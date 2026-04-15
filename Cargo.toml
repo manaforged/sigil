@@ -1,0 +1,65 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/ui-hal",
+    "crates/ui-reactive",
+    "crates/ui-async",
+    "crates/ui-renderer",
+    "crates/ui-shell",
+    "examples/hello-rect",
+]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.90"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ThomGardiner/sigil"
+authors = ["the author"]
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+missing_docs = "warn"
+unreachable_pub = "warn"
+unused_crate_dependencies = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+# the author rust-hygiene restriction set. Agents loading the
+# rust-hygiene skill treat these as non-negotiable in production
+# code. Tests / benches / examples may bend `panic` or
+# `indexing_slicing` via a crate-root #![allow] with a comment
+# citing docs/plans/native-ui/hygiene-cleanup-framework.md.
+unwrap_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+mod_module_files = "deny"
+# `clippy::cargo` is deliberately not enabled at the workspace level.
+# Transitive multi-version dependencies come from wgpu and winit and are
+# not under our control; treat at crate level if a specific crate can
+# legitimately dedupe its own tree.
+
+[workspace.dependencies]
+winit = "0.30"
+wgpu = "29"
+pollster = "0.4"
+raw-window-handle = "0.6"
+bytemuck = { version = "1", features = ["derive"] }
+smallvec = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
+ui-hal = { path = "crates/ui-hal" }
+ui-reactive = { path = "crates/ui-reactive" }
+ui-async = { path = "crates/ui-async" }
+ui-renderer = { path = "crates/ui-renderer" }
+ui-shell = { path = "crates/ui-shell" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

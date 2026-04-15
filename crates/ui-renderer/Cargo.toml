@@ -1,0 +1,30 @@
+[package]
+name = "ui-renderer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "wgpu-backed Renderer adapter for the sigil workspace."
+
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped — the lib.rs example
+# is a `text` block specifically to avoid this path.
+doctest = false
+
+[dependencies]
+ui-hal = { workspace = true }
+wgpu = { workspace = true }
+pollster = { workspace = true }
+raw-window-handle = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+# wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
+# to provide `impl std::error::Error for windows_core::Error`. See
+# examples/hello-rect/Cargo.toml for the full rationale.
+windows-core = { version = "0.62", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

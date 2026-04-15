@@ -1,0 +1,113 @@
+# cargo-deny configuration for sigil.
+#
+# Checks run in CI via `cargo deny check` (see .github/workflows/ci.yml).
+# Schema reference: https://embarkstudios.github.io/cargo-deny/
+# Tested against cargo-deny ~0.16 (April 2026).
+
+# --- graph ------------------------------------------------------------------
+# Target list we actually build for. Keeping this tight means cargo-deny
+# doesn't complain about platform-specific crates that are never linked
+# into any of our real builds.
+[graph]
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },
+    { triple = "aarch64-unknown-linux-gnu" },
+    { triple = "x86_64-pc-windows-msvc" },
+    { triple = "aarch64-pc-windows-msvc" },
+    { triple = "x86_64-apple-darwin" },
+    { triple = "aarch64-apple-darwin" },
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+# --- advisories -------------------------------------------------------------
+# Default posture: any RUSTSEC advisory fails the build. The `ignore` list is
+# empty on purpose — every exception must land as a new entry here with a
+# comment explaining (a) which advisory, (b) why we can't upgrade, (c) what
+# the follow-up is.
+[advisories]
+db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = [
+    # Example format (uncomment + adapt when we actually need to ignore one):
+    # { id = "RUSTSEC-0000-0000", reason = "Upstream fix in flight — tracked in #NNN. Remove by <date>." },
+]
+
+# --- licenses ---------------------------------------------------------------
+# Allow list is the SPDX intersection of what the author legal has cleared for
+# shipping in dual-licensed (MIT OR Apache-2.0) product code. Anything not
+# on this list fails the build and requires a conscious decision to add.
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "ISC",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+]
+confidence-threshold = 0.93
+exceptions = []
+
+[licenses.private]
+ignore = true
+registries = []
+
+# --- bans -------------------------------------------------------------------
+# Duplicate-version policy: we'd prefer one version of each crate, but the
+# wgpu / winit / criterion dependency trees bring in transitive duplicates
+# we cannot dedupe ourselves. The `skip` list below captures the exact
+# duplicates we know about (from `cargo tree --workspace --duplicates` on
+# 2026-04-14). When upstream consolidates, remove the entry — the rest of
+# the check will catch any new unexpected duplicates.
+[bans]
+multiple-versions = "deny"
+wildcards = "deny"
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+allow = []
+deny = []
+
+# Known-duplicated transitive crates. Each entry needs a pointer to the
+# upstream cause so we can re-check periodically.
+skip = [
+    # wgpu 29 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
+    # wgpu-core, wgpu-hal, gpu-allocator). indexmap 2.14 additionally pulls
+    # hashbrown 0.17. All in the wgpu dep tree, no workaround available.
+    { crate = "hashbrown@0.15.5", reason = "wgpu 29 transitive (gpu-descriptor)" },
+    { crate = "hashbrown@0.16.1", reason = "wgpu 29 transitive (naga/wgpu-core)" },
+    { crate = "hashbrown@0.17.0", reason = "indexmap 2.14 transitive via wgpu-core/naga" },
+
+    # foldhash follows hashbrown's version split for the same reason.
+    { crate = "foldhash@0.1.5",   reason = "wgpu 29 transitive via hashbrown 0.15" },
+    { crate = "foldhash@0.2.0",   reason = "wgpu 29 transitive via hashbrown 0.16" },
+
+    # winit 0.30 pins windows-sys 0.52; criterion 0.5 (via is-terminal /
+    # winapi-util / walkdir) pulls windows-sys 0.61. Both are dev/runtime
+    # deps we cannot consolidate without forking.
+    { crate = "windows-sys@0.52.0", reason = "winit 0.30 pins this version" },
+    { crate = "windows-sys@0.61.2", reason = "criterion 0.5 transitive (is-terminal, walkdir)" },
+]
+skip-tree = []
+
+# --- sources ----------------------------------------------------------------
+# Only crates.io is allowed as a package source. Any git dependency must be
+# whitelisted explicitly in `allow-git` or via `sources.allow-org`.
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[sources.allow-org]
+github = []
+gitlab = []
+bitbucket = []

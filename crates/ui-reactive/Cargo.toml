@@ -1,0 +1,40 @@
+[package]
+name = "ui-reactive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Leptos 0.5+ style reactive core — signals, effects, derived, owner tree."
+
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. Crate-level examples are marked `rust,ignore`; the
+# same examples live in `tests/reactive_contract.rs` as real tests.
+doctest = false
+
+[dependencies]
+smallvec = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "reactive_ops"
+harness = false
+
+[[bench]]
+name = "fanout"
+harness = false
+
+[[bench]]
+name = "realtime"
+harness = false
+
+[[bench]]
+name = "memory"
+harness = false
+
+[lints]
+workspace = true

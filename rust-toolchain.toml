@@ -1,0 +1,5 @@
+# MSRV is 1.90 (enforced in CI). Developers use stable.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "default"

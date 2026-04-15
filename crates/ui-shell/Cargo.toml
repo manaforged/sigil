@@ -1,0 +1,26 @@
+[package]
+name = "ui-shell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "winit 0.30+ ApplicationHandler-backed Shell adapter."
+
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped.
+doctest = false
+
+[dependencies]
+ui-hal = { workspace = true }
+# NOTE: `ui-async` is intentionally not a direct dependency in Phase 2.
+# The wake bridge is exposed as an `Arc<dyn Fn() + Send + Sync>` so
+# that `ui-shell` does not pin the `ui-async` public API before it
+# stabilises. Add the dep (and replace the hook closure with a typed
+# `ui_async::AsyncRuntime` handle) when the `ui-async` surface lands.
+winit = { workspace = true }
+
+[lints]
+workspace = true

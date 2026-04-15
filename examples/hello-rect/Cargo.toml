@@ -1,0 +1,33 @@
+[package]
+name = "hello-rect"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "hello-rect"
+path = "src/main.rs"
+
+[dependencies]
+ui-hal = { workspace = true }
+ui-reactive = { workspace = true }
+ui-async = { workspace = true }
+ui-renderer = { workspace = true }
+ui-shell = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
+winit = { workspace = true }
+
+# wgpu-hal 29.0.1 on Windows pulls windows-core with `default-features = false`
+# which drops the `std` feature providing `impl std::error::Error for
+# windows_core::Error`. wgpu-hal's gles/wgl backend expects that impl, so the
+# build fails unless some crate turns `std` back on. Features are additive, so
+# pulling windows-core here with `std` unifies it across the whole dep graph.
+# Carried from the pre-HAL hello-rect; ui-renderer has the same workaround.
+# Remove once wgpu ships a fix.
+[target.'cfg(windows)'.dependencies]
+windows-core = { version = "0.62", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true
