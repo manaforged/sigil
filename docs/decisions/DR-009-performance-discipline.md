@@ -60,14 +60,15 @@ A change to the core runtime re-runs all tiers.
 | Operation | Target | Rationale |
 |-----------|--------|-----------|
 | `signal.get()` | ≤10 ns | Called 1000s of times per frame in any real UI. Must approach memory-access floor. |
-| `signal.set()` with 1 sub | ≤120 ns | Common case; dictates reactive fan-out cost. |
+| `signal.set()` with 1 sub | ≤150 ns | Common case; dictates reactive fan-out cost. **Amended 2026-04-15 from 120 ns:** stable-dep cursoring in `EffectSlot` bought 22× on 1000-subscriber fan-out (1.51 ms → 67.7 µs) in exchange for ~30 ns per single-subscriber write. Clawing the 30 ns back via micro-optimisation would undo the fan-out win. 150 ns is the new defended floor. |
 | `signal.set()` with 100 subs | ≤20 µs | Fan-out under a theme switch. |
 | `signal.set()` with 1000 subs | ≤200 µs | Broadcast events. 5 at ≤200 µs fit in one frame. |
 | Cross-thread dispatch round-trip | ≤500 µs p99 | Background task write → effect fires on next frame. |
 | Drain with 100 pending callbacks | ≤2 ms | Fits in frame budget alongside layout+paint. |
 | Sustained 1k writes/sec, frame latency p99 | ≤16 ms | 60 Hz maintained under live-data load. |
 | Burst 10k writes batched | ≤5 ms | One frame's worth of coalesced work. |
-| Memory per signal (steady state) | ≤128 B | 10k signals = 1.3 MB — fits comfortably. |
+| Memory per signal (steady state) | ≤192 B | 10k signals ≈ 1.9 MB. **Amended 2026-04-15 from 128 B:** `SignalSlot` is 80 B inline before `Box<dyn Any>` + arena Vec growth + owner's `signals` Vec entry. The provisional 128 B budget was set before slot sizes were measured; 192 B reflects reality. Re-tighten when `#[expect(dead_code)]` fields on `SignalSlot` are either wired in or deleted. |
+| Memory per effect (steady state) | ≤640 B | 10k effects ≈ 6.3 MB. **Amended 2026-04-15 from 512 B reference:** `EffectSlot` gained `prev_deps: SmallVec<[SignalKey; 4]>` + `prev_dep_cursor: usize` to support stable-dep cursoring (see `signal.set()` row above). Net +56 B slot + amortised +118 B per effect; the fan-out/broadcast wins are load-bearing for Phase 12 live-data dashboards. Revisit if a real UI shape pushes effect counts above 10k concurrent. |
 | 10-minute streaming session memory growth | ≤10 MB | Bounded heap churn; any growth beyond this is a leak. |
 | Deep owner disposal, 1000 nodes | ≤100 µs | Closing a complex dialog. |
 
@@ -102,8 +103,8 @@ perf trajectory.
 Every phase that lands new crates or primitives lands a bench suite
 covering its relevant tiers:
 
-- Foundation crates (`ui-reactive`, `ui-async`, `ui-renderer`,
-  `ui-shell`) — Tiers 1-5.
+- Foundation crates (`sigil-reactive`, `sigil-async`, `sigil-renderer`,
+  `sigil-shell`) — Tiers 1-5.
 - Layout / text / focus — Tiers 1, 2, 4.
 - Primitives (Button, Input, Table, etc.) — Tier 4 (one Button is
   cheap; 1000 Buttons in a grid is what matters).

@@ -41,10 +41,10 @@ Research findings (April 2026):
 ## Decision
 
 Depend on `parley` upstream. Wrap behind a `TextEngine` trait in
-`ui-hal`. The `ui-text` crate provides the adapter plus the layers
+`sigil-hal`. The `sigil-text` crate provides the adapter plus the layers
 Parley does not give us.
 
-**Explicit owned scope** in `ui-text`:
+**Explicit owned scope** in `sigil-text`:
 
 - IME integration on all three desktop OSes (Windows TSF, macOS
   NSTextInputClient, Linux IBus/Fcitx) — including the intermediate-glyph
@@ -67,12 +67,12 @@ directly.
   ecosystem. This is an explicit differentiator.
 - If Parley breaks API repeatedly (more than twice per quarter) or if
   upstream choices become incompatible with our IME work, we fork Parley
-  into `ui-text` and own the paragraph layer. Kill criteria are specific
+  into `sigil-text` and own the paragraph layer. Kill criteria are specific
   because the cost of forking is high.
 
 ## Kill criteria
 
-Fork `parley` into `ui-text` when, and only when:
+Fork `parley` into `sigil-text` when, and only when:
 
 1. Parley ships more than two breaking API changes per quarter sustained
    over two quarters, **or**

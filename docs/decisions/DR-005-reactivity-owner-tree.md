@@ -206,7 +206,7 @@ to standardize it; we fill the gap.
 
 This addendum is not a new decision — it is a refinement of how the
 owner tree is implemented. The owner model itself remains
-Leptos 0.5+ style. We implement this in the first `ui-reactive`
+Leptos 0.5+ style. We implement this in the first `sigil-reactive`
 commit, not as a later polish pass, because naming and location
 capture are load-bearing for every debug tool that follows and
 retrofitting them later means touching every reactive construction

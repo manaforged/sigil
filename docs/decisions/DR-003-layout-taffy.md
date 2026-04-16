@@ -32,7 +32,7 @@ Research findings (April 2026):
 
 ## Decision
 
-Depend on `taffy` upstream. Wrap behind a `Layout` trait in `ui-hal`.
+Depend on `taffy` upstream. Wrap behind a `Layout` trait in `sigil-hal`.
 
 **No fork on day one.** The HAL trait is the swap point: if a measured
 bottleneck later justifies a specialized implementation, we build it
@@ -42,10 +42,10 @@ against the same trait without touching consumers.
 
 - We inherit Taffy's open correctness bugs. Our adapter includes a fixture
   test suite (ported from WPT where possible) so we notice regressions.
-- `ui-layout` is a thin adapter, not an engine. It normalizes Taffy's API
+- `sigil-layout` is a thin adapter, not an engine. It normalizes Taffy's API
   quirks and exposes the `Layout` trait implementation.
 - If the fast-path need materializes, it becomes a separate crate
-  (`ui-layout-fast`) behind the same trait, not a fork.
+  (`sigil-layout-fast`) behind the same trait, not a fork.
 
 ## Kill criteria
 

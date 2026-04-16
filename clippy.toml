@@ -1,0 +1,12 @@
+# the author clippy.toml
+# Configures thresholds for restriction lints to match the the author
+# clean-lean-Rust contract. Clippy defaults are too permissive:
+#   too-many-lines:      100 → 50
+#   too-many-arguments:    7 → 5
+#   cognitive-complexity: 25 → 15
+# See the author-dev-team/skills/rust-hygiene/SKILL.md for the full contract.
+
+too-many-lines-threshold = 50
+too-many-arguments-threshold = 5
+cognitive-complexity-threshold = 15
+type-complexity-threshold = 200

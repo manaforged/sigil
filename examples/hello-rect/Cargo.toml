@@ -11,11 +11,11 @@ name = "hello-rect"
 path = "src/main.rs"
 
 [dependencies]
-ui-hal = { workspace = true }
-ui-reactive = { workspace = true }
-ui-async = { workspace = true }
-ui-renderer = { workspace = true }
-ui-shell = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-async = { workspace = true }
+sigil-renderer = { workspace = true }
+sigil-shell = { workspace = true }
 tokio = { workspace = true, features = ["time"] }
 winit = { workspace = true }
 
@@ -24,7 +24,7 @@ winit = { workspace = true }
 # windows_core::Error`. wgpu-hal's gles/wgl backend expects that impl, so the
 # build fails unless some crate turns `std` back on. Features are additive, so
 # pulling windows-core here with `std` unifies it across the whole dep graph.
-# Carried from the pre-HAL hello-rect; ui-renderer has the same workaround.
+# Carried from the pre-HAL hello-rect; sigil-renderer has the same workaround.
 # Remove once wgpu ships a fix.
 [target.'cfg(windows)'.dependencies]
 windows-core = { version = "0.62", default-features = false, features = ["std"] }

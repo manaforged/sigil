@@ -1,0 +1,26 @@
+[package]
+name = "sigil-shell"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "winit 0.30+ ApplicationHandler-backed Shell adapter."
+
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped.
+doctest = false
+
+[dependencies]
+sigil-hal = { workspace = true }
+# NOTE: `sigil-async` is intentionally not a direct dependency in Phase 2.
+# The wake bridge is exposed as an `Arc<dyn Fn() + Send + Sync>` so
+# that `sigil-shell` does not pin the `sigil-async` public API before it
+# stabilises. Add the dep (and replace the hook closure with a typed
+# `sigil_async::AsyncRuntime` handle) when the `sigil-async` surface lands.
+winit = { workspace = true }
+
+[lints]
+workspace = true

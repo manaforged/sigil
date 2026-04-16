@@ -1,21 +1,21 @@
-//! `hello-rect` — Phase 2 kernel-demo.
+//! `hello-rect` - kernel-demo.
 //!
 //! Opens a window, clears it to a colour, and cycles through three
 //! colours every 600 ms. All five foundation crates cooperate:
 //!
-//! - `ui-reactive` holds the colour index as a `Signal<usize>`.
-//! - `ui-async` owns a Tokio runtime. A background task ticks every
+//! - `sigil-reactive` holds the colour index as a `Signal<usize>`.
+//! - `sigil-async` owns a Tokio runtime. A background task ticks every
 //!   600 ms and posts a write through `dispatch_to_owner`.
-//! - `ui-shell` runs the winit event loop and delivers wake events
+//! - `sigil-shell` runs the winit event loop and delivers wake events
 //!   into the async dispatcher.
-//! - `ui-renderer` clears the surface to the current colour.
-//! - `ui-hal` is what every downstream crate names in its imports.
+//! - `sigil-renderer` clears the surface to the current colour.
+//! - `sigil-hal` is what every downstream crate names in its imports.
 //!
-//! Note: click-to-cycle was the Phase 0 gesture. The HAL-shaped
-//! `Shell` trait in Phase 2 does not deliver pointer events — input
-//! vocabulary lands with `ui-events` in Phase 3. The Tokio-driven
-//! cycle below proves the cross-thread signal path (the harder
-//! thing) end-to-end while we wait for Phase 3.
+//! Note: click-to-cycle belonged to the earliest proof app. The
+//! HAL-shaped `Shell` trait does not deliver pointer events yet; input
+//! vocabulary lands with `ui-events`. The Tokio-driven cycle below
+//! proves the cross-thread signal path end-to-end while input remains a
+//! later milestone.
 
 // hello-rect example: indices are bounded by construction
 // (modulo COLORS.len()). See docs/plans/native-ui/hygiene-cleanup-framework.md.
@@ -24,7 +24,7 @@
 #![allow(missing_docs)]
 
 // wgpu-hal 29.0.1 GLES/WGL backend needs `windows-core` with the
-// `std` feature enabled. `ui-renderer` carries the same workaround;
+// `std` feature enabled. `sigil-renderer` carries the same workaround;
 // this binary pulls it in too so the feature unification holds at
 // link time across the whole executable. Remove once wgpu ships a
 // fix.
@@ -36,12 +36,12 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use ui_async::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
-use ui_hal::{Color, PhysicalSize, Renderer, Scheduler, Shell};
-use ui_reactive::{Runtime, signal};
-use ui_renderer::{WgpuRenderer, WgpuSurface, into_window_handle};
-use ui_shell::WinitShell;
-// `winit` and `tokio` arrive transitively via ui-shell / ui-async.
+use sigil_async::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
+use sigil_hal::{Color, PhysicalSize, Renderer, Scheduler, Shell};
+use sigil_reactive::{Runtime, signal};
+use sigil_renderer::{WgpuRenderer, WgpuSurface, into_window_handle};
+use sigil_shell::WinitShell;
+// `winit` and `tokio` arrive transitively via sigil-shell / sigil-async.
 // The `use` markers silence `unused_crate_dependencies` on direct
 // deps we only reference through the adapters.
 use tokio as _;
@@ -54,6 +54,10 @@ const COLORS: [Color; 3] = [
     Color::rgba(0.95, 0.35, 0.20, 1.0), // warm orange
 ];
 
+// Example entry point — the setup + reactive scope + event-loop form one
+// coherent narrative that cannot be split without losing the walkthrough
+// value. 7 lines over the soft cap; allowed per the hygiene framework.
+#[allow(clippy::too_many_lines)]
 fn main() {
     // ----- construct the three runtimes on the main thread -----
 
@@ -76,7 +80,7 @@ fn main() {
     // ----- ask the shell for a window; it materialises on resumed -----
 
     let window_handle = shell
-        .create_window("sigil — kernel-demo", PhysicalSize::new(720, 480))
+        .create_window("Sigil - kernel-demo", PhysicalSize::new(720, 480))
         .expect("create window");
 
     // ----- build the reactive state + spawn the cycling task -----

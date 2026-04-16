@@ -1,0 +1,24 @@
+[package]
+name = "sigil-text"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Parley-backed text engine for Sigil."
+
+[dependencies]
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+parley = "0.8"
+ahash = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+sigil-core = { workspace = true }
+sigil-layout = { workspace = true }
+taffy = { workspace = true }
+
+[lints]
+workspace = true

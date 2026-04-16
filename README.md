@@ -1,55 +1,79 @@
-# sigil
+# Sigil
 
-A production-grade, Rust-native desktop UI component library. Built on a
-deliberately minimal floor (winit, wgpu, Taffy, Parley, AccessKit) and
-focused on the layers every existing Rust UI framework leaves open:
-accessibility from day one, real IME, a designed component system with
-variant ergonomics, data-heavy patterns, and documentation.
+Sigil is a Rust-native desktop UI system for building serious,
+data-heavy applications without retreating to a webview. It owns the
+experience layer above the hard foundations: reactive state, typed node
+identity, layout, rendering, accessibility, IME-ready text, headless
+interaction primitives, a designed component catalog, and the app
+patterns that make dense desktop software feel composed instead of
+assembled from parts.
 
-**Status:** Phase 0 — evidence and decision records. Not usable yet.
+**Status:** `sigil-layout` landed. The workspace has a headless node tree
+with stable AccessKit-compatible IDs plus a Taffy-backed layout adapter
+that writes computed rectangles back onto nodes.
 
 ## Design plan
 
-The full design plan lives outside this repo at
-`a local document`. Decision records
-are in [`docs/decisions/`](docs/decisions/).
+The roadmap reconciliation lives in
+[`DR-013`](docs/decisions/DR-013-roadmap-reconciliation.md). Repo-local
+execution plans live in [`docs/plans/`](docs/plans/), and decision
+records live in [`docs/decisions/`](docs/decisions/).
 
-## Workspace layout
+## Workspace Layout
 
-```
+```text
 crates/
-  ui-hal/            Hardware abstraction layer — traits for Renderer,
+  sigil-hal/            Hardware abstraction layer: traits for Renderer,
                      Shell, Layout, TextEngine, A11yBridge, Scheduler.
                      Every downstream crate depends on these traits,
                      never on upstream crates directly.
+  sigil-reactive/       Main-thread signal/effect owner tree.
+  sigil-core/           Stable node identity, arena storage, Component,
+                     Semantics, typed extensions, and builders.
+  sigil-layout/         Taffy-backed layout adapter. Mirrors sigil-core
+                     subtrees, computes layout, and attaches results.
+  sigil-async/          Tokio runtime and owner-targeted main-thread dispatch.
+  sigil-renderer/       wgpu-backed renderer adapter.
+  sigil-shell/          winit shell adapter.
 
 examples/
-  hello-rect/        Phase 0 proof app: opens a window, clears the
+  hello-rect/        Window proof app: opens a window, clears the
                      surface to a colour, toggles through three
-                     colours on click, exits cleanly. Uses winit +
-                     wgpu directly (pre-HAL). A real rect-drawing
-                     pipeline lands with `ui-renderer` in Phase 1.1.
+                     colours on a timer, and exits cleanly.
+  hello-tree/        Headless proof app: builds a `sigil-core` node tree
+                     and prints its shape.
+  hello-layout/      Headless proof app: computes rectangles for a
+                     `sigil-core` tree and prints them.
 
 docs/
-  decisions/         Architecture decision records (DR-000..DR-008).
+  decisions/         Architecture decision records (DR-000..DR-013).
+  plans/             Repo-local execution plans tied to accepted DRs.
 ```
 
-## Phase 0 verification
+## Verification
 
 ```bash
-cargo check --workspace
-cargo clippy --workspace -- -D warnings
+cargo fmt --check
+cargo check --workspace --all-targets
+cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic -W clippy::nursery
+cargo test --workspace
 cargo run -p hello-rect
+cargo run -p hello-tree
+cargo run -p hello-layout
+cargo bench -p sigil-core
+cargo bench -p sigil-layout
 ```
 
-`cargo run -p hello-rect` should open a window, clear the surface
-to a colour, change colour when clicked, and close cleanly when the
-window is closed. This is the Phase 0 gate.
+`cargo run -p hello-rect` should open a window, clear the surface to a
+colour, cycle colours on a timer, and close cleanly when the window is
+closed. `cargo run -p hello-tree` should print a deterministic headless
+tree outline. `cargo run -p hello-layout` should print deterministic
+computed rectangles.
 
 ## Principles
 
 - **Lean:** small files, one concern per module, no god objects, no
-  speculative abstractions. Soft cap ~400 LoC per file.
+  speculative abstractions. Soft cap around 400 LoC per file.
 - **Honest:** no feature stubs, no half-baked functions, no "TODO" shims
   landed on main. If it is not done, it does not merge.
 - **Accessible from day one:** semantic identity lives on the node model
@@ -61,11 +85,11 @@ window is closed. This is the Phase 0 gate.
 
 [![CI](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml/badge.svg)](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml)
 
-Every push and PR runs on `{ubuntu, macos, windows} × {stable, 1.90 MSRV}`:
+Every push and PR runs on `{ubuntu, macos, windows} x {stable, 1.90 MSRV}`:
 `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
 `cargo check --workspace --all-targets`, `cargo test --workspace`, and
 `cargo build -p hello-rect`. Ubuntu stable additionally runs a
-`ui-reactive` bench smoke test and `cargo deny check` for licenses,
+`sigil-reactive` bench smoke test and `cargo deny check` for licenses,
 advisories, bans, and sources.
 
 ## License

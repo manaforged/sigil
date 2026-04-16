@@ -1,4 +1,4 @@
 # Default owner for everything in this repo. All PRs require review from
 # the repo owner. Add more specific rules above this line as the codebase
-# grows (e.g. `crates/ui-renderer/ @some-handle`).
+# grows (e.g. `crates/sigil-renderer/ @some-handle`).
 *   @ThomGardiner

@@ -26,7 +26,7 @@ Evidence:
 ## Decision
 
 Depend on `wgpu` upstream. Wrap every `wgpu` touchpoint behind a
-`Renderer` trait in `ui-hal`. Downstream crates name the trait, never
+`Renderer` trait in `sigil-hal`. Downstream crates name the trait, never
 `wgpu` directly.
 
 The HAL insulates us from breaking releases, gives us a test seam
@@ -37,11 +37,11 @@ consumer code.
 ## Consequences
 
 - Every `wgpu`-typed value lives behind `Renderer` trait methods. No
-  `wgpu::Surface` in `ui-core` or higher.
+  `wgpu::Surface` in `sigil-core` or higher.
 - We pay a small abstraction cost (trait indirection, type erasure where
   needed). The HAL target is ~2k LoC across all six traits, so the cost
   is bounded.
-- Migrations are confined to `ui-renderer`. When `wgpu` ships a breaking
+- Migrations are confined to `sigil-renderer`. When `wgpu` ships a breaking
   release, only that crate changes.
 
 ## Kill criteria

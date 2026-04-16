@@ -29,7 +29,7 @@ contract replacing the closure-based API. Key constraints:
 
 ## Decision
 
-Depend on `winit` 0.30+ upstream. Wrap behind a `Shell` trait in `ui-hal`.
+Depend on `winit` 0.30+ upstream. Wrap behind a `Shell` trait in `sigil-hal`.
 Downstream crates name the trait, never `winit` directly.
 
 The `Shell` trait surfaces:
@@ -48,7 +48,7 @@ winit handler, never Tokio.
 - The library is fundamentally main-thread-driven. Signal reads and
   writes from background threads are funneled through the dispatcher.
 - We pay the `winit` migration cost when it ships `winit-next`. The
-  `Shell` trait confines that migration to `ui-renderer` + `ui-shell`.
+  `Shell` trait confines that migration to `sigil-renderer` + `sigil-shell`.
 - We are writing the **canonical winit+Tokio integration pattern**. No
   shipped Rust UI framework uses this combination today (Bevy uses its
   own scheduler, Floem has its own executor, GPUI has its own

@@ -1,0 +1,34 @@
+[package]
+name = "sigil-async"
+autobenches = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Tokio-based async runtime and main-thread dispatcher for Sigil."
+
+[lib]
+# Workaround for the Rust 1.94 merged-doctests + Windows-msvc target
+# misdetection bug. The crate has no runnable doctests; keeping them
+# on would trigger rustdoc to compile against x86_64-pc-windows-gnu
+# and fail to find msvc-built rlibs. Matches the `rust,ignore` pattern
+# used on sigil-reactive.
+doctest = false
+
+[dependencies]
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+winit = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "async_ops"
+harness = false
+
+[lints]
+workspace = true
