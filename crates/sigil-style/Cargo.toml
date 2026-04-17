@@ -1,0 +1,33 @@
+[package]
+name = "sigil-style"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Utility-class, theme, and reactive style layer for Sigil."
+
+[lib]
+doctest = false
+bench = false
+
+[dependencies]
+phf = { workspace = true }
+sigil-core = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-style-macros = { workspace = true }
+smallvec = { workspace = true }
+strsim = { workspace = true }
+
+[dev-dependencies]
+allocation-counter = "0.8.1"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "style_ops"
+harness = false
+
+[lints]
+workspace = true

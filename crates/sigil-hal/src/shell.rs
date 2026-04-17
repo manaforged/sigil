@@ -9,7 +9,7 @@
 //! thread; background work funnels through the [`Scheduler`] into the
 //! main-thread dispatcher and wakes the shell via [`Shell::wake`].
 //!
-//! # Phase 2 shape
+//! # Event delivery shape
 //!
 //! This trait is deliberately narrow. It encodes only:
 //!
@@ -18,25 +18,24 @@
 //!    (`ApplicationHandler::resumed` in the winit implementation).
 //! 2. **Cross-thread wake** — a `Waker` handle is `Clone + Send + Sync`
 //!    and drives the coalescing wake documented in DR-002/DR-007.
-//! 3. **Event-loop entry point** — `run` consumes the shell, drives
+//! 3. **Event drain** — platform adapters translate OS input and
+//!    lifecycle notifications into [`ShellEvent`] values, then expose
+//!    them through [`Shell::drain_events`] during the frame callback.
+//! 4. **Event-loop entry point** — `run` consumes the shell, drives
 //!    the OS event loop, and invokes the user's `frame` callback at
 //!    redraw time with a mutable handle to the shell.
 //!
-//! Input event delivery (pointer, keyboard, IME, scroll) and richer
-//! lifecycle hooks (`suspended`, explicit redraw requests) are *not*
-//! modelled here. Phase 3 introduces a separate `ui-events` crate that
-//! rides on top of `Shell`; wiring it in will either extend the frame
-//! callback signature or add one further trait method. Keeping `Shell`
-//! narrow for Phase 2 means the first adapter does not have to commit
-//! to an event vocabulary before we have a real consumer driving the
-//! shape.
+//! Routing, hit-testing, focus management, and handler dispatch live
+//! in `sigil-events`. `Shell` only owns platform delivery.
 //!
 //! [DR-002]: ../../../docs/decisions/DR-002-shell-winit.md
 //! [`Scheduler`]: crate::scheduler::Scheduler
 
 use core::error::Error;
 
-use crate::geometry::PhysicalSize;
+use alloc::vec::IntoIter;
+
+use crate::{ShellEvent, geometry::PhysicalSize};
 
 /// OS window and event loop abstraction.
 ///
@@ -96,6 +95,12 @@ pub trait Shell: Sized {
         title: &str,
         initial_size: PhysicalSize,
     ) -> Result<Self::Window, Self::Error>;
+
+    /// Drain input and lifecycle events buffered since the last frame.
+    ///
+    /// The returned iterator owns the drained buffer, mirroring
+    /// `sigil-async`'s main-thread drain shape.
+    fn drain_events(&mut self) -> IntoIter<ShellEvent>;
 
     /// Run the event loop until exit.
     ///

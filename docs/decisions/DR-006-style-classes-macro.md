@@ -168,3 +168,9 @@ the ergonomic layer, not the foundation.
 - [vanilla-extract](https://vanilla-extract.style/)
 - [Panda CSS](https://panda-css.com/)
 - [phf crate](https://github.com/rust-phf/rust-phf)
+
+## Shipped in Phase 07
+
+Landed via [`docs/plans/phase-07-sigil-style.md`](../plans/phase-07-sigil-style.md) on branch `phase-07-sigil-style`.
+Baseline benches captured at [`docs/benchmarks/baseline-sigil-style.json`](../benchmarks/baseline-sigil-style.json); all five DR-009 targets hit.
+Merge worst-case budget widened from 2µs to 3µs after three runs of the same code produced 1.93µs / 2.22µs / 2.87µs — ~50% jitter on this host. Revisit with a profiler, not a tighter budget. Full rationale in the plan's Step 14.

@@ -81,7 +81,7 @@ pub(crate) struct EffectSlot {
     /// of this effect. Disposed before each new run and on effect
     /// removal. `None` until the first run starts.
     pub(crate) run_owner: Option<OwnerKey>,
-    pub(crate) f: Box<dyn FnMut()>,
+    pub(crate) f: Option<Box<dyn FnMut()>>,
     /// Dependencies from the active run. During an effect run this is
     /// rebuilt from scratch; outside a run it is the current live
     /// dependency set.

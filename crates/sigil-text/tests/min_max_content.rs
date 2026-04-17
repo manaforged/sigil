@@ -10,7 +10,7 @@ use parley as _;
 use sigil_hal as _;
 use sigil_reactive as _;
 
-use sigil_core::TextSource;
+use sigil_core::TextContent;
 use sigil_layout::TextEngineMeasure;
 use sigil_layout::TextMeasure;
 use sigil_text::{ParleyTextEngine, TextConfig};
@@ -26,7 +26,7 @@ fn measure_with_space(
     text: &str,
     width: AvailableSpace,
 ) -> Size<f32> {
-    let source = TextSource::Static(text.to_owned());
+    let source = TextContent::Static(text.to_owned());
     measurer.measure(
         &source,
         Size {

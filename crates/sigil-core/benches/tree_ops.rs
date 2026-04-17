@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use accesskit as _;
 use ahash as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;

@@ -17,31 +17,23 @@ fn main() -> Result<(), Box<dyn Error>> {
         container()
             .role(Role::Main)
             .aria_label("Hello layout")
+            .layout(
+                LayoutStyle::flex_row()
+                    .fixed_size(320.0, 80.0)
+                    .gap_px(12.0)
+                    .align_items(AlignItems::FlexStart),
+            )
             .child(text("Hello"))
-            .child(container().child(text("from layout"))),
+            .child(
+                container()
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .padding_px(4.0)
+                            .align_items(AlignItems::FlexStart),
+                    )
+                    .child(text("from layout")),
+            ),
     );
-
-    attach(
-        &mut cx,
-        root,
-        LayoutIntent::flex_row()
-            .fixed_size(320.0, 80.0)
-            .gap_px(12.0)
-            .align_items(AlignItems::FlexStart),
-    )?;
-
-    let second = cx
-        .get(root)
-        .and_then(|node| node.children.get(1))
-        .copied()
-        .ok_or_else(|| std::io::Error::other("second child exists"))?;
-    attach(
-        &mut cx,
-        second,
-        LayoutIntent::flex_column()
-            .padding_px(4.0)
-            .align_items(AlignItems::FlexStart),
-    )?;
 
     let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
     let measurer = TextEngineMeasure::new(engine);
@@ -64,18 +56,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn attach(cx: &mut Cx, id: NodeId, intent: LayoutIntent) -> Result<(), Box<dyn Error>> {
-    let node = cx
-        .get_mut(id)
-        .ok_or_else(|| std::io::Error::other("node exists"))?;
-    let _ = node.attach(intent);
-    Ok(())
-}
-
-const fn kind_name(kind: &NodeKind) -> &'static str {
+const fn kind_name(kind: &NodeType) -> &'static str {
     match kind {
-        NodeKind::Container => "container",
-        NodeKind::Text { .. } => "text",
-        NodeKind::Fragment => "fragment",
+        NodeType::Container => "container",
+        NodeType::Text { .. } => "text",
+        NodeType::Fragment => "fragment",
     }
 }

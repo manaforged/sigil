@@ -32,8 +32,14 @@ pub(super) struct CachedGlyph {
 /// The cache is resolution-independent — one entry covers all font sizes.
 /// It grows monotonically; call [`GlyphCache::clear`] once per scene if
 /// needed (e.g. after a font reload).
+///
+/// The `generation` counter is incremented on every [`insert`](Self::insert)
+/// so the atlas can detect when the cache content has changed and skip
+/// redundant GPU re-uploads on stable frames.
 pub(super) struct GlyphCache {
     map: HashMap<GlyphKey, CachedGlyph>,
+    /// Monotonically increasing; bumped on every insertion.
+    generation: u64,
 }
 
 impl GlyphCache {
@@ -41,7 +47,16 @@ impl GlyphCache {
     pub(super) fn new() -> Self {
         Self {
             map: HashMap::new(),
+            generation: 0,
         }
+    }
+
+    /// Current generation counter.
+    ///
+    /// Two calls that return the same value guarantee no glyphs were inserted
+    /// between them.
+    pub(super) const fn generation(&self) -> u64 {
+        self.generation
     }
 
     /// Look up a cached glyph.
@@ -57,11 +72,23 @@ impl GlyphCache {
     /// Insert preprocessed band data for a glyph.
     pub(super) fn insert(&mut self, key: GlyphKey, band_data: BandData) {
         self.map.insert(key, CachedGlyph { band_data });
+        self.generation = self.generation.wrapping_add(1);
+    }
+
+    /// Number of cached glyphs.
+    pub(super) fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    /// Iterate over all `(GlyphKey, CachedGlyph)` pairs.
+    pub(super) fn iter(&self) -> impl Iterator<Item = (&GlyphKey, &CachedGlyph)> {
+        self.map.iter()
     }
 
     /// Evict all entries (e.g. after a font reload).
     #[allow(dead_code)]
     pub(super) fn clear(&mut self) {
         self.map.clear();
+        self.generation = self.generation.wrapping_add(1);
     }
 }

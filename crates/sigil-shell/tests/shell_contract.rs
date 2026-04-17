@@ -35,6 +35,7 @@
 
 // `winit` is a regular dep of `sigil-shell`; integration tests inherit
 // its dep graph even though they don't reference winit directly.
+use smol_str as _;
 use winit as _;
 
 use sigil_shell::{ShellError, WinitShell, WinitWaker};

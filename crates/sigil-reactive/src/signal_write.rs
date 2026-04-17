@@ -107,8 +107,11 @@ impl<T: 'static> Signal<T> {
                 !slot.value.is::<UpdateInProgress>(),
                 "Signal::set on a signal whose own update closure is still running (at {caller})"
             );
-            assert!(slot.value.is::<T>(), "signal type mismatch");
-            let old: Box<dyn core::any::Any> = core::mem::replace(&mut slot.value, Box::new(value));
+            let current = slot
+                .value
+                .downcast_mut::<T>()
+                .expect("signal type mismatch");
+            let old = core::mem::replace(current, value);
             if slot.subscribers.is_empty() {
                 return (old, None);
             }

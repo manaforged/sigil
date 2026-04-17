@@ -8,6 +8,11 @@ repository.workspace = true
 authors.workspace = true
 description = "Parley-backed text engine for Sigil."
 
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped.
+doctest = false
+
 [dependencies]
 sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }

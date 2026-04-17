@@ -5,6 +5,7 @@
 use ahash as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 mod stub;

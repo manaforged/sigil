@@ -9,10 +9,11 @@ use std::rc::Rc;
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_core::{Component, Cx, NodeId, NodeKind, Semantics, container};
+use sigil_core::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
 use sigil_reactive::{Runtime, debug, effect, on_cleanup, signal};
 
 struct DisposableComponent {
@@ -20,7 +21,7 @@ struct DisposableComponent {
     effect_runs: Rc<Cell<u32>>,
 }
 
-impl Component for DisposableComponent {
+impl IntoNode for DisposableComponent {
     fn build(self, cx: &mut Cx) -> NodeId {
         let a = signal(1_i32);
         let b = signal(2_i32);
@@ -35,7 +36,7 @@ impl Component for DisposableComponent {
             effect_runs.set(effect_runs.get() + 1);
         });
 
-        cx.insert_raw(NodeKind::Container, Semantics::default())
+        cx.new_node(NodeType::Container, A11yProps::default())
     }
 }
 

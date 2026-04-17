@@ -1,0 +1,33 @@
+[package]
+name = "sigil-events"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Headless event routing, hit-testing, focus, and builder handlers for Sigil."
+
+[lib]
+doctest = false
+
+[dependencies]
+accesskit = { workspace = true }
+sigil-core = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
+smallvec = { workspace = true }
+
+[dev-dependencies]
+allocation-counter = "0.8.1"
+criterion = { version = "0.5", features = ["html_reports"] }
+sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
+taffy = { workspace = true }
+
+[[bench]]
+name = "events_ops"
+harness = false
+
+[lints]
+workspace = true

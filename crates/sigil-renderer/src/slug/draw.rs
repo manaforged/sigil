@@ -1,14 +1,19 @@
 //! [`SlugTextPipeline`] — GPU draw calls for Slug text rendering.
+//!
+//! Phase 2 (M2+M3): one atlas buffer per frame; one instanced draw call per
+//! paragraph instead of N per-glyph draws.
 
 use std::collections::HashMap;
 
 use sigil_hal::RenderedGlyph;
 use sigil_text::Paragraph;
+use wgpu::util::DeviceExt as _;
 
 use crate::error::RendererError;
 use crate::slug::{
-    bands::{BandData, preprocess_glyph},
-    cache::{CachedGlyph, GlyphCache, GlyphKey},
+    atlas::GlyphAtlas,
+    bands::preprocess_glyph,
+    cache::{GlyphCache, GlyphKey},
     pipeline::{create_bind_group_layout, create_pipeline},
 };
 
@@ -30,29 +35,27 @@ pub struct DrawParams<'a> {
     pub origin: (f32, f32),
 }
 
-/// CPU-side uniform that mirrors the WGSL `GlyphParams` struct (48 bytes).
+/// CPU-side uniform mirroring the WGSL `SurfaceParams` struct (16 bytes).
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
-struct GlyphUniform {
-    origin: [f32; 2],
-    size: [f32; 2],
-    color: [f32; 4],
+struct SurfaceUniform {
     surface_size: [f32; 2],
     _pad: [f32; 2],
 }
 
-/// One ready-to-draw glyph: a wgpu bind group referencing per-glyph GPU buffers.
-struct GlyphDraw {
-    bind_group: wgpu::BindGroup,
-}
-
-/// Bundle of references needed to record the render pass.
-struct RenderCtx<'a> {
-    device: &'a wgpu::Device,
-    queue: &'a wgpu::Queue,
-    view: &'a wgpu::TextureView,
-    pipeline: &'a wgpu::RenderPipeline,
-    quad_vb: &'a wgpu::Buffer,
+/// Per-instance glyph data for the GPU instance vertex buffer (40 bytes).
+///
+/// Each field maps to a vertex shader `@location` attribute via step mode
+/// `Instance`. The `atlas_offset` is a float-index into the shared atlas
+/// storage buffer (i.e. byte offset ÷ 4).
+#[repr(C)]
+#[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
+struct GlyphInstance {
+    origin: [f32; 2],
+    size: [f32; 2],
+    color: [f32; 4],
+    atlas_offset: u32,
+    _pad: u32,
 }
 
 /// Six UV vertices for two triangles covering \[0,1\]².
@@ -61,20 +64,20 @@ const QUAD_UVS: &[f32] = &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0
 /// GPU-side Slug text pipeline.
 ///
 /// Owns the wgpu render pipeline, bind group layout, glyph band-data cache,
-/// and a reusable quad vertex buffer.  Construct once per surface format;
-/// reuse across frames.
+/// a reusable quad vertex buffer, and the per-frame glyph atlas.
+/// Construct once per surface format; reuse across frames.
 pub struct SlugTextPipeline {
     pipeline: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
     cache: GlyphCache,
     quad_vb: wgpu::Buffer,
+    atlas: GlyphAtlas,
 }
 
 impl SlugTextPipeline {
     /// Create a new pipeline for `surface_format`.
     #[must_use]
     pub fn new(device: &wgpu::Device, surface_format: wgpu::TextureFormat) -> Self {
-        use wgpu::util::DeviceExt as _;
         let bgl = create_bind_group_layout(device);
         let pipeline = create_pipeline(device, &bgl, surface_format);
         let quad_vb = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -82,11 +85,13 @@ impl SlugTextPipeline {
             contents: bytemuck::cast_slice(QUAD_UVS),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        let atlas = GlyphAtlas::new(device);
         Self {
             pipeline,
             bgl,
             cache: GlyphCache::new(),
             quad_vb,
+            atlas,
         }
     }
 
@@ -98,28 +103,33 @@ impl SlugTextPipeline {
     /// # Errors
     ///
     /// Currently infallible; `Err` is reserved for future GPU submission failures.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the paragraph contains more than `u32::MAX` glyphs, which
+    /// cannot occur in practice.
     pub fn draw_paragraph(&mut self, params: &DrawParams<'_>) -> Result<(), RendererError> {
         let glyphs = params.paragraph.rendered_glyphs();
         if glyphs.is_empty() {
             return Ok(());
         }
+
         self.ensure_preprocessed(&glyphs, params.paragraph);
-        let draws = self.build_draws(&glyphs, params);
-        if draws.is_empty() {
+        self.atlas.rebuild(params.device, params.queue, &self.cache);
+
+        let instances = self.build_instances(&glyphs, params);
+        if instances.is_empty() {
             return Ok(());
         }
-        let ctx = RenderCtx {
-            device: params.device,
-            queue: params.queue,
-            view: params.view,
-            pipeline: &self.pipeline,
-            quad_vb: &self.quad_vb,
-        };
-        submit_draws(&ctx, &draws);
+
+        let count = u32::try_from(instances.len()).expect("paragraph glyph count overflows u32");
+        let instance_buf = upload_instances(params.device, &instances);
+        let bind_group = make_bind_group(params, &self.bgl, self.atlas.buffer());
+        self.submit_draw(params, &instance_buf, &bind_group, count);
         Ok(())
     }
 
-    /// Preprocess any glyphs missing from the cache by calling `for_each_font`.
+    /// Preprocess any glyphs not yet in the cache.
     fn ensure_preprocessed(&mut self, glyphs: &[RenderedGlyph], para: &Paragraph) {
         let mut missing: HashMap<(u64, u32), Vec<usize>> = HashMap::new();
         for (i, g) in glyphs.iter().enumerate() {
@@ -161,12 +171,14 @@ impl SlugTextPipeline {
         });
     }
 
-    /// Build per-glyph GPU resources for every cached glyph in `glyphs`.
+    /// Build per-instance CPU data for every cached glyph in `glyphs`.
     #[allow(clippy::cast_precision_loss)]
-    fn build_draws(&self, glyphs: &[RenderedGlyph], params: &DrawParams<'_>) -> Vec<GlyphDraw> {
-        let sw = params.surface_width as f32;
-        let sh = params.surface_height as f32;
-        let mut draws = Vec::new();
+    fn build_instances(
+        &self,
+        glyphs: &[RenderedGlyph],
+        params: &DrawParams<'_>,
+    ) -> Vec<GlyphInstance> {
+        let mut instances = Vec::new();
         for g in glyphs {
             let key = GlyphKey {
                 font_id: g.font_id,
@@ -177,66 +189,98 @@ impl SlugTextPipeline {
             let Some(cached) = self.cache.get(&key) else {
                 continue;
             };
-            let uniform = glyph_uniform(g, cached, params.origin, sw, sh);
-            draws.push(make_glyph_draw(
-                params.device,
-                &self.bgl,
-                &uniform,
-                &cached.band_data,
-            ));
+            let Some(atlas_offset) = self.atlas.get_offset(&key) else {
+                continue;
+            };
+            let bbox = cached.band_data.bbox;
+            let upem_f = if cached.band_data.units_per_em == 0 {
+                1000.0_f32
+            } else {
+                f32::from(cached.band_data.units_per_em)
+            };
+            let scale = g.size / upem_f;
+            instances.push(GlyphInstance {
+                origin: [
+                    bbox.x_min.mul_add(scale, params.origin.0 + g.x),
+                    bbox.y_max.mul_add(-scale, params.origin.1 + g.y),
+                ],
+                size: [bbox.width() * scale, bbox.height() * scale],
+                color: [g.color.r, g.color.g, g.color.b, g.color.a],
+                atlas_offset,
+                _pad: 0,
+            });
         }
-        draws
+        instances
+    }
+
+    /// Encode and submit one instanced draw call for the paragraph.
+    fn submit_draw(
+        &self,
+        params: &DrawParams<'_>,
+        instance_buf: &wgpu::Buffer,
+        bind_group: &wgpu::BindGroup,
+        instance_count: u32,
+    ) {
+        let mut encoder = params
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("slug-encoder"),
+            });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("slug-pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: params.view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&self.pipeline);
+            pass.set_bind_group(0, bind_group, &[]);
+            pass.set_vertex_buffer(0, self.quad_vb.slice(..));
+            pass.set_vertex_buffer(1, instance_buf.slice(..));
+            pass.draw(0..6, 0..instance_count);
+        }
+        params.queue.submit(core::iter::once(encoder.finish()));
     }
 }
 
-/// Compute the per-glyph uniform from layout and cache data.
-fn glyph_uniform(
-    g: &RenderedGlyph,
-    cached: &CachedGlyph,
-    origin: (f32, f32),
-    sw: f32,
-    sh: f32,
-) -> GlyphUniform {
-    let bbox = cached.band_data.bbox;
-    let upem = cached.band_data.units_per_em;
-    let upem_f = if upem == 0 {
-        1000.0_f32
-    } else {
-        f32::from(upem)
-    };
-    let scale = g.size / upem_f;
-    // Map design-unit bbox to pixel-space quad (baseline = glyph.y in Parley).
-    GlyphUniform {
-        origin: [
-            bbox.x_min.mul_add(scale, origin.0 + g.x),
-            bbox.y_max.mul_add(-scale, origin.1 + g.y),
-        ],
-        size: [bbox.width() * scale, bbox.height() * scale],
-        color: [g.color.r, g.color.g, g.color.b, g.color.a],
-        surface_size: [sw, sh],
-        _pad: [0.0; 2],
-    }
+/// Upload a slice of [`GlyphInstance`] into a fresh `VERTEX` buffer.
+fn upload_instances(device: &wgpu::Device, instances: &[GlyphInstance]) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("slug-instances"),
+        contents: bytemuck::cast_slice(instances),
+        usage: wgpu::BufferUsages::VERTEX,
+    })
 }
 
-/// Create per-glyph GPU buffers and a bind group.
-fn make_glyph_draw(
-    device: &wgpu::Device,
+/// Build the per-frame bind group: surface uniform (binding 0) + atlas (binding 1).
+#[allow(clippy::cast_precision_loss)] // surface dimensions fit in f32 mantissa in practice
+fn make_bind_group(
+    params: &DrawParams<'_>,
     bgl: &wgpu::BindGroupLayout,
-    uniform: &GlyphUniform,
-    band_data: &BandData,
-) -> GlyphDraw {
-    use wgpu::util::DeviceExt as _;
-    let ubuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("slug-uniform"),
-        contents: bytemuck::bytes_of(uniform),
-        usage: wgpu::BufferUsages::UNIFORM,
-    });
-    let bbuf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("slug-bands"),
-        contents: band_data.as_bytes(),
-        usage: wgpu::BufferUsages::STORAGE,
-    });
-    let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
+    atlas_buf: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    let surface_uniform = SurfaceUniform {
+        surface_size: [params.surface_width as f32, params.surface_height as f32],
+        _pad: [0.0; 2],
+    };
+    let ubuf = params
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("slug-surface-uniform"),
+            contents: bytemuck::bytes_of(&surface_uniform),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+    params.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("slug-bg"),
         layout: bgl,
         entries: &[
@@ -246,43 +290,8 @@ fn make_glyph_draw(
             },
             wgpu::BindGroupEntry {
                 binding: 1,
-                resource: bbuf.as_entire_binding(),
+                resource: atlas_buf.as_entire_binding(),
             },
         ],
-    });
-    GlyphDraw { bind_group: bg }
-}
-
-/// Record the render pass and submit it to the queue.
-fn submit_draws(ctx: &RenderCtx<'_>, draws: &[GlyphDraw]) {
-    let mut encoder = ctx
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("slug-encoder"),
-        });
-    {
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("slug-pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: ctx.view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
-        pass.set_pipeline(ctx.pipeline);
-        pass.set_vertex_buffer(0, ctx.quad_vb.slice(..));
-        for draw in draws {
-            pass.set_bind_group(0, &draw.bind_group, &[]);
-            pass.draw(0..6, 0..1);
-        }
-    }
-    ctx.queue.submit(core::iter::once(encoder.finish()));
+    })
 }

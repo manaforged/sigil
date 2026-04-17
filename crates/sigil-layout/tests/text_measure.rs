@@ -5,19 +5,20 @@
 use ahash as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 mod stub;
 use stub::stub_engine;
 
-use sigil_core::{TextSource, prelude::*};
+use sigil_core::{TextContent, prelude::*};
 use sigil_layout::prelude::*;
 use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 struct FixedMeasure;
 
 impl TextMeasure for FixedMeasure {
-    fn measure(&self, _source: &TextSource, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
+    fn measure(&self, _source: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
         TaffySize {
             width: 100.0,
             height: 20.0,
@@ -39,7 +40,7 @@ fn computed_text_width(mut engine: LayoutEngine) -> f32 {
     let root = cx.add(container().child(text("AB")));
     cx.get_mut(root)
         .expect("root exists")
-        .attach(LayoutIntent::flex_row().align_items(AlignItems::FlexStart));
+        .attach(LayoutStyle::flex_row().align_items(AlignItems::FlexStart));
 
     let child = cx
         .get(root)

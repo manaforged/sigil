@@ -4,6 +4,7 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
@@ -18,19 +19,19 @@ fn every_core_node_kind_has_accessible_defaults() {
     let text = cx.add(text("Label text"));
 
     for id in [container, fragment, text] {
-        let semantics = &cx.get(id).expect("node exists").semantics;
-        assert_ne!(semantics.role, Role::Unknown);
-        assert!(semantics.aria_owns.is_empty());
-        assert_eq!(semantics.aria_labelled_by, None);
+        let a11y = &cx.get(id).expect("node exists").a11y;
+        assert_ne!(a11y.role, Role::Unknown);
+        assert!(a11y.aria_owns.is_empty());
+        assert_eq!(a11y.aria_labelled_by, None);
     }
 
     assert_eq!(
-        cx.get(container).expect("container").semantics.role,
+        cx.get(container).expect("container").a11y.role,
         Role::GenericContainer
     );
     assert_eq!(
-        cx.get(fragment).expect("fragment").semantics.role,
+        cx.get(fragment).expect("fragment").a11y.role,
         Role::GenericContainer
     );
-    assert_eq!(cx.get(text).expect("text").semantics.role, Role::Label);
+    assert_eq!(cx.get(text).expect("text").a11y.role, Role::Label);
 }

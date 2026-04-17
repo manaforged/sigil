@@ -11,17 +11,20 @@
 use criterion as _;
 
 mod adapter;
+pub mod builder_ext;
 mod engine;
 mod error;
 mod intent;
 mod measure;
 pub mod prelude;
 mod result;
+pub(crate) mod style_adapter;
 mod text_adapter;
 
+pub use builder_ext::LayoutBuilderExt;
 pub use engine::LayoutEngine;
 pub use error::LayoutError;
-pub use intent::LayoutIntent;
+pub use intent::LayoutStyle;
 pub use measure::TextMeasure;
 pub use result::LayoutResult;
 pub use text_adapter::TextEngineMeasure;

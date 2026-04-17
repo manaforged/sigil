@@ -4,6 +4,7 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
@@ -18,8 +19,8 @@ fn accesskit_id_is_stable_until_node_removal() {
 
     for i in 0..100 {
         let node = cx.get_mut(id).expect("node remains live");
-        node.semantics.focusable = i % 2 == 0;
-        node.semantics.role = if i % 3 == 0 {
+        node.a11y.focusable = i % 2 == 0;
+        node.a11y.role = if i % 3 == 0 {
             Role::Label
         } else {
             Role::GenericContainer

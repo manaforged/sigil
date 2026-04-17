@@ -30,7 +30,11 @@ struct RunGuard {
 
 impl Drop for RunGuard {
     fn drop(&mut self) {
-        let f = self.f.take();
+        let f = if std::thread::panicking() {
+            None
+        } else {
+            self.f.take()
+        };
         with_rt(|rt| {
             reconcile_deps(rt, self.key);
             rt.current_owner = self.prev_owner;
@@ -39,7 +43,7 @@ impl Drop for RunGuard {
             if let Some(f) = f
                 && let Some(slot) = rt.effects.get_mut(self.key)
             {
-                slot.f = f;
+                slot.f = Some(f);
             }
             // If the slot is gone the closure drops here.
         });
@@ -146,6 +150,9 @@ fn run_setup(key: EffectKey) -> RunSetup {
             crate::diagnostic::reactive_cycle(loc);
             return RunSetup::Skip;
         }
+        if rt.effects.get(key).is_some_and(|slot| slot.f.is_none()) {
+            return RunSetup::Skip;
+        }
         rt.running.insert(key);
 
         // Rotate deps: move current → prev so RunGuard can reconcile.
@@ -174,7 +181,10 @@ fn run_setup(key: EffectKey) -> RunSetup {
             .effects
             .get_mut(key)
             .expect("invariant: slot present after make_effect_run_owner");
-        let f = core::mem::replace(&mut slot.f, Box::new(|| {}));
+        let f = slot
+            .f
+            .take()
+            .expect("invariant: effect closure present outside a run");
         let prev_owner = rt.current_owner;
         let prev_effect = rt.current_effect;
         rt.current_owner = Some(run_owner);
@@ -227,9 +237,7 @@ pub(crate) fn run_effect(key: EffectKey) {
         prev_effect,
         f: Some(f),
     };
-    let mut f_local = guard.f.take().expect("closure just stored in guard");
-    f_local();
-    guard.f = Some(f_local);
+    guard.f.as_mut().expect("closure just stored in guard")();
     drop(guard);
 
     if crate::trace::trace_active() {

@@ -5,6 +5,7 @@
 use ahash as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 mod stub;
@@ -20,7 +21,7 @@ fn sync_updates_intent_without_allocating_new_taffy_nodes() {
 
     cx.get_mut(root)
         .expect("root exists")
-        .attach(LayoutIntent::flex_row().fixed_size(100.0, 20.0));
+        .attach(LayoutStyle::flex_row().fixed_size(100.0, 20.0));
 
     let mut engine = stub_engine();
     engine.sync(&cx, root).expect("initial sync succeeds");
@@ -28,7 +29,7 @@ fn sync_updates_intent_without_allocating_new_taffy_nodes() {
 
     cx.get_mut(root)
         .expect("root exists")
-        .attach(LayoutIntent::flex_row().fixed_size(200.0, 20.0));
+        .attach(LayoutStyle::flex_row().fixed_size(200.0, 20.0));
     engine.sync(&cx, root).expect("resync succeeds");
 
     assert_eq!(engine.mirrored_node_count(), 3);

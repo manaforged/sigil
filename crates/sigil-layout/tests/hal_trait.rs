@@ -4,6 +4,7 @@
 
 use ahash as _;
 use criterion as _;
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 mod stub;
@@ -33,10 +34,10 @@ fn layout_two_boxes<L>(
     child: NodeId,
 ) -> Result<(), <L as Layout>::Error>
 where
-    L: Layout<NodeId = NodeId, Intent = LayoutIntent, Result = LayoutResult>,
+    L: Layout<NodeId = NodeId, Intent = LayoutStyle, Result = LayoutResult>,
 {
-    engine.upsert(root, &LayoutIntent::flex_row().fixed_size(100.0, 20.0))?;
-    engine.upsert(child, &LayoutIntent::default().fixed_size(10.0, 8.0))?;
+    engine.upsert(root, &LayoutStyle::flex_row().fixed_size(100.0, 20.0))?;
+    engine.upsert(child, &LayoutStyle::default().fixed_size(10.0, 8.0))?;
     engine.set_children(root, &[child])?;
     engine.compute(root, Size::fixed(100.0, 20.0))
 }

@@ -8,8 +8,13 @@ members = [
     "crates/sigil-async",
     "crates/sigil-renderer",
     "crates/sigil-shell",
+    "crates/sigil-events",
+    "crates/sigil-style",
+    "crates/sigil-style-macros",
     "crates/sigil-text",
     "examples/hello-rect",
+    "examples/hello-events",
+    "examples/hello-style",
     "examples/hello-tree",
     "examples/hello-layout",
 ]
@@ -74,9 +79,14 @@ raw-window-handle = "0.6"
 bytemuck = { version = "1", features = ["derive"] }
 skrifa = "0.40"
 smallvec = "1"
+phf = "0.11"
+strsim = "0.11"
 slotmap = "1"
 ahash = "0.8"
+tracing = "0.1"
 accesskit = "0.24"
+keyboard-types = { version = "0.8.3", default-features = false }
+smol_str = { version = "0.3.6", default-features = false }
 taffy = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
 sigil-hal = { path = "crates/sigil-hal" }
@@ -86,6 +96,9 @@ sigil-layout = { path = "crates/sigil-layout" }
 sigil-async = { path = "crates/sigil-async" }
 sigil-renderer = { path = "crates/sigil-renderer" }
 sigil-shell = { path = "crates/sigil-shell" }
+sigil-events = { path = "crates/sigil-events" }
+sigil-style = { path = "crates/sigil-style" }
+sigil-style-macros = { path = "crates/sigil-style-macros" }
 sigil-text = { path = "crates/sigil-text" }
 
 [profile.release]

@@ -5,6 +5,7 @@
 use ahash as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 mod stub;
@@ -23,7 +24,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
             .child(text("CCC")),
     );
     cx.get_mut(root).expect("root exists").attach(
-        LayoutIntent::flex_row()
+        LayoutStyle::flex_row()
             .fixed_size(300.0, 40.0)
             .align_items(AlignItems::FlexStart),
     );

@@ -19,6 +19,7 @@ accesskit = { workspace = true }
 ahash = { workspace = true }
 slotmap = { workspace = true }
 smallvec = { workspace = true }
+sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }
 
 [dev-dependencies]

@@ -6,11 +6,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_core::{Cx, NodeKind, Role, container, text};
+use sigil_core::{Cx, NodeType, Role, container, text};
 
 // Single smoke test that covers root, children, nesting, text content,
 // and dump_tree in one pass. Sequential assertions naturally raise the
@@ -30,7 +31,7 @@ fn builds_expected_tree_shape() {
     assert_eq!(cx.len(), 5);
 
     let root_node = cx.get(root).expect("root node exists");
-    assert!(matches!(root_node.kind, NodeKind::Container));
+    assert!(matches!(root_node.kind, NodeType::Container));
     assert_eq!(root_node.parent, None);
     assert_eq!(root_node.children.len(), 3);
 
@@ -44,12 +45,12 @@ fn builds_expected_tree_shape() {
     assert_eq!(cx.get(tail).expect("tail child").parent, Some(root));
 
     match &cx.get(first).expect("first child").kind {
-        NodeKind::Text { source } => assert_eq!(source.as_static_str(), Some("Hello")),
+        NodeType::Text { content } => assert_eq!(content.as_static_str(), Some("Hello")),
         other => panic!("expected text child, got {other:?}"),
     }
 
     let nested_node = cx.get(nested).expect("nested container");
-    assert!(matches!(nested_node.kind, NodeKind::Container));
+    assert!(matches!(nested_node.kind, NodeType::Container));
     assert_eq!(nested_node.children.len(), 1);
 
     let nested_text = nested_node.children[0];
@@ -58,7 +59,7 @@ fn builds_expected_tree_shape() {
         Some(nested)
     );
     match &cx.get(nested_text).expect("nested text").kind {
-        NodeKind::Text { source } => assert_eq!(source.as_static_str(), Some("Nested")),
+        NodeType::Text { content } => assert_eq!(content.as_static_str(), Some("Nested")),
         other => panic!("expected nested text, got {other:?}"),
     }
 

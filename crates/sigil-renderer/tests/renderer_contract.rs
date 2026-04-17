@@ -19,11 +19,17 @@
 // library's direct deps but doesn't name most of them. Silence the
 // workspace `unused_crate_dependencies` lint for the ones only the
 // library's production code uses.
+use ahash as _;
 use bytemuck as _;
 use pollster as _;
 use raw_window_handle as _;
+use sigil_core as _;
+use sigil_layout as _;
+use sigil_style as _;
 use sigil_text as _;
 use skrifa as _;
+use taffy as _;
+use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -33,6 +39,37 @@ use std::time::{Duration, Instant};
 
 use sigil_hal::{Color, PhysicalSize, Renderer};
 use sigil_renderer::{RendererError, WgpuRenderer};
+
+const SLUG_SHADER: &str = include_str!("../src/slug/shader.wgsl");
+
+#[derive(Copy, Clone)]
+struct StemRect {
+    left: f32,
+    right: f32,
+    top: f32,
+    bottom: f32,
+}
+
+fn centered_edge_coverage(edge_px: f32, sample_center_px: f32) -> f32 {
+    (edge_px - sample_center_px + 0.5).clamp(0.0, 1.0)
+}
+
+fn stem_coverage(stem: StemRect, sample_x: f32, sample_y: f32) -> f32 {
+    if sample_y < stem.top || sample_y >= stem.bottom {
+        return 0.0;
+    }
+    let left = centered_edge_coverage(stem.left, sample_x);
+    let right = centered_edge_coverage(stem.right, sample_x);
+    (right - left).abs()
+}
+
+fn assert_near(actual: f32, expected: f32) {
+    let delta = (actual - expected).abs();
+    assert!(
+        delta < 1e-6,
+        "expected coverage {expected}, got {actual} (delta {delta})"
+    );
+}
 
 /// Every `RendererError` variant must produce non-empty `Display`
 /// output and report an `Error::source` that matches the variant
@@ -95,6 +132,44 @@ fn renderer_associated_types_match_hal_contract() {
     {
     }
     assert_impls::<WgpuRenderer>();
+}
+
+/// The Slug shader receives UVs at fragment centers, so the analytic
+/// edge ramp must include the half-pixel bias from the center to the
+/// pixel edge. This source-level guard keeps the WGSL helper aligned
+/// with the math regression below.
+#[test]
+fn slug_shader_edge_ramp_accounts_for_fragment_centers() {
+    let expected = "return clamp((edge_x - sample_x) * width + 0.5, 0.0, 1.0);";
+    assert!(SLUG_SHADER.contains("fn edge_coverage("));
+    assert!(
+        SLUG_SHADER.contains(expected),
+        "Slug shader edge ramp must keep the +0.5 center-sample bias"
+    );
+}
+
+/// A one-pixel stem whose edge falls on pixel boundaries should render
+/// its interior center samples at full coverage. Without the +0.5 edge
+/// bias, the pixel just inside the right edge evaluates to 0.5 alpha.
+#[test]
+fn slug_aa_keeps_one_pixel_stem_centers_opaque() {
+    let vertical = StemRect {
+        left: 1.0,
+        right: 2.0,
+        top: 0.0,
+        bottom: 3.0,
+    };
+    assert_near(stem_coverage(vertical, 1.5, 0.5), 1.0);
+    assert_near(stem_coverage(vertical, 0.5, 0.5), 0.0);
+    assert_near(stem_coverage(vertical, 2.5, 0.5), 0.0);
+
+    let horizontal = StemRect {
+        left: 0.0,
+        right: 3.0,
+        top: 1.0,
+        bottom: 2.0,
+    };
+    assert_near(stem_coverage(horizontal, 2.5, 1.5), 1.0);
 }
 
 /// A freshly-constructed renderer on a GPU-capable host must succeed.

@@ -15,8 +15,13 @@ description = "wgpu-backed Renderer adapter for Sigil."
 doctest = false
 
 [dependencies]
+ahash = { workspace = true }
+sigil-core = { workspace = true }
 sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-style = { workspace = true }
 sigil-text = { workspace = true }
+tracing = { workspace = true }
 wgpu = { workspace = true }
 pollster = { workspace = true }
 raw-window-handle = { workspace = true }
@@ -28,6 +33,9 @@ skrifa = { workspace = true }
 # to provide `impl std::error::Error for windows_core::Error`. See
 # examples/hello-rect/Cargo.toml for the full rationale.
 windows-core = { version = "0.62", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+taffy = { workspace = true }
 
 [lints]
 workspace = true

@@ -8,9 +8,12 @@ interaction primitives, a designed component catalog, and the app
 patterns that make dense desktop software feel composed instead of
 assembled from parts.
 
-**Status:** `sigil-layout` landed. The workspace has a headless node tree
-with stable AccessKit-compatible IDs plus a Taffy-backed layout adapter
-that writes computed rectangles back onto nodes.
+**Status:** `sigil-style` landed. The workspace has a headless node tree
+with stable AccessKit-compatible IDs, a Taffy-backed layout adapter, an
+input/focus router over shell-delivered pointer, keyboard, IME, scroll,
+and lifecycle events, and the DR-006 three-layer style API: `classes!`
+proc macro, `Style::new()` struct API, and `style_reactive` signal
+binding, all folded into layout and rendering.
 
 ## Design plan
 
@@ -32,6 +35,14 @@ crates/
                      Semantics, typed extensions, and builders.
   sigil-layout/         Taffy-backed layout adapter. Mirrors sigil-core
                      subtrees, computes layout, and attaches results.
+  sigil-events/         Input routing, z-order hit-testing, focus
+                     traversal, pointer capture, and handler builders.
+  sigil-style/          StyleAtom vocabulary, Theme, StyleEngine,
+                     classes! resolver, Style struct API, and
+                     style_reactive signal binding.
+  sigil-style-macros/   Proc-macro crate backing classes!; a phf
+                     structural-token table is generated at build time
+                     from grammar/structural.toml.
   sigil-async/          Tokio runtime and owner-targeted main-thread dispatch.
   sigil-renderer/       wgpu-backed renderer adapter.
   sigil-shell/          winit shell adapter.
@@ -44,6 +55,12 @@ examples/
                      and prints its shape.
   hello-layout/      Headless proof app: computes rectangles for a
                      `sigil-core` tree and prints them.
+  hello-events/      Window proof app: routes clicks through
+                     `sigil-events`, moves focus with Tab, and exits
+                     on Escape.
+  hello-style/       Window proof app: three panes demonstrating
+                     static styling, hover-reactive styling, and
+                     merge-override via the style API.
 
 docs/
   decisions/         Architecture decision records (DR-000..DR-013).
@@ -60,15 +77,23 @@ cargo test --workspace
 cargo run -p hello-rect
 cargo run -p hello-tree
 cargo run -p hello-layout
+cargo run -p hello-events
+cargo run -p hello-style
 cargo bench -p sigil-core
 cargo bench -p sigil-layout
+cargo bench -p sigil-events
+cargo bench -p sigil-style
 ```
 
 `cargo run -p hello-rect` should open a window, clear the surface to a
 colour, cycle colours on a timer, and close cleanly when the window is
 closed. `cargo run -p hello-tree` should print a deterministic headless
 tree outline. `cargo run -p hello-layout` should print deterministic
-computed rectangles.
+computed rectangles. `cargo run -p hello-events` should open a window,
+toggle colour on click, move a visible focus ring with Tab, and exit on
+Escape. `cargo run -p hello-style` should open a window with three panes
+— a static-styled pane, a hover-reactive pane, and a merge-override
+pane demonstrating last-wins atom resolution — and exit on Escape.
 
 ## Principles
 

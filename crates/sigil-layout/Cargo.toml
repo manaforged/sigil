@@ -17,6 +17,7 @@ smallvec = { workspace = true }
 taffy = { workspace = true }
 sigil-core = { workspace = true }
 sigil-hal = { workspace = true }
+sigil-style = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

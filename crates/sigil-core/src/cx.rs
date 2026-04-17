@@ -5,9 +5,10 @@ use core::fmt::Write as _;
 use ahash::AHashMap;
 use sigil_reactive::{Owner, OwnerId};
 use slotmap::{DefaultKey, SlotMap};
+use smallvec::SmallVec;
 
-use crate::component::{BoxedComponent, Component};
-use crate::{Node, NodeId, NodeKind, Semantics, TextSource};
+use crate::component::{ErasedComponent, IntoNode};
+use crate::{A11yProps, Node, NodeId, NodeType, TextContent};
 
 /// Node arena and composition context.
 ///
@@ -19,6 +20,8 @@ pub struct Cx {
     nodes: SlotMap<DefaultKey, Node>,
     owner_for_node: AHashMap<NodeId, Owner>,
     root_owner: Owner,
+    roots: SmallVec<[NodeId; 4]>,
+    mutation_generation: u64,
 }
 
 impl Cx {
@@ -30,6 +33,8 @@ impl Cx {
             nodes: SlotMap::with_key(),
             owner_for_node: AHashMap::new(),
             root_owner,
+            roots: SmallVec::new(),
+            mutation_generation: 0,
         }
     }
 
@@ -41,42 +46,42 @@ impl Cx {
 
     /// Add a component as a root-level node and return its root ID.
     #[must_use]
-    pub fn add<C: Component>(&mut self, child: C) -> NodeId {
+    pub fn add<C: IntoNode>(&mut self, child: C) -> NodeId {
         self.add_with_parent(None, |cx| child.build(cx))
     }
 
     /// Add a component as a child of `parent` and return its root ID.
     ///
-    /// Use this inside a [`Component::build`] impl that manually
+    /// Use this inside a [`IntoNode::build`] impl that manually
     /// composes subtrees. The child runs inside a fresh per-component
     /// owner parented to the current owner, and its root node is
     /// linked as a child of `parent` in the node arena.
     #[must_use]
-    pub fn add_child<C: Component>(&mut self, parent: NodeId, child: C) -> NodeId {
+    pub fn add_child<C: IntoNode>(&mut self, parent: NodeId, child: C) -> NodeId {
         self.add_with_parent(Some(parent), |cx| child.build(cx))
     }
 
-    /// Insert one raw node into the arena under the current owner.
+    /// Create a single node in the arena and return its ID.
     ///
-    /// Primitive builders use this inside the owner scope established
-    /// by [`Cx::add`] or [`Cx::add_child`].
+    /// Call this inside an [`IntoNode::build`] implementation to allocate
+    /// the node for your component. Must be called within the owner scope
+    /// that [`Cx::add`] or [`Cx::add_child`] sets up — i.e. inside `build`.
     ///
     /// # Panics
     ///
-    /// Panics when called outside any reactive owner scope. Raw nodes
-    /// must belong to a component owner so signals, effects, and
-    /// cleanups registered during build tear down with the component
-    /// instead of leaking to the context root.
-    pub fn insert_raw(&mut self, kind: NodeKind, semantics: Semantics) -> NodeId {
-        let owner =
-            Owner::current().expect("Cx::insert_raw called outside any reactive owner scope");
-        NodeId(self.nodes.insert(Node::new(kind, semantics, owner)))
+    /// Panics when called outside any reactive owner scope. This cannot
+    /// happen if you call it from within `IntoNode::build`.
+    pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
+        let owner = Owner::current().expect("Cx::new_node called outside an IntoNode::build scope");
+        let id = NodeId(self.nodes.insert(Node::new(kind, a11y, owner)));
+        self.bump_generation();
+        id
     }
 
     pub(crate) fn add_boxed_child(
         &mut self,
         parent: NodeId,
-        child: Box<dyn BoxedComponent>,
+        child: Box<dyn ErasedComponent>,
     ) -> NodeId {
         self.add_with_parent(Some(parent), |cx| child.build_box(cx))
     }
@@ -92,6 +97,9 @@ impl Cx {
         self.owner_for_node.insert(node_id, owner);
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
+        } else if !self.roots.contains(&node_id) {
+            self.roots.push(node_id);
+            self.bump_generation();
         }
         node_id
     }
@@ -103,6 +111,8 @@ impl Cx {
         if let Some(parent_node) = self.nodes.get_mut(parent.key()) {
             parent_node.children.push(child);
         }
+        self.roots.retain(|root| *root != child);
+        self.bump_generation();
     }
 
     /// Remove a node and all descendants from the arena.
@@ -115,6 +125,7 @@ impl Cx {
             return false;
         }
 
+        self.bump_generation();
         let subtree = self.collect_subtree(id);
         self.detach_from_parent(id);
 
@@ -148,6 +159,8 @@ impl Cx {
             && let Some(parent_node) = self.nodes.get_mut(parent.key())
         {
             parent_node.children.retain(|child| *child != id);
+        } else {
+            self.roots.retain(|root| *root != id);
         }
     }
 
@@ -162,10 +175,32 @@ impl Cx {
         self.nodes.get_mut(id.key())
     }
 
+    /// Explicitly invalidate caches keyed on tree or node metadata.
+    ///
+    /// `get_mut` is a plain borrow so projection writes, such as
+    /// layout-result attachment, do not churn mutation generation. Call
+    /// this after direct field-level edits that affect routing, focus, or
+    /// other generation-keyed caches.
+    pub const fn mark_mutated(&mut self) {
+        self.bump_generation();
+    }
+
     /// Return the component owner recorded for a node root.
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<OwnerId> {
         self.owner_for_node.get(&id).map(|owner| owner.id())
+    }
+
+    /// Return the root nodes in insertion order.
+    #[must_use]
+    pub fn roots(&self) -> &[NodeId] {
+        &self.roots
+    }
+
+    /// Return the monotonic tree mutation generation.
+    #[must_use]
+    pub const fn mutation_generation(&self) -> u64 {
+        self.mutation_generation
     }
 
     /// Number of live nodes in the arena.
@@ -202,6 +237,44 @@ impl Cx {
         out
     }
 
+    /// Return the parent of a node.
+    #[must_use]
+    pub fn parent(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes.get(id.key()).and_then(|node| node.parent)
+    }
+
+    /// Return the first child of a node.
+    #[must_use]
+    pub fn first_child(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes
+            .get(id.key())
+            .and_then(|node| node.children.first().copied())
+    }
+
+    /// Return the last child of a node.
+    #[must_use]
+    pub fn last_child(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes
+            .get(id.key())
+            .and_then(|node| node.children.last().copied())
+    }
+
+    /// Return the nth child (0-indexed) of a node.
+    #[must_use]
+    pub fn nth_child(&self, id: NodeId, n: usize) -> Option<NodeId> {
+        self.nodes
+            .get(id.key())
+            .and_then(|node| node.children.get(n).copied())
+    }
+
+    /// Return the number of children of a node.
+    #[must_use]
+    pub fn child_count(&self, id: NodeId) -> usize {
+        self.nodes
+            .get(id.key())
+            .map_or(0, |node| node.children.len())
+    }
+
     fn write_dump(&self, id: NodeId, depth: usize, out: &mut String) {
         let Some(node) = self.nodes.get(id.key()) else {
             return;
@@ -210,24 +283,28 @@ impl Cx {
             out.push_str("  ");
         }
         match &node.kind {
-            NodeKind::Container => {
-                let _ = writeln!(out, "Container role={:?}", node.semantics.role);
+            NodeType::Container => {
+                let _ = writeln!(out, "Container role={:?}", node.a11y.role);
             }
-            NodeKind::Fragment => {
-                let _ = writeln!(out, "Fragment role={:?}", node.semantics.role);
+            NodeType::Fragment => {
+                let _ = writeln!(out, "Fragment role={:?}", node.a11y.role);
             }
-            NodeKind::Text { source } => {
+            NodeType::Text { content } => {
                 let _ = writeln!(
                     out,
                     "Text {} role={:?}",
-                    dump_text_source(source),
-                    node.semantics.role
+                    dump_text_content(content),
+                    node.a11y.role
                 );
             }
         }
         for child in &node.children {
             self.write_dump(*child, depth + 1, out);
         }
+    }
+
+    const fn bump_generation(&mut self) {
+        self.mutation_generation = self.mutation_generation.wrapping_add(1);
     }
 }
 
@@ -237,9 +314,9 @@ impl Drop for Cx {
     }
 }
 
-fn dump_text_source(source: &TextSource) -> String {
-    match source {
-        TextSource::Static(value) => format!("{value:?}"),
-        TextSource::Reactive(_) => "<reactive>".to_owned(),
+fn dump_text_content(content: &TextContent) -> String {
+    match content {
+        TextContent::Static(value) => format!("{value:?}"),
+        TextContent::Reactive(_) => "<reactive>".to_owned(),
     }
 }

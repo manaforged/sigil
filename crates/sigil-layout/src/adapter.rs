@@ -3,12 +3,12 @@
 use sigil_core::NodeId;
 use sigil_hal::{Layout, Size};
 
-use crate::{LayoutEngine, LayoutError, LayoutIntent, LayoutResult};
+use crate::{LayoutEngine, LayoutError, LayoutResult, LayoutStyle};
 
 impl Layout for LayoutEngine {
     type Error = LayoutError;
     type NodeId = NodeId;
-    type Intent = LayoutIntent;
+    type Intent = LayoutStyle;
     type Result = LayoutResult;
 
     fn upsert(&mut self, id: Self::NodeId, intent: &Self::Intent) -> Result<(), Self::Error> {

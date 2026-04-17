@@ -1,12 +1,13 @@
 //! Layout engine and `sigil-core` synchronization.
 
 use ahash::AHashMap;
-use sigil_core::{Cx, NodeId, NodeKind, TextSource};
+use sigil_core::{Cx, NodeId, NodeType, TextContent};
 use sigil_hal::{Dim, Size};
 use smallvec::SmallVec;
 use taffy::prelude::{AvailableSpace, NodeId as TaffyId, Size as TaffySize, TaffyTree};
 
-use crate::{LayoutError, LayoutIntent, LayoutResult, TextMeasure};
+use crate::style_adapter::apply_style_atoms;
+use crate::{LayoutError, LayoutResult, LayoutStyle, TextMeasure};
 
 /// Taffy-backed layout engine.
 pub struct LayoutEngine {
@@ -15,11 +16,12 @@ pub struct LayoutEngine {
     taffy_to_core: AHashMap<TaffyId, NodeId>,
     computed: AHashMap<NodeId, LayoutResult>,
     measurer: Box<dyn TextMeasure>,
+    generation: u64,
 }
 
 #[derive(Clone, Debug)]
 struct LayoutContext {
-    text_source: Option<TextSource>,
+    text_content: Option<TextContent>,
 }
 
 impl LayoutEngine {
@@ -32,6 +34,7 @@ impl LayoutEngine {
             taffy_to_core: AHashMap::new(),
             computed: AHashMap::new(),
             measurer,
+            generation: 0,
         }
     }
 
@@ -39,6 +42,17 @@ impl LayoutEngine {
     #[must_use]
     pub fn mirrored_node_count(&self) -> usize {
         self.core_to_taffy.len()
+    }
+
+    /// Monotonic counter bumped on every successful `compute` call.
+    ///
+    /// Downstream caches keyed on layout geometry should invalidate
+    /// when this value changes, paired with
+    /// [`Cx::mutation_generation`](sigil_core::Cx::mutation_generation)
+    /// for tree-shape invalidation.
+    #[must_use]
+    pub const fn generation(&self) -> u64 {
+        self.generation
     }
 
     /// Return the most recently computed result for a node.
@@ -55,7 +69,7 @@ impl LayoutEngine {
     /// child mapping is absent, and returns [`LayoutError::TaffyInvalid`]
     /// when Taffy rejects a mirror update.
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
-        self.sync_subtree(cx, root)
+        self.sync_subtree(cx, root).map(|_taffy_ids| ())
     }
 
     /// Compute layout for a `sigil-core` subtree and attach results back to nodes.
@@ -89,11 +103,14 @@ impl LayoutEngine {
         }
 
         for id in ids {
-            let result = self.result(id).ok_or(LayoutError::NodeMissing(id))?;
-            let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
-            let _ = node.attach(result);
+            // Fragments have no Taffy node and no layout result — skip them.
+            if let Some(result) = self.result(id) {
+                let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
+                let _ = node.attach(result);
+            }
         }
 
+        self.generation = self.generation.wrapping_add(1);
         Ok(())
     }
 
@@ -123,7 +140,7 @@ impl LayoutEngine {
     pub(crate) fn upsert_mirror(
         &mut self,
         id: NodeId,
-        intent: &LayoutIntent,
+        intent: &LayoutStyle,
     ) -> Result<(), LayoutError> {
         self.upsert_with_text(id, intent, None)
     }
@@ -185,41 +202,64 @@ impl LayoutEngine {
         self.refresh_results(root_taffy)
     }
 
-    fn sync_subtree(&mut self, cx: &Cx, id: NodeId) -> Result<(), LayoutError> {
+    /// Sync one node into Taffy and return the Taffy IDs the *caller* should
+    /// register as its children.
+    ///
+    /// For `Container` and `Text` nodes this is `[taffy_id_of_self]`.
+    /// For `Fragment` nodes there is no Taffy node — the fragment's own
+    /// children are returned directly so they appear as siblings of the
+    /// fragment inside its parent's layout box.
+    fn sync_subtree(&mut self, cx: &Cx, id: NodeId) -> Result<SmallVec<[TaffyId; 4]>, LayoutError> {
         let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
-        let intent = node
-            .get_extension::<LayoutIntent>()
-            .cloned()
-            .unwrap_or_default();
-        let text_source = match &node.kind {
-            NodeKind::Text { source } => Some(source.clone()),
-            NodeKind::Container | NodeKind::Fragment => None,
-        };
         let children = node.children.iter().copied().collect::<SmallVec<[_; 4]>>();
 
-        self.upsert_with_text(id, &intent, text_source)?;
-        for child in &children {
-            self.sync_subtree(cx, *child)?;
+        // Fragments flatten into their parent: no Taffy node of their own.
+        if matches!(node.kind, NodeType::Fragment) {
+            let mut out = SmallVec::<[TaffyId; 4]>::new();
+            for child in &children {
+                out.extend(self.sync_subtree(cx, *child)?);
+            }
+            return Ok(out);
         }
+
+        let mut intent = node
+            .get_extension::<LayoutStyle>()
+            .cloned()
+            .unwrap_or_default();
+        if let Some(binding) = node.get_extension::<sigil_style::StyleBinding>() {
+            apply_style_atoms(binding.static_slice(), &mut intent);
+            apply_style_atoms(binding.dynamic_slice(), &mut intent);
+            apply_style_atoms(binding.reactive_slice(), &mut intent);
+        }
+        let text_content = match &node.kind {
+            NodeType::Text { content } => Some(content.clone()),
+            NodeType::Container | NodeType::Fragment => None,
+        };
+
+        self.upsert_with_text(id, &intent, text_content)?;
 
         let mut taffy_children = SmallVec::<[TaffyId; 8]>::new();
         for child in &children {
-            taffy_children.push(self.taffy_id(*child)?);
+            taffy_children.extend(self.sync_subtree(cx, *child)?);
         }
         let parent_taffy = self.taffy_id(id)?;
         self.taffy
             .set_children(parent_taffy, &taffy_children)
-            .map_err(LayoutError::from)
+            .map_err(LayoutError::from)?;
+
+        let mut out = SmallVec::<[TaffyId; 4]>::new();
+        out.push(parent_taffy);
+        Ok(out)
     }
 
     fn upsert_with_text(
         &mut self,
         id: NodeId,
-        intent: &LayoutIntent,
-        text_source: Option<TextSource>,
+        intent: &LayoutStyle,
+        text_content: Option<TextContent>,
     ) -> Result<(), LayoutError> {
         let style = intent.as_taffy().clone();
-        let context = LayoutContext { text_source };
+        let context = LayoutContext { text_content };
 
         if let Some(taffy_id) = self.core_to_taffy.get(&id).copied() {
             self.taffy
@@ -287,7 +327,7 @@ fn measure_text(
     let text_size = context
         .and_then(|context| {
             context
-                .text_source
+                .text_content
                 .as_ref()
                 .map(|source| measurer.measure(source, space))
         })

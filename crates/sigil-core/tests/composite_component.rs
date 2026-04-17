@@ -6,18 +6,19 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_core::{Component, Cx, NodeId, Role, container, text};
+use sigil_core::{Cx, IntoNode, NodeId, Role, container, text};
 
 struct LabelledPanel {
     title: &'static str,
     body: &'static str,
 }
 
-impl Component for LabelledPanel {
+impl IntoNode for LabelledPanel {
     fn build(self, cx: &mut Cx) -> NodeId {
         let root = cx.add(container().role(Role::Group));
         let _ = cx.add_child(root, text(self.title).role(Role::Heading));
@@ -35,7 +36,7 @@ fn add_child_links_parent_and_uses_component_owner() {
     });
 
     let panel_node = cx.get(panel).expect("panel exists");
-    assert!(matches!(panel_node.semantics.role, Role::Group));
+    assert!(matches!(panel_node.a11y.role, Role::Group));
     assert_eq!(panel_node.children.len(), 2);
 
     let heading = panel_node.children[0];

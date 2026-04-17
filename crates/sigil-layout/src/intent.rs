@@ -2,7 +2,8 @@
 
 use taffy::geometry::{Rect as TaffyRect, Size as TaffySize};
 use taffy::prelude::{
-    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage, Style,
+    AlignItems, AlignSelf, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
+    LengthPercentageAuto, Position, Style,
 };
 
 /// Layout intent attached to a node through `NodeExtensions`.
@@ -11,9 +12,9 @@ use taffy::prelude::{
 /// the public boundary preserves the adapter as the swap point if
 /// Taffy churns or a measured fast path appears later.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct LayoutIntent(pub(crate) Style);
+pub struct LayoutStyle(pub(crate) Style);
 
-impl LayoutIntent {
+impl LayoutStyle {
     /// Build a block layout intent.
     #[must_use]
     pub fn block() -> Self {
@@ -143,17 +144,79 @@ impl LayoutIntent {
         self
     }
 
-    /// Apply a focused raw Taffy style mutation.
+    /// Set uniform margin on all four sides.
     #[must_use]
-    pub fn with_style(mut self, mutate: impl FnOnce(&mut Style)) -> Self {
-        mutate(&mut self.0);
+    pub const fn margin(mut self, margin: LengthPercentageAuto) -> Self {
+        self.0.margin = all_sides(margin);
         self
     }
 
-    /// Borrow the wrapped Taffy style.
+    /// Set a fixed logical-pixel uniform margin.
     #[must_use]
-    pub const fn style(&self) -> &Style {
-        &self.0
+    pub const fn margin_px(self, margin: f32) -> Self {
+        self.margin(LengthPercentageAuto::length(margin))
+    }
+
+    /// Set the minimum width and height.
+    #[must_use]
+    pub const fn min_size(mut self, width: Dimension, height: Dimension) -> Self {
+        self.0.min_size = TaffySize { width, height };
+        self
+    }
+
+    /// Set a fixed logical-pixel minimum width and height.
+    #[must_use]
+    pub const fn min_size_px(self, width: f32, height: f32) -> Self {
+        self.min_size(Dimension::length(width), Dimension::length(height))
+    }
+
+    /// Set the maximum width and height.
+    #[must_use]
+    pub const fn max_size(mut self, width: Dimension, height: Dimension) -> Self {
+        self.0.max_size = TaffySize { width, height };
+        self
+    }
+
+    /// Set a fixed logical-pixel maximum width and height.
+    #[must_use]
+    pub const fn max_size_px(self, width: f32, height: f32) -> Self {
+        self.max_size(Dimension::length(width), Dimension::length(height))
+    }
+
+    /// Override the cross-axis alignment for this item specifically.
+    ///
+    /// Overrides the parent container's `align_items` for this child only.
+    #[must_use]
+    pub const fn align_self(mut self, align_self: AlignSelf) -> Self {
+        self.0.align_self = Some(align_self);
+        self
+    }
+
+    /// Set the initial flex item size before `grow`/`shrink` are applied.
+    #[must_use]
+    pub const fn flex_basis(mut self, basis: Dimension) -> Self {
+        self.0.flex_basis = basis;
+        self
+    }
+
+    /// Set the position mode (`Relative` or `Absolute`).
+    ///
+    /// Use `Position::Absolute` with `inset` (via [`with_taffy`](Self::with_taffy))
+    /// to place a node at an exact offset from its containing block.
+    #[must_use]
+    pub const fn position(mut self, position: Position) -> Self {
+        self.0.position = position;
+        self
+    }
+
+    /// Escape hatch for raw `taffy::Style` mutation.
+    ///
+    /// Use named methods when possible. Reach for this only when you need
+    /// a Taffy field that has no dedicated builder method yet.
+    #[must_use]
+    pub fn with_taffy(mut self, mutate: impl FnOnce(&mut Style)) -> Self {
+        mutate(&mut self.0);
+        self
     }
 
     pub(crate) const fn as_taffy(&self) -> &Style {

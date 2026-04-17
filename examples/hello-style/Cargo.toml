@@ -1,0 +1,33 @@
+[package]
+name = "hello-style"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[[bin]]
+name = "hello-style"
+path = "src/main.rs"
+
+[dependencies]
+bytemuck = { workspace = true }
+sigil-async = { workspace = true }
+sigil-core = { workspace = true }
+sigil-events = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-renderer = { workspace = true }
+sigil-shell = { workspace = true }
+sigil-style = { workspace = true }
+taffy = { workspace = true }
+wgpu = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-core = { version = "0.62", default-features = false, features = ["std"] }
+
+[lints]
+workspace = true

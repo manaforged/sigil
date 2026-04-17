@@ -1,17 +1,31 @@
-//! Component trait and object-erased child storage.
+//! `IntoNode` trait and object-erased child storage.
 
 use crate::{Cx, NodeId};
 
-/// One-shot construction of a node subtree.
+/// Anything that can produce a node in the tree when built.
 ///
-/// Components are consumed when built. State lives in signals and in
-/// the node tree, not in a retained component instance.
-pub trait Component {
-    /// Build this component and return the root node ID it created.
+/// Implement this to write a custom component. The simplest form is a
+/// plain closure — `|cx: &mut Cx| { ... }` — but you can also implement
+/// the trait on a struct to bundle configuration:
+///
+/// ```ignore
+/// struct Button { label: &'static str }
+///
+/// impl IntoNode for Button {
+///     fn build(self, cx: &mut Cx) -> NodeId {
+///         cx.add(container().role(Role::Button).aria_label(self.label))
+///     }
+/// }
+/// ```
+///
+/// All state lives in signals and in the node tree, not in the `IntoNode`
+/// value — it is consumed on build and does not persist.
+pub trait IntoNode {
+    /// Build this value into the tree and return the root [`NodeId`] it created.
     fn build(self, cx: &mut Cx) -> NodeId;
 }
 
-impl<F> Component for F
+impl<F> IntoNode for F
 where
     F: FnOnce(&mut Cx) -> NodeId,
 {
@@ -20,13 +34,18 @@ where
     }
 }
 
-pub(crate) trait BoxedComponent {
+/// Object-safe wrapper that lets any [`IntoNode`] be stored as `Box<dyn ErasedComponent>`.
+///
+/// This exists because `IntoNode::build(self, …)` takes `self` by value, which is not
+/// object-safe. `ErasedComponent::build_box` takes `Box<Self>` instead, allowing
+/// heterogeneous children to be collected in a single `SmallVec` without an enum.
+pub(crate) trait ErasedComponent {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
 }
 
-impl<T> BoxedComponent for T
+impl<T> ErasedComponent for T
 where
-    T: Component,
+    T: IntoNode,
 {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId {
         (*self).build(cx)

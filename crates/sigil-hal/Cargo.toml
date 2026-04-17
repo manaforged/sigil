@@ -8,5 +8,14 @@ repository.workspace = true
 authors.workspace = true
 description = "Hardware abstraction layer — renderer, shell, layout, text, a11y, and scheduler traits."
 
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped.
+doctest = false
+
+[dependencies]
+keyboard-types = { workspace = true }
+smol_str = { workspace = true }
+
 [lints]
 workspace = true

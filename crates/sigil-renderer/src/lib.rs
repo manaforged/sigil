@@ -40,14 +40,21 @@
 #[cfg(windows)]
 use windows_core as _;
 
+#[cfg(test)]
+use taffy as _;
+
 mod error;
 mod renderer;
+mod scene;
 mod slug;
+mod style_adapter;
 mod surface;
 mod window_handle;
 
 pub use error::RendererError;
 pub use renderer::WgpuRenderer;
+pub use scene::{Scene, SceneItem, SceneRect, SceneText, emit_scene};
 pub use slug::{DrawParams, SlugTextPipeline};
+pub use style_adapter::unsupported_style_warning_count_for;
 pub use surface::WgpuSurface;
 pub use window_handle::{WindowHandle, into_window_handle};

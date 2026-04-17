@@ -97,7 +97,7 @@ fn effect_named_impl<F: FnMut() + 'static>(
         let key = rt.effects.insert(EffectSlot {
             owner,
             run_owner: None,
-            f: Box::new(f),
+            f: Some(Box::new(f)),
             deps: SmallVec::new(),
             prev_deps: SmallVec::new(),
             prev_dep_cursor: 0,

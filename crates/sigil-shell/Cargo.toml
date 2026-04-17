@@ -15,6 +15,7 @@ doctest = false
 
 [dependencies]
 sigil-hal = { workspace = true }
+smol_str = { workspace = true }
 # NOTE: `sigil-async` is intentionally not a direct dependency in Phase 2.
 # The wake bridge is exposed as an `Arc<dyn Fn() + Send + Sync>` so
 # that `sigil-shell` does not pin the `sigil-async` public API before it

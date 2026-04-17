@@ -11,12 +11,6 @@
 //! - `sigil-renderer` clears the surface to the current colour.
 //! - `sigil-hal` is what every downstream crate names in its imports.
 //!
-//! Note: click-to-cycle belonged to the earliest proof app. The
-//! HAL-shaped `Shell` trait does not deliver pointer events yet; input
-//! vocabulary lands with `ui-events`. The Tokio-driven cycle below
-//! proves the cross-thread signal path end-to-end while input remains a
-//! later milestone.
-
 // hello-rect example: indices are bounded by construction
 // (modulo COLORS.len()). See docs/plans/native-ui/hygiene-cleanup-framework.md.
 #![allow(clippy::indexing_slicing)]

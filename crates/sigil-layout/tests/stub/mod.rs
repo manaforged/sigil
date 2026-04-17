@@ -1,6 +1,6 @@
 //! Shared test stub replacing the removed `DefaultTextMeasure`.
 
-use sigil_core::TextSource;
+use sigil_core::TextContent;
 use sigil_layout::{LayoutEngine, TextMeasure};
 use taffy::prelude::{AvailableSpace, Size};
 
@@ -8,10 +8,10 @@ struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextSource, _space: Size<AvailableSpace>) -> Size<f32> {
+    fn measure(&self, source: &TextContent, _space: Size<AvailableSpace>) -> Size<f32> {
         let chars = match source {
-            TextSource::Static(v) => v.chars().count() as f32,
-            TextSource::Reactive(_) => 0.0,
+            TextContent::Static(v) => v.chars().count() as f32,
+            TextContent::Reactive(_) => 0.0,
         };
         Size {
             width: chars * 8.0,

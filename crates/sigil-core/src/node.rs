@@ -6,15 +6,15 @@ use ahash::AHashMap;
 use sigil_reactive::OwnerId;
 use smallvec::SmallVec;
 
-use crate::{NodeId, Semantics, TextSource};
+use crate::{A11yProps, NodeId, TextContent};
 
 /// One arena node in the composed UI tree.
 #[derive(Debug)]
 pub struct Node {
     /// Hot-path structural kind.
-    pub kind: NodeKind,
+    pub kind: NodeType,
     /// Mandatory accessibility metadata.
-    pub semantics: Semantics,
+    pub a11y: A11yProps,
     /// Parent node, if this node is attached below another node.
     pub parent: Option<NodeId>,
     /// Ordered child nodes.
@@ -25,10 +25,10 @@ pub struct Node {
 }
 
 impl Node {
-    pub(crate) fn new(kind: NodeKind, semantics: Semantics, owner: OwnerId) -> Self {
+    pub(crate) fn new(kind: NodeType, a11y: A11yProps, owner: OwnerId) -> Self {
         Self {
             kind,
-            semantics,
+            a11y,
             parent: None,
             children: SmallVec::new(),
             owner,
@@ -71,17 +71,31 @@ impl Node {
     }
 }
 
-/// Closed set of core node kinds.
+/// Closed set of core node types.
 #[derive(Clone, Debug)]
-pub enum NodeKind {
-    /// A structural container that may hold children.
+pub enum NodeType {
+    /// A structural node with its own layout box.
+    ///
+    /// Use `Container` for any node that participates in layout as an
+    /// independent box — flex rows, grids, panels, buttons, cards.
+    /// The layout engine assigns it a position and size, and its
+    /// children are laid out inside it.
     Container,
     /// Text content. Rendering and shaping live in later crates.
     Text {
-        /// Static or reactive text source.
-        source: TextSource,
+        /// Static or reactive text content.
+        content: TextContent,
     },
-    /// A structural grouping node with no visual box of its own.
+    /// A grouping node with **no layout box of its own**.
+    ///
+    /// A `Fragment`'s children are laid out as if they were direct
+    /// children of the Fragment's parent — the Fragment itself takes
+    /// up no space and has no border, padding, or background.
+    ///
+    /// Use `Fragment` when you need to group siblings for logical or
+    /// conditional rendering without adding an extra layout level.
+    /// For example, conditionally rendering two sibling labels as one
+    /// unit without wrapping them in a visible container.
     Fragment,
 }
 

@@ -4,6 +4,7 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
+use sigil_hal as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
@@ -28,4 +29,26 @@ fn extension_attach_get_overwrite_and_remove_roundtrip() {
 
     assert_eq!(node.remove_extension::<Behavior>(), Some(Behavior(2)));
     assert_eq!(node.get_extension::<Behavior>(), None);
+}
+
+#[test]
+fn get_mut_does_not_advance_mutation_generation() {
+    let mut cx = Cx::new_root();
+    let id = cx.add(text("Reactive label"));
+    let generation = cx.mutation_generation();
+
+    let _node = cx.get_mut(id).expect("node exists");
+
+    assert_eq!(cx.mutation_generation(), generation);
+}
+
+#[test]
+fn explicit_mark_mutated_advances_mutation_generation() {
+    let mut cx = Cx::new_root();
+    let _id = cx.add(text("Reactive label"));
+    let generation = cx.mutation_generation();
+
+    cx.mark_mutated();
+
+    assert_ne!(cx.mutation_generation(), generation);
 }

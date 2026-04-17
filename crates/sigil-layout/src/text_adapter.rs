@@ -6,7 +6,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use sigil_core::TextSource;
+use sigil_core::TextContent;
 use sigil_hal::{ParagraphMetrics, TextEngine};
 
 use crate::TextMeasure;
@@ -32,7 +32,7 @@ impl<E: TextEngine> TextEngineMeasure<E> {
 impl<E: TextEngine> TextMeasure for TextEngineMeasure<E> {
     fn measure(
         &self,
-        source: &TextSource,
+        source: &TextContent,
         space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
     ) -> taffy::prelude::Size<f32> {
         use taffy::prelude::{AvailableSpace, Size};
@@ -64,9 +64,9 @@ impl<E: TextEngine> TextMeasure for TextEngineMeasure<E> {
 }
 
 /// Resolve text without allocating for the static case.
-fn resolve_text(source: &TextSource) -> Cow<'_, str> {
+fn resolve_text(source: &TextContent) -> Cow<'_, str> {
     match source {
-        TextSource::Static(s) => Cow::Borrowed(s),
-        TextSource::Reactive(sig) => Cow::Owned(sig.peek()),
+        TextContent::Static(s) => Cow::Borrowed(s),
+        TextContent::Reactive(sig) => Cow::Owned(sig.peek()),
     }
 }

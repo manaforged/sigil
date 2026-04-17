@@ -49,10 +49,10 @@ the matching repo-local plan and DR agree.
 The following follow-ups are tracked here until they receive their own
 DR or plan:
 
-- **F-001 Fragment layout semantics:** before component primitives use
-  `sigil-core::Fragment` heavily, decide whether fragments flatten into
-  their parent for layout, become transparent adapter-only nodes, or
-  require a different core representation.
+- **F-001 Fragment layout semantics:** **Closed 2026-04-16** by
+  [DR-015](DR-015-fragment-semantics.md) — flatten into parent, with
+  `debug_assert!` footguns on `class`/`theme`/`style_reactive` /
+  `focusable(true)` against fragments.
 - **F-002 sigil-shell async handle:** replace the temporary shell callback
   hook with a typed `sigil_async::AsyncRuntime` handle once that API is
   stable enough for the shell boundary.

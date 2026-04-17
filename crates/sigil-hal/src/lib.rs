@@ -18,7 +18,10 @@
 
 #![no_std]
 
+extern crate alloc;
+
 pub mod a11y;
+pub mod events;
 pub mod geometry;
 pub mod layout;
 pub mod renderer;
@@ -27,6 +30,11 @@ pub mod shell;
 pub mod text;
 
 pub use a11y::A11yBridge;
+pub use events::{
+    ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    ScrollDelta, ScrollEvent, ScrollPhase, ShellEvent, Shortcut, WindowEvent,
+};
 pub use geometry::{Color, PhysicalSize, Point, Rect};
 pub use layout::{Dim, Layout, Size};
 pub use renderer::Renderer;

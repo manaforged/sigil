@@ -1,20 +1,21 @@
 //! Built-in text node primitive.
 
 use accesskit::Role;
+use sigil_hal::Shortcut;
 use sigil_reactive::Signal;
 
-use crate::{Component, Cx, NameSource, NodeId, NodeKind, Semantics};
+use crate::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
 
 /// Static or reactive text content.
 #[derive(Clone, Debug)]
-pub enum TextSource {
+pub enum TextContent {
     /// Fixed text known at build time.
     Static(String),
     /// Text driven by a reactive signal.
     Reactive(Signal<String>),
 }
 
-impl TextSource {
+impl TextContent {
     /// Borrow the static text when this source is fixed.
     #[must_use]
     pub fn as_static_str(&self) -> Option<&str> {
@@ -25,19 +26,19 @@ impl TextSource {
     }
 }
 
-impl From<&str> for TextSource {
+impl From<&str> for TextContent {
     fn from(value: &str) -> Self {
         Self::Static(value.to_owned())
     }
 }
 
-impl From<String> for TextSource {
+impl From<String> for TextContent {
     fn from(value: String) -> Self {
         Self::Static(value)
     }
 }
 
-impl From<Signal<String>> for TextSource {
+impl From<Signal<String>> for TextContent {
     fn from(value: Signal<String>) -> Self {
         Self::Reactive(value)
     }
@@ -45,18 +46,18 @@ impl From<Signal<String>> for TextSource {
 
 /// Builder for a text node.
 pub struct TextBuilder {
-    source: TextSource,
-    semantics: Semantics,
+    source: TextContent,
+    a11y: A11yProps,
 }
 
 /// Create a text node builder.
 #[must_use]
-pub fn text(source: impl Into<TextSource>) -> TextBuilder {
+pub fn text(source: impl Into<TextContent>) -> TextBuilder {
     TextBuilder {
         source: source.into(),
-        semantics: Semantics {
+        a11y: A11yProps {
             role: Role::Label,
-            ..Semantics::default()
+            ..A11yProps::default()
         },
     }
 }
@@ -65,35 +66,56 @@ impl TextBuilder {
     /// Set the accessibility role.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
-        self.semantics.role = role;
+        self.a11y.role = role;
         self
     }
 
     /// Set a static accessible label.
     #[must_use]
     pub fn aria_label(mut self, label: impl Into<String>) -> Self {
-        self.semantics.name = NameSource::Static(label.into());
+        self.a11y.name = AccessibleName::Static(label.into());
         self
     }
 
     /// Set a reactive accessible label.
     #[must_use]
     pub fn aria_label_signal(mut self, signal: Signal<String>) -> Self {
-        self.semantics.name = NameSource::Derived(signal);
+        self.a11y.name = AccessibleName::Derived(signal);
         self
     }
 
     /// Set a static accessible description.
     #[must_use]
     pub fn aria_description(mut self, description: impl Into<String>) -> Self {
-        self.semantics.description = Some(NameSource::Static(description.into()));
+        self.a11y.description = Some(AccessibleName::Static(description.into()));
         self
     }
 
     /// Mark this text node focusable or not.
     #[must_use]
     pub const fn focusable(mut self, yes: bool) -> Self {
-        self.semantics.focusable = yes;
+        self.a11y.focusable = yes;
+        self
+    }
+
+    /// Set an explicit tab index.
+    #[must_use]
+    pub const fn tab_index(mut self, index: i32) -> Self {
+        self.a11y.tab_index = Some(index);
+        self
+    }
+
+    /// Set the keyboard shortcut advertised by this text node.
+    #[must_use]
+    pub fn keyboard_shortcut(mut self, shortcut: impl Into<Shortcut>) -> Self {
+        self.a11y.keyboard_shortcut = Some(shortcut.into());
+        self
+    }
+
+    /// Enable or disable pointer hit-testing for this text node.
+    #[must_use]
+    pub const fn hit_test_enabled(mut self, yes: bool) -> Self {
+        self.a11y.hit_test_enabled = yes;
         self
     }
 
@@ -104,13 +126,13 @@ impl TextBuilder {
     }
 }
 
-impl Component for TextBuilder {
+impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        cx.insert_raw(
-            NodeKind::Text {
-                source: self.source,
+        cx.new_node(
+            NodeType::Text {
+                content: self.source,
             },
-            self.semantics,
+            self.a11y,
         )
     }
 }

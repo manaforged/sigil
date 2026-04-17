@@ -12,10 +12,11 @@ use std::hint::black_box;
 
 use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil_core::TextSource;
+use sigil_core::TextContent;
 use sigil_core::{Cx, NodeBuilder, NodeId, container, text};
 use sigil_hal::Size;
-use sigil_layout::{LayoutEngine, LayoutIntent, TextMeasure};
+use sigil_layout::{LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_style as _;
 use smallvec as _;
 use taffy as _;
 use taffy::prelude::{AvailableSpace, Size as TaffySize};
@@ -23,10 +24,10 @@ use taffy::prelude::{AvailableSpace, Size as TaffySize};
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
     #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextSource, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
+    fn measure(&self, source: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
         let chars = match source {
-            TextSource::Static(v) => v.chars().count() as f32,
-            TextSource::Reactive(_) => 0.0,
+            TextContent::Static(v) => v.chars().count() as f32,
+            TextContent::Reactive(_) => 0.0,
         };
         TaffySize {
             width: chars * 8.0,
@@ -51,7 +52,7 @@ fn nested_subtree_with_text_children(count: usize) -> NodeBuilder {
     container().child(tree_with_text_children(count))
 }
 
-fn attach_root_intent(cx: &mut Cx, root: NodeId, intent: LayoutIntent) {
+fn attach_root_intent(cx: &mut Cx, root: NodeId, intent: LayoutStyle) {
     let _ = cx.get_mut(root).expect("root exists").attach(intent);
 }
 
@@ -62,7 +63,7 @@ fn bench_compute_single_node(c: &mut Criterion) {
         attach_root_intent(
             &mut cx,
             root,
-            LayoutIntent::flex_row().fixed_size(100.0, 40.0),
+            LayoutStyle::flex_row().fixed_size(100.0, 40.0),
         );
         let mut engine = stub_engine();
 
@@ -82,7 +83,7 @@ fn bench_compute_flex_row_100_children(c: &mut Criterion) {
         attach_root_intent(
             &mut cx,
             root,
-            LayoutIntent::flex_row().fixed_size(1200.0, 40.0),
+            LayoutStyle::flex_row().fixed_size(1200.0, 40.0),
         );
         let mut engine = stub_engine();
 
@@ -102,7 +103,7 @@ fn bench_compute_tree_100(c: &mut Criterion) {
         attach_root_intent(
             &mut cx,
             root,
-            LayoutIntent::flex_column().fixed_size(800.0, 1200.0),
+            LayoutStyle::flex_column().fixed_size(800.0, 1200.0),
         );
         let mut engine = stub_engine();
 
@@ -122,7 +123,7 @@ fn bench_sync_tree_1000_nodes(c: &mut Criterion) {
         attach_root_intent(
             &mut cx,
             root,
-            LayoutIntent::flex_column().fixed_size(800.0, 12_000.0),
+            LayoutStyle::flex_column().fixed_size(800.0, 12_000.0),
         );
         let mut engine = stub_engine();
 
@@ -142,7 +143,7 @@ fn bench_gc_after_remove_100(c: &mut Criterion) {
                 attach_root_intent(
                     &mut cx,
                     root,
-                    LayoutIntent::flex_column().fixed_size(800.0, 1200.0),
+                    LayoutStyle::flex_column().fixed_size(800.0, 1200.0),
                 );
                 let remove_root = cx
                     .get(root)

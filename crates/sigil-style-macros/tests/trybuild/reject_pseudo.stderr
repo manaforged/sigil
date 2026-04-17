@@ -1,0 +1,5 @@
+error: pseudo prefix 'hover:' is not supported
+ --> tests/trybuild/reject_pseudo.rs:4:29
+  |
+4 |     let _classes = classes!("hover:bg-accent");
+  |                             ^^^^^^^^^^^^^^^^^
