@@ -6,6 +6,8 @@ use sigil_reactive::Signal;
 
 use crate::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
 
+type TextMutator = Box<dyn FnOnce(&mut crate::Node)>;
+
 /// Static or reactive text content.
 #[derive(Clone, Debug)]
 pub enum TextContent {
@@ -48,6 +50,7 @@ impl From<Signal<String>> for TextContent {
 pub struct TextBuilder {
     source: TextContent,
     a11y: A11yProps,
+    pre_extensions: Vec<TextMutator>,
 }
 
 /// Create a text node builder.
@@ -59,6 +62,7 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
             role: Role::Label,
             ..A11yProps::default()
         },
+        pre_extensions: Vec::new(),
     }
 }
 
@@ -124,15 +128,31 @@ impl TextBuilder {
     pub fn add(self, cx: &mut Cx) -> NodeId {
         cx.add(self)
     }
+
+    /// Mutate the node at build time.
+    ///
+    /// This is the escape hatch used by downstream builder extension
+    /// traits that need to attach typed extensions to text nodes.
+    #[must_use]
+    pub fn mutate(mut self, apply: impl FnOnce(&mut crate::Node) + 'static) -> Self {
+        self.pre_extensions.push(Box::new(apply));
+        self
+    }
 }
 
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        cx.new_node(
+        let id = cx.new_node(
             NodeType::Text {
                 content: self.source,
             },
             self.a11y,
-        )
+        );
+        if let Some(node) = cx.get_mut(id) {
+            for apply in self.pre_extensions {
+                apply(node);
+            }
+        }
+        id
     }
 }

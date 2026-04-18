@@ -43,11 +43,29 @@ pub trait NodeEventsExt {
     where
         H: Fn(&mut PointerEvent) + 'static;
 
+    /// Run `h` when the pointer enters this node's hit path.
+    #[must_use]
+    fn on_pointer_enter<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut PointerEvent) + 'static;
+
+    /// Run `h` when the pointer leaves this node's hit path.
+    #[must_use]
+    fn on_pointer_leave<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut PointerEvent) + 'static;
+
     /// Run `h` when a matching key event reaches this node.
     #[must_use]
     fn on_key<S, H>(self, shortcut: S, h: H) -> Self
     where
         S: Into<Shortcut>,
+        H: Fn(&mut KeyEvent) + 'static;
+
+    /// Run `h` when any key event reaches this node.
+    #[must_use]
+    fn on_key_any<H>(self, h: H) -> Self
+    where
         H: Fn(&mut KeyEvent) + 'static;
 
     /// Run `h` during key-event capture for a matching shortcut.
@@ -119,6 +137,24 @@ impl NodeEventsExt for NodeBuilder {
         })
     }
 
+    fn on_pointer_enter<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut PointerEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_pointer_enter(Box::new(h));
+        })
+    }
+
+    fn on_pointer_leave<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut PointerEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_pointer_leave(Box::new(h));
+        })
+    }
+
     fn on_key<S, H>(self, shortcut: S, h: H) -> Self
     where
         S: Into<Shortcut>,
@@ -128,6 +164,13 @@ impl NodeEventsExt for NodeBuilder {
         with_handlers(self, move |handlers| {
             handlers.add_key(shortcut, Box::new(h));
         })
+    }
+
+    fn on_key_any<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut KeyEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| handlers.add_key_any(Box::new(h)))
     }
 
     fn on_key_capture<S, H>(self, shortcut: S, h: H) -> Self

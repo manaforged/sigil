@@ -20,10 +20,16 @@ sigil-hal = { workspace = true }
 sigil-style = { workspace = true }
 
 [dev-dependencies]
+allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
+sigil-reactive = { workspace = true }
 
 [[bench]]
 name = "layout_ops"
+harness = false
+
+[[bench]]
+name = "invalidation_rig"
 harness = false
 
 [lints]

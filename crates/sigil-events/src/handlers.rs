@@ -20,8 +20,11 @@ pub struct EventHandlers {
     pointer_up: Vec<PointerHandler>,
     pointer_move_capture: Vec<PointerHandler>,
     pointer_move: Vec<PointerHandler>,
+    pointer_enter: Vec<PointerHandler>,
+    pointer_leave: Vec<PointerHandler>,
     key_capture: Vec<KeyBinding>,
     key: Vec<KeyBinding>,
+    key_any: Vec<KeyHandler>,
     focus_in: Vec<FocusHandler>,
     focus_out: Vec<FocusHandler>,
 }
@@ -51,12 +54,24 @@ impl EventHandlers {
         self.pointer_move.push(handler);
     }
 
+    pub(crate) fn add_pointer_enter(&mut self, handler: PointerHandler) {
+        self.pointer_enter.push(handler);
+    }
+
+    pub(crate) fn add_pointer_leave(&mut self, handler: PointerHandler) {
+        self.pointer_leave.push(handler);
+    }
+
     pub(crate) fn add_key_capture(&mut self, shortcut: Shortcut, handler: KeyHandler) {
         self.key_capture.push(KeyBinding { shortcut, handler });
     }
 
     pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: KeyHandler) {
         self.key.push(KeyBinding { shortcut, handler });
+    }
+
+    pub(crate) fn add_key_any(&mut self, handler: KeyHandler) {
+        self.key_any.push(handler);
     }
 
     pub(crate) fn add_focus_in(&mut self, handler: FocusHandler) {
@@ -101,6 +116,16 @@ impl EventHandlers {
                 return invoked;
             }
         }
+        if capture {
+            return invoked;
+        }
+        for handler in &self.key_any {
+            handler(event);
+            invoked = true;
+            if event.propagation_stopped() {
+                return invoked;
+            }
+        }
         invoked
     }
 
@@ -124,6 +149,8 @@ impl EventHandlers {
             (PointerPhase::Up, false) => Some(&self.pointer_up),
             (PointerPhase::Move, true) => Some(&self.pointer_move_capture),
             (PointerPhase::Move, false) => Some(&self.pointer_move),
+            (PointerPhase::Enter, false) => Some(&self.pointer_enter),
+            (PointerPhase::Leave, false) => Some(&self.pointer_leave),
             _ => None,
         }
     }

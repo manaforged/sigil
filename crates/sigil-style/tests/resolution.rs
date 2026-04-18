@@ -335,6 +335,22 @@ fn class_string_attaches_binding() {
 }
 
 #[test]
+fn class_string_attaches_to_text_binding() {
+    let mut cx = sigil_core::Cx::new_root();
+    let id = cx.add(sigil_core::text("label").class("text-on-surface"));
+    let binding = cx
+        .get(id)
+        .and_then(|node| node.get_extension::<StyleBinding>())
+        .unwrap();
+
+    assert_eq!(
+        binding.static_slice(),
+        &[StyleAtom::TextThemeRef("on-surface")]
+    );
+    assert_eq!(binding.dynamic_slice(), &[]);
+}
+
+#[test]
 fn style_struct_attaches_binding() {
     let mut cx = sigil_core::Cx::new_root();
     let id = cx.add(sigil_core::container().style(Style::new().padding(8)));

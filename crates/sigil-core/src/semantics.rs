@@ -38,6 +38,18 @@ pub struct A11yProps {
     pub keyboard_shortcut: Option<Shortcut>,
     /// Whether this node participates in pointer hit-testing.
     pub hit_test_enabled: bool,
+    /// Reactive checked state for checkbox-like controls.
+    pub checked: Option<Signal<bool>>,
+    /// Reactive numeric value for range-like controls.
+    pub value_now: Option<Signal<f32>>,
+    /// Minimum numeric value for range-like controls.
+    pub value_min: Option<f32>,
+    /// Maximum numeric value for range-like controls.
+    pub value_max: Option<f32>,
+    /// Reactive text value for text-input-like controls.
+    pub text_value: Option<Signal<String>>,
+    /// Placeholder text for text-input-like controls.
+    pub placeholder: Option<String>,
     /// Nodes owned by this node in the accessibility tree.
     pub aria_owns: SmallVec<[NodeId; 2]>,
     /// Node that labels this node.
@@ -55,6 +67,12 @@ impl Default for A11yProps {
             tab_index: None,
             keyboard_shortcut: None,
             hit_test_enabled: true,
+            checked: None,
+            value_now: None,
+            value_min: None,
+            value_max: None,
+            text_value: None,
+            placeholder: None,
             aria_owns: SmallVec::new(),
             aria_labelled_by: None,
         }

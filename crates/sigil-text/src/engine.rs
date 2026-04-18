@@ -4,10 +4,11 @@ use std::cell::RefCell;
 
 use std::borrow::Cow;
 
-use parley::style::{FontFamily, LineHeight};
+use parley::style::{FontFamily, FontWeight, LineHeight};
 use parley::{FontContext, LayoutContext, StyleProperty};
 use sigil_hal::Color;
 use sigil_hal::TextEngine;
+use sigil_style::{StyledTextEngine, TextLineHeight, TextStyle};
 
 use crate::cache::ParagraphCache;
 use crate::config::TextConfig;
@@ -45,14 +46,19 @@ impl ParleyTextEngine {
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
     }
-}
 
-impl TextEngine for ParleyTextEngine {
-    type Error = TextError;
-    type Paragraph = Paragraph;
-
-    fn layout_paragraph(&self, text: &str, max_width: Option<f32>) -> Result<Paragraph, TextError> {
-        if let Some(cached) = self.cache.borrow().get(text, max_width) {
+    /// Lay out a paragraph with explicit resolved typography.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TextError`] if paragraph layout fails.
+    pub fn layout_paragraph_styled(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Result<Paragraph, TextError> {
+        if let Some(cached) = self.cache.borrow().get(text, max_width, style) {
             return Ok(cached.clone());
         }
 
@@ -63,13 +69,16 @@ impl TextEngine for ParleyTextEngine {
         let quantize = true;
         let mut builder = layout_cx.ranged_builder(&mut font_cx, text, scale, quantize);
 
-        let family = self.config.font_family.as_str();
+        let family = style.font_family.as_str();
         builder.push_default(StyleProperty::FontFamily(FontFamily::Source(
             Cow::Borrowed(family),
         )));
-        builder.push_default(StyleProperty::FontSize(self.config.font_size));
-        builder.push_default(StyleProperty::LineHeight(LineHeight::FontSizeRelative(
-            self.config.line_height,
+        builder.push_default(StyleProperty::FontSize(style.font_size.max(1.0)));
+        builder.push_default(StyleProperty::FontWeight(FontWeight::new(f32::from(
+            style.font_weight,
+        ))));
+        builder.push_default(StyleProperty::LineHeight(to_parley_line_height(
+            style.line_height,
         )));
         builder.push_default(StyleProperty::Brush(Color::WHITE));
 
@@ -79,11 +88,39 @@ impl TextEngine for ParleyTextEngine {
         let para = Paragraph::new(layout);
         self.cache
             .borrow_mut()
-            .insert(text, max_width, para.clone());
+            .insert(text, max_width, style, para.clone());
         Ok(para)
+    }
+}
+
+impl TextEngine for ParleyTextEngine {
+    type Error = TextError;
+    type Paragraph = Paragraph;
+
+    fn layout_paragraph(&self, text: &str, max_width: Option<f32>) -> Result<Paragraph, TextError> {
+        let style = self.config.text_style();
+        self.layout_paragraph_styled(text, max_width, &style)
     }
 
     fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
+    }
+}
+
+impl StyledTextEngine for ParleyTextEngine {
+    fn layout_paragraph_styled(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Result<Paragraph, TextError> {
+        Self::layout_paragraph_styled(self, text, max_width, style)
+    }
+}
+
+const fn to_parley_line_height(line_height: TextLineHeight) -> LineHeight {
+    match line_height {
+        TextLineHeight::FontSizeRelative(value) => LineHeight::FontSizeRelative(value.max(0.1)),
+        TextLineHeight::Absolute(value) => LineHeight::Absolute(value.max(1.0)),
     }
 }

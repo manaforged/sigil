@@ -90,6 +90,10 @@ pub(crate) fn key_event(key: Key, physical: PhysicalKey, phase: KeyPhase) -> She
     }))
 }
 
+pub(crate) const fn window_blur() -> ShellEvent {
+    ShellEvent::Window(sigil_hal::WindowEvent::Focused(false))
+}
+
 pub(crate) fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)

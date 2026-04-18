@@ -11,6 +11,7 @@ use sigil_reactive as _;
 use taffy as _;
 
 use sigil_hal::{ParagraphMetrics, TextEngine};
+use sigil_style::{TextLineHeight, TextStyle};
 use sigil_text::{ParleyTextEngine, TextConfig};
 
 fn engine() -> ParleyTextEngine {
@@ -72,4 +73,39 @@ fn line_count_is_one_for_short_text() {
     let e = engine();
     let para = e.layout_paragraph("Hi", None).unwrap();
     assert_eq!(para.line_count(), 1);
+}
+
+#[test]
+fn styled_font_size_and_line_height_change_metrics() {
+    let e = engine();
+    let small = TextStyle {
+        font_size: 12.0,
+        line_height: TextLineHeight::Absolute(14.0),
+        ..TextStyle::default()
+    };
+    let large = TextStyle {
+        font_size: 24.0,
+        line_height: TextLineHeight::Absolute(32.0),
+        ..TextStyle::default()
+    };
+
+    let small = e
+        .layout_paragraph_styled("Typography", None, &small)
+        .unwrap();
+    let large = e
+        .layout_paragraph_styled("Typography", None, &large)
+        .unwrap();
+
+    assert!(
+        large.width() > small.width(),
+        "larger font should be wider: {} vs {}",
+        large.width(),
+        small.width()
+    );
+    assert!(
+        large.height() > small.height(),
+        "larger line height should be taller: {} vs {}",
+        large.height(),
+        small.height()
+    );
 }

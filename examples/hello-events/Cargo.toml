@@ -9,18 +9,7 @@ authors.workspace = true
 description = "Windowed event-routing proof for Sigil."
 
 [dependencies]
-bytemuck = { workspace = true }
-sigil-core = { workspace = true }
-sigil-events = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-renderer = { workspace = true }
-sigil-shell = { workspace = true }
-taffy = { workspace = true }
-wgpu = { workspace = true }
-
-[target.'cfg(windows)'.dependencies]
-windows-core = { version = "0.62", default-features = false, features = ["std"] }
+sigil = { workspace = true }
 
 [lints]
 workspace = true

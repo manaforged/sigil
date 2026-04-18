@@ -12,27 +12,28 @@ use std::sync::{
 };
 
 use sigil_hal::{
-    ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, ModifiersState, MouseButton,
-    MouseButtons, PhysicalSize, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    ScrollEvent, Shell, ShellEvent, WindowEvent as SigilWindowEvent,
+    ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, LogicalSize, ModifiersState,
+    MouseButton, MouseButtons, PhysicalSize, Point, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase, Scale, ScrollEvent, Shell, ShellEvent, WindowEvent as SigilWindowEvent,
 };
 use smol_str::SmolStr;
 use winit::{
-    dpi::PhysicalSize as WinitPhysicalSize,
+    dpi::{LogicalSize as WinitLogicalSize, PhysicalSize as WinitPhysicalSize, Size as WinitSize},
     event::{
         ElementState, Ime as WinitIme, KeyEvent as WinitKeyEvent, MouseButton as WinitMouseButton,
         MouseScrollDelta as WinitMouseScrollDelta, TouchPhase, WindowEvent as WinitWindowEvent,
     },
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    window::{Window, WindowAttributes},
+    window::{Window, WindowAttributes, WindowId},
 };
 
 use crate::{
     ShellError, WinitWindowHandle,
     app::WinitApp,
+    dpi::{logical_point_from_f64, scale_for_window_id, scale_from_f64, set_scale_for_window_id},
     event_map::{
         map_modifiers, map_mouse_button, map_scroll_delta, map_scroll_phase,
-        map_touch_pointer_phase, mouse_button_bit, point_from_f64,
+        map_touch_pointer_phase, mouse_button_bit,
     },
     key_map::{map_logical_key, map_physical_key},
     waker::{WakeEvent, WinitWaker},
@@ -43,7 +44,12 @@ use crate::{
 pub(crate) struct PendingWindow {
     handle: WinitWindowHandle,
     title: String,
-    size: PhysicalSize,
+    size: PendingWindowSize,
+}
+
+pub(crate) enum PendingWindowSize {
+    Physical(PhysicalSize),
+    Logical(LogicalSize),
 }
 
 /// Closure invoked inside `ApplicationHandler::user_event`, used by
@@ -58,6 +64,7 @@ pub struct WinitShell {
     alive: Arc<AtomicBool>,
     pending: Vec<PendingWindow>,
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
+    window_scales: Vec<(WinitWindowHandle, Scale)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<ShellEvent>,
     pointer_position: Point,
@@ -94,6 +101,7 @@ impl WinitShell {
             alive: Arc::new(AtomicBool::new(true)),
             pending: Vec::new(),
             windows: Vec::new(),
+            window_scales: Vec::new(),
             failed: Vec::new(),
             events: Vec::new(),
             pointer_position: Point::new(0.0, 0.0),
@@ -174,11 +182,24 @@ impl WinitShell {
         }
         let pending = std::mem::take(&mut self.pending);
         for spec in pending {
+            let size = match spec.size {
+                PendingWindowSize::Physical(size) => {
+                    WinitSize::Physical(WinitPhysicalSize::new(size.width, size.height))
+                }
+                PendingWindowSize::Logical(size) => WinitSize::Logical(WinitLogicalSize::new(
+                    f64::from(size.width),
+                    f64::from(size.height),
+                )),
+            };
             let attrs = WindowAttributes::default()
                 .with_title(spec.title)
-                .with_inner_size(WinitPhysicalSize::new(spec.size.width, spec.size.height));
+                .with_inner_size(size);
             match active.create_window(attrs) {
-                Ok(window) => self.windows.push((spec.handle, Arc::new(window))),
+                Ok(window) => {
+                    self.window_scales
+                        .push((spec.handle, scale_from_f64(window.scale_factor())));
+                    self.windows.push((spec.handle, Arc::new(window)));
+                }
                 // Recorded for `take_failed_windows`; callers surface
                 // the error out-of-band since the shell cannot panic.
                 Err(err) => self.failed.push((spec.handle, err.to_string())),
@@ -186,7 +207,12 @@ impl WinitShell {
         }
     }
 
-    pub(crate) fn buffer_window_event(&mut self, event: WinitWindowEvent) -> bool {
+    pub(crate) fn buffer_window_event(
+        &mut self,
+        window_id: WindowId,
+        event: WinitWindowEvent,
+    ) -> bool {
+        let scale = scale_for_window_id(&self.windows, &self.window_scales, window_id);
         match event {
             WinitWindowEvent::Resized(size) => self.push_window_resized(size),
             WinitWindowEvent::Destroyed => self.push_window(SigilWindowEvent::Destroyed),
@@ -194,20 +220,24 @@ impl WinitShell {
             WinitWindowEvent::KeyboardInput { event, .. } => self.push_key(event),
             WinitWindowEvent::ModifiersChanged(modifiers) => self.update_modifiers(modifiers),
             WinitWindowEvent::Ime(event) => self.push_ime(event),
-            WinitWindowEvent::CursorMoved { position, .. } => self.push_cursor_move(position),
+            WinitWindowEvent::CursorMoved { position, .. } => {
+                self.push_cursor_move(position, scale)
+            }
             WinitWindowEvent::CursorEntered { .. } => self.push_pointer_phase(PointerPhase::Enter),
             WinitWindowEvent::CursorLeft { .. } => self.push_pointer_phase(PointerPhase::Leave),
-            WinitWindowEvent::MouseWheel { delta, phase, .. } => self.push_scroll(delta, phase),
+            WinitWindowEvent::MouseWheel { delta, phase, .. } => {
+                self.push_scroll(delta, phase, scale)
+            }
             WinitWindowEvent::MouseInput { state, button, .. } => {
                 self.push_mouse_input(state, button);
                 true
             }
             WinitWindowEvent::Touch(touch) => {
-                self.push_touch(touch.phase, touch.location.x, touch.location.y);
+                self.push_touch(touch.phase, touch.location.x, touch.location.y, scale);
                 true
             }
             WinitWindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                self.push_window(SigilWindowEvent::ScaleFactorChanged(scale_factor))
+                self.push_scale_factor_changed(window_id, scale_factor)
             }
             WinitWindowEvent::Occluded(occluded) => {
                 self.push_window(SigilWindowEvent::Occluded(occluded))
@@ -226,6 +256,12 @@ impl WinitShell {
     fn push_window(&mut self, event: SigilWindowEvent) -> bool {
         self.events.push(ShellEvent::Window(event));
         true
+    }
+
+    fn push_scale_factor_changed(&mut self, window_id: WindowId, scale_factor: f64) -> bool {
+        let scale = scale_from_f64(scale_factor);
+        set_scale_for_window_id(&self.windows, &mut self.window_scales, window_id, scale);
+        self.push_window(SigilWindowEvent::ScaleFactorChanged(scale))
     }
 
     fn push_focus(&mut self, focused: bool) -> bool {
@@ -270,8 +306,12 @@ impl WinitShell {
         true
     }
 
-    fn push_cursor_move(&mut self, position: winit::dpi::PhysicalPosition<f64>) -> bool {
-        let next = point_from_f64(position.x, position.y);
+    fn push_cursor_move(
+        &mut self,
+        position: winit::dpi::PhysicalPosition<f64>,
+        scale: Scale,
+    ) -> bool {
+        let next = logical_point_from_f64(position.x, position.y, scale);
         let delta = Point::new(
             next.x - self.pointer_position.x,
             next.y - self.pointer_position.y,
@@ -306,8 +346,8 @@ impl WinitShell {
         );
     }
 
-    fn push_touch(&mut self, phase: TouchPhase, x: f64, y: f64) {
-        let next = point_from_f64(x, y);
+    fn push_touch(&mut self, phase: TouchPhase, x: f64, y: f64, scale: Scale) {
+        let next = logical_point_from_f64(x, y, scale);
         let delta = Point::new(
             next.x - self.pointer_position.x,
             next.y - self.pointer_position.y,
@@ -340,10 +380,15 @@ impl WinitShell {
             })));
     }
 
-    fn push_scroll(&mut self, delta: WinitMouseScrollDelta, phase: TouchPhase) -> bool {
+    fn push_scroll(
+        &mut self,
+        delta: WinitMouseScrollDelta,
+        phase: TouchPhase,
+        scale: Scale,
+    ) -> bool {
         self.events.push(ShellEvent::Scroll(ScrollEvent {
             position: self.pointer_position,
-            delta: map_scroll_delta(delta),
+            delta: map_scroll_delta(delta, scale),
             modifiers: self.modifiers,
             phase: map_scroll_phase(phase),
         }));
@@ -377,7 +422,21 @@ impl Shell for WinitShell {
         self.pending.push(PendingWindow {
             handle,
             title: title.to_owned(),
-            size: initial_size,
+            size: PendingWindowSize::Physical(initial_size),
+        });
+        Ok(handle)
+    }
+
+    fn create_window_logical(
+        &mut self,
+        title: &str,
+        initial: LogicalSize,
+    ) -> Result<Self::Window, Self::Error> {
+        let handle = self.allocate_handle();
+        self.pending.push(PendingWindow {
+            handle,
+            title: title.to_owned(),
+            size: PendingWindowSize::Logical(initial),
         });
         Ok(handle)
     }

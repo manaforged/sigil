@@ -50,6 +50,8 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Opacity(_)
+        // Typography is resolved in `text_style.rs::apply_text_binding`;
+        // keep cache-key coverage in sync with that function.
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
         | StyleAtom::LineHeight(_)

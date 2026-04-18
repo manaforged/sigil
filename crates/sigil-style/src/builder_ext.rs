@@ -3,12 +3,12 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use sigil_core::{Node, NodeBuilder};
+use sigil_core::{Node, NodeBuilder, TextBuilder};
 use smallvec::SmallVec;
 
 use crate::{
-    Style, StyleAtom, StyleBinding, StyleReactiveEffect, Theme, merge_classes, parse_class_string,
-    parser::ParseError,
+    FocusRing, Style, StyleAtom, StyleBinding, StyleReactiveEffect, Theme, merge_classes,
+    parse_class_string, parser::ParseError,
 };
 
 /// Source accepted by [`NodeStyleExt::class`].
@@ -59,6 +59,10 @@ pub trait NodeStyleExt {
     #[must_use]
     fn theme(self, theme: Theme) -> Self;
 
+    /// Attach focus-ring semantics to this node.
+    #[must_use]
+    fn focus_ring(self, ring: FocusRing) -> Self;
+
     /// Attach a signal-driven static atom slice to this node.
     #[must_use]
     fn style_reactive<F>(self, f: F) -> Self
@@ -78,6 +82,36 @@ impl NodeStyleExt for NodeBuilder {
 
     fn theme(self, theme: Theme) -> Self {
         self.mutate(move |node| install_theme(node, theme))
+    }
+
+    fn focus_ring(self, ring: FocusRing) -> Self {
+        self.mutate(move |node| install_focus_ring(node, ring))
+    }
+
+    fn style_reactive<F>(self, f: F) -> Self
+    where
+        F: Fn() -> &'static [StyleAtom] + 'static,
+    {
+        self.mutate(move |node| install_reactive(node, f))
+    }
+}
+
+impl NodeStyleExt for TextBuilder {
+    fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.mutate(move |node| install_class(node, source))
+    }
+
+    fn style(self, style: Style) -> Self {
+        self.class(style)
+    }
+
+    fn theme(self, theme: Theme) -> Self {
+        self.mutate(move |node| install_theme(node, theme))
+    }
+
+    fn focus_ring(self, ring: FocusRing) -> Self {
+        self.mutate(move |node| install_focus_ring(node, ring))
     }
 
     fn style_reactive<F>(self, f: F) -> Self
@@ -114,6 +148,11 @@ fn install_theme(node: &mut Node, theme: Theme) {
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
         binding.invalidate_theme();
     }
+}
+
+fn install_focus_ring(node: &mut Node, ring: FocusRing) {
+    debug_assert_not_fragment(node, "focus_ring");
+    let _previous = node.attach(ring);
 }
 
 fn install_reactive<F>(node: &mut Node, f: F)

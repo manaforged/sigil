@@ -1,44 +1,19 @@
 //! [`WgpuRenderer`] — the production [`sigil_hal::Renderer`] implementation.
 //!
-//! This module owns every touchpoint with `wgpu`. Consumers of
-//! `sigil-renderer` should name [`WgpuRenderer`] only at construction time
-//! and thereafter work through the [`sigil_hal::Renderer`] trait.
-//! Composited rendering (clear + text in one frame) uses [`Self::render_frame`].
+//! This module owns the public wgpu-facing API. Lazy device/adapter
+//! construction lives in [`crate::device_state`]; the scene-paint
+//! pipeline lives in [`crate::scene_paint`].
 
 use sigil_hal::{Color, PhysicalSize, Renderer};
 
+use crate::device_state::{DeviceState, ReadyState};
 use crate::error::RendererError;
+use crate::scene::Scene;
+use crate::scene_command::CommandScene;
+use crate::scene_command::adapter::flat_to_commands;
+use crate::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::surface::WgpuSurface;
 use crate::window_handle::WindowHandle;
-
-/// Lazily-initialised GPU state.
-///
-/// `WgpuRenderer::new` only builds the `wgpu::Instance` — picking an
-/// adapter before we have a presentable surface would let wgpu hand us
-/// a GPU that later cannot be configured onto the user's window (hybrid
-/// iGPU/dGPU laptops, remote-display protocols, WebGL-compat-only
-/// fallbacks, …). The first call to `create_surface` promotes this to
-/// `Ready` by picking an adapter that is known-compatible with that
-/// concrete surface.
-enum DeviceState {
-    /// Instance-only state. No adapter/device has been requested yet.
-    Uninitialized(wgpu::Instance),
-    /// Adapter + device chosen against the first surface we created.
-    Ready(ReadyState),
-}
-
-struct ReadyState {
-    instance: wgpu::Instance,
-    adapter: wgpu::Adapter,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-}
-
-impl ReadyState {
-    fn max_texture_dimension_2d(&self) -> u32 {
-        self.device.limits().max_texture_dimension_2d
-    }
-}
 
 /// wgpu-backed GPU renderer.
 ///
@@ -50,38 +25,6 @@ pub struct WgpuRenderer {
     state: DeviceState,
 }
 
-/// Request an adapter compatible with `surface`, then a device from that adapter.
-fn request_adapter_and_device(
-    instance: &wgpu::Instance,
-    surface: &wgpu::Surface<'_>,
-) -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
-    use pollster::FutureExt as _;
-
-    let Ok(adapter) = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: Some(surface),
-            force_fallback_adapter: false,
-        })
-        .block_on()
-    else {
-        return Err(RendererError::NoAdapter);
-    };
-
-    let (device, queue) = adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("sigil-renderer device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()?;
-
-    Ok((adapter, device, queue))
-}
-
 impl WgpuRenderer {
     /// Construct a new renderer. Cheap — only creates a `wgpu::Instance`.
     /// Adapter and device selection are deferred to the first `create_surface`
@@ -91,79 +34,27 @@ impl WgpuRenderer {
     ///
     /// Currently infallible; returns `Result` for forward compatibility.
     pub fn new() -> Result<Self, RendererError> {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         Ok(Self {
-            state: DeviceState::Uninitialized(instance),
+            state: DeviceState::new(),
         })
-    }
-
-    /// Promote `Uninitialized` → `Ready`. Idempotent after the first call.
-    fn ensure_ready(&mut self, surface: &wgpu::Surface<'_>) -> Result<&ReadyState, RendererError> {
-        if matches!(self.state, DeviceState::Uninitialized(_)) {
-            let placeholder =
-                wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-            let instance = match core::mem::replace(
-                &mut self.state,
-                DeviceState::Uninitialized(placeholder),
-            ) {
-                DeviceState::Uninitialized(i) => i,
-                DeviceState::Ready(_) => unreachable!(),
-            };
-            match request_adapter_and_device(&instance, surface) {
-                Ok((adapter, device, queue)) => {
-                    self.state = DeviceState::Ready(ReadyState {
-                        instance,
-                        adapter,
-                        device,
-                        queue,
-                    });
-                }
-                Err(err) => {
-                    self.state = DeviceState::Uninitialized(instance);
-                    return Err(err);
-                }
-            }
-        }
-        match &self.state {
-            DeviceState::Ready(ready) => Ok(ready),
-            DeviceState::Uninitialized(_) => unreachable!(),
-        }
-    }
-
-    /// Borrow `ReadyState`. Returns [`RendererError::NotInitialized`] before
-    /// the first `create_surface` call.
-    const fn ready(&self) -> Result<&ReadyState, RendererError> {
-        match &self.state {
-            DeviceState::Ready(ready) => Ok(ready),
-            DeviceState::Uninitialized(_) => Err(RendererError::NotInitialized),
-        }
     }
 
     /// Borrow the underlying `wgpu::Instance` (always available).
     #[must_use]
-    pub const fn instance(&self) -> &wgpu::Instance {
-        match &self.state {
-            DeviceState::Uninitialized(instance) => instance,
-            DeviceState::Ready(ready) => &ready.instance,
-        }
+    pub fn instance(&self) -> &wgpu::Instance {
+        self.state.instance()
     }
 
     /// Borrow the underlying `wgpu::Device`, or `None` before `create_surface`.
     #[must_use]
-    pub const fn device(&self) -> Option<&wgpu::Device> {
-        match &self.state {
-            DeviceState::Ready(ready) => Some(&ready.device),
-            DeviceState::Uninitialized(_) => None,
-        }
+    pub fn device(&self) -> Option<&wgpu::Device> {
+        self.state.ready().ok().map(|ready| &ready.device)
     }
 
     /// Borrow the underlying `wgpu::Queue`, or `None` before `create_surface`.
     #[must_use]
-    pub const fn queue(&self) -> Option<&wgpu::Queue> {
-        match &self.state {
-            DeviceState::Ready(ready) => Some(&ready.queue),
-            DeviceState::Uninitialized(_) => None,
-        }
+    pub fn queue(&self) -> Option<&wgpu::Queue> {
+        self.state.ready().ok().map(|ready| &ready.queue)
     }
 
     /// Acquire the surface texture, clear it to `clear_color`, run `draw`
@@ -188,59 +79,152 @@ impl WgpuRenderer {
     where
         F: FnOnce(&wgpu::Device, &wgpu::Queue, &wgpu::TextureView),
     {
-        let ready = self.ready()?;
-        let frame = match surface.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(f)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                surface.surface.configure(&ready.device, &surface.config);
-                return Ok(());
-            }
-            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
-                return Ok(());
-            }
-            wgpu::CurrentSurfaceTexture::Validation => {
-                return Err(RendererError::SurfaceValidation);
-            }
+        let ready = self.state.ready()?;
+        let Some((frame, view)) = acquire_frame(ready, surface)? else {
+            return Ok(());
         };
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-
-        let mut enc = ready
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("render_frame clear"),
-            });
-        {
-            let _p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("render_frame clear pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: f64::from(clear_color.r),
-                            g: f64::from(clear_color.g),
-                            b: f64::from(clear_color.b),
-                            a: f64::from(clear_color.a),
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-        }
-        ready.queue.submit(core::iter::once(enc.finish()));
-
+        submit_clear(ready, &view, clear_color);
         draw(&ready.device, &ready.queue, &view);
         frame.present();
         Ok(())
     }
+
+    /// Acquire the surface texture, clear, paint every `SceneItem::Rect`
+    /// and `SceneItem::Text` from `scene`, then present.
+    ///
+    /// The scene's rectangles are interpreted in logical pixels; the
+    /// `viewport` argument is also logical pixels and must match the
+    /// layout root size used to emit the scene. The WGSL scene shader
+    /// uses this logical viewport for its NDC conversion math. The
+    /// acquired surface texture is the physical-pixel part of the call;
+    /// do not pass physical surface dimensions as `viewport`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::NotInitialized`] if called before
+    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` —
+    /// the next frame retries.
+    pub fn render_scene(
+        &mut self,
+        surface: &mut WgpuSurface,
+        scene: &Scene,
+        clear_color: Color,
+        viewport: (f32, f32),
+    ) -> Result<(), RendererError> {
+        let commands = flat_to_commands(scene);
+        self.render_command_scene(surface, &commands, clear_color, viewport)
+    }
+
+    /// Acquire the surface texture, clear, walk every command from `scene`,
+    /// and present.
+    ///
+    /// This is the command-buffer counterpart to [`Self::render_scene`].
+    /// `render_scene` remains the flat-scene compatibility entry point and
+    /// compiles its input through the Step 3 adapter before calling this
+    /// method.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::NotInitialized`] if called before
+    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` -
+    /// the next frame retries.
+    pub fn render_command_scene(
+        &mut self,
+        surface: &mut WgpuSurface,
+        scene: &CommandScene,
+        clear_color: Color,
+        viewport: (f32, f32),
+    ) -> Result<(), RendererError> {
+        let format = surface.config.format;
+        let ready = self.state.ready_mut()?;
+        let Some((frame, view)) = acquire_frame(ready, surface)? else {
+            return Ok(());
+        };
+        submit_clear(ready, &view, clear_color);
+
+        // Split-borrow ReadyState so the walk can hold immutable refs to
+        // device/queue while mutating the format-keyed pipeline caches.
+        let ReadyState {
+            device,
+            queue,
+            scene_pipelines,
+            slug_pipelines,
+            text_engine,
+            ..
+        } = ready;
+        walk_command_scene(
+            WalkCtx {
+                device,
+                queue,
+                view: &view,
+                viewport,
+                format,
+                scene_pipelines,
+                slug_pipelines,
+                text_engine,
+            },
+            scene,
+        )?;
+        frame.present();
+        Ok(())
+    }
+}
+
+/// Acquire the next surface texture. Returns `Ok(None)` when the surface
+/// is lost / outdated / timing-out — caller should return cleanly.
+fn acquire_frame(
+    ready: &ReadyState,
+    surface: &WgpuSurface,
+) -> Result<Option<(wgpu::SurfaceTexture, wgpu::TextureView)>, RendererError> {
+    let frame = match surface.surface.get_current_texture() {
+        wgpu::CurrentSurfaceTexture::Success(f) | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
+        wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
+            surface.surface.configure(&ready.device, &surface.config);
+            return Ok(None);
+        }
+        wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
+            return Ok(None);
+        }
+        wgpu::CurrentSurfaceTexture::Validation => {
+            return Err(RendererError::SurfaceValidation);
+        }
+    };
+    let view = frame
+        .texture
+        .create_view(&wgpu::TextureViewDescriptor::default());
+    Ok(Some((frame, view)))
+}
+
+fn submit_clear(ready: &ReadyState, view: &wgpu::TextureView, color: Color) {
+    let mut enc = ready
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("sigil-renderer clear encoder"),
+        });
+    {
+        let _p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("sigil-renderer clear pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: f64::from(color.r),
+                        g: f64::from(color.g),
+                        b: f64::from(color.b),
+                        a: f64::from(color.a),
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+    }
+    ready.queue.submit(core::iter::once(enc.finish()));
 }
 
 impl Renderer for WgpuRenderer {
@@ -254,8 +238,8 @@ impl Renderer for WgpuRenderer {
         initial_size: PhysicalSize,
     ) -> Result<Self::Surface, Self::Error> {
         let handle = window.into_inner();
-        let surface = self.instance().create_surface(handle)?;
-        let ready = self.ensure_ready(&surface)?;
+        let surface = self.state.instance().create_surface(handle)?;
+        let ready = self.state.ensure_ready(&surface)?;
         let caps = surface.get_capabilities(&ready.adapter);
         if caps.formats.is_empty() {
             return Err(RendererError::NoSupportedFormat);
@@ -295,7 +279,7 @@ impl Renderer for WgpuRenderer {
         if size.width == 0 || size.height == 0 {
             return Ok(());
         }
-        let ready = self.ready()?;
+        let ready = self.state.ready()?;
         let (width, height) = surface_extent(size, ready.max_texture_dimension_2d());
         surface.config.width = width;
         surface.config.height = height;
@@ -304,53 +288,11 @@ impl Renderer for WgpuRenderer {
     }
 
     fn clear(&mut self, surface: &mut Self::Surface, color: Color) -> Result<(), Self::Error> {
-        let ready = self.ready()?;
-        let frame = match surface.surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(f)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(f) => f,
-            wgpu::CurrentSurfaceTexture::Outdated | wgpu::CurrentSurfaceTexture::Lost => {
-                surface.surface.configure(&ready.device, &surface.config);
-                return Ok(());
-            }
-            wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
-                return Ok(());
-            }
-            wgpu::CurrentSurfaceTexture::Validation => {
-                return Err(RendererError::SurfaceValidation);
-            }
+        let ready = self.state.ready()?;
+        let Some((frame, view)) = acquire_frame(ready, surface)? else {
+            return Ok(());
         };
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut enc = ready
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer clear encoder"),
-            });
-        {
-            let _p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("sigil-renderer clear pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: f64::from(color.r),
-                            g: f64::from(color.g),
-                            b: f64::from(color.b),
-                            a: f64::from(color.a),
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-        }
-        ready.queue.submit(core::iter::once(enc.finish()));
+        submit_clear(ready, &view, color);
         frame.present();
         Ok(())
     }

@@ -3,7 +3,7 @@
 use accesskit::TreeUpdate;
 use sigil_core::{Cx, NodeId};
 use sigil_hal::{
-    Key, KeyEvent, KeyPhase, LogicalKey, PointerEvent, PointerPhase, ShellEvent, Shortcut,
+    Key, KeyEvent, KeyPhase, LogicalKey, Point, PointerEvent, PointerPhase, ShellEvent, Shortcut,
 };
 use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -11,12 +11,22 @@ use smallvec::SmallVec;
 use crate::EventHandlers;
 use crate::focus::FocusManager;
 use crate::hit_test::{HitTestCache, NodePath};
+use crate::pointer_dispatch::{
+    PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
+    pointer_target_for_node, pointer_targets, synthetic_leave_source,
+};
 
 /// Routes shell events through a composed node tree.
 #[derive(Debug, Default)]
 pub struct EventRouter {
     focus: FocusManager,
     pointer_capture: Option<NodeId>,
+    // Hover path cached with absolute origins so that Enter/Leave
+    // synthesis on each transition is O(depth), not O(depth²). Rebuilding
+    // origins per node via `path_to_node` per Enter/Leave was the 5x
+    // regression caught on route_hover_transition_depth_20.
+    hover_targets: PointerTargets,
+    last_pointer: Option<PointerEvent>,
     shortcuts: ShortcutIndex,
     hit_cache: HitTestCache,
 }
@@ -34,7 +44,17 @@ impl EventRouter {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, event),
             ShellEvent::Window(sigil_hal::WindowEvent::Focused(false)) => {
+                // Window lost focus: the pointer is effectively no longer
+                // over anything. Dispatch Leave through every node in the
+                // hover path so widgets (buttons, etc.) can clear their
+                // hover/pressed state instead of freezing visually until
+                // the window regains focus.
                 self.pointer_capture = None;
+                let source = self
+                    .last_pointer
+                    .clone()
+                    .unwrap_or_else(synthetic_leave_source);
+                self.clear_hover(cx, &source);
             }
             ShellEvent::Window(_) | ShellEvent::Ime(_) | ShellEvent::Scroll(_) => {}
         }
@@ -68,22 +88,36 @@ impl EventRouter {
     }
 
     fn route_pointer(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: PointerEvent) {
-        if self.route_captured_pointer(cx, &mut event) {
+        // Remember the last real pointer event so that synthesised Leaves
+        // (for window blur, pointer capture loss, etc.) carry the actual
+        // last-known position and modifier state instead of zeros.
+        self.last_pointer = Some(event.clone());
+        let global_position = event.position;
+        if self.route_captured_pointer(cx, layout, &mut event, global_position) {
             return;
         }
         let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
+            self.clear_hover(cx, &event);
             self.release_capture_on_terminal_phase(event.phase);
             return;
         };
+        let next_targets = pointer_targets(layout, &path);
+        self.update_hover(cx, &next_targets, &event);
         self.focus_pointer_target(cx, &path, event.phase);
-        dispatch_pointer_path(cx, &path, &mut event);
+        dispatch_pointer_path(cx, &next_targets, &mut event, global_position);
         if event.capture_requested() {
             self.pointer_capture = path.last().copied();
         }
         self.release_capture_on_terminal_phase(event.phase);
     }
 
-    fn route_captured_pointer(&mut self, cx: &Cx, event: &mut PointerEvent) -> bool {
+    fn route_captured_pointer(
+        &mut self,
+        cx: &Cx,
+        layout: &LayoutEngine,
+        event: &mut PointerEvent,
+        global_position: Point,
+    ) -> bool {
         let Some(captured) = self.pointer_capture.filter(|id| cx.get(*id).is_some()) else {
             self.pointer_capture = None;
             return false;
@@ -92,9 +126,43 @@ impl EventRouter {
             return false;
         }
         event.set_captured(true);
-        dispatch_pointer_target(cx, captured, event);
+        dispatch_pointer_target(
+            cx,
+            pointer_target_for_node(cx, layout, captured),
+            event,
+            global_position,
+        );
         self.release_capture_on_terminal_phase(event.phase);
         true
+    }
+
+    // Diff the cached hover path (with origins) against the freshly
+    // computed target list and fire synthetic Leave/Enter only on the
+    // nodes whose membership changed.
+    fn update_hover(&mut self, cx: &Cx, next: &PointerTargets, source: &PointerEvent) {
+        if ids_match(&self.hover_targets, next) {
+            return;
+        }
+        let common = target_common_prefix_len(&self.hover_targets, next);
+        if let Some(leaving) = self.hover_targets.get(common..) {
+            for target in leaving.iter().rev().copied() {
+                dispatch_synthetic_target(cx, target, source, PointerPhase::Leave);
+            }
+        }
+        if let Some(entering) = next.get(common..) {
+            for target in entering.iter().copied() {
+                dispatch_synthetic_target(cx, target, source, PointerPhase::Enter);
+            }
+        }
+        self.hover_targets.clear();
+        self.hover_targets.extend(next.iter().copied());
+    }
+
+    fn clear_hover(&mut self, cx: &Cx, source: &PointerEvent) {
+        for target in self.hover_targets.iter().rev().copied() {
+            dispatch_synthetic_target(cx, target, source, PointerPhase::Leave);
+        }
+        self.hover_targets.clear();
     }
 
     const fn release_capture_on_terminal_phase(&mut self, phase: PointerPhase) {
@@ -143,33 +211,15 @@ impl EventRouter {
     }
 }
 
-fn dispatch_pointer_path(cx: &Cx, path: &NodePath, event: &mut PointerEvent) {
-    for id in path {
-        invoke_pointer(cx, *id, event, true);
-        if event.propagation_stopped() {
-            return;
-        }
-    }
-    for id in path.iter().rev().copied() {
-        invoke_pointer(cx, id, event, false);
-        if event.propagation_stopped() {
-            return;
-        }
-    }
+fn ids_match(left: &PointerTargets, right: &PointerTargets) -> bool {
+    left.len() == right.len() && left.iter().zip(right.iter()).all(|(a, b)| a.id == b.id)
 }
 
-fn dispatch_pointer_target(cx: &Cx, target: NodeId, event: &mut PointerEvent) {
-    invoke_pointer(cx, target, event, false);
-}
-
-fn invoke_pointer(cx: &Cx, id: NodeId, event: &mut PointerEvent, capture: bool) {
-    let Some(handlers) = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<EventHandlers>())
-    else {
-        return;
-    };
-    handlers.invoke_pointer(event.phase, capture, event);
+fn target_common_prefix_len(left: &PointerTargets, right: &PointerTargets) -> usize {
+    left.iter()
+        .zip(right.iter())
+        .take_while(|(a, b)| a.id == b.id)
+        .count()
 }
 
 fn dispatch_key_path(cx: &Cx, path: &[NodeId], event: &mut KeyEvent) {

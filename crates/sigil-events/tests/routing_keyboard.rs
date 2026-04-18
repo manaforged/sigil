@@ -79,3 +79,45 @@ fn focused_key_up_does_not_invoke_action() {
 
     assert_eq!(hits.get(), 1);
 }
+
+#[test]
+fn focused_key_any_receives_unregistered_text_input() {
+    let hits = Rc::new(Cell::new(0_u32));
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .focusable(true)
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .on_key_any({
+                let hits = Rc::clone(&hits);
+                move |event| {
+                    if event.text.as_deref() == Some("é") {
+                        hits.set(hits.get() + 1);
+                    }
+                }
+            }),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+    router.set_focus(&mut cx, Some(root));
+
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        text_key_event("é", PhysicalKey::KeyE),
+    );
+
+    assert_eq!(hits.get(), 1);
+}
+
+fn text_key_event(text: &str, physical: PhysicalKey) -> sigil_hal::ShellEvent {
+    sigil_hal::ShellEvent::Key(sigil_hal::KeyEvent::new(sigil_hal::KeyEventInit {
+        key: LogicalKey::character(text),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: Some(text.into()),
+    }))
+}

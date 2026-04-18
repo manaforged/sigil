@@ -4,14 +4,19 @@
 //! tree, computes layout, and writes [`LayoutResult`] extensions back
 //! onto the core nodes.
 
-// `criterion` is a dev-dep used only by the `layout_ops` bench. Cargo
-// pulls dev-deps into the lib-test target, so keep the dependency
-// visible to the unused-crate-dependencies lint.
+// Dev-deps used only by specific benches/tests. Cargo pulls dev-deps
+// into the lib-test target, so keep them visible to the
+// unused-crate-dependencies lint.
+#[cfg(test)]
+use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
+#[cfg(test)]
+use sigil_reactive as _;
 
 mod adapter;
 pub mod builder_ext;
+mod cache_key;
 mod engine;
 mod error;
 mod intent;
@@ -20,6 +25,7 @@ pub mod prelude;
 mod result;
 pub(crate) mod style_adapter;
 mod text_adapter;
+mod text_style;
 
 pub use builder_ext::LayoutBuilderExt;
 pub use engine::LayoutEngine;

@@ -60,7 +60,7 @@ where
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: WinitWindowEvent,
     ) {
         match event {
@@ -81,7 +81,7 @@ where
                 }
             }
             event => {
-                if self.shell.buffer_window_event(event) {
+                if self.shell.buffer_window_event(window_id, event) {
                     self.shell.request_redraws();
                 }
             }

@@ -6,7 +6,7 @@
 
 use smol_str::SmolStr;
 
-use crate::{PhysicalSize, Point};
+use crate::{PhysicalSize, Point, Scale};
 
 pub use keyboard_types::{Code as PhysicalKey, Modifiers as ModifiersState, NamedKey as Key};
 
@@ -200,7 +200,11 @@ pub enum PointerPhase {
 /// Pointer input event.
 #[derive(Clone, Debug, PartialEq)]
 pub struct PointerEvent {
-    /// Window-relative position.
+    /// Pointer position in logical pixels.
+    ///
+    /// Shell adapters initialise this as window-relative. During event
+    /// routing, pointer handlers receive it in the current target node's
+    /// local coordinate space.
     pub position: Point,
     /// Movement since the previous pointer event.
     pub delta: Point,
@@ -421,8 +425,8 @@ pub struct ScrollEvent {
 pub enum WindowEvent {
     /// Window resized.
     Resized(PhysicalSize),
-    /// Window DPI changed.
-    ScaleFactorChanged(f64),
+    /// Window DPI scale changed.
+    ScaleFactorChanged(Scale),
     /// Window focus changed.
     Focused(bool),
     /// Window close was requested.

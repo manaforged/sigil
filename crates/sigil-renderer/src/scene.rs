@@ -1,11 +1,13 @@
 //! Headless scene emission for renderer integration tests.
 
 use sigil_core::{Cx, Node, NodeId, NodeType, TextContent};
-use sigil_hal::Rect;
+use sigil_hal::{Point, Rect};
 use sigil_layout::LayoutResult;
-use sigil_style::{Px, Rgba8};
+use sigil_style::{Px, Rgba8, TextStyle};
 
-use crate::style_adapter::render_style_for;
+use crate::scene_builder::SceneBuilder;
+use crate::scene_command::{CommandScene, GlyphRun, SceneRectStyle};
+use crate::style_adapter::{ResolvedFocusRing, focus_ring_for, render_style_for, text_style_for};
 
 /// A headless list of primitives that would be submitted to the renderer.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -20,7 +22,7 @@ impl Scene {
         &self.items
     }
 
-    fn push(&mut self, item: SceneItem) {
+    pub(crate) fn push(&mut self, item: SceneItem) {
         self.items.push(item);
     }
 }
@@ -60,48 +62,107 @@ pub struct SceneText {
     pub text: String,
     /// Resolved text colour.
     pub color: Rgba8,
+    /// Resolved typography.
+    pub style: TextStyle,
     /// Opacity encoded as `value * 10000`.
     pub opacity: u16,
 }
 
-/// Emit a headless scene for a laid-out core subtree.
+/// Emit a command-buffer scene for a laid-out core subtree.
 #[must_use]
-pub fn emit_scene(cx: &Cx, root: NodeId) -> Scene {
-    let mut scene = Scene::default();
-    cx.visit_preorder(root, |id, node| push_node(&mut scene, id, node));
-    scene
+pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
+    let mut scene = SceneBuilder::new();
+    push_subtree(&mut scene, cx, root, Point::new(0.0, 0.0));
+    scene.finish()
 }
 
-fn push_node(scene: &mut Scene, id: NodeId, node: &Node) {
-    let style = render_style_for(id, node);
-    let Some(layout) = node.get_extension::<LayoutResult>() else {
+fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, parent_origin: Point) {
+    let Some(node) = cx.get(id) else {
         return;
     };
+    let rect = node
+        .get_extension::<LayoutResult>()
+        .map(|layout| absolute_rect(parent_origin, layout.rect()));
+    if let Some(rect) = rect {
+        push_focus_ring(scene, id, node, rect);
+        push_node(scene, id, node, rect);
+    }
+    let child_origin = rect.map_or(parent_origin, |rect| rect.origin);
+    for child in node.children.iter().copied() {
+        push_subtree(scene, cx, child, child_origin);
+    }
+}
+
+fn push_focus_ring(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
+    let Some(ring) = focus_ring_for(node).filter(|ring| ring.width > 0.0) else {
+        return;
+    };
+    for ring_rect in focus_ring_rects(rect, ring) {
+        scene.draw_rect_for_node(
+            id,
+            ring_rect,
+            SceneRectStyle::new(ring.color, None, ring.opacity),
+        );
+    }
+}
+
+fn focus_ring_rects(rect: Rect, ring: ResolvedFocusRing) -> [Rect; 4] {
+    let width = ring.width;
+    let offset = ring.offset;
+    let outer_x = rect.origin.x - offset - width;
+    let outer_y = rect.origin.y - offset - width;
+    let inner_y = rect.origin.y - offset;
+    let right_x = rect.origin.x + rect.width + offset;
+    let bottom_y = rect.origin.y + rect.height + offset;
+    let outer_width = (offset + width).mul_add(2.0, rect.width);
+    let side_height = offset.mul_add(2.0, rect.height);
+    [
+        Rect::new(Point::new(outer_x, outer_y), outer_width, width),
+        Rect::new(Point::new(outer_x, bottom_y), outer_width, width),
+        Rect::new(Point::new(outer_x, inner_y), width, side_height),
+        Rect::new(Point::new(right_x, inner_y), width, side_height),
+    ]
+}
+
+fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
+    let style = render_style_for(id, node);
     match &node.kind {
         NodeType::Container => {
             if let Some(color) = style.background_color {
-                scene.push(SceneItem::Rect(SceneRect {
-                    node: id,
-                    rect: layout.rect(),
-                    color,
-                    border_radius: style.border_radius,
-                    opacity: style.opacity,
-                }));
+                scene.draw_rect_for_node(
+                    id,
+                    rect,
+                    SceneRectStyle::new(color, style.border_radius, style.opacity),
+                );
             }
         }
         NodeType::Text { content } => {
             if let Some(color) = style.text_color {
-                scene.push(SceneItem::Text(SceneText {
-                    node: id,
-                    rect: layout.rect(),
-                    text: text_content(content),
-                    color,
-                    opacity: style.opacity,
-                }));
+                scene.draw_glyph_run_for_node(
+                    id,
+                    GlyphRun::new(
+                        rect,
+                        text_content(content),
+                        color,
+                        text_style_for(node),
+                        style.opacity,
+                    ),
+                );
             }
         }
         NodeType::Fragment => {}
     }
+}
+
+const fn absolute_rect(parent_origin: Point, rect: Rect) -> Rect {
+    Rect::new(
+        Point::new(
+            parent_origin.x + rect.origin.x,
+            parent_origin.y + rect.origin.y,
+        ),
+        rect.width,
+        rect.height,
+    )
 }
 
 fn text_content(content: &TextContent) -> String {

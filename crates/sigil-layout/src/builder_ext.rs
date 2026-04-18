@@ -12,7 +12,7 @@
 //!     .child(text("hello"))
 //! ```
 
-use sigil_core::NodeBuilder;
+use sigil_core::{NodeBuilder, TextBuilder};
 
 use crate::LayoutStyle;
 
@@ -27,5 +27,13 @@ pub trait LayoutBuilderExt {
 impl LayoutBuilderExt for NodeBuilder {
     fn layout(self, style: LayoutStyle) -> Self {
         self.with(style)
+    }
+}
+
+impl LayoutBuilderExt for TextBuilder {
+    fn layout(self, style: LayoutStyle) -> Self {
+        self.mutate(move |node| {
+            let _ = node.attach(style);
+        })
     }
 }

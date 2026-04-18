@@ -12,11 +12,14 @@ members = [
     "crates/sigil-style",
     "crates/sigil-style-macros",
     "crates/sigil-text",
+    "crates/sigil-app",
+    "crates/sigil",
     "examples/hello-rect",
     "examples/hello-events",
     "examples/hello-style",
     "examples/hello-tree",
     "examples/hello-layout",
+    "examples/vertical-slice",
 ]
 
 [workspace.package]
@@ -100,6 +103,8 @@ sigil-events = { path = "crates/sigil-events" }
 sigil-style = { path = "crates/sigil-style" }
 sigil-style-macros = { path = "crates/sigil-style-macros" }
 sigil-text = { path = "crates/sigil-text" }
+sigil-app = { path = "crates/sigil-app" }
+sigil = { path = "crates/sigil" }
 
 [profile.release]
 lto = "thin"

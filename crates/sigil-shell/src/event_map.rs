@@ -7,7 +7,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerPhase, ScrollDelta, ScrollPhase,
+    ModifiersState, MouseButton, MouseButtons, Point, PointerPhase, Scale, ScrollDelta, ScrollPhase,
 };
 use winit::{
     event::{
@@ -65,11 +65,11 @@ pub(crate) const fn map_scroll_phase(phase: TouchPhase) -> ScrollPhase {
     }
 }
 
-pub(crate) const fn map_scroll_delta(delta: WinitMouseScrollDelta) -> ScrollDelta {
+pub(crate) fn map_scroll_delta(delta: WinitMouseScrollDelta, scale: Scale) -> ScrollDelta {
     match delta {
         WinitMouseScrollDelta::LineDelta(x, y) => ScrollDelta::Lines(Point::new(x, y)),
         WinitMouseScrollDelta::PixelDelta(delta) => {
-            ScrollDelta::Pixels(point_from_f64(delta.x, delta.y))
+            ScrollDelta::Pixels(scale.point_to_logical(point_from_f64(delta.x, delta.y)))
         }
     }
 }

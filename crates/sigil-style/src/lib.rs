@@ -17,10 +17,13 @@ pub mod atom;
 pub mod binding;
 pub mod builder_ext;
 pub mod engine;
+pub mod focus_ring;
 pub mod merge;
 pub mod parser;
 pub mod reactive;
+pub mod state;
 pub mod struct_api;
+pub mod text_style;
 pub mod theme;
 
 pub use atom::{
@@ -30,21 +33,25 @@ pub use atom::{
 pub use binding::{ReactiveStyleAtoms, StyleBinding};
 pub use builder_ext::{ClassSource, NodeStyleExt};
 pub use engine::StyleEngine;
+pub use focus_ring::FocusRing;
 pub use merge::{
     ComponentId, merge_classes, merge_warning_count, merge_warning_count_for_component,
 };
 pub use parser::{ParseError, parse_class_string};
 pub use reactive::StyleReactiveEffect;
 pub use sigil_style_macros::classes;
+pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use struct_api::Style;
+pub use text_style::{StyledTextEngine, TextLineHeight, TextStyle};
 pub use theme::{Theme, ThemeBuilder, ThemeValue};
 
 /// Common imports for applications using Sigil styling.
 pub mod prelude {
     pub use crate::{
-        AlignKind, ClassSource, ColorAtom, ComponentId, Dimension, DisplayKind, FlexDir,
+        AlignKind, ClassSource, ColorAtom, ComponentId, Dimension, DisplayKind, FlexDir, FocusRing,
         JustifyKind, MillisU16, NodeStyleExt, ParseError, Px, ReactiveStyleAtoms, RenderStyle,
-        Rgba8, SPACING_STEP, Style, StyleAtom, StyleBinding, StyleEngine, StyleReactiveEffect,
+        Rgba8, SPACING_STEP, StateSlot, StateStyle, Style, StyleAtom, StyleBinding, StyleEngine,
+        StyleReactiveEffect, StyleState, StyleVariant, StyledTextEngine, TextLineHeight, TextStyle,
         Theme, ThemeBuilder, ThemeValue, TransitionId, classes, merge_classes, merge_warning_count,
         merge_warning_count_for_component, parse_class_string,
     };

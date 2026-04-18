@@ -27,6 +27,7 @@ pub mod layout;
 pub mod renderer;
 pub mod scheduler;
 pub mod shell;
+pub mod size;
 pub mod text;
 
 pub use a11y::A11yBridge;
@@ -40,4 +41,5 @@ pub use layout::{Dim, Layout, Size};
 pub use renderer::Renderer;
 pub use scheduler::Scheduler;
 pub use shell::Shell;
+pub use size::{LogicalSize, Scale};
 pub use text::{HitPosition, ParagraphMetrics, RenderedGlyph, TextAffinity, TextEngine};

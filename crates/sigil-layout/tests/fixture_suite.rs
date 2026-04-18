@@ -2,8 +2,10 @@
 #![allow(clippy::unwrap_used)]
 
 use ahash as _;
+use allocation_counter as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
 use taffy as _;

@@ -74,6 +74,9 @@ fn main() {
     // ----- ask the shell for a window; it materialises on resumed -----
 
     let window_handle = shell
+        // hello-rect still uses the pre-DR-016 path, so this size is
+        // physical pixels. TODO(DR-018, Phase 08c): port to launch so
+        // the example receives logical pixels like hello-style/events.
         .create_window("Sigil - kernel-demo", PhysicalSize::new(720, 480))
         .expect("create window");
 

@@ -13,8 +13,8 @@ use sigil_hal as _;
 use sigil_reactive::{Runtime, signal};
 use sigil_style::{
     AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
-    RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, Theme, TransitionId, classes,
-    merge_classes,
+    RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
+    TransitionId, classes, merge_classes,
 };
 use sigil_style_macros as _;
 use smallvec as _;
@@ -28,6 +28,17 @@ static APPLY_ATOMS: &[StyleAtom] = classes!("bg-accent text-on-surface rounded-m
 static REACTIVE_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static REACTIVE_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static THEME_SWAP_ATOMS: &[StyleAtom] = classes!("bg-accent text-on-accent rounded-md opacity-100");
+static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
+static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static STATE_PRESS: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::Opacity(8_800),
+];
+static STATE_DISABLED: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::Opacity(5_000),
+];
 
 const DEFAULTS_32: [StyleAtom; 32] = [
     StyleAtom::PaddingTop(Px(1)),
@@ -173,6 +184,32 @@ fn style_reactive_toggle(c: &mut Criterion) {
     });
 }
 
+fn state_style_resolve_1000_widgets(c: &mut Criterion) {
+    let style = StateStyle::new(
+        STATE_REST,
+        STATE_FOCUS,
+        STATE_HOVER,
+        STATE_PRESS,
+        STATE_DISABLED,
+    );
+    let states = (0..1_000)
+        .map(|index| StyleState {
+            disabled: index % 17 == 0,
+            hovered: index % 3 == 0,
+            pressed: index % 11 == 0,
+            focused: index % 5 == 0,
+        })
+        .collect::<Vec<_>>();
+
+    c.bench_function("state_style_resolve_1000_widgets", |b| {
+        b.iter(|| {
+            for state in &states {
+                black_box(style.resolve(black_box(*state)));
+            }
+        });
+    });
+}
+
 fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     let default_theme = Theme::default();
     let accent_theme = Theme {
@@ -228,6 +265,7 @@ criterion_group! {
         style_engine_apply_1000_nodes,
         merge_classes_worst_case,
         style_reactive_toggle,
+        state_style_resolve_1000_widgets,
         theme_swap_10_000_bound_nodes
 }
 criterion_main!(benches);

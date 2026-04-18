@@ -5,6 +5,7 @@
 use std::sync::OnceLock;
 
 use ahash::{AHashMap, RandomState};
+use sigil_style::{TextLineHeight, TextStyle};
 
 use crate::Paragraph;
 
@@ -32,6 +33,21 @@ impl DiscreteWidth {
 struct CacheKey {
     text_hash: u64,
     width: DiscreteWidth,
+    style: DiscreteTextStyle,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct DiscreteTextStyle {
+    font_family_hash: u64,
+    font_size_bits: u32,
+    font_weight: u16,
+    line_height: DiscreteLineHeight,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+enum DiscreteLineHeight {
+    FontSizeRelative(u32),
+    Absolute(u32),
 }
 
 /// Frame-scoped paragraph cache.
@@ -46,13 +62,24 @@ impl ParagraphCache {
         }
     }
 
-    pub(crate) fn get(&self, text: &str, max_width: Option<f32>) -> Option<&Paragraph> {
-        let key = Self::key(text, max_width);
+    pub(crate) fn get(
+        &self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+    ) -> Option<&Paragraph> {
+        let key = Self::key(text, max_width, style);
         self.map.get(&key)
     }
 
-    pub(crate) fn insert(&mut self, text: &str, max_width: Option<f32>, para: Paragraph) {
-        let key = Self::key(text, max_width);
+    pub(crate) fn insert(
+        &mut self,
+        text: &str,
+        max_width: Option<f32>,
+        style: &TextStyle,
+        para: Paragraph,
+    ) {
+        let key = Self::key(text, max_width, style);
         self.map.insert(key, para);
     }
 
@@ -60,10 +87,31 @@ impl ParagraphCache {
         self.map.clear();
     }
 
-    fn key(text: &str, max_width: Option<f32>) -> CacheKey {
+    fn key(text: &str, max_width: Option<f32>, style: &TextStyle) -> CacheKey {
         CacheKey {
             text_hash: hasher().hash_one(text),
             width: DiscreteWidth::from_option(max_width),
+            style: DiscreteTextStyle::from(style),
+        }
+    }
+}
+
+impl From<&TextStyle> for DiscreteTextStyle {
+    fn from(style: &TextStyle) -> Self {
+        Self {
+            font_family_hash: hasher().hash_one(style.font_family.as_str()),
+            font_size_bits: style.font_size.to_bits(),
+            font_weight: style.font_weight,
+            line_height: DiscreteLineHeight::from(style.line_height),
+        }
+    }
+}
+
+impl From<TextLineHeight> for DiscreteLineHeight {
+    fn from(line_height: TextLineHeight) -> Self {
+        match line_height {
+            TextLineHeight::FontSizeRelative(value) => Self::FontSizeRelative(value.to_bits()),
+            TextLineHeight::Absolute(value) => Self::Absolute(value.to_bits()),
         }
     }
 }

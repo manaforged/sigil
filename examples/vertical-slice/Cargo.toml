@@ -1,0 +1,25 @@
+[package]
+name = "vertical-slice"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Interactive vertical-slice proof for Sigil."
+
+[[bin]]
+name = "vertical-slice"
+path = "src/main.rs"
+
+[dependencies]
+sigil = { workspace = true }
+
+[dev-dependencies]
+sigil-app = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-renderer = { workspace = true }
+
+[lints]
+workspace = true

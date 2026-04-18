@@ -6,11 +6,21 @@ use std::sync::{Mutex, OnceLock};
 
 use ahash::AHashSet;
 use sigil_core::{Node, NodeId};
-use sigil_style::{RenderStyle, StyleAtom, StyleBinding, StyleEngine, Theme};
+use sigil_style::{
+    FocusRing, RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme,
+};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum UnsupportedSlot {
     UnknownThemeRef(&'static str),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct ResolvedFocusRing {
+    pub(crate) color: Rgba8,
+    pub(crate) width: f32,
+    pub(crate) offset: f32,
+    pub(crate) opacity: u16,
 }
 
 /// Return whether a given unsupported style warning has fired.
@@ -28,6 +38,9 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
 
 pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
     let mut render = RenderStyle::default();
+    if matches!(node.kind, sigil_core::NodeType::Text { .. }) {
+        render.text_color = Some(default_theme().on_surface);
+    }
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return render;
     };
@@ -39,6 +52,36 @@ pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
     apply_atoms(engine, binding.dynamic_slice(), &mut render, id, node);
     apply_atoms(engine, binding.reactive_slice(), &mut render, id, node);
     render
+}
+
+pub(crate) fn text_style_for(node: &Node) -> TextStyle {
+    let mut style = TextStyle::default();
+    let Some(binding) = node.get_extension::<StyleBinding>() else {
+        return style;
+    };
+
+    let theme = node.get_extension::<Theme>().unwrap_or_else(default_theme);
+    let engine = StyleEngine::new(theme);
+
+    engine.apply_text(binding.static_slice(), &mut style);
+    engine.apply_text(binding.dynamic_slice(), &mut style);
+    engine.apply_text(binding.reactive_slice(), &mut style);
+    style
+}
+
+pub(crate) fn focus_ring_for(node: &Node) -> Option<ResolvedFocusRing> {
+    let ring = node.get_extension::<FocusRing>()?;
+    if !ring.visible() {
+        return None;
+    }
+    let theme = node.get_extension::<Theme>().unwrap_or_else(default_theme);
+    let engine = StyleEngine::new(theme);
+    Some(ResolvedFocusRing {
+        color: engine.resolve_color(ring.color_atom()),
+        width: ring.stroke_width().max(0.0),
+        offset: ring.offset_px().max(0.0),
+        opacity: ring.opacity_value(),
+    })
 }
 
 fn default_theme<'theme>() -> &'theme Theme {

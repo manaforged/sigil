@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use sigil_hal::RenderedGlyph;
+use sigil_hal::{Color, RenderedGlyph};
 use sigil_text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
@@ -25,14 +25,16 @@ pub struct DrawParams<'a> {
     pub queue: &'a wgpu::Queue,
     /// Render target — caller acquires the surface texture and creates this view.
     pub view: &'a wgpu::TextureView,
-    /// Surface width in physical pixels.
-    pub surface_width: u32,
-    /// Surface height in physical pixels.
-    pub surface_height: u32,
+    /// Viewport width in the same coordinate space as glyph positions.
+    pub surface_width: f32,
+    /// Viewport height in the same coordinate space as glyph positions.
+    pub surface_height: f32,
     /// Paragraph to render.
     pub paragraph: &'a Paragraph,
-    /// Top-left origin of the paragraph in surface pixels.
+    /// Top-left origin of the paragraph in viewport coordinates.
     pub origin: (f32, f32),
+    /// Optional color override applied to every glyph.
+    pub color: Option<Color>,
 }
 
 /// CPU-side uniform mirroring the WGSL `SurfaceParams` struct (16 bytes).
@@ -67,6 +69,7 @@ const QUAD_UVS: &[f32] = &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0
 /// a reusable quad vertex buffer, and the per-frame glyph atlas.
 /// Construct once per surface format; reuse across frames.
 pub struct SlugTextPipeline {
+    format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
     bgl: wgpu::BindGroupLayout,
     cache: GlyphCache,
@@ -87,12 +90,19 @@ impl SlugTextPipeline {
         });
         let atlas = GlyphAtlas::new(device);
         Self {
+            format: surface_format,
             pipeline,
             bgl,
             cache: GlyphCache::new(),
             quad_vb,
             atlas,
         }
+    }
+
+    /// Surface format this pipeline was created for.
+    #[must_use]
+    pub const fn format(&self) -> wgpu::TextureFormat {
+        self.format
     }
 
     /// Draw all glyphs in `paragraph` onto `params.view`.
@@ -205,7 +215,7 @@ impl SlugTextPipeline {
                     bbox.y_max.mul_add(-scale, params.origin.1 + g.y),
                 ],
                 size: [bbox.width() * scale, bbox.height() * scale],
-                color: [g.color.r, g.color.g, g.color.b, g.color.a],
+                color: glyph_color(g, params),
                 atlas_offset,
                 _pad: 0,
             });
@@ -262,15 +272,22 @@ fn upload_instances(device: &wgpu::Device, instances: &[GlyphInstance]) -> wgpu:
     })
 }
 
+fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
+    let color = params.color.unwrap_or(glyph.color);
+    [color.r, color.g, color.b, color.a]
+}
+
 /// Build the per-frame bind group: surface uniform (binding 0) + atlas (binding 1).
-#[allow(clippy::cast_precision_loss)] // surface dimensions fit in f32 mantissa in practice
 fn make_bind_group(
     params: &DrawParams<'_>,
     bgl: &wgpu::BindGroupLayout,
     atlas_buf: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     let surface_uniform = SurfaceUniform {
-        surface_size: [params.surface_width as f32, params.surface_height as f32],
+        surface_size: [
+            params.surface_width.max(1.0),
+            params.surface_height.max(1.0),
+        ],
         _pad: [0.0; 2],
     };
     let ubuf = params

@@ -8,6 +8,7 @@ use ahash as _;
 use criterion as _;
 use parley as _;
 use sigil_hal as _;
+use sigil_style as _;
 
 use sigil_core::TextContent;
 use sigil_layout::TextEngineMeasure;

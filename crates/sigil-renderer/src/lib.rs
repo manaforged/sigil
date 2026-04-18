@@ -1,4 +1,4 @@
-//! wgpu-backed [`Renderer`] adapter for Sigil.
+//! wgpu-backed [`sigil_hal::Renderer`] adapter for Sigil.
 //!
 //! This crate is the single chokepoint where `wgpu` types live. Every
 //! downstream crate names the [`sigil_hal::Renderer`] trait and treats the
@@ -43,9 +43,14 @@ use windows_core as _;
 #[cfg(test)]
 use taffy as _;
 
+mod device_state;
 mod error;
 mod renderer;
 mod scene;
+mod scene_builder;
+mod scene_command;
+mod scene_instance;
+mod scene_paint;
 mod slug;
 mod style_adapter;
 mod surface;
@@ -54,6 +59,10 @@ mod window_handle;
 pub use error::RendererError;
 pub use renderer::WgpuRenderer;
 pub use scene::{Scene, SceneItem, SceneRect, SceneText, emit_scene};
+pub use scene_builder::SceneBuilder;
+pub use scene_command::{
+    CommandScene, DrawGlyphRun, DrawRect, GlyphRun, SceneCommand, SceneRectStyle, Transform,
+};
 pub use slug::{DrawParams, SlugTextPipeline};
 pub use style_adapter::unsupported_style_warning_count_for;
 pub use surface::WgpuSurface;

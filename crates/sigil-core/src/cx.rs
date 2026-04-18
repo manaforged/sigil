@@ -1,8 +1,10 @@
 //! Composition context and arena storage.
 
 use core::fmt::Write as _;
+use core::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::AHashMap;
+use sigil_hal::Scale;
 use sigil_reactive::{Owner, OwnerId};
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
@@ -17,11 +19,13 @@ use crate::{A11yProps, Node, NodeId, NodeType, TextContent};
 /// runs the component build inside it, and records that owner for
 /// subtree disposal.
 pub struct Cx {
+    instance_id: u64,
     nodes: SlotMap<DefaultKey, Node>,
     owner_for_node: AHashMap<NodeId, Owner>,
     root_owner: Owner,
     roots: SmallVec<[NodeId; 4]>,
     mutation_generation: u64,
+    scale: Scale,
 }
 
 impl Cx {
@@ -30,11 +34,13 @@ impl Cx {
     pub fn new_root() -> Self {
         let root_owner = Owner::new("sigil-core::root", Owner::current());
         Self {
+            instance_id: next_instance_id(),
             nodes: SlotMap::with_key(),
             owner_for_node: AHashMap::new(),
             root_owner,
             roots: SmallVec::new(),
             mutation_generation: 0,
+            scale: Scale::ONE,
         }
     }
 
@@ -42,6 +48,15 @@ impl Cx {
     #[must_use]
     pub const fn root_owner(&self) -> OwnerId {
         self.root_owner.id()
+    }
+
+    /// Stable identity for this `Cx` instance.
+    ///
+    /// Cache owners use this to distinguish two fresh contexts whose
+    /// slotmap node keys and mutation generations happen to match.
+    #[must_use]
+    pub const fn instance_id(&self) -> u64 {
+        self.instance_id
     }
 
     /// Add a component as a root-level node and return its root ID.
@@ -185,6 +200,25 @@ impl Cx {
         self.bump_generation();
     }
 
+    /// The current per-window scale factor. Defaults to [`Scale::ONE`]
+    /// until the shell adapter delivers the first
+    /// [`WindowEvent::ScaleFactorChanged`](sigil_hal::WindowEvent::ScaleFactorChanged).
+    #[must_use]
+    pub const fn scale(&self) -> Scale {
+        self.scale
+    }
+
+    /// Update the stored scale. Bumps `mutation_generation` via
+    /// [`Cx::mark_mutated`] when the factor actually changes. Re-applying
+    /// the same scale is a no-op so repeated shell events do not churn caches.
+    pub const fn set_scale(&mut self, scale: Scale) {
+        if self.scale.factor().to_bits() == scale.factor().to_bits() {
+            return;
+        }
+        self.scale = scale;
+        self.mark_mutated();
+    }
+
     /// Return the component owner recorded for a node root.
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<OwnerId> {
@@ -319,4 +353,9 @@ fn dump_text_content(content: &TextContent) -> String {
         TextContent::Static(value) => format!("{value:?}"),
         TextContent::Reactive(_) => "<reactive>".to_owned(),
     }
+}
+
+fn next_instance_id() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
 }

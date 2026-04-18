@@ -8,14 +8,17 @@
     clippy::unwrap_used
 )]
 
+use allocation_counter as _;
+
 use std::hint::black_box;
 
 use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil_core::TextContent;
 use sigil_core::{Cx, NodeBuilder, NodeId, container, text};
-use sigil_hal::Size;
+use sigil_hal::{Scale, Size};
 use sigil_layout::{LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
 use taffy as _;
@@ -68,6 +71,7 @@ fn bench_compute_single_node(c: &mut Criterion) {
         let mut engine = stub_engine();
 
         b.iter(|| {
+            cx.mark_mutated();
             engine
                 .compute(&mut cx, root, Size::fixed(100.0, 40.0))
                 .expect("layout compute succeeds");
@@ -88,6 +92,7 @@ fn bench_compute_flex_row_100_children(c: &mut Criterion) {
         let mut engine = stub_engine();
 
         b.iter(|| {
+            cx.mark_mutated();
             engine
                 .compute(&mut cx, root, Size::fixed(1200.0, 40.0))
                 .expect("layout compute succeeds");
@@ -108,6 +113,7 @@ fn bench_compute_tree_100(c: &mut Criterion) {
         let mut engine = stub_engine();
 
         b.iter(|| {
+            cx.mark_mutated();
             engine
                 .compute(&mut cx, root, Size::fixed(800.0, 1200.0))
                 .expect("layout compute succeeds");
@@ -164,6 +170,35 @@ fn bench_gc_after_remove_100(c: &mut Criterion) {
     });
 }
 
+fn bench_scale_change_reflow_1000_nodes(c: &mut Criterion) {
+    c.bench_function("scale_change_reflow_1000_nodes", |b| {
+        b.iter_batched(
+            || {
+                let mut cx = Cx::new_root();
+                let root = cx.add(tree_with_text_children(1000));
+                attach_root_intent(
+                    &mut cx,
+                    root,
+                    LayoutStyle::flex_column().fixed_size(1280.0, 720.0),
+                );
+                let mut engine = stub_engine();
+                engine
+                    .compute(&mut cx, root, Size::fixed(1280.0, 720.0))
+                    .expect("initial layout compute succeeds");
+                (cx, root, engine)
+            },
+            |(mut cx, root, mut engine)| {
+                cx.set_scale(Scale::new(2.0));
+                engine
+                    .compute(&mut cx, root, Size::fixed(1280.0, 720.0))
+                    .expect("scale-change layout compute succeeds");
+                black_box(engine.result(root));
+            },
+            BatchSize::SmallInput,
+        );
+    });
+}
+
 criterion_group!(
     benches,
     bench_compute_single_node,
@@ -171,5 +206,6 @@ criterion_group!(
     bench_compute_tree_100,
     bench_sync_tree_1000_nodes,
     bench_gc_after_remove_100,
+    bench_scale_change_reflow_1000_nodes,
 );
 criterion_main!(benches);

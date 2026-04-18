@@ -1,7 +1,7 @@
 //! Surface state owned by the renderer consumer.
 //!
 //! A [`WgpuSurface`] is returned from
-//! [`WgpuRenderer::create_surface`][crate::WgpuRenderer] and then
+//! [`WgpuRenderer::create_surface`][sigil_hal::Renderer::create_surface] and then
 //! threaded back into `resize` / `clear` calls. It owns the `'static`
 //! `wgpu::Surface` (wgpu takes ownership of the window handle box when
 //! the surface is created and keeps it alive internally for the
@@ -11,7 +11,7 @@
 /// `SurfaceConfiguration`.
 ///
 /// Construct via
-/// [`WgpuRenderer::create_surface`][crate::WgpuRenderer::create_surface].
+/// [`WgpuRenderer::create_surface`][sigil_hal::Renderer::create_surface].
 /// Consumers should treat the struct as opaque — the public accessors
 /// ([`Self::size`], [`Self::format`]) are for diagnostics and test
 /// assertions only.

@@ -61,6 +61,7 @@
 use winit::error::EventLoopError;
 
 pub(crate) mod app;
+pub(crate) mod dpi;
 pub(crate) mod event_map;
 pub(crate) mod key_map;
 pub(crate) mod shell;

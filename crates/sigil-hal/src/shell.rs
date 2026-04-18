@@ -35,7 +35,11 @@ use core::error::Error;
 
 use alloc::vec::IntoIter;
 
-use crate::{ShellEvent, geometry::PhysicalSize};
+use crate::{
+    ShellEvent,
+    geometry::PhysicalSize,
+    size::{LogicalSize, Scale},
+};
 
 /// OS window and event loop abstraction.
 ///
@@ -95,6 +99,27 @@ pub trait Shell: Sized {
         title: &str,
         initial_size: PhysicalSize,
     ) -> Result<Self::Window, Self::Error>;
+
+    /// Create a window sized in logical pixels.
+    ///
+    /// The shell adapter is responsible for converting to the
+    /// destination monitor's physical pixels using its current scale
+    /// factor, so the resulting OS window matches the user's requested
+    /// logical dimensions on high-density displays.
+    ///
+    /// The default implementation preserves compatibility for adapters
+    /// that only understand physical pixels.
+    /// # Errors
+    ///
+    /// Returns an error when the shell cannot queue or create the
+    /// requested window.
+    fn create_window_logical(
+        &mut self,
+        title: &str,
+        initial: LogicalSize,
+    ) -> Result<Self::Window, Self::Error> {
+        self.create_window(title, Scale::ONE.to_physical(initial))
+    }
 
     /// Drain input and lifecycle events buffered since the last frame.
     ///

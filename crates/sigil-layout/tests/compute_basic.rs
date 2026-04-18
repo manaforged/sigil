@@ -3,8 +3,10 @@
 #![allow(clippy::unwrap_used)]
 
 use ahash as _;
+use allocation_counter as _;
 use criterion as _;
 use sigil_hal as _;
+use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
 use taffy as _;
@@ -96,6 +98,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
 
     cx.get_mut(root).expect("root exists").children.clear();
     cx.get_mut(child).expect("child exists").parent = None;
+    cx.mark_mutated();
 
     engine
         .compute(&mut cx, root, Size::fixed(100.0, 40.0))

@@ -23,6 +23,7 @@ use sigil_hal::{
     Shortcut,
 };
 use sigil_layout::prelude::*;
+use sigil_style::TextStyle;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(1_000, false);
@@ -80,6 +81,29 @@ fn route_captured_pointer_release(c: &mut Criterion) {
     });
 }
 
+fn route_hover_transition_depth_20(c: &mut Criterion) {
+    let (mut cx, _root, layout) = deep_tree_with_leaf(
+        20,
+        container()
+            .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
+            .on_pointer_enter(|_| {})
+            .on_pointer_leave(|_| {}),
+    );
+    let mut router = EventRouter::new();
+    let mut inside = false;
+    c.bench_function("route_hover_transition_depth_20", |b| {
+        b.iter(|| {
+            inside = !inside;
+            let event = if inside {
+                pointer_move(0.5, 0.5)
+            } else {
+                pointer_move(200.0, 200.0)
+            };
+            router.route(&mut cx, &layout, event);
+        });
+    });
+}
+
 fn hit_test_10_000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(10_000, false);
     let mut router = EventRouter::new();
@@ -115,6 +139,7 @@ criterion_group!(
     route_pointer_event_depth_64,
     route_captured_pointer_event,
     route_captured_pointer_release,
+    route_hover_transition_depth_20,
     hit_test_10_000_nodes,
     shortcut_dispatch_1000_nodes,
     tab_ring_rebuild_1000_focusable
@@ -279,6 +304,15 @@ impl TextMeasure for ZeroTextMeasure {
     fn measure(
         &self,
         _content: &TextContent,
+        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
+    ) -> taffy::prelude::Size<f32> {
+        taffy::prelude::Size::ZERO
+    }
+
+    fn measure_styled(
+        &self,
+        _content: &TextContent,
+        _style: &TextStyle,
         _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
     ) -> taffy::prelude::Size<f32> {
         taffy::prelude::Size::ZERO

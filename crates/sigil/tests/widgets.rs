@@ -1,0 +1,747 @@
+#![allow(missing_docs)]
+#![allow(clippy::unwrap_used)]
+
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+
+use sigil_app as _;
+use sigil_core as _;
+use sigil_events as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+
+use sigil::prelude::*;
+use sigil_hal::{KeyEventInit, Point, PointerEventInit};
+use sigil_renderer::{SceneCommand, emit_scene};
+
+struct StubMeasure;
+
+impl TextMeasure for StubMeasure {
+    fn measure(
+        &self,
+        _content: &TextContent,
+        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
+    ) -> taffy::prelude::Size<f32> {
+        taffy::prelude::Size {
+            width: 40.0,
+            height: 16.0,
+        }
+    }
+}
+
+#[test]
+fn button_is_focusable_and_activates_on_enter() {
+    sigil::reactive::Runtime::scope("sigil-widget-button-enter", || {
+        let hits = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(button("Queue run").primary().on_activate({
+            let hits = Rc::clone(&hits);
+            move || hits.set(hits.get() + 1)
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, enter_down());
+
+        assert_eq!(hits.get(), 1);
+        let node = cx.get(root).unwrap();
+        assert_eq!(node.a11y.role, Role::Button);
+        assert!(node.a11y.focusable);
+        assert!(node.get_extension::<FocusRing>().unwrap().visible());
+    });
+}
+
+#[test]
+fn disabled_button_does_not_focus_or_activate() {
+    sigil::reactive::Runtime::scope("sigil-widget-button-disabled", || {
+        let hits = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(button("Disabled").enabled(false).on_activate({
+            let hits = Rc::clone(&hits);
+            move || hits.set(hits.get() + 1)
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, enter_down());
+
+        assert_eq!(hits.get(), 0);
+        let node = cx.get(root).unwrap();
+        assert!(!node.a11y.focusable);
+        assert!(!node.a11y.hit_test_enabled);
+    });
+}
+
+#[test]
+fn button_pointer_activation_requires_press_inside() {
+    sigil::reactive::Runtime::scope("sigil-widget-button-pointer", || {
+        let hits = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(button("Queue run").on_activate({
+            let hits = Rc::clone(&hits);
+            move || hits.set(hits.get() + 1)
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_up(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_move(500.0, 500.0));
+        router.route(&mut cx, &layout, pointer_up(500.0, 500.0));
+
+        assert_eq!(hits.get(), 1);
+    });
+}
+
+#[test]
+fn label_accepts_reactive_text() {
+    sigil::reactive::Runtime::scope("sigil-widget-label-reactive", || {
+        let value = signal(String::from("Ready"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(label(value));
+        let node = cx.get(root).unwrap();
+        let is_reactive_text =
+            matches!(&node.kind, NodeType::Text { content } if content.as_static_str().is_none());
+        assert!(is_reactive_text);
+    });
+}
+
+#[test]
+fn text_field_typing_updates_signal() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-typing", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).placeholder("Notes"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, text_down("a"));
+        router.route(&mut cx, &layout, text_down("é"));
+
+        assert_eq!(value.get(), "aé");
+        let node = cx.get(root).unwrap();
+        assert_eq!(node.a11y.role, Role::TextInput);
+        assert_eq!(node.a11y.text_value.expect("text value").get(), "aé");
+        assert_eq!(node.a11y.placeholder.as_deref(), Some("Notes"));
+    });
+}
+
+#[test]
+fn text_field_backspace_removes_last_character() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-backspace", || {
+        let value = signal(String::from("ab"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, backspace_down());
+
+        assert_eq!(value.get(), "a");
+    });
+}
+
+#[test]
+fn text_field_disabled_ignores_typing() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-disabled", || {
+        let value = signal(String::new());
+        let disabled = signal(true);
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).disabled(disabled));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, text_down("a"));
+
+        assert_eq!(value.get(), "");
+        let node = cx.get(root).unwrap();
+        assert!(!node.a11y.focusable);
+        assert!(!node.a11y.hit_test_enabled);
+    });
+}
+
+#[test]
+fn text_field_enter_fires_on_submit_with_current_value() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-submit", || {
+        let value = signal(String::from("ready"));
+        let submitted = Rc::new(RefCell::new(String::new()));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).on_submit({
+            let submitted = Rc::clone(&submitted);
+            move |text: &str| {
+                submitted.replace(text.to_owned());
+            }
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, enter_down());
+
+        assert_eq!(submitted.borrow().as_str(), "ready");
+        assert_eq!(value.get(), "ready");
+    });
+}
+
+#[test]
+fn text_field_placeholder_renders_when_empty_and_unfocused() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-placeholder", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).placeholder("Add note"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        assert!(scene_has_text(&cx, root, "Add note"));
+    });
+}
+
+#[test]
+fn text_field_placeholder_hides_when_focused() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-placeholder-focus", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).placeholder("Add note"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout recomputes");
+
+        assert!(!scene_has_text(&cx, root, "Add note"));
+    });
+}
+
+#[test]
+fn text_field_focus_ring_visible_when_focused() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-focus-ring", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).placeholder("Notes"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+
+        let node = cx.get(root).unwrap();
+        assert!(node.get_extension::<FocusRing>().unwrap().visible());
+    });
+}
+
+#[test]
+fn checkbox_click_flips_signal() {
+    sigil::reactive::Runtime::scope("sigil-widget-checkbox-click", || {
+        let checked = signal(false);
+        let changes = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(checkbox(checked).label("Restock alerts").on_change({
+            let changes = Rc::clone(&changes);
+            move |next| {
+                assert!(next);
+                changes.set(changes.get() + 1);
+            }
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_up(5.0, 5.0));
+
+        assert!(checked.get());
+        assert_eq!(changes.get(), 1);
+        let node = cx.get(root).unwrap();
+        assert_eq!(node.a11y.role, Role::CheckBox);
+        assert!(node.a11y.checked.unwrap().get());
+    });
+}
+
+#[test]
+fn checkbox_keyboard_activation() {
+    sigil::reactive::Runtime::scope("sigil-widget-checkbox-keyboard", || {
+        let checked = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(checkbox(checked).label("Monitor"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, space_down());
+        assert!(checked.get());
+
+        router.route(&mut cx, &layout, enter_down());
+        assert!(!checked.get());
+    });
+}
+
+#[test]
+fn checkbox_disabled_ignores_click() {
+    sigil::reactive::Runtime::scope("sigil-widget-checkbox-disabled", || {
+        let checked = signal(false);
+        let disabled = signal(true);
+        let changes = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            checkbox(checked)
+                .label("Disabled")
+                .disabled(disabled)
+                .on_change({
+                    let changes = Rc::clone(&changes);
+                    move |_| changes.set(changes.get() + 1)
+                }),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_up(5.0, 5.0));
+
+        assert!(!checked.get());
+        assert_eq!(changes.get(), 0);
+        let node = cx.get(root).unwrap();
+        assert!(!node.a11y.focusable);
+        assert!(!node.a11y.hit_test_enabled);
+    });
+}
+
+#[test]
+fn checkbox_scene_emits_checked_and_unchecked_variants() {
+    sigil::reactive::Runtime::scope("sigil-widget-checkbox-scene", || {
+        let checked = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            checkbox(checked)
+                .label("Visual")
+                .tone(CheckboxTone::Primary),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let theme = Theme::default();
+        let unchecked_colors = scene_rect_colors(&cx, root);
+        assert!(unchecked_colors.contains(&theme.surface));
+
+        checked.set(true);
+        let checked_colors = scene_rect_colors(&cx, root);
+        assert!(checked_colors.contains(&theme.accent));
+        assert!(checked_colors.contains(&theme.on_accent));
+    });
+}
+
+#[test]
+fn toggle_click_flips_signal() {
+    sigil::reactive::Runtime::scope("sigil-widget-toggle-click", || {
+        let on = signal(false);
+        let changes = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(toggle(on).label("Watch").on_change({
+            let changes = Rc::clone(&changes);
+            move |next| {
+                assert!(next);
+                changes.set(changes.get() + 1);
+            }
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        router.route(&mut cx, &layout, pointer_up(5.0, 5.0));
+
+        assert!(on.get());
+        assert_eq!(changes.get(), 1);
+        let node = cx.get(root).unwrap();
+        assert_eq!(node.a11y.role, Role::Switch);
+        assert!(node.a11y.checked.unwrap().get());
+    });
+}
+
+#[test]
+fn toggle_keyboard_activation() {
+    sigil::reactive::Runtime::scope("sigil-widget-toggle-keyboard", || {
+        let on = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(toggle(on).label("Monitor"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, space_down());
+        assert!(on.get());
+
+        router.route(&mut cx, &layout, enter_down());
+        assert!(!on.get());
+    });
+}
+
+#[test]
+fn toggle_scene_emits_on_and_off_variants() {
+    sigil::reactive::Runtime::scope("sigil-widget-toggle-scene", || {
+        let on = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(toggle(on).label("Visual"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let theme = Theme::default();
+        let off_colors = scene_rect_colors(&cx, root);
+        let off_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
+        assert!(off_colors.contains(&theme.surface_hover));
+
+        on.set(true);
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout recomputes");
+        let on_colors = scene_rect_colors(&cx, root);
+        let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
+        assert!(on_colors.contains(&theme.accent));
+        assert!(on_thumb_x > off_thumb_x);
+    });
+}
+
+#[test]
+fn toggle_and_checkbox_share_styled_interaction_path() {
+    let interaction_src = include_str!("../src/interaction.rs");
+    let shared_src = include_str!("../src/widgets/shared.rs");
+    let checkbox_src = include_str!("../src/widgets/checkbox.rs");
+    let toggle_src = include_str!("../src/widgets/toggle.rs");
+
+    assert!(interaction_src.contains("pub fn style_state"));
+    assert!(interaction_src.contains("pub fn release_pointer"));
+    assert!(shared_src.contains("interaction.release_pointer"));
+    assert!(shared_src.contains("interaction.activate_key"));
+    assert!(shared_src.contains("binary_style_state"));
+    assert!(checkbox_src.contains("binary_style_state"));
+    assert!(toggle_src.contains("binary_style_state"));
+}
+
+#[test]
+fn slider_click_jumps_to_position() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-click", || {
+        let value = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(90.0, 10.0));
+
+        assert_approx(value.get(), 50.0);
+        let node = cx.get(root).unwrap();
+        assert_eq!(node.a11y.role, Role::Slider);
+        assert_approx(node.a11y.value_now.unwrap().get(), 50.0);
+        assert_eq!(node.a11y.value_min, Some(0.0));
+        assert_eq!(node.a11y.value_max, Some(100.0));
+    });
+}
+
+#[test]
+fn slider_drag_updates_value_continuously() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-drag", || {
+        let value = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(0.0, 10.0));
+        router.route(&mut cx, &layout, pointer_move(135.0, 10.0));
+
+        assert_approx(value.get(), 75.0);
+    });
+}
+
+#[test]
+fn slider_drag_with_step_quantizes_value() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-step", || {
+        let value = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0).step(10.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(47.0, 10.0));
+        router.route(&mut cx, &layout, pointer_move(64.0, 10.0));
+
+        assert_approx(value.get(), 40.0);
+    });
+}
+
+#[test]
+fn slider_keyboard_stepping() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-keyboard", || {
+        let value = signal(50.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0).step(5.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(
+            &mut cx,
+            &layout,
+            arrow_down(Key::ArrowRight, PhysicalKey::ArrowRight),
+        );
+        assert_approx(value.get(), 55.0);
+
+        router.route(
+            &mut cx,
+            &layout,
+            arrow_down(Key::ArrowLeft, PhysicalKey::ArrowLeft),
+        );
+        assert_approx(value.get(), 50.0);
+    });
+}
+
+#[test]
+fn slider_disabled_ignores_input() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-disabled", || {
+        let value = signal(25.0_f32);
+        let disabled = signal(true);
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0).disabled(disabled).step(5.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(180.0, 10.0));
+        router.set_focus(&mut cx, Some(root));
+        router.route(
+            &mut cx,
+            &layout,
+            arrow_down(Key::ArrowRight, PhysicalKey::ArrowRight),
+        );
+
+        assert_approx(value.get(), 25.0);
+        let node = cx.get(root).unwrap();
+        assert!(!node.a11y.focusable);
+        assert!(!node.a11y.hit_test_enabled);
+    });
+}
+
+#[test]
+fn slider_capture_releases_on_pointer_up() {
+    sigil::reactive::Runtime::scope("sigil-widget-slider-capture-release", || {
+        let value = signal(0.0_f32);
+        let changes = Rc::new(Cell::new(0_u32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(slider(value, 0.0..=100.0).on_change({
+            let changes = Rc::clone(&changes);
+            move |_| changes.set(changes.get() + 1)
+        }));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, pointer_down(0.0, 10.0));
+        router.route(&mut cx, &layout, pointer_move(180.0, 10.0));
+        router.route(&mut cx, &layout, pointer_up(180.0, 10.0));
+        assert_approx(value.get(), 100.0);
+        assert_eq!(changes.get(), 1);
+
+        router.route(&mut cx, &layout, pointer_move(0.0, 10.0));
+        assert_approx(value.get(), 100.0);
+        assert_eq!(changes.get(), 1);
+    });
+}
+
+fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
+    emit_scene(cx, root)
+        .commands()
+        .iter()
+        .filter_map(|command| match command {
+            SceneCommand::DrawRect(rect) => Some(rect.color),
+            _ => None,
+        })
+        .collect()
+}
+
+fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil_style::Rgba8) -> f32 {
+    emit_scene(cx, root)
+        .commands()
+        .iter()
+        .find_map(|command| match command {
+            SceneCommand::DrawRect(rect) if rect.color == color => Some(rect.rect.origin.x),
+            _ => None,
+        })
+        .expect("rect with requested color exists")
+}
+
+fn scene_has_text(cx: &Cx, root: NodeId, expected: &str) -> bool {
+    emit_scene(cx, root).find_text(expected).is_some()
+}
+
+const fn pointer_down(x: f32, y: f32) -> ShellEvent {
+    pointer_event(
+        x,
+        y,
+        PointerPhase::Down,
+        Some(MouseButton::Left),
+        MouseButtons::LEFT,
+    )
+}
+
+const fn pointer_move(x: f32, y: f32) -> ShellEvent {
+    pointer_event(x, y, PointerPhase::Move, None, MouseButtons::LEFT)
+}
+
+const fn pointer_up(x: f32, y: f32) -> ShellEvent {
+    pointer_event(
+        x,
+        y,
+        PointerPhase::Up,
+        Some(MouseButton::Left),
+        MouseButtons::empty(),
+    )
+}
+
+const fn pointer_event(
+    x: f32,
+    y: f32,
+    phase: PointerPhase,
+    button: Option<MouseButton>,
+    buttons: MouseButtons,
+) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button,
+        buttons,
+        modifiers: ModifiersState::empty(),
+        phase,
+    }))
+}
+
+fn text_down(text: &str) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(text),
+        physical: PhysicalKey::KeyA,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: Some(text.into()),
+    }))
+}
+
+fn backspace_down() -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: Key::Backspace.into(),
+        physical: PhysicalKey::Backspace,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn enter_down() -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: Key::Enter.into(),
+        physical: PhysicalKey::Enter,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn space_down() -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(" "),
+        physical: PhysicalKey::Space,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn arrow_down(key: Key, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: key.into(),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn assert_approx(actual: f32, expected: f32) {
+    assert!(
+        (actual - expected).abs() < 0.001,
+        "expected {expected}, got {actual}"
+    );
+}

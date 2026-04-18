@@ -8,6 +8,7 @@ use parley as _;
 use sigil_core as _;
 use sigil_layout as _;
 use sigil_reactive as _;
+use sigil_style as _;
 use taffy as _;
 
 use sigil_hal::{ParagraphMetrics, TextEngine};

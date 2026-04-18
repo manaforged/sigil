@@ -22,7 +22,9 @@ use sigil_core::prelude::*;
 use sigil_events::prelude::*;
 use sigil_layout::prelude::*;
 
-use routing_helpers::{abs_rect, compute_layout, pointer_down, pointer_move, record, route_event};
+use routing_helpers::{
+    abs_rect, compute_layout, pointer_down, pointer_move, record, route_event, window_blur,
+};
 
 #[test]
 fn pointer_down_hits_top_of_z_stack() {
@@ -138,6 +140,96 @@ fn pointer_capture_redirects_moves() {
     route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 200.0));
 
     assert_eq!(captured_moves.get(), 1);
+}
+
+#[test]
+fn pointer_handlers_receive_target_local_position() {
+    let local = Rc::new(Cell::new((0.0_f32, 0.0_f32)));
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .child(
+                container()
+                    .layout(abs_rect(40.0, 30.0, 20.0, 20.0))
+                    .on_pointer_down({
+                        let local = Rc::clone(&local);
+                        move |event| local.set((event.position.x, event.position.y))
+                    }),
+            ),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, pointer_down(45.0, 37.0));
+
+    assert_eq!(local.get(), (5.0, 7.0));
+}
+
+#[test]
+fn pointer_move_synthesizes_enter_leave() {
+    let order = Rc::new(RefCell::new(Vec::new()));
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .child(
+                container()
+                    .layout(abs_rect(0.0, 0.0, 20.0, 20.0))
+                    .on_pointer_enter(record(&order, "a-enter"))
+                    .on_pointer_leave(record(&order, "a-leave")),
+            )
+            .child(
+                container()
+                    .layout(abs_rect(40.0, 0.0, 20.0, 20.0))
+                    .on_pointer_enter(record(&order, "b-enter"))
+                    .on_pointer_leave(record(&order, "b-leave")),
+            ),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, pointer_move(5.0, 5.0));
+    route_event(&mut router, &mut cx, &layout, pointer_move(45.0, 5.0));
+    route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 200.0));
+
+    assert_eq!(
+        &*order.borrow(),
+        &["a-enter", "a-leave", "b-enter", "b-leave"]
+    );
+}
+
+#[test]
+fn window_blur_dispatches_synthetic_leaves() {
+    // Regression: alt-tabbing while hovering a widget used to leave
+    // hover state frozen because the router cleared `hover_path` in
+    // place without firing synthetic PointerPhase::Leave events.
+    let order = Rc::new(RefCell::new(Vec::new()));
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .on_pointer_enter(record(&order, "root-enter"))
+            .on_pointer_leave(record(&order, "root-leave"))
+            .child(
+                container()
+                    .layout(abs_rect(0.0, 0.0, 20.0, 20.0))
+                    .on_pointer_enter(record(&order, "child-enter"))
+                    .on_pointer_leave(record(&order, "child-leave")),
+            ),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, pointer_move(5.0, 5.0));
+    assert_eq!(&*order.borrow(), &["root-enter", "child-enter"]);
+
+    route_event(&mut router, &mut cx, &layout, window_blur());
+
+    assert_eq!(
+        &*order.borrow(),
+        &["root-enter", "child-enter", "child-leave", "root-leave"]
+    );
 }
 
 #[test]

@@ -817,16 +817,7 @@ checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
 name = "hello-events"
 version = "0.0.0"
 dependencies = [
- "bytemuck",
- "sigil-core",
- "sigil-events",
- "sigil-hal",
- "sigil-layout",
- "sigil-renderer",
- "sigil-shell",
- "taffy",
- "wgpu",
- "windows-core",
+ "sigil",
 ]
 
 [[package]]
@@ -856,19 +847,7 @@ dependencies = [
 name = "hello-style"
 version = "0.0.0"
 dependencies = [
- "bytemuck",
- "sigil-async",
- "sigil-core",
- "sigil-events",
- "sigil-hal",
- "sigil-layout",
- "sigil-reactive",
- "sigil-renderer",
- "sigil-shell",
- "sigil-style",
- "taffy",
- "wgpu",
- "windows-core",
+ "sigil",
 ]
 
 [[package]]
@@ -2212,6 +2191,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
+name = "sigil"
+version = "0.0.0"
+dependencies = [
+ "sigil-app",
+ "sigil-core",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-renderer",
+ "sigil-style",
+ "taffy",
+]
+
+[[package]]
+name = "sigil-app"
+version = "0.0.0"
+dependencies = [
+ "sigil-async",
+ "sigil-core",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-renderer",
+ "sigil-shell",
+ "sigil-style",
+ "sigil-text",
+ "taffy",
+ "tracing",
+ "windows-core",
+]
+
+[[package]]
 name = "sigil-async"
 version = "0.0.0"
 dependencies = [
@@ -2264,9 +2277,11 @@ name = "sigil-layout"
 version = "0.0.0"
 dependencies = [
  "ahash",
+ "allocation-counter",
  "criterion",
  "sigil-core",
  "sigil-hal",
+ "sigil-reactive",
  "sigil-style",
  "smallvec",
  "taffy",
@@ -2349,6 +2364,7 @@ dependencies = [
  "sigil-hal",
  "sigil-layout",
  "sigil-reactive",
+ "sigil-style",
  "taffy",
 ]
 
@@ -2813,6 +2829,16 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vertical-slice"
+version = "0.0.0"
+dependencies = [
+ "sigil",
+ "sigil-app",
+ "sigil-hal",
+ "sigil-renderer",
+]
 
 [[package]]
 name = "walkdir"

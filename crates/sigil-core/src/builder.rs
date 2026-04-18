@@ -127,6 +127,36 @@ impl NodeBuilder {
         self
     }
 
+    /// Set a reactive checked state for checkbox-like controls.
+    #[must_use]
+    pub const fn aria_checked_signal(mut self, signal: Signal<bool>) -> Self {
+        self.a11y.checked = Some(signal);
+        self
+    }
+
+    /// Set a reactive numeric value for range-like controls.
+    #[must_use]
+    pub const fn aria_value_signal(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
+        self.a11y.value_now = Some(signal);
+        self.a11y.value_min = Some(min);
+        self.a11y.value_max = Some(max);
+        self
+    }
+
+    /// Set a reactive text value for text-input-like controls.
+    #[must_use]
+    pub const fn aria_text_value_signal(mut self, signal: Signal<String>) -> Self {
+        self.a11y.text_value = Some(signal);
+        self
+    }
+
+    /// Set placeholder text for text-input-like controls.
+    #[must_use]
+    pub fn aria_placeholder(mut self, placeholder: impl Into<String>) -> Self {
+        self.a11y.placeholder = Some(placeholder.into());
+        self
+    }
+
     /// Add a child component to this structural node.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {

@@ -32,3 +32,14 @@ new DR that references the old one, not editing the old one.
 | 011 | sigil-layout - Taffy-backed adapter | Accepted |
 | 012 | Project name: Sigil | Accepted |
 | 013 | Roadmap reconciliation and plan traceability | Accepted |
+| 014 | Text Renderer: Slug GPU Algorithm | Accepted |
+| 015 | Fragment semantics: flatten into parent | Accepted |
+| 016 | Application shell: `sigil::launch` | Accepted |
+| 017 | Default scene paint in `sigil-renderer` | Accepted (text-deferral superseded by 025) |
+| 018 | DPI and logical-pixel unit system | Accepted |
+| 020 | Scene command buffer | Accepted |
+| 023 | Incremental layout — generation gating | Accepted (cache-key superseded by 024) |
+| 024 | Layout cache-key content hash | Accepted |
+| 025 | Text-in-scene interim wiring | Accepted |
+| 026 | Widget substrate contract | Accepted |
+| 027 | Text input contract | Accepted |

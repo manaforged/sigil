@@ -4,13 +4,16 @@
 mod stub;
 
 use ahash as _;
+use allocation_counter as _;
 use criterion as _;
+use sigil_core::TextContent;
 use sigil_core::prelude::*;
-use sigil_hal as _;
 use sigil_layout::prelude::*;
+use sigil_reactive as _;
 use sigil_style::NodeStyleExt;
+use sigil_style::{TextLineHeight, TextStyle};
 use smallvec as _;
-use taffy as _;
+use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 use stub::stub_engine;
 
@@ -88,6 +91,20 @@ fn flex_row_items_center() {
     assert_eq!(second.origin.y, 15.0);
 }
 
+#[test]
+fn typography_atoms_drive_text_measurement() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(text("Type").class("text-xl font-bold leading-8"));
+
+    LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))
+        .compute(&mut cx, root, Size::max_content())
+        .expect("compute succeeds");
+
+    let rect = layout_rect(&cx, root);
+    assert_eq!(rect.width, 27.0);
+    assert_eq!(rect.height, 32.0);
+}
+
 fn first_child(cx: &Cx, root: NodeId) -> NodeId {
     cx.get(root).unwrap().children.first().copied().unwrap()
 }
@@ -97,4 +114,31 @@ fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")
         .rect()
+}
+
+struct StyleAwareMeasure;
+
+impl TextMeasure for StyleAwareMeasure {
+    fn measure(&self, _content: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
+        TaffySize::ZERO
+    }
+
+    fn measure_styled(
+        &self,
+        _content: &TextContent,
+        style: &TextStyle,
+        _space: TaffySize<AvailableSpace>,
+    ) -> TaffySize<f32> {
+        TaffySize {
+            width: style.font_size + f32::from(style.font_weight) / 100.0,
+            height: text_line_height(style),
+        }
+    }
+}
+
+fn text_line_height(style: &TextStyle) -> f32 {
+    match style.line_height {
+        TextLineHeight::FontSizeRelative(value) => style.font_size * value,
+        TextLineHeight::Absolute(value) => value,
+    }
 }

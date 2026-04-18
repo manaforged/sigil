@@ -16,6 +16,7 @@ doctest = false
 [dependencies]
 sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
 parley = "0.8"
 ahash = { workspace = true }
 

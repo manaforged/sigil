@@ -8,12 +8,14 @@ interaction primitives, a designed component catalog, and the app
 patterns that make dense desktop software feel composed instead of
 assembled from parts.
 
-**Status:** `sigil-style` landed. The workspace has a headless node tree
-with stable AccessKit-compatible IDs, a Taffy-backed layout adapter, an
-input/focus router over shell-delivered pointer, keyboard, IME, scroll,
-and lifecycle events, and the DR-006 three-layer style API: `classes!`
-proc macro, `Style::new()` struct API, and `style_reactive` signal
-binding, all folded into layout and rendering.
+**Status:** `sigil::launch` landed (DR-016) and Sigil is DPI-aware
+(DR-018). The workspace has a headless
+node tree with stable AccessKit-compatible IDs, a Taffy-backed layout
+adapter, an input/focus router over shell-delivered pointer, keyboard,
+IME, scroll, and lifecycle events, the DR-006 three-layer style API
+(`classes!` macro + `Style` + `style_reactive`), and a one-call `sigil::launch`
+entry point (DR-016) with a default scene-paint pipeline (DR-017).
+`hello-events` is now 34 lines; `hello-style` 62.
 
 ## Design plan
 
@@ -29,7 +31,8 @@ crates/
   sigil-hal/            Hardware abstraction layer: traits for Renderer,
                      Shell, Layout, TextEngine, A11yBridge, Scheduler.
                      Every downstream crate depends on these traits,
-                     never on upstream crates directly.
+                     never on upstream crates directly. Scale and
+                     logical-size primitives live here.
   sigil-reactive/       Main-thread signal/effect owner tree.
   sigil-core/           Stable node identity, arena storage, Component,
                      Semantics, typed extensions, and builders.
@@ -44,8 +47,14 @@ crates/
                      structural-token table is generated at build time
                      from grammar/structural.toml.
   sigil-async/          Tokio runtime and owner-targeted main-thread dispatch.
-  sigil-renderer/       wgpu-backed renderer adapter.
+  sigil-renderer/       wgpu-backed renderer adapter. Includes
+                     WgpuRenderer::render_scene default pipeline (DR-017).
   sigil-shell/          winit shell adapter.
+  sigil-app/            App orchestrator: sigil::launch, AppConfig,
+                     TreeRoot, frame loop, DPI-aware logical sizing,
+                     bulletproof defaults (DR-016, DR-018).
+  sigil/                User-facing facade with prelude. `use sigil::prelude::*;`
+                     is the one import line user apps need.
 
 examples/
   hello-rect/        Window proof app: opens a window, clears the
@@ -55,15 +64,15 @@ examples/
                      and prints its shape.
   hello-layout/      Headless proof app: computes rectangles for a
                      `sigil-core` tree and prints them.
-  hello-events/      Window proof app: routes clicks through
-                     `sigil-events`, moves focus with Tab, and exits
-                     on Escape.
-  hello-style/       Window proof app: three panes demonstrating
-                     static styling, hover-reactive styling, and
-                     merge-override via the style API.
+  hello-events/      Window proof app using `sigil::launch`: click
+                     toggles the surface tint, Tab cycles focus, Esc
+                     quits. 34 lines of user code.
+  hello-style/       Window proof app using `sigil::launch`: two
+                     static panes + a hover-reactive pane driven by
+                     style_reactive. 62 lines.
 
 docs/
-  decisions/         Architecture decision records (DR-000..DR-013).
+  decisions/         Architecture decision records (DR-000..DR-018).
   plans/             Repo-local execution plans tied to accepted DRs.
 ```
 
@@ -85,6 +94,8 @@ cargo bench -p sigil-events
 cargo bench -p sigil-style
 ```
 
+All user-facing sizes and positions are logical pixels; the shell and
+launch layers convert to physical pixels at the winit/wgpu boundary.
 `cargo run -p hello-rect` should open a window, clear the surface to a
 colour, cycle colours on a timer, and close cleanly when the window is
 closed. `cargo run -p hello-tree` should print a deterministic headless

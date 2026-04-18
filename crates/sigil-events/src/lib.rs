@@ -25,6 +25,7 @@ mod builder_ext;
 mod focus;
 mod handlers;
 mod hit_test;
+mod pointer_dispatch;
 pub mod prelude;
 mod router;
 
