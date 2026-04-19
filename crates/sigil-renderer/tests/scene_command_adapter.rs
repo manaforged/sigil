@@ -6,6 +6,7 @@
 
 use ahash as _;
 use bytemuck as _;
+use criterion as _;
 use pollster as _;
 use raw_window_handle as _;
 use sigil_text as _;
@@ -23,7 +24,7 @@ use sigil_renderer::{Scene, SceneCommand, SceneItem, emit_scene};
 use sigil_style::NodeStyleExt;
 
 mod scene {
-    pub(super) use sigil_renderer::{Scene, SceneItem};
+    pub(super) use sigil_renderer::{Scene, SceneItem, shape_glyph_run};
 }
 
 mod scene_builder {
@@ -31,7 +32,7 @@ mod scene_builder {
 }
 
 mod scene_command {
-    use sigil_renderer::{CommandScene, GlyphRun, SceneRectStyle};
+    use sigil_renderer::{CommandScene, SceneRectStyle};
 
     mod adapter {
         include!(concat!(
@@ -60,9 +61,9 @@ fn adapter_preserves_text_content_for_interim_path() {
         commands.commands().iter().any(|command| matches!(
             command,
             SceneCommand::DrawGlyphRun(draw) if draw.run.text == "Adapter text"
-                && !draw.run.has_positioned_glyphs()
+                && draw.run.has_positioned_glyphs()
         )),
-        "adapter must preserve raw text for the DR-025 fallback path"
+        "adapter must preserve text and carry shaped glyph positions"
     );
 }
 

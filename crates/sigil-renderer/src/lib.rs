@@ -41,6 +41,8 @@
 use windows_core as _;
 
 #[cfg(test)]
+use criterion as _;
+#[cfg(test)]
 use taffy as _;
 
 mod device_state;
@@ -58,6 +60,8 @@ mod window_handle;
 
 pub use error::RendererError;
 pub use renderer::WgpuRenderer;
+#[doc(hidden)]
+pub use scene::shape_glyph_run;
 pub use scene::{Scene, SceneItem, SceneRect, SceneText, emit_scene};
 pub use scene_builder::SceneBuilder;
 pub use scene_command::{

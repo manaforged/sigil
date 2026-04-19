@@ -40,6 +40,6 @@ new DR that references the old one, not editing the old one.
 | 020 | Scene command buffer | Accepted |
 | 023 | Incremental layout — generation gating | Accepted (cache-key superseded by 024) |
 | 024 | Layout cache-key content hash | Accepted |
-| 025 | Text-in-scene interim wiring | Accepted |
+| 025 | Text-in-scene interim wiring | Accepted (superseded by 020) |
 | 026 | Widget substrate contract | Accepted |
 | 027 | Text input contract | Accepted |

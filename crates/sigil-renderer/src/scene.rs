@@ -4,6 +4,7 @@ use sigil_core::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_hal::{Point, Rect};
 use sigil_layout::LayoutResult;
 use sigil_style::{Px, Rgba8, TextStyle};
+use sigil_text::{ParleyTextEngine, TextConfig};
 
 use crate::scene_builder::SceneBuilder;
 use crate::scene_command::{CommandScene, GlyphRun, SceneRectStyle};
@@ -140,7 +141,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
             if let Some(color) = style.text_color {
                 scene.draw_glyph_run_for_node(
                     id,
-                    GlyphRun::new(
+                    shape_glyph_run(
                         rect,
                         text_content(content),
                         color,
@@ -152,6 +153,31 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
         }
         NodeType::Fragment => {}
     }
+}
+
+#[doc(hidden)]
+/// Shape a text run for command-scene emission.
+#[must_use]
+pub fn shape_glyph_run(
+    rect: Rect,
+    text: String,
+    color: Rgba8,
+    style: TextStyle,
+    opacity: u16,
+) -> GlyphRun {
+    let max_width = Some(rect.width.max(1.0));
+    let paragraph =
+        TEXT_ENGINE.with(
+            |engine| match engine.layout_paragraph_styled(&text, max_width, &style) {
+                Ok(paragraph) => paragraph,
+                Err(err) => match err {},
+            },
+        );
+    GlyphRun::new(rect, text, color, style, opacity).with_paragraph(paragraph)
+}
+
+thread_local! {
+    static TEXT_ENGINE: ParleyTextEngine = ParleyTextEngine::new(TextConfig::default());
 }
 
 const fn absolute_rect(parent_origin: Point, rect: Rect) -> Rect {

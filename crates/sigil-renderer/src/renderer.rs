@@ -149,7 +149,6 @@ impl WgpuRenderer {
             queue,
             scene_pipelines,
             slug_pipelines,
-            text_engine,
             ..
         } = ready;
         walk_command_scene(
@@ -161,7 +160,6 @@ impl WgpuRenderer {
                 format,
                 scene_pipelines,
                 slug_pipelines,
-                text_engine,
             },
             scene,
         )?;

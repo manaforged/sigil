@@ -7,12 +7,10 @@
 //!
 //! [`WgpuRenderer`]: crate::WgpuRenderer
 
-use pollster::FutureExt as _;
-use sigil_text::{ParleyTextEngine, TextConfig};
-
 use crate::error::RendererError;
 use crate::scene_paint::ScenePipeline;
 use crate::slug::SlugTextPipeline;
+use pollster::FutureExt as _;
 
 /// Lazily-initialised GPU state.
 ///
@@ -37,7 +35,6 @@ pub(crate) struct ReadyState {
     pub(crate) queue: wgpu::Queue,
     pub(crate) scene_pipelines: Vec<ScenePipeline>,
     pub(crate) slug_pipelines: Vec<SlugTextPipeline>,
-    pub(crate) text_engine: ParleyTextEngine,
 }
 
 impl ReadyState {
@@ -94,7 +91,6 @@ impl DeviceState {
                         queue,
                         scene_pipelines: Vec::new(),
                         slug_pipelines: Vec::new(),
-                        text_engine: ParleyTextEngine::new(TextConfig::default()),
                     }));
                 }
                 Err(err) => {

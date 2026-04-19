@@ -1,6 +1,6 @@
 # DR-025 — Text-in-scene interim wiring (pragmatic Phase 14 stub)
 
-**Status:** Accepted
+**Status:** Superseded by DR-020 (Phase 11 realised the long-term design; the interim path is retired)
 **Date:** 2026-04-17
 **Supersedes in part:** DR-017 (retains the `render_scene` rect design; replaces the "text is dropped with a one-per-process warn" clause).
 **Depends on:** DR-001 (wgpu renderer), DR-004 (Parley text engine), DR-014 (Slug glyph pipeline), DR-017 (scene paint).

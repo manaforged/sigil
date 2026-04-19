@@ -3,6 +3,7 @@
 
 use ahash as _;
 use bytemuck as _;
+use criterion as _;
 use pollster as _;
 use raw_window_handle as _;
 use sigil_text as _;

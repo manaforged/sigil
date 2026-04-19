@@ -31,6 +31,8 @@ pub struct DrawParams<'a> {
     pub surface_height: f32,
     /// Paragraph to render.
     pub paragraph: &'a Paragraph,
+    /// Pre-positioned glyphs for this paragraph, when carried by a scene command.
+    pub glyphs: Option<&'a [RenderedGlyph]>,
     /// Top-left origin of the paragraph in viewport coordinates.
     pub origin: (f32, f32),
     /// Optional color override applied to every glyph.
@@ -119,15 +121,21 @@ impl SlugTextPipeline {
     /// Panics if the paragraph contains more than `u32::MAX` glyphs, which
     /// cannot occur in practice.
     pub fn draw_paragraph(&mut self, params: &DrawParams<'_>) -> Result<(), RendererError> {
-        let glyphs = params.paragraph.rendered_glyphs();
+        let owned_glyphs;
+        let glyphs = if let Some(glyphs) = params.glyphs {
+            glyphs
+        } else {
+            owned_glyphs = params.paragraph.rendered_glyphs();
+            &owned_glyphs
+        };
         if glyphs.is_empty() {
             return Ok(());
         }
 
-        self.ensure_preprocessed(&glyphs, params.paragraph);
+        self.ensure_preprocessed(glyphs, params.paragraph);
         self.atlas.rebuild(params.device, params.queue, &self.cache);
 
-        let instances = self.build_instances(&glyphs, params);
+        let instances = self.build_instances(glyphs, params);
         if instances.is_empty() {
             return Ok(());
         }

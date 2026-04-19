@@ -1,8 +1,8 @@
 // Adapter from the legacy flat scene to command-buffer scenes.
 
-use crate::scene::{Scene, SceneItem};
+use crate::scene::{Scene, SceneItem, shape_glyph_run};
 use crate::scene_builder::SceneBuilder;
-use crate::scene_command::{CommandScene, GlyphRun, SceneRectStyle};
+use crate::scene_command::{CommandScene, SceneRectStyle};
 
 #[allow(dead_code, clippy::redundant_pub_crate)]
 pub(crate) fn flat_to_commands(scene: &Scene) -> CommandScene {
@@ -16,7 +16,7 @@ pub(crate) fn flat_to_commands(scene: &Scene) -> CommandScene {
             ),
             SceneItem::Text(text) => builder.draw_glyph_run_for_node(
                 text.node,
-                GlyphRun::new(
+                shape_glyph_run(
                     text.rect,
                     text.text.clone(),
                     text.color,

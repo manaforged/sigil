@@ -1,7 +1,6 @@
 //! Command-scene interpreter for `WgpuRenderer`.
 
 use sigil_hal::{Color, Point, Rect};
-use sigil_text::{Paragraph, ParleyTextEngine};
 
 use crate::error::RendererError;
 use crate::scene_command::{
@@ -21,7 +20,6 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) format: wgpu::TextureFormat,
     pub(crate) scene_pipelines: &'a mut Vec<ScenePipeline>,
     pub(crate) slug_pipelines: &'a mut Vec<SlugTextPipeline>,
-    pub(crate) text_engine: &'a ParleyTextEngine,
 }
 
 pub(crate) fn walk_command_scene(
@@ -129,16 +127,10 @@ impl<'a> Walk<'a> {
         if self.clip_rect(rect).is_none() {
             return Ok(());
         }
+        let Some(paragraph) = run.paragraph() else {
+            return Ok(());
+        };
         let color = glyph_run_color(run, self.current_opacity());
-        let paragraph;
-        let shaped;
-        if let Some(existing) = run.paragraph() {
-            paragraph = existing;
-        } else {
-            let max_width = Some(run.rect.width.max(1.0));
-            shaped = layout_glyph_run(self.ctx.text_engine, run, max_width);
-            paragraph = &shaped;
-        }
         let pipeline = slug_pipeline_for(self.ctx.slug_pipelines, self.ctx.device, self.ctx.format);
         pipeline.draw_paragraph(&DrawParams {
             device: self.ctx.device,
@@ -147,6 +139,7 @@ impl<'a> Walk<'a> {
             surface_width: self.ctx.viewport.0,
             surface_height: self.ctx.viewport.1,
             paragraph,
+            glyphs: Some(run.positioned_glyphs()),
             origin: (rect.origin.x, rect.origin.y),
             color: Some(color),
         })
@@ -197,17 +190,6 @@ fn slug_pipeline_for<'a>(
     pipelines
         .get_mut(idx)
         .expect("slug pipeline index was just constructed from the vec")
-}
-
-fn layout_glyph_run(
-    engine: &ParleyTextEngine,
-    run: &GlyphRun,
-    max_width: Option<f32>,
-) -> Paragraph {
-    match engine.layout_paragraph_styled(&run.text, max_width, &run.style) {
-        Ok(paragraph) => paragraph,
-        Err(err) => match err {},
-    }
 }
 
 fn glyph_run_color(run: &GlyphRun, opacity_scale: f32) -> Color {
