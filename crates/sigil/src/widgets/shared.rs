@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use sigil_core::{NodeBuilder, TextBuilder, TextContent, text};
 use sigil_events::prelude::{KeyEvent, PointerEvent};
+use sigil_kernel::{NodeBuilder, TextBuilder, TextContent, text};
 use sigil_reactive::Signal;
 use sigil_style::NodeStyleExt;
 use sigil_style::StyleState;

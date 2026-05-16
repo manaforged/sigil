@@ -43,7 +43,7 @@ at minimal coverage (one window, one button, one text input). But the
 **semantic identity** that feeds `TreeUpdate`s lives on the node model
 from the first commit:
 
-- Every `NodeId` in `sigil-core` is also the `accesskit::NodeId`. One
+- Every `NodeId` in `sigil-kernel` is also the `accesskit::NodeId`. One
   identity, one tree.
 - Every node carries a `Semantics` struct:
   - `role` — `Role::Button`, `Role::TextInput`, etc.

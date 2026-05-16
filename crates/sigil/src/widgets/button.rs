@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use sigil_core::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_style::{ClassSource, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme};
 
@@ -178,7 +178,7 @@ impl ButtonBuilder {
 }
 
 impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_core::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

@@ -5,7 +5,7 @@
 
 ## Context
 
-Phase 3 landed `sigil-core`: stable node IDs, accessible-by-default
+Phase 3 landed `sigil-kernel`: stable node IDs, accessible-by-default
 semantics, typed extensions, component owners, and hand-written
 builders. The core tree still had no computed geometry. Renderers,
 hit-testing, and accessibility bounds need a local layout result to
@@ -21,14 +21,14 @@ important adjustments:
   as the latest 0.10 patch. The workspace pins the 0.10 line with
   `taffy = "0.10"` rather than an exact patch.
 - The repo already had Phase 3 in flight as uncommitted work. Phase 4
-  must layer on top of that API without reshaping `sigil-core`.
+  must layer on top of that API without reshaping `sigil-kernel`.
 
 ## Decision
 
 Add `sigil-layout` as a headless Taffy-backed adapter.
 
 - `LayoutEngine` owns one `TaffyTree<LayoutContext>` and bidirectional
-  maps between `sigil_core::NodeId` and Taffy node IDs.
+  maps between `sigil_kernel::NodeId` and Taffy node IDs.
 - `LayoutIntent` is a thin newtype over `taffy::Style`, attached to
   nodes through `NodeExtensions`.
 - `LayoutResult` is attached back to nodes after compute as a read-only
@@ -58,7 +58,7 @@ read-path projection for tree consumers. `compute` refreshes projections
 for the computed root and clears stale projections from nodes that were
 part of the previous compute but are no longer under that root.
 
-The adapter mirrors `sigil-core::Fragment` as a normal Taffy node for now
+The adapter mirrors `sigil-kernel::Fragment` as a normal Taffy node for now
 because Taffy has no `display: contents` equivalent. That is acceptable
 for the Phase 4 headless proof, but fragment transparency is tracked by
 DR-013 follow-up F-001 and must be resolved before fragments are used
@@ -104,5 +104,5 @@ Revisit this decision if:
 
 - [DR-003 - Layout: Taffy upstream behind HAL](./DR-003-layout-taffy.md)
 - [DR-009 - Performance Discipline](./DR-009-performance-discipline.md)
-- [DR-010 - sigil-core keystone crate](./DR-010-sigil-core-keystone.md)
+- [DR-010 - sigil-kernel keystone crate](./DR-010-sigil-kernel-keystone.md)
 - [DR-013 - Roadmap reconciliation and plan traceability](./DR-013-roadmap-reconciliation.md)

@@ -32,7 +32,7 @@ editing crate is needed.
 
 Two adjacent substrate deltas ship with the MVP:
 
-- `sigil-core::A11yProps` can carry `text_value: Signal<String>` and
+- `sigil-kernel::A11yProps` can carry `text_value: Signal<String>` and
   `placeholder: String` through `NodeBuilder::aria_text_value_signal`
   and `NodeBuilder::aria_placeholder`.
 - `sigil-events::NodeEventsExt::on_key_any` lets a focused widget
@@ -71,7 +71,7 @@ printable character. `on_key_any` is the smallest event-router addition
 that lets content widgets consume `KeyEvent::text` while preserving
 specific shortcut handlers for named keys.
 
-**Why text value and placeholder live in `sigil-core`.** Accessibility
+**Why text value and placeholder live in `sigil-kernel`.** Accessibility
 metadata is attached to the node model, not the widget implementation.
 Sliders already carry a numeric value through `A11yProps`; text inputs
 need the same first-class semantic path for a string value and
@@ -118,7 +118,7 @@ Supersede this DR when:
 
 - `crates/sigil/src/widgets/text_field.rs`
 - `crates/sigil/src/widgets/text_edit.rs`
-- `crates/sigil-core/src/semantics.rs`
-- `crates/sigil-events/src/handlers.rs`
+- `crates/sigil/kernel/src/semantics.rs`
+- `crates/sigil/events/src/handlers.rs`
 - `examples/vertical-slice/src/main.rs`
 - `docs/plans/widget-pack-2-text-field-mvp.md`

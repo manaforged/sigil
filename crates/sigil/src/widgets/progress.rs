@@ -1,0 +1,147 @@
+//! Progress widget — determinate or indeterminate progress bar.
+
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq};
+use sigil_style::{Dimension, NodeStyleExt, Px, StyleAtom};
+
+const TRACK_WIDTH: f32 = 240.0;
+const TRACK_HEIGHT: f32 = 8.0;
+const INDETERMINATE_RATIO: f32 = 0.30;
+
+static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+
+/// Builder returned by [`progress`].
+pub struct ProgressBuilder {
+    value: Signal<f32>,
+    max: f32,
+    /// Switch to indeterminate animation mode.
+    ///
+    /// In indeterminate mode `value` is treated as an animation phase
+    /// (0.0–1.0). Drive it with a reactive signal that advances each frame.
+    pub indeterminate: bool,
+}
+
+/// Create a progress bar widget.
+///
+/// - `value` — current progress value (0.0..=`max`), or animation phase
+///   (0.0–1.0) in indeterminate mode.
+/// - `max`   — maximum value (must be > 0).
+#[must_use]
+pub const fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
+    ProgressBuilder::new(value, max)
+}
+
+impl ProgressBuilder {
+    /// Create a progress builder with default settings.
+    #[must_use]
+    pub const fn new(value: Signal<f32>, max: f32) -> Self {
+        Self {
+            value,
+            max: max.max(f32::EPSILON),
+            indeterminate: false,
+        }
+    }
+
+    /// Enable indeterminate mode (looping bar animation driven by `value`).
+    #[must_use]
+    pub const fn indeterminate(mut self) -> Self {
+        self.indeterminate = true;
+        self
+    }
+
+    fn into_node_builder(self) -> NodeBuilder {
+        let value = self.value;
+        let max = self.max;
+        let is_indeterminate = self.indeterminate;
+
+        let fill = if is_indeterminate {
+            indeterminate_fill(value)
+        } else {
+            determinate_fill(value, max)
+        };
+
+        container()
+            .role(Role::ProgressIndicator)
+            .aria_value_signal(value, 0.0, max)
+            .layout(track_layout())
+            .class("rounded-md")
+            .class(TRACK)
+            .child(fill)
+    }
+}
+
+impl IntoNode for ProgressBuilder {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+        self.into_node_builder().build(cx)
+    }
+}
+
+fn track_layout() -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fixed_size(TRACK_WIDTH, TRACK_HEIGHT)
+        .align_items(AlignItems::Center)
+}
+
+fn determinate_fill(value: Signal<f32>, max: f32) -> NodeBuilder {
+    let fill_px = derived_eq(move || {
+        let ratio = (value.get() / max).clamp(0.0, 1.0);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let px = (ratio * TRACK_WIDTH).round() as i16;
+        px
+    });
+
+    container()
+        .layout(LayoutStyle::block().height_px(TRACK_HEIGHT))
+        .class("rounded-md")
+        .style_reactive(move || width_atoms_px(fill_px.get()))
+        .class(FILL)
+}
+
+fn indeterminate_fill(phase: Signal<f32>) -> NodeBuilder {
+    let offset_px = derived_eq(move || {
+        let t = phase.get().clamp(0.0, 1.0);
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let px = (t * TRACK_WIDTH * (1.0 - INDETERMINATE_RATIO)).round() as i16;
+        px
+    });
+
+    let bar_width_px = (TRACK_WIDTH * INDETERMINATE_RATIO).round();
+    container()
+        .layout(
+            LayoutStyle::block()
+                .width_px(bar_width_px)
+                .height_px(TRACK_HEIGHT),
+        )
+        .class("rounded-md")
+        .style_reactive(move || left_margin_atoms_px(offset_px.get()))
+        .class(FILL)
+}
+
+fn width_atoms_px(px: i16) -> &'static [StyleAtom] {
+    cached_atoms(px, || vec![StyleAtom::Width(Dimension::Px(Px(px)))])
+}
+
+fn left_margin_atoms_px(px: i16) -> &'static [StyleAtom] {
+    cached_atoms(px.wrapping_add(i16::MAX / 2), || {
+        vec![StyleAtom::MarginLeft(Px(px))]
+    })
+}
+
+fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [StyleAtom] {
+    static CACHE: OnceLock<Mutex<HashMap<i16, &'static [StyleAtom]>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let Ok(mut map) = cache.lock() else {
+        return Box::leak(build().into_boxed_slice());
+    };
+    if let Some(atoms) = map.get(&key).copied() {
+        return atoms;
+    }
+    let leaked: &'static [StyleAtom] = Box::leak(build().into_boxed_slice());
+    map.insert(key, leaked);
+    leaked
+}

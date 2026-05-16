@@ -6,7 +6,7 @@
 use std::error::Error;
 use std::rc::Rc;
 
-use sigil_core::prelude::*;
+use sigil_kernel::prelude::*;
 use sigil_layout::TextEngineMeasure;
 use sigil_layout::prelude::*;
 use sigil_text::{ParleyTextEngine, TextConfig};

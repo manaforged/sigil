@@ -1,0 +1,346 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use sigil_kernel::NodeBuilder;
+use sigil_reactive::{Signal, signal};
+
+use super::super::shared::disabled_now;
+use super::super::text_edit::TextEdit;
+use super::builder::{Clipboard, TextChange};
+
+pub(super) struct NoopClipboard;
+
+impl Clipboard for NoopClipboard {
+    fn set(&self, _text: &str) {}
+    fn get(&self) -> Option<String> {
+        None
+    }
+}
+
+/// Approximate visible characters that fit in the inner content area.
+///
+/// Inner width is 156 px (178 px container minus 2×12 px padding). At an
+/// assumed average advance of 8 px per ASCII character this gives ~19 chars.
+/// The constant is a conservative approximation — only used for scroll math.
+pub(super) const VISIBLE_CHAR_APPROX: usize = 19;
+
+#[derive(Clone)]
+pub(super) struct TextFieldRuntime {
+    pub(super) value: Signal<String>,
+    pub(super) disabled: Option<Signal<bool>>,
+    pub(super) edit: Rc<RefCell<TextEdit>>,
+    pub(super) on_change: TextChange,
+    pub(super) on_submit: TextChange,
+    pub(super) clipboard: Rc<dyn Clipboard>,
+    pub(super) caret_visible: Signal<bool>,
+    pub(super) scroll_offset: Signal<usize>,
+}
+
+impl TextFieldRuntime {
+    pub(super) fn new(
+        value: Signal<String>,
+        disabled: Option<Signal<bool>>,
+        on_change: TextChange,
+        on_submit: TextChange,
+        clipboard: Rc<dyn Clipboard>,
+    ) -> Self {
+        Self {
+            value,
+            disabled,
+            edit: Rc::new(RefCell::new(TextEdit::new(value.peek()))),
+            on_change,
+            on_submit,
+            clipboard,
+            caret_visible: signal(true),
+            scroll_offset: signal(0_usize),
+        }
+    }
+
+    pub(super) fn disabled(&self) -> bool {
+        disabled_now(self.disabled)
+    }
+}
+
+pub(super) fn noop_text_change() -> TextChange {
+    Rc::new(|_| {})
+}
+
+pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
+    let node = edit_keys(node, runtime.clone());
+    let node = shift_keys(node, runtime.clone());
+    let node = clipboard_keys(node, runtime.clone());
+    history_keys(node, runtime)
+}
+
+fn edit_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
+    let any_key = runtime.clone();
+    let backspace = runtime.clone();
+    let delete = runtime.clone();
+    let left = runtime.clone();
+    let right = runtime.clone();
+    let home = runtime.clone();
+    let end = runtime.clone();
+    let submit = runtime;
+    node.on_key_any(move |event| insert_text(event, &any_key))
+        .on_key(Key::Backspace, move |event| {
+            edit_value(event, &backspace, TextEdit::backspace);
+        })
+        .on_key(Key::Delete, move |event| {
+            edit_value(event, &delete, TextEdit::delete_forward);
+        })
+        .on_key(Key::ArrowLeft, move |event| {
+            move_caret(event, &left, TextEdit::move_left);
+        })
+        .on_key(Key::ArrowRight, move |event| {
+            move_caret(event, &right, TextEdit::move_right);
+        })
+        .on_key(Key::Home, move |event| {
+            move_caret(event, &home, TextEdit::move_home);
+        })
+        .on_key(Key::End, move |event| {
+            move_caret(event, &end, TextEdit::move_end);
+        })
+        .on_key(Key::Enter, move |event| submit_text(event, &submit))
+}
+
+fn shift_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
+    let shift_left = runtime.clone();
+    let shift_right = runtime.clone();
+    let shift_home = runtime.clone();
+    let shift_end = runtime;
+    node.on_key(
+        Shortcut::new(Key::ArrowLeft, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_left, TextEdit::shift_left);
+        },
+    )
+    .on_key(
+        Shortcut::new(Key::ArrowRight, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_right, TextEdit::shift_right);
+        },
+    )
+    .on_key(
+        Shortcut::new(Key::Home, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_home, TextEdit::shift_home);
+        },
+    )
+    .on_key(
+        Shortcut::new(Key::End, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_end, TextEdit::shift_end);
+        },
+    )
+}
+
+fn clipboard_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
+    let copy = runtime.clone();
+    let cut = runtime.clone();
+    let paste = runtime.clone();
+    let select_all = runtime;
+    node.on_key(Shortcut::ctrl(LogicalKey::character("c")), move |event| {
+        clipboard_copy(event, &copy);
+    })
+    .on_key(Shortcut::ctrl(LogicalKey::character("x")), move |event| {
+        clipboard_cut(event, &cut);
+    })
+    .on_key(Shortcut::ctrl(LogicalKey::character("v")), move |event| {
+        clipboard_paste(event, &paste);
+    })
+    .on_key(Shortcut::ctrl(LogicalKey::character("a")), move |event| {
+        select_all_text(event, &select_all);
+    })
+}
+
+fn history_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
+    let redo_rt = runtime.clone();
+    let undo_rt = runtime;
+    node.on_key(
+        Shortcut::new(
+            LogicalKey::character("z"),
+            ModifiersState::CONTROL | ModifiersState::SHIFT,
+        ),
+        move |event| {
+            history_redo(event, &redo_rt);
+        },
+    )
+    .on_key(Shortcut::ctrl(LogicalKey::character("z")), move |event| {
+        history_undo(event, &undo_rt);
+    })
+}
+
+fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    if runtime.disabled() {
+        event.stop_propagation();
+        return;
+    }
+    if event.modifiers.contains(ModifiersState::CONTROL)
+        || event.modifiers.contains(ModifiersState::META)
+    {
+        return;
+    }
+    let Some(text) = event
+        .text
+        .as_deref()
+        .filter(|text| is_single_line_scalar(text))
+    else {
+        return;
+    };
+    let mut edit = runtime.edit.borrow_mut();
+    edit.insert_str(text);
+    write_value(runtime.value, edit.as_str());
+    (runtime.on_change)(edit.as_str());
+    update_scroll(&edit, runtime.scroll_offset);
+    runtime.caret_visible.set(true);
+    event.stop_propagation();
+}
+
+fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnce(&mut TextEdit)) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let mut state = runtime.edit.borrow_mut();
+    let before = (state.len(), state.is_empty());
+    edit(&mut state);
+    if (state.len(), state.is_empty()) != before {
+        write_value(runtime.value, state.as_str());
+        (runtime.on_change)(state.as_str());
+    }
+    update_scroll(&state, runtime.scroll_offset);
+    runtime.caret_visible.set(true);
+}
+
+fn move_caret(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnce(&mut TextEdit)) {
+    event.stop_propagation();
+    if !runtime.disabled() {
+        let mut state = runtime.edit.borrow_mut();
+        edit(&mut state);
+        debug_assert!(state.caret() <= state.len());
+        update_scroll(&state, runtime.scroll_offset);
+        runtime.caret_visible.set(true);
+    }
+}
+
+fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let state = runtime.edit.borrow();
+    if let Some(text) = state.selected_text() {
+        runtime.clipboard.set(text);
+    }
+}
+
+fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let selected = runtime.edit.borrow().selected_text().map(ToOwned::to_owned);
+    if let Some(text) = selected {
+        runtime.clipboard.set(&text);
+        let mut state = runtime.edit.borrow_mut();
+        state.backspace();
+        write_value(runtime.value, state.as_str());
+        (runtime.on_change)(state.as_str());
+        update_scroll(&state, runtime.scroll_offset);
+        runtime.caret_visible.set(true);
+    }
+}
+
+fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let Some(text) = runtime.clipboard.get() else {
+        return;
+    };
+    let mut state = runtime.edit.borrow_mut();
+    for ch in text.chars().filter(|c| *c != '\n' && *c != '\r') {
+        let buf = {
+            let mut b = [0u8; 4];
+            let s = ch.encode_utf8(&mut b);
+            s.to_owned()
+        };
+        state.insert_str(&buf);
+    }
+    write_value(runtime.value, state.as_str());
+    (runtime.on_change)(state.as_str());
+    update_scroll(&state, runtime.scroll_offset);
+    runtime.caret_visible.set(true);
+}
+
+fn select_all_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if !runtime.disabled() {
+        runtime.edit.borrow_mut().select_all();
+        runtime.caret_visible.set(true);
+    }
+}
+
+fn history_undo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let mut state = runtime.edit.borrow_mut();
+    if state.undo() {
+        write_value(runtime.value, state.as_str());
+        (runtime.on_change)(state.as_str());
+        update_scroll(&state, runtime.scroll_offset);
+        runtime.caret_visible.set(true);
+    }
+}
+
+fn history_redo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let mut state = runtime.edit.borrow_mut();
+    if state.redo() {
+        write_value(runtime.value, state.as_str());
+        (runtime.on_change)(state.as_str());
+        update_scroll(&state, runtime.scroll_offset);
+        runtime.caret_visible.set(true);
+    }
+}
+
+fn submit_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
+    event.stop_propagation();
+    if runtime.disabled() {
+        return;
+    }
+    let value = runtime.value.peek();
+    (runtime.on_submit)(value.as_str());
+}
+
+pub(super) fn write_value(value: Signal<String>, next: &str) {
+    value.update(|current| {
+        current.clear();
+        current.push_str(next);
+    });
+}
+
+pub(super) fn update_scroll(edit: &TextEdit, scroll_offset: Signal<usize>) {
+    let caret = edit.caret();
+    let current = scroll_offset.peek();
+    if caret < current {
+        scroll_offset.set(caret);
+    } else if caret > current + VISIBLE_CHAR_APPROX {
+        scroll_offset.set(caret.saturating_sub(VISIBLE_CHAR_APPROX));
+    }
+}
+
+pub(super) fn is_single_line_scalar(text: &str) -> bool {
+    let mut chars = text.chars();
+    let Some(ch) = chars.next() else {
+        return false;
+    };
+    chars.next().is_none() && ch != '\n' && ch != '\r'
+}

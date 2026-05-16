@@ -99,7 +99,7 @@ Parley layout (L3)
 `sigil-renderer` is the only crate that imports `skrifa` and `wgpu`. The swap
 from any future alternative (e.g., a re-evaluation of Vello once it gains a
 glyph cache) is contained entirely within `sigil-renderer`. All upstream
-crates (`sigil-text`, `sigil-hal`, `sigil-core`) are unaffected.
+crates (`sigil-text`, `sigil-hal`, `sigil-kernel`) are unaffected.
 
 ## Consequences
 

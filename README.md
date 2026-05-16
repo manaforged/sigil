@@ -34,9 +34,9 @@ crates/
                      never on upstream crates directly. Scale and
                      logical-size primitives live here.
   sigil-reactive/       Main-thread signal/effect owner tree.
-  sigil-core/           Stable node identity, arena storage, Component,
+  sigil-kernel/           Stable node identity, arena storage, Component,
                      Semantics, typed extensions, and builders.
-  sigil-layout/         Taffy-backed layout adapter. Mirrors sigil-core
+  sigil-layout/         Taffy-backed layout adapter. Mirrors sigil-kernel
                      subtrees, computes layout, and attaches results.
   sigil-events/         Input routing, z-order hit-testing, focus
                      traversal, pointer capture, and handler builders.
@@ -60,10 +60,10 @@ examples/
   hello-rect/        Window proof app: opens a window, clears the
                      surface to a colour, toggles through three
                      colours on a timer, and exits cleanly.
-  hello-tree/        Headless proof app: builds a `sigil-core` node tree
+  hello-tree/        Headless proof app: builds a `sigil-kernel` node tree
                      and prints its shape.
   hello-layout/      Headless proof app: computes rectangles for a
-                     `sigil-core` tree and prints them.
+                     `sigil-kernel` tree and prints them.
   hello-events/      Window proof app using `sigil::launch`: click
                      toggles the surface tint, Tab cycles focus, Esc
                      quits. 34 lines of user code.
@@ -88,7 +88,7 @@ cargo run -p hello-tree
 cargo run -p hello-layout
 cargo run -p hello-events
 cargo run -p hello-style
-cargo bench -p sigil-core
+cargo bench -p sigil-kernel
 cargo bench -p sigil-layout
 cargo bench -p sigil-events
 cargo bench -p sigil-style

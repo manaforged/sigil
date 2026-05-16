@@ -70,7 +70,7 @@ Phase 14 (text-in-scene + IME).
 ### Text (explicitly deferred)
 
 `render_scene` does **not** paint text. The Slug pipeline
-(`crates/sigil-renderer/src/slug/`) remains callable via `render_frame`
+(`crates/sigil/renderer/src/slug/`) remains callable via `render_frame`
 for consumers that need text today. Wiring text into `render_scene` is
 Phase 14 and blocks on the scene command-buffer rework (DR-020, post-
 Spike 3).
@@ -144,10 +144,10 @@ half-baked text path today would be thrown away in a month.
 ## References
 
 - [`docs/plans/phase-08a-ergonomics-pass.md`](../plans/phase-08a-ergonomics-pass.md)
-- [`crates/sigil-renderer/src/renderer.rs`](../../crates/sigil-renderer/src/renderer.rs)
-- [`crates/sigil-renderer/src/scene_paint.rs`](../../crates/sigil-renderer/src/scene_paint.rs)
-- [`crates/sigil-renderer/src/device_state.rs`](../../crates/sigil-renderer/src/device_state.rs)
-- [`crates/sigil-renderer/src/scene.rs`](../../crates/sigil-renderer/src/scene.rs)
+- [`crates/sigil/renderer/src/renderer.rs`](../../crates/sigil/renderer/src/renderer.rs)
+- [`crates/sigil/renderer/src/scene_paint.rs`](../../crates/sigil/renderer/src/scene_paint.rs)
+- [`crates/sigil/renderer/src/device_state.rs`](../../crates/sigil/renderer/src/device_state.rs)
+- [`crates/sigil/renderer/src/scene.rs`](../../crates/sigil/renderer/src/scene.rs)
 
 ## Kill Criteria
 

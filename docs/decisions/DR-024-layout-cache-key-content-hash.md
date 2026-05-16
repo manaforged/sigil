@@ -38,7 +38,7 @@ pub(crate) struct LayoutCacheKey {
 - `TextContent` — string bytes for `Static`, `signal.peek()` bytes for `Reactive`.
 - Layout-affecting `StyleAtom` variants from each node's `StyleBinding` (padding/margin/gap, width/height/min/max, display, flex, font-size/weight/line-height). Non-layout atoms (background, color, border) are intentionally excluded so paint-only reactive changes don't force recompute.
 
-Lives in `crates/sigil-layout/src/cache_key.rs`.
+Lives in `crates/sigil/layout/src/cache_key.rs`.
 
 ### Fast-path ordering
 
@@ -77,7 +77,7 @@ This means the DR-023 7 ns S1 path becomes "O(n) walk producing the same hash" o
 
 ### Test surface
 
-`crates/sigil-layout/tests/incremental.rs` grows with four new tests exercising the new invalidation channels:
+`crates/sigil/layout/tests/incremental.rs` grows with four new tests exercising the new invalidation channels:
 
 - `available_size_change_invalidates_cache`
 - `computing_different_root_in_same_cx_invalidates_cache`
@@ -91,7 +91,7 @@ The six tests DR-023 mandated still pass unchanged.
 
 | Alternative | Reason |
 |---|---|
-| Route `Signal::set` through `Cx::mark_mutated` | Couples `sigil-reactive` to `sigil-core`; bumps generation for paint-only signals; requires back-references DR-005 explicitly avoids. |
+| Route `Signal::set` through `Cx::mark_mutated` | Couples `sigil-reactive` to `sigil-kernel`; bumps generation for paint-only signals; requires back-references DR-005 explicitly avoids. |
 | Hash every `StyleAtom` variant | Hover/press color changes would invalidate layout. |
 | Persist the paragraph layout across frames keyed on signal value | Doesn't solve the problem — Taffy owns measurement caches, not text shaping. |
 | Introduce a layout-specific dirty bit on reactive signals | Cross-crate coupling with Phase 09 reactive recomposition not yet landed. |
@@ -108,6 +108,6 @@ Revisit if:
 
 - DR-023 — generation-gated compute (superseded in part by this DR).
 - DR-015 — `Cx::mark_mutated` semantics that this DR preserves.
-- `crates/sigil-layout/src/cache_key.rs` — the shipped implementation.
-- `crates/sigil-layout/tests/incremental.rs` — test coverage.
+- `crates/sigil/layout/src/cache_key.rs` — the shipped implementation.
+- `crates/sigil/layout/tests/incremental.rs` — test coverage.
 - Commit `9436dfa` — "feat(vertical-slice): interactive dashboard proof + text-in-scene wiring".

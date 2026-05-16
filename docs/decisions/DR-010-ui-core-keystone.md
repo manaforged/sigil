@@ -1,4 +1,4 @@
-# DR-010 - sigil-core keystone crate
+# DR-010 - sigil-kernel keystone crate
 
 **Status:** Accepted
 **Date:** 2026-04-15
@@ -12,7 +12,7 @@ identity, accessibility semantics, composition, reactive ownership, and
 extension points from the first usable tree.
 
 The repo-local Phase 3 plan at
-[`docs/plans/phase-03-sigil-core-keystone.md`](../plans/phase-03-sigil-core-keystone.md)
+[`docs/plans/phase-03-sigil-kernel-keystone.md`](../plans/phase-03-sigil-kernel-keystone.md)
 reconciles the original kernel-slice plan with what has shipped. It
 also locks the two standards for this phase: bulletproof internals and
 ergonomic call sites. Shipping an internal-only arena without pleasant
@@ -22,7 +22,7 @@ and a11y fragile.
 
 ## Decision
 
-Add `sigil-core` as the keystone crate.
+Add `sigil-kernel` as the keystone crate.
 
 - **Identity:** `NodeId` is a newtype over `slotmap::DefaultKey`.
   `NodeId::to_accesskit()` converts through `KeyData::as_ffi()` into
@@ -41,14 +41,14 @@ Add `sigil-core` as the keystone crate.
 - **Element model:** `NodeKind` is a closed enum for hot-path core
   variants (`Container`, `Text`, `Fragment`). `NodeExtensions` is a
   typed bag for downstream crates to attach layout, style, event, text,
-  or a11y-specific state without forcing a `sigil-core` release.
+  or a11y-specific state without forcing a `sigil-kernel` release.
 - **Accessibility:** every `Node` carries `Semantics`, never
   `Option<Semantics>`. Defaults use `Role::GenericContainer`, while
   built-in text defaults to `Role::Label`.
 - **Builders:** hand-written builders and free functions ship now:
   `container()`, `fragment()`, and `text(...)`. No proc macros are part
   of this phase.
-- **Public surface:** `sigil_core::prelude::*` exposes the application
+- **Public surface:** `sigil_kernel::prelude::*` exposes the application
   surface; slotmap keys and raw storage stay behind `NodeId` and `Cx`.
 
 ## Consequences
@@ -63,14 +63,14 @@ cold-path flexibility cost paid only by nodes with attached downstream
 state. The core hot-path kind remains an enum so tree walks can match
 exhaustively without dynamic downcasts.
 
-`sigil-core` does not own layout, events, focus, styling, text shaping, or
+`sigil-kernel` does not own layout, events, focus, styling, text shaping, or
 platform a11y adapter wiring. Those crates attach their phase-specific
 state through extensions and derive their own runtime structures from
 the stable node tree.
 
 ## Initial Bench Measurements
 
-First local smoke run, measured with `cargo bench -p sigil-core` on the
+First local smoke run, measured with `cargo bench -p sigil-kernel` on the
 Windows development machine:
 
 | Operation | Measurement | Phase 3 budget |
@@ -81,7 +81,7 @@ Windows development machine:
 
 These are criterion smoke numbers, not a cross-machine baseline. The
 budget is the defended floor for Phase 3 until the CI baseline machinery
-from DR-009 is wired for `sigil-core`.
+from DR-009 is wired for `sigil-kernel`.
 
 ## Kill Criteria
 

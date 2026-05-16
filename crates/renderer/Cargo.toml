@@ -1,0 +1,57 @@
+[package]
+name = "sigil-renderer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "wgpu-backed Renderer adapter for Sigil."
+
+[lib]
+# Rust 1.94 merged-doctests + Windows-msvc target misdetection
+# workaround. No runnable doctests are shipped — the lib.rs example
+# is a `text` block specifically to avoid this path.
+doctest = false
+
+[features]
+# Enables direct access to pipeline internals for criterion benches.
+# Not a default feature; activated by bench targets via `cargo bench`.
+bench = []
+
+[dependencies]
+ahash = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-icons = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-style = { workspace = true }
+sigil-text = { workspace = true }
+tracing = { workspace = true }
+wgpu = { workspace = true }
+pollster = { workspace = true }
+raw-window-handle = { workspace = true }
+bytemuck = { workspace = true }
+skrifa = { workspace = true }
+smallvec = { workspace = true }
+half = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+# wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
+# to provide `impl std::error::Error for windows_core::Error`. See
+# examples/hello-rect/Cargo.toml for the full rationale.
+windows-core = { version = "0.62", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+image = { workspace = true }
+taffy = { workspace = true }
+sigil-shell = { workspace = true }
+proptest = { workspace = true }
+
+[[bench]]
+name = "text_paint_cost"
+harness = false
+
+[lints]
+workspace = true

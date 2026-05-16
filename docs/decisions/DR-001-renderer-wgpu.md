@@ -37,7 +37,7 @@ consumer code.
 ## Consequences
 
 - Every `wgpu`-typed value lives behind `Renderer` trait methods. No
-  `wgpu::Surface` in `sigil-core` or higher.
+  `wgpu::Surface` in `sigil-kernel` or higher.
 - We pay a small abstraction cost (trait indirection, type erasure where
   needed). The HAL target is ~2k LoC across all six traits, so the cost
   is bounded.

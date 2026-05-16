@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use sigil_core::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
 use sigil_style::{
@@ -162,7 +162,7 @@ impl ToggleBuilder {
 }
 
 impl IntoNode for ToggleBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_core::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

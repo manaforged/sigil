@@ -1,0 +1,358 @@
+#![allow(clippy::cast_precision_loss, clippy::redundant_pub_crate)]
+//! Texture compositing pipeline for offscreen layers.
+
+use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt as _;
+
+use crate::scene_paint::PaintCtx;
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct LayerUniforms {
+    viewport: [f32; 2],
+    _pad: [f32; 2],
+}
+
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+struct LayerInstance {
+    dest: [f32; 4],
+    uv_max: [f32; 2],
+    opacity: f32,
+    _pad: f32,
+}
+
+pub(crate) struct LayerCompositePipeline {
+    format: wgpu::TextureFormat,
+    pipeline: wgpu::RenderPipeline,
+    uniform_buffer: wgpu::Buffer,
+    uniform_bind_group: wgpu::BindGroup,
+    texture_layout: wgpu::BindGroupLayout,
+    sampler: wgpu::Sampler,
+    unit_quad: wgpu::Buffer,
+    instance_buffer: wgpu::Buffer,
+}
+
+impl LayerCompositePipeline {
+    pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("sigil-renderer layer composite shader"),
+            source: wgpu::ShaderSource::Wgsl(LAYER_SHADER.into()),
+        });
+        let uniform_layout = uniform_layout(device);
+        let texture_layout = texture_layout(device);
+        let uniform_buffer = uniform_buffer(device);
+        let uniform_bind_group = uniform_bind_group(device, &uniform_layout, &uniform_buffer);
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("sigil-renderer layer composite sampler"),
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        Self {
+            format,
+            pipeline: pipeline(device, format, &shader, &uniform_layout, &texture_layout),
+            uniform_buffer,
+            uniform_bind_group,
+            texture_layout,
+            sampler,
+            unit_quad: unit_quad(device),
+            instance_buffer: instance_buffer(device),
+        }
+    }
+
+    pub(crate) const fn format(&self) -> wgpu::TextureFormat {
+        self.format
+    }
+
+    pub(crate) fn composite(&self, mut ctx: PaintCtx<'_>, request: CompositeRequest<'_>) {
+        let instance = LayerInstance {
+            dest: [
+                request.dest.origin.x,
+                request.dest.origin.y,
+                request.dest.width,
+                request.dest.height,
+            ],
+            uv_max: [
+                request.dest.width / request.texture_size.0.max(1) as f32,
+                request.dest.height / request.texture_size.1.max(1) as f32,
+            ],
+            opacity: request.opacity.clamp(0.0, 1.0),
+            _pad: 0.0,
+        };
+        ctx.queue.write_buffer(
+            &self.uniform_buffer,
+            0,
+            bytemuck::bytes_of(&LayerUniforms {
+                viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
+                _pad: [0.0, 0.0],
+            }),
+        );
+        ctx.queue
+            .write_buffer(&self.instance_buffer, 0, bytemuck::bytes_of(&instance));
+        let texture_bind_group = texture_bind_group(
+            ctx.device,
+            &self.texture_layout,
+            request.layer_view,
+            &self.sampler,
+        );
+        draw(self, &mut ctx, &texture_bind_group);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct CompositeRequest<'a> {
+    pub(crate) layer_view: &'a wgpu::TextureView,
+    pub(crate) dest: sigil_hal::Rect,
+    pub(crate) texture_size: (u32, u32),
+    pub(crate) opacity: f32,
+}
+
+fn draw(
+    pipeline: &LayerCompositePipeline,
+    ctx: &mut PaintCtx<'_>,
+    texture_bind_group: &wgpu::BindGroup,
+) {
+    let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("sigil-renderer layer composite pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view: ctx.view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+    pass.set_pipeline(&pipeline.pipeline);
+    pass.set_bind_group(0, &pipeline.uniform_bind_group, &[]);
+    pass.set_bind_group(1, texture_bind_group, &[]);
+    pass.set_vertex_buffer(0, pipeline.unit_quad.slice(..));
+    pass.set_vertex_buffer(1, pipeline.instance_buffer.slice(..));
+    pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
+}
+
+fn pipeline(
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+    shader: &wgpu::ShaderModule,
+    uniform_layout: &wgpu::BindGroupLayout,
+    texture_layout: &wgpu::BindGroupLayout,
+) -> wgpu::RenderPipeline {
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("sigil-renderer layer composite pipeline layout"),
+        bind_group_layouts: &[Some(uniform_layout), Some(texture_layout)],
+        immediate_size: 0,
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("sigil-renderer layer composite pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("vs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[UNIT_QUAD_LAYOUT, INSTANCE_LAYOUT],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("fs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
+fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("sigil-renderer layer uniforms layout"),
+        entries: &[wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::VERTEX,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    })
+}
+
+fn texture_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        label: Some("sigil-renderer layer texture layout"),
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            },
+        ],
+    })
+}
+
+fn uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("sigil-renderer layer uniforms"),
+        size: core::mem::size_of::<LayerUniforms>() as u64,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+fn uniform_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    buffer: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("sigil-renderer layer uniforms bind group"),
+        layout,
+        entries: &[wgpu::BindGroupEntry {
+            binding: 0,
+            resource: buffer.as_entire_binding(),
+        }],
+    })
+}
+
+fn texture_bind_group(
+    device: &wgpu::Device,
+    layout: &wgpu::BindGroupLayout,
+    view: &wgpu::TextureView,
+    sampler: &wgpu::Sampler,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("sigil-renderer layer texture bind group"),
+        layout,
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(view),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            },
+        ],
+    })
+}
+
+fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("sigil-renderer layer unit quad"),
+        contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
+        usage: wgpu::BufferUsages::VERTEX,
+    })
+}
+
+fn instance_buffer(device: &wgpu::Device) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("sigil-renderer layer instance buffer"),
+        size: core::mem::size_of::<LayerInstance>() as u64,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
+}
+
+const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
+const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.0, 0.0],
+    [1.0, 1.0],
+    [0.0, 1.0],
+];
+
+const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
+    array_stride: (core::mem::size_of::<f32>() as u64) * 2,
+    step_mode: wgpu::VertexStepMode::Vertex,
+    attributes: &wgpu::vertex_attr_array![0 => Float32x2],
+};
+
+const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
+    array_stride: core::mem::size_of::<LayerInstance>() as u64,
+    step_mode: wgpu::VertexStepMode::Instance,
+    attributes: &wgpu::vertex_attr_array![
+        1 => Float32x4,
+        2 => Float32x2,
+        3 => Float32,
+    ],
+};
+
+const LAYER_SHADER: &str = r"
+struct Uniforms {
+    viewport: vec2<f32>,
+    _pad: vec2<f32>,
+};
+
+@group(0) @binding(0) var<uniform> u: Uniforms;
+@group(1) @binding(0) var layer_tex: texture_2d<f32>;
+@group(1) @binding(1) var layer_sampler: sampler;
+
+struct VertexIn {
+    @location(0) unit: vec2<f32>,
+};
+
+struct InstanceIn {
+    @location(1) dest: vec4<f32>,
+    @location(2) uv_max: vec2<f32>,
+    @location(3) opacity: f32,
+};
+
+struct VertexOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) uv: vec2<f32>,
+    @location(1) opacity: f32,
+};
+
+@vertex
+fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
+    var out: VertexOut;
+    let pos_px = inst.dest.xy + v.unit * inst.dest.zw;
+    let ndc = vec2<f32>(
+        (pos_px.x / u.viewport.x) * 2.0 - 1.0,
+        1.0 - (pos_px.y / u.viewport.y) * 2.0,
+    );
+    out.clip = vec4<f32>(ndc, 0.0, 1.0);
+    out.uv = v.unit * inst.uv_max;
+    out.opacity = inst.opacity;
+    return out;
+}
+
+@fragment
+fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
+    // The offscreen layer texture is already premultiplied (output of prior
+    // ALPHA_BLENDING passes), so texel.rgb is already original_rgb * texel.a.
+    // We only attenuate by the caller-supplied opacity — no second premult.
+    let texel = textureSample(layer_tex, layer_sampler, in.uv);
+    return vec4<f32>(texel.rgb * in.opacity, texel.a * in.opacity);
+}
+";

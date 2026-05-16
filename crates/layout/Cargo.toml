@@ -1,0 +1,36 @@
+[package]
+name = "sigil-layout"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Taffy-backed layout adapter for Sigil."
+
+[lib]
+doctest = false
+
+[dependencies]
+ahash = { workspace = true }
+smallvec = { workspace = true }
+taffy = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-style = { workspace = true }
+
+[dev-dependencies]
+allocation-counter = "0.8.1"
+criterion = { version = "0.5", features = ["html_reports"] }
+sigil-reactive = { workspace = true }
+
+[[bench]]
+name = "layout_ops"
+harness = false
+
+[[bench]]
+name = "invalidation_rig"
+harness = false
+
+[lints]
+workspace = true

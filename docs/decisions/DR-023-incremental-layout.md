@@ -7,7 +7,7 @@
 
 ## Context
 
-Before this DR, `LayoutEngine::compute` re-synced the entire `sigil-core` tree to Taffy and re-computed layout on every call, regardless of whether anything changed. Spike 1 measured this on a 10 101-node tree against three variants:
+Before this DR, `LayoutEngine::compute` re-synced the entire `sigil-kernel` tree to Taffy and re-computed layout on every call, regardless of whether anything changed. Spike 1 measured this on a 10 101-node tree against three variants:
 
 | Scenario | Variant A (current) | **Variant B (this DR)** | Variant C (parked) | Tier 3 budget |
 |---|---:|---:|---:|---:|
@@ -23,7 +23,7 @@ Adopt **Variant B — generation gating**.
 
 `LayoutEngine` caches the `Cx::mutation_generation()` value from its last successful `compute()`. Subsequent `compute()` calls with an unchanged generation short-circuit immediately, doing zero work: no Taffy sync, no Taffy layout, no `LayoutResult` refresh, and no `LayoutEngine::generation()` bump.
 
-Production code change is ~7 lines in `crates/sigil-layout/src/engine.rs`. No `Cx` modifications. No `LayoutEngine` API changes — same `compute()` signature, same external contract.
+Production code change is ~7 lines in `crates/sigil/layout/src/engine.rs`. No `Cx` modifications. No `LayoutEngine` API changes — same `compute()` signature, same external contract.
 
 ## Rationale
 
@@ -55,7 +55,7 @@ Variant C (Taffy-dirty propagation + `Cx::mutation_log`) is **explicitly parked*
 
 - A real app demonstrates >60 fps mutation rate with measurable jank attributable to layout.
 - The S3 regression in C's spike implementation can be eliminated (Spike 1's C had a structural-change fall-back that paid full sync; a cleaner implementation could tag structural mutations differently).
-- A `Cx::mutation_log` API can be designed without leaking layout-implementation concerns into `sigil-core`.
+- A `Cx::mutation_log` API can be designed without leaking layout-implementation concerns into `sigil-kernel`.
 
 Until those conditions hold, ship B and don't touch C.
 

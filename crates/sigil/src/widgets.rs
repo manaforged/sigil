@@ -6,6 +6,10 @@
 
 mod button;
 mod checkbox;
+mod dropdown;
+mod panel;
+mod progress;
+mod scroll;
 mod shared;
 mod slider;
 mod text_edit;
@@ -14,7 +18,11 @@ mod toggle;
 
 pub use button::{ButtonBuilder, ButtonTone, button};
 pub use checkbox::{CheckboxBuilder, CheckboxTone, checkbox};
+pub use dropdown::{DropdownBuilder, dropdown};
+pub use panel::{PanelBuilder, panel};
+pub use progress::{ProgressBuilder, progress};
+pub use scroll::{ScrollBuilder, scroll};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
-pub use text_field::{TextFieldBuilder, text_field};
+pub use text_field::{Clipboard, TextFieldBuilder, text_field};
 pub use toggle::{ToggleBuilder, toggle};

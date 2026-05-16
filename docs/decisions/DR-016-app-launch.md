@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-04-16
 **Closes:** F-002 (shell async handle) partially — see Consequences
-**Depends on:** DR-002 (winit shell), DR-005 (reactive owner tree), DR-010 (sigil-core), DR-011 (sigil-layout), DR-015 (fragment semantics)
+**Depends on:** DR-002 (winit shell), DR-005 (reactive owner tree), DR-010 (sigil-kernel), DR-011 (sigil-layout), DR-015 (fragment semantics)
 **Unlocks:** Phase 08 (widgets), Phase 08b (DPI)
 
 ## Context
@@ -84,12 +84,12 @@ the new surface:
 
 ### Crate shape
 
-- `crates/sigil-app` — the orchestrator. Owns `WinitShell`,
+- `crates/sigil/app` — the orchestrator. Owns `WinitShell`,
   `WgpuRenderer`, `Cx`, `LayoutEngine`, `EventRouter`, lazy
   `WgpuSurface`. Exports `launch`, `AppConfig`, `TreeRoot`, `Error`,
   `Result`, `DefaultTextMeasure`, `PanicPolicy`.
 - `crates/sigil` — thin facade. `pub use sigil_app::*` plus a
-  `prelude` module pulling in `sigil_core::prelude::*`,
+  `prelude` module pulling in `sigil_kernel::prelude::*`,
   `sigil_events::prelude::*`, `sigil_layout::prelude::*`, `signal`,
   `effect`, `StyleAtom`, `Theme`, `Style`, `NodeStyleExt`, and the
   launch API. Users write `use sigil::prelude::*;` and get everything
@@ -171,9 +171,9 @@ helpers — never by changing `launch`'s positional args.
 
 - [`docs/plans/phase-08a-ergonomics-pass.md`](../plans/phase-08a-ergonomics-pass.md)
 - [`docs/decisions/DR-013-roadmap-reconciliation.md`](DR-013-roadmap-reconciliation.md) (F-002)
-- [`crates/sigil-app/src/launch.rs`](../../crates/sigil-app/src/launch.rs)
-- [`crates/sigil-app/src/config.rs`](../../crates/sigil-app/src/config.rs)
-- [`crates/sigil-app/src/tree_root.rs`](../../crates/sigil-app/src/tree_root.rs)
+- [`crates/sigil/app/src/launch.rs`](../../crates/sigil/app/src/launch.rs)
+- [`crates/sigil/app/src/config.rs`](../../crates/sigil/app/src/config.rs)
+- [`crates/sigil/app/src/tree_root.rs`](../../crates/sigil/app/src/tree_root.rs)
 - [`crates/sigil/src/lib.rs`](../../crates/sigil/src/lib.rs)
 - [`examples/hello-style/src/main.rs`](../../examples/hello-style/src/main.rs)
 - [`examples/hello-events/src/main.rs`](../../examples/hello-events/src/main.rs)

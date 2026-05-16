@@ -48,6 +48,12 @@ allow = [
     "BSD-3-Clause",
     "CC0-1.0",
     "ISC",
+    # MPL-2.0 retained for any fluent-rs or future weak-copyleft deps.
+    # Note: usvg 0.45+ relicensed to Apache-2.0 OR MIT, so current R8 deps
+    # do not exercise this entry. It is kept as an explicit opt-in for
+    # any future MPL-2.0 dep that passes the author legal review (unmodified
+    # library use only; the host engine's proprietary code is not contaminated by
+    # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
     "Unicode-3.0",
     "Unicode-DFS-2016",
@@ -95,6 +101,14 @@ skip = [
     # deps we cannot consolidate without forking.
     { crate = "windows-sys@0.52.0", reason = "winit 0.30 pins this version" },
     { crate = "windows-sys@0.61.2", reason = "criterion 0.5 transitive (is-terminal, walkdir)" },
+
+    # R8 (icon baker): usvg 0.47 requires tiny-skia-path 0.12.0; winit 0.30
+    # pulls sctk-adwaita 0.10.1 which requires tiny-skia 0.11.4 (and thus
+    # tiny-skia-path 0.11.4). Both are deep transitive deps we cannot unify
+    # without forking sctk-adwaita or pinning usvg to an older version.
+    # Re-check when sctk-adwaita is updated to tiny-skia 0.12+.
+    { crate = "tiny-skia-path@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30 (R8 introduced usvg 0.47 which needs 0.12.0)" },
+    { crate = "tiny-skia-path@0.12.0", reason = "usvg 0.47 transitive (R8 icon baker); conflicts with sctk-adwaita's 0.11.4" },
 ]
 skip-tree = []
 

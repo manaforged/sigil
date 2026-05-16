@@ -1,7 +1,7 @@
 //! Reusable widget interaction contract.
 
-use sigil_core::NodeBuilder;
 use sigil_events::prelude::{KeyEvent, NodeEventsExt, PointerEvent};
+use sigil_kernel::NodeBuilder;
 use sigil_reactive::{Signal, signal};
 use sigil_style::{FocusRing, NodeStyleExt, StyleState};
 

@@ -28,7 +28,7 @@ new DR that references the old one, not editing the old one.
 | 007 | Async - one Tokio runtime per app | Accepted |
 | 008 | Accessibility - AccessKit TreeUpdate from Phase 1 | Accepted |
 | 009 | Performance discipline - bench tiers, budgets, CI regression gate | Accepted |
-| 010 | sigil-core - keystone crate | Accepted |
+| 010 | sigil-kernel - keystone crate | Accepted |
 | 011 | sigil-layout - Taffy-backed adapter | Accepted |
 | 012 | Project name: Sigil | Accepted |
 | 013 | Roadmap reconciliation and plan traceability | Accepted |

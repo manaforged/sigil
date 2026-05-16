@@ -16,7 +16,7 @@ distribution without sounding like an ecosystem category.
 Name the library **Sigil**.
 
 Workspace crates are named `sigil-*` (`sigil-hal`, `sigil-reactive`,
-`sigil-core`, `sigil-layout`, `sigil-async`, `sigil-renderer`,
+`sigil-kernel`, `sigil-layout`, `sigil-async`, `sigil-renderer`,
 `sigil-shell`, and the forthcoming `sigil-text`). The local checkout
 may remain in a `sigil` folder until the repository itself is
 renamed.
@@ -43,7 +43,7 @@ pattern: project-prefix, hyphen at the Cargo-name level, underscore in
 
 ## Consequences
 
-Future docs should say Sigil for the library/project. Use `sigil-core`,
+Future docs should say Sigil for the library/project. Use `sigil-kernel`,
 `sigil-layout`, and the other crate names only when referring to concrete
 workspace crates.
 

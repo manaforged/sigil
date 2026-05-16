@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-04-16
 **Closes:** DR-013 follow-up F-001
-**Depends on:** DR-010 (`sigil-core` keystone), DR-011 (`sigil-layout` adapter)
+**Depends on:** DR-010 (`sigil-kernel` keystone), DR-011 (`sigil-layout` adapter)
 **Unlocks:** Phase 08 (widgets)
 
 ## Context
@@ -23,7 +23,7 @@ Three shapes were considered:
 
 1. **Flatten into parent.** The fragment has no Taffy node; its children
    are spliced in as siblings of the fragment's parent. The fragment
-   node still exists in the `sigil-core` tree — only the layout engine
+   node still exists in the `sigil-kernel` tree — only the layout engine
    is blind to it.
 2. **Transparent adapter-only node.** The fragment gets a zero-sized,
    zero-padded, `display: contents` Taffy node. Layout treats it as a
@@ -44,9 +44,9 @@ that shipped across Phases 04–07.
   for them.
 - `sigil-events`: fragments are transparent to the router. Hit-test never
   lands on a fragment (no geometry), but capture/bubble walks the
-  `sigil-core` tree, so `.on_pointer_down(…)` attached to a fragment
+  `sigil-kernel` tree, so `.on_pointer_down(…)` attached to a fragment
   fires for its subtree as expected.
-- `sigil-core`: the fragment remains a real node with a `NodeId`, an
+- `sigil-kernel`: the fragment remains a real node with a `NodeId`, an
   `Owner`, and an extension bag. Reactivity, component ownership, and
   extension attachment work uniformly across fragments and containers.
 
@@ -125,13 +125,13 @@ outcome is a missing style/focus ring, not a crash.
 
 - [`docs/decisions/DR-013-roadmap-reconciliation.md`](DR-013-roadmap-reconciliation.md)
   — F-001 logged.
-- [`crates/sigil-core/src/node.rs`](../../crates/sigil-core/src/node.rs)
+- [`crates/sigil/kernel/src/node.rs`](../../crates/sigil/kernel/src/node.rs)
   — `NodeType::Fragment` definition + doc comment.
-- [`crates/sigil-layout/src/engine.rs`](../../crates/sigil-layout/src/engine.rs)
+- [`crates/sigil/layout/src/engine.rs`](../../crates/sigil/layout/src/engine.rs)
   — `sync_subtree` flattening.
-- [`crates/sigil-layout/tests/fixture_suite.rs`](../../crates/sigil-layout/tests/fixture_suite.rs)
+- [`crates/sigil/layout/tests/fixture_suite.rs`](../../crates/sigil/layout/tests/fixture_suite.rs)
   — `fragment_children_treated_as_siblings_of_parent` regression test.
-- [`crates/sigil-renderer/src/scene.rs`](../../crates/sigil-renderer/src/scene.rs)
+- [`crates/sigil/renderer/src/scene.rs`](../../crates/sigil/renderer/src/scene.rs)
   — scene emission no-op.
 
 ## Kill Criteria

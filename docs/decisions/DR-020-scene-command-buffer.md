@@ -118,6 +118,6 @@ Revisit this DR if:
 
 - `docs/spikes/03-scene-model.md`
 - `docs/spikes/03-scene-model-brief.md`
-- `crates/sigil-renderer/benches/scene_model_rig.rs`
+- `crates/sigil/renderer/benches/scene_model_rig.rs`
 - `docs/decisions/DR-017-scene-paint.md`
 - `docs/decisions/DR-025-text-in-scene-interim.md`

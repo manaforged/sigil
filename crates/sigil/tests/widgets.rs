@@ -5,8 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil_app as _;
-use sigil_core as _;
 use sigil_events as _;
+use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_style as _;
@@ -208,6 +208,53 @@ fn text_field_enter_fires_on_submit_with_current_value() {
 
         assert_eq!(submitted.borrow().as_str(), "ready");
         assert_eq!(value.get(), "ready");
+    });
+}
+
+#[test]
+fn text_field_shift_arrow_selects_and_cut_clears_value() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-selection", || {
+        let value = signal(String::from("hello"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        // Home → shift+right×5 to select "hello"
+        router.route(&mut cx, &layout, named_key(Key::Home, PhysicalKey::Home));
+        for _ in 0..5 {
+            router.route(
+                &mut cx,
+                &layout,
+                shift_arrow(Key::ArrowRight, PhysicalKey::ArrowRight),
+            );
+        }
+        // Ctrl+X cuts the selection — field should now be empty
+        router.route(&mut cx, &layout, ctrl_key("x", PhysicalKey::KeyX));
+        assert_eq!(value.get(), "");
+    });
+}
+
+#[test]
+fn text_field_ctrl_a_selects_all_and_delete_clears() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-select-all", || {
+        let value = signal(String::from("hello world"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, ctrl_key("a", PhysicalKey::KeyA));
+        router.route(&mut cx, &layout, backspace_down());
+        assert_eq!(value.get(), "");
     });
 }
 
@@ -616,12 +663,155 @@ fn slider_capture_releases_on_pointer_up() {
     });
 }
 
+#[test]
+fn text_field_undo_restores_previous_value() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-undo", || {
+        let value = signal(String::new());
+        let builder = text_field(value);
+        let mut cx = Cx::new_root();
+        let root = cx.add(builder);
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, type_char("a", PhysicalKey::KeyA));
+        router.route(&mut cx, &layout, type_char("b", PhysicalKey::KeyB));
+        assert_eq!(value.get(), "ab");
+
+        router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
+        assert_eq!(value.get(), "a", "undo should restore value before 'b'");
+
+        router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
+        assert_eq!(value.get(), "", "second undo should restore empty");
+    });
+}
+
+#[test]
+fn text_field_redo_reapplies_undone_change() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-redo", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, type_char("x", PhysicalKey::KeyX));
+        assert_eq!(value.get(), "x");
+
+        router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
+        assert_eq!(value.get(), "");
+
+        router.route(&mut cx, &layout, ctrl_shift_key("z", PhysicalKey::KeyZ));
+        assert_eq!(value.get(), "x", "redo should reapply 'x'");
+    });
+}
+
+#[test]
+fn text_field_caret_visible_resets_on_keystroke() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-caret-blink", || {
+        let value = signal(String::new());
+        let builder = text_field(value);
+        let caret_visible = builder.caret_visible();
+        let mut cx = Cx::new_root();
+        let root = cx.add(builder);
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        assert!(caret_visible.get(), "starts visible");
+
+        caret_visible.set(false);
+        assert!(!caret_visible.get());
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, type_char("k", PhysicalKey::KeyK));
+        assert!(
+            caret_visible.get(),
+            "keystroke resets caret_visible to true"
+        );
+    });
+}
+
+#[test]
+fn text_field_scroll_offset_advances_past_visible_window() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-scroll", || {
+        let value = signal(String::new());
+        let builder = text_field(value);
+        let scroll_offset = builder.scroll_offset();
+        let mut cx = Cx::new_root();
+        let root = cx.add(builder);
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+
+        for ch in "abcdefghijklmnopqrstuvwxyz".chars() {
+            let key_str = ch.to_string();
+            router.route(
+                &mut cx,
+                &layout,
+                type_char_owned(key_str, PhysicalKey::KeyA),
+            );
+        }
+        assert!(
+            scroll_offset.get() > 0,
+            "scroll_offset should advance after long input, got {}",
+            scroll_offset.get()
+        );
+    });
+}
+
+fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(ch),
+        physical,
+        modifiers: ModifiersState::CONTROL | ModifiersState::SHIFT,
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(ch),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: Some(ch.to_string().into()),
+    }))
+}
+
+fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(ch.as_str()),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: Some(ch.into()),
+    }))
+}
+
 fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
     emit_scene(cx, root)
-        .commands()
+        .commands
         .iter()
         .filter_map(|command| match command {
-            SceneCommand::DrawRect(rect) => Some(rect.color),
+            SceneCommand::Rect(rect) => Some(rect.color),
             _ => None,
         })
         .collect()
@@ -629,10 +819,10 @@ fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
 
 fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil_style::Rgba8) -> f32 {
     emit_scene(cx, root)
-        .commands()
+        .commands
         .iter()
         .find_map(|command| match command {
-            SceneCommand::DrawRect(rect) if rect.color == color => Some(rect.rect.origin.x),
+            SceneCommand::Rect(rect) if rect.color == color => Some(rect.rect.origin.x),
             _ => None,
         })
         .expect("rect with requested color exists")
@@ -744,4 +934,37 @@ fn assert_approx(actual: f32, expected: f32) {
         (actual - expected).abs() < 0.001,
         "expected {expected}, got {actual}"
     );
+}
+
+fn named_key(key: Key, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: key.into(),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn shift_arrow(key: Key, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: key.into(),
+        physical,
+        modifiers: ModifiersState::SHIFT,
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn ctrl_key(ch: &str, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(ch),
+        physical,
+        modifiers: ModifiersState::CONTROL,
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
 }

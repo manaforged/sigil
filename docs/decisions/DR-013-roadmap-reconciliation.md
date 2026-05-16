@@ -11,7 +11,7 @@ assigned later phase numbers to layout/text/style work. The codebase now
 has a different, more incremental sequence:
 
 - foundation crates and the first runnable proof,
-- `sigil-core` as the shared node model,
+- `sigil-kernel` as the shared node model,
 - `sigil-layout` as the first downstream adapter.
 
 DR-010 and DR-011 accurately describe what shipped, but they previously
@@ -32,8 +32,8 @@ user path for the core argument.
 
 For current shipped work:
 
-- [`phase-03-sigil-core-keystone.md`](../plans/phase-03-sigil-core-keystone.md)
-  is the repo-local `sigil-core` plan.
+- [`phase-03-sigil-kernel-keystone.md`](../plans/phase-03-sigil-kernel-keystone.md)
+  is the repo-local `sigil-kernel` plan.
 - [`phase-04-sigil-layout-adapter.md`](../plans/phase-04-sigil-layout-adapter.md)
   is the repo-local `sigil-layout` plan.
 
@@ -68,5 +68,5 @@ phase numbers to new ones.
 
 ## References
 
-- [DR-010 - sigil-core keystone crate](./DR-010-sigil-core-keystone.md)
+- [DR-010 - sigil-kernel keystone crate](./DR-010-sigil-kernel-keystone.md)
 - [DR-011 - sigil-layout adapter](./DR-011-sigil-layout-adapter.md)

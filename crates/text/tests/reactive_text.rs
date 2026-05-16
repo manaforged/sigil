@@ -1,0 +1,78 @@
+//! Reactive text measurement tests.
+
+#![allow(missing_docs, clippy::unwrap_used)]
+
+use std::rc::Rc;
+
+use ahash as _;
+use criterion as _;
+use parley as _;
+use sigil_hal as _;
+use sigil_style as _;
+
+use sigil_kernel::TextContent;
+use sigil_layout::TextEngineMeasure;
+use sigil_layout::TextMeasure;
+use sigil_reactive::{Runtime, signal};
+use sigil_text::{ParleyTextEngine, TextConfig};
+use taffy::prelude::{AvailableSpace, Size};
+
+fn make_measurer() -> TextEngineMeasure<ParleyTextEngine> {
+    let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
+    TextEngineMeasure::new(engine)
+}
+
+#[test]
+fn reactive_text_measures_current_value() {
+    Runtime::scope("reactive_measure", || {
+        let sig = signal(String::from("Hello"));
+        let source = TextContent::Reactive(sig);
+        let measurer = make_measurer();
+
+        let size = measurer.measure(
+            &source,
+            Size {
+                width: AvailableSpace::MaxContent,
+                height: AvailableSpace::MaxContent,
+            },
+        );
+
+        assert!(size.width > 0.0, "reactive text should have width");
+        assert!(size.height > 0.0, "reactive text should have height");
+    });
+}
+
+#[test]
+fn reactive_text_reflects_signal_update() {
+    Runtime::scope("reactive_update", || {
+        let sig = signal(String::from("Hi"));
+        let source = TextContent::Reactive(sig);
+        let measurer = make_measurer();
+
+        let short = measurer.measure(
+            &source,
+            Size {
+                width: AvailableSpace::MaxContent,
+                height: AvailableSpace::MaxContent,
+            },
+        );
+
+        sig.set(String::from("Hello world this is longer"));
+        measurer.begin_frame();
+
+        let long = measurer.measure(
+            &source,
+            Size {
+                width: AvailableSpace::MaxContent,
+                height: AvailableSpace::MaxContent,
+            },
+        );
+
+        assert!(
+            long.width > short.width,
+            "longer text should be wider: {} vs {}",
+            long.width,
+            short.width
+        );
+    });
+}

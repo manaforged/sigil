@@ -13,16 +13,16 @@ doctest = false
 
 [dependencies]
 sigil-app = { workspace = true }
-sigil-core = { workspace = true }
+sigil-kernel = { workspace = true }
 sigil-events = { workspace = true }
 sigil-layout = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
+taffy = { workspace = true }
 
 [dev-dependencies]
 sigil-hal = { workspace = true }
 sigil-renderer = { workspace = true }
-taffy = { workspace = true }
 
 [lints]
 workspace = true

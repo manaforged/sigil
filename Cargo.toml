@@ -1,19 +1,21 @@
 [workspace]
 resolver = "3"
 members = [
-    "crates/sigil-hal",
-    "crates/sigil-reactive",
-    "crates/sigil-core",
-    "crates/sigil-layout",
-    "crates/sigil-async",
-    "crates/sigil-renderer",
-    "crates/sigil-shell",
-    "crates/sigil-events",
-    "crates/sigil-style",
-    "crates/sigil-style-macros",
-    "crates/sigil-text",
-    "crates/sigil-app",
     "crates/sigil",
+    "crates/animation",
+    "crates/app",
+    "crates/async",
+    "crates/kernel",
+    "crates/events",
+    "crates/hal",
+    "crates/icons",
+    "crates/layout",
+    "crates/reactive",
+    "crates/renderer",
+    "crates/shell",
+    "crates/style",
+    "crates/style-macros",
+    "crates/text",
     "examples/hello-rect",
     "examples/hello-events",
     "examples/hello-style",
@@ -80,6 +82,8 @@ wgpu = "29"
 pollster = "0.4"
 raw-window-handle = "0.6"
 bytemuck = { version = "1", features = ["derive"] }
+half = "2"
+image = { version = "0.25", default-features = false, features = ["png"] }
 skrifa = "0.40"
 smallvec = "1"
 phf = "0.11"
@@ -92,19 +96,30 @@ keyboard-types = { version = "0.8.3", default-features = false }
 smol_str = { version = "0.3.6", default-features = false }
 taffy = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
-sigil-hal = { path = "crates/sigil-hal" }
-sigil-reactive = { path = "crates/sigil-reactive" }
-sigil-core = { path = "crates/sigil-core" }
-sigil-layout = { path = "crates/sigil-layout" }
-sigil-async = { path = "crates/sigil-async" }
-sigil-renderer = { path = "crates/sigil-renderer" }
-sigil-shell = { path = "crates/sigil-shell" }
-sigil-events = { path = "crates/sigil-events" }
-sigil-style = { path = "crates/sigil-style" }
-sigil-style-macros = { path = "crates/sigil-style-macros" }
-sigil-text = { path = "crates/sigil-text" }
-sigil-app = { path = "crates/sigil-app" }
+proptest = { version = "1", default-features = false, features = ["std"] }
+# Workspace crate names keep the `sigil-<leaf>` form because cargo
+# crate names cannot contain `/`. The filesystem layout is nested so
+# the conceptual `sigil/<leaf>` grouping is visible in the tree, and
+# the `sigil-` cargo-name prefix preserves discoverability for any
+# downstream `Cargo.toml` that lists them. Rust imports use the
+# underscored form (`sigil_renderer::…`).
 sigil = { path = "crates/sigil" }
+sigil-animation = { path = "crates/animation" }
+sigil-app = { path = "crates/app" }
+sigil-async = { path = "crates/async" }
+sigil-kernel = { path = "crates/kernel" }
+sigil-events = { path = "crates/events" }
+sigil-hal = { path = "crates/hal" }
+sigil-layout = { path = "crates/layout" }
+sigil-reactive = { path = "crates/reactive" }
+sigil-renderer = { path = "crates/renderer" }
+sigil-shell = { path = "crates/shell" }
+sigil-style = { path = "crates/style" }
+sigil-style-macros = { path = "crates/style-macros" }
+sigil-icons = { path = "crates/icons" }
+sigil-text = { path = "crates/text" }
+usvg = { version = "0.47", default-features = false }
+lyon_geom = { version = "1.0" }
 
 [profile.release]
 lto = "thin"

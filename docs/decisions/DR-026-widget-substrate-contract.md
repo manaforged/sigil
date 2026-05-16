@@ -87,7 +87,7 @@ own decision record.
   maintaining local hover/press/focus bookkeeping.
 - `button`, `checkbox`, `toggle`, and `slider` are the reference
   examples for future widget authors.
-- `sigil-core` accessibility props now include reactive checked and
+- `sigil-kernel` accessibility props now include reactive checked and
   numeric range values so semantic state can live beside the visual
   widget state.
 - `sigil-events` pointer dispatch now has a clearer split:
@@ -123,7 +123,7 @@ Revisit this DR if:
 
 - `crates/sigil/src/interaction.rs` - shared widget interaction state.
 - `crates/sigil/src/widgets/` - built-in widget implementations.
-- `crates/sigil-events/src/router.rs` - pointer target-local dispatch.
+- `crates/sigil/events/src/router.rs` - pointer target-local dispatch.
 - `examples/vertical-slice/src/main.rs` - all four widgets on one screen.
 - `docs/plans/widget-pack-1-checkbox-toggle-slider.md` - implementation plan.
 - Commits `4ecb098` (substrate polish + TextStyle relocation) and `3e5af78` (widget pack: checkbox, toggle, slider; `InteractionState::dragging` delta; local-coords router refactor).

@@ -1,0 +1,383 @@
+//! [`WgpuRenderer`] — the production [`sigil_hal::Renderer`] implementation.
+//!
+//! This module owns the public wgpu-facing API. Lazy device/adapter
+//! construction lives in [`crate::device_state`]; the scene-paint
+//! pipeline lives in [`crate::scene_paint`].
+
+mod submit;
+
+pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
+
+use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
+
+use sigil_hal::{Color, PhysicalSize, Renderer};
+
+use crate::device_state::DeviceState;
+use crate::error::RendererError;
+use crate::scene::Scene;
+use crate::scene_command::CommandScene;
+use crate::scene_command::adapter::flat_to_commands;
+use crate::surface::WgpuSurface;
+use crate::window_handle::WindowHandle;
+
+/// wgpu-backed GPU renderer.
+///
+/// Owns a `wgpu::Instance` unconditionally and — after the first
+/// `create_surface` call — an adapter, device, and queue chosen to be
+/// compatible with the user's window. A single renderer can drive any
+/// number of [`WgpuSurface`]s.
+pub struct WgpuRenderer {
+    pub(crate) state: DeviceState,
+}
+
+impl WgpuRenderer {
+    /// Construct a new renderer. Cheap — only creates a `wgpu::Instance`.
+    /// Adapter and device selection are deferred to the first `create_surface`
+    /// call so the GPU we pick is guaranteed compatible with the user's window.
+    ///
+    /// # Errors
+    ///
+    /// Currently infallible; returns `Result` for forward compatibility.
+    pub fn new() -> Result<Self, RendererError> {
+        Ok(Self {
+            state: DeviceState::new(),
+        })
+    }
+
+    /// Borrow the underlying `wgpu::Instance` (always available).
+    #[must_use]
+    pub fn instance(&self) -> &wgpu::Instance {
+        self.state.instance()
+    }
+
+    /// Borrow the underlying `wgpu::Device`, or `None` before `create_surface`.
+    #[must_use]
+    pub fn device(&self) -> Option<&wgpu::Device> {
+        self.state.ready().ok().map(|ready| &ready.device)
+    }
+
+    /// Borrow the underlying `wgpu::Queue`, or `None` before `create_surface`.
+    #[must_use]
+    pub fn queue(&self) -> Option<&wgpu::Queue> {
+        self.state.ready().ok().map(|ready| &ready.queue)
+    }
+
+    /// Return `(scene, fill, shadow, slug, sprite)` pipeline-cache lengths.
+    ///
+    /// This is exposed for renderer integration tests that need to verify
+    /// command walking has populated the format-keyed caches.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn pipeline_cache_counts(&self) -> Option<(usize, usize, usize, usize, usize)> {
+        self.state.ready().ok().map(|ready| {
+            (
+                ready.scene_pipelines.len(),
+                ready.fill_pipelines.len(),
+                ready.shadow_pipelines.len(),
+                ready.slug_pipelines.len(),
+                ready.sprite_pipelines.len(),
+            )
+        })
+    }
+
+    /// Return the number of cached text-decoration pipelines, when initialized.
+    #[must_use]
+    pub fn decoration_pipeline_cache_count(&self) -> Option<usize> {
+        self.state
+            .ready()
+            .ok()
+            .map(|ready| ready.decoration_pipelines.len())
+    }
+
+    /// Return whether the renderer has initialized its offscreen layer pool.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn layer_pool_ready_for_tests(&self) -> bool {
+        self.state
+            .ready()
+            .ok()
+            .is_some_and(|ready| ready.layer_pool.is_some())
+    }
+
+    /// Initialize the renderer's headless device/queue without a surface.
+    ///
+    /// This is exposed for renderer integration tests that exercise offscreen
+    /// command walking against the renderer-owned pipeline caches.
+    #[doc(hidden)]
+    pub fn ensure_headless_for_tests(&mut self) -> Result<(), RendererError> {
+        self.state.ensure_ready_headless().map(|_| ())
+    }
+
+    /// Submit a screen-space scene into a caller-owned texture view.
+    ///
+    /// This is the documented public successor to the experimental
+    /// [`render_command_scene_offscreen`][Self::render_command_scene_offscreen]
+    /// API added in R11. The renderer does not acquire or present a swapchain
+    /// surface — the caller owns the full frame graph.
+    ///
+    /// If `target.clear` is `Some(color)`, the view is cleared to that colour
+    /// before drawing. Pass `None` when compositing on top of a pre-cleared
+    /// target (e.g. the second `submit_screen` call in a split-path render).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::InvalidViewport`] when either viewport
+    /// dimension is zero or negative.
+    pub fn submit_screen(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+    ) -> Result<(), RendererError> {
+        if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
+            return Err(RendererError::InvalidViewport);
+        }
+        let ready = self.state.ensure_ready_headless()?;
+        if let Some(color) = target.clear {
+            submit_clear(target.device, target.queue, target.view, color);
+        }
+        // Device-equality guard: the renderer's cached pipelines are bound to
+        // `ready.device`. Submitting against a foreign device would poison the
+        // caches with handles created on the wrong device. The deprecated
+        // `render_command_scene_offscreen` had this guard; we restore it here.
+        // Foreign-device callers get a fresh per-call pipeline set via
+        // `walk_with_temporary_pipelines` (no cache mutation).
+        if ready.device == *target.device {
+            walk_screen(
+                ready,
+                target.device,
+                target.queue,
+                target.view,
+                target.viewport,
+                target.format,
+                scene,
+            )
+        } else {
+            crate::offscreen::walk_with_temporary_pipelines(
+                crate::offscreen::OffscreenTarget {
+                    device: target.device,
+                    queue: target.queue,
+                    view: target.view,
+                    format: target.format,
+                    viewport: target.viewport,
+                },
+                scene,
+            )
+        }
+    }
+
+    /// Submit a world-space scene into a caller-owned texture view with depth
+    /// occlusion.
+    ///
+    /// **Stub**: validates parameters and returns `Ok(())` without painting.
+    /// the host engine's P13 phase lights up the real depth-aware implementation.
+    /// The stub exists so the host engine can wire the entry point now and the
+    /// depth-aware drawing fills in later.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::InvalidViewport`] when either viewport
+    /// dimension is zero or negative.
+    /// Returns [`RendererError::InvalidViewProj`] when the matrix contains a
+    /// non-finite value (NaN or infinity).
+    pub fn submit_world(
+        &mut self,
+        target: &WorldSubmission<'_>,
+        _scene: &CommandScene,
+    ) -> Result<(), RendererError> {
+        if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
+            return Err(RendererError::InvalidViewport);
+        }
+        if !target.view_proj.iter().flatten().all(|f| f.is_finite()) {
+            return Err(RendererError::InvalidViewProj);
+        }
+        // the host engine's P13 fills in the real depth-aware rendering here.
+        Ok(())
+    }
+
+    /// Acquire the surface texture, clear it to `clear_color`, run `draw`
+    /// (which may composite additional GPU work such as text), then present.
+    ///
+    /// This is the integration point for [`crate::SlugTextPipeline`]: call
+    /// `pipeline.draw_paragraph(...)` inside `draw` with the provided
+    /// `device`, `queue`, and `view`. The frame is presented after `draw`
+    /// returns, so all commands land in the same presentation.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::NotInitialized`] if called before
+    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` —
+    /// the next frame retries.
+    pub fn render_frame<F>(
+        &mut self,
+        surface: &mut WgpuSurface,
+        clear_color: Color,
+        draw: F,
+    ) -> Result<(), RendererError>
+    where
+        F: FnOnce(&wgpu::Device, &wgpu::Queue, &wgpu::TextureView),
+    {
+        let ready = self.state.ready()?;
+        render_frame_surface(ready, surface, clear_color, draw)
+    }
+
+    /// Acquire the surface texture, clear, paint every `SceneItem::Rect`
+    /// and `SceneItem::Text` from `scene`, then present.
+    ///
+    /// The scene's rectangles are interpreted in logical pixels; the
+    /// `viewport` argument is also logical pixels and must match the
+    /// layout root size used to emit the scene. The WGSL scene shader
+    /// uses this logical viewport for its NDC conversion math. The
+    /// acquired surface texture is the physical-pixel part of the call;
+    /// do not pass physical surface dimensions as `viewport`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::NotInitialized`] if called before
+    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` —
+    /// the next frame retries.
+    pub fn render_scene(
+        &mut self,
+        surface: &mut WgpuSurface,
+        scene: &Scene,
+        clear_color: Color,
+        viewport: (f32, f32),
+    ) -> Result<(), RendererError> {
+        let commands = flat_to_commands(scene);
+        self.render_command_scene(surface, &commands, clear_color, viewport)
+    }
+
+    /// Acquire the surface texture, clear, walk every command from `scene`,
+    /// and present.
+    ///
+    /// This is the command-buffer counterpart to [`Self::render_scene`].
+    /// `render_scene` remains the flat-scene compatibility entry point and
+    /// compiles its input through the Step 3 adapter before calling this
+    /// method.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::NotInitialized`] if called before
+    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` -
+    /// the next frame retries.
+    pub fn render_command_scene(
+        &mut self,
+        surface: &mut WgpuSurface,
+        scene: &CommandScene,
+        clear_color: Color,
+        viewport: (f32, f32),
+    ) -> Result<(), RendererError> {
+        let ready = self.state.ready_mut()?;
+        render_command_scene_surface(ready, surface, scene, clear_color, viewport)
+    }
+}
+
+impl Renderer for WgpuRenderer {
+    type Error = RendererError;
+    type Surface = WgpuSurface;
+    type WindowHandle = WindowHandle;
+
+    fn create_surface(
+        &mut self,
+        window: Self::WindowHandle,
+        initial_size: PhysicalSize,
+    ) -> Result<Self::Surface, Self::Error> {
+        let handle = window.into_inner();
+        let surface = self.state.instance().create_surface(handle)?;
+        let ready = self.state.ensure_ready(&surface)?;
+        let caps = surface.get_capabilities(&ready.adapter);
+        if caps.formats.is_empty() {
+            return Err(RendererError::NoSupportedFormat);
+        }
+        let format = caps
+            .formats
+            .iter()
+            .copied()
+            .find(wgpu::TextureFormat::is_srgb)
+            .or_else(|| caps.formats.first().copied())
+            .ok_or(RendererError::NoSupportedFormat)?;
+        let alpha_mode = caps
+            .alpha_modes
+            .first()
+            .copied()
+            .unwrap_or(wgpu::CompositeAlphaMode::Auto);
+        let (width, height) = surface_extent(initial_size, ready.max_texture_dimension_2d());
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format,
+            width,
+            height,
+            present_mode: wgpu::PresentMode::AutoVsync,
+            desired_maximum_frame_latency: 2,
+            alpha_mode,
+            view_formats: vec![],
+        };
+        surface.configure(&ready.device, &config);
+        Ok(WgpuSurface { surface, config })
+    }
+
+    fn resize(
+        &mut self,
+        surface: &mut Self::Surface,
+        size: PhysicalSize,
+    ) -> Result<(), Self::Error> {
+        if size.width == 0 || size.height == 0 {
+            return Ok(());
+        }
+        let ready = self.state.ready()?;
+        let (width, height) = surface_extent(size, ready.max_texture_dimension_2d());
+        surface.config.width = width;
+        surface.config.height = height;
+        surface.surface.configure(&ready.device, &surface.config);
+        Ok(())
+    }
+
+    fn clear(&mut self, surface: &mut Self::Surface, color: Color) -> Result<(), Self::Error> {
+        let ready = self.state.ready()?;
+        let Some((frame, view)) = acquire_frame(ready, surface)? else {
+            return Ok(());
+        };
+        submit_clear(&ready.device, &ready.queue, &view, color);
+        frame.present();
+        Ok(())
+    }
+}
+
+const fn surface_extent(size: PhysicalSize, max_texture_dimension_2d: u32) -> (u32, u32) {
+    let max_extent = if max_texture_dimension_2d == 0 {
+        u32::MAX
+    } else {
+        max_texture_dimension_2d
+    };
+    (
+        clamp_extent(size.width, max_extent),
+        clamp_extent(size.height, max_extent),
+    )
+}
+
+const fn clamp_extent(value: u32, max_extent: u32) -> u32 {
+    if value == 0 {
+        1
+    } else if value > max_extent {
+        max_extent
+    } else {
+        value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{PhysicalSize, surface_extent};
+
+    #[test]
+    fn surface_extent_clamps_to_adapter_limit() {
+        assert_eq!(
+            surface_extent(PhysicalSize::new(2864, 1524), 2048),
+            (2048, 1524),
+        );
+    }
+
+    #[test]
+    fn surface_extent_never_returns_zero() {
+        assert_eq!(surface_extent(PhysicalSize::new(0, 0), 2048), (1, 1));
+    }
+}

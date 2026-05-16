@@ -41,8 +41,8 @@ pub mod reactive {
 /// style layer (`NodeStyleExt::class` / `style` / `theme` /
 /// `style_reactive`). Launch + config types are at the crate root.
 pub mod prelude {
-    pub use sigil_core::prelude::*;
     pub use sigil_events::prelude::*;
+    pub use sigil_kernel::prelude::*;
     pub use sigil_layout::prelude::*;
     pub use sigil_reactive::{Signal, effect, signal};
     pub use sigil_style::{
@@ -51,8 +51,10 @@ pub mod prelude {
 
     pub use crate::interaction::InteractionState;
     pub use crate::widgets::{
-        ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, Orientation, SliderBuilder,
-        TextFieldBuilder, ToggleBuilder, button, checkbox, label, slider, text_field, toggle,
+        ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, Clipboard, DropdownBuilder,
+        Orientation, PanelBuilder, ProgressBuilder, ScrollBuilder, SliderBuilder, TextFieldBuilder,
+        ToggleBuilder, button, checkbox, dropdown, label, panel, progress, scroll, slider,
+        text_field, toggle,
     };
     pub use crate::{AppConfig, Error, Result, launch};
 }

@@ -122,10 +122,10 @@ The fix adds `Shell::create_window_logical` for initial logical window sizing, o
 - [`docs/plans/phase-08b-dpi-unit-system.md`](../plans/phase-08b-dpi-unit-system.md)
 - [`docs/decisions/DR-016-app-launch.md`](DR-016-app-launch.md)
 - [`docs/decisions/DR-017-scene-paint.md`](DR-017-scene-paint.md)
-- [`crates/sigil-hal/src/size.rs`](../../crates/sigil-hal/src/size.rs)
-- [`crates/sigil-core/src/cx.rs`](../../crates/sigil-core/src/cx.rs)
-- [`crates/sigil-shell/src/shell.rs`](../../crates/sigil-shell/src/shell.rs)
-- [`crates/sigil-app/src/launch.rs`](../../crates/sigil-app/src/launch.rs)
+- [`crates/sigil/hal/src/size.rs`](../../crates/sigil/hal/src/size.rs)
+- [`crates/sigil/kernel/src/cx.rs`](../../crates/sigil/kernel/src/cx.rs)
+- [`crates/sigil/shell/src/shell.rs`](../../crates/sigil/shell/src/shell.rs)
+- [`crates/sigil/app/src/launch.rs`](../../crates/sigil/app/src/launch.rs)
 - [`docs/benchmarks/baseline-sigil-layout.json`](../benchmarks/baseline-sigil-layout.json)
 
 ## Kill Criteria
