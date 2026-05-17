@@ -13,6 +13,7 @@ doctest = false
 
 [dependencies]
 ahash = { workspace = true }
+rayon = { workspace = true }
 smallvec = { workspace = true }
 taffy = { workspace = true }
 sigil-kernel = { workspace = true }

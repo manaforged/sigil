@@ -1,6 +1,16 @@
-//! Button widget demo — normal, primary, and danger tones.
+//! Button widget demo — neutral and primary tones.
 
 #![allow(missing_docs)]
+
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use taffy as _;
 
 use sigil::prelude::*;
 
@@ -15,8 +25,7 @@ fn build(cx: &mut Cx) -> NodeId {
             .role(Role::Main)
             .layout(LayoutStyle::flex_row().gap_px(16.0).padding_px(32.0))
             .class("w-full h-full bg-surface")
-            .child(button("Normal").on_press(move || count.set(count.peek() + 1)))
-            .child(button("Primary").tone(ButtonTone::Primary).on_press(|| {}))
-            .child(button("Danger").tone(ButtonTone::Danger).on_press(|| {})),
+            .child(button("Neutral").on_activate(move || count.set(count.peek() + 1)))
+            .child(button("Primary").primary().on_activate(|| {})),
     )
 }

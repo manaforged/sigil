@@ -6,17 +6,26 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Parley-backed text engine for Sigil."
+description = "Owned text engine for Sigil (skrifa + unicode-segmentation)."
 
 [lib]
 # Rust 1.94 merged-doctests + Windows-msvc target misdetection
 # workaround. No runnable doctests are shipped.
 doctest = false
 
+[features]
+shaping-complex = []
+
 [dependencies]
 sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
+skrifa = { workspace = true }
+smallvec = { workspace = true }
+unicode-segmentation = "1"
+unicode-bidi = "0.3"
+# G1.4 rewrites engine.rs/paragraph.rs/cache.rs against the owned shaper.
+# Until then the existing Parley-backed code paths still compile.
 parley = "0.8"
 ahash = { workspace = true }
 

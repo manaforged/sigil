@@ -52,9 +52,9 @@ pub mod prelude {
     pub use crate::interaction::InteractionState;
     pub use crate::widgets::{
         ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, Clipboard, DropdownBuilder,
-        Orientation, PanelBuilder, ProgressBuilder, ScrollBuilder, SliderBuilder, TextFieldBuilder,
-        ToggleBuilder, button, checkbox, dropdown, label, panel, progress, scroll, slider,
-        text_field, toggle,
+        FctSettings, FctSpawn, Orientation, PanelBuilder, ProgressBuilder, ScrollBuilder,
+        SliderBuilder, TextFieldBuilder, ToggleBuilder, button, checkbox, dropdown, floating_text,
+        label, panel, progress, scroll, slider, text_field, toggle,
     };
     pub use crate::{AppConfig, Error, Result, launch};
 }

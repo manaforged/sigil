@@ -1,0 +1,106 @@
+# Sigil CI matrix
+#
+# F0 milestone — Wave 1 of the Sigil R15+ the author dispatch plan
+# (`the dispatch plan` in the
+# companion the host engine repo). Establishes the green Win/Mac/Linux baseline
+# that every subsequent milestone (P0 layout, G-substrate, IDE primitives)
+# depends on.
+#
+# Trigger surface:
+#   - push to `main` (long-term trunk)
+#   - push to `wip/*` (in-flight tracks)
+#   - push to `swarm-*` (hook-instrumented swarm branches)
+#   - pull_request targeting `main` (gate before promotion)
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "wip/*"
+      - "swarm-*"
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
+
+jobs:
+  ci:
+    name: ${{ matrix.os }} / ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        toolchain: [stable]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # wgpu (29) + winit (0.30) need X11/Wayland + xkbcommon headers on
+      # Linux for the renderer/shell/hal crates to compile. macOS + Windows
+      # GitHub runners already ship the equivalent SDKs.
+      - name: Install Linux build deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev \
+            libwayland-dev \
+            libxkbcommon-x11-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libgl1-mesa-dev \
+            pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          components: rustfmt, clippy
+
+      # Swatinem/rust-cache keys on Cargo.lock + rustc version + workspace
+      # structure. Per the dispatch plan caching rule: pin cache keys to
+      # lockfile + toolchain hash so stale artifacts can't sneak in.
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: sigil-ci-${{ matrix.os }}-${{ matrix.toolchain }}
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Check workspace
+        run: cargo check --workspace --all-targets
+
+      - name: Compile tests
+        # Compile every test in the workspace without running them.
+        # Native-backed runtime gates (golden frames via wgpu, winit shell
+        # tests) get layered in later waves when headless setup lands;
+        # F0 baseline is "every test crate builds on every supported
+        # platform".
+        run: cargo test --workspace --no-run
+
+      - name: Run tests
+        run: cargo test --workspace --no-fail-fast
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: cargo deny check
+        # Audits licenses, advisories, banned crates, and sources against
+        # `deny.toml` at the workspace root.
+        run: cargo deny check

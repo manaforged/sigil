@@ -16,6 +16,7 @@ members = [
     "crates/style",
     "crates/style-macros",
     "crates/text",
+    "crates/sigil-ide-core",
     "examples/hello-rect",
     "examples/hello-events",
     "examples/hello-style",
@@ -86,6 +87,7 @@ half = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
 skrifa = "0.40"
 smallvec = "1"
+rayon = "1.10"
 phf = "0.11"
 strsim = "0.11"
 slotmap = "1"
@@ -97,6 +99,15 @@ smol_str = { version = "0.3.6", default-features = false }
 taffy = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
+# I-T6 workspace + fs-watch primitives. Forever-rentals: `notify` is the
+# de-facto cross-platform fs-watcher; `ignore` is BurntSushi's gitignore
+# parser/walker; `crossbeam-channel` carries fs events into consumer code.
+notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
+ignore = "0.4"
+crossbeam-channel = "0.5"
+# I-T7 settings: parse-only TOML (serde feature for typed deserialize).
+toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
+tempfile = "3"
 # Workspace crate names keep the `sigil-<leaf>` form because cargo
 # crate names cannot contain `/`. The filesystem layout is nested so
 # the conceptual `sigil/<leaf>` grouping is visible in the tree, and
@@ -118,6 +129,7 @@ sigil-style = { path = "crates/style" }
 sigil-style-macros = { path = "crates/style-macros" }
 sigil-icons = { path = "crates/icons" }
 sigil-text = { path = "crates/text" }
+sigil-ide-core = { path = "crates/sigil-ide-core" }
 usvg = { version = "0.47", default-features = false }
 lyon_geom = { version = "1.0" }
 

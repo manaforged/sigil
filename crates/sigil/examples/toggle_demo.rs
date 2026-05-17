@@ -2,6 +2,16 @@
 
 #![allow(missing_docs)]
 
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use taffy as _;
+
 use sigil::prelude::*;
 
 fn main() -> sigil::Result<()> {

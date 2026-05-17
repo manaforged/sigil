@@ -1,11 +1,21 @@
 //! Layout engine and `sigil-kernel` synchronization.
+//!
+//! P0 cutover (DR-041): the taffy-backed [`LayoutEngine`] in this file
+//! stays unchanged in P0.1. The owned-engine types (`LayoutForest`,
+//! `MeasureScope`, `NodeRef`, `ComputedBox`, `LocalId`, `LayoutPass`,
+//! `AvailableSpace`, `SpaceConstraint`) live in [`crate::forest`] and
+//! are consumed by `block`, `flex`, `parallel`. P0.5 (W2.6) swaps the
+//! taffy backend out and rewires the public methods below to call the
+//! owned types.
 
 use ahash::AHashMap;
 use sigil_hal::{Dim, Size};
 use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil_style::{StyleBinding, StyleEngine, TextStyle};
 use smallvec::SmallVec;
-use taffy::prelude::{AvailableSpace, NodeId as TaffyId, Size as TaffySize, TaffyTree};
+use taffy::prelude::{
+    AvailableSpace as TaffyAvailableSpace, NodeId as TaffyId, Size as TaffySize, TaffyTree,
+};
 
 use crate::cache_key::{AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature};
 use crate::style_adapter::apply_style_atoms;
@@ -371,17 +381,17 @@ impl LayoutEngine {
     }
 }
 
-const fn to_taffy_size(size: Size) -> TaffySize<AvailableSpace> {
+const fn to_taffy_size(size: Size) -> TaffySize<TaffyAvailableSpace> {
     TaffySize {
         width: to_available_space(size.width),
         height: to_available_space(size.height),
     }
 }
 
-const fn to_available_space(dim: Dim) -> AvailableSpace {
+const fn to_available_space(dim: Dim) -> TaffyAvailableSpace {
     match dim {
-        Dim::Fixed(value) => AvailableSpace::Definite(value),
-        Dim::MinContent => AvailableSpace::MinContent,
-        Dim::MaxContent => AvailableSpace::MaxContent,
+        Dim::Fixed(value) => TaffyAvailableSpace::Definite(value),
+        Dim::MinContent => TaffyAvailableSpace::MinContent,
+        Dim::MaxContent => TaffyAvailableSpace::MaxContent,
     }
 }

@@ -12,25 +12,45 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 #[cfg(test)]
+use rayon as _;
+#[cfg(test)]
 use sigil_reactive as _;
 
 mod adapter;
+mod block;
+mod block_collapse;
+mod block_size;
 pub mod builder_ext;
 mod cache_key;
 mod engine;
+mod engine_drive;
 mod error;
+mod flex;
+mod flex_algorithm;
+mod flex_lines;
+mod forest;
 mod intent;
 mod measure;
+mod parallel;
 pub mod prelude;
 mod result;
 pub(crate) mod style_adapter;
+mod style_data;
 mod text_adapter;
 mod text_style;
 
 pub use builder_ext::LayoutBuilderExt;
 pub use engine::LayoutEngine;
+pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use error::LayoutError;
 pub use intent::LayoutStyle;
 pub use measure::TextMeasure;
 pub use result::LayoutResult;
+pub use style_data::{
+    AlignContent, AlignItems as StyleAlignItems, AlignSelf as StyleAlignSelf, BoxSizing, Dimension,
+    Display as StyleDisplay, FlexDirection as StyleFlexDirection, FlexWrap,
+    JustifyContent as StyleJustifyContent, LengthPercentage as StyleLengthPercentage,
+    LengthPercentageAuto as StyleLengthPercentageAuto, Position as StylePosition, Rect, Size,
+    StyleData,
+};
 pub use text_adapter::TextEngineMeasure;

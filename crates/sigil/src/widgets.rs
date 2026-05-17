@@ -7,6 +7,7 @@
 mod button;
 mod checkbox;
 mod dropdown;
+mod floating_text;
 mod panel;
 mod progress;
 mod scroll;
@@ -19,6 +20,9 @@ mod toggle;
 pub use button::{ButtonBuilder, ButtonTone, button};
 pub use checkbox::{CheckboxBuilder, CheckboxTone, checkbox};
 pub use dropdown::{DropdownBuilder, dropdown};
+pub use floating_text::{
+    FCT_POOL_CAPACITY, FctNode, FctSettings, FctSpawn, FctState, Particle, floating_text,
+};
 pub use panel::{PanelBuilder, panel};
 pub use progress::{ProgressBuilder, progress};
 pub use scroll::{ScrollBuilder, scroll};

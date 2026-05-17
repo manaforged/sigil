@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 use ahash as _;
 use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
+use rayon as _;
 use sigil_hal::Size;
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};

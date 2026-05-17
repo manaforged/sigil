@@ -9,6 +9,10 @@ use criterion as _;
 use parley as _;
 use sigil_hal as _;
 use sigil_style as _;
+use skrifa as _;
+use smallvec as _;
+use unicode_bidi as _;
+use unicode_segmentation as _;
 
 use sigil_kernel::TextContent;
 use sigil_layout::TextEngineMeasure;

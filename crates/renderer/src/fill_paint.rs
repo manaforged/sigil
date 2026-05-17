@@ -6,9 +6,7 @@
 //! (2). The WGSL fragment shader branches on the `fill_kind` discriminator
 //! packed into `stop_range.z`.
 
-use crate::scene_instance::{
-    FillInstance, GpuStop, SceneUniforms, fill_instance_stride, gpu_stop_stride,
-};
+use crate::scene_instance::{FillInstance, GpuStop, SceneUniforms};
 use crate::scene_paint::PaintCtx;
 
 mod setup;

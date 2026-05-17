@@ -14,6 +14,7 @@ use std::hint::black_box;
 
 use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use rayon as _;
 use sigil_hal::{Scale, Size};
 use sigil_kernel::TextContent;
 use sigil_kernel::{Cx, NodeBuilder, NodeId, container, text};

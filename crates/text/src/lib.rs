@@ -1,10 +1,12 @@
-//! Parley-backed text engine for Sigil.
+//! Owned text engine for Sigil.
 //!
-//! This crate wraps [Parley] behind the [`sigil_hal::TextEngine`] trait.
-//! The layout-specific [`TextMeasure`](sigil_layout::TextMeasure) adapter
-//! lives in `sigil-layout` as [`TextEngineMeasure`](sigil_layout::TextEngineMeasure).
+//! G1.1 ships the skeleton: skrifa-backed shaper stub, unicode
+//! segmentation wrappers, bidi placeholder, and the [`GlyphRun`]
+//! output type Slug consumes. The Parley-backed [`engine`],
+//! [`paragraph`], and [`cache`] modules stay in place until G1.4
+//! rewrites them against the owned shaper (DR-044).
 //!
-//! [Parley]: https://github.com/linebender/parley
+//! See [`docs/decisions/DR-044-g1-owned-text-pipeline.md`].
 
 #[cfg(test)]
 use criterion as _;
@@ -21,6 +23,15 @@ mod config;
 mod engine;
 mod error;
 mod paragraph;
+
+pub mod bidi;
+pub mod glyph;
+pub mod segment;
+
+pub(crate) mod shaper;
+
+#[cfg(feature = "shaping-complex")]
+pub(crate) mod shaping_complex;
 
 pub use config::TextConfig;
 pub use engine::ParleyTextEngine;

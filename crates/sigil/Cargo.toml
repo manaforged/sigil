@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "The sigil UI framework — one-stop facade crate with prelude."
+autobenches = false
 
 [lib]
 doctest = false
@@ -21,8 +22,13 @@ sigil-style = { workspace = true }
 taffy = { workspace = true }
 
 [dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
 sigil-hal = { workspace = true }
 sigil-renderer = { workspace = true }
+
+[[bench]]
+name = "floating_text"
+harness = false
 
 [lints]
 workspace = true

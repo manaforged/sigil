@@ -5,6 +5,7 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use rayon as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
