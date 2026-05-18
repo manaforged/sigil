@@ -1,5 +1,8 @@
 #![allow(missing_docs)]
 
+use criterion as _;
+use image as _;
+use pollster as _;
 use sigil as _;
 use sigil_app as _;
 use sigil_events as _;
@@ -9,7 +12,7 @@ use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
-use taffy as _;
+use wgpu as _;
 
 #[path = "../src/widgets/text_edit.rs"]
 mod text_edit;

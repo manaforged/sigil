@@ -11,32 +11,42 @@
 use allocation_counter as _;
 
 use std::hint::black_box;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::time::Duration;
 
 use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use rayon as _;
-use sigil_hal::{Scale, Size};
+use rayon::{ThreadPool, ThreadPoolBuilder};
+use sigil_hal::{LogicalSize, Scale, Size};
 use sigil_kernel::TextContent;
 use sigil_kernel::{Cx, NodeBuilder, NodeId, container, text};
-use sigil_layout::{LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
-use taffy::prelude::{AvailableSpace, Size as TaffySize};
+
+const ROOT_WIDTH: f32 = 1280.0;
+const ROOT_HEIGHT: f32 = 1000.0;
+const ROWS_100K: usize = 1000;
+const LEAVES_PER_ROW_100K: usize = 100;
+const ROW_HEIGHT_100K: f32 = 1.0;
+const LEAF_WIDTH_100K: f32 = 12.8;
+const AVAILABLE_100K: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
+
+enum BenchCommand {
+    Run,
+    Stop,
+}
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
     #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
+    fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(v) => v.chars().count() as f32,
             TextContent::Reactive(_) => 0.0,
         };
-        TaffySize {
-            width: chars * 8.0,
-            height: 16.0,
-        }
+        LogicalSize::new(chars * 8.0, 16.0)
     }
 }
 
@@ -54,6 +64,62 @@ fn tree_with_text_children(count: usize) -> NodeBuilder {
 
 fn nested_subtree_with_text_children(count: usize) -> NodeBuilder {
     container().child(tree_with_text_children(count))
+}
+
+fn build_100k_flex_tree() -> (Cx, NodeId, LayoutEngine) {
+    let mut cx = Cx::new_root();
+    let mut root_builder =
+        container().layout(LayoutStyle::flex_column().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
+    for _ in 0..ROWS_100K {
+        root_builder = root_builder.child(row_100k());
+    }
+    let root = cx.add(root_builder);
+    let engine = stub_engine();
+    (cx, root, engine)
+}
+
+fn row_100k() -> NodeBuilder {
+    let mut row_builder =
+        container().layout(LayoutStyle::flex_row().fixed_size(ROOT_WIDTH, ROW_HEIGHT_100K));
+    for _ in 0..LEAVES_PER_ROW_100K {
+        row_builder = row_builder.child(leaf_100k());
+    }
+    row_builder
+}
+
+fn leaf_100k() -> NodeBuilder {
+    container().layout(LayoutStyle::block().fixed_size(LEAF_WIDTH_100K, ROW_HEIGHT_100K))
+}
+
+fn spawn_compute_worker(pool: &ThreadPool) -> (Sender<BenchCommand>, Receiver<()>) {
+    let (command_tx, command_rx) = mpsc::channel();
+    let (done_tx, done_rx) = mpsc::channel();
+    let (ready_tx, ready_rx) = mpsc::channel();
+
+    pool.spawn(move || {
+        let (mut cx, root, mut engine) = build_100k_flex_tree();
+        engine
+            .compute(&mut cx, root, AVAILABLE_100K)
+            .expect("warm layout compute succeeds");
+        ready_tx.send(()).expect("ready signal sends");
+
+        while let Ok(command) = command_rx.recv() {
+            match command {
+                BenchCommand::Run => {
+                    cx.mark_mutated();
+                    engine
+                        .compute(&mut cx, root, AVAILABLE_100K)
+                        .expect("layout compute succeeds");
+                    black_box(engine.result(root));
+                    done_tx.send(()).expect("done signal sends");
+                }
+                BenchCommand::Stop => break,
+            }
+        }
+    });
+
+    ready_rx.recv().expect("worker starts");
+    (command_tx, done_rx)
 }
 
 fn attach_root_intent(cx: &mut Cx, root: NodeId, intent: LayoutStyle) {
@@ -154,8 +220,7 @@ fn bench_gc_after_remove_100(c: &mut Criterion) {
                 );
                 let remove_root = cx
                     .get(root)
-                    .and_then(|node| node.children.first())
-                    .copied()
+                    .and_then(|node| node.children().first().copied())
                     .expect("nested subtree exists");
                 let mut engine = stub_engine();
                 engine.sync(&cx, root).expect("initial sync succeeds");
@@ -200,13 +265,53 @@ fn bench_scale_change_reflow_1000_nodes(c: &mut Criterion) {
     });
 }
 
+fn bench_compute_100k_flex_tree(c: &mut Criterion, threads: usize) {
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .expect("rayon thread pool builds");
+    let bench_name = format!("bench_compute_100k/{threads}_threads");
+    c.bench_function(&bench_name, |b| {
+        let (command_tx, done_rx) = spawn_compute_worker(&pool);
+
+        b.iter(|| {
+            command_tx
+                .send(BenchCommand::Run)
+                .expect("run signal sends");
+            done_rx.recv().expect("layout compute completes");
+        });
+        command_tx
+            .send(BenchCommand::Stop)
+            .expect("stop signal sends");
+    });
+}
+
+fn bench_compute_100k_1_thread(c: &mut Criterion) {
+    bench_compute_100k_flex_tree(c, 1);
+}
+
+fn bench_compute_100k_2_threads(c: &mut Criterion) {
+    bench_compute_100k_flex_tree(c, 2);
+}
+
+fn bench_compute_100k_4_threads(c: &mut Criterion) {
+    bench_compute_100k_flex_tree(c, 4);
+}
+
 criterion_group!(
-    benches,
-    bench_compute_single_node,
-    bench_compute_flex_row_100_children,
-    bench_compute_tree_100,
-    bench_sync_tree_1000_nodes,
-    bench_gc_after_remove_100,
-    bench_scale_change_reflow_1000_nodes,
+    name = benches;
+    config = Criterion::default()
+        .sample_size(2000)
+        .warm_up_time(Duration::from_secs(2));
+    targets =
+        bench_compute_single_node,
+        bench_compute_flex_row_100_children,
+        bench_compute_tree_100,
+        bench_sync_tree_1000_nodes,
+        bench_gc_after_remove_100,
+        bench_scale_change_reflow_1000_nodes,
+        bench_compute_100k_1_thread,
+        bench_compute_100k_2_threads,
+        bench_compute_100k_4_threads,
 );
 criterion_main!(benches);

@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Taffy-backed layout adapter for Sigil."
+description = "Owned layout adapter for Sigil."
 
 [lib]
 doctest = false
@@ -15,7 +15,6 @@ doctest = false
 ahash = { workspace = true }
 rayon = { workspace = true }
 smallvec = { workspace = true }
-taffy = { workspace = true }
 sigil-kernel = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-style = { workspace = true }

@@ -10,7 +10,6 @@ use sigil_hal as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 mod stub;
 use stub::stub_engine;
 
@@ -35,7 +34,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
     let children = cx
         .get(root)
         .expect("root exists")
-        .children
+        .children()
         .iter()
         .copied()
         .collect::<Vec<_>>();
@@ -81,8 +80,7 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
     let root = cx.add(container().child(text("stale")));
     let child = cx
         .get(root)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("child exists");
 
     let mut engine = stub_engine();
@@ -97,8 +95,11 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
         "child receives initial layout result",
     );
 
-    cx.get_mut(root).expect("root exists").children.clear();
-    cx.get_mut(child).expect("child exists").parent = None;
+    // Detach via removal — the result-set invariant tested here holds whether
+    // the node is detached from the tree or removed entirely (both make it
+    // ineligible for the next compute pass). A dedicated `Cx::detach` would
+    // express this more precisely; tracked as a followup against B3.
+    assert!(cx.remove(child));
     cx.mark_mutated();
 
     engine

@@ -15,9 +15,8 @@
 //! The solver does not mutate the [`LayoutForest`] — `MeasureScope`
 //! borrows it immutably so multiple solvers can run concurrently in
 //! P0.4. Computed boxes land in an internal `RefCell` map; the engine
-//! drains them into the forest's `boxes` slab in P0.5 (W2.6) when the
-//! taffy backend is removed. Tests read the map directly through
-//! [`FlexSolver::boxed`].
+//! drains them into the forest's `boxes` slab. Tests read the map
+//! directly through [`FlexSolver::boxed`].
 
 #![allow(dead_code, clippy::redundant_pub_crate)]
 
@@ -57,7 +56,7 @@ impl<'a> FlexSolver<'a> {
     ///
     /// # Errors
     ///
-    /// Returns [`LayoutError::TaffyInvalid`] when the subtree
+    /// Returns [`LayoutError::LayoutInvalid`] when the subtree
     /// references a stale `NodeId`.
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
         let avail = self.scope.available();

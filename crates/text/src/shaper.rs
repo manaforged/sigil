@@ -1,43 +1,398 @@
-//! Owned shaper — skrifa-backed glyph layout. Body lands in G1.3.
+//! Owned shaper — skrifa-backed glyph layout (DR-044, G1.3).
+//!
+//! Per-grapheme glyph lookup via `skrifa::charmap::Charmap`; advances
+//! from `skrifa::metrics::GlyphMetrics`. The shaper handles Latin,
+//! CJK (ideographs + the U+3000..U+303F and U+FF00..U+FFEF punctuation
+//! blocks), and emoji as a passthrough (G1.5 routes polychrome glyph
+//! IDs into the R7 sprite-split atlas). Complex shaping (Arabic,
+//! Devanagari, Thai) is gated behind the `shaping-complex` feature
+//! and lands in G1.6.
+//!
+//! `Shaper` is `Send + Sync` — skrifa lookups are read-only against
+//! owned font data, so the engine can shape across rayon threads
+//! without a pool.
+//!
+//! G1.3 ships the implementation + tests but the engine layer (G1.4)
+//! still consumes the Parley path, so every type here is technically
+//! dead from the lib's point of view. The G1.1 stub used a crate-root
+//! `#![allow(dead_code, ...)]` for the same reason; the comment block
+//! below repeats the justification.
 
-// G1.1 stubs: signatures are frozen per DR-044 (`&self` on shape,
-// non-`const` new) so the G1.3 body can land without churning the
-// API surface. Suppress the stub-shaped lints until then.
-#![allow(
-    dead_code,
-    clippy::redundant_pub_crate,
-    clippy::missing_const_for_fn,
-    clippy::unused_self
-)]
+// Hygiene exception: until G1.4 rewires engine.rs through this module,
+// every public-to-crate item here is unreferenced from the lib graph.
+// `redundant_pub_crate` fires because shaper is a `pub(crate) mod`;
+// `missing_const_for_fn` fires on accessors that could be const but
+// don't gain anything from it. Both lifted from the G1.1 skeleton.
+#![allow(dead_code, clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
 
-use crate::glyph::GlyphRun;
-use skrifa as _;
+use std::sync::Arc;
 
-/// Placeholder font handle. G1.3 replaces with a skrifa-backed font
-/// view that carries the loaded face + cmap + outline tables.
-pub(crate) struct Font;
+use skrifa::FontRef;
+use skrifa::MetadataProvider;
+use skrifa::charmap::Charmap;
+use skrifa::instance::{LocationRef, Size};
+use skrifa::metrics::GlyphMetrics;
+use smallvec::SmallVec;
+use unicode_segmentation::UnicodeSegmentation;
 
-/// Placeholder text segment. G1.3 replaces with the byte-range + bidi
-/// level + script tag produced by [`crate::segment`] and [`crate::bidi`].
-pub(crate) struct TextSegment;
+use crate::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
 
-/// Placeholder style. G1.3 replaces with the resolved `TextStyle`
-/// projection (family, weight, size, feature set).
-pub(crate) struct Style;
+#[path = "shaper/classify.rs"]
+mod classify_mod;
 
-/// Skrifa-backed shaper. G1.1 ships the type only — the shape body
-/// lands in G1.3 against the property-test oracle.
-pub(crate) struct Shaper {/* skrifa-backed; body lands in G1.3 */}
+#[cfg(not(feature = "shaping-complex"))]
+use classify_mod::warn_complex_without_feature;
+// `Script` is re-exported for `shaping_complex` + the shaper tests, which
+// keep importing from `crate::shaper::*` for API-surface stability after
+// the G1.7 module split.
+#[allow(unused_imports)]
+pub(crate) use classify_mod::{Script, classify_segment_script};
 
-impl Shaper {
-    /// Construct a shaper bound to `_font`.
-    pub(crate) fn new(_font: &Font) -> Self {
-        Self {}
+/// OpenType-style feature tag (4 ASCII bytes, e.g. `*b"liga"`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct FeatureTag(pub [u8; 4]);
+
+/// Owned font handle backing the skrifa lookup tables.
+///
+/// Inner bytes are reference-counted (`Arc<Vec<u8>>`) so paragraphs
+/// produced by the engine can hold a cheap, lifetime-free handle to
+/// the source bytes for the renderer's glyph-outline cache. Skrifa
+/// parses lazily, so the construction cost is just table-directory
+/// validation.
+#[derive(Debug, Clone)]
+pub struct Font {
+    data: Arc<Vec<u8>>,
+    index: u32,
+}
+
+impl Font {
+    /// Construct a font from owned TTF/OTF bytes.
+    ///
+    /// `index` selects the face inside a TTC; pass `0` for single-face
+    /// files.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ShaperError::InvalidFont`] when skrifa rejects the
+    /// table directory.
+    pub fn from_bytes(data: Vec<u8>, index: u32) -> Result<Self, ShaperError> {
+        // Validate at construction so `font_ref()` never fails downstream.
+        FontRef::from_index(&data, index).map_err(|_| ShaperError::InvalidFont)?;
+        Ok(Self {
+            data: Arc::new(data),
+            index,
+        })
     }
 
-    /// Shape `_segment` under `_style`. Returns an empty run until
-    /// G1.3 lands the real implementation.
-    pub(crate) fn shape(&self, _segment: &TextSegment, _style: &Style) -> GlyphRun {
-        GlyphRun::empty()
+    fn font_ref(&self) -> FontRef<'_> {
+        // Validated in `from_bytes`; this branch is unreachable in
+        // practice but we surface a clean panic message rather than
+        // `unwrap()` per rust-hygiene.
+        FontRef::from_index(&self.data, self.index)
+            .expect("Font::data validated in Font::from_bytes")
+    }
+
+    /// Cheap clone of the reference-counted font bytes.
+    #[must_use]
+    pub fn bytes_arc(&self) -> Arc<Vec<u8>> {
+        Arc::clone(&self.data)
+    }
+
+    /// Face index inside a TTC (0 for single-face files).
+    #[must_use]
+    pub const fn face_index(&self) -> u32 {
+        self.index
+    }
+
+    /// Stable identifier derived from the bytes pointer.
+    ///
+    /// Two clones of the same `Font` share the same id; two faces
+    /// constructed independently from the same bytes do not.
+    #[must_use]
+    pub fn id(&self) -> u64 {
+        Arc::as_ptr(&self.data) as u64
     }
 }
+
+// Skrifa's `FontRef` is `Send + Sync`; `Vec<u8>` is too. Marker is
+// implicit via the field types — no manual impl needed. The whitebox
+// test below pins the contract.
+
+/// Segmented text input to the shaper.
+///
+/// `level` is the UAX #9 embedding level (even = LTR, odd = RTL).
+/// G1.3 honours `level` only for cluster monotonicity assertions —
+/// the visual reordering inside RTL runs is paragraph-level and lands
+/// in G1.4 when the engine wires segments through the shaper.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TextSegment<'a> {
+    /// Source text — already split by bidi run + script run.
+    pub(crate) text: &'a str,
+    /// Bidi embedding level (UAX #9) for this segment.
+    pub(crate) level: u8,
+}
+
+impl<'a> TextSegment<'a> {
+    /// Construct an LTR segment over `text`.
+    pub(crate) const fn ltr(text: &'a str) -> Self {
+        Self { text, level: 0 }
+    }
+
+    /// Construct an RTL segment over `text` (bidi level 1).
+    pub(crate) const fn rtl(text: &'a str) -> Self {
+        Self { text, level: 1 }
+    }
+
+    /// Construct a segment at an explicit UAX #9 embedding level.
+    pub(crate) const fn at_level(text: &'a str, level: u8) -> Self {
+        Self { text, level }
+    }
+}
+
+/// Resolved text-style projection driving glyph metrics.
+///
+/// G1.4's engine populates this from `sigil_style::TextStyle`.
+#[derive(Debug, Clone)]
+pub(crate) struct Style {
+    pub(crate) size_px: f32,
+    pub(crate) weight: u16,
+    pub(crate) italic: bool,
+    pub(crate) features: SmallVec<[FeatureTag; 4]>,
+}
+
+impl Style {
+    /// Construct a regular 16 px / weight-400 style with no features.
+    pub(crate) fn regular(size_px: f32) -> Self {
+        Self {
+            size_px,
+            weight: 400,
+            italic: false,
+            features: SmallVec::new(),
+        }
+    }
+}
+
+impl Default for Style {
+    fn default() -> Self {
+        Self::regular(16.0)
+    }
+}
+
+/// Errors surfaced by the shaper.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShaperError {
+    /// Font data did not parse as a valid OpenType/TrueType face.
+    InvalidFont,
+}
+
+impl core::fmt::Display for ShaperError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::InvalidFont => f.write_str("invalid font data"),
+        }
+    }
+}
+
+impl std::error::Error for ShaperError {}
+
+/// Skrifa-backed shaper.
+///
+/// Borrows the [`Font`] for its lifetime; cheap to construct
+/// (skrifa lookups are per-call zero-copy). Threading note: the
+/// shaper is `Send + Sync`, so the engine can dispatch shaping
+/// across rayon workers without a pool.
+pub(crate) struct Shaper<'a> {
+    font_ref: FontRef<'a>,
+    font: &'a Font,
+}
+
+impl<'a> Shaper<'a> {
+    /// Construct a shaper bound to `font`.
+    pub(crate) fn new(font: &'a Font) -> Self {
+        Self {
+            font_ref: font.font_ref(),
+            font,
+        }
+    }
+
+    /// Shape `segment` under `style`, producing a [`GlyphRun`].
+    ///
+    /// Complex scripts (Arabic, Hebrew, Devanagari, Khmer, Thai, Lao)
+    /// route through the optional `HarfRust` path when the
+    /// `shaping-complex` feature is on; otherwise they fall through
+    /// to the owned shaper with a one-shot per-script warning.
+    pub(crate) fn shape(&self, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+        if segment.text.is_empty() {
+            return GlyphRun::empty();
+        }
+        let script = classify_segment_script(segment);
+        if script.is_complex() {
+            #[cfg(feature = "shaping-complex")]
+            {
+                if let Some(run) = crate::shaping_complex::shape(segment, style, self.font) {
+                    return run;
+                }
+                // `HarfRust` returned nothing (malformed face / empty
+                // buffer); fall through to the owned shaper rather
+                // than emit nothing.
+            }
+            #[cfg(not(feature = "shaping-complex"))]
+            {
+                warn_complex_without_feature(script);
+            }
+        }
+        // Silence the unused-field warning when the feature is off.
+        let _ = self.font;
+        shape_simple(&self.font_ref, segment, style)
+    }
+}
+
+/// Shape `segment` along the simple (Latin/CJK/emoji) path.
+fn shape_simple(font_ref: &FontRef<'_>, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+    let charmap = font_ref.charmap();
+    let size = Size::new(style.size_px.max(1.0));
+    let metrics = GlyphMetrics::new(font_ref, size, LocationRef::default());
+    let face_metrics = font_ref.metrics(size, LocationRef::default());
+
+    let text = segment.text;
+    let mut glyphs: SmallVec<[GlyphPos; 16]> = SmallVec::with_capacity(text.len() / 2 + 1);
+    let mut pen_x: f32 = 0.0;
+    let mut min_x: f32 = 0.0;
+    let mut max_x: f32 = 0.0;
+
+    for (cluster_byte, grapheme) in text.grapheme_indices(true) {
+        let cluster_advance = grapheme_advance(grapheme, &charmap, &metrics);
+        emit_grapheme(
+            grapheme,
+            cluster_byte,
+            &charmap,
+            cluster_advance,
+            &mut glyphs,
+        );
+        pen_x += cluster_advance;
+        if pen_x > max_x {
+            max_x = pen_x;
+        }
+        if pen_x < min_x {
+            min_x = pen_x;
+        }
+    }
+
+    let baseline = face_metrics.ascent;
+    let bbox = Rect {
+        x: min_x,
+        y: -face_metrics.ascent,
+        w: max_x - min_x,
+        h: face_metrics.ascent - face_metrics.descent,
+    };
+
+    GlyphRun {
+        glyphs,
+        baseline,
+        bbox,
+    }
+}
+
+/// Total horizontal advance of a single grapheme cluster.
+///
+/// For multi-codepoint clusters (ZWJ emoji, combining marks) the
+/// advance is taken from the first base glyph; combining marks have
+/// zero advance per OpenType convention.
+fn grapheme_advance(grapheme: &str, charmap: &Charmap<'_>, metrics: &GlyphMetrics<'_>) -> f32 {
+    let mut chars = grapheme.chars();
+    let Some(first) = chars.next() else {
+        return 0.0;
+    };
+    let gid = charmap.map(first as u32).unwrap_or_default();
+    metrics.advance_width(gid).unwrap_or(0.0)
+}
+
+/// Emit `GlyphPos` entries for every codepoint in `grapheme`.
+///
+/// The first codepoint carries the cluster advance; subsequent code
+/// points (combining marks, ZWJ joiners) emit zero-advance positions
+/// pointing at the same cluster byte. Skrifa returns the cmap's `notdef`
+/// glyph (id 0) for unmapped codepoints — we keep them so downstream
+/// can paint the tofu box.
+fn emit_grapheme(
+    grapheme: &str,
+    cluster_byte: usize,
+    charmap: &Charmap<'_>,
+    cluster_advance: f32,
+    out: &mut SmallVec<[GlyphPos; 16]>,
+) {
+    let cluster = u32::try_from(cluster_byte).unwrap_or(u32::MAX);
+    for (idx, ch) in grapheme.chars().enumerate() {
+        let skrifa_gid = charmap.map(ch as u32).unwrap_or_default();
+        let id_u16 = u16::try_from(skrifa_gid.to_u32()).unwrap_or(0);
+        let advance = if idx == 0 { cluster_advance } else { 0.0 };
+        out.push(GlyphPos {
+            id: GlyphId(id_u16),
+            advance,
+            offset_x: 0.0,
+            offset_y: 0.0,
+            cluster,
+        });
+    }
+}
+
+/// Codepoint classification kept for downstream (G1.5 atlas routing).
+///
+/// G1.3 doesn't act on the result — skrifa returns the correct
+/// advance for Latin, CJK, and emoji uniformly — but it pins the
+/// detection contract so the followup atlas-routing dispatch has a
+/// stable surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CodepointClass {
+    /// Standard Latin / Greek / Cyrillic etc.
+    Regular,
+    /// CJK Symbols and Punctuation (`U+3000..U+303F`).
+    CjkPunctuation,
+    /// Half/Full-width Forms (`U+FF00..U+FFEF`).
+    HalfFullWidth,
+    /// Emoji codepoint (BMP + supplementary blocks).
+    Emoji,
+}
+
+/// Classify the lead codepoint of a grapheme.
+pub(crate) fn classify(ch: char) -> CodepointClass {
+    let cp = ch as u32;
+    if matches!(cp, 0x3000..=0x303F) {
+        CodepointClass::CjkPunctuation
+    } else if matches!(cp, 0xFF00..=0xFFEF) {
+        CodepointClass::HalfFullWidth
+    } else if is_emoji(cp) {
+        CodepointClass::Emoji
+    } else {
+        CodepointClass::Regular
+    }
+}
+
+/// Cheap emoji-block check covering the high-frequency ranges.
+///
+/// Per DR-044: pulling `unicode-properties` for the well-typed
+/// `EMOJI_PRESENTATION` query is overkill for G1.3 — the codepoint
+/// ranges below cover Misc Symbols + Dingbats + the SMP emoji
+/// blocks, which is what the test corpus needs. G1.5 can swap in
+/// the full property table when the atlas-routing surface needs
+/// stricter coverage.
+const fn is_emoji(cp: u32) -> bool {
+    matches!(
+        cp,
+        0x2600..=0x27BF      // Misc Symbols + Dingbats
+        | 0x1F300..=0x1F5FF  // Misc Symbols and Pictographs
+        | 0x1F600..=0x1F64F  // Emoticons
+        | 0x1F680..=0x1F6FF  // Transport and Map
+        | 0x1F700..=0x1F77F  // Alchemical
+        | 0x1F900..=0x1F9FF, // Supplemental Symbols and Pictographs
+    )
+}
+
+#[cfg(test)]
+#[path = "shaper/tests.rs"]
+mod tests;
+
+// G1.3 oracle-parity module retired in G1.7. The owned shaper has been
+// production-verified through G1.4–G1.6; the historical comparison
+// dependency is no longer needed. See DR-044 and the G1.7 closeout
+// commit for the rationale.

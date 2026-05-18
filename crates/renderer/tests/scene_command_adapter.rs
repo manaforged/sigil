@@ -16,7 +16,6 @@ use sigil_shell as _;
 use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use taffy as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
@@ -156,14 +155,7 @@ fn draw_rect_count(commands: &[SceneCommand]) -> usize {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size {
-            width: 96.0,
-            height: 18.0,
-        }
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(96.0, 18.0)
     }
 }

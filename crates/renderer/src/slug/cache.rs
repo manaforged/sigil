@@ -10,7 +10,8 @@ use super::bands::BandData;
 /// and variable-font instances each get their own cache entry.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct GlyphKey {
-    /// Stable blob identity from `parley` / `skrifa`.
+    /// Stable blob identity — pointer hash of the font's `Arc<Vec<u8>>` buffer
+    /// as carried through the owned text engine + skrifa font ref.
     pub font_id: u64,
     /// TrueType collection face index (0 for single-font files).
     pub font_index: u32,

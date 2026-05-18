@@ -6,23 +6,25 @@ use std::rc::Rc;
 
 use ahash as _;
 use criterion as _;
-use parley as _;
-use sigil_hal as _;
+#[cfg(feature = "shaping-complex")]
+use harfrust as _;
 use sigil_style as _;
 use skrifa as _;
 use smallvec as _;
+use tracing as _;
 use unicode_bidi as _;
+use unicode_script as _;
 use unicode_segmentation as _;
 
+use sigil_hal::{Dim, Size};
 use sigil_kernel::TextContent;
 use sigil_layout::TextEngineMeasure;
 use sigil_layout::TextMeasure;
 use sigil_reactive::{Runtime, signal};
-use sigil_text::{ParleyTextEngine, TextConfig};
-use taffy::prelude::{AvailableSpace, Size};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
-fn make_measurer() -> TextEngineMeasure<ParleyTextEngine> {
-    let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
+fn make_measurer() -> TextEngineMeasure<OwnedTextEngine> {
+    let engine = Rc::new(OwnedTextEngine::new(TextConfig::default()));
     TextEngineMeasure::new(engine)
 }
 
@@ -36,8 +38,8 @@ fn reactive_text_measures_current_value() {
         let size = measurer.measure(
             &source,
             Size {
-                width: AvailableSpace::MaxContent,
-                height: AvailableSpace::MaxContent,
+                width: Dim::MaxContent,
+                height: Dim::MaxContent,
             },
         );
 
@@ -56,8 +58,8 @@ fn reactive_text_reflects_signal_update() {
         let short = measurer.measure(
             &source,
             Size {
-                width: AvailableSpace::MaxContent,
-                height: AvailableSpace::MaxContent,
+                width: Dim::MaxContent,
+                height: Dim::MaxContent,
             },
         );
 
@@ -67,8 +69,8 @@ fn reactive_text_reflects_signal_update() {
         let long = measurer.measure(
             &source,
             Size {
-                width: AvailableSpace::MaxContent,
-                height: AvailableSpace::MaxContent,
+                width: Dim::MaxContent,
+                height: Dim::MaxContent,
             },
         );
 

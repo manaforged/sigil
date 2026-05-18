@@ -2,7 +2,7 @@
 //!
 //! Targets the F6 acceptance gate: 500 simultaneous spawns + per-frame
 //! animations under 2 ms per frame on the dev box. The bench measures
-//! the simulation step in isolation (no taffy, no scene emit), which
+//! the simulation step in isolation (no layout, no scene emit), which
 //! is the hot path the widget owns.
 //!
 //! Run with `cargo bench -p sigil --bench floating_text`.
@@ -21,7 +21,6 @@ use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_renderer as _;
-use taffy as _;
 
 use std::hint::black_box;
 use std::rc::Rc;

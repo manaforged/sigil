@@ -1,34 +1,24 @@
 //! Layout engine and `sigil-kernel` synchronization.
-//!
-//! P0 cutover (DR-041): the taffy-backed [`LayoutEngine`] in this file
-//! stays unchanged in P0.1. The owned-engine types (`LayoutForest`,
-//! `MeasureScope`, `NodeRef`, `ComputedBox`, `LocalId`, `LayoutPass`,
-//! `AvailableSpace`, `SpaceConstraint`) live in [`crate::forest`] and
-//! are consumed by `block`, `flex`, `parallel`. P0.5 (W2.6) swaps the
-//! taffy backend out and rewires the public methods below to call the
-//! owned types.
 
 use ahash::AHashMap;
 use sigil_hal::{Dim, Size};
 use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
 use sigil_style::{StyleBinding, StyleEngine, TextStyle};
 use smallvec::SmallVec;
-use taffy::prelude::{
-    AvailableSpace as TaffyAvailableSpace, NodeId as TaffyId, Size as TaffySize, TaffyTree,
-};
 
 use crate::cache_key::{AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature};
+use crate::engine_drive::{LayoutDrive, NodeHandle};
+use crate::forest::{AvailableSpace, SpaceConstraint};
 use crate::style_adapter::apply_style_atoms;
-use crate::text_style::{LayoutContext, apply_text_binding, measure_text, theme_for};
+use crate::text_style::{apply_text_binding, theme_for};
 use crate::{LayoutError, LayoutResult, LayoutStyle, TextMeasure};
 
-/// Taffy-backed layout engine.
+/// Owned layout engine mirroring a `sigil-kernel` subtree into [`LayoutDrive`].
 pub struct LayoutEngine {
-    taffy: TaffyTree<LayoutContext>,
-    core_to_taffy: AHashMap<NodeId, TaffyId>,
-    taffy_to_core: AHashMap<TaffyId, NodeId>,
+    drive: LayoutDrive,
+    core_to_handle: AHashMap<NodeId, NodeHandle>,
+    handle_to_core: AHashMap<NodeHandle, NodeId>,
     computed: AHashMap<NodeId, LayoutResult>,
-    measurer: Box<dyn TextMeasure>,
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
 }
@@ -38,28 +28,22 @@ impl LayoutEngine {
     #[must_use]
     pub fn with_text_measure(measurer: Box<dyn TextMeasure>) -> Self {
         Self {
-            taffy: TaffyTree::new(),
-            core_to_taffy: AHashMap::new(),
-            taffy_to_core: AHashMap::new(),
+            drive: LayoutDrive::new(measurer),
+            core_to_handle: AHashMap::new(),
+            handle_to_core: AHashMap::new(),
             computed: AHashMap::new(),
-            measurer,
             generation: 0,
             cached_key: None,
         }
     }
 
-    /// Return the number of nodes currently mirrored into Taffy.
+    /// Return the number of nodes currently mirrored into the owned drive.
     #[must_use]
     pub fn mirrored_node_count(&self) -> usize {
-        self.core_to_taffy.len()
+        self.core_to_handle.len()
     }
 
     /// Monotonic counter bumped on every successful layout recompute.
-    ///
-    /// Downstream caches keyed on layout geometry should invalidate
-    /// when this value changes, paired with
-    /// [`Cx::mutation_generation`](sigil_kernel::Cx::mutation_generation)
-    /// for tree-shape invalidation.
     #[must_use]
     pub const fn generation(&self) -> u64 {
         self.generation
@@ -71,15 +55,14 @@ impl LayoutEngine {
         self.computed.get(&id).copied()
     }
 
-    /// Mirror a `sigil-kernel` subtree into the private Taffy tree.
+    /// Mirror a `sigil-kernel` subtree into the private owned layout drive.
     ///
     /// # Errors
     ///
     /// Returns [`LayoutError::NodeMissing`] when `root` is stale or a
-    /// child mapping is absent, and returns [`LayoutError::TaffyInvalid`]
-    /// when Taffy rejects a mirror update.
+    /// child mapping is absent.
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
-        self.sync_subtree(cx, root).map(|_taffy_ids| ())
+        self.sync_subtree(cx, root).map(|_handles| ())
     }
 
     /// Compute layout for a `sigil-kernel` subtree and attach results back to nodes.
@@ -87,8 +70,8 @@ impl LayoutEngine {
     /// # Errors
     ///
     /// Returns [`LayoutError::NodeMissing`] when `root` or a computed
-    /// node is stale, and returns [`LayoutError::TaffyInvalid`] when
-    /// Taffy rejects sync or compute.
+    /// node is stale, and returns [`LayoutError::LayoutInvalid`] when
+    /// the owned drive rejects a stale mirror handle.
     pub fn compute(
         &mut self,
         cx: &mut Cx,
@@ -103,7 +86,7 @@ impl LayoutEngine {
             CacheDecision::Miss(key) => key,
         };
 
-        self.measurer.begin_frame();
+        self.drive.begin_frame();
         let previous_ids = self.computed.keys().copied().collect::<SmallVec<[_; 32]>>();
         self.sync(cx, root)?;
         self.compute_mirror(root, available)?;
@@ -121,7 +104,6 @@ impl LayoutEngine {
         }
 
         for id in ids {
-            // Fragments have no Taffy node and no layout result — skip them.
             if let Some(result) = self.result(id) {
                 let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
                 let _ = node.attach(result);
@@ -133,7 +115,76 @@ impl LayoutEngine {
         Ok(())
     }
 
-    // Cheap fields first; cold/mismatch paths skip the O(n) content walk.
+    /// Remove mirrored layout nodes for `sigil-kernel` nodes no longer present.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LayoutError::LayoutInvalid`] when the owned drive sees a stale handle.
+    pub fn gc(&mut self, cx: &Cx) -> Result<(), LayoutError> {
+        let stale = self
+            .core_to_handle
+            .keys()
+            .copied()
+            .filter(|id| cx.get(*id).is_none())
+            .collect::<Vec<_>>();
+
+        for id in stale {
+            if self.core_to_handle.contains_key(&id) {
+                self.remove_mirror(id)?;
+            }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn upsert_mirror(
+        &mut self,
+        id: NodeId,
+        intent: &LayoutStyle,
+    ) -> Result<(), LayoutError> {
+        self.upsert_with_text(id, intent, None, None)
+    }
+
+    pub(crate) fn set_children_mirror(
+        &mut self,
+        parent: NodeId,
+        children: &[NodeId],
+    ) -> Result<(), LayoutError> {
+        let parent_handle = self.handle(parent)?;
+        let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
+        for child in children {
+            child_handles.push(self.handle(*child)?);
+        }
+        self.drive.set_children(parent_handle, &child_handles)
+    }
+
+    pub(crate) fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
+        let handle = self
+            .core_to_handle
+            .get(&id)
+            .copied()
+            .ok_or(LayoutError::NodeMissing(id))?;
+        let subtree = self.drive.subtree_handles(handle)?;
+
+        for handle in &subtree {
+            if let Some(core_id) = self.handle_to_core.remove(handle) {
+                let _ = self.core_to_handle.remove(&core_id);
+                let _ = self.computed.remove(&core_id);
+            }
+        }
+        self.drive.remove(handle)
+    }
+
+    pub(crate) fn compute_mirror(
+        &mut self,
+        root: NodeId,
+        available: Size,
+    ) -> Result<(), LayoutError> {
+        let root_handle = self.handle(root)?;
+        self.drive
+            .measure_with_constraints(root_handle, to_available_space(available))?;
+        self.refresh_results(root_handle)
+    }
+
     fn resolve_cache_key(&self, cx: &Cx, root: NodeId, available: Size) -> CacheDecision {
         let cx_instance = cx.instance_id();
         let cx_generation = cx.mutation_generation();
@@ -165,108 +216,22 @@ impl LayoutEngine {
         })
     }
 
-    /// Remove mirrored Taffy nodes for `sigil-kernel` nodes no longer present.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LayoutError::TaffyInvalid`] when Taffy rejects a
-    /// removal while collecting stale nodes.
-    pub fn gc(&mut self, cx: &Cx) -> Result<(), LayoutError> {
-        let stale = self
-            .core_to_taffy
-            .keys()
-            .copied()
-            .filter(|id| cx.get(*id).is_none())
-            .collect::<Vec<_>>();
-
-        for id in stale {
-            if self.core_to_taffy.contains_key(&id) {
-                self.remove_mirror(id)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn upsert_mirror(
+    /// Sync one kernel node and return the handles the caller should
+    /// register as children. Fragments flatten into their parent.
+    fn sync_subtree(
         &mut self,
+        cx: &Cx,
         id: NodeId,
-        intent: &LayoutStyle,
-    ) -> Result<(), LayoutError> {
-        self.upsert_with_text(id, intent, None, None)
-    }
-
-    pub(crate) fn set_children_mirror(
-        &mut self,
-        parent: NodeId,
-        children: &[NodeId],
-    ) -> Result<(), LayoutError> {
-        let parent_taffy = self.taffy_id(parent)?;
-        let mut taffy_children = SmallVec::<[TaffyId; 8]>::new();
-        for child in children {
-            taffy_children.push(self.taffy_id(*child)?);
-        }
-        self.taffy
-            .set_children(parent_taffy, &taffy_children)
-            .map_err(LayoutError::from)
-    }
-
-    pub(crate) fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
-        let taffy_id = self
-            .core_to_taffy
-            .get(&id)
-            .copied()
-            .ok_or(LayoutError::NodeMissing(id))?;
-
-        let mut subtree = Vec::new();
-        self.collect_taffy_subtree(taffy_id, &mut subtree)?;
-        for taffy_node in subtree.into_iter().rev() {
-            if let Some(core_id) = self.taffy_to_core.remove(&taffy_node) {
-                let _ = self.core_to_taffy.remove(&core_id);
-                let _ = self.computed.remove(&core_id);
-            }
-            self.taffy.remove(taffy_node).map_err(LayoutError::from)?;
-        }
-
-        Ok(())
-    }
-
-    pub(crate) fn compute_mirror(
-        &mut self,
-        root: NodeId,
-        available: Size,
-    ) -> Result<(), LayoutError> {
-        let root_taffy = self.taffy_id(root)?;
-        let available = to_taffy_size(available);
-        let measurer = &self.measurer;
-
-        self.taffy
-            .compute_layout_with_measure(
-                root_taffy,
-                available,
-                |known, space, _node_id, context, _style| {
-                    measure_text(measurer.as_ref(), known, space, context)
-                },
-            )
-            .map_err(LayoutError::from)?;
-
-        self.refresh_results(root_taffy)
-    }
-
-    /// Sync one node into Taffy and return the Taffy IDs the *caller* should
-    /// register as its children.
-    ///
-    /// For `Container` and `Text` nodes this is `[taffy_id_of_self]`.
-    /// For `Fragment` nodes there is no Taffy node — the fragment's own
-    /// children are returned directly so they appear as siblings of the
-    /// fragment inside its parent's layout box.
-    fn sync_subtree(&mut self, cx: &Cx, id: NodeId) -> Result<SmallVec<[TaffyId; 4]>, LayoutError> {
+    ) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
         let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
-        let children = node.children.iter().copied().collect::<SmallVec<[_; 4]>>();
+        let children = node
+            .children()
+            .iter()
+            .copied()
+            .collect::<SmallVec<[_; 4]>>();
 
-        // Fragments flatten into their parent: no Taffy node of their own.
         if matches!(node.kind, NodeType::Fragment) {
-            let mut out = SmallVec::<[TaffyId; 4]>::new();
+            let mut out = SmallVec::<[NodeHandle; 4]>::new();
             for child in &children {
                 out.extend(self.sync_subtree(cx, *child)?);
             }
@@ -297,17 +262,15 @@ impl LayoutEngine {
 
         self.upsert_with_text(id, &intent, text_content, text_style)?;
 
-        let mut taffy_children = SmallVec::<[TaffyId; 8]>::new();
+        let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
         for child in &children {
-            taffy_children.extend(self.sync_subtree(cx, *child)?);
+            child_handles.extend(self.sync_subtree(cx, *child)?);
         }
-        let parent_taffy = self.taffy_id(id)?;
-        self.taffy
-            .set_children(parent_taffy, &taffy_children)
-            .map_err(LayoutError::from)?;
+        let parent_handle = self.handle(id)?;
+        self.drive.set_children(parent_handle, &child_handles)?;
 
-        let mut out = SmallVec::<[TaffyId; 4]>::new();
-        out.push(parent_taffy);
+        let mut out = SmallVec::<[NodeHandle; 4]>::new();
+        out.push(parent_handle);
         Ok(out)
     }
 
@@ -318,80 +281,54 @@ impl LayoutEngine {
         text_content: Option<TextContent>,
         text_style: Option<TextStyle>,
     ) -> Result<(), LayoutError> {
-        let style = intent.as_taffy().clone();
-        let context = LayoutContext {
-            text_content,
-            text_style,
-        };
-
-        if let Some(taffy_id) = self.core_to_taffy.get(&id).copied() {
-            self.taffy
-                .set_style(taffy_id, style)
-                .map_err(LayoutError::from)?;
-            self.taffy
-                .set_node_context(taffy_id, Some(context))
-                .map_err(LayoutError::from)?;
+        let style = intent.data().clone();
+        if let Some(handle) = self.core_to_handle.get(&id).copied() {
+            self.drive.set_style(handle, style)?;
+            self.drive.set_text(handle, text_content, text_style)?;
             return Ok(());
         }
 
-        let taffy_id = self
-            .taffy
-            .new_leaf_with_context(style, context)
-            .map_err(LayoutError::from)?;
-        self.core_to_taffy.insert(id, taffy_id);
-        self.taffy_to_core.insert(taffy_id, id);
+        let handle = self.drive.insert(style);
+        self.drive.set_text(handle, text_content, text_style)?;
+        self.core_to_handle.insert(id, handle);
+        self.handle_to_core.insert(handle, id);
         Ok(())
     }
 
-    fn refresh_results(&mut self, root: TaffyId) -> Result<(), LayoutError> {
-        let mut stack = vec![root];
+    fn refresh_results(&mut self, root: NodeHandle) -> Result<(), LayoutError> {
         let mut computed = AHashMap::new();
-        while let Some(taffy_id) = stack.pop() {
+        for handle in self.drive.subtree_handles(root)? {
             let core_id =
-                self.taffy_to_core.get(&taffy_id).copied().ok_or_else(|| {
-                    LayoutError::TaffyInvalid("missing inverse node map".to_owned())
+                self.handle_to_core.get(&handle).copied().ok_or_else(|| {
+                    LayoutError::LayoutInvalid("missing inverse node map".to_owned())
                 })?;
-            let layout = self.taffy.layout(taffy_id).map_err(LayoutError::from)?;
-            computed.insert(core_id, LayoutResult::from_taffy(layout));
-            let children = self.taffy.children(taffy_id).map_err(LayoutError::from)?;
-            stack.extend(children);
+            if let Some(layout) = self.drive.computed_box(handle) {
+                computed.insert(core_id, LayoutResult::from_resolved_box(&layout));
+            }
         }
         self.computed = computed;
         Ok(())
     }
 
-    fn collect_taffy_subtree(
-        &self,
-        root: TaffyId,
-        out: &mut Vec<TaffyId>,
-    ) -> Result<(), LayoutError> {
-        out.push(root);
-        let children = self.taffy.children(root).map_err(LayoutError::from)?;
-        for child in children {
-            self.collect_taffy_subtree(child, out)?;
-        }
-        Ok(())
-    }
-
-    fn taffy_id(&self, id: NodeId) -> Result<TaffyId, LayoutError> {
-        self.core_to_taffy
+    fn handle(&self, id: NodeId) -> Result<NodeHandle, LayoutError> {
+        self.core_to_handle
             .get(&id)
             .copied()
             .ok_or(LayoutError::NodeMissing(id))
     }
 }
 
-const fn to_taffy_size(size: Size) -> TaffySize<TaffyAvailableSpace> {
-    TaffySize {
-        width: to_available_space(size.width),
-        height: to_available_space(size.height),
+const fn to_available_space(size: Size) -> AvailableSpace {
+    AvailableSpace {
+        w: to_space_constraint(size.width),
+        h: to_space_constraint(size.height),
     }
 }
 
-const fn to_available_space(dim: Dim) -> TaffyAvailableSpace {
+const fn to_space_constraint(dim: Dim) -> SpaceConstraint {
     match dim {
-        Dim::Fixed(value) => TaffyAvailableSpace::Definite(value),
-        Dim::MinContent => TaffyAvailableSpace::MinContent,
-        Dim::MaxContent => TaffyAvailableSpace::MaxContent,
+        Dim::Fixed(value) => SpaceConstraint::Definite(value),
+        Dim::MinContent => SpaceConstraint::MinContent,
+        Dim::MaxContent => SpaceConstraint::MaxContent,
     }
 }

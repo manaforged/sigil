@@ -10,7 +10,6 @@ use sigil_hal as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 mod stub;
 use stub::stub_engine;
 
@@ -18,7 +17,7 @@ use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 
 #[test]
-fn sync_updates_intent_without_allocating_new_taffy_nodes() {
+fn sync_updates_intent_without_allocating_new_layout_nodes() {
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(text("A")).child(text("B")));
 

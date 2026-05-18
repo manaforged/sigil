@@ -23,7 +23,8 @@ use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 
 use routing_helpers::{
-    abs_rect, compute_layout, pointer_down, pointer_move, record, route_event, window_blur,
+    abs_rect, compute_layout, pointer_down, pointer_move, record, route_event, scroll_lines,
+    window_blur,
 };
 
 #[test]
@@ -256,4 +257,58 @@ fn disposed_handler_node_no_panic() {
     route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
 
     assert_eq!(hits.get(), 0);
+}
+
+#[test]
+fn scroll_dispatches_via_fresh_hit_test() {
+    // No pointer event has fired before the first scroll — the
+    // router should hit-test event.position rather than rely on a
+    // stale hover path. Regression for scroll-before-first-move.
+    let order = Rc::new(RefCell::new(Vec::new()));
+    let mut cx = Cx::new_root();
+    let outer = Rc::clone(&order);
+    let inner = Rc::clone(&order);
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .on_scroll(move |_| outer.borrow_mut().push("outer"))
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
+                    .on_scroll(move |_| inner.borrow_mut().push("inner")),
+            ),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, scroll_lines(5.0, 5.0, 1.0));
+
+    assert_eq!(&*order.borrow(), &["inner", "outer"]);
+}
+
+#[test]
+fn scroll_stop_propagation_halts_bubble() {
+    let order = Rc::new(RefCell::new(Vec::new()));
+    let mut cx = Cx::new_root();
+    let outer = Rc::clone(&order);
+    let inner = Rc::clone(&order);
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .on_scroll(move |_| outer.borrow_mut().push("outer"))
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
+                    .on_scroll(move |ev| {
+                        inner.borrow_mut().push("inner");
+                        ev.stop_propagation();
+                    }),
+            ),
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, scroll_lines(5.0, 5.0, 1.0));
+
+    assert_eq!(&*order.borrow(), &["inner"]);
 }

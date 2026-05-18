@@ -96,6 +96,7 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
+        | StyleAtom::FontFamily(_)
         | StyleAtom::LineHeight(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
@@ -183,6 +184,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
+        StyleAtom::FontFamily(_) => ResolvedSlot::FontFamily,
         StyleAtom::LineHeight(_) => ResolvedSlot::LineHeight,
         StyleAtom::Transition(_) => ResolvedSlot::Transition,
         StyleAtom::TransitionDuration(_) => ResolvedSlot::TransitionDuration,
@@ -217,6 +219,7 @@ enum ResolvedSlot {
     Opacity,
     FontSize,
     FontWeight,
+    FontFamily,
     LineHeight,
     Transition,
     TransitionDuration,

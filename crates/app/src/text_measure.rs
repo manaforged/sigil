@@ -4,11 +4,11 @@ use std::rc::Rc;
 
 use sigil_layout::{TextEngineMeasure, TextMeasure};
 use sigil_style::TextStyle;
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
-/// Parley-backed text measurer used by the launch pipeline.
+/// Owned-text-engine-backed measurer used by the launch pipeline.
 pub struct DefaultTextMeasure {
-    inner: TextEngineMeasure<ParleyTextEngine>,
+    inner: TextEngineMeasure<OwnedTextEngine>,
 }
 
 impl Default for DefaultTextMeasure {
@@ -21,7 +21,7 @@ impl DefaultTextMeasure {
     /// Create the default text measurer.
     #[must_use]
     pub fn new() -> Self {
-        let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
+        let engine = Rc::new(OwnedTextEngine::new(TextConfig::default()));
         Self {
             inner: TextEngineMeasure::new(engine),
         }
@@ -32,8 +32,8 @@ impl TextMeasure for DefaultTextMeasure {
     fn measure(
         &self,
         content: &sigil_kernel::TextContent,
-        space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
+        space: sigil_hal::Size,
+    ) -> sigil_hal::LogicalSize {
         self.inner.measure(content, space)
     }
 
@@ -41,8 +41,8 @@ impl TextMeasure for DefaultTextMeasure {
         &self,
         content: &sigil_kernel::TextContent,
         style: &TextStyle,
-        space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
+        space: sigil_hal::Size,
+    ) -> sigil_hal::LogicalSize {
         self.inner.measure_styled(content, style, space)
     }
 

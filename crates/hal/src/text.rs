@@ -1,9 +1,9 @@
 //! Text engine trait — see [DR-004].
 //!
 //! The `TextEngine` trait abstracts paragraph layout, shaping, caret
-//! modelling, and selection geometry. In production this is
-//! implemented over `parley` upstream by `sigil-text`. Tests
-//! implement a monospace stub.
+//! modelling, and selection geometry. In production this is implemented
+//! by `sigil-text` over skrifa + unicode-segmentation (DR-044).
+//! Tests implement a monospace stub.
 //!
 //! Text editing operations (cursor movement, delete, undo/redo) and
 //! IME integration are the responsibility of `sigil-text`, not of

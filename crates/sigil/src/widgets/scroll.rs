@@ -1,113 +1,140 @@
 //! Scroll widget — viewport clip with reactive scroll position.
 //!
-//! Content is offset by a negative `MarginTop` (or `MarginLeft` for horizontal
-//! scrolling) driven by a `Signal<f32>`. Viewport clipping relies on layout
-//! `overflow: hidden` via Taffy's escape hatch; visual clipping is deferred
-//! to a future renderer integration pass.
+//! Content is offset by a negative `MarginTop` driven by a `Signal<f32>`.
+//! Viewport clipping relies on layout `overflow: hidden`; visual clipping
+//! is deferred to a future renderer integration pass.
+
+#![allow(clippy::missing_const_for_fn)]
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt};
+use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use sigil_reactive::{Signal, derived_eq, signal};
-use sigil_style::{NodeStyleExt, Px, StyleAtom};
-use taffy::Overflow;
+use sigil_style::{ClassSource, NodeStyleExt, Px, StyleAtom};
 
 const VIEWPORT_WIDTH: f32 = 320.0;
 const VIEWPORT_HEIGHT: f32 = 240.0;
 const SCROLLBAR_WIDTH: f32 = 8.0;
 const THUMB_MIN_HEIGHT: f32 = 24.0;
 const SCROLL_LINE: f32 = 40.0;
+const ATOM_CACHE_CAP: usize = 256;
 
 static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static THUMB_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static THUMB_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 
 /// Builder returned by [`scroll`].
 pub struct ScrollBuilder {
     content: NodeBuilder,
-    content_height: f32,
-    viewport_height: f32,
-    /// Enable horizontal scrolling (default: vertical only).
-    pub horizontal: bool,
-    /// Enable kinetic momentum on release (default: true — stub until timer lands).
-    pub momentum: bool,
+    extent: Signal<f32>,
+    height: f32,
+    width: f32,
+    extra: Option<ClassSource>,
 }
 
-/// Create a scroll widget that clips `content` to a vertical viewport.
+/// Coerce a content-extent value into a [`Signal<f32>`].
 ///
-/// `content_height` is the intrinsic height of the content in logical pixels.
-/// `viewport_height` is the visible window height; defaults to 240 px.
+/// Implemented for `f32` (wraps in a fresh signal) and `Signal<f32>`
+/// (passes through). Lets `scroll(content, 800.0)` and
+/// `scroll(content, my_signal)` both compile.
+pub trait IntoScrollExtent {
+    /// Return the extent as a reactive signal in logical pixels.
+    fn into_extent(self) -> Signal<f32>;
+}
+
+impl IntoScrollExtent for f32 {
+    fn into_extent(self) -> Signal<f32> {
+        signal(self)
+    }
+}
+
+impl IntoScrollExtent for Signal<f32> {
+    fn into_extent(self) -> Signal<f32> {
+        self
+    }
+}
+
+/// Create a scroll widget that clips `content` to a viewport.
+///
+/// `extent` is the total height of the content in logical pixels.
+/// Pass a `Signal<f32>` to keep scroll bounds reactive (the widget
+/// re-clamps as content height changes), or a bare `f32` for static
+/// content.
 #[must_use]
-pub const fn scroll(content: NodeBuilder, content_height: f32) -> ScrollBuilder {
-    ScrollBuilder::new(content, content_height)
+pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuilder {
+    ScrollBuilder {
+        content,
+        extent: extent.into_extent(),
+        height: VIEWPORT_HEIGHT,
+        width: VIEWPORT_WIDTH,
+        extra: None,
+    }
 }
 
 impl ScrollBuilder {
-    /// Create a scroll builder with defaults.
+    /// Apply utility classes to the viewport container root.
     #[must_use]
-    pub const fn new(content: NodeBuilder, content_height: f32) -> Self {
-        Self {
-            content,
-            content_height: content_height.max(1.0),
-            viewport_height: VIEWPORT_HEIGHT,
-            horizontal: false,
-            momentum: true,
-        }
-    }
-
-    /// Override the visible viewport height.
-    #[must_use]
-    pub const fn viewport_height(mut self, px: f32) -> Self {
-        self.viewport_height = px;
+    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
+        self.extra = Some(source.into());
         self
     }
 
-    /// Enable or disable kinetic momentum on gesture release.
+    /// Set the visible viewport height in pixels.
     #[must_use]
-    pub const fn momentum(mut self, enabled: bool) -> Self {
-        self.momentum = enabled;
+    pub const fn height(mut self, px: f32) -> Self {
+        self.height = px;
+        self
+    }
+
+    /// Set the visible viewport width in pixels.
+    #[must_use]
+    pub const fn width(mut self, px: f32) -> Self {
+        self.width = px;
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
         let scroll_y = signal(0.0_f32);
-        let content_h = self.content_height;
-        let viewport_h = self.viewport_height;
+        let extent = self.extent;
+        let height = self.height;
+        let width = self.width;
         let content = self.content;
 
-        let max_scroll = (content_h - viewport_h).max(0.0);
-        let content_with_offset = offset_content(content, scroll_y, content_h, viewport_h);
-        let scrollbar = scrollbar_track(scroll_y, content_h, viewport_h);
+        let max_scroll = derived_eq(move || (extent.get() - height).max(0.0));
+        let initial = extent.peek().max(height);
+        let body = wrap_content(content, scroll_y, max_scroll, initial, width);
+        let track = scrollbar_track(scroll_y, max_scroll, initial, height);
 
-        viewport_container(viewport_h)
-            .child(content_with_offset)
-            .child(scrollbar)
+        let mut root = viewport_container(width, height)
+            .child(body)
+            .child(track)
             .on_key(Key::ArrowDown, move |ev| {
-                scroll_by(ev, scroll_y, SCROLL_LINE, max_scroll);
+                step(ev, scroll_y, SCROLL_LINE, max_scroll.peek());
             })
             .on_key(Key::ArrowUp, move |ev| {
-                scroll_by(ev, scroll_y, -SCROLL_LINE, max_scroll);
+                step(ev, scroll_y, -SCROLL_LINE, max_scroll.peek());
             })
             .on_key(Key::PageDown, move |ev| {
-                scroll_by(ev, scroll_y, viewport_h, max_scroll);
+                step(ev, scroll_y, height, max_scroll.peek());
             })
             .on_key(Key::PageUp, move |ev| {
-                scroll_by(ev, scroll_y, -viewport_h, max_scroll);
+                step(ev, scroll_y, -height, max_scroll.peek());
             })
             .on_key(Key::Home, move |ev| {
-                scroll_to(ev, scroll_y, 0.0);
+                jump(ev, scroll_y, 0.0);
             })
             .on_key(Key::End, move |ev| {
-                scroll_to(ev, scroll_y, max_scroll);
+                jump(ev, scroll_y, max_scroll.peek());
             })
-    }
-}
-
-impl Default for ScrollBuilder {
-    fn default() -> Self {
-        Self::new(container(), 0.0)
+            .on_scroll(move |ev| {
+                wheel(ev, scroll_y, height, max_scroll.peek());
+            });
+        if let Some(classes) = self.extra {
+            root = root.class(classes);
+        }
+        root
     }
 }
 
@@ -117,97 +144,161 @@ impl IntoNode for ScrollBuilder {
     }
 }
 
-fn viewport_container(viewport_h: f32) -> NodeBuilder {
+fn viewport_container(width: f32, height: f32) -> NodeBuilder {
     container()
         .role(Role::ScrollView)
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(VIEWPORT_WIDTH, viewport_h)
-                .with_taffy(|s| {
-                    s.overflow.y = Overflow::Hidden;
+                .fixed_size(width, height)
+                .with_layout(|s| {
+                    s.overflow.height = Overflow::Hidden;
                 }),
         )
         .class(VIEWPORT_ATOMS)
 }
 
-fn offset_content(
+fn wrap_content(
     content: NodeBuilder,
     scroll_y: Signal<f32>,
-    content_h: f32,
-    viewport_h: f32,
+    max_scroll: Signal<f32>,
+    initial: f32,
+    width: f32,
 ) -> NodeBuilder {
-    let max_scroll = (content_h - viewport_h).max(0.0);
     let offset_px = derived_eq(move || {
-        let clamped = scroll_y.get().clamp(0.0, max_scroll);
+        let clamped = scroll_y.get().clamp(0.0, max_scroll.get());
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let px = clamped.round() as i16;
         px
     });
+    // Layout box snaps to initial extent; if content grows past it,
+    // the overflow:hidden viewport still clips correctly — only the
+    // body's own inner layout reflows less ideally. Tracked: make
+    // body fixed_size reactive once the layout system grows a
+    // Height style atom.
     content
-        .layout(LayoutStyle::block().fixed_size(VIEWPORT_WIDTH - SCROLLBAR_WIDTH, content_h))
-        .style_reactive(move || margin_top_atoms_px(offset_px.get()))
+        .layout(LayoutStyle::block().fixed_size(width - SCROLLBAR_WIDTH, initial))
+        .style_reactive(move || margin_top_atoms(offset_px.get()))
 }
 
-fn scrollbar_track(scroll_y: Signal<f32>, content_h: f32, viewport_h: f32) -> NodeBuilder {
+fn scrollbar_track(
+    scroll_y: Signal<f32>,
+    max_scroll: Signal<f32>,
+    initial: f32,
+    height: f32,
+) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::block()
-                .fixed_size(SCROLLBAR_WIDTH, viewport_h)
+                .fixed_size(SCROLLBAR_WIDTH, height)
                 .position(Position::Relative),
         )
         .class(&[StyleAtom::BackgroundThemeRef("border")] as &[_])
-        .child(scrollbar_thumb(scroll_y, content_h, viewport_h))
+        .child(scrollbar_thumb(scroll_y, max_scroll, initial, height))
 }
 
-fn scrollbar_thumb(scroll_y: Signal<f32>, content_h: f32, viewport_h: f32) -> NodeBuilder {
-    let ratio = (viewport_h / content_h).clamp(0.0, 1.0);
-    let thumb_h = (ratio * viewport_h).max(THUMB_MIN_HEIGHT);
-    let max_scroll = (content_h - viewport_h).max(0.0);
-    let max_thumb_travel = viewport_h - thumb_h;
+fn scrollbar_thumb(
+    scroll_y: Signal<f32>,
+    max_scroll: Signal<f32>,
+    initial: f32,
+    height: f32,
+) -> NodeBuilder {
+    let ratio = (height / initial).clamp(0.0, 1.0);
+    let thumb_h = (ratio * height).max(THUMB_MIN_HEIGHT);
+    let max_travel = (height - thumb_h).max(0.0);
 
     let thumb_top = derived_eq(move || {
-        let t = if max_scroll > 0.0 {
-            scroll_y.get().clamp(0.0, max_scroll) / max_scroll
+        let max = max_scroll.get();
+        let t = if max > 0.0 {
+            scroll_y.get().clamp(0.0, max) / max
         } else {
             0.0
         };
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let px = (t * max_thumb_travel).round() as i16;
+        let px = (t * max_travel).round() as i16;
         px
     });
+
+    // Track-relative drag: record the down-position and the
+    // scroll value at that moment, then translate subsequent
+    // pointer-move deltas via the thumb-to-content ratio. Using
+    // raw event.position.y would snap the thumb to the global
+    // coordinate, which is wrong whenever the scroll widget isn't
+    // anchored at window y=0.
+    let drag_anchor = signal::<Option<(f32, f32)>>(None);
 
     container()
         .layout(LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, thumb_h))
         .class(THUMB_ATOMS)
-        .style_reactive(move || margin_top_atoms_px(thumb_top.get()))
+        .style_reactive(move || margin_top_atoms(thumb_top.get()))
         .on_pointer_down(move |ev| {
             ev.capture_pointer();
+            drag_anchor.set(Some((ev.position.y, scroll_y.peek())));
+        })
+        .on_pointer_up(move |_| {
+            drag_anchor.set(None);
         })
         .on_pointer_move(move |ev| {
             if !ev.is_captured() {
                 return;
             }
-            if max_thumb_travel <= 0.0 || max_scroll <= 0.0 {
+            let Some((anchor_y, anchor_scroll)) = drag_anchor.peek() else {
+                return;
+            };
+            let max = max_scroll.peek();
+            if max_travel <= 0.0 || max <= 0.0 {
                 return;
             }
-            let t = (ev.position.y / max_thumb_travel).clamp(0.0, 1.0);
-            scroll_y.set(t * max_scroll);
+            let drag_dy = ev.position.y - anchor_y;
+            let offset_dy = drag_dy * (max / max_travel);
+            let next = (anchor_scroll + offset_dy).clamp(0.0, max);
+            scroll_y.set(next);
             ev.stop_propagation();
         })
 }
 
-fn scroll_by(ev: &mut KeyEvent, scroll_y: Signal<f32>, delta: f32, max_scroll: f32) {
-    ev.stop_propagation();
-    let next = (scroll_y.peek() + delta).clamp(0.0, max_scroll);
-    scroll_y.set(next);
+/// Apply a fixed pixel step (arrow / page keys). Only stops
+/// propagation when scroll actually moved, so the parent can take
+/// over at the bounds.
+fn step(ev: &mut KeyEvent, scroll_y: Signal<f32>, delta: f32, max: f32) {
+    let current = scroll_y.peek();
+    let next = (current + delta).clamp(0.0, max);
+    if (next - current).abs() > f32::EPSILON {
+        scroll_y.set(next);
+        ev.stop_propagation();
+    }
 }
 
-fn scroll_to(ev: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
+/// Jump to an absolute position (Home / End).
+fn jump(ev: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
     ev.stop_propagation();
     scroll_y.set(target);
 }
 
-fn margin_top_atoms_px(px: i16) -> &'static [StyleAtom] {
+/// Translate a wheel / trackpad delta into a scroll-offset update.
+///
+/// Pixel deltas apply directly (they already reflect user intent at
+/// device granularity). Line deltas multiply by `SCROLL_LINE` and
+/// clamp to the viewport so a runaway delta cannot skip the whole
+/// document in one event. Propagation only stops when the scroll
+/// position changes; at top/bottom the event bubbles so an outer
+/// scroll container can take over.
+fn wheel(ev: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, max: f32) {
+    let dy = match ev.delta {
+        ScrollDelta::Pixels(p) => p.y,
+        ScrollDelta::Lines(l) => (l.y * SCROLL_LINE).clamp(-height, height),
+    };
+    // Wheel-down (positive y on most platforms) means the user
+    // wants to see content lower in the document, i.e. the scroll
+    // offset should increase. Sign-invert the platform delta.
+    let current = scroll_y.peek();
+    let next = (current - dy).clamp(0.0, max);
+    if (next - current).abs() > f32::EPSILON {
+        scroll_y.set(next);
+        ev.stop_propagation();
+    }
+}
+
+fn margin_top_atoms(px: i16) -> &'static [StyleAtom] {
     cached_atoms(px, || vec![StyleAtom::MarginTop(Px(px.wrapping_neg()))])
 }
 
@@ -221,6 +312,8 @@ fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [S
         return atoms;
     }
     let leaked: &'static [StyleAtom] = Box::leak(build().into_boxed_slice());
-    map.insert(key, leaked);
+    if map.len() < ATOM_CACHE_CAP {
+        map.insert(key, leaked);
+    }
     leaked
 }

@@ -54,9 +54,9 @@ impl FlexItem {
         let style = node.style();
         let cb_inline = if ctx.axes.row { cb_main } else { cb_cross };
         let edges = NodeEdges::build(style, cb_inline);
-        let basis = item_main_basis(style, ctx.axes, cb_main, &edges);
+        let basis = item_main_basis(ctx, node, style, ctx.axes, cb_main, &edges);
         let (cross_resolved, was_auto) =
-            item_cross_basis(style, ctx.axes, cb_main, cb_cross, &edges);
+            item_cross_basis(ctx, node, style, ctx.axes, cb_main, cb_cross, &edges);
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
         let m = edges.margin.or_zero();
         Self {

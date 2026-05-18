@@ -1,7 +1,7 @@
 //! P0.5.2 engine driver — end-to-end `measure` over a [`LayoutForest`].
 //!
 //! Public surface for downstream crates to drive layout against an owned
-//! forest without touching `taffy`. The driver dispatches the root's
+//! forest without touching an upstream layout engine. The driver dispatches the root's
 //! display to the matching solver ([`BlockSolver`] or [`FlexSolver`]),
 //! drains the solver's per-node results into the forest's `boxes` slab,
 //! and exposes per-node geometry through [`LayoutDrive::computed_box`].
@@ -14,10 +14,14 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
+use ahash::AHashSet;
+use sigil_kernel::TextContent;
+use sigil_style::TextStyle;
+
 use crate::block::BlockSolver;
 use crate::error::LayoutError;
 use crate::flex::FlexSolver;
-use crate::forest::{AvailableSpace, LayoutForest, LocalId, MeasureScope};
+use crate::forest::{AvailableSpace, LayoutForest, LayoutText, LocalId, MeasureScope};
 use crate::measure::TextMeasure;
 use crate::style_data::{Display, Size, StyleData};
 
@@ -60,6 +64,7 @@ pub struct NodeHandle(LocalId);
 pub struct LayoutDrive {
     forest: LayoutForest,
     text: Box<dyn TextMeasure>,
+    reached: AHashSet<LocalId>,
 }
 
 impl LayoutDrive {
@@ -69,6 +74,7 @@ impl LayoutDrive {
         Self {
             forest: LayoutForest::new(),
             text,
+            reached: AHashSet::new(),
         }
     }
 
@@ -78,20 +84,68 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(None, style))
     }
 
+    /// Replace a node's style.
+    pub fn set_style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), LayoutError> {
+        self.forest.set_style(node.0, style)
+    }
+
+    /// Replace the optional text measurement context for a node.
+    pub fn set_text(
+        &mut self,
+        node: NodeHandle,
+        content: Option<TextContent>,
+        style: Option<TextStyle>,
+    ) -> Result<(), LayoutError> {
+        let text = content.map(|content| LayoutText { content, style });
+        self.forest.set_text(node.0, text)
+    }
+
     /// Append `child` to `parent`'s child list.
     ///
     /// # Errors
     ///
-    /// Returns [`LayoutError::TaffyInvalid`] when either handle is
+    /// Returns [`LayoutError::LayoutInvalid`] when either handle is
     /// stale.
     pub fn attach(&mut self, parent: NodeHandle, child: NodeHandle) -> Result<(), LayoutError> {
         self.forest.attach(parent.0, child.0)
+    }
+
+    /// Replace `parent`'s child list.
+    pub fn set_children(
+        &mut self,
+        parent: NodeHandle,
+        children: &[NodeHandle],
+    ) -> Result<(), LayoutError> {
+        let local = children.iter().map(|child| child.0).collect::<Vec<_>>();
+        self.forest.set_children(parent.0, &local)
+    }
+
+    /// Return the reachable subtree handles below `root`, including `root`.
+    pub(crate) fn subtree_handles(&self, root: NodeHandle) -> Result<Vec<NodeHandle>, LayoutError> {
+        let mut out = Vec::new();
+        self.collect_subtree(root, &mut out)?;
+        Ok(out)
+    }
+
+    /// Remove a node and all of its descendants from the owned forest.
+    pub fn remove(&mut self, root: NodeHandle) -> Result<(), LayoutError> {
+        let mut subtree = self.subtree_handles(root)?;
+        for handle in subtree.drain(..).rev() {
+            let _ = self.reached.remove(&handle.0);
+            self.forest.free(handle.0)?;
+        }
+        Ok(())
     }
 
     /// Live node count.
     #[must_use]
     pub fn count(&self) -> usize {
         self.forest.count()
+    }
+
+    /// Notify the text measurer that a new frame is beginning.
+    pub fn begin_frame(&self) {
+        self.text.begin_frame();
     }
 
     /// Walk the tree from `root` and resolve every reachable node's
@@ -109,15 +163,29 @@ impl LayoutDrive {
     ///
     /// # Errors
     ///
-    /// Returns [`LayoutError::TaffyInvalid`] when `root` is stale or a
+    /// Returns [`LayoutError::LayoutInvalid`] when `root` is stale or a
     /// descendant references a stale id mid-walk.
     pub fn measure(&mut self, root: NodeHandle, viewport: Size<f32>) -> Result<(), LayoutError> {
         let avail = AvailableSpace::definite(viewport.width, viewport.height);
+        self.measure_with_constraints(root, avail)
+    }
+
+    /// Measure with full owned space constraints.
+    ///
+    /// `LayoutEngine` uses this path so `sigil_hal::Dim::{Fixed,
+    /// MinContent, MaxContent}` survive the cutover. The older
+    /// [`Self::measure`] convenience remains for tests and callers with
+    /// definite viewport sizes.
+    pub(crate) fn measure_with_constraints(
+        &mut self,
+        root: NodeHandle,
+        avail: AvailableSpace,
+    ) -> Result<(), LayoutError> {
         let root_id = root.0;
         let handle = self
             .forest
             .refer(root_id)
-            .ok_or_else(|| LayoutError::TaffyInvalid(format!("stale measure root {root_id:?}")))?;
+            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
         let display = handle.style().display;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
         let drained = match display {
@@ -126,17 +194,21 @@ impl LayoutDrive {
                 solver.solve(handle)?;
                 solver.take()
             }
-            Display::Block | Display::None => {
+            // Grid falls back to BlockSolver until the owned grid solver
+            // lands (post-G2, tracked in docs/followups.md).
+            Display::Block | Display::None | Display::Grid => {
                 let solver = BlockSolver::new(scope);
                 solver.solve(handle)?;
                 solver.take()
             }
         };
+        self.reached.clear();
         for (id, cb) in drained {
             // Stale ids fall away silently inside `write` — the only
             // path producing one is concurrent forest mutation, which
             // does not happen under `&mut self`.
             let _ = self.forest.write(id, cb);
+            let _ = self.reached.insert(id);
         }
         Ok(())
     }
@@ -146,18 +218,33 @@ impl LayoutDrive {
     /// or the node was not reached.
     #[must_use]
     pub fn computed_box(&self, node: NodeHandle) -> Option<ResolvedBox> {
+        if !self.reached.contains(&node.0) {
+            return None;
+        }
         let cb = self.forest.boxed(node.0)?;
         // Unreached nodes left as the slab default — distinguish from
         // a real (0, 0, 0, 0) result by returning `None`.
-        if cb == crate::forest::ComputedBox::default() {
-            return None;
-        }
         Some(ResolvedBox {
             x: cb.x,
             y: cb.y,
             w: cb.w,
             h: cb.h,
         })
+    }
+
+    fn collect_subtree(
+        &self,
+        root: NodeHandle,
+        out: &mut Vec<NodeHandle>,
+    ) -> Result<(), LayoutError> {
+        let Some(node) = self.forest.refer(root.0) else {
+            return Ok(());
+        };
+        out.push(root);
+        for child in node.children() {
+            self.collect_subtree(NodeHandle(*child), out)?;
+        }
+        Ok(())
     }
 }
 
@@ -166,13 +253,13 @@ impl LayoutDrive {
 mod tests {
     use super::*;
     use crate::style_data::{Dimension, Display, Size as StyleSize, StyleData};
+    use sigil_hal::{LogicalSize, Size as HalSize};
     use sigil_kernel::TextContent;
-    use taffy::prelude::{AvailableSpace as TaffyAvailable, Size as TaffySize};
 
     struct NullText;
     impl TextMeasure for NullText {
-        fn measure(&self, _: &TextContent, _: TaffySize<TaffyAvailable>) -> TaffySize<f32> {
-            TaffySize::ZERO
+        fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
+            LogicalSize::default()
         }
     }
 

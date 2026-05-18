@@ -244,6 +244,13 @@ impl Style {
         self.push(StyleAtom::FontWeight(weight))
     }
 
+    /// Set font family. Accepts a `&'static str` family name resolved
+    /// by the text engine (e.g. `"sans"`, `"mono"`, `"serif"`).
+    #[must_use]
+    pub fn font_family(self, name: &'static str) -> Self {
+        self.push(StyleAtom::FontFamily(name))
+    }
+
     /// Set line height in logical pixels.
     #[must_use]
     pub fn line_height(self, px: i16) -> Self {

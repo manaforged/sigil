@@ -17,7 +17,6 @@ use sigil_renderer as _;
 use sigil_shell as _;
 use sigil_style as _;
 use sigil_text as _;
-use taffy as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;

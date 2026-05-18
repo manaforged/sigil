@@ -9,7 +9,6 @@ use rayon as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 mod stub;
 use stub::stub_engine;
 

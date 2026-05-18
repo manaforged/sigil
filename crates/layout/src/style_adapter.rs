@@ -2,14 +2,17 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_style::{AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom};
-use taffy::prelude::{
-    AlignItems as TaffyAlignItems, Dimension as TaffyDimension, Display as TaffyDisplay,
-    FlexDirection as TaffyFlexDirection, JustifyContent as TaffyJustifyContent, LengthPercentage,
-    LengthPercentageAuto, Style as TaffyStyle,
+use sigil_style::{
+    AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom,
 };
 
-use crate::LayoutStyle;
+use crate::{
+    LayoutStyle,
+    style_data::{
+        AlignItems, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
+        LengthPercentageAuto, StyleData,
+    },
+};
 
 pub(crate) fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     for atom in atoms {
@@ -54,6 +57,7 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         // keep cache-key coverage in sync with that function.
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
+        | StyleAtom::FontFamily(_)
         | StyleAtom::LineHeight(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
@@ -116,19 +120,19 @@ fn set_gap(layout: &mut LayoutStyle, gap: Px) {
     });
 }
 
-fn set_width(layout: &mut LayoutStyle, width: Dimension) {
+fn set_width(layout: &mut LayoutStyle, width: StyleDimension) {
     mutate_layout(layout, |style| style.size.width = dimension(width));
 }
 
-fn set_height(layout: &mut LayoutStyle, height: Dimension) {
+fn set_height(layout: &mut LayoutStyle, height: StyleDimension) {
     mutate_layout(layout, |style| style.size.height = dimension(height));
 }
 
-fn set_min_width(layout: &mut LayoutStyle, width: Dimension) {
+fn set_min_width(layout: &mut LayoutStyle, width: StyleDimension) {
     mutate_layout(layout, |style| style.min_size.width = dimension(width));
 }
 
-fn set_max_width(layout: &mut LayoutStyle, width: Dimension) {
+fn set_max_width(layout: &mut LayoutStyle, width: StyleDimension) {
     mutate_layout(layout, |style| style.max_size.width = dimension(width));
 }
 
@@ -164,60 +168,59 @@ fn set_flex_shrink(layout: &mut LayoutStyle, shrink: u16) {
     });
 }
 
-fn mutate_layout(layout: &mut LayoutStyle, mutate: impl FnOnce(&mut TaffyStyle)) {
-    let current = core::mem::take(layout);
-    *layout = current.with_taffy(mutate);
+fn mutate_layout(layout: &mut LayoutStyle, mutate: impl FnOnce(&mut StyleData)) {
+    mutate(layout.data_mut());
 }
 
 fn length(px: Px) -> LengthPercentage {
-    LengthPercentage::length(f32::from(px.0))
+    LengthPercentage::Px(f32::from(px.0))
 }
 
 fn length_auto(px: Px) -> LengthPercentageAuto {
-    LengthPercentageAuto::length(f32::from(px.0))
+    LengthPercentageAuto::Px(f32::from(px.0))
 }
 
-fn dimension(value: Dimension) -> TaffyDimension {
+fn dimension(value: StyleDimension) -> Dimension {
     match value {
-        Dimension::Px(px) => TaffyDimension::length(f32::from(px.0)),
-        Dimension::Full => TaffyDimension::percent(1.0),
-        Dimension::Auto => TaffyDimension::auto(),
+        StyleDimension::Px(px) => Dimension::Px(f32::from(px.0)),
+        StyleDimension::Full => Dimension::Percent(1.0),
+        StyleDimension::Auto => Dimension::Auto,
     }
 }
 
-const fn display_kind(display: DisplayKind) -> TaffyDisplay {
+const fn display_kind(display: DisplayKind) -> Display {
     match display {
-        DisplayKind::Flex => TaffyDisplay::Flex,
-        DisplayKind::Block => TaffyDisplay::Block,
-        DisplayKind::None => TaffyDisplay::None,
+        DisplayKind::Flex => Display::Flex,
+        DisplayKind::Block => Display::Block,
+        DisplayKind::None => Display::None,
     }
 }
 
-const fn flex_direction(direction: FlexDir) -> TaffyFlexDirection {
+const fn flex_direction(direction: FlexDir) -> FlexDirection {
     match direction {
-        FlexDir::Row => TaffyFlexDirection::Row,
-        FlexDir::Column => TaffyFlexDirection::Column,
-        FlexDir::RowReverse => TaffyFlexDirection::RowReverse,
-        FlexDir::ColumnReverse => TaffyFlexDirection::ColumnReverse,
+        FlexDir::Row => FlexDirection::Row,
+        FlexDir::Column => FlexDirection::Column,
+        FlexDir::RowReverse => FlexDirection::RowReverse,
+        FlexDir::ColumnReverse => FlexDirection::ColumnReverse,
     }
 }
 
-const fn align_items(align: AlignKind) -> TaffyAlignItems {
+const fn align_items(align: AlignKind) -> AlignItems {
     match align {
-        AlignKind::Start => TaffyAlignItems::Start,
-        AlignKind::Center | AlignKind::Between | AlignKind::Around => TaffyAlignItems::Center,
-        AlignKind::End => TaffyAlignItems::End,
-        AlignKind::Stretch => TaffyAlignItems::Stretch,
+        AlignKind::Start => AlignItems::Start,
+        AlignKind::Center | AlignKind::Between | AlignKind::Around => AlignItems::Center,
+        AlignKind::End => AlignItems::End,
+        AlignKind::Stretch => AlignItems::Stretch,
     }
 }
 
-const fn justify_content(justify: JustifyKind) -> TaffyJustifyContent {
+const fn justify_content(justify: JustifyKind) -> JustifyContent {
     match justify {
-        JustifyKind::Start => TaffyJustifyContent::Start,
-        JustifyKind::Center => TaffyJustifyContent::Center,
-        JustifyKind::End => TaffyJustifyContent::End,
-        JustifyKind::Stretch => TaffyJustifyContent::Stretch,
-        JustifyKind::Between => TaffyJustifyContent::SpaceBetween,
-        JustifyKind::Around => TaffyJustifyContent::SpaceAround,
+        JustifyKind::Start => JustifyContent::Start,
+        JustifyKind::Center => JustifyContent::Center,
+        JustifyKind::End => JustifyContent::End,
+        JustifyKind::Stretch => JustifyContent::Stretch,
+        JustifyKind::Between => JustifyContent::SpaceBetween,
+        JustifyKind::Around => JustifyContent::SpaceAround,
     }
 }

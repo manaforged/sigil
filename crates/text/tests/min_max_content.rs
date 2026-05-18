@@ -6,37 +6,39 @@ use std::rc::Rc;
 
 use ahash as _;
 use criterion as _;
-use parley as _;
-use sigil_hal as _;
+#[cfg(feature = "shaping-complex")]
+use harfrust as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use skrifa as _;
 use smallvec as _;
+use tracing as _;
 use unicode_bidi as _;
+use unicode_script as _;
 use unicode_segmentation as _;
 
+use sigil_hal::{Dim, LogicalSize, Size};
 use sigil_kernel::TextContent;
 use sigil_layout::TextEngineMeasure;
 use sigil_layout::TextMeasure;
-use sigil_text::{ParleyTextEngine, TextConfig};
-use taffy::prelude::{AvailableSpace, Size};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
-fn make_measurer() -> TextEngineMeasure<ParleyTextEngine> {
-    let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
+fn make_measurer() -> TextEngineMeasure<OwnedTextEngine> {
+    let engine = Rc::new(OwnedTextEngine::new(TextConfig::default()));
     TextEngineMeasure::new(engine)
 }
 
 fn measure_with_space(
-    measurer: &TextEngineMeasure<ParleyTextEngine>,
+    measurer: &TextEngineMeasure<OwnedTextEngine>,
     text: &str,
-    width: AvailableSpace,
-) -> Size<f32> {
+    width: Dim,
+) -> LogicalSize {
     let source = TextContent::Static(text.to_owned());
     measurer.measure(
         &source,
         Size {
             width,
-            height: AvailableSpace::MaxContent,
+            height: Dim::MaxContent,
         },
     )
 }
@@ -44,15 +46,15 @@ fn measure_with_space(
 #[test]
 fn max_content_returns_unconstrained_width() {
     let m = make_measurer();
-    let size = measure_with_space(&m, "Hello world", AvailableSpace::MaxContent);
+    let size = measure_with_space(&m, "Hello world", Dim::MaxContent);
     assert!(size.width > 0.0, "max content width should be positive");
 }
 
 #[test]
 fn min_content_is_narrower_than_max_content() {
     let m = make_measurer();
-    let max = measure_with_space(&m, "Hello world test string", AvailableSpace::MaxContent);
-    let min = measure_with_space(&m, "Hello world test string", AvailableSpace::MinContent);
+    let max = measure_with_space(&m, "Hello world test string", Dim::MaxContent);
+    let min = measure_with_space(&m, "Hello world test string", Dim::MinContent);
 
     assert!(
         min.width <= max.width,
@@ -71,8 +73,8 @@ fn min_content_equals_longest_word_width() {
     // that word laid out alone (since it's the widest unbreakable
     // segment).
     let text = "Hi Internationalization Go";
-    let min = measure_with_space(&m, text, AvailableSpace::MinContent);
-    let longest_alone = measure_with_space(&m, "Internationalization", AvailableSpace::MaxContent);
+    let min = measure_with_space(&m, text, Dim::MinContent);
+    let longest_alone = measure_with_space(&m, "Internationalization", Dim::MaxContent);
 
     let tolerance = 1.0; // sub-pixel rounding
     assert!(
@@ -87,8 +89,8 @@ fn min_content_equals_longest_word_width() {
 fn definite_width_produces_more_lines_than_unconstrained() {
     let m = make_measurer();
     let text = "The quick brown fox jumps over the lazy dog";
-    let wide = measure_with_space(&m, text, AvailableSpace::MaxContent);
-    let narrow = measure_with_space(&m, text, AvailableSpace::Definite(80.0));
+    let wide = measure_with_space(&m, text, Dim::MaxContent);
+    let narrow = measure_with_space(&m, text, Dim::Fixed(80.0));
 
     assert!(
         narrow.height > wide.height,

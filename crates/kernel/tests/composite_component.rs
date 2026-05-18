@@ -37,13 +37,13 @@ fn add_child_links_parent_and_uses_component_owner() {
 
     let panel_node = cx.get(panel).expect("panel exists");
     assert!(matches!(panel_node.a11y.role, Role::Group));
-    assert_eq!(panel_node.children.len(), 2);
+    assert_eq!(panel_node.children().len(), 2);
 
-    let heading = panel_node.children[0];
-    let body = panel_node.children[1];
+    let heading = panel_node.children()[0];
+    let body = panel_node.children()[1];
 
-    assert_eq!(cx.get(heading).expect("heading").parent, Some(panel));
-    assert_eq!(cx.get(body).expect("body").parent, Some(panel));
+    assert_eq!(cx.get(heading).expect("heading").parent(), Some(panel));
+    assert_eq!(cx.get(body).expect("body").parent(), Some(panel));
 
     // Each add_child created its own component owner distinct from the
     // panel's owner.
@@ -65,8 +65,8 @@ fn remove_disposes_composite_subtree() {
 
     assert_eq!(cx.len(), 4);
 
-    let panel = cx.get(root).expect("root").children[0];
+    let panel = cx.get(root).expect("root").children()[0];
     assert!(cx.remove(panel));
     assert_eq!(cx.len(), 1);
-    assert!(cx.get(root).expect("root").children.is_empty());
+    assert!(cx.get(root).expect("root").children().is_empty());
 }

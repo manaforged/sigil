@@ -4,22 +4,24 @@
 
 use ahash as _;
 use criterion as _;
-use parley as _;
+#[cfg(feature = "shaping-complex")]
+use harfrust as _;
 use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use skrifa as _;
 use smallvec as _;
-use taffy as _;
+use tracing as _;
 use unicode_bidi as _;
+use unicode_script as _;
 use unicode_segmentation as _;
 
 use sigil_hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
-fn engine() -> ParleyTextEngine {
-    ParleyTextEngine::new(TextConfig::default())
+fn engine() -> OwnedTextEngine {
+    OwnedTextEngine::new(TextConfig::default())
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +79,7 @@ fn hit_test_middle_lands_between_endpoints() {
 
     let start = para.hit_test(0.0, 0.0);
     let end = para.hit_test(99_999.0, 0.0);
-    let mid = para.hit_test(para.inner().width() / 2.0, 0.0);
+    let mid = para.hit_test(para.width() / 2.0, 0.0);
 
     assert!(
         mid.byte_index > start.byte_index,
@@ -100,7 +102,7 @@ fn hit_test_multibyte_utf8_index_is_char_boundary() {
     let e = engine();
     let text = "café🔥end";
     let para = e.layout_paragraph(text, None).unwrap();
-    let width = para.inner().width();
+    let width = para.width();
     for frac in [0.0_f32, 0.2, 0.4, 0.6, 0.8, 1.0] {
         let pos = para.hit_test(width * frac, 0.0);
         assert!(

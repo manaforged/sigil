@@ -14,7 +14,6 @@ use sigil_reactive as _;
 use sigil_style::NodeStyleExt;
 use sigil_style::{TextLineHeight, TextStyle};
 use smallvec as _;
-use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 use stub::stub_engine;
 
@@ -74,7 +73,7 @@ fn flex_row_items_center() {
     let children = cx
         .get(root)
         .unwrap()
-        .children
+        .children()
         .iter()
         .copied()
         .collect::<Vec<_>>();
@@ -107,7 +106,7 @@ fn typography_atoms_drive_text_measurement() {
 }
 
 fn first_child(cx: &Cx, root: NodeId) -> NodeId {
-    cx.get(root).unwrap().children.first().copied().unwrap()
+    cx.get(root).unwrap().children().first().copied().unwrap()
 }
 
 fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
@@ -120,20 +119,20 @@ fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
 struct StyleAwareMeasure;
 
 impl TextMeasure for StyleAwareMeasure {
-    fn measure(&self, _content: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
-        TaffySize::ZERO
+    fn measure(&self, _content: &TextContent, _space: Size) -> LogicalSize {
+        LogicalSize::default()
     }
 
     fn measure_styled(
         &self,
         _content: &TextContent,
         style: &TextStyle,
-        _space: TaffySize<AvailableSpace>,
-    ) -> TaffySize<f32> {
-        TaffySize {
-            width: style.font_size + f32::from(style.font_weight) / 100.0,
-            height: text_line_height(style),
-        }
+        _space: Size,
+    ) -> LogicalSize {
+        LogicalSize::new(
+            style.font_size + f32::from(style.font_weight) / 100.0,
+            text_line_height(style),
+        )
     }
 }
 

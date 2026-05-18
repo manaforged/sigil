@@ -1,6 +1,6 @@
 //! Builder extension trait for installing event handlers.
 
-use sigil_hal::{KeyEvent, PointerEvent, Shortcut};
+use sigil_hal::{KeyEvent, PointerEvent, ScrollEvent, Shortcut};
 use sigil_kernel::{Node, NodeBuilder};
 
 use crate::EventHandlers;
@@ -54,6 +54,14 @@ pub trait NodeEventsExt {
     fn on_pointer_leave<H>(self, h: H) -> Self
     where
         H: Fn(&mut PointerEvent) + 'static;
+
+    /// Run `h` when a scroll event lands on this node or an ancestor.
+    /// Bubbles target-first; handlers can call `event.stop_propagation()`
+    /// to prevent the event from reaching outer scroll containers.
+    #[must_use]
+    fn on_scroll<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut ScrollEvent) + 'static;
 
     /// Run `h` when a matching key event reaches this node.
     #[must_use]
@@ -152,6 +160,15 @@ impl NodeEventsExt for NodeBuilder {
     {
         with_handlers(self, move |handlers| {
             handlers.add_pointer_leave(Box::new(h));
+        })
+    }
+
+    fn on_scroll<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut ScrollEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_scroll(Box::new(h));
         })
     }
 

@@ -87,7 +87,7 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
             hash_style_atoms(binding.dynamic_slice(), &mut hasher);
             hash_style_atoms(binding.reactive_slice(), &mut hasher);
         }
-        for child in node.children.iter().rev().copied() {
+        for child in node.children().iter().rev().copied() {
             stack.push(child);
         }
     }
@@ -139,6 +139,7 @@ const fn is_layout_affecting_atom(atom: &StyleAtom) -> bool {
             | StyleAtom::FlexShrink(_)
             | StyleAtom::FontSize(_)
             | StyleAtom::FontWeight(_)
+            | StyleAtom::FontFamily(_)
             | StyleAtom::LineHeight(_)
     )
 }

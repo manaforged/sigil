@@ -7,7 +7,6 @@ use std::rc::Rc;
 use accesskit as _;
 use criterion as _;
 use smallvec as _;
-use taffy as _;
 
 use sigil_events::prelude::*;
 use sigil_hal::{ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind};
@@ -79,7 +78,7 @@ fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
 }
 
 fn first_child(cx: &Cx, root: NodeId) -> NodeId {
-    cx.get(root).unwrap().children.first().copied().unwrap()
+    cx.get(root).unwrap().children().first().copied().unwrap()
 }
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
@@ -104,11 +103,7 @@ const fn pointer_move(x: f32, y: f32) -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size::ZERO
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }

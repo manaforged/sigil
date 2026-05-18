@@ -18,9 +18,6 @@ use criterion as _;
 use sigil_reactive as _;
 #[cfg(test)]
 use sigil_style as _;
-#[cfg(test)]
-use taffy as _;
-
 mod builder_ext;
 mod focus;
 mod handlers;

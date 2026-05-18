@@ -24,6 +24,8 @@ pub struct ProgressBuilder {
     /// In indeterminate mode `value` is treated as an animation phase
     /// (0.0–1.0). Drive it with a reactive signal that advances each frame.
     pub indeterminate: bool,
+    /// Override the track height in logical pixels (default: 8.0).
+    track_height: f32,
 }
 
 /// Create a progress bar widget.
@@ -44,6 +46,7 @@ impl ProgressBuilder {
             value,
             max: max.max(f32::EPSILON),
             indeterminate: false,
+            track_height: TRACK_HEIGHT,
         }
     }
 
@@ -54,21 +57,33 @@ impl ProgressBuilder {
         self
     }
 
+    /// Override the track height in logical pixels.
+    ///
+    /// Useful when rendering into a golden harness that requires a minimum
+    /// canvas dimension (e.g. ≥32 px) while still showing the bar at
+    /// ≥70% frame coverage.
+    #[must_use]
+    pub const fn height(mut self, px: f32) -> Self {
+        self.track_height = px;
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let value = self.value;
         let max = self.max;
+        let track_h = self.track_height;
         let is_indeterminate = self.indeterminate;
 
         let fill = if is_indeterminate {
-            indeterminate_fill(value)
+            indeterminate_fill(value, track_h)
         } else {
-            determinate_fill(value, max)
+            determinate_fill(value, max, track_h)
         };
 
         container()
             .role(Role::ProgressIndicator)
             .aria_value_signal(value, 0.0, max)
-            .layout(track_layout())
+            .layout(track_layout(track_h))
             .class("rounded-md")
             .class(TRACK)
             .child(fill)
@@ -81,13 +96,13 @@ impl IntoNode for ProgressBuilder {
     }
 }
 
-fn track_layout() -> LayoutStyle {
+fn track_layout(track_h: f32) -> LayoutStyle {
     LayoutStyle::flex_row()
-        .fixed_size(TRACK_WIDTH, TRACK_HEIGHT)
+        .fixed_size(TRACK_WIDTH, track_h)
         .align_items(AlignItems::Center)
 }
 
-fn determinate_fill(value: Signal<f32>, max: f32) -> NodeBuilder {
+fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
     let fill_px = derived_eq(move || {
         let ratio = (value.get() / max).clamp(0.0, 1.0);
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -96,13 +111,13 @@ fn determinate_fill(value: Signal<f32>, max: f32) -> NodeBuilder {
     });
 
     container()
-        .layout(LayoutStyle::block().height_px(TRACK_HEIGHT))
+        .layout(LayoutStyle::block().height_px(track_h))
         .class("rounded-md")
         .style_reactive(move || width_atoms_px(fill_px.get()))
         .class(FILL)
 }
 
-fn indeterminate_fill(phase: Signal<f32>) -> NodeBuilder {
+fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
     let offset_px = derived_eq(move || {
         let t = phase.get().clamp(0.0, 1.0);
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -115,7 +130,7 @@ fn indeterminate_fill(phase: Signal<f32>) -> NodeBuilder {
         .layout(
             LayoutStyle::block()
                 .width_px(bar_width_px)
-                .height_px(TRACK_HEIGHT),
+                .height_px(track_h),
         )
         .class("rounded-md")
         .style_reactive(move || left_margin_atoms_px(offset_px.get()))

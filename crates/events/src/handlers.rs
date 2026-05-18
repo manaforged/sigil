@@ -1,9 +1,10 @@
 //! Handler storage attached to `sigil_kernel::Node` extensions.
 
-use sigil_hal::{KeyEvent, PointerEvent, PointerPhase, Shortcut};
+use sigil_hal::{KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 
 type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
 type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;
+type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 
 struct KeyBinding {
@@ -22,6 +23,7 @@ pub struct EventHandlers {
     pointer_move: Vec<PointerHandler>,
     pointer_enter: Vec<PointerHandler>,
     pointer_leave: Vec<PointerHandler>,
+    scroll: Vec<ScrollHandler>,
     key_capture: Vec<KeyBinding>,
     key: Vec<KeyBinding>,
     key_any: Vec<KeyHandler>,
@@ -60,6 +62,22 @@ impl EventHandlers {
 
     pub(crate) fn add_pointer_leave(&mut self, handler: PointerHandler) {
         self.pointer_leave.push(handler);
+    }
+
+    pub(crate) fn add_scroll(&mut self, handler: ScrollHandler) {
+        self.scroll.push(handler);
+    }
+
+    pub(crate) fn invoke_scroll(&self, event: &mut ScrollEvent) -> bool {
+        let mut invoked = false;
+        for handler in &self.scroll {
+            handler(event);
+            invoked = true;
+            if event.propagation_stopped() {
+                return invoked;
+            }
+        }
+        invoked
     }
 
     pub(crate) fn add_key_capture(&mut self, shortcut: Shortcut, handler: KeyHandler) {

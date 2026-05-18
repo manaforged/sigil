@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom};
 
-const STRUCTURAL_TOKENS: [&str; 59] = [
+const STRUCTURAL_TOKENS: [&str; 63] = [
     "p-4",
     "px-4",
     "py-4",
@@ -52,6 +52,7 @@ const STRUCTURAL_TOKENS: [&str; 59] = [
     "bg-accent",
     "bg-border",
     "bg-surface",
+    "bg-surface-hover",
     "text-xs",
     "text-sm",
     "text-base",
@@ -63,6 +64,9 @@ const STRUCTURAL_TOKENS: [&str; 59] = [
     "font-normal",
     "font-medium",
     "font-bold",
+    "font-sans",
+    "font-mono",
+    "font-serif",
     "leading-4",
     "opacity-0",
     "opacity-100",
@@ -154,6 +158,9 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "font-normal" => return Ok(StyleAtom::FontWeight(400)),
         "font-medium" => return Ok(StyleAtom::FontWeight(500)),
         "font-bold" => return Ok(StyleAtom::FontWeight(700)),
+        "font-sans" => return Ok(StyleAtom::FontFamily("sans")),
+        "font-mono" => return Ok(StyleAtom::FontFamily("mono")),
+        "font-serif" => return Ok(StyleAtom::FontFamily("serif")),
         _ => {}
     }
     parse_prefixed_token(token).ok_or_else(|| unknown(token))

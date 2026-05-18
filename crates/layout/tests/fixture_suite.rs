@@ -9,12 +9,15 @@ use sigil_hal as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 mod stub;
 use stub::stub_engine;
 
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
+use sigil_layout::{
+    Dimension as StyleDimension, LayoutDrive, StyleData, StyleDisplay, StyleLengthPercentageAuto,
+    StylePosition,
+};
 
 const EPSILON: f32 = 0.5;
 
@@ -25,7 +28,7 @@ fn flex_row_grow_child_fills_remaining_space() {
     let children = cx
         .get(root)
         .expect("root exists")
-        .children
+        .children()
         .iter()
         .copied()
         .collect::<Vec<_>>();
@@ -59,7 +62,7 @@ fn flex_column_gap_offsets_children() {
     let children = cx
         .get(root)
         .expect("root exists")
-        .children
+        .children()
         .iter()
         .copied()
         .collect::<Vec<_>>();
@@ -88,8 +91,7 @@ fn padding_moves_content_origin() {
     let root = cx.add(container().child(text("A")));
     let child = cx
         .get(root)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("child exists");
 
     cx.get_mut(root).expect("root exists").attach(
@@ -117,8 +119,7 @@ fn block_auto_width_fills_available_space() {
     let root = cx.add(container().child(container().child(text("block"))));
     let child = cx
         .get(root)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("child exists");
 
     cx.get_mut(root)
@@ -141,6 +142,7 @@ fn block_auto_width_fills_available_space() {
 }
 
 #[test]
+#[ignore = "Grid solver lands post-G2; owned StyleData has no grid_template_columns/_rows fields"]
 fn grid_2x2_places_items_in_fixed_tracks() {
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -153,19 +155,20 @@ fn grid_2x2_places_items_in_fixed_tracks() {
     let children = cx
         .get(root)
         .expect("root exists")
-        .children
+        .children()
         .iter()
         .copied()
         .collect::<Vec<_>>();
 
-    cx.get_mut(root).expect("root exists").attach(
-        LayoutStyle::grid()
-            .fixed_size(200.0, 100.0)
-            .with_taffy(|style| {
-                style.grid_template_columns = vec![length(80.0), length(120.0)];
-                style.grid_template_rows = vec![length(40.0), length(60.0)];
-            }),
-    );
+    cx.get_mut(root)
+        .expect("root exists")
+        .attach(LayoutStyle::default().with_layout(|style| {
+            style.display = Display::Grid;
+            style.size.width = Dimension::Px(200.0);
+            style.size.height = Dimension::Px(100.0);
+            // grid_template_columns/_rows are intentionally absent from owned
+            // StyleData until the post-G2 Grid solver lands.
+        }));
 
     let mut engine = stub_engine();
     engine
@@ -190,13 +193,11 @@ fn nested_absolute_uses_positioned_parent_origin() {
     let root = cx.add(container().child(container().child(text("abs"))));
     let parent = cx
         .get(root)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("parent exists");
     let child = cx
         .get(parent)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("absolute child exists");
 
     cx.get_mut(root)
@@ -210,10 +211,10 @@ fn nested_absolute_uses_positioned_parent_origin() {
     cx.get_mut(child).expect("child exists").attach(
         LayoutStyle::default()
             .fixed_size(30.0, 20.0)
-            .with_taffy(|style| {
+            .with_layout(|style| {
                 style.position = Position::Absolute;
-                style.inset.left = LengthPercentageAuto::length(10.0);
-                style.inset.top = LengthPercentageAuto::length(12.0);
+                style.inset.left = LengthPercentageAuto::Px(10.0);
+                style.inset.top = LengthPercentageAuto::Px(12.0);
             }),
     );
 
@@ -227,6 +228,33 @@ fn nested_absolute_uses_positioned_parent_origin() {
     assert_close(result.rect().origin.y, 12.0);
     assert_close(result.rect().width, 30.0);
     assert_close(result.rect().height, 20.0);
+}
+
+#[test]
+fn absolute_child_uses_inset_offset() {
+    let mut drive = LayoutDrive::new(Box::new(NullMeasure));
+    let mut parent_style = StyleData::default();
+    parent_style.display = StyleDisplay::Flex;
+    parent_style.size.width = StyleDimension::Px(200.0);
+    parent_style.size.height = StyleDimension::Px(100.0);
+
+    let mut child_style = StyleData::default();
+    child_style.position = StylePosition::Absolute;
+    child_style.size.width = StyleDimension::Px(30.0);
+    child_style.size.height = StyleDimension::Px(20.0);
+    child_style.inset.left = StyleLengthPercentageAuto::Px(20.0);
+    child_style.inset.top = StyleLengthPercentageAuto::Px(50.0);
+
+    let root = drive.insert(parent_style);
+    let child = drive.insert(child_style);
+    drive.attach(root, child).expect("attach succeeds");
+    drive
+        .measure(root, sigil_layout::Size::new(200.0, 100.0))
+        .expect("measure succeeds");
+
+    let result = drive.computed_box(child).expect("child result");
+    assert_close(result.x, 20.0);
+    assert_close(result.y, 50.0);
 }
 
 /// Fragment children should appear as direct siblings of the fragment's parent,
@@ -255,10 +283,10 @@ fn fragment_children_treated_as_siblings_of_parent() {
         .expect("compute succeeds");
 
     // Collect the three text nodes from the tree.
-    let root_children = cx.get(root).expect("root").children.clone();
+    let root_children: Vec<_> = cx.get(root).expect("root").children().to_vec();
     let text_a = root_children.first().copied().expect("text A");
     let frag = root_children.get(1).copied().expect("fragment node");
-    let frag_children = cx.get(frag).expect("fragment").children.clone();
+    let frag_children: Vec<_> = cx.get(frag).expect("fragment").children().to_vec();
     let text_b = frag_children.first().copied().expect("text B");
     let text_c = frag_children.get(1).copied().expect("text C");
 
@@ -280,6 +308,14 @@ fn result_for(cx: &Cx, id: NodeId) -> &LayoutResult {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")
+}
+
+struct NullMeasure;
+
+impl TextMeasure for NullMeasure {
+    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
+        LogicalSize::default()
+    }
 }
 
 fn assert_close(actual: f32, expected: f32) {

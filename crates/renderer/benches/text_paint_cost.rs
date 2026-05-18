@@ -18,7 +18,7 @@ use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_renderer::{SceneCommand, emit_scene};
 use sigil_shell as _;
 use sigil_style as _;
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_text::{OwnedTextEngine, TextConfig};
 use skrifa as _;
 use smallvec as _;
 use tracing as _;
@@ -40,7 +40,7 @@ fn text_paint_cost(c: &mut Criterion) {
         .collect::<Vec<_>>();
     assert_eq!(runs.len(), 50);
 
-    let engine = ParleyTextEngine::new(TextConfig::default());
+    let engine = OwnedTextEngine::new(TextConfig::default());
     warm_interim_cache(&engine, &runs);
 
     c.bench_function("text_paint_cost/dr025_interim_50_text_nodes", |b| {
@@ -68,7 +68,7 @@ fn text_paint_cost(c: &mut Criterion) {
     });
 }
 
-fn warm_interim_cache(engine: &ParleyTextEngine, runs: &[&sigil_renderer::DrawGlyphRun]) {
+fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil_renderer::DrawGlyphRun]) {
     for draw in runs {
         let run = &draw.run;
         let _ = engine
@@ -96,15 +96,8 @@ fn text_scene() -> sigil_renderer::CommandScene {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size {
-            width: 160.0,
-            height: 18.0,
-        }
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(160.0, 18.0)
     }
 }
 

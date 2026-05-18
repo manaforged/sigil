@@ -1,8 +1,8 @@
 //! Hardware abstraction layer for Sigil.
 //!
 //! Every downstream crate depends on the traits defined here, never on
-//! upstream crates like `wgpu`, `winit`, `taffy`, `parley`, or
-//! `accesskit` directly. This insulates the library from breaking
+//! upstream crates like `wgpu`, `winit`, or `accesskit`
+//! directly. This insulates the library from breaking
 //! releases, provides test seams (CPU/headless implementations), and
 //! gives a single chokepoint where each upstream's API quirks are
 //! normalised.
@@ -12,7 +12,7 @@
 //!
 //! # Status
 //!
-//! `Layout` became load-bearing when `sigil-layout` landed over Taffy.
+//! `Layout` became load-bearing when `sigil-layout` landed.
 //! The other trait shapes are still sketches until their first real
 //! adapters harden them.
 
@@ -34,7 +34,7 @@ pub use a11y::A11yBridge;
 pub use events::{
     ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
     MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    ScrollDelta, ScrollEvent, ScrollPhase, ShellEvent, Shortcut, WindowEvent,
+    ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent, Shortcut, WindowEvent,
 };
 pub use geometry::{Color, PhysicalSize, Point, Rect};
 pub use layout::{Dim, Layout, Size};

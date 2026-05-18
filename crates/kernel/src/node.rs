@@ -16,9 +16,15 @@ pub struct Node {
     /// Mandatory accessibility metadata.
     pub a11y: A11yProps,
     /// Parent node, if this node is attached below another node.
-    pub parent: Option<NodeId>,
+    ///
+    /// Crate-private: structural pointers are mutated only by [`Cx`]
+    /// (B3 — the reviewer review 2026-05-17). External readers use
+    /// [`Node::parent`] / [`Node::children`].
+    pub(crate) parent: Option<NodeId>,
     /// Ordered child nodes.
-    pub children: SmallVec<[NodeId; 4]>,
+    ///
+    /// Crate-private for the same reason as [`Node::parent`] above.
+    pub(crate) children: SmallVec<[NodeId; 4]>,
     /// Reactive owner active when this node was inserted.
     pub owner: OwnerId,
     pub(crate) extensions: Option<Box<NodeExtensions>>,
@@ -60,6 +66,24 @@ impl Node {
     /// Remove a typed extension component from this node.
     pub fn remove_extension<T: 'static>(&mut self) -> Option<T> {
         self.extensions.as_mut().and_then(|bag| bag.remove::<T>())
+    }
+
+    /// Return this node's parent, if any.
+    ///
+    /// Read-only accessor — structural pointers are mutated only by
+    /// the kernel's `Cx` (see B3, 2026-05-17).
+    #[must_use]
+    pub const fn parent(&self) -> Option<NodeId> {
+        self.parent
+    }
+
+    /// Return this node's children in document order.
+    ///
+    /// Read-only accessor — structural pointers are mutated only by
+    /// the kernel's `Cx` (see B3, 2026-05-17).
+    #[must_use]
+    pub fn children(&self) -> &[NodeId] {
+        &self.children
     }
 
     /// Return whether this node has allocated extension storage.

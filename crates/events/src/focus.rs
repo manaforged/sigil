@@ -136,7 +136,7 @@ fn collect_focusable(
             Some(_) => {}
         }
     }
-    for child in node.children.iter().copied() {
+    for child in node.children().iter().copied() {
         collect_focusable(cx, child, order, explicit, implicit);
     }
 }

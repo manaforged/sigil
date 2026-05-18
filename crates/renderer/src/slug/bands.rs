@@ -69,9 +69,9 @@ impl BandData {
 
 /// Preprocess a glyph into band-partitioned quadratic arcs.
 ///
-/// `variation_coords` are raw `i16` fixed-point normalised-variation bits as
-/// returned by `parley::Run::normalized_coords()`. Pass an empty slice for
-/// static (non-variable) fonts.
+/// `variation_coords` are raw `i16` fixed-point normalised-variation bits
+/// as produced by the owned text engine via skrifa's variation tables.
+/// Pass an empty slice for static (non-variable) fonts.
 ///
 /// Returns `None` if the glyph has no outline (spaces, control characters, etc.).
 pub(super) fn preprocess_glyph(

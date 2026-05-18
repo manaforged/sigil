@@ -69,6 +69,17 @@ impl WorkspaceRoot {
         WalkIter { inner: walk }
     }
 
+    /// Iterate every entry under this root (files AND directories),
+    /// respecting `.gitignore` and project `ignore_patterns`. The root
+    /// itself is skipped; descendant directories are yielded before
+    /// their children so callers can build a stable tree view.
+    #[must_use]
+    pub fn entries(&self) -> EntryIter {
+        let walk = self.build_walker().build();
+        let root = self.path.clone();
+        EntryIter { inner: walk, root }
+    }
+
     /// Spawn an fs-watcher rooted here. The returned [`Watcher`]
     /// receives debounced + coalesced events; consumers poll with
     /// [`Watcher::next`] or block with [`Watcher::wait`].
@@ -128,6 +139,44 @@ impl Iterator for WalkIter {
             if is_file(&entry) {
                 return Some(entry.into_path());
             }
+        }
+    }
+}
+
+/// One entry yielded by [`WorkspaceRoot::entries`]: a path plus
+/// whether it is a directory.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WalkEntry {
+    /// Absolute path on disk.
+    pub path: PathBuf,
+    /// `true` for directories, `false` for files (or symlinks).
+    pub is_dir: bool,
+}
+
+/// Iterator over every entry (files + directories) under a workspace
+/// root. The root itself is skipped; transient stat errors are silently
+/// dropped, matching the [`WalkIter`] contract.
+#[allow(missing_debug_implementations)]
+pub struct EntryIter {
+    inner: Walk,
+    root: PathBuf,
+}
+
+impl Iterator for EntryIter {
+    type Item = WalkEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let entry = self.inner.next()?.ok()?;
+            let path = entry.path();
+            if path == self.root {
+                continue;
+            }
+            let is_dir = entry.file_type().is_some_and(|t| t.is_dir());
+            return Some(WalkEntry {
+                path: entry.into_path(),
+                is_dir,
+            });
         }
     }
 }
@@ -203,6 +252,43 @@ mod tests {
             .collect();
         assert!(files.contains("a.rs"));
         assert!(!files.contains("b.tmp"), "project pattern not applied");
+    }
+
+    #[test]
+    fn entries_yields_files_and_dirs() {
+        let dir = tempfile::tempdir().unwrap();
+        touch(&dir.path().join("a.rs"));
+        touch(&dir.path().join("sub/b.rs"));
+        let root = WorkspaceRoot::open(dir.path()).unwrap();
+        let entries: Vec<_> = root.entries().collect();
+        let names: HashSet<_> = entries
+            .iter()
+            .map(|e| {
+                (
+                    e.path
+                        .file_name()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("")
+                        .to_owned(),
+                    e.is_dir,
+                )
+            })
+            .collect();
+        assert!(names.contains(&("a.rs".to_owned(), false)));
+        assert!(names.contains(&("sub".to_owned(), true)));
+        assert!(names.contains(&("b.rs".to_owned(), false)));
+    }
+
+    #[test]
+    fn entries_skips_the_root_itself() {
+        let dir = tempfile::tempdir().unwrap();
+        touch(&dir.path().join("only.rs"));
+        let root = WorkspaceRoot::open(dir.path()).unwrap();
+        let entries: Vec<_> = root.entries().collect();
+        assert!(
+            entries.iter().all(|e| e.path != *root.path()),
+            "root should not appear in its own entries"
+        );
     }
 
     #[test]

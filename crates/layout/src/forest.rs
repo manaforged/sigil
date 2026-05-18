@@ -23,7 +23,8 @@
 
 use std::cell::Cell;
 
-use sigil_kernel::NodeId;
+use sigil_kernel::{NodeId, TextContent};
+use sigil_style::TextStyle;
 use smallvec::SmallVec;
 
 use crate::{LayoutError, StyleData, TextMeasure};
@@ -62,11 +63,12 @@ impl LocalId {
 /// `kernel` links back to the originating `sigil_kernel::NodeId` when
 /// the node mirrors a real kernel node. `style` is the owned style
 /// (added in P0.1.5) — block / flex solvers read it through
-/// [`NodeRef::style`] without dereferencing taffy state.
+/// [`NodeRef::style`] without dereferencing external engine state.
 #[derive(Clone, Debug)]
 pub(crate) struct LayoutNode {
     kernel: Option<NodeId>,
     style: StyleData,
+    text: Option<LayoutText>,
     children: SmallVec<[LocalId; 4]>,
     tag: u32,
     alive: bool,
@@ -83,10 +85,22 @@ impl LayoutNode {
         &self.style
     }
 
+    /// Text measurement context for text nodes.
+    pub(crate) const fn text(&self) -> Option<&LayoutText> {
+        self.text.as_ref()
+    }
+
     /// Children in insertion order.
     pub(crate) fn children(&self) -> &[LocalId] {
         &self.children
     }
+}
+
+/// Per-node text payload consumed by layout measurement.
+#[derive(Clone, Debug)]
+pub(crate) struct LayoutText {
+    pub(crate) content: TextContent,
+    pub(crate) style: Option<TextStyle>,
 }
 
 /// Computed geometry for a node — populated by the measure + arrange
@@ -154,6 +168,7 @@ impl LayoutForest {
             let node = LayoutNode {
                 kernel,
                 style,
+                text: None,
                 children: SmallVec::new(),
                 tag: slot.tag,
                 alive: true,
@@ -175,6 +190,7 @@ impl LayoutForest {
         self.nodes.push(LayoutNode {
             kernel,
             style,
+            text: None,
             children: SmallVec::new(),
             tag: 0,
             alive: true,
@@ -197,6 +213,7 @@ impl LayoutForest {
         entry.children.clear();
         entry.kernel = None;
         entry.style = StyleData::default();
+        entry.text = None;
         entry.tag = next_tag;
         self.free.push(LocalId {
             index: id.index,
@@ -214,6 +231,51 @@ impl LayoutForest {
             .get_mut(slot)
             .expect("slot() validated the parent index is in-bounds");
         entry.children.push(child);
+        Ok(())
+    }
+
+    /// Replace the full child list for `parent`.
+    pub(crate) fn set_children(
+        &mut self,
+        parent: LocalId,
+        children: &[LocalId],
+    ) -> Result<(), LayoutError> {
+        for child in children {
+            let _ = self.slot(*child)?;
+        }
+        let slot = self.slot(parent)?;
+        let entry = self
+            .nodes
+            .get_mut(slot)
+            .expect("slot() validated the parent index is in-bounds");
+        entry.children.clear();
+        entry.children.extend_from_slice(children);
+        Ok(())
+    }
+
+    /// Replace the style for a live node.
+    pub(crate) fn set_style(&mut self, id: LocalId, style: StyleData) -> Result<(), LayoutError> {
+        let slot = self.slot(id)?;
+        let entry = self
+            .nodes
+            .get_mut(slot)
+            .expect("slot() validated the index is in-bounds");
+        entry.style = style;
+        Ok(())
+    }
+
+    /// Replace the text measurement context for a live node.
+    pub(crate) fn set_text(
+        &mut self,
+        id: LocalId,
+        text: Option<LayoutText>,
+    ) -> Result<(), LayoutError> {
+        let slot = self.slot(id)?;
+        let entry = self
+            .nodes
+            .get_mut(slot)
+            .expect("slot() validated the index is in-bounds");
+        entry.text = text;
         Ok(())
     }
 
@@ -278,7 +340,7 @@ impl LayoutForest {
             .get(idx)
             .filter(|n| n.alive && n.tag == id.tag)
             .ok_or_else(|| {
-                LayoutError::TaffyInvalid(format!(
+                LayoutError::LayoutInvalid(format!(
                     "stale layout-forest id index={} tag={}",
                     id.index, id.tag
                 ))
@@ -325,6 +387,11 @@ impl NodeRef<'_> {
             .node(self.id)
             .map_or(&DEFAULT_STYLE, LayoutNode::style)
     }
+
+    /// Text measurement context for this node, if it mirrors text.
+    pub(crate) fn text(&self) -> Option<&LayoutText> {
+        self.forest.node(self.id).and_then(LayoutNode::text)
+    }
 }
 
 /// Default-style singleton for [`NodeRef::style`]'s stale-id fallback.
@@ -332,6 +399,16 @@ impl NodeRef<'_> {
 static DEFAULT_STYLE: StyleData = StyleData {
     display: crate::style_data::Display::Block,
     position: crate::style_data::Position::Relative,
+    overflow: crate::style_data::Size {
+        width: crate::style_data::Overflow::Visible,
+        height: crate::style_data::Overflow::Visible,
+    },
+    inset: crate::style_data::Rect {
+        left: crate::style_data::LengthPercentageAuto::Auto,
+        right: crate::style_data::LengthPercentageAuto::Auto,
+        top: crate::style_data::LengthPercentageAuto::Auto,
+        bottom: crate::style_data::LengthPercentageAuto::Auto,
+    },
     flex_direction: crate::style_data::FlexDirection::Row,
     flex_wrap: crate::style_data::FlexWrap::NoWrap,
     flex_grow: 0.0,
@@ -498,6 +575,36 @@ impl<'a> MeasureScope<'a> {
     pub(crate) fn write_node(&self, node: &NodeRef<'_>, value: ComputedBox) {
         self.write(node.id(), value);
     }
+
+    /// Measure text attached to `node`, preserving any already-known
+    /// axis supplied by the caller.
+    pub(crate) fn measure_text(
+        &self,
+        node: NodeRef<'_>,
+        known: crate::style_data::Size<Option<f32>>,
+    ) -> Option<crate::style_data::Size<f32>> {
+        let text = node.text()?;
+        let space = sigil_hal::Size {
+            width: space_constraint_to_hal_dim(self.available.w),
+            height: space_constraint_to_hal_dim(self.available.h),
+        };
+        let measured = text.style.as_ref().map_or_else(
+            || self.text.measure(&text.content, space),
+            |style| self.text.measure_styled(&text.content, style, space),
+        );
+        Some(crate::style_data::Size {
+            width: known.width.unwrap_or(measured.width),
+            height: known.height.unwrap_or(measured.height),
+        })
+    }
+}
+
+const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> sigil_hal::Dim {
+    match space {
+        SpaceConstraint::Definite(value) => sigil_hal::Dim::Fixed(value),
+        SpaceConstraint::MinContent => sigil_hal::Dim::MinContent,
+        SpaceConstraint::MaxContent => sigil_hal::Dim::MaxContent,
+    }
 }
 
 #[cfg(test)]
@@ -603,7 +710,7 @@ mod tests {
         let id = f.insert(None, StyleData::default());
         f.free(id).unwrap();
         let err = f.write(id, ComputedBox::default()).unwrap_err();
-        assert!(matches!(err, LayoutError::TaffyInvalid(_)));
+        assert!(matches!(err, LayoutError::LayoutInvalid(_)));
     }
 
     #[test]
@@ -625,9 +732,9 @@ mod tests {
             fn measure(
                 &self,
                 _: &sigil_kernel::TextContent,
-                _: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-            ) -> taffy::prelude::Size<f32> {
-                taffy::prelude::Size::ZERO
+                _: sigil_hal::Size,
+            ) -> sigil_hal::LogicalSize {
+                sigil_hal::LogicalSize::default()
             }
         }
         let f = LayoutForest::new();
@@ -697,9 +804,9 @@ mod tests {
         fn measure(
             &self,
             _: &sigil_kernel::TextContent,
-            _: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-        ) -> taffy::prelude::Size<f32> {
-            taffy::prelude::Size::ZERO
+            _: sigil_hal::Size,
+        ) -> sigil_hal::LogicalSize {
+            sigil_hal::LogicalSize::default()
         }
     }
 

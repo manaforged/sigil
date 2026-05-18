@@ -239,6 +239,45 @@ pub struct ScrollEvent {
     pub modifiers: ModifiersState,
     /// Scroll phase.
     pub phase: ScrollPhase,
+    propagation_stopped: bool,
+}
+
+/// Initial values for a [`ScrollEvent`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScrollEventInit {
+    /// Window-relative pointer position.
+    pub position: Point,
+    /// Scroll movement.
+    pub delta: ScrollDelta,
+    /// Active keyboard modifiers.
+    pub modifiers: ModifiersState,
+    /// Scroll phase.
+    pub phase: ScrollPhase,
+}
+
+impl ScrollEvent {
+    /// Construct a scroll event.
+    #[must_use]
+    pub const fn new(init: ScrollEventInit) -> Self {
+        Self {
+            position: init.position,
+            delta: init.delta,
+            modifiers: init.modifiers,
+            phase: init.phase,
+            propagation_stopped: false,
+        }
+    }
+
+    /// Stop routing this event to ancestor handlers.
+    pub const fn stop_propagation(&mut self) {
+        self.propagation_stopped = true;
+    }
+
+    /// Return whether propagation was stopped.
+    #[must_use]
+    pub const fn propagation_stopped(&self) -> bool {
+        self.propagation_stopped
+    }
 }
 
 /// Window lifecycle event.

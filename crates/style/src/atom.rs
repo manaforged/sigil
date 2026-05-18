@@ -202,6 +202,10 @@ pub enum StyleAtom {
     FontSize(Px),
     /// Font weight.
     FontWeight(u16),
+    /// Font family name (e.g. `"sans"`, `"mono"`, `"serif"`). The
+    /// text engine resolves this against its registered font
+    /// collection; unknown families fall back to the primary face.
+    FontFamily(&'static str),
     /// Line height.
     LineHeight(Px),
     /// Deferred transition preset.

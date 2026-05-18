@@ -62,7 +62,7 @@ impl Scale {
 
 /// A size in **logical pixels**. The unit users specify everywhere
 /// except at the HAL boundary.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct LogicalSize {
     /// Width in logical pixels.
     pub width: f32,

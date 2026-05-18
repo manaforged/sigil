@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil_events::prelude::*;
-use sigil_hal::{KeyEventInit, Point, PointerEventInit, Shell};
+use sigil_hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit, Shell};
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 
@@ -94,13 +94,22 @@ pub(crate) const fn window_blur() -> ShellEvent {
     ShellEvent::Window(sigil_hal::WindowEvent::Focused(false))
 }
 
+pub(crate) const fn scroll_lines(x: f32, y: f32, dy: f32) -> ShellEvent {
+    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+        position: Point::new(x, y),
+        delta: ScrollDelta::Lines(Point::new(0.0, dy)),
+        modifiers: ModifiersState::empty(),
+        phase: ScrollPhase::Moved,
+    }))
+}
+
 pub(crate) fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
         .position(Position::Absolute)
-        .with_taffy(move |style| {
-            style.inset.left = LengthPercentageAuto::length(x);
-            style.inset.top = LengthPercentageAuto::length(y);
+        .with_layout(move |style| {
+            style.inset.left = LengthPercentageAuto::Px(x);
+            style.inset.top = LengthPercentageAuto::Px(y);
         })
 }
 
@@ -151,11 +160,7 @@ pub(crate) fn focusable_child(tab_index: Option<i32>) -> NodeBuilder {
 pub(crate) struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size::ZERO
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }

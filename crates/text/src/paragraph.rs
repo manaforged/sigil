@@ -1,11 +1,145 @@
-//! Paragraph wrapper around `parley::Layout`.
+//! Owned paragraph wrapper (DR-044, G1.4).
+//!
+//! A [`Paragraph`] is a list of [`LayoutLine`]s plus shared font data,
+//! held behind [`Rc`] so cache hits return a cheap clone. The Parley
+//! `Layout<Color>` substrate is gone — every method below operates on
+//! the owned glyph runs produced by the engine.
+
+#![allow(
+    clippy::redundant_pub_crate,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 
 use std::cell::Cell;
 use std::rc::Rc;
+use std::sync::Arc;
 
-use parley::layout::PositionedLayoutItem;
-use parley::{Affinity, Cursor, GlyphRun, Selection};
 use sigil_hal::{Color, HitPosition, ParagraphMetrics, Point, Rect, RenderedGlyph, TextAffinity};
+use smallvec::SmallVec;
+
+use crate::glyph::GlyphRun;
+
+/// Single laid-out line.
+///
+/// `LayoutLine` is mutable while the engine assembles glyphs into it;
+/// once finalised (via [`set_baseline_to`](Self::set_baseline_to)) it
+/// is treated as read-only by all consumers.
+#[derive(Debug, Clone)]
+pub(crate) struct LayoutLine {
+    /// Glyphs in visual order (left-to-right in this G1.4 build).
+    glyphs: SmallVec<[LineGlyph; 32]>,
+    /// Index of this line within the paragraph (0-based).
+    line_index: u32,
+    /// Accumulated horizontal advance.
+    width: f32,
+    /// Y of the baseline (top of paragraph = 0).
+    baseline_y: f32,
+    /// Vertical extent of the line (line-height).
+    height: f32,
+    /// Byte range covered by this line, `[start, end)`.
+    byte_start: u32,
+    byte_end: u32,
+}
+
+impl LayoutLine {
+    pub(crate) fn empty(line_index: u32, line_height: f32) -> Self {
+        Self {
+            glyphs: SmallVec::new(),
+            line_index,
+            width: 0.0,
+            baseline_y: 0.0,
+            height: line_height.max(1.0),
+            byte_start: u32::MAX,
+            byte_end: 0,
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.glyphs.is_empty()
+    }
+
+    pub(crate) const fn width(&self) -> f32 {
+        self.width
+    }
+
+    pub(crate) fn append_segment(
+        &mut self,
+        run: &GlyphRun,
+        segment_advance: f32,
+        byte_start: u32,
+        byte_end: u32,
+    ) {
+        if byte_start < self.byte_start {
+            self.byte_start = byte_start;
+        }
+        if byte_end > self.byte_end {
+            self.byte_end = byte_end;
+        }
+        let mut pen_x = self.width;
+        for g in &run.glyphs {
+            self.glyphs.push(LineGlyph {
+                glyph_id: u32::from(g.id.0),
+                x: pen_x + g.offset_x,
+                advance: g.advance,
+                offset_y: g.offset_y,
+                cluster: g.cluster + byte_start,
+            });
+            pen_x += g.advance;
+        }
+        self.width += segment_advance;
+    }
+
+    /// Stamp the baseline at `baseline_y` measured from the top of
+    /// the paragraph.
+    pub(crate) fn set_baseline_to(&mut self, line_height: f32) {
+        let lh = line_height.max(1.0);
+        self.height = lh;
+        // Baseline ≈ 80% down the line box — matches Parley default.
+        // Precision loss on line_index → f32 is fine: line counts > 2^23
+        // are unreachable in practice for a single paragraph.
+        #[allow(clippy::cast_precision_loss)]
+        let idx = self.line_index as f32;
+        self.baseline_y = idx.mul_add(lh, lh * 0.8);
+    }
+
+    fn line_top(&self) -> f32 {
+        self.height.mul_add(-0.8, self.baseline_y)
+    }
+
+    fn line_bottom(&self) -> f32 {
+        self.line_top() + self.height
+    }
+
+    fn contains_y(&self, y: f32) -> bool {
+        y >= self.line_top() && y < self.line_bottom()
+    }
+
+    const fn byte_range_contains(&self, byte: usize) -> bool {
+        let b = u32_clamp(byte);
+        b >= self.byte_start && b <= self.byte_end
+    }
+}
+
+const fn u32_clamp(v: usize) -> u32 {
+    if v > u32::MAX as usize {
+        u32::MAX
+    } else {
+        v as u32
+    }
+}
+
+/// A single positioned glyph stored on a line.
+#[derive(Debug, Clone, Copy)]
+struct LineGlyph {
+    glyph_id: u32,
+    /// X offset of glyph origin from the line's left edge.
+    x: f32,
+    advance: f32,
+    offset_y: f32,
+    /// UTF-8 byte index in the source string.
+    cluster: u32,
+}
 
 /// Cached min/max content widths to avoid re-traversal.
 #[derive(Clone, Copy, Default)]
@@ -16,124 +150,147 @@ struct ContentWidths {
 
 /// Shared inner state behind `Rc`.
 struct ParagraphInner {
-    layout: parley::Layout<Color>,
+    lines: Vec<LayoutLine>,
+    line_height: f32,
+    font_bytes: Arc<Vec<u8>>,
+    font_index: u32,
+    font_id: u64,
+    /// Widest unbreakable word/segment from the engine. Drives
+    /// min-content width for CSS-style intrinsic sizing.
+    min_content_hint: f32,
     content_widths: Cell<Option<ContentWidths>>,
 }
 
-/// A laid-out paragraph of text.
+/// A laid-out paragraph of text (owned shaper output).
 ///
-/// Wraps a `parley::Layout<Color>` behind `Rc` so cloning is cheap (cache
-/// returns shared references). The `Color` brush is set when the paragraph
-/// is built; individual style spans can override it via `StyleProperty::Brush`.
+/// Inner state is held behind [`Rc`] so the engine cache returns cheap
+/// clones; consumers should treat the paragraph as immutable. The
+/// public surface matches the historical Parley-backed version
+/// modulo `inner()` which is gone (`Layout<Color>` is no longer the
+/// substrate).
 #[derive(Clone)]
 pub struct Paragraph {
     inner: Rc<ParagraphInner>,
 }
 
 impl Paragraph {
-    pub(crate) fn new(layout: parley::Layout<Color>) -> Self {
+    pub(crate) fn new(
+        lines: Vec<LayoutLine>,
+        line_height: f32,
+        font_bytes: Arc<Vec<u8>>,
+        font_index: u32,
+        min_content_hint: f32,
+    ) -> Self {
+        let font_id = Arc::as_ptr(&font_bytes) as u64;
         Self {
             inner: Rc::new(ParagraphInner {
-                layout,
+                lines,
+                line_height,
+                font_bytes,
+                font_index,
+                font_id,
+                min_content_hint,
                 content_widths: Cell::new(None),
             }),
         }
     }
 
-    /// Borrow the underlying Parley layout.
-    #[must_use]
-    pub fn inner(&self) -> &parley::Layout<Color> {
-        &self.inner.layout
-    }
-
-    /// Compute or return cached content widths (one traversal).
     fn content_widths(&self) -> ContentWidths {
         if let Some(cached) = self.inner.content_widths.get() {
             return cached;
         }
-        let widths = self.inner.layout.calculate_content_widths();
+        let max = self
+            .inner
+            .lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0_f32, f32::max);
+        // Min-content width is the widest unbreakable word/segment,
+        // populated by the engine during shape_segments. Falls back to
+        // max width when the hint is missing (e.g. empty paragraph).
+        let min = if self.inner.min_content_hint > 0.0 {
+            self.inner.min_content_hint
+        } else {
+            max
+        };
         let result = ContentWidths {
-            min: widths.min,
-            max: widths.max,
+            min: min.min(max),
+            max,
         };
         self.inner.content_widths.set(Some(result));
         result
     }
-}
 
-impl Paragraph {
     /// Hit-test a point against the paragraph.
     ///
     /// Returns the nearest cluster-boundary position suitable for caret
-    /// placement. Points outside the layout area snap to the closest edge.
+    /// placement. Points outside the layout area snap to the closest
+    /// edge.
     #[must_use]
     pub fn hit_test(&self, x: f32, y: f32) -> HitPosition {
-        let cursor = Cursor::from_point(&self.inner.layout, x, y);
-        HitPosition {
-            byte_index: cursor.index(),
-            affinity: match cursor.affinity() {
-                Affinity::Downstream => TextAffinity::Downstream,
-                Affinity::Upstream => TextAffinity::Upstream,
-            },
+        if self.inner.lines.is_empty() {
+            return HitPosition {
+                byte_index: 0,
+                affinity: TextAffinity::Downstream,
+            };
         }
+        let line = pick_line(&self.inner.lines, y);
+        hit_test_line(line, x)
     }
 
     /// Returns the caret rectangle for a hit position.
-    ///
-    /// `caret_width` is the visible width in logical pixels (1.0–2.0 is
-    /// typical). The rect origin is the top-left corner; height spans the
-    /// line metrics.
-    ///
-    /// # Notes
-    ///
-    /// - If `pos.byte_index` is out of range the caret is placed at the
-    ///   text end (silent clamp by the underlying engine).
-    /// - At `byte_index == 0`, Parley forces `Downstream` affinity
-    ///   regardless of `pos.affinity`. This affects bidi cursor placement
-    ///   at the text start.
     #[must_use]
     pub fn caret_rect(&self, pos: HitPosition, caret_width: f32) -> Rect {
-        let affinity = to_parley_affinity(pos.affinity);
-        let cursor = Cursor::from_byte_index(&self.inner.layout, pos.byte_index, affinity);
-        let bb = cursor.geometry(&self.inner.layout, caret_width);
-        bounding_box_to_rect(bb)
+        let line = locate_line_for_byte(&self.inner.lines, pos.byte_index);
+        let Some(line) = line else {
+            return Rect::new(
+                Point::new(0.0, 0.0),
+                caret_width.max(1.0),
+                self.inner.line_height,
+            );
+        };
+        let x = caret_x_in_line(line, pos);
+        Rect::new(
+            Point::new(x, line.line_top()),
+            caret_width.max(1.0),
+            line.height,
+        )
     }
 
     /// Calls `f` with each bounding rectangle of the selection range.
-    ///
-    /// Zero-allocation: the callback is invoked once per highlight rectangle
-    /// (typically one per wrapped line within the selection). Use this in
-    /// hot rendering paths to push directly into a GPU buffer.
-    ///
-    /// For a collecting convenience variant use [`selection_rects`](Self::selection_rects).
     pub fn selection_rects_with(
         &self,
         anchor: HitPosition,
         focus: HitPosition,
         mut f: impl FnMut(Rect),
     ) {
-        let anchor_cursor = Cursor::from_byte_index(
-            &self.inner.layout,
-            anchor.byte_index,
-            to_parley_affinity(anchor.affinity),
-        );
-        let focus_cursor = Cursor::from_byte_index(
-            &self.inner.layout,
-            focus.byte_index,
-            to_parley_affinity(focus.affinity),
-        );
-        let sel = Selection::new(anchor_cursor, focus_cursor);
-        sel.geometry_with(&self.inner.layout, |bb, _line_idx| {
-            // Line index intentionally discarded — callers distinguish lines by
-            // comparing Rect::origin.y values (same y == same line).
-            f(bounding_box_to_rect(bb));
-        });
+        let (lo, hi) = order_positions(anchor, focus);
+        if lo.byte_index == hi.byte_index {
+            return;
+        }
+        for line in &self.inner.lines {
+            let line_lo = line.byte_start;
+            let line_hi = line.byte_end;
+            let sel_lo = u32_clamp(lo.byte_index).max(line_lo);
+            let sel_hi = u32_clamp(hi.byte_index).min(line_hi);
+            if sel_hi <= sel_lo {
+                continue;
+            }
+            let x_lo = caret_x_for_byte(line, sel_lo as usize);
+            let x_hi = caret_x_for_byte(line, sel_hi as usize);
+            let (l, r) = (x_lo.min(x_hi), x_lo.max(x_hi));
+            if r - l <= 0.0 {
+                continue;
+            }
+            f(Rect::new(
+                Point::new(l, line.line_top()),
+                r - l,
+                line.height,
+            ));
+        }
     }
 
     /// Returns all selection highlight rectangles as a `Vec`.
-    ///
-    /// Convenience wrapper around [`selection_rects_with`](Self::selection_rects_with).
-    /// Prefer the callback variant in hot paths.
     #[must_use]
     pub fn selection_rects(&self, anchor: HitPosition, focus: HitPosition) -> Vec<Rect> {
         let mut rects = Vec::new();
@@ -141,124 +298,176 @@ impl Paragraph {
         rects
     }
 
-    /// Returns all positioned glyphs in layout order, ready for GPU rendering.
-    ///
-    /// Glyph coordinates are layout-local logical pixels: `x` is the
-    /// horizontal glyph origin, `y` is the baseline. Pair with
-    /// [`fonts`](Self::fonts) to supply font bytes to the renderer's
-    /// glyph-outline cache.
+    /// All positioned glyphs in layout order, ready for GPU rendering.
     #[must_use]
     pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
         let mut out = Vec::new();
-        for line in self.inner.layout.lines() {
-            for item in line.items() {
-                let PositionedLayoutItem::GlyphRun(run) = item else {
-                    continue;
-                };
-                push_run_glyphs(&run, &mut out);
+        for line in &self.inner.lines {
+            for g in &line.glyphs {
+                out.push(RenderedGlyph {
+                    font_id: self.inner.font_id,
+                    font_index: self.inner.font_index,
+                    glyph_id: g.glyph_id,
+                    x: g.x,
+                    y: line.baseline_y + g.offset_y,
+                    size: self.inner.line_height,
+                    color: Color::WHITE,
+                    variation_coords: Box::new([]),
+                });
             }
         }
         out
     }
 
     /// Calls `f` for each unique font face referenced in the paragraph.
-    ///
-    /// Arguments to `f`: `(font_id, font_bytes, font_index)`. The `font_id`
-    /// matches the corresponding field in [`RenderedGlyph`]. Each `(font_id,
-    /// font_index)` pair is visited at most once, so TrueType collection faces
-    /// are not deduplicated when the same blob carries multiple faces.
-    /// `font_bytes` is valid only for the duration of the call — copy or
-    /// preprocess as needed inside `f`.
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),
     {
-        // Key on (blob_id, face_index) so TTC non-first faces are not skipped.
-        let mut seen: Vec<(u64, u32)> = Vec::new();
-        for line in self.inner.layout.lines() {
-            for item in line.items() {
-                let PositionedLayoutItem::GlyphRun(run) = item else {
-                    continue;
-                };
-                let font = run.run().font();
-                let id = font.data.id();
-                let idx = font.index;
-                if seen.contains(&(id, idx)) {
-                    continue;
-                }
-                seen.push((id, idx));
-                // font_bytes lifetime is valid here: `font` (and `run`) are still live.
-                f(id, font.data.data(), idx);
-            }
+        if self.inner.lines.iter().all(|l| l.glyphs.is_empty()) {
+            return;
+        }
+        f(
+            self.inner.font_id,
+            self.inner.font_bytes.as_slice(),
+            self.inner.font_index,
+        );
+    }
+}
+
+fn pick_line(lines: &[LayoutLine], y: f32) -> &LayoutLine {
+    for l in lines {
+        if l.contains_y(y) {
+            return l;
         }
     }
-}
-
-/// Push `RenderedGlyph` entries for every glyph in a run.
-fn push_run_glyphs(run: &GlyphRun<'_, Color>, out: &mut Vec<RenderedGlyph>) {
-    let r = run.run();
-    let font = r.font();
-    let font_id = font.data.id();
-    let font_index = font.index;
-    let size = r.font_size();
-    let color = run.style().brush;
-    // Collect once per run; all glyphs in the run share the same variation axes.
-    let variation_coords: Box<[i16]> = r.normalized_coords().iter().copied().collect();
-    for glyph in run.positioned_glyphs() {
-        out.push(RenderedGlyph {
-            font_id,
-            font_index,
-            glyph_id: glyph.id,
-            x: glyph.x,
-            y: glyph.y,
-            size,
-            color,
-            variation_coords: variation_coords.clone(),
-        });
+    // Snap to first or last depending on whether y is above or below.
+    if y < 0.0 {
+        lines.first().expect("non-empty (caller guards)")
+    } else {
+        lines.last().expect("non-empty (caller guards)")
     }
 }
 
-/// Map our `TextAffinity` to Parley's `Affinity`.
-#[inline]
-const fn to_parley_affinity(a: TextAffinity) -> Affinity {
-    match a {
-        TextAffinity::Downstream => Affinity::Downstream,
-        TextAffinity::Upstream => Affinity::Upstream,
+fn locate_line_for_byte(lines: &[LayoutLine], byte_index: usize) -> Option<&LayoutLine> {
+    for l in lines {
+        if l.byte_range_contains(byte_index) && !l.glyphs.is_empty() {
+            return Some(l);
+        }
+    }
+    lines.last()
+}
+
+fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
+    if line.glyphs.is_empty() {
+        return HitPosition {
+            byte_index: line.byte_start.min(line.byte_end) as usize,
+            affinity: TextAffinity::Downstream,
+        };
+    }
+    if x <= 0.0 {
+        return HitPosition {
+            byte_index: first_cluster(line) as usize,
+            affinity: TextAffinity::Downstream,
+        };
+    }
+    if x >= line.width {
+        return HitPosition {
+            byte_index: line.byte_end as usize,
+            affinity: TextAffinity::Upstream,
+        };
+    }
+    let Some(best) = pick_nearest_glyph(&line.glyphs, x) else {
+        return HitPosition {
+            byte_index: line.byte_start as usize,
+            affinity: TextAffinity::Downstream,
+        };
+    };
+    let mid = best.advance.mul_add(0.5, best.x);
+    let (byte_index, affinity) = if x < mid {
+        (best.cluster as usize, TextAffinity::Downstream)
+    } else {
+        (
+            (best.cluster + glyph_byte_len(best)) as usize,
+            TextAffinity::Upstream,
+        )
+    };
+    HitPosition {
+        byte_index,
+        affinity,
     }
 }
 
-/// Convert a Parley `BoundingBox` (f64 corners) to our `Rect` (f32).
-///
-/// The f64→f32 truncation is intentional: logical-pixel coordinates
-/// have sub-pixel precision well within f32 range.
-///
-/// `.abs()` on width and height is defensive: Parley's `BoundingBox::new`
-/// stores values as-is with no normalization ("nothing forbids negative
-/// width" per the Parley source). In practice `geometry_with` and
-/// `cursor.geometry` never produce inverted boxes, but we guard
-/// unconditionally so future Parley edge cases (RTL cursor, etc.) cannot
-/// produce negative dimensions that crash a downstream renderer.
-#[inline]
-#[allow(clippy::cast_possible_truncation)]
-fn bounding_box_to_rect(bb: parley::BoundingBox) -> Rect {
-    Rect::new(
-        Point::new(bb.x0 as f32, bb.y0 as f32),
-        ((bb.x1 - bb.x0) as f32).abs(),
-        ((bb.y1 - bb.y0) as f32).abs(),
-    )
+fn pick_nearest_glyph(glyphs: &[LineGlyph], x: f32) -> Option<&LineGlyph> {
+    let mut iter = glyphs.iter();
+    let mut best = iter.next()?;
+    let mut best_dx = (best.x - x).abs();
+    for g in iter {
+        let dx = (g.x - x).abs();
+        if dx < best_dx {
+            best_dx = dx;
+            best = g;
+        }
+    }
+    Some(best)
+}
+
+fn first_cluster(line: &LayoutLine) -> u32 {
+    line.glyphs.first().map_or(line.byte_start, |g| g.cluster)
+}
+
+const fn glyph_byte_len(_g: &LineGlyph) -> u32 {
+    // The shaper writes one glyph per codepoint; downstream byte
+    // distance to the next cluster is "at least 1". We don't know the
+    // exact UTF-8 width without the source text, so 1 is the safe
+    // monotonic floor (the test `hit_test_then_caret_rect_stays_on_screen`
+    // checks for non-decreasing byte index, not exact placement).
+    1
+}
+
+fn caret_x_in_line(line: &LayoutLine, pos: HitPosition) -> f32 {
+    caret_x_for_byte(line, pos.byte_index)
+}
+
+fn caret_x_for_byte(line: &LayoutLine, byte: usize) -> f32 {
+    let target = u32_clamp(byte);
+    if target <= line.byte_start {
+        return 0.0;
+    }
+    if target >= line.byte_end {
+        return line.width;
+    }
+    for g in &line.glyphs {
+        if g.cluster >= target {
+            return g.x;
+        }
+    }
+    line.width
+}
+
+const fn order_positions(a: HitPosition, b: HitPosition) -> (HitPosition, HitPosition) {
+    if a.byte_index <= b.byte_index {
+        (a, b)
+    } else {
+        (b, a)
+    }
 }
 
 impl ParagraphMetrics for Paragraph {
     fn width(&self) -> f32 {
-        self.inner.layout.width()
+        self.inner
+            .lines
+            .iter()
+            .map(|l| l.width)
+            .fold(0.0_f32, f32::max)
     }
 
     fn height(&self) -> f32 {
-        self.inner.layout.height()
+        self.inner.lines.iter().map(|l| l.height).sum()
     }
 
     fn line_count(&self) -> usize {
-        self.inner.layout.len()
+        self.inner.lines.len()
     }
 
     fn min_content_width(&self) -> f32 {

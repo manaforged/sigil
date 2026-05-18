@@ -18,21 +18,20 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
-use sigil_hal as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
 
+use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;
 use sigil_layout::{
     Dimension, LayoutDrive, NodeHandle, ResolvedBox, Size, StyleData, StyleDisplay, TextMeasure,
 };
-use taffy::prelude::{AvailableSpace as TaffyAvailable, Size as TaffySize};
 
 struct NullText;
 impl TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: TaffySize<TaffyAvailable>) -> TaffySize<f32> {
-        TaffySize::ZERO
+    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
+        LogicalSize::default()
     }
 }
 

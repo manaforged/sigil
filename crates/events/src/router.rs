@@ -2,7 +2,8 @@
 
 use accesskit::TreeUpdate;
 use sigil_hal::{
-    Key, KeyEvent, KeyPhase, LogicalKey, Point, PointerEvent, PointerPhase, ShellEvent, Shortcut,
+    Key, KeyEvent, KeyPhase, LogicalKey, Point, PointerEvent, PointerPhase, ScrollEvent,
+    ShellEvent, Shortcut,
 };
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout::LayoutEngine;
@@ -56,7 +57,33 @@ impl EventRouter {
                     .unwrap_or_else(synthetic_leave_source);
                 self.clear_hover(cx, &source);
             }
-            ShellEvent::Window(_) | ShellEvent::Ime(_) | ShellEvent::Scroll(_) => {}
+            ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
+            ShellEvent::Window(_) | ShellEvent::Ime(_) => {}
+        }
+    }
+
+    /// Route a scroll (mouse wheel / trackpad) event by hit-testing
+    /// `event.position` and bubbling the resulting path target-first.
+    /// Hit-testing fresh (rather than reusing the cached hover path)
+    /// lets a scroll arrive before any pointer-move event has built up
+    /// hover state, which can happen on first touchpad use after a
+    /// window opens. Handlers can call `event.stop_propagation()` to
+    /// consume the event.
+    fn route_scroll(&mut self, cx: &Cx, layout: &LayoutEngine, mut event: ScrollEvent) {
+        let Some(path) = self.hit_cache.hit_path(cx, layout, event.position) else {
+            return;
+        };
+        for id in path.iter().rev().copied() {
+            let Some(node) = cx.get(id) else {
+                continue;
+            };
+            let Some(handlers) = node.get_extension::<EventHandlers>() else {
+                continue;
+            };
+            handlers.invoke_scroll(&mut event);
+            if event.propagation_stopped() {
+                return;
+            }
         }
     }
 
@@ -294,7 +321,7 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
     if let Some(shortcut) = node.a11y.keyboard_shortcut.as_ref() {
         entries.push((shortcut.clone(), id));
     }
-    for child in node.children.iter().copied() {
+    for child in node.children().iter().copied() {
         collect_shortcuts(cx, child, entries);
     }
 }

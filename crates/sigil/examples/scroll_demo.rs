@@ -10,7 +10,6 @@ use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
-use taffy as _;
 
 use sigil::prelude::*;
 
@@ -28,7 +27,7 @@ fn root() -> NodeBuilder {
         .role(Role::Main)
         .layout(LayoutStyle::flex_column().padding_px(24.0))
         .class("w-full h-full bg-surface")
-        .child(scroll(items, 600.0).viewport_height(300.0))
+        .child(scroll(items, 600.0).height(300.0))
 }
 
 fn tall_column() -> NodeBuilder {

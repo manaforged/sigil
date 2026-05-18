@@ -2,23 +2,22 @@
 
 use core::fmt;
 
-/// Errors returned by the Parley text engine.
+/// Errors returned by the owned text engine.
 ///
-/// Parley v0.8's layout path is infallible. This type exists as the
-/// `TextEngine::Error` associated type and is currently uninhabited.
-/// If a future Parley version introduces fallible layout, add a
-/// variant here rather than changing the trait surface.
-pub enum TextError {}
-
-impl fmt::Debug for TextError {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unreachable!()
-    }
+/// The G1.4 layout path itself is infallible; font registration is the
+/// only fallible surface. New fallible paths (font discovery, fallback
+/// chains) add variants here without breaking the trait surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TextError {
+    /// Font bytes did not parse as a valid OpenType/TrueType face.
+    InvalidFont,
 }
 
 impl fmt::Display for TextError {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        unreachable!()
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidFont => f.write_str("invalid font data"),
+        }
     }
 }
 

@@ -26,7 +26,6 @@ use sigil_style as _;
 use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use taffy as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]

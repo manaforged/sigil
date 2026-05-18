@@ -1,8 +1,8 @@
-//! Taffy-backed layout adapter for `sigil-kernel`.
+//! Owned layout adapter for `sigil-kernel`.
 //!
-//! `sigil-layout` mirrors a `sigil_kernel::Cx` subtree into a private Taffy
-//! tree, computes layout, and writes [`LayoutResult`] extensions back
-//! onto the core nodes.
+//! `sigil-layout` mirrors a `sigil_kernel::Cx` subtree into an owned
+//! layout drive, computes layout, and writes [`LayoutResult`] extensions
+//! back onto the core nodes.
 
 // Dev-deps used only by specific benches/tests. Cargo pulls dev-deps
 // into the lib-test target, so keep them visible to the
@@ -49,8 +49,9 @@ pub use result::LayoutResult;
 pub use style_data::{
     AlignContent, AlignItems as StyleAlignItems, AlignSelf as StyleAlignSelf, BoxSizing, Dimension,
     Display as StyleDisplay, FlexDirection as StyleFlexDirection, FlexWrap,
-    JustifyContent as StyleJustifyContent, LengthPercentage as StyleLengthPercentage,
-    LengthPercentageAuto as StyleLengthPercentageAuto, Position as StylePosition, Rect, Size,
-    StyleData,
+    JustifyContent as StyleJustifyContent, LengthPercentage,
+    LengthPercentage as StyleLengthPercentage, LengthPercentageAuto,
+    LengthPercentageAuto as StyleLengthPercentageAuto, Overflow, Position,
+    Position as StylePosition, Rect, Size, StyleData,
 };
 pub use text_adapter::TextEngineMeasure;

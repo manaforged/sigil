@@ -80,6 +80,7 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::FlexShrink(_)
             | StyleAtom::FontSize(_)
             | StyleAtom::FontWeight(_)
+            | StyleAtom::FontFamily(_)
             | StyleAtom::LineHeight(_)
             | StyleAtom::Transition(_)
             | StyleAtom::TransitionDuration(_)
@@ -92,6 +93,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
     match atom {
         StyleAtom::FontSize(px) => text.font_size = f32::from(px.0).max(1.0),
         StyleAtom::FontWeight(weight) => text.font_weight = weight.clamp(1, 1000),
+        StyleAtom::FontFamily(name) => name.clone_into(&mut text.font_family),
         StyleAtom::LineHeight(px) => {
             text.line_height = TextLineHeight::Absolute(f32::from(px.0).max(1.0));
         }

@@ -123,7 +123,7 @@ impl ParallelMeasure {
     ///
     /// # Errors
     ///
-    /// Returns [`LayoutError::TaffyInvalid`] when a boundary's
+    /// Returns [`LayoutError::LayoutInvalid`] when a boundary's
     /// `LocalId` is stale relative to `forest`.
     // DR-041 froze the signature with `scope: MeasureScope<'_>` by value.
     // Replay borrows internally; clippy's by-value warning is acknowledged
@@ -231,7 +231,9 @@ fn classify_walk(forest: &LayoutForest, node: LocalId, out: &mut Vec<DispatchRec
 
 fn kind_for(handle: NodeRef<'_>) -> SolverKind {
     match handle.style().display {
-        Display::Block => SolverKind::Block,
+        // Grid falls back to BlockSolver until the owned grid solver
+        // lands (post-G2, tracked in docs/followups.md).
+        Display::Block | Display::Grid => SolverKind::Block,
         Display::Flex => SolverKind::Flex,
         Display::None => SolverKind::None,
     }
@@ -277,18 +279,14 @@ mod tests {
     use crate::forest::AvailableSpace;
     use crate::measure::TextMeasure;
     use crate::style_data::{Display, StyleData};
+    use sigil_hal::{LogicalSize, Size as HalSize};
     use std::collections::HashSet;
-    use taffy::prelude::{AvailableSpace as TaffyAvailable, Size as TaffySize};
 
     struct NullText;
 
     impl TextMeasure for NullText {
-        fn measure(
-            &self,
-            _: &sigil_kernel::TextContent,
-            _: TaffySize<TaffyAvailable>,
-        ) -> TaffySize<f32> {
-            TaffySize::ZERO
+        fn measure(&self, _: &sigil_kernel::TextContent, _: HalSize) -> LogicalSize {
+            LogicalSize::default()
         }
     }
 

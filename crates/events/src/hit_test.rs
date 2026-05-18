@@ -125,7 +125,7 @@ fn emit(ctx: &EmitCtx<'_>, id: NodeId, parent_origin: Point, items: &mut HitItem
         hit_test_enabled: node.a11y.hit_test_enabled,
     });
 
-    for child in node.children.iter().copied() {
+    for child in node.children().iter().copied() {
         emit(ctx, child, child_origin, items);
     }
 }

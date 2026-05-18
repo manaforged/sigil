@@ -10,7 +10,6 @@ use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
-use taffy as _;
 
 use sigil::prelude::*;
 

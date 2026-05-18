@@ -1,4 +1,4 @@
-//! Floating combat text demo — particle damage numbers without taffy.
+//! Floating combat text demo — particle damage numbers without layout.
 //!
 //! The demo wires a 60 Hz tick signal and spawns three particles per
 //! tick at randomised positions, simulating a burst-damage scenario.
@@ -19,7 +19,6 @@ use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
-use taffy as _;
 
 use sigil::prelude::*;
 use sigil_style::Rgba8;

@@ -22,7 +22,6 @@ use sigil_kernel as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 
 use sigil_layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleData, StyleDisplay, StyleFlexDirection,

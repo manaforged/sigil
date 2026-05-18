@@ -44,9 +44,9 @@ pub(super) fn build_popup(
             LayoutStyle::flex_column()
                 .fixed_size(TRIGGER_WIDTH, popup_h)
                 .position(Position::Absolute)
-                .with_taffy(|s| {
-                    s.inset.top = LengthPercentageAuto::length(TRIGGER_HEIGHT);
-                    s.inset.left = LengthPercentageAuto::length(0.0);
+                .with_layout(|s| {
+                    s.inset.top = LengthPercentageAuto::Px(TRIGGER_HEIGHT);
+                    s.inset.left = LengthPercentageAuto::Px(0.0);
                 }),
         )
         .class("rounded-md")

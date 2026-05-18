@@ -59,13 +59,18 @@ fn remove_subtree_disposes_reactive_owner_resources() {
         assert!(before.contains("signals: 3"));
         assert!(before.contains("effects: 1"));
 
-        let child = cx.get(root).expect("root").children[0];
+        let child = cx.get(root).expect("root").children()[0];
         assert!(cx.remove(child));
 
         assert_eq!(cleanup_count.get(), 1, "component cleanup fired once");
         assert_eq!(cx.len(), 1);
         assert!(cx.get(child).is_none());
-        assert!(cx.get(root).expect("root still alive").children.is_empty());
+        assert!(
+            cx.get(root)
+                .expect("root still alive")
+                .children()
+                .is_empty()
+        );
 
         let after = debug::dump_owner_tree();
         assert!(!after.contains("signals: 3"));

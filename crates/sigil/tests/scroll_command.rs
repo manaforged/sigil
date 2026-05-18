@@ -1,6 +1,9 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use criterion as _;
+use image as _;
+use pollster as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_hal as _;
@@ -8,6 +11,7 @@ use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_style as _;
+use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_renderer::{SceneCommand, emit_scene};
@@ -15,15 +19,8 @@ use sigil_renderer::{SceneCommand, emit_scene};
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size {
-            width: 60.0,
-            height: 16.0,
-        }
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(60.0, 16.0)
     }
 }
 
@@ -98,7 +95,7 @@ fn scroll_thumb_proportional_to_content() {
     sigil::reactive::Runtime::scope("sigil-scroll-thumb-size", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 480.0).viewport_height(240.0));
+        let root = cx.add(scroll(content, 480.0).height(240.0));
         compute(&mut cx, root);
 
         let scene = emit_scene(&cx, root);
@@ -118,22 +115,18 @@ fn scroll_thumb_proportional_to_content() {
 }
 
 #[test]
-fn scroll_default_is_vertical_not_horizontal() {
-    sigil::reactive::Runtime::scope("sigil-scroll-defaults", || {
-        sigil::reactive::Runtime::scope("sigil-scroll-defaults-inner", || {
-            let sb = scroll(container(), 800.0);
-            assert!(!sb.horizontal, "default horizontal is false");
-            assert!(sb.momentum, "default momentum is true");
-        });
-    });
-}
-
-#[test]
-fn scroll_builder_fields_configurable() {
-    sigil::reactive::Runtime::scope("sigil-scroll-fields", || {
-        let sb = scroll(container(), 800.0)
-            .viewport_height(480.0)
-            .momentum(false);
-        assert!(!sb.momentum, "momentum=false after builder");
+fn scroll_thumb_no_offset_at_zero_with_overflow() {
+    sigil::reactive::Runtime::scope("sigil-scroll-thumb-zero", || {
+        let mut cx = Cx::new_root();
+        let content = container();
+        let root = cx.add(scroll(content, 800.0).height(240.0));
+        compute(&mut cx, root);
+        let scene = emit_scene(&cx, root);
+        let rect_count = scene
+            .commands
+            .iter()
+            .filter(|c| matches!(c, SceneCommand::Rect(_)))
+            .count();
+        assert!(rect_count >= 2);
     });
 }

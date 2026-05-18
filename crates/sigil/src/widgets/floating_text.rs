@@ -1,4 +1,4 @@
-//! Floating combat text — particle-style numbers that bypass taffy.
+//! Floating combat text — particle-style numbers that bypass layout.
 //!
 //! Each spawn pushes a particle into a fixed-capacity pool. A reactive
 //! tick advances ages and evicts expired particles. Positions are stored

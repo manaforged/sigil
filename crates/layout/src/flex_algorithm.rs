@@ -218,10 +218,26 @@ pub(crate) fn layout_root(
         border_origin.x + edges.border.left + edges.padding.left,
         border_origin.y + edges.border.top + edges.padding.top,
     );
-    let items = build_items(ctx, node, container_main, container_cross)?;
+    let (content_w, content_h) = if ctx.axes.row {
+        (container_main, container_cross)
+    } else {
+        (container_cross, container_main)
+    };
+    let padding_box = crate::style_data::Size {
+        width: content_w + edges.padding.left + edges.padding.right,
+        height: content_h + edges.padding.top + edges.padding.bottom,
+    };
+    let items = build_items(
+        ctx,
+        node,
+        container_main,
+        container_cross,
+        padding_box,
+        border_origin,
+    )?;
     let lines = collect_lines(ctx, &items, style, container_main);
     let placed = place_lines(ctx, lines, style, container_main, container_cross);
-    write_items(ctx, &placed, content_origin);
+    write_items(ctx, &placed, content_origin)?;
     write_container(ctx, node, &edges, border_origin, container_main, &placed);
     Ok(())
 }
@@ -278,12 +294,14 @@ fn build_items(
     parent: NodeRef<'_>,
     container_main: f32,
     container_cross: f32,
+    padding_box: crate::style_data::Size<f32>,
+    padding_origin: Position2,
 ) -> Result<Vec<FlexItem>, LayoutError> {
     let forest = ctx.solver.scope().forest();
     let mut items = Vec::new();
     for child_id in parent.children() {
         let child = forest.refer(*child_id).ok_or_else(|| {
-            LayoutError::TaffyInvalid(format!("stale flex child id {child_id:?}"))
+            LayoutError::LayoutInvalid(format!("stale flex child id {child_id:?}"))
         })?;
         let style = child.style();
         if matches!(style.display, Display::None) {
@@ -292,7 +310,14 @@ fn build_items(
         if matches!(style.position, Position::Absolute) {
             // Absolutes don't participate in flex flow; place against
             // the container's padding box.
-            place_absolute(ctx, child, container_main, container_cross)?;
+            place_absolute(
+                ctx,
+                child,
+                container_main,
+                container_cross,
+                padding_box,
+                padding_origin,
+            )?;
             continue;
         }
         items.push(FlexItem::build(ctx, child, container_main, container_cross));
@@ -308,11 +333,16 @@ fn place_absolute(
     child: NodeRef<'_>,
     cb_main: f32,
     cb_cross: f32,
+    padding_box: crate::style_data::Size<f32>,
+    padding_origin: Position2,
 ) -> Result<(), LayoutError> {
     let style = child.style();
     let cb_w = if ctx.axes.row { cb_main } else { cb_cross };
     let cb_h = if ctx.axes.row { cb_cross } else { cb_main };
     let edges = NodeEdges::build(style, cb_w);
+    let margins = edges.margin.or_zero();
+    let inset_left = resolve_inset(style.inset.left, padding_box.width);
+    let inset_top = resolve_inset(style.inset.top, padding_box.height);
     let w = dim_to_border_box(
         style.size.width,
         cb_w,
@@ -330,13 +360,21 @@ fn place_absolute(
     ctx.solver.write(
         child.id(),
         ComputedBox {
-            x: 0.0,
-            y: 0.0,
+            x: padding_origin.x + inset_left + margins.left,
+            y: padding_origin.y + inset_top + margins.top,
             w,
             h,
         },
     );
     Ok(())
+}
+
+fn resolve_inset(value: LengthPercentageAuto, basis: f32) -> f32 {
+    match value {
+        LengthPercentageAuto::Auto => 0.0,
+        LengthPercentageAuto::Px(v) => v,
+        LengthPercentageAuto::Percent(p) => p * basis,
+    }
 }
 
 /// Place each line's items in (main, cross) pixel coordinates.
@@ -460,7 +498,7 @@ fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
     let used_basis: f32 = line.items.iter().map(FlexItem::outer_main_basis).sum();
     let gap_total = line.gap * (line.items.len().saturating_sub(1) as f32);
     let free = container_main - used_basis - gap_total;
-    if free.abs() < f32::EPSILON || line.items.is_empty() {
+    if free.abs() < f32::EPSILON || line.items.is_empty() || container_main <= f32::EPSILON {
         for item in &mut line.items {
             item.main_size = clamp_main(item, item.flex_basis_resolved);
         }
@@ -621,7 +659,11 @@ fn cross_size_for(item: &FlexItem, container: Option<AlignItems>, line_cross: f3
 }
 
 /// Write resolved boxes into the solver's results map.
-fn write_items(ctx: &FlexCtx<'_, '_>, placed: &[PlacedItem], content_origin: Position2) {
+fn write_items(
+    ctx: &FlexCtx<'_, '_>,
+    placed: &[PlacedItem],
+    content_origin: Position2,
+) -> Result<(), LayoutError> {
     for p in placed {
         let (x, y, w, h) = if ctx.axes.row {
             (
@@ -639,7 +681,33 @@ fn write_items(ctx: &FlexCtx<'_, '_>, placed: &[PlacedItem], content_origin: Pos
             )
         };
         ctx.solver.write(p.id, ComputedBox { x, y, w, h });
+        layout_item_subtree(ctx, p.id, Position2::new(x, y), w, h)?;
     }
+    Ok(())
+}
+
+fn layout_item_subtree(
+    ctx: &FlexCtx<'_, '_>,
+    id: crate::forest::LocalId,
+    origin: Position2,
+    w: f32,
+    h: f32,
+) -> Result<(), LayoutError> {
+    let forest = ctx.solver.scope().forest();
+    let node = forest
+        .refer(id)
+        .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale flex item id {id:?}")))?;
+    if node.children().is_empty() {
+        return Ok(());
+    }
+    let style = node.style();
+    let axes = Axis2::for_direction(style.flex_direction);
+    let nested = FlexCtx {
+        solver: ctx.solver,
+        axes,
+        cb: CbSize { w, h },
+    };
+    layout_root(&nested, node, origin)
 }
 
 /// Write the container's own resolved box. Main size = container's
@@ -704,6 +772,8 @@ impl<T> Pipe<T> for T {
 
 // Re-exported helpers used by flex_lines.
 pub(crate) fn item_cross_basis(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
     style: &StyleData,
     axes: Axis2,
     cb_main: f32,
@@ -722,10 +792,20 @@ pub(crate) fn item_cross_basis(
     };
     let was_auto = matches!(dim, Dimension::Auto);
     let resolved = dim_to_border_box(dim, cb_used, chrome_cross, style.box_sizing);
+    let resolved = resolved.or_else(|| {
+        let measured = text_intrinsic(ctx, node, style, axes)?;
+        Some(if axes.row {
+            measured.height + chrome_cross
+        } else {
+            measured.width + chrome_cross
+        })
+    });
     (resolved, was_auto)
 }
 
 pub(crate) fn item_main_basis(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
     style: &StyleData,
     axes: Axis2,
     cb_main: f32,
@@ -744,9 +824,44 @@ pub(crate) fn item_main_basis(
     } else {
         style.size.height
     };
-    dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing)
-        .unwrap_or(0.0)
+    if let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
+        return size.max(0.0);
+    }
+    text_intrinsic(ctx, node, style, axes)
+        .map_or(0.0, |measured| {
+            if axes.row {
+                measured.width + chrome_main
+            } else {
+                measured.height + chrome_main
+            }
+        })
         .max(0.0)
+}
+
+fn text_intrinsic(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    style: &StyleData,
+    axes: Axis2,
+) -> Option<crate::style_data::Size<f32>> {
+    if !node.children().is_empty() {
+        return None;
+    }
+    let known = crate::style_data::Size {
+        width: dim_to_border_box(
+            style.size.width,
+            if axes.row { ctx.cb.w } else { ctx.cb.h },
+            0.0,
+            style.box_sizing,
+        ),
+        height: dim_to_border_box(
+            style.size.height,
+            if axes.row { ctx.cb.h } else { ctx.cb.w },
+            0.0,
+            style.box_sizing,
+        ),
+    };
+    ctx.solver.scope().measure_text(node, known)
 }
 
 pub(crate) fn item_min_max_main(

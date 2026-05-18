@@ -6,8 +6,8 @@
 
 use sigil_hal::{
     ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PhysicalSize, Point,
-    PointerEvent, PointerEventInit, PointerKind, PointerPhase, Scale, ScrollEvent, ShellEvent,
-    WindowEvent as SigilWindowEvent,
+    PointerEvent, PointerEventInit, PointerKind, PointerPhase, Scale, ScrollEvent, ScrollEventInit,
+    ShellEvent, WindowEvent as SigilWindowEvent,
 };
 use smol_str::SmolStr;
 use winit::{
@@ -172,12 +172,13 @@ impl WinitShell {
         phase: TouchPhase,
         scale: Scale,
     ) -> bool {
-        self.events.push(ShellEvent::Scroll(ScrollEvent {
-            position: self.pointer_position,
-            delta: map_scroll_delta(delta, scale),
-            modifiers: self.modifiers,
-            phase: map_scroll_phase(phase),
-        }));
+        self.events
+            .push(ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+                position: self.pointer_position,
+                delta: map_scroll_delta(delta, scale),
+                modifiers: self.modifiers,
+                phase: map_scroll_phase(phase),
+            })));
         true
     }
 }

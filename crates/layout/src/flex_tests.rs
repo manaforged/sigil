@@ -34,15 +34,15 @@ use crate::style_data::{
     JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, Size as StyleSize,
     StyleData,
 };
+use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;
-use taffy::prelude::{AvailableSpace as TaffyAvailable, Size as TaffySize};
 
 const TOL: f32 = 0.01;
 
 struct NullText;
 impl crate::TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: TaffySize<TaffyAvailable>) -> TaffySize<f32> {
-        TaffySize::ZERO
+    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
+        LogicalSize::default()
     }
 }
 

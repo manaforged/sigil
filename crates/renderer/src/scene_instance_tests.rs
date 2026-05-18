@@ -1,8 +1,7 @@
-use sigil_hal::{Point, Rect, Size};
+use sigil_hal::{LogicalSize, Point, Rect, Size};
 use sigil_kernel::{Cx, NodeId, TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_style::{NodeStyleExt, Rgba8};
-use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 use super::{
     RectInstance, collect_instances, draw_gradient_instance, draw_rect_instance,
@@ -19,11 +18,8 @@ use crate::shadow_paint::{Shadow, ShadowKind};
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: TaffySize<AvailableSpace>) -> TaffySize<f32> {
-        TaffySize {
-            width: 0.0,
-            height: 0.0,
-        }
+    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
+        LogicalSize::default()
     }
 }
 

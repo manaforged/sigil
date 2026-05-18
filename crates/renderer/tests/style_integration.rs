@@ -29,16 +29,12 @@ use sigil_renderer::{
 };
 use sigil_style::TextLineHeight;
 use sigil_style::{FocusRing, NodeStyleExt, Theme};
-use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
-        TaffySize {
-            width: 0.0,
-            height: 0.0,
-        }
+    fn measure(&self, _source: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }
 

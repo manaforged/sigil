@@ -9,7 +9,7 @@ use std::rc::Rc;
 use sigil_kernel::prelude::*;
 use sigil_layout::TextEngineMeasure;
 use sigil_layout::prelude::*;
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut cx = Cx::new_root();
@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ),
     );
 
-    let engine = Rc::new(ParleyTextEngine::new(TextConfig::default()));
+    let engine = Rc::new(OwnedTextEngine::new(TextConfig::default()));
     let measurer = TextEngineMeasure::new(engine);
     let mut layout = LayoutEngine::with_text_measure(Box::new(measurer));
     layout.compute(&mut cx, root, Size::fixed(320.0, 80.0))?;

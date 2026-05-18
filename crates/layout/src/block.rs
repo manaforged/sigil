@@ -13,9 +13,8 @@
 //! The solver does not mutate the [`LayoutForest`] — `MeasureScope`
 //! borrows it immutably so multiple solvers can run concurrently in
 //! P0.4. Computed boxes land in an internal `RefCell` map; the engine
-//! drains them into the forest's `boxes` slab in P0.5 (W2.6) when the
-//! taffy backend is removed. Tests read the map directly through
-//! [`BlockSolver::boxed`].
+//! drains them into the forest's `boxes` slab. Tests read the map
+//! directly through [`BlockSolver::boxed`].
 
 #![allow(dead_code, clippy::redundant_pub_crate)]
 
@@ -26,7 +25,7 @@ use crate::LayoutError;
 use crate::block_collapse::OpenMargin;
 use crate::block_size::{AxisIntent, NodeEdges, SizeIntent};
 use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
-use crate::style_data::{Display, Position, Size, StyleData};
+use crate::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData};
 
 /// CSS block layout subset.
 ///
@@ -58,9 +57,9 @@ impl<'a> BlockSolver<'a> {
     ///
     /// # Errors
     ///
-    /// Returns [`LayoutError::TaffyInvalid`] (renamed in P0.5) when
-    /// the subtree references a stale `NodeId`. Stale forest ids are
-    /// the only failure mode at this layer.
+    /// Returns [`LayoutError::LayoutInvalid`] when the subtree references
+    /// a stale `NodeId`. Stale forest ids are the only failure mode at
+    /// this layer.
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
         let avail = self.scope.available();
         let cb = root_containing_block(avail);
@@ -144,6 +143,10 @@ const fn definite(c: crate::forest::SpaceConstraint) -> f32 {
 /// not here). The function writes a [`ComputedBox`] into the solver's
 /// results map and returns the resolved geometry so the caller can
 /// stack siblings.
+#[allow(
+    clippy::too_many_lines,
+    reason = "T6 cutover landed solve_box at 66 lines; structural extraction tracked in docs/followups.md"
+)]
 fn solve_box(
     solver: &BlockSolver<'_>,
     node: NodeRef<'_>,
@@ -153,17 +156,51 @@ fn solve_box(
     let style = node.style();
     let edges = NodeEdges::build(style, cb.width);
     let intent = SizeIntent::build(style, cb, &edges);
-    let box_w = intent.w.clamp(width_for(style, intent.w, cb.width, &edges));
+    let text_size = if node.children().is_empty() {
+        solver.scope.measure_text(
+            node,
+            Size {
+                width: intent.w.preferred,
+                height: intent.h.preferred,
+            },
+        )
+    } else {
+        None
+    };
+    let natural_w = text_size.map_or_else(
+        || width_for(style, intent.w, cb.width, &edges),
+        |size| size.width + edges.inline_chrome(),
+    );
+    let box_w = intent.w.clamp(natural_w);
     let inner_w = (box_w - edges.inline_chrome()).max(0.0);
     let inner_cb = Size {
         width: inner_w,
-        height: intent.h.preferred.unwrap_or(cb.height),
+        height: intent
+            .h
+            .preferred
+            .map_or(cb.height, |height| height - edges.block_chrome())
+            .max(0.0),
     };
     let content_origin = Position2::new(
         border_origin.x + edges.border.left + edges.padding.left,
         border_origin.y + edges.border.top + edges.padding.top,
     );
-    let content_height = layout_children(solver, node, inner_cb, content_origin)?;
+    let padding_box = Size {
+        width: inner_w + edges.padding.left + edges.padding.right,
+        height: inner_cb.height + edges.padding.top + edges.padding.bottom,
+    };
+    let content_height = if let Some(size) = text_size {
+        size.height
+    } else {
+        layout_children(
+            solver,
+            node,
+            inner_cb,
+            content_origin,
+            padding_box,
+            content_origin,
+        )?
+    };
     let auto_h = content_height + edges.block_chrome();
     let box_h = intent
         .h
@@ -204,11 +241,17 @@ fn width_for(style: &StyleData, intent: AxisIntent, cb_w: f32, edges: &NodeEdges
 /// and recurse absolute children against the parent's padding box.
 /// Returns the content-area height consumed by in-flow children
 /// (excludes absolute descendants — they don't contribute to flow).
+#[allow(
+    clippy::too_many_arguments,
+    reason = "T6 cutover landed layout_children at 6 args; PaddingFrame struct bundle tracked in docs/followups.md"
+)]
 fn layout_children(
     solver: &BlockSolver<'_>,
     parent: NodeRef<'_>,
     inner_cb: Size<f32>,
     content_origin: Position2,
+    padding_box: Size<f32>,
+    padding_origin: Position2,
 ) -> Result<f32, LayoutError> {
     let forest = solver.scope.forest();
     let mut cursor_y = 0.0_f32;
@@ -216,13 +259,13 @@ fn layout_children(
     for child_id in parent.children() {
         let child = forest
             .refer(*child_id)
-            .ok_or_else(|| LayoutError::TaffyInvalid(format!("stale child id {child_id:?}")))?;
+            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale child id {child_id:?}")))?;
         let style = child.style();
         if matches!(style.display, Display::None) {
             continue;
         }
         if matches!(style.position, Position::Absolute) {
-            place_absolute(solver, child, inner_cb, content_origin)?;
+            place_absolute(solver, child, inner_cb, padding_box, padding_origin)?;
             continue;
         }
         let edges_preview = NodeEdges::build(style, inner_cb.width);
@@ -247,11 +290,18 @@ fn place_absolute(
     solver: &BlockSolver<'_>,
     child: NodeRef<'_>,
     inner_cb: Size<f32>,
-    content_origin: Position2,
+    padding_box: Size<f32>,
+    padding_origin: Position2,
 ) -> Result<(), LayoutError> {
     let style = child.style();
     let edges = NodeEdges::build(style, inner_cb.width);
     let intent = SizeIntent::build(style, inner_cb, &edges);
+    let inset_left = resolve_inset(style.inset.left, padding_box.width);
+    let inset_top = resolve_inset(style.inset.top, padding_box.height);
+    let border_origin = Position2::new(
+        padding_origin.x + inset_left + edges.margin.left.unwrap_or(0.0),
+        padding_origin.y + inset_top + edges.margin_top(),
+    );
     let auto_w =
         (inner_cb.width - edges.margin.left.unwrap_or(0.0) - edges.margin.right.unwrap_or(0.0))
             .max(0.0);
@@ -262,25 +312,41 @@ fn place_absolute(
         height: intent.h.preferred.unwrap_or(inner_cb.height),
     };
     let content_origin_child = Position2::new(
-        content_origin.x
-            + edges.margin.left.unwrap_or(0.0)
-            + edges.border.left
-            + edges.padding.left,
-        content_origin.y + edges.margin_top() + edges.border.top + edges.padding.top,
+        border_origin.x + edges.border.left + edges.padding.left,
+        border_origin.y + edges.border.top + edges.padding.top,
     );
-    let content_h = layout_children(solver, child, inner_cb_child, content_origin_child)?;
+    let child_padding_box = Size {
+        width: inner_w + edges.padding.left + edges.padding.right,
+        height: inner_cb_child.height + edges.padding.top + edges.padding.bottom,
+    };
+    let content_h = layout_children(
+        solver,
+        child,
+        inner_cb_child,
+        content_origin_child,
+        child_padding_box,
+        content_origin_child,
+    )?;
     let auto_h = content_h + edges.block_chrome();
     let box_h = intent.h.clamp(intent.h.preferred.unwrap_or(auto_h));
     solver.write(
         child.id(),
         ComputedBox {
-            x: content_origin.x + edges.margin.left.unwrap_or(0.0),
-            y: content_origin.y + edges.margin_top(),
+            x: border_origin.x,
+            y: border_origin.y,
             w: box_w,
             h: box_h,
         },
     );
     Ok(())
+}
+
+fn resolve_inset(value: LengthPercentageAuto, basis: f32) -> f32 {
+    match value {
+        LengthPercentageAuto::Auto => 0.0,
+        LengthPercentageAuto::Px(v) => v,
+        LengthPercentageAuto::Percent(p) => p * basis,
+    }
 }
 
 #[cfg(test)]

@@ -2,6 +2,8 @@
 
 use sigil_hal::{Point, Rect};
 
+use crate::ResolvedBox;
+
 /// Computed layout attached back to a node after layout runs.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LayoutResult {
@@ -22,14 +24,10 @@ impl LayoutResult {
         self.content_size
     }
 
-    pub(crate) const fn from_taffy(layout: &taffy::tree::Layout) -> Self {
+    pub(crate) const fn from_resolved_box(layout: &ResolvedBox) -> Self {
         Self {
-            rect: Rect::new(
-                Point::new(layout.location.x, layout.location.y),
-                layout.size.width,
-                layout.size.height,
-            ),
-            content_size: Point::new(layout.content_size.width, layout.content_size.height),
+            rect: Rect::new(Point::new(layout.x, layout.y), layout.w, layout.h),
+            content_size: Point::new(layout.w, layout.h),
         }
     }
 }

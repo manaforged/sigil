@@ -1,26 +1,26 @@
 //! Layout intent attached to `sigil-kernel` nodes.
 
-use taffy::geometry::{Rect as TaffyRect, Size as TaffySize};
-use taffy::prelude::{
-    AlignItems, AlignSelf, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
-    LengthPercentageAuto, Position, Style,
+use crate::style_data::{
+    AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap,
+    JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, Size, StyleData,
 };
 
 /// Layout intent attached to a node through `NodeExtensions`.
 ///
-/// This is a thin newtype over `taffy::Style`; keeping the wrapper at
-/// the public boundary preserves the adapter as the swap point if
-/// Taffy churns or a measured fast path appears later.
+/// This is a thin newtype over owned [`StyleData`]; keeping the wrapper
+/// at the public boundary preserves the adapter as the stable authoring
+/// surface while the layout backend evolves.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct LayoutStyle(pub(crate) Style);
+pub struct LayoutStyle(pub(crate) StyleData);
 
 impl LayoutStyle {
     /// Build a block layout intent.
     #[must_use]
     pub fn block() -> Self {
-        let mut style = Style {
+        let mut style = StyleData {
             display: Display::Block,
-            ..Style::default()
+            box_sizing: BoxSizing::BorderBox,
+            ..StyleData::default()
         };
         style.flex_direction = FlexDirection::Column;
         Self(style)
@@ -29,30 +29,54 @@ impl LayoutStyle {
     /// Build a row-oriented flex layout intent.
     #[must_use]
     pub fn flex_row() -> Self {
-        Self(Style {
+        Self(StyleData {
             display: Display::Flex,
             flex_direction: FlexDirection::Row,
-            ..Style::default()
+            box_sizing: BoxSizing::BorderBox,
+            ..StyleData::default()
         })
     }
 
     /// Build a column-oriented flex layout intent.
     #[must_use]
     pub fn flex_column() -> Self {
-        Self(Style {
+        Self(StyleData {
             display: Display::Flex,
             flex_direction: FlexDirection::Column,
-            ..Style::default()
+            box_sizing: BoxSizing::BorderBox,
+            ..StyleData::default()
         })
     }
 
     /// Build a grid layout intent.
     #[must_use]
     pub fn grid() -> Self {
-        Self(Style {
+        Self(StyleData {
             display: Display::Grid,
-            ..Style::default()
+            box_sizing: BoxSizing::BorderBox,
+            ..StyleData::default()
         })
+    }
+
+    /// Set the layout algorithm selector.
+    #[must_use]
+    pub const fn display(mut self, display: Display) -> Self {
+        self.0.display = display;
+        self
+    }
+
+    /// Set the flex main-axis direction.
+    #[must_use]
+    pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Self {
+        self.0.flex_direction = flex_direction;
+        self
+    }
+
+    /// Set the flex line-wrap mode.
+    #[must_use]
+    pub const fn flex_wrap(mut self, flex_wrap: FlexWrap) -> Self {
+        self.0.flex_wrap = flex_wrap;
+        self
     }
 
     /// Set the preferred width.
@@ -65,7 +89,7 @@ impl LayoutStyle {
     /// Set a fixed logical-pixel width.
     #[must_use]
     pub const fn width_px(self, width: f32) -> Self {
-        self.width(Dimension::length(width))
+        self.width(Dimension::Px(width))
     }
 
     /// Set the preferred height.
@@ -78,7 +102,7 @@ impl LayoutStyle {
     /// Set a fixed logical-pixel height.
     #[must_use]
     pub const fn height_px(self, height: f32) -> Self {
-        self.height(Dimension::length(height))
+        self.height(Dimension::Px(height))
     }
 
     /// Set a fixed logical-pixel width and height.
@@ -97,13 +121,13 @@ impl LayoutStyle {
     /// Set fixed logical-pixel uniform padding.
     #[must_use]
     pub const fn padding_px(self, padding: f32) -> Self {
-        self.padding(LengthPercentage::length(padding))
+        self.padding(LengthPercentage::Px(padding))
     }
 
     /// Set uniform flex/grid gap.
     #[must_use]
     pub const fn gap(mut self, gap: LengthPercentage) -> Self {
-        self.0.gap = TaffySize {
+        self.0.gap = Size {
             width: gap,
             height: gap,
         };
@@ -113,7 +137,7 @@ impl LayoutStyle {
     /// Set a fixed logical-pixel flex/grid gap.
     #[must_use]
     pub const fn gap_px(self, gap: f32) -> Self {
-        self.gap(LengthPercentage::length(gap))
+        self.gap(LengthPercentage::Px(gap))
     }
 
     /// Set flex grow.
@@ -137,6 +161,13 @@ impl LayoutStyle {
         self
     }
 
+    /// Set per-line cross-axis distribution for flex/grid containers.
+    #[must_use]
+    pub const fn align_content(mut self, align_content: AlignContent) -> Self {
+        self.0.align_content = Some(align_content);
+        self
+    }
+
     /// Set main-axis content distribution for flex/grid containers.
     #[must_use]
     pub const fn justify_content(mut self, justify_content: JustifyContent) -> Self {
@@ -154,33 +185,33 @@ impl LayoutStyle {
     /// Set a fixed logical-pixel uniform margin.
     #[must_use]
     pub const fn margin_px(self, margin: f32) -> Self {
-        self.margin(LengthPercentageAuto::length(margin))
+        self.margin(LengthPercentageAuto::Px(margin))
     }
 
     /// Set the minimum width and height.
     #[must_use]
     pub const fn min_size(mut self, width: Dimension, height: Dimension) -> Self {
-        self.0.min_size = TaffySize { width, height };
+        self.0.min_size = Size { width, height };
         self
     }
 
     /// Set a fixed logical-pixel minimum width and height.
     #[must_use]
     pub const fn min_size_px(self, width: f32, height: f32) -> Self {
-        self.min_size(Dimension::length(width), Dimension::length(height))
+        self.min_size(Dimension::Px(width), Dimension::Px(height))
     }
 
     /// Set the maximum width and height.
     #[must_use]
     pub const fn max_size(mut self, width: Dimension, height: Dimension) -> Self {
-        self.0.max_size = TaffySize { width, height };
+        self.0.max_size = Size { width, height };
         self
     }
 
     /// Set a fixed logical-pixel maximum width and height.
     #[must_use]
     pub const fn max_size_px(self, width: f32, height: f32) -> Self {
-        self.max_size(Dimension::length(width), Dimension::length(height))
+        self.max_size(Dimension::Px(width), Dimension::Px(height))
     }
 
     /// Override the cross-axis alignment for this item specifically.
@@ -199,9 +230,16 @@ impl LayoutStyle {
         self
     }
 
+    /// Set whether `size` includes padding and border.
+    #[must_use]
+    pub const fn box_sizing(mut self, box_sizing: BoxSizing) -> Self {
+        self.0.box_sizing = box_sizing;
+        self
+    }
+
     /// Set the position mode (`Relative` or `Absolute`).
     ///
-    /// Use `Position::Absolute` with `inset` (via [`with_taffy`](Self::with_taffy))
+    /// Use `Position::Absolute` with `inset` (via [`with_layout`](Self::with_layout))
     /// to place a node at an exact offset from its containing block.
     #[must_use]
     pub const fn position(mut self, position: Position) -> Self {
@@ -209,26 +247,25 @@ impl LayoutStyle {
         self
     }
 
-    /// Escape hatch for raw `taffy::Style` mutation.
+    /// Escape hatch for direct [`StyleData`] mutation.
     ///
     /// Use named methods when possible. Reach for this only when you need
-    /// a Taffy field that has no dedicated builder method yet.
+    /// a layout field that has no dedicated builder method yet.
     #[must_use]
-    pub fn with_taffy(mut self, mutate: impl FnOnce(&mut Style)) -> Self {
+    pub fn with_layout(mut self, mutate: impl FnOnce(&mut StyleData)) -> Self {
         mutate(&mut self.0);
         self
     }
 
-    pub(crate) const fn as_taffy(&self) -> &Style {
+    pub(crate) const fn data(&self) -> &StyleData {
         &self.0
+    }
+
+    pub(crate) const fn data_mut(&mut self) -> &mut StyleData {
+        &mut self.0
     }
 }
 
-const fn all_sides<T: Copy>(value: T) -> TaffyRect<T> {
-    TaffyRect {
-        left: value,
-        right: value,
-        top: value,
-        bottom: value,
-    }
+const fn all_sides<T: Copy>(value: T) -> Rect<T> {
+    Rect::splat(value)
 }

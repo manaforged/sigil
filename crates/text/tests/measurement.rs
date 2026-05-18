@@ -4,22 +4,24 @@
 
 use ahash as _;
 use criterion as _;
-use parley as _;
+#[cfg(feature = "shaping-complex")]
+use harfrust as _;
 use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use skrifa as _;
 use smallvec as _;
-use taffy as _;
+use tracing as _;
 use unicode_bidi as _;
+use unicode_script as _;
 use unicode_segmentation as _;
 
 use sigil_hal::{ParagraphMetrics, TextEngine};
 use sigil_style::{TextLineHeight, TextStyle};
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
-fn engine() -> ParleyTextEngine {
-    ParleyTextEngine::new(TextConfig::default())
+fn engine() -> OwnedTextEngine {
+    OwnedTextEngine::new(TextConfig::default())
 }
 
 #[test]

@@ -1,12 +1,12 @@
 //! Layout trait — see [DR-003].
 //!
-//! The `Layout` trait abstracts the box-layout engine. In production
-//! this is implemented over `taffy` upstream. Tests implement a fixed
-//! layout that returns predetermined rectangles.
+//! The `Layout` trait abstracts the box-layout engine. Production code
+//! uses the owned `sigil-layout` engine. Tests implement a fixed layout
+//! that returns predetermined rectangles.
 //!
 //! # Phase 4 shape
 //!
-//! [DR-003]: ../../../docs/decisions/DR-003-layout-taffy.md
+//! See DR-003 in `docs/decisions/`.
 
 use core::error::Error;
 

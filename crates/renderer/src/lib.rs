@@ -52,9 +52,6 @@ use proptest as _;
 use sigil_shell as _;
 #[cfg(test)]
 use smallvec as _;
-#[cfg(test)]
-use taffy as _;
-
 mod blur_paint;
 mod blur_shader;
 mod corner_radii;

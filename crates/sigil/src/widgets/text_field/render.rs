@@ -45,11 +45,11 @@ fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .width_px(180.0)
         .align_items(AlignItems::Center)
-        .with_taffy(|style| {
-            style.padding.left = LengthPercentage::length(1.0);
-            style.padding.right = LengthPercentage::length(1.0);
-            style.padding.top = LengthPercentage::length(1.0);
-            style.padding.bottom = LengthPercentage::length(1.0);
+        .with_layout(|style| {
+            style.padding.left = LengthPercentage::Px(1.0);
+            style.padding.right = LengthPercentage::Px(1.0);
+            style.padding.top = LengthPercentage::Px(1.0);
+            style.padding.bottom = LengthPercentage::Px(1.0);
         })
 }
 
@@ -65,11 +65,11 @@ fn field_inner_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .width_px(178.0)
         .align_items(AlignItems::Center)
-        .with_taffy(|style| {
-            style.padding.left = LengthPercentage::length(12.0);
-            style.padding.right = LengthPercentage::length(12.0);
-            style.padding.top = LengthPercentage::length(8.0);
-            style.padding.bottom = LengthPercentage::length(8.0);
+        .with_layout(|style| {
+            style.padding.left = LengthPercentage::Px(12.0);
+            style.padding.right = LengthPercentage::Px(12.0);
+            style.padding.top = LengthPercentage::Px(8.0);
+            style.padding.bottom = LengthPercentage::Px(8.0);
         })
 }
 

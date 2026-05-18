@@ -15,13 +15,12 @@ use ahash as _;
 use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
 use rayon as _;
-use sigil_hal::Size;
+use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_reactive as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy::prelude::{AvailableSpace, Size as TaffySize};
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 720.0;
@@ -35,15 +34,12 @@ struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextContent, _space: TaffySize<AvailableSpace>) -> TaffySize<f32> {
+    fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(value) => value.chars().count() as f32,
             TextContent::Reactive(_) => 0.0,
         };
-        TaffySize {
-            width: chars * 8.0,
-            height: 16.0,
-        }
+        LogicalSize::new(chars * 8.0, 16.0)
     }
 }
 
@@ -145,7 +141,7 @@ fn leaf() -> NodeBuilder {
 fn collect_row_ids(cx: &Cx, root: NodeId) -> Vec<NodeId> {
     cx.get(root)
         .expect("root exists")
-        .children
+        .children()
         .iter()
         .copied()
         .collect()
@@ -155,7 +151,7 @@ fn collect_leaf_ids(cx: &Cx, root: NodeId) -> Vec<NodeId> {
     let rows = collect_row_ids(cx, root);
     let mut leaves = Vec::with_capacity(ROWS * LEAVES_PER_ROW);
     for row in rows {
-        leaves.extend(cx.get(row).expect("row exists").children.iter().copied());
+        leaves.extend(cx.get(row).expect("row exists").children().iter().copied());
     }
     leaves
 }

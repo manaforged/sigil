@@ -211,6 +211,7 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::Opacity(opacity) => Style::new().opacity(opacity),
         StyleAtom::FontSize(px) => Style::new().font_size(px.0),
         StyleAtom::FontWeight(weight) => Style::new().font_weight(weight),
+        StyleAtom::FontFamily(name) => Style::new().font_family(name),
         StyleAtom::LineHeight(px) => Style::new().line_height(px.0),
         StyleAtom::Transition(transition) => Style::new().transition(transition),
         StyleAtom::TransitionDuration(duration) => Style::new().transition_duration(duration),

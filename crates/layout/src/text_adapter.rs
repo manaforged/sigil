@@ -6,7 +6,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use sigil_hal::ParagraphMetrics;
+use sigil_hal::{Dim, LogicalSize, ParagraphMetrics, Size};
 use sigil_kernel::TextContent;
 use sigil_style::{StyledTextEngine, TextStyle};
 
@@ -31,41 +31,27 @@ impl<E: StyledTextEngine> TextEngineMeasure<E> {
 }
 
 impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
-    fn measure(
-        &self,
-        source: &TextContent,
-        space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
+    fn measure(&self, source: &TextContent, space: Size) -> LogicalSize {
         self.measure_styled(source, &TextStyle::default(), space)
     }
 
-    fn measure_styled(
-        &self,
-        source: &TextContent,
-        style: &TextStyle,
-        space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        use taffy::prelude::{AvailableSpace, Size};
-
+    fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
         let text = resolve_text(source);
         let max_width = match space.width {
-            AvailableSpace::Definite(w) => Some(w),
-            AvailableSpace::MinContent | AvailableSpace::MaxContent => None,
+            Dim::Fixed(w) => Some(w),
+            Dim::MinContent | Dim::MaxContent => None,
         };
 
         let Ok(para) = self.engine.layout_paragraph_styled(&text, max_width, style) else {
-            return Size::ZERO;
+            return LogicalSize::default();
         };
 
         let width = match space.width {
-            AvailableSpace::Definite(_) | AvailableSpace::MaxContent => para.width(),
-            AvailableSpace::MinContent => para.min_content_width(),
+            Dim::Fixed(_) | Dim::MaxContent => para.width(),
+            Dim::MinContent => para.min_content_width(),
         };
 
-        Size {
-            width,
-            height: para.height(),
-        }
+        LogicalSize::new(width, para.height())
     }
 
     fn begin_frame(&self) {

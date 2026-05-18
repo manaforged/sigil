@@ -200,9 +200,9 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
     LayoutStyle::block()
         .fixed_size(width, height)
         .position(Position::Absolute)
-        .with_taffy(move |style| {
-            style.inset.left = LengthPercentageAuto::length(x);
-            style.inset.top = LengthPercentageAuto::length(y);
+        .with_layout(move |style| {
+            style.inset.left = LengthPercentageAuto::Px(x);
+            style.inset.top = LengthPercentageAuto::Px(y);
         })
 }
 
@@ -267,11 +267,7 @@ fn ctrl_s() -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size::ZERO
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }

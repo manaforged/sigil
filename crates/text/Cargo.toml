@@ -14,7 +14,7 @@ description = "Owned text engine for Sigil (skrifa + unicode-segmentation)."
 doctest = false
 
 [features]
-shaping-complex = []
+shaping-complex = ["dep:harfrust"]
 
 [dependencies]
 sigil-hal = { workspace = true }
@@ -22,18 +22,17 @@ sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
 skrifa = { workspace = true }
 smallvec = { workspace = true }
+tracing = { workspace = true }
+unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-bidi = "0.3"
-# G1.4 rewrites engine.rs/paragraph.rs/cache.rs against the owned shaper.
-# Until then the existing Parley-backed code paths still compile.
-parley = "0.8"
 ahash = { workspace = true }
+harfrust = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 sigil-kernel = { workspace = true }
 sigil-layout = { workspace = true }
-taffy = { workspace = true }
 
 [lints]
 workspace = true

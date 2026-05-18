@@ -3,8 +3,8 @@
 use sigil_hal::{Point, Rect};
 use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_layout::LayoutResult;
-use sigil_style::{Rgba8, TextStyle};
-use sigil_text::{ParleyTextEngine, TextConfig};
+use sigil_style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;
@@ -84,6 +84,11 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, parent_origin: Po
     let Some(node) = cx.get(id) else {
         return;
     };
+    // Honour display:none — skip this node and its entire subtree, matching
+    // CSS semantics where display:none removes the element from the render tree.
+    if is_display_none(node) {
+        return;
+    }
     let rect = node
         .get_extension::<LayoutResult>()
         .map(|layout| absolute_rect(parent_origin, layout.rect()));
@@ -92,9 +97,20 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, parent_origin: Po
         push_node(scene, id, node, rect);
     }
     let child_origin = rect.map_or(parent_origin, |rect| rect.origin);
-    for child in node.children.iter().copied() {
+    for child in node.children().iter().copied() {
         push_subtree(scene, cx, child, child_origin);
     }
+}
+
+/// Return  if any atom slice on the node sets .
+fn is_display_none(node: &Node) -> bool {
+    let Some(binding) = node.get_extension::<StyleBinding>() else {
+        return false;
+    };
+    let target = StyleAtom::Display(DisplayKind::None);
+    binding.static_slice().contains(&target)
+        || binding.dynamic_slice().contains(&target)
+        || binding.reactive_slice().contains(&target)
 }
 
 fn push_focus_ring(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
@@ -173,18 +189,19 @@ pub fn shape_glyph_run(
     opacity: u16,
 ) -> GlyphRun {
     let max_width = Some(rect.width.max(1.0));
-    let paragraph =
-        TEXT_ENGINE.with(
-            |engine| match engine.layout_paragraph_styled(&text, max_width, &style) {
-                Ok(paragraph) => paragraph,
-                Err(err) => match err {},
-            },
-        );
+    // The shared engine bootstraps with bundled FiraSans (G1.4 owned
+    // engine). Layout failure is unreachable unless a future caller
+    // hot-swaps in a malformed user font via FontCollection::register.
+    let paragraph = TEXT_ENGINE.with(|engine| {
+        engine
+            .layout_paragraph_styled(&text, max_width, &style)
+            .unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"))
+    });
     GlyphRun::new(rect, text, color, style, opacity).with_paragraph(paragraph)
 }
 
 thread_local! {
-    static TEXT_ENGINE: ParleyTextEngine = ParleyTextEngine::new(TextConfig::default());
+    static TEXT_ENGINE: OwnedTextEngine = OwnedTextEngine::new(TextConfig::default());
 }
 
 const fn absolute_rect(parent_origin: Point, rect: Rect) -> Rect {

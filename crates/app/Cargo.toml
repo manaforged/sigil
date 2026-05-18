@@ -22,7 +22,6 @@ sigil-renderer = { workspace = true }
 sigil-shell = { workspace = true }
 sigil-style = { workspace = true }
 sigil-text = { workspace = true }
-taffy = { workspace = true }
 tracing = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]

@@ -14,6 +14,9 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use criterion as _;
+use image as _;
+use pollster as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_hal as _;
@@ -21,6 +24,7 @@ use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_style as _;
+use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
@@ -30,15 +34,8 @@ use sigil_style::Rgba8;
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(
-        &self,
-        _content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
-        taffy::prelude::Size {
-            width: 40.0,
-            height: 16.0,
-        }
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

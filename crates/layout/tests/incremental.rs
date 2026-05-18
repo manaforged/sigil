@@ -8,7 +8,6 @@ use rayon as _;
 use sigil_hal as _;
 use sigil_style as _;
 use smallvec as _;
-use taffy as _;
 
 mod stub;
 
@@ -258,8 +257,7 @@ fn build_tree() -> (Cx, NodeId, NodeId) {
     );
     let child = cx
         .get(root)
-        .and_then(|node| node.children.first())
-        .copied()
+        .and_then(|node| node.children().first().copied())
         .expect("child exists");
     (cx, root, child)
 }
@@ -280,19 +278,12 @@ fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
 struct ContentWidthMeasure;
 
 impl TextMeasure for ContentWidthMeasure {
-    fn measure(
-        &self,
-        content: &TextContent,
-        _space: taffy::prelude::Size<taffy::prelude::AvailableSpace>,
-    ) -> taffy::prelude::Size<f32> {
+    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
         };
         let clamped = u16::try_from(len).unwrap_or(u16::MAX);
-        taffy::prelude::Size {
-            width: f32::from(clamped) * 10.0,
-            height: 10.0,
-        }
+        sigil_hal::LogicalSize::new(f32::from(clamped) * 10.0, 10.0)
     }
 }

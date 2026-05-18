@@ -15,11 +15,17 @@
 //! ```
 
 #[cfg(test)]
+use criterion as _;
+#[cfg(test)]
+use image as _;
+#[cfg(test)]
+use pollster as _;
+#[cfg(test)]
 use sigil_hal as _;
 #[cfg(test)]
 use sigil_renderer as _;
 #[cfg(test)]
-use taffy as _;
+use wgpu as _;
 
 pub use sigil_app::{AppConfig, Error, PanicPolicy, Result, TreeRoot, launch};
 
