@@ -14,7 +14,6 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use ahash::AHashSet;
 use sigil_kernel::TextContent;
 use sigil_style::TextStyle;
 
@@ -64,7 +63,6 @@ pub struct NodeHandle(LocalId);
 pub struct LayoutDrive {
     forest: LayoutForest,
     text: Box<dyn TextMeasure>,
-    reached: AHashSet<LocalId>,
 }
 
 impl LayoutDrive {
@@ -74,7 +72,6 @@ impl LayoutDrive {
         Self {
             forest: LayoutForest::new(),
             text,
-            reached: AHashSet::new(),
         }
     }
 
@@ -84,9 +81,36 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(None, style))
     }
 
+    /// Insert a node carrying its originating `sigil_kernel::NodeId`
+    /// link. `LayoutEngine` uses this path so the inverse `handle →
+    /// kernel` lookup reads `LayoutNode.kernel` directly instead of a
+    /// parallel hashmap.
+    pub(crate) fn insert_with_kernel(
+        &mut self,
+        kernel: sigil_kernel::NodeId,
+        style: StyleData,
+    ) -> NodeHandle {
+        NodeHandle(self.forest.insert(Some(kernel), style))
+    }
+
+    /// Resolve `handle` back to its kernel `NodeId`. Returns `None`
+    /// when the handle is stale or the node was inserted without a
+    /// kernel link (e.g. test fixtures using `LayoutDrive::insert`).
+    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<sigil_kernel::NodeId> {
+        self.forest.refer(handle.0)?.kernel()
+    }
+
     /// Replace a node's style.
     pub fn set_style(&mut self, node: NodeHandle, style: StyleData) -> Result<(), LayoutError> {
         self.forest.set_style(node.0, style)
+    }
+
+    /// Borrow a node's currently-stored style. Returns `None` when the
+    /// handle is stale. Used by `LayoutEngine` to skip the
+    /// clone-and-write path when the kernel-side intent already
+    /// matches the mirror.
+    pub(crate) fn style_for(&self, node: NodeHandle) -> Option<&StyleData> {
+        self.forest.style_for(node.0)
     }
 
     /// Replace the optional text measurement context for a node.
@@ -98,6 +122,12 @@ impl LayoutDrive {
     ) -> Result<(), LayoutError> {
         let text = content.map(|content| LayoutText { content, style });
         self.forest.set_text(node.0, text)
+    }
+
+    /// Borrow a node's currently-stored text payload. Mirror of
+    /// `style_for`. Returns `None` when the handle is stale.
+    pub(crate) fn text_for(&self, node: NodeHandle) -> Option<&LayoutText> {
+        self.forest.text_for(node.0)
     }
 
     /// Append `child` to `parent`'s child list.
@@ -129,9 +159,8 @@ impl LayoutDrive {
 
     /// Remove a node and all of its descendants from the owned forest.
     pub fn remove(&mut self, root: NodeHandle) -> Result<(), LayoutError> {
-        let mut subtree = self.subtree_handles(root)?;
-        for handle in subtree.drain(..).rev() {
-            let _ = self.reached.remove(&handle.0);
+        let subtree = self.subtree_handles(root)?;
+        for handle in subtree.into_iter().rev() {
             self.forest.free(handle.0)?;
         }
         Ok(())
@@ -182,33 +211,30 @@ impl LayoutDrive {
         avail: AvailableSpace,
     ) -> Result<(), LayoutError> {
         let root_id = root.0;
+        // Bump the frame tag before dispatching so every box the
+        // solver scatter-writes through `MeasureScope::write` lands
+        // stamped with the current frame. `computed_box` compares
+        // against this tag to detect "reached this measure" vs
+        // "stale slab entry" — replaces the previous per-frame
+        // `AHashSet<LocalId>`.
+        let _ = self.forest.next_frame();
         let handle = self
             .forest
             .refer(root_id)
             .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
         let display = handle.style().display;
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
-        let drained = match display {
+        match display {
             Display::Flex => {
                 let solver = FlexSolver::new(scope);
                 solver.solve(handle)?;
-                solver.take()
             }
             // Grid falls back to BlockSolver until the owned grid solver
             // lands (post-G2, tracked in docs/followups.md).
             Display::Block | Display::None | Display::Grid => {
                 let solver = BlockSolver::new(scope);
                 solver.solve(handle)?;
-                solver.take()
             }
-        };
-        self.reached.clear();
-        for (id, cb) in drained {
-            // Stale ids fall away silently inside `write` — the only
-            // path producing one is concurrent forest mutation, which
-            // does not happen under `&mut self`.
-            let _ = self.forest.write(id, cb);
-            let _ = self.reached.insert(id);
         }
         Ok(())
     }
@@ -218,12 +244,10 @@ impl LayoutDrive {
     /// or the node was not reached.
     #[must_use]
     pub fn computed_box(&self, node: NodeHandle) -> Option<ResolvedBox> {
-        if !self.reached.contains(&node.0) {
+        if self.forest.frame_for(node.0)? != self.forest.current_frame() {
             return None;
         }
         let cb = self.forest.boxed(node.0)?;
-        // Unreached nodes left as the slab default — distinguish from
-        // a real (0, 0, 0, 0) result by returning `None`.
         Some(ResolvedBox {
             x: cb.x,
             y: cb.y,

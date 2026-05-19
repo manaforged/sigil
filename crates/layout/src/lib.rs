@@ -34,7 +34,7 @@ mod measure;
 mod parallel;
 pub mod prelude;
 mod result;
-pub(crate) mod style_adapter;
+pub mod style_adapter;
 mod style_data;
 mod text_adapter;
 mod text_style;

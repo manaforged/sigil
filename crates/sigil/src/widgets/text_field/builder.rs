@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use sigil_reactive::{Signal, signal};
+use sigil_style::{NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
@@ -29,6 +30,7 @@ pub struct TextFieldBuilder {
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Signal<bool>,
     pub(super) scroll_offset: Signal<usize>,
+    pub(super) style_accumulator: Style,
 }
 
 /// Create a single-line text field widget.
@@ -50,6 +52,7 @@ impl TextFieldBuilder {
             clipboard: None,
             caret_visible: signal(true),
             scroll_offset: signal(0_usize),
+            style_accumulator: Style::new(),
         }
     }
 
@@ -111,6 +114,7 @@ impl TextFieldBuilder {
         let value = self.value;
         let disabled = self.disabled;
         let placeholder = self.placeholder;
+        let style_accumulator = self.style_accumulator;
         let on_change = self.on_change.unwrap_or_else(noop_text_change);
         let on_submit = self.on_submit.unwrap_or_else(noop_text_change);
         let clipboard = self.clipboard.unwrap_or_else(|| Rc::new(NoopClipboard));
@@ -122,10 +126,29 @@ impl TextFieldBuilder {
         runtime.scroll_offset = self.scroll_offset;
 
         let node = build_base_node(value, disabled, &placeholder, interaction);
-        let node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        let mut node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        // Styled accumulator installs AFTER the field's own atoms +
+        // state-variant install so the trait surface layers ON TOP of
+        // the FIELD_BASE/FIELD_REST/FIELD_FOCUS/FIELD_HOVER/FIELD_DOWN/
+        // FIELD_DISABLED state arms (additive composition per DR-049
+        // §10). The accumulator's hover/focus/pressed/disabled slot
+        // overlays will compose with the existing arms at engine
+        // install time (G6.2); base atoms route through the existing
+        // `NodeStyleExt::style` class-source seam.
+        if !style_accumulator.is_empty() {
+            node = node.style(style_accumulator);
+        }
         (node, runtime)
     }
 }
+
+impl StyleAccess for TextFieldBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for TextFieldBuilder {}
 
 impl IntoNode for TextFieldBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {

@@ -18,7 +18,9 @@
 // `smallvec` and `criterion` are dev-deps; this test references
 // neither. Silence `unused_crate_dependencies`.
 use criterion as _;
+use sigil_actions as _;
 use smallvec as _;
+use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

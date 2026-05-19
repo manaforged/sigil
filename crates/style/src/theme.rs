@@ -5,12 +5,14 @@ use crate::palette::Palette;
 use crate::variant::{FontFamilyHint, Variant};
 
 #[cfg(debug_assertions)]
-const BUILT_IN_COLOR_TOKENS: [&str; 7] = [
+const BUILT_IN_COLOR_TOKENS: [&str; 9] = [
     "accent",
     "accent-hover",
     "on-accent",
     "surface",
     "surface-hover",
+    "surface-pressed",
+    "surface-pressed-strong",
     "on-surface",
     "border",
 ];
@@ -39,6 +41,17 @@ pub struct Theme {
     pub surface: Rgba8,
     /// Hover state for default surfaces.
     pub surface_hover: Rgba8,
+    /// Pressed/active state for default surfaces. Visibly deeper than
+    /// [`surface_hover`] so a 16px swatch can carry the delta on its
+    /// own without needing a border shift.
+    pub surface_pressed: Rgba8,
+    /// Deepest pressed-state tint for tiny indicators (16-20 px) where
+    /// the hover→pressed step on [`surface_pressed`] alone fell below
+    /// the same-hue JND (~6 sRGB units measured at the 75% opacity
+    /// blend the previous design used). Roughly twice the linear-space
+    /// step from `surface` that `surface_pressed` carries — clears the
+    /// JND at 16 px swatch scale without needing a border cue.
+    pub surface_pressed_strong: Rgba8,
     /// Text/icon colour on default surfaces.
     pub on_surface: Rgba8,
     /// Default border colour.
@@ -56,10 +69,23 @@ impl Default for Theme {
             accent_hover: rgba(35, 93, 230), // Slightly deeper accent for hover feedback.
             on_accent: rgba(255, 255, 255), // White keeps accent controls readable.
             surface: rgba(248, 250, 252), // Near-white default pane surface.
-            surface_hover: rgba(226, 232, 240), // Cool hover lift for neutral surfaces.
-            on_surface: rgba(15, 23, 42), // Dark text for light surfaces.
-            border: rgba(148, 163, 184), // Subtle cool border.
-            missing_token_fallback: rgba(255, 0, 255), // Debug magenta for misses.
+            // Hover sits ~26 lightness units darker than `surface` so the
+            // post-sRGB-gamma delta clears the same-hue JND (~7.65) on
+            // small swatches (16-22px). Previous `(226, 232, 240)` gave a
+            // ~8 sRGB delta — borderline-to-below the JND, sub-perceptual.
+            surface_hover: rgba(200, 210, 222), // Clearly perceptible hover lift.
+            // Pressed sits ~52 units darker — twice the hover delta, so the
+            // hover→pressed step itself is also above JND. Previous
+            // `(192, 202, 217)` collided with hover at small widget scale.
+            surface_pressed: rgba(160, 174, 192), // Markedly darker press tint.
+            // Strong-pressed sits ~26 units below `surface_pressed`
+            // (matching the hover→pressed step). Targeted at 16-20 px
+            // indicators where the previous 75 %-opacity blend over
+            // `surface_pressed` produced only a 6 sRGB delta vs hover.
+            surface_pressed_strong: rgba(130, 144, 162), // Deepest tint for tiny indicators.
+            on_surface: rgba(15, 23, 42),                // Dark text for light surfaces.
+            border: rgba(148, 163, 184),                 // Subtle cool border.
+            missing_token_fallback: rgba(255, 0, 255),   // Debug magenta for misses.
             tokens: phf::Map::new(),
         }
     }
@@ -83,6 +109,8 @@ impl Theme {
             "on-accent" => Some(self.on_accent),
             "surface" => Some(self.surface),
             "surface-hover" => Some(self.surface_hover),
+            "surface-pressed" => Some(self.surface_pressed),
+            "surface-pressed-strong" => Some(self.surface_pressed_strong),
             "on-surface" => Some(self.on_surface),
             "border" => Some(self.border),
             _ => None,
@@ -132,8 +160,15 @@ impl Theme {
     pub fn from_palette(palette: Palette, variant: Variant) -> Self {
         let tokens = variant.tokens();
         let dark_surface = is_dark(palette.background);
+        // Hover shifts by ~26 lightness units (was 18). The 18-unit
+        // value gave only ~8 sRGB delta after gamma encoding —
+        // borderline-to-below the same-hue JND (~7.65) and sub-
+        // perceptual on a 16-22px widget swatch. 26 lifts the post-
+        // gamma delta clear of the JND across calibration variance.
+        // Pressed doubles this (saturating to 52) so the hover→pressed
+        // step is itself perceptible.
         let hover_shift: i16 = if tokens.hover_lift {
-            if dark_surface { 18 } else { -18 }
+            if dark_surface { 26 } else { -26 }
         } else {
             // Variant suppresses hover lift (e.g. Terminal): surfaces
             // stay flat regardless of pointer state.
@@ -153,6 +188,13 @@ impl Theme {
             on_accent,
             surface: palette.background,
             surface_hover: shift(palette.background, hover_shift),
+            // Pressed shifts twice as far as hover — a Terminal-flat
+            // variant collapses both to the base alongside hover.
+            surface_pressed: shift(palette.background, hover_shift.saturating_mul(2)),
+            // Strong-pressed shifts a further `hover_shift` past pressed
+            // (3× hover from surface). Terminal-flat variants collapse
+            // alongside hover/pressed. Targeted at 16-20 px indicators.
+            surface_pressed_strong: shift(palette.background, hover_shift.saturating_mul(3)),
             on_surface: palette.text,
             border: alpha_mix(palette.text, palette.background, 0.35),
             missing_token_fallback: rgba(255, 0, 255),

@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom};
 
-const STRUCTURAL_TOKENS: [&str; 63] = [
+const STRUCTURAL_TOKENS: [&str; 65] = [
     "p-4",
     "px-4",
     "py-4",
@@ -53,6 +53,8 @@ const STRUCTURAL_TOKENS: [&str; 63] = [
     "bg-border",
     "bg-surface",
     "bg-surface-hover",
+    "bg-surface-pressed",
+    "bg-surface-pressed-strong",
     "text-xs",
     "text-sm",
     "text-base",

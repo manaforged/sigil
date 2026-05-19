@@ -17,6 +17,7 @@
 use criterion as _;
 use image as _;
 use pollster as _;
+use sigil_actions as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_hal as _;
@@ -136,7 +137,7 @@ fn button_disabled_is_not_focusable() {
         compute(&mut cx, root);
         let node = cx.get(root).unwrap();
         assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hit_test_enabled);
+        assert!(!node.a11y.hittable);
     });
 }
 

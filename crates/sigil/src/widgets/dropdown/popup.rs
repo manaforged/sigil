@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use sigil_kernel::{NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, LengthPercentageAuto, Position};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use super::super::shared::{Activate, disabled_now};
@@ -44,10 +44,8 @@ pub(super) fn build_popup(
             LayoutStyle::flex_column()
                 .fixed_size(TRIGGER_WIDTH, popup_h)
                 .position(Position::Absolute)
-                .with_layout(|s| {
-                    s.inset.top = LengthPercentageAuto::Px(TRIGGER_HEIGHT);
-                    s.inset.left = LengthPercentageAuto::Px(0.0);
-                }),
+                .inset_top_px(TRIGGER_HEIGHT)
+                .inset_left_px(0.0),
         )
         .class("rounded-md")
         .class(SURFACE_HOVER)
@@ -83,7 +81,7 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) 
     use sigil_events::prelude::NodeEventsExt;
     container()
         .role(Role::ListBoxOption)
-        .aria_label(label.clone())
+        .label(label.clone())
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(TRIGGER_WIDTH, OPTION_HEIGHT)

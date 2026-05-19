@@ -82,6 +82,8 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::FontWeight(_)
             | StyleAtom::FontFamily(_)
             | StyleAtom::LineHeight(_)
+            | StyleAtom::OverflowX(_)
+            | StyleAtom::OverflowY(_)
             | StyleAtom::Transition(_)
             | StyleAtom::TransitionDuration(_)
             | StyleAtom::UnknownThemeRef(_) => {}
@@ -128,6 +130,8 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Opacity(_)
+        | StyleAtom::OverflowX(_)
+        | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
         | StyleAtom::UnknownThemeRef(_) => {}

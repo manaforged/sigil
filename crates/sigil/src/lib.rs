@@ -21,6 +21,8 @@ use image as _;
 #[cfg(test)]
 use pollster as _;
 #[cfg(test)]
+use sigil_actions as _;
+#[cfg(test)]
 use sigil_hal as _;
 #[cfg(test)]
 use sigil_renderer as _;
@@ -52,7 +54,9 @@ pub mod prelude {
     pub use sigil_layout::prelude::*;
     pub use sigil_reactive::{Signal, effect, signal};
     pub use sigil_style::{
-        FocusRing, NodeStyleExt, StateStyle, Style, StyleAtom, StyleState, StyleVariant, Theme,
+        ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Sizing, Spacing, StateStyle,
+        StateStyleBuilder, StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant,
+        Styleable, Styled, Theme, Transitions, Typography, Visual,
     };
 
     pub use crate::interaction::InteractionState;

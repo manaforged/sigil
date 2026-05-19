@@ -15,12 +15,16 @@
 )]
 
 // Workspace deps that the bench target inherits but does not call.
+use image as _;
+use pollster as _;
+use sigil_actions as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_renderer as _;
+use wgpu as _;
 
 use std::hint::black_box;
 use std::rc::Rc;

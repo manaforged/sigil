@@ -13,7 +13,7 @@ use crate::{Cx, NodeId};
 ///
 /// impl IntoNode for Button {
 ///     fn build(self, cx: &mut Cx) -> NodeId {
-///         cx.add(container().role(Role::Button).aria_label(self.label))
+///         cx.add(container().role(Role::Button).label(self.label))
 ///     }
 /// }
 /// ```

@@ -4,16 +4,55 @@
 //! owner/effect TLS stacks and the batched pending-effect queue.
 //! Everything here is `!Send`: a reactive runtime belongs to one
 //! thread for its entire lifetime.
+//!
+//! The `Runtime` public surface is split across sibling modules to
+//! keep this file under the 400-line cap:
+//!
+//! - [`runtime_slots`](crate::runtime_slots) — arena slot type
+//!   definitions (`OwnerSlot`, `SignalSlot`, …).
+//! - [`runtime_phase`](crate::runtime_phase) — frame-phase transitions
+//!   (`begin_effect`, `begin_layout`, `begin_paint`, `end_frame`).
+//! - [`runtime_executor`](crate::runtime_executor) — executor install
+//!   plus the completion-queue surface.
+//! - [`runtime_drain`](crate::runtime_drain) — module-scope drain
+//!   helpers (`drain_pending_completions`, `drain_observers_to_fixpoint`,
+//!   `push_pending_completion`).
 
-use core::any::Any;
+// Entity / observer plumbing (DR-045 G2 keystone) lives in
+// `entity.rs`, `entity_observer.rs`, `entity_global.rs`, `cx.rs`;
+// each of these struct/enum/field below is consumed by exactly one
+// of those modules. During incremental landing the dead-code lint
+// fires before those consumers exist — scoped allow keeps the
+// runtime additions reviewable as a single unit.
+#![allow(
+    dead_code,
+    reason = "entity / observer plumbing consumed by sibling modules in this G2 landing"
+)]
+
+use core::any::TypeId;
 use core::cell::RefCell;
-use core::panic::Location;
 use core::sync::atomic::{AtomicU64, Ordering};
 use std::collections::{BTreeSet, VecDeque};
+use std::sync::Arc;
 
-use smallvec::SmallVec;
+use sigil_actions::ActionRegistry;
 
-use crate::arena::{Arena, Key};
+use crate::arena::Arena;
+use crate::async_cx::{MainThreadDispatcher, TaskExecutor};
+use crate::focus::FocusHandleId;
+use crate::local_executor::LocalTaskExecutor;
+use crate::phase::{DeferredWrite, DrawPhase};
+pub(crate) use crate::runtime_slots::{
+    EffectKey, EffectSlot, EntityKey, EntitySlot, ObserveBareFn, ObserveFn, ObserverKey,
+    ObserverKind, ObserverSlot, OwnerKey, OwnerSlot, PendingCompletion, PendingObserver, SignalKey,
+    SignalSlot, SubscribeFn,
+};
+
+/// Maximum quiescence passes for [`Runtime::run_until_idle`].
+///
+/// Per DR-048 §8 — catches the pathological livelock where each
+/// completion enqueues another. Matches DR-047 §8 conservatism.
+pub(crate) const MAX_QUIESCENCE_PASSES: u32 = 64;
 
 /// Monotonic counter for per-thread reactive runtime identities.
 ///
@@ -28,94 +67,79 @@ use crate::arena::{Arena, Key};
 /// to exhaust it.
 static RUNTIME_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-pub(crate) type OwnerKey = Key<OwnerSlot>;
-pub(crate) type SignalKey = Key<SignalSlot>;
-pub(crate) type EffectKey = Key<EffectSlot>;
-
-pub(crate) struct OwnerSlot {
-    pub(crate) parent: Option<OwnerKey>,
-    pub(crate) index_in_parent: Option<usize>,
-    pub(crate) children: Vec<OwnerKey>,
-    pub(crate) signals: Vec<SignalKey>,
-    pub(crate) effects: Vec<EffectKey>,
-    pub(crate) cleanups: Vec<Box<dyn FnOnce()>>,
-    /// Owner debug name captured at construction. Read by
-    /// [`crate::debug::dump_owner_tree`]. See DR-005 addendum item 1.
-    pub(crate) name: &'static str,
-    /// `Location::caller()` at construction. Read by
-    /// [`crate::debug::dump_owner_tree`]. See DR-005 addendum item 2.
-    pub(crate) location: &'static Location<'static>,
-}
-
-pub(crate) struct SignalSlot {
-    /// Owner this signal belongs to. Kept for consistency asserts and
-    /// currently unread outside of tests; future commits will use it
-    /// for cross-owner signal moves and a debug check in
-    /// `dispose_owner`.
-    #[expect(
-        dead_code,
-        reason = "read by future cross-owner signal moves; kept to preserve the construction-site invariant"
-    )]
-    pub(crate) owner: OwnerKey,
-    pub(crate) value: Box<dyn Any>,
-    pub(crate) subscribers: SmallVec<[EffectKey; 4]>,
-    /// `Location::caller()` at `signal()` call site. Currently only
-    /// read in test-targeted stale-handle panic paths; the field
-    /// stays so the construction-site invariant holds for every
-    /// signal.
-    #[expect(
-        dead_code,
-        reason = "stale-handle panic messages use this in a follow-up commit"
-    )]
-    pub(crate) location: &'static Location<'static>,
-}
-
-pub(crate) struct EffectSlot {
-    /// The owner in whose scope `effect()` was called. Each run of
-    /// the effect creates its own child owner (`run_owner`) under
-    /// this one so that signals/effects/cleanups registered inside
-    /// the closure are torn down before the next re-run. See
-    /// `effect::run_effect`.
-    pub(crate) owner: OwnerKey,
-    /// The owner created for the most recent (or in-progress) run
-    /// of this effect. Disposed before each new run and on effect
-    /// removal. `None` until the first run starts.
-    pub(crate) run_owner: Option<OwnerKey>,
-    pub(crate) f: Option<Box<dyn FnMut()>>,
-    /// Dependencies from the active run. During an effect run this is
-    /// rebuilt from scratch; outside a run it is the current live
-    /// dependency set.
-    pub(crate) deps: SmallVec<[SignalKey; 4]>,
-    /// Dependencies from the previous run while the effect is
-    /// currently executing.
-    ///
-    /// We keep those signal subscriptions installed until the new
-    /// run completes, then unsubscribe only deps that disappeared.
-    /// That avoids a remove/re-add pass for stable dependencies,
-    /// which is the common fan-out path.
-    pub(crate) prev_deps: SmallVec<[SignalKey; 4]>,
-    /// Fast cursor into `prev_deps` for the common case where an
-    /// effect reads the same dependency list in the same order on
-    /// each run.
-    pub(crate) prev_dep_cursor: usize,
-    pub(crate) location: &'static Location<'static>,
-    /// Debug name for this effect, captured at registration. Set via
-    /// [`crate::effect::effect_named`]; [`crate::effect::effect`]
-    /// stores `"<unnamed>"`. Emitted by the `SIGIL_TRACE_EFFECTS`
-    /// trace hook and future debug tooling. See DR-005 addendum item 1.
-    pub(crate) name: &'static str,
-}
-
 pub(crate) struct RuntimeState {
     pub(crate) owners: Arena<OwnerSlot>,
     pub(crate) signals: Arena<SignalSlot>,
     pub(crate) effects: Arena<EffectSlot>,
+    pub(crate) entities: Arena<EntitySlot>,
+    pub(crate) observers: Arena<ObserverSlot>,
+    /// Pending observer queue, drained at the end of the outermost
+    /// `Entity::update` turn (DR-045 decision 5). Parallel to
+    /// `pending` for effects.
+    pub(crate) pending_observers: VecDeque<PendingObserver>,
+    /// Depth of nested `Entity::update` calls. Observer drain fires
+    /// only when this returns to 0 (the outermost update).
+    pub(crate) update_depth: u32,
+    /// `TypeId` → `EntityKey` map for global state (DR-045 decision 6).
+    /// At ≤100 globals scale a linear-scan `Vec` beats a `HashMap` and
+    /// stays `const`-constructible for the thread-local.
+    pub(crate) globals: Vec<(TypeId, EntityKey)>,
     pub(crate) current_owner: Option<OwnerKey>,
     pub(crate) current_effect: Option<EffectKey>,
+    /// Entity whose `update` closure is currently in flight.
+    /// `cx.notify()` reads this to know which entity's subscribers
+    /// to schedule.
+    pub(crate) current_entity: Option<EntityKey>,
     pub(crate) batch_depth: u32,
     pub(crate) pending: VecDeque<EffectKey>,
     pub(crate) pending_set: BTreeSet<EffectKey>,
     pub(crate) running: BTreeSet<EffectKey>,
+    /// Focus stack — innermost-last. `Context::focus` pushes,
+    /// `Context::blur` removes, owner-cleanup evicts on entity drop.
+    /// `dispatch_action` walks this leaf-first to resolve handlers.
+    ///
+    /// `Vec` (not `SmallVec`) so the field has a `const fn new()` for
+    /// the thread-local-init `const` block. Focus stacks are bounded
+    /// by UI nesting depth (rarely >10 levels) and pushes are rare
+    /// (focus changes); the heap-alloc penalty is irrelevant.
+    pub(crate) focus_stack: Vec<FocusHandleId>,
+    /// Action handler registry. Wrapped in `Option` so
+    /// `Context::dispatch_action` can move it out, dispatch without
+    /// holding a borrow on the runtime, then put it back — the
+    /// re-entrant dispatch pattern (DR-046 §6).
+    pub(crate) action_registry: Option<ActionRegistry>,
+    /// Current frame phase. Reads cheap (`Copy` enum); consulted by
+    /// every reactive write seam via [`crate::phase::assert_paint_safe`].
+    /// See DR-047.
+    pub(crate) phase: DrawPhase,
+    /// Queue of writes captured during [`DrawPhase::Paint`] that are
+    /// replayed at [`Runtime::end_frame`]. Today only `dispatch_action`
+    /// defers; direct state mutations panic in debug and no-op in
+    /// release. See DR-047 §5.
+    pub(crate) deferred_writes: Vec<DeferredWrite>,
+    /// G5 — completion callbacks delivered by background tasks, drained
+    /// at the top of [`Runtime::begin_effect`] (DR-048 §4). The queue
+    /// is `FnOnce + Send` so adapters can push from any thread, even
+    /// though the drain itself happens on the main thread.
+    pub(crate) pending_completions: Vec<PendingCompletion>,
+    /// G5 — installed task executor (DR-048 §5). `None` until
+    /// [`Runtime::install_executor`] runs. Cloned per [`crate::Context::spawn`]
+    /// call.
+    pub(crate) executor: Option<Arc<dyn TaskExecutor>>,
+    /// G5 — installed main-thread dispatcher (DR-048 §5). `None` until
+    /// [`Runtime::install_executor`] runs. Cloned per [`crate::Context::spawn`]
+    /// call into the produced [`crate::AsyncContext`].
+    pub(crate) dispatcher: Option<Arc<dyn MainThreadDispatcher>>,
+    /// W4.99.B3 — installed `!Send`-future local executor. `None` until
+    /// [`Runtime::install_local_executor`] runs. Cloned per
+    /// [`crate::Context::spawn_local`] call.
+    ///
+    /// Held as `Arc<dyn LocalTaskExecutor>` rather than `Rc<...>` so the
+    /// runtime's tear-down path stays uniform with the `executor` /
+    /// `dispatcher` siblings; the trait itself is intentionally NOT
+    /// `Send + Sync`, but `Arc<dyn !Send>` is still legal (the Arc just
+    /// inherits the trait object's negative bounds).
+    pub(crate) local_executor: Option<Arc<dyn LocalTaskExecutor>>,
     /// Unique, non-zero identity for this thread's reactive runtime.
     ///
     /// Lazy-initialized on first call to [`runtime_id`] (zero until
@@ -134,12 +158,26 @@ impl RuntimeState {
             owners: Arena::new(),
             signals: Arena::new(),
             effects: Arena::new(),
+            entities: Arena::new(),
+            observers: Arena::new(),
+            pending_observers: VecDeque::new(),
+            update_depth: 0,
+            globals: Vec::new(),
             current_owner: None,
             current_effect: None,
+            current_entity: None,
             batch_depth: 0,
             pending: VecDeque::new(),
             pending_set: BTreeSet::new(),
             running: BTreeSet::new(),
+            focus_stack: Vec::new(),
+            action_registry: None,
+            phase: DrawPhase::Idle,
+            deferred_writes: Vec::new(),
+            pending_completions: Vec::new(),
+            executor: None,
+            dispatcher: None,
+            local_executor: None,
             runtime_id: 0,
         }
     }
@@ -191,10 +229,12 @@ pub(crate) fn runtime_id() -> u64 {
 /// The reactive runtime — entry points that create and dispose
 /// root owners.
 ///
-/// Phase 1.1 exposes one method, [`Runtime::scope`], which creates
-/// an unnamed root owner, runs a closure with it active, and
-/// disposes the owner on return. Tests use this; apps eventually
-/// drive roots through their top-level `App` struct (Phase 1.2+).
+/// The public surface is split across this module plus three siblings:
+///
+/// - [`runtime_phase`](crate::runtime_phase) — frame-phase transitions.
+/// - [`runtime_executor`](crate::runtime_executor) — executor /
+///   completion-queue API.
+/// - here — root-scope construction and phase introspection.
 #[derive(Debug)]
 pub struct Runtime;
 
@@ -229,5 +269,15 @@ impl Runtime {
         let result = owner.with(f);
         owner.dispose();
         result
+    }
+
+    /// Read the current frame phase.
+    ///
+    /// Cheap (`Copy` enum + one thread-local borrow). Public so
+    /// consumers — typically widgets choosing between an immediate-write
+    /// path and a deferred path — can branch on phase.
+    #[must_use]
+    pub fn current_phase() -> DrawPhase {
+        with_rt(|rt| rt.phase)
     }
 }

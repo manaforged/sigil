@@ -1,0 +1,27 @@
+[package]
+name = "sigil-actions"
+autobenches = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Typed action dispatch + registry — Layer A (no focus/Context yet)."
+
+[lib]
+doctest = false
+
+[dependencies]
+sigil-actions-macros = { workspace = true }
+smallvec = { workspace = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "dispatch"
+harness = false
+
+[lints]
+workspace = true

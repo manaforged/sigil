@@ -14,12 +14,15 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 use sigil_hal::Scheduler;
-use sigil_reactive::OwnerId;
+use sigil_reactive::{BoxMainCallback, OwnerId};
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio::task::{AbortHandle, JoinHandle};
 
 use crate::handle::OwnerHandle;
+use crate::reactive_bridge::{
+    ReactiveBridge, build_bridge, drain_into_reactive, replace_bridge_waker,
+};
 
 /// Error surface for the scheduler.
 ///
@@ -130,6 +133,14 @@ pub struct AsyncRuntime {
     sender: Dispatcher,
     rx: UnboundedReceiver<DispatchMessage>,
     owner_tasks: Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>>,
+    /// G5 (DR-048 §5) — sender half of the reactive bridge channel.
+    /// Background tasks calling `MainThreadDispatcher::post_to_main`
+    /// push `(OwnerId, BoxMainCallback)` pairs through this; the main
+    /// thread drains via `pump_completions_into_reactive`.
+    bridge: ReactiveBridge,
+    /// G5 (DR-048 §5) — receiver half of the reactive bridge channel.
+    /// Held by `AsyncRuntime` and drained on the main thread.
+    bridge_rx: UnboundedReceiver<(OwnerId, BoxMainCallback)>,
 }
 
 impl fmt::Debug for AsyncRuntime {
@@ -159,6 +170,7 @@ impl AsyncRuntime {
     pub fn new() -> std::io::Result<Self> {
         let rt = Builder::new_multi_thread().enable_all().build()?;
         let (tx, rx) = unbounded_channel();
+        let (bridge, bridge_rx) = build_bridge();
         Ok(Self {
             rt,
             sender: Dispatcher {
@@ -167,6 +179,8 @@ impl AsyncRuntime {
             },
             rx,
             owner_tasks: Arc::new(Mutex::new(HashMap::new())),
+            bridge,
+            bridge_rx,
         })
     }
 
@@ -180,6 +194,63 @@ impl AsyncRuntime {
         F: Fn() + Send + Sync + 'static,
     {
         self.sender.waker = Arc::new(waker);
+    }
+
+    /// G5 (DR-048 §5) — clone the reactive-bridge sender half.
+    ///
+    /// The returned [`ReactiveBridge`] is `Send + Sync + Clone` and
+    /// implements [`sigil_reactive::MainThreadDispatcher`]. The
+    /// application installs this via
+    /// [`sigil_reactive::Runtime::install_executor`] (paired with the
+    /// [`crate::TokioExecutor`] from [`AsyncRuntime::tokio_executor`])
+    /// at startup; background tasks then post completion callbacks
+    /// through it.
+    #[must_use]
+    pub fn reactive_bridge(&self) -> ReactiveBridge {
+        self.bridge.clone()
+    }
+
+    /// G5 (DR-048 §5) — mint a [`crate::TokioExecutor`] over this
+    /// runtime's Tokio handle.
+    ///
+    /// The returned executor implements [`sigil_reactive::TaskExecutor`]
+    /// and shares the same Tokio multi-thread runtime as
+    /// `AsyncRuntime`'s [`sigil_hal::Scheduler`] surface — there is
+    /// only one Tokio runtime per `AsyncRuntime`.
+    #[must_use]
+    pub fn tokio_executor(&self) -> crate::TokioExecutor {
+        crate::TokioExecutor::new(self.rt.handle().clone())
+    }
+
+    /// G5 (DR-048 §5) — replace the reactive-bridge waker closure.
+    ///
+    /// Same shape as [`AsyncRuntime::set_waker`] but for the bridge
+    /// channel (different MPSC than the [`sigil_hal::Scheduler`]
+    /// queue). Tests can swap a counter waker to assert the worker
+    /// fired its waker per `post_to_main` call.
+    pub fn set_bridge_waker<F>(&mut self, waker: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        replace_bridge_waker(&mut self.bridge, waker);
+    }
+
+    /// G5 (DR-048 §5) — drain the reactive-bridge MPSC, forwarding
+    /// each `(owner, callback)` entry to
+    /// [`sigil_reactive::Runtime::enqueue_completion`].
+    ///
+    /// Must be called on the main thread (the reactive runtime is
+    /// thread-local). Returns the number of entries moved into the
+    /// reactive `pending_completions` queue. Bounded per call — at
+    /// most the queue length observed at entry, so a fast producer
+    /// can't starve the caller.
+    ///
+    /// The frame loop invokes this just before
+    /// [`sigil_reactive::Runtime::begin_effect`], which then drains
+    /// the freshly-forwarded completions as the first step of the
+    /// Effect phase.
+    pub fn pump_completions_into_reactive(&mut self) -> usize {
+        drain_into_reactive(&mut self.bridge_rx)
     }
 
     /// A cloneable, `Send + Sync` dispatcher handle.
@@ -320,7 +391,7 @@ impl Scheduler for AsyncRuntime {
         // cancel until drain" bug. `with_owner_by_id` scopes the
         // `on_cleanup` registration to `owner` without requiring us
         // to be inside that owner's `with` closure.
-        let registered = sigil_reactive::with_owner_by_id(owner.id(), move || {
+        let registered = sigil_reactive::owner_by_id(owner.id(), move || {
             sigil_reactive::on_cleanup(move || {
                 abort.abort();
             });
@@ -370,7 +441,7 @@ impl Scheduler for AsyncRuntime {
                 // `Box<dyn FnOnce() + Send + 'static>` satisfies
                 // `impl FnOnce()` directly (the `Box<dyn FnOnce>`
                 // FnOnce impl) — no extra closure wrapping needed.
-                let ran_inner = sigil_reactive::with_owner_by_id(msg.owner.id(), callback);
+                let ran_inner = sigil_reactive::owner_by_id(msg.owner.id(), callback);
                 if ran_inner {
                     ran += 1;
                 }

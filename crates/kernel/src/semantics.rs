@@ -6,6 +6,23 @@ use smallvec::SmallVec;
 
 use crate::NodeId;
 
+/// Scope kind for focus-trap regions (DR-050 §6).
+///
+/// Hosted by the kernel so widgets can advertise modal / popup
+/// containment; the focus engine reads this when routing keyboard
+/// navigation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FocusScopeKind {
+    /// A modal dialog — focus traps inside the subtree.
+    Modal,
+    /// A popup/menu — focus traps inside the subtree but Escape
+    /// dismisses to the trigger.
+    Popup,
+    /// Inert subtree — descendants are excluded from focus
+    /// navigation but remain visible.
+    Inert,
+}
+
 /// Source for a node's accessible name or description.
 #[derive(Clone, Debug)]
 pub enum AccessibleName {
@@ -15,8 +32,24 @@ pub enum AccessibleName {
     Static(String),
     /// A reactive string owned by the component's reactive owner.
     Derived(Signal<String>),
-    /// The name is provided by another node in the same tree.
-    LabelledBy(NodeId),
+}
+
+impl From<String> for AccessibleName {
+    fn from(value: String) -> Self {
+        Self::Static(value)
+    }
+}
+
+impl From<&'static str> for AccessibleName {
+    fn from(value: &'static str) -> Self {
+        Self::Static(value.to_owned())
+    }
+}
+
+impl From<Signal<String>> for AccessibleName {
+    fn from(value: Signal<String>) -> Self {
+        Self::Derived(value)
+    }
 }
 
 /// Accessibility metadata present on every node.
@@ -37,7 +70,7 @@ pub struct A11yProps {
     /// Optional keyboard shortcut advertised by the node.
     pub keyboard_shortcut: Option<Shortcut>,
     /// Whether this node participates in pointer hit-testing.
-    pub hit_test_enabled: bool,
+    pub hittable: bool,
     /// Reactive checked state for checkbox-like controls.
     pub checked: Option<Signal<bool>>,
     /// Reactive numeric value for range-like controls.
@@ -51,9 +84,15 @@ pub struct A11yProps {
     /// Placeholder text for text-input-like controls.
     pub placeholder: Option<String>,
     /// Nodes owned by this node in the accessibility tree.
-    pub aria_owns: SmallVec<[NodeId; 2]>,
+    pub owns: SmallVec<[NodeId; 2]>,
     /// Node that labels this node.
-    pub aria_labelled_by: Option<NodeId>,
+    pub labelled_by: Option<NodeId>,
+    /// Live-region politeness for assistive-tech announcements.
+    pub live: Option<accesskit::Live>,
+    /// Reactive expanded state for disclosure-like controls.
+    pub expanded: Option<Signal<bool>>,
+    /// Focus-scope kind for trap regions (modal / popup / inert).
+    pub focus_scope: Option<FocusScopeKind>,
 }
 
 impl Default for A11yProps {
@@ -66,15 +105,18 @@ impl Default for A11yProps {
             focusable: false,
             tab_index: None,
             keyboard_shortcut: None,
-            hit_test_enabled: true,
+            hittable: true,
             checked: None,
             value_now: None,
             value_min: None,
             value_max: None,
             text_value: None,
             placeholder: None,
-            aria_owns: SmallVec::new(),
-            aria_labelled_by: None,
+            owns: SmallVec::new(),
+            labelled_by: None,
+            live: None,
+            expanded: None,
+            focus_scope: None,
         }
     }
 }

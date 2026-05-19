@@ -117,6 +117,8 @@ fn make_effect_run_owner(
         children: Vec::new(),
         signals: Vec::new(),
         effects: Vec::new(),
+        entities: Vec::new(),
+        observers: Vec::new(),
         cleanups: Vec::new(),
         name: "<effect-run>",
         location: effect_location,

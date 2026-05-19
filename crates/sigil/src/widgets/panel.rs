@@ -2,7 +2,7 @@
 
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil_style::{NodeStyleExt, StyleAtom};
+use sigil_style::{NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom};
 
 const PANEL_WIDTH: f32 = 320.0;
 const PANEL_MIN_HEIGHT: f32 = 48.0;
@@ -18,6 +18,7 @@ pub struct PanelBuilder {
     /// Shadow/elevation tier: 0 = none, 1 = subtle, 2 = card, 3 = modal.
     pub elevation: u32,
     content: Option<Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>>,
+    style_accumulator: Style,
 }
 
 /// Create a panel widget — a themed surface card.
@@ -35,6 +36,7 @@ impl PanelBuilder {
             padding: DEFAULT_PADDING,
             elevation: 1,
             content: None,
+            style_accumulator: Style::new(),
         }
     }
 
@@ -81,6 +83,13 @@ impl PanelBuilder {
             root = attach(root);
         }
 
+        // Styled accumulator installs LAST so user-supplied tokens
+        // layer on top of the panel's elevation/rounding defaults
+        // (additive composition per DR-049 §10).
+        if !self.style_accumulator.is_empty() {
+            root = root.style(self.style_accumulator);
+        }
+
         root
     }
 }
@@ -90,6 +99,14 @@ impl Default for PanelBuilder {
         Self::new()
     }
 }
+
+impl StyleAccess for PanelBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for PanelBuilder {}
 
 impl IntoNode for PanelBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {

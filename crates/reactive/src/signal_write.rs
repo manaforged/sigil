@@ -86,6 +86,25 @@ fn fan_out_signal(
     }
 }
 
+/// Replace a signal slot with the `UpdateInProgress` sentinel and
+/// return the original payload, asserting paint-safety + non-disposed +
+/// non-reentrant access. Lifted out of [`Signal::update`] to keep that
+/// method within the 50-line cap.
+#[track_caller]
+fn take_for_update(key: SignalKey, caller: &'static Location<'static>) -> Box<dyn core::any::Any> {
+    with_rt(|rt| {
+        crate::phase::assert_paint_safe(rt, "Signal::update");
+        let Some(slot) = rt.signals.get_mut(key) else {
+            crate::diagnostic::disposed_signal("update", caller);
+        };
+        assert!(
+            !slot.value.is::<UpdateInProgress>(),
+            "Signal::update called recursively on the same signal (at {caller})"
+        );
+        core::mem::replace(&mut slot.value, Box::new(UpdateInProgress))
+    })
+}
+
 impl<T: 'static> Signal<T> {
     /// Replace the signal's value and schedule dependent effects.
     ///
@@ -100,6 +119,7 @@ impl<T: 'static> Signal<T> {
     pub fn set(self, value: T) {
         let caller = Location::caller();
         let (old, subscribers) = with_rt(|rt| {
+            crate::phase::assert_paint_safe(rt, "Signal::set");
             let Some(slot) = rt.signals.get_mut(self.key) else {
                 crate::diagnostic::disposed_signal("set", caller);
             };
@@ -150,16 +170,7 @@ impl<T: 'static> Signal<T> {
     #[track_caller]
     pub fn update(self, f: impl FnOnce(&mut T)) {
         let caller = Location::caller();
-        let taken: Box<dyn core::any::Any> = with_rt(|rt| {
-            let Some(slot) = rt.signals.get_mut(self.key) else {
-                crate::diagnostic::disposed_signal("update", caller);
-            };
-            assert!(
-                !slot.value.is::<UpdateInProgress>(),
-                "Signal::update called recursively on the same signal (at {caller})"
-            );
-            core::mem::replace(&mut slot.value, Box::new(UpdateInProgress))
-        });
+        let taken = take_for_update(self.key, caller);
         let mut guard = UpdateGuard {
             key: self.key,
             value: Some(taken),

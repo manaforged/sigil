@@ -68,14 +68,30 @@ fn nested_subtree_with_text_children(count: usize) -> NodeBuilder {
 
 fn build_100k_flex_tree() -> (Cx, NodeId, LayoutEngine) {
     let mut cx = Cx::new_root();
+    let root = build_100k_root(&mut cx);
+    let engine = stub_engine();
+    (cx, root, engine)
+}
+
+fn build_100k_root(cx: &mut Cx) -> NodeId {
     let mut root_builder =
         container().layout(LayoutStyle::flex_column().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
     for _ in 0..ROWS_100K {
         root_builder = root_builder.child(row_100k());
     }
-    let root = cx.add(root_builder);
-    let engine = stub_engine();
-    (cx, root, engine)
+    cx.add(root_builder)
+}
+
+fn first_leaf_under(cx: &Cx, root: NodeId) -> NodeId {
+    let mut stack = vec![root];
+    while let Some(id) = stack.pop() {
+        let node = cx.get(id).expect("node exists");
+        if node.children().is_empty() {
+            return id;
+        }
+        stack.extend(node.children().iter().rev().copied());
+    }
+    unreachable!("root subtree contains at least one node")
 }
 
 fn row_100k() -> NodeBuilder {
@@ -265,6 +281,34 @@ fn bench_scale_change_reflow_1000_nodes(c: &mut Criterion) {
     });
 }
 
+fn bench_incremental_single_leaf_mutation(c: &mut Criterion) {
+    c.bench_function("bench_incremental_single_leaf_mutation_100k", |b| {
+        b.iter_batched(
+            || {
+                let mut cx = Cx::new_root();
+                let root = build_100k_root(&mut cx);
+                let leaf = first_leaf_under(&cx, root);
+                let mut engine = stub_engine();
+                engine
+                    .compute(&mut cx, root, AVAILABLE_100K)
+                    .expect("warm layout compute succeeds");
+                cx.clear_dirty();
+                (cx, root, leaf, engine)
+            },
+            |(mut cx, root, leaf, mut engine)| {
+                cx.get_mut(leaf).expect("leaf exists").attach(
+                    LayoutStyle::block().fixed_size(LEAF_WIDTH_100K + 1.0, ROW_HEIGHT_100K),
+                );
+                engine
+                    .compute(&mut cx, root, AVAILABLE_100K)
+                    .expect("incremental compute succeeds");
+                black_box(engine.result(leaf));
+            },
+            BatchSize::PerIteration,
+        );
+    });
+}
+
 fn bench_compute_100k_flex_tree(c: &mut Criterion, threads: usize) {
     let pool = ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -310,6 +354,7 @@ criterion_group!(
         bench_sync_tree_1000_nodes,
         bench_gc_after_remove_100,
         bench_scale_change_reflow_1000_nodes,
+        bench_incremental_single_leaf_mutation,
         bench_compute_100k_1_thread,
         bench_compute_100k_2_threads,
         bench_compute_100k_4_threads,

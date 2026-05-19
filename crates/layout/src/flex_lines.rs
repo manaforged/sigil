@@ -154,16 +154,25 @@ impl FlexLine {
 /// Single line when wrap is `NoWrap`. Otherwise greedy fill —
 /// accumulate outer-main of items until the next would overflow
 /// `container_main`; start a new line.
+///
+/// Takes `items` by value so the `NoWrap` path can move the whole vec
+/// into a single `FlexLine` without copying. The wide-tree corpus
+/// (one container, 100k+ flex children) makes this copy a load-bearing
+/// cost — `extend_from_slice` previously moved ~8 MiB of `FlexItem`
+/// structs on every call.
 pub(crate) fn collect_lines(
     ctx: &FlexCtx<'_, '_>,
-    items: &[FlexItem],
+    items: Vec<FlexItem>,
     style: &StyleData,
     container_main: f32,
 ) -> Vec<FlexLine> {
     let gap = main_gap(ctx, style);
     if matches!(style.flex_wrap, FlexWrap::NoWrap) || items.is_empty() {
-        let mut line = FlexLine::new(gap);
-        line.items.extend_from_slice(items);
+        let line = FlexLine {
+            items,
+            gap,
+            cross: 0.0,
+        };
         return vec![line];
     }
     let mut lines: Vec<FlexLine> = Vec::new();
@@ -179,7 +188,7 @@ pub(crate) fn collect_lines(
         } else {
             used = next;
         }
-        current.items.push(*item);
+        current.items.push(item);
     }
     if !current.items.is_empty() {
         lines.push(current);

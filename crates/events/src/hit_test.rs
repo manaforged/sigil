@@ -42,7 +42,7 @@ struct HitItem {
     id: NodeId,
     rect: Rect,
     has_rect: bool,
-    hit_test_enabled: bool,
+    hittable: bool,
 }
 
 impl Default for HitTestCache {
@@ -84,7 +84,7 @@ impl HitTestCache {
 
     fn hit(&self, position: Point) -> Option<NodeId> {
         for item in self.items.iter().rev() {
-            if item.has_rect && item.hit_test_enabled && contains(item.rect, position) {
+            if item.has_rect && item.hittable && contains(item.rect, position) {
                 return Some(item.id);
             }
         }
@@ -122,7 +122,7 @@ fn emit(ctx: &EmitCtx<'_>, id: NodeId, parent_origin: Point, items: &mut HitItem
         id,
         rect: rect.unwrap_or_else(|| Rect::new(Point::new(0.0, 0.0), 0.0, 0.0)),
         has_rect: rect.is_some(),
-        hit_test_enabled: node.a11y.hit_test_enabled,
+        hittable: node.a11y.hittable,
     });
 
     for child in node.children().iter().copied() {

@@ -15,6 +15,7 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use criterion as _;
+use sigil_actions as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_hal as _;

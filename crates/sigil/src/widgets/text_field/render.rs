@@ -1,6 +1,6 @@
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
-use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, LengthPercentage};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
 use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant};
 
@@ -31,9 +31,9 @@ pub(super) fn build_base_node(
     let displayed = displayed_text(value, interaction.focus_visible(), placeholder.clone());
     container()
         .role(Role::TextInput)
-        .aria_label(accessible_label(placeholder_str.as_str()))
-        .aria_text_value_signal(value)
-        .aria_placeholder(placeholder_str)
+        .label(accessible_label(placeholder_str.as_str()))
+        .text_value(value)
+        .placeholder(placeholder_str)
         .layout(field_layout())
         .class("rounded-md")
         .style_reactive(move || field_variant().state(field_state(interaction, disabled)))
@@ -45,12 +45,7 @@ fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .width_px(180.0)
         .align_items(AlignItems::Center)
-        .with_layout(|style| {
-            style.padding.left = LengthPercentage::Px(1.0);
-            style.padding.right = LengthPercentage::Px(1.0);
-            style.padding.top = LengthPercentage::Px(1.0);
-            style.padding.bottom = LengthPercentage::Px(1.0);
-        })
+        .padding_px(1.0)
 }
 
 fn field_inner(displayed: Signal<String>) -> NodeBuilder {
@@ -65,12 +60,8 @@ fn field_inner_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .width_px(178.0)
         .align_items(AlignItems::Center)
-        .with_layout(|style| {
-            style.padding.left = LengthPercentage::Px(12.0);
-            style.padding.right = LengthPercentage::Px(12.0);
-            style.padding.top = LengthPercentage::Px(8.0);
-            style.padding.bottom = LengthPercentage::Px(8.0);
-        })
+        .padding_x_px(12.0)
+        .padding_y_px(8.0)
 }
 
 fn field_text(displayed: Signal<String>) -> TextBuilder {

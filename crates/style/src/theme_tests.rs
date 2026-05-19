@@ -31,9 +31,10 @@
         assert_eq!(theme.surface, palette.background);
         assert_eq!(theme.on_surface, palette.text);
         assert_eq!(theme.accent, palette.primary);
-        // Terminal variant suppresses hover lift — surface_hover and
-        // accent_hover must equal their bases.
+        // Terminal variant suppresses hover lift — surface_hover,
+        // surface_pressed and accent_hover must equal their bases.
         assert_eq!(theme.surface_hover, theme.surface);
+        assert_eq!(theme.surface_pressed, theme.surface);
         assert_eq!(theme.accent_hover, theme.accent);
         // Terminal variant uses monospace font.
         assert_eq!(

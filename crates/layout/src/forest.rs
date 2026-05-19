@@ -115,13 +115,52 @@ pub(crate) struct ComputedBox {
     pub(crate) h: f32,
 }
 
-/// Box-slot type alias — `Cell<ComputedBox>` lets the engine scatter-write
-/// per-id from a shared `&LayoutForest`. The cell is `!Sync`, so the
-/// parallel measure pass (P0.4) never borrows the whole forest inside a
-/// rayon closure; instead, it pre-collects a `Sync` snapshot of read-only
-/// fields, fans those out, and replays the resulting dispatch list on the
-/// main thread.
-pub(crate) type BoxCell = Cell<ComputedBox>;
+/// Box-slot record — geometry + the frame tag of the most recent write.
+///
+/// Solvers scatter-write through `MeasureScope::write`, which stamps the
+/// current frame tag into `frame`. `LayoutDrive::computed_box` checks
+/// `frame == current_frame` to distinguish "reached this measure" from
+/// "stale slab entry from a prior or never-measured node." Replaces the
+/// per-frame `AHashSet<LocalId>` that previously tracked reached nodes
+/// (vector δ in `docs/plans/2026-05-18-perf-vector-delta-...`).
+#[derive(Debug, Default)]
+pub(crate) struct BoxCell {
+    cb: Cell<ComputedBox>,
+    frame: Cell<u32>,
+}
+
+impl BoxCell {
+    /// Construct a slot seeded with `cb` and a frame tag of 0.
+    #[must_use]
+    pub(crate) const fn new(cb: ComputedBox) -> Self {
+        Self {
+            cb: Cell::new(cb),
+            frame: Cell::new(0),
+        }
+    }
+
+    /// Read the stored geometry.
+    pub(crate) const fn get(&self) -> ComputedBox {
+        self.cb.get()
+    }
+
+    /// Frame tag stamped on the last write.
+    pub(crate) const fn frame(&self) -> u32 {
+        self.frame.get()
+    }
+
+    /// Write geometry and stamp the frame tag.
+    pub(crate) fn write(&self, cb: ComputedBox, frame: u32) {
+        self.cb.set(cb);
+        self.frame.set(frame);
+    }
+
+    /// Reset the slot (used by `free` to drop the prior occupant's data).
+    pub(crate) fn reset(&self) {
+        self.cb.set(ComputedBox::default());
+        self.frame.set(0);
+    }
+}
 
 /// Owned layout forest — the heart of the P0 engine.
 ///
@@ -129,22 +168,50 @@ pub(crate) type BoxCell = Cell<ComputedBox>;
 /// vectors (`nodes` and `boxes`) grow together; `free` is a stack of
 /// recyclable slot ids whose `tag` already reflects the post-free
 /// generation, so the next `insert` mints them with the bumped tag.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct LayoutForest {
     nodes: Vec<LayoutNode>,
     boxes: Vec<BoxCell>,
     free: Vec<LocalId>,
+    /// Monotonic frame counter — bumped by `next_frame` at the start of
+    /// every measure pass; stamped onto every box slot the solvers
+    /// write through `MeasureScope::write`. Starts at 1 so unwritten
+    /// `BoxCell` slots (default frame 0) are always stale.
+    frame: u32,
+}
+
+impl Default for LayoutForest {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl LayoutForest {
-    /// Build an empty forest.
+    /// Build an empty forest. The frame counter starts at 1 so the
+    /// default `BoxCell::frame = 0` is always stale relative to
+    /// `current_frame`; this makes `boxed_when_current` correct even
+    /// without an explicit `next_frame()` before the first measure.
     #[must_use]
     pub(crate) const fn new() -> Self {
         Self {
             nodes: Vec::new(),
             boxes: Vec::new(),
             free: Vec::new(),
+            frame: 1,
         }
+    }
+
+    /// Advance the frame counter and return the new tag. The driver
+    /// calls this before dispatching the solver; solvers stamp every
+    /// box write with this tag.
+    pub(crate) const fn next_frame(&mut self) -> u32 {
+        self.frame = self.frame.wrapping_add(1);
+        self.frame
+    }
+
+    /// Current frame tag (most recently issued by `next_frame`).
+    pub(crate) const fn current_frame(&self) -> u32 {
+        self.frame
     }
 
     /// Live node count (alive slots only).
@@ -182,7 +249,7 @@ impl LayoutForest {
                 .boxes
                 .get_mut(idx)
                 .expect("free-list slot points inside boxes slab");
-            box_slot.set(ComputedBox::default());
+            box_slot.reset();
             return slot;
         }
         let index = u32::try_from(self.nodes.len()).expect("forest slab exceeds u32::MAX");
@@ -234,7 +301,10 @@ impl LayoutForest {
         Ok(())
     }
 
-    /// Replace the full child list for `parent`.
+    /// Replace the full child list for `parent`. Skips the write when
+    /// the existing list is already byte-identical — saves a
+    /// `SmallVec` clear + reallocation per unchanged sync (every
+    /// frame on broadcast measures where nothing structural moved).
     pub(crate) fn set_children(
         &mut self,
         parent: LocalId,
@@ -248,6 +318,9 @@ impl LayoutForest {
             .nodes
             .get_mut(slot)
             .expect("slot() validated the parent index is in-bounds");
+        if entry.children.as_slice() == children {
+            return Ok(());
+        }
         entry.children.clear();
         entry.children.extend_from_slice(children);
         Ok(())
@@ -279,6 +352,19 @@ impl LayoutForest {
         Ok(())
     }
 
+    /// Borrow the style stored on `id`. Returns `None` for stale ids.
+    /// Wraps `node` so callers don't have to go through `LayoutNode`'s
+    /// crate-private `style()` accessor.
+    pub(crate) fn style_for(&self, id: LocalId) -> Option<&StyleData> {
+        self.node(id).map(LayoutNode::style)
+    }
+
+    /// Borrow the text payload stored on `id`. Returns `None` when the
+    /// id is stale or no text is attached.
+    pub(crate) fn text_for(&self, id: LocalId) -> Option<&LayoutText> {
+        self.node(id).and_then(LayoutNode::text)
+    }
+
     /// Borrow a node by id. Returns `None` for stale or freed ids.
     pub(crate) fn node(&self, id: LocalId) -> Option<&LayoutNode> {
         let idx = id.index as usize;
@@ -295,7 +381,20 @@ impl LayoutForest {
         let idx = id.index as usize;
         let entry = self.nodes.get(idx)?;
         if entry.alive && entry.tag == id.tag {
-            self.boxes.get(idx).map(Cell::get)
+            self.boxes.get(idx).map(BoxCell::get)
+        } else {
+            None
+        }
+    }
+
+    /// Frame tag stamped on the box for `id`. Returns `None` for stale
+    /// ids. The driver compares this against `current_frame()` to detect
+    /// "reached this measure" vs "stale slab entry."
+    pub(crate) fn frame_for(&self, id: LocalId) -> Option<u32> {
+        let idx = id.index as usize;
+        let entry = self.nodes.get(idx)?;
+        if entry.alive && entry.tag == id.tag {
+            self.boxes.get(idx).map(BoxCell::frame)
         } else {
             None
         }
@@ -306,14 +405,16 @@ impl LayoutForest {
     ///
     /// Engine-sync callers go through this `&mut self` entry point; the
     /// parallel measure pass uses [`MeasureScope::write`] which carries
-    /// only a shared borrow and writes through the cell.
+    /// only a shared borrow and writes through the cell. Both paths
+    /// stamp the forest's current frame tag onto the slot.
     pub(crate) fn write(&mut self, id: LocalId, value: ComputedBox) -> Result<(), LayoutError> {
         let slot = self.slot(id)?;
+        let frame = self.frame;
         let cell = self
             .boxes
             .get_mut(slot)
             .expect("slot() validated the index is in-bounds");
-        cell.set(value);
+        cell.write(value, frame);
         Ok(())
     }
 
@@ -567,7 +668,7 @@ impl<'a> MeasureScope<'a> {
             return;
         }
         if let Some(slot) = self.forest.boxes.get(idx) {
-            slot.set(value);
+            slot.write(value, self.forest.current_frame());
         }
     }
 

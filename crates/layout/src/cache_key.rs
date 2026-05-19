@@ -16,7 +16,7 @@ use std::hash::{Hash as _, Hasher as _};
 use ahash::AHasher;
 use sigil_hal::{Dim, Size};
 use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
-use sigil_style::{StyleAtom, StyleBinding};
+use sigil_style::StyleBinding;
 use smallvec::SmallVec;
 
 pub(crate) enum CacheDecision {
@@ -66,6 +66,21 @@ impl DimKey {
 }
 
 pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
+    // ε-cache: fold each node's `Node::version()` into the tree
+    // signature instead of re-hashing the full style binding atoms.
+    // The kernel bumps `version` on every mutation that could
+    // possibly change layout output, so the version alone is a sound
+    // proxy for "the deep style state at this node". For 101k-node
+    // corpora this drops the signature pass from ~5 ms (AHashMap
+    // probes + atom hashing per node) to ~600 µs (slotmap read +
+    // version hash per node).
+    //
+    // Reactive text content can mutate without going through any
+    // kernel mutation path — `Signal::set` does not bump
+    // `Node::version` — so we still hash the materialised text
+    // payload for `NodeType::Text { content: Reactive(_) }` nodes.
+    // Static text is captured in `Node::version` at the time it
+    // was attached.
     let mut hasher = AHasher::default();
     let mut stack = SmallVec::<[NodeId; 64]>::new();
     stack.push(root);
@@ -73,19 +88,27 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
         let Some(node) = cx.get(id) else {
             continue;
         };
-        id.hash(&mut hasher);
-        match &node.kind {
-            NodeType::Container => 0_u8.hash(&mut hasher),
-            NodeType::Fragment => 1_u8.hash(&mut hasher),
-            NodeType::Text { content } => {
-                2_u8.hash(&mut hasher);
-                hash_text_content(content, &mut hasher);
+        node.version().hash(&mut hasher);
+        // Reactive style bindings + reactive text content can mutate
+        // without going through any kernel API that bumps
+        // `Node::version` (Signal::set is a separate channel). Hash
+        // their resolved value so the signature still invalidates on
+        // signal write. Static/dynamic style atoms are baked into
+        // `Node::version` by `attach`, so the cheap fast-path covers
+        // them without paying for the AHashMap lookup here.
+        if let Some(binding) = node.get_extension::<StyleBinding>() {
+            let reactive = binding.reactive_slice();
+            if !reactive.is_empty() {
+                for atom in reactive {
+                    atom.hash(&mut hasher);
+                }
             }
         }
-        if let Some(binding) = node.get_extension::<StyleBinding>() {
-            hash_style_atoms(binding.static_slice(), &mut hasher);
-            hash_style_atoms(binding.dynamic_slice(), &mut hasher);
-            hash_style_atoms(binding.reactive_slice(), &mut hasher);
+        if let NodeType::Text {
+            content: content @ TextContent::Reactive(_),
+        } = &node.kind
+        {
+            hash_text_content(content, &mut hasher);
         }
         for child in node.children().iter().rev().copied() {
             stack.push(child);
@@ -101,45 +124,7 @@ fn hash_text_content(content: &TextContent, hasher: &mut AHasher) {
     }
 }
 
-fn hash_style_atoms(atoms: &[StyleAtom], hasher: &mut AHasher) {
-    for atom in atoms.iter().copied().filter(is_layout_affecting_atom) {
-        atom.hash(hasher);
-    }
-}
-
-const fn is_layout_affecting_atom(atom: &StyleAtom) -> bool {
-    // Sync point: typography atoms listed here must stay mirrored by
-    // `text_style.rs::apply_text_binding`.
-    matches!(
-        atom,
-        StyleAtom::PaddingAll(_)
-            | StyleAtom::PaddingX(_)
-            | StyleAtom::PaddingY(_)
-            | StyleAtom::PaddingTop(_)
-            | StyleAtom::PaddingRight(_)
-            | StyleAtom::PaddingBottom(_)
-            | StyleAtom::PaddingLeft(_)
-            | StyleAtom::MarginAll(_)
-            | StyleAtom::MarginX(_)
-            | StyleAtom::MarginY(_)
-            | StyleAtom::MarginTop(_)
-            | StyleAtom::MarginRight(_)
-            | StyleAtom::MarginBottom(_)
-            | StyleAtom::MarginLeft(_)
-            | StyleAtom::Gap(_)
-            | StyleAtom::Width(_)
-            | StyleAtom::Height(_)
-            | StyleAtom::MinWidth(_)
-            | StyleAtom::MaxWidth(_)
-            | StyleAtom::Display(_)
-            | StyleAtom::FlexDirection(_)
-            | StyleAtom::AlignItems(_)
-            | StyleAtom::JustifyContent(_)
-            | StyleAtom::FlexGrow(_)
-            | StyleAtom::FlexShrink(_)
-            | StyleAtom::FontSize(_)
-            | StyleAtom::FontWeight(_)
-            | StyleAtom::FontFamily(_)
-            | StyleAtom::LineHeight(_)
-    )
-}
+// ε-cache: the per-atom hashing helpers were retired alongside the
+// switch to version-based signatures (atoms feed into `Node::version`
+// indirectly via the style binding's `attach`, so re-hashing them per
+// frame is redundant).

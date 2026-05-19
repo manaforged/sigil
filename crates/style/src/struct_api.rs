@@ -3,20 +3,28 @@
 use smallvec::SmallVec;
 
 use crate::{
-    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, Px, Rgba8,
-    StyleAtom, TransitionId,
+    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, OverflowKind,
+    Px, Rgba8, StyleAtom, TransitionId,
 };
 
 /// Chainable struct API for building style atom lists.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Style {
     atoms: SmallVec<[StyleAtom; 16]>,
+    hover_atoms: SmallVec<[StyleAtom; 4]>,
+    focus_atoms: SmallVec<[StyleAtom; 4]>,
+    pressed_atoms: SmallVec<[StyleAtom; 4]>,
+    disabled_atoms: SmallVec<[StyleAtom; 4]>,
 }
 
 impl Default for Style {
     fn default() -> Self {
         Self {
             atoms: SmallVec::new(),
+            hover_atoms: SmallVec::new(),
+            focus_atoms: SmallVec::new(),
+            pressed_atoms: SmallVec::new(),
+            disabled_atoms: SmallVec::new(),
         }
     }
 }
@@ -38,6 +46,71 @@ impl Style {
     #[must_use]
     pub fn into_atoms(self) -> SmallVec<[StyleAtom; 16]> {
         self.atoms
+    }
+
+    /// Borrow hover-slot overlay atoms.
+    #[must_use]
+    pub fn hover_atoms(&self) -> &[StyleAtom] {
+        &self.hover_atoms
+    }
+
+    /// Borrow focus-slot overlay atoms.
+    #[must_use]
+    pub fn focus_atoms(&self) -> &[StyleAtom] {
+        &self.focus_atoms
+    }
+
+    /// Borrow pressed-slot overlay atoms.
+    #[must_use]
+    pub fn pressed_atoms(&self) -> &[StyleAtom] {
+        &self.pressed_atoms
+    }
+
+    /// Borrow disabled-slot overlay atoms.
+    #[must_use]
+    pub fn disabled_atoms(&self) -> &[StyleAtom] {
+        &self.disabled_atoms
+    }
+
+    /// True when any base atoms or state-slot overlays have been pushed.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.atoms.is_empty() && !self.has_state_overlays()
+    }
+
+    /// True when any state-slot overlay has at least one atom.
+    #[must_use]
+    pub fn has_state_overlays(&self) -> bool {
+        !self.hover_atoms.is_empty()
+            || !self.focus_atoms.is_empty()
+            || !self.pressed_atoms.is_empty()
+            || !self.disabled_atoms.is_empty()
+    }
+
+    /// Replace the hover-slot overlay with `atoms` (last-call-wins per DR-049).
+    pub(crate) fn set_hover(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
+        self.hover_atoms = atoms.into_iter().collect();
+    }
+
+    /// Replace the focus-slot overlay with `atoms`.
+    pub(crate) fn set_focus(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
+        self.focus_atoms = atoms.into_iter().collect();
+    }
+
+    /// Replace the pressed-slot overlay with `atoms`.
+    pub(crate) fn set_pressed(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
+        self.pressed_atoms = atoms.into_iter().collect();
+    }
+
+    /// Replace the disabled-slot overlay with `atoms`.
+    pub(crate) fn set_disabled(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
+        self.disabled_atoms = atoms.into_iter().collect();
+    }
+
+    /// Append `atom` to the base list — used by the `Styled` trait's
+    /// default impls.
+    pub(crate) fn push_atom(&mut self, atom: StyleAtom) {
+        self.atoms.push(atom);
     }
 
     /// Set uniform padding in logical pixels.
@@ -193,12 +266,12 @@ impl Style {
     /// Set a concrete background colour.
     #[must_use]
     pub fn bg(self, color: Rgba8) -> Self {
-        self.background_color(ColorAtom::Rgba8(color))
+        self.fill(ColorAtom::Rgba8(color))
     }
 
     /// Set a background colour atom.
     #[must_use]
-    pub fn background_color(self, color: ColorAtom) -> Self {
+    pub fn fill(self, color: ColorAtom) -> Self {
         self.push(StyleAtom::BackgroundColor(color))
     }
 
@@ -265,7 +338,7 @@ impl Style {
 
     /// Store a deferred transition duration.
     #[must_use]
-    pub fn transition_duration(self, duration: MillisU16) -> Self {
+    pub fn duration(self, duration: MillisU16) -> Self {
         self.push(StyleAtom::TransitionDuration(duration))
     }
 
@@ -273,6 +346,18 @@ impl Style {
     #[must_use]
     pub fn unknown_theme_ref(self, token: &'static str) -> Self {
         self.push(StyleAtom::UnknownThemeRef(token))
+    }
+
+    /// Store an overflow rule on the inline (width) axis.
+    #[must_use]
+    pub fn overflow_x(self, kind: OverflowKind) -> Self {
+        self.push(StyleAtom::OverflowX(kind))
+    }
+
+    /// Store an overflow rule on the block (height) axis.
+    #[must_use]
+    pub fn overflow_y(self, kind: OverflowKind) -> Self {
+        self.push(StyleAtom::OverflowY(kind))
     }
 
     fn push(mut self, atom: StyleAtom) -> Self {

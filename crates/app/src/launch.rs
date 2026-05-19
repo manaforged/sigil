@@ -5,12 +5,15 @@
 //! Every failure mode listed in `phase-08a-ergonomics-pass.md`'s
 //! bulletproof table becomes unreachable at this layer.
 
+use std::sync::Arc;
+
+use sigil_async::AsyncRuntime;
 use sigil_events::EventRouter;
 use sigil_hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
 use sigil_kernel::Cx;
 use sigil_layout::LayoutEngine;
 use sigil_layout::prelude::Size;
-use sigil_reactive::Runtime;
+use sigil_reactive::{MainThreadDispatcher, Runtime, TaskExecutor};
 use sigil_renderer::{WgpuRenderer, WgpuSurface, emit_scene};
 use sigil_shell::{WinitShell, WinitWindowHandle};
 
@@ -63,6 +66,14 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> Result<()> {
     let mut viewport = (logical_size.width, logical_size.height);
     let mut exit_requested = false;
 
+    // G5 (DR-048 §5) — install the Tokio executor + reactive bridge so
+    // `Context::spawn` has somewhere to send its futures. The bridge's
+    // worker→main mpsc is drained at the top of every frame, just
+    // before `Runtime::begin_effect` consumes the reactive
+    // `pending_completions` queue.
+    let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
+    install_g5_executor(&async_rt);
+
     shell
         .run(move |shell| {
             frame_once(FrameCtx {
@@ -77,10 +88,23 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> Result<()> {
                 surface: &mut surface,
                 viewport: &mut viewport,
                 exit_requested: &mut exit_requested,
+                async_rt: &mut async_rt,
             });
         })
         .map_err(Error::new)?;
     Ok(())
+}
+
+/// G5 (DR-048 §5) — wire `Context::spawn` to the supplied async runtime.
+///
+/// Public-in-crate so the integration test
+/// `crates/app/tests/g5_executor.rs` can install the same pair against
+/// its own `AsyncRuntime` and drive the same frame-loop pump path as
+/// production.
+pub fn install_g5_executor(async_rt: &AsyncRuntime) {
+    let executor: Arc<dyn TaskExecutor> = Arc::new(async_rt.tokio_executor());
+    let dispatcher: Arc<dyn MainThreadDispatcher> = Arc::new(async_rt.reactive_bridge());
+    Runtime::install_executor(executor, dispatcher);
 }
 
 fn create_initial_window<S>(
@@ -108,6 +132,9 @@ struct FrameCtx<'a> {
     surface: &'a mut Option<WgpuSurface>,
     viewport: &'a mut (f32, f32),
     exit_requested: &'a mut bool,
+    /// G5 (DR-048 §5) — pulled from for `pump_completions_into_reactive`
+    /// at frame start, before `Runtime::begin_effect`.
+    async_rt: &'a mut AsyncRuntime,
 }
 
 fn frame_once(ctx: FrameCtx<'_>) {
@@ -123,8 +150,25 @@ fn frame_once(ctx: FrameCtx<'_>) {
         surface,
         viewport,
         exit_requested,
+        async_rt,
     } = ctx;
 
+    // G5 (DR-048 §5) — forward any worker-thread completion callbacks
+    // into the reactive `pending_completions` queue BEFORE
+    // `Runtime::begin_effect` drains it. Order matters: pump first,
+    // then begin_effect — that's what makes the worker's
+    // `acx.update(...)` visible to the next frame's Effect phase.
+    let _moved = async_rt.pump_completions_into_reactive();
+
+    // DR-047 frame driver: Idle → Effect → Layout → Paint → Idle.
+    //
+    // Effect phase brackets every reactive write produced during the
+    // frame: drain_events runs router handlers that call signal.set /
+    // entity.update / cx.dispatch_action; ensure_surface mutates cx
+    // for the initial-scale path. begin_effect also drains G5 task
+    // completions and any deferred actions queued in the previous
+    // frame's Paint.
+    Runtime::begin_effect();
     ensure_surface(EnsureSurfaceCtx {
         shell,
         window_handle,
@@ -150,9 +194,46 @@ fn frame_once(ctx: FrameCtx<'_>) {
     if *exit_requested {
         shell.request_exit();
     }
+    // Layout phase: recompute Taffy boxes. Reactive writes still legal
+    // by phase contract but invalidate the in-flight pass — discouraged
+    // by convention, not by panic.
+    Runtime::begin_layout();
     let logical = logical_size_from_viewport(*viewport);
     recompute_layout(cx, root, layout, cx.scale(), logical);
+    // Paint phase: scene emit + GPU submit. Reactive writes panic in
+    // debug; dispatch_action defers to next frame's Effect drain.
+    Runtime::begin_paint();
     paint(cx, root, renderer, surface, *viewport);
+    // end_frame transitions Paint → Effect (replay deferred writes) →
+    // Idle so the next iteration enters begin_effect from a clean
+    // resting state.
+    Runtime::end_frame();
+}
+
+/// Drive one frame's phase transitions, calling `layout_pass` while
+/// the reactive runtime is in [`DrawPhase::Layout`] and `paint_pass`
+/// while it is in [`DrawPhase::Paint`].
+///
+/// Test-only seam that exposes the production frame driver's phase
+/// shape (Idle → Effect → Layout → Paint → Idle) without requiring a
+/// real winit shell, wgpu adapter, or `WgpuRenderer`. Production code
+/// uses [`launch`]; the integration test in
+/// `crates/sigil/tests/frame_driver.rs` drives this helper with stub
+/// closures so the wiring contract (phase observable at each pass) is
+/// checkable end-to-end.
+///
+/// Callers must invoke this from inside a [`Runtime::scope`].
+///
+/// [`DrawPhase::Layout`]: sigil_reactive::DrawPhase::Layout
+/// [`DrawPhase::Paint`]: sigil_reactive::DrawPhase::Paint
+#[doc(hidden)]
+pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
+    Runtime::begin_effect();
+    Runtime::begin_layout();
+    layout_pass();
+    Runtime::begin_paint();
+    paint_pass();
+    Runtime::end_frame();
 }
 
 fn resize_surface(

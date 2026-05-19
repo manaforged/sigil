@@ -235,7 +235,7 @@ pub(crate) fn layout_root(
         padding_box,
         border_origin,
     )?;
-    let lines = collect_lines(ctx, &items, style, container_main);
+    let lines = collect_lines(ctx, items, style, container_main);
     let placed = place_lines(ctx, lines, style, container_main, container_cross);
     write_items(ctx, &placed, content_origin)?;
     write_container(ctx, node, &edges, border_origin, container_main, &placed);
@@ -298,8 +298,9 @@ fn build_items(
     padding_origin: Position2,
 ) -> Result<Vec<FlexItem>, LayoutError> {
     let forest = ctx.solver.scope().forest();
-    let mut items = Vec::new();
-    for child_id in parent.children() {
+    let children = parent.children();
+    let mut items = Vec::with_capacity(children.len());
+    for child_id in children {
         let child = forest.refer(*child_id).ok_or_else(|| {
             LayoutError::LayoutInvalid(format!("stale flex child id {child_id:?}"))
         })?;
@@ -322,7 +323,14 @@ fn build_items(
         }
         items.push(FlexItem::build(ctx, child, container_main, container_cross));
     }
-    items.sort_by_key(|i| i.order);
+    // Skip the order sort when every item has the default order (0) —
+    // that's the overwhelming common case and sorting a 100k flat tree
+    // by a key that is the same value across the board is pure
+    // overhead. `order` is `i32`; we only have to sort when at least
+    // one item declared a non-zero order.
+    if items.iter().any(|i| i.order != 0) {
+        items.sort_by_key(|i| i.order);
+    }
     Ok(items)
 }
 
@@ -341,8 +349,6 @@ fn place_absolute(
     let cb_h = if ctx.axes.row { cb_cross } else { cb_main };
     let edges = NodeEdges::build(style, cb_w);
     let margins = edges.margin.or_zero();
-    let inset_left = resolve_inset(style.inset.left, padding_box.width);
-    let inset_top = resolve_inset(style.inset.top, padding_box.height);
     let w = dim_to_border_box(
         style.size.width,
         cb_w,
@@ -357,19 +363,53 @@ fn place_absolute(
         style.box_sizing,
     )
     .unwrap_or(0.0);
-    ctx.solver.write(
-        child.id(),
-        ComputedBox {
-            x: padding_origin.x + inset_left + margins.left,
-            y: padding_origin.y + inset_top + margins.top,
-            w,
-            h,
-        },
-    );
+    let x = resolve_inset_axis(InsetAxis {
+        leading: style.inset.left,
+        trailing: style.inset.right,
+        origin: padding_origin.x,
+        cb_dim: padding_box.width,
+        box_dim: w,
+        margin_leading: margins.left,
+        margin_trailing: margins.right,
+    });
+    let y = resolve_inset_axis(InsetAxis {
+        leading: style.inset.top,
+        trailing: style.inset.bottom,
+        origin: padding_origin.y,
+        cb_dim: padding_box.height,
+        box_dim: h,
+        margin_leading: margins.top,
+        margin_trailing: margins.bottom,
+    });
+    ctx.solver.write(child.id(), ComputedBox { x, y, w, h });
     Ok(())
 }
 
-fn resolve_inset(value: LengthPercentageAuto, basis: f32) -> f32 {
+/// Inputs to one axis of `inset` resolution. Mirrors `block::InsetAxis`
+/// — kept in this module so the two solvers don't grow a cross-module
+/// dependency.
+#[derive(Clone, Copy)]
+struct InsetAxis {
+    leading: LengthPercentageAuto,
+    trailing: LengthPercentageAuto,
+    origin: f32,
+    cb_dim: f32,
+    box_dim: f32,
+    margin_leading: f32,
+    margin_trailing: f32,
+}
+
+fn resolve_inset_axis(a: InsetAxis) -> f32 {
+    match (a.leading, a.trailing) {
+        (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
+            let off = inset_px(t, a.cb_dim);
+            a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
+        }
+        (l, _) => a.origin + inset_px(l, a.cb_dim) + a.margin_leading,
+    }
+}
+
+fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
     match value {
         LengthPercentageAuto::Auto => 0.0,
         LengthPercentageAuto::Px(v) => v,
@@ -395,14 +435,19 @@ fn place_lines(
     let (lines_origin, lines_gap) =
         distribute_cross(style.align_content, cross_free, line_count, container_cross);
     let cross_dir = matches!(style.flex_wrap, crate::style_data::FlexWrap::WrapReverse);
-    let mut placed = Vec::new();
+    let item_total: usize = lines.iter().map(|l| l.items.len()).sum();
+    let mut placed = Vec::with_capacity(item_total);
     let mut cursor_cross = lines_origin;
-    let ordered: Vec<&mut FlexLine> = if cross_dir {
-        lines.iter_mut().rev().collect()
-    } else {
-        lines.iter_mut().collect()
-    };
-    for line in ordered {
+    // Walk lines forward or reversed without allocating a `Vec<&mut FlexLine>`
+    // intermediate. The common case is `cross_dir = false` (no
+    // wrap-reverse); the index trick saves an allocation per layout_root
+    // call and folds both directions into one loop.
+    let line_total = lines.len();
+    for i in 0..line_total {
+        let idx = if cross_dir { line_total - 1 - i } else { i };
+        let Some(line) = lines.get_mut(idx) else {
+            continue;
+        };
         // CSS rule: when there's exactly one flex line, the line takes
         // the container's full cross size — single-line containers
         // always stretch their cross axis. Multi-line: `align-content`
@@ -458,12 +503,16 @@ fn place_line_items(
     let (main_origin, main_gap_extra) =
         distribute_main(style.justify_content, free, item_count, container_main);
     let mut cursor = main_origin;
-    let ordered: Vec<&FlexItem> = if ctx.axes.reversed_main {
-        line.items.iter().rev().collect()
-    } else {
-        line.items.iter().collect()
-    };
-    for item in ordered {
+    // Walk items forward or reversed without allocating a `Vec<&FlexItem>`
+    // intermediate. For wide_tree (1000-item flex line + 100k 100-item
+    // sub-lines), this collect was the single largest remaining per-frame
+    // allocation in place_line_items.
+    let reversed = ctx.axes.reversed_main;
+    for i in 0..item_count {
+        let idx = if reversed { item_count - 1 - i } else { i };
+        let Some(item) = line.items.get(idx) else {
+            continue;
+        };
         let cross_offset = cross_offset_for(item, style.align_items, line_cross);
         let placed = PlacedItem {
             id: item.id,
@@ -793,14 +842,45 @@ pub(crate) fn item_cross_basis(
     let was_auto = matches!(dim, Dimension::Auto);
     let resolved = dim_to_border_box(dim, cb_used, chrome_cross, style.box_sizing);
     let resolved = resolved.or_else(|| {
-        let measured = text_intrinsic(ctx, node, style, axes)?;
-        Some(if axes.row {
-            measured.height + chrome_cross
+        if node.children().is_empty() {
+            let measured = text_intrinsic(ctx, node, style, axes)?;
+            Some(if axes.row {
+                measured.height + chrome_cross
+            } else {
+                measured.width + chrome_cross
+            })
         } else {
-            measured.width + chrome_cross
-        })
+            // Container with children + auto cross: run a hypothetical
+            // layout pass to learn the natural cross size. CSS flexbox
+            // §9.2 step 3 — the item's hypothetical main / cross size
+            // depends on its content; for an auto-cross item this is
+            // the post-layout cross extent of its subtree.
+            container_intrinsic_cross(ctx, node, cb_main, cb_cross, axes)
+        }
     });
     (resolved, was_auto)
+}
+
+/// Compute the natural cross size of a flex-or-block item with
+/// children by laying out its subtree at origin (0, 0) under the
+/// container's containing block, then reading the resulting box's
+/// cross dimension out of the forest. The box is overwritten later
+/// during the real placement pass in `write_items`.
+fn container_intrinsic_cross(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    cb_main: f32,
+    cb_cross: f32,
+    axes: Axis2,
+) -> Option<f32> {
+    let (w, h) = if axes.row {
+        (cb_main, cb_cross)
+    } else {
+        (cb_cross, cb_main)
+    };
+    layout_item_subtree(ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    let cb = ctx.solver.scope().forest().boxed(node.id())?;
+    Some(if axes.row { cb.h } else { cb.w })
 }
 
 pub(crate) fn item_main_basis(

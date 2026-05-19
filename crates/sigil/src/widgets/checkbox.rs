@@ -4,7 +4,10 @@ use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
-use sigil_style::{ClassSource, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme};
+use sigil_style::{
+    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
+    Theme,
+};
 
 use crate::interaction::InteractionState;
 
@@ -31,26 +34,36 @@ pub struct CheckboxBuilder {
     tone: CheckboxTone,
     on_change: Option<BoolChange>,
     mutators: Vec<BuilderMutator>,
+    style_accumulator: Style,
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
 static PRIMARY_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
-    StyleAtom::Opacity(8_800),
-];
+static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static NEUTRAL_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(8_800),
-];
+static NEUTRAL_CHECKED_DOWN: &[StyleAtom] =
+    &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
 static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static UNCHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static UNCHECKED_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(8_800),
-];
+// Hover skips straight to surface-pressed (rather than surface-hover)
+// so the default→hover delta is perceptible on a 16-20px indicator.
+// A border-darkening cue would be richer but the renderer has no
+// border primitive (logged as a follow-up).
+static UNCHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
+// Pressed uses the dedicated `surface-pressed-strong` token (a third
+// step past `surface_pressed`) so the hover→pressed delta clears the
+// same-hue JND at 16-20 px swatch scale. The previous 75 %-opacity
+// blend over `surface_pressed` produced only a ~6 sRGB unit step vs
+// hover — sub-perceptual on a 16 px indicator.
+static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
+// Disabled uses surface-hover (the lighter of the two muted tones)
+// PLUS 50% opacity. The opacity layer is what differentiates disabled
+// from hover — hover lands on surface-pressed at full opacity, so a
+// disabled swatch reads as "faded surface-hover" rather than "deeper
+// surface". Reactive state applies LAST in the cascade, beating any
+// inline `bg-surface` class. A border primitive would carry a richer
+// cue but the renderer has none; opacity + distinct fill is the only
+// pair of axes available at 16-20px.
 static CHECKBOX_DISABLED: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface-hover"),
     StyleAtom::Opacity(5_000),
@@ -61,14 +74,14 @@ static NO_MARK: &[StyleAtom] = &[];
 
 /// Create a checkbox widget.
 #[must_use]
-pub const fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
+pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
     CheckboxBuilder::new(checked)
 }
 
 impl CheckboxBuilder {
     /// Create a checkbox builder.
     #[must_use]
-    pub const fn new(checked: Signal<bool>) -> Self {
+    pub fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
             label: None,
@@ -76,6 +89,7 @@ impl CheckboxBuilder {
             tone: CheckboxTone::Neutral,
             on_change: None,
             mutators: Vec::new(),
+            style_accumulator: Style::new(),
         }
     }
 
@@ -116,6 +130,9 @@ impl CheckboxBuilder {
     }
 
     /// Add struct-built style after the built-in checkbox defaults.
+    ///
+    /// Coexists with the `Styled::style(&mut self) -> &mut Style` trait
+    /// method — signatures disambiguate by receiver + arity (DR-049 §11).
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
@@ -140,6 +157,12 @@ impl CheckboxBuilder {
         for mutate in self.mutators {
             node = mutate(node);
         }
+        // Styled accumulator installed after explicit mutators so the
+        // trait surface layers ON TOP of `.class()` / `.style(Style)`
+        // calls (additive composition per DR-049 §10).
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
         node
     }
 
@@ -152,8 +175,8 @@ impl CheckboxBuilder {
         let space_change = on_change;
         let mut node = container()
             .role(Role::CheckBox)
-            .aria_label(accessible_label(self.label.as_ref()))
-            .aria_checked_signal(checked)
+            .label(accessible_label(self.label.as_ref()))
+            .checked(checked)
             .layout(checkbox_layout(self.label.is_some()))
             .on_pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, checked, &pointer_change);
@@ -171,6 +194,14 @@ impl CheckboxBuilder {
         interaction.install(node)
     }
 }
+
+impl StyleAccess for CheckboxBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for CheckboxBuilder {}
 
 impl IntoNode for CheckboxBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {

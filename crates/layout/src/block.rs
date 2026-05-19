@@ -12,14 +12,12 @@
 //!
 //! The solver does not mutate the [`LayoutForest`] — `MeasureScope`
 //! borrows it immutably so multiple solvers can run concurrently in
-//! P0.4. Computed boxes land in an internal `RefCell` map; the engine
-//! drains them into the forest's `boxes` slab. Tests read the map
-//! directly through [`BlockSolver::boxed`].
+//! P0.4. Computed boxes scatter-write directly into the forest's
+//! `boxes` slab via [`MeasureScope::write`], with the forest's
+//! `current_frame` tag stamped into each slot. Tests read results back
+//! through [`BlockSolver::boxed`], which delegates to `forest.boxed`.
 
 #![allow(dead_code, clippy::redundant_pub_crate)]
-
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 use crate::LayoutError;
 use crate::block_collapse::OpenMargin;
@@ -35,25 +33,21 @@ use crate::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData
 /// sizing.
 pub(crate) struct BlockSolver<'a> {
     scope: MeasureScope<'a>,
-    results: RefCell<HashMap<LocalId, ComputedBox>>,
 }
 
 impl<'a> BlockSolver<'a> {
     /// Wrap a measure scope for a block-layout pass.
-    pub(crate) fn new(scope: MeasureScope<'a>) -> Self {
-        Self {
-            scope,
-            results: RefCell::new(HashMap::new()),
-        }
+    pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
+        Self { scope }
     }
 
     /// Run the block layout algorithm rooted at `subtree`.
     ///
     /// The pass writes one [`ComputedBox`] per visited in-flow node
-    /// (and one per absolute descendant) into the internal results
-    /// map. Callers query with [`Self::boxed`] or drain via
-    /// [`Self::take`]. The pass is single-threaded and recurses
-    /// top-down; sizes resolve against the parent's content box.
+    /// (and one per absolute descendant) directly into the forest's
+    /// `boxes` slab through [`MeasureScope::write`]. The pass is
+    /// single-threaded and recurses top-down; sizes resolve against
+    /// the parent's content box.
     ///
     /// # Errors
     ///
@@ -73,21 +67,20 @@ impl<'a> BlockSolver<'a> {
         Ok(())
     }
 
-    /// Borrow the computed box for `id`. Returns `None` if the solver
-    /// never visited the id during this pass.
+    /// Borrow the computed box for `id`. Returns `None` when the id is
+    /// stale or the solver never visited it during this pass.
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
-        self.results.borrow().get(&id).copied()
+        let forest = self.scope.forest();
+        if forest.frame_for(id)? != forest.current_frame() {
+            return None;
+        }
+        forest.boxed(id)
     }
 
-    /// Drain the results map. Used by the engine driver (P0.5) to
-    /// scatter results into the forest's `boxes` slab.
-    pub(crate) fn take(&self) -> HashMap<LocalId, ComputedBox> {
-        std::mem::take(&mut self.results.borrow_mut())
-    }
-
-    /// Record a computed box keyed by node id.
+    /// Record a computed box keyed by node id. Writes scatter-directly
+    /// into the forest's box slab via the shared `MeasureScope` borrow.
     fn write(&self, id: LocalId, cb: ComputedBox) {
-        self.results.borrow_mut().insert(id, cb);
+        self.scope.write(id, cb);
     }
 }
 
@@ -296,12 +289,41 @@ fn place_absolute(
     let style = child.style();
     let edges = NodeEdges::build(style, inner_cb.width);
     let intent = SizeIntent::build(style, inner_cb, &edges);
-    let inset_left = resolve_inset(style.inset.left, padding_box.width);
-    let inset_top = resolve_inset(style.inset.top, padding_box.height);
-    let border_origin = Position2::new(
-        padding_origin.x + inset_left + edges.margin.left.unwrap_or(0.0),
-        padding_origin.y + inset_top + edges.margin_top(),
+    let provisional = Position2::new(
+        padding_origin.x + edges.margin.left.unwrap_or(0.0),
+        padding_origin.y + edges.margin_top(),
     );
+    let (box_w, box_h) = size_absolute(solver, child, &edges, &intent, inner_cb, provisional)?;
+    let (x, y) = resolve_absolute_xy(style, &edges, padding_origin, padding_box, (box_w, box_h));
+    let dx = x - provisional.x;
+    let dy = y - provisional.y;
+    if dx != 0.0 || dy != 0.0 {
+        shift_subtree(solver, child, dx, dy);
+    }
+    solver.write(
+        child.id(),
+        ComputedBox {
+            x,
+            y,
+            w: box_w,
+            h: box_h,
+        },
+    );
+    Ok(())
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "absolute sizing needs solver + child + resolved edges/intent + inner_cb + provisional; bundling would obscure the data flow"
+)]
+fn size_absolute(
+    solver: &BlockSolver<'_>,
+    child: NodeRef<'_>,
+    edges: &NodeEdges,
+    intent: &SizeIntent,
+    inner_cb: Size<f32>,
+    provisional: Position2,
+) -> Result<(f32, f32), LayoutError> {
     let auto_w =
         (inner_cb.width - edges.margin.left.unwrap_or(0.0) - edges.margin.right.unwrap_or(0.0))
             .max(0.0);
@@ -311,9 +333,9 @@ fn place_absolute(
         width: inner_w,
         height: intent.h.preferred.unwrap_or(inner_cb.height),
     };
-    let content_origin_child = Position2::new(
-        border_origin.x + edges.border.left + edges.padding.left,
-        border_origin.y + edges.border.top + edges.padding.top,
+    let content_origin = Position2::new(
+        provisional.x + edges.border.left + edges.padding.left,
+        provisional.y + edges.border.top + edges.padding.top,
     );
     let child_padding_box = Size {
         width: inner_w + edges.padding.left + edges.padding.right,
@@ -323,29 +345,101 @@ fn place_absolute(
         solver,
         child,
         inner_cb_child,
-        content_origin_child,
+        content_origin,
         child_padding_box,
-        content_origin_child,
+        content_origin,
     )?;
     let auto_h = content_h + edges.block_chrome();
     let box_h = intent.h.clamp(intent.h.preferred.unwrap_or(auto_h));
-    solver.write(
-        child.id(),
-        ComputedBox {
-            x: border_origin.x,
-            y: border_origin.y,
-            w: box_w,
-            h: box_h,
-        },
-    );
-    Ok(())
+    Ok((box_w, box_h))
 }
 
-fn resolve_inset(value: LengthPercentageAuto, basis: f32) -> f32 {
+fn resolve_absolute_xy(
+    style: &StyleData,
+    edges: &NodeEdges,
+    padding_origin: Position2,
+    padding_box: Size<f32>,
+    (box_w, box_h): (f32, f32),
+) -> (f32, f32) {
+    let x = resolve_inset_axis(InsetAxis {
+        leading: style.inset.left,
+        trailing: style.inset.right,
+        origin: padding_origin.x,
+        cb_dim: padding_box.width,
+        box_dim: box_w,
+        margin_leading: edges.margin.left.unwrap_or(0.0),
+        margin_trailing: edges.margin.right.unwrap_or(0.0),
+    });
+    let y = resolve_inset_axis(InsetAxis {
+        leading: style.inset.top,
+        trailing: style.inset.bottom,
+        origin: padding_origin.y,
+        cb_dim: padding_box.height,
+        box_dim: box_h,
+        margin_leading: edges.margin_top(),
+        margin_trailing: edges.margin.bottom.unwrap_or(0.0),
+    });
+    (x, y)
+}
+
+/// Inputs to one axis of `inset` resolution.
+#[derive(Clone, Copy)]
+struct InsetAxis {
+    leading: LengthPercentageAuto,
+    trailing: LengthPercentageAuto,
+    origin: f32,
+    cb_dim: f32,
+    box_dim: f32,
+    margin_leading: f32,
+    margin_trailing: f32,
+}
+
+/// Resolve a single inset axis against the parent's padding box.
+///
+/// * Leading edge fixed (`Px` / `Percent`) → place against leading edge.
+/// * Leading edge `Auto`, trailing edge fixed → place against trailing
+///   edge: `origin + cb - box - trailing - margin_trailing`.
+/// * Both `Auto` → falls back to the parent's content edge (existing
+///   behavior).
+fn resolve_inset_axis(a: InsetAxis) -> f32 {
+    match (a.leading, a.trailing) {
+        (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
+            let off = inset_px(t, a.cb_dim);
+            a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
+        }
+        (l, _) => a.origin + inset_px(l, a.cb_dim) + a.margin_leading,
+    }
+}
+
+fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
     match value {
         LengthPercentageAuto::Auto => 0.0,
         LengthPercentageAuto::Px(v) => v,
         LengthPercentageAuto::Percent(p) => p * basis,
+    }
+}
+
+/// Translate a descendant subtree by `(dx, dy)`. Called when an
+/// `Absolute` parent's final placement differs from the provisional
+/// origin used while recursing into its children — keeps descendant
+/// boxes consistent with the parent's actual position.
+fn shift_subtree(solver: &BlockSolver<'_>, node: NodeRef<'_>, dx: f32, dy: f32) {
+    let forest = solver.scope.forest();
+    for child_id in node.children() {
+        if let Some(child) = forest.refer(*child_id) {
+            if let Some(b) = solver.boxed(*child_id) {
+                solver.write(
+                    *child_id,
+                    ComputedBox {
+                        x: b.x + dx,
+                        y: b.y + dy,
+                        w: b.w,
+                        h: b.h,
+                    },
+                );
+            }
+            shift_subtree(solver, child, dx, dy);
+        }
     }
 }
 

@@ -74,23 +74,19 @@ impl TextBuilder {
         self
     }
 
-    /// Set a static accessible label.
+    /// Set the accessible label.
+    ///
+    /// Accepts a `&'static str` / `String` (static) or `Signal<String>`
+    /// (reactive) via the `AccessibleName` `From` impls.
     #[must_use]
-    pub fn aria_label(mut self, label: impl Into<String>) -> Self {
-        self.a11y.name = AccessibleName::Static(label.into());
-        self
-    }
-
-    /// Set a reactive accessible label.
-    #[must_use]
-    pub fn aria_label_signal(mut self, signal: Signal<String>) -> Self {
-        self.a11y.name = AccessibleName::Derived(signal);
+    pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
+        self.a11y.name = name.into();
         self
     }
 
     /// Set a static accessible description.
     #[must_use]
-    pub fn aria_description(mut self, description: impl Into<String>) -> Self {
+    pub fn description(mut self, description: impl Into<String>) -> Self {
         self.a11y.description = Some(AccessibleName::Static(description.into()));
         self
     }
@@ -118,8 +114,8 @@ impl TextBuilder {
 
     /// Enable or disable pointer hit-testing for this text node.
     #[must_use]
-    pub const fn hit_test_enabled(mut self, yes: bool) -> Self {
-        self.a11y.hit_test_enabled = yes;
+    pub const fn hittable(mut self, yes: bool) -> Self {
+        self.a11y.hittable = yes;
         self
     }
 

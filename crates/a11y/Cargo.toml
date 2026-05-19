@@ -1,0 +1,20 @@
+[package]
+name = "sigil-a11y"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "AccessKit bridge for Sigil — projects the kernel node tree into accesskit::TreeUpdate."
+
+[lib]
+doctest = false
+
+[dependencies]
+accesskit = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-kernel = { workspace = true }
+
+[lints]
+workspace = true

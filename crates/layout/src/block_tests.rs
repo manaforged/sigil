@@ -459,15 +459,12 @@ fn negative_margin_pulls_sibling_up() {
 }
 
 #[test]
-fn solver_take_drains_results() {
+fn solver_writes_root_and_child_boxes_through_forest() {
     let mut f = LayoutForest::new();
     let root = f.insert(None, StyleData::default());
     let child = f.insert(None, StyleData::default());
     f.attach(root, child).unwrap();
     let s = run(&f, root, 100.0, 100.0);
     assert!(s.boxed(root).is_some());
-    let drained = s.take();
-    assert_eq!(drained.len(), 2);
-    // After take, internal map is empty.
-    assert!(s.boxed(root).is_none());
+    assert!(s.boxed(child).is_some());
 }

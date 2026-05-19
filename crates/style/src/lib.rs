@@ -24,13 +24,14 @@ pub mod parser;
 pub mod reactive;
 pub mod state;
 pub mod struct_api;
+pub mod styled;
 pub mod text_style;
 pub mod theme;
 pub mod variant;
 
 pub use atom::{
-    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, Px, RenderStyle,
-    Rgba8, SPACING_STEP, StyleAtom, TransitionId,
+    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, OverflowKind,
+    Px, RenderStyle, Rgba8, SPACING_STEP, StyleAtom, TransitionId,
 };
 pub use binding::{ReactiveStyleAtoms, StyleBinding};
 pub use builder_ext::{ClassSource, NodeStyleExt};
@@ -44,17 +45,23 @@ pub use reactive::StyleReactiveEffect;
 pub use sigil_style_macros::classes;
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use struct_api::Style;
+pub use styled::{
+    ColorOrToken, Fill, Flex, Geometry, NodeStyledBuilder, Sizing, Spacing, StateHost,
+    StateStyleBuilder, StateVariants, StyleAccess, Styleable, Styled, Transitions, Typography,
+    Visual,
+};
 pub use text_style::{StyledTextEngine, TextLineHeight, TextStyle};
 pub use theme::{Theme, ThemeBuilder, ThemeValue};
 
 /// Common imports for applications using Sigil styling.
 pub mod prelude {
     pub use crate::{
-        AlignKind, ClassSource, ColorAtom, ComponentId, Dimension, DisplayKind, FlexDir, FocusRing,
-        JustifyKind, MillisU16, NodeStyleExt, ParseError, Px, ReactiveStyleAtoms, RenderStyle,
-        Rgba8, SPACING_STEP, StateSlot, StateStyle, Style, StyleAtom, StyleBinding, StyleEngine,
-        StyleReactiveEffect, StyleState, StyleVariant, StyledTextEngine, TextLineHeight, TextStyle,
-        Theme, ThemeBuilder, ThemeValue, TransitionId, classes, merge_classes, merge_warning_count,
-        merge_warning_count_for_component, parse_class_string,
+        AlignKind, ClassSource, ColorAtom, ColorOrToken, ComponentId, Dimension, DisplayKind,
+        FlexDir, FocusRing, JustifyKind, MillisU16, NodeStyleExt, NodeStyledBuilder, ParseError,
+        Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP, StateSlot, StateStyle,
+        StateStyleBuilder, Style, StyleAccess, StyleAtom, StyleBinding, StyleEngine,
+        StyleReactiveEffect, StyleState, StyleVariant, Styleable, Styled, StyledTextEngine,
+        TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue, TransitionId, classes,
+        merge_classes, merge_warning_count, merge_warning_count_for_component, parse_class_string,
     };
 }

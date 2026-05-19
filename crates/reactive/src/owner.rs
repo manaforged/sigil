@@ -76,6 +76,8 @@ impl Owner {
                 children: Vec::new(),
                 signals: Vec::new(),
                 effects: Vec::new(),
+                entities: Vec::new(),
+                observers: Vec::new(),
                 cleanups: Vec::new(),
                 name,
                 location,
@@ -180,7 +182,7 @@ pub fn is_live(id: OwnerId) -> bool {
 ///
 /// See DR-005 addendum §3 and DR-007 invariant (4).
 #[track_caller]
-pub fn with_owner_by_id(id: OwnerId, f: impl FnOnce()) -> bool {
+pub fn owner_by_id(id: OwnerId, f: impl FnOnce()) -> bool {
     let prev = with_rt(|rt| {
         if !rt.owners.contains(id.0) {
             return None;

@@ -136,7 +136,7 @@ where
     // Synchronous abort on owner disposal: register an `on_cleanup`
     // scoped to `owner`. The moment `owner` disposes, the cleanup
     // runs and aborts the future — no drain required.
-    let _ = sigil_reactive::with_owner_by_id(owner.id(), move || {
+    let _ = sigil_reactive::owner_by_id(owner.id(), move || {
         sigil_reactive::on_cleanup(move || {
             abort.abort();
         });

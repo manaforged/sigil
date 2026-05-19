@@ -13,7 +13,7 @@ use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEve
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use sigil_reactive::{Signal, derived_eq, signal};
-use sigil_style::{ClassSource, NodeStyleExt, Px, StyleAtom};
+use sigil_style::{ClassSource, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
 
 const VIEWPORT_WIDTH: f32 = 320.0;
 const VIEWPORT_HEIGHT: f32 = 240.0;
@@ -32,6 +32,7 @@ pub struct ScrollBuilder {
     height: f32,
     width: f32,
     extra: Option<ClassSource>,
+    style_accumulator: Style,
 }
 
 /// Coerce a content-extent value into a [`Signal<f32>`].
@@ -70,6 +71,7 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
         height: VIEWPORT_HEIGHT,
         width: VIEWPORT_WIDTH,
         extra: None,
+        style_accumulator: Style::new(),
     }
 }
 
@@ -134,9 +136,23 @@ impl ScrollBuilder {
         if let Some(classes) = self.extra {
             root = root.class(classes);
         }
+        // Styled accumulator installed AFTER `.class()` extras so the
+        // trait surface layers ON TOP of the explicit class call
+        // (additive composition per DR-049 §10). Order matches batch 1.
+        if !self.style_accumulator.is_empty() {
+            root = root.style(self.style_accumulator);
+        }
         root
     }
 }
+
+impl StyleAccess for ScrollBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for ScrollBuilder {}
 
 impl IntoNode for ScrollBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
@@ -150,9 +166,7 @@ fn viewport_container(width: f32, height: f32) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(width, height)
-                .with_layout(|s| {
-                    s.overflow.height = Overflow::Hidden;
-                }),
+                .overflow_y(Overflow::Hidden),
         )
         .class(VIEWPORT_ATOMS)
 }

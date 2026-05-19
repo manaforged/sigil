@@ -47,39 +47,34 @@ impl NodeBuilder {
         self
     }
 
-    /// Set a static accessible label.
+    /// Set the accessible label.
+    ///
+    /// Accepts a `&'static str` / `String` (static) or `Signal<String>`
+    /// (reactive) via the `AccessibleName` `From` impls.
     #[must_use]
-    pub fn aria_label(mut self, label: impl Into<String>) -> Self {
-        self.a11y.name = AccessibleName::Static(label.into());
-        self
-    }
-
-    /// Set a reactive accessible label.
-    #[must_use]
-    pub fn aria_label_signal(mut self, signal: Signal<String>) -> Self {
-        self.a11y.name = AccessibleName::Derived(signal);
+    pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
+        self.a11y.name = name.into();
         self
     }
 
     /// Set a static accessible description.
     #[must_use]
-    pub fn aria_description(mut self, description: impl Into<String>) -> Self {
+    pub fn description(mut self, description: impl Into<String>) -> Self {
         self.a11y.description = Some(AccessibleName::Static(description.into()));
         self
     }
 
     /// Set this node's labelling relation.
     #[must_use]
-    pub fn labelled_by(mut self, node: NodeId) -> Self {
-        self.a11y.aria_labelled_by = Some(node);
-        self.a11y.name = AccessibleName::LabelledBy(node);
+    pub const fn labelled_by(mut self, node: NodeId) -> Self {
+        self.a11y.labelled_by = Some(node);
         self
     }
 
     /// Add an owned accessibility relation.
     #[must_use]
     pub fn owns(mut self, node: NodeId) -> Self {
-        self.a11y.aria_owns.push(node);
+        self.a11y.owns.push(node);
         self
     }
 
@@ -122,21 +117,21 @@ impl NodeBuilder {
 
     /// Enable or disable pointer hit-testing for this node.
     #[must_use]
-    pub const fn hit_test_enabled(mut self, yes: bool) -> Self {
-        self.a11y.hit_test_enabled = yes;
+    pub const fn hittable(mut self, yes: bool) -> Self {
+        self.a11y.hittable = yes;
         self
     }
 
     /// Set a reactive checked state for checkbox-like controls.
     #[must_use]
-    pub const fn aria_checked_signal(mut self, signal: Signal<bool>) -> Self {
+    pub const fn checked(mut self, signal: Signal<bool>) -> Self {
         self.a11y.checked = Some(signal);
         self
     }
 
     /// Set a reactive numeric value for range-like controls.
     #[must_use]
-    pub const fn aria_value_signal(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
+    pub const fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
         self.a11y.value_now = Some(signal);
         self.a11y.value_min = Some(min);
         self.a11y.value_max = Some(max);
@@ -145,14 +140,14 @@ impl NodeBuilder {
 
     /// Set a reactive text value for text-input-like controls.
     #[must_use]
-    pub const fn aria_text_value_signal(mut self, signal: Signal<String>) -> Self {
+    pub const fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
         self
     }
 
     /// Set placeholder text for text-input-like controls.
     #[must_use]
-    pub fn aria_placeholder(mut self, placeholder: impl Into<String>) -> Self {
+    pub fn placeholder(mut self, placeholder: impl Into<String>) -> Self {
         self.a11y.placeholder = Some(placeholder.into());
         self
     }

@@ -3,7 +3,7 @@
 use core::fmt::Write as _;
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use ahash::AHashMap;
+use ahash::{AHashMap, AHashSet};
 use sigil_hal::Scale;
 use sigil_reactive::{Owner, OwnerId};
 use slotmap::{DefaultKey, SlotMap};
@@ -22,6 +22,13 @@ pub struct Cx {
     instance_id: u64,
     nodes: SlotMap<DefaultKey, Node>,
     owner_for_node: AHashMap<NodeId, Owner>,
+    dirty: AHashSet<NodeId>,
+    /// When set, every live node is considered dirty without populating
+    /// `dirty` with 100k entries. `mark_mutated` flips this on in O(1)
+    /// instead of doing an O(N) `AHashSet::insert` loop. The dirty
+    /// iterator yields all slotmap keys when this is true, then falls
+    /// back to the regular set otherwise. ε1.5.
+    dirty_all: bool,
     root_owner: Owner,
     roots: SmallVec<[NodeId; 4]>,
     mutation_generation: u64,
@@ -37,6 +44,8 @@ impl Cx {
             instance_id: next_instance_id(),
             nodes: SlotMap::with_key(),
             owner_for_node: AHashMap::new(),
+            dirty: AHashSet::new(),
+            dirty_all: false,
             root_owner,
             roots: SmallVec::new(),
             mutation_generation: 0,
@@ -89,6 +98,7 @@ impl Cx {
     pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
         let owner = Owner::current().expect("Cx::new_node called outside an IntoNode::build scope");
         let id = NodeId(self.nodes.insert(Node::new(kind, a11y, owner)));
+        self.mark_dirty(id);
         self.bump_generation();
         id
     }
@@ -110,10 +120,12 @@ impl Cx {
         let owner = Owner::new("sigil-kernel::component", Some(parent_owner));
         let node_id = owner.with(|| build(self));
         self.owner_for_node.insert(node_id, owner);
+        self.mark_dirty(node_id);
         if let Some(parent) = parent_node {
             self.link_parent(parent, node_id);
         } else if !self.roots.contains(&node_id) {
             self.roots.push(node_id);
+            self.mark_dirty(node_id);
             self.bump_generation();
         }
         node_id
@@ -122,11 +134,15 @@ impl Cx {
     fn link_parent(&mut self, parent: NodeId, child: NodeId) {
         if let Some(child_node) = self.nodes.get_mut(child.key()) {
             child_node.parent = Some(parent);
+            child_node.bump_version();
         }
         if let Some(parent_node) = self.nodes.get_mut(parent.key()) {
             parent_node.children.push(child);
+            parent_node.bump_version();
         }
         self.roots.retain(|root| *root != child);
+        self.mark_dirty(child);
+        self.mark_dirty(parent);
         self.bump_generation();
     }
 
@@ -141,8 +157,15 @@ impl Cx {
         }
 
         self.bump_generation();
+        let parent = self.nodes.get(id.key()).and_then(|node| node.parent);
         let subtree = self.collect_subtree(id);
         self.detach_from_parent(id);
+        if let Some(parent) = parent {
+            self.mark_dirty(parent);
+        }
+        for node_id in &subtree {
+            self.dirty.remove(node_id);
+        }
 
         for node_id in subtree.iter().rev() {
             if let Some(owner) = self.owner_for_node.remove(node_id) {
@@ -174,6 +197,7 @@ impl Cx {
             && let Some(parent_node) = self.nodes.get_mut(parent.key())
         {
             parent_node.children.retain(|child| *child != id);
+            parent_node.bump_version();
         } else {
             self.roots.retain(|root| *root != id);
         }
@@ -187,7 +211,31 @@ impl Cx {
 
     /// Mutably borrow a node by ID.
     pub fn get_mut(&mut self, id: NodeId) -> Option<&mut Node> {
+        if self.nodes.contains_key(id.key()) {
+            self.mark_dirty(id);
+        }
         self.nodes.get_mut(id.key())
+    }
+
+    /// Iterate kernel `NodeId`s mutated since the last `clear_dirty()`
+    /// call. When `dirty_all` is set (after `mark_mutated`), yields
+    /// every live node id without ever populating the underlying
+    /// `AHashSet` — O(N) iteration without the O(N) set rebuild.
+    pub fn dirty(&self) -> impl Iterator<Item = NodeId> + '_ {
+        let from_set = self.dirty.iter().copied();
+        let from_keys: Box<dyn Iterator<Item = NodeId> + '_> = if self.dirty_all {
+            Box::new(self.nodes.keys().map(NodeId))
+        } else {
+            Box::new(std::iter::empty())
+        };
+        from_keys.chain(from_set)
+    }
+
+    /// Reset the dirty set. Called by layout engine + render pipeline
+    /// after they sync against the set.
+    pub fn clear_dirty(&mut self) {
+        self.dirty.clear();
+        self.dirty_all = false;
     }
 
     /// Explicitly invalidate caches keyed on tree or node metadata.
@@ -195,9 +243,12 @@ impl Cx {
     /// `get_mut` is a plain borrow so projection writes, such as
     /// layout-result attachment, do not churn mutation generation. Call
     /// this after direct field-level edits that affect routing, focus, or
-    /// other generation-keyed caches.
+    /// other generation-keyed caches. ε1.5: O(1) — flips `dirty_all`
+    /// instead of inserting every node id into the set (was 5-10 ms
+    /// per call on 101k-node corpora).
     pub const fn mark_mutated(&mut self) {
         self.bump_generation();
+        self.dirty_all = true;
     }
 
     /// The current per-window scale factor. Defaults to [`Scale::ONE`]
@@ -208,15 +259,19 @@ impl Cx {
         self.scale
     }
 
-    /// Update the stored scale. Bumps `mutation_generation` via
-    /// [`Cx::mark_mutated`] when the factor actually changes. Re-applying
-    /// the same scale is a no-op so repeated shell events do not churn caches.
-    pub const fn set_scale(&mut self, scale: Scale) {
+    /// Update the stored scale. Bumps `mutation_generation` when the factor
+    /// actually changes. Re-applying the same scale is a no-op so repeated
+    /// shell events do not churn caches.
+    pub fn set_scale(&mut self, scale: Scale) {
         if self.scale.factor().to_bits() == scale.factor().to_bits() {
             return;
         }
         self.scale = scale;
-        self.mark_mutated();
+        self.bump_generation();
+        let roots = self.roots.clone();
+        for root in roots {
+            self.mark_dirty(root);
+        }
     }
 
     /// Return the component owner recorded for a node root.
@@ -339,6 +394,10 @@ impl Cx {
 
     const fn bump_generation(&mut self) {
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
+    }
+
+    fn mark_dirty(&mut self, id: NodeId) {
+        self.dirty.insert(id);
     }
 }
 

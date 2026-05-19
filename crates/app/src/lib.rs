@@ -18,7 +18,6 @@
 use windows_core as _;
 
 // Transitive deps threaded through launch; names are used there.
-use sigil_async as _;
 use sigil_style as _;
 
 mod config;
@@ -32,3 +31,16 @@ pub use error::{Error, Result};
 pub use launch::launch;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::TreeRoot;
+
+/// G5 (DR-048 §5) — install the production `TaskExecutor` +
+/// `MainThreadDispatcher` pair against an `AsyncRuntime`.
+///
+/// Called by `launch::run` at startup; re-exported for the
+/// `g5_executor` integration test which drives the same install path
+/// without booting winit/wgpu.
+pub use launch::install_g5_executor;
+
+/// Test-only re-export of the frame driver's phase-transition shape.
+/// See [`launch::__drive_test_frame`] for the contract.
+#[doc(hidden)]
+pub use launch::__drive_test_frame;

@@ -3,7 +3,10 @@ use std::rc::Rc;
 use sigil_events::prelude::{Key, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use sigil_style::{ClassSource, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme};
+use sigil_style::{
+    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
+    Theme,
+};
 
 use crate::interaction::InteractionState;
 
@@ -28,24 +31,19 @@ pub struct ButtonBuilder {
     enabled: bool,
     on_activate: Option<Activate>,
     mutators: Vec<BuilderMutator>,
+    style_accumulator: Style,
 }
 
 static PRIMARY_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static PRIMARY_REST: &[StyleAtom] = &[];
 static PRIMARY_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 static PRIMARY_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static PRIMARY_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
-    StyleAtom::Opacity(8_800),
-];
+static PRIMARY_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static NEUTRAL_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static NEUTRAL_REST: &[StyleAtom] = &[];
 static NEUTRAL_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 static NEUTRAL_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static NEUTRAL_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(8_800),
-];
+static NEUTRAL_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
 static DISABLED: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface-hover"),
     StyleAtom::Opacity(5_000),
@@ -69,6 +67,7 @@ impl ButtonBuilder {
             enabled: true,
             on_activate: None,
             mutators: Vec::new(),
+            style_accumulator: Style::new(),
         }
     }
 
@@ -124,6 +123,13 @@ impl ButtonBuilder {
     }
 
     /// Add struct-built style after the built-in button defaults.
+    ///
+    /// This is the original `style(Style)` inherent (consuming, taking a
+    /// `Style` arg). It coexists with the `Styled::style(&mut self) ->
+    /// &mut Style` trait method — the two signatures disambiguate by
+    /// receiver + arity per DR-049 §11. Inside trait default bodies the
+    /// `&mut self` form is selected; external callers passing a `Style`
+    /// hit the inherent.
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
@@ -147,6 +153,14 @@ impl ButtonBuilder {
         for mutate in self.mutators {
             node = mutate(node);
         }
+        // Styled accumulator is installed AFTER the explicit mutators
+        // so explicit `.class(...)` / `.style(Style)` calls land first
+        // and the trait surface adds on top. Atoms are merged through
+        // the existing `NodeStyleExt::style` path (a class-source push)
+        // — same install seam as `container().styled()...`.
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
         node
     }
 
@@ -156,7 +170,7 @@ impl ButtonBuilder {
         let key_activate = activate;
         let node = container()
             .role(Role::Button)
-            .aria_label(self.label.clone())
+            .label(self.label.clone())
             .layout(button_layout(self.width, self.height))
             .class("rounded-md")
             .class(variant.base())
@@ -176,6 +190,14 @@ impl ButtonBuilder {
             .class(button_text_class(self.tone))
     }
 }
+
+impl StyleAccess for ButtonBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for ButtonBuilder {}
 
 impl IntoNode for ButtonBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {

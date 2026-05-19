@@ -101,6 +101,19 @@ pub enum JustifyKind {
     Around,
 }
 
+/// Overflow clipping behaviour for a single axis.
+///
+/// Maps to [`sigil_layout::Overflow`] during style resolution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OverflowKind {
+    /// Content extends past the box without clipping.
+    Visible,
+    /// Content past the box is clipped at the border edge.
+    Hidden,
+    /// Same as `Hidden` but reserves space for a scrollbar.
+    Scroll,
+}
+
 /// Stable transition preset identifier.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TransitionId(pub u16);
@@ -208,6 +221,10 @@ pub enum StyleAtom {
     FontFamily(&'static str),
     /// Line height.
     LineHeight(Px),
+    /// Overflow clipping on the inline (width) axis.
+    OverflowX(OverflowKind),
+    /// Overflow clipping on the block (height) axis.
+    OverflowY(OverflowKind),
     /// Deferred transition preset.
     Transition(TransitionId),
     /// Deferred transition duration.

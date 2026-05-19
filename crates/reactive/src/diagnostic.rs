@@ -20,6 +20,29 @@ pub(crate) fn disposed_signal(op: &'static str, caller: &'static Location<'stati
     panic!("Signal::{op} on a disposed signal (at {caller})")
 }
 
+/// Panic helper for "operation on a disposed entity" contract violations.
+///
+/// Carries the `EntityGone` token so call sites that catch the panic
+/// can pattern-match on the message — mirrors the
+/// [`crate::EntityGone`] error returned by the async surface
+/// (`AsyncContext::update`) for the same condition.
+#[cold]
+#[track_caller]
+pub(crate) fn disposed_entity(op: &'static str, caller: &'static Location<'static>) -> ! {
+    panic!("Entity::{op} on a disposed entity — EntityGone (at {caller})")
+}
+
+/// Panic helper for "global of type X not installed" contract violations.
+#[cold]
+#[track_caller]
+pub(crate) fn missing_global(
+    op: &'static str,
+    type_name: &'static str,
+    caller: &'static Location<'static>,
+) -> ! {
+    panic!("{op}::<{type_name}> not installed in current runtime (at {caller})")
+}
+
 /// Diagnostic helper for reactive cycle re-entrancy detection.
 #[cold]
 #[track_caller]

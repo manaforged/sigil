@@ -877,16 +877,13 @@ fn container_box_picks_up_explicit_size() {
 }
 
 #[test]
-fn take_drains_results_and_resets_internal_map() {
+fn solver_writes_results_through_forest_for_visited_nodes() {
     let mut f = LayoutForest::new();
     let parent = f.insert(None, flex_parent());
-    let _a = add_child(&mut f, parent, fixed(20.0, 20.0));
+    let child = add_child(&mut f, parent, fixed(20.0, 20.0));
     let s = run(&f, parent, 200.0, 100.0);
-    let drained = s.take();
-    assert!(!drained.is_empty());
-    // After draining, the solver's internal map is empty.
-    let drained2 = s.take();
-    assert!(drained2.is_empty());
+    assert!(s.boxed(parent).is_some());
+    assert!(s.boxed(child).is_some());
 }
 
 #[test]
@@ -901,9 +898,7 @@ fn empty_flex_container_produces_only_self_box() {
         },
     );
     let s = run(&f, parent, 200.0, 100.0);
-    let drained = s.take();
-    assert_eq!(drained.len(), 1);
-    assert!(drained.contains_key(&parent));
+    assert!(s.boxed(parent).is_some());
 }
 
 // ---------------------------------------------------------------------

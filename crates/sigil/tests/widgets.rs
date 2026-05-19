@@ -8,6 +8,7 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wgpu as _;
 
+use sigil_actions as _;
 use sigil_app as _;
 use sigil_events as _;
 use sigil_kernel as _;
@@ -74,7 +75,7 @@ fn disabled_button_does_not_focus_or_activate() {
         assert_eq!(hits.get(), 0);
         let node = cx.get(root).unwrap();
         assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hit_test_enabled);
+        assert!(!node.a11y.hittable);
     });
 }
 
@@ -178,7 +179,7 @@ fn text_field_disabled_ignores_typing() {
         assert_eq!(value.get(), "");
         let node = cx.get(root).unwrap();
         assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hit_test_enabled);
+        assert!(!node.a11y.hittable);
     });
 }
 
@@ -390,7 +391,7 @@ fn checkbox_disabled_ignores_click() {
         assert_eq!(changes.get(), 0);
         let node = cx.get(root).unwrap();
         assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hit_test_enabled);
+        assert!(!node.a11y.hittable);
     });
 }
 
@@ -628,7 +629,7 @@ fn slider_disabled_ignores_input() {
         assert_approx(value.get(), 25.0);
         let node = cx.get(root).unwrap();
         assert!(!node.a11y.focusable);
-        assert!(!node.a11y.hit_test_enabled);
+        assert!(!node.a11y.hittable);
     });
 }
 

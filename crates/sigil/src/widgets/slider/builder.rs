@@ -5,7 +5,10 @@ use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
-use sigil_style::{ClassSource, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme};
+use sigil_style::{
+    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
+    Theme,
+};
 
 use crate::interaction::InteractionState;
 
@@ -71,6 +74,7 @@ pub struct SliderBuilder {
     on_change: Option<ValueChange>,
     orientation: Orientation,
     mutators: Vec<BuilderMutator>,
+    style_accumulator: Style,
 }
 
 /// Create a slider widget.
@@ -93,6 +97,7 @@ impl SliderBuilder {
             on_change: None,
             orientation: Orientation::Horizontal,
             mutators: Vec::new(),
+            style_accumulator: Style::new(),
         }
     }
 
@@ -157,9 +162,25 @@ impl SliderBuilder {
         for mutate in self.mutators {
             node = mutate(node);
         }
+        // Styled accumulator installed after explicit mutators so the
+        // trait surface layers ON TOP of `.class()` / `.style(Style)`
+        // calls (additive composition per DR-049 §10).
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
         node
     }
+}
 
+impl StyleAccess for SliderBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for SliderBuilder {}
+
+impl SliderBuilder {
     fn base_node(&self, interaction: InteractionState, on_change: ValueChange) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
         let node = slider_root(runtime, interaction)
@@ -245,8 +266,8 @@ impl SliderRuntime {
 fn slider_root(runtime: SliderRuntime, interaction: InteractionState) -> NodeBuilder {
     container()
         .role(Role::Slider)
-        .aria_label("Slider")
-        .aria_value_signal(runtime.value, runtime.range.min, runtime.range.max)
+        .label("Slider")
+        .value(runtime.value, runtime.range.min, runtime.range.max)
         .layout(slider_layout(runtime.orientation))
         .class("rounded-md")
         .class(TRACK)

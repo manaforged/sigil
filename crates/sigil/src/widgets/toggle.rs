@@ -141,8 +141,8 @@ impl ToggleBuilder {
         let space_change = on_change;
         let mut node = container()
             .role(Role::Switch)
-            .aria_label(accessible_label(self.label.as_ref()))
-            .aria_checked_signal(on)
+            .label(accessible_label(self.label.as_ref()))
+            .checked(on)
             .layout(toggle_layout(self.label.is_some()))
             .on_pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, on, &pointer_change);

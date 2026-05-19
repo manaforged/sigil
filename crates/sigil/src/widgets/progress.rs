@@ -6,7 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
-use sigil_style::{Dimension, NodeStyleExt, Px, StyleAtom};
+use sigil_style::{Dimension, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
 
 const TRACK_WIDTH: f32 = 240.0;
 const TRACK_HEIGHT: f32 = 8.0;
@@ -26,6 +26,7 @@ pub struct ProgressBuilder {
     pub indeterminate: bool,
     /// Override the track height in logical pixels (default: 8.0).
     track_height: f32,
+    style_accumulator: Style,
 }
 
 /// Create a progress bar widget.
@@ -34,19 +35,20 @@ pub struct ProgressBuilder {
 ///   (0.0–1.0) in indeterminate mode.
 /// - `max`   — maximum value (must be > 0).
 #[must_use]
-pub const fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
+pub fn progress(value: Signal<f32>, max: f32) -> ProgressBuilder {
     ProgressBuilder::new(value, max)
 }
 
 impl ProgressBuilder {
     /// Create a progress builder with default settings.
     #[must_use]
-    pub const fn new(value: Signal<f32>, max: f32) -> Self {
+    pub fn new(value: Signal<f32>, max: f32) -> Self {
         Self {
             value,
             max: max.max(f32::EPSILON),
             indeterminate: false,
             track_height: TRACK_HEIGHT,
+            style_accumulator: Style::new(),
         }
     }
 
@@ -73,6 +75,7 @@ impl ProgressBuilder {
         let max = self.max;
         let track_h = self.track_height;
         let is_indeterminate = self.indeterminate;
+        let style_accumulator = self.style_accumulator;
 
         let fill = if is_indeterminate {
             indeterminate_fill(value, track_h)
@@ -80,15 +83,30 @@ impl ProgressBuilder {
             determinate_fill(value, max, track_h)
         };
 
-        container()
+        let mut node = container()
             .role(Role::ProgressIndicator)
-            .aria_value_signal(value, 0.0, max)
+            .value(value, 0.0, max)
             .layout(track_layout(track_h))
             .class("rounded-md")
             .class(TRACK)
-            .child(fill)
+            .child(fill);
+        // Styled accumulator installed AFTER the built-in widget atoms
+        // so the trait surface layers ON TOP of the defaults (additive
+        // composition per DR-049 §10). Order matches batch 1.
+        if !style_accumulator.is_empty() {
+            node = node.style(style_accumulator);
+        }
+        node
     }
 }
+
+impl StyleAccess for ProgressBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for ProgressBuilder {}
 
 impl IntoNode for ProgressBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {

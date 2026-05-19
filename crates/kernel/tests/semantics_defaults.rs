@@ -21,8 +21,8 @@ fn every_core_node_kind_has_accessible_defaults() {
     for id in [container, fragment, text] {
         let a11y = &cx.get(id).expect("node exists").a11y;
         assert_ne!(a11y.role, Role::Unknown);
-        assert!(a11y.aria_owns.is_empty());
-        assert_eq!(a11y.aria_labelled_by, None);
+        assert!(a11y.owns.is_empty());
+        assert_eq!(a11y.labelled_by, None);
     }
 
     assert_eq!(
@@ -44,8 +44,8 @@ fn text_input_semantics_carry_reactive_value_and_placeholder() {
         let root = cx.add(
             container()
                 .role(Role::TextInput)
-                .aria_text_value_signal(value)
-                .aria_placeholder("Notes"),
+                .text_value(value)
+                .placeholder("Notes"),
         );
 
         let a11y = &cx.get(root).expect("text input node exists").a11y;

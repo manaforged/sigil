@@ -43,26 +43,56 @@
 use criterion as _;
 
 mod arena;
+mod async_cx;
 mod batch;
+mod cx;
+mod cx_actions;
+mod cx_focus;
+mod cx_spawn;
+mod cx_spawn_local;
 pub mod debug;
 mod derived;
 mod diagnostic;
 mod effect;
 mod effect_run;
+mod entity;
+mod entity_global;
+mod entity_observer;
+mod focus;
+mod local_executor;
 mod owner;
 mod owner_dispose;
+mod phase;
 mod runtime;
+mod runtime_drain;
+mod runtime_executor;
+mod runtime_phase;
+mod runtime_slots;
 mod signal;
 mod signal_ops;
 mod signal_write;
+mod task;
+mod task_local;
 mod trace;
 
+pub use async_cx::{
+    AsyncContext, BoxMainCallback, BoxSendFuture, DispatchError, MainThreadDispatcher, TaskExecutor,
+};
 pub use batch::batch;
+pub use cx::Context;
 pub use derived::{derived, derived_eq};
 pub use effect::{effect, effect_named};
-pub use owner::{Owner, OwnerId, is_live, on_cleanup, with_owner_by_id};
+pub use entity::{Entity, EntityId};
+pub use entity_global::{global, global_mut, observe_global, set_global};
+pub use entity_observer::Subscription;
+pub use focus::{FocusHandle, FocusHandleId};
+pub use local_executor::{BoxLocalFuture, LocalTaskExecutor};
+pub use owner::{Owner, OwnerId, is_live, on_cleanup, owner_by_id};
+pub use phase::DrawPhase;
 pub use runtime::Runtime;
 pub use signal::{SendableSignal, Signal, signal};
+pub use task::{EntityGone, Task, TaskAwaitError};
+pub use task_local::LocalTask;
 
 // Re-exported for integration tests only. The `test_hook` submodule
 // is `#[doc(hidden)]` and carries no stability promise. See the

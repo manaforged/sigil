@@ -3,18 +3,25 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_style::{
-    AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom,
+    AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, JustifyKind, OverflowKind, Px,
+    StyleAtom,
 };
 
 use crate::{
     LayoutStyle,
     style_data::{
         AlignItems, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
-        LengthPercentageAuto, StyleData,
+        LengthPercentageAuto, Overflow, StyleData,
     },
 };
 
-pub(crate) fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
+/// Apply a slice of [`StyleAtom`] values onto a [`LayoutStyle`].
+///
+/// Used internally by the layout engine when resolving a node's
+/// `StyleBinding`; exposed at the crate root so tests can verify the
+/// round-trip from atoms to the resolved [`StyleData`] without going
+/// through the full engine compute path.
+pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     for atom in atoms {
         apply_style_atom(*atom, style);
     }
@@ -47,6 +54,8 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         StyleAtom::JustifyContent(justify) => set_justify_content(style, justify),
         StyleAtom::FlexGrow(grow) => set_flex_grow(style, grow),
         StyleAtom::FlexShrink(shrink) => set_flex_shrink(style, shrink),
+        StyleAtom::OverflowX(kind) => set_overflow_x(style, kind),
+        StyleAtom::OverflowY(kind) => set_overflow_y(style, kind),
         StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::TextColor(_)
@@ -166,6 +175,22 @@ fn set_flex_shrink(layout: &mut LayoutStyle, shrink: u16) {
     mutate_layout(layout, |style| {
         style.flex_shrink = f32::from(shrink) / 1000.0;
     });
+}
+
+fn set_overflow_x(layout: &mut LayoutStyle, kind: OverflowKind) {
+    mutate_layout(layout, |style| style.overflow.width = overflow(kind));
+}
+
+fn set_overflow_y(layout: &mut LayoutStyle, kind: OverflowKind) {
+    mutate_layout(layout, |style| style.overflow.height = overflow(kind));
+}
+
+const fn overflow(kind: OverflowKind) -> Overflow {
+    match kind {
+        OverflowKind::Visible => Overflow::Visible,
+        OverflowKind::Hidden => Overflow::Hidden,
+        OverflowKind::Scroll => Overflow::Scroll,
+    }
 }
 
 fn mutate_layout(layout: &mut LayoutStyle, mutate: impl FnOnce(&mut StyleData)) {

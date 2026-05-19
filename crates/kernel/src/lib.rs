@@ -38,5 +38,5 @@ pub use component::IntoNode;
 pub use cx::Cx;
 pub use id::NodeId;
 pub use node::{Node, NodeExtensions, NodeType};
-pub use semantics::{A11yProps, AccessibleName};
+pub use semantics::{A11yProps, AccessibleName, FocusScopeKind};
 pub use text::{TextBuilder, TextContent, text};

@@ -141,4 +141,45 @@ fn main() {
         "  gc:                                        {:>10.3} ms",
         t0.elapsed().as_secs_f64() * 1000.0
     );
+
+    eprintln!("\n=== incremental: single-leaf mutation (5 iterations) ===");
+    // Fresh engine + tree to isolate this scenario from the prior sync churn.
+    let (mut cx, root) = build_100k_tree();
+    let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    engine
+        .compute(&mut cx, root, AVAILABLE)
+        .expect("warm compute");
+    cx.clear_dirty();
+
+    let leaf = first_leaf(&cx, root);
+    let mut total_incr = 0.0;
+    for i in 0..5 {
+        cx.get_mut(leaf)
+            .expect("leaf exists")
+            .attach(LayoutStyle::block().fixed_size(LEAF_WIDTH + 1.0 + i as f32, ROW_HEIGHT));
+        let dirty_count = cx.dirty().count();
+        let t0 = Instant::now();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("incremental compute");
+        let ms = t0.elapsed().as_secs_f64() * 1000.0;
+        eprintln!("  iter {i}: {ms:>10.3} ms (dirty before compute: {dirty_count})");
+        total_incr += ms;
+    }
+    eprintln!(
+        "  mean incremental single-leaf:              {:>10.3} ms\n",
+        total_incr / 5.0
+    );
+}
+
+fn first_leaf(cx: &sigil_kernel::Cx, root: NodeId) -> NodeId {
+    let mut stack = vec![root];
+    while let Some(id) = stack.pop() {
+        let node = cx.get(id).expect("node exists");
+        if node.children().is_empty() {
+            return id;
+        }
+        stack.extend(node.children().iter().rev().copied());
+    }
+    unreachable!()
 }

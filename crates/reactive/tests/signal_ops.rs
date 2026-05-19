@@ -9,7 +9,9 @@
 // `unused_crate_dependencies` lint for this integration-test binary.
 // `smallvec` is a regular dep but unused here — same treatment.
 use criterion as _;
+use sigil_actions as _;
 use smallvec as _;
+use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

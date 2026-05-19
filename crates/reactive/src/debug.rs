@@ -22,6 +22,7 @@
 
 use core::fmt::Write as _;
 
+use crate::entity::{Entity, EntityId};
 use crate::owner::OwnerId;
 use crate::runtime::{OwnerKey, OwnerSlot, with_rt};
 
@@ -61,6 +62,32 @@ pub fn dump_owner_tree() -> String {
         write_subtree(&mut out, root, 0);
     }
     out
+}
+
+/// Return `true` if `entity` names a live entity slot on this thread.
+///
+/// Test seam — public-but-`#[doc(hidden)]` — for asserting the
+/// DR-045 §A1 eviction contract. Production code does not need this
+/// check: stale handles surface via the
+/// [`crate::diagnostic::disposed_entity`] panic
+/// (`Entity::update` / `Entity::read`) or `Err(EntityGone)` from
+/// `AsyncContext::update`.
+///
+/// Marked `#[doc(hidden)]` to keep the surface explicit-opt-in.
+#[doc(hidden)]
+#[must_use]
+pub fn entity_is_live<T: 'static>(entity: Entity<T>) -> bool {
+    with_rt(|rt| rt.entities.contains(entity.key))
+}
+
+/// Same as [`entity_is_live`] but for the type-erased
+/// [`EntityId`].
+///
+/// Test seam — public-but-`#[doc(hidden)]`.
+#[doc(hidden)]
+#[must_use]
+pub fn entity_id_is_live(id: EntityId) -> bool {
+    with_rt(|rt| rt.entities.contains(id.0))
 }
 
 /// Render the subtree rooted at `owner` as a human-readable string.
@@ -199,6 +226,8 @@ mod tests {
             children: Vec::new(),
             signals: Vec::new(),
             effects: Vec::new(),
+            entities: Vec::new(),
+            observers: Vec::new(),
             cleanups: Vec::new(),
             name: "Root",
             location: loc,
@@ -218,6 +247,8 @@ mod tests {
             children: Vec::new(),
             signals: Vec::new(),
             effects: Vec::new(),
+            entities: Vec::new(),
+            observers: Vec::new(),
             cleanups: Vec::new(),
             name: "Child",
             location: loc,

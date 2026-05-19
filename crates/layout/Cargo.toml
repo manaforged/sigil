@@ -14,6 +14,7 @@ doctest = false
 [dependencies]
 ahash = { workspace = true }
 rayon = { workspace = true }
+slotmap = { workspace = true }
 smallvec = { workspace = true }
 sigil-kernel = { workspace = true }
 sigil-hal = { workspace = true }
@@ -23,6 +24,7 @@ sigil-style = { workspace = true }
 allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
 sigil-reactive = { workspace = true }
+taffy = "0.10"
 
 [[bench]]
 name = "layout_ops"
@@ -30,6 +32,26 @@ harness = false
 
 [[bench]]
 name = "invalidation_rig"
+harness = false
+
+[[bench]]
+name = "taffy_corpus_huge_nested"
+harness = false
+
+[[bench]]
+name = "taffy_corpus_wide_tree"
+harness = false
+
+[[bench]]
+name = "taffy_corpus_incremental"
+harness = false
+
+[[bench]]
+name = "taffy_corpus_deep"
+harness = false
+
+[[bench]]
+name = "js_framework_benchmark"
 harness = false
 
 [lints]

@@ -21,7 +21,22 @@ impl NodeId {
         accesskit::NodeId(self.0.data().as_ffi())
     }
 
-    pub(crate) const fn key(self) -> DefaultKey {
+    /// Slotmap key backing this node identity.
+    ///
+    /// Exposed for downstream crates (e.g. `sigil-layout`) that mirror the
+    /// kernel's slotmap and want `slotmap::SecondaryMap` direct-indexed
+    /// lookup instead of hashing.
+    #[must_use]
+    pub const fn key(self) -> DefaultKey {
         self.0
+    }
+
+    /// Reconstruct a `NodeId` from a previously-extracted slotmap key.
+    ///
+    /// Pair with [`Self::key`] to round-trip identities through a
+    /// `slotmap::SecondaryMap` keyed map without going through hashing.
+    #[must_use]
+    pub const fn from_key(key: DefaultKey) -> Self {
+        Self(key)
     }
 }

@@ -203,7 +203,7 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::JustifyContent(justify) => Style::new().justify_content(justify),
         StyleAtom::FlexGrow(grow) => Style::new().flex_grow(grow),
         StyleAtom::FlexShrink(shrink) => Style::new().flex_shrink(shrink),
-        StyleAtom::BackgroundColor(color) => Style::new().background_color(color),
+        StyleAtom::BackgroundColor(color) => Style::new().fill(color),
         StyleAtom::BackgroundThemeRef(token) => Style::new().background_theme(token),
         StyleAtom::TextColor(color) => Style::new().text_color(color),
         StyleAtom::TextThemeRef(token) => Style::new().text_theme(token),
@@ -214,8 +214,10 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::FontFamily(name) => Style::new().font_family(name),
         StyleAtom::LineHeight(px) => Style::new().line_height(px.0),
         StyleAtom::Transition(transition) => Style::new().transition(transition),
-        StyleAtom::TransitionDuration(duration) => Style::new().transition_duration(duration),
+        StyleAtom::TransitionDuration(duration) => Style::new().duration(duration),
         StyleAtom::UnknownThemeRef(token) => Style::new().unknown_theme_ref(token),
+        StyleAtom::OverflowX(kind) => Style::new().overflow_x(kind),
+        StyleAtom::OverflowY(kind) => Style::new().overflow_y(kind),
     }
 }
 

@@ -72,7 +72,7 @@ impl InteractionState {
     #[must_use]
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
         node.focusable(self.enabled)
-            .hit_test_enabled(self.enabled)
+            .hittable(self.enabled)
             .focus_ring(FocusRing::new(self.focus_visible()))
             .on_focus_in(move || self.set_focused(true))
             .on_focus_out(move || self.set_focused(false))

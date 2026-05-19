@@ -14,14 +14,14 @@
 //!
 //! The solver does not mutate the [`LayoutForest`] — `MeasureScope`
 //! borrows it immutably so multiple solvers can run concurrently in
-//! P0.4. Computed boxes land in an internal `RefCell` map; the engine
-//! drains them into the forest's `boxes` slab. Tests read the map
-//! directly through [`FlexSolver::boxed`].
+//! P0.4. Computed boxes scatter-write directly into the forest's
+//! `boxes` slab via [`MeasureScope::write`], with the forest's
+//! `current_frame` tag stamped into each slot so callers can
+//! distinguish "reached this measure" from "stale slab entry." Tests
+//! read results back through [`FlexSolver::boxed`], which delegates to
+//! `forest.boxed`.
 
 #![allow(dead_code, clippy::redundant_pub_crate)]
-
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 use crate::LayoutError;
 use crate::flex_algorithm::{Axis2, FlexCtx, layout_root};
@@ -35,24 +35,19 @@ use crate::style_data::FlexDirection;
 /// align-self / align-content. Reverse directions handled.
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
-    results: RefCell<HashMap<LocalId, ComputedBox>>,
 }
 
 impl<'a> FlexSolver<'a> {
     /// Wrap a measure scope for a flex-layout pass.
-    pub(crate) fn new(scope: MeasureScope<'a>) -> Self {
-        Self {
-            scope,
-            results: RefCell::new(HashMap::new()),
-        }
+    pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
+        Self { scope }
     }
 
     /// Run the flex layout algorithm rooted at `subtree`.
     ///
     /// Visits the root as a flex container; its children become flex
-    /// items. Writes one [`ComputedBox`] per visited node into the
-    /// internal results map. Callers query with [`Self::boxed`] or
-    /// drain via [`Self::take`].
+    /// items. Writes one [`ComputedBox`] per visited node directly into
+    /// the forest's `boxes` slab through [`MeasureScope::write`].
     ///
     /// # Errors
     ///
@@ -71,21 +66,21 @@ impl<'a> FlexSolver<'a> {
         layout_root(&ctx, subtree, Position2::origin())
     }
 
-    /// Borrow the computed box for `id`. Returns `None` if the solver
-    /// never visited the id during this pass.
+    /// Borrow the computed box for `id`. Returns `None` when the id is
+    /// stale or the solver never visited it during this pass (frame
+    /// tag does not match the forest's current frame).
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
-        self.results.borrow().get(&id).copied()
+        let forest = self.scope.forest();
+        if forest.frame_for(id)? != forest.current_frame() {
+            return None;
+        }
+        forest.boxed(id)
     }
 
-    /// Drain the results map. Used by the engine driver (P0.5) to
-    /// scatter results into the forest's `boxes` slab.
-    pub(crate) fn take(&self) -> HashMap<LocalId, ComputedBox> {
-        std::mem::take(&mut self.results.borrow_mut())
-    }
-
-    /// Record a computed box keyed by node id.
+    /// Record a computed box keyed by node id. Writes scatter-directly
+    /// into the forest's box slab via the shared `MeasureScope` borrow.
     pub(crate) fn write(&self, id: LocalId, cb: ComputedBox) {
-        self.results.borrow_mut().insert(id, cb);
+        self.scope.write(id, cb);
     }
 
     /// Borrow the measure scope (used by helpers in sibling modules).

@@ -1,0 +1,24 @@
+[package]
+name = "sigil-actions-macros"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Proc macros for Sigil typed actions (#[derive(Action)])."
+
+[lib]
+proc-macro = true
+doctest = false
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }
+
+[dev-dependencies]
+sigil-actions = { workspace = true }
+
+[lints]
+workspace = true

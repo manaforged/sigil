@@ -2,7 +2,8 @@
 
 use crate::style_data::{
     AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap,
-    JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, Size, StyleData,
+    JustifyContent, LengthPercentage, LengthPercentageAuto, Overflow, Position, Rect, Size,
+    StyleData,
 };
 
 /// Layout intent attached to a node through `NodeExtensions`.
@@ -122,6 +123,43 @@ impl LayoutStyle {
     #[must_use]
     pub const fn padding_px(self, padding: f32) -> Self {
         self.padding(LengthPercentage::Px(padding))
+    }
+
+    /// Set fixed logical-pixel padding on the inline (left + right) axis.
+    #[must_use]
+    pub const fn padding_x_px(mut self, padding: f32) -> Self {
+        self.0.padding.left = LengthPercentage::Px(padding);
+        self.0.padding.right = LengthPercentage::Px(padding);
+        self
+    }
+
+    /// Set fixed logical-pixel padding on the block (top + bottom) axis.
+    #[must_use]
+    pub const fn padding_y_px(mut self, padding: f32) -> Self {
+        self.0.padding.top = LengthPercentage::Px(padding);
+        self.0.padding.bottom = LengthPercentage::Px(padding);
+        self
+    }
+
+    /// Set the block-axis (height) overflow behavior.
+    #[must_use]
+    pub const fn overflow_y(mut self, overflow: Overflow) -> Self {
+        self.0.overflow.height = overflow;
+        self
+    }
+
+    /// Set a fixed logical-pixel top inset (for `Position::Absolute`).
+    #[must_use]
+    pub const fn inset_top_px(mut self, top: f32) -> Self {
+        self.0.inset.top = LengthPercentageAuto::Px(top);
+        self
+    }
+
+    /// Set a fixed logical-pixel left inset (for `Position::Absolute`).
+    #[must_use]
+    pub const fn inset_left_px(mut self, left: f32) -> Self {
+        self.0.inset.left = LengthPercentageAuto::Px(left);
+        self
     }
 
     /// Set uniform flex/grid gap.
@@ -257,7 +295,13 @@ impl LayoutStyle {
         self
     }
 
-    pub(crate) const fn data(&self) -> &StyleData {
+    /// Borrow the underlying resolved [`StyleData`].
+    ///
+    /// Public so tests and other crates can verify what a builder chain
+    /// (or a slice of [`StyleAtom`]s via
+    /// [`crate::style_adapter::apply_style_atoms`]) resolved to.
+    #[must_use]
+    pub const fn data(&self) -> &StyleData {
         &self.0
     }
 
