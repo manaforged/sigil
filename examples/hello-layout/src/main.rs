@@ -16,11 +16,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     let root = cx.add(
         container()
             .role(Role::Main)
-            .aria_label("Hello layout")
+            .label("Hello layout")
             .layout(
                 LayoutStyle::flex_row()
                     .fixed_size(320.0, 80.0)
-                    .gap_px(12.0)
+                    .gap(12.0)
                     .align_items(AlignItems::FlexStart),
             )
             .child(text("Hello"))
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 container()
                     .layout(
                         LayoutStyle::flex_column()
-                            .padding_px(4.0)
+                            .padding(4.0)
                             .align_items(AlignItems::FlexStart),
                     )
                     .child(text("from layout")),

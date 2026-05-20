@@ -6,6 +6,7 @@ use sigil_style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_command::{Stroke, StrokeAlign, StrokeStyle};
+use crate::scene_instance::srgb_channel_to_linear;
 
 use super::RectInstance;
 
@@ -17,9 +18,9 @@ pub(super) fn rect_instance_parts(
     stroke: Option<Stroke>,
 ) -> RectInstance {
     let color = [
-        f32::from(color.r) / 255.0,
-        f32::from(color.g) / 255.0,
-        f32::from(color.b) / 255.0,
+        srgb_channel_to_linear(color.r),
+        srgb_channel_to_linear(color.g),
+        srgb_channel_to_linear(color.b),
         f32::from(color.a) / 255.0,
     ];
     let (stroke_params, stroke_meta) = stroke_fields(stroke);

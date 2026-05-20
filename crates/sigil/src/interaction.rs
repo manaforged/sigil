@@ -74,11 +74,11 @@ impl InteractionState {
         node.focusable(self.enabled)
             .hittable(self.enabled)
             .focus_ring(FocusRing::new(self.focus_visible()))
-            .on_focus_in(move || self.set_focused(true))
-            .on_focus_out(move || self.set_focused(false))
-            .on_pointer_enter(move |event| self.pointer_enter(event))
-            .on_pointer_leave(move |event| self.pointer_leave(event))
-            .on_pointer_down(move |event| self.pointer_down(event))
+            .focus_in(move || self.set_focused(true))
+            .focus_out(move || self.set_focused(false))
+            .pointer_enter(move |event| self.pointer_enter(event))
+            .pointer_leave(move |event| self.pointer_leave(event))
+            .pointer_down(move |event| self.pointer_down(event))
     }
 
     /// Release a pointer press and return whether this was a valid activation.

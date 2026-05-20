@@ -24,7 +24,7 @@ fn build(cx: &mut Cx) -> NodeId {
         "Zig".to_owned(),
         "C++".to_owned(),
     ];
-    cx.add(dropdown(selected, options).on_change(move || {
+    cx.add(dropdown(selected, options).change(move || {
         println!("selected: {}", selected.get());
     }))
 }

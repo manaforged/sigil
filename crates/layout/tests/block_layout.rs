@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! Integration smoke test for the P0.2 block layout body.
 //!
 //! The substantive block-layout tests (18 cases covering explicit

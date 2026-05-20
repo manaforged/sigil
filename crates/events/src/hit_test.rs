@@ -76,7 +76,7 @@ impl HitTestCache {
         self.items.clear();
         let ctx = EmitCtx { cx, layout };
         for root in cx.roots().iter().copied() {
-            emit(&ctx, root, Point::new(0.0, 0.0), &mut self.items);
+            emit(&ctx, root, &mut self.items);
         }
         self.cx_generation = cx_generation;
         self.layout_generation = layout_generation;
@@ -108,15 +108,17 @@ struct EmitCtx<'a> {
     layout: &'a LayoutEngine,
 }
 
-fn emit(ctx: &EmitCtx<'_>, id: NodeId, parent_origin: Point, items: &mut HitItems) {
+fn emit(ctx: &EmitCtx<'_>, id: NodeId, items: &mut HitItems) {
     let Some(node) = ctx.cx.get(id) else {
         return;
     };
-    let rect = ctx
-        .layout
-        .result(id)
-        .map(|result| absolute_rect(parent_origin, result.rect()));
-    let child_origin = rect.map_or(parent_origin, |rect| rect.origin);
+    // `LayoutResult::rect()` is already in root coordinates — the
+    // layout solvers accumulate every ancestor's border + padding
+    // offsets into the `ComputedBox` they scatter-write. Hit testing
+    // therefore reads the rect directly; re-accumulating a
+    // `parent_origin` would double-count and shift the hit region by
+    // the sum of every ancestor's offset.
+    let rect = ctx.layout.result(id).map(|result| result.rect());
 
     items.push(HitItem {
         id,
@@ -126,19 +128,8 @@ fn emit(ctx: &EmitCtx<'_>, id: NodeId, parent_origin: Point, items: &mut HitItem
     });
 
     for child in node.children().iter().copied() {
-        emit(ctx, child, child_origin, items);
+        emit(ctx, child, items);
     }
-}
-
-const fn absolute_rect(parent_origin: Point, rect: Rect) -> Rect {
-    Rect::new(
-        Point::new(
-            parent_origin.x + rect.origin.x,
-            parent_origin.y + rect.origin.y,
-        ),
-        rect.width,
-        rect.height,
-    )
 }
 
 const fn contains(rect: Rect, point: Point) -> bool {

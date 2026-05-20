@@ -13,7 +13,7 @@ use crate::scene_command::{
 };
 use crate::scene_instance::{
     draw_gradient_instance, draw_pattern_instance, draw_rect_instance, draw_shadow_instance,
-    gradient_stop_records,
+    gradient_stop_records, srgb_channel_to_linear,
 };
 use crate::scene_paint::{PaintCtx, ScenePipeline};
 use crate::shadow_paint::{Shadow, ShadowPipeline};
@@ -341,9 +341,9 @@ fn sprite_pipeline_for<'a>(
 fn glyph_run_color(run: &GlyphRun, opacity_scale: f32) -> Color {
     let opacity = (f32::from(run.opacity) / 10_000.0) * opacity_scale;
     Color::rgba(
-        f32::from(run.color.r) / 255.0,
-        f32::from(run.color.g) / 255.0,
-        f32::from(run.color.b) / 255.0,
+        srgb_channel_to_linear(run.color.r),
+        srgb_channel_to_linear(run.color.g),
+        srgb_channel_to_linear(run.color.b),
         (f32::from(run.color.a) / 255.0) * opacity.clamp(0.0, 1.0),
     )
 }

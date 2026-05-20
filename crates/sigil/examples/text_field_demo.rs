@@ -23,12 +23,12 @@ fn build(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap_px(16.0).padding_px(32.0))
+            .layout(LayoutStyle::flex_column().gap(16.0).padding(32.0))
             .class("w-full h-full bg-surface")
             .child(
                 text_field(name)
                     .placeholder("Enter your name")
-                    .on_change(move |v| {
+                    .change(move |v| {
                         name.update(|s| {
                             s.clear();
                             s.push_str(v);

@@ -45,8 +45,10 @@ fn build(cx: &mut Cx) -> NodeId {
         }
     });
 
-    let widget =
-        floating_text(spawn, FctSettings::new(time).duration(1.6)).label("floating combat text");
+    let widget = floating_text(spawn)
+        .time(time)
+        .duration(1.6)
+        .label("floating combat text");
 
     cx.add(
         container()

@@ -328,7 +328,7 @@ fn pack_f16_pair(first: f16, second: f16) -> u32 {
     u32::from(first.to_bits()) | (u32::from(second.to_bits()) << 16)
 }
 
-fn srgb_channel_to_linear(channel: u8) -> f32 {
+pub(crate) fn srgb_channel_to_linear(channel: u8) -> f32 {
     let value = f32::from(channel) / 255.0;
     if value <= 0.040_45 {
         value / 12.92

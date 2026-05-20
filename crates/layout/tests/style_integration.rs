@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
@@ -47,7 +48,7 @@ fn w_full_is_percent_100() {
             .layout(LayoutStyle::block().fixed_size(200.0, 40.0))
             .child(
                 container()
-                    .layout(LayoutStyle::default().height_px(10.0))
+                    .layout(LayoutStyle::default().height(10.0))
                     .class("w-full"),
             ),
     );
@@ -70,13 +71,7 @@ fn flex_row_items_center() {
             .child(container().layout(LayoutStyle::default().fixed_size(10.0, 10.0)))
             .child(container().layout(LayoutStyle::default().fixed_size(20.0, 10.0))),
     );
-    let children = cx
-        .get(root)
-        .unwrap()
-        .children()
-        .iter()
-        .copied()
-        .collect::<Vec<_>>();
+    let children = cx.get(root).unwrap().children().to_vec();
 
     stub_engine()
         .compute(&mut cx, root, Size::fixed(100.0, 40.0))

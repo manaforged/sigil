@@ -2,10 +2,12 @@
 
 This directory hosts the helper module backing
 `crates/sigil/tests/visual_goldens.rs`. The harness drives a widget into one
-of five interaction modes (`Default`, `Hover`, `Pressed`, `Focused`,
-`Disabled`), renders the resulting node tree through
-`WgpuRenderer::render_command_scene_offscreen`, reads pixels back, and
-compares against a committed PNG in `crates/sigil/tests/goldens/`.
+of eight interaction modes — five settled (`Default`, `Hover`, `Pressed`,
+`Focused`, `Disabled`) and three frame-aware (`HoverAfterFrames`,
+`PressedAfterFrames`, `FocusedAfterFrames`) — renders the resulting node
+tree through `WgpuRenderer::render_command_scene_offscreen`, reads pixels
+back, and compares against a committed PNG in
+`crates/sigil/tests/goldens/`.
 
 ## Why committed PNGs
 
@@ -44,6 +46,34 @@ its own `crate::interaction::InteractionState` and drives state through
 Pressed to take effect. `Disabled` is driven through the widget builder
 itself (e.g., `button("Save").enabled(false)`) — the harness skips events
 in that mode.
+
+### Animated modes (W5.0a)
+
+`HoverAfterFrames`, `PressedAfterFrames`, and `FocusedAfterFrames` drive
+the same pointer / focus event as their non-AfterFrames counterpart, then
+advance `sigil_animation_runtime::tick(dt)` for `frames` iterations so
+animator-driven style atoms resolve to the post-tick value before
+`emit_scene` captures. The canonical `dt` is `1.0 / 60.0`.
+
+```rust
+let img = render_widget_to_png(
+    |cx| cx.add(button("Save")),
+    InteractionMode::HoverAfterFrames { frames: 6, dt: 1.0 / 60.0 },
+    [160, 56],
+    (74.0, 22.0),
+);
+```
+
+`frames: u32::MAX` is a sentinel meaning "tick until every active
+animator settles." A safety cap (`SETTLE_SAFETY_CAP = 600` frames — 10 s
+of simulated time at 60 Hz) guards against runaway animators. A widget
+that retargets on every tick will trip the cap and panic with a clear
+message rather than stalling the test.
+
+`InteractionMode::tag()` returns the same lowercase tag for both the
+settled and `*AfterFrames` variants (e.g., both `Hover` and
+`HoverAfterFrames` tag as `"hover"`), so call sites that bake animated
+goldens should append their own `_animated` suffix to the golden stem.
 
 ## Regenerating goldens
 

@@ -5,21 +5,40 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::{RenderStyle, StyleAtom};
+use crate::{AnimatorOverlay, RenderStyle, StyleAtom};
 
 /// Shared reactive style slice updated by a node-owned effect.
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 
 /// Style atoms and resolved caches attached to a node.
-#[derive(Debug, Clone)]
 pub struct StyleBinding {
     static_atoms: &'static [StyleAtom],
     dynamic_atoms: SmallVec<[StyleAtom; 16]>,
     reactive_atoms: Option<ReactiveStyleAtoms>,
+    /// W5.1b: attached animator overlay produced by the binding-install
+    /// hook in `sigil-animation-runtime`. `None` for bindings without
+    /// a `Transition` atom (zero-overhead path); `Some` when one or
+    /// more numeric atoms differ between base and a state-slot overlay.
+    attached_animators: Option<Box<dyn AnimatorOverlay>>,
     resolved_render: RenderStyle,
     cx_generation: u64,
     layout_generation: u64,
     theme_generation: u64,
+}
+
+impl core::fmt::Debug for StyleBinding {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("StyleBinding")
+            .field("static_atoms", &self.static_atoms)
+            .field("dynamic_atoms", &self.dynamic_atoms)
+            .field("reactive_atoms", &self.reactive_atoms)
+            .field("attached_animators", &self.attached_animators.is_some())
+            .field("resolved_render", &self.resolved_render)
+            .field("cx_generation", &self.cx_generation)
+            .field("layout_generation", &self.layout_generation)
+            .field("theme_generation", &self.theme_generation)
+            .finish()
+    }
 }
 
 impl Default for StyleBinding {
@@ -28,6 +47,7 @@ impl Default for StyleBinding {
             static_atoms: &[],
             dynamic_atoms: SmallVec::new(),
             reactive_atoms: None,
+            attached_animators: None,
             resolved_render: RenderStyle::default(),
             cx_generation: 0,
             layout_generation: 0,
@@ -84,6 +104,18 @@ impl StyleBinding {
             .map_or(&[], |atoms| atoms.get())
     }
 
+    /// True when a reactive atom channel is installed on this binding.
+    ///
+    /// The reactive channel mutates through an `Rc<Cell>` that bypasses
+    /// the owning node's `version()` stamp, so consumers that cache by
+    /// version (notably the layout engine's per-node sync fast-path)
+    /// need to force a re-sync for reactive nodes even when the
+    /// reactive slice is currently empty.
+    #[must_use]
+    pub const fn has_reactive(&self) -> bool {
+        self.reactive_atoms.is_some()
+    }
+
     /// Borrow cached render style.
     #[must_use]
     pub const fn resolved_render(&self) -> &RenderStyle {
@@ -106,6 +138,36 @@ impl StyleBinding {
     #[must_use]
     pub const fn theme_generation(&self) -> u64 {
         self.theme_generation
+    }
+
+    /// Borrow the attached animator overlay, if any.
+    ///
+    /// W5.1b — the style engine consults this overlay at apply time;
+    /// when a numeric atom (opacity / radius / padding / gap / font /
+    /// line-height) has a driven value, the engine uses the driven
+    /// value instead of the literal atom value.
+    #[must_use]
+    pub fn animator_overlay(&self) -> Option<&dyn crate::AnimatorOverlay> {
+        self.attached_animators.as_deref()
+    }
+
+    /// Install a fresh animator overlay, replacing any prior overlay.
+    ///
+    /// Built by the binding-install hook in `sigil-animation-runtime`.
+    /// Passing `None` clears any existing overlay.
+    pub fn set_animator_overlay(&mut self, overlay: Option<Box<dyn crate::AnimatorOverlay>>) {
+        self.attached_animators = overlay;
+    }
+
+    /// Re-aim every attached animator at `slot`'s value, using `base`
+    /// as the source of fallback atoms.
+    ///
+    /// No-op when no animators are attached. Called by the reactive
+    /// effect that observes state-slot transitions on this binding.
+    pub fn retarget_animators(&mut self, slot: crate::StateSlot, base: &[StyleAtom]) {
+        if let Some(overlay) = self.attached_animators.as_deref_mut() {
+            overlay.retarget_to_slot(slot, base);
+        }
     }
 
     pub(crate) fn all_atoms(&self) -> SmallVec<[StyleAtom; 32]> {

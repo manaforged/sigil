@@ -22,14 +22,31 @@
 //!
 //! [DR-053]: ../../../docs/decisions/DR-053-g9-animation.md
 
+// `criterion` is a dev-dep used by the `animator_ticks` bench. Mark it
+// referenced under test+bench builds so the workspace's
+// `unused_crate_dependencies` warning stays quiet on lib builds.
+#[cfg(test)]
+use criterion as _;
+
 pub(crate) mod animator;
+pub mod binding_animate;
+pub(crate) mod binding_animate_color;
 pub(crate) mod config;
 pub(crate) mod motion;
 pub(crate) mod registry;
 pub(crate) mod state;
 
 pub use animator::{Animator, AnimatorStatus};
+pub use binding_animate::{
+    ANIMATION_REGISTRY_MISS, AttachedAnimator, AttachedAnimators, AttachedColorAnimator,
+    install_animators, install_animators_themed,
+};
+pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
 pub use config::AnimationConfig;
 pub use motion::MotionPrefs;
 pub use registry::{AnimationRegistry, presets};
-pub use state::tick;
+// W5.1b: `NumericAtomKind` moved into `sigil-style` for the
+// `AnimatorOverlay` trait surface; re-export keeps the prior import
+// path stable for crates depending on this runtime.
+pub use sigil_style::NumericAtomKind;
+pub use state::{active_count, tick};

@@ -12,14 +12,13 @@
 //!
 //! See the strategic plan §F6.
 //!
-//! # Hygiene-exception — `Signal<f32>` time input
+//! # Hygiene-exception - `Signal<f32>` time input
 //!
-//! The brief specifies `floating_text(spawn, settings) -> NodeBuilder`
-//! with `FctSettings { duration, drift }`. A particle system needs a
-//! clock; this implementation threads it through `FctSettings::time`
-//! (added field, caller-driven seconds-since-start). This keeps the
-//! widget agnostic to whatever frame loop the caller runs and makes the
-//! bench measurable. Flagged in the F6 return.
+//! A particle system needs a clock; this implementation accepts one via
+//! [`FloatingTextBuilder::time`] (caller-driven seconds-since-start).
+//! This keeps the widget agnostic to whatever frame loop the caller runs
+//! and makes the bench measurable. If no clock is supplied, the builder
+//! installs an inert `0.0` signal.
 //!
 //! # Hygiene-exception — `Signal<FctSpawn>` edge semantics
 //!
@@ -31,9 +30,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil_kernel::{NodeBuilder, fragment};
+use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, fragment};
 use sigil_reactive::{Signal, effect_named};
-use sigil_style::Rgba8;
+use sigil_style::{NodeStyleExt, Rgba8, StateHost, Style, StyleAccess};
+
+use super::shared::BuilderMutator;
 
 /// Maximum simultaneous particles tracked by one floating-text widget.
 ///
@@ -79,37 +80,40 @@ impl Default for FctSpawn {
     }
 }
 
-/// Per-widget tuning. `duration` is the particle lifetime in seconds;
-/// `drift` is the linear velocity in logical pixels per second.
-#[derive(Clone, Copy, Debug)]
-pub struct FctSettings {
-    /// Particle lifetime in seconds. Clamped to `>= EPSILON`.
-    pub duration: f32,
-    /// Drift velocity `[vx, vy]` in logical pixels per second.
-    pub drift: [f32; 2],
-    /// Caller-driven clock in seconds. Each write advances simulation.
-    pub time: Signal<f32>,
+/// Builder returned by [`floating_text`].
+///
+/// It owns per-widget tuning such as duration, drift, clock, and pool
+/// capacity. Build it directly as a node or continue chaining style
+/// methods from [`crate::prelude::Styled`].
+pub struct FloatingTextBuilder {
+    spawn: Signal<FctSpawn>,
+    settings: FctSettings,
+    mutators: Vec<BuilderMutator>,
+    style_accumulator: Style,
 }
 
-impl FctSettings {
-    /// Default settings using the supplied time signal: 1.2s lifetime,
-    /// 32 px/s upward drift (game-feel default).
+impl FloatingTextBuilder {
+    /// Create a floating-text builder with default tuning.
+    ///
+    /// Defaults are a 1.2s lifetime, 32 px/s upward drift, an inert
+    /// `0.0` time signal, and [`FCT_POOL_CAPACITY`] slots.
     #[must_use]
-    pub const fn new(time: Signal<f32>) -> Self {
+    pub fn new(spawn: Signal<FctSpawn>) -> Self {
         Self {
-            duration: 1.2,
-            drift: [0.0, -32.0],
-            time,
+            spawn,
+            settings: FctSettings::new(sigil_reactive::signal(0.0_f32)),
+            mutators: Vec::new(),
+            style_accumulator: Style::new(),
         }
     }
 
-    /// Set the particle lifetime (seconds).
+    /// Set the particle lifetime in seconds.
     ///
-    /// Non-positive values are coerced to `f32::EPSILON` to keep
-    /// `1.0 / duration` finite inside the simulation step.
+    /// Non-positive values are coerced to `f32::EPSILON` to keep the
+    /// simulation step finite.
     #[must_use]
     pub const fn duration(mut self, seconds: f32) -> Self {
-        self.duration = if seconds > f32::EPSILON {
+        self.settings.duration = if seconds > f32::EPSILON {
             seconds
         } else {
             f32::EPSILON
@@ -117,11 +121,89 @@ impl FctSettings {
         self
     }
 
-    /// Set the drift velocity (logical px / second).
+    /// Set the drift velocity in logical pixels per second.
     #[must_use]
     pub const fn drift(mut self, drift: [f32; 2]) -> Self {
-        self.drift = drift;
+        self.settings.drift = drift;
         self
+    }
+
+    /// Set the caller-driven clock in seconds.
+    ///
+    /// Each write advances the particle simulation.
+    #[must_use]
+    pub const fn time(mut self, time: Signal<f32>) -> Self {
+        self.settings.time = time;
+        self
+    }
+
+    /// Set the maximum number of simultaneous particles.
+    #[must_use]
+    pub const fn capacity(mut self, capacity: usize) -> Self {
+        self.settings.capacity = capacity;
+        self
+    }
+
+    /// Set the accessible label on the floating-text fragment.
+    #[must_use]
+    pub fn label(mut self, name: impl Into<AccessibleName> + 'static) -> Self {
+        let name = name.into();
+        self.mutators.push(Box::new(move |node| node.label(name)));
+        self
+    }
+
+    fn into_node_builder(self) -> NodeBuilder {
+        let state = Rc::new(FctState::from_settings(self.settings));
+        let extension = Rc::clone(&state);
+        let time = self.settings.time;
+
+        install_spawn_effect(Rc::clone(&state), self.spawn, time);
+        install_tick_effect(Rc::clone(&state), time);
+
+        let mut node = fragment().mutate(move |node| {
+            let _previous = node.attach(FctNode(extension));
+        });
+        for mutate in self.mutators {
+            node = mutate(node);
+        }
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
+        }
+        node
+    }
+}
+
+impl StyleAccess for FloatingTextBuilder {
+    fn style(&mut self) -> &mut Style {
+        &mut self.style_accumulator
+    }
+}
+
+impl StateHost for FloatingTextBuilder {}
+
+impl IntoNode for FloatingTextBuilder {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+        self.into_node_builder().build(cx)
+    }
+}
+
+/// Internal per-widget tuning accumulator.
+#[derive(Clone, Copy, Debug)]
+struct FctSettings {
+    duration: f32,
+    drift: [f32; 2],
+    time: Signal<f32>,
+    capacity: usize,
+}
+
+impl FctSettings {
+    const fn new(time: Signal<f32>) -> Self {
+        Self {
+            duration: 1.2,
+            drift: [0.0, -32.0],
+            time,
+            capacity: FCT_POOL_CAPACITY,
+        }
     }
 }
 
@@ -185,17 +267,30 @@ pub struct FctState {
 }
 
 impl FctState {
-    /// Build a new pool with the supplied settings.
+    /// Build a new pool with the supplied tuning.
+    ///
+    /// `duration` is clamped to `f32::EPSILON`; `capacity` is the fixed
+    /// pool size and can be lower than [`FCT_POOL_CAPACITY`] for tests or
+    /// specialized widgets.
     #[must_use]
-    pub fn new(settings: &FctSettings) -> Self {
-        let pool = (0..FCT_POOL_CAPACITY).map(|_| Particle::empty()).collect();
+    pub fn new(duration: f32, drift: [f32; 2], time: Signal<f32>, capacity: usize) -> Self {
+        let pool = (0..capacity).map(|_| Particle::empty()).collect();
         Self {
             pool: RefCell::new(pool),
-            duration: settings.duration.max(f32::EPSILON),
-            drift: settings.drift,
-            last_tick: RefCell::new(settings.time.peek()),
+            duration: duration.max(f32::EPSILON),
+            drift,
+            last_tick: RefCell::new(time.peek()),
             generation: sigil_reactive::signal(0_u32),
         }
+    }
+
+    fn from_settings(settings: FctSettings) -> Self {
+        Self::new(
+            settings.duration,
+            settings.drift,
+            settings.time,
+            settings.capacity,
+        )
     }
 
     /// Push a particle into the next free slot. Drops the spawn on the
@@ -285,11 +380,11 @@ fn advance_slot(slot: &mut Particle, dt: f32, inv_dur: f32) {
     slot.alpha = (slot.remaining * inv_dur).clamp(0.0, 1.0);
 }
 
-/// Create a floating combat text widget.
+/// Create a floating combat text widget builder.
 ///
 /// Each write to `spawn` queues one particle. Each write to
-/// `settings.time` advances simulation. The returned node is a
-/// fragment carrying an [`FctState`] extension that a downstream
+/// [`FloatingTextBuilder::time`] advances simulation. The built node is
+/// a fragment carrying an [`FctState`] extension that a downstream
 /// renderer reads each frame.
 ///
 /// # Examples
@@ -298,21 +393,15 @@ fn advance_slot(slot: &mut Particle, dt: f32, inv_dur: f32) {
 /// use sigil::prelude::*;
 /// let time = signal(0.0_f32);
 /// let spawn = signal(FctSpawn::default());
-/// let widget = floating_text(spawn, FctSettings::new(time));
+/// let widget = floating_text(spawn)
+///     .time(time)
+///     .duration(2.0)
+///     .drift([0.0, -40.0]);
 /// ```
 #[must_use]
 #[track_caller]
-pub fn floating_text(spawn: Signal<FctSpawn>, settings: FctSettings) -> NodeBuilder {
-    let state = Rc::new(FctState::new(&settings));
-    let state_for_extension = Rc::clone(&state);
-    let time = settings.time;
-
-    install_spawn_effect(Rc::clone(&state), spawn, time);
-    install_tick_effect(Rc::clone(&state), time);
-
-    fragment().mutate(move |node| {
-        let _previous = node.attach(FctNode(state_for_extension));
-    })
+pub fn floating_text(spawn: Signal<FctSpawn>) -> FloatingTextBuilder {
+    FloatingTextBuilder::new(spawn)
 }
 
 fn install_spawn_effect(state: Rc<FctState>, spawn: Signal<FctSpawn>, time: Signal<f32>) {
@@ -378,10 +467,9 @@ mod tests {
         Runtime::scope("fct-build-node", || {
             let time = signal(0.0_f32);
             let spawn = signal(FctSpawn::default());
-            let settings = FctSettings::new(time).duration(1.0);
-            // Smoke: the returned NodeBuilder constructs without panicking
+            // Smoke: the returned builder can be configured without panicking
             // and the spawn signal can be driven through it.
-            let _builder = floating_text(spawn, settings);
+            let _builder = floating_text(spawn).time(time).duration(1.0);
             spawn.set(FctSpawn::new([10.0, 20.0], "100", red()));
             spawn.set(FctSpawn::new([30.0, 40.0], "50", red()));
         });
@@ -391,9 +479,7 @@ mod tests {
     fn tick_advances_position_and_alpha() {
         Runtime::scope("fct-tick-advance", || {
             let time = signal(0.0_f32);
-            let state = Rc::new(FctState::new(
-                &FctSettings::new(time).duration(1.0).drift([10.0, -20.0]),
-            ));
+            let state = Rc::new(FctState::new(1.0, [10.0, -20.0], time, FCT_POOL_CAPACITY));
             assert!(state.spawn(FctSpawn::new([0.0, 0.0], "1", red()), 0.0));
             state.tick(0.5);
             let snap = state.snapshot();
@@ -408,7 +494,7 @@ mod tests {
     fn expired_particles_are_reclaimed() {
         Runtime::scope("fct-expire", || {
             let time = signal(0.0_f32);
-            let state = Rc::new(FctState::new(&FctSettings::new(time).duration(0.5)));
+            let state = Rc::new(FctState::new(0.5, [0.0, -32.0], time, FCT_POOL_CAPACITY));
             assert!(state.spawn(FctSpawn::new([0.0, 0.0], "9", red()), 0.0));
             assert_eq!(state.alive_count(), 1);
             state.tick(0.4);
@@ -422,7 +508,7 @@ mod tests {
     fn empty_text_does_not_spawn() {
         Runtime::scope("fct-empty", || {
             let time = signal(0.0_f32);
-            let state = Rc::new(FctState::new(&FctSettings::new(time)));
+            let state = Rc::new(FctState::new(1.2, [0.0, -32.0], time, FCT_POOL_CAPACITY));
             let inert = FctSpawn {
                 at: [0.0, 0.0],
                 text: String::new(),
@@ -437,7 +523,7 @@ mod tests {
     fn pool_capacity_is_capped() {
         Runtime::scope("fct-cap", || {
             let time = signal(0.0_f32);
-            let state = Rc::new(FctState::new(&FctSettings::new(time).duration(10.0)));
+            let state = Rc::new(FctState::new(10.0, [0.0, -32.0], time, FCT_POOL_CAPACITY));
             for i in 0..FCT_POOL_CAPACITY {
                 #[allow(clippy::cast_precision_loss)]
                 let f = i as f32;
@@ -454,12 +540,12 @@ mod tests {
         Runtime::scope("fct-reactive-spawn", || {
             let time = signal(0.0_f32);
             let spawn = signal(FctSpawn::default());
-            let state = Rc::new(FctState::new(&FctSettings::new(time)));
-            let state_for_effect = Rc::clone(&state);
+            let state = Rc::new(FctState::new(1.2, [0.0, -32.0], time, FCT_POOL_CAPACITY));
+            let effect = Rc::clone(&state);
             sigil_reactive::effect(move || {
                 let payload = spawn.get();
                 if !payload.text.is_empty() {
-                    let _ok = state_for_effect.spawn(payload, time.peek());
+                    let _ok = effect.spawn(payload, time.peek());
                 }
             });
             spawn.set(FctSpawn::new([1.0, 2.0], "crit", red()));

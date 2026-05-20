@@ -82,62 +82,48 @@ impl LayoutStyle {
 
     /// Set the preferred width.
     #[must_use]
-    pub const fn width(mut self, width: Dimension) -> Self {
-        self.0.size.width = width;
+    pub fn width(mut self, width: impl Into<Dimension>) -> Self {
+        self.0.size.width = width.into();
         self
-    }
-
-    /// Set a fixed logical-pixel width.
-    #[must_use]
-    pub const fn width_px(self, width: f32) -> Self {
-        self.width(Dimension::Px(width))
     }
 
     /// Set the preferred height.
     #[must_use]
-    pub const fn height(mut self, height: Dimension) -> Self {
-        self.0.size.height = height;
+    pub fn height(mut self, height: impl Into<Dimension>) -> Self {
+        self.0.size.height = height.into();
         self
-    }
-
-    /// Set a fixed logical-pixel height.
-    #[must_use]
-    pub const fn height_px(self, height: f32) -> Self {
-        self.height(Dimension::Px(height))
     }
 
     /// Set a fixed logical-pixel width and height.
     #[must_use]
-    pub const fn fixed_size(self, width: f32, height: f32) -> Self {
-        self.width_px(width).height_px(height)
+    pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
+        self.0.size.width = Dimension::Px(width);
+        self.0.size.height = Dimension::Px(height);
+        self
     }
 
     /// Set uniform padding.
     #[must_use]
-    pub const fn padding(mut self, padding: LengthPercentage) -> Self {
-        self.0.padding = all_sides(padding);
+    pub fn padding(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        self.0.padding = all_sides(padding.into());
         self
-    }
-
-    /// Set fixed logical-pixel uniform padding.
-    #[must_use]
-    pub const fn padding_px(self, padding: f32) -> Self {
-        self.padding(LengthPercentage::Px(padding))
     }
 
     /// Set fixed logical-pixel padding on the inline (left + right) axis.
     #[must_use]
-    pub const fn padding_x_px(mut self, padding: f32) -> Self {
-        self.0.padding.left = LengthPercentage::Px(padding);
-        self.0.padding.right = LengthPercentage::Px(padding);
+    pub fn padding_x(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        let padding = padding.into();
+        self.0.padding.left = padding;
+        self.0.padding.right = padding;
         self
     }
 
     /// Set fixed logical-pixel padding on the block (top + bottom) axis.
     #[must_use]
-    pub const fn padding_y_px(mut self, padding: f32) -> Self {
-        self.0.padding.top = LengthPercentage::Px(padding);
-        self.0.padding.bottom = LengthPercentage::Px(padding);
+    pub fn padding_y(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        let padding = padding.into();
+        self.0.padding.top = padding;
+        self.0.padding.bottom = padding;
         self
     }
 
@@ -150,32 +136,27 @@ impl LayoutStyle {
 
     /// Set a fixed logical-pixel top inset (for `Position::Absolute`).
     #[must_use]
-    pub const fn inset_top_px(mut self, top: f32) -> Self {
-        self.0.inset.top = LengthPercentageAuto::Px(top);
+    pub fn inset_top(mut self, top: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.inset.top = top.into();
         self
     }
 
     /// Set a fixed logical-pixel left inset (for `Position::Absolute`).
     #[must_use]
-    pub const fn inset_left_px(mut self, left: f32) -> Self {
-        self.0.inset.left = LengthPercentageAuto::Px(left);
+    pub fn inset_left(mut self, left: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.inset.left = left.into();
         self
     }
 
     /// Set uniform flex/grid gap.
     #[must_use]
-    pub const fn gap(mut self, gap: LengthPercentage) -> Self {
+    pub fn gap(mut self, gap: impl Into<LengthPercentage>) -> Self {
+        let gap = gap.into();
         self.0.gap = Size {
             width: gap,
             height: gap,
         };
         self
-    }
-
-    /// Set a fixed logical-pixel flex/grid gap.
-    #[must_use]
-    pub const fn gap_px(self, gap: f32) -> Self {
-        self.gap(LengthPercentage::Px(gap))
     }
 
     /// Set flex grow.
@@ -215,41 +196,29 @@ impl LayoutStyle {
 
     /// Set uniform margin on all four sides.
     #[must_use]
-    pub const fn margin(mut self, margin: LengthPercentageAuto) -> Self {
-        self.0.margin = all_sides(margin);
+    pub fn margin(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.margin = all_sides(margin.into());
         self
-    }
-
-    /// Set a fixed logical-pixel uniform margin.
-    #[must_use]
-    pub const fn margin_px(self, margin: f32) -> Self {
-        self.margin(LengthPercentageAuto::Px(margin))
     }
 
     /// Set the minimum width and height.
     #[must_use]
-    pub const fn min_size(mut self, width: Dimension, height: Dimension) -> Self {
-        self.0.min_size = Size { width, height };
+    pub fn min_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
+        self.0.min_size = Size {
+            width: width.into(),
+            height: height.into(),
+        };
         self
-    }
-
-    /// Set a fixed logical-pixel minimum width and height.
-    #[must_use]
-    pub const fn min_size_px(self, width: f32, height: f32) -> Self {
-        self.min_size(Dimension::Px(width), Dimension::Px(height))
     }
 
     /// Set the maximum width and height.
     #[must_use]
-    pub const fn max_size(mut self, width: Dimension, height: Dimension) -> Self {
-        self.0.max_size = Size { width, height };
+    pub fn max_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
+        self.0.max_size = Size {
+            width: width.into(),
+            height: height.into(),
+        };
         self
-    }
-
-    /// Set a fixed logical-pixel maximum width and height.
-    #[must_use]
-    pub const fn max_size_px(self, width: f32, height: f32) -> Self {
-        self.max_size(Dimension::Px(width), Dimension::Px(height))
     }
 
     /// Override the cross-axis alignment for this item specifically.

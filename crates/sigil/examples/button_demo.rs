@@ -22,9 +22,9 @@ fn build(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_row().gap_px(16.0).padding_px(32.0))
+            .layout(LayoutStyle::flex_row().gap(16.0).padding(32.0))
             .class("w-full h-full bg-surface")
-            .child(button("Neutral").on_activate(move || count.set(count.peek() + 1)))
-            .child(button("Primary").primary().on_activate(|| {})),
+            .child(button("Neutral").activate(move || count.set(count.peek() + 1)))
+            .child(button("Primary").primary().activate(|| {})),
     )
 }

@@ -12,6 +12,10 @@ use sigil_kernel::{Cx, container, fragment};
 // sigil_hal is needed by sigil-a11y's public bridge trait but not
 // named directly in this test file.
 use sigil_hal as _;
+// sigil-reactive is a dev-dep introduced for `reactive_flow.rs`; the
+// integration-test compilation unit pulls every dev-dep into every
+// integration test, so we alias to silence `unused_crate_dependencies`.
+use sigil_reactive as _;
 
 #[test]
 fn button_role_and_name() {

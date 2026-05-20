@@ -1,11 +1,13 @@
 use std::rc::Rc;
 
+use sigil_animation_runtime::presets;
 use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
 use sigil_style::{
     ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme,
+    TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -14,6 +16,10 @@ use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change,
 };
+use super::transition_seam::install_transition_animators;
+
+const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
+const TOGGLE_COMPONENT_ID: u64 = 0x7066_1000;
 
 /// Builder returned by [`toggle`].
 pub struct ToggleBuilder {
@@ -25,6 +31,9 @@ pub struct ToggleBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
+// Animator-only base slice: scanned by `install_transition_animators`
+// for the `Transition` atom that flips it into the animated path.
+static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("accent"),
     StyleAtom::JustifyContent(JustifyKind::End),
@@ -92,7 +101,7 @@ impl ToggleBuilder {
 
     /// Run a callback after state changes.
     #[must_use]
-    pub fn on_change(mut self, change: impl Fn(bool) + 'static) -> Self {
+    pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
@@ -105,9 +114,13 @@ impl ToggleBuilder {
         self
     }
 
-    /// Add struct-built style after the built-in toggle defaults.
+    /// Add struct-built style atoms after the built-in toggle defaults.
+    ///
+    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
+    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
+    /// trait method.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn style_atoms(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -144,13 +157,13 @@ impl ToggleBuilder {
             .label(accessible_label(self.label.as_ref()))
             .checked(on)
             .layout(toggle_layout(self.label.is_some()))
-            .on_pointer_up(move |event| {
+            .pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, on, &pointer_change);
             })
-            .on_key(Key::Enter, move |event| {
+            .key(Key::Enter, move |event| {
                 activate_binary_key(event, interaction, disabled, on, &enter_change);
             })
-            .on_key(LogicalKey::character(" "), move |event| {
+            .key(LogicalKey::character(" "), move |event| {
                 activate_binary_key(event, interaction, disabled, on, &space_change);
             })
             .child(toggle_track(on, disabled, interaction));
@@ -171,7 +184,7 @@ fn toggle_layout(has_label: bool) -> LayoutStyle {
     let width = if has_label { 184.0 } else { 52.0 };
     LayoutStyle::flex_row()
         .fixed_size(width, 32.0)
-        .gap_px(8.0)
+        .gap(8.0)
         .align_items(AlignItems::Center)
 }
 
@@ -180,18 +193,47 @@ fn toggle_track(
     disabled: Option<Signal<bool>>,
     interaction: InteractionState,
 ) -> NodeBuilder {
-    container()
+    let state_style = toggle_state_style(false);
+    let node = container()
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(48.0, 28.0)
-                .padding_px(3.0)
+                .padding(3.0)
                 .align_items(AlignItems::Center),
         )
         .class("rounded-md")
+        .class(TOGGLE_ANIM_BASE)
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(toggle_thumb())
+        .child(toggle_thumb());
+    install_transition_animators(
+        node,
+        TOGGLE_ANIM_BASE,
+        state_style,
+        TOGGLE_COMPONENT_ID,
+        interaction,
+    )
+}
+
+const fn toggle_state_style(on: bool) -> StateStyle {
+    if on {
+        StateStyle::new(
+            TOGGLE_ON,
+            TOGGLE_ON_HOVER,
+            TOGGLE_ON_HOVER,
+            TOGGLE_ON_DOWN,
+            TOGGLE_DISABLED,
+        )
+    } else {
+        StateStyle::new(
+            TOGGLE_OFF,
+            TOGGLE_OFF_HOVER,
+            TOGGLE_OFF_HOVER,
+            TOGGLE_OFF_DOWN,
+            TOGGLE_DISABLED,
+        )
+    }
 }
 
 fn toggle_thumb() -> NodeBuilder {
@@ -202,7 +244,7 @@ fn toggle_thumb() -> NodeBuilder {
 }
 
 fn toggle_label(source: TextContent) -> impl IntoNode {
-    label(source).layout(LayoutStyle::block().width_px(124.0))
+    label(source).layout(LayoutStyle::block().width(124.0))
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {

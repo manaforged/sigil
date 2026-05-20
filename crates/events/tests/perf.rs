@@ -42,7 +42,7 @@ fn focused_key_route_depth_64_does_not_allocate() {
             container()
                 .focusable(true)
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                .on_key(Key::Enter, {
+                .key(Key::Enter, {
                     let hits = Rc::clone(&hits);
                     move |_| hits.set(hits.get() + 1)
                 }),
@@ -68,8 +68,8 @@ fn captured_pointer_up_release_does_not_allocate() {
         Some(
             container()
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                .on_pointer_down(PointerEvent::capture_pointer)
-                .on_pointer_up({
+                .pointer_down(PointerEvent::capture_pointer)
+                .pointer_up({
                     let ups = Rc::clone(&ups);
                     move |event| {
                         if event.is_captured() {
@@ -104,8 +104,8 @@ fn captured_pointer_move_does_not_allocate() {
         Some(
             container()
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                .on_pointer_down(PointerEvent::capture_pointer)
-                .on_pointer_move({
+                .pointer_down(PointerEvent::capture_pointer)
+                .pointer_move({
                     let moves = Rc::clone(&moves);
                     move |event| {
                         if event.is_captured() {
@@ -136,7 +136,7 @@ fn semantic_shortcut_scan_1000_nodes_does_not_allocate() {
         let child = if index == 999 {
             wide_child(index)
                 .keyboard_shortcut(shortcut.clone())
-                .on_key(shortcut.clone(), {
+                .key(shortcut.clone(), {
                     let hits = Rc::clone(&hits);
                     move |_| hits.set(hits.get() + 1)
                 })

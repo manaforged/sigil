@@ -31,6 +31,12 @@ impl Default for LengthPercentage {
     }
 }
 
+impl From<f32> for LengthPercentage {
+    fn from(value: f32) -> Self {
+        Self::Px(value)
+    }
+}
+
 impl LengthPercentage {
     /// Compatibility constructor matching the old length authoring helper.
     #[must_use]
@@ -56,6 +62,12 @@ impl Default for LengthPercentageAuto {
     }
 }
 
+impl From<f32> for LengthPercentageAuto {
+    fn from(value: f32) -> Self {
+        Self::Px(value)
+    }
+}
+
 impl LengthPercentageAuto {
     /// Compatibility constructor matching the old length authoring helper.
     #[must_use]
@@ -74,6 +86,12 @@ pub enum Dimension {
     /// CSS `auto` — fall back to content size.
     #[default]
     Auto,
+}
+
+impl From<f32> for Dimension {
+    fn from(value: f32) -> Self {
+        Self::Px(value)
+    }
 }
 
 /// Two-axis pair (`width` / `height` or `x` / `y`).
@@ -352,7 +370,7 @@ impl Default for StyleData {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::panic)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::cognitive_complexity)]
 mod tests {
     use super::*;
 

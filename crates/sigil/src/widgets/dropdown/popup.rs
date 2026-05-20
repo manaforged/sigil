@@ -44,8 +44,8 @@ pub(super) fn build_popup(
             LayoutStyle::flex_column()
                 .fixed_size(TRIGGER_WIDTH, popup_h)
                 .position(Position::Absolute)
-                .inset_top_px(TRIGGER_HEIGHT)
-                .inset_left_px(0.0),
+                .inset_top(TRIGGER_HEIGHT)
+                .inset_left(0.0),
         )
         .class("rounded-md")
         .class(SURFACE_HOVER)
@@ -85,10 +85,10 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) 
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(TRIGGER_WIDTH, OPTION_HEIGHT)
-                .padding_px(8.0),
+                .padding(8.0),
         )
         .style_reactive(move || option_atoms(idx, ctx.selected.get(), ctx.cursor.get()))
-        .on_pointer_up(move |ev| {
+        .pointer_up(move |ev| {
             if ev.is_captured() {
                 return;
             }
@@ -100,12 +100,12 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) 
             on_change();
             ev.stop_propagation();
         })
-        .on_pointer_enter(move |_| {
+        .pointer_enter(move |_| {
             ctx.cursor.set(idx);
         })
         .child(
             text(label)
-                .layout(LayoutStyle::block().width_px(TRIGGER_WIDTH - 16.0))
+                .layout(LayoutStyle::block().width(TRIGGER_WIDTH - 16.0))
                 .class("text-on-surface"),
         )
 }

@@ -337,7 +337,26 @@ impl LayoutEngine {
         // miss) `upsert_with_text`'s existing-handle branch — saves one
         // slotmap secondary probe per synced node on the broadcast path.
         let existing_handle = self.core_to_handle.get(id.key()).copied();
-        let version_matches = existing_handle.is_some()
+        // Reactive style bindings mutate the kernel node's reactive
+        // atom slice through an `Rc<Cell>` channel that bypasses
+        // `Node::version()` — see `StyleReactiveEffect::set_slice`.
+        // The version fast-path is correct for static / dynamic /
+        // structural mutations but would let a reactive `Display::None
+        // → []` flip go undetected, stranding the affected subtree
+        // (e.g. an absolutely-positioned tooltip bubble) in the
+        // forest's stale `Display::None` state. Force a re-sync when
+        // a reactive binding is attached; the downstream
+        // `upsert_with_text` style-equality check still cheap-outs
+        // when nothing actually changed.
+        // `reactive_slice()` returns `&[]` for both "no reactive
+        // binding installed" and "reactive binding currently empty";
+        // the cell-pointer identity check disambiguates by comparing
+        // against the canonical empty-slice constant.
+        let has_reactive = node
+            .get_extension::<StyleBinding>()
+            .is_some_and(StyleBinding::has_reactive);
+        let version_matches = !has_reactive
+            && existing_handle.is_some()
             && self.synced_version.get(id.key()).copied() == Some(kernel_version);
         if !version_matches {
             let (intent, text_content, text_style) = Self::layout_inputs_for_node(node);

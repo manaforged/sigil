@@ -35,7 +35,26 @@ use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
+/// Safety cap on `*AfterFrames { frames: u32::MAX, .. }` ticking. 600
+/// frames at 60 Hz = 10 s of simulated time — well past any production
+/// transition. A runaway animator that never settles will trip this and
+/// panic with a clear message rather than stall the test silently.
+pub const SETTLE_SAFETY_CAP: u32 = 600;
+
 /// Which interaction state to drive the widget into before capture.
+///
+/// The `*AfterFrames` variants drive the same event the non-AfterFrames
+/// variant does, then advance `sigil_animation_runtime::tick(dt)` for
+/// `frames` iterations so animator-driven style atoms settle to the
+/// post-tick value before `emit_scene` captures.
+///
+/// `frames: u32::MAX` is a sentinel meaning "tick until every active
+/// animator reports settled, OR until [`SETTLE_SAFETY_CAP`] is hit." A
+/// runaway animator that never settles will panic with the cap value in
+/// the message so the test surfaces the failure rather than stalling.
+///
+/// `dt` is the per-tick delta in seconds; `1.0 / 60.0` is the canonical
+/// 60 Hz value.
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
     /// Resting / neutral.
@@ -48,20 +67,127 @@ pub enum InteractionMode {
     Focused,
     /// Widget disabled (the widget builder must own this — harness skips events).
     Disabled,
+    /// Pointer-enter, then tick the animation runtime so hover-driven
+    /// transitions resolve to their post-tick value.
+    HoverAfterFrames {
+        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
+        /// (capped by [`SETTLE_SAFETY_CAP`]).
+        frames: u32,
+        /// Per-tick delta in seconds.
+        dt: f32,
+    },
+    /// Pointer-down, then tick the animation runtime so press-driven
+    /// transitions resolve to their post-tick value.
+    PressedAfterFrames {
+        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
+        /// (capped by [`SETTLE_SAFETY_CAP`]).
+        frames: u32,
+        /// Per-tick delta in seconds.
+        dt: f32,
+    },
+    /// Focus the widget, then tick the animation runtime so focus-driven
+    /// transitions resolve to their post-tick value.
+    FocusedAfterFrames {
+        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
+        /// (capped by [`SETTLE_SAFETY_CAP`]).
+        frames: u32,
+        /// Per-tick delta in seconds.
+        dt: f32,
+    },
 }
 
 impl InteractionMode {
-    /// Lowercase tag used in golden filenames.
+    /// Lowercase tag used in golden filenames. AfterFrames variants
+    /// share the tag of their non-AfterFrames counterpart so animated
+    /// goldens can opt-in to a stable name with a `_animated` suffix at
+    /// the call site.
     #[must_use]
     pub const fn tag(self) -> &'static str {
         match self {
             Self::Default => "default",
-            Self::Hover => "hover",
-            Self::Pressed => "pressed",
-            Self::Focused => "focused",
+            Self::Hover | Self::HoverAfterFrames { .. } => "hover",
+            Self::Pressed | Self::PressedAfterFrames { .. } => "pressed",
+            Self::Focused | Self::FocusedAfterFrames { .. } => "focused",
             Self::Disabled => "disabled",
         }
     }
+}
+
+/// 4-pixel-wide black separator between frames in a filmstrip.
+pub const FILMSTRIP_GAP_PX: u32 = 4;
+
+/// Render an animation filmstrip: a single wide RgbaImage containing
+/// `frame_count` frames stitched horizontally with a [`FILMSTRIP_GAP_PX`]
+/// black separator between each frame.
+///
+/// Frame 0 renders the widget in the default state. Frames 1..N render
+/// after applying hover (pointer enter at `hit_point`) and advancing
+/// `sigil_animation_runtime::tick(dt)` once per frame. The point of the
+/// filmstrip is to show the *full transition curve* at a glance — frame
+/// 0 = default, frame 1 = hover-engaged, frames 2..N = interpolating.
+///
+/// `build` is called once per frame so each frame gets a fresh widget
+/// tree under its own [`Runtime`] scope; animator state lives in a
+/// per-thread cell, so ticking across frames is the canonical way to
+/// observe the animation curve.
+///
+/// Returns `None` when no wgpu adapter is available on the host.
+#[must_use]
+pub fn capture_filmstrip(
+    build: impl Fn(&mut Cx) -> NodeId,
+    size_px: [u32; 2],
+    hit_point: (f32, f32),
+    frame_count: u32,
+    dt: f32,
+) -> Option<image::RgbaImage> {
+    assert!(
+        frame_count >= 1,
+        "capture_filmstrip: frame_count must be at least 1",
+    );
+    let mut frames: Vec<image::RgbaImage> = Vec::with_capacity(frame_count as usize);
+    for index in 0..frame_count {
+        let mode = if index == 0 {
+            InteractionMode::Default
+        } else {
+            // After-frames count = ticks since hover engaged. Frame 1
+            // is "hover just applied, zero ticks" — this matches the
+            // brief's contract that frame 1 looks the same as frame 0
+            // (transition just started) or slightly transitioning.
+            InteractionMode::HoverAfterFrames {
+                frames: index - 1,
+                dt,
+            }
+        };
+        let frame = render_widget_to_png(&build, mode, size_px, hit_point)?;
+        frames.push(frame);
+    }
+    Some(stitch_horizontal(&frames, FILMSTRIP_GAP_PX))
+}
+
+/// Stitch `frames` horizontally with a `gap_px` black separator between
+/// each pair. Frames must all share the same height; the result width is
+/// `n * frame_width + (n - 1) * gap_px`.
+fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaImage {
+    assert!(!frames.is_empty(), "stitch_horizontal: no frames");
+    let frame_w = frames[0].width();
+    let height = frames[0].height();
+    for frame in frames {
+        assert_eq!(frame.width(), frame_w, "filmstrip frame width mismatch");
+        assert_eq!(frame.height(), height, "filmstrip frame height mismatch");
+    }
+    let n = frames.len() as u32;
+    let total_w = n * frame_w + n.saturating_sub(1) * gap_px;
+    let mut out = image::RgbaImage::from_pixel(total_w, height, image::Rgba([0, 0, 0, 255]));
+    for (index, frame) in frames.iter().enumerate() {
+        let x_offset = index as u32 * (frame_w + gap_px);
+        for y in 0..height {
+            for x in 0..frame_w {
+                let pixel = *frame.get_pixel(x, y);
+                out.put_pixel(x_offset + x, y, pixel);
+            }
+        }
+    }
+    out
 }
 
 /// Minimal text measurement stub matching the existing widget tests.
@@ -220,6 +346,45 @@ fn drive_state(
         InteractionMode::Focused => {
             router.set_focus(cx, Some(root));
         }
+        InteractionMode::HoverAfterFrames { frames, dt } => {
+            router.route(cx, layout, pointer_move(hit.0, hit.1));
+            tick_animation_runtime(frames, dt);
+        }
+        InteractionMode::PressedAfterFrames { frames, dt } => {
+            router.route(cx, layout, pointer_move(hit.0, hit.1));
+            router.route(cx, layout, pointer_down(hit.0, hit.1));
+            tick_animation_runtime(frames, dt);
+        }
+        InteractionMode::FocusedAfterFrames { frames, dt } => {
+            router.set_focus(cx, Some(root));
+            tick_animation_runtime(frames, dt);
+        }
+    }
+}
+
+/// Advance `sigil_animation_runtime::tick(dt)` `frames` times. When
+/// `frames == u32::MAX` ticks until every active animator settles, with
+/// [`SETTLE_SAFETY_CAP`] guarding against runaway loops.
+fn tick_animation_runtime(frames: u32, dt: f32) {
+    if frames == u32::MAX {
+        for _ in 0..SETTLE_SAFETY_CAP {
+            if sigil_animation_runtime::active_count() == 0 {
+                return;
+            }
+            sigil_animation_runtime::tick(dt);
+        }
+        let remaining = sigil_animation_runtime::active_count();
+        assert!(
+            remaining == 0,
+            "golden harness: animation runtime did not settle within \
+             SETTLE_SAFETY_CAP ({SETTLE_SAFETY_CAP}) frames at dt={dt}. \
+             Active animators remaining: {remaining}. A widget under test is \
+             likely retargeting every frame.",
+        );
+        return;
+    }
+    for _ in 0..frames {
+        sigil_animation_runtime::tick(dt);
     }
 }
 

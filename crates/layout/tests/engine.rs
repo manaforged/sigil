@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! P0.5.2 engine-driver integration tests.
 //!
 //! Exercises the public [`LayoutDrive`] surface end-to-end: build a

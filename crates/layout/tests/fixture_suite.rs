@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -25,13 +26,7 @@ const EPSILON: f32 = 0.5;
 fn flex_row_grow_child_fills_remaining_space() {
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(text("A")).child(text("B")));
-    let children = cx
-        .get(root)
-        .expect("root exists")
-        .children()
-        .iter()
-        .copied()
-        .collect::<Vec<_>>();
+    let children = cx.get(root).expect("root exists").children().to_vec();
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
@@ -59,17 +54,11 @@ fn flex_row_grow_child_fills_remaining_space() {
 fn flex_column_gap_offsets_children() {
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(text("A")).child(text("B")));
-    let children = cx
-        .get(root)
-        .expect("root exists")
-        .children()
-        .iter()
-        .copied()
-        .collect::<Vec<_>>();
+    let children = cx.get(root).expect("root exists").children().to_vec();
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
-            .gap_px(4.0)
+            .gap(4.0)
             .align_items(AlignItems::FlexStart),
     );
 
@@ -96,7 +85,7 @@ fn padding_moves_content_origin() {
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_row()
-            .padding_px(6.0)
+            .padding(6.0)
             .align_items(AlignItems::FlexStart),
     );
 
@@ -127,7 +116,7 @@ fn block_auto_width_fills_available_space() {
         .attach(LayoutStyle::block().fixed_size(200.0, 50.0));
     cx.get_mut(child)
         .expect("child exists")
-        .attach(LayoutStyle::block().height_px(20.0));
+        .attach(LayoutStyle::block().height(20.0));
 
     let mut engine = stub_engine();
     engine
@@ -152,13 +141,7 @@ fn grid_2x2_places_items_in_fixed_tracks() {
             .child(text("three"))
             .child(text("four")),
     );
-    let children = cx
-        .get(root)
-        .expect("root exists")
-        .children()
-        .iter()
-        .copied()
-        .collect::<Vec<_>>();
+    let children = cx.get(root).expect("root exists").children().to_vec();
 
     cx.get_mut(root)
         .expect("root exists")
@@ -203,11 +186,9 @@ fn nested_absolute_uses_positioned_parent_origin() {
     cx.get_mut(root)
         .expect("root exists")
         .attach(LayoutStyle::flex_row().fixed_size(200.0, 100.0));
-    cx.get_mut(parent).expect("parent exists").attach(
-        LayoutStyle::flex_row()
-            .fixed_size(120.0, 80.0)
-            .padding_px(5.0),
-    );
+    cx.get_mut(parent)
+        .expect("parent exists")
+        .attach(LayoutStyle::flex_row().fixed_size(120.0, 80.0).padding(5.0));
     cx.get_mut(child).expect("child exists").attach(
         LayoutStyle::default()
             .fixed_size(30.0, 20.0)
@@ -233,13 +214,17 @@ fn nested_absolute_uses_positioned_parent_origin() {
 #[test]
 fn absolute_child_uses_inset_offset() {
     let mut drive = LayoutDrive::new(Box::new(NullMeasure));
-    let mut parent_style = StyleData::default();
-    parent_style.display = StyleDisplay::Flex;
+    let mut parent_style = StyleData {
+        display: StyleDisplay::Flex,
+        ..StyleData::default()
+    };
     parent_style.size.width = StyleDimension::Px(200.0);
     parent_style.size.height = StyleDimension::Px(100.0);
 
-    let mut child_style = StyleData::default();
-    child_style.position = StylePosition::Absolute;
+    let mut child_style = StyleData {
+        position: StylePosition::Absolute,
+        ..StyleData::default()
+    };
     child_style.size.width = StyleDimension::Px(30.0);
     child_style.size.height = StyleDimension::Px(20.0);
     child_style.inset.left = StyleLengthPercentageAuto::Px(20.0);
@@ -273,7 +258,7 @@ fn fragment_children_treated_as_siblings_of_parent() {
 
     cx.get_mut(root).expect("root exists").attach(
         LayoutStyle::flex_column()
-            .gap_px(4.0)
+            .gap(4.0)
             .align_items(AlignItems::FlexStart),
     );
 

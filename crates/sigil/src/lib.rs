@@ -13,6 +13,19 @@
 //!     })
 //! }
 //! ```
+//!
+//! # `.class()` vs `.styled()`
+//!
+//! Per DR-049, `.class(...)` is the default styling path: it accepts a
+//! static `&[StyleAtom]` slice (or a parsed class string like
+//! `"p-4 bg-accent rounded-md"`) and is the right call for compile-time
+//! atoms that do not change per instance. `.styled()` opens the trait
+//! surface for per-method authoring — chain individual fluent methods
+//! like `.padding(8).bg(token("accent"))` when an atom needs a typed,
+//! per-call shape rather than a class string. Both paths funnel into
+//! the same atom merger; pick `.class()` for static utility-class
+//! authoring and `.styled()` when the surface benefits from typed
+//! method calls.
 
 #[cfg(test)]
 use criterion as _;
@@ -21,7 +34,7 @@ use image as _;
 #[cfg(test)]
 use pollster as _;
 #[cfg(test)]
-use sigil_actions as _;
+use sigil_animation as _;
 #[cfg(test)]
 use sigil_hal as _;
 #[cfg(test)]
@@ -49,22 +62,25 @@ pub mod reactive {
 /// style layer (`NodeStyleExt::class` / `style` / `theme` /
 /// `style_reactive`). Launch + config types are at the crate root.
 pub mod prelude {
+    pub use sigil_actions::{Action, DeriveAction, DispatchCx, HandlerKey};
+    pub use sigil_async::{OwnerHandle, dispatch_to_owner};
     pub use sigil_events::prelude::*;
     pub use sigil_kernel::prelude::*;
     pub use sigil_layout::prelude::*;
     pub use sigil_reactive::{Signal, effect, signal};
     pub use sigil_style::{
         ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Sizing, Spacing, StateStyle,
-        StateStyleBuilder, StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant,
-        Styleable, Styled, Theme, Transitions, Typography, Visual,
+        StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
+        Theme, Transitions, Typography, Visual,
     };
 
     pub use crate::interaction::InteractionState;
     pub use crate::widgets::{
         ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, Clipboard, DropdownBuilder,
-        FctSettings, FctSpawn, Orientation, PanelBuilder, ProgressBuilder, ScrollBuilder,
-        SliderBuilder, TextFieldBuilder, ToggleBuilder, button, checkbox, dropdown, floating_text,
-        label, panel, progress, scroll, slider, text_field, toggle,
+        FctSpawn, FloatingTextBuilder, MenuBuilder, MenuItem, ModalBuilder, Orientation,
+        PanelBuilder, ProgressBuilder, ScrollBuilder, SliderBuilder, TabsBuilder, TextFieldBuilder,
+        ToggleBuilder, TooltipBuilder, button, checkbox, dropdown, floating_text, label, menu,
+        modal, panel, progress, scroll, slider, tabs, text_field, toggle, tooltip,
     };
     pub use crate::{AppConfig, Error, Result, launch};
 }

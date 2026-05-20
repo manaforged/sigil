@@ -8,8 +8,8 @@
 //!   rest     → base/rest colour (surface, accent, etc.)
 //!   hovered  → hover colour (surface-hover, accent-hover)
 //!   pressed  → pressed colour with opacity 0.88
-//!   focused  → focus ring visible (node.a11y.focusable + focus_visible)
-//!   disabled → opacity 0.50, hit_test disabled
+//!   focused  → focus ring visible (node.a11y.focusable + `focus_visible`)
+//!   disabled → opacity 0.50, `hit_test` disabled
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
@@ -18,7 +18,10 @@ use criterion as _;
 use image as _;
 use pollster as _;
 use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_async as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -59,7 +62,7 @@ fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
         .collect()
 }
 
-fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
+const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -71,7 +74,7 @@ fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),

@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! W1.3 — `Display::Grid` fallback smoke fixture.
 //!
 //! `Grid` containers have no dedicated solver yet (post-G2 work,
@@ -43,9 +44,7 @@ fn children_of(cx: &Cx, parent: NodeId) -> Vec<NodeId> {
     cx.get(parent)
         .expect("parent node exists")
         .children()
-        .iter()
-        .copied()
-        .collect()
+        .to_vec()
 }
 
 // ── fixture tests ─────────────────────────────────────────────────────────────
@@ -89,8 +88,8 @@ fn grid_children_receive_block_origin_boxes() {
         .expect("compute must succeed");
 
     let kids = children_of(&cx, root);
-    let first = layout_rect(&cx, kids[0]);
-    let second = layout_rect(&cx, kids[1]);
+    let first = layout_rect(&cx, *kids.first().expect("first child exists"));
+    let second = layout_rect(&cx, *kids.get(1).expect("second child exists"));
 
     // Both children land at x=0 (parent content origin, no padding).
     assert_eq!(first.origin.x, 0.0, "first child x at content origin");

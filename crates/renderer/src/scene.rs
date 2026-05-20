@@ -76,11 +76,11 @@ pub struct SceneText {
 #[must_use]
 pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     let mut scene = SceneBuilder::new();
-    push_subtree(&mut scene, cx, root, Point::new(0.0, 0.0));
+    push_subtree(&mut scene, cx, root);
     scene.finish()
 }
 
-fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, parent_origin: Point) {
+fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId) {
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -89,16 +89,20 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, parent_origin: Po
     if is_display_none(node) {
         return;
     }
-    let rect = node
-        .get_extension::<LayoutResult>()
-        .map(|layout| absolute_rect(parent_origin, layout.rect()));
+    // `LayoutResult::rect()` is already in root coordinates — both
+    // `BlockSolver` and `FlexSolver` accumulate every ancestor's
+    // border + padding offsets into the `ComputedBox` they write.
+    // Re-accumulating a parent_origin here would double-count every
+    // ancestor offset and mislocate the node by the root-padding-and-
+    // up sum. See `LayoutResult::rect` docs and the renderer's
+    // `nested_text_scene_rect_is_absolute` regression test.
+    let rect = node.get_extension::<LayoutResult>().map(LayoutResult::rect);
     if let Some(rect) = rect {
         push_focus_ring(scene, id, node, rect);
         push_node(scene, id, node, rect);
     }
-    let child_origin = rect.map_or(parent_origin, |rect| rect.origin);
     for child in node.children().iter().copied() {
-        push_subtree(scene, cx, child, child_origin);
+        push_subtree(scene, cx, child);
     }
 }
 
@@ -202,17 +206,6 @@ pub fn shape_glyph_run(
 
 thread_local! {
     static TEXT_ENGINE: OwnedTextEngine = OwnedTextEngine::new(TextConfig::default());
-}
-
-const fn absolute_rect(parent_origin: Point, rect: Rect) -> Rect {
-    Rect::new(
-        Point::new(
-            parent_origin.x + rect.origin.x,
-            parent_origin.y + rect.origin.y,
-        ),
-        rect.width,
-        rect.height,
-    )
 }
 
 fn text_content(content: &TextContent) -> String {

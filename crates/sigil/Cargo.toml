@@ -13,7 +13,10 @@ autobenches = false
 doctest = false
 
 [dependencies]
+sigil-actions = { workspace = true }
+sigil-animation-runtime = { workspace = true }
 sigil-app = { workspace = true }
+sigil-async = { workspace = true }
 sigil-kernel = { workspace = true }
 sigil-events = { workspace = true }
 sigil-layout = { workspace = true }
@@ -22,7 +25,7 @@ sigil-style = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-sigil-actions = { workspace = true }
+sigil-animation = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-renderer = { workspace = true }
 image = { workspace = true }
@@ -35,6 +38,10 @@ harness = false
 
 [[bench]]
 name = "virtual_list"
+harness = false
+
+[[bench]]
+name = "widget_render"
 harness = false
 
 [lints]

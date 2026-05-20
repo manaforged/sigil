@@ -1,12 +1,19 @@
+use sigil_animation_runtime::presets;
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
-use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant};
+use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, TransitionId};
 
 use crate::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
+use super::super::transition_seam::install_transition_animators;
+
+const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
+const TEXT_FIELD_COMPONENT_ID: u64 = 0x7E47_F000;
+// Animator-only base slice scanned by `install_transition_animators`.
+static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
 static FIELD_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 static FIELD_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
@@ -29,23 +36,42 @@ pub(super) fn build_base_node(
 ) -> NodeBuilder {
     let placeholder_str = text_content_untracked(placeholder);
     let displayed = displayed_text(value, interaction.focus_visible(), placeholder.clone());
-    container()
+    let state_style = field_state_style();
+    let node = container()
         .role(Role::TextInput)
         .label(accessible_label(placeholder_str.as_str()))
         .text_value(value)
         .placeholder(placeholder_str)
         .layout(field_layout())
         .class("rounded-md")
+        .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(move || field_variant().state(field_state(interaction, disabled)))
-        .on_pointer_up(move |event| pointer_up(event, interaction))
-        .child(field_inner(displayed))
+        .pointer_up(move |event| pointer_up(event, interaction))
+        .child(field_inner(displayed));
+    install_transition_animators(
+        node,
+        TEXT_FIELD_ANIM_BASE,
+        state_style,
+        TEXT_FIELD_COMPONENT_ID,
+        interaction,
+    )
+}
+
+const fn field_state_style() -> StateStyle {
+    StateStyle::new(
+        FIELD_REST,
+        FIELD_FOCUS,
+        FIELD_HOVER,
+        FIELD_DOWN,
+        FIELD_DISABLED,
+    )
 }
 
 fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .width_px(180.0)
+        .width(180.0)
         .align_items(AlignItems::Center)
-        .padding_px(1.0)
+        .padding(1.0)
 }
 
 fn field_inner(displayed: Signal<String>) -> NodeBuilder {
@@ -58,15 +84,15 @@ fn field_inner(displayed: Signal<String>) -> NodeBuilder {
 
 fn field_inner_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .width_px(178.0)
+        .width(178.0)
         .align_items(AlignItems::Center)
-        .padding_x_px(12.0)
-        .padding_y_px(8.0)
+        .padding_x(12.0)
+        .padding_y(8.0)
 }
 
 fn field_text(displayed: Signal<String>) -> TextBuilder {
     text(displayed)
-        .layout(LayoutStyle::block().width_px(156.0))
+        .layout(LayoutStyle::block().width(156.0))
         .class("text-on-surface")
 }
 

@@ -1,4 +1,10 @@
-//! `hello-rect` - kernel-demo.
+//! `hello-rect` — internals / kernel-demo.
+//!
+//! This example predates `sigil::launch` and drives the kernel + scene-
+//! command surface directly. New users should start with `hello-counter`
+//! (the minimum viable reactive UI) or `hello-events` (the recommended
+//! programming model) and reach for this only when working below the
+//! `sigil::launch` facade.
 //!
 //! Opens a window, clears it to a colour, and cycles through three
 //! colours every 600 ms. All five foundation crates cooperate:

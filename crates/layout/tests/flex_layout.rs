@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! Integration smoke test for the P0.3 flex layout body.
 //!
 //! The substantive flex tests (43 cases covering direction, basis,

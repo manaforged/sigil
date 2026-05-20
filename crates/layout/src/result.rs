@@ -12,7 +12,17 @@ pub struct LayoutResult {
 }
 
 impl LayoutResult {
-    /// Return the parent-relative border-box rectangle in logical pixels.
+    /// Return the border-box rectangle in root (layout-tree) logical
+    /// pixels.
+    ///
+    /// Both the `BlockSolver` and the `FlexSolver` write `ComputedBox`
+    /// values whose `(x, y)` are accumulated through every ancestor's
+    /// border + padding offsets — i.e. they are **already in root
+    /// coordinates**. Consumers walking the kernel tree (scene
+    /// emission, hit testing) must therefore use the rect directly
+    /// instead of re-accumulating a `parent_origin`; doing so would
+    /// double-count the ancestor offsets and mislocate the node by
+    /// every padding / margin / gap above it in the tree.
     #[must_use]
     pub const fn rect(&self) -> Rect {
         self.rect

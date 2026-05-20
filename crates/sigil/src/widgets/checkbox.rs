@@ -1,12 +1,13 @@
 use std::rc::Rc;
 
+use sigil_animation_runtime::presets;
 use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
 use sigil_style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
-    Theme,
+    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+    StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -15,6 +16,14 @@ use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change,
 };
+use super::transition_seam::install_transition_animators;
+
+const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
+const CHECKBOX_COMPONENT_ID: u64 = 0xC4EC_B0CC;
+const CHECKBOX_ROOT_SIZE: f32 = SizeToken::ControlMd.px();
+const CHECKBOX_GAP: f32 = SizeToken::GapSm.px();
+const CHECKBOX_BOX_SIZE: f32 = SizeToken::CheckboxBox.px();
+const CHECKBOX_MARK_SIZE: f32 = SizeToken::CheckboxMark.px();
 
 /// Visual tone for [`checkbox`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -38,6 +47,10 @@ pub struct CheckboxBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
+// Animator-only base slice: scanned by `install_transition_animators`
+// for the `Transition` atom that flips it into the animated path. Does
+// not affect the visual variant (which is still computed reactively).
+static CHECKBOX_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(CHECKBOX_TRANSITION)];
 static PRIMARY_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
@@ -56,18 +69,28 @@ static UNCHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-
 // blend over `surface_pressed` produced only a ~6 sRGB unit step vs
 // hover — sub-perceptual on a 16 px indicator.
 static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-// Disabled uses surface-hover (the lighter of the two muted tones)
-// PLUS 50% opacity. The opacity layer is what differentiates disabled
-// from hover — hover lands on surface-pressed at full opacity, so a
-// disabled swatch reads as "faded surface-hover" rather than "deeper
-// surface". Reactive state applies LAST in the cascade, beating any
-// inline `bg-surface` class. A border primitive would carry a richer
-// cue but the renderer has none; opacity + distinct fill is the only
-// pair of axes available at 16-20px.
-static CHECKBOX_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(5_000),
-];
+// Disabled paints the dedicated `border` token at full opacity. The
+// previous design used `surface-hover` + 50 % opacity, but the alpha
+// blend composited back into the parent `bg-surface` (also near-white)
+// and produced only an ~11 sRGB delta vs the resting state — below the
+// JND on a 16-20 px indicator. `border` (alpha_mix(text, bg, 0.35) —
+// ~(166,171,178) under the default light theme) carries a clear muted-
+// grey reading that's visibly distinct from every other slot and works
+// the same way under dark palettes (where it lifts toward the text
+// colour instead). Opacity is dropped from the disabled slot — the
+// W5.3 widget-catalog pass owns the richer "faded" semantic.
+// Disabled paints the `surface-hover` token at full opacity. The
+// previous design used `surface-hover` + 50 % opacity, but the alpha
+// blend composited back over the parent `bg-surface` and produced
+// only an ~11 sRGB delta versus the resting state. Dropping the
+// opacity blend lets the full `surface-hover` brightness reach the
+// framebuffer — that's a ~23 sRGB step versus rest and a ~21 step
+// versus hover after the gamma encoding the offscreen RGBA8UNORM-SRGB
+// target applies. `border` was the obvious alternative but its raw
+// linear value (148,163,184) under the default theme renders close
+// enough to `surface-pressed` after gamma to confuse the hover ↔
+// disabled comparison. W5.3 owns the richer faded semantic.
+static CHECKBOX_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 static PRIMARY_MARK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-accent")];
 static NEUTRAL_MARK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
 static NO_MARK: &[StyleAtom] = &[];
@@ -116,7 +139,7 @@ impl CheckboxBuilder {
 
     /// Run a callback after checked state changes.
     #[must_use]
-    pub fn on_change(mut self, change: impl Fn(bool) + 'static) -> Self {
+    pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
@@ -129,12 +152,13 @@ impl CheckboxBuilder {
         self
     }
 
-    /// Add struct-built style after the built-in checkbox defaults.
+    /// Add struct-built style atoms after the built-in checkbox defaults.
     ///
-    /// Coexists with the `Styled::style(&mut self) -> &mut Style` trait
-    /// method — signatures disambiguate by receiver + arity (DR-049 §11).
+    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
+    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
+    /// trait method.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn style_atoms(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -178,13 +202,13 @@ impl CheckboxBuilder {
             .label(accessible_label(self.label.as_ref()))
             .checked(checked)
             .layout(checkbox_layout(self.label.is_some()))
-            .on_pointer_up(move |event| {
+            .pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, checked, &pointer_change);
             })
-            .on_key(Key::Enter, move |event| {
+            .key(Key::Enter, move |event| {
                 activate_binary_key(event, interaction, disabled, checked, &enter_change);
             })
-            .on_key(LogicalKey::character(" "), move |event| {
+            .key(LogicalKey::character(" "), move |event| {
                 activate_binary_key(event, interaction, disabled, checked, &space_change);
             })
             .child(checkbox_indicator(checked, disabled, tone, interaction));
@@ -210,10 +234,10 @@ impl IntoNode for CheckboxBuilder {
 }
 
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
-    let width = if has_label { 180.0 } else { 32.0 };
+    let width = if has_label { 180.0 } else { CHECKBOX_ROOT_SIZE };
     LayoutStyle::flex_row()
-        .fixed_size(width, 32.0)
-        .gap_px(8.0)
+        .fixed_size(width, CHECKBOX_ROOT_SIZE)
+        .gap(CHECKBOX_GAP)
         .align_items(AlignItems::Center)
 }
 
@@ -223,29 +247,64 @@ fn checkbox_indicator(
     tone: CheckboxTone,
     interaction: InteractionState,
 ) -> NodeBuilder {
-    container()
+    let state_style = checkbox_state_style(tone, false);
+    let node = container()
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(20.0, 20.0)
+                .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
         .class("rounded-md")
+        .class(CHECKBOX_ANIM_BASE)
         .style_reactive(move || {
             checkbox_variant(tone, checked.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(checkbox_mark(checked, tone))
+        .child(checkbox_mark(checked, tone));
+    install_transition_animators(
+        node,
+        CHECKBOX_ANIM_BASE,
+        state_style,
+        CHECKBOX_COMPONENT_ID,
+        interaction,
+    )
+}
+
+const fn checkbox_state_style(tone: CheckboxTone, checked: bool) -> StateStyle {
+    match (tone, checked) {
+        (CheckboxTone::Primary, true) => StateStyle::new(
+            PRIMARY_CHECKED,
+            PRIMARY_CHECKED_HOVER,
+            PRIMARY_CHECKED_HOVER,
+            PRIMARY_CHECKED_DOWN,
+            CHECKBOX_DISABLED,
+        ),
+        (CheckboxTone::Neutral, true) => StateStyle::new(
+            NEUTRAL_CHECKED,
+            NEUTRAL_CHECKED,
+            NEUTRAL_CHECKED,
+            NEUTRAL_CHECKED_DOWN,
+            CHECKBOX_DISABLED,
+        ),
+        (_, false) => StateStyle::new(
+            UNCHECKED,
+            UNCHECKED_HOVER,
+            UNCHECKED_HOVER,
+            UNCHECKED_DOWN,
+            CHECKBOX_DISABLED,
+        ),
+    }
 }
 
 fn checkbox_mark(checked: Signal<bool>, tone: CheckboxTone) -> NodeBuilder {
     container()
-        .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
+        .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE))
         .class("rounded-md")
         .style_reactive(move || checkbox_mark_atoms(tone, checked.get()))
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
-    label(source).layout(LayoutStyle::block().width_px(144.0))
+    label(source).layout(LayoutStyle::block().width(144.0))
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {

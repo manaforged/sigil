@@ -27,7 +27,7 @@ fn pointer_move_drives_style_reactive_without_allocating() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-                .on_pointer_move_capture({
+                .pointer_move_capture({
                     let flips = Rc::clone(&flips);
                     move |event| {
                         let inside = event.position.x < 50.0 && event.position.y < 50.0;

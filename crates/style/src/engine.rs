@@ -1,6 +1,9 @@
 //! Style atom resolver.
 
-use crate::{ColorAtom, RenderStyle, Rgba8, StyleAtom, TextLineHeight, TextStyle, Theme};
+use crate::{
+    AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
+    TextLineHeight, TextStyle, Theme,
+};
 
 /// Resolves style atoms against a theme.
 #[derive(Debug, Clone, Copy)]
@@ -19,6 +22,24 @@ impl<'theme> StyleEngine<'theme> {
     pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
         for atom in atoms {
             (*self).apply_atom(*atom, render);
+        }
+    }
+
+    /// Apply theme-backed visual atoms, consulting `overlay` for
+    /// animator-driven numeric values.
+    ///
+    /// W5.1b — when `overlay.value_for(kind)` returns `Some(v)`, the
+    /// resolved render style uses `v` instead of the literal atom
+    /// value. Used by the renderer when a binding has attached
+    /// animators (DR-053 §5).
+    pub fn apply_with_overlay(
+        &self,
+        atoms: &[StyleAtom],
+        overlay: &dyn AnimatorOverlay,
+        render: &mut RenderStyle,
+    ) {
+        for atom in atoms {
+            (*self).apply_atom_overlaid(*atom, overlay, render);
         }
     }
 
@@ -89,6 +110,81 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::UnknownThemeRef(_) => {}
         }
     }
+
+    fn apply_atom_overlaid(
+        self,
+        atom: StyleAtom,
+        overlay: &dyn AnimatorOverlay,
+        render: &mut RenderStyle,
+    ) {
+        // Only the *render-visible* numeric atoms get overlaid here.
+        // Layout-flowing atoms (padding, gap, font size, line height)
+        // are owned by the layout engine; the overlay reaches those via
+        // the layout-side seam landing in a follow-up phase.
+        match atom {
+            StyleAtom::Opacity(literal) => {
+                let resolved = overlay
+                    .value_for(NumericAtomKind::Opacity)
+                    .map_or(literal, encode_opacity);
+                render.opacity = resolved;
+            }
+            StyleAtom::BorderRadius(literal) => {
+                let resolved = overlay
+                    .value_for(NumericAtomKind::BorderRadius)
+                    .map_or(literal, encode_px);
+                render.border_radius = Some(resolved);
+            }
+            StyleAtom::BackgroundColor(literal) => {
+                let resolved = overlay
+                    .value_for_color(ColorAtomKind::Background)
+                    .unwrap_or_else(|| self.resolve_color(literal));
+                render.background_color = Some(resolved);
+            }
+            StyleAtom::BackgroundThemeRef(token) => {
+                let resolved = overlay
+                    .value_for_color(ColorAtomKind::Background)
+                    .unwrap_or_else(|| self.theme.resolve_color(token));
+                render.background_color = Some(resolved);
+            }
+            StyleAtom::TextColor(literal) => {
+                let resolved = overlay
+                    .value_for_color(ColorAtomKind::Text)
+                    .unwrap_or_else(|| self.resolve_color(literal));
+                render.text_color = Some(resolved);
+            }
+            StyleAtom::TextThemeRef(token) => {
+                let resolved = overlay
+                    .value_for_color(ColorAtomKind::Text)
+                    .unwrap_or_else(|| self.theme.resolve_color(token));
+                render.text_color = Some(resolved);
+            }
+            _ => self.apply_atom(atom, render),
+        }
+    }
+}
+
+/// Encode an animator-driven `f32` back into the `u16` representation
+/// used by [`StyleAtom::Opacity`] / [`RenderStyle::opacity`]
+/// (`value * 10_000` clamped to `0..=u16::MAX`).
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "value is clamped to 0..=u16::MAX before the cast — fits losslessly in u16"
+)]
+fn encode_opacity(value: f32) -> u16 {
+    value.clamp(0.0, f32::from(u16::MAX)).round() as u16
+}
+
+/// Encode an animator-driven `f32` back into the `i16`-px representation
+/// used by [`StyleAtom::BorderRadius`] / [`Px`] (rounded, clamped to
+/// `0..=i16::MAX` — negative radii are not meaningful).
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "value is clamped to 0..=i16::MAX before the cast — fits losslessly in i16"
+)]
+fn encode_px(value: f32) -> Px {
+    let clamped = value.round().clamp(0.0, f32::from(i16::MAX));
+    Px(clamped as i16)
 }
 
 fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {

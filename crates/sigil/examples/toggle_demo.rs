@@ -23,9 +23,9 @@ fn build(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_row().gap_px(24.0).padding_px(32.0))
+            .layout(LayoutStyle::flex_row().gap(24.0).padding(32.0))
             .class("w-full h-full bg-surface")
-            .child(toggle(on).on_change(move |v| on.set(v)))
+            .child(toggle(on).change(move |v| on.set(v)))
             .child(toggle(signal(true)))
             .child(toggle(signal(false)).disabled(disabled)),
     )

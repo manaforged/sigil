@@ -140,6 +140,23 @@ pub(crate) struct RuntimeState {
     /// `Send + Sync`, but `Arc<dyn !Send>` is still legal (the Arc just
     /// inherits the trait object's negative bounds).
     pub(crate) local_executor: Option<Arc<dyn LocalTaskExecutor>>,
+    /// W5.2 / DR-050 §G10-phase-2 — a11y tree is dirty and needs to be
+    /// republished at the next [`Runtime::end_frame`] drain.
+    ///
+    /// Flipped on by the `entity_a11y_observer` reactive effect bodies
+    /// whenever any subscribed `A11yProps` signal (`checked`, `value_now`,
+    /// `expanded`, `text_value`, `live`, …) changes. Cleared by the
+    /// drain in [`crate::runtime_drain::drain_a11y_updates`].
+    pub(crate) a11y_dirty: bool,
+    /// W5.2 / DR-050 §G10-phase-2 — installed publisher callback that
+    /// the end-of-frame drain invokes to snapshot the current `Cx` into a
+    /// `TreeUpdate` and forward it to the installed `A11yBridge`.
+    ///
+    /// `None` until [`Runtime::install_a11y_publisher`] is called. The
+    /// publisher is a `FnMut` so it can hold a mutable handle to both the
+    /// kernel `Cx` and the bridge — both of which the application owns
+    /// outside the reactive runtime.
+    pub(crate) a11y_publisher: Option<Box<dyn FnMut()>>,
     /// Unique, non-zero identity for this thread's reactive runtime.
     ///
     /// Lazy-initialized on first call to [`runtime_id`] (zero until
@@ -178,6 +195,8 @@ impl RuntimeState {
             executor: None,
             dispatcher: None,
             local_executor: None,
+            a11y_dirty: false,
+            a11y_publisher: None,
             runtime_id: 0,
         }
     }

@@ -34,7 +34,7 @@ fn shortcut_dispatch_invokes_action() {
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
             .keyboard_shortcut(shortcut.clone())
-            .on_key(shortcut, {
+            .key(shortcut, {
                 let saves = Rc::clone(&saves);
                 move |_| saves.set(saves.get() + 1)
             }),
@@ -55,7 +55,7 @@ fn focused_key_up_does_not_invoke_action() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_key(Key::Enter, {
+            .key(Key::Enter, {
                 let hits = Rc::clone(&hits);
                 move |_| hits.set(hits.get() + 1)
             }),
@@ -88,7 +88,7 @@ fn focused_key_any_receives_unregistered_text_input() {
         container()
             .focusable(true)
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_key_any({
+            .key_any({
                 let hits = Rc::clone(&hits);
                 move |event| {
                     if event.text.as_deref() == Some("é") {

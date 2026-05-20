@@ -53,6 +53,17 @@ pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
     apply_atoms(engine, binding.static_slice(), &mut render, id, node);
     apply_atoms(engine, binding.dynamic_slice(), &mut render, id, node);
     apply_atoms(engine, binding.reactive_slice(), &mut render, id, node);
+
+    // W5.1b: replay the same atom set through the animator overlay so
+    // any driven numeric value wins over the literal atom value. The
+    // unknown-theme-ref warning has already been emitted by the
+    // literal pass above; this pass only updates the resolved render
+    // values.
+    if let Some(overlay) = binding.animator_overlay() {
+        engine.apply_with_overlay(binding.static_slice(), overlay, &mut render);
+        engine.apply_with_overlay(binding.dynamic_slice(), overlay, &mut render);
+        engine.apply_with_overlay(binding.reactive_slice(), overlay, &mut render);
+    }
     render
 }
 

@@ -135,8 +135,13 @@ pub trait Flex: StyleAccess {
     }
 
     /// Set flex grow factor (encoded as `value * 1000`).
+    ///
+    /// Named `flex_grow` (CSS canonical) rather than `grow` to avoid the
+    /// silent type-confusion footgun with [`crate::Style::flex_grow`] on
+    /// the lower-level layout primitive — both used to be named `grow`
+    /// but one takes `u16` (this one) and the other takes `f32`.
     #[must_use]
-    fn grow(mut self, value: u16) -> Self {
+    fn flex_grow(mut self, value: u16) -> Self {
         self.style().push_atom(StyleAtom::FlexGrow(value));
         self
     }

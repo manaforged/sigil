@@ -42,6 +42,44 @@ impl Runtime {
         });
     }
 
+    /// Install an a11y publisher closure (W5.2 / DR-050 §G10-phase-2).
+    ///
+    /// The publisher runs at the end of every frame in which an
+    /// [`crate::A11yObserver`] tracking effect saw a signal change.
+    /// Its job is to snapshot the kernel `Cx` into a `TreeUpdate` and
+    /// forward it to the installed [`sigil_hal::A11yBridge`]. Both the
+    /// `Cx` and the bridge live outside the reactive runtime — the
+    /// publisher captures them by reference (typically via shared
+    /// `Rc<RefCell<_>>` handles).
+    ///
+    /// The reactive crate cannot depend on `sigil-kernel` or
+    /// `sigil-a11y` (would be circular at the kernel boundary and
+    /// drag a heavy dep tree into the reactive layer); the
+    /// application wires up the snapshot + bridge call at startup.
+    /// Calling twice replaces the previous install.
+    ///
+    /// Must be called from the thread that owns the reactive runtime.
+    pub fn install_a11y_publisher(publisher: Box<dyn FnMut()>) {
+        with_rt(|rt| {
+            rt.a11y_publisher = Some(publisher);
+        });
+    }
+
+    /// Uninstall the a11y publisher and return it to the caller.
+    ///
+    /// Companion to [`Runtime::install_a11y_publisher`]; the caller
+    /// drops the returned closure on a stable stack frame, which lets
+    /// publisher captures (e.g. `Rc<RefCell<Cx>>`) drop *before* the
+    /// reactive runtime's thread-local owners are torn down on scope
+    /// exit. Tests that install a publisher capturing a `Cx` must call
+    /// this before letting the surrounding `Runtime::scope` return.
+    ///
+    /// Returns `None` if no publisher was installed.
+    #[must_use]
+    pub fn take_a11y_publisher() -> Option<Box<dyn FnMut()>> {
+        with_rt(|rt| rt.a11y_publisher.take())
+    }
+
     /// Install a `!Send`-future local executor (W4.99.B3).
     ///
     /// Companion to [`Runtime::install_executor`] for the

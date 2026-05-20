@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! W1.4 — verify the round-trip from `StyleAtom::OverflowX` / `OverflowY`
 //! through the style adapter into `StyleData::overflow`.
 //!

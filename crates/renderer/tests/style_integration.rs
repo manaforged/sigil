@@ -129,14 +129,10 @@ fn nested_text_scene_rect_is_absolute() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(
-                LayoutStyle::block()
-                    .fixed_size(240.0, 120.0)
-                    .padding_px(24.0),
-            )
+            .layout(LayoutStyle::block().fixed_size(240.0, 120.0).padding(24.0))
             .child(
                 container()
-                    .layout(LayoutStyle::block().fixed_size(120.0, 60.0).padding_px(8.0))
+                    .layout(LayoutStyle::block().fixed_size(120.0, 60.0).padding(8.0))
                     .child(text("Nested")),
             ),
     );

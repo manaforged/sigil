@@ -64,14 +64,14 @@ fn focus_in_out_fires_on_both_ends() {
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                    .on_focus_in(record_focus(&order, "a-in"))
-                    .on_focus_out(record_focus(&order, "a-out")),
+                    .focus_in(record_focus(&order, "a-in"))
+                    .focus_out(record_focus(&order, "a-out")),
             )
             .child(
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-                    .on_focus_in(record_focus(&order, "b-in")),
+                    .focus_in(record_focus(&order, "b-in")),
             ),
     );
     let first = cx.nth_child(root, 0).unwrap();

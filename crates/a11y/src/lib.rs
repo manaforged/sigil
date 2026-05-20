@@ -10,6 +10,13 @@
 //!
 //! [DR-050]: ../../../docs/decisions/DR-050-g10-a11y.md
 
+// W5.2 — `sigil-reactive` is a dev-dep used only by `tests/reactive_flow.rs`.
+// Cargo's lib-test target pulls all dev-deps into the lib compilation
+// unit, which trips `unused_crate_dependencies` here. Alias silences
+// the lint without adding a real import.
+#[cfg(test)]
+use sigil_reactive as _;
+
 pub mod bridge;
 pub mod mapping;
 pub mod snapshot;

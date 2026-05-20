@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]
@@ -31,13 +32,7 @@ fn flex_row_text_children_use_placeholder_intrinsic_widths() {
             .align_items(AlignItems::FlexStart),
     );
 
-    let children = cx
-        .get(root)
-        .expect("root exists")
-        .children()
-        .iter()
-        .copied()
-        .collect::<Vec<_>>();
+    let children = cx.get(root).expect("root exists").children().to_vec();
 
     let mut engine = stub_engine();
     engine

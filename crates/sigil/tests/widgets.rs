@@ -9,7 +9,10 @@ use std::rc::Rc;
 use wgpu as _;
 
 use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_async as _;
 use sigil_events as _;
 use sigil_kernel as _;
 use sigil_layout as _;
@@ -33,7 +36,7 @@ fn button_is_focusable_and_activates_on_enter() {
     sigil::reactive::Runtime::scope("sigil-widget-button-enter", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(button("Queue run").primary().on_activate({
+        let root = cx.add(button("Queue run").primary().activate({
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
@@ -59,7 +62,7 @@ fn disabled_button_does_not_focus_or_activate() {
     sigil::reactive::Runtime::scope("sigil-widget-button-disabled", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(button("Disabled").enabled(false).on_activate({
+        let root = cx.add(button("Disabled").enabled(false).activate({
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
@@ -84,7 +87,7 @@ fn button_pointer_activation_requires_press_inside() {
     sigil::reactive::Runtime::scope("sigil-widget-button-pointer", || {
         let hits = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(button("Queue run").on_activate({
+        let root = cx.add(button("Queue run").activate({
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
@@ -317,7 +320,7 @@ fn checkbox_click_flips_signal() {
         let checked = signal(false);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(checkbox(checked).label("Restock alerts").on_change({
+        let root = cx.add(checkbox(checked).label("Restock alerts").change({
             let changes = Rc::clone(&changes);
             move |next| {
                 assert!(next);
@@ -373,7 +376,7 @@ fn checkbox_disabled_ignores_click() {
             checkbox(checked)
                 .label("Disabled")
                 .disabled(disabled)
-                .on_change({
+                .change({
                     let changes = Rc::clone(&changes);
                     move |_| changes.set(changes.get() + 1)
                 }),
@@ -427,7 +430,7 @@ fn toggle_click_flips_signal() {
         let on = signal(false);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(toggle(on).label("Watch").on_change({
+        let root = cx.add(toggle(on).label("Watch").change({
             let changes = Rc::clone(&changes);
             move |next| {
                 assert!(next);
@@ -639,7 +642,7 @@ fn slider_capture_releases_on_pointer_up() {
         let value = signal(0.0_f32);
         let changes = Rc::new(Cell::new(0_u32));
         let mut cx = Cx::new_root();
-        let root = cx.add(slider(value, 0.0..=100.0).on_change({
+        let root = cx.add(slider(value, 0.0..=100.0).change({
             let changes = Rc::clone(&changes);
             move |_| changes.set(changes.get() + 1)
         }));

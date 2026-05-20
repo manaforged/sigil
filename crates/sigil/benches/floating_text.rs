@@ -30,7 +30,7 @@ use std::hint::black_box;
 use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::widgets::{FCT_POOL_CAPACITY, FctSettings, FctSpawn, FctState};
+use sigil::widgets::{FCT_POOL_CAPACITY, FctSpawn, FctState};
 use sigil_reactive::{Runtime, signal};
 use sigil_style::Rgba8;
 
@@ -44,9 +44,10 @@ const RED: Rgba8 = Rgba8 {
 fn make_state(duration: f32) -> Rc<FctState> {
     let time = signal(0.0_f32);
     Rc::new(FctState::new(
-        &FctSettings::new(time)
-            .duration(duration)
-            .drift([0.0, -32.0]),
+        duration,
+        [0.0, -32.0],
+        time,
+        FCT_POOL_CAPACITY,
     ))
 }
 

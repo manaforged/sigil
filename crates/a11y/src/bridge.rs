@@ -19,6 +19,11 @@ use sigil_kernel::NodeId;
 /// Test-side bridge — captures every `publish` into a `Vec` and
 /// serves `take_action` from a FIFO queue tests prime with
 /// [`RecordingBridge::action`].
+///
+/// Hidden from rustdoc: this is a test utility surfaced in the public
+/// API for cross-crate tests to import, but it shouldn't appear in
+/// rustdoc search alongside production types.
+#[doc(hidden)]
 #[derive(Debug, Default)]
 pub struct RecordingBridge {
     /// Every successfully published `TreeUpdate`, in publish order.
@@ -44,6 +49,15 @@ impl RecordingBridge {
     #[must_use]
     pub fn last_published(&self) -> Option<&TreeUpdate> {
         self.published.last()
+    }
+
+    /// Number of `TreeUpdate`s captured so far.
+    ///
+    /// Cross-crate tests use this to assert publish counts without
+    /// having to borrow the private `published` vec directly.
+    #[must_use]
+    pub const fn published_count(&self) -> usize {
+        self.published.len()
     }
 }
 

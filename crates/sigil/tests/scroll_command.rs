@@ -5,7 +5,10 @@ use criterion as _;
 use image as _;
 use pollster as _;
 use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_async as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -82,7 +85,7 @@ fn scroll_at_zero_has_no_thumb_offset() {
             })
             .collect();
         assert!(!rects.is_empty(), "should emit at least one rect");
-        let first = rects[0];
+        let first = rects.first().expect("rects is non-empty");
         assert!(
             first.rect.origin.y < 1.0,
             "viewport rect origin.y should be ~0 when scroll=0, got {}",

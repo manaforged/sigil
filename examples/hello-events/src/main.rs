@@ -6,7 +6,6 @@
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
-use sigil::reactive::signal;
 
 static BG_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static BG_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
@@ -32,5 +31,5 @@ fn hit_pane(toggled: sigil::reactive::Signal<bool>) -> NodeBuilder {
     container()
         .focusable(true)
         .layout(LayoutStyle::block().fixed_size(360.0, 480.0))
-        .on_pointer_down(move |_| toggled.set(!toggled.peek()))
+        .pointer_down(move |_| toggled.set(!toggled.peek()))
 }

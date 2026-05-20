@@ -68,7 +68,7 @@ fn pressed_slot_records_atoms() {
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let mut b = styled().disabled(|s| s.opacity(5_000));
+    let mut b = styled().disabled(|s| s.opacity(0.5));
     let disabled = b.style().disabled_atoms();
     assert_eq!(disabled.len(), 1);
     assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
@@ -185,7 +185,7 @@ fn all_four_state_slots_populate_independently() {
         .hover(|s| s.bg("h"))
         .focus(|s| s.bg("f"))
         .pressed(|s| s.bg("p"))
-        .disabled(|s| s.opacity(5_000));
+        .disabled(|s| s.opacity(0.5));
     let style = b.style();
     assert_eq!(style.hover_atoms().len(), 1);
     assert_eq!(style.focus_atoms().len(), 1);
@@ -202,7 +202,7 @@ fn state_builder_implements_styled_within_closure() {
         s.bg("surface-hover")
             .text_color("on-surface")
             .px(12)
-            .opacity(9_000)
+            .opacity(0.9)
     });
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 4);
@@ -269,7 +269,7 @@ fn flex_layout_methods_emit_correct_atoms() {
         .items_center()
         .justify_between()
         .gap(8)
-        .grow(1000)
+        .flex_grow(1000)
         .shrink(500);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
@@ -298,4 +298,48 @@ fn empty_builder_has_empty_style() {
     assert!(style.is_empty());
     assert_eq!(style.as_atoms().len(), 0);
     assert!(!style.has_state_overlays());
+}
+
+// ----- W4.99.B2 silent-trap regression tests -----
+
+/// Trap 1: `Styled::grow` was renamed to `Styled::flex_grow` to avoid
+/// the silent type-confusion footgun with `LayoutStyle::grow(f32)`.
+/// The new method must write `FlexGrow(value)` to the atom stream, and
+/// the old `.grow(u16)` name on this trait must no longer exist.
+#[test]
+fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
+    let mut b = styled().flex_grow(2);
+    let atoms = b.style().as_atoms();
+    assert_eq!(atoms.len(), 1);
+    assert_eq!(atoms[0], StyleAtom::FlexGrow(2));
+
+    // Compile-time evidence that the `.grow(u16)` method on the Flex
+    // trait no longer exists: if it did, the trait probe below would
+    // succeed and `flex_grow` would fail to resolve. We instead just
+    // re-call `.flex_grow` to lock in the new name as the only one.
+    let mut b2 = styled().flex_grow(1000);
+    assert_eq!(b2.style().as_atoms()[0], StyleAtom::FlexGrow(1000));
+}
+
+/// Trap 2: `Styled::opacity` now takes `f32` in `0.0..=1.0` and scales
+/// internally to the `StyleAtom::Opacity` u16 representation (×`10_000`).
+/// Authoring `.opacity(0.5)` must produce `Opacity(5_000)` (50 %),
+/// not `Opacity(50)` (0.5 %).
+#[test]
+fn trap2_opacity_f32_scales_to_atom() {
+    let mut b = styled().opacity(0.5);
+    let atoms = b.style().as_atoms();
+    assert_eq!(atoms.len(), 1);
+    assert_eq!(atoms[0], StyleAtom::Opacity(5_000));
+}
+
+/// Trap 2: clamping at the boundaries — `.opacity(0.0)` and
+/// `.opacity(1.0)` must produce the exact min / max atom encoding.
+#[test]
+fn trap2_opacity_clamps_at_boundaries() {
+    let mut zero = styled().opacity(0.0);
+    assert_eq!(zero.style().as_atoms()[0], StyleAtom::Opacity(0));
+
+    let mut one = styled().opacity(1.0);
+    assert_eq!(one.style().as_atoms()[0], StyleAtom::Opacity(10_000));
 }

@@ -15,6 +15,8 @@ use criterion as _;
 use rayon as _;
 #[cfg(test)]
 use sigil_reactive as _;
+#[cfg(test)]
+use taffy as _;
 
 mod adapter;
 mod block;

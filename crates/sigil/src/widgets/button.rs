@@ -1,16 +1,24 @@
 use std::rc::Rc;
 
+use sigil_animation_runtime::presets;
 use sigil_events::prelude::{Key, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
-    Theme,
+    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+    StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
 use super::shared::{Activate, BuilderMutator, activate_key, activate_pointer, noop_activate};
+use super::transition_seam::install_transition_animators;
+
+const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
+const BUTTON_COMPONENT_ID: u64 = 0xB117_7000;
+const BUTTON_DEFAULT_WIDTH: f32 = SizeToken::ControlLgWidth.px();
+const BUTTON_DEFAULT_HEIGHT: f32 = SizeToken::ControlLg.px();
+const BUTTON_LABEL_PAD_X: f32 = SizeToken::PaddingLg.px();
 
 /// Visual tone for [`button`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -34,12 +42,18 @@ pub struct ButtonBuilder {
     style_accumulator: Style,
 }
 
-static PRIMARY_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static PRIMARY_BASE: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("accent"),
+    StyleAtom::Transition(BUTTON_TRANSITION),
+];
 static PRIMARY_REST: &[StyleAtom] = &[];
 static PRIMARY_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 static PRIMARY_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 static PRIMARY_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static NEUTRAL_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
+static NEUTRAL_BASE: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("surface"),
+    StyleAtom::Transition(BUTTON_TRANSITION),
+];
 static NEUTRAL_REST: &[StyleAtom] = &[];
 static NEUTRAL_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 static NEUTRAL_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
@@ -62,8 +76,8 @@ impl ButtonBuilder {
         Self {
             label: label.into(),
             tone: ButtonTone::Neutral,
-            width: 148.0,
-            height: 44.0,
+            width: BUTTON_DEFAULT_WIDTH,
+            height: BUTTON_DEFAULT_HEIGHT,
             enabled: true,
             on_activate: None,
             mutators: Vec::new(),
@@ -94,7 +108,7 @@ impl ButtonBuilder {
 
     /// Set a fixed logical-pixel width.
     #[must_use]
-    pub const fn width_px(mut self, width: f32) -> Self {
+    pub const fn width(mut self, width: f32) -> Self {
         self.width = width;
         self
     }
@@ -109,7 +123,7 @@ impl ButtonBuilder {
 
     /// Run a callback when the button is activated by pointer or Enter.
     #[must_use]
-    pub fn on_activate(mut self, activate: impl Fn() + 'static) -> Self {
+    pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.on_activate = Some(Rc::new(activate));
         self
     }
@@ -122,16 +136,14 @@ impl ButtonBuilder {
         self
     }
 
-    /// Add struct-built style after the built-in button defaults.
+    /// Add struct-built style atoms after the built-in button defaults.
     ///
-    /// This is the original `style(Style)` inherent (consuming, taking a
-    /// `Style` arg). It coexists with the `Styled::style(&mut self) ->
-    /// &mut Style` trait method — the two signatures disambiguate by
-    /// receiver + arity per DR-049 §11. Inside trait default bodies the
-    /// `&mut self` form is selected; external callers passing a `Style`
-    /// hit the inherent.
+    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
+    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
+    /// trait method (`fn style(&mut self) -> &mut Style`) — DR-049 §11
+    /// documented the receiver/arity disambiguation as a known footgun.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn style_atoms(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -166,6 +178,7 @@ impl ButtonBuilder {
 
     fn base_node(&self, interaction: InteractionState, activate: Activate) -> NodeBuilder {
         let variant = button_variant(self.tone);
+        let state_style = button_state_style(self.tone);
         let pointer_activate = Rc::clone(&activate);
         let key_activate = activate;
         let node = container()
@@ -175,18 +188,25 @@ impl ButtonBuilder {
             .class("rounded-md")
             .class(variant.base())
             .style_reactive(move || variant.state(interaction.style_state()))
-            .on_pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
-            .on_key(Key::Enter, move |event| {
+            .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
+            .key(Key::Enter, move |event| {
                 activate_key(event, interaction, &key_activate);
             })
             .child(self.label_node());
+        let node = install_transition_animators(
+            node,
+            variant.base(),
+            state_style,
+            BUTTON_COMPONENT_ID,
+            interaction,
+        );
         interaction.install(node)
     }
 
     fn label_node(&self) -> TextBuilder {
-        let width = (self.width - 32.0).max(1.0);
+        let width = 2.0_f32.mul_add(-BUTTON_LABEL_PAD_X, self.width).max(1.0);
         text(self.label.clone())
-            .layout(LayoutStyle::block().width_px(width))
+            .layout(LayoutStyle::block().width(width))
             .class(button_text_class(self.tone))
     }
 }
@@ -214,25 +234,26 @@ fn button_layout(width: f32, height: f32) -> LayoutStyle {
 
 const fn button_variant(tone: ButtonTone) -> StyleVariant {
     match tone {
-        ButtonTone::Primary => StyleVariant::new(
-            PRIMARY_BASE,
-            StateStyle::new(
-                PRIMARY_REST,
-                PRIMARY_FOCUS,
-                PRIMARY_HOVER,
-                PRIMARY_DOWN,
-                DISABLED,
-            ),
+        ButtonTone::Primary => StyleVariant::new(PRIMARY_BASE, button_state_style(tone)),
+        ButtonTone::Neutral => StyleVariant::new(NEUTRAL_BASE, button_state_style(tone)),
+    }
+}
+
+const fn button_state_style(tone: ButtonTone) -> StateStyle {
+    match tone {
+        ButtonTone::Primary => StateStyle::new(
+            PRIMARY_REST,
+            PRIMARY_FOCUS,
+            PRIMARY_HOVER,
+            PRIMARY_DOWN,
+            DISABLED,
         ),
-        ButtonTone::Neutral => StyleVariant::new(
-            NEUTRAL_BASE,
-            StateStyle::new(
-                NEUTRAL_REST,
-                NEUTRAL_FOCUS,
-                NEUTRAL_HOVER,
-                NEUTRAL_DOWN,
-                DISABLED,
-            ),
+        ButtonTone::Neutral => StateStyle::new(
+            NEUTRAL_REST,
+            NEUTRAL_FOCUS,
+            NEUTRAL_HOVER,
+            NEUTRAL_DOWN,
+            DISABLED,
         ),
     }
 }

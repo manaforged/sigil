@@ -10,7 +10,7 @@ fn main() {
     let root = cx.add(
         container()
             .role(Role::Main)
-            .aria_label("Hello tree")
+            .label("Hello tree")
             .child(text("Hello, world!"))
             .child(container().child(text("This is a node tree."))),
     );

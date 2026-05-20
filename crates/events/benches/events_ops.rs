@@ -54,8 +54,8 @@ fn route_captured_pointer_event(c: &mut Criterion) {
         32,
         container()
             .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-            .on_pointer_down(PointerEvent::capture_pointer)
-            .on_pointer_move(|_| {}),
+            .pointer_down(PointerEvent::capture_pointer)
+            .pointer_move(|_| {}),
     );
     let mut router = EventRouter::new();
     router.route(&mut cx, &layout, pointer_down(0.5, 0.5));
@@ -69,8 +69,8 @@ fn route_captured_pointer_release(c: &mut Criterion) {
         32,
         container()
             .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-            .on_pointer_down(PointerEvent::capture_pointer)
-            .on_pointer_up(|_| {}),
+            .pointer_down(PointerEvent::capture_pointer)
+            .pointer_up(|_| {}),
     );
     let mut router = EventRouter::new();
     c.bench_function("route_captured_pointer_release", |b| {
@@ -86,8 +86,8 @@ fn route_hover_transition_depth_20(c: &mut Criterion) {
         20,
         container()
             .layout(LayoutStyle::block().fixed_size(10.0, 10.0))
-            .on_pointer_enter(|_| {})
-            .on_pointer_leave(|_| {}),
+            .pointer_enter(|_| {})
+            .pointer_leave(|_| {}),
     );
     let mut router = EventRouter::new();
     let mut inside = false;
@@ -188,7 +188,7 @@ fn wide_tree_with_shortcut(
         let child = if index + 1 == count {
             wide_child(index, false)
                 .keyboard_shortcut(shortcut.clone())
-                .on_key(shortcut.clone(), {
+                .key(shortcut.clone(), {
                     let hits = Rc::clone(hits);
                     move |_| hits.set(hits.get() + 1)
                 })

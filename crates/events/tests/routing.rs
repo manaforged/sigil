@@ -39,13 +39,13 @@ fn pointer_down_hits_top_of_z_stack() {
                 let bottom_hit = Rc::clone(&bottom_hit);
                 container()
                     .layout(abs_rect(0.0, 0.0, 80.0, 80.0))
-                    .on_pointer_down(move |_| bottom_hit.set(true))
+                    .pointer_down(move |_| bottom_hit.set(true))
             })
             .child({
                 let top_hit = Rc::clone(&top_hit);
                 container()
                     .layout(abs_rect(0.0, 0.0, 80.0, 80.0))
-                    .on_pointer_down(move |_| top_hit.set(true))
+                    .pointer_down(move |_| top_hit.set(true))
             }),
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
@@ -64,15 +64,15 @@ fn capture_runs_root_to_target() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_pointer_down_capture(record(&order, "root"))
+            .pointer_down_capture(record(&order, "root"))
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(80.0, 80.0))
-                    .on_pointer_down_capture(record(&order, "mid"))
+                    .pointer_down_capture(record(&order, "mid"))
                     .child(
                         container()
                             .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                            .on_pointer_down_capture(record(&order, "leaf")),
+                            .pointer_down_capture(record(&order, "leaf")),
                     ),
             ),
     );
@@ -91,18 +91,18 @@ fn stop_propagation_skips_bubble() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_pointer_down_capture({
+            .pointer_down_capture({
                 let order = Rc::clone(&order);
                 move |event| {
                     order.borrow_mut().push("root-capture");
                     event.stop_propagation();
                 }
             })
-            .on_pointer_down(record(&order, "root-bubble"))
+            .pointer_down(record(&order, "root-bubble"))
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_pointer_down(record(&order, "leaf-target")),
+                    .pointer_down(record(&order, "leaf-target")),
             ),
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
@@ -123,8 +123,8 @@ fn pointer_capture_redirects_moves() {
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_pointer_down(PointerEvent::capture_pointer)
-                    .on_pointer_move({
+                    .pointer_down(PointerEvent::capture_pointer)
+                    .pointer_move({
                         let captured_moves = Rc::clone(&captured_moves);
                         move |event| {
                             if event.is_captured() {
@@ -153,7 +153,7 @@ fn pointer_handlers_receive_target_local_position() {
             .child(
                 container()
                     .layout(abs_rect(40.0, 30.0, 20.0, 20.0))
-                    .on_pointer_down({
+                    .pointer_down({
                         let local = Rc::clone(&local);
                         move |event| local.set((event.position.x, event.position.y))
                     }),
@@ -177,14 +177,14 @@ fn pointer_move_synthesizes_enter_leave() {
             .child(
                 container()
                     .layout(abs_rect(0.0, 0.0, 20.0, 20.0))
-                    .on_pointer_enter(record(&order, "a-enter"))
-                    .on_pointer_leave(record(&order, "a-leave")),
+                    .pointer_enter(record(&order, "a-enter"))
+                    .pointer_leave(record(&order, "a-leave")),
             )
             .child(
                 container()
                     .layout(abs_rect(40.0, 0.0, 20.0, 20.0))
-                    .on_pointer_enter(record(&order, "b-enter"))
-                    .on_pointer_leave(record(&order, "b-leave")),
+                    .pointer_enter(record(&order, "b-enter"))
+                    .pointer_leave(record(&order, "b-leave")),
             ),
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
@@ -210,13 +210,13 @@ fn window_blur_dispatches_synthetic_leaves() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            .on_pointer_enter(record(&order, "root-enter"))
-            .on_pointer_leave(record(&order, "root-leave"))
+            .pointer_enter(record(&order, "root-enter"))
+            .pointer_leave(record(&order, "root-leave"))
             .child(
                 container()
                     .layout(abs_rect(0.0, 0.0, 20.0, 20.0))
-                    .on_pointer_enter(record(&order, "child-enter"))
-                    .on_pointer_leave(record(&order, "child-leave")),
+                    .pointer_enter(record(&order, "child-enter"))
+                    .pointer_leave(record(&order, "child-leave")),
             ),
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
@@ -243,7 +243,7 @@ fn disposed_handler_node_no_panic() {
             .child(
                 container()
                     .layout(LayoutStyle::block().fixed_size(20.0, 20.0))
-                    .on_pointer_down({
+                    .pointer_down({
                         let hits = Rc::clone(&hits);
                         move |_| hits.set(hits.get() + 1)
                     }),

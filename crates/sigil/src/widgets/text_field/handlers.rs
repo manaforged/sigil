@@ -82,26 +82,26 @@ fn edit_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
     let home = runtime.clone();
     let end = runtime.clone();
     let submit = runtime;
-    node.on_key_any(move |event| insert_text(event, &any_key))
-        .on_key(Key::Backspace, move |event| {
+    node.key_any(move |event| insert_text(event, &any_key))
+        .key(Key::Backspace, move |event| {
             edit_value(event, &backspace, TextEdit::backspace);
         })
-        .on_key(Key::Delete, move |event| {
+        .key(Key::Delete, move |event| {
             edit_value(event, &delete, TextEdit::delete_forward);
         })
-        .on_key(Key::ArrowLeft, move |event| {
+        .key(Key::ArrowLeft, move |event| {
             move_caret(event, &left, TextEdit::move_left);
         })
-        .on_key(Key::ArrowRight, move |event| {
+        .key(Key::ArrowRight, move |event| {
             move_caret(event, &right, TextEdit::move_right);
         })
-        .on_key(Key::Home, move |event| {
+        .key(Key::Home, move |event| {
             move_caret(event, &home, TextEdit::move_home);
         })
-        .on_key(Key::End, move |event| {
+        .key(Key::End, move |event| {
             move_caret(event, &end, TextEdit::move_end);
         })
-        .on_key(Key::Enter, move |event| submit_text(event, &submit))
+        .key(Key::Enter, move |event| submit_text(event, &submit))
 }
 
 fn shift_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
@@ -109,25 +109,25 @@ fn shift_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
     let shift_right = runtime.clone();
     let shift_home = runtime.clone();
     let shift_end = runtime;
-    node.on_key(
+    node.key(
         Shortcut::new(Key::ArrowLeft, ModifiersState::SHIFT),
         move |event| {
             move_caret(event, &shift_left, TextEdit::shift_left);
         },
     )
-    .on_key(
+    .key(
         Shortcut::new(Key::ArrowRight, ModifiersState::SHIFT),
         move |event| {
             move_caret(event, &shift_right, TextEdit::shift_right);
         },
     )
-    .on_key(
+    .key(
         Shortcut::new(Key::Home, ModifiersState::SHIFT),
         move |event| {
             move_caret(event, &shift_home, TextEdit::shift_home);
         },
     )
-    .on_key(
+    .key(
         Shortcut::new(Key::End, ModifiersState::SHIFT),
         move |event| {
             move_caret(event, &shift_end, TextEdit::shift_end);
@@ -140,16 +140,16 @@ fn clipboard_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
     let cut = runtime.clone();
     let paste = runtime.clone();
     let select_all = runtime;
-    node.on_key(Shortcut::ctrl(LogicalKey::character("c")), move |event| {
+    node.key(Shortcut::ctrl(LogicalKey::character("c")), move |event| {
         clipboard_copy(event, &copy);
     })
-    .on_key(Shortcut::ctrl(LogicalKey::character("x")), move |event| {
+    .key(Shortcut::ctrl(LogicalKey::character("x")), move |event| {
         clipboard_cut(event, &cut);
     })
-    .on_key(Shortcut::ctrl(LogicalKey::character("v")), move |event| {
+    .key(Shortcut::ctrl(LogicalKey::character("v")), move |event| {
         clipboard_paste(event, &paste);
     })
-    .on_key(Shortcut::ctrl(LogicalKey::character("a")), move |event| {
+    .key(Shortcut::ctrl(LogicalKey::character("a")), move |event| {
         select_all_text(event, &select_all);
     })
 }
@@ -157,7 +157,7 @@ fn clipboard_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
 fn history_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
     let redo_rt = runtime.clone();
     let undo_rt = runtime;
-    node.on_key(
+    node.key(
         Shortcut::new(
             LogicalKey::character("z"),
             ModifiersState::CONTROL | ModifiersState::SHIFT,
@@ -166,7 +166,7 @@ fn history_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
             history_redo(event, &redo_rt);
         },
     )
-    .on_key(Shortcut::ctrl(LogicalKey::character("z")), move |event| {
+    .key(Shortcut::ctrl(LogicalKey::character("z")), move |event| {
         history_undo(event, &undo_rt);
     })
 }

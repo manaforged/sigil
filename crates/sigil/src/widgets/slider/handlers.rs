@@ -11,28 +11,28 @@ pub(super) fn attach_key_handlers(
     interaction: InteractionState,
     runtime: SliderRuntime,
 ) -> NodeBuilder {
-    node.on_key(Key::ArrowRight, move |event| {
+    node.key(Key::ArrowRight, move |event| {
         step_key(event, interaction, runtime, true);
     })
-    .on_key(Key::ArrowUp, move |event| {
+    .key(Key::ArrowUp, move |event| {
         step_key(event, interaction, runtime, true);
     })
-    .on_key(Key::ArrowLeft, move |event| {
+    .key(Key::ArrowLeft, move |event| {
         step_key(event, interaction, runtime, false);
     })
-    .on_key(Key::ArrowDown, move |event| {
+    .key(Key::ArrowDown, move |event| {
         step_key(event, interaction, runtime, false);
     })
-    .on_key(Key::PageUp, move |event| {
+    .key(Key::PageUp, move |event| {
         page_key(event, interaction, runtime, true);
     })
-    .on_key(Key::PageDown, move |event| {
+    .key(Key::PageDown, move |event| {
         page_key(event, interaction, runtime, false);
     })
-    .on_key(Key::Home, move |event| {
+    .key(Key::Home, move |event| {
         jump_key(event, interaction, runtime, false);
     })
-    .on_key(Key::End, move |event| {
+    .key(Key::End, move |event| {
         jump_key(event, interaction, runtime, true);
     })
 }

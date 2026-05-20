@@ -1,4 +1,4 @@
-//! SceneCommand smoke tests for the dropdown widget (D2).
+//! `SceneCommand` smoke tests for the dropdown widget (D2).
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -6,7 +6,10 @@ use criterion as _;
 use image as _;
 use pollster as _;
 use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_async as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;

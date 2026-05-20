@@ -1,0 +1,15 @@
+[package]
+name = "hello-counter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Minimum viable reactive counter on `sigil::launch`."
+
+[dependencies]
+sigil = { workspace = true }
+
+[lints]
+workspace = true

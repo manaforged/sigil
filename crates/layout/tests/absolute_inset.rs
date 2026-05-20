@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 //! W1.5 — `inset` placement for `Position::Absolute` children.
 //!
 //! Verifies that the block + flex solvers read `style.inset` when

@@ -6,7 +6,9 @@ use wgpu::util::DeviceExt as _;
 #[path = "shadow_shader.rs"]
 mod shadow_shader;
 
-use crate::scene_instance::{SceneUniforms, ShadowInstance, shadow_instance_stride};
+use crate::scene_instance::{
+    SceneUniforms, ShadowInstance, shadow_instance_stride, srgb_channel_to_linear,
+};
 use crate::scene_paint::PaintCtx;
 use shadow_shader::SHADOW_SHADER;
 
@@ -75,9 +77,9 @@ impl Shadow {
     #[must_use]
     pub fn glow(color: sigil_style::Rgba8, spread: f32, blur: f32) -> Self {
         let c = [
-            f32::from(color.r) / 255.0,
-            f32::from(color.g) / 255.0,
-            f32::from(color.b) / 255.0,
+            srgb_channel_to_linear(color.r),
+            srgb_channel_to_linear(color.g),
+            srgb_channel_to_linear(color.b),
             f32::from(color.a) / 255.0,
         ];
         Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)

@@ -116,13 +116,13 @@ impl IntoNode for PanelBuilder {
 
 fn panel_layout(padding: f32) -> LayoutStyle {
     LayoutStyle::flex_column()
-        .padding_px(padding)
-        .min_size_px(PANEL_WIDTH, PANEL_MIN_HEIGHT)
+        .padding(padding)
+        .min_size(PANEL_WIDTH, PANEL_MIN_HEIGHT)
 }
 
 fn panel_title(title: String) -> impl IntoNode {
     text(title)
-        .layout(LayoutStyle::block().height_px(TITLE_HEIGHT))
+        .layout(LayoutStyle::block().height(TITLE_HEIGHT))
         .class("text-on-surface")
 }
 

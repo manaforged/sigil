@@ -91,7 +91,7 @@ impl TextFieldBuilder {
 
     /// Run a callback after user editing changes the value.
     #[must_use]
-    pub fn on_change(mut self, f: impl Fn(&str) + 'static) -> Self {
+    pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.on_change = Some(Rc::new(f));
         self
     }

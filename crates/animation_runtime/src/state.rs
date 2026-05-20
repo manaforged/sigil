@@ -131,11 +131,14 @@ pub fn tick(dt: f32) {
     });
 }
 
-/// Number of currently active animators on this thread. Crate-internal
-/// test seam; tests in this module assert against it.
-#[cfg(test)]
+/// Number of currently active animators on this thread.
+///
+/// Public test seam used by the visual-golden harness and by this
+/// crate's unit tests. Apps should not depend on this — production
+/// frame loops drive [`tick`] unconditionally and let the runtime
+/// eviction logic handle the active set.
 #[must_use]
-pub(crate) fn active_count() -> usize {
+pub fn active_count() -> usize {
     ENTRIES.with(|cell| cell.borrow().len())
 }
 

@@ -13,6 +13,7 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 
+pub mod animator_overlay;
 pub mod atom;
 pub mod binding;
 pub mod builder_ext;
@@ -22,6 +23,7 @@ pub mod merge;
 pub mod palette;
 pub mod parser;
 pub mod reactive;
+pub mod size_tokens;
 pub mod state;
 pub mod struct_api;
 pub mod styled;
@@ -29,6 +31,7 @@ pub mod text_style;
 pub mod theme;
 pub mod variant;
 
+pub use animator_overlay::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 pub use atom::{
     AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, OverflowKind,
     Px, RenderStyle, Rgba8, SPACING_STEP, StyleAtom, TransitionId,
@@ -43,6 +46,7 @@ pub use merge::{
 pub use parser::{ParseError, parse_class_string};
 pub use reactive::StyleReactiveEffect;
 pub use sigil_style_macros::classes;
+pub use size_tokens::SizeToken;
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use struct_api::Style;
 pub use styled::{
@@ -56,10 +60,10 @@ pub use theme::{Theme, ThemeBuilder, ThemeValue};
 /// Common imports for applications using Sigil styling.
 pub mod prelude {
     pub use crate::{
-        AlignKind, ClassSource, ColorAtom, ColorOrToken, ComponentId, Dimension, DisplayKind,
-        FlexDir, FocusRing, JustifyKind, MillisU16, NodeStyleExt, NodeStyledBuilder, ParseError,
-        Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP, StateSlot, StateStyle,
-        StateStyleBuilder, Style, StyleAccess, StyleAtom, StyleBinding, StyleEngine,
+        AlignKind, ClassSource, ColorAtom, ColorAtomKind, ColorOrToken, ComponentId, Dimension,
+        DisplayKind, FlexDir, FocusRing, JustifyKind, MillisU16, NodeStyleExt, NodeStyledBuilder,
+        ParseError, Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP, SizeToken, StateSlot,
+        StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom, StyleBinding, StyleEngine,
         StyleReactiveEffect, StyleState, StyleVariant, Styleable, Styled, StyledTextEngine,
         TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue, TransitionId, classes,
         merge_classes, merge_warning_count, merge_warning_count_for_component, parse_class_string,

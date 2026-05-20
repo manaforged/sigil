@@ -16,5 +16,12 @@ sigil-animation = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "animator_ticks"
+harness = false
+
 [lints]
 workspace = true

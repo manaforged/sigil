@@ -16,5 +16,10 @@ accesskit = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-kernel = { workspace = true }
 
+[dev-dependencies]
+# W5.2 — `reactive_flow` integration test drives `A11yObserver` +
+# `Runtime::install_a11y_publisher` against `RecordingBridge`.
+sigil-reactive = { workspace = true }
+
 [lints]
 workspace = true

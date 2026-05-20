@@ -23,13 +23,13 @@ fn build(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .role(Role::Main)
-            .layout(LayoutStyle::flex_column().gap_px(24.0).padding_px(32.0))
+            .layout(LayoutStyle::flex_column().gap(24.0).padding(32.0))
             .class("w-full h-full bg-surface")
-            .child(slider(h_val, 0.0..=100.0).on_change(move |v| h_val.set(v)))
+            .child(slider(h_val, 0.0..=100.0).change(move |v| h_val.set(v)))
             .child(
                 slider(v_val, 0.0..=100.0)
                     .orientation(Orientation::Vertical)
-                    .on_change(move |v| v_val.set(v)),
+                    .change(move |v| v_val.set(v)),
             ),
     )
 }

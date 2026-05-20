@@ -129,7 +129,7 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
     });
 
     container()
-        .layout(LayoutStyle::block().height_px(track_h))
+        .layout(LayoutStyle::block().height(track_h))
         .class("rounded-md")
         .style_reactive(move || width_atoms_px(fill_px.get()))
         .class(FILL)
@@ -145,11 +145,7 @@ fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
 
     let bar_width_px = (TRACK_WIDTH * INDETERMINATE_RATIO).round();
     container()
-        .layout(
-            LayoutStyle::block()
-                .width_px(bar_width_px)
-                .height_px(track_h),
-        )
+        .layout(LayoutStyle::block().width(bar_width_px).height(track_h))
         .class("rounded-md")
         .style_reactive(move || left_margin_atoms_px(offset_px.get()))
         .class(FILL)

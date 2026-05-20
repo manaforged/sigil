@@ -3,7 +3,6 @@
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
-use sigil::reactive::signal;
 
 static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
@@ -23,9 +22,9 @@ fn app_tree(cx: &mut Cx) -> NodeId {
             .layout(
                 LayoutStyle::flex_column()
                     .fixed_size(720.0, 480.0)
-                    .gap_px(16.0),
+                    .gap(16.0),
             )
-            .on_pointer_move_capture(move |event| {
+            .pointer_move_capture(move |event| {
                 let inside = in_right_pane(event.position.x, event.position.y);
                 if pointer_hover.peek() != inside {
                     pointer_hover.set(inside);
@@ -42,11 +41,7 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 
 fn top_row(hover: sigil::reactive::Signal<bool>) -> NodeBuilder {
     container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fixed_size(688.0, 304.0)
-                .gap_px(16.0),
-        )
+        .layout(LayoutStyle::flex_row().fixed_size(688.0, 304.0).gap(16.0))
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(328.0, 304.0))

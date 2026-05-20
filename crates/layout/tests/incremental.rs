@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -319,7 +320,7 @@ fn broadcast_mark_mutated_matches_pre_alpha() {
 #[test]
 fn incremental_remove_drops_layout_result() {
     let (mut cx, root, children) = build_many_leaf_row(5);
-    let removed = children[2];
+    let removed = children.get(2).copied().expect("third child exists");
     let mut engine = stub_engine();
 
     engine

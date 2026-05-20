@@ -1,28 +1,37 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
+use sigil_animation_runtime::presets;
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
 use sigil_style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
-    Theme,
+    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+    StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
 use super::super::shared::{BuilderMutator, binary_style_state, disabled_now};
+use super::super::transition_seam::install_transition_animators;
 use super::handlers::{
     attach_key_handlers, normalized_step, pointer_down, pointer_move, pointer_up, quantize,
 };
 
+const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
+const SLIDER_COMPONENT_ID: u64 = 0x5110_E000;
+// Animator-only base slice: scanned by `install_transition_animators`
+// for the `Transition` atom that flips the thumb into the animated path.
+static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
+
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
 
-const HORIZONTAL_WIDTH: f32 = 180.0;
-const HORIZONTAL_HEIGHT: f32 = 28.0;
-const VERTICAL_WIDTH: f32 = 28.0;
-const VERTICAL_HEIGHT: f32 = 180.0;
+const HORIZONTAL_WIDTH: f32 = SizeToken::SliderTrackLong.px();
+const HORIZONTAL_HEIGHT: f32 = SizeToken::SliderTrackShort.px();
+const VERTICAL_WIDTH: f32 = SizeToken::SliderTrackShort.px();
+const VERTICAL_HEIGHT: f32 = SizeToken::SliderTrackLong.px();
+const THUMB_SIZE: f32 = SizeToken::SliderThumb.px();
 
 static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 static TRACK_DISABLED: &[StyleAtom] = &[
@@ -117,7 +126,7 @@ impl SliderBuilder {
 
     /// Run a callback when a user gesture commits a value.
     #[must_use]
-    pub fn on_change(mut self, change: impl Fn(f32) + 'static) -> Self {
+    pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
@@ -137,9 +146,13 @@ impl SliderBuilder {
         self
     }
 
-    /// Add struct-built style after the built-in slider defaults.
+    /// Add struct-built style atoms after the built-in slider defaults.
+    ///
+    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
+    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
+    /// trait method.
     #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
+    pub fn style_atoms(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -184,9 +197,9 @@ impl SliderBuilder {
     fn base_node(&self, interaction: InteractionState, on_change: ValueChange) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
         let node = slider_root(runtime, interaction)
-            .on_pointer_down(move |event| pointer_down(event, interaction, runtime))
-            .on_pointer_move(move |event| pointer_move(event, interaction, runtime))
-            .on_pointer_up(move |event| {
+            .pointer_down(move |event| pointer_down(event, interaction, runtime))
+            .pointer_move(move |event| pointer_move(event, interaction, runtime))
+            .pointer_up(move |event| {
                 pointer_up(event, interaction, runtime.value, &on_change);
             });
         interaction.install(attach_key_handlers(node, interaction, runtime))
@@ -291,12 +304,31 @@ fn slider_layout(orientation: Orientation) -> LayoutStyle {
 }
 
 fn slider_thumb(interaction: InteractionState, disabled: Option<Signal<bool>>) -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::block().fixed_size(22.0, 22.0))
+    let state_style = slider_thumb_state_style();
+    let node = container()
+        .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
         .class("rounded-md")
+        .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
             slider_thumb_variant().state(binary_style_state(interaction, disabled))
-        })
+        });
+    install_transition_animators(
+        node,
+        SLIDER_THUMB_ANIM_BASE,
+        state_style,
+        SLIDER_COMPONENT_ID,
+        interaction,
+    )
+}
+
+const fn slider_thumb_state_style() -> StateStyle {
+    StateStyle::new(
+        THUMB_REST,
+        THUMB_HOVER,
+        THUMB_HOVER,
+        THUMB_DOWN,
+        THUMB_DISABLED,
+    )
 }
 
 fn noop_value_change() -> ValueChange {

@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]
@@ -49,7 +50,7 @@ fn sync_updates_intent_without_allocating_new_layout_nodes() {
 #[test]
 fn text_builder_accepts_layout_intent() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Pinned").layout(LayoutStyle::block().width_px(96.0)));
+    let root = cx.add(text("Pinned").layout(LayoutStyle::block().width(96.0)));
 
     let mut engine = stub_engine();
     engine

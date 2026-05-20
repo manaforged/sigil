@@ -382,6 +382,15 @@ fn place_absolute(
         margin_trailing: margins.bottom,
     });
     ctx.solver.write(child.id(), ComputedBox { x, y, w, h });
+    // RC3: recurse into the absolute child's subtree so descendants
+    // (esp. text leaves) get LayoutResults. Before this call, an
+    // absolutely-positioned flex child wrote only its own box and left
+    // descendants without rects — the renderer's scene-walk then
+    // dropped any text descendant on the floor because it had no
+    // LayoutResult to read. `block::place_absolute` already recurses
+    // via `size_absolute → layout_children`; flex was the asymmetric
+    // case. Mirrors the in-flow flex item path at `layout_item_subtree`.
+    layout_item_subtree(ctx, child.id(), Position2::new(x, y), w, h)?;
     Ok(())
 }
 

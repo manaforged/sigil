@@ -30,7 +30,7 @@ fn build(cx: &mut Cx) -> NodeId {
 fn root(det: Signal<f32>, phase: Signal<f32>) -> NodeBuilder {
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().gap_px(24.0).padding_px(32.0))
+        .layout(LayoutStyle::flex_column().gap(24.0).padding(32.0))
         .class("w-full h-full bg-surface")
         .child(
             panel()

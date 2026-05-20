@@ -920,6 +920,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hello-counter"
+version = "0.0.0"
+dependencies = [
+ "sigil",
+]
+
+[[package]]
 name = "hello-events"
 version = "0.0.0"
 dependencies = [
@@ -2414,7 +2421,10 @@ dependencies = [
  "image",
  "pollster",
  "sigil-actions",
+ "sigil-animation",
+ "sigil-animation-runtime",
  "sigil-app",
+ "sigil-async",
  "sigil-events",
  "sigil-hal",
  "sigil-kernel",
@@ -2432,6 +2442,7 @@ dependencies = [
  "accesskit",
  "sigil-hal",
  "sigil-kernel",
+ "sigil-reactive",
 ]
 
 [[package]]
@@ -2461,6 +2472,7 @@ version = "0.0.0"
 name = "sigil-animation-runtime"
 version = "0.0.0"
 dependencies = [
+ "criterion",
  "sigil-animation",
  "sigil-reactive",
  "sigil-style",

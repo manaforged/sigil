@@ -21,11 +21,12 @@ members = [
     "crates/style-macros",
     "crates/text",
     "crates/sigil-ide-core",
-    "examples/hello-rect",
+    "examples/hello-counter",
     "examples/hello-events",
     "examples/hello-style",
     "examples/hello-tree",
     "examples/hello-layout",
+    "examples/internals/hello-rect",
     "examples/vertical-slice",
 ]
 

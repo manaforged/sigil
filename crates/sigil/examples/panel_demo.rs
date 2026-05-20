@@ -24,7 +24,7 @@ fn build(cx: &mut Cx) -> NodeId {
 fn root() -> NodeBuilder {
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().gap_px(16.0).padding_px(24.0))
+        .layout(LayoutStyle::flex_column().gap(16.0).padding(24.0))
         .class("w-full h-full bg-surface")
         .child(panel().elevation(0).title("Elevation 0 — flat"))
         .child(panel().elevation(1).title("Elevation 1 — subtle"))

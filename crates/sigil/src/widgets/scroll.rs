@@ -23,7 +23,12 @@ const SCROLL_LINE: f32 = 40.0;
 const ATOM_CACHE_CAP: usize = 256;
 
 static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static THUMB_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
+// Thumb paints `surface-pressed-strong` — visibly darker than the
+// track's `border` background. Earlier the thumb shared the track's
+// `border` token, leaving the gutter readable as a single uniform
+// strip with no visible thumb affordance. The strong-pressed step
+// clears the same-hue JND against `border` at 8 px gutter scale.
+static THUMB_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
 
 /// Builder returned by [`scroll`].
 pub struct ScrollBuilder {
@@ -107,27 +112,29 @@ impl ScrollBuilder {
         let max_scroll = derived_eq(move || (extent.get() - height).max(0.0));
         let initial = extent.peek().max(height);
         let body = wrap_content(content, scroll_y, max_scroll, initial, width);
-        let track = scrollbar_track(scroll_y, max_scroll, initial, height);
+        let track = scrollbar_track(height);
+        let thumb = scrollbar_thumb(scroll_y, max_scroll, initial, height, width);
 
         let mut root = viewport_container(width, height)
             .child(body)
             .child(track)
-            .on_key(Key::ArrowDown, move |ev| {
+            .child(thumb)
+            .key(Key::ArrowDown, move |ev| {
                 step(ev, scroll_y, SCROLL_LINE, max_scroll.peek());
             })
-            .on_key(Key::ArrowUp, move |ev| {
+            .key(Key::ArrowUp, move |ev| {
                 step(ev, scroll_y, -SCROLL_LINE, max_scroll.peek());
             })
-            .on_key(Key::PageDown, move |ev| {
+            .key(Key::PageDown, move |ev| {
                 step(ev, scroll_y, height, max_scroll.peek());
             })
-            .on_key(Key::PageUp, move |ev| {
+            .key(Key::PageUp, move |ev| {
                 step(ev, scroll_y, -height, max_scroll.peek());
             })
-            .on_key(Key::Home, move |ev| {
+            .key(Key::Home, move |ev| {
                 jump(ev, scroll_y, 0.0);
             })
-            .on_key(Key::End, move |ev| {
+            .key(Key::End, move |ev| {
                 jump(ev, scroll_y, max_scroll.peek());
             })
             .on_scroll(move |ev| {
@@ -194,20 +201,10 @@ fn wrap_content(
         .style_reactive(move || margin_top_atoms(offset_px.get()))
 }
 
-fn scrollbar_track(
-    scroll_y: Signal<f32>,
-    max_scroll: Signal<f32>,
-    initial: f32,
-    height: f32,
-) -> NodeBuilder {
+fn scrollbar_track(height: f32) -> NodeBuilder {
     container()
-        .layout(
-            LayoutStyle::block()
-                .fixed_size(SCROLLBAR_WIDTH, height)
-                .position(Position::Relative),
-        )
+        .layout(LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, height))
         .class(&[StyleAtom::BackgroundThemeRef("border")] as &[_])
-        .child(scrollbar_thumb(scroll_y, max_scroll, initial, height))
 }
 
 fn scrollbar_thumb(
@@ -215,6 +212,7 @@ fn scrollbar_thumb(
     max_scroll: Signal<f32>,
     initial: f32,
     height: f32,
+    width: f32,
 ) -> NodeBuilder {
     let ratio = (height / initial).clamp(0.0, 1.0);
     let thumb_h = (ratio * height).max(THUMB_MIN_HEIGHT);
@@ -240,18 +238,30 @@ fn scrollbar_thumb(
     // anchored at window y=0.
     let drag_anchor = signal::<Option<(f32, f32)>>(None);
 
+    // Thumb is absolute-positioned against the viewport (the
+    // viewport_container is the closest positioned ancestor in the
+    // sigil layout model). Pin it to the right gutter at
+    // `width - SCROLLBAR_WIDTH` left inset; the reactive
+    // `margin_top_atoms` slides it vertically as scroll progresses.
+    let thumb_left = width - SCROLLBAR_WIDTH;
     container()
-        .layout(LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, thumb_h))
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(SCROLLBAR_WIDTH, thumb_h)
+                .position(Position::Absolute)
+                .inset_left(thumb_left)
+                .inset_top(0.0),
+        )
         .class(THUMB_ATOMS)
         .style_reactive(move || margin_top_atoms(thumb_top.get()))
-        .on_pointer_down(move |ev| {
+        .pointer_down(move |ev| {
             ev.capture_pointer();
             drag_anchor.set(Some((ev.position.y, scroll_y.peek())));
         })
-        .on_pointer_up(move |_| {
+        .pointer_up(move |_| {
             drag_anchor.set(None);
         })
-        .on_pointer_move(move |ev| {
+        .pointer_move(move |ev| {
             if !ev.is_captured() {
                 return;
             }

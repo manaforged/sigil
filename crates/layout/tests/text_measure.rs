@@ -1,3 +1,4 @@
+#![allow(unused_crate_dependencies)]
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::unwrap_used)]

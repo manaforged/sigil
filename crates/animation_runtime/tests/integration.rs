@@ -11,6 +11,10 @@ use sigil_reactive::{Runtime, signal};
 // consumes `TransitionId`); the integration tests do not name it.
 use sigil_style as _;
 
+// criterion is a dev-dep used by the `animator_ticks` bench; integration
+// tests do not name it.
+use criterion as _;
+
 const DT_60HZ: f32 = 1.0 / 60.0;
 
 fn tick_until_settled(animator: &Animator, max_frames: u32) -> u32 {

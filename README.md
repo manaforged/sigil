@@ -57,19 +57,24 @@ crates/
                      is the one import line user apps need.
 
 examples/
-  hello-rect/        Window proof app: opens a window, clears the
-                     surface to a colour, toggles through three
-                     colours on a timer, and exits cleanly.
-  hello-tree/        Headless proof app: builds a `sigil-kernel` node tree
-                     and prints its shape.
-  hello-layout/      Headless proof app: computes rectangles for a
-                     `sigil-kernel` tree and prints them.
+  hello-counter/     Minimum viable reactive UI on `sigil::launch`:
+                     a signal-backed counter with a primary button
+                     and a derived label. ~20 lines of user code.
   hello-events/      Window proof app using `sigil::launch`: click
                      toggles the surface tint, Tab cycles focus, Esc
                      quits. 34 lines of user code.
   hello-style/       Window proof app using `sigil::launch`: two
                      static panes + a hover-reactive pane driven by
                      style_reactive. 62 lines.
+  hello-tree/        Headless proof app: builds a `sigil-kernel` node tree
+                     and prints its shape.
+  hello-layout/      Headless proof app: computes rectangles for a
+                     `sigil-kernel` tree and prints them.
+  internals/
+    hello-rect/      Direct kernel + scene-command surface; predates
+                     `sigil::launch`. Advanced reference — opens a
+                     window, clears to a colour, cycles three colours
+                     on a timer, and exits cleanly.
 
 docs/
   decisions/         Architecture decision records (DR-000..DR-018).
@@ -83,11 +88,12 @@ cargo fmt --check
 cargo check --workspace --all-targets
 cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic -W clippy::nursery
 cargo test --workspace
-cargo run -p hello-rect
-cargo run -p hello-tree
-cargo run -p hello-layout
+cargo run -p hello-counter
 cargo run -p hello-events
 cargo run -p hello-style
+cargo run -p hello-tree
+cargo run -p hello-layout
+cargo run -p hello-rect
 cargo bench -p sigil-kernel
 cargo bench -p sigil-layout
 cargo bench -p sigil-events
