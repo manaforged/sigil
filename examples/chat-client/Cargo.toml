@@ -1,0 +1,20 @@
+[package]
+name = "chat-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Tier-5 kitchen-sink chat-client app exercising modal + tabs + splitter + virtual_list + text_field + text_edit."
+
+[[bin]]
+name = "chat-client"
+path = "src/main.rs"
+
+[dependencies]
+sigil = { workspace = true }
+
+[lints]
+workspace = true

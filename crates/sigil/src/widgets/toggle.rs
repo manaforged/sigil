@@ -1,17 +1,18 @@
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::Signal;
-use sigil_style::{
+use animation_runtime::presets;
+use events::prelude::{Key, LogicalKey, NodeEventsExt};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
+use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use reactive::Signal;
+use style::{
     ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme,
     TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change,
@@ -28,6 +29,13 @@ pub struct ToggleBuilder {
     disabled: Option<Signal<bool>>,
     on_change: Option<BoolChange>,
     mutators: Vec<BuilderMutator>,
+    layout_overrides: LayoutOverrides,
+}
+
+impl WidgetLayoutExt for ToggleBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
@@ -82,6 +90,7 @@ impl ToggleBuilder {
             disabled: None,
             on_change: None,
             mutators: Vec::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -116,11 +125,9 @@ impl ToggleBuilder {
 
     /// Add struct-built style atoms after the built-in toggle defaults.
     ///
-    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
-    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
-    /// trait method.
+    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -139,11 +146,13 @@ impl ToggleBuilder {
             .on_change
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
+        let layout_overrides = self.layout_overrides.clone();
+        let has_label = self.label.is_some();
         let mut node = self.base_node(interaction, Rc::clone(&on_change));
         for mutate in self.mutators {
             node = mutate(node);
         }
-        node
+        node.layout(layout_overrides.apply(toggle_layout(has_label)))
     }
 
     fn base_node(&self, interaction: InteractionState, on_change: BoolChange) -> NodeBuilder {
@@ -175,7 +184,7 @@ impl ToggleBuilder {
 }
 
 impl IntoNode for ToggleBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

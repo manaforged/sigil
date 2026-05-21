@@ -7,26 +7,26 @@
 use ahash as _;
 use bytemuck as _;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use hal::Size;
 use half as _;
 use image as _;
+use kernel::{TextContent, prelude::*};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use sigil_hal::Size;
-use sigil_kernel::{TextContent, prelude::*};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text::{OwnedTextEngine, TextConfig};
+use renderer::{SceneCommand, emit_scene};
+use shell as _;
 use skrifa as _;
 use smallvec as _;
+use style as _;
+use text::{OwnedTextEngine, TextConfig};
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use sigil_icons as _;
+use icons as _;
 
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();
@@ -68,7 +68,7 @@ fn text_paint_cost(c: &mut Criterion) {
     });
 }
 
-fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil_renderer::DrawGlyphRun]) {
+fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&renderer::DrawGlyphRun]) {
     for draw in runs {
         let run = &draw.run;
         let _ = engine
@@ -77,7 +77,7 @@ fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil_renderer::DrawGly
     }
 }
 
-fn text_scene() -> sigil_renderer::CommandScene {
+fn text_scene() -> renderer::CommandScene {
     let mut cx = Cx::new_root();
     let mut root = container().layout(LayoutStyle::flex_column().fixed_size(360.0, 1_200.0));
     for index in 0..50 {
@@ -96,8 +96,8 @@ fn text_scene() -> sigil_renderer::CommandScene {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(160.0, 18.0)
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::new(160.0, 18.0)
     }
 }
 

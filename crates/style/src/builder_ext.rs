@@ -3,13 +3,16 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use sigil_kernel::{Node, NodeBuilder, TextBuilder};
+use kernel::{Node, NodeBuilder, TextBuilder};
+use reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::{
     FocusRing, Style, StyleAtom, StyleBinding, StyleReactiveEffect, Theme, merge_classes,
     parse_class_string, parser::ParseError,
 };
+
+static EMPTY_ATOMS: &[StyleAtom] = &[];
 
 /// Source accepted by [`NodeStyleExt::class`].
 pub enum ClassSource {
@@ -68,6 +71,42 @@ pub trait NodeStyleExt {
     fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static;
+
+    /// Conditionally attach a utility-class literal when `signal` is `true`.
+    ///
+    /// The class string is parsed once on first install and cached for
+    /// the lifetime of the program. Whenever `signal` flips, the node's
+    /// reactive style slice is rewritten to either the parsed atoms
+    /// (signal `true`) or an empty slice (signal `false`).
+    ///
+    /// This is a thin wrapper over [`style_reactive`](Self::style_reactive)
+    /// that gives callers a one-line reactive opt-in to a class without
+    /// writing the `if signal.get()` boilerplate.
+    ///
+    /// Same caveat as [`style_reactive`](Self::style_reactive): a later
+    /// `class_when` / `style_reactive` call on the same node replaces
+    /// the previous reactive slot. Use multiple atoms in one class
+    /// string when multiple toggles must compose.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use kernel::container;
+    /// use reactive::signal;
+    /// use style::NodeStyleExt;
+    ///
+    /// let highlighted = signal(false);
+    /// let node = container().class_when(highlighted, "bg-accent");
+    /// // `node` carries `bg-accent` only while `highlighted` is true.
+    /// ```
+    #[must_use]
+    fn class_when(self, signal: Signal<bool>, class: &'static str) -> Self
+    where
+        Self: Sized,
+    {
+        let atoms = cached_class_string(class);
+        self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })
+    }
 }
 
 impl NodeStyleExt for NodeBuilder {
@@ -137,7 +176,7 @@ fn install_class(node: &mut Node, source: ClassSource) {
 
 fn debug_assert_not_fragment(node: &Node, op: &'static str) {
     debug_assert!(
-        !matches!(node.kind, sigil_kernel::NodeType::Fragment),
+        !matches!(node.kind, kernel::NodeType::Fragment),
         "{op}() on a Fragment: fragments have no paint box; see DR-015"
     );
 }
@@ -169,7 +208,7 @@ where
     }
 
     let effect_state = reactive.clone();
-    sigil_reactive::effect_named("sigil-style::style_reactive", move || {
+    reactive::effect_named("sigil-style::style_reactive", move || {
         effect_state.set_slice(f());
     });
     let _previous = node.attach(reactive);
@@ -200,7 +239,13 @@ fn cached_class_string(input: &'static str) -> &'static [StyleAtom] {
 }
 
 fn parse_and_leak(input: &'static str) -> &'static [StyleAtom] {
-    let atoms = parse_class_string(input).unwrap_or_else(|err| diagnostic::class_parse(&err));
+    let mut atoms: SmallVec<[StyleAtom; 16]> = SmallVec::new();
+    for token in input.split(' ').filter(|token| !token.is_empty()) {
+        match parse_class_string(token) {
+            Ok(parsed) => atoms.extend(parsed),
+            Err(err) => diagnostic::class_parse(input, &err),
+        }
+    }
     Box::leak(atoms.into_vec().into_boxed_slice())
 }
 
@@ -209,13 +254,18 @@ fn smallvec16(atoms: SmallVec<[StyleAtom; 32]>) -> SmallVec<[StyleAtom; 16]> {
 }
 
 mod diagnostic {
-    #![allow(clippy::panic)]
-
     use super::ParseError;
+    use crate::merge::bump_unknown_class_count;
 
     #[cold]
     #[track_caller]
-    pub(super) fn class_parse(err: &ParseError) -> ! {
-        panic!("{err}");
+    pub(super) fn class_parse(input: &str, err: &ParseError) {
+        bump_unknown_class_count();
+        tracing::warn!(
+            target: "style::class",
+            input,
+            error = %err,
+            "unknown class token ignored",
+        );
     }
 }

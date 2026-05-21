@@ -14,10 +14,10 @@
 use std::hash::{Hash as _, Hasher as _};
 
 use ahash::AHasher;
-use sigil_hal::{Dim, Size};
-use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
-use sigil_style::StyleBinding;
+use hal::{Dim, Size};
+use kernel::{Cx, NodeId, NodeType, TextContent};
 use smallvec::SmallVec;
+use style::StyleBinding;
 
 pub(crate) enum CacheDecision {
     Hit,

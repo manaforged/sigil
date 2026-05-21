@@ -2,14 +2,14 @@
 //!
 //! This crate ships `#[derive(Action)]` — the one-line authoring shortcut
 //! for declaring an action type that can flow through
-//! [`sigil_actions::ActionRegistry`].
+//! [`actions::ActionRegistry`].
 //!
 //! See **DR-046 §1** for the full Action trait design. Layer A (this
 //! crate + `sigil-actions`) lands the trait + derive + registry +
 //! dispatch loop. Layer B wires the focus/Context surface on top.
 //!
 //! ```rust,ignore
-//! use sigil_actions::Action;
+//! use actions::Action;
 //!
 //! #[derive(Action)]
 //! struct CloseTab;
@@ -23,9 +23,9 @@ use quote::quote;
 use syn::{DeriveInput, parse_macro_input};
 
 #[cfg(test)]
-use sigil_actions as _;
+use actions as _;
 
-/// Derive `sigil_actions::Action` for a type.
+/// Derive `actions::Action` for a type.
 ///
 /// Generated impl provides:
 ///
@@ -49,11 +49,11 @@ pub fn derive_action(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::sigil_actions::Action for #name #ty_generics #where_clause {
+        impl #impl_generics ::actions::Action for #name #ty_generics #where_clause {
             fn debug_name(&self) -> &'static str {
                 #name_str
             }
-            fn boxed_clone(&self) -> ::std::boxed::Box<dyn ::sigil_actions::Action> {
+            fn boxed_clone(&self) -> ::std::boxed::Box<dyn ::actions::Action> {
                 ::std::boxed::Box::new(::core::clone::Clone::clone(self))
             }
             fn as_any(&self) -> &dyn ::core::any::Any {

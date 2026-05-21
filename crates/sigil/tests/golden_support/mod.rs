@@ -25,12 +25,12 @@ use std::sync::mpsc;
 
 use pollster::FutureExt as _;
 
-use sigil::prelude::*;
-use sigil_hal::{
+use hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::prelude::*;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -44,7 +44,7 @@ pub const SETTLE_SAFETY_CAP: u32 = 600;
 /// Which interaction state to drive the widget into before capture.
 ///
 /// The `*AfterFrames` variants drive the same event the non-AfterFrames
-/// variant does, then advance `sigil_animation_runtime::tick(dt)` for
+/// variant does, then advance `animation_runtime::tick(dt)` for
 /// `frames` iterations so animator-driven style atoms settle to the
 /// post-tick value before `emit_scene` captures.
 ///
@@ -122,7 +122,7 @@ pub const FILMSTRIP_GAP_PX: u32 = 4;
 ///
 /// Frame 0 renders the widget in the default state. Frames 1..N render
 /// after applying hover (pointer enter at `hit_point`) and advancing
-/// `sigil_animation_runtime::tick(dt)` once per frame. The point of the
+/// `animation_runtime::tick(dt)` once per frame. The point of the
 /// filmstrip is to show the *full transition curve* at a glance — frame
 /// 0 = default, frame 1 = hover-engaged, frames 2..N = interpolating.
 ///
@@ -194,8 +194,8 @@ fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaIma
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -232,6 +232,22 @@ pub fn render_widget_to_png(
     size_px: [u32; 2],
     hit_point: (f32, f32),
 ) -> Option<image::RgbaImage> {
+    render_widget_to_png_with(build, mode, size_px, hit_point, Box::new(StubMeasure))
+}
+
+/// Same as [`render_widget_to_png`] but lets the caller inject a
+/// concrete [`layout::TextMeasure`] instead of the deterministic
+/// `StubMeasure`. Use this when the golden's correctness depends on
+/// real glyph-advance widths (e.g. the live `widget-playground`
+/// capture, which has to match what the user sees on screen).
+#[must_use]
+pub fn render_widget_to_png_with(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    size_px: [u32; 2],
+    hit_point: (f32, f32),
+    text_measure: Box<dyn layout::TextMeasure>,
+) -> Option<image::RgbaImage> {
     let mut image: Option<image::RgbaImage> = None;
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
         let mut cx = Cx::new_root();
@@ -239,7 +255,7 @@ pub fn render_widget_to_png(
 
         let viewport_w = size_px[0] as f32;
         let viewport_h = size_px[1] as f32;
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(text_measure);
         layout
             .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
             .expect("layout");
@@ -362,18 +378,18 @@ fn drive_state(
     }
 }
 
-/// Advance `sigil_animation_runtime::tick(dt)` `frames` times. When
+/// Advance `animation_runtime::tick(dt)` `frames` times. When
 /// `frames == u32::MAX` ticks until every active animator settles, with
 /// [`SETTLE_SAFETY_CAP`] guarding against runaway loops.
 fn tick_animation_runtime(frames: u32, dt: f32) {
     if frames == u32::MAX {
         for _ in 0..SETTLE_SAFETY_CAP {
-            if sigil_animation_runtime::active_count() == 0 {
+            if animation_runtime::active_count() == 0 {
                 return;
             }
-            sigil_animation_runtime::tick(dt);
+            animation_runtime::tick(dt);
         }
-        let remaining = sigil_animation_runtime::active_count();
+        let remaining = animation_runtime::active_count();
         assert!(
             remaining == 0,
             "golden harness: animation runtime did not settle within \
@@ -384,7 +400,7 @@ fn tick_animation_runtime(frames: u32, dt: f32) {
         return;
     }
     for _ in 0..frames {
-        sigil_animation_runtime::tick(dt);
+        animation_runtime::tick(dt);
     }
 }
 

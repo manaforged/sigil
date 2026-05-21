@@ -9,11 +9,11 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use sigil_reactive::{Signal, derived_eq, signal};
-use sigil_style::{ClassSource, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
+use events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use reactive::{Signal, derived_eq, signal};
+use style::{ClassSource, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
 
 const VIEWPORT_WIDTH: f32 = 320.0;
 const VIEWPORT_HEIGHT: f32 = 240.0;
@@ -154,7 +154,7 @@ impl ScrollBuilder {
 }
 
 impl StyleAccess for ScrollBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -162,7 +162,7 @@ impl StyleAccess for ScrollBuilder {
 impl StateHost for ScrollBuilder {}
 
 impl IntoNode for ScrollBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -191,13 +191,16 @@ fn wrap_content(
         let px = clamped.round() as i16;
         px
     });
-    // Layout box snaps to initial extent; if content grows past it,
-    // the overflow:hidden viewport still clips correctly — only the
-    // body's own inner layout reflows less ideally. Tracked: make
-    // body fixed_size reactive once the layout system grows a
-    // Height style atom.
-    content
+    // Wrap the user's content in a fresh anonymous sizing container so
+    // that the user's own LayoutStyle (flex_column, padding, gap, etc.)
+    // is preserved verbatim. Previously this called `.layout(…)` directly
+    // on `content`, which replaced any previously-attached LayoutStyle
+    // because NodeBuilder::with::<T>() routes through attach::<T>() which
+    // replaces on TypeId collision. Option B: the sizing box owns the
+    // fixed_size; content is added as its child unchanged.
+    container()
         .layout(LayoutStyle::block().fixed_size(width - SCROLLBAR_WIDTH, initial))
+        .child(content)
         .style_reactive(move || margin_top_atoms(offset_px.get()))
 }
 

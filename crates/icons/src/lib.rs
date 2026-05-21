@@ -13,7 +13,7 @@
 //! # Example
 //!
 //! ```rust
-//! use sigil_icons::IconBaker;
+//! use icons::IconBaker;
 //!
 //! let baker = IconBaker::new();
 //! let icon = baker.bake(r#"<svg viewBox="0 0 24 24"><path d="M12 2L2 22h20Z"/></svg>"#, 32, 32).unwrap();

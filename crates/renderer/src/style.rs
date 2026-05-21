@@ -1,4 +1,4 @@
-//! Scene draw-style types under the `sigil_renderer::style` namespace.
+//! Scene draw-style types under the `renderer::style` namespace.
 //!
 //! These are re-exports of the canonical definitions in `scene_command` under
 //! shorter names. The old `Scene*Style` names remain as type aliases for one

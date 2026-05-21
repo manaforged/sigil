@@ -1,9 +1,9 @@
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{NodeEventsExt, PointerEvent};
-use sigil_kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
-use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::{Signal, derived_eq};
-use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, TransitionId};
+use animation_runtime::presets;
+use events::prelude::{NodeEventsExt, PointerEvent};
+use kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
+use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use reactive::{Signal, derived_eq};
+use style::{ColorAtom, NodeStyleExt, Rgba8, StateStyle, StyleAtom, StyleVariant, TransitionId};
 
 use crate::interaction::InteractionState;
 
@@ -27,10 +27,23 @@ static FIELD_DISABLED: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("border"),
     StyleAtom::Opacity(5_000),
 ];
+// Invalid-state overlay: a saturated red border paint that overrides
+// every other state slot when the `invalid_when` signal peeks `true`.
+// Colour matches WCAG AAA-compliant Material "error" (#D32F2F → sRGB
+// (211,47,47)) so the 1 px-thick outer band stays legible against the
+// default light + dark surfaces.
+pub(super) static FIELD_INVALID: &[StyleAtom] =
+    &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
+        r: 211,
+        g: 47,
+        b: 47,
+        a: 255,
+    }))];
 
 pub(super) fn build_base_node(
     value: Signal<String>,
     disabled: Option<Signal<bool>>,
+    invalid: Option<Signal<bool>>,
     placeholder: &TextContent,
     interaction: InteractionState,
 ) -> NodeBuilder {
@@ -45,7 +58,17 @@ pub(super) fn build_base_node(
         .layout(field_layout())
         .class("rounded-md")
         .class(TEXT_FIELD_ANIM_BASE)
-        .style_reactive(move || field_variant().state(field_state(interaction, disabled)))
+        .style_reactive(move || {
+            // Invalid overrides every other state slot — a red border
+            // is the universal "fix this before continuing" cue. We
+            // call `.get()` (not `.peek()`) so the effect re-subscribes
+            // whenever the signal flips.
+            if invalid.is_some_and(Signal::get) {
+                FIELD_INVALID
+            } else {
+                field_variant().state(field_state(interaction, disabled))
+            }
+        })
         .pointer_up(move |event| pointer_up(event, interaction))
         .child(field_inner(displayed));
     install_transition_animators(
@@ -67,7 +90,7 @@ const fn field_state_style() -> StateStyle {
     )
 }
 
-fn field_layout() -> LayoutStyle {
+pub(super) fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .width(180.0)
         .align_items(AlignItems::Center)
@@ -136,10 +159,7 @@ fn accessible_label(placeholder: &str) -> String {
         .map_or_else(|| String::from("Text field"), ToOwned::to_owned)
 }
 
-fn field_state(
-    interaction: InteractionState,
-    disabled: Option<Signal<bool>>,
-) -> sigil_style::StyleState {
+fn field_state(interaction: InteractionState, disabled: Option<Signal<bool>>) -> style::StyleState {
     binary_style_state(interaction, disabled)
 }
 

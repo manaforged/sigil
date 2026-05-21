@@ -50,11 +50,14 @@ pub(crate) struct AutoEdges {
 /// `Px(v)` returns `Some(v)`. `Percent(p)` returns `Some(p * cb)` —
 /// CSS percent margins/padding always resolve against the containing
 /// block's *inline* size; the caller passes the right basis.
-/// `Auto` returns `None`.
+/// `Auto` returns `None`. `Fill` returns `Some(cb)` — semantically
+/// `Percent(1.0)`, but expresses intent directly (see
+/// [`crate::LayoutStyle::fill`]).
 pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
     match dim {
         Dimension::Px(v) => Some(v),
         Dimension::Percent(p) => Some(p * cb),
+        Dimension::Fill => Some(cb),
         Dimension::Auto => None,
     }
 }

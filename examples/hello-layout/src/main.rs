@@ -6,10 +6,10 @@
 use std::error::Error;
 use std::rc::Rc;
 
-use sigil_kernel::prelude::*;
-use sigil_layout::TextEngineMeasure;
-use sigil_layout::prelude::*;
-use sigil_text::{OwnedTextEngine, TextConfig};
+use kernel::prelude::*;
+use layout::TextEngineMeasure;
+use layout::prelude::*;
+use text::{OwnedTextEngine, TextConfig};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut cx = Cx::new_root();

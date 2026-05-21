@@ -20,18 +20,18 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
+use style as _;
 
 const ROOT_WIDTH: f32 = 12_800.0;
 const ROOT_HEIGHT: f32 = 100.0;
@@ -51,7 +51,7 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
+const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
         width: taffy::AvailableSpace::Definite(width),
         height: taffy::AvailableSpace::Definite(height),
@@ -86,9 +86,8 @@ fn build_owned(cx: &mut Cx) -> (NodeId, NodeId) {
     // Pick the first leaf under the first column — that's our
     // mutation target. We re-find it via the kernel tree walk to
     // avoid coupling the helper to internal id state.
-    let mut leaf = root_id;
     let first_col = cx.nth_child(root_id, 0).expect("root has a first column");
-    leaf = cx.nth_child(first_col, 0).expect("column has a first leaf");
+    let leaf = cx.nth_child(first_col, 0).expect("column has a first leaf");
     (root_id, leaf)
 }
 

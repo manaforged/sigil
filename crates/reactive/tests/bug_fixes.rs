@@ -15,8 +15,8 @@
 // Silence `unused_crate_dependencies` — criterion is a dev-dep for
 // benches, smallvec a regular dep for subscriber storage; neither is
 // referenced in this test file.
+use actions as _;
 use criterion as _;
-use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
@@ -24,7 +24,7 @@ use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
-use sigil_reactive::{Owner, Runtime, Signal, batch, effect, on_cleanup, signal};
+use reactive::{Owner, Runtime, Signal, batch, effect, on_cleanup, signal};
 
 // ---------------------------------------------------------------
 // P0 #1 — effect-owner model

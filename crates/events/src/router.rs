@@ -1,12 +1,12 @@
 //! Event router implementation.
 
 use accesskit::TreeUpdate;
-use sigil_hal::{
+use hal::{
     Key, KeyEvent, KeyPhase, LogicalKey, Point, PointerEvent, PointerPhase, ScrollEvent,
     ShellEvent, Shortcut,
 };
-use sigil_kernel::{Cx, NodeId};
-use sigil_layout::LayoutEngine;
+use kernel::{Cx, NodeId};
+use layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::EventHandlers;
@@ -41,10 +41,11 @@ impl EventRouter {
 
     /// Route one shell event through the tree and layout state.
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
+        self.focus.sync_scopes(cx);
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, event),
-            ShellEvent::Window(sigil_hal::WindowEvent::Focused(false)) => {
+            ShellEvent::Window(hal::WindowEvent::Focused(false)) => {
                 // Window lost focus: the pointer is effectively no longer
                 // over anything. Dispatch Leave through every node in the
                 // hover path so widgets (buttons, etc.) can clear their
@@ -112,6 +113,13 @@ impl EventRouter {
     #[must_use]
     pub fn a11y_focus_update(&self) -> TreeUpdate {
         self.focus.a11y_focus_update()
+    }
+
+    /// Test-only: current focus-scope stack depth.
+    #[cfg(test)]
+    #[must_use]
+    pub const fn scope_depth(&self) -> usize {
+        self.focus.scope_depth()
     }
 
     fn route_pointer(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: PointerEvent) {

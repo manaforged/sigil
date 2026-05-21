@@ -102,6 +102,64 @@ impl LayoutStyle {
         self
     }
 
+    /// Build a column flex pane of fixed width and height with a 4 px gap.
+    ///
+    /// Sugar for the most common pane shape in dogfood UIs — a fixed-size
+    /// column with a small inter-child gap. Equivalent to:
+    ///
+    /// ```ignore
+    /// use layout::prelude::*;
+    ///
+    /// LayoutStyle::flex_column().fixed_size(width, height).gap(4.0);
+    /// ```
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// use layout::prelude::*;
+    ///
+    /// let style = LayoutStyle::pane(320.0, 200.0);
+    /// ```
+    #[must_use]
+    pub fn pane(width: f32, height: f32) -> Self {
+        Self::flex_column().fixed_size(width, height).gap(4.0)
+    }
+
+    /// Inherit the parent's resolved content-box on the inline axis.
+    ///
+    /// Equivalent to setting [`Dimension::Fill`] as `size.width`. The
+    /// child's border-box width resolves to the parent's content-box
+    /// width during the layout pass, so a parent of width 800 with
+    /// `padding(20)` produces a child of width 760.
+    #[must_use]
+    pub const fn fill_width(mut self) -> Self {
+        self.0.size.width = Dimension::Fill;
+        self
+    }
+
+    /// Inherit the parent's resolved content-box on the block axis.
+    ///
+    /// Equivalent to setting [`Dimension::Fill`] as `size.height`. The
+    /// child's border-box height resolves to the parent's content-box
+    /// height during the layout pass.
+    #[must_use]
+    pub const fn fill_height(mut self) -> Self {
+        self.0.size.height = Dimension::Fill;
+        self
+    }
+
+    /// Inherit the parent's resolved content-box on both axes.
+    ///
+    /// Shorthand for [`Self::fill_width`] followed by [`Self::fill_height`].
+    /// A child of a parent sized 800×600 with `padding(20)` resolves to
+    /// 760×560.
+    #[must_use]
+    pub const fn fill(mut self) -> Self {
+        self.0.size.width = Dimension::Fill;
+        self.0.size.height = Dimension::Fill;
+        self
+    }
+
     /// Set uniform padding.
     #[must_use]
     pub fn padding(mut self, padding: impl Into<LengthPercentage>) -> Self {
@@ -281,4 +339,24 @@ impl LayoutStyle {
 
 const fn all_sides<T: Copy>(value: T) -> Rect<T> {
     Rect::splat(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::style_data::{Display, FlexDirection, LengthPercentage};
+
+    #[test]
+    fn pane_sugar_matches_manual_chain() {
+        let sugared = LayoutStyle::pane(320.0, 200.0);
+        let manual = LayoutStyle::flex_column().fixed_size(320.0, 200.0).gap(4.0);
+
+        assert_eq!(sugared.data(), manual.data());
+        assert_eq!(sugared.data().display, Display::Flex);
+        assert_eq!(sugared.data().flex_direction, FlexDirection::Column);
+        assert_eq!(sugared.data().size.width, Dimension::Px(320.0));
+        assert_eq!(sugared.data().size.height, Dimension::Px(200.0));
+        assert_eq!(sugared.data().gap.width, LengthPercentage::Px(4.0));
+        assert_eq!(sugared.data().gap.height, LengthPercentage::Px(4.0));
+    }
 }

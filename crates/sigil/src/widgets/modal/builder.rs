@@ -1,14 +1,24 @@
 //! Modal widget — full-viewport dimmed backdrop with a centered
-//! dialog frame whose visibility is gated by a reactive `open` signal.
+//! dialog frame whose visibility is gated by a reactive `show` signal.
 
-use sigil_animation_runtime::presets;
-use sigil_kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use sigil_reactive::Signal;
-use sigil_style::{
+use std::cell::Cell;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use animation_runtime::presets;
+use events::prelude::{Key, NodeEventsExt};
+use kernel::{
+    Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, container, queue_announcement, text,
+};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use reactive::{Signal, effect_named, on_cleanup};
+use style::{
     ColorAtom, DisplayKind, NodeStyleExt, Rgba8, StateHost, Style, StyleAccess, StyleAtom,
     TransitionId,
 };
+
+use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 use super::super::shared::BuilderMutator;
 
@@ -52,18 +62,22 @@ static DIALOG_BASE: &[StyleAtom] = &[
 
 /// Builder returned by [`modal`].
 pub struct ModalBuilder {
-    open: Option<Signal<bool>>,
+    show: Option<Signal<bool>>,
     title: Option<String>,
-    children: Vec<Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>>,
+    children: Vec<Box<dyn IntoNode>>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    trap: bool,
+    escape_closes: bool,
+    dismiss_on_backdrop: bool,
+    layout_overrides: LayoutOverrides,
 }
 
 /// Create a modal dialog widget.
 ///
 /// Renders a full-viewport dimmed backdrop and a centered dialog frame.
-/// Both layers paint with `Display::None` when the `open` signal is
-/// `false`; supply the signal via [`ModalBuilder::open`].
+/// Both layers paint with `Display::None` when the `show` signal is
+/// `false`; supply the signal via [`ModalBuilder::show`].
 #[must_use]
 pub fn modal() -> ModalBuilder {
     ModalBuilder::new()
@@ -74,11 +88,15 @@ impl ModalBuilder {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            open: None,
+            show: None,
             title: None,
             children: Vec::new(),
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            trap: true,
+            escape_closes: true,
+            dismiss_on_backdrop: false,
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -94,39 +112,171 @@ impl ModalBuilder {
     /// When the signal reads `false`, both backdrop and dialog frame
     /// paint with `Display::None` and contribute no layout box.
     #[must_use]
-    pub const fn open(mut self, open: Signal<bool>) -> Self {
-        self.open = Some(open);
+    pub const fn show(mut self, show: Signal<bool>) -> Self {
+        self.show = Some(show);
+        self
+    }
+
+    /// Enable or disable the modal focus trap marker.
+    ///
+    /// Enabled by default. Passing `false` opts out of registering the
+    /// dialog as a modal focus scope.
+    #[must_use]
+    pub const fn trap(mut self, enabled: bool) -> Self {
+        self.trap = enabled;
+        self
+    }
+
+    /// Enable or disable Escape-key dismissal.
+    ///
+    /// Enabled by default. When enabled, Escape closes the topmost open
+    /// modal by setting its `show` signal to `false`.
+    #[must_use]
+    pub const fn escape_closes(mut self, enabled: bool) -> Self {
+        self.escape_closes = enabled;
+        self
+    }
+
+    /// Enable or disable backdrop-click dismissal.
+    ///
+    /// Disabled by default. When enabled, pointer-down on the backdrop
+    /// closes the modal by setting its `show` signal to `false`.
+    #[must_use]
+    pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
+        self.dismiss_on_backdrop = enabled;
         self
     }
 
     /// Append a child node to the dialog body.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
-        self.children
-            .push(Box::new(move |node: NodeBuilder| node.child(child)));
+        self.children.push(Box::new(child));
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let open = self.open;
+        assert!(
+            self.show.is_some(),
+            "modal() requires .show(signal) — pass a Signal<bool> controlling visibility"
+        );
+
+        let show = self.show;
         let title_for_label = self.title.clone().unwrap_or_else(|| String::from("Dialog"));
 
-        let backdrop = build_backdrop(open);
-        let dialog = build_dialog(open, self.title, self.children, self.style_accumulator);
+        install_open_announcement(show, &title_for_label);
+        if self.escape_closes {
+            register_escape_modal(show);
+        }
+
+        let backdrop = build_backdrop(show, self.dismiss_on_backdrop);
+        let dialog = build_dialog(
+            show,
+            self.title,
+            self.children,
+            self.style_accumulator,
+            self.trap,
+        );
 
         let mut root = container()
             .role(Role::GenericContainer)
             .label(title_for_label)
             .layout(root_layout())
-            .style_reactive(move || open_display(open))
+            .style_reactive(move || show_display(show))
             .child(backdrop)
             .child(dialog);
+        if self.escape_closes {
+            root = root.key(Key::Escape, |ev| {
+                if close_top_escape_modal() {
+                    ev.stop_propagation();
+                }
+            });
+        }
 
         for mutate in self.mutators {
             root = mutate(root);
         }
-        root
+
+        root.layout(self.layout_overrides.apply(root_layout()))
     }
+}
+
+impl WidgetLayoutExt for ModalBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
+/// Register a reactive effect that announces the dialog title to
+/// assistive tech on every `false → true` rising edge of `show`.
+///
+/// Initial state — including a modal that opens with `show == true`
+/// at first read — is treated as steady, not a rising edge: ARIA-style
+/// live regions should fire when the modal *opens*, not when the host
+/// mounts with the dialog already visible. Re-opens (`false → true`
+/// after a `true → false`) do re-announce.
+///
+/// The effect does not need `&mut Cx`. It queues the announcement via
+/// [`queue_announcement`]; the host drains it through
+/// [`kernel::Cx::flush_announcements`] on the next frame tick.
+fn install_open_announcement(show: Option<Signal<bool>>, title: &str) {
+    let Some(signal) = show else {
+        return;
+    };
+    let prev = Rc::new(Cell::new(true));
+    let title = title.to_owned();
+    effect_named("sigil::modal::open_announce", move || {
+        let open_now = signal.get();
+        let was_open = prev.replace(open_now);
+        // Rising edge: only fire when we just transitioned closed -> open.
+        // `was_open == true` covers both steady-open and the implicit
+        // initial read (prev seeded to true), suppressing the mount-time
+        // announce.
+        if open_now && !was_open {
+            queue_announcement(title.clone(), Live::Polite);
+        }
+    });
+}
+
+#[derive(Clone, Copy)]
+struct EscapeModal {
+    id: u64,
+    show: Signal<bool>,
+}
+
+thread_local! {
+    static ESCAPE_MODALS: RefCell<Vec<EscapeModal>> = const {
+        RefCell::new(Vec::new())
+    };
+}
+
+static NEXT_ESCAPE_MODAL_ID: AtomicU64 = AtomicU64::new(1);
+
+fn register_escape_modal(show: Option<Signal<bool>>) {
+    let Some(show) = show else {
+        return;
+    };
+    let id = NEXT_ESCAPE_MODAL_ID.fetch_add(1, Ordering::Relaxed);
+    ESCAPE_MODALS.with(|stack| stack.borrow_mut().push(EscapeModal { id, show }));
+    on_cleanup(move || {
+        ESCAPE_MODALS.with(|stack| {
+            stack.borrow_mut().retain(|modal| modal.id != id);
+        });
+    });
+}
+
+fn close_top_escape_modal() -> bool {
+    ESCAPE_MODALS.with(|stack| {
+        let top = stack
+            .borrow()
+            .iter()
+            .rev()
+            .copied()
+            .find(|modal| modal.show.peek());
+        top.is_some_and(|modal| {
+            modal.show.set(false);
+            true
+        })
+    })
 }
 
 impl Default for ModalBuilder {
@@ -136,7 +286,7 @@ impl Default for ModalBuilder {
 }
 
 impl StyleAccess for ModalBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -144,7 +294,7 @@ impl StyleAccess for ModalBuilder {
 impl StateHost for ModalBuilder {}
 
 impl IntoNode for ModalBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -158,8 +308,8 @@ fn root_layout() -> LayoutStyle {
     LayoutStyle::block().fixed_size(BACKDROP_SIZE, BACKDROP_SIZE)
 }
 
-fn build_backdrop(open: Option<Signal<bool>>) -> NodeBuilder {
-    container()
+fn build_backdrop(show: Option<Signal<bool>>, dismiss_on_backdrop: bool) -> NodeBuilder {
+    let mut backdrop = container()
         .role(Role::GenericContainer)
         .layout(
             LayoutStyle::block()
@@ -169,14 +319,26 @@ fn build_backdrop(open: Option<Signal<bool>>) -> NodeBuilder {
                 .fixed_size(BACKDROP_SIZE, BACKDROP_SIZE),
         )
         .class(BACKDROP_BASE)
-        .style_reactive(move || open_display(open))
+        .style_reactive(move || show_display(show));
+    if dismiss_on_backdrop {
+        backdrop = backdrop.pointer_down(move |ev| {
+            if show.is_some_and(|signal| signal.peek()) {
+                if let Some(signal) = show {
+                    signal.set(false);
+                }
+                ev.stop_propagation();
+            }
+        });
+    }
+    backdrop
 }
 
 fn build_dialog(
-    open: Option<Signal<bool>>,
+    show: Option<Signal<bool>>,
     title: Option<String>,
-    children: Vec<Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>>,
+    children: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
+    trap: bool,
 ) -> NodeBuilder {
     // Centre the dialog inside the golden viewport. With the backdrop
     // root anchored at the host's top-left and the dialog absolutely
@@ -191,19 +353,21 @@ fn build_dialog(
         .role(Role::Dialog)
         .label(title_label)
         .focusable(true)
-        .mutate(|node| {
-            node.a11y.focus_scope = Some(FocusScopeKind::Modal);
-        })
         .layout(dialog_layout(top, left))
         .class("rounded-md")
         .class(DIALOG_BASE)
-        .style_reactive(move || open_display(open));
+        .style_reactive(move || show_display(show));
+    if trap {
+        dialog = dialog.mutate(|node| {
+            node.a11y.focus_scope = Some(FocusScopeKind::Modal);
+        });
+    }
 
     if let Some(title_text) = title {
         dialog = dialog.child(dialog_title(title_text));
     }
-    for attach in children {
-        dialog = attach(dialog);
+    for child in children {
+        dialog = dialog.child(child);
     }
 
     if !style_accumulator.is_empty() {
@@ -230,12 +394,28 @@ fn dialog_title(title: String) -> impl IntoNode {
         .class("text-on-surface")
 }
 
-// ---- open / closed visibility --------------------------------------------
+// ---- show / closed visibility --------------------------------------------
 
-fn open_display(open: Option<Signal<bool>>) -> &'static [StyleAtom] {
-    if open.is_none_or(|signal| signal.get()) {
+fn show_display(show: Option<Signal<bool>>) -> &'static [StyleAtom] {
+    if show.is_none_or(|signal| signal.get()) {
         &[]
     } else {
         &[StyleAtom::Display(DisplayKind::None)]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use reactive::Runtime;
+
+    #[test]
+    #[should_panic(expected = "requires .show")]
+    fn modal_without_show_panics_at_build_time() {
+        Runtime::scope("modal-missing-show-panics", || {
+            let mut cx = Cx::new_root();
+            let _ = cx.add(modal().title("Missing show"));
+        });
     }
 }

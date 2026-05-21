@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use sigil_events::prelude::{KeyEvent, PointerEvent};
-use sigil_kernel::{NodeBuilder, TextBuilder, TextContent, text};
-use sigil_reactive::Signal;
-use sigil_style::NodeStyleExt;
-use sigil_style::StyleState;
+use events::prelude::{KeyEvent, PointerEvent};
+use kernel::{NodeBuilder, TextBuilder, TextContent, text};
+use reactive::Signal;
+use style::NodeStyleExt;
+use style::StyleState;
 
 use crate::interaction::InteractionState;
 
@@ -34,6 +34,33 @@ pub(super) fn activate_key(
     activate: &Activate,
 ) {
     if interaction.activate_key(event) {
+        activate();
+    }
+}
+
+/// Pointer-release activation that also respects a reactive disabled signal.
+///
+/// Suppresses the callback when `disabled` peeks `true`, even if the
+/// initial constructor enabled state allowed interaction.
+pub(super) fn activate_pointer_reactive(
+    event: &mut PointerEvent,
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+    activate: &Activate,
+) {
+    if interaction.release_pointer(event) && !disabled_now(disabled) {
+        activate();
+    }
+}
+
+/// Key-activation that also respects a reactive disabled signal.
+pub(super) fn activate_key_reactive(
+    event: &mut KeyEvent,
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+    activate: &Activate,
+) {
+    if interaction.activate_key(event) && !disabled_now(disabled) {
         activate();
     }
 }

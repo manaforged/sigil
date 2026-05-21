@@ -2,18 +2,18 @@
 
 #![allow(missing_docs)]
 
-use sigil_app as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
+use app as _;
+use events as _;
+use hal as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use renderer as _;
+use style as _;
 
 use sigil::prelude::*;
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - toggle demo", 400, 200), build)
 }
 

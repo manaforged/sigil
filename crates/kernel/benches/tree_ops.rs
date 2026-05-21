@@ -9,13 +9,13 @@ use std::time::{Duration, Instant};
 
 use accesskit as _;
 use ahash as _;
-use sigil_hal as _;
-use sigil_reactive as _;
+use hal as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_kernel::{Cx, NodeBuilder, container, text};
+use kernel::{Cx, NodeBuilder, container, text};
 
 fn tree_with_text_children(count: usize) -> NodeBuilder {
     let mut builder = container();

@@ -1,0 +1,324 @@
+//! Drag-handle plumbing for the splitter widget.
+//!
+//! Each handle sits between adjacent panes. On pointer-down it captures
+//! the pointer and snapshots the local position + the current pane-size
+//! vector. Subsequent pointer-move events compute the axis delta
+//! relative to that anchor and re-distribute the delta across the two
+//! adjacent panes — pane `idx` grows, pane `idx + 1` shrinks. Min/max
+//! constraints clamp the resulting sizes. Pointer-up settles the drag,
+//! applying any configured snap pulls.
+//!
+//! The router dispatches captured-pointer events to the leaf the
+//! pointer was captured on, so all three hooks (`pointer_down`,
+//! `pointer_move`, `pointer_up`) live on the handle node itself — never
+//! on an ancestor.
+
+use std::cell::{Cell, RefCell};
+
+use events::prelude::NodeEventsExt;
+use kernel::NodeBuilder;
+use reactive::Signal;
+
+use super::builder::SplitterOrientation;
+
+/// Shared per-splitter-instance drag state.
+///
+/// Heap-leaked (one allocation per `splitter(...)` call) so per-handle
+/// closures can carry a `Copy` reference instead of threading
+/// `Rc<RefCell<_>>`. The state holds the live `sizes` vector, the
+/// per-pane min/max constraints, and any optional snap points.
+#[derive(Clone, Copy)]
+pub(super) struct SplitterState {
+    inner: &'static SplitterStateInner,
+}
+
+struct SplitterStateInner {
+    orientation: SplitterOrientation,
+    sizes: RefCell<Vec<f32>>,
+    mins: RefCell<Vec<f32>>,
+    maxs: RefCell<Vec<f32>>,
+    /// One snap-point slice per handle (index `i` between panes `i` and
+    /// `i + 1`). Empty means "no snap for that handle".
+    snap_points: RefCell<Vec<Vec<f32>>>,
+    snap_threshold: Cell<f32>,
+    /// Optional external observation signal.
+    sizes_bind: Cell<Option<Signal<Vec<f32>>>>,
+    /// Per-handle drag anchor: starting pointer position (axis-major)
+    /// and a snapshot of the sizes vector at pointer-down. Indexed by
+    /// handle index.
+    drag_anchor: RefCell<Option<DragAnchor>>,
+}
+
+struct DragAnchor {
+    handle: usize,
+    /// The pointer's axis position (local to the captured handle) at
+    /// the moment of pointer-down. We add subsequent
+    /// `event.position - down_position` deltas to redistribute sizes.
+    down_axis: f32,
+    /// Snapshot of `sizes` at pointer-down so successive move events
+    /// apply against a stable base instead of compounding.
+    snapshot: Vec<f32>,
+}
+
+impl SplitterState {
+    pub(super) fn new(
+        orientation: SplitterOrientation,
+        sizes: Vec<f32>,
+        mins: Vec<f32>,
+        maxs: Vec<f32>,
+    ) -> Self {
+        let count = sizes.len();
+        let handle_count = count.saturating_sub(1);
+        let inner = Box::leak(Box::new(SplitterStateInner {
+            orientation,
+            sizes: RefCell::new(sizes),
+            mins: RefCell::new(mins),
+            maxs: RefCell::new(maxs),
+            snap_points: RefCell::new(vec![Vec::new(); handle_count]),
+            snap_threshold: Cell::new(8.0),
+            sizes_bind: Cell::new(None),
+            drag_anchor: RefCell::new(None),
+        }));
+        Self { inner }
+    }
+
+    pub(super) const fn orientation(self) -> SplitterOrientation {
+        self.inner.orientation
+    }
+
+    pub(super) fn size_at(self, pane: usize) -> f32 {
+        self.inner.sizes.borrow().get(pane).copied().unwrap_or(0.0)
+    }
+
+    pub(super) fn set_snap(self, handle: usize, points: Vec<f32>) {
+        if let Some(slot) = self.inner.snap_points.borrow_mut().get_mut(handle) {
+            *slot = points;
+        }
+    }
+
+    pub(super) fn set_snap_threshold(self, threshold: f32) {
+        self.inner.snap_threshold.set(threshold.max(0.0));
+    }
+
+    pub(super) fn bind_sizes(self, signal: Signal<Vec<f32>>) {
+        // Seed the signal with the current size vector so observers
+        // see the layout snapshot before any drag fires.
+        signal.set(self.inner.sizes.borrow().clone());
+        self.inner.sizes_bind.set(Some(signal));
+    }
+
+    fn publish(self) {
+        if let Some(signal) = self.inner.sizes_bind.get() {
+            signal.set(self.inner.sizes.borrow().clone());
+        }
+    }
+
+    fn begin(self, handle: usize, axis_position: f32) {
+        let snapshot = self.inner.sizes.borrow().clone();
+        *self.inner.drag_anchor.borrow_mut() = Some(DragAnchor {
+            handle,
+            down_axis: axis_position,
+            snapshot,
+        });
+    }
+
+    fn apply_delta(self, handle: usize, delta: f32) {
+        let (snapshot, _down) = {
+            let anchor = self.inner.drag_anchor.borrow();
+            let Some(anchor) = anchor.as_ref() else {
+                return;
+            };
+            if anchor.handle != handle {
+                return;
+            }
+            (anchor.snapshot.clone(), anchor.down_axis)
+        };
+        let next = redistribute(
+            &snapshot,
+            handle,
+            delta,
+            &self.inner.mins.borrow(),
+            &self.inner.maxs.borrow(),
+        );
+        *self.inner.sizes.borrow_mut() = next;
+        self.publish();
+    }
+
+    fn end(self) {
+        let anchor = self.inner.drag_anchor.borrow_mut().take();
+        let Some(anchor) = anchor else {
+            return;
+        };
+        let snap_points = self.inner.snap_points.borrow();
+        let Some(points) = snap_points.get(anchor.handle) else {
+            return;
+        };
+        if points.is_empty() {
+            return;
+        }
+        let threshold = self.inner.snap_threshold.get();
+        let current_split = {
+            let sizes = self.inner.sizes.borrow();
+            cumulative_split(&sizes, anchor.handle)
+        };
+        let Some(target) = nearest_snap(points, current_split, threshold) else {
+            return;
+        };
+        let delta = target - current_split;
+        let next = redistribute(
+            &self.inner.sizes.borrow().clone(),
+            anchor.handle,
+            delta,
+            &self.inner.mins.borrow(),
+            &self.inner.maxs.borrow(),
+        );
+        *self.inner.sizes.borrow_mut() = next;
+        self.publish();
+    }
+}
+
+/// Compute the redistributed size vector for a drag of `delta` axis-pixels
+/// on `handle`. Pane `handle` grows by `delta`, pane `handle + 1` shrinks
+/// by `delta`; constraints clamp the actual applied delta so neither
+/// pane crosses its min or max.
+fn redistribute(
+    snapshot: &[f32],
+    handle: usize,
+    delta: f32,
+    mins: &[f32],
+    maxs: &[f32],
+) -> Vec<f32> {
+    let mut out = snapshot.to_vec();
+    let Some(&grow_base) = snapshot.get(handle) else {
+        return out;
+    };
+    let Some(&shrink_base) = snapshot.get(handle + 1) else {
+        return out;
+    };
+    let grow_min = mins.get(handle).copied().unwrap_or(0.0);
+    let grow_max = maxs.get(handle).copied().unwrap_or(f32::INFINITY);
+    let shrink_min = mins.get(handle + 1).copied().unwrap_or(0.0);
+    let shrink_max = maxs.get(handle + 1).copied().unwrap_or(f32::INFINITY);
+
+    // Allowed delta range: pane `handle` may grow up to (grow_max - grow_base)
+    // and shrink down to (grow_min - grow_base, negative). Pane `handle + 1`
+    // mirrors that constraint.
+    let max_delta = (grow_max - grow_base).min(shrink_base - shrink_min);
+    let min_delta = (grow_min - grow_base).max(shrink_base - shrink_max);
+    let applied = delta.clamp(min_delta, max_delta);
+
+    if let Some(slot) = out.get_mut(handle) {
+        *slot = grow_base + applied;
+    }
+    if let Some(slot) = out.get_mut(handle + 1) {
+        *slot = shrink_base - applied;
+    }
+    out
+}
+
+fn cumulative_split(sizes: &[f32], handle: usize) -> f32 {
+    sizes.iter().take(handle + 1).copied().sum()
+}
+
+fn nearest_snap(points: &[f32], current: f32, threshold: f32) -> Option<f32> {
+    let mut best: Option<(f32, f32)> = None;
+    for &p in points {
+        let distance = (p - current).abs();
+        if distance > threshold {
+            continue;
+        }
+        match best {
+            None => best = Some((p, distance)),
+            Some((_, d)) if distance < d => best = Some((p, distance)),
+            _ => {}
+        }
+    }
+    best.map(|(p, _)| p)
+}
+
+/// Install drag handlers on a splitter handle node. The handle owns its
+/// own capture-pointer / move / up flow because the router dispatches
+/// captured events only to the captured leaf.
+pub(super) fn install_handle_hooks(
+    node: NodeBuilder,
+    state: SplitterState,
+    handle_index: usize,
+) -> NodeBuilder {
+    node.pointer_down(move |event| {
+        let axis = axis_of(state.orientation(), event.position.x, event.position.y);
+        state.begin(handle_index, axis);
+        event.capture_pointer();
+        event.stop_propagation();
+    })
+    .pointer_move(move |event| {
+        if !event.is_captured() {
+            return;
+        }
+        let anchor_axis = {
+            let anchor = state.inner.drag_anchor.borrow();
+            anchor.as_ref().map(|a| a.down_axis)
+        };
+        let Some(anchor_axis) = anchor_axis else {
+            return;
+        };
+        let current_axis = axis_of(state.orientation(), event.position.x, event.position.y);
+        let delta = current_axis - anchor_axis;
+        state.apply_delta(handle_index, delta);
+        event.stop_propagation();
+    })
+    .pointer_up(move |event| {
+        state.end();
+        event.stop_propagation();
+    })
+}
+
+const fn axis_of(orientation: SplitterOrientation, x: f32, y: f32) -> f32 {
+    match orientation {
+        SplitterOrientation::Horizontal => x,
+        SplitterOrientation::Vertical => y,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cumulative_split, nearest_snap, redistribute};
+
+    #[test]
+    fn redistribute_within_bounds() {
+        let next = redistribute(
+            &[200.0, 200.0, 200.0],
+            0,
+            50.0,
+            &[0.0, 0.0, 0.0],
+            &[f32::INFINITY, f32::INFINITY, f32::INFINITY],
+        );
+        assert_eq!(next, vec![250.0, 150.0, 200.0]);
+    }
+
+    #[test]
+    fn redistribute_clamps_to_min() {
+        // pane 1 has min=100; pushing delta=300 would shrink pane 1 to -100,
+        // so the applied delta is clamped to 100 (200 - 100).
+        let next = redistribute(
+            &[200.0, 200.0, 200.0],
+            0,
+            300.0,
+            &[0.0, 100.0, 0.0],
+            &[f32::INFINITY, f32::INFINITY, f32::INFINITY],
+        );
+        assert_eq!(next, vec![300.0, 100.0, 200.0]);
+    }
+
+    #[test]
+    fn cumulative_split_sums_through_handle() {
+        assert!((cumulative_split(&[200.0, 150.0, 200.0], 0) - 200.0).abs() < f32::EPSILON);
+        assert!((cumulative_split(&[200.0, 150.0, 200.0], 1) - 350.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn nearest_snap_within_threshold() {
+        assert_eq!(nearest_snap(&[200.0], 195.0, 8.0), Some(200.0));
+        assert_eq!(nearest_snap(&[200.0], 210.0, 8.0), None);
+        assert_eq!(nearest_snap(&[200.0, 400.0], 395.0, 8.0), Some(400.0));
+    }
+}

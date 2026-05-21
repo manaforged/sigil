@@ -2,7 +2,7 @@
 //!
 //! Types only. The shaper body in G1.3 populates `GlyphRun` from
 //! skrifa outlines + cluster mappings. `Rect` here is intentionally
-//! local: `sigil_hal::Rect` exists but uses an `origin: Point` shape,
+//! local: `hal::Rect` exists but uses an `origin: Point` shape,
 //! not the flat `x/y/w/h` shape G1.5 needs for the Slug glyph-bbox
 //! contract.
 
@@ -54,7 +54,7 @@ impl GlyphRun {
 
 /// Plain rect for glyph bbox.
 ///
-/// Distinct from [`sigil_hal::Rect`] (which carries an `origin: Point`
+/// Distinct from [`hal::Rect`] (which carries an `origin: Point`
 /// wrapper) so the Slug glyph-bbox surface can be the flat `x/y/w/h`
 /// form it needs without an extra unwrap at the call site.
 #[derive(Debug, Clone, Copy, Default)]

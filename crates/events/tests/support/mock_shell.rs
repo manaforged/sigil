@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::fmt;
 
-use sigil_hal::{PhysicalSize, Shell, ShellEvent};
+use hal::{PhysicalSize, Shell, ShellEvent};
 
 #[derive(Default)]
 pub(crate) struct MockShell {

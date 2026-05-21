@@ -9,9 +9,9 @@ authors.workspace = true
 description = "Headless sigil-layout example."
 
 [dependencies]
-sigil-kernel = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-text = { workspace = true }
+kernel = { workspace = true }
+layout = { workspace = true }
+text = { workspace = true }
 
 [lints]
 workspace = true

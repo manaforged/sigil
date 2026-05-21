@@ -7,24 +7,24 @@
 
 use std::sync::Arc;
 
-use sigil_async::AsyncRuntime;
-use sigil_events::EventRouter;
-use sigil_hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
-use sigil_kernel::Cx;
-use sigil_layout::LayoutEngine;
-use sigil_layout::prelude::Size;
-use sigil_reactive::{MainThreadDispatcher, Runtime, TaskExecutor};
-use sigil_renderer::{WgpuRenderer, WgpuSurface, emit_scene};
-use sigil_shell::{WinitShell, WinitWindowHandle};
+use events::EventRouter;
+use hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
+use kernel::Cx;
+use layout::LayoutEngine;
+use layout::prelude::Size;
+use reactive::{MainThreadDispatcher, Runtime, TaskExecutor};
+use renderer::{WgpuRenderer, WgpuSurface, emit_scene};
+use shell::{WinitShell, WinitWindowHandle};
+use tasks::AsyncRuntime;
 
 use crate::config::AppConfig;
-use crate::error::{Error, Result};
+use crate::error::{AppResult, Error};
 use crate::text_measure::DefaultTextMeasure;
 use crate::tree_root::TreeRoot;
 
-mod events;
+mod event_wiring;
 
-use events::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface};
+use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface};
 
 /// Launch a sigil app.
 ///
@@ -39,7 +39,7 @@ use events::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface};
 /// initialise. Runtime errors during the frame loop (surface lost,
 /// transient wgpu timeouts) are handled internally — the loop retries
 /// on the next frame.
-pub fn launch<C, T>(config: C, tree: T) -> Result<()>
+pub fn launch<C, T>(config: C, tree: T) -> AppResult<()>
 where
     C: Into<AppConfig>,
     T: TreeRoot,
@@ -48,7 +48,7 @@ where
     Runtime::scope("sigil-app", || run(config, tree))
 }
 
-fn run<T: TreeRoot>(config: AppConfig, tree: T) -> Result<()> {
+fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     let logical_size = logical_size_from_config(config.size);
 
     let mut shell = WinitShell::new().map_err(Error::new)?;
@@ -111,7 +111,7 @@ fn create_initial_window<S>(
     shell: &mut S,
     config: &AppConfig,
     logical_size: LogicalSize,
-) -> Result<S::Window>
+) -> AppResult<S::Window>
 where
     S: Shell,
 {
@@ -125,7 +125,7 @@ struct FrameCtx<'a> {
     shell: &'a mut WinitShell,
     window_handle: WinitWindowHandle,
     cx: &'a mut Cx,
-    root: sigil_kernel::NodeId,
+    root: kernel::NodeId,
     layout: &'a mut LayoutEngine,
     router: &'a mut EventRouter,
     renderer: &'a mut WgpuRenderer,
@@ -224,8 +224,8 @@ fn frame_once(ctx: FrameCtx<'_>) {
 ///
 /// Callers must invoke this from inside a [`Runtime::scope`].
 ///
-/// [`DrawPhase::Layout`]: sigil_reactive::DrawPhase::Layout
-/// [`DrawPhase::Paint`]: sigil_reactive::DrawPhase::Paint
+/// [`DrawPhase::Layout`]: reactive::DrawPhase::Layout
+/// [`DrawPhase::Paint`]: reactive::DrawPhase::Paint
 #[doc(hidden)]
 pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
     Runtime::begin_effect();
@@ -250,7 +250,7 @@ fn resize_surface(
 
 fn recompute_layout(
     cx: &mut Cx,
-    root: sigil_kernel::NodeId,
+    root: kernel::NodeId,
     layout: &mut LayoutEngine,
     scale: Scale,
     logical: LogicalSize,
@@ -262,11 +262,11 @@ fn recompute_layout(
 
 fn layout_for_scale(
     cx: &mut Cx,
-    root: sigil_kernel::NodeId,
+    root: kernel::NodeId,
     layout: &mut LayoutEngine,
     _scale: Scale,
     logical_viewport: LogicalSize,
-) -> core::result::Result<(), sigil_layout::LayoutError> {
+) -> core::result::Result<(), layout::LayoutError> {
     layout.compute(
         cx,
         root,
@@ -303,7 +303,7 @@ fn scale_from_f64(scale: f64) -> Scale {
 
 fn paint(
     cx: &Cx,
-    root: sigil_kernel::NodeId,
+    root: kernel::NodeId,
     renderer: &mut WgpuRenderer,
     surface: &mut Option<WgpuSurface>,
     viewport: (f32, f32),
@@ -324,10 +324,10 @@ mod tests {
 
     use std::fmt;
 
-    use sigil_hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
-    use sigil_kernel::{Cx, container};
-    use sigil_layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-    use sigil_reactive::Runtime;
+    use hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
+    use kernel::{Cx, container};
+    use layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+    use reactive::Runtime;
 
     use crate::config::AppConfig;
     use crate::launch::{create_initial_window, layout_for_scale};

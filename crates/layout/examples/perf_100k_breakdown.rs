@@ -9,9 +9,9 @@
 
 use std::time::Instant;
 
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
@@ -172,7 +172,7 @@ fn main() {
     );
 }
 
-fn first_leaf(cx: &sigil_kernel::Cx, root: NodeId) -> NodeId {
+fn first_leaf(cx: &kernel::Cx, root: NodeId) -> NodeId {
     let mut stack = vec![root];
     while let Some(id) = stack.pop() {
         let node = cx.get(id).expect("node exists");

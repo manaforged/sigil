@@ -32,7 +32,7 @@ pub(super) fn clear_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     view: &wgpu::TextureView,
-    color: sigil_hal::Color,
+    color: hal::Color,
 ) {
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("sigil-renderer capture split pre-clear"),

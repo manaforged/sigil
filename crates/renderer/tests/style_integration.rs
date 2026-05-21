@@ -9,32 +9,32 @@ use image as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use sigil_shell as _;
-use sigil_text as _;
+use shell as _;
 use skrifa as _;
 use smallvec as _;
+use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use sigil_icons as _;
+use icons as _;
 
-use sigil_hal::Size;
-use sigil_kernel::{TextContent, prelude::*};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
-use sigil_renderer::{
+use hal::Size;
+use kernel::{TextContent, prelude::*};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
+use renderer::{
     CommandScene, DrawGlyphRun, DrawRect, SceneCommand, emit_scene,
     unsupported_style_warning_count_for,
 };
-use sigil_style::TextLineHeight;
-use sigil_style::{FocusRing, NodeStyleExt, Theme};
+use style::TextLineHeight;
+use style::{FocusRing, NodeStyleExt, Theme};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::default()
+    fn measure(&self, _source: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::default()
     }
 }
 

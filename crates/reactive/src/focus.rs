@@ -24,7 +24,7 @@
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use sigil_actions::HandlerKey;
+use actions::HandlerKey;
 
 use crate::runtime::EntityKey;
 

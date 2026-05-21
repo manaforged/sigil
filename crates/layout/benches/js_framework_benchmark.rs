@@ -1,11 +1,11 @@
 //! Sigil-layout vs Taffy on the **krausest js-framework-benchmark**
-//! workload (https://github.com/krausest/js-framework-benchmark).
+//! workload (<https://github.com/krausest/js-framework-benchmark>).
 //!
 //! ## Methodology
 //!
 //! krausest's bench is the de-facto industry standard for UI framework
 //! performance — every major JS framework (React, Vue, Svelte, Solid,
-//! Lit, Angular) publishes numbers against it, and the SCU / WebKit
+//! Lit, `Angular`) publishes numbers against it, and the SCU / `WebKit`
 //! teams use the same shape internally. The canonical operations are:
 //!
 //! | Op | Description |
@@ -34,25 +34,31 @@
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
-    clippy::unwrap_used
+    clippy::unwrap_used,
+    // usize→f32 casts are intentional: row counts fit comfortably in f32 mantissa
+    // for the small table sizes (≤10k rows) used in these benchmarks.
+    clippy::cast_precision_loss,
+    // Indexing on `rows[i]` is always bounds-safe because `i = (i+1) % rows.len()`.
+    // Bench data is statically sized; the panic-as-bug trade-off is acceptable.
+    clippy::indexing_slicing
 )]
 
 use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
+use style as _;
 
 const VIEWPORT_WIDTH: f32 = 1_280.0;
 const VIEWPORT_HEIGHT: f32 = 720.0;
@@ -70,7 +76,7 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
+const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
         width: taffy::AvailableSpace::Definite(width),
         height: taffy::AvailableSpace::Definite(height),

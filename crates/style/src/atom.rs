@@ -103,7 +103,7 @@ pub enum JustifyKind {
 
 /// Overflow clipping behaviour for a single axis.
 ///
-/// Maps to [`sigil_layout::Overflow`] during style resolution.
+/// Maps to [`layout::Overflow`] during style resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OverflowKind {
     /// Content extends past the box without clipping.

@@ -1,0 +1,20 @@
+[package]
+name = "log-tailer"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Dogfooded log tailer viewer on Sigil's `virtual_list`."
+
+[[bin]]
+name = "log-tailer"
+path = "src/main.rs"
+
+[dependencies]
+sigil = { workspace = true }
+
+[lints]
+workspace = true

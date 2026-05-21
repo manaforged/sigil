@@ -1,8 +1,8 @@
 //! Shared test stub replacing the removed `DefaultTextMeasure`.
 
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::TextContent;
-use sigil_layout::{LayoutEngine, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::TextContent;
+use layout::{LayoutEngine, TextMeasure};
 
 struct StubMeasure;
 

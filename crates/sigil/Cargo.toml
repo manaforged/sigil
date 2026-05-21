@@ -13,21 +13,22 @@ autobenches = false
 doctest = false
 
 [dependencies]
-sigil-actions = { workspace = true }
-sigil-animation-runtime = { workspace = true }
-sigil-app = { workspace = true }
-sigil-async = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-events = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
+actions = { workspace = true }
+animation-runtime = { workspace = true }
+app = { workspace = true }
+tasks = { workspace = true }
+kernel = { workspace = true }
+events = { workspace = true }
+layout = { workspace = true }
+reactive = { workspace = true }
+style = { workspace = true }
+arboard = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-sigil-animation = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-renderer = { workspace = true }
+animation = { workspace = true }
+hal = { workspace = true }
+renderer = { workspace = true }
 image = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true }

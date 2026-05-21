@@ -105,7 +105,7 @@ impl LayerCompositePipeline {
 #[derive(Clone, Copy)]
 pub(crate) struct CompositeRequest<'a> {
     pub(crate) layer_view: &'a wgpu::TextureView,
-    pub(crate) dest: sigil_hal::Rect,
+    pub(crate) dest: hal::Rect,
     pub(crate) texture_size: (u32, u32),
     pub(crate) opacity: f32,
 }

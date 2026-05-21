@@ -3,10 +3,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil_events::prelude::*;
-use sigil_hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit, Shell};
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
+use events::prelude::*;
+use hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit, Shell};
+use kernel::prelude::*;
+use layout::prelude::*;
 
 use super::mock_shell::MockShell;
 
@@ -91,7 +91,7 @@ pub(crate) fn key_event(key: Key, physical: PhysicalKey, phase: KeyPhase) -> She
 }
 
 pub(crate) const fn window_blur() -> ShellEvent {
-    ShellEvent::Window(sigil_hal::WindowEvent::Focused(false))
+    ShellEvent::Window(hal::WindowEvent::Focused(false))
 }
 
 pub(crate) const fn scroll_lines(x: f32, y: f32, dy: f32) -> ShellEvent {
@@ -160,7 +160,7 @@ pub(crate) fn focusable_child(tab_index: Option<i32>) -> NodeBuilder {
 pub(crate) struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::default()
     }
 }

@@ -14,8 +14,8 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_kernel::TextContent;
-use sigil_style::TextStyle;
+use kernel::TextContent;
+use style::TextStyle;
 
 use crate::block::BlockSolver;
 use crate::error::LayoutError;
@@ -81,13 +81,13 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(None, style))
     }
 
-    /// Insert a node carrying its originating `sigil_kernel::NodeId`
+    /// Insert a node carrying its originating `kernel::NodeId`
     /// link. `LayoutEngine` uses this path so the inverse `handle →
     /// kernel` lookup reads `LayoutNode.kernel` directly instead of a
     /// parallel hashmap.
     pub(crate) fn insert_with_kernel(
         &mut self,
-        kernel: sigil_kernel::NodeId,
+        kernel: kernel::NodeId,
         style: StyleData,
     ) -> NodeHandle {
         NodeHandle(self.forest.insert(Some(kernel), style))
@@ -96,7 +96,7 @@ impl LayoutDrive {
     /// Resolve `handle` back to its kernel `NodeId`. Returns `None`
     /// when the handle is stale or the node was inserted without a
     /// kernel link (e.g. test fixtures using `LayoutDrive::insert`).
-    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<sigil_kernel::NodeId> {
+    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<kernel::NodeId> {
         self.forest.refer(handle.0)?.kernel()
     }
 
@@ -201,7 +201,7 @@ impl LayoutDrive {
 
     /// Measure with full owned space constraints.
     ///
-    /// `LayoutEngine` uses this path so `sigil_hal::Dim::{Fixed,
+    /// `LayoutEngine` uses this path so `hal::Dim::{Fixed,
     /// MinContent, MaxContent}` survive the cutover. The older
     /// [`Self::measure`] convenience remains for tests and callers with
     /// definite viewport sizes.
@@ -277,8 +277,8 @@ impl LayoutDrive {
 mod tests {
     use super::*;
     use crate::style_data::{Dimension, Display, Size as StyleSize, StyleData};
-    use sigil_hal::{LogicalSize, Size as HalSize};
-    use sigil_kernel::TextContent;
+    use hal::{LogicalSize, Size as HalSize};
+    use kernel::TextContent;
 
     struct NullText;
     impl TextMeasure for NullText {

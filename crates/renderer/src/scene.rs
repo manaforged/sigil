@@ -1,10 +1,10 @@
 //! Headless scene emission for renderer integration tests.
 
-use sigil_hal::{Point, Rect};
-use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
-use sigil_layout::LayoutResult;
-use sigil_style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle};
-use sigil_text::{OwnedTextEngine, TextConfig};
+use hal::{Point, Rect};
+use kernel::{Cx, Node, NodeId, NodeType, TextContent};
+use layout::LayoutResult;
+use style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle};
+use text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;

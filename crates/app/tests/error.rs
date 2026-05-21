@@ -1,17 +1,17 @@
-//! `sigil_app::Error` wrapping behaviour.
+//! `app::Error` wrapping behaviour.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
+use events as _;
+use hal as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use shell as _;
+use style as _;
+use tasks as _;
+use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -19,7 +19,7 @@ use windows_core as _;
 use std::error::Error as StdError;
 use std::fmt;
 
-use sigil_app::Error;
+use app::Error;
 
 #[derive(Debug)]
 struct DummyErr(&'static str);
@@ -43,7 +43,7 @@ fn error_renderer_error_into_works_via_question_mark() {
     // The renderer error path is the main reason `?` should succeed
     // inside `launch::run` — make sure the From impl exists.
     fn try_renderer() -> Result<(), Error> {
-        Err(sigil_renderer::RendererError::NotInitialized)?;
+        Err(renderer::RendererError::NotInitialized)?;
         Ok(())
     }
     let err = try_renderer().expect_err("must propagate");

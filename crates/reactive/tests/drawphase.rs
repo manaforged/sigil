@@ -25,8 +25,8 @@ use tokio as _;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_actions::DeriveAction;
-use sigil_reactive::{DrawPhase, Entity, Runtime, set_global, signal};
+use actions::DeriveAction;
+use reactive::{DrawPhase, Entity, Runtime, set_global, signal};
 
 #[derive(Clone, DeriveAction)]
 struct Tick;

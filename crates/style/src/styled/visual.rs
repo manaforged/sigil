@@ -29,30 +29,30 @@ pub trait Visual: StyleAccess {
         // (max 65_535) and is non-negative. No truncation or sign loss.
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let encoded = (clamped * OPACITY_SCALE).round() as u16;
-        self.style().push_atom(StyleAtom::Opacity(encoded));
+        self.style_mut().push_atom(StyleAtom::Opacity(encoded));
         self
     }
 
     /// Set inline-axis overflow behaviour.
     #[must_use]
     fn overflow_x(mut self, kind: OverflowKind) -> Self {
-        self.style().push_atom(StyleAtom::OverflowX(kind));
+        self.style_mut().push_atom(StyleAtom::OverflowX(kind));
         self
     }
 
     /// Set block-axis overflow behaviour.
     #[must_use]
     fn overflow_y(mut self, kind: OverflowKind) -> Self {
-        self.style().push_atom(StyleAtom::OverflowY(kind));
+        self.style_mut().push_atom(StyleAtom::OverflowY(kind));
         self
     }
 
     /// Hide overflow on both axes.
     #[must_use]
     fn overflow_hidden(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::OverflowX(OverflowKind::Hidden));
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::OverflowY(OverflowKind::Hidden));
         self
     }

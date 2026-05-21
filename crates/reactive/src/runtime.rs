@@ -35,7 +35,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 
-use sigil_actions::ActionRegistry;
+use actions::ActionRegistry;
 
 use crate::arena::Arena;
 use crate::async_cx::{MainThreadDispatcher, TaskExecutor};
@@ -271,7 +271,7 @@ impl Runtime {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use sigil_reactive::{effect, signal, Runtime};
+    /// use reactive::{effect, signal, Runtime};
     ///
     /// let result = Runtime::scope("example", || {
     ///     let n = signal(1_i32);

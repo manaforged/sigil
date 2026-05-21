@@ -15,8 +15,8 @@
 //! not in sRGB. (Confirmed against the RC1 fix in `4a6e12e` — same
 //! contract the static palette uses.)
 
-use sigil_reactive::signal;
-use sigil_style::{ColorAtomKind, Rgba8, StyleAtom, Theme};
+use reactive::signal;
+use style::{ColorAtomKind, Rgba8, StyleAtom, Theme};
 
 use crate::{AnimationConfig, Animator};
 
@@ -178,10 +178,10 @@ pub(crate) fn find_color(
     })
 }
 
-fn resolve_color_atom(color: sigil_style::ColorAtom, theme: ThemeSnapshot) -> Rgba8 {
+fn resolve_color_atom(color: style::ColorAtom, theme: ThemeSnapshot) -> Rgba8 {
     match color {
-        sigil_style::ColorAtom::Rgba8(rgba) => rgba,
-        sigil_style::ColorAtom::ThemeRef(token) => theme.resolve(token),
+        style::ColorAtom::Rgba8(rgba) => rgba,
+        style::ColorAtom::ThemeRef(token) => theme.resolve(token),
     }
 }
 

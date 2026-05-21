@@ -1,6 +1,6 @@
 //! Offscreen command-scene rendering support.
 
-use sigil_hal::Color;
+use hal::Color;
 
 use crate::blur_paint::BlurPipeline;
 use crate::decoration_paint::DecorationPipeline;

@@ -22,20 +22,22 @@ use std::cell::Cell;
 use std::hint::black_box;
 use std::rc::Rc;
 
-// `smallvec` is a regular dep of `sigil-reactive`. Bench targets pull
-// regular deps into their compilation unit, so the unused-deps lint
-// fires here without a marker.
+// `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
+// into every bench compilation unit. We don't reference them directly
+// here, so silence `unused_crate_dependencies` with marker aliases.
+use actions as _;
 use smallvec as _;
+use tokio as _;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil_reactive::{Runtime, derived, effect, signal};
+use reactive::{Runtime, derived, effect, signal};
 
 /// Build `count` effects that all read `sig` and store the value into
 /// their own `Cell`. The sinks are returned so the caller can keep
 /// them alive across the timed section — dropping them inside the
 /// closure would skew the measurement and let the optimiser fold the
 /// effect bodies away.
-fn install_subscribers(sig: sigil_reactive::Signal<i32>, count: usize) -> Vec<Rc<Cell<i32>>> {
+fn install_subscribers(sig: reactive::Signal<i32>, count: usize) -> Vec<Rc<Cell<i32>>> {
     let mut sinks = Vec::with_capacity(count);
     for _ in 0..count {
         let sink = Rc::new(Cell::new(0_i32));
@@ -105,10 +107,7 @@ fn bench_set_10000_subscribers(c: &mut Criterion) {
 /// Returns the terminal signal. Caller is responsible for keeping the
 /// enclosing scope alive — the chain holds no extra references because
 /// `Signal<T>` is a `Copy` arena handle.
-fn build_derived_chain(
-    root: sigil_reactive::Signal<i32>,
-    depth: usize,
-) -> sigil_reactive::Signal<i32> {
+fn build_derived_chain(root: reactive::Signal<i32>, depth: usize) -> reactive::Signal<i32> {
     let mut current = root;
     for _ in 0..depth {
         let prev = current;

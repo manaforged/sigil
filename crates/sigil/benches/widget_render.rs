@@ -30,27 +30,29 @@
 )]
 
 // Workspace deps inherited by the bench target but not directly named.
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use events as _;
 use image as _;
-use sigil_actions as _;
-use sigil_app as _;
-use sigil_async as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use style as _;
+use tasks as _;
 
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pollster::FutureExt as _;
-use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
-use sigil_hal::{
+use hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use pollster::FutureExt as _;
+use renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::prelude::*;
+use sigil::reactive::{Runtime, signal};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -74,8 +76,8 @@ impl Mode {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

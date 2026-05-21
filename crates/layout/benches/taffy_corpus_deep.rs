@@ -22,25 +22,28 @@
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
-    clippy::unwrap_used
+    clippy::unwrap_used,
+    // u32→f32 cast is intentional: xorshift output bucketed into 200 slots,
+    // so values 0..200 are well within f32's exact integer range (≤2^23).
+    clippy::cast_precision_loss
 )]
 
 use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
+use style as _;
 
 // Taffy's published deep shape: 2^17 = 131_072 leaves on a binary tree.
 // We use the same depth so the work-per-frame matches.
@@ -57,7 +60,7 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
+const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
         width: taffy::AvailableSpace::Definite(width),
         height: taffy::AvailableSpace::Definite(height),
@@ -71,7 +74,7 @@ impl Rng {
     const fn new(seed: u32) -> Self {
         Self(seed)
     }
-    fn next(&mut self) -> u32 {
+    const fn next(&mut self) -> u32 {
         let mut x = self.0;
         x ^= x << 13;
         x ^= x >> 17;

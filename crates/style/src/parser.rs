@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom};
 
-const STRUCTURAL_TOKENS: [&str; 65] = [
+const STRUCTURAL_TOKENS: [&str; 67] = [
     "p-4",
     "px-4",
     "py-4",
@@ -24,6 +24,8 @@ const STRUCTURAL_TOKENS: [&str; 65] = [
     "gap-4",
     "w-4",
     "h-4",
+    "min-w-4",
+    "max-w-4",
     "w-full",
     "h-full",
     "w-auto",
@@ -202,6 +204,12 @@ fn spacing_atom(token: &str) -> Option<StyleAtom> {
 }
 
 fn dimension_atom(token: &str) -> Option<StyleAtom> {
+    if let Some(value) = token.strip_prefix("min-w-") {
+        return Some(StyleAtom::MinWidth(Dimension::Px(scale(value)?)));
+    }
+    if let Some(value) = token.strip_prefix("max-w-") {
+        return Some(StyleAtom::MaxWidth(Dimension::Px(scale(value)?)));
+    }
     let (prefix, value) = token.split_once('-')?;
     let dimension = Dimension::Px(scale(value)?);
     match prefix {

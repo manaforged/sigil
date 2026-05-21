@@ -4,12 +4,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use sigil_hal as _;
-use sigil_reactive as _;
+use hal as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_kernel::{Cx, Role, text};
+use kernel::{Cx, Role, text};
 
 #[test]
 fn accesskit_id_is_stable_until_node_removal() {

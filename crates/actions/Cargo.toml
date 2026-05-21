@@ -1,5 +1,5 @@
 [package]
-name = "sigil-actions"
+name = "actions"
 autobenches = false
 version.workspace = true
 edition.workspace = true
@@ -13,7 +13,7 @@ description = "Typed action dispatch + registry — Layer A (no focus/Context ye
 doctest = false
 
 [dependencies]
-sigil-actions-macros = { workspace = true }
+actions-macros = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]

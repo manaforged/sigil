@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 #[cfg(test)]
-use sigil_style as _;
+use style as _;
 #[cfg(test)]
 use trybuild as _;
 
@@ -38,7 +38,7 @@ fn emit_segments(
     atoms: Vec<proc_macro2::TokenStream>,
 ) -> proc_macro2::TokenStream {
     let Some((head, tail)) = segments.split_first() else {
-        return quote!(&[#(#atoms),*] as &[::sigil_style::StyleAtom]);
+        return quote!(&[#(#atoms),*] as &[::style::StyleAtom]);
     };
     match head {
         parser::Segment::Static(static_atoms) => {

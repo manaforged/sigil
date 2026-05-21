@@ -1,17 +1,18 @@
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::Signal;
-use sigil_style::{
-    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+use animation_runtime::presets;
+use events::prelude::{Key, LogicalKey, NodeEventsExt};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use reactive::Signal;
+use style::{
+    ClassSource, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
     StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change,
@@ -20,10 +21,8 @@ use super::transition_seam::install_transition_animators;
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
 const CHECKBOX_COMPONENT_ID: u64 = 0xC4EC_B0CC;
-const CHECKBOX_ROOT_SIZE: f32 = SizeToken::ControlMd.px();
-const CHECKBOX_GAP: f32 = SizeToken::GapSm.px();
-const CHECKBOX_BOX_SIZE: f32 = SizeToken::CheckboxBox.px();
-const CHECKBOX_MARK_SIZE: f32 = SizeToken::CheckboxMark.px();
+const CHECKBOX_BOX_SIZE: f32 = 20.0;
+const CHECKBOX_MARK_SIZE: f32 = 8.0;
 
 /// Visual tone for [`checkbox`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -44,6 +43,7 @@ pub struct CheckboxBuilder {
     on_change: Option<BoolChange>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
@@ -113,6 +113,7 @@ impl CheckboxBuilder {
             on_change: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -154,11 +155,9 @@ impl CheckboxBuilder {
 
     /// Add struct-built style atoms after the built-in checkbox defaults.
     ///
-    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
-    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
-    /// trait method.
+    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -177,6 +176,8 @@ impl CheckboxBuilder {
             .on_change
             .as_ref()
             .map_or_else(noop_bool_change, Rc::clone);
+        let layout_overrides = self.layout_overrides.clone();
+        let has_label = self.label.is_some();
         let mut node = self.base_node(interaction, Rc::clone(&on_change));
         for mutate in self.mutators {
             node = mutate(node);
@@ -187,7 +188,7 @@ impl CheckboxBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node
+        node.layout(layout_overrides.apply(checkbox_layout(has_label)))
     }
 
     fn base_node(&self, interaction: InteractionState, on_change: BoolChange) -> NodeBuilder {
@@ -220,24 +221,33 @@ impl CheckboxBuilder {
 }
 
 impl StyleAccess for CheckboxBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
 
 impl StateHost for CheckboxBuilder {}
 
+impl WidgetLayoutExt for CheckboxBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
 impl IntoNode for CheckboxBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
 
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
-    let width = if has_label { 180.0 } else { CHECKBOX_ROOT_SIZE };
+    let theme = Theme::default();
+    let root_size = theme.control_height(Size::Default).px_or_zero();
+    let gap = theme.gap(Size::Default).px_or_zero();
+    let width = if has_label { 180.0 } else { root_size };
     LayoutStyle::flex_row()
-        .fixed_size(width, CHECKBOX_ROOT_SIZE)
-        .gap(CHECKBOX_GAP)
+        .fixed_size(width, root_size)
+        .gap(gap)
         .align_items(AlignItems::Center)
 }
 

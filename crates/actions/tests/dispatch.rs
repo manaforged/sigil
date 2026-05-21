@@ -11,8 +11,8 @@
     clippy::similar_names
 )]
 
+use actions_macros as _;
 use criterion as _;
-use sigil_actions_macros as _;
 use smallvec as _;
 
 use std::cell::Cell;
@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use std::any::Any;
 
-use sigil_actions::{Action, ActionRegistry, HandlerKey};
+use actions::{Action, ActionRegistry, HandlerKey};
 
 #[derive(Clone)]
 struct Ping;

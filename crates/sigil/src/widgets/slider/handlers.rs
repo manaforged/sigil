@@ -1,6 +1,6 @@
-use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, PointerEvent};
-use sigil_kernel::NodeBuilder;
-use sigil_reactive::Signal;
+use events::prelude::{Key, KeyEvent, NodeEventsExt, PointerEvent};
+use kernel::NodeBuilder;
+use reactive::Signal;
 
 use crate::interaction::InteractionState;
 

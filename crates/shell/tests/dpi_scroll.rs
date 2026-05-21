@@ -2,14 +2,14 @@
 
 #![allow(missing_docs)]
 
-use sigil_shell as _;
+use shell as _;
 use smol_str as _;
 
 #[allow(dead_code)]
 #[path = "../src/event_map.rs"]
 mod event_map;
 
-use sigil_hal::{Point, Scale, ScrollDelta};
+use hal::{Point, Scale, ScrollDelta};
 use winit::dpi::PhysicalPosition;
 use winit::event::MouseScrollDelta;
 

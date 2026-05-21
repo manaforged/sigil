@@ -66,6 +66,36 @@ impl<'a> FlexSolver<'a> {
         layout_root(&ctx, subtree, Position2::origin())
     }
 
+    /// Run the flex layout algorithm against `subtree` as a child of
+    /// some containing block of size `cb`, anchored at `origin` (the
+    /// subtree root's border-box top-left BEFORE this node's own margin
+    /// is applied). Used by per-subtree solver dispatch when a flex-
+    /// display node lands inside a block parent.
+    ///
+    /// Mirrors [`Self::solve`]'s shape but takes an explicit containing
+    /// block + origin instead of deriving them from `scope.available()`
+    /// at the viewport origin.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LayoutError::LayoutInvalid`] when `subtree` references a
+    /// stale id.
+    pub(crate) fn solve_at(
+        &self,
+        subtree: NodeRef<'_>,
+        cb: CbSize,
+        origin: Position2,
+    ) -> Result<(), LayoutError> {
+        let style = subtree.style();
+        let axes = Axis2::for_direction(style.flex_direction);
+        let ctx = FlexCtx {
+            solver: self,
+            axes,
+            cb,
+        };
+        layout_root(&ctx, subtree, origin)
+    }
+
     /// Borrow the computed box for `id`. Returns `None` when the id is
     /// stale or the solver never visited it during this pass (frame
     /// tag does not match the forest's current frame).

@@ -11,19 +11,19 @@
 // Examples inherit the host crate's dev-deps even when they don't
 // touch them. Silence the `unused_crate_dependencies` lint for the
 // ones this demo doesn't pull in directly.
+use app as _;
 use criterion as _;
-use sigil_app as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
+use events as _;
+use hal as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use renderer as _;
 
 use sigil::prelude::*;
-use sigil_style::Rgba8;
+use style::Rgba8;
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - floating combat text", 960, 540), build)
 }
 

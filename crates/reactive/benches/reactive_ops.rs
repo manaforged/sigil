@@ -14,14 +14,15 @@ use std::cell::Cell;
 use std::hint::black_box;
 use std::rc::Rc;
 
-// `smallvec` is a regular dep of `sigil-reactive` (for subscriber
-// storage). Benches don't reference it directly; the alias silences
-// `unused_crate_dependencies` which flows from regular deps into
-// bin/test/bench targets.
+// `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
+// into every bench compilation unit. We don't reference them directly;
+// these aliases silence `unused_crate_dependencies`.
+use actions as _;
 use smallvec as _;
+use tokio as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_reactive::{Owner, Runtime, batch, effect, signal};
+use reactive::{Owner, Runtime, batch, effect, signal};
 
 /// Reading a signal: arena lookup, type check, clone, subscribe.
 /// No current effect = no subscription path, so this measures the

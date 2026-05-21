@@ -1,5 +1,5 @@
 [package]
-name = "sigil-text"
+name = "text"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -17,9 +17,9 @@ doctest = false
 shaping-complex = ["dep:harfrust"]
 
 [dependencies]
-sigil-hal = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
+hal = { workspace = true }
+reactive = { workspace = true }
+style = { workspace = true }
 skrifa = { workspace = true }
 smallvec = { workspace = true }
 tracing = { workspace = true }
@@ -31,8 +31,8 @@ harfrust = { version = "0.6", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-sigil-kernel = { workspace = true }
-sigil-layout = { workspace = true }
+kernel = { workspace = true }
+layout = { workspace = true }
 
 [lints]
 workspace = true

@@ -47,7 +47,7 @@ impl Runtime {
     /// The publisher runs at the end of every frame in which an
     /// [`crate::A11yObserver`] tracking effect saw a signal change.
     /// Its job is to snapshot the kernel `Cx` into a `TreeUpdate` and
-    /// forward it to the installed [`sigil_hal::A11yBridge`]. Both the
+    /// forward it to the installed [`hal::A11yBridge`]. Both the
     /// `Cx` and the bridge live outside the reactive runtime — the
     /// publisher captures them by reference (typically via shared
     /// `Rc<RefCell<_>>` handles).

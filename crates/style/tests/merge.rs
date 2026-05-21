@@ -1,17 +1,21 @@
 #![allow(missing_docs)]
 #![allow(clippy::panic)]
 
+use ::reactive as _;
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
+use kernel as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
 use smallvec as _;
 use strsim as _;
+use style_macros as _;
+use tracing as _;
 
-use sigil_style::{Dimension, Px, StyleAtom, merge_classes, merge_warning_count_for_component};
+use style::{
+    Dimension, Px, StyleAtom, bump_unknown_class_count, merge_classes,
+    merge_warning_count_for_component, unknown_class_warning_count,
+};
 
 #[test]
 fn merge_last_wins() {
@@ -84,4 +88,13 @@ fn merge_is_alloc_free_below_32() {
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");
+}
+
+#[test]
+fn unknown_class_counter_increments() {
+    let before = unknown_class_warning_count();
+    bump_unknown_class_count();
+    bump_unknown_class_count();
+    let after = unknown_class_warning_count();
+    assert_eq!(after - before, 2);
 }

@@ -1,8 +1,8 @@
 //! Built-in text node primitive.
 
 use accesskit::Role;
-use sigil_hal::Shortcut;
-use sigil_reactive::Signal;
+use hal::Shortcut;
+use reactive::Signal;
 
 use crate::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
 

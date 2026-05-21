@@ -3,13 +3,13 @@
 //! Determinism: every test ticks at a fixed `dt = 1.0 / 60.0` so spring
 //! physics matches CI-runs across machines.
 
-use sigil_animation::{Easing, SpringPreset};
-use sigil_animation_runtime::{AnimationConfig, Animator, MotionPrefs, tick};
-use sigil_reactive::{Runtime, signal};
+use animation::{Easing, SpringPreset};
+use animation_runtime::{AnimationConfig, Animator, MotionPrefs, tick};
+use reactive::{Runtime, signal};
 
 // sigil-style is a public-api dep of sigil-animation-runtime (registry
 // consumes `TransitionId`); the integration tests do not name it.
-use sigil_style as _;
+use style as _;
 
 // criterion is a dev-dep used by the `animator_ticks` bench; integration
 // tests do not name it.

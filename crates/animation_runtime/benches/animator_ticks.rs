@@ -1,6 +1,6 @@
 //! Animator-tick micro-benchmark — W5.0b baseline for W5.1.
 //!
-//! Establishes the per-frame cost of [`tick(dt)`](sigil_animation_runtime::tick)
+//! Establishes the per-frame cost of [`tick(dt)`](animation_runtime::tick)
 //! at varying active-animator counts (1, 10, 100, 1000). The W5.1
 //! binding-install hook routes every widget's state transitions through
 //! `Animator::tick`, so this curve is the regression baseline.
@@ -17,14 +17,14 @@
 )]
 
 // Workspace deps inherited by the bench target but not directly named.
-use sigil_style as _;
+use style as _;
 
 use std::hint::black_box;
 
+use animation::SpringPreset;
+use animation_runtime::{AnimationConfig, Animator, tick};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use sigil_animation::SpringPreset;
-use sigil_animation_runtime::{AnimationConfig, Animator, tick};
-use sigil_reactive::{Runtime, signal};
+use reactive::{Runtime, signal};
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 

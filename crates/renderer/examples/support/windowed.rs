@@ -3,11 +3,9 @@ use std::error::Error;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use sigil_hal::{Color, PhysicalSize, Renderer, Shell};
-use sigil_renderer::{
-    CommandScene, ScreenSubmission, WgpuRenderer, WgpuSurface, into_window_handle,
-};
-use sigil_shell::WinitShell;
+use hal::{Color, PhysicalSize, Renderer, Shell};
+use renderer::{CommandScene, ScreenSubmission, WgpuRenderer, WgpuSurface, into_window_handle};
+use shell::WinitShell;
 
 #[allow(unreachable_pub)]
 #[allow(dead_code)]

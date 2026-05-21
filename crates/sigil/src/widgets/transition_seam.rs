@@ -15,10 +15,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil_animation_runtime::{AnimationRegistry, AttachedAnimators, install_animators_themed};
-use sigil_kernel::{Node, NodeBuilder};
-use sigil_reactive::effect_named;
-use sigil_style::{
+use animation_runtime::{AnimationRegistry, AttachedAnimators, install_animators_themed};
+use kernel::{Node, NodeBuilder};
+use reactive::effect_named;
+use style::{
     AnimatorOverlay, ColorAtomKind, ComponentId, NumericAtomKind, Rgba8, StateSlot, StateStyle,
     StyleAtom, StyleBinding, Theme,
 };

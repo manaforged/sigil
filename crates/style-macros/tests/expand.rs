@@ -3,12 +3,12 @@
 use phf as _;
 use proc_macro2 as _;
 use quote as _;
-use sigil_style as _;
-use sigil_style_macros as _;
+use style as _;
+use style_macros as _;
 use syn as _;
 use trybuild as _;
 
-use sigil_style::{ColorAtom, Px, StyleAtom, classes};
+use style::{ColorAtom, Px, StyleAtom, classes};
 
 #[test]
 fn expands_static_literal() {
@@ -40,7 +40,7 @@ fn expands_match_literal() {
         ),
         &[
             StyleAtom::BackgroundThemeRef("accent"),
-            StyleAtom::Height(sigil_style::Dimension::Px(Px(40))),
+            StyleAtom::Height(style::Dimension::Px(Px(40))),
             StyleAtom::FontSize(Px(16)),
         ],
     );

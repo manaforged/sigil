@@ -4,12 +4,12 @@
 //!
 //! `NodeBuilder` does not own a `Style` field today; instead it queues
 //! `mutate` closures applied at `build()` time. The G6 contract is "the
-//! trait's `style()` method returns `&mut Style`"; we satisfy that with
+//! trait's `style_mut()` method returns `&mut Style`"; we satisfy that with
 //! a small `NodeStyledBuilder` newtype that owns a `Style` accumulator
 //! and forwards `IntoNode` to the underlying `NodeBuilder` with the
 //! accumulator attached at build time via the existing `NodeStyleExt`.
 
-use sigil_kernel::NodeBuilder;
+use kernel::NodeBuilder;
 
 use super::{StateHost, StyleAccess};
 use crate::{ClassSource, NodeStyleExt, Style};
@@ -35,6 +35,11 @@ impl NodeStyledBuilder {
         }
     }
 
+    /// Borrow the accumulated style.
+    #[must_use]
+    pub const fn style(&self) -> &Style {
+        &self.style
+    }
     /// Consume the wrapper and return the underlying [`NodeBuilder`]
     /// with the accumulated style attached.
     #[must_use]
@@ -44,7 +49,7 @@ impl NodeStyledBuilder {
 }
 
 impl StyleAccess for NodeStyledBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style
     }
 }
@@ -65,8 +70,8 @@ impl Styleable for NodeBuilder {
     }
 }
 
-impl sigil_kernel::IntoNode for NodeStyledBuilder {
-    fn build(self, cx: &mut sigil_kernel::Cx) -> sigil_kernel::NodeId {
+impl kernel::IntoNode for NodeStyledBuilder {
+    fn build(self, cx: &mut kernel::Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

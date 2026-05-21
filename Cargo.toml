@@ -8,7 +8,7 @@ members = [
     "crates/actions_macros",
     "crates/animation",
     "crates/app",
-    "crates/async",
+    "crates/tasks",
     "crates/kernel",
     "crates/events",
     "crates/hal",
@@ -20,7 +20,9 @@ members = [
     "crates/style",
     "crates/style-macros",
     "crates/text",
-    "crates/sigil-ide-core",
+    "crates/ide-core",
+    "crates/bench-parity",
+    "crates/bench-parity-gpui",
     "examples/hello-counter",
     "examples/hello-events",
     "examples/hello-style",
@@ -28,6 +30,47 @@ members = [
     "examples/hello-layout",
     "examples/internals/hello-rect",
     "examples/vertical-slice",
+    "examples/timer-stopwatch",
+    "examples/log-tailer",
+    "examples/scratchpad",
+    "examples/file-browser",
+    "examples/kanban-board",
+    "examples/password-generator",
+    "examples/csv-viewer",
+    "examples/regex-tester",
+    "examples/api-explorer",
+    "examples/chat-client",
+    "examples/widget-playground",
+]
+default-members = [
+    "crates/sigil",
+    "crates/a11y",
+    "crates/actions",
+    "crates/animation_runtime",
+    "crates/actions_macros",
+    "crates/animation",
+    "crates/app",
+    "crates/tasks",
+    "crates/kernel",
+    "crates/events",
+    "crates/hal",
+    "crates/icons",
+    "crates/layout",
+    "crates/reactive",
+    "crates/renderer",
+    "crates/shell",
+    "crates/style",
+    "crates/style-macros",
+    "crates/text",
+    "crates/ide-core",
+    "examples/hello-counter",
+    "examples/hello-events",
+    "examples/hello-style",
+    "examples/hello-tree",
+    "examples/hello-layout",
+    "examples/internals/hello-rect",
+    "examples/vertical-slice",
+    "examples/widget-playground",
 ]
 
 [workspace.package]
@@ -41,7 +84,10 @@ authors = ["the author"]
 [workspace.lints.rust]
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
-missing_docs = "warn"
+# `priority = -1` so per-crate `[lints.rust] missing_docs = "deny"` (used
+# by library crates that contract on full rustdoc coverage) overrides
+# this workspace default. Binary / example crates inherit the warn-level.
+missing_docs = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
 unused_crate_dependencies = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
@@ -61,6 +107,11 @@ unwrap_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
 mod_module_files = "deny"
+# Conflicts with rustc `unreachable_pub` for `[[bin]]` crates that have
+# internal sub-modules: clippy wants `pub(crate)`, rustc wants `pub`.
+# Allow workspace-wide; library crates that genuinely want the lint can
+# re-enable it per-crate.
+redundant_pub_crate = "allow"
 # Threshold lints — actual thresholds configured in clippy.toml.
 # Clippy defaults (100 lines, 7 args, complexity 25) are too permissive
 # for the the author clean-lean-Rust contract (50 lines, 5 args, complexity 15).
@@ -112,32 +163,35 @@ crossbeam-channel = "0.5"
 # I-T7 settings: parse-only TOML (serde feature for typed deserialize).
 toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
 tempfile = "3"
-# Workspace crate names keep the `sigil-<leaf>` form because cargo
-# crate names cannot contain `/`. The filesystem layout is nested so
-# the conceptual `sigil/<leaf>` grouping is visible in the tree, and
-# the `sigil-` cargo-name prefix preserves discoverability for any
-# downstream `Cargo.toml` that lists them. Rust imports use the
-# underscored form (`sigil_renderer::…`).
+# F1 (dogfood-v2): system clipboard. `arboard` is the de-facto cross-platform
+# Rust crate (Win32, X11, Wayland, AppKit). Default features include the
+# image-encoding path we do not need, so depend with `default-features = false`
+# to keep the transitive surface narrow.
+arboard = { version = "3", default-features = false }
+# Workspace leaf crates use bare names matching their directory (the host engine
+# convention). The umbrella `sigil` crate re-exports everything as the
+# public surface. `sigil-async` was renamed to `tasks` because `async`
+# is a Rust reserved keyword and would force consumers to use `r#async`.
 sigil = { path = "crates/sigil" }
-sigil-a11y = { path = "crates/a11y" }
-sigil-actions = { path = "crates/actions" }
-sigil-actions-macros = { path = "crates/actions_macros" }
-sigil-animation = { path = "crates/animation" }
-sigil-animation-runtime = { path = "crates/animation_runtime" }
-sigil-app = { path = "crates/app" }
-sigil-async = { path = "crates/async" }
-sigil-kernel = { path = "crates/kernel" }
-sigil-events = { path = "crates/events" }
-sigil-hal = { path = "crates/hal" }
-sigil-layout = { path = "crates/layout" }
-sigil-reactive = { path = "crates/reactive" }
-sigil-renderer = { path = "crates/renderer" }
-sigil-shell = { path = "crates/shell" }
-sigil-style = { path = "crates/style" }
-sigil-style-macros = { path = "crates/style-macros" }
-sigil-icons = { path = "crates/icons" }
-sigil-text = { path = "crates/text" }
-sigil-ide-core = { path = "crates/sigil-ide-core" }
+a11y = { path = "crates/a11y" }
+actions = { path = "crates/actions" }
+actions-macros = { path = "crates/actions_macros" }
+animation = { path = "crates/animation" }
+animation-runtime = { path = "crates/animation_runtime" }
+app = { path = "crates/app" }
+tasks = { path = "crates/tasks" }
+kernel = { path = "crates/kernel" }
+events = { path = "crates/events" }
+hal = { path = "crates/hal" }
+layout = { path = "crates/layout" }
+reactive = { path = "crates/reactive" }
+renderer = { path = "crates/renderer" }
+shell = { path = "crates/shell" }
+style = { path = "crates/style" }
+style-macros = { path = "crates/style-macros" }
+icons = { path = "crates/icons" }
+text = { path = "crates/text" }
+ide-core = { path = "crates/ide-core" }
 usvg = { version = "0.47", default-features = false }
 lyon_geom = { version = "1.0" }
 

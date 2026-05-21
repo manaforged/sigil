@@ -1,4 +1,4 @@
-//! [`WgpuRenderer`] — the production [`sigil_hal::Renderer`] implementation.
+//! [`WgpuRenderer`] — the production [`hal::Renderer`] implementation.
 //!
 //! This module owns the public wgpu-facing API. Lazy device/adapter
 //! construction lives in [`crate::device_state`]; the scene-paint
@@ -10,7 +10,7 @@ pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
 
 use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
 
-use sigil_hal::{Color, PhysicalSize, Renderer};
+use hal::{Color, PhysicalSize, Renderer};
 
 use crate::device_state::DeviceState;
 use crate::error::RendererError;

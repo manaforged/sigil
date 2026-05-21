@@ -1,8 +1,8 @@
 //! Fill and stroke model types (gradients, patterns, stroke style).
 
-use sigil_hal::Point;
-use sigil_style::Rgba8;
+use hal::Point;
 use smallvec::SmallVec;
+use style::Rgba8;
 
 /// Rectangle fill model shared by future style adapters.
 #[derive(Clone, Debug, PartialEq)]

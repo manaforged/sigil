@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{Key, NodeEventsExt};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use sigil_reactive::{Signal, derived_eq, signal};
-use sigil_style::{
+use animation_runtime::presets;
+use events::prelude::{Key, NodeEventsExt};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use reactive::{Signal, derived_eq, signal};
+use style::{
     NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant, TransitionId,
 };
 
@@ -132,7 +132,7 @@ impl DropdownBuilder {
 }
 
 impl StyleAccess for DropdownBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -140,7 +140,7 @@ impl StyleAccess for DropdownBuilder {
 impl StateHost for DropdownBuilder {}
 
 impl IntoNode for DropdownBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -297,8 +297,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
 // W5.3 owns the richer glyph-or-icon affordance; this fix just
 // restores user-visible "this opens a dropdown" cue.
 fn trigger_chevron() -> impl IntoNode {
-    static CHEVRON_BG: &[sigil_style::StyleAtom] =
-        &[sigil_style::StyleAtom::BackgroundThemeRef("accent")];
+    static CHEVRON_BG: &[style::StyleAtom] = &[style::StyleAtom::BackgroundThemeRef("accent")];
     // Inset math: trigger is `TRIGGER_WIDTH` wide with 8 px right
     // padding; chevron swatch is 16 px wide. Left inset =
     // TRIGGER_WIDTH - 16 (chevron) - 8 (right padding) = 176. Top

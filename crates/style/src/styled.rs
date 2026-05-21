@@ -4,7 +4,7 @@
 //! The trait is split into per-category super-traits, each in its own
 //! file, all anchored on a single [`StyleAccess`] base:
 //!
-//! - [`access`] — [`StyleAccess`], the single `fn style(&mut self)` hook
+//! - [`access`] — [`StyleAccess`], the single `fn style_mut(&mut self)` hook
 //!   every implementor provides.
 //! - [`spacing`] — [`Spacing`]: padding, margin, gap.
 //! - [`sizing`] — [`Sizing`]: width, height, min/max.

@@ -1,12 +1,12 @@
 //! Kernel-node → `accesskit::Node` projection (DR-050 §2).
 //!
-//! `node` reads one [`sigil_kernel::Node`]'s [`A11yProps`] and
+//! `node` reads one [`kernel::Node`]'s [`A11yProps`] and
 //! returns the AccessKit projection. `tree` walks the kernel
 //! arena depth-first from every root, skipping fragments, and produces
 //! the full `TreeUpdate`.
 
 use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, Tree, TreeId, TreeUpdate};
-use sigil_kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+use kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
 /// Build the AccessKit tree for the current [`Cx`] state.
 ///
@@ -60,7 +60,7 @@ fn walk_subtree(
 
 /// Project one kernel node into an [`AkNode`].
 ///
-/// Signal reads use [`sigil_reactive::Signal::peek`] (untracked) — the
+/// Signal reads use [`reactive::Signal::peek`] (untracked) — the
 /// observer registered on attach is the subscription path; projecting
 /// must not register duplicate subscriptions every frame.
 #[must_use]
@@ -123,6 +123,9 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
             Toggled::False
         };
         ak.set_toggled(toggled);
+    }
+    if let Some(sig) = a11y.selected {
+        ak.set_selected(sig.peek());
     }
     if let (Some(now), Some(min), Some(max)) = (a11y.value_now, a11y.value_min, a11y.value_max) {
         ak.set_numeric_value(f64::from(now.peek()));

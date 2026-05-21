@@ -29,14 +29,14 @@
 //! * `.child(target)` — the wrapped node.
 //! * `.class(...)` / `.style(...)` / `.theme(...)` via the trait surface.
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::NodeEventsExt;
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use sigil_reactive::{Signal, signal};
-use sigil_style::{
-    ClassSource, DisplayKind, NodeStyleExt, SizeToken, StateHost, Style, StyleAccess, StyleAtom,
-    Theme, TransitionId,
+use animation_runtime::presets;
+use events::prelude::NodeEventsExt;
+use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use reactive::{Signal, signal};
+use style::{
+    ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, Style, StyleAccess, StyleAtom, Theme,
+    TransitionId,
 };
 
 use super::shared::BuilderMutator;
@@ -51,10 +51,9 @@ const BUBBLE_OFFSET_ABOVE: f32 = -32.0;
 /// renderer's z-order doing the work.
 const BUBBLE_OFFSET_CLAMPED: f32 = 0.0;
 /// Nominal bubble dimensions.
-const BUBBLE_HEIGHT: f32 = SizeToken::TooltipBubbleHeight.px();
-const BUBBLE_WIDTH: f32 = SizeToken::TooltipBubbleWidth.px();
-const BUBBLE_PADDING: f32 = SizeToken::TooltipBubblePadding.px();
-const BUBBLE_GAP: f32 = SizeToken::GapSm.px();
+const BUBBLE_HEIGHT: f32 = 28.0;
+const BUBBLE_WIDTH: f32 = 160.0;
+const BUBBLE_PADDING: f32 = 6.0;
 
 const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -68,7 +67,7 @@ static BUBBLE_BASE: &[StyleAtom] = &[
 pub struct TooltipBuilder {
     label: String,
     shortcut: Option<String>,
-    child: Option<Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>>,
+    child: Option<Box<dyn IntoNode>>,
     clamp_top: bool,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
@@ -108,7 +107,7 @@ impl TooltipBuilder {
     /// Attach the target node the tooltip wraps.
     #[must_use]
     pub fn child(mut self, target: impl IntoNode + 'static) -> Self {
-        self.child = Some(Box::new(move |node: NodeBuilder| node.child(target)));
+        self.child = Some(Box::new(target));
         self
     }
 
@@ -137,7 +136,7 @@ impl TooltipBuilder {
 
     /// Add struct-built style atoms onto the wrapper.
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -174,8 +173,8 @@ impl TooltipBuilder {
                 event.stop_propagation();
             });
 
-        if let Some(attach) = self.child {
-            root = attach(root);
+        if let Some(child) = self.child {
+            root = root.child(child);
         }
         root = root.child(bubble);
 
@@ -191,7 +190,7 @@ impl TooltipBuilder {
 }
 
 impl StyleAccess for TooltipBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -199,7 +198,7 @@ impl StyleAccess for TooltipBuilder {
 impl StateHost for TooltipBuilder {}
 
 impl IntoNode for TooltipBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -245,6 +244,8 @@ fn build_bubble(
 }
 
 fn bubble_layout(top_px: f32, has_shortcut: bool) -> LayoutStyle {
+    let theme = Theme::default();
+    let gap = theme.gap(Size::Default).px_or_zero();
     let width = if has_shortcut {
         BUBBLE_WIDTH
     } else {
@@ -253,7 +254,7 @@ fn bubble_layout(top_px: f32, has_shortcut: bool) -> LayoutStyle {
     LayoutStyle::flex_row()
         .fixed_size(width, BUBBLE_HEIGHT)
         .padding(BUBBLE_PADDING)
-        .gap(BUBBLE_GAP)
+        .gap(gap)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
         .position(Position::Absolute)
@@ -273,8 +274,8 @@ const fn visibility_atoms(show: bool) -> &'static [StyleAtom] {
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use sigil_kernel::container as kernel_container;
-    use sigil_reactive::Runtime;
+    use kernel::container as kernel_container;
+    use reactive::Runtime;
 
     #[test]
     fn tooltip_builds_with_target_child() {

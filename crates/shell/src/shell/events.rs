@@ -4,7 +4,7 @@
 //! readable under the 400-LoC hygiene cap. These methods translate raw
 //! winit events into the sigil-hal `ShellEvent` vocabulary.
 
-use sigil_hal::{
+use hal::{
     ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PhysicalSize, Point,
     PointerEvent, PointerEventInit, PointerKind, PointerPhase, Scale, ScrollEvent, ScrollEventInit,
     ShellEvent, WindowEvent as SigilWindowEvent,

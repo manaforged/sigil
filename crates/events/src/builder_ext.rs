@@ -1,7 +1,7 @@
 //! Builder extension trait for installing event handlers.
 
-use sigil_hal::{KeyEvent, PointerEvent, ScrollEvent, Shortcut};
-use sigil_kernel::{Node, NodeBuilder};
+use hal::{KeyEvent, PointerEvent, ScrollEvent, Shortcut};
+use kernel::{Node, NodeBuilder};
 
 use crate::EventHandlers;
 

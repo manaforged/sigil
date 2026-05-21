@@ -1,5 +1,5 @@
 [package]
-name = "sigil-app"
+name = "app"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,16 +12,16 @@ description = "Sigil application shell — sigil::launch, opinionated frame loop
 doctest = false
 
 [dependencies]
-sigil-async = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-events = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-renderer = { workspace = true }
-sigil-shell = { workspace = true }
-sigil-style = { workspace = true }
-sigil-text = { workspace = true }
+tasks = { workspace = true }
+kernel = { workspace = true }
+events = { workspace = true }
+hal = { workspace = true }
+layout = { workspace = true }
+reactive = { workspace = true }
+renderer = { workspace = true }
+shell = { workspace = true }
+style = { workspace = true }
+text = { workspace = true }
 tracing = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]

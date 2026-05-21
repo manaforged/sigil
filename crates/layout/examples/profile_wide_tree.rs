@@ -14,9 +14,9 @@
     clippy::unwrap_used
 )]
 
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 
 const ROOT_WIDTH: f32 = 12_800.0;
 const ROOT_HEIGHT: f32 = 100.0;

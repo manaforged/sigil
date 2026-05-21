@@ -9,7 +9,7 @@ pub trait Flex: StyleAccess {
     /// Use flex layout.
     #[must_use]
     fn flex(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::Display(DisplayKind::Flex));
         self
     }
@@ -17,7 +17,7 @@ pub trait Flex: StyleAccess {
     /// Use block layout.
     #[must_use]
     fn block(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::Display(DisplayKind::Block));
         self
     }
@@ -25,7 +25,7 @@ pub trait Flex: StyleAccess {
     /// Hide the node from layout and paint.
     #[must_use]
     fn hidden(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::Display(DisplayKind::None));
         self
     }
@@ -33,7 +33,7 @@ pub trait Flex: StyleAccess {
     /// Set flex direction to row.
     #[must_use]
     fn flex_row(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::FlexDirection(FlexDir::Row));
         self
     }
@@ -41,7 +41,7 @@ pub trait Flex: StyleAccess {
     /// Set flex direction to column.
     #[must_use]
     fn flex_col(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::FlexDirection(FlexDir::Column));
         self
     }
@@ -49,7 +49,7 @@ pub trait Flex: StyleAccess {
     /// Set flex direction to reverse row.
     #[must_use]
     fn flex_row_reverse(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::FlexDirection(FlexDir::RowReverse));
         self
     }
@@ -57,7 +57,7 @@ pub trait Flex: StyleAccess {
     /// Set flex direction to reverse column.
     #[must_use]
     fn flex_col_reverse(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::FlexDirection(FlexDir::ColumnReverse));
         self
     }
@@ -65,7 +65,7 @@ pub trait Flex: StyleAccess {
     /// Align items to the cross-axis start.
     #[must_use]
     fn items_start(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::AlignItems(AlignKind::Start));
         self
     }
@@ -73,7 +73,7 @@ pub trait Flex: StyleAccess {
     /// Align items to the cross-axis centre.
     #[must_use]
     fn items_center(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::AlignItems(AlignKind::Center));
         self
     }
@@ -81,7 +81,7 @@ pub trait Flex: StyleAccess {
     /// Align items to the cross-axis end.
     #[must_use]
     fn items_end(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::AlignItems(AlignKind::End));
         self
     }
@@ -89,7 +89,7 @@ pub trait Flex: StyleAccess {
     /// Stretch items across the cross axis.
     #[must_use]
     fn items_stretch(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::AlignItems(AlignKind::Stretch));
         self
     }
@@ -97,7 +97,7 @@ pub trait Flex: StyleAccess {
     /// Justify content at the main-axis start.
     #[must_use]
     fn justify_start(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::JustifyContent(JustifyKind::Start));
         self
     }
@@ -105,7 +105,7 @@ pub trait Flex: StyleAccess {
     /// Justify content at the main-axis centre.
     #[must_use]
     fn justify_center(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::JustifyContent(JustifyKind::Center));
         self
     }
@@ -113,7 +113,7 @@ pub trait Flex: StyleAccess {
     /// Justify content at the main-axis end.
     #[must_use]
     fn justify_end(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::JustifyContent(JustifyKind::End));
         self
     }
@@ -121,7 +121,7 @@ pub trait Flex: StyleAccess {
     /// Distribute content with space between items.
     #[must_use]
     fn justify_between(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::JustifyContent(JustifyKind::Between));
         self
     }
@@ -129,7 +129,7 @@ pub trait Flex: StyleAccess {
     /// Distribute content with space around items.
     #[must_use]
     fn justify_around(mut self) -> Self {
-        self.style()
+        self.style_mut()
             .push_atom(StyleAtom::JustifyContent(JustifyKind::Around));
         self
     }
@@ -142,14 +142,14 @@ pub trait Flex: StyleAccess {
     /// but one takes `u16` (this one) and the other takes `f32`.
     #[must_use]
     fn flex_grow(mut self, value: u16) -> Self {
-        self.style().push_atom(StyleAtom::FlexGrow(value));
+        self.style_mut().push_atom(StyleAtom::FlexGrow(value));
         self
     }
 
     /// Set flex shrink factor (encoded as `value * 1000`).
     #[must_use]
     fn shrink(mut self, value: u16) -> Self {
-        self.style().push_atom(StyleAtom::FlexShrink(value));
+        self.style_mut().push_atom(StyleAtom::FlexShrink(value));
         self
     }
 }

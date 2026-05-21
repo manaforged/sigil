@@ -4,8 +4,8 @@
 
 use std::sync::OnceLock;
 
-use sigil_kernel::Node;
-use sigil_style::{StyleBinding, StyleEngine, TextStyle, Theme};
+use kernel::Node;
+use style::{StyleBinding, StyleEngine, TextStyle, Theme};
 
 pub(crate) fn apply_text_binding(
     engine: StyleEngine<'_>,

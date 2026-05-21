@@ -9,7 +9,7 @@ pub trait Geometry: StyleAccess {
     /// Set border radius in logical pixels.
     #[must_use]
     fn rounded(mut self, px: i16) -> Self {
-        self.style().push_atom(StyleAtom::BorderRadius(Px(px)));
+        self.style_mut().push_atom(StyleAtom::BorderRadius(Px(px)));
         self
     }
 }

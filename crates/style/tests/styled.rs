@@ -7,35 +7,36 @@
 
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
+use reactive as _;
 use smallvec as _;
 use strsim as _;
+use style_macros as _;
+use tracing as _;
 
-use sigil_kernel::container;
-use sigil_style::{
+use kernel::container;
+use style::{
     ColorAtom, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8, Sizing, Spacing,
-    StateStyleBuilder, StateVariants, StyleAccess, StyleAtom, Styleable, Typography, Visual,
+    StateStyleBuilder, StateVariants, StyleAtom, Styleable, Typography, Visual,
 };
 
 /// Helper — start a fresh styled builder on a container node.
-fn styled() -> sigil_style::NodeStyledBuilder {
+fn styled() -> style::NodeStyledBuilder {
     container().styled()
 }
 
 #[test]
 fn default_impl_chains_correctly() {
-    let mut b = styled().bg("surface").px(16);
+    let b = styled().bg("surface").px(16);
     let atoms = b.style().as_atoms();
     assert!(atoms.contains(&StyleAtom::BackgroundThemeRef("surface")));
-    assert!(atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(16))));
+    assert!(atoms.contains(&StyleAtom::PaddingX(style::Px(16))));
 }
 
 #[test]
 fn hover_state_record_overwrites_on_second_call() {
-    let mut b = styled().hover(|s| s.bg("a")).hover(|s| s.bg("b"));
+    let b = styled().hover(|s| s.bg("a")).hover(|s| s.bg("b"));
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 1, "hover slot must be last-call-wins");
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("b"));
@@ -43,16 +44,16 @@ fn hover_state_record_overwrites_on_second_call() {
 
 #[test]
 fn hover_atoms_accumulate_within_closure() {
-    let mut b = styled().hover(|s| s.bg("a").px(8));
+    let b = styled().hover(|s| s.bg("a").px(8));
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 2);
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("a"));
-    assert_eq!(hover[1], StyleAtom::PaddingX(sigil_style::Px(8)));
+    assert_eq!(hover[1], StyleAtom::PaddingX(style::Px(8)));
 }
 
 #[test]
 fn focus_slot_records_atoms() {
-    let mut b = styled().focus(|s| s.bg("focus-ring"));
+    let b = styled().focus(|s| s.bg("focus-ring"));
     let focus = b.style().focus_atoms();
     assert_eq!(focus.len(), 1);
     assert_eq!(focus[0], StyleAtom::BackgroundThemeRef("focus-ring"));
@@ -60,7 +61,7 @@ fn focus_slot_records_atoms() {
 
 #[test]
 fn pressed_slot_records_atoms() {
-    let mut b = styled().pressed(|s| s.bg("pressed"));
+    let b = styled().pressed(|s| s.bg("pressed"));
     let pressed = b.style().pressed_atoms();
     assert_eq!(pressed.len(), 1);
     assert_eq!(pressed[0], StyleAtom::BackgroundThemeRef("pressed"));
@@ -68,7 +69,7 @@ fn pressed_slot_records_atoms() {
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let mut b = styled().disabled(|s| s.opacity(0.5));
+    let b = styled().disabled(|s| s.opacity(0.5));
     let disabled = b.style().disabled_atoms();
     assert_eq!(disabled.len(), 1);
     assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
@@ -82,7 +83,7 @@ fn bg_accepts_rgba8() {
         b: 0,
         a: 255,
     };
-    let mut b = styled().bg(red);
+    let b = styled().bg(red);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::BackgroundColor(ColorAtom::Rgba8(red)));
@@ -90,7 +91,7 @@ fn bg_accepts_rgba8() {
 
 #[test]
 fn bg_accepts_theme_token() {
-    let mut b = styled().bg("surface");
+    let b = styled().bg("surface");
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::BackgroundThemeRef("surface"));
@@ -105,7 +106,7 @@ fn bg_accepts_color_atom() {
         a: 255,
     };
     let atom = ColorAtom::Rgba8(blue);
-    let mut b = styled().bg(atom);
+    let b = styled().bg(atom);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::BackgroundColor(atom));
@@ -113,7 +114,7 @@ fn bg_accepts_color_atom() {
 
 #[test]
 fn padding_methods_sweep_order_preserved() {
-    let mut b = styled()
+    let b = styled()
         .padding(8)
         .px(16)
         .py(24)
@@ -123,37 +124,31 @@ fn padding_methods_sweep_order_preserved() {
         .pl(56);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
-    assert_eq!(atoms[0], StyleAtom::PaddingAll(sigil_style::Px(8)));
-    assert_eq!(atoms[1], StyleAtom::PaddingX(sigil_style::Px(16)));
-    assert_eq!(atoms[2], StyleAtom::PaddingY(sigil_style::Px(24)));
-    assert_eq!(atoms[3], StyleAtom::PaddingTop(sigil_style::Px(32)));
-    assert_eq!(atoms[4], StyleAtom::PaddingRight(sigil_style::Px(40)));
-    assert_eq!(atoms[5], StyleAtom::PaddingBottom(sigil_style::Px(48)));
-    assert_eq!(atoms[6], StyleAtom::PaddingLeft(sigil_style::Px(56)));
+    assert_eq!(atoms[0], StyleAtom::PaddingAll(style::Px(8)));
+    assert_eq!(atoms[1], StyleAtom::PaddingX(style::Px(16)));
+    assert_eq!(atoms[2], StyleAtom::PaddingY(style::Px(24)));
+    assert_eq!(atoms[3], StyleAtom::PaddingTop(style::Px(32)));
+    assert_eq!(atoms[4], StyleAtom::PaddingRight(style::Px(40)));
+    assert_eq!(atoms[5], StyleAtom::PaddingBottom(style::Px(48)));
+    assert_eq!(atoms[6], StyleAtom::PaddingLeft(style::Px(56)));
 }
 
 #[test]
 fn sizing_methods_emit_correct_atoms() {
-    let mut b = styled()
-        .w(Dimension::Px(sigil_style::Px(100)))
-        .h(Dimension::Px(sigil_style::Px(50)))
+    let b = styled()
+        .w(Dimension::Px(style::Px(100)))
+        .h(Dimension::Px(style::Px(50)))
         .w(Dimension::Full);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 3);
-    assert_eq!(
-        atoms[0],
-        StyleAtom::Width(Dimension::Px(sigil_style::Px(100)))
-    );
-    assert_eq!(
-        atoms[1],
-        StyleAtom::Height(Dimension::Px(sigil_style::Px(50)))
-    );
+    assert_eq!(atoms[0], StyleAtom::Width(Dimension::Px(style::Px(100))));
+    assert_eq!(atoms[1], StyleAtom::Height(Dimension::Px(style::Px(50))));
     assert_eq!(atoms[2], StyleAtom::Width(Dimension::Full));
 }
 
 #[test]
 fn overflow_hidden_emits_both_axes() {
-    let mut b = styled().overflow_hidden();
+    let b = styled().overflow_hidden();
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 2);
     assert_eq!(atoms[0], StyleAtom::OverflowX(OverflowKind::Hidden));
@@ -162,26 +157,26 @@ fn overflow_hidden_emits_both_axes() {
 
 #[test]
 fn rounded_presets_emit_distinct_radii() {
-    let mut sm = styled().rounded(2);
-    let mut md = styled().rounded(6);
-    let mut lg = styled().rounded(10);
+    let sm = styled().rounded(2);
+    let md = styled().rounded(6);
+    let lg = styled().rounded(10);
     assert_eq!(
         sm.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil_style::Px(2))
+        StyleAtom::BorderRadius(style::Px(2))
     );
     assert_eq!(
         md.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil_style::Px(6))
+        StyleAtom::BorderRadius(style::Px(6))
     );
     assert_eq!(
         lg.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil_style::Px(10))
+        StyleAtom::BorderRadius(style::Px(10))
     );
 }
 
 #[test]
 fn all_four_state_slots_populate_independently() {
-    let mut b = styled()
+    let b = styled()
         .hover(|s| s.bg("h"))
         .focus(|s| s.bg("f"))
         .pressed(|s| s.bg("p"))
@@ -198,7 +193,7 @@ fn all_four_state_slots_populate_independently() {
 fn state_builder_implements_styled_within_closure() {
     // Verifies the StateStyleBuilder responds to the same fluent vocab
     // as the outer builder — uses bg / px / opacity / text_color.
-    let mut b = styled().hover(|s| {
+    let b = styled().hover(|s| {
         s.bg("surface-hover")
             .text_color("on-surface")
             .px(12)
@@ -208,7 +203,7 @@ fn state_builder_implements_styled_within_closure() {
     assert_eq!(hover.len(), 4);
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
     assert_eq!(hover[1], StyleAtom::TextThemeRef("on-surface"));
-    assert_eq!(hover[2], StyleAtom::PaddingX(sigil_style::Px(12)));
+    assert_eq!(hover[2], StyleAtom::PaddingX(style::Px(12)));
     assert_eq!(hover[3], StyleAtom::Opacity(9_000));
 }
 
@@ -240,7 +235,7 @@ fn color_or_token_from_impls_route_correctly() {
 fn state_style_builder_can_be_built_standalone() {
     // The pub(crate) constructor is reachable through .hover etc.
     // This verifies the trait method works through the closure path.
-    let mut outer = styled().hover(|s: StateStyleBuilder| s.bg("h"));
+    let outer = styled().hover(|s: StateStyleBuilder| s.bg("h"));
     let hover = outer.style().hover_atoms();
     assert_eq!(hover.len(), 1);
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("h"));
@@ -248,22 +243,22 @@ fn state_style_builder_can_be_built_standalone() {
 
 #[test]
 fn font_methods_emit_typography_atoms() {
-    let mut b = styled()
+    let b = styled()
         .font_size(14)
         .font_weight(600)
         .font_family("mono")
         .line_height(20);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 4);
-    assert_eq!(atoms[0], StyleAtom::FontSize(sigil_style::Px(14)));
+    assert_eq!(atoms[0], StyleAtom::FontSize(style::Px(14)));
     assert_eq!(atoms[1], StyleAtom::FontWeight(600));
     assert_eq!(atoms[2], StyleAtom::FontFamily("mono"));
-    assert_eq!(atoms[3], StyleAtom::LineHeight(sigil_style::Px(20)));
+    assert_eq!(atoms[3], StyleAtom::LineHeight(style::Px(20)));
 }
 
 #[test]
 fn flex_layout_methods_emit_correct_atoms() {
-    let mut b = styled()
+    let b = styled()
         .flex()
         .flex_row()
         .items_center()
@@ -273,27 +268,21 @@ fn flex_layout_methods_emit_correct_atoms() {
         .shrink(500);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
-    assert_eq!(atoms[0], StyleAtom::Display(sigil_style::DisplayKind::Flex));
-    assert_eq!(
-        atoms[1],
-        StyleAtom::FlexDirection(sigil_style::FlexDir::Row)
-    );
-    assert_eq!(
-        atoms[2],
-        StyleAtom::AlignItems(sigil_style::AlignKind::Center)
-    );
+    assert_eq!(atoms[0], StyleAtom::Display(style::DisplayKind::Flex));
+    assert_eq!(atoms[1], StyleAtom::FlexDirection(style::FlexDir::Row));
+    assert_eq!(atoms[2], StyleAtom::AlignItems(style::AlignKind::Center));
     assert_eq!(
         atoms[3],
-        StyleAtom::JustifyContent(sigil_style::JustifyKind::Between)
+        StyleAtom::JustifyContent(style::JustifyKind::Between)
     );
-    assert_eq!(atoms[4], StyleAtom::Gap(sigil_style::Px(8)));
+    assert_eq!(atoms[4], StyleAtom::Gap(style::Px(8)));
     assert_eq!(atoms[5], StyleAtom::FlexGrow(1000));
     assert_eq!(atoms[6], StyleAtom::FlexShrink(500));
 }
 
 #[test]
 fn empty_builder_has_empty_style() {
-    let mut b = styled();
+    let b = styled();
     let style = b.style();
     assert!(style.is_empty());
     assert_eq!(style.as_atoms().len(), 0);
@@ -308,7 +297,7 @@ fn empty_builder_has_empty_style() {
 /// the old `.grow(u16)` name on this trait must no longer exist.
 #[test]
 fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
-    let mut b = styled().flex_grow(2);
+    let b = styled().flex_grow(2);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::FlexGrow(2));
@@ -317,7 +306,7 @@ fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
     // trait no longer exists: if it did, the trait probe below would
     // succeed and `flex_grow` would fail to resolve. We instead just
     // re-call `.flex_grow` to lock in the new name as the only one.
-    let mut b2 = styled().flex_grow(1000);
+    let b2 = styled().flex_grow(1000);
     assert_eq!(b2.style().as_atoms()[0], StyleAtom::FlexGrow(1000));
 }
 
@@ -327,7 +316,7 @@ fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
 /// not `Opacity(50)` (0.5 %).
 #[test]
 fn trap2_opacity_f32_scales_to_atom() {
-    let mut b = styled().opacity(0.5);
+    let b = styled().opacity(0.5);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::Opacity(5_000));
@@ -337,9 +326,9 @@ fn trap2_opacity_f32_scales_to_atom() {
 /// `.opacity(1.0)` must produce the exact min / max atom encoding.
 #[test]
 fn trap2_opacity_clamps_at_boundaries() {
-    let mut zero = styled().opacity(0.0);
+    let zero = styled().opacity(0.0);
     assert_eq!(zero.style().as_atoms()[0], StyleAtom::Opacity(0));
 
-    let mut one = styled().opacity(1.0);
+    let one = styled().opacity(1.0);
     assert_eq!(one.style().as_atoms()[0], StyleAtom::Opacity(10_000));
 }

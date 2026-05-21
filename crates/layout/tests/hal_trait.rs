@@ -7,15 +7,15 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 mod stub;
 use stub::stub_engine;
 
-use sigil_hal::{Layout, Size};
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
+use hal::{Layout, Size};
+use kernel::prelude::*;
+use layout::prelude::*;
 
 #[test]
 fn raw_hal_consumer_can_drive_layout_engine() {

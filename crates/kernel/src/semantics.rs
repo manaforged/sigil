@@ -1,7 +1,7 @@
 //! Accessibility semantics carried by every node.
 
-use sigil_hal::Shortcut;
-use sigil_reactive::Signal;
+use hal::Shortcut;
+use reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::NodeId;
@@ -73,6 +73,8 @@ pub struct A11yProps {
     pub hittable: bool,
     /// Reactive checked state for checkbox-like controls.
     pub checked: Option<Signal<bool>>,
+    /// Reactive selected state for selectable rows and options.
+    pub selected: Option<Signal<bool>>,
     /// Reactive numeric value for range-like controls.
     pub value_now: Option<Signal<f32>>,
     /// Minimum numeric value for range-like controls.
@@ -107,6 +109,7 @@ impl Default for A11yProps {
             keyboard_shortcut: None,
             hittable: true,
             checked: None,
+            selected: None,
             value_now: None,
             value_min: None,
             value_max: None,

@@ -9,7 +9,7 @@ use std::mem;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use sigil_reactive::{Owner, Runtime, effect, signal};
+use reactive::{Owner, Runtime, effect, signal};
 
 use super::{bytes_allocated, fmt_delta, lcg_next, slot_shadow, with_alloc_delta};
 
@@ -67,7 +67,7 @@ pub fn bench_signal_creation_bytes() -> i64 {
             mem::forget(sigs);
         });
         total_delta = delta;
-        let holder_overhead = (N * mem::size_of::<sigil_reactive::Signal<i32>>()) as i64;
+        let holder_overhead = (N * mem::size_of::<reactive::Signal<i32>>()) as i64;
         bytes_per_signal = (delta - holder_overhead) / N as i64;
     });
     println!("--- Signal creation ---");

@@ -4,8 +4,8 @@ use core::fmt::Write as _;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{AHashMap, AHashSet};
-use sigil_hal::Scale;
-use sigil_reactive::{Owner, OwnerId};
+use hal::Scale;
+use reactive::{Owner, OwnerId};
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
@@ -20,9 +20,9 @@ use crate::{A11yProps, Node, NodeId, NodeType, TextContent};
 /// subtree disposal.
 pub struct Cx {
     instance_id: u64,
-    nodes: SlotMap<DefaultKey, Node>,
-    owner_for_node: AHashMap<NodeId, Owner>,
-    dirty: AHashSet<NodeId>,
+    pub(crate) nodes: SlotMap<DefaultKey, Node>,
+    pub(crate) owner_for_node: AHashMap<NodeId, Owner>,
+    pub(crate) dirty: AHashSet<NodeId>,
     /// When set, every live node is considered dirty without populating
     /// `dirty` with 100k entries. `mark_mutated` flips this on in O(1)
     /// instead of doing an O(N) `AHashSet::insert` loop. The dirty
@@ -30,9 +30,15 @@ pub struct Cx {
     /// back to the regular set otherwise. ε1.5.
     dirty_all: bool,
     root_owner: Owner,
-    roots: SmallVec<[NodeId; 4]>,
-    mutation_generation: u64,
+    pub(crate) roots: SmallVec<[NodeId; 4]>,
+    pub(crate) mutation_generation: u64,
     scale: Scale,
+    /// Lazily-created live-region node id for [`Cx::announce`]. `None`
+    /// until the first announcement; apps that never announce pay no
+    /// cost. Phase 1.3 — Sigil gap-closure. Crate-visible so the
+    /// `announce` module can read and mutate it without going through
+    /// extra accessor methods.
+    pub(crate) live_region: Option<NodeId>,
 }
 
 impl Cx {
@@ -50,6 +56,7 @@ impl Cx {
             roots: SmallVec::new(),
             mutation_generation: 0,
             scale: Scale::ONE,
+            live_region: None,
         }
     }
 
@@ -253,7 +260,7 @@ impl Cx {
 
     /// The current per-window scale factor. Defaults to [`Scale::ONE`]
     /// until the shell adapter delivers the first
-    /// [`WindowEvent::ScaleFactorChanged`](sigil_hal::WindowEvent::ScaleFactorChanged).
+    /// [`WindowEvent::ScaleFactorChanged`](hal::WindowEvent::ScaleFactorChanged).
     #[must_use]
     pub const fn scale(&self) -> Scale {
         self.scale

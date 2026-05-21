@@ -14,13 +14,13 @@ use std::rc::Rc;
 use accesskit as _;
 use allocation_counter as _;
 use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 
-use sigil_events::prelude::*;
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
+use events::prelude::*;
+use kernel::prelude::*;
+use layout::prelude::*;
 
 use routing_helpers::{
     abs_rect, compute_layout, pointer_down, pointer_move, record, route_event, scroll_lines,

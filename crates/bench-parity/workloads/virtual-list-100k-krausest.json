@@ -1,0 +1,21 @@
+{
+  "workload_id": "virtual-list-100k-krausest",
+  "description": "100k-item virtual list with krausest 4-cell row shape, 1280x1280 viewport, linear one-row-per-frame scroll",
+  "category": "virtual-list",
+  "params": {
+    "row_count": 100000,
+    "row_height_px": 32.0,
+    "viewport_width_px": 1280.0,
+    "viewport_height_px": 1280.0,
+    "row_shape": "krausest-4-cell",
+    "scroll_pattern": "linear-one-row-per-frame",
+    "iterations": 100,
+    "warmup": 10
+  },
+  "equivalence_checks": [
+    {
+      "name": "visible_window_indices",
+      "description": "At scroll_y=N*row_height, materialised row indices must include row N and exclude any row whose [top, top+row_height) does not intersect [scroll_y, scroll_y+viewport_height)"
+    }
+  ]
+}

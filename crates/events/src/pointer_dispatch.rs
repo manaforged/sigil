@@ -8,11 +8,11 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_hal::{
+use hal::{
     ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
 };
-use sigil_kernel::{Cx, NodeId};
-use sigil_layout::LayoutEngine;
+use kernel::{Cx, NodeId};
+use layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::EventHandlers;
@@ -80,12 +80,10 @@ pub(crate) const fn synthetic_leave_source() -> PointerEvent {
 
 pub(crate) fn pointer_targets(layout: &LayoutEngine, path: &NodePath) -> PointerTargets {
     let mut targets = PointerTargets::new();
-    let mut origin = Point::new(0.0, 0.0);
     for id in path.iter().copied() {
-        if let Some(result) = layout.result(id) {
-            let rect = result.rect();
-            origin = Point::new(origin.x + rect.origin.x, origin.y + rect.origin.y);
-        }
+        let origin = layout
+            .result(id)
+            .map_or(Point::new(0.0, 0.0), |result| result.rect().origin);
         targets.push(PointerTarget { id, origin });
     }
     targets

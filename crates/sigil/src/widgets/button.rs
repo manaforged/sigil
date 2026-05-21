@@ -1,24 +1,19 @@
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{Key, NodeEventsExt};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use sigil_style::{
-    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleVariant, Theme, TransitionId,
-};
+use reactive::Signal;
+use sigil::widget_dev::*;
 
 use crate::interaction::InteractionState;
 
-use super::shared::{Activate, BuilderMutator, activate_key, activate_pointer, noop_activate};
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::shared::{
+    Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, binary_style_state,
+    disabled_now, noop_activate,
+};
 use super::transition_seam::install_transition_animators;
 
 const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 const BUTTON_COMPONENT_ID: u64 = 0xB117_7000;
-const BUTTON_DEFAULT_WIDTH: f32 = SizeToken::ControlLgWidth.px();
-const BUTTON_DEFAULT_HEIGHT: f32 = SizeToken::ControlLg.px();
-const BUTTON_LABEL_PAD_X: f32 = SizeToken::PaddingLg.px();
 
 /// Visual tone for [`button`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -37,9 +32,11 @@ pub struct ButtonBuilder {
     width: f32,
     height: f32,
     enabled: bool,
-    on_activate: Option<Activate>,
+    disabled: Option<Signal<bool>>,
+    activate: Option<Activate>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 static PRIMARY_BASE: &[StyleAtom] = &[
@@ -73,15 +70,18 @@ impl ButtonBuilder {
     /// Create a button builder.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
+        let theme = Theme::default();
         Self {
             label: label.into(),
             tone: ButtonTone::Neutral,
-            width: BUTTON_DEFAULT_WIDTH,
-            height: BUTTON_DEFAULT_HEIGHT,
+            width: theme.control_width(Size::Wide).px_or_zero(),
+            height: theme.control_height(Size::Wide).px_or_zero(),
             enabled: true,
-            on_activate: None,
+            disabled: None,
+            activate: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -106,6 +106,45 @@ impl ButtonBuilder {
         self
     }
 
+    /// Bind a reactive disabled signal.
+    ///
+    /// Reactive parity with [`enabled`](Self::enabled): while `disabled`
+    /// peeks `true` the button paints its disabled state and suppresses
+    /// pointer / Enter activation. Flipping the signal updates the
+    /// rendered state on the next reactive tick without rebuilding the
+    /// tree.
+    ///
+    /// The constructor-time focusable / hittable bits still derive from
+    /// [`enabled`](Self::enabled) and the signal's *initial* value —
+    /// the reactive update covers the visual state and the activation
+    /// guard, matching the [`CheckboxBuilder::disabled`] /
+    /// [`SliderBuilder::disabled`] contract.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use sigil::widgets::button::button;
+    /// use reactive::signal;
+    ///
+    /// let saving = signal(false);
+    /// let node = button("Save").disabled(saving);
+    /// // While `saving` is true the button greys out and won't activate.
+    /// ```
+    #[must_use]
+    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.disabled = Some(disabled);
+        self
+    }
+
+    /// Set a semantic theme-resolved control size.
+    #[must_use]
+    pub fn size(mut self, size: Size) -> Self {
+        let theme = Theme::default();
+        self.width = theme.control_width(size).px_or_zero();
+        self.height = theme.control_height(size).px_or_zero();
+        self
+    }
+
     /// Set a fixed logical-pixel width.
     #[must_use]
     pub const fn width(mut self, width: f32) -> Self {
@@ -113,18 +152,10 @@ impl ButtonBuilder {
         self
     }
 
-    /// Set a fixed logical-pixel size.
-    #[must_use]
-    pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
-        self.width = width;
-        self.height = height;
-        self
-    }
-
     /// Run a callback when the button is activated by pointer or Enter.
     #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
-        self.on_activate = Some(Rc::new(activate));
+        self.activate = Some(Rc::new(activate));
         self
     }
 
@@ -138,12 +169,9 @@ impl ButtonBuilder {
 
     /// Add struct-built style atoms after the built-in button defaults.
     ///
-    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
-    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
-    /// trait method (`fn style(&mut self) -> &mut Style`) — DR-049 §11
-    /// documented the receiver/arity disambiguation as a known footgun.
+    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -156,11 +184,14 @@ impl ButtonBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let interaction = InteractionState::new(self.enabled);
-        let activate = self
-            .on_activate
-            .as_ref()
-            .map_or_else(noop_activate, Rc::clone);
+        // Constructor enabled = static `enabled` AND the reactive
+        // signal's initial value. Subsequent flips of the signal are
+        // routed through `binary_style_state` (visual) and the
+        // activate-guard wrappers (gesture).
+        let enabled = self.enabled && !disabled_now(self.disabled);
+        let interaction = InteractionState::new(enabled);
+        let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
+        let layout_overrides = self.layout_overrides.clone();
         let mut node = self.base_node(interaction, Rc::clone(&activate));
         for mutate in self.mutators {
             node = mutate(node);
@@ -173,12 +204,13 @@ impl ButtonBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node
+        node.layout(layout_overrides.apply(button_layout(self.width, self.height)))
     }
 
     fn base_node(&self, interaction: InteractionState, activate: Activate) -> NodeBuilder {
         let variant = button_variant(self.tone);
         let state_style = button_state_style(self.tone);
+        let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
         let key_activate = activate;
         let node = container()
@@ -187,10 +219,17 @@ impl ButtonBuilder {
             .layout(button_layout(self.width, self.height))
             .class("rounded-md")
             .class(variant.base())
-            .style_reactive(move || variant.state(interaction.style_state()))
-            .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
+            .style_reactive(move || {
+                // Subscribe to the reactive disabled signal so flips
+                // re-run this effect; `binary_style_state` only peeks.
+                let _ = disabled.map(Signal::get);
+                variant.state(binary_style_state(interaction, disabled))
+            })
+            .pointer_up(move |event| {
+                activate_pointer_reactive(event, interaction, disabled, &pointer_activate);
+            })
             .key(Key::Enter, move |event| {
-                activate_key(event, interaction, &key_activate);
+                activate_key_reactive(event, interaction, disabled, &key_activate);
             })
             .child(self.label_node());
         let node = install_transition_animators(
@@ -204,7 +243,9 @@ impl ButtonBuilder {
     }
 
     fn label_node(&self) -> TextBuilder {
-        let width = 2.0_f32.mul_add(-BUTTON_LABEL_PAD_X, self.width).max(1.0);
+        let theme = Theme::default();
+        let label_pad_x = theme.padding(Size::Wide).px_or_zero();
+        let width = 2.0_f32.mul_add(-label_pad_x, self.width).max(1.0);
         text(self.label.clone())
             .layout(LayoutStyle::block().width(width))
             .class(button_text_class(self.tone))
@@ -212,15 +253,21 @@ impl ButtonBuilder {
 }
 
 impl StyleAccess for ButtonBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
+    }
+}
+
+impl WidgetLayoutExt for ButtonBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 
 impl StateHost for ButtonBuilder {}
 
 impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

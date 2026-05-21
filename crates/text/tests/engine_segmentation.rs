@@ -6,9 +6,9 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
 use skrifa as _;
 use smallvec as _;
 use tracing as _;
@@ -16,9 +16,9 @@ use unicode_bidi as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 
-use sigil_hal::{ParagraphMetrics, TextEngine};
-use sigil_style::{TextLineHeight, TextStyle};
-use sigil_text::{OwnedTextEngine, TextConfig, TextError};
+use hal::{ParagraphMetrics, TextEngine};
+use style::{TextLineHeight, TextStyle};
+use text::{OwnedTextEngine, TextConfig, TextError};
 
 mod engine_segmentation {
     use super::*;

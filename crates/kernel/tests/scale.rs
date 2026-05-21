@@ -3,12 +3,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use sigil_reactive as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_hal::Scale;
-use sigil_kernel::Cx;
+use hal::Scale;
+use kernel::Cx;
 
 #[test]
 fn cx_scale_defaults_to_one() {

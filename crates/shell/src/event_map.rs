@@ -6,7 +6,7 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_hal::{
+use hal::{
     ModifiersState, MouseButton, MouseButtons, Point, PointerPhase, Scale, ScrollDelta, ScrollPhase,
 };
 use winit::{

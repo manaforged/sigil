@@ -17,23 +17,23 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
-use sigil_reactive as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
 use taffy as _;
 
 mod stub;
 
-use sigil_hal as _;
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
-use sigil_style as _;
+use hal as _;
+use kernel::prelude::*;
+use layout::prelude::*;
+use style as _;
 
 use stub::stub_engine;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
+fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result must exist after compute")

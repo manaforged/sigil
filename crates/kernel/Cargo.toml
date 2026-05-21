@@ -1,5 +1,5 @@
 [package]
-name = "sigil-kernel"
+name = "kernel"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,8 +19,8 @@ accesskit = { workspace = true }
 ahash = { workspace = true }
 slotmap = { workspace = true }
 smallvec = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-reactive = { workspace = true }
+hal = { workspace = true }
+reactive = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

@@ -38,14 +38,14 @@
 use smol_str as _;
 use winit as _;
 
-use sigil_shell::{ShellError, WinitShell, WinitWaker};
+use shell::{ShellError, WinitShell, WinitWaker};
 
 /// The waker type must be `Send + Sync + Clone + 'static` so it can
 /// cross thread boundaries into `sigil-async`'s background Tokio tasks.
 #[test]
 fn waker_is_send_sync_clone_static() {
     fn assert_bounds<T: Send + Sync + Clone + 'static>() {}
-    assert_bounds::<<WinitShell as sigil_hal::Shell>::Waker>();
+    assert_bounds::<<WinitShell as hal::Shell>::Waker>();
     assert_bounds::<WinitWaker>();
 }
 
@@ -86,7 +86,7 @@ fn event_loop_closed_error_has_display_message() {
 #[test]
 fn take_failed_windows_signature_is_owned_vec() {
     #[allow(dead_code)]
-    fn probe(shell: &mut WinitShell) -> Vec<(sigil_shell::WinitWindowHandle, String)> {
+    fn probe(shell: &mut WinitShell) -> Vec<(shell::WinitWindowHandle, String)> {
         shell.take_failed_windows()
     }
 }
@@ -110,7 +110,7 @@ fn take_failed_windows_signature_is_owned_vec() {
 fn construct_and_probe() {
     use std::sync::atomic::Ordering;
 
-    use sigil_hal::{PhysicalSize, Shell};
+    use hal::{PhysicalSize, Shell};
 
     let mut shell = WinitShell::new().expect("construct shell on the main thread");
 
@@ -131,11 +131,11 @@ fn construct_and_probe() {
     // yet run (the event loop is not executing), so the pending flag
     // remains set from the first call. The counter must still be
     // exactly 1.
-    let baseline = sigil_shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
+    let baseline = shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
     for _ in 0..10 {
         <WinitShell as Shell>::wake(&waker).expect("wake still ok");
     }
-    let after = sigil_shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
+    let after = shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
     assert_eq!(
         after,
         baseline,

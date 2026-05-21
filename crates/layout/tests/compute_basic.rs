@@ -6,16 +6,16 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
 use rayon as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 mod stub;
 use stub::stub_engine;
 
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
+use kernel::prelude::*;
+use layout::prelude::*;
 
 #[test]
 fn flex_row_text_children_use_placeholder_intrinsic_widths() {

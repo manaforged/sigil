@@ -14,14 +14,14 @@ use std::rc::Rc;
 use accesskit as _;
 use allocation_counter as _;
 use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 
-use sigil_events::prelude::*;
-use sigil_hal::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut};
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
+use events::prelude::*;
+use hal::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut};
+use kernel::prelude::*;
+use layout::prelude::*;
 
 use routing_helpers::{compute_layout, ctrl_s, key_event, route_event};
 
@@ -111,8 +111,8 @@ fn focused_key_any_receives_unregistered_text_input() {
     assert_eq!(hits.get(), 1);
 }
 
-fn text_key_event(text: &str, physical: PhysicalKey) -> sigil_hal::ShellEvent {
-    sigil_hal::ShellEvent::Key(sigil_hal::KeyEvent::new(sigil_hal::KeyEventInit {
+fn text_key_event(text: &str, physical: PhysicalKey) -> hal::ShellEvent {
+    hal::ShellEvent::Key(hal::KeyEvent::new(hal::KeyEventInit {
         key: LogicalKey::character(text),
         physical,
         modifiers: ModifiersState::empty(),

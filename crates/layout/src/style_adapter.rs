@@ -2,7 +2,7 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_style::{
+use style::{
     AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, JustifyKind, OverflowKind, Px,
     StyleAtom,
 };

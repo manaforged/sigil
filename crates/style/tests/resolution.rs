@@ -3,18 +3,19 @@
 
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
+use kernel as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
+use reactive as _;
 use smallvec as _;
 use strsim as _;
+use style_macros as _;
+use tracing as _;
 
-use sigil_style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
-use sigil_style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
-use sigil_style::{NodeStyleExt, StyleBinding};
-use sigil_style::{ParseError, parse_class_string};
+use style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
+use style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
+use style::{NodeStyleExt, StyleBinding};
+use style::{ParseError, parse_class_string};
 
 #[test]
 fn atom_size_within_budget() {
@@ -321,8 +322,8 @@ fn parse_pseudo_prefix_not_supported() {
 fn class_string_attaches_binding() {
     let mut ptrs = Vec::new();
     for _ in 0..10 {
-        let mut cx = sigil_kernel::Cx::new_root();
-        let id = cx.add(sigil_kernel::container().class("p-4 rounded-md bg-accent"));
+        let mut cx = kernel::Cx::new_root();
+        let id = cx.add(kernel::container().class("p-4 rounded-md bg-accent"));
         let binding = cx
             .get(id)
             .and_then(|node| node.get_extension::<StyleBinding>())
@@ -339,8 +340,8 @@ fn class_string_attaches_binding() {
 
 #[test]
 fn class_string_attaches_to_text_binding() {
-    let mut cx = sigil_kernel::Cx::new_root();
-    let id = cx.add(sigil_kernel::text("label").class("text-on-surface"));
+    let mut cx = kernel::Cx::new_root();
+    let id = cx.add(kernel::text("label").class("text-on-surface"));
     let binding = cx
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
@@ -355,8 +356,8 @@ fn class_string_attaches_to_text_binding() {
 
 #[test]
 fn style_struct_attaches_binding() {
-    let mut cx = sigil_kernel::Cx::new_root();
-    let id = cx.add(sigil_kernel::container().style(Style::new().padding(8)));
+    let mut cx = kernel::Cx::new_root();
+    let id = cx.add(kernel::container().style(Style::new().padding(8)));
     let binding = cx
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
@@ -368,12 +369,8 @@ fn style_struct_attaches_binding() {
 
 #[test]
 fn theme_swap_invalidates_binding() {
-    let mut cx = sigil_kernel::Cx::new_root();
-    let id = cx.add(
-        sigil_kernel::container()
-            .class("p-4")
-            .theme(Theme::default()),
-    );
+    let mut cx = kernel::Cx::new_root();
+    let id = cx.add(kernel::container().class("p-4").theme(Theme::default()));
     let node = cx.get(id).unwrap();
     let binding = node.get_extension::<StyleBinding>().unwrap();
 

@@ -1,0 +1,36 @@
+[package]
+name = "bench-parity"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Cross-framework bench-parity harness — locked workloads, identical measurement, swappable framework runners."
+publish = false
+
+[lib]
+doctest = false
+
+[dependencies]
+sigil = { workspace = true }
+kernel = { workspace = true }
+hal = { workspace = true }
+layout = { workspace = true }
+reactive = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+time = { version = "0.3", default-features = false, features = ["formatting"] }
+
+[[bin]]
+name = "bench-parity-runner"
+path = "src/bin/bench-parity-runner.rs"
+
+[[bin]]
+name = "bench-parity-aggregator"
+path = "src/bin/bench-parity-aggregator.rs"
+
+[lints]
+workspace = true

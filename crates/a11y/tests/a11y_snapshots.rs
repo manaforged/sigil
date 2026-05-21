@@ -3,19 +3,20 @@
 //!
 //! Each test builds a tiny `Cx` arena, runs the projection, and asserts
 //! against an inline snapshot. The snapshot format is the indented-text
-//! formatter from [`sigil_a11y::snapshot`].
+//! formatter from [`a11y::snapshot`].
 
+use a11y::{snapshot, tree};
 use accesskit::Role;
-use sigil_a11y::{snapshot, tree};
-use sigil_kernel::{Cx, container, fragment};
+use kernel::{Cx, container, fragment};
 
-// sigil_hal is needed by sigil-a11y's public bridge trait but not
+// hal is needed by sigil-a11y's public bridge trait but not
 // named directly in this test file.
-use sigil_hal as _;
-// sigil-reactive is a dev-dep introduced for `reactive_flow.rs`; the
-// integration-test compilation unit pulls every dev-dep into every
-// integration test, so we alias to silence `unused_crate_dependencies`.
-use sigil_reactive as _;
+use hal as _;
+// sigil-reactive (Wave 5.2 reactive_flow.rs dev-dep) + sigil
+// (Phase 1.3.C live_regions.rs dev-dep) — every integration test
+// pulls all dev-deps, so we alias to silence `unused_crate_dependencies`.
+use reactive as _;
+use sigil as _;
 
 #[test]
 fn button_role_and_name() {

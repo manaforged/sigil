@@ -1,208 +1,200 @@
+//! Integration tests for the public `text_edit` widget surface.
+//!
+//! Covers the factory + builder API: factory shape, change-callback
+//! delivery, layout-override pass-through, and headless tree-build.
+//! The internal `TextEdit` rope primitive is covered by `#[cfg(test)]`
+//! tests inside `crates/sigil/src/widgets/text_edit/buffer.rs`.
+
 #![allow(missing_docs)]
 
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use arboard as _;
 use criterion as _;
+use events as _;
+use hal as _;
 use image as _;
+use kernel::{NodeId, NodeType};
+use layout::prelude::Dimension;
 use pollster as _;
-use sigil as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
+use reactive as _;
+use renderer as _;
+use sigil::prelude::*;
+use sigil::testing::with_cx;
+use sigil::widgets::{TextEditBuilder, text_edit};
+use style as _;
+use tasks as _;
 use wgpu as _;
 
-#[path = "../src/widgets/text_edit.rs"]
-mod text_edit;
-
-use text_edit::TextEdit;
-
 #[test]
-fn insert_ascii_advances_caret() {
-    let mut edit = TextEdit::new(String::new());
-
-    edit.insert_str("abc");
-
-    assert_eq!(edit.as_str(), "abc");
-    assert_eq!(edit.caret(), 3);
-    assert_eq!(edit.len(), 3);
-    assert!(!edit.is_empty());
+fn tree_builds_without_panic() {
+    with_cx("text-edit-tree", |cx| {
+        let value = signal(String::new());
+        let _root = cx.add(
+            text_edit(value)
+                .placeholder("Notes…")
+                .width(320.0)
+                .height(120.0),
+        );
+    });
 }
 
 #[test]
-fn insert_multibyte_emoji_advances_by_grapheme_bytes() {
-    let mut edit = TextEdit::new(String::new());
-
-    edit.insert_str("🙂");
-
-    assert_eq!(edit.as_str(), "🙂");
-    assert_eq!(edit.caret(), "🙂".len());
+fn factory_returns_a_builder_that_carries_supplied_signal() {
+    with_cx("text-edit-factory-binds-signal", |cx| {
+        // The builder threads the supplied Signal<String> through into
+        // the rendered node's a11y text_value, so we can assert
+        // post-build that the same signal reached the leaf.
+        let value = signal(String::from("hello"));
+        let builder: TextEditBuilder = text_edit(value);
+        let root = cx.add(builder);
+        let bound = cx
+            .get(root)
+            .expect("root node exists")
+            .a11y
+            .text_value
+            .expect("text_value populated");
+        assert_eq!(bound.peek(), "hello");
+    });
 }
 
 #[test]
-fn backspace_at_start_is_noop() {
-    let mut edit = TextEdit::new(String::from("abc"));
-    edit.move_home();
-
-    edit.backspace();
-
-    assert_eq!(edit.as_str(), "abc");
-    assert_eq!(edit.caret(), 0);
+fn submit_callback_is_registered_without_firing_on_construction() {
+    // Submit-on-Ctrl+Enter is wired through a key handler that we
+    // cannot dispatch synthetically without a winit-driven event
+    // loop. As a smoke, assert the callback is accepted and is not
+    // invoked at builder-construction time.
+    use std::cell::Cell;
+    use std::rc::Rc;
+    with_cx("text-edit-submit-not-fired", |cx| {
+        let value = signal(String::from("hello"));
+        let fired = Rc::new(Cell::new(false));
+        let fired_for_cb = fired.clone();
+        let _root = cx.add(text_edit(value).submit(move |_text: &str| {
+            fired_for_cb.set(true);
+        }));
+        assert!(!fired.get(), "submit must not fire at construction");
+    });
 }
 
 #[test]
-fn backspace_before_multibyte_boundary_removes_full_codepoint() {
-    let mut edit = TextEdit::new(String::from("a🙂b"));
-    edit.move_left();
-
-    edit.backspace();
-
-    assert_eq!(edit.as_str(), "ab");
-    assert_eq!(edit.caret(), 1);
+fn widget_layout_ext_overrides_reach_root_node() {
+    with_cx("text-edit-layout-override", |cx| {
+        let value = signal(String::new());
+        let root = cx.add(text_edit(value).width(200.0).height(150.0));
+        let style = cx
+            .get(root)
+            .expect("root node exists")
+            .get_extension::<LayoutStyle>()
+            .expect("root has LayoutStyle")
+            .clone();
+        assert_eq!(style.data().size.width, Dimension::Px(200.0));
+        assert_eq!(style.data().size.height, Dimension::Px(150.0));
+    });
 }
 
 #[test]
-fn delete_forward_at_end_is_noop() {
-    let mut edit = TextEdit::new(String::from("abc"));
-
-    edit.delete_forward();
-
-    assert_eq!(edit.as_str(), "abc");
-    assert_eq!(edit.caret(), 3);
+fn placeholder_accepts_string_literal() {
+    with_cx("text-edit-placeholder", |cx| {
+        let value = signal(String::new());
+        let _root = cx.add(text_edit(value).placeholder("Type here…"));
+    });
 }
 
+/// B4 — line children rebuild reactively when the bound signal mutates.
+///
+/// Was previously a "pins the broken behaviour" regression test
+/// (`text_edit_line_children_freeze_at_build`). After B1
+/// (`children_reactive`) + B4 wired `edit_lines` through it, the same
+/// scenario now produces the correct count, so the assertion flipped
+/// from `lines_after_mutation == lines_at_build` to
+/// `lines_after_mutation == 2` (one node per line in `"a\nb"`).
 #[test]
-fn caret_never_mid_char_after_any_operation() {
-    let mut edit = TextEdit::new(String::from("a🙂é"));
-    assert_on_boundary(&edit);
+fn text_edit_line_children_rebuild_on_signal_mutation() {
+    with_cx("text-edit-lines-rebuild", |cx| {
+        let value = signal(String::new());
+        let root = cx.add(text_edit(value));
+        cx.flush_reactive_children();
 
-    edit.move_left();
-    assert_on_boundary(&edit);
-    edit.move_left();
-    assert_on_boundary(&edit);
-    edit.insert_str("ø");
-    assert_on_boundary(&edit);
-    edit.backspace();
-    assert_on_boundary(&edit);
-    edit.delete_forward();
-    assert_on_boundary(&edit);
-    edit.move_right();
-    assert_on_boundary(&edit);
+        let lines_at_build = count_text_descendants(cx, root);
+        // Empty buffer: single empty-line placeholder text child.
+        assert_eq!(
+            lines_at_build, 1,
+            "empty buffer should emit one placeholder line child"
+        );
+
+        // Mutate the bound signal AFTER build — line children rebuild
+        // against the fresh line vector via `children_reactive`.
+        value.set(String::from("a\nb"));
+        cx.flush_reactive_children();
+        let lines_after_mutation = count_text_descendants(cx, root);
+        assert_eq!(
+            lines_after_mutation, 2,
+            "two newline-separated lines should emit two text children"
+        );
+        assert_eq!(value.peek(), "a\nb");
+    });
 }
 
+/// Typing three lines after build expands the child set to three.
 #[test]
-fn home_and_end_jump_to_bounds() {
-    let mut edit = TextEdit::new(String::from("a🙂b"));
+fn text_edit_line_children_grow_to_three_lines() {
+    with_cx("text-edit-lines-grow", |cx| {
+        let value = signal(String::new());
+        let root = cx.add(text_edit(value));
+        cx.flush_reactive_children();
 
-    edit.move_home();
-    assert_eq!(edit.caret(), 0);
+        value.set(String::from("one\ntwo\nthree"));
+        cx.flush_reactive_children();
 
-    edit.move_end();
-    assert_eq!(edit.caret(), edit.len());
+        assert_eq!(
+            count_text_descendants(cx, root),
+            3,
+            "three newline-separated lines should emit three text children"
+        );
+    });
 }
 
-fn assert_on_boundary(edit: &TextEdit) {
-    assert!(edit.caret() <= edit.len());
-    assert!(edit.as_str().is_char_boundary(edit.caret()));
-}
-
+/// Deleting the trailing newline collapses two visible lines to one.
 #[test]
-fn shift_right_extends_selection() {
-    let mut edit = TextEdit::new(String::from("abc"));
-    edit.move_home();
+fn text_edit_line_children_collapse_after_delete() {
+    with_cx("text-edit-lines-collapse", |cx| {
+        let value = signal(String::from("a\nb"));
+        let root = cx.add(text_edit(value));
+        cx.flush_reactive_children();
 
-    edit.shift_right();
-    edit.shift_right();
+        assert_eq!(
+            count_text_descendants(cx, root),
+            2,
+            "initial buffer of two lines should render two children"
+        );
 
-    assert_eq!(edit.selected_text(), Some("ab"));
-    assert_eq!(edit.caret(), 2);
+        // Simulate the user backspacing the second line away.
+        value.set(String::from("a"));
+        cx.flush_reactive_children();
+
+        assert_eq!(
+            count_text_descendants(cx, root),
+            1,
+            "deleting the newline must collapse to one line child"
+        );
+    });
 }
 
-#[test]
-fn shift_left_extends_selection_backward() {
-    let mut edit = TextEdit::new(String::from("abc"));
-
-    edit.shift_left();
-    edit.shift_left();
-
-    assert_eq!(edit.selected_text(), Some("bc"));
-    assert_eq!(edit.caret(), 1);
-}
-
-#[test]
-fn shift_home_selects_to_start() {
-    let mut edit = TextEdit::new(String::from("hello"));
-
-    edit.shift_home();
-
-    assert_eq!(edit.selected_text(), Some("hello"));
-    assert_eq!(edit.caret(), 0);
-}
-
-#[test]
-fn shift_end_selects_to_end() {
-    let mut edit = TextEdit::new(String::from("hello"));
-    edit.move_home();
-
-    edit.shift_end();
-
-    assert_eq!(edit.selected_text(), Some("hello"));
-    assert_eq!(edit.caret(), 5);
-}
-
-#[test]
-fn insert_replaces_selection() {
-    let mut edit = TextEdit::new(String::from("hello world"));
-    edit.move_home();
-    edit.shift_right();
-    edit.shift_right();
-    edit.shift_right();
-    edit.shift_right();
-    edit.shift_right();
-
-    edit.insert_str("hi");
-
-    assert_eq!(edit.as_str(), "hi world");
-    assert!(edit.selected_text().is_none());
-}
-
-#[test]
-fn backspace_deletes_selection() {
-    let mut edit = TextEdit::new(String::from("abcd"));
-    edit.move_home();
-    edit.shift_right();
-    edit.shift_right();
-
-    edit.backspace();
-
-    assert_eq!(edit.as_str(), "cd");
-    assert_eq!(edit.caret(), 0);
-}
-
-#[test]
-fn select_all_covers_buffer() {
-    let mut edit = TextEdit::new(String::from("hello"));
-
-    edit.select_all();
-
-    assert_eq!(edit.selected_text(), Some("hello"));
-}
-
-#[test]
-fn move_collapses_selection() {
-    let mut edit = TextEdit::new(String::from("abc"));
-    edit.move_home();
-    edit.shift_right();
-    edit.shift_right();
-    assert!(edit.has_selection());
-
-    edit.move_right();
-
-    assert!(!edit.has_selection());
+/// Walk the subtree rooted at `root` and count nodes whose kind is
+/// [`NodeType::Text`]. Fragments are descended through; containers
+/// are also descended. Used by the freeze-regression test.
+fn count_text_descendants(cx: &kernel::Cx, root: NodeId) -> usize {
+    let mut stack = vec![root];
+    let mut count = 0_usize;
+    while let Some(id) = stack.pop() {
+        let Some(node) = cx.get(id) else { continue };
+        if matches!(node.kind, NodeType::Text { .. }) {
+            count += 1;
+        }
+        stack.extend(node.children().iter().copied());
+    }
+    count
 }

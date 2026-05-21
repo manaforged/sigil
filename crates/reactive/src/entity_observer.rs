@@ -25,20 +25,50 @@ use crate::runtime::{
 /// enclosing reactive owner disposes (see DR-045 §4).
 #[must_use = "subscriptions unsubscribe on drop; bind the handle to keep observation alive"]
 pub struct Subscription {
-    pub(crate) key: ObserverKey,
-    // !Send + !Sync — observer lists are thread-local.
+    pub(crate) kind: SubscriptionKind,
     _not_send: PhantomData<*const ()>,
+}
+
+pub(crate) enum SubscriptionKind {
+    Observer(ObserverKey),
+    Cleanup(Option<Box<dyn FnOnce()>>),
 }
 
 impl core::fmt::Debug for Subscription {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Subscription({:?})", self.key)
+        match &self.kind {
+            SubscriptionKind::Observer(key) => write!(f, "Subscription({key:?})"),
+            SubscriptionKind::Cleanup(_) => write!(f, "Subscription(<cleanup>)"),
+        }
     }
 }
 
 impl Drop for Subscription {
     fn drop(&mut self) {
-        unsubscribe(self.key);
+        match &mut self.kind {
+            SubscriptionKind::Observer(key) => unsubscribe(*key),
+            SubscriptionKind::Cleanup(cleanup) => {
+                if let Some(cleanup) = cleanup.take() {
+                    cleanup();
+                }
+            }
+        }
+    }
+}
+
+impl Subscription {
+    pub(crate) const fn observer(key: ObserverKey) -> Self {
+        Self {
+            kind: SubscriptionKind::Observer(key),
+            _not_send: PhantomData,
+        }
+    }
+
+    pub(crate) fn cleanup(cleanup: impl FnOnce() + 'static) -> Self {
+        Self {
+            kind: SubscriptionKind::Cleanup(Some(Box::new(cleanup))),
+            _not_send: PhantomData,
+        }
     }
 }
 
@@ -119,10 +149,7 @@ where
     };
     let key = install_observer(slot, observed.key, None);
     register_cleanup(key);
-    Subscription {
-        key,
-        _not_send: PhantomData,
-    }
+    Subscription::observer(key)
 }
 
 /// Register a typed-event subscriber — fires only on `cx.emit::<Ev>`.
@@ -152,10 +179,7 @@ where
     };
     let key = install_observer(slot, observed.key, Some(ev_type));
     register_cleanup(key);
-    Subscription {
-        key,
-        _not_send: PhantomData,
-    }
+    Subscription::observer(key)
 }
 
 /// Register a top-level `observe_global` — bare `FnMut()` with no
@@ -175,10 +199,7 @@ pub(crate) fn register_observe_global(
     };
     let key = install_observer(slot, observed, None);
     register_cleanup(key);
-    Subscription {
-        key,
-        _not_send: PhantomData,
-    }
+    Subscription::observer(key)
 }
 
 fn current_owner() -> crate::runtime::OwnerKey {

@@ -13,8 +13,8 @@ use core::fmt;
 use std::collections::VecDeque;
 
 use accesskit::{ActionRequest, TreeUpdate};
-use sigil_hal::A11yBridge;
-use sigil_kernel::NodeId;
+use hal::A11yBridge;
+use kernel::NodeId;
 
 /// Test-side bridge — captures every `publish` into a `Vec` and
 /// serves `take_action` from a FIFO queue tests prime with

@@ -1,7 +1,7 @@
 //! `sigil-hal::Layout` implementation.
 
-use sigil_hal::{Layout, Size};
-use sigil_kernel::NodeId;
+use hal::{Layout, Size};
+use kernel::NodeId;
 
 use crate::{LayoutEngine, LayoutError, LayoutResult, LayoutStyle};
 

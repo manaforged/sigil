@@ -1,5 +1,5 @@
 [package]
-name = "sigil-a11y"
+name = "a11y"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,13 +13,18 @@ doctest = false
 
 [dependencies]
 accesskit = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-kernel = { workspace = true }
+hal = { workspace = true }
+kernel = { workspace = true }
 
 [dev-dependencies]
 # W5.2 — `reactive_flow` integration test drives `A11yObserver` +
 # `Runtime::install_a11y_publisher` against `RecordingBridge`.
-sigil-reactive = { workspace = true }
+reactive = { workspace = true }
+# Phase 1.3 acceptance gate (`live_regions`) drives the modal widget's
+# rising-edge announcement effect end-to-end through the AccessKit
+# projection. Dev-dep only — no cycle, since `sigil` does not depend on
+# `sigil-a11y`.
+sigil = { workspace = true }
 
 [lints]
 workspace = true

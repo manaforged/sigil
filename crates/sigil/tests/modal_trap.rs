@@ -1,0 +1,176 @@
+#![allow(missing_docs)]
+#![allow(clippy::unwrap_used)]
+
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use arboard as _;
+use criterion as _;
+use events as _;
+use hal as _;
+use image as _;
+use kernel as _;
+use layout as _;
+use pollster as _;
+use reactive as _;
+use renderer as _;
+use style as _;
+use tasks as _;
+use wgpu as _;
+
+use hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
+use sigil::prelude::*;
+
+struct StubMeasure;
+
+impl TextMeasure for StubMeasure {
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::new(40.0, 16.0)
+    }
+}
+
+fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
+    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    layout
+        .compute(cx, root, Size::fixed(640.0, 480.0))
+        .expect("layout");
+    layout
+}
+
+fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: key.into(),
+        physical,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+const fn pointer_down(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(MouseButton::Left),
+        buttons: MouseButtons::LEFT,
+        modifiers: ModifiersState::empty(),
+        phase: PointerPhase::Down,
+    }))
+}
+
+fn modal_dialog(cx: &Cx, root: NodeId) -> NodeId {
+    cx.nth_child(root, 1).expect("modal dialog child")
+}
+
+#[test]
+fn modal_open_pushes_focus_scope() {
+    sigil::reactive::Runtime::scope("sigil-modal-trap-focus-scope", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
+                .child(
+                    container()
+                        .focusable(true)
+                        .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
+                )
+                .child(modal().show(show)),
+        );
+        let layout = compute(&mut cx, root);
+        let modal_root = cx.nth_child(root, 1).expect("modal root");
+        let dialog = modal_dialog(&cx, modal_root);
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+
+        assert_eq!(router.focus(), Some(dialog));
+
+        show.set(false);
+        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        assert!(!show.get());
+    });
+}
+
+#[test]
+fn escape_closes_modal_when_enabled_default() {
+    sigil::reactive::Runtime::scope("sigil-modal-trap-escape", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(modal().show(show));
+        let layout = compute(&mut cx, root);
+        let dialog = modal_dialog(&cx, root);
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(dialog));
+        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+
+        assert!(!show.get());
+    });
+}
+
+#[test]
+fn backdrop_click_closes_when_opt_in() {
+    sigil::reactive::Runtime::scope("sigil-modal-trap-backdrop", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(
+            modal()
+                .show(show)
+                .dismiss_on_backdrop(true)
+                .child(container().layout(LayoutStyle::block().fixed_size(80.0, 24.0))),
+        );
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+
+        router.route(&mut cx, &layout, pointer_down(60.0, 70.0));
+        assert!(show.get(), "dialog click must not dismiss");
+
+        router.route(&mut cx, &layout, pointer_down(5.0, 5.0));
+        assert!(!show.get(), "backdrop click dismisses");
+    });
+}
+
+#[test]
+fn three_modal_stack_escape_pops_one_at_a_time() {
+    sigil::reactive::Runtime::scope("sigil-modal-trap-stack", || {
+        let first = signal(true);
+        let second = signal(true);
+        let third = signal(true);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
+                .child(modal().title("First").show(first))
+                .child(modal().title("Second").show(second))
+                .child(modal().title("Third").show(third)),
+        );
+        let layout = compute(&mut cx, root);
+        let top_root = cx.nth_child(root, 2).expect("third modal root");
+        let top_dialog = modal_dialog(&cx, top_root);
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(top_dialog));
+
+        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        assert_eq!(
+            (first.get(), second.get(), third.get()),
+            (true, true, false)
+        );
+
+        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        assert_eq!(
+            (first.get(), second.get(), third.get()),
+            (true, false, false)
+        );
+
+        router.route(&mut cx, &layout, key_down(Key::Escape, PhysicalKey::Escape));
+        assert_eq!(
+            (first.get(), second.get(), third.get()),
+            (false, false, false)
+        );
+    });
+}

@@ -3,8 +3,8 @@
 use phf as _;
 use proc_macro2 as _;
 use quote as _;
-use sigil_style as _;
-use sigil_style_macros as _;
+use style as _;
+use style_macros as _;
 use syn as _;
 
 #[test]

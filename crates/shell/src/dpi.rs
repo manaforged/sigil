@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use sigil_hal::{Point, Scale};
+use hal::{Point, Scale};
 use winit::window::{Window, WindowId};
 
 use crate::WinitWindowHandle;
@@ -63,7 +63,7 @@ fn handle_for_window_id(
 
 #[cfg(test)]
 mod tests {
-    use sigil_hal::{Point, Scale, WindowEvent};
+    use hal::{Point, Scale, WindowEvent};
 
     use super::logical_point_from_f64;
 

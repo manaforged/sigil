@@ -11,7 +11,7 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use sigil_hal::{Key, LogicalKey, PhysicalKey};
+use hal::{Key, LogicalKey, PhysicalKey};
 use winit::keyboard::{
     Key as WinitKey, KeyCode as WinitKeyCode, NamedKey as WinitNamedKey,
     PhysicalKey as WinitPhysicalKey,

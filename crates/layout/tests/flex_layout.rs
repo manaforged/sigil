@@ -17,14 +17,14 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
+use kernel as _;
 use rayon as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 
-use sigil_layout::{
+use layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleAlignSelf, StyleData, StyleDisplay,
     StyleFlexDirection, StyleJustifyContent, StyleLengthPercentage, StyleLengthPercentageAuto,
     StylePosition,

@@ -5,7 +5,7 @@ use smol_str as _;
 
 use std::fmt;
 
-use sigil_hal::{LogicalSize, PhysicalSize, Shell, ShellEvent};
+use hal::{LogicalSize, PhysicalSize, Shell, ShellEvent};
 
 #[derive(Debug)]
 struct MockError;

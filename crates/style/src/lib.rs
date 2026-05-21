@@ -2,10 +2,10 @@
 
 // Step 1 wires the full dependency surface before the phase fills the
 // modules. Keep those crates visible to `unused_crate_dependencies`.
+use ::reactive as _;
+use hal as _;
+use kernel as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
 use smallvec as _;
 
 #[cfg(test)]
@@ -23,7 +23,7 @@ pub mod merge;
 pub mod palette;
 pub mod parser;
 pub mod reactive;
-pub mod size_tokens;
+pub mod size;
 pub mod state;
 pub mod struct_api;
 pub mod styled;
@@ -41,14 +41,15 @@ pub use builder_ext::{ClassSource, NodeStyleExt};
 pub use engine::StyleEngine;
 pub use focus_ring::FocusRing;
 pub use merge::{
-    ComponentId, merge_classes, merge_warning_count, merge_warning_count_for_component,
+    ComponentId, bump_unknown_class_count, merge_classes, merge_warning_count,
+    merge_warning_count_for_component, unknown_class_warning_count,
 };
 pub use parser::{ParseError, parse_class_string};
 pub use reactive::StyleReactiveEffect;
-pub use sigil_style_macros::classes;
-pub use size_tokens::SizeToken;
+pub use size::{LengthPercentage, Size};
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use struct_api::Style;
+pub use style_macros::classes;
 pub use styled::{
     ColorOrToken, Fill, Flex, Geometry, NodeStyledBuilder, Sizing, Spacing, StateHost,
     StateStyleBuilder, StateVariants, StyleAccess, Styleable, Styled, Transitions, Typography,
@@ -61,11 +62,12 @@ pub use theme::{Theme, ThemeBuilder, ThemeValue};
 pub mod prelude {
     pub use crate::{
         AlignKind, ClassSource, ColorAtom, ColorAtomKind, ColorOrToken, ComponentId, Dimension,
-        DisplayKind, FlexDir, FocusRing, JustifyKind, MillisU16, NodeStyleExt, NodeStyledBuilder,
-        ParseError, Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP, SizeToken, StateSlot,
-        StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom, StyleBinding, StyleEngine,
-        StyleReactiveEffect, StyleState, StyleVariant, Styleable, Styled, StyledTextEngine,
-        TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue, TransitionId, classes,
-        merge_classes, merge_warning_count, merge_warning_count_for_component, parse_class_string,
+        DisplayKind, FlexDir, FocusRing, JustifyKind, LengthPercentage, MillisU16, NodeStyleExt,
+        NodeStyledBuilder, ParseError, Px, ReactiveStyleAtoms, RenderStyle, Rgba8, SPACING_STEP,
+        Size, StateSlot, StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom,
+        StyleBinding, StyleEngine, StyleReactiveEffect, StyleState, StyleVariant, Styleable,
+        Styled, StyledTextEngine, TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue,
+        TransitionId, classes, merge_classes, merge_warning_count,
+        merge_warning_count_for_component, parse_class_string,
     };
 }

@@ -7,14 +7,14 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use smallvec as _;
+use style as _;
 mod stub;
 use stub::stub_engine;
 
-use sigil_kernel::{TextContent, prelude::*};
-use sigil_layout::prelude::*;
+use kernel::{TextContent, prelude::*};
+use layout::prelude::*;
 
 struct FixedMeasure;
 

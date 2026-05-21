@@ -14,13 +14,15 @@ use std::time::{Duration, Instant};
 use ahash as _;
 use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use rayon as _;
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
+use slotmap as _;
 use smallvec as _;
+use style as _;
+use taffy as _;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 720.0;
@@ -139,12 +141,7 @@ fn leaf() -> NodeBuilder {
 }
 
 fn collect_row_ids(cx: &Cx, root: NodeId) -> Vec<NodeId> {
-    cx.get(root)
-        .expect("root exists")
-        .children()
-        .iter()
-        .copied()
-        .collect()
+    cx.get(root).expect("root exists").children().to_vec()
 }
 
 fn collect_leaf_ids(cx: &Cx, root: NodeId) -> Vec<NodeId> {

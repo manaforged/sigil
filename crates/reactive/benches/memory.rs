@@ -67,11 +67,14 @@ mod memory_benches;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-// `criterion` and `smallvec` are dev/regular deps that get pulled into
-// every bench compilation unit. We don't reference them here so the
-// `unused_crate_dependencies` lint complains without these aliases.
+// `criterion`, `actions`, `smallvec`, and `tokio` are dev/regular
+// deps pulled into every bench compilation unit. We don't reference
+// them here so the `unused_crate_dependencies` lint complains without
+// these aliases.
+use actions as _;
 use criterion as _;
 use smallvec as _;
+use tokio as _;
 
 // ---------------------------------------------------------------------
 // Allocation counter

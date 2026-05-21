@@ -2,7 +2,7 @@
 
 use std::fmt::{Display, Formatter};
 
-use sigil_kernel::NodeId;
+use kernel::NodeId;
 
 /// Error returned by layout sync and compute operations.
 #[derive(Debug, Clone, PartialEq, Eq)]

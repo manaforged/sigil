@@ -1,8 +1,8 @@
 use super::*;
 
-use sigil_app::DefaultTextMeasure;
-use sigil_hal::{KeyEventInit, Point, PointerEventInit, Rect};
-use sigil_renderer::emit_scene;
+use app::DefaultTextMeasure;
+use hal::{KeyEventInit, Point, PointerEventInit, Rect};
+use renderer::emit_scene;
 
 #[test]
 fn slice_emits_initial_and_reactive_text() -> core::result::Result<(), Box<dyn std::error::Error>> {
@@ -178,24 +178,16 @@ fn center_of(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Point {
     )
 }
 
-fn absolute_rect(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Rect {
-    let mut stack = Vec::new();
-    let mut current = Some(id);
-    while let Some(node_id) = current {
-        stack.push(node_id);
-        current = cx.parent(node_id);
-    }
-    let mut origin = Point::new(0.0, 0.0);
-    let mut size = (0.0, 0.0);
-    for node_id in stack.iter().rev().copied() {
-        if let Some(result) = layout.result(node_id) {
-            let rect = result.rect();
-            origin.x += rect.origin.x;
-            origin.y += rect.origin.y;
-            size = (rect.width, rect.height);
-        }
-    }
-    Rect::new(origin, size.0, size.1)
+fn absolute_rect(_cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Rect {
+    // `LayoutResult::rect()` is already in root coordinates (see
+    // commit a84d207 / hit_test.rs comment): the layout solvers
+    // accumulate every ancestor's border + padding offset into the
+    // rect they write. Walking parents and re-summing would
+    // double-count. Read the rect through unchanged.
+    layout.result(id).map_or_else(
+        || Rect::new(Point::new(0.0, 0.0), 0.0, 0.0),
+        |result| result.rect(),
+    )
 }
 
 fn enter_down() -> ShellEvent {

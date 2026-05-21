@@ -7,8 +7,8 @@
 
 use core::cell::{Cell, RefCell};
 
-use sigil_animation::{Easing, SpringPreset};
-use sigil_reactive::Signal;
+use animation::{Easing, SpringPreset};
+use reactive::Signal;
 
 use crate::animator::{AnimatorStatus, Motion, SpringMotion, TweenMotion};
 
@@ -144,8 +144,8 @@ pub fn active_count() -> usize {
 
 #[cfg(test)]
 mod tests {
-    use sigil_animation::SpringPreset;
-    use sigil_reactive::{Runtime, signal};
+    use animation::SpringPreset;
+    use reactive::{Runtime, signal};
 
     use super::{active_count, tick};
     use crate::animator::Animator;

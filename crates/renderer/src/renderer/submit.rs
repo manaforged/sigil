@@ -1,6 +1,6 @@
 //! Screen/world submission target descriptors and shared submit helpers.
 
-use sigil_hal::Color;
+use hal::Color;
 
 use crate::device_state::ReadyState;
 use crate::error::RendererError;
@@ -167,7 +167,7 @@ pub(super) fn walk_screen(
 pub(super) fn render_frame_surface<F>(
     ready: &ReadyState,
     surface: &WgpuSurface,
-    clear_color: sigil_hal::Color,
+    clear_color: hal::Color,
     draw: F,
 ) -> Result<(), RendererError>
 where
@@ -187,7 +187,7 @@ pub(super) fn render_command_scene_surface(
     ready: &mut ReadyState,
     surface: &WgpuSurface,
     scene: &CommandScene,
-    clear_color: sigil_hal::Color,
+    clear_color: hal::Color,
     viewport: (f32, f32),
 ) -> Result<(), RendererError> {
     let format = surface.config.format;

@@ -1,5 +1,5 @@
 [package]
-name = "sigil-events"
+name = "events"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,16 +13,16 @@ doctest = false
 
 [dependencies]
 accesskit = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-layout = { workspace = true }
+kernel = { workspace = true }
+hal = { workspace = true }
+layout = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
+reactive = { workspace = true }
+style = { workspace = true }
 
 [[bench]]
 name = "events_ops"

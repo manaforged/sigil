@@ -1,6 +1,6 @@
-use sigil_hal::{Point, Rect};
-use sigil_style::Rgba8;
+use hal::{Point, Rect};
 use smallvec::smallvec;
+use style::Rgba8;
 
 use crate::scene_command::ScenePatternStyle;
 use crate::{

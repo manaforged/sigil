@@ -1,5 +1,5 @@
 [package]
-name = "sigil-reactive"
+name = "reactive"
 autobenches = false
 version.workspace = true
 edition.workspace = true
@@ -16,7 +16,7 @@ description = "Leptos 0.5+ style reactive core — signals, effects, derived, ow
 doctest = false
 
 [dependencies]
-sigil-actions = { workspace = true }
+actions = { workspace = true }
 smallvec = { workspace = true }
 # G5 (DR-048): Task<T> wraps oneshot for completion routing and stores
 # AbortHandle for RAII cancel. Sync feature pulls in `oneshot`; the

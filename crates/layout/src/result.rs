@@ -1,6 +1,6 @@
 //! Computed layout result attached to `sigil-kernel` nodes.
 
-use sigil_hal::{Point, Rect};
+use hal::{Point, Rect};
 
 use crate::ResolvedBox;
 

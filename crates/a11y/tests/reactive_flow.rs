@@ -1,8 +1,8 @@
 //! W5.2 / DR-050 §G10-phase-2 — end-to-end reactive a11y flow.
 //!
-//! Wires together [`sigil_reactive::A11yObserver`],
-//! [`sigil_reactive::Runtime::install_a11y_publisher`], the kernel
-//! `Cx`, and the [`sigil_a11y::RecordingBridge`] to prove that a
+//! Wires together [`reactive::A11yObserver`],
+//! [`reactive::Runtime::install_a11y_publisher`], the kernel
+//! `Cx`, and the [`a11y::RecordingBridge`] to prove that a
 //! checkbox-style reactive `checked` signal flips the AccessKit tree
 //! at end-of-frame.
 
@@ -14,18 +14,21 @@
     clippy::ignored_unit_patterns
 )]
 
-// `sigil_hal` provides the `A11yBridge` trait the recording bridge
-// implements; load-bearing through `sigil_a11y::RecordingBridge` but
+// `hal` provides the `A11yBridge` trait the recording bridge
+// implements; load-bearing through `a11y::RecordingBridge` but
 // not named directly in this test.
-use sigil_hal as _;
+use hal as _;
+// `sigil` is a dev-dep for Phase 1.3.C's `live_regions.rs`; every
+// integration test pulls all dev-deps, so alias here too.
+use sigil as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use a11y::{RecordingBridge, snapshot, tree};
 use accesskit::Role;
-use sigil_a11y::{RecordingBridge, snapshot, tree};
-use sigil_kernel::{Cx, container};
-use sigil_reactive::{A11yObserver, Runtime, Signal, signal};
+use kernel::{Cx, container};
+use reactive::{A11yObserver, Runtime, Signal, signal};
 
 type SharedCx = Rc<RefCell<Cx>>;
 type SharedBridge = Rc<RefCell<RecordingBridge>>;
@@ -38,14 +41,14 @@ fn drive_frame() {
     Runtime::end_frame();
 }
 
-/// Install a publisher that snapshots `cx` through `sigil_a11y::tree`
+/// Install a publisher that snapshots `cx` through `a11y::tree`
 /// and forwards the result into `bridge`.
 fn install_cx_publisher(cx: &SharedCx, bridge: &SharedBridge) {
     let cx_for_pub = Rc::clone(cx);
     let bridge_for_pub = Rc::clone(bridge);
     Runtime::install_a11y_publisher(Box::new(move || {
         let update = tree(&cx_for_pub.borrow(), None);
-        let _ = sigil_hal::A11yBridge::publish(&mut *bridge_for_pub.borrow_mut(), update);
+        let _ = hal::A11yBridge::publish(&mut *bridge_for_pub.borrow_mut(), update);
     }));
 }
 

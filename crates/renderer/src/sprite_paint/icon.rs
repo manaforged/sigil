@@ -1,4 +1,4 @@
-use sigil_icons::{BakedIcon, IconBaker, builtin};
+use icons::{BakedIcon, IconBaker, builtin};
 
 use super::{AtlasDesc, SpritePipeline};
 use crate::scenes::BUILTIN_ICON_ATLAS_BASE_ID;

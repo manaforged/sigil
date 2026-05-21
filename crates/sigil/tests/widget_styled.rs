@@ -10,10 +10,10 @@
 //!
 //! Note on method-name disambiguation: per W4.99.B2 the inherent
 //! consuming-self method `.style(Style) -> Self` was renamed to
-//! `.style_atoms(Style) -> Self` on `ButtonBuilder` / `CheckboxBuilder`
+//! `.style(Style) -> Self` on `ButtonBuilder` / `CheckboxBuilder`
 //! / `ToggleBuilder` / `SliderBuilder` so that the `style()` name is
 //! reserved for the [`StyleAccess`] trait method
-//! (`fn style(&mut self) -> &mut Style`). Tests can therefore call
+//! (`fn style_mut(&mut self) -> &mut Style`). Tests can therefore call
 //! `.style()` (zero-arg, &mut self) freely without method-resolution
 //! ambiguity.
 
@@ -23,21 +23,22 @@
 #![allow(clippy::indexing_slicing)]
 
 // Test-only deps that the dev-dep set pulls in for OTHER widget tests.
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use arboard as _;
 use criterion as _;
+use events as _;
+use hal as _;
 use image as _;
+use kernel as _;
+use layout as _;
 use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
+use reactive as _;
+use renderer as _;
+use style as _;
+use tasks as _;
 use wgpu as _;
 
 use sigil::prelude::{
@@ -53,13 +54,13 @@ use sigil::reactive::Runtime;
 fn button_styled_bg_emits_atom() {
     Runtime::scope("widget-styled-button-bg", || {
         let mut b = button("Run").bg("surface").rounded(8);
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "button bg('surface') must push BackgroundThemeRef onto the accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil_style::Px(8))),
+            atoms.contains(&StyleAtom::BorderRadius(style::Px(8))),
             "button rounded(8) must push BorderRadius, got {atoms:?}",
         );
     });
@@ -69,7 +70,7 @@ fn button_styled_bg_emits_atom() {
 fn button_styled_hover_populates_state_slot() {
     Runtime::scope("widget-styled-button-hover", || {
         let mut b = button("Run").hover(|s| s.bg("surface-hover").opacity(0.8));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         let hover = style.hover_atoms().to_vec();
         assert_eq!(
             hover.len(),
@@ -91,7 +92,7 @@ fn button_styled_accepts_full_compile_surface() {
             .px(16)
             .py(8)
             .hover(|s| s.bg("surface-hover"));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         assert!(
             !style.is_empty(),
             "chained styled methods must populate the accumulator",
@@ -107,13 +108,13 @@ fn checkbox_styled_bg_emits_atom() {
     Runtime::scope("widget-styled-checkbox-bg", || {
         let checked = signal(false);
         let mut b = checkbox(checked).bg("surface").rounded(6);
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "checkbox bg('surface') must reach the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil_style::Px(6))),
+            atoms.contains(&StyleAtom::BorderRadius(style::Px(6))),
             "rounded(6) must land, got {atoms:?}",
         );
     });
@@ -124,7 +125,7 @@ fn checkbox_styled_hover_populates_state_slot() {
     Runtime::scope("widget-styled-checkbox-hover", || {
         let checked = signal(false);
         let mut b = checkbox(checked).hover(|s| s.bg("accent-hover"));
-        let hover = StyleAccess::style(&mut b).hover_atoms().to_vec();
+        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert_eq!(hover.len(), 1, "hover slot must capture exactly one atom");
         assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("accent-hover"));
     });
@@ -139,14 +140,14 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
         let mut b = dropdown(selected, vec!["a".into(), "b".into()])
             .bg("surface")
             .padding(12);
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "dropdown bg('surface') must hit the trait accumulator (which is then \
              merged into the trigger at build time), got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil_style::Px(12))),
+            atoms.contains(&StyleAtom::PaddingAll(style::Px(12))),
             "padding(12) must land in the accumulator, got {atoms:?}",
         );
     });
@@ -158,7 +159,7 @@ fn dropdown_styled_pressed_populates_state_slot() {
         let selected = signal(0_usize);
         let mut b =
             dropdown(selected, vec!["a".into()]).pressed(|s| s.bg("surface-pressed-strong"));
-        let pressed = StyleAccess::style(&mut b).pressed_atoms().to_vec();
+        let pressed = StyleAccess::style_mut(&mut b).pressed_atoms().to_vec();
         assert_eq!(pressed.len(), 1);
         assert_eq!(
             pressed[0],
@@ -188,14 +189,14 @@ fn panel_accepts_styled_surface() {
             .bg("accent")
             .px(20)
             .hover(|s| s.bg("accent-hover"));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("accent")),
             "panel bg('accent') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(style::Px(20))),
             "panel px(20) must land in the trait accumulator, got {atoms:?}",
         );
         let hover = style.hover_atoms().to_vec();
@@ -239,14 +240,14 @@ fn text_field_styled_composes_with_state_variant() {
             .focus(|s| s.bg("on-surface"))
             .pressed(|s| s.bg("surface-pressed"));
         b = StateVariants::disabled(b, |s| s.opacity(0.5));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         let base = style.as_atoms().to_vec();
         assert!(
             base.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "text_field bg('surface') must land in trait accumulator base, got {base:?}",
         );
         assert!(
-            base.contains(&StyleAtom::PaddingX(sigil_style::Px(10))),
+            base.contains(&StyleAtom::PaddingX(style::Px(10))),
             "text_field px(10) must land in trait accumulator base, got {base:?}",
         );
         // Each state slot must independently capture its closure's
@@ -275,13 +276,13 @@ fn slider_accepts_styled_surface() {
     Runtime::scope("widget-styled-slider", || {
         let value = signal(0.5_f32);
         let mut b = slider(value, 0.0..=1.0).bg("surface").padding(8);
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "slider bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil_style::Px(8))),
+            atoms.contains(&StyleAtom::PaddingAll(style::Px(8))),
             "padding(8) must land in the accumulator, got {atoms:?}",
         );
     });
@@ -296,8 +297,8 @@ fn progress_accepts_styled_surface() {
         let mut b = progress(value, 1.0)
             .bg("surface")
             .hover(|s| s.bg("surface-hover"));
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
-        let hover = StyleAccess::style(&mut b).hover_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
+        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "progress bg('surface') must hit the trait accumulator, got {atoms:?}",
@@ -318,8 +319,8 @@ fn floating_text_accepts_styled_surface() {
             .capacity(16)
             .bg("surface")
             .hover(|s| s.bg("surface-hover"));
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
-        let hover = StyleAccess::style(&mut b).hover_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
+        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "floating_text bg('surface') must hit the trait accumulator, got {atoms:?}",
@@ -335,35 +336,33 @@ fn floating_text_accepts_styled_surface() {
 
 /// Trap 3: the consuming inherent `.style(Style)` on `ButtonBuilder` /
 /// `CheckboxBuilder` / `ToggleBuilder` / `SliderBuilder` was renamed
-/// to `.style_atoms(Style)` to reserve the `style()` name for the
-/// `StyleAccess` trait method (`fn style(&mut self) -> &mut Style`).
+/// to `.style(Style)` to reserve the `style()` name for the
+/// `StyleAccess` trait method (`fn style_mut(&mut self) -> &mut Style`).
 ///
 /// This test is primarily a compile-time gate: it must build cleanly
-/// with `.style_atoms(my_style)` (consuming, with arg) AND a fully-
-/// qualified trait call `StyleAccess::style(&mut b)` (&mut, zero-arg)
+/// with `.style(my_style)` (consuming, with arg) AND a fully-
+/// qualified trait call `StyleAccess::style_mut(&mut b)` (&mut, zero-arg)
 /// on the same builder, with no shadow or resolution ambiguity.
 #[test]
-fn trap3_style_atoms_and_trait_style_coexist() {
-    Runtime::scope("widget-styled-trap3-style-atoms", || {
-        let my_style = sigil_style::Style::new()
-            .padding(8)
-            .background_theme("surface");
-        let mut b = button("X").style_atoms(my_style);
-        // Trait `style()` returns &mut Style — must compile on the
+fn trap3_style_and_trait_style_coexist() {
+    Runtime::scope("widget-styled-trap3-style", || {
+        let my_style = style::Style::new().padding(8).background_theme("surface");
+        let mut b = button("X").style(my_style);
+        // Trait `style_mut()` returns &mut Style — must compile on the
         // same builder without shadowing the inherent.
-        let style_view = StyleAccess::style(&mut b);
-        // Empty accumulator at this point — `style_atoms` writes via
+        let style_view = StyleAccess::style_mut(&mut b);
+        // Empty accumulator at this point — `style` writes via
         // the mutator queue, not the trait accumulator.
         assert!(style_view.is_empty());
 
         let checked = signal(false);
-        let _cb = checkbox(checked).style_atoms(sigil_style::Style::new().padding(4));
+        let _cb = checkbox(checked).style(style::Style::new().padding(4));
 
         let on = signal(false);
-        let _tg = toggle(on).style_atoms(sigil_style::Style::new().padding(4));
+        let _tg = toggle(on).style(style::Style::new().padding(4));
 
         let value = signal(0.5_f32);
-        let _sl = slider(value, 0.0..=1.0).style_atoms(sigil_style::Style::new().padding(4));
+        let _sl = slider(value, 0.0..=1.0).style(style::Style::new().padding(4));
     });
 }
 
@@ -382,14 +381,14 @@ fn modal_accepts_styled_surface() {
             .bg("surface")
             .px(20)
             .hover(|s| s.bg("surface-hover"));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "modal bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(style::Px(20))),
             "modal px(20) must land in the trait accumulator, got {atoms:?}",
         );
         let hover = style.hover_atoms().to_vec();
@@ -412,8 +411,8 @@ fn tabs_accepts_styled_surface() {
             .label("Settings sections")
             .bg("surface")
             .hover(|s| s.bg("surface-hover"));
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
-        let hover = StyleAccess::style(&mut b).hover_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
+        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "tabs bg('surface') must hit the trait accumulator, got {atoms:?}",
@@ -430,8 +429,8 @@ fn scroll_accepts_styled_surface() {
         let mut b = scroll(inner, 400.0_f32)
             .bg("surface")
             .pressed(|s| s.bg("surface-pressed"));
-        let atoms = StyleAccess::style(&mut b).as_atoms().to_vec();
-        let pressed = StyleAccess::style(&mut b).pressed_atoms().to_vec();
+        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
+        let pressed = StyleAccess::style_mut(&mut b).pressed_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "scroll bg('surface') must hit the trait accumulator, got {atoms:?}",
@@ -456,14 +455,14 @@ fn menu_accepts_styled_surface() {
             .bg("surface")
             .px(20)
             .hover(|s| s.bg("surface-hover"));
-        let style = StyleAccess::style(&mut b);
+        let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "menu bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(style::Px(20))),
             "menu px(20) must land in the trait accumulator, got {atoms:?}",
         );
         let hover = style.hover_atoms().to_vec();

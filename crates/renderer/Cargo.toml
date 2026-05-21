@@ -1,5 +1,5 @@
 [package]
-name = "sigil-renderer"
+name = "renderer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,12 +21,12 @@ bench = []
 
 [dependencies]
 ahash = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-icons = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-style = { workspace = true }
-sigil-text = { workspace = true }
+kernel = { workspace = true }
+hal = { workspace = true }
+icons = { workspace = true }
+layout = { workspace = true }
+style = { workspace = true }
+text = { workspace = true }
 tracing = { workspace = true }
 wgpu = { workspace = true }
 pollster = { workspace = true }
@@ -45,7 +45,7 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 image = { workspace = true }
-sigil-shell = { workspace = true }
+shell = { workspace = true }
 proptest = { workspace = true }
 
 [[bench]]

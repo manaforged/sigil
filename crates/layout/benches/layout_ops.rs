@@ -16,14 +16,16 @@ use std::time::Duration;
 
 use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use hal::{LogicalSize, Scale, Size};
+use kernel::TextContent;
+use kernel::{Cx, NodeBuilder, NodeId, container, text};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use sigil_hal::{LogicalSize, Scale, Size};
-use sigil_kernel::TextContent;
-use sigil_kernel::{Cx, NodeBuilder, NodeId, container, text};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
+use slotmap as _;
 use smallvec as _;
+use style as _;
+use taffy as _;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 1000.0;

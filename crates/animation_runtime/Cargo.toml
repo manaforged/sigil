@@ -1,5 +1,5 @@
 [package]
-name = "sigil-animation-runtime"
+name = "animation-runtime"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,9 +12,9 @@ description = "Animation orchestration layer over sigil-animation primitives —
 doctest = false
 
 [dependencies]
-sigil-animation = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
+animation = { workspace = true }
+reactive = { workspace = true }
+style = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

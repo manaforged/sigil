@@ -1,4 +1,4 @@
-use sigil_hal::{Color, Rect};
+use hal::{Color, Rect};
 
 use super::helpers::{rect, rgba};
 use crate::{CommandScene, LayerEffect, LayerScope, SceneBuilder, SceneRectStyle};

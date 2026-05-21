@@ -10,7 +10,7 @@
 use sigil::prelude::*;
 use sigil::reactive::derived;
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
 }
 

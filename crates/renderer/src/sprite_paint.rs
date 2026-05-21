@@ -316,7 +316,7 @@ const fn sprite_kind_f32(kind: SpriteKind) -> f32 {
     }
 }
 
-fn rgba8_to_linear(color: sigil_style::Rgba8) -> [f32; 4] {
+fn rgba8_to_linear(color: style::Rgba8) -> [f32; 4] {
     [
         srgb_to_linear(color.r),
         srgb_to_linear(color.g),

@@ -18,8 +18,8 @@ use crate::{Style, StyleAtom};
 /// Nested state-variant closures fail to compile:
 ///
 /// ```compile_fail
-/// use sigil_kernel::container;
-/// use sigil_style::{Styled, StyledNodeBuilder};
+/// use kernel::container;
+/// use style::{Styled, StyledNodeBuilder};
 /// // `s` inside the closure is a StateStyleBuilder, which does not
 /// // implement StateHost — so `.hover` is not callable.
 /// let _ = container().styled().hover(|s| s.hover(|inner| inner));
@@ -55,7 +55,7 @@ impl StateStyleBuilder {
 }
 
 impl StyleAccess for StateStyleBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style
     }
 }

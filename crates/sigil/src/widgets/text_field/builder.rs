@@ -1,14 +1,16 @@
 use std::rc::Rc;
 
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use sigil_reactive::{Signal, signal};
-use sigil_style::{NodeStyleExt, StateHost, Style, StyleAccess};
+use kernel::{Cx, IntoNode, NodeBuilder, TextContent};
+use layout::prelude::LayoutBuilderExt;
+use reactive::{Signal, signal};
+use style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
-use super::super::shared::disabled_now;
-use super::handlers::{NoopClipboard, TextFieldRuntime, attach_key_handlers, noop_text_change};
-use super::render::build_base_node;
+use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::shared::{BuilderMutator, disabled_now};
+use super::handlers::{NoopClipboard, TextFieldRuntime, attach_key_handlers, noop_change};
+use super::render::{build_base_node, field_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
@@ -25,12 +27,15 @@ pub struct TextFieldBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
     pub(super) disabled: Option<Signal<bool>>,
-    pub(super) on_change: Option<TextChange>,
-    pub(super) on_submit: Option<TextChange>,
+    pub(super) invalid: Option<Signal<bool>>,
+    pub(super) change: Option<TextChange>,
+    pub(super) submit: Option<TextChange>,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
-    pub(super) caret_visible: Signal<bool>,
-    pub(super) scroll_offset: Signal<usize>,
+    pub(super) caret_visible: Option<Signal<bool>>,
+    pub(super) scroll_offset: Option<Signal<usize>>,
     pub(super) style_accumulator: Style,
+    mutators: Vec<BuilderMutator>,
+    layout_overrides: LayoutOverrides,
 }
 
 /// Create a single-line text field widget.
@@ -47,13 +52,28 @@ impl TextFieldBuilder {
             value,
             placeholder: TextContent::Static(String::new()),
             disabled: None,
-            on_change: None,
-            on_submit: None,
+            invalid: None,
+            change: None,
+            submit: None,
             clipboard: None,
-            caret_visible: signal(true),
-            scroll_offset: signal(0_usize),
+            caret_visible: None,
+            scroll_offset: None,
             style_accumulator: Style::new(),
+            mutators: Vec::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
+    }
+
+    /// Add utility classes or atoms after the built-in text-field defaults.
+    ///
+    /// Mirrors the inherent `.class()` on [`crate::widgets::ButtonBuilder`].
+    /// Classes are installed AFTER the field's own base atoms so user
+    /// classes override the defaults (per DR-049 additive composition).
+    #[must_use]
+    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
+        let source = source.into();
+        self.mutators.push(Box::new(move |node| node.class(source)));
+        self
     }
 
     /// Signal that tracks whether the text cursor should be rendered.
@@ -61,18 +81,16 @@ impl TextFieldBuilder {
     /// Starts `true`; reset to `true` on every keystroke. An external timer
     /// (e.g., a 500 ms interval on the shell event loop) toggles it to create
     /// the blinking effect. Tests can read this to assert the reset behavior.
-    #[must_use]
-    pub const fn caret_visible(&self) -> Signal<bool> {
-        self.caret_visible
+    pub fn caret_visible(&mut self) -> Signal<bool> {
+        *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
     /// Byte offset of the left edge of the visible viewport within the buffer.
     ///
     /// Updated after every caret movement so that the caret stays in view.
     /// Tests can read this to assert scroll behavior after long input.
-    #[must_use]
-    pub const fn scroll_offset(&self) -> Signal<usize> {
-        self.scroll_offset
+    pub fn scroll_offset(&mut self) -> Signal<usize> {
+        *self.scroll_offset.get_or_insert_with(|| signal(0_usize))
     }
 
     /// Set placeholder text rendered while the field is empty and unfocused.
@@ -89,17 +107,43 @@ impl TextFieldBuilder {
         self
     }
 
+    /// Bind a reactive invalid signal that paints a red border when `true`.
+    ///
+    /// While the signal peeks `true` the field's outer border is
+    /// repainted with a saturated red overlay (Material "error"
+    /// #D32F2F) that overrides every other state slot — rest, hover,
+    /// focus, pressed, and disabled. Flipping the signal updates the
+    /// rendered border on the next reactive tick without rebuilding
+    /// the tree.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use sigil::widgets::text_field::text_field;
+    /// use reactive::{derived, signal};
+    ///
+    /// let value = signal(String::new());
+    /// let invalid = derived(move || value.get().trim().is_empty());
+    /// let node = text_field(value).invalid_when(invalid);
+    /// // Border turns red whenever the field is blank.
+    /// ```
+    #[must_use]
+    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
+        self.invalid = Some(invalid);
+        self
+    }
+
     /// Run a callback after user editing changes the value.
     #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.on_change = Some(Rc::new(f));
+        self.change = Some(Rc::new(f));
         self
     }
 
     /// Run a callback when Enter is pressed.
     #[must_use]
-    pub fn on_submit(mut self, f: impl Fn(&str) + 'static) -> Self {
-        self.on_submit = Some(Rc::new(f));
+    pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
+        self.submit = Some(Rc::new(f));
         self
     }
 
@@ -113,20 +157,34 @@ impl TextFieldBuilder {
     pub(super) fn into_node_builder(self) -> (NodeBuilder, TextFieldRuntime) {
         let value = self.value;
         let disabled = self.disabled;
+        let invalid = self.invalid;
         let placeholder = self.placeholder;
         let style_accumulator = self.style_accumulator;
-        let on_change = self.on_change.unwrap_or_else(noop_text_change);
-        let on_submit = self.on_submit.unwrap_or_else(noop_text_change);
+        let mutators = self.mutators;
+        let layout_overrides = self.layout_overrides;
+        let change = self.change.unwrap_or_else(noop_change);
+        let submit = self.submit.unwrap_or_else(noop_change);
         let clipboard = self.clipboard.unwrap_or_else(|| Rc::new(NoopClipboard));
 
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);
-        let mut runtime = TextFieldRuntime::new(value, disabled, on_change, on_submit, clipboard);
-        runtime.caret_visible = self.caret_visible;
-        runtime.scroll_offset = self.scroll_offset;
+        let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
+        let scroll_offset = self.scroll_offset.unwrap_or_else(|| signal(0_usize));
+        let runtime = TextFieldRuntime::new(
+            value,
+            disabled,
+            change,
+            submit,
+            clipboard,
+            caret_visible,
+            scroll_offset,
+        );
 
-        let node = build_base_node(value, disabled, &placeholder, interaction);
+        let node = build_base_node(value, disabled, invalid, &placeholder, interaction);
         let mut node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        for mutate in mutators {
+            node = mutate(node);
+        }
         // Styled accumulator installs AFTER the field's own atoms +
         // state-variant install so the trait surface layers ON TOP of
         // the FIELD_BASE/FIELD_REST/FIELD_FOCUS/FIELD_HOVER/FIELD_DOWN/
@@ -138,20 +196,27 @@ impl TextFieldBuilder {
         if !style_accumulator.is_empty() {
             node = node.style(style_accumulator);
         }
+        node = node.layout(layout_overrides.apply(field_layout()));
         (node, runtime)
     }
 }
 
 impl StyleAccess for TextFieldBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
 
 impl StateHost for TextFieldBuilder {}
 
+impl WidgetLayoutExt for TextFieldBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
 impl IntoNode for TextFieldBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         let (node, _runtime) = self.into_node_builder();
         node.build(cx)
     }

@@ -151,7 +151,7 @@ impl<'a> TextSegment<'a> {
 
 /// Resolved text-style projection driving glyph metrics.
 ///
-/// G1.4's engine populates this from `sigil_style::TextStyle`.
+/// G1.4's engine populates this from `style::TextStyle`.
 #[derive(Debug, Clone)]
 pub(crate) struct Style {
     pub(crate) size_px: f32,

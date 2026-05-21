@@ -160,6 +160,7 @@ pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
     match dim {
         Dimension::Px(v) => Some(v),
         Dimension::Percent(p) => Some(p * cb),
+        Dimension::Fill => Some(cb),
         Dimension::Auto => None,
     }
 }
@@ -759,13 +760,56 @@ fn layout_item_subtree(
         return Ok(());
     }
     let style = node.style();
-    let axes = Axis2::for_direction(style.flex_direction);
-    let nested = FlexCtx {
-        solver: ctx.solver,
-        axes,
-        cb: CbSize { w, h },
+    // Q1 tertiary — per-subtree solver dispatch. The child's own
+    // `display` decides which formatting context owns its children,
+    // regardless of the parent's display. CSS interleaves block-in-flex
+    // and flex-in-block freely.
+    match style.display {
+        Display::Flex => {
+            let axes = Axis2::for_direction(style.flex_direction);
+            let nested = FlexCtx {
+                solver: ctx.solver,
+                axes,
+                cb: CbSize { w, h },
+            };
+            layout_root(&nested, node, origin)
+        }
+        // `Display::None` skipped upstream in `build_items`; `Grid`
+        // falls back to BlockSolver until the owned grid solver lands
+        // (post-G2, see docs/followups.md).
+        Display::Block | Display::None | Display::Grid => {
+            dispatch_block_subtree(ctx, node, style, origin, w, h)
+        }
+    }
+}
+
+/// Dispatch a `Display::Block` (or Grid fallback) child of a flex
+/// container to a sibling [`crate::block::BlockSolver`] sharing the
+/// same scope. `solve_at` does NOT re-apply this node's margins — the
+/// flex placement pass already baked them into `origin`, so we feed
+/// the pre-margin position back.
+fn dispatch_block_subtree(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    style: &StyleData,
+    origin: Position2,
+    w: f32,
+    h: f32,
+) -> Result<(), LayoutError> {
+    let scope = ctx.solver.scope();
+    let nested = crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
+    let solver = crate::block::BlockSolver::new(nested);
+    let cb = crate::style_data::Size {
+        width: w,
+        height: h,
     };
-    layout_root(&nested, node, origin)
+    let edges = NodeEdges::build(style, w);
+    let m = edges.margin.or_zero();
+    let pre = crate::block::Position2 {
+        x: origin.x - m.left,
+        y: origin.y - m.top,
+    };
+    solver.solve_at(node, cb, pre)
 }
 
 /// Write the container's own resolved box. Main size = container's
@@ -843,13 +887,20 @@ pub(crate) fn item_cross_basis(
     } else {
         edges.inline_chrome()
     };
-    let (cb_used, dim) = if axes.row {
-        (cb_cross, style.size.height)
+    let dim = if axes.row {
+        style.size.height
     } else {
-        (cb_main, style.size.width)
+        style.size.width
     };
     let was_auto = matches!(dim, Dimension::Auto);
-    let resolved = dim_to_border_box(dim, cb_used, chrome_cross, style.box_sizing);
+    // Child's cross dimension always resolves against the parent's
+    // cross-axis containing block — cb_cross under both row and column
+    // directions (see `FlexItem::build`: cb_main/cb_cross track main/cross
+    // axes, not horizontal/vertical). The prior column-direction branch
+    // used cb_main, which silently substituted the parent's height for
+    // its width, collapsing `fill_width()` on a column child to the
+    // column's height and overlapping its children at x=0.
+    let resolved = dim_to_border_box(dim, cb_cross, chrome_cross, style.box_sizing);
     let resolved = resolved.or_else(|| {
         if node.children().is_empty() {
             let measured = text_intrinsic(ctx, node, style, axes)?;
@@ -916,15 +967,76 @@ pub(crate) fn item_main_basis(
     if let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
         return size.max(0.0);
     }
-    text_intrinsic(ctx, node, style, axes)
-        .map_or(0.0, |measured| {
-            if axes.row {
-                measured.width + chrome_main
-            } else {
-                measured.height + chrome_main
-            }
-        })
+    if node.children().is_empty() {
+        return text_intrinsic(ctx, node, style, axes)
+            .map_or(0.0, |measured| {
+                if axes.row {
+                    measured.width + chrome_main
+                } else {
+                    measured.height + chrome_main
+                }
+            })
+            .max(0.0);
+    }
+    // Container with children + auto main + no flex-basis: mirror the
+    // cross-axis fallback. CSS flexbox §9.2 step 3 — the item's
+    // hypothetical main size is its content's natural main extent.
+    container_intrinsic_main(ctx, node, ctx.cb.w, ctx.cb.h, axes)
+        .unwrap_or(0.0)
         .max(0.0)
+}
+
+/// Mirror of `container_intrinsic_cross` for the main axis. Run a
+/// hypothetical layout pass under the container's containing block at
+/// origin (0, 0), then read back the natural main extent by taking the
+/// max far-edge of the laid-out children plus the container's own
+/// main-axis chrome. The container's own box stores the CB-bound main
+/// size (because `write_container` always writes `inner_main + chrome`
+/// on the main axis), so we cannot read it back from the box directly
+/// the way `container_intrinsic_cross` does — child boxes hold the real
+/// content extent. Recursion bottoms out at leaves (where
+/// `layout_item_subtree` returns early) and at children with definite
+/// main sizes.
+fn container_intrinsic_main(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    cb_main: f32,
+    cb_cross: f32,
+    axes: Axis2,
+) -> Option<f32> {
+    let (w, h) = if axes.row {
+        (cb_main, cb_cross)
+    } else {
+        (cb_cross, cb_main)
+    };
+    layout_item_subtree(ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    let style = node.style();
+    let edges = NodeEdges::build(style, ctx.cb.w);
+    // The hypothetical layout placed `node` at origin (0, 0); its child
+    // boxes sit at content-origin = padding-start + border-start, in
+    // viewport-absolute coordinates. Subtract that leading offset
+    // before re-adding it as part of chrome — otherwise the leading
+    // padding is double-counted (a chip with `padding_x(8)` and text
+    // "NEUTRAL" returned 24+text instead of 16+text, which collapsed
+    // every chip in a flex_row to a zero-or-too-small basis and
+    // overlapped them at x=0).
+    let (chrome_main, lead_main) = if axes.row {
+        (
+            edges.inline_chrome(),
+            edges.padding.left + edges.border.left,
+        )
+    } else {
+        (edges.block_chrome(), edges.padding.top + edges.border.top)
+    };
+    let forest = ctx.solver.scope().forest();
+    let far_edge = node
+        .children()
+        .iter()
+        .filter_map(|child_id| forest.boxed(*child_id))
+        .map(|cb| if axes.row { cb.x + cb.w } else { cb.y + cb.h })
+        .fold(0.0_f32, f32::max);
+    let inner_content = (far_edge - lead_main).max(0.0);
+    Some(inner_content + chrome_main)
 }
 
 fn text_intrinsic(

@@ -1,8 +1,8 @@
 //! Panel widget — themed surface card with optional title.
 
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil_style::{NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use style::{NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom};
 
 const PANEL_WIDTH: f32 = 320.0;
 const PANEL_MIN_HEIGHT: f32 = 48.0;
@@ -17,7 +17,7 @@ pub struct PanelBuilder {
     pub padding: f32,
     /// Shadow/elevation tier: 0 = none, 1 = subtle, 2 = card, 3 = modal.
     pub elevation: u32,
-    content: Option<Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>>,
+    content: Option<Box<dyn IntoNode>>,
     style_accumulator: Style,
 }
 
@@ -64,7 +64,7 @@ impl PanelBuilder {
     /// Attach a child node (panel body content).
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
-        self.content = Some(Box::new(move |node: NodeBuilder| node.child(child)));
+        self.content = Some(Box::new(child));
         self
     }
 
@@ -79,8 +79,8 @@ impl PanelBuilder {
             root = root.child(panel_title(title));
         }
 
-        if let Some(attach) = self.content {
-            root = attach(root);
+        if let Some(child) = self.content {
+            root = root.child(child);
         }
 
         // Styled accumulator installs LAST so user-supplied tokens
@@ -101,7 +101,7 @@ impl Default for PanelBuilder {
 }
 
 impl StyleAccess for PanelBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -109,7 +109,7 @@ impl StyleAccess for PanelBuilder {
 impl StateHost for PanelBuilder {}
 
 impl IntoNode for PanelBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

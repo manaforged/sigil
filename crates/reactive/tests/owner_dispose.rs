@@ -23,15 +23,15 @@
     clippy::missing_const_for_fn
 )]
 
+use actions as _;
 use criterion as _;
-use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_reactive::{Entity, Owner, Runtime, debug::entity_is_live, observe_global, set_global};
+use reactive::{Entity, Owner, Runtime, debug::entity_is_live, observe_global, set_global};
 
 /// Build a child owner under the current scope. Caller is responsible
 /// for disposing it.

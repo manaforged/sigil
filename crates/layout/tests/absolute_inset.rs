@@ -14,15 +14,15 @@ mod stub;
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use kernel as _;
+use kernel::prelude::*;
+use layout::prelude::*;
+use layout::{LengthPercentageAuto, Rect as StyleRect};
 use rayon as _;
-use sigil_kernel as _;
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
-use sigil_layout::{LengthPercentageAuto, Rect as StyleRect};
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
+use style as _;
 use taffy as _;
 
 use stub::stub_engine;
@@ -234,7 +234,7 @@ fn first_child(cx: &Cx, root: NodeId) -> NodeId {
     cx.get(root).unwrap().children().first().copied().unwrap()
 }
 
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
+fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")

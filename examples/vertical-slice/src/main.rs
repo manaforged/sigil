@@ -30,7 +30,7 @@ static ROW_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover"
 static STRIPE_IDLE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 static STRIPE_ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - vertical slice", 960, 640), build_app)
 }
 
@@ -268,7 +268,7 @@ fn note_control(state: DashboardState) -> NodeBuilder {
             text_field(state.note)
                 .placeholder("Add note")
                 .change(move |value| state.update_note_status(value))
-                .on_submit(move |value| state.submit_note(value)),
+                .submit(move |value| state.submit_note(value)),
         )
         .child(label("Submitted notes"))
         .child(label(state.submitted_notes_label))

@@ -1,13 +1,13 @@
 //! The sigil UI framework.
 //!
-//! Thin facade over [`sigil_app`] and the kernel crates so user code
+//! Thin facade over [`app`] and the kernel crates so user code
 //! writes `use sigil::prelude::*;` and never has to name individual
 //! sub-crates. See DR-016 (app launch) and the ergonomics-pass plan.
 //!
 //! ```text
 //! use sigil::prelude::*;
 //!
-//! fn main() -> sigil::Result<()> {
+//! fn main() -> sigil::AppResult<()> {
 //!     sigil::launch("Demo", |cx| {
 //!         cx.add(container().class("bg-accent"))
 //!     })
@@ -27,30 +27,38 @@
 //! authoring and `.styled()` when the surface benefits from typed
 //! method calls.
 
+#![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
+
+extern crate self as sigil;
+
+#[cfg(test)]
+use animation as _;
 #[cfg(test)]
 use criterion as _;
+#[cfg(test)]
+use hal as _;
 #[cfg(test)]
 use image as _;
 #[cfg(test)]
 use pollster as _;
 #[cfg(test)]
-use sigil_animation as _;
-#[cfg(test)]
-use sigil_hal as _;
-#[cfg(test)]
-use sigil_renderer as _;
+use renderer as _;
 #[cfg(test)]
 use wgpu as _;
 
-pub use sigil_app::{AppConfig, Error, PanicPolicy, Result, TreeRoot, launch};
+pub use app::{AppConfig, AppResult, Error, PanicPolicy, TreeRoot, launch};
 
+pub mod clipboard;
 pub mod interaction;
+pub mod testing;
+pub mod widget_dev;
 pub mod widgets;
 
 /// Reactive primitives re-exported unchanged.
 pub mod reactive {
-    pub use sigil_reactive::{
-        Runtime, Signal, batch, derived, derived_eq, effect, effect_named, on_cleanup, signal,
+    pub use reactive::{
+        EventChannel, Runtime, Signal, Trigger, batch, derived, derived_eq, effect, effect_named,
+        on_cleanup, signal,
     };
 }
 
@@ -62,25 +70,44 @@ pub mod reactive {
 /// style layer (`NodeStyleExt::class` / `style` / `theme` /
 /// `style_reactive`). Launch + config types are at the crate root.
 pub mod prelude {
-    pub use sigil_actions::{Action, DeriveAction, DispatchCx, HandlerKey};
-    pub use sigil_async::{OwnerHandle, dispatch_to_owner};
-    pub use sigil_events::prelude::*;
-    pub use sigil_kernel::prelude::*;
-    pub use sigil_layout::prelude::*;
-    pub use sigil_reactive::{Signal, effect, signal};
-    pub use sigil_style::{
+    pub use actions::{Action, DeriveAction, DispatchCx, HandlerKey};
+    pub use events::prelude::*;
+    pub use kernel::prelude::*;
+    pub use layout::prelude::*;
+    pub use reactive::{EventChannel, Signal, Trigger, derived, effect, signal};
+    /// Utility-class strings accepted by `.class("...")` include:
+    /// `p-N`, `px-N`, `py-N`, `pt-N`, `pr-N`, `pb-N`, `pl-N`, `m-N`, `mx-N`,
+    /// `my-N`, `mt-N`, `mr-N`, `mb-N`, `ml-N`, `gap-N`, `w-N`, `h-N`,
+    /// `min-w-N`, `max-w-N`, `w-full`, `h-full`, `w-auto`, `h-auto`, `flex`,
+    /// `block`, `hidden`, `flex-row`, `flex-col`, `flex-row-reverse`,
+    /// `flex-col-reverse`, `items-start`, `items-center`, `items-end`,
+    /// `items-stretch`, `justify-start`, `justify-center`, `justify-end`,
+    /// `justify-between`, `justify-around`, `rounded`, `rounded-sm`,
+    /// `rounded-md`, `rounded-lg`, `rounded-full`, `bg-<name>`, `text-<name>`,
+    /// `border-<name>`, `shadow-<name>`, `text-xs`, `text-sm`, `text-base`,
+    /// `text-lg`, `text-xl`, `font-normal`, `font-medium`, `font-bold`,
+    /// `font-sans`, `font-mono`, `font-serif`, `leading-N`, `opacity-N`.
+    pub use style::{
         ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Sizing, Spacing, StateStyle,
         StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
         Theme, Transitions, Typography, Visual,
     };
+    pub use tasks::{OwnerHandle, dispatch_to_owner};
 
     pub use crate::interaction::InteractionState;
+    pub use crate::reactive::Runtime;
+    pub use crate::widgets::layout_ext::WidgetLayoutExt;
+    pub use crate::widgets::patterns;
     pub use crate::widgets::{
-        ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, Clipboard, DropdownBuilder,
-        FctSpawn, FloatingTextBuilder, MenuBuilder, MenuItem, ModalBuilder, Orientation,
-        PanelBuilder, ProgressBuilder, ScrollBuilder, SliderBuilder, TabsBuilder, TextFieldBuilder,
-        ToggleBuilder, TooltipBuilder, button, checkbox, dropdown, floating_text, label, menu,
-        modal, panel, progress, scroll, slider, tabs, text_field, toggle, tooltip,
+        ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard,
+        DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, MenuBuilder, MenuItem,
+        ModalBuilder, NumberFieldBuilder, NumericKind, Orientation, PanelBuilder, ProgressBuilder,
+        ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, SliderBuilder, SplitterBuilder,
+        SplitterOrientation, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder,
+        TooltipBuilder, VirtualListBuilder, button, checkbox, chip, divider_horizontal,
+        divider_vertical, dropdown, floating_text, kv_row, label, menu, modal, number_field, panel,
+        progress, scroll, slider, splitter, status_bar, tabs, text_edit, text_field, toggle,
+        tooltip, virtual_list,
     };
-    pub use crate::{AppConfig, Error, Result, launch};
+    pub use crate::{AppConfig, AppResult, Error, launch};
 }

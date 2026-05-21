@@ -9,16 +9,16 @@
 //!   `EntityKey`/`FocusHandle`).
 //! - [`DispatchResult`] — `{ handled, fired_owners }`.
 //!
-//! Re-exports [`sigil_actions_macros::Action`] as the
+//! Re-exports [`actions_macros::Action`] as the
 //! [`DeriveAction`] alias so consumers can write
-//! `#[derive(sigil_actions::DeriveAction)]` when full-path clarity matters.
+//! `#[derive(actions::DeriveAction)]` when full-path clarity matters.
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use sigil_actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
+//! use actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
 //!
-//! #[derive(sigil_actions::DeriveAction)]
+//! #[derive(actions::DeriveAction)]
 //! struct CloseTab;
 //!
 //! let mut registry = ActionRegistry::new();
@@ -40,7 +40,7 @@ use smallvec::SmallVec;
 #[cfg(test)]
 use criterion as _;
 
-pub use sigil_actions_macros::Action as DeriveAction;
+pub use actions_macros::Action as DeriveAction;
 
 /// Type-keyed dispatch identity for an action.
 ///

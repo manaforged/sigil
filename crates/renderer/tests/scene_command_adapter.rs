@@ -12,33 +12,33 @@ use image as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use sigil_shell as _;
-use sigil_text as _;
+use shell as _;
 use skrifa as _;
 use smallvec as _;
+use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use sigil_icons as _;
+use icons as _;
 
-use sigil_hal::Size;
-use sigil_kernel::{Cx, NodeId, TextContent, prelude::*};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_renderer::{Scene, SceneCommand, SceneItem, emit_scene};
-use sigil_style::NodeStyleExt;
+use hal::Size;
+use kernel::{Cx, NodeId, TextContent, prelude::*};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use renderer::{Scene, SceneCommand, SceneItem, emit_scene};
+use style::NodeStyleExt;
 
 mod scene {
-    pub(super) use sigil_renderer::{Scene, SceneItem, shape_glyph_run};
+    pub(super) use renderer::{Scene, SceneItem, shape_glyph_run};
 }
 
 mod scene_builder {
-    pub(super) use sigil_renderer::SceneBuilder;
+    pub(super) use renderer::SceneBuilder;
 }
 
 mod scene_command {
-    use sigil_renderer::{CommandScene, SceneRectStyle};
+    use renderer::{CommandScene, SceneRectStyle};
 
     mod adapter {
         include!(concat!(
@@ -155,7 +155,7 @@ fn draw_rect_count(commands: &[SceneCommand]) -> usize {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(96.0, 18.0)
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::new(96.0, 18.0)
     }
 }

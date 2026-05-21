@@ -8,7 +8,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use sigil_reactive::{effect, signal, Runtime};
+//! use reactive::{effect, signal, Runtime};
 //!
 //! Runtime::scope("test::counter", || {
 //!     let count = signal(0_i32);
@@ -60,6 +60,8 @@ mod entity_a11y_observer;
 mod entity_global;
 mod entity_observer;
 mod focus;
+mod interval;
+mod interval_registry;
 mod local_executor;
 mod owner;
 mod owner_dispose;
@@ -75,6 +77,7 @@ mod signal_write;
 mod task;
 mod task_local;
 mod trace;
+mod trigger;
 
 pub use async_cx::{
     AsyncContext, BoxMainCallback, BoxSendFuture, DispatchError, MainThreadDispatcher, TaskExecutor,
@@ -88,6 +91,10 @@ pub use entity_a11y_observer::A11yObserver;
 pub use entity_global::{global, global_mut, observe_global, set_global};
 pub use entity_observer::Subscription;
 pub use focus::{FocusHandle, FocusHandleId};
+pub use interval::{
+    __test_advance_clock, __test_clear_clock, __test_set_clock, IntervalId, cancel_interval,
+    next_interval_deadline, register_interval, tick_intervals,
+};
 pub use local_executor::{BoxLocalFuture, LocalTaskExecutor};
 pub use owner::{Owner, OwnerId, is_live, on_cleanup, owner_by_id};
 pub use phase::DrawPhase;
@@ -95,6 +102,7 @@ pub use runtime::Runtime;
 pub use signal::{SendableSignal, Signal, signal};
 pub use task::{EntityGone, Task, TaskAwaitError};
 pub use task_local::LocalTask;
+pub use trigger::{EventChannel, Trigger};
 
 // Re-exported for integration tests only. The `test_hook` submodule
 // is `#[doc(hidden)]` and carries no stability promise. See the

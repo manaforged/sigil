@@ -1,6 +1,6 @@
 //! Per-command draw handlers for the command-scene walker.
 
-use sigil_hal::Color;
+use hal::Color;
 
 use crate::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::error::RendererError;

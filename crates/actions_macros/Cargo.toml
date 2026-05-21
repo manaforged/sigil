@@ -1,5 +1,5 @@
 [package]
-name = "sigil-actions-macros"
+name = "actions-macros"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -18,7 +18,7 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-sigil-actions = { workspace = true }
+actions = { workspace = true }
 
 [lints]
 workspace = true

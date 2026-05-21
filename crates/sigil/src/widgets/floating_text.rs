@@ -30,9 +30,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, fragment};
-use sigil_reactive::{Signal, effect_named};
-use sigil_style::{NodeStyleExt, Rgba8, StateHost, Style, StyleAccess};
+use kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, fragment};
+use reactive::{Signal, effect_named};
+use style::{NodeStyleExt, Rgba8, StateHost, Style, StyleAccess};
 
 use super::shared::BuilderMutator;
 
@@ -101,7 +101,7 @@ impl FloatingTextBuilder {
     pub fn new(spawn: Signal<FctSpawn>) -> Self {
         Self {
             spawn,
-            settings: FctSettings::new(sigil_reactive::signal(0.0_f32)),
+            settings: FctSettings::new(),
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
@@ -133,7 +133,7 @@ impl FloatingTextBuilder {
     /// Each write advances the particle simulation.
     #[must_use]
     pub const fn time(mut self, time: Signal<f32>) -> Self {
-        self.settings.time = time;
+        self.settings.time = Some(time);
         self
     }
 
@@ -153,9 +153,12 @@ impl FloatingTextBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let state = Rc::new(FctState::from_settings(self.settings));
+        let time = self
+            .settings
+            .time
+            .unwrap_or_else(|| reactive::signal(0.0_f32));
+        let state = Rc::new(FctState::from_settings(self.settings, time));
         let extension = Rc::clone(&state);
-        let time = self.settings.time;
 
         install_spawn_effect(Rc::clone(&state), self.spawn, time);
         install_tick_effect(Rc::clone(&state), time);
@@ -174,7 +177,7 @@ impl FloatingTextBuilder {
 }
 
 impl StyleAccess for FloatingTextBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -182,7 +185,7 @@ impl StyleAccess for FloatingTextBuilder {
 impl StateHost for FloatingTextBuilder {}
 
 impl IntoNode for FloatingTextBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -192,16 +195,16 @@ impl IntoNode for FloatingTextBuilder {
 struct FctSettings {
     duration: f32,
     drift: [f32; 2],
-    time: Signal<f32>,
+    time: Option<Signal<f32>>,
     capacity: usize,
 }
 
 impl FctSettings {
-    const fn new(time: Signal<f32>) -> Self {
+    const fn new() -> Self {
         Self {
             duration: 1.2,
             drift: [0.0, -32.0],
-            time,
+            time: None,
             capacity: FCT_POOL_CAPACITY,
         }
     }
@@ -280,17 +283,12 @@ impl FctState {
             duration: duration.max(f32::EPSILON),
             drift,
             last_tick: RefCell::new(time.peek()),
-            generation: sigil_reactive::signal(0_u32),
+            generation: reactive::signal(0_u32),
         }
     }
 
-    fn from_settings(settings: FctSettings) -> Self {
-        Self::new(
-            settings.duration,
-            settings.drift,
-            settings.time,
-            settings.capacity,
-        )
+    fn from_settings(settings: FctSettings, time: Signal<f32>) -> Self {
+        Self::new(settings.duration, settings.drift, time, settings.capacity)
     }
 
     /// Push a particle into the next free slot. Drops the spawn on the
@@ -441,7 +439,6 @@ pub struct FctNode(pub Rc<FctState>);
 
 impl FctNode {
     /// Borrow the underlying state for read-only inspection.
-    #[must_use]
     pub const fn state(&self) -> &Rc<FctState> {
         &self.0
     }
@@ -451,7 +448,7 @@ impl FctNode {
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use sigil_reactive::{Runtime, signal};
+    use reactive::{Runtime, signal};
 
     fn red() -> Rgba8 {
         Rgba8 {
@@ -542,7 +539,7 @@ mod tests {
             let spawn = signal(FctSpawn::default());
             let state = Rc::new(FctState::new(1.2, [0.0, -32.0], time, FCT_POOL_CAPACITY));
             let effect = Rc::clone(&state);
-            sigil_reactive::effect(move || {
+            reactive::effect(move || {
                 let payload = spawn.get();
                 if !payload.text.is_empty() {
                     let _ok = effect.spawn(payload, time.peek());

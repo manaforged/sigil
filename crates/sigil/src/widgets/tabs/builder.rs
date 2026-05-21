@@ -1,26 +1,35 @@
+//! Tabs builder.
+//!
+//! Public surface: [`tabs`] + [`TabsBuilder`]. The builder collects per-tab
+//! state (labels, disabled set, optional per-index content), the global
+//! reorder + close opt-ins, then materialises a [`Role::TabList`] root
+//! container or a `flex_column` wrapper when content routing is in use.
+
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{Key, NodeEventsExt};
-use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::{Signal, derived_eq};
-use sigil_style::{
-    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleVariant, Theme, TransitionId,
+use animation_runtime::presets;
+use events::prelude::{Key, NodeEventsExt};
+use kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, text};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use reactive::{Signal, derived_eq};
+use style::{
+    ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess,
+    StyleAtom, StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
+use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{Activate, BuilderMutator, activate_key, activate_pointer};
 use super::super::transition_seam::install_transition_animators;
+use super::drag::{DragState, install_label_drag_hooks};
 
 const TABS_TRANSITION: TransitionId = presets::SMOOTH;
 /// Component id for tabs container — per-tab ids OR-in the tab index.
 const TABS_COMPONENT_ID: u64 = 0x7AB5_0000;
-const TAB_HEIGHT: f32 = SizeToken::TabHeight.px();
-const TAB_WIDTH: f32 = SizeToken::TabWidth.px();
-const TAB_PADDING: f32 = SizeToken::PaddingSm.px();
+pub(super) const TAB_HEIGHT: f32 = 34.0;
+pub(super) const TAB_WIDTH: f32 = 80.0;
+const CLOSE_AFFORDANCE_WIDTH: f32 = 16.0;
 
 // ---- atoms ---------------------------------------------------------------
 
@@ -67,6 +76,22 @@ static TAB_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
 
 // ---- builder -------------------------------------------------------------
 
+pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
+
+/// Shared body-factory thunk: invoked from inside the reactive subtree
+/// to produce a fresh `IntoNode` for the active tab body.
+pub(super) type ContentFactory = Rc<dyn Fn() -> Box<dyn IntoNode>>;
+
+/// One tab's content. `Static` bodies are captured at build time and
+/// shown via the existing `Display::None` collapse on inactive tabs.
+/// `Factory` bodies are rebuilt every time the active tab lands on them
+/// (or any signal read inside the factory mutates), via a single
+/// `children_reactive` subtree wired into the content area.
+pub(super) enum ContentSlot {
+    Static(Box<dyn IntoNode>),
+    Factory(ContentFactory),
+}
+
 /// Builder returned by [`tabs`].
 pub struct TabsBuilder {
     active: Signal<usize>,
@@ -75,6 +100,12 @@ pub struct TabsBuilder {
     aria_label: String,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    contents: Vec<Option<ContentSlot>>,
+    reorderable: bool,
+    order: Option<Signal<Vec<usize>>>,
+    closeable: bool,
+    close_handler: Option<CloseHandler>,
+    layout_overrides: LayoutOverrides,
 }
 
 /// Create a tabs widget.
@@ -90,6 +121,11 @@ impl TabsBuilder {
     /// Create a tabs builder.
     #[must_use]
     pub fn new(active: Signal<usize>, labels: Vec<String>) -> Self {
+        let count = labels.len();
+        let mut contents: Vec<Option<ContentSlot>> = Vec::with_capacity(count);
+        for _ in 0..count {
+            contents.push(None);
+        }
         Self {
             active,
             labels,
@@ -97,6 +133,12 @@ impl TabsBuilder {
             aria_label: String::new(),
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            contents,
+            reorderable: false,
+            order: None,
+            closeable: false,
+            close_handler: None,
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -124,7 +166,7 @@ impl TabsBuilder {
 
     /// Add struct-built style atoms after the built-in tabs defaults.
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -136,21 +178,114 @@ impl TabsBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
-        let total = self.labels.len();
-        let active = self.active;
-        let disabled = Rc::new(self.disabled);
-        let labels = self.labels;
-
-        let mut root = container()
-            .role(Role::TabList)
-            .label(accessible_label(&self.aria_label))
-            .layout(tab_list_layout(total));
-
-        for (index, label) in labels.into_iter().enumerate() {
-            let tab = build_tab(index, label, active, &disabled);
-            root = root.child(tab);
+    /// Attach a content node to the tab at `index`.
+    ///
+    /// Only the active tab's content is rendered — inactive entries keep
+    /// their kernel node but paint with `DisplayKind::None`. Out-of-range
+    /// indices are silently ignored to keep callers from panicking when
+    /// the label list shrinks.
+    ///
+    /// For bodies that need to rebuild reactively (e.g. when a signal
+    /// read inside the body mutates), see [`Self::content_for_fn`].
+    #[must_use]
+    pub fn content_for(mut self, index: usize, node: impl IntoNode + 'static) -> Self {
+        if let Some(slot) = self.contents.get_mut(index) {
+            *slot = Some(ContentSlot::Static(Box::new(node)));
         }
+        self
+    }
+
+    /// Attach a factory closure that produces the tab body on demand.
+    ///
+    /// The closure is invoked whenever (a) the active-tab signal flips
+    /// onto `index`, or (b) any signal read inside the closure body
+    /// mutates while `index` is the active tab. The body is mounted via
+    /// a single `children_reactive` subtree shared across all factory
+    /// tabs — the prior body's reactive owners are disposed before the
+    /// new body is built (B1 positional identity).
+    ///
+    /// Out-of-range indices are silently ignored.
+    #[must_use]
+    pub fn content_for_fn<F, N>(mut self, index: usize, factory: F) -> Self
+    where
+        F: Fn() -> N + 'static,
+        N: IntoNode + 'static,
+    {
+        if let Some(slot) = self.contents.get_mut(index) {
+            let wrapped: ContentFactory = Rc::new(move || Box::new(factory()) as Box<dyn IntoNode>);
+            *slot = Some(ContentSlot::Factory(wrapped));
+        }
+        self
+    }
+
+    /// Enable drag-to-reorder on tab labels.
+    #[must_use]
+    pub const fn reorderable(mut self, enabled: bool) -> Self {
+        self.reorderable = enabled;
+        self
+    }
+
+    /// Bind an observable order signal — host reads to learn the current
+    /// tab permutation. When `reorderable(true)` is set, drag updates write
+    /// into this signal.
+    #[must_use]
+    pub const fn order(mut self, signal: Signal<Vec<usize>>) -> Self {
+        self.order = Some(signal);
+        self
+    }
+
+    /// Show a per-tab close affordance.
+    #[must_use]
+    pub const fn closeable(mut self, enabled: bool) -> Self {
+        self.closeable = enabled;
+        self
+    }
+
+    /// Run `handler` with the original tab index when its close affordance
+    /// is activated.
+    #[must_use]
+    pub fn close(mut self, handler: impl Fn(usize) + 'static) -> Self {
+        self.close_handler = Some(Rc::new(handler));
+        self
+    }
+
+    /// Wrap this tabs widget in a [`container()`] so the result is a
+    /// `NodeBuilder` chainable for `.class()`, `.layout()`, etc.
+    ///
+    /// Without this, `tabs(...).content_for(...)` returns a
+    /// [`TabsBuilder`] which `IntoNode`s but does not expose
+    /// container-level methods. Equivalent to `container().child(self)`.
+    #[must_use]
+    pub fn into_container(self) -> NodeBuilder {
+        container().child(self)
+    }
+
+    fn into_node_builder(self) -> NodeBuilder {
+        let count = self.labels.len();
+        let has_content = self.contents.iter().any(Option::is_some);
+        let order_signal = self.order;
+        let drag = if self.reorderable {
+            Some(DragState::new())
+        } else {
+            None
+        };
+
+        let tab_list = build_tab_list(
+            self.active,
+            self.labels,
+            &self.disabled,
+            &self.aria_label,
+            order_signal,
+            drag,
+            self.closeable,
+            self.close_handler.as_ref().map(Rc::clone),
+        );
+
+        let mut root = if has_content {
+            wrap_with_content(tab_list, self.active, self.contents, count)
+        } else {
+            tab_list
+        };
 
         for mutate in self.mutators {
             root = mutate(root);
@@ -159,20 +294,26 @@ impl TabsBuilder {
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
-        root
+        root.layout(self.layout_overrides.apply(tab_list_layout(count)))
     }
 }
 
 impl StyleAccess for TabsBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
 
 impl StateHost for TabsBuilder {}
 
+impl WidgetLayoutExt for TabsBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
 impl IntoNode for TabsBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -196,11 +337,154 @@ fn tab_list_layout(count: usize) -> LayoutStyle {
         .align_items(AlignItems::Center)
 }
 
+#[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
+fn build_tab_list(
+    active: Signal<usize>,
+    labels: Vec<String>,
+    disabled: &[usize],
+    aria_label: &str,
+    order: Option<Signal<Vec<usize>>>,
+    drag: Option<DragState>,
+    closeable: bool,
+    close_handler: Option<CloseHandler>,
+) -> NodeBuilder {
+    let count = labels.len();
+    let disabled = Rc::new(disabled.to_vec());
+
+    let mut root = container()
+        .role(Role::TabList)
+        .label(accessible_label(aria_label))
+        .layout(tab_list_layout(count));
+
+    let visual_order: Vec<usize> = order.map_or_else(
+        || identity_order(count),
+        |sig| {
+            let current = sig.peek();
+            if current.len() == count {
+                current
+            } else {
+                identity_order(count)
+            }
+        },
+    );
+
+    for (visual_index, original) in visual_order.iter().copied().enumerate() {
+        let label = labels.get(original).cloned().unwrap_or_default();
+        let tab = build_tab(
+            original,
+            visual_index,
+            label,
+            active,
+            &disabled,
+            drag,
+            closeable,
+            close_handler.as_ref().map(Rc::clone),
+        );
+        root = root.child(tab);
+    }
+
+    if let Some(drag_state) = drag {
+        // Per-tab move/up handlers live on each tab (see
+        // `install_label_drag_hooks`) because the router routes captured
+        // pointer events to the captured node, never to ancestors. Bind
+        // the order signal + count here so those handlers can reach
+        // them via the shared `DragState`.
+        drag_state.bind(order, count);
+    }
+
+    root
+}
+
+fn identity_order(count: usize) -> Vec<usize> {
+    (0..count).collect()
+}
+
+fn wrap_with_content(
+    tab_list: NodeBuilder,
+    active: Signal<usize>,
+    contents: Vec<Option<ContentSlot>>,
+    count: usize,
+) -> NodeBuilder {
+    let mut root = container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::flex_column().align_items(AlignItems::Stretch))
+        .child(tab_list);
+
+    // Collect factories by index so the single reactive subtree can
+    // dispatch on the active tab. Static slots keep their existing
+    // `Display::None` panel; factory slots feed the reactive subtree.
+    let mut factories: Vec<Option<ContentFactory>> = (0..count).map(|_| None).collect();
+    let mut any_factory = false;
+
+    for (index, slot) in contents.into_iter().enumerate() {
+        match slot {
+            Some(ContentSlot::Static(node)) => {
+                root = root.child(content_panel(active, index, node, count));
+            }
+            Some(ContentSlot::Factory(factory)) => {
+                if let Some(slot_mut) = factories.get_mut(index) {
+                    *slot_mut = Some(factory);
+                    any_factory = true;
+                }
+            }
+            None => {}
+        }
+    }
+
+    if any_factory {
+        root = root.child(reactive_content(active, factories));
+    }
+    root
+}
+
+/// One reactive subtree fans out to whichever factory matches the
+/// current active tab. Static tabs return an empty Vec — their static
+/// panels render via the parallel `Display::None` path above.
+fn reactive_content(active: Signal<usize>, factories: Vec<Option<ContentFactory>>) -> NodeBuilder {
+    container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::flex_column().align_items(AlignItems::Stretch))
+        .children_reactive(move || {
+            let idx = active.get();
+            factories
+                .get(idx)
+                .and_then(|slot| slot.as_ref().map(|factory| factory()))
+                .into_iter()
+                .collect::<Vec<_>>()
+        })
+}
+
+fn content_panel(
+    active: Signal<usize>,
+    index: usize,
+    node: Box<dyn IntoNode>,
+    _count: usize,
+) -> NodeBuilder {
+    container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::flex_column())
+        .style_reactive(move || content_display(active, index))
+        .child(node)
+}
+
+fn content_display(active: Signal<usize>, index: usize) -> &'static [StyleAtom] {
+    if active.get() == index {
+        &[]
+    } else {
+        &[StyleAtom::Display(DisplayKind::None)]
+    }
+}
+
+#[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
 fn build_tab(
     index: usize,
+    visual_index: usize,
     label: String,
     active: Signal<usize>,
     disabled: &Rc<Vec<usize>>,
+    drag: Option<DragState>,
+    closeable: bool,
+    close_handler: Option<CloseHandler>,
 ) -> NodeBuilder {
     let is_disabled = disabled.contains(&index);
     let interaction = InteractionState::new(!is_disabled);
@@ -224,10 +508,17 @@ fn build_tab(
         tab_state_style()
     };
 
+    // Drag-aware activate: skip activation when a drag was in flight so a
+    // pointer-up that ends a drag does not also flip the active tab.
+    let drag_for_activate = drag;
     let activate: Activate = Rc::new(move || {
-        if !is_disabled {
-            active.set(index);
+        if is_disabled {
+            return;
         }
+        if drag_for_activate.is_some_and(DragState::consume_just_dragged) {
+            return;
+        }
+        active.set(index);
     });
     let pointer_activate = Rc::clone(&activate);
     let key_activate = activate;
@@ -243,25 +534,86 @@ fn build_tab(
         .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
         .key(Key::Enter, move |event| {
             activate_key(event, interaction, &key_activate);
-        })
-        .child(tab_label(label));
+        });
+
+    if let Some(drag_state) = drag {
+        node = install_label_drag_hooks(node, drag_state, visual_index);
+    }
+
+    node = node.child(tab_label(label));
+
+    if closeable {
+        node = node.child(close_button(index, close_handler.as_ref().map(Rc::clone)));
+    }
 
     node = install_transition_animators(node, base_atoms, state_style, component_id, interaction);
     interaction.install(node)
 }
 
 fn tab_layout() -> LayoutStyle {
+    let theme = Theme::default();
+    let padding = theme.padding(Size::Compact).px_or_zero();
     LayoutStyle::flex_row()
         .fixed_size(TAB_WIDTH, TAB_HEIGHT)
-        .padding(TAB_PADDING)
+        .padding(padding)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }
 
 fn tab_label(label: String) -> impl IntoNode {
-    let width = 2.0_f32.mul_add(-TAB_PADDING, TAB_WIDTH).max(1.0);
+    let theme = Theme::default();
+    let padding = theme.padding(Size::Compact).px_or_zero();
+    let width = 2.0_f32.mul_add(-padding, TAB_WIDTH).max(1.0);
+    // Labels are not hittable on their own — the router captures
+    // pointer events to `path.last()`, which would land on this text
+    // node and starve the tab's drag handlers. Letting the tab itself
+    // be the deepest hit keeps the capture target where the drag
+    // handlers live.
     text(label)
         .layout(LayoutStyle::block().width(width))
+        .class("text-on-surface")
+        .hittable(false)
+}
+
+fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
+    let interaction = InteractionState::new(true);
+    let activate: Activate = Rc::new(move || {
+        if let Some(cb) = handler.as_ref() {
+            cb(index);
+        }
+    });
+    let pointer_activate = Rc::clone(&activate);
+    // `InteractionState::install` wires focusable + hittable + the
+    // hover/press signals (via pointer_enter / pointer_down) that
+    // `release_pointer` consults. Without it `hovered` stays `false`
+    // and the close callback never fires under real pointer flow.
+    // Install BEFORE the user-supplied pointer hooks below so the
+    // install-side pointer_down runs first; the user pointer_down's
+    // `stop_propagation` would otherwise skip every later same-node
+    // handler in the same `invoke_pointer` loop.
+    let node = interaction.install(
+        container()
+            .role(Role::Button)
+            .label(AccessibleName::Static(String::from("Close tab")))
+            .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
+            .class("rounded-sm")
+            .child(close_glyph()),
+    );
+    node.pointer_down(move |event| {
+        // Stop the close pointer-down from bubbling into the
+        // surrounding tab; otherwise the tab activator captures the
+        // gesture and the close action never fires on release.
+        event.stop_propagation();
+    })
+    .pointer_up(move |event| {
+        event.stop_propagation();
+        activate_pointer(event, interaction, &pointer_activate);
+    })
+}
+
+fn close_glyph() -> impl IntoNode {
+    text("\u{00D7}")
+        .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
         .class("text-on-surface")
 }
 

@@ -36,11 +36,11 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-use sigil_async::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
-use sigil_hal::{Color, PhysicalSize, Renderer, Scheduler, Shell};
-use sigil_reactive::{Runtime, signal};
-use sigil_renderer::{WgpuRenderer, WgpuSurface, into_window_handle};
-use sigil_shell::WinitShell;
+use hal::{Color, PhysicalSize, Renderer, Scheduler, Shell};
+use reactive::{Runtime, signal};
+use renderer::{WgpuRenderer, WgpuSurface, into_window_handle};
+use shell::WinitShell;
+use tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
 // `winit` and `tokio` arrive transitively via sigil-shell / sigil-async.
 // The `use` markers silence `unused_crate_dependencies` on direct
 // deps we only reference through the adapters.

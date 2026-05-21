@@ -1,11 +1,11 @@
 //! Layout engine and `sigil-kernel` synchronization.
 
 use ahash::AHashSet;
-use sigil_hal::{Dim, Size};
-use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
-use sigil_style::{StyleBinding, StyleEngine, TextStyle};
+use hal::{Dim, Size};
+use kernel::{Cx, NodeId, NodeType, TextContent};
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
+use style::{StyleBinding, StyleEngine, TextStyle};
 
 use crate::cache_key::{AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature};
 use crate::engine_drive::{LayoutDrive, NodeHandle};
@@ -76,6 +76,25 @@ impl LayoutEngine {
         Some(LayoutResult::from_resolved_box(&layout))
     }
 
+    /// Return the parent's resolved content-box size for `id` from the
+    /// most recent layout pass.
+    ///
+    /// Returns `None` when `id` has no parent in `cx`, when the parent
+    /// is not mirrored, or when no layout has been computed yet.
+    ///
+    /// Widgets that need to size against their containing block can
+    /// query this after a layout pass instead of being told the size
+    /// at build time. The preferred build-time path is
+    /// [`crate::Dimension::Fill`], which the solvers resolve to the
+    /// containing block on the corresponding axis.
+    #[must_use]
+    pub fn parent_content_box(&self, cx: &Cx, id: NodeId) -> Option<Size> {
+        let parent = cx.parent(id)?;
+        let result = self.result(parent)?;
+        let rect = result.rect();
+        Some(Size::fixed(rect.width, rect.height))
+    }
+
     /// Mirror a `sigil-kernel` subtree into the private owned layout drive.
     ///
     /// # Errors
@@ -102,6 +121,14 @@ impl LayoutEngine {
         if cx.get(root).is_none() {
             return Err(LayoutError::NodeMissing(root));
         }
+        // Drain any deferred reactive-children rebuilds BEFORE the
+        // cache-key check. Each rebuild calls `Cx::remove` + `Cx::add_child`,
+        // which marks the affected nodes dirty via `mark_dirty`. The
+        // cache-key resolution below reads `cx.dirty()` and
+        // `cx.mutation_generation()`, so the drain must happen first —
+        // otherwise the engine would see a clean dirty-set, return
+        // `CacheDecision::Hit`, and miss the structural change entirely.
+        cx.flush_reactive_children();
         let cache_key = match self.resolve_cache_key(cx, root, available) {
             CacheDecision::Hit => return Ok(()),
             CacheDecision::Miss(key) => key,
@@ -446,7 +473,7 @@ impl LayoutEngine {
     }
 
     fn layout_inputs_for_node(
-        node: &sigil_kernel::Node,
+        node: &kernel::Node,
     ) -> (LayoutStyle, Option<TextContent>, Option<TextStyle>) {
         let mut intent = node
             .get_extension::<LayoutStyle>()
@@ -483,7 +510,7 @@ impl LayoutEngine {
         &mut self,
         cx: &Cx,
         id: NodeId,
-        node: &sigil_kernel::Node,
+        node: &kernel::Node,
     ) -> Result<(), LayoutError> {
         let parent = if matches!(node.kind, NodeType::Fragment) {
             self.nearest_mirrored_ancestor(cx, id)

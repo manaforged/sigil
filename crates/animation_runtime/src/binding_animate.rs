@@ -1,7 +1,7 @@
 //! Binding-install hook — DR-053 §5 / W5.1.
 //!
-//! When a node has a [`StyleBinding`](sigil_style::StyleBinding) whose
-//! atom set carries [`StyleAtom::Transition(id)`](sigil_style::StyleAtom::Transition),
+//! When a node has a [`StyleBinding`](style::StyleBinding) whose
+//! atom set carries [`StyleAtom::Transition(id)`](style::StyleAtom::Transition),
 //! this module scans the binding's base atoms + state-slot overlays and
 //! produces an [`AttachedAnimators`] handle: one [`Animator`] per
 //! numeric atom whose value differs across slots, each driving a
@@ -29,8 +29,8 @@
 //! seams (`TransitionId`, `StyleAtom`, `merge_warning_count_for_component`)
 //! the hook consumes.
 
-use sigil_reactive::{Signal, signal};
-use sigil_style::{
+use reactive::{Signal, signal};
+use style::{
     AnimatorOverlay, ColorAtomKind, ComponentId, MillisU16, NumericAtomKind, Rgba8, StateSlot,
     StateStyle, StyleAtom, Theme, TransitionId,
     merge_warning_count_for_component as _emit_warning_counter_check,
@@ -44,7 +44,7 @@ use crate::{AnimationConfig, AnimationRegistry, Animator};
 /// `ComponentId` namespace used by the binding-install hook when it
 /// fails to resolve a [`TransitionId`] in the registry.
 ///
-/// Logged via `sigil_style::merge_warning_count_for_component`. The
+/// Logged via `style::merge_warning_count_for_component`. The
 /// numeric value is arbitrary — chosen large enough that real
 /// per-widget component IDs never collide.
 pub const ANIMATION_REGISTRY_MISS: ComponentId = 0xA111_0000_0000_0001;
@@ -202,7 +202,7 @@ impl AnimatorOverlay for AttachedAnimators {
 /// Returns [`AttachedAnimators::empty()`] when:
 /// - The binding contains no `Transition` atom (zero-overhead path).
 /// - The `Transition`'s `id` does not resolve in `registry` (after
-///   logging via `sigil_style::merge_warning_count_for_component`).
+///   logging via `style::merge_warning_count_for_component`).
 /// - No numeric atom value differs between base and the hover slot
 ///   (no work to animate).
 ///
@@ -403,7 +403,7 @@ pub mod miss_counter {
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
 
-    use sigil_style::ComponentId;
+    use style::ComponentId;
 
     static TOTAL: AtomicUsize = AtomicUsize::new(0);
     static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
@@ -437,9 +437,9 @@ pub mod miss_counter {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
-    use sigil_animation::SpringPreset;
-    use sigil_reactive::Runtime;
-    use sigil_style::{Px, StateSlot, StateStyle, StyleAtom, TransitionId};
+    use animation::SpringPreset;
+    use reactive::Runtime;
+    use style::{Px, StateSlot, StateStyle, StyleAtom, TransitionId};
 
     use super::{ANIMATION_REGISTRY_MISS, install_animators, miss_counter};
     use crate::registry::presets;

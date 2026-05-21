@@ -39,6 +39,22 @@ pub fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
     diagnostic::warning_count_for_component(component_id)
 }
 
+/// Number of unknown-class tokens dropped by the class parser this session.
+///
+/// Bumped by [`bump_unknown_class_count`] when `.class("...")` receives a
+/// token outside the documented atomic-class catalog. Useful in tests to
+/// assert the catalog covers every token a widget emits.
+#[must_use]
+pub fn unknown_class_warning_count() -> usize {
+    diagnostic::unknown_class_count()
+}
+
+/// Bump the unknown-class counter. Called from the class parser's diagnostic
+/// path alongside the `tracing::warn!` emission.
+pub fn bump_unknown_class_count() {
+    diagnostic::bump_unknown_class();
+}
+
 fn insert_atom(
     merged: &mut SmallVec<[(ResolvedSlot, StyleAtom); 32]>,
     atom: StyleAtom,
@@ -233,9 +249,20 @@ enum ResolvedSlot {
 }
 
 mod diagnostic {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
     use super::{ComponentId, HashSet, Mutex, OnceLock, ResolvedSlot};
 
     static WARNED: OnceLock<Mutex<HashSet<(ResolvedSlot, ComponentId)>>> = OnceLock::new();
+    static UNKNOWN_CLASS: AtomicUsize = AtomicUsize::new(0);
+
+    pub(super) fn bump_unknown_class() {
+        UNKNOWN_CLASS.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub(super) fn unknown_class_count() -> usize {
+        UNKNOWN_CLASS.load(Ordering::Relaxed)
+    }
 
     pub(super) fn warn_conflict(slot: ResolvedSlot, component_id: ComponentId) {
         let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));

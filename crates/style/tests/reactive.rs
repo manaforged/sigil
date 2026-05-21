@@ -6,16 +6,17 @@ use std::rc::Rc;
 
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
+use reactive as _;
 use smallvec as _;
 use strsim as _;
+use style_macros as _;
+use tracing as _;
 
-use sigil_kernel::{Cx, container};
-use sigil_reactive::{Runtime, signal};
-use sigil_style::{NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding};
+use kernel::{Cx, container};
+use reactive::{Runtime, signal};
+use style::{NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding};
 
 static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
@@ -97,14 +98,12 @@ fn pillar_call_site_compiles() {
         let mut cx = Cx::new_root();
         let id = cx.add(container().style_reactive(move || {
             if danger.get() {
-                &[StyleAtom::BackgroundColor(sigil_style::ColorAtom::Rgba8(
-                    Rgba8 {
-                        r: 255,
-                        g: 0,
-                        b: 0,
-                        a: 255,
-                    },
-                ))]
+                &[StyleAtom::BackgroundColor(style::ColorAtom::Rgba8(Rgba8 {
+                    r: 255,
+                    g: 0,
+                    b: 0,
+                    a: 255,
+                }))]
             } else {
                 INACTIVE
             }
@@ -114,7 +113,36 @@ fn pillar_call_site_compiles() {
     });
 }
 
-fn reactive_slice(cx: &Cx, id: sigil_kernel::NodeId) -> &'static [StyleAtom] {
+#[test]
+fn class_when_toggles_on_signal_change() {
+    Runtime::scope("sigil_style_class_when_toggle", || {
+        let highlighted = signal(false);
+        let mut cx = Cx::new_root();
+        let id = cx.add(container().class_when(highlighted, "bg-accent"));
+
+        let initial = reactive_slice(&cx, id);
+        assert!(
+            initial.is_empty(),
+            "class_when starts with empty slice while signal is false, got {initial:?}",
+        );
+
+        highlighted.set(true);
+        let live = reactive_slice(&cx, id);
+        assert_eq!(
+            live,
+            &[StyleAtom::BackgroundThemeRef("accent")],
+            "class_when must install `bg-accent` atoms when signal flips true, got {live:?}",
+        );
+
+        highlighted.set(false);
+        assert!(
+            reactive_slice(&cx, id).is_empty(),
+            "class_when must clear atoms when signal flips false",
+        );
+    });
+}
+
+fn reactive_slice(cx: &Cx, id: kernel::NodeId) -> &'static [StyleAtom] {
     cx.get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
         .map(StyleBinding::reactive_slice)

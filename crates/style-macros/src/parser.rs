@@ -138,39 +138,31 @@ fn reject_token(origin: &syn::LitStr, token: &str) -> syn::Result<()> {
 
 fn fixed_token(token: &str) -> Option<TokenStream> {
     match token {
-        "flex" => Some(quote!(::sigil_style::StyleAtom::Display(
-            ::sigil_style::DisplayKind::Flex
+        "flex" => Some(quote!(::style::StyleAtom::Display(
+            ::style::DisplayKind::Flex
         ))),
-        "block" => Some(quote!(::sigil_style::StyleAtom::Display(
-            ::sigil_style::DisplayKind::Block
+        "block" => Some(quote!(::style::StyleAtom::Display(
+            ::style::DisplayKind::Block
         ))),
-        "hidden" => Some(quote!(::sigil_style::StyleAtom::Display(
-            ::sigil_style::DisplayKind::None
+        "hidden" => Some(quote!(::style::StyleAtom::Display(
+            ::style::DisplayKind::None
         ))),
-        "flex-row" => Some(quote!(::sigil_style::StyleAtom::FlexDirection(
-            ::sigil_style::FlexDir::Row
+        "flex-row" => Some(quote!(::style::StyleAtom::FlexDirection(
+            ::style::FlexDir::Row
         ))),
-        "flex-col" => Some(quote!(::sigil_style::StyleAtom::FlexDirection(
-            ::sigil_style::FlexDir::Column
+        "flex-col" => Some(quote!(::style::StyleAtom::FlexDirection(
+            ::style::FlexDir::Column
         ))),
-        "flex-row-reverse" => Some(quote!(::sigil_style::StyleAtom::FlexDirection(
-            ::sigil_style::FlexDir::RowReverse
+        "flex-row-reverse" => Some(quote!(::style::StyleAtom::FlexDirection(
+            ::style::FlexDir::RowReverse
         ))),
-        "flex-col-reverse" => Some(quote!(::sigil_style::StyleAtom::FlexDirection(
-            ::sigil_style::FlexDir::ColumnReverse
+        "flex-col-reverse" => Some(quote!(::style::StyleAtom::FlexDirection(
+            ::style::FlexDir::ColumnReverse
         ))),
-        "w-full" => Some(quote!(::sigil_style::StyleAtom::Width(
-            ::sigil_style::Dimension::Full
-        ))),
-        "h-full" => Some(quote!(::sigil_style::StyleAtom::Height(
-            ::sigil_style::Dimension::Full
-        ))),
-        "w-auto" => Some(quote!(::sigil_style::StyleAtom::Width(
-            ::sigil_style::Dimension::Auto
-        ))),
-        "h-auto" => Some(quote!(::sigil_style::StyleAtom::Height(
-            ::sigil_style::Dimension::Auto
-        ))),
+        "w-full" => Some(quote!(::style::StyleAtom::Width(::style::Dimension::Full))),
+        "h-full" => Some(quote!(::style::StyleAtom::Height(::style::Dimension::Full))),
+        "w-auto" => Some(quote!(::style::StyleAtom::Width(::style::Dimension::Auto))),
+        "h-auto" => Some(quote!(::style::StyleAtom::Height(::style::Dimension::Auto))),
         "rounded" => Some(px_atom("BorderRadius", 4)),
         "rounded-sm" => Some(px_atom("BorderRadius", 2)),
         "rounded-md" => Some(px_atom("BorderRadius", 6)),
@@ -181,9 +173,9 @@ fn fixed_token(token: &str) -> Option<TokenStream> {
         "text-base" => Some(px_atom("FontSize", 16)),
         "text-lg" => Some(px_atom("FontSize", 18)),
         "text-xl" => Some(px_atom("FontSize", 20)),
-        "font-normal" => Some(quote!(::sigil_style::StyleAtom::FontWeight(400))),
-        "font-medium" => Some(quote!(::sigil_style::StyleAtom::FontWeight(500))),
-        "font-bold" => Some(quote!(::sigil_style::StyleAtom::FontWeight(700))),
+        "font-normal" => Some(quote!(::style::StyleAtom::FontWeight(400))),
+        "font-medium" => Some(quote!(::style::StyleAtom::FontWeight(500))),
+        "font-bold" => Some(quote!(::style::StyleAtom::FontWeight(700))),
         _ => None,
     }
 }
@@ -226,12 +218,8 @@ fn dimension_token(token: &str) -> Option<TokenStream> {
     let (prefix, value) = token.split_once('-')?;
     let px = scale(value)?;
     match prefix {
-        "w" => Some(
-            quote!(::sigil_style::StyleAtom::Width(::sigil_style::Dimension::Px(::sigil_style::Px(#px)))),
-        ),
-        "h" => Some(
-            quote!(::sigil_style::StyleAtom::Height(::sigil_style::Dimension::Px(::sigil_style::Px(#px)))),
-        ),
+        "w" => Some(quote!(::style::StyleAtom::Width(::style::Dimension::Px(::style::Px(#px))))),
+        "h" => Some(quote!(::style::StyleAtom::Height(::style::Dimension::Px(::style::Px(#px))))),
         _ => None,
     }
 }
@@ -239,60 +227,60 @@ fn dimension_token(token: &str) -> Option<TokenStream> {
 fn align_token(token: &str) -> Option<TokenStream> {
     let value = token.strip_prefix("items-")?;
     let variant = match value {
-        "start" => quote!(::sigil_style::AlignKind::Start),
-        "center" => quote!(::sigil_style::AlignKind::Center),
-        "end" => quote!(::sigil_style::AlignKind::End),
-        "stretch" => quote!(::sigil_style::AlignKind::Stretch),
+        "start" => quote!(::style::AlignKind::Start),
+        "center" => quote!(::style::AlignKind::Center),
+        "end" => quote!(::style::AlignKind::End),
+        "stretch" => quote!(::style::AlignKind::Stretch),
         _ => return None,
     };
-    Some(quote!(::sigil_style::StyleAtom::AlignItems(#variant)))
+    Some(quote!(::style::StyleAtom::AlignItems(#variant)))
 }
 
 fn justify_token(token: &str) -> Option<TokenStream> {
     let value = token.strip_prefix("justify-")?;
     let variant = match value {
-        "start" => quote!(::sigil_style::JustifyKind::Start),
-        "center" => quote!(::sigil_style::JustifyKind::Center),
-        "end" => quote!(::sigil_style::JustifyKind::End),
-        "between" => quote!(::sigil_style::JustifyKind::Between),
-        "around" => quote!(::sigil_style::JustifyKind::Around),
+        "start" => quote!(::style::JustifyKind::Start),
+        "center" => quote!(::style::JustifyKind::Center),
+        "end" => quote!(::style::JustifyKind::End),
+        "between" => quote!(::style::JustifyKind::Between),
+        "around" => quote!(::style::JustifyKind::Around),
         _ => return None,
     };
-    Some(quote!(::sigil_style::StyleAtom::JustifyContent(#variant)))
+    Some(quote!(::style::StyleAtom::JustifyContent(#variant)))
 }
 
 fn opacity_token(token: &str) -> Option<TokenStream> {
     let value = token.strip_prefix("opacity-")?.parse::<u16>().ok()?;
     (value <= 100).then(|| {
         let encoded = value.saturating_mul(100);
-        quote!(::sigil_style::StyleAtom::Opacity(#encoded))
+        quote!(::style::StyleAtom::Opacity(#encoded))
     })
 }
 
 fn theme_token(token: &str) -> Option<TokenStream> {
     token
         .strip_prefix("bg-")
-        .map(|value| quote!(::sigil_style::StyleAtom::BackgroundThemeRef(#value)))
+        .map(|value| quote!(::style::StyleAtom::BackgroundThemeRef(#value)))
         .or_else(|| {
             token
                 .strip_prefix("text-")
-                .map(|value| quote!(::sigil_style::StyleAtom::TextThemeRef(#value)))
+                .map(|value| quote!(::style::StyleAtom::TextThemeRef(#value)))
         })
         .or_else(|| {
             token
                 .strip_prefix("border-")
-                .map(|_| quote!(::sigil_style::StyleAtom::UnknownThemeRef(#token)))
+                .map(|_| quote!(::style::StyleAtom::UnknownThemeRef(#token)))
         })
         .or_else(|| {
             token
                 .strip_prefix("shadow-")
-                .map(|_| quote!(::sigil_style::StyleAtom::UnknownThemeRef(#token)))
+                .map(|_| quote!(::style::StyleAtom::UnknownThemeRef(#token)))
         })
 }
 
 fn px_atom(variant: &str, px: i16) -> TokenStream {
     let variant = syn::Ident::new(variant, proc_macro2::Span::call_site());
-    quote!(::sigil_style::StyleAtom::#variant(::sigil_style::Px(#px)))
+    quote!(::style::StyleAtom::#variant(::style::Px(#px)))
 }
 
 fn scale(value: &str) -> Option<i16> {

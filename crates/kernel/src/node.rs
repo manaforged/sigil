@@ -2,7 +2,7 @@
 
 use std::any::{Any, TypeId};
 
-use sigil_reactive::OwnerId;
+use reactive::OwnerId;
 use smallvec::SmallVec;
 
 use crate::{A11yProps, NodeId, TextContent};
@@ -30,7 +30,7 @@ pub struct Node {
     /// Monotonic per-node version — bumped on every mutation
     /// (`attach` / `remove_extension` / structural reparent / child
     /// list change / accessibility update). Consumers like
-    /// `sigil_layout::LayoutEngine` cache `(NodeId, version)` and
+    /// `layout::LayoutEngine` cache `(NodeId, version)` and
     /// fast-path when a re-sync sees no version change. Wraps at
     /// `u32::MAX` (a stale wrapped value still differs from a current
     /// reading because we compare for equality, not ordering).

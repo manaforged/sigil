@@ -9,12 +9,12 @@ use std::rc::Rc;
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use sigil_hal as _;
+use hal as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_kernel::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
-use sigil_reactive::{Runtime, debug, effect, on_cleanup, signal};
+use kernel::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
+use reactive::{Runtime, debug, effect, on_cleanup, signal};
 
 struct DisposableComponent {
     cleanup_count: Rc<Cell<u32>>,

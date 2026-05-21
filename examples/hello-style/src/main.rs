@@ -7,7 +7,7 @@ use sigil::prelude::*;
 static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     // 720x480 logical pixels; physical size depends on monitor scale
     // (1080x720 at 1.5x, 1440x960 at 2x).
     assert!(!in_right_pane(720.0, 480.0));

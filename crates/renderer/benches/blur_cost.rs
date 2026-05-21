@@ -45,28 +45,28 @@ use ahash as _;
 use bytemuck as _;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use half as _;
+use icons as _;
 use image as _;
+use kernel as _;
+use layout as _;
 use proptest as _;
 use raw_window_handle as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
+use shell as _;
 use skrifa as _;
 use smallvec as _;
+use style as _;
+use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
 
+use hal::Color;
 use pollster::FutureExt as _;
-use sigil_hal::Color;
-use sigil_renderer::{
+use renderer::{
     CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient,
     OffscreenTarget, SceneBuilder, SceneGradientStyle, SceneRectStyle, WgpuRenderer,
 };
-use sigil_style::Rgba8;
+use style::Rgba8;
 use wgpu::TextureFormat;
 
 // ---------------------------------------------------------------------------
@@ -271,7 +271,7 @@ fn multi_blur_scene(
 
 /// Emit a horizontal gradient covering the full viewport.
 fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
-    use sigil_hal::{Point, Rect};
+    use hal::{Point, Rect};
     scene.draw_gradient(
         Rect::new(Point::new(0.0, 0.0), w as f32, h as f32),
         SceneGradientStyle::new(
@@ -296,7 +296,7 @@ fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
 /// measure the real blur cost.
 #[allow(clippy::too_many_arguments)]
 fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, sigma: f32) {
-    use sigil_hal::{Point, Rect};
+    use hal::{Point, Rect};
     let clip = Rect::new(Point::new(x, y), w, h);
     scene.push_layer(LayerScope {
         clip,

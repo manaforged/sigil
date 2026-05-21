@@ -1,14 +1,15 @@
 //! Generic builders for structural nodes.
 
 use accesskit::{Action, Role};
-use sigil_hal::Shortcut;
-use sigil_reactive::Signal;
+use hal::Shortcut;
+use reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::component::{ErasedComponent, IntoNode};
-use crate::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+use crate::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, reactive_children};
 
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
+type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 
 /// Builder for structural nodes.
 pub struct NodeBuilder {
@@ -16,6 +17,7 @@ pub struct NodeBuilder {
     children: SmallVec<[Box<dyn ErasedComponent>; 4]>,
     kind: NodeType,
     pre_extensions: Vec<NodeMutator>,
+    reactive_children: Option<ReactiveChildrenInstall>,
 }
 
 /// Create a container node builder.
@@ -37,6 +39,7 @@ impl NodeBuilder {
             children: SmallVec::new(),
             kind,
             pre_extensions: Vec::new(),
+            reactive_children: None,
         }
     }
 
@@ -129,6 +132,13 @@ impl NodeBuilder {
         self
     }
 
+    /// Set a reactive selected state for selectable controls.
+    #[must_use]
+    pub const fn selected(mut self, signal: Signal<bool>) -> Self {
+        self.a11y.selected = Some(signal);
+        self
+    }
+
     /// Set a reactive numeric value for range-like controls.
     #[must_use]
     pub const fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
@@ -159,11 +169,41 @@ impl NodeBuilder {
         self
     }
 
+    /// Bind this node's children to a reactive closure.
+    ///
+    /// The closure runs once at build and re-runs whenever any signal
+    /// it reads changes. Each re-run removes every prior child (full
+    /// disposal of reactive owners) and adds the fresh result in source
+    /// order. Identity across rebuilds is positional; callers that need
+    /// per-row state must keep it in an external signal keyed by their
+    /// own domain id.
+    ///
+    /// The bound effect is parented to this builder's per-component
+    /// owner — removing the parent via [`Cx::remove`] disposes the
+    /// subscription automatically.
+    ///
+    /// Until B1.b wires the drain into `LayoutEngine::compute`, callers
+    /// must invoke [`Cx::flush_reactive_children`] explicitly after
+    /// signal mutations (and after the initial `cx.add(...)`) to apply
+    /// the queued rebuild.
+    #[must_use]
+    pub fn children_reactive<F, I, N>(mut self, f: F) -> Self
+    where
+        F: Fn() -> I + 'static,
+        I: IntoIterator<Item = N>,
+        N: IntoNode + 'static,
+    {
+        self.reactive_children = Some(Box::new(move |parent| {
+            reactive_children::install(parent, f);
+        }));
+        self
+    }
+
     /// Attach a typed extension value to this node at build time.
     ///
     /// This is the low-level primitive. Prefer crate-provided extension
     /// methods — for example, use `.layout(LayoutStyle::…)` from
-    /// `sigil_layout::prelude::*` rather than `.with(layout_style)`.
+    /// `layout::prelude::*` rather than `.with(layout_style)`.
     #[must_use]
     pub fn with<T: 'static>(mut self, value: T) -> Self {
         self.pre_extensions.push(Box::new(move |node: &mut Node| {
@@ -200,6 +240,9 @@ impl IntoNode for NodeBuilder {
         }
         for child in self.children {
             let _ = cx.add_boxed_child(id, child);
+        }
+        if let Some(install) = self.reactive_children {
+            install(id);
         }
         id
     }

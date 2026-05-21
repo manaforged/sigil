@@ -13,31 +13,31 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
+use hal as _;
 use half as _;
+use icons as _;
 use image as _;
+use kernel as _;
+use layout as _;
 use proptest as _;
 use raw_window_handle as _;
-use sigil_hal as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
+use shell as _;
 use skrifa as _;
 use smallvec as _;
+use style as _;
+use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
 
 use std::sync::mpsc;
 
+use hal::{Color, Point, Rect};
 use pollster::FutureExt as _;
-use sigil_hal::{Color, Point, Rect};
-use sigil_renderer::{
+use renderer::{
     CornerRadii, OffscreenTarget, PatternKind, SceneBuilder, ScenePatternStyle, WgpuRenderer,
 };
-use sigil_style::Rgba8;
+use style::Rgba8;
 
 // Physical scale factor: texture dims = viewport × SCALE.
 // wgpu's downlevel default texture-dimension limit is 2048 px on each
@@ -76,7 +76,7 @@ fn pattern_pixels_match_slash_and_checker_contracts() {
     assert_checker_colour_sanity(&pixels, phys_w);
 }
 
-fn build_pattern_scene() -> sigil_renderer::CommandScene {
+fn build_pattern_scene() -> renderer::CommandScene {
     let slash = PatternKind::Slash {
         color: Rgba8 {
             r: 255,

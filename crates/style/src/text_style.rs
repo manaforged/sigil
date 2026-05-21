@@ -1,6 +1,6 @@
 //! Resolved typography used by text measurement and painting.
 
-use sigil_hal::TextEngine;
+use hal::TextEngine;
 
 /// Resolved line-height value for paragraph layout.
 #[derive(Copy, Clone, Debug, PartialEq)]

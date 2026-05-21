@@ -1,8 +1,8 @@
 //! Theme tokens and palette values.
 
-use crate::Rgba8;
 use crate::palette::Palette;
 use crate::variant::{FontFamilyHint, Variant};
+use crate::{Dimension, LengthPercentage, Px, Rgba8, Size};
 
 #[cfg(debug_assertions)]
 const BUILT_IN_COLOR_TOKENS: [&str; 9] = [
@@ -202,6 +202,115 @@ impl Theme {
         }
     }
 
+    /// Resolve the preferred control width for a semantic size preset.
+    #[must_use]
+    pub fn control_width(&self, size: Size) -> Dimension {
+        self.dimension_token(
+            match size {
+                Size::Compact => "control-width-compact",
+                Size::Default => "control-width-default",
+                Size::Wide => "control-width-wide",
+                Size::Grow => return Dimension::Full,
+            },
+            match size {
+                Size::Compact => 24,
+                Size::Default => 32,
+                Size::Wide => 148,
+                Size::Grow => unreachable!(),
+            },
+        )
+    }
+
+    /// Resolve the preferred control height for a semantic size preset.
+    #[must_use]
+    pub fn control_height(&self, size: Size) -> Dimension {
+        self.dimension_token(
+            match size {
+                Size::Compact => "control-height-compact",
+                Size::Default => "control-height-default",
+                Size::Wide => "control-height-wide",
+                Size::Grow => return Dimension::Auto,
+            },
+            match size {
+                Size::Compact => 24,
+                Size::Default => 32,
+                Size::Wide => 44,
+                Size::Grow => unreachable!(),
+            },
+        )
+    }
+
+    /// Resolve uniform padding for a semantic size preset.
+    #[must_use]
+    pub fn padding(&self, size: Size) -> LengthPercentage {
+        self.length_token(
+            match size {
+                Size::Compact => "padding-compact",
+                Size::Default => "padding-default",
+                Size::Wide => "padding-wide",
+                Size::Grow => return LengthPercentage::Percent(1.0),
+            },
+            match size {
+                Size::Compact => 8,
+                Size::Default => 12,
+                Size::Wide => 16,
+                Size::Grow => unreachable!(),
+            },
+        )
+    }
+
+    /// Resolve uniform gap for a semantic size preset.
+    #[must_use]
+    pub fn gap(&self, size: Size) -> LengthPercentage {
+        self.length_token(
+            match size {
+                Size::Compact => "gap-compact",
+                Size::Default => "gap-default",
+                Size::Wide => "gap-wide",
+                Size::Grow => return LengthPercentage::Percent(1.0),
+            },
+            match size {
+                Size::Compact => 4,
+                Size::Default => 8,
+                Size::Wide => 12,
+                Size::Grow => unreachable!(),
+            },
+        )
+    }
+
+    /// Resolve border radius for a semantic size preset.
+    #[must_use]
+    pub fn radius(&self, size: Size) -> LengthPercentage {
+        self.length_token(
+            match size {
+                Size::Compact => "radius-compact",
+                Size::Default => "radius-default",
+                Size::Wide => "radius-wide",
+                Size::Grow => return LengthPercentage::Percent(1.0),
+            },
+            match size {
+                Size::Compact => 2,
+                Size::Default => 4,
+                Size::Wide => 8,
+                Size::Grow => unreachable!(),
+            },
+        )
+    }
+
+    fn dimension_token(&self, token: &'static str, fallback: i16) -> Dimension {
+        Dimension::Px(self.px_token(token, fallback))
+    }
+
+    fn length_token(&self, token: &'static str, fallback: i16) -> LengthPercentage {
+        LengthPercentage::Px(self.px_token(token, fallback))
+    }
+
+    fn px_token(&self, token: &'static str, fallback: i16) -> Px {
+        match self.tokens.get(token).copied() {
+            Some(ThemeValue::Px(px)) => px_from_f32(px),
+            _ => Px(fallback),
+        }
+    }
     /// The non-terminal regression baseline — Obsidian palette under
     /// the Normal shape variant. The default Sigil look.
     #[must_use]
@@ -349,6 +458,18 @@ fn nearest_tokens(token: &str, registered: &[&'static str]) -> [&'static str; 3]
     ]
 }
 
+fn px_from_f32(value: f32) -> Px {
+    let px = value
+        .round()
+        .clamp(f32::from(i16::MIN), f32::from(i16::MAX));
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "Rounded and clamped to the i16 range before cast."
+    )]
+    {
+        Px(px as i16)
+    }
+}
 const fn rgba(r: u8, g: u8, b: u8) -> Rgba8 {
     Rgba8 { r, g, b, a: 255 }
 }

@@ -2,8 +2,8 @@
 //!
 //! The runtime defaults to [`DrawPhase::Idle`]. Real apps walk through
 //! `Idle → Effect → Layout → Paint → Idle` once per frame via the
-//! frame driver wired into [`sigil_app::launch`]. These tests drive the
-//! same phase shape via [`sigil_app::__drive_test_frame`] — the
+//! frame driver wired into [`app::launch`]. These tests drive the
+//! same phase shape via [`app::__drive_test_frame`] — the
 //! doc-hidden test seam that exposes the production wiring without
 //! requiring a winit shell + wgpu adapter — and prove the observable
 //! contracts of the frame driver.
@@ -35,26 +35,27 @@
 
 // Dev-deps the lib-test target pulls in but which this file does not
 // name directly. Aliases silence `unused_crate_dependencies`.
+use animation as _;
+use animation_runtime as _;
+use arboard as _;
 use criterion as _;
+use events as _;
+use hal as _;
 use image as _;
+use kernel as _;
+use layout as _;
 use pollster as _;
+use renderer as _;
 use sigil as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_renderer as _;
-use sigil_style as _;
+use style as _;
+use tasks as _;
 use wgpu as _;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil_actions::DeriveAction;
-use sigil_reactive::{DrawPhase, Entity, Runtime};
+use actions::DeriveAction;
+use reactive::{DrawPhase, Entity, Runtime};
 
 #[derive(Clone, DeriveAction)]
 struct Tick;
@@ -70,7 +71,7 @@ fn frame_driver_walks_idle_to_idle_through_all_phases() {
         let layout_trace = Rc::clone(&trace);
         let paint_trace = Rc::clone(&trace);
 
-        sigil_app::__drive_test_frame(
+        app::__drive_test_frame(
             move || layout_trace.borrow_mut().push(Runtime::current_phase()),
             move || paint_trace.borrow_mut().push(Runtime::current_phase()),
         );
@@ -117,7 +118,7 @@ fn action_registration_survives_frame_cycle() {
         });
 
         // Drive a full frame with empty passes.
-        sigil_app::__drive_test_frame(|| {}, || {});
+        app::__drive_test_frame(|| {}, || {});
 
         // After the frame returns to Idle, the handler + focus stack
         // are still wired. Dispatching from Effect in the NEXT frame
@@ -169,7 +170,7 @@ fn g3_deferred_action_fires_at_end_of_frame() {
         let fired_during = Rc::clone(&fired);
         let host_for_paint = host.clone();
 
-        sigil_app::__drive_test_frame(
+        app::__drive_test_frame(
             || {},
             move || {
                 host_for_paint.update(|_, cx| cx.dispatch(&Tick));
@@ -217,9 +218,9 @@ fn begin_effect_runs_before_layout_pass() {
         // changes. The effect's body captures the phase at fire-time.
         let observed_phase = Rc::new(Cell::new(DrawPhase::Idle));
         let phase_writer = Rc::clone(&observed_phase);
-        let s = sigil_reactive::signal(0_i32);
+        let s = reactive::signal(0_i32);
 
-        sigil_reactive::effect(move || {
+        reactive::effect(move || {
             // Read to subscribe.
             let _ = s.get();
             phase_writer.set(Runtime::current_phase());
@@ -242,7 +243,7 @@ fn begin_effect_runs_before_layout_pass() {
         // Drive a frame; effect does not re-run (no signal change),
         // and the frame driver enters Effect → Layout → Paint → Idle
         // cleanly with no completions outstanding.
-        sigil_app::__drive_test_frame(|| {}, || {});
+        app::__drive_test_frame(|| {}, || {});
 
         assert_eq!(
             Runtime::current_phase(),
@@ -260,7 +261,7 @@ fn begin_effect_runs_before_layout_pass() {
 fn paint_phase_write_panics_in_debug() {
     Runtime::scope("frame_driver::paint_write_panics", || {
         let counter = Entity::<u32>::new("counter", |_| 0_u32);
-        sigil_app::__drive_test_frame(
+        app::__drive_test_frame(
             || {},
             move || {
                 counter.update(|n, _cx| {
@@ -278,8 +279,8 @@ fn paint_phase_write_panics_in_debug() {
 #[should_panic(expected = "Signal::set")]
 fn paint_phase_signal_set_panics_in_debug() {
     Runtime::scope("frame_driver::paint_signal_set_panics", || {
-        let s = sigil_reactive::signal(0_i32);
-        sigil_app::__drive_test_frame(
+        let s = reactive::signal(0_i32);
+        app::__drive_test_frame(
             || {},
             move || {
                 s.set(7);
@@ -293,12 +294,12 @@ fn paint_phase_signal_set_panics_in_debug() {
 #[test]
 fn read_paths_in_paint_pass_are_legal() {
     Runtime::scope("frame_driver::read_in_paint", || {
-        let s = sigil_reactive::signal(42_i32);
+        let s = reactive::signal(42_i32);
         let e = Entity::<u32>::new("e", |_| 99_u32);
         let observed = Rc::new(Cell::new((0_i32, 0_u32, DrawPhase::Idle)));
         let writer = Rc::clone(&observed);
 
-        sigil_app::__drive_test_frame(
+        app::__drive_test_frame(
             || {},
             move || {
                 let s_val = s.get();

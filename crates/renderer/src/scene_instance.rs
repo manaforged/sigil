@@ -5,9 +5,9 @@
 //! and to colocate instance-data tests with the helpers they cover.
 
 use bytemuck::{Pod, Zeroable};
+use hal::Rect;
 use half::f16;
-use sigil_hal::Rect;
-use sigil_style::Rgba8;
+use style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene::{Scene, SceneItem, SceneRect};
@@ -276,7 +276,7 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
     let [offset_x, offset_y] = shadow.offset;
     let outset = shadow.blur.mul_add(3.0, shadow.spread.abs());
     Rect::new(
-        sigil_hal::Point::new(
+        hal::Point::new(
             surface.origin.x - outset + offset_x,
             surface.origin.y - outset + offset_y,
         ),

@@ -10,7 +10,7 @@ use sigil::prelude::*;
 static BG_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static BG_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 
-fn main() -> sigil::Result<()> {
+fn main() -> sigil::AppResult<()> {
     // 720x480 logical pixels; physical size depends on monitor scale
     // (1080x720 at 1.5x, 1440x960 at 2x).
     sigil::launch(("Sigil - hello-events", 720, 480), app_tree)

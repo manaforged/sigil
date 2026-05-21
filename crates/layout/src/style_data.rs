@@ -86,6 +86,15 @@ pub enum Dimension {
     /// CSS `auto` — fall back to content size.
     #[default]
     Auto,
+    /// Inherit the parent's resolved content-box on this axis.
+    ///
+    /// Equivalent in math to `Percent(1.0)` but expresses intent
+    /// directly: "fill whatever the parent gives me". Resolves against
+    /// the containing-block size during the layout pass, so a child
+    /// inside a parent of 800×600 with padding(20) resolves to 760×560
+    /// (the parent's content box, which is its children's containing
+    /// block).
+    Fill,
 }
 
 impl From<f32> for Dimension {

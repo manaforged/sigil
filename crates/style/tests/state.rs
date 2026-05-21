@@ -2,15 +2,16 @@
 
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
+use kernel as _;
 use phf as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
+use reactive as _;
 use smallvec as _;
 use strsim as _;
+use style_macros as _;
+use tracing as _;
 
-use sigil_style::{StateSlot, StateStyle, StyleAtom, StyleState};
+use style::{StateSlot, StateStyle, StyleAtom, StyleState};
 
 static REST: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
 static FOCUS: &[StyleAtom] = &[StyleAtom::Opacity(9_500)];

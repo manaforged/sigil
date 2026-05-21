@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use sigil_kernel::{NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
+use kernel::{NodeBuilder, Role, container, text};
+use layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use super::super::shared::{Activate, disabled_now};
 
@@ -17,10 +17,10 @@ pub(super) static OPTION_ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(
 
 #[derive(Clone, Copy)]
 pub(super) struct OptionCtx {
-    pub(super) selected: sigil_reactive::Signal<usize>,
-    pub(super) open: sigil_reactive::Signal<bool>,
-    pub(super) cursor: sigil_reactive::Signal<usize>,
-    pub(super) disabled: Option<sigil_reactive::Signal<bool>>,
+    pub(super) selected: reactive::Signal<usize>,
+    pub(super) open: reactive::Signal<bool>,
+    pub(super) cursor: reactive::Signal<usize>,
+    pub(super) disabled: Option<reactive::Signal<bool>>,
 }
 
 pub(super) fn build_popup(
@@ -78,7 +78,7 @@ pub(super) const fn popup_display(open: bool) -> &'static [StyleAtom] {
 }
 
 fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) -> NodeBuilder {
-    use sigil_events::prelude::NodeEventsExt;
+    use events::prelude::NodeEventsExt;
     container()
         .role(Role::ListBoxOption)
         .label(label.clone())

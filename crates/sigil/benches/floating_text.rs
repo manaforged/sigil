@@ -15,24 +15,27 @@
 )]
 
 // Workspace deps that the bench target inherits but does not call.
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use events as _;
+use hal as _;
 use image as _;
+use kernel as _;
+use layout as _;
 use pollster as _;
-use sigil_actions as _;
-use sigil_app as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_renderer as _;
+use renderer as _;
+use tasks as _;
 use wgpu as _;
 
 use std::hint::black_box;
 use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use reactive::{Runtime, signal};
 use sigil::widgets::{FCT_POOL_CAPACITY, FctSpawn, FctState};
-use sigil_reactive::{Runtime, signal};
-use sigil_style::Rgba8;
+use style::Rgba8;
 
 const RED: Rgba8 = Rgba8 {
     r: 240,

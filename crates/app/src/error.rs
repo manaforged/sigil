@@ -1,10 +1,14 @@
-//! `sigil::Error` — unified error type + `sigil::Result` alias.
+//! `sigil::Error` — unified error type + `sigil::AppResult` alias.
 
 use core::fmt;
 use std::error::Error as StdError;
 
 /// Short-hand for `Result<T, sigil::Error>`.
-pub type Result<T> = core::result::Result<T, Error>;
+///
+/// Renamed from the previous single-arg `Result<T>` to avoid shadowing
+/// `std::result::Result<T, E>` — `fn scan(...) -> Result<Vec<T>, String>`
+/// used to trip `E0107` before the rename. See dogfood v2 post-mortem.
+pub type AppResult<T> = core::result::Result<T, Error>;
 
 /// The one error type returned by [`crate::launch`] and anything user code
 /// calls through it. Wraps boxed errors from shell / renderer / layout so
@@ -47,8 +51,8 @@ impl From<Box<dyn StdError + Send + Sync + 'static>> for Error {
     }
 }
 
-impl From<sigil_renderer::RendererError> for Error {
-    fn from(err: sigil_renderer::RendererError) -> Self {
+impl From<renderer::RendererError> for Error {
+    fn from(err: renderer::RendererError) -> Self {
         Self::new(err)
     }
 }

@@ -5,8 +5,8 @@
 use std::sync::{Mutex, OnceLock};
 
 use ahash::AHashSet;
-use sigil_kernel::{Node, NodeId};
-use sigil_style::{
+use kernel::{Node, NodeId};
+use style::{
     FocusRing, Px, RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme,
 };
 
@@ -40,7 +40,7 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
 
 pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
     let mut render = RenderStyle::default();
-    if matches!(node.kind, sigil_kernel::NodeType::Text { .. }) {
+    if matches!(node.kind, kernel::NodeType::Text { .. }) {
         render.text_color = Some(default_theme().on_surface);
     }
     let Some(binding) = node.get_extension::<StyleBinding>() else {

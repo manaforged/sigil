@@ -3,7 +3,7 @@
 // Example prints its tree to stdout by design.
 #![allow(clippy::print_stdout)]
 
-use sigil_kernel::prelude::*;
+use kernel::prelude::*;
 
 fn main() {
     let mut cx = Cx::new_root();

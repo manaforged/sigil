@@ -7,7 +7,7 @@ pub use crate::{
     StyleLengthPercentage as LengthPercentage, StyleLengthPercentageAuto as LengthPercentageAuto,
     StylePosition as Position, TextMeasure,
 };
-pub use sigil_hal::{Dim, LogicalSize, Size};
+pub use hal::{Dim, LogicalSize, Size};
 
 /// Compatibility helper for pre-cutover code that imported a length helper.
 #[must_use]

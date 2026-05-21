@@ -14,15 +14,15 @@
 // dep (subscriber storage). Neither is used in this test file; the
 // aliases satisfy `unused_crate_dependencies` which flows into every
 // integration-test binary.
+use actions as _;
 use criterion as _;
-use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_reactive::{Owner, Runtime, batch, effect, on_cleanup, signal};
+use reactive::{Owner, Runtime, batch, effect, on_cleanup, signal};
 
 #[test]
 fn signal_get_and_set_roundtrip() {

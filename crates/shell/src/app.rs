@@ -10,11 +10,13 @@
 use std::sync::atomic::Ordering;
 
 use winit::{
-    application::ApplicationHandler, event::WindowEvent as WinitWindowEvent,
-    event_loop::ActiveEventLoop, window::WindowId,
+    application::ApplicationHandler,
+    event::WindowEvent as WinitWindowEvent,
+    event_loop::{ActiveEventLoop, ControlFlow},
+    window::WindowId,
 };
 
-use sigil_hal::{ShellEvent, WindowEvent as SigilWindowEvent};
+use hal::{ShellEvent, WindowEvent as SigilWindowEvent};
 
 use crate::{shell::WinitShell, waker::WakeEvent};
 
@@ -54,6 +56,16 @@ where
         // signal-driven updates land in the next frame.
         for (_, window) in self.shell.windows() {
             window.request_redraw();
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // Apply the configured idle deadline (e.g. `cx.interval` wakeups)
+        // so the OS can wake the loop on time without busy-spinning.
+        // Falls back to `Wait` when no deadline hook is installed.
+        match self.shell.deadline_hook().and_then(|hook| hook()) {
+            Some(deadline) => event_loop.set_control_flow(ControlFlow::WaitUntil(deadline)),
+            None => event_loop.set_control_flow(ControlFlow::Wait),
         }
     }
 

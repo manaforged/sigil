@@ -84,6 +84,17 @@ jobs:
       - name: Check workspace
         run: cargo check --workspace --all-targets
 
+      # Phase H2 gate (docs/plans/2026-05-20-dogfood-gap-closure.md). Explicit
+      # `--tests --benches` invocation so example/test/bench rot can't recur
+      # silently — historical regression: `examples/vertical-slice` shipped a
+      # stale `.on_submit` call for several waves because no CI step exercised
+      # the example crate's full target set. `--all-targets` above is the
+      # broader sweep; this step keeps the load-bearing flag pair explicit so
+      # a future weakening of `--all-targets` still leaves tests + benches
+      # gated.
+      - name: Check tests + benches
+        run: cargo check --workspace --tests --benches
+
       - name: Compile tests
         # Compile every test in the workspace without running them.
         # Native-backed runtime gates (golden frames via wgpu, winit shell

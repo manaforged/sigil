@@ -67,6 +67,41 @@ impl<'a> BlockSolver<'a> {
         Ok(())
     }
 
+    /// Run the block layout algorithm against `subtree` as a child of
+    /// some containing block of size `cb`, anchored at `origin` (the
+    /// subtree root's border-box top-left BEFORE this node's own margin
+    /// is applied). Used by per-subtree solver dispatch when a block-
+    /// display node lands inside a flex parent.
+    ///
+    /// Mirrors [`Self::solve`]'s margin-then-border-origin shape so a
+    /// `display: block` flex item that recurses through here resolves
+    /// its own margins against the supplied containing block.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`LayoutError::LayoutInvalid`] when `subtree` references a
+    /// stale id.
+    pub(crate) fn solve_at(
+        &self,
+        subtree: NodeRef<'_>,
+        cb: Size<f32>,
+        origin: Position2,
+    ) -> Result<(), LayoutError> {
+        let style = subtree.style();
+        let edges = NodeEdges::build(style, cb.width);
+        let border_origin = Position2::new(
+            origin.x + edges.margin.left.unwrap_or(0.0),
+            origin.y + edges.margin_top(),
+        );
+        solve_box(self, subtree, cb, border_origin).map(|_| ())
+    }
+
+    /// Borrow the measure scope (used by per-subtree dispatch helpers
+    /// to reconstruct a sibling solver mid-traversal).
+    pub(crate) const fn scope(&self) -> &MeasureScope<'_> {
+        &self.scope
+    }
+
     /// Borrow the computed box for `id`. Returns `None` when the id is
     /// stale or the solver never visited it during this pass.
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
@@ -88,9 +123,9 @@ impl<'a> BlockSolver<'a> {
 /// of the child's *containing block* (parent's content box) in the
 /// root coordinate space.
 #[derive(Clone, Copy, Debug)]
-struct Position2 {
-    x: f32,
-    y: f32,
+pub(crate) struct Position2 {
+    pub(crate) x: f32,
+    pub(crate) y: f32,
 }
 
 impl Position2 {
@@ -268,11 +303,66 @@ fn layout_children(
             content_origin.x + edges_preview.margin.left.unwrap_or(0.0),
             content_origin.y + cursor_y,
         );
-        let resolved = solve_box(solver, child, inner_cb, child_border_origin)?;
+        // Q1 tertiary — per-subtree solver dispatch. When a block parent
+        // contains a `display: flex` child, the flex algorithm owns that
+        // child's content layout; we still keep this node in the block
+        // stacking pass for vertical advance + margin collapse.
+        let resolved = match style.display {
+            Display::Flex => solve_flex_child(solver, child, inner_cb, child_border_origin)?,
+            Display::Block | Display::None | Display::Grid => {
+                solve_box(solver, child, inner_cb, child_border_origin)?
+            }
+        };
         cursor_y += resolved.box_h;
         open.emit_bottom(resolved.edges.margin_bottom());
     }
     Ok(cursor_y)
+}
+
+/// Q1 tertiary helper — lay out a `Display::Flex` child of a block
+/// parent through the `FlexSolver`, then read back the child's resolved
+/// box so the block stacking pass can advance the cursor + collapse the
+/// child's bottom margin into the next sibling.
+///
+/// The flex solver writes its own box (border-box at
+/// `child_border_origin + margin`) and resolves the subtree; we then
+/// re-read it through the scope's forest to produce a `Resolved` that
+/// mirrors `solve_box`'s contract.
+fn solve_flex_child(
+    solver: &BlockSolver<'_>,
+    child: NodeRef<'_>,
+    inner_cb: Size<f32>,
+    child_border_origin: Position2,
+) -> Result<Resolved, LayoutError> {
+    let style = child.style();
+    let edges = NodeEdges::build(style, inner_cb.width);
+    let scope = solver.scope();
+    let nested = crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
+    let flex = crate::flex::FlexSolver::new(nested);
+    // FlexSolver's `solve_at` expects the BORDER box origin BEFORE this
+    // node's own margin is applied — same shape as BlockSolver::solve_at
+    // — so we feed the pre-margin position (block's `child_border_origin`
+    // is already post-margin, so subtract).
+    let cb = crate::flex::CbSize {
+        w: inner_cb.width,
+        h: inner_cb.height,
+    };
+    let pre = crate::flex::Position2::new(
+        child_border_origin.x - edges.margin.left.unwrap_or(0.0),
+        child_border_origin.y - edges.margin_top(),
+    );
+    flex.solve_at(child, cb, pre)?;
+    let computed = solver.boxed(child.id()).ok_or_else(|| {
+        LayoutError::LayoutInvalid(format!(
+            "flex subtree did not write a box for {:?}",
+            child.id()
+        ))
+    })?;
+    Ok(Resolved {
+        box_w: computed.w,
+        box_h: computed.h,
+        edges,
+    })
 }
 
 /// Place a `Position::Absolute` child against the parent's padding box.

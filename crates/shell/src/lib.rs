@@ -1,6 +1,6 @@
 //! winit 0.30+ `ApplicationHandler`-backed Shell adapter.
 //!
-//! Implements [`sigil_hal::Shell`] over `winit` 0.30+. See
+//! Implements [`hal::Shell`] over `winit` 0.30+. See
 //! [DR-002](../../../docs/decisions/DR-002-shell-winit.md) for the
 //! load-bearing invariants.
 //!
@@ -9,14 +9,14 @@
 //! [`WinitShell::new`] constructs an `EventLoop<WakeEvent>` eagerly so
 //! that the [`Waker`] can be handed out before the event loop is
 //! running. Window specifications submitted via
-//! [`sigil_hal::Shell::create_window`] are queued until winit fires
+//! [`hal::Shell::create_window`] are queued until winit fires
 //! `resumed`, at which point the adapter creates them on the active
 //! event loop. The adapter also drains the pending queue on each
 //! `user_event` tick and at the top of every `RedrawRequested`, so
 //! frame-time window requests resolve on the next event-loop iteration
 //! rather than sitting un-materialised forever.
 //!
-//! [`Waker`]: sigil_hal::Shell::Waker
+//! [`Waker`]: hal::Shell::Waker
 //!
 //! # Wake bridge
 //!
@@ -55,7 +55,7 @@
 //! adapter before `sigil-async` stabilises its public API — the bridge
 //! is a plain closure, not a typed runtime handle.
 //!
-//! TODO: wire a typed `sigil_async::AsyncRuntime` handle when its API
+//! TODO: wire a typed `tasks::AsyncRuntime` handle when its API
 //! stabilises.
 
 use winit::error::EventLoopError;
@@ -70,7 +70,7 @@ pub(crate) mod waker;
 pub use shell::WinitShell;
 pub use waker::{WAKE_DELIVERED_COUNT, WakeEvent, WinitWaker};
 
-/// Handle for a window requested via [`sigil_hal::Shell::create_window`].
+/// Handle for a window requested via [`hal::Shell::create_window`].
 ///
 /// The handle is returned immediately, but the underlying OS window
 /// is only created once winit fires `resumed`. Use
@@ -101,7 +101,7 @@ pub enum ShellError {
     EventLoopClosed,
     /// The waker's internal mutex was poisoned.
     WakerPoisoned,
-    /// [`sigil_hal::Shell::run`] was called but the event loop had
+    /// [`hal::Shell::run`] was called but the event loop had
     /// already been consumed by a previous call.
     AlreadyRun,
 }

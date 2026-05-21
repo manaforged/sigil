@@ -17,16 +17,16 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use hal as _;
+use kernel as _;
 use rayon as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
 use taffy as _;
 
-use sigil_layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
-use sigil_style::{OverflowKind, StyleAtom};
+use layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
+use style::{OverflowKind, StyleAtom};
 
 #[test]
 fn overflow_x_hidden_round_trips_through_style_adapter() {

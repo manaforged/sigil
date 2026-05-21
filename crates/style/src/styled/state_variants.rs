@@ -26,7 +26,7 @@ pub trait StateVariants: StyleAccess + StateHost {
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
         let built = configure(StateStyleBuilder::new());
-        self.style().set_hover(built.into_atoms());
+        self.style_mut().set_hover(built.into_atoms());
         self
     }
 
@@ -37,7 +37,7 @@ pub trait StateVariants: StyleAccess + StateHost {
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
         let built = configure(StateStyleBuilder::new());
-        self.style().set_focus(built.into_atoms());
+        self.style_mut().set_focus(built.into_atoms());
         self
     }
 
@@ -48,7 +48,7 @@ pub trait StateVariants: StyleAccess + StateHost {
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
         let built = configure(StateStyleBuilder::new());
-        self.style().set_pressed(built.into_atoms());
+        self.style_mut().set_pressed(built.into_atoms());
         self
     }
 
@@ -59,7 +59,7 @@ pub trait StateVariants: StyleAccess + StateHost {
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {
         let built = configure(StateStyleBuilder::new());
-        self.style().set_disabled(built.into_atoms());
+        self.style_mut().set_disabled(built.into_atoms());
         self
     }
 }

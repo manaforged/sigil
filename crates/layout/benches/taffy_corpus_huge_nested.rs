@@ -1,4 +1,4 @@
-//! Owned-engine vs Taffy comparison - huge_nested scene from Taffy's
+//! Owned-engine vs Taffy comparison - `huge_nested` scene from Taffy's
 //! published bench corpus.
 //!
 //! Run with `cargo bench -p sigil-layout --bench taffy_corpus_huge_nested`.
@@ -13,19 +13,19 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use hal::{LogicalSize, Size};
+use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 // allow unused dev-dep extern crates per repo convention
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use reactive as _;
 use slotmap as _;
 use smallvec as _;
+use style as _;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;
@@ -39,7 +39,7 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
+const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
         width: taffy::AvailableSpace::Definite(width),
         height: taffy::AvailableSpace::Definite(height),

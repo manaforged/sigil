@@ -1,7 +1,7 @@
 //! `StyleAccess` — the single mutable-borrow hook every styling
 //! super-trait builds on.
 //!
-//! Implementors provide [`StyleAccess::style`]; the per-category
+//! Implementors provide [`StyleAccess::style_mut`]; the per-category
 //! super-traits ([`super::Spacing`], [`super::Sizing`], etc.) attach
 //! their default methods on top via blanket impls over `StyleAccess`.
 //! See DR-049 for the locked vocabulary.
@@ -18,5 +18,5 @@ use crate::Style;
 /// implementing this trait is enough to get the full fluent surface.
 pub trait StyleAccess: Sized {
     /// Mutable borrow of this builder's owned [`Style`] accumulator.
-    fn style(&mut self) -> &mut Style;
+    fn style_mut(&mut self) -> &mut Style;
 }

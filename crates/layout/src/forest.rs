@@ -23,9 +23,9 @@
 
 use std::cell::Cell;
 
-use sigil_kernel::{NodeId, TextContent};
-use sigil_style::TextStyle;
+use kernel::{NodeId, TextContent};
 use smallvec::SmallVec;
+use style::TextStyle;
 
 use crate::{LayoutError, StyleData, TextMeasure};
 
@@ -60,7 +60,7 @@ impl LocalId {
 
 /// One node in the owned layout forest.
 ///
-/// `kernel` links back to the originating `sigil_kernel::NodeId` when
+/// `kernel` links back to the originating `kernel::NodeId` when
 /// the node mirrors a real kernel node. `style` is the owned style
 /// (added in P0.1.5) — block / flex solvers read it through
 /// [`NodeRef::style`] without dereferencing external engine state.
@@ -685,7 +685,7 @@ impl<'a> MeasureScope<'a> {
         known: crate::style_data::Size<Option<f32>>,
     ) -> Option<crate::style_data::Size<f32>> {
         let text = node.text()?;
-        let space = sigil_hal::Size {
+        let space = hal::Size {
             width: space_constraint_to_hal_dim(self.available.w),
             height: space_constraint_to_hal_dim(self.available.h),
         };
@@ -700,11 +700,11 @@ impl<'a> MeasureScope<'a> {
     }
 }
 
-const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> sigil_hal::Dim {
+const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> hal::Dim {
     match space {
-        SpaceConstraint::Definite(value) => sigil_hal::Dim::Fixed(value),
-        SpaceConstraint::MinContent => sigil_hal::Dim::MinContent,
-        SpaceConstraint::MaxContent => sigil_hal::Dim::MaxContent,
+        SpaceConstraint::Definite(value) => hal::Dim::Fixed(value),
+        SpaceConstraint::MinContent => hal::Dim::MinContent,
+        SpaceConstraint::MaxContent => hal::Dim::MaxContent,
     }
 }
 
@@ -830,12 +830,8 @@ mod tests {
     fn measure_scope_borrows_forest_and_constraints() {
         struct NullText;
         impl TextMeasure for NullText {
-            fn measure(
-                &self,
-                _: &sigil_kernel::TextContent,
-                _: sigil_hal::Size,
-            ) -> sigil_hal::LogicalSize {
-                sigil_hal::LogicalSize::default()
+            fn measure(&self, _: &kernel::TextContent, _: hal::Size) -> hal::LogicalSize {
+                hal::LogicalSize::default()
             }
         }
         let f = LayoutForest::new();
@@ -902,12 +898,8 @@ mod tests {
     /// Null text measurer reused across the scatter-write tests below.
     struct NullText;
     impl TextMeasure for NullText {
-        fn measure(
-            &self,
-            _: &sigil_kernel::TextContent,
-            _: sigil_hal::Size,
-        ) -> sigil_hal::LogicalSize {
-            sigil_hal::LogicalSize::default()
+        fn measure(&self, _: &kernel::TextContent, _: hal::Size) -> hal::LogicalSize {
+            hal::LogicalSize::default()
         }
     }
 

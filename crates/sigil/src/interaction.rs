@@ -1,9 +1,9 @@
 //! Reusable widget interaction contract.
 
-use sigil_events::prelude::{KeyEvent, NodeEventsExt, PointerEvent};
-use sigil_kernel::NodeBuilder;
-use sigil_reactive::{Signal, signal};
-use sigil_style::{FocusRing, NodeStyleExt, StyleState};
+use events::prelude::{KeyEvent, NodeEventsExt, PointerEvent};
+use kernel::NodeBuilder;
+use reactive::{Signal, signal};
+use style::{FocusRing, NodeStyleExt, StyleState};
 
 /// Shared hover/press/focus state for focusable widgets.
 #[derive(Clone, Copy)]
@@ -21,7 +21,7 @@ impl InteractionState {
     /// # Panics
     ///
     /// The signals are owned by the current reactive scope. Calling
-    /// outside [`Runtime::scope`](sigil_reactive::Runtime::scope)
+    /// outside [`Runtime::scope`](reactive::Runtime::scope)
     /// creates handles that panic on the next signal read.
     #[must_use]
     pub fn new(enabled: bool) -> Self {

@@ -15,7 +15,7 @@ pub trait Fill: StyleAccess {
     /// [`crate::ColorAtom`].
     #[must_use]
     fn bg(mut self, color: impl Into<ColorOrToken>) -> Self {
-        self.style().push_atom(background_atom(color.into()));
+        self.style_mut().push_atom(background_atom(color.into()));
         self
     }
 
@@ -25,7 +25,7 @@ pub trait Fill: StyleAccess {
     /// [`crate::ColorAtom`].
     #[must_use]
     fn text_color(mut self, color: impl Into<ColorOrToken>) -> Self {
-        self.style().push_atom(text_atom(color.into()));
+        self.style_mut().push_atom(text_atom(color.into()));
         self
     }
 }

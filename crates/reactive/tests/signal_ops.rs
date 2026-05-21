@@ -8,15 +8,15 @@
 // `criterion` is a dev-dep used only by benches; alias to silence the
 // `unused_crate_dependencies` lint for this integration-test binary.
 // `smallvec` is a regular dep but unused here — same treatment.
+use actions as _;
 use criterion as _;
-use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_reactive::{Runtime, effect, signal};
+use reactive::{Runtime, effect, signal};
 
 #[test]
 fn add_assign_mutates_and_fires_effects() {

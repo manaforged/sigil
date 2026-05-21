@@ -2,8 +2,8 @@
 //! wgpu / layout / router plumbing every app otherwise rewrites by hand.
 //!
 //! ```text
-//! fn main() -> sigil_app::Result<()> {
-//!     sigil_app::launch("hello-style", |cx| app_tree(cx))
+//! fn main() -> app::AppResult<()> {
+//!     app::launch("hello-style", |cx| app_tree(cx))
 //! }
 //! ```
 //!
@@ -18,7 +18,7 @@
 use windows_core as _;
 
 // Transitive deps threaded through launch; names are used there.
-use sigil_style as _;
+use style as _;
 
 mod config;
 mod error;
@@ -27,7 +27,7 @@ mod text_measure;
 mod tree_root;
 
 pub use config::{AppConfig, PanicPolicy};
-pub use error::{Error, Result};
+pub use error::{AppResult, Error};
 pub use launch::launch;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::TreeRoot;

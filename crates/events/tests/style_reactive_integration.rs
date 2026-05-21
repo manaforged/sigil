@@ -8,12 +8,12 @@ use accesskit as _;
 use criterion as _;
 use smallvec as _;
 
-use sigil_events::prelude::*;
-use sigil_hal::{ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind};
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
-use sigil_reactive::{Runtime, signal};
-use sigil_style::{NodeStyleExt, StyleAtom, StyleBinding};
+use events::prelude::*;
+use hal::{ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind};
+use kernel::prelude::*;
+use layout::prelude::*;
+use reactive::{Runtime, signal};
+use style::{NodeStyleExt, StyleAtom, StyleBinding};
 
 static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
@@ -103,7 +103,7 @@ const fn pointer_move(x: f32, y: f32) -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+        hal::LogicalSize::default()
     }
 }

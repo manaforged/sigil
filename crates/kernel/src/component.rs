@@ -20,9 +20,30 @@ use crate::{Cx, NodeId};
 ///
 /// All state lives in signals and in the node tree, not in the `IntoNode`
 /// value — it is consumed on build and does not persist.
-pub trait IntoNode {
+pub trait IntoNode: IntoNodeBox {
     /// Build this value into the tree and return the root [`NodeId`] it created.
     fn build(self, cx: &mut Cx) -> NodeId;
+}
+
+/// Object-safe boxed build entry point for [`IntoNode`] trait objects.
+pub trait IntoNodeBox {
+    /// Build this boxed value into the tree and return the root [`NodeId`] it created.
+    fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId;
+}
+
+impl<T> IntoNodeBox for T
+where
+    T: IntoNode,
+{
+    fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId {
+        (*self).build(cx)
+    }
+}
+
+impl IntoNode for Box<dyn IntoNode> {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        <dyn IntoNode as IntoNodeBox>::build_box(self, cx)
+    }
 }
 
 impl<F> IntoNode for F
@@ -48,6 +69,6 @@ where
     T: IntoNode,
 {
     fn build_box(self: Box<Self>, cx: &mut Cx) -> NodeId {
-        (*self).build(cx)
+        IntoNodeBox::build_box(self, cx)
     }
 }

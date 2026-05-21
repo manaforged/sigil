@@ -11,10 +11,10 @@
 #[cfg(test)]
 use criterion as _;
 #[cfg(test)]
-use sigil_kernel as _;
+use kernel as _;
 #[cfg(test)]
-use sigil_layout as _;
-use sigil_reactive as _;
+use layout as _;
+use reactive as _;
 // `tracing` is only used by the complex-script fallback warning path
 // (active when the `shaping-complex` feature is OFF). When ON, the
 // warn helper is cfg'd out and tracing would be unused.

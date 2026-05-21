@@ -17,9 +17,9 @@ path = "src/main.rs"
 sigil = { workspace = true }
 
 [dev-dependencies]
-sigil-app = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-renderer = { workspace = true }
+app = { workspace = true }
+hal = { workspace = true }
+renderer = { workspace = true }
 
 [lints]
 workspace = true

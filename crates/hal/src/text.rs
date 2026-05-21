@@ -21,7 +21,7 @@ use crate::geometry::Color;
 
 /// A single positioned glyph ready for GPU rendering.
 ///
-/// Produced by `sigil_text::Paragraph::rendered_glyphs`. The `font_id` is an
+/// Produced by `text::Paragraph::rendered_glyphs`. The `font_id` is an
 /// opaque u64 stable for the font blob's lifetime (derived from the blob's
 /// internal atomic counter). Pass a matching `(font_id, &[u8], font_index)`
 /// entry from `Paragraph::fonts()` so the renderer can preprocess outlines on

@@ -10,10 +10,10 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use actions::{Action, ActionRegistry, HandlerKey};
+use actions_macros::Action;
 use proc_macro2 as _;
 use quote as _;
-use sigil_actions::{Action, ActionRegistry, HandlerKey};
-use sigil_actions_macros::Action;
 use syn as _;
 
 #[derive(Clone, Action)]

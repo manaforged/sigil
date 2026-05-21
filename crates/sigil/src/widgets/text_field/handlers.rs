@@ -1,9 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
-use sigil_kernel::NodeBuilder;
-use sigil_reactive::{Signal, signal};
+use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use kernel::NodeBuilder;
+use reactive::Signal;
 
 use super::super::shared::disabled_now;
 use super::super::text_edit::TextEdit;
@@ -30,30 +30,33 @@ pub(super) struct TextFieldRuntime {
     pub(super) value: Signal<String>,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) edit: Rc<RefCell<TextEdit>>,
-    pub(super) on_change: TextChange,
-    pub(super) on_submit: TextChange,
+    pub(super) change: TextChange,
+    pub(super) submit: TextChange,
     pub(super) clipboard: Rc<dyn Clipboard>,
     pub(super) caret_visible: Signal<bool>,
     pub(super) scroll_offset: Signal<usize>,
 }
 
 impl TextFieldRuntime {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn new(
         value: Signal<String>,
         disabled: Option<Signal<bool>>,
-        on_change: TextChange,
-        on_submit: TextChange,
+        change: TextChange,
+        submit: TextChange,
         clipboard: Rc<dyn Clipboard>,
+        caret_visible: Signal<bool>,
+        scroll_offset: Signal<usize>,
     ) -> Self {
         Self {
             value,
             disabled,
             edit: Rc::new(RefCell::new(TextEdit::new(value.peek()))),
-            on_change,
-            on_submit,
+            change,
+            submit,
             clipboard,
-            caret_visible: signal(true),
-            scroll_offset: signal(0_usize),
+            caret_visible,
+            scroll_offset,
         }
     }
 
@@ -62,7 +65,7 @@ impl TextFieldRuntime {
     }
 }
 
-pub(super) fn noop_text_change() -> TextChange {
+pub(super) fn noop_change() -> TextChange {
     Rc::new(|_| {})
 }
 
@@ -155,7 +158,8 @@ fn clipboard_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
 }
 
 fn history_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
-    let redo_rt = runtime.clone();
+    let redo_shift = runtime.clone();
+    let redo_ctrl_y = runtime.clone();
     let undo_rt = runtime;
     node.key(
         Shortcut::new(
@@ -163,11 +167,14 @@ fn history_keys(node: NodeBuilder, runtime: TextFieldRuntime) -> NodeBuilder {
             ModifiersState::CONTROL | ModifiersState::SHIFT,
         ),
         move |event| {
-            history_redo(event, &redo_rt);
+            history_redo(event, &redo_shift);
         },
     )
     .key(Shortcut::ctrl(LogicalKey::character("z")), move |event| {
         history_undo(event, &undo_rt);
+    })
+    .key(Shortcut::ctrl(LogicalKey::character("y")), move |event| {
+        history_redo(event, &redo_ctrl_y);
     })
 }
 
@@ -191,7 +198,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     let mut edit = runtime.edit.borrow_mut();
     edit.insert_str(text);
     write_value(runtime.value, edit.as_str());
-    (runtime.on_change)(edit.as_str());
+    (runtime.change)(edit.as_str());
     update_scroll(&edit, runtime.scroll_offset);
     runtime.caret_visible.set(true);
     event.stop_propagation();
@@ -207,7 +214,7 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
     edit(&mut state);
     if (state.len(), state.is_empty()) != before {
         write_value(runtime.value, state.as_str());
-        (runtime.on_change)(state.as_str());
+        (runtime.change)(state.as_str());
     }
     update_scroll(&state, runtime.scroll_offset);
     runtime.caret_visible.set(true);
@@ -246,7 +253,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         let mut state = runtime.edit.borrow_mut();
         state.backspace();
         write_value(runtime.value, state.as_str());
-        (runtime.on_change)(state.as_str());
+        (runtime.change)(state.as_str());
         update_scroll(&state, runtime.scroll_offset);
         runtime.caret_visible.set(true);
     }
@@ -270,7 +277,7 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         state.insert_str(&buf);
     }
     write_value(runtime.value, state.as_str());
-    (runtime.on_change)(state.as_str());
+    (runtime.change)(state.as_str());
     update_scroll(&state, runtime.scroll_offset);
     runtime.caret_visible.set(true);
 }
@@ -291,7 +298,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     let mut state = runtime.edit.borrow_mut();
     if state.undo() {
         write_value(runtime.value, state.as_str());
-        (runtime.on_change)(state.as_str());
+        (runtime.change)(state.as_str());
         update_scroll(&state, runtime.scroll_offset);
         runtime.caret_visible.set(true);
     }
@@ -305,7 +312,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     let mut state = runtime.edit.borrow_mut();
     if state.redo() {
         write_value(runtime.value, state.as_str());
-        (runtime.on_change)(state.as_str());
+        (runtime.change)(state.as_str());
         update_scroll(&state, runtime.scroll_offset);
         runtime.caret_visible.set(true);
     }
@@ -317,7 +324,7 @@ fn submit_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         return;
     }
     let value = runtime.value.peek();
-    (runtime.on_submit)(value.as_str());
+    (runtime.submit)(value.as_str());
 }
 
 pub(super) fn write_value(value: Signal<String>, next: &str) {

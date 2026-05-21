@@ -9,8 +9,8 @@
 
 use std::cell::RefCell;
 
-use sigil_hal::TextEngine;
-use sigil_style::{StyledTextEngine, TextLineHeight, TextStyle};
+use hal::TextEngine;
+use style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;

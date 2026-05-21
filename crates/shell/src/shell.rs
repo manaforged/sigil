@@ -1,4 +1,4 @@
-//! `WinitShell` — the winit-backed [`sigil_hal::Shell`] implementation.
+//! `WinitShell` — the winit-backed [`hal::Shell`] implementation.
 //! See DR-002 for the lifecycle contract: windows are queued until the
 //! event loop is alive, and the event loop is built eagerly so the
 //! [`Shell::waker`] handle can be handed to `sigil-async` before
@@ -10,8 +10,9 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
+use std::time::Instant;
 
-use sigil_hal::{
+use hal::{
     LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Scale, Shell,
     ShellEvent, WindowEvent as SigilWindowEvent,
 };
@@ -48,6 +49,17 @@ pub(crate) enum PendingWindowSize {
 /// `sigil-async` to drain its MPSC.
 pub(crate) type WakeHook = Arc<dyn Fn() + Send + Sync + 'static>;
 
+/// Closure consulted between event-loop iterations to discover when
+/// the soonest piece of pending work is due.
+///
+/// Returning `Some(deadline)` causes the adapter to set
+/// `ControlFlow::WaitUntil(deadline)`, letting the OS wake the loop at
+/// the requested time without a busy spin. Returning `None` falls back
+/// to the default `Wait` behaviour. Wired by the application layer
+/// (see [`WinitShell::on_idle_deadline`]) to surface
+/// `reactive::next_interval_deadline()` to the event loop.
+pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
+
 /// winit-backed [`Shell`] implementation.
 pub struct WinitShell {
     event_loop: Option<EventLoop<WakeEvent>>,
@@ -64,6 +76,7 @@ pub struct WinitShell {
     modifiers: ModifiersState,
     next_handle: u64,
     wake_hook: Option<WakeHook>,
+    deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
 }
 
@@ -101,6 +114,7 @@ impl WinitShell {
             modifiers: ModifiersState::empty(),
             next_handle: 0,
             wake_hook: None,
+            deadline_hook: None,
             exit_requested: false,
         })
     }
@@ -109,6 +123,23 @@ impl WinitShell {
     /// inside `ApplicationHandler::user_event`.
     pub fn on_wake<F: Fn() + Send + Sync + 'static>(&mut self, hook: F) {
         self.wake_hook = Some(Arc::new(hook));
+    }
+
+    /// Register a closure consulted between event-loop iterations to
+    /// discover the soonest pending deadline (e.g. the next
+    /// [`reactive::interval`](https://docs.rs/sigil-reactive) fire).
+    ///
+    /// When the hook returns `Some(deadline)`, the adapter sets winit's
+    /// `ControlFlow::WaitUntil(deadline)` so the OS wakes the loop at
+    /// the requested time without busy-spinning. Returning `None` falls
+    /// back to the default `Wait` behaviour. Apps wire this to
+    /// `reactive::next_interval_deadline` from inside their
+    /// frame-driver setup.
+    pub fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
+        &mut self,
+        hook: F,
+    ) {
+        self.deadline_hook = Some(Arc::new(hook));
     }
 
     /// Request that the event loop exit after the current callback.
@@ -146,6 +177,10 @@ impl WinitShell {
 
     pub(crate) fn wake_hook(&self) -> Option<&WakeHook> {
         self.wake_hook.as_ref()
+    }
+
+    pub(crate) fn deadline_hook(&self) -> Option<&DeadlineHook> {
+        self.deadline_hook.as_ref()
     }
 
     pub(crate) fn pending_wake(&self) -> &AtomicBool {

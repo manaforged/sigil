@@ -14,18 +14,19 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
+use actions as _;
+use animation as _;
+use animation_runtime as _;
+use app as _;
+use arboard as _;
 use criterion as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use sigil_style as _;
+use events as _;
+use hal as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use style as _;
+use tasks as _;
 
 use sigil::prelude::*;
 

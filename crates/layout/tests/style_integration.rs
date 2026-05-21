@@ -7,14 +7,14 @@ mod stub;
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
+use kernel::TextContent;
+use kernel::prelude::*;
+use layout::prelude::*;
 use rayon as _;
-use sigil_kernel::TextContent;
-use sigil_kernel::prelude::*;
-use sigil_layout::prelude::*;
-use sigil_reactive as _;
-use sigil_style::NodeStyleExt;
-use sigil_style::{TextLineHeight, TextStyle};
+use reactive as _;
 use smallvec as _;
+use style::NodeStyleExt;
+use style::{TextLineHeight, TextStyle};
 
 use stub::stub_engine;
 
@@ -104,7 +104,7 @@ fn first_child(cx: &Cx, root: NodeId) -> NodeId {
     cx.get(root).unwrap().children().first().copied().unwrap()
 }
 
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
+fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")

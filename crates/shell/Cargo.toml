@@ -1,5 +1,5 @@
 [package]
-name = "sigil-shell"
+name = "shell"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,7 @@ description = "winit 0.30+ ApplicationHandler-backed Shell adapter."
 doctest = false
 
 [dependencies]
-sigil-hal = { workspace = true }
+hal = { workspace = true }
 smol_str = { workspace = true }
 # NOTE: `sigil-async` is intentionally not a direct dependency in Phase 2.
 # The wake bridge is exposed as an `Arc<dyn Fn() + Send + Sync>` so

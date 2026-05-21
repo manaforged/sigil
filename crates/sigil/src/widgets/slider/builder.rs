@@ -1,14 +1,14 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::{NodeEventsExt, PointerEvent};
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::Signal;
-use sigil_style::{
-    ClassSource, NodeStyleExt, SizeToken, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleVariant, Theme, TransitionId,
+use animation_runtime::presets;
+use events::prelude::{NodeEventsExt, PointerEvent};
+use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use reactive::Signal;
+use style::{
+    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
+    Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -27,11 +27,11 @@ static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRA
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
 
-const HORIZONTAL_WIDTH: f32 = SizeToken::SliderTrackLong.px();
-const HORIZONTAL_HEIGHT: f32 = SizeToken::SliderTrackShort.px();
-const VERTICAL_WIDTH: f32 = SizeToken::SliderTrackShort.px();
-const VERTICAL_HEIGHT: f32 = SizeToken::SliderTrackLong.px();
-const THUMB_SIZE: f32 = SizeToken::SliderThumb.px();
+const HORIZONTAL_WIDTH: f32 = 180.0;
+const HORIZONTAL_HEIGHT: f32 = 28.0;
+const VERTICAL_WIDTH: f32 = 28.0;
+const VERTICAL_HEIGHT: f32 = 180.0;
+const THUMB_SIZE: f32 = 22.0;
 
 static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 static TRACK_DISABLED: &[StyleAtom] = &[
@@ -148,11 +148,9 @@ impl SliderBuilder {
 
     /// Add struct-built style atoms after the built-in slider defaults.
     ///
-    /// Renamed from `.style(Style)` to `.style_atoms(Style)` per W4.99.B2
-    /// to reserve the `style()` name for the [`crate::prelude::StyleAccess`]
-    /// trait method.
+    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
     #[must_use]
-    pub fn style_atoms(mut self, style: Style) -> Self {
+    pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
@@ -186,7 +184,7 @@ impl SliderBuilder {
 }
 
 impl StyleAccess for SliderBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -207,7 +205,7 @@ impl SliderBuilder {
 }
 
 impl IntoNode for SliderBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

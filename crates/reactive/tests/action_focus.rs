@@ -28,8 +28,8 @@ use tokio as _;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_actions::DeriveAction;
-use sigil_reactive::{Entity, Owner, Runtime};
+use actions::DeriveAction;
+use reactive::{Entity, Owner, Runtime};
 
 #[derive(Clone, DeriveAction)]
 struct Ping;

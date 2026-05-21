@@ -1,13 +1,13 @@
 //! Menu widget — vertical stack of menu items in a floating panel
 //! whose visibility is bound to a reactive `open` signal.
 
-use sigil_animation_runtime::presets;
-use sigil_events::prelude::NodeEventsExt;
-use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use sigil_reactive::{Signal, signal};
-use sigil_style::{
-    DisplayKind, NodeStyleExt, SizeToken, StateHost, Style, StyleAccess, StyleAtom, TransitionId,
+use animation_runtime::presets;
+use events::prelude::NodeEventsExt;
+use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use reactive::{Signal, signal};
+use style::{
+    DisplayKind, NodeStyleExt, Size, StateHost, Style, StyleAccess, StyleAtom, Theme, TransitionId,
 };
 
 use super::super::shared::BuilderMutator;
@@ -15,15 +15,9 @@ use super::super::shared::BuilderMutator;
 const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 
 /// Menu panel width in logical pixels.
-const MENU_WIDTH: f32 = SizeToken::MenuWidth.px();
-/// Row height for every item, separator block included.
-const ITEM_HEIGHT: f32 = SizeToken::ControlMd.px();
+const MENU_WIDTH: f32 = 200.0;
 /// Separator stripe thickness in logical pixels.
 const SEPARATOR_HEIGHT: f32 = 1.0;
-/// Inner horizontal padding inside the row.
-const ROW_PADDING_X: f32 = SizeToken::PaddingMd.px();
-/// Gap between row children.
-const ROW_GAP: f32 = SizeToken::GapSm.px();
 /// Submenu indicator dimensions. The indicator is a small `accent`
 /// swatch at the row's trailing edge — the same affordance pattern the
 /// dropdown trigger uses for its down-chevron. A textual `›` glyph was
@@ -130,7 +124,7 @@ pub struct MenuBuilder {
 /// `open` signal gates visibility: when it reads `false`, the panel
 /// paints `Display::None` and contributes no layout box.
 ///
-/// Position via the [`Styled`](sigil_style::Styled) surface (for
+/// Position via the [`Styled`](style::Styled) surface (for
 /// example `.style(Style::new().padding(8))`). The default placement
 /// centres the panel in the golden viewport.
 #[must_use]
@@ -216,7 +210,7 @@ impl MenuBuilder {
 }
 
 impl StyleAccess for MenuBuilder {
-    fn style(&mut self) -> &mut Style {
+    fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
     }
 }
@@ -224,7 +218,7 @@ impl StyleAccess for MenuBuilder {
 impl StateHost for MenuBuilder {}
 
 impl IntoNode for MenuBuilder {
-    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -232,13 +226,15 @@ impl IntoNode for MenuBuilder {
 // ---- structural helpers --------------------------------------------------
 
 fn panel_height(rows: &[Row]) -> f32 {
+    let theme = Theme::default();
+    let item_height = theme.control_height(Size::Default).px_or_zero();
     rows.iter()
         .map(|row| match row {
-            Row::Item(_) => ITEM_HEIGHT,
+            Row::Item(_) => item_height,
             Row::Separator => SEPARATOR_HEIGHT,
         })
         .sum::<f32>()
-        .max(ITEM_HEIGHT)
+        .max(item_height)
 }
 
 fn panel_layout(top: f32, left: f32, height: f32) -> LayoutStyle {
@@ -300,10 +296,14 @@ fn build_item(item: MenuItem) -> NodeBuilder {
 }
 
 fn item_layout() -> LayoutStyle {
+    let theme = Theme::default();
+    let item_height = theme.control_height(Size::Default).px_or_zero();
+    let row_padding_x = theme.padding(Size::Default).px_or_zero();
+    let row_gap = theme.gap(Size::Default).px_or_zero();
     LayoutStyle::flex_row()
-        .fixed_size(MENU_WIDTH, ITEM_HEIGHT)
-        .padding(ROW_PADDING_X)
-        .gap(ROW_GAP)
+        .fixed_size(MENU_WIDTH, item_height)
+        .padding(row_padding_x)
+        .gap(row_gap)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
 }
@@ -316,9 +316,11 @@ fn item_label_width(shortcut: Option<&str>, submenu: bool) -> f32 {
     // (single-line flow) per the rendering caveat — text inside a
     // sibling flex child renders, text wrapped in an extra container
     // does not.
-    const INTERIOR: f32 = MENU_WIDTH - 2.0 * ROW_PADDING_X;
+    let theme = Theme::default();
+    let row_padding_x = theme.padding(Size::Default).px_or_zero();
+    let interior = 2.0_f32.mul_add(-row_padding_x, MENU_WIDTH);
     let reserved = if shortcut.is_some() { 64.0 } else { 0.0 } + if submenu { 20.0 } else { 0.0 };
-    (INTERIOR - reserved).max(60.0)
+    (interior - reserved).max(60.0)
 }
 
 const fn row_atoms(hover: bool, disabled: bool) -> &'static [StyleAtom] {

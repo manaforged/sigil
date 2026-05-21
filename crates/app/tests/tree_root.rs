@@ -7,22 +7,22 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use sigil_async as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_layout as _;
-use sigil_renderer as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
+use events as _;
+use hal as _;
+use layout as _;
+use renderer as _;
+use shell as _;
+use style as _;
+use tasks as _;
+use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use sigil_kernel::prelude::*;
-use sigil_reactive::Runtime;
+use kernel::prelude::*;
+use reactive::Runtime;
 
-use sigil_app::TreeRoot;
+use app::TreeRoot;
 
 #[test]
 fn fn_root_returns_installed_node_id() {

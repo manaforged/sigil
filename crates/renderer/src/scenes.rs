@@ -5,9 +5,9 @@
 
 use std::sync::OnceLock;
 
-use sigil_hal::{Color, Rect};
-use sigil_icons::{IconBaker, builtin};
-use sigil_style::Rgba8;
+use hal::{Color, Rect};
+use icons::{IconBaker, builtin};
+use style::Rgba8;
 
 mod backdrop_blur;
 mod effects;
@@ -32,7 +32,7 @@ use crate::{
 /// First reserved atlas id for the five built-in icon showcase atlases.
 pub const BUILTIN_ICON_ATLAS_BASE_ID: u32 = BUILTIN_SPRITE_ATLAS_ID - 5;
 
-static BUILTIN_ICONS: OnceLock<Vec<sigil_icons::BakedIcon>> = OnceLock::new();
+static BUILTIN_ICONS: OnceLock<Vec<icons::BakedIcon>> = OnceLock::new();
 
 /// Build the R1 linear-gradient showcase scene.
 #[must_use]
@@ -285,14 +285,14 @@ const ICON_ATLAS_IDS: [u32; 5] = [
     BUILTIN_ICON_ATLAS_BASE_ID + 4,
 ];
 
-fn bake_builtin_icons() -> Vec<sigil_icons::BakedIcon> {
+fn bake_builtin_icons() -> Vec<icons::BakedIcon> {
     let baker = IconBaker::new();
     builtin::ALL
         .iter()
         .map(|(_, svg)| {
             baker
                 .bake(svg, 128, 128)
-                .unwrap_or_else(|_| sigil_icons::BakedIcon {
+                .unwrap_or_else(|_| icons::BakedIcon {
                     width: 128,
                     height: 128,
                     alpha: vec![0; 128 * 128],

@@ -1,7 +1,7 @@
 //! Event routing, hit-testing, focus, and builder ergonomics for Sigil.
 //!
 //! `sigil-events` sits above shell delivery and below widgets. It
-//! receives translated [`sigil_hal::ShellEvent`] values, finds the
+//! receives translated [`hal::ShellEvent`] values, finds the
 //! target node from layout geometry, runs capture/target/bubble
 //! handlers, and maintains keyboard focus.
 
@@ -15,9 +15,9 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 #[cfg(test)]
-use sigil_reactive as _;
+use reactive as _;
 #[cfg(test)]
-use sigil_style as _;
+use style as _;
 mod builder_ext;
 mod focus;
 mod handlers;

@@ -1,8 +1,8 @@
 //! Internal helpers for building [`super::RectInstance`] / [`super::ShadowInstance`]
 //! payloads from public scene-command types.
 
-use sigil_hal::Rect;
-use sigil_style::Rgba8;
+use hal::Rect;
+use style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_command::{Stroke, StrokeAlign, StrokeStyle};
@@ -58,7 +58,7 @@ pub(super) fn inflate(rect: Rect, outset: f32) -> Rect {
         return rect;
     }
     Rect {
-        origin: sigil_hal::Point::new(rect.origin.x - outset, rect.origin.y - outset),
+        origin: hal::Point::new(rect.origin.x - outset, rect.origin.y - outset),
         width: outset.mul_add(2.0, rect.width),
         height: outset.mul_add(2.0, rect.height),
     }

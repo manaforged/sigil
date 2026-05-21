@@ -10,7 +10,7 @@
 use core::any::Any;
 use core::panic::Location;
 
-use sigil_actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
+use actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
 use smallvec::SmallVec;
 
 use crate::cx::Context;
