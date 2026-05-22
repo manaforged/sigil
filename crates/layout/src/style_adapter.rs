@@ -70,7 +70,10 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::LineHeight(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
-        | StyleAtom::UnknownThemeRef(_) => {}
+        | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::BgToneStep(_)
+        | StyleAtom::FgToneStep(_)
+        | StyleAtom::FgOnSolid => {}
     }
 }
 

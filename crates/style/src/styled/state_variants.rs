@@ -15,6 +15,28 @@ use super::{StateHost, StateStyleBuilder, StyleAccess};
 /// [`StateStyleBuilder`] deliberately does NOT implement [`StateHost`],
 /// so nesting these closures fails to compile.
 pub trait StateVariants: StyleAccess + StateHost {
+    /// Configure the rest-slot overlay via a closure.
+    ///
+    /// Rest atoms apply when no other state is active. The closure
+    /// receives a [`StateStyleBuilder`] that responds to the same
+    /// fluent vocabulary as the other state methods. Calling `.rest`
+    /// twice **overwrites** the slot (last-call-wins per DR-049
+    /// Decision 8).
+    ///
+    /// DS2.5 — this slot lets you override the widget's baked
+    /// rest-state atoms without forking the widget. The user atoms
+    /// resolve last, so per-property last-wins gives them priority
+    /// over the widget's static rest atoms.
+    #[must_use]
+    fn rest<F>(mut self, configure: F) -> Self
+    where
+        F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
+    {
+        let built = configure(StateStyleBuilder::new());
+        self.style_mut().set_rest(built.into_atoms());
+        self
+    }
+
     /// Configure the hover-slot overlay via a closure.
     ///
     /// The closure receives a [`StateStyleBuilder`] that responds to the

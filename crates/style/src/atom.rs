@@ -207,6 +207,26 @@ pub enum StyleAtom {
     TextColor(ColorAtom),
     /// Runtime theme-token text colour.
     TextThemeRef(&'static str),
+    /// Background colour resolved as the current tone's scale at the
+    /// given step (1..=12).
+    ///
+    /// The resolving engine consults the node's
+    /// [`ToneContext`](crate::ToneContext) extension to pick which
+    /// scale to read; absent context defaults to `Tone::Neutral`.
+    /// This is the tone-parameterized counterpart to
+    /// [`BackgroundThemeRef`](Self::BackgroundThemeRef) — one atom
+    /// covers every tone, instead of a hardcoded `"error-9"` string.
+    BgToneStep(u8),
+    /// Text colour resolved as the current tone's scale at the given
+    /// step. See [`BgToneStep`](Self::BgToneStep) for resolution
+    /// semantics.
+    FgToneStep(u8),
+    /// Text colour resolved as the current tone's scale's WCAG-passing
+    /// `on_solid` contrast color — the readable text for painting on
+    /// `step(9)`. Use on solid-variant widget labels where
+    /// `FgToneStep(12)` would fail contrast (most prominently:
+    /// warm/yellow tones in dark mode).
+    FgOnSolid,
     /// Border radius.
     BorderRadius(Px),
     /// Opacity encoded as `value * 10000`.

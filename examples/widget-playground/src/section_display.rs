@@ -30,13 +30,19 @@ fn text_row() -> NodeBuilder {
 }
 
 fn chips_row() -> NodeBuilder {
-    let chips = row(vec![
-        chip("NEUTRAL", ChipTone::Neutral),
-        chip("INFO", ChipTone::Info),
-        chip("SUCCESS", ChipTone::Success),
-        chip("WARN", ChipTone::Warn),
-        chip("ERROR", ChipTone::Error),
-    ]);
+    // Natural-pack row of small chips — NOT the equal-cells `row()`
+    // helper, which would stretch each chip to fill 1/5 of the parent.
+    let chips = container()
+        .layout(
+            LayoutStyle::flex_row()
+                .gap(8.0)
+                .align_items(AlignItems::Center),
+        )
+        .child(chip("NEUTRAL", ChipTone::Neutral))
+        .child(chip("INFO", ChipTone::Info))
+        .child(chip("SUCCESS", ChipTone::Success))
+        .child(chip("WARN", ChipTone::Warn))
+        .child(chip("ERROR", ChipTone::Error));
     patterns::field("chip (all 5 tones)", chips)
 }
 

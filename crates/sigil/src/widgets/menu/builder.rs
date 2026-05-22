@@ -27,11 +27,16 @@ const SEPARATOR_HEIGHT: f32 = 1.0;
 /// "more here" cue.
 const SUBMENU_INDICATOR_SIZE: f32 = 8.0;
 /// Logical viewport the golden harness renders at — used to centre the
-/// menu inside the canvas via absolute insets. Application code can
-/// shift the menu via the style accumulator.
+/// menu inside the canvas via absolute insets when no anchor is set.
+/// Application code that needs trigger-anchored placement should call
+/// [`MenuBuilder::anchor`] with the cursor / trigger position instead.
 const GOLDEN_VIEWPORT_W: f32 = 240.0;
 /// See [`GOLDEN_VIEWPORT_W`].
 const GOLDEN_VIEWPORT_H: f32 = 280.0;
+/// Wrapper size for anchored menus — matches modal's backdrop sentinel
+/// so absolute insets are interpreted relative to (0, 0) of the
+/// viewport regardless of the surrounding layout.
+const ANCHORED_WRAPPER_SIZE: f32 = 4_096.0;
 // Disabled rows paint `surface-pressed-strong` (the same token the
 // dropdown uses for its disabled trigger). The background-only approach
 // gives ~63 sRGB delta against the resting `surface` slot, well clear
@@ -114,6 +119,7 @@ pub struct MenuBuilder {
     open: Signal<bool>,
     rows: Vec<Row>,
     label: Option<String>,
+    anchor: Option<(f32, f32)>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -140,6 +146,7 @@ impl MenuBuilder {
             open,
             rows: Vec::new(),
             label: None,
+            anchor: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
@@ -149,6 +156,24 @@ impl MenuBuilder {
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
+        self
+    }
+
+    /// Anchor the menu panel at viewport coordinates `(x, y)`.
+    ///
+    /// When set, the panel paints with its top-left at the given
+    /// position instead of being centred in the golden viewport.
+    /// Use this for trigger-positioned popovers (right-click context
+    /// menus, button-anchored dropdowns, etc.).
+    ///
+    /// V1 limitation — the anchor is captured at build time. To
+    /// reposition between opens, rebuild the menu (rebuild the
+    /// containing component, or conditionally insert the menu into
+    /// the tree). Reactive re-anchoring waits on the kernel's
+    /// reactive-layout primitive landing.
+    #[must_use]
+    pub const fn anchor(mut self, x: f32, y: f32) -> Self {
+        self.anchor = Some((x, y));
         self
     }
 
@@ -169,8 +194,17 @@ impl MenuBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let open = self.open;
         let panel_h = panel_height(&self.rows);
-        let left = (GOLDEN_VIEWPORT_W - MENU_WIDTH).max(0.0) / 2.0;
-        let top = (GOLDEN_VIEWPORT_H - panel_h).max(0.0) / 2.0;
+        let (top, left, wrapper_size) = if let Some((x, y)) = self.anchor {
+            (y, x, ANCHORED_WRAPPER_SIZE)
+        } else {
+            let centered_left = (GOLDEN_VIEWPORT_W - MENU_WIDTH).max(0.0) / 2.0;
+            let centered_top = (GOLDEN_VIEWPORT_H - panel_h).max(0.0) / 2.0;
+            (
+                centered_top,
+                centered_left,
+                GOLDEN_VIEWPORT_W.max(GOLDEN_VIEWPORT_H),
+            )
+        };
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
 
         let mut panel = container()
@@ -195,11 +229,20 @@ impl MenuBuilder {
         // Wrap the absolute-positioned panel in a block-layout outer
         // root that anchors the absolute insets to the viewport. Without
         // a non-absolute parent, the kernel ignores `inset_top_px` /
-        // `inset_left_px` and the panel snaps to (0, 0). Modal uses the
-        // same wrapping pattern with a 4096-square backdrop sentinel —
-        // here the wrapper is the viewport rect itself.
+        // `inset_left_px` and the panel snaps to (0, 0). Anchored menus
+        // use a 4096-square sentinel (matches modal's backdrop) so
+        // insets resolve to viewport coordinates; the unanchored
+        // fallback keeps the original golden-viewport box for the
+        // existing golden suite.
+        //
+        // The wrapper itself flips `Display::None` in lockstep with the
+        // `open` signal — without that gate the 4096-square anchored
+        // wrapper expanded surrounding layout even when the menu was
+        // closed (caught by the cross-vendor adversarial-review on
+        // 2026-05-21).
         let mut root = container()
-            .layout(LayoutStyle::block().fixed_size(GOLDEN_VIEWPORT_W, GOLDEN_VIEWPORT_H))
+            .layout(LayoutStyle::block().fixed_size(wrapper_size, wrapper_size))
+            .style_reactive(move || open_display(open))
             .child(panel);
 
         for mutate in self.mutators {
@@ -360,5 +403,30 @@ fn open_display(open: Signal<bool>) -> &'static [StyleAtom] {
         &[]
     } else {
         &[StyleAtom::Display(DisplayKind::None)]
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use reactive::{Runtime, signal};
+
+    #[test]
+    fn anchor_stores_position_for_into_node_builder() {
+        Runtime::scope("menu-anchor-stored", || {
+            let m = menu(signal(false))
+                .item(MenuItem::new("Copy"))
+                .anchor(120.0, 80.0);
+            assert_eq!(m.anchor, Some((120.0, 80.0)));
+        });
+    }
+
+    #[test]
+    fn unanchored_menu_keeps_none() {
+        Runtime::scope("menu-anchor-default-none", || {
+            let m = menu(signal(false)).item(MenuItem::new("Copy"));
+            assert!(m.anchor.is_none());
+        });
     }
 }

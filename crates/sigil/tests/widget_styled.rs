@@ -184,11 +184,11 @@ fn panel_accepts_styled_surface() {
         // method-resolution collision (DR-049 §11 — inherent wins on
         // a concrete receiver). End-user code mixing inherent +
         // trait stays unambiguous because the surface words differ.
-        let mut b = panel()
-            .title("Settings")
-            .bg("accent")
-            .px(20)
-            .hover(|s| s.bg("accent-hover"));
+        // DS2.5 — `impl StateHost for PanelBuilder` was removed because
+        // panel doesn't expose a stateful slot for user `.hover()` /
+        // `.pressed()` atoms to merge into. The trait-level base
+        // accumulator (bg / px) still works.
+        let mut b = panel().title("Settings").bg("accent").px(20);
         let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
@@ -199,13 +199,6 @@ fn panel_accepts_styled_surface() {
             atoms.contains(&StyleAtom::PaddingX(style::Px(20))),
             "panel px(20) must land in the trait accumulator, got {atoms:?}",
         );
-        let hover = style.hover_atoms().to_vec();
-        assert_eq!(
-            hover.len(),
-            1,
-            "panel hover closure must record exactly one atom, got {hover:?}",
-        );
-        assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("accent-hover"));
     });
 }
 

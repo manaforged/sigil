@@ -7,8 +7,12 @@ use kernel::{Node, NodeBuilder, TextBuilder};
 use reactive::Signal;
 use smallvec::SmallVec;
 
+use std::cell::Cell;
+use std::rc::Rc;
+
 use crate::{
-    FocusRing, Style, StyleAtom, StyleBinding, StyleReactiveEffect, Theme, merge_classes,
+    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
+    StyleReactiveEffect, StyleState, StyleVariant, Theme, Tone, ToneContext, merge_classes,
     parse_class_string, parser::ParseError,
 };
 
@@ -62,6 +66,18 @@ pub trait NodeStyleExt {
     #[must_use]
     fn theme(self, theme: Theme) -> Self;
 
+    /// Attach a per-node [`ToneContext`] — selects which scale on the
+    /// theme the [`StyleAtom::BgToneStep`] /
+    /// [`StyleAtom::FgToneStep`] / [`StyleAtom::FgOnSolid`] /
+    /// [`StyleAtom::BorderToneStep`] atoms on this node resolve
+    /// through.
+    ///
+    /// DS2.5 — collapses the
+    /// `.mutate(|node| { let _ = node.attach(ToneContext::new(tone)); })`
+    /// pattern that the early DS2.5 widgets had to write by hand.
+    #[must_use]
+    fn tone(self, tone: Tone) -> Self;
+
     /// Attach focus-ring semantics to this node.
     #[must_use]
     fn focus_ring(self, ring: FocusRing) -> Self;
@@ -71,6 +87,54 @@ pub trait NodeStyleExt {
     fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static;
+
+    /// Attach a per-instance user state overlay plus the slot cell the
+    /// widget's reactive style effect uses to publish the current
+    /// interaction state.
+    ///
+    /// Most widget authors should reach for
+    /// [`stateful_style`](Self::stateful_style) instead — this method
+    /// is the low-level escape hatch when a widget needs to construct
+    /// the slot cell itself.
+    ///
+    /// DS2 Phase 2 — the overlay's atoms apply AFTER the widget's
+    /// reactive slot atoms, so last-atom-wins resolution gives user
+    /// `.hover()` / `.focus()` / `.pressed()` / `.disabled()` atoms
+    /// priority per property.
+    #[must_use]
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self;
+
+    /// Install a reactive style variant plus per-instance user overlay
+    /// in one call. Handles the slot-cell wiring internally so widget
+    /// authors don't see `ReactiveStateSlot`.
+    ///
+    /// `state_fn` is invoked inside the reactive style effect every
+    /// time a tracked signal flips; it must return the current
+    /// [`StyleState`]. The helper writes the resulting slot into the
+    /// cell so the resolver can pick the matching overlay slice, then
+    /// returns the variant's atoms for the same state through the
+    /// reactive channel.
+    ///
+    /// DS2.5 — collapses the four-step ritual (`Rc::new(Cell::...)`,
+    /// `Rc::clone`, `style_reactive` + cell write, `state_overlay`)
+    /// into one call. Widget authors that forget to wire the cell
+    /// today silently lose hover / focus / pressed overlays; this
+    /// helper makes that impossible.
+    #[must_use]
+    fn stateful_style<F>(self, variant: StyleVariant, overlay: StyleOverlay, state_fn: F) -> Self
+    where
+        Self: Sized,
+        F: Fn() -> StyleState + 'static,
+    {
+        let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
+        let cell_for_closure = Rc::clone(&slot_cell);
+        self.style_reactive(move || {
+            let state = state_fn();
+            cell_for_closure.set(state.slot());
+            variant.state(state)
+        })
+        .state_overlay(overlay, slot_cell)
+    }
 
     /// Conditionally attach a utility-class literal when `signal` is `true`.
     ///
@@ -133,6 +197,14 @@ impl NodeStyleExt for NodeBuilder {
     {
         self.mutate(move |node| install_reactive(node, f))
     }
+
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
+        self.mutate(move |node| install_state_overlay(node, overlay, slot))
+    }
+
+    fn tone(self, tone: Tone) -> Self {
+        self.mutate(move |node| install_tone(node, tone))
+    }
 }
 
 impl NodeStyleExt for TextBuilder {
@@ -159,6 +231,33 @@ impl NodeStyleExt for TextBuilder {
     {
         self.mutate(move |node| install_reactive(node, f))
     }
+
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
+        self.mutate(move |node| install_state_overlay(node, overlay, slot))
+    }
+
+    fn tone(self, tone: Tone) -> Self {
+        self.mutate(move |node| install_tone(node, tone))
+    }
+}
+
+fn install_tone(node: &mut Node, tone: Tone) {
+    debug_assert_not_fragment(node, "tone");
+    let _previous = node.attach(ToneContext::new(tone));
+    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+        binding.invalidate_theme();
+    }
+}
+
+fn install_state_overlay(node: &mut Node, overlay: StyleOverlay, slot: ReactiveStateSlot) {
+    debug_assert_not_fragment(node, "state_overlay");
+    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+        binding.set_state_overlay(overlay, slot);
+        return;
+    }
+    let mut binding = StyleBinding::default();
+    binding.set_state_overlay(overlay, slot);
+    let _previous = node.attach(binding);
 }
 
 fn install_class(node: &mut Node, source: ClassSource) {

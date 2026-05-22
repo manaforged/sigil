@@ -62,6 +62,7 @@ impl<'a> FlexSolver<'a> {
             solver: self,
             axes,
             cb,
+            suppress_stretch: false,
         };
         layout_root(&ctx, subtree, Position2::origin())
     }
@@ -92,6 +93,7 @@ impl<'a> FlexSolver<'a> {
             solver: self,
             axes,
             cb,
+            suppress_stretch: false,
         };
         layout_root(&ctx, subtree, origin)
     }

@@ -84,6 +84,7 @@ fn root() -> NodeBuilder {
         .height(VIEWPORT_HEIGHT);
     container()
         .layout(LayoutStyle::flex_column().fill())
+        .class("bg-surface")
         .child(viewport)
 }
 
@@ -108,11 +109,16 @@ pub(crate) fn category(title: &'static str, body: NodeBuilder) -> NodeBuilder {
 pub(crate) fn row(children: Vec<NodeBuilder>) -> NodeBuilder {
     let mut c = container().layout(
         LayoutStyle::flex_row()
+            .fill_width()
             .gap(12.0)
             .align_items(AlignItems::Start),
     );
     for child in children {
-        c = c.child(child);
+        c = c.child(
+            container()
+                .layout(LayoutStyle::flex_column().grow(1.0).width(0.0))
+                .child(child),
+        );
     }
     c
 }
@@ -129,24 +135,36 @@ pub(crate) fn wrap(node: impl IntoNode + 'static) -> NodeBuilder {
     container().child(node)
 }
 
-#[test]
-fn render_playground_to_png() {
+fn save_render(filename: &str, build: impl FnOnce(&mut Cx) -> kernel::NodeId) {
     let img = render_widget_to_png_with(
-        |cx| cx.add(root()),
+        build,
         InteractionMode::Default,
         [1100, 800],
         (1.0, 1.0),
         Box::new(DefaultTextMeasure::new()),
     );
     let Some(img) = img else {
-        println!("no GPU adapter — skipping playground render");
+        println!("no GPU adapter — skipping {filename}");
         return;
     };
     let out_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("output");
     fs::create_dir_all(&out_dir).expect("create output dir");
-    let path = out_dir.join("playground.png");
-    img.save(&path).expect("save playground png");
-    println!("playground render → {}", path.display());
+    let path = out_dir.join(filename);
+    img.save(&path).expect("save png");
+    println!("render → {}", path.display());
+}
+
+#[test]
+fn render_playground_to_png() {
+    save_render("playground.png", |cx| cx.add(root()));
+}
+
+#[test]
+fn render_playground_dark_to_png() {
+    use style::Theme;
+    save_render("playground_dark.png", |cx| {
+        cx.add(root().theme(Theme::dark()))
+    });
 }

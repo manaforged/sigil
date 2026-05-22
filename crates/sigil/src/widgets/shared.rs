@@ -65,7 +65,9 @@ pub(super) fn activate_key_reactive(
     }
 }
 
-pub(super) fn noop_activate() -> Activate {
+/// A no-op activation callback — the default for interactive widgets
+/// that haven't been wired with `.activate(...)` yet.
+pub(crate) fn noop_activate() -> Activate {
     Rc::new(|| {})
 }
 
@@ -94,7 +96,11 @@ pub(super) fn activate_binary_key(
     }
 }
 
-pub(super) fn binary_style_state(
+/// Fold the widget's interaction state with the reactive `disabled`
+/// signal into a [`StyleState`]. Peeks the signal — use
+/// [`reactive_style_state`] when the enclosing reactive closure
+/// should re-run on `disabled` flips.
+pub(crate) fn binary_style_state(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
 ) -> StyleState {
@@ -103,7 +109,22 @@ pub(super) fn binary_style_state(
     state
 }
 
-pub(super) fn disabled_now(disabled: Option<Signal<bool>>) -> bool {
+/// Same as [`binary_style_state`] but also subscribes to `disabled` so
+/// the enclosing reactive effect re-runs on signal flips.
+///
+/// Use this inside a `stateful_style` closure when the widget has a
+/// reactive `disabled` signal; the standalone `binary_style_state`
+/// only peeks and won't drive re-resolution on its own.
+pub(crate) fn reactive_style_state(
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+) -> StyleState {
+    let _ = disabled.map(Signal::get);
+    binary_style_state(interaction, disabled)
+}
+
+/// Peek a reactive disabled signal — `false` when absent.
+pub(crate) fn disabled_now(disabled: Option<Signal<bool>>) -> bool {
     disabled.is_some_and(Signal::peek)
 }
 

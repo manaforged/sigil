@@ -2,33 +2,42 @@ use std::rc::Rc;
 
 use reactive::Signal;
 use sigil::widget_dev::*;
+use style::{SOFT_VARIANT, SOLID_VARIANT, Tone};
 
 use crate::interaction::InteractionState;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
-    Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, binary_style_state,
-    disabled_now, noop_activate,
+    Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, disabled_now,
+    noop_activate, reactive_style_state,
 };
 use super::transition_seam::install_transition_animators;
 
 const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 const BUTTON_COMPONENT_ID: u64 = 0xB117_7000;
 
-/// Visual tone for [`button`].
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ButtonTone {
-    /// Neutral surface button.
-    #[default]
-    Neutral,
-    /// Accent-coloured primary action.
-    Primary,
-}
+/// Static transition atom shared across all button variants — keeps
+/// the SMOOTH spring on every state change so the visual is the same
+/// whether the button is soft+neutral or solid+error.
+static BUTTON_TRANSITION_ATOMS: &[StyleAtom] = &[StyleAtom::Transition(BUTTON_TRANSITION)];
+
+/// Label text-color atoms per variant. The label is a separate text
+/// node so it must repeat the variant's text-color choice. `FgOnSolid`
+/// reads each scale's WCAG-AA contrast color (works for every tone,
+/// including warm/yellow); `FgToneStep(11)` is the step Radix uses
+/// for muted text on soft-tinted backgrounds.
+static LABEL_TEXT_SOLID: &[StyleAtom] = &[StyleAtom::FgOnSolid];
+static LABEL_TEXT_SOFT: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
 /// Builder returned by [`button`].
 pub struct ButtonBuilder {
     label: String,
-    tone: ButtonTone,
+    tone: Tone,
+    variant: StyleVariant,
+    /// Atoms applied to the label text node. Tracked alongside
+    /// `variant` because the label is a separate text node — the
+    /// variant's text-color atom sits on the container, not the label.
+    label_atoms: &'static [StyleAtom],
     width: f32,
     height: f32,
     enabled: bool,
@@ -39,27 +48,6 @@ pub struct ButtonBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-static PRIMARY_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
-    StyleAtom::Transition(BUTTON_TRANSITION),
-];
-static PRIMARY_REST: &[StyleAtom] = &[];
-static PRIMARY_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static PRIMARY_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static PRIMARY_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static NEUTRAL_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::Transition(BUTTON_TRANSITION),
-];
-static NEUTRAL_REST: &[StyleAtom] = &[];
-static NEUTRAL_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static NEUTRAL_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static NEUTRAL_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-static DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(5_000),
-];
-
 /// Create a button widget.
 #[must_use]
 pub fn button(label: impl Into<String>) -> ButtonBuilder {
@@ -68,12 +56,20 @@ pub fn button(label: impl Into<String>) -> ButtonBuilder {
 
 impl ButtonBuilder {
     /// Create a button builder.
+    ///
+    /// Default look: soft variant + neutral tone (tinted surface
+    /// background, readable on-surface text). Call [`primary`](Self::primary)
+    /// to opt into the saturated accent CTA look, or
+    /// [`tone`](Self::tone) / [`solid`](Self::solid) / [`soft`](Self::soft)
+    /// for fine control.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         let theme = Theme::default();
         Self {
             label: label.into(),
-            tone: ButtonTone::Neutral,
+            tone: Tone::Neutral,
+            variant: SOFT_VARIANT,
+            label_atoms: LABEL_TEXT_SOFT,
             width: theme.control_width(Size::Wide).px_or_zero(),
             height: theme.control_height(Size::Wide).px_or_zero(),
             enabled: true,
@@ -85,17 +81,66 @@ impl ButtonBuilder {
         }
     }
 
-    /// Use the primary accent tone.
+    /// Sugar for [`tone(Tone::Primary)`](Self::tone) +
+    /// [`solid`](Self::solid) — the classic saturated CTA button.
     #[must_use]
     pub const fn primary(mut self) -> Self {
-        self.tone = ButtonTone::Primary;
+        self.tone = Tone::Primary;
+        self.variant = SOLID_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOLID;
         self
     }
 
-    /// Use the neutral surface tone.
+    /// Sugar for [`tone(Tone::Neutral)`](Self::tone) +
+    /// [`soft`](Self::soft) — the tinted surface default.
     #[must_use]
     pub const fn neutral(mut self) -> Self {
-        self.tone = ButtonTone::Neutral;
+        self.tone = Tone::Neutral;
+        self.variant = SOFT_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOFT;
+        self
+    }
+
+    /// Sugar for [`tone(Tone::Error)`](Self::tone) +
+    /// [`solid`](Self::solid) — the canonical destructive-action
+    /// button (Delete, Discard, Revoke, etc.). Visually identical
+    /// to `.solid().tone(Tone::Error)`; named for intent so call
+    /// sites read as the design system pattern they are.
+    #[must_use]
+    pub const fn destructive(mut self) -> Self {
+        self.tone = Tone::Error;
+        self.variant = SOLID_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOLID;
+        self
+    }
+
+    /// Set the semantic tone (`Neutral`, `Primary`, `Info`, `Success`,
+    /// `Warn`, `Error`). The widget's current variant determines HOW
+    /// the tone paints — solid saturated fill vs. soft tinted fill.
+    ///
+    /// Adding a new tone is a two-line change to the [`Tone`] enum +
+    /// [`Theme`](style::Theme) — no widget code changes.
+    #[must_use]
+    pub const fn tone(mut self, tone: Tone) -> Self {
+        self.tone = tone;
+        self
+    }
+
+    /// Use the solid variant — saturated tone fill (step 9 bg, step 12
+    /// text). The classic primary-button look across every tone.
+    #[must_use]
+    pub const fn solid(mut self) -> Self {
+        self.variant = SOLID_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOLID;
+        self
+    }
+
+    /// Use the soft variant — tinted tone background (step 3 bg,
+    /// step 11 text). The secondary-action / chip-like look.
+    #[must_use]
+    pub const fn soft(mut self) -> Self {
+        self.variant = SOFT_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOFT;
         self
     }
 
@@ -183,33 +228,39 @@ impl ButtonBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
-        // Constructor enabled = static `enabled` AND the reactive
-        // signal's initial value. Subsequent flips of the signal are
-        // routed through `binary_style_state` (visual) and the
-        // activate-guard wrappers (gesture).
+    fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = self.enabled && !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
-        let mut node = self.base_node(interaction, Rc::clone(&activate));
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — they get merged into the widget's
+        // own StyleVariant so `.hover(|s| s.bg("error-9"))` etc.
+        // actually paints (DS2 Phase 2 wiring).
+        let user_overlay = self.style_accumulator.take_state_overlay();
+        let mut node = self.base_node(interaction, Rc::clone(&activate), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
-        // Styled accumulator is installed AFTER the explicit mutators
-        // so explicit `.class(...)` / `.style(Style)` calls land first
-        // and the trait surface adds on top. Atoms are merged through
-        // the existing `NodeStyleExt::style` path (a class-source push)
-        // — same install seam as `container().styled()...`.
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
         node.layout(layout_overrides.apply(button_layout(self.width, self.height)))
     }
 
-    fn base_node(&self, interaction: InteractionState, activate: Activate) -> NodeBuilder {
-        let variant = button_variant(self.tone);
-        let state_style = button_state_style(self.tone);
+    fn base_node(
+        &self,
+        interaction: InteractionState,
+        activate: Activate,
+        user_overlay: style::StyleOverlay,
+    ) -> NodeBuilder {
+        // DS2.5 — `.stateful_style(...)` handles the slot-cell wiring
+        // internally; `ToneContext` selects which scale the variant's
+        // tone-step atoms resolve through. Adding a new tone is a
+        // two-line change in `style` (enum + scale field) — zero
+        // widget code touches.
+        let variant = self.variant;
+        let state_style = variant.states();
         let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
         let key_activate = activate;
@@ -219,11 +270,10 @@ impl ButtonBuilder {
             .layout(button_layout(self.width, self.height))
             .class("rounded-md")
             .class(variant.base())
-            .style_reactive(move || {
-                // Subscribe to the reactive disabled signal so flips
-                // re-run this effect; `binary_style_state` only peeks.
-                let _ = disabled.map(Signal::get);
-                variant.state(binary_style_state(interaction, disabled))
+            .class(BUTTON_TRANSITION_ATOMS)
+            .tone(self.tone)
+            .stateful_style(variant, user_overlay, move || {
+                reactive_style_state(interaction, disabled)
             })
             .pointer_up(move |event| {
                 activate_pointer_reactive(event, interaction, disabled, &pointer_activate);
@@ -246,9 +296,13 @@ impl ButtonBuilder {
         let theme = Theme::default();
         let label_pad_x = theme.padding(Size::Wide).px_or_zero();
         let width = 2.0_f32.mul_add(-label_pad_x, self.width).max(1.0);
+        // Label paints with the same tone as the button container,
+        // using the variant's preferred text atoms (FgOnSolid for
+        // solid, FgToneStep(11) for soft).
         text(self.label.clone())
             .layout(LayoutStyle::block().width(width))
-            .class(button_text_class(self.tone))
+            .tone(self.tone)
+            .class(self.label_atoms)
     }
 }
 
@@ -277,37 +331,4 @@ fn button_layout(width: f32, height: f32) -> LayoutStyle {
         .fixed_size(width, height)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
-}
-
-const fn button_variant(tone: ButtonTone) -> StyleVariant {
-    match tone {
-        ButtonTone::Primary => StyleVariant::new(PRIMARY_BASE, button_state_style(tone)),
-        ButtonTone::Neutral => StyleVariant::new(NEUTRAL_BASE, button_state_style(tone)),
-    }
-}
-
-const fn button_state_style(tone: ButtonTone) -> StateStyle {
-    match tone {
-        ButtonTone::Primary => StateStyle::new(
-            PRIMARY_REST,
-            PRIMARY_FOCUS,
-            PRIMARY_HOVER,
-            PRIMARY_DOWN,
-            DISABLED,
-        ),
-        ButtonTone::Neutral => StateStyle::new(
-            NEUTRAL_REST,
-            NEUTRAL_FOCUS,
-            NEUTRAL_HOVER,
-            NEUTRAL_DOWN,
-            DISABLED,
-        ),
-    }
-}
-
-const fn button_text_class(tone: ButtonTone) -> &'static str {
-    match tone {
-        ButtonTone::Primary => "text-on-accent",
-        ButtonTone::Neutral => "text-on-surface",
-    }
 }

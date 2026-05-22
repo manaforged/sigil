@@ -102,12 +102,17 @@ fn enter_key() -> ShellEvent {
 
 #[test]
 fn button_rest_emits_surface_color() {
+    // DS2.5 — default button is the SOFT variant on the gray scale.
+    // Rest state paints `BgToneStep(3)` which resolves to gray step 3
+    // (gray.step(3)), the Radix "interactive subtle bg" slot. Prior
+    // to DS2.5 the rest slot was `theme.surface` (gray.step(2)); this
+    // test was not updated in the same wave and rotted at HEAD.
     sigil::reactive::Runtime::scope("c4-button-rest", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root);
-        let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface));
+        let expected = style::scale::slate_light().step(3);
+        assert!(rect_colors(&cx, root).contains(&expected));
     });
 }
 
@@ -232,7 +237,9 @@ fn slider_rest_emits_track_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface_hover));
+        // Q10 fix: track switched from `surface-hover` to `border` so
+        // the slider stays visible inside a `bg-surface-hover` card.
+        assert!(rect_colors(&cx, root).contains(&theme.border));
     });
 }
 

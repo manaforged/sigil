@@ -15,8 +15,14 @@ const TEXT_FIELD_COMPONENT_ID: u64 = 0x7E47_F000;
 // Animator-only base slice scanned by `install_transition_animators`.
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
-static FIELD_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
-static FIELD_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
+// Border colour for the rest/disabled states. `theme.border` resolves
+// to slate step 7 (#CDCED7) which measures ~1.5:1 against the surface —
+// well below the 3:1 WCAG 1.4.11 floor for non-text UI boundaries
+// (visual review 2026-05-21). `gray-9` (#8B8D98 in slate-light)
+// measures ~3.3:1 and lifts the field edge to a compliant boundary
+// without going so dark it reads as a focused-state border.
+static FIELD_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
+static FIELD_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
 static FIELD_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
 static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
 static FIELD_DOWN: &[StyleAtom] = &[
@@ -24,7 +30,7 @@ static FIELD_DOWN: &[StyleAtom] = &[
     StyleAtom::Opacity(8_800),
 ];
 static FIELD_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("border"),
+    StyleAtom::BackgroundThemeRef("gray-9"),
     StyleAtom::Opacity(5_000),
 ];
 // Invalid-state overlay: a saturated red border paint that overrides
@@ -92,7 +98,7 @@ const fn field_state_style() -> StateStyle {
 
 pub(super) fn field_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .width(180.0)
+        .fill_width()
         .align_items(AlignItems::Center)
         .padding(1.0)
 }
@@ -106,8 +112,16 @@ fn field_inner(displayed: Signal<String>) -> NodeBuilder {
 }
 
 fn field_inner_layout() -> LayoutStyle {
+    // Inner fills whatever the outer (1 px-padded border frame) gives
+    // it. The old fixed `width(178)` produced a "gray right cap" in any
+    // host wider than 180 px — the outer fill_width'd to the host while
+    // the inner stayed pinned at 178, exposing a strip of the outer's
+    // border-coloured background on the right (visual review
+    // 2026-05-21). Adaptive width keeps the 1 px border uniform on all
+    // four sides regardless of the host's chosen width.
     LayoutStyle::flex_row()
-        .width(178.0)
+        .fill_width()
+        .grow(1.0)
         .align_items(AlignItems::Center)
         .padding_x(12.0)
         .padding_y(8.0)
@@ -115,7 +129,7 @@ fn field_inner_layout() -> LayoutStyle {
 
 fn field_text(displayed: Signal<String>) -> TextBuilder {
     text(displayed)
-        .layout(LayoutStyle::block().width(156.0))
+        .layout(LayoutStyle::block().fill_width().grow(1.0))
         .class("text-on-surface")
 }
 

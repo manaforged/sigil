@@ -3,7 +3,7 @@
 use hal::{Point, Rect};
 use kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use layout::LayoutResult;
-use style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle};
+use style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
 use text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
@@ -76,34 +76,37 @@ pub struct SceneText {
 #[must_use]
 pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     let mut scene = SceneBuilder::new();
-    push_subtree(&mut scene, cx, root);
+    push_subtree(&mut scene, cx, root, default_inherited_theme());
     scene.finish()
 }
 
-fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId) {
+fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: &Theme) {
     let Some(node) = cx.get(id) else {
         return;
     };
-    // Honour display:none — skip this node and its entire subtree, matching
-    // CSS semantics where display:none removes the element from the render tree.
     if is_display_none(node) {
         return;
     }
-    // `LayoutResult::rect()` is already in root coordinates — both
-    // `BlockSolver` and `FlexSolver` accumulate every ancestor's
-    // border + padding offsets into the `ComputedBox` they write.
-    // Re-accumulating a parent_origin here would double-count every
-    // ancestor offset and mislocate the node by the root-padding-and-
-    // up sum. See `LayoutResult::rect` docs and the renderer's
-    // `nested_text_scene_rect_is_absolute` regression test.
+    // Theme inheritance: if this node attached its own `Theme`, that
+    // becomes the effective theme for itself AND its descendants;
+    // otherwise we keep the inherited one. Without this every
+    // descendant ignored an ancestor's `.theme(Theme::dark())` and
+    // resolved colors against the default light theme.
+    let effective = node.get_extension::<Theme>().unwrap_or(inherited);
     let rect = node.get_extension::<LayoutResult>().map(LayoutResult::rect);
     if let Some(rect) = rect {
-        push_focus_ring(scene, id, node, rect);
-        push_node(scene, id, node, rect);
+        push_focus_ring(scene, id, node, rect, effective);
+        push_node(scene, id, node, rect, effective);
     }
     for child in node.children().iter().copied() {
-        push_subtree(scene, cx, child);
+        push_subtree(scene, cx, child, effective);
     }
+}
+
+fn default_inherited_theme<'theme>() -> &'theme Theme {
+    use std::sync::OnceLock;
+    static DEFAULT: OnceLock<Theme> = OnceLock::new();
+    DEFAULT.get_or_init(Theme::default)
 }
 
 /// Return  if any atom slice on the node sets .
@@ -117,8 +120,14 @@ fn is_display_none(node: &Node) -> bool {
         || binding.reactive_slice().contains(&target)
 }
 
-fn push_focus_ring(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
-    let Some(ring) = focus_ring_for(node).filter(|ring| ring.width > 0.0) else {
+fn push_focus_ring(
+    scene: &mut SceneBuilder,
+    id: NodeId,
+    node: &Node,
+    rect: Rect,
+    inherited: &Theme,
+) {
+    let Some(ring) = focus_ring_for(node, inherited).filter(|ring| ring.width > 0.0) else {
         return;
     };
     for ring_rect in focus_ring_rects(rect, ring) {
@@ -148,8 +157,8 @@ fn focus_ring_rects(rect: Rect, ring: ResolvedFocusRing) -> [Rect; 4] {
     ]
 }
 
-fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
-    let style = render_style_for(id, node);
+fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, inherited: &Theme) {
+    let style = render_style_for(id, node, inherited);
     match &node.kind {
         NodeType::Container => {
             if let Some(color) = style.background_color {
@@ -172,7 +181,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect) {
                         rect,
                         text_content(content),
                         color,
-                        text_style_for(node),
+                        text_style_for(node, inherited),
                         style.opacity,
                     ),
                 );

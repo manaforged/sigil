@@ -72,6 +72,11 @@ pub(crate) struct FlexCtx<'s, 'a> {
     pub(crate) solver: &'s FlexSolver<'a>,
     pub(crate) axes: Axis2,
     pub(crate) cb: CbSize,
+    /// True when this layout pass is the hypothetical inside
+    /// `container_intrinsic_*` — `cross_size_for` then skips the
+    /// `align-items: stretch` inflation so basis reads back the
+    /// children's natural extent instead of a stretched value.
+    pub(crate) suppress_stretch: bool,
 }
 
 /// Resolved pixel edges (no `auto`).
@@ -529,7 +534,7 @@ fn place_line_items(
             main_pos: cursor + item.margin_main_start(),
             cross_pos: line_origin_cross + cross_offset + item.margin_cross_start(),
             main_size: item.main_size,
-            cross_size: cross_size_for(item, style.align_items, line_cross),
+            cross_size: cross_size_for(item, style.align_items, line_cross, ctx.suppress_stretch),
             margin_main_start: item.margin_main_start(),
             margin_cross_start: item.margin_cross_start(),
         };
@@ -708,9 +713,14 @@ fn cross_offset_for(item: &FlexItem, container: Option<AlignItems>, line_cross: 
     }
 }
 
-fn cross_size_for(item: &FlexItem, container: Option<AlignItems>, line_cross: f32) -> f32 {
+fn cross_size_for(
+    item: &FlexItem,
+    container: Option<AlignItems>,
+    line_cross: f32,
+    suppress_stretch: bool,
+) -> f32 {
     let align = item.align_self.or(container).unwrap_or(AlignItems::Stretch);
-    if matches!(align, AlignItems::Stretch) && item.cross_size_was_auto {
+    if !suppress_stretch && matches!(align, AlignItems::Stretch) && item.cross_size_was_auto {
         (line_cross - item.margin_cross_start() - item.margin_cross_end()).max(0.0)
     } else {
         item.cross_size
@@ -771,6 +781,7 @@ fn layout_item_subtree(
                 solver: ctx.solver,
                 axes,
                 cb: CbSize { w, h },
+                suppress_stretch: ctx.suppress_stretch,
             };
             layout_root(&nested, node, origin)
         }
@@ -933,13 +944,21 @@ fn container_intrinsic_cross(
     cb_cross: f32,
     axes: Axis2,
 ) -> Option<f32> {
+    // Same hypothetical-stretch concern as `container_intrinsic_main`
+    // — feed children their natural cross extent, not the stretched one.
+    let probe = FlexCtx {
+        solver: ctx.solver,
+        axes: ctx.axes,
+        cb: ctx.cb,
+        suppress_stretch: true,
+    };
     let (w, h) = if axes.row {
         (cb_main, cb_cross)
     } else {
         (cb_cross, cb_main)
     };
-    layout_item_subtree(ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
-    let cb = ctx.solver.scope().forest().boxed(node.id())?;
+    layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    let cb = probe.solver.scope().forest().boxed(node.id())?;
     Some(if axes.row { cb.h } else { cb.w })
 }
 
@@ -981,7 +1000,19 @@ pub(crate) fn item_main_basis(
     // Container with children + auto main + no flex-basis: mirror the
     // cross-axis fallback. CSS flexbox §9.2 step 3 — the item's
     // hypothetical main size is its content's natural main extent.
-    container_intrinsic_main(ctx, node, ctx.cb.w, ctx.cb.h, axes)
+    //
+    // `ctx.cb.along(axes)` rather than raw `(ctx.cb.w, ctx.cb.h)`:
+    // `container_intrinsic_main` interprets its first two arguments as
+    // `(cb_main, cb_cross)` — axis-relative — but `ctx.cb.{w,h}` is
+    // axis-absolute (horizontal, vertical). For a row parent the two
+    // happen to coincide; for a column parent they're swapped, so
+    // the hypothetical subtree got laid out at (parent_height,
+    // parent_width) instead of (parent_width, parent_height), and
+    // the basis came back as the parent's width — collapsing every
+    // text leaf in a `patterns::field` flex_column down to its
+    // shrink-clamped remainder.
+    let (cb_main_axis, cb_cross_axis) = ctx.cb.along(axes);
+    container_intrinsic_main(ctx, node, cb_main_axis, cb_cross_axis, axes)
         .unwrap_or(0.0)
         .max(0.0)
 }
@@ -1009,7 +1040,18 @@ fn container_intrinsic_main(
     } else {
         (cb_cross, cb_main)
     };
-    layout_item_subtree(ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    // Hypothetical pass: suppress `align-items: stretch` so children's
+    // boxes report their natural cross extent. With stretch on, an
+    // empty container child inflates to fill its parent's cross axis;
+    // the OUTER read then sees that as the OUTER's "natural" main
+    // extent and over-reports its basis by the full parent dimension.
+    let probe_ctx = FlexCtx {
+        solver: ctx.solver,
+        axes: ctx.axes,
+        cb: ctx.cb,
+        suppress_stretch: true,
+    };
+    layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
     let style = node.style();
     let edges = NodeEdges::build(style, ctx.cb.w);
     // The hypothetical layout placed `node` at origin (0, 0); its child

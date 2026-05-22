@@ -2,7 +2,7 @@
 
 use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use style::{NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom};
+use style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
 
 const PANEL_WIDTH: f32 = 320.0;
 const PANEL_MIN_HEIGHT: f32 = 48.0;
@@ -106,7 +106,12 @@ impl StyleAccess for PanelBuilder {
     }
 }
 
-impl StateHost for PanelBuilder {}
+// DS2.5 — `impl StateHost` removed. Panel is a static surface widget
+// that doesn't track interaction state; its previous `StateHost` impl
+// silently dropped `.hover() / .focus() / .pressed() / .disabled()`
+// atoms because `into_node_builder` never called `take_state_overlay`.
+// Reintroduce only if panel grows interaction-state tracking AND the
+// `into_node_builder` pattern in button.rs is replicated here.
 
 impl IntoNode for PanelBuilder {
     fn build(self, cx: &mut Cx) -> kernel::NodeId {

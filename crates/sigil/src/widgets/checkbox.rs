@@ -244,11 +244,18 @@ fn checkbox_layout(has_label: bool) -> LayoutStyle {
     let theme = Theme::default();
     let root_size = theme.control_height(Size::Default).px_or_zero();
     let gap = theme.gap(Size::Default).px_or_zero();
-    let width = if has_label { 180.0 } else { root_size };
-    LayoutStyle::flex_row()
-        .fixed_size(width, root_size)
+    let row = LayoutStyle::flex_row()
+        .height(root_size)
         .gap(gap)
-        .align_items(AlignItems::Center)
+        .align_items(AlignItems::Center);
+    if has_label {
+        // Labeled checkbox flows with its parent — the row stretches to
+        // fill available width and the label inside wraps naturally.
+        row.fill_width()
+    } else {
+        // Unlabeled checkbox is just the indicator box.
+        row.width(root_size)
+    }
 }
 
 fn checkbox_indicator(
@@ -314,7 +321,9 @@ fn checkbox_mark(checked: Signal<bool>, tone: CheckboxTone) -> NodeBuilder {
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
-    label(source).layout(LayoutStyle::block().width(144.0))
+    // No fixed width — the label wraps to whatever the parent row
+    // (`flex_row().fill_width()`) hands it.
+    label(source).layout(LayoutStyle::block().fill_width())
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {

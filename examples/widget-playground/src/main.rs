@@ -58,6 +58,7 @@ fn root() -> NodeBuilder {
         .height(VIEWPORT_HEIGHT);
     container()
         .layout(LayoutStyle::flex_column().fill())
+        .class("bg-surface")
         .child(viewport)
 }
 
@@ -84,15 +85,24 @@ pub(crate) fn category(title: &'static str, body: NodeBuilder) -> NodeBuilder {
         .child(card)
 }
 
-/// Horizontal row of widget cells; one cell per child.
+/// Horizontal row of widget cells; one cell per child. Each cell is
+/// wrapped in a `flex_grow(1.0) + width(0)` sizing container so the row
+/// distributes its inline space equally — without this, a single wide
+/// cell (e.g. a multi-line `text_edit`) pushes its siblings off the right
+/// edge of the section.
 pub(crate) fn row(children: Vec<NodeBuilder>) -> NodeBuilder {
     let mut c = container().layout(
         LayoutStyle::flex_row()
+            .fill_width()
             .gap(12.0)
             .align_items(AlignItems::Start),
     );
     for child in children {
-        c = c.child(child);
+        c = c.child(
+            container()
+                .layout(LayoutStyle::flex_column().grow(1.0).width(0.0))
+                .child(child),
+        );
     }
     c
 }

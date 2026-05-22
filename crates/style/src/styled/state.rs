@@ -10,10 +10,39 @@ use crate::{Style, StyleAtom};
 /// Marker trait sealing state-variant methods to outer builders only.
 ///
 /// Implementors of [`Styled`] that also implement this marker can call
-/// `.hover`, `.focus`, `.pressed`, and `.disabled`. [`StateStyleBuilder`]
-/// deliberately does NOT implement this marker, which makes nested
-/// state-variant closures (`.hover(|s| s.hover(|s2| ...))`) a compile
-/// error per DR-049 Decision 4.
+/// `.rest`, `.hover`, `.focus`, `.pressed`, and `.disabled`.
+/// [`StateStyleBuilder`] deliberately does NOT implement this marker,
+/// which makes nested state-variant closures
+/// (`.hover(|s| s.hover(|s2| ...))`) a compile error per DR-049
+/// Decision 4.
+///
+/// # Implementation contract (DS2.5)
+///
+/// **A widget builder that `impl StateHost` MUST drain the state-slot
+/// overlay accumulator into its node binding.** The reactive surface
+/// already wrote the user's `.hover()` / `.pressed()` / etc. atoms
+/// into the builder's `Style` accumulator — without an explicit
+/// `take_state_overlay()` + `stateful_style()` call those atoms drop
+/// silently with no compile error, no runtime warning, no painted
+/// effect. The canonical pattern lives in
+/// `crates/sigil/src/widgets/button.rs`:
+///
+/// ```ignore
+/// fn into_node_builder(mut self) -> NodeBuilder {
+///     let user_overlay = self.style_accumulator.take_state_overlay();
+///     container()
+///         .class(variant.base())
+///         .stateful_style(variant, user_overlay, move || state_fn())
+///         // ...
+/// }
+/// ```
+///
+/// Widgets that don't follow this pattern silently lie about their
+/// state-overlay support. If your widget genuinely doesn't paint
+/// interaction states (e.g. a static panel), do NOT
+/// `impl StateHost for YourBuilder` — leave it out so call-site
+/// `.hover()` produces a clear compile error instead of a silent
+/// drop.
 ///
 /// Nested state-variant closures fail to compile:
 ///

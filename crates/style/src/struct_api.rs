@@ -11,6 +11,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Style {
     atoms: SmallVec<[StyleAtom; 16]>,
+    rest_atoms: SmallVec<[StyleAtom; 4]>,
     hover_atoms: SmallVec<[StyleAtom; 4]>,
     focus_atoms: SmallVec<[StyleAtom; 4]>,
     pressed_atoms: SmallVec<[StyleAtom; 4]>,
@@ -21,6 +22,7 @@ impl Default for Style {
     fn default() -> Self {
         Self {
             atoms: SmallVec::new(),
+            rest_atoms: SmallVec::new(),
             hover_atoms: SmallVec::new(),
             focus_atoms: SmallVec::new(),
             pressed_atoms: SmallVec::new(),
@@ -46,6 +48,12 @@ impl Style {
     #[must_use]
     pub fn into_atoms(self) -> SmallVec<[StyleAtom; 16]> {
         self.atoms
+    }
+
+    /// Borrow rest-slot overlay atoms.
+    #[must_use]
+    pub fn rest_atoms(&self) -> &[StyleAtom] {
+        &self.rest_atoms
     }
 
     /// Borrow hover-slot overlay atoms.
@@ -81,10 +89,16 @@ impl Style {
     /// True when any state-slot overlay has at least one atom.
     #[must_use]
     pub fn has_state_overlays(&self) -> bool {
-        !self.hover_atoms.is_empty()
+        !self.rest_atoms.is_empty()
+            || !self.hover_atoms.is_empty()
             || !self.focus_atoms.is_empty()
             || !self.pressed_atoms.is_empty()
             || !self.disabled_atoms.is_empty()
+    }
+
+    /// Replace the rest-slot overlay with `atoms` (last-call-wins per DR-049).
+    pub(crate) fn set_rest(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
+        self.rest_atoms = atoms.into_iter().collect();
     }
 
     /// Replace the hover-slot overlay with `atoms` (last-call-wins per DR-049).
@@ -105,6 +119,26 @@ impl Style {
     /// Replace the disabled-slot overlay with `atoms`.
     pub(crate) fn set_disabled(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
         self.disabled_atoms = atoms.into_iter().collect();
+    }
+
+    /// Drain the state-slot overlays into a [`StyleOverlay`].
+    ///
+    /// Use this in a widget builder's `into_node_builder()` to lift
+    /// user-supplied `.rest()` / `.hover()` / `.focus()` /
+    /// `.pressed()` / `.disabled()` atoms out of the accumulator
+    /// before the base atoms attach to the node. Ownership transfers
+    /// to the caller — no leaking, no `'static` laundering. The
+    /// resulting overlay attaches to a node via
+    /// [`StyleBinding::set_state_overlay`](crate::StyleBinding::set_state_overlay).
+    #[must_use]
+    pub fn take_state_overlay(&mut self) -> crate::StyleOverlay {
+        crate::StyleOverlay::from_slots(
+            std::mem::take(&mut self.rest_atoms),
+            std::mem::take(&mut self.hover_atoms),
+            std::mem::take(&mut self.focus_atoms),
+            std::mem::take(&mut self.pressed_atoms),
+            std::mem::take(&mut self.disabled_atoms),
+        )
     }
 
     /// Append `atom` to the base list — used by the `Styled` trait's

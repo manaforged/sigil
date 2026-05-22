@@ -2,20 +2,34 @@
 
 use crate::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
-    TextLineHeight, TextStyle, Theme,
+    TextLineHeight, TextStyle, Theme, Tone,
 };
 
-/// Resolves style atoms against a theme.
+/// Resolves style atoms against a theme + per-node tone.
 #[derive(Debug, Clone, Copy)]
 pub struct StyleEngine<'theme> {
     theme: &'theme Theme,
+    tone: Tone,
 }
 
 impl<'theme> StyleEngine<'theme> {
-    /// Create a resolver over a theme snapshot.
+    /// Create a resolver over a theme snapshot, defaulting to the
+    /// neutral tone.
     #[must_use]
     pub const fn new(theme: &'theme Theme) -> Self {
-        Self { theme }
+        Self::with_tone(theme, Tone::Neutral)
+    }
+
+    /// Create a resolver over a theme snapshot bound to `tone`.
+    ///
+    /// The tone selects which scale on the theme
+    /// [`BgToneStep`](StyleAtom::BgToneStep) /
+    /// [`FgToneStep`](StyleAtom::FgToneStep) /
+    /// [`BorderToneStep`](StyleAtom::BorderToneStep) atoms resolve
+    /// against.
+    #[must_use]
+    pub const fn with_tone(theme: &'theme Theme, tone: Tone) -> Self {
+        Self { theme, tone }
     }
 
     /// Apply theme-backed visual atoms into the render sink.
@@ -51,6 +65,12 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
+    /// Resolve a tone-step atom through this engine's theme + tone.
+    #[must_use]
+    const fn tone_step(&self, step: u8) -> Rgba8 {
+        self.theme.scale(self.tone.scale_role()).step(step)
+    }
+
     /// Resolve a colour atom through this engine's theme.
     #[must_use]
     pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
@@ -60,6 +80,10 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
+    #[allow(
+        clippy::too_many_lines,
+        reason = "exhaustive match on StyleAtom — the long no-op arm chain is intentional; a wildcard would silently swallow new atom kinds"
+    )]
     fn apply_atom(self, atom: StyleAtom, render: &mut RenderStyle) {
         match atom {
             StyleAtom::BackgroundColor(color) => {
@@ -71,6 +95,11 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
             StyleAtom::TextThemeRef(token) => {
                 render.text_color = Some(self.theme.resolve_color(token));
+            }
+            StyleAtom::BgToneStep(step) => render.background_color = Some(self.tone_step(step)),
+            StyleAtom::FgToneStep(step) => render.text_color = Some(self.tone_step(step)),
+            StyleAtom::FgOnSolid => {
+                render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
@@ -230,6 +259,9 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
-        | StyleAtom::UnknownThemeRef(_) => {}
+        | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::BgToneStep(_)
+        | StyleAtom::FgToneStep(_)
+        | StyleAtom::FgOnSolid => {}
     }
 }

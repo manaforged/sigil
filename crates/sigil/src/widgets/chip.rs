@@ -5,24 +5,22 @@
 //! tone (success / warn / error / info / neutral). This is the smallest
 //! widget that closes that gap.
 //!
-//! ## Theme token mapping (current palette gap)
+//! ## Theme token mapping (DS1 scale tokens)
 //!
-//! Sigil's theme palette in `crates/style/src/theme.rs` does not (yet)
-//! ship semantic tone tokens like `bg-warn` / `bg-error`. Until those
-//! tokens land, [`ChipTone`] maps each variant to the closest existing
-//! palette token:
+//! Each [`ChipTone`] maps to a Radix-style background/foreground pair on
+//! its role scale — step 3 for the background (light-tinted), step 11
+//! for the text (high-contrast same-hue). This convention keeps status
+//! chips legible against any theme surface and makes the success / warn
+//! / error chips visually distinct without crossing into the saturated
+//! step-9 brand color (reserved for solid buttons).
 //!
-//! | `ChipTone` | Background token        | Foreground token |
-//! |------------|-------------------------|------------------|
-//! | `Neutral`  | `surface-hover`         | `on-surface`     |
-//! | `Info`     | `accent`                | `on-accent`      |
-//! | `Success`  | `accent-hover`          | `on-accent`      |
-//! | `Warn`     | `surface-pressed`       | `on-surface`     |
-//! | `Error`    | `surface-pressed-strong`| `on-surface`     |
-//!
-//! When semantic-tone tokens (`success`, `warn`, `error`, `info`) land
-//! in the palette, this mapping should be updated and the
-//! `// followup: tone-tokens` comment below removed.
+//! | `ChipTone` | Background    | Foreground         |
+//! |------------|---------------|--------------------|
+//! | `Neutral`  | `bg-gray-3`   | `text-gray-12`     |
+//! | `Info`     | `bg-info-3`   | `text-info-11`     |
+//! | `Success`  | `bg-success-3`| `text-success-11`  |
+//! | `Warn`     | `bg-warn-3`   | `text-warn-11`     |
+//! | `Error`    | `bg-error-3`  | `text-error-11`    |
 
 use kernel::{NodeBuilder, Role, TextContent, container, text};
 use layout::prelude::{LayoutBuilderExt, LayoutStyle};
@@ -46,16 +44,15 @@ pub enum ChipTone {
 
 impl ChipTone {
     /// Background + foreground utility-class fragment for this tone.
-    ///
-    /// `// followup: tone-tokens` — once `success`/`warn`/`error`/`info`
-    /// land in the theme palette this should switch to those tokens.
+    /// Each chip uses Radix step-3 as a soft tinted background and
+    /// step-11 as the legible same-hue text color.
     const fn class(self) -> &'static str {
         match self {
-            Self::Neutral => "bg-surface-hover text-on-surface",
-            Self::Info => "bg-accent text-on-accent",
-            Self::Success => "bg-accent-hover text-on-accent",
-            Self::Warn => "bg-surface-pressed text-on-surface",
-            Self::Error => "bg-surface-pressed-strong text-on-surface",
+            Self::Neutral => "bg-gray-3 text-gray-12",
+            Self::Info => "bg-info-3 text-info-11",
+            Self::Success => "bg-success-3 text-success-11",
+            Self::Warn => "bg-warn-3 text-warn-11",
+            Self::Error => "bg-error-3 text-error-11",
         }
     }
 }

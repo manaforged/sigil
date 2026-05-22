@@ -118,7 +118,10 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
-        | StyleAtom::UnknownThemeRef(_) => out.push((slot(atom), atom)),
+        | StyleAtom::UnknownThemeRef(_)
+        | StyleAtom::BgToneStep(_)
+        | StyleAtom::FgToneStep(_)
+        | StyleAtom::FgOnSolid => out.push((slot(atom), atom)),
     }
 }
 
@@ -194,10 +197,13 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::JustifyContent(_) => ResolvedSlot::JustifyContent,
         StyleAtom::FlexGrow(_) => ResolvedSlot::FlexGrow,
         StyleAtom::FlexShrink(_) => ResolvedSlot::FlexShrink,
-        StyleAtom::BackgroundColor(_) | StyleAtom::BackgroundThemeRef(_) => {
-            ResolvedSlot::BackgroundColor
-        }
-        StyleAtom::TextColor(_) | StyleAtom::TextThemeRef(_) => ResolvedSlot::TextColor,
+        StyleAtom::BackgroundColor(_)
+        | StyleAtom::BackgroundThemeRef(_)
+        | StyleAtom::BgToneStep(_) => ResolvedSlot::BackgroundColor,
+        StyleAtom::TextColor(_)
+        | StyleAtom::TextThemeRef(_)
+        | StyleAtom::FgToneStep(_)
+        | StyleAtom::FgOnSolid => ResolvedSlot::TextColor,
         StyleAtom::BorderRadius(_) => ResolvedSlot::BorderRadius,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,

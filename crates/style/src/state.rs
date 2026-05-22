@@ -209,4 +209,10 @@ impl StyleVariant {
     pub const fn state(self, state: StyleState) -> &'static [StyleAtom] {
         self.states.resolve(state)
     }
+
+    /// Borrow the underlying [`StateStyle`].
+    #[must_use]
+    pub const fn states(self) -> StateStyle {
+        self.states
+    }
 }

@@ -163,7 +163,7 @@ impl AttachedAnimators {
             entry.last_target = target;
             entry.animator.target(target);
         }
-        if let Some(theme) = self.theme_snapshot {
+        if let Some(theme) = self.theme_snapshot.as_ref() {
             for entry in &mut self.color_entries {
                 let target = find_color(entry.kind, slot_atoms, theme)
                     .or_else(|| find_color(entry.kind, base, theme));
@@ -246,6 +246,12 @@ pub fn install_animators_themed(
     reason = "registry is a `Copy` ZST today; keep the borrow shape so phase-2 \
               expansions to a non-ZST table (per-app overrides) don't break callers"
 )]
+#[allow(
+    clippy::large_types_passed_by_value,
+    reason = "`theme_snapshot` is consumed — install_impl stores it into the \
+              returned AttachedAnimators (line ~298). Passing by reference \
+              would force a clone at the assignment site."
+)]
 fn install_impl(
     atoms: &[StyleAtom],
     state_style: StateStyle,
@@ -277,7 +283,7 @@ fn install_impl(
     }
 
     let mut color_entries = Vec::new();
-    if let Some(theme) = theme_snapshot {
+    if let Some(theme) = theme_snapshot.as_ref() {
         for kind in [ColorAtomKind::Background, ColorAtomKind::Text] {
             let base_value = find_color(kind, atoms, theme);
             let hover_value = find_color(kind, hover_atoms, theme);

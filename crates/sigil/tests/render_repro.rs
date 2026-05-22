@@ -93,20 +93,19 @@ fn position_relative_child_paints() {
     };
 
     // Theme defaults (see crates/style/src/theme.rs):
-    //   accent           = rgba(51, 112, 255)
-    //   surface          = rgba(248, 250, 252)
-    //   surface_pressed  = rgba(160, 174, 192)
+    //   accent  = iris_light().step(9)  = rgba(0x5B, 0x5B, 0xD6) = (91, 91, 214)
+    //   surface = slate_light().step(2) = rgba(0xF9, 0xF9, 0xFB) = (249, 249, 251)
     let px = img.get_pixel(SAMPLE_X, SAMPLE_Y);
     let [r, g, b, _a] = px.0;
     println!("position_relative_child_paints @ ({SAMPLE_X},{SAMPLE_Y}) = ({r},{g},{b})");
 
-    // Accept any reasonable approximation of accent rgb(51, 112, 255).
+    // Accept any reasonable approximation of accent rgb(91, 91, 214).
     // sRGB textures + linearisation can drift a couple of units.
     let close_to_accent =
-        (r as i32 - 51).abs() <= 6 && (g as i32 - 112).abs() <= 8 && (b as i32 - 255).abs() <= 6;
+        (r as i32 - 91).abs() <= 6 && (g as i32 - 91).abs() <= 6 && (b as i32 - 214).abs() <= 6;
     assert!(
         close_to_accent,
-        "expected accent ~(51,112,255) at ({SAMPLE_X},{SAMPLE_Y}), got ({r},{g},{b}). \
+        "expected accent ~(91,91,214) at ({SAMPLE_X},{SAMPLE_Y}), got ({r},{g},{b}). \
          Bug A: deeply-nested child paint mislocated (likely scene-emitter \
          double-accumulating parent_origin onto a root-coord layout rect)."
     );

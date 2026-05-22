@@ -8,6 +8,7 @@ use ahash::AHashSet;
 use kernel::{Node, NodeId};
 use style::{
     FocusRing, Px, RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme,
+    ToneContext,
 };
 
 use crate::corner_radii::CornerRadii;
@@ -38,21 +39,29 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
     usize::from(warned.contains(&(UnsupportedSlot::UnknownThemeRef(token), id)))
 }
 
-pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
+pub(crate) fn render_style_for(id: NodeId, node: &Node, inherited: &Theme) -> RenderStyle {
     let mut render = RenderStyle::default();
+    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
     if matches!(node.kind, kernel::NodeType::Text { .. }) {
-        render.text_color = Some(default_theme().on_surface);
+        render.text_color = Some(theme.on_surface);
     }
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return render;
     };
-
-    let theme = node.get_extension::<Theme>().unwrap_or_else(default_theme);
-    let engine = StyleEngine::new(theme);
+    let tone = node
+        .get_extension::<ToneContext>()
+        .copied()
+        .unwrap_or_default()
+        .tone;
+    let engine = StyleEngine::with_tone(theme, tone);
 
     apply_atoms(engine, binding.static_slice(), &mut render, id, node);
     apply_atoms(engine, binding.dynamic_slice(), &mut render, id, node);
     apply_atoms(engine, binding.reactive_slice(), &mut render, id, node);
+    // DS2 Phase 2: per-instance user state overlay applies last so
+    // last-atom-wins gives user `.hover()` / `.pressed()` / `.focus()`
+    // / `.disabled()` atoms priority over widget-baked atoms.
+    apply_atoms(engine, binding.state_overlay_atoms(), &mut render, id, node);
 
     // W5.1b: replay the same atom set through the animator overlay so
     // any driven numeric value wins over the literal atom value. The
@@ -63,31 +72,38 @@ pub(crate) fn render_style_for(id: NodeId, node: &Node) -> RenderStyle {
         engine.apply_with_overlay(binding.static_slice(), overlay, &mut render);
         engine.apply_with_overlay(binding.dynamic_slice(), overlay, &mut render);
         engine.apply_with_overlay(binding.reactive_slice(), overlay, &mut render);
+        engine.apply_with_overlay(binding.state_overlay_atoms(), overlay, &mut render);
     }
     render
 }
 
-pub(crate) fn text_style_for(node: &Node) -> TextStyle {
+pub(crate) fn text_style_for(node: &Node, inherited: &Theme) -> TextStyle {
     let mut style = TextStyle::default();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return style;
     };
 
-    let theme = node.get_extension::<Theme>().unwrap_or_else(default_theme);
-    let engine = StyleEngine::new(theme);
+    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
+    let tone = node
+        .get_extension::<ToneContext>()
+        .copied()
+        .unwrap_or_default()
+        .tone;
+    let engine = StyleEngine::with_tone(theme, tone);
 
     engine.apply_text(binding.static_slice(), &mut style);
     engine.apply_text(binding.dynamic_slice(), &mut style);
     engine.apply_text(binding.reactive_slice(), &mut style);
+    engine.apply_text(binding.state_overlay_atoms(), &mut style);
     style
 }
 
-pub(crate) fn focus_ring_for(node: &Node) -> Option<ResolvedFocusRing> {
+pub(crate) fn focus_ring_for(node: &Node, inherited: &Theme) -> Option<ResolvedFocusRing> {
     let ring = node.get_extension::<FocusRing>()?;
     if !ring.visible() {
         return None;
     }
-    let theme = node.get_extension::<Theme>().unwrap_or_else(default_theme);
+    let theme = node.get_extension::<Theme>().unwrap_or(inherited);
     let engine = StyleEngine::new(theme);
     Some(ResolvedFocusRing {
         color: engine.resolve_color(ring.color_atom()),
@@ -101,11 +117,6 @@ pub(crate) fn corner_radii_for(border_radius: Option<Px>) -> CornerRadii {
     border_radius.map_or(CornerRadii::ZERO, |radius| {
         CornerRadii::uniform(f32::from(radius.0))
     })
-}
-
-fn default_theme<'theme>() -> &'theme Theme {
-    static DEFAULT_THEME: OnceLock<Theme> = OnceLock::new();
-    DEFAULT_THEME.get_or_init(Theme::default)
 }
 
 fn apply_atoms(

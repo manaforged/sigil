@@ -13,9 +13,11 @@
 
 use kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use style::{NodeStyleExt, StyleAtom};
+use reactive::{Signal, derived};
+use style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use super::shared::label;
+use super::text_field::TextFieldBuilder;
 use super::tooltip::{TooltipBuilder, tooltip as tooltip_widget};
 
 /// Fixed top-bar height in logical pixels.
@@ -117,6 +119,73 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
         .child(label(label_text))
         .child(control)
 }
+
+/// Variant of [`field`] with a reactive validation-error slot.
+///
+/// `error` is a `Signal<Option<String>>` — when it reads `Some("…")`
+/// a red helper-text node appears under the control with the
+/// supplied message; when `None`, the slot collapses via
+/// `Display::None` and contributes no layout box.
+///
+/// ```ignore
+/// use sigil::prelude::*;
+/// use reactive::{signal, derived};
+///
+/// let email = signal(String::new());
+/// let email_error = derived(move || {
+///     let v = email.get();
+///     (!v.contains('@')).then(|| String::from("Email must contain @"))
+/// });
+///
+/// patterns::validated_field(
+///     "Email",
+///     text_field(email).placeholder("you@example.com"),
+///     email_error,
+/// )
+/// ```
+#[must_use]
+pub fn validated_field(
+    label_text: impl Into<TextContent>,
+    control: TextFieldBuilder,
+    error: Signal<Option<String>>,
+) -> NodeBuilder {
+    let message: Signal<String> = derived(move || error.get().unwrap_or_default());
+    let visible: Signal<bool> = derived(move || error.get().is_some());
+    // Wire the error state into the control's invalid border so the
+    // field itself enters an error state, not just the helper text.
+    // Without this the reviewer (2026-05-21) flagged validated_field as
+    // "carrying the error in the helper text only" — a semantic-drift
+    // a11y failure (the field doesn't signal invalidity to assistive
+    // tech or sighted users glancing at the control).
+    let invalid_signal: Signal<bool> = derived(move || error.get().is_some());
+    let control = control.invalid_when(invalid_signal);
+    container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
+        .child(label(label_text))
+        .child(control)
+        .child(
+            // step-12 instead of step-11: at the 12 px `text-xs` size
+            // antialiasing dilutes effective contrast by ~1.5 stops vs.
+            // the pure colour pair, pushing step-11 ruby (~5.4:1 solid)
+            // into the ~3.5:1 measured zone — below the 4.5:1 floor for
+            // small body text. Step 12 ruby (#641723) measures ~12:1
+            // against light surfaces and survives the AA penalty.
+            text(message)
+                .role(Role::Label)
+                .class("text-error-12 text-xs font-medium")
+                .style_reactive(move || {
+                    if visible.get() {
+                        ERROR_VISIBLE
+                    } else {
+                        ERROR_HIDDEN
+                    }
+                }),
+        )
+}
+
+static ERROR_VISIBLE: &[StyleAtom] = &[];
+static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
 /// Two-column key/value grid: each row is a `flex_row` with the key on the
 /// left and the value (rendered in the monospace class) on the right.
@@ -326,6 +395,23 @@ mod tests {
                 node.children().len(),
                 2,
                 "field produces exactly label + control"
+            );
+        });
+    }
+
+    #[test]
+    fn validated_field_emits_three_children() {
+        use crate::widgets::text_field::text_field;
+        Runtime::scope("validated-field-shape", || {
+            let mut cx = Cx::new_root();
+            let error: reactive::Signal<Option<String>> = reactive::signal(None);
+            let value = reactive::signal(String::new());
+            let id = validated_field("Email", text_field(value), error).build(&mut cx);
+            let node = cx.get(id).expect("validated field root");
+            assert_eq!(
+                node.children().len(),
+                3,
+                "validated_field is label + control + error-slot",
             );
         });
     }

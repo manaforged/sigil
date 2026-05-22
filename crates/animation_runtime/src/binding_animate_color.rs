@@ -16,6 +16,7 @@
 //! contract the static palette uses.)
 
 use reactive::signal;
+use style::scale::{ColorScale, ScaleRole};
 use style::{ColorAtomKind, Rgba8, StyleAtom, Theme};
 
 use crate::{AnimationConfig, Animator};
@@ -29,6 +30,14 @@ use super::binding_animate::AttachedColorAnimator;
 /// later `retarget_to_slot` call can resolve token references that the
 /// state-slot overlay introduces without re-borrowing the kernel's
 /// theme.
+///
+/// V1 limitation — runtime-registered tokens (those added via
+/// [`Theme::register_token`] / [`Theme::with_token`]) are NOT in the
+/// snapshot and resolve to `missing_token_fallback` during
+/// transitions. Static (non-animated) rendering of the same token
+/// goes through `Theme::resolve_color` and works correctly. Carrying
+/// the runtime `HashMap` here would require either dropping `Copy`
+/// on this snapshot or sharing it via `Rc`; tracked as a follow-up.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ThemeSnapshot {
     pub(crate) accent: Rgba8,
@@ -41,6 +50,17 @@ pub(crate) struct ThemeSnapshot {
     pub(crate) on_surface: Rgba8,
     pub(crate) border: Rgba8,
     pub(crate) missing_token_fallback: Rgba8,
+    // Scales for `<role>-<step>` token resolution (e.g. `accent-9`,
+    // `success-3`, `error-11`). Without these, animated transitions
+    // through scale tokens fell to `missing_token_fallback`
+    // (adversarial review 2026-05-21).
+    pub(crate) gray: ColorScale,
+    pub(crate) accent_scale: ColorScale,
+    pub(crate) success: ColorScale,
+    pub(crate) warn: ColorScale,
+    pub(crate) error: ColorScale,
+    pub(crate) info: ColorScale,
+    pub(crate) on_solid: Rgba8,
 }
 
 impl ThemeSnapshot {
@@ -56,6 +76,13 @@ impl ThemeSnapshot {
             on_surface: theme.on_surface,
             border: theme.border,
             missing_token_fallback: theme.missing_token_fallback,
+            gray: theme.gray,
+            accent_scale: theme.accent_scale,
+            success: theme.success,
+            warn: theme.warn,
+            error: theme.error,
+            info: theme.info,
+            on_solid: theme.on_solid,
         }
     }
 
@@ -70,7 +97,38 @@ impl ThemeSnapshot {
             "surface-pressed-strong" => self.surface_pressed_strong,
             "on-surface" => self.on_surface,
             "border" => self.border,
-            _ => self.missing_token_fallback,
+            "on-solid" => self.on_solid,
+            // Semantic aliases that `Theme::resolve_color` handles.
+            "surface-subtle" => self.gray.step(3),
+            "on-surface-muted" => self.gray.step(11),
+            _ => self
+                .scale_step(token)
+                .unwrap_or(self.missing_token_fallback),
+        }
+    }
+
+    /// Parse `<role>-<step>` and return the corresponding scale step,
+    /// matching `Theme::scale_step_color`. Returns `None` when the
+    /// token does not fit the pattern.
+    fn scale_step(self, token: &str) -> Option<Rgba8> {
+        let (role_name, step_str) = token.rsplit_once('-')?;
+        let role = ScaleRole::from_token(role_name)?;
+        let step: u8 = step_str.parse().ok()?;
+        if !(1..=12).contains(&step) {
+            return None;
+        }
+        let scale = self.scale(role);
+        Some(scale.step(step))
+    }
+
+    const fn scale(self, role: ScaleRole) -> ColorScale {
+        match role {
+            ScaleRole::Gray => self.gray,
+            ScaleRole::Accent => self.accent_scale,
+            ScaleRole::Success => self.success,
+            ScaleRole::Warn => self.warn,
+            ScaleRole::Error => self.error,
+            ScaleRole::Info => self.info,
         }
     }
 }
@@ -165,7 +223,7 @@ pub(crate) fn read_color(entry: &AttachedColorAnimator) -> Rgba8 {
 pub(crate) fn find_color(
     kind: ColorAtomKind,
     atoms: &[StyleAtom],
-    theme: ThemeSnapshot,
+    theme: &ThemeSnapshot,
 ) -> Option<Rgba8> {
     atoms.iter().rev().find_map(|atom| match (*atom, kind) {
         (StyleAtom::BackgroundColor(color), ColorAtomKind::Background)
@@ -178,7 +236,7 @@ pub(crate) fn find_color(
     })
 }
 
-fn resolve_color_atom(color: style::ColorAtom, theme: ThemeSnapshot) -> Rgba8 {
+fn resolve_color_atom(color: style::ColorAtom, theme: &ThemeSnapshot) -> Rgba8 {
     match color {
         style::ColorAtom::Rgba8(rgba) => rgba,
         style::ColorAtom::ThemeRef(token) => theme.resolve(token),
@@ -243,6 +301,47 @@ mod tests {
                 "sRGB roundtrip drift > 1 LSB for {c}: lin={lin}, back={back}",
             );
         }
+    }
+
+    #[test]
+    fn theme_snapshot_resolves_scale_step_tokens() {
+        // Regression for adversarial review 2026-05-21:
+        // animated transitions of `bg-accent-9`, `bg-success-3`, etc.
+        // previously fell through to `missing_token_fallback`. They
+        // must now resolve to the same colour the static
+        // `Theme::resolve_color` path picks.
+        let theme = Theme::default();
+        let snap = ThemeSnapshot::from_theme(&theme);
+        let cases = [
+            ("accent-9", theme.accent_scale.step(9)),
+            ("success-3", theme.success.step(3)),
+            ("error-11", theme.error.step(11)),
+            ("gray-2", theme.gray.step(2)),
+            ("warn-7", theme.warn.step(7)),
+            ("info-5", theme.info.step(5)),
+        ];
+        for (token, expected) in cases {
+            let resolved = snap.resolve(token);
+            assert_eq!(
+                resolved, expected,
+                "ThemeSnapshot::resolve({token:?}) returned {resolved:?}, \
+                 expected scale-step color {expected:?}",
+            );
+            assert_ne!(
+                resolved, snap.missing_token_fallback,
+                "{token:?} silently fell back to magenta — scale-step path broken",
+            );
+        }
+    }
+
+    #[test]
+    fn theme_snapshot_unknown_token_still_falls_back() {
+        let theme = Theme::default();
+        let snap = ThemeSnapshot::from_theme(&theme);
+        assert_eq!(
+            snap.resolve("not-a-real-token-name"),
+            snap.missing_token_fallback,
+        );
     }
 
     #[test]

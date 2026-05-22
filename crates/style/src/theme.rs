@@ -1,6 +1,12 @@
 //! Theme tokens and palette values.
 
+use std::collections::HashMap;
+
 use crate::palette::Palette;
+use crate::scale::{
+    ColorScale, ScaleRole, amber_dark, amber_light, cyan_dark, cyan_light, green_dark, green_light,
+    iris_dark, iris_light, ruby_dark, ruby_light, slate_dark, slate_light,
+};
 use crate::variant::{FontFamilyHint, Variant};
 use crate::{Dimension, LengthPercentage, Px, Rgba8, Size};
 
@@ -29,64 +35,231 @@ pub enum ThemeValue {
 }
 
 /// Runtime theme snapshot used to resolve style atoms.
+///
+/// As of DS1 the theme carries one 12-step [`ColorScale`] per role
+/// (gray / accent / success / warn / error / info). The flat fields
+/// (`accent`, `surface`, …) are kept as a backwards-compat shim and
+/// are populated from the corresponding scale steps; new code should
+/// reach for the scale or for the semantic alias helpers
+/// ([`Theme::surface`], [`Theme::text_default`], etc.) instead.
 #[derive(Debug, PartialEq)]
 pub struct Theme {
-    /// Primary action/accent colour.
+    /// Neutral gray scale — surfaces, borders, default text.
+    pub gray: ColorScale,
+    /// Accent / brand scale — primary actions, focus rings.
+    pub accent_scale: ColorScale,
+    /// Success scale — confirmation chips, valid borders.
+    pub success: ColorScale,
+    /// Warn scale — cautionary banners, non-blocking notices.
+    pub warn: ColorScale,
+    /// Error / destructive scale — invalid inputs, delete actions.
+    pub error: ColorScale,
+    /// Info / notice scale — hint banners, neutral callouts.
+    pub info: ColorScale,
+    /// Text/icon colour rendered on top of a solid (step-9) fill —
+    /// usually white, contrasted against accent / success / error
+    /// solid backgrounds. Independent of the gray scale because the
+    /// solid step lives outside the neutral range.
+    pub on_solid: Rgba8,
+
+    /// Primary action/accent colour. Mirrors `accent_scale.step(9)`.
     pub accent: Rgba8,
-    /// Hover state for primary action/accent surfaces.
+    /// Hover state for primary action/accent surfaces. Mirrors
+    /// `accent_scale.step(10)`.
     pub accent_hover: Rgba8,
-    /// Text/icon colour on accent surfaces.
+    /// Text/icon colour on accent surfaces. Mirrors [`on_solid`].
     pub on_accent: Rgba8,
-    /// Default panel/surface colour.
+    /// Default panel/surface colour. Mirrors `gray.step(2)`.
     pub surface: Rgba8,
-    /// Hover state for default surfaces.
+    /// Hover state for default surfaces. Mirrors `gray.step(4)`.
     pub surface_hover: Rgba8,
-    /// Pressed/active state for default surfaces. Visibly deeper than
-    /// [`surface_hover`] so a 16px swatch can carry the delta on its
-    /// own without needing a border shift.
+    /// Pressed/active state for default surfaces. Mirrors
+    /// `gray.step(5)`.
     pub surface_pressed: Rgba8,
-    /// Deepest pressed-state tint for tiny indicators (16-20 px) where
-    /// the hover→pressed step on [`surface_pressed`] alone fell below
-    /// the same-hue JND (~6 sRGB units measured at the 75% opacity
-    /// blend the previous design used). Roughly twice the linear-space
-    /// step from `surface` that `surface_pressed` carries — clears the
-    /// JND at 16 px swatch scale without needing a border cue.
+    /// Deepest pressed-state tint for tiny indicators (16-20 px).
+    /// Mirrors `gray.step(6)`.
     pub surface_pressed_strong: Rgba8,
-    /// Text/icon colour on default surfaces.
+    /// Text/icon colour on default surfaces. Mirrors `gray.step(12)`.
     pub on_surface: Rgba8,
-    /// Default border colour.
+    /// Default border colour. Mirrors `gray.step(7)`.
     pub border: Rgba8,
     /// Release-mode fallback for missing theme tokens.
     pub missing_token_fallback: Rgba8,
-    /// User-defined tokens.
+    /// Compile-time perfect-hash user tokens (built via `phf_map!`).
     pub tokens: phf::Map<&'static str, ThemeValue>,
+    /// Runtime-registered user tokens — overlays `tokens`.
+    ///
+    /// Use [`Theme::with_token`] / [`Theme::register_token`] to add an
+    /// entry. Runtime tokens shadow `phf` tokens with the same key, so
+    /// callers can override compile-time defaults at startup.
+    pub runtime_tokens: HashMap<String, ThemeValue>,
+}
+
+impl Theme {
+    /// Borrow the scale assigned to the given semantic [`ScaleRole`].
+    #[must_use]
+    pub const fn scale(&self, role: ScaleRole) -> &ColorScale {
+        match role {
+            ScaleRole::Gray => &self.gray,
+            ScaleRole::Accent => &self.accent_scale,
+            ScaleRole::Success => &self.success,
+            ScaleRole::Warn => &self.warn,
+            ScaleRole::Error => &self.error,
+            ScaleRole::Info => &self.info,
+        }
+    }
+
+    /// Replace the gray scale and rebuild the flat-field shim. Use
+    /// this to swap the neutral hue (e.g. mauve / sage / olive) for
+    /// the entire theme.
+    #[must_use]
+    pub const fn with_gray_scale(mut self, scale: ColorScale) -> Self {
+        self.gray = scale;
+        self.surface = scale.step(2);
+        self.surface_hover = scale.step(4);
+        self.surface_pressed = scale.step(5);
+        self.surface_pressed_strong = scale.step(6);
+        self.border = scale.step(7);
+        self.on_surface = scale.step(12);
+        self
+    }
+
+    /// Replace the accent scale and rebuild the flat-field shim.
+    #[must_use]
+    pub const fn with_accent_scale(mut self, scale: ColorScale) -> Self {
+        self.accent_scale = scale;
+        self.accent = scale.step(9);
+        self.accent_hover = scale.step(10);
+        self
+    }
+
+    /// Replace the success scale.
+    #[must_use]
+    pub const fn with_success_scale(mut self, scale: ColorScale) -> Self {
+        self.success = scale;
+        self
+    }
+
+    /// Replace the warn scale.
+    #[must_use]
+    pub const fn with_warn_scale(mut self, scale: ColorScale) -> Self {
+        self.warn = scale;
+        self
+    }
+
+    /// Replace the error scale.
+    #[must_use]
+    pub const fn with_error_scale(mut self, scale: ColorScale) -> Self {
+        self.error = scale;
+        self
+    }
+
+    /// Replace the info scale.
+    #[must_use]
+    pub const fn with_info_scale(mut self, scale: ColorScale) -> Self {
+        self.info = scale;
+        self
+    }
+
+    /// Semantic alias: low-contrast / muted text on default surfaces.
+    /// Reads `gray.step(11)`.
+    #[must_use]
+    pub const fn text_muted(&self) -> Rgba8 {
+        self.gray.step(11)
+    }
+
+    /// Semantic alias: subtle background — slightly darker than the
+    /// app shell, used for cards / panels. Reads `gray.step(3)`.
+    #[must_use]
+    pub const fn surface_subtle(&self) -> Rgba8 {
+        self.gray.step(3)
+    }
+
+    /// Semantic alias: stronger border for focused / hovered shells.
+    /// Reads `gray.step(8)`.
+    #[must_use]
+    pub const fn border_strong(&self) -> Rgba8 {
+        self.gray.step(8)
+    }
+}
+
+impl Theme {
+    /// Build a dark-mode theme.
+    ///
+    /// Mirrors [`Theme::default`] (the light-mode constructor) but
+    /// uses the dark variant of every scale. Semantic aliases keep
+    /// their step references — `surface` is still `gray.step(2)`,
+    /// just `slate_dark().step(2)` instead of `slate_light().step(2)`.
+    /// Widgets that go through `bg-surface` / `text-on-surface` /
+    /// `bg-success-3` / etc. flip automatically; widgets that
+    /// hard-code RGB values do not (audit them with a `grep
+    /// "Rgba8 {"` sweep before promoting to DS-compliant).
+    #[must_use]
+    pub fn dark() -> Self {
+        let gray = slate_dark();
+        let accent_scale = iris_dark();
+        let success = green_dark();
+        let warn = amber_dark();
+        let error = ruby_dark();
+        let info = cyan_dark();
+        let on_solid = rgba(255, 255, 255);
+        Self {
+            gray,
+            accent_scale,
+            success,
+            warn,
+            error,
+            info,
+            on_solid,
+            accent: accent_scale.step(9),
+            accent_hover: accent_scale.step(10),
+            on_accent: on_solid,
+            surface: gray.step(2),
+            surface_hover: gray.step(4),
+            surface_pressed: gray.step(5),
+            surface_pressed_strong: gray.step(6),
+            on_surface: gray.step(12),
+            border: gray.step(7),
+            missing_token_fallback: rgba(255, 0, 255),
+            tokens: phf::Map::new(),
+            runtime_tokens: HashMap::new(),
+        }
+    }
 }
 
 impl Default for Theme {
     fn default() -> Self {
+        // Default scales — Radix Colors-inspired light theme. The flat
+        // fields below are derived from these so legacy code that
+        // reaches for `theme.surface` / `theme.accent` keeps working
+        // verbatim.
+        let gray = slate_light();
+        let accent_scale = iris_light();
+        let success = green_light();
+        let warn = amber_light();
+        let error = ruby_light();
+        let info = cyan_light();
+        let on_solid = rgba(255, 255, 255);
         Self {
-            accent: rgba(51, 112, 255), // Clear accent for proof apps and early widgets.
-            accent_hover: rgba(35, 93, 230), // Slightly deeper accent for hover feedback.
-            on_accent: rgba(255, 255, 255), // White keeps accent controls readable.
-            surface: rgba(248, 250, 252), // Near-white default pane surface.
-            // Hover sits ~26 lightness units darker than `surface` so the
-            // post-sRGB-gamma delta clears the same-hue JND (~7.65) on
-            // small swatches (16-22px). Previous `(226, 232, 240)` gave a
-            // ~8 sRGB delta — borderline-to-below the JND, sub-perceptual.
-            surface_hover: rgba(200, 210, 222), // Clearly perceptible hover lift.
-            // Pressed sits ~52 units darker — twice the hover delta, so the
-            // hover→pressed step itself is also above JND. Previous
-            // `(192, 202, 217)` collided with hover at small widget scale.
-            surface_pressed: rgba(160, 174, 192), // Markedly darker press tint.
-            // Strong-pressed sits ~26 units below `surface_pressed`
-            // (matching the hover→pressed step). Targeted at 16-20 px
-            // indicators where the previous 75 %-opacity blend over
-            // `surface_pressed` produced only a 6 sRGB delta vs hover.
-            surface_pressed_strong: rgba(130, 144, 162), // Deepest tint for tiny indicators.
-            on_surface: rgba(15, 23, 42),                // Dark text for light surfaces.
-            border: rgba(148, 163, 184),                 // Subtle cool border.
-            missing_token_fallback: rgba(255, 0, 255),   // Debug magenta for misses.
+            gray,
+            accent_scale,
+            success,
+            warn,
+            error,
+            info,
+            on_solid,
+            accent: accent_scale.step(9),
+            accent_hover: accent_scale.step(10),
+            on_accent: on_solid,
+            surface: gray.step(2),
+            surface_hover: gray.step(4),
+            surface_pressed: gray.step(5),
+            surface_pressed_strong: gray.step(6),
+            on_surface: gray.step(12),
+            border: gray.step(7),
+            missing_token_fallback: rgba(255, 0, 255), // Debug magenta for misses.
             tokens: phf::Map::new(),
+            runtime_tokens: HashMap::new(),
         }
     }
 }
@@ -96,14 +269,38 @@ impl Theme {
         if let Some(color) = self.built_in_color(token) {
             return color;
         }
+        if let Some(color) = self.scale_step_color(token) {
+            return color;
+        }
+        if let Some(ThemeValue::Color(color)) = self.runtime_tokens.get(token).copied() {
+            return color;
+        }
         if let Some(ThemeValue::Color(color)) = self.tokens.get(token).copied() {
             return color;
         }
         self.missing_color(token)
     }
 
+    /// Register a runtime token. Overlays a same-named compile-time
+    /// `phf` token. Returns the previously-bound value, if any.
+    pub fn register_token(
+        &mut self,
+        name: impl Into<String>,
+        value: ThemeValue,
+    ) -> Option<ThemeValue> {
+        self.runtime_tokens.insert(name.into(), value)
+    }
+
+    /// Builder-style alternative to [`Theme::register_token`].
+    #[must_use]
+    pub fn with_token(mut self, name: impl Into<String>, value: ThemeValue) -> Self {
+        self.runtime_tokens.insert(name.into(), value);
+        self
+    }
+
     fn built_in_color(&self, token: &str) -> Option<Rgba8> {
         match token {
+            // Legacy named tokens.
             "accent" => Some(self.accent),
             "accent-hover" => Some(self.accent_hover),
             "on-accent" => Some(self.on_accent),
@@ -113,8 +310,29 @@ impl Theme {
             "surface-pressed-strong" => Some(self.surface_pressed_strong),
             "on-surface" => Some(self.on_surface),
             "border" => Some(self.border),
+            // DS1 semantic aliases. The parser strips the `bg-` /
+            // `text-` prefix before lookup, so utility classes like
+            // `bg-surface-subtle` / `text-on-surface-muted` route here
+            // by their stripped suffix.
+            "surface-subtle" => Some(self.surface_subtle()),
+            "on-surface-muted" => Some(self.text_muted()),
+            "on-solid" => Some(self.on_solid),
             _ => None,
         }
+    }
+
+    /// Resolve a `<role>-<step>` token such as `gray-2`, `success-9`,
+    /// or `error-11` to its concrete color. Returns `None` when the
+    /// token is not in scale form so the caller can fall through to
+    /// user-defined tokens / the unknown-token fallback.
+    fn scale_step_color(&self, token: &str) -> Option<Rgba8> {
+        let (role_name, step_str) = token.rsplit_once('-')?;
+        let role = ScaleRole::from_token(role_name)?;
+        let step: u8 = step_str.parse().ok()?;
+        if !(1..=12).contains(&step) {
+            return None;
+        }
+        Some(self.scale(role).step(step))
     }
 
     #[cfg(debug_assertions)]
@@ -142,9 +360,10 @@ impl Theme {
     }
 
     #[cfg(debug_assertions)]
-    fn registered_tokens(&self) -> Vec<&'static str> {
-        let mut tokens = BUILT_IN_COLOR_TOKENS.to_vec();
-        tokens.extend(self.tokens.keys().copied());
+    fn registered_tokens(&self) -> Vec<String> {
+        let mut tokens: Vec<String> = BUILT_IN_COLOR_TOKENS.iter().map(|s| (*s).into()).collect();
+        tokens.extend(self.tokens.keys().map(|s| (*s).into()));
+        tokens.extend(self.runtime_tokens.keys().cloned());
         tokens
     }
 
@@ -182,7 +401,19 @@ impl Theme {
         // dark accent on a dark palette it produced unreadable dark-on-
         // dark text.
         let on_accent = pick_higher_contrast(palette.primary, palette.text, palette.background);
+        // The DS1 scales are not yet derivable from a 6-color Palette;
+        // fall back to the default light scales so role-prefixed
+        // classes (`bg-success-3`, etc.) still resolve. A future
+        // palette-aware pipeline can replace these by interpolating
+        // around each palette role color.
         Self {
+            gray: slate_light(),
+            accent_scale: iris_light(),
+            success: green_light(),
+            warn: amber_light(),
+            error: ruby_light(),
+            info: cyan_light(),
+            on_solid: rgba(255, 255, 255),
             accent: palette.primary,
             accent_hover: shift(palette.primary, hover_shift),
             on_accent,
@@ -199,6 +430,7 @@ impl Theme {
             border: alpha_mix(palette.text, palette.background, 0.35),
             missing_token_fallback: rgba(255, 0, 255),
             tokens: phf::Map::new(),
+            runtime_tokens: HashMap::new(),
         }
     }
 
@@ -306,6 +538,9 @@ impl Theme {
     }
 
     fn px_token(&self, token: &'static str, fallback: i16) -> Px {
+        if let Some(ThemeValue::Px(px)) = self.runtime_tokens.get(token).copied() {
+            return px_from_f32(px);
+        }
         match self.tokens.get(token).copied() {
             Some(ThemeValue::Px(px)) => px_from_f32(px),
             _ => Px(fallback),
@@ -431,31 +666,43 @@ impl ThemeBuilder {
 
     /// Replace the user token map.
     #[must_use]
-    pub const fn tokens(mut self, tokens: phf::Map<&'static str, ThemeValue>) -> Self {
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "Theme now owns a HashMap; const-stable in the consumer regardless."
+    )]
+    pub fn tokens(mut self, tokens: phf::Map<&'static str, ThemeValue>) -> Self {
         self.theme.tokens = tokens;
+        self
+    }
+
+    /// Register a runtime token. Overlays compile-time `phf` tokens.
+    #[must_use]
+    pub fn token(mut self, name: impl Into<String>, value: ThemeValue) -> Self {
+        self.theme.runtime_tokens.insert(name.into(), value);
         self
     }
 
     /// Build the theme.
     #[must_use]
-    pub const fn build(self) -> Theme {
+    pub fn build(self) -> Theme {
         self.theme
     }
 }
 
 #[cfg(debug_assertions)]
-fn nearest_tokens(token: &str, registered: &[&'static str]) -> [&'static str; 3] {
-    let mut scored = registered
+fn nearest_tokens(token: &str, registered: &[String]) -> [String; 3] {
+    let mut scored: Vec<(usize, &String)> = registered
         .iter()
-        .copied()
         .map(|candidate| (strsim::levenshtein(token, candidate), candidate))
-        .collect::<Vec<_>>();
-    scored.sort_by_key(|(score, candidate)| (*score, *candidate));
-    [
-        scored.first().map_or("", |(_, candidate)| *candidate),
-        scored.get(1).map_or("", |(_, candidate)| *candidate),
-        scored.get(2).map_or("", |(_, candidate)| *candidate),
-    ]
+        .collect();
+    scored.sort_by(|a, b| a.0.cmp(&b.0).then_with(|| a.1.cmp(b.1)));
+    let pick = |i: usize| {
+        scored
+            .get(i)
+            .map(|(_, candidate)| (*candidate).clone())
+            .unwrap_or_default()
+    };
+    [pick(0), pick(1), pick(2)]
 }
 
 fn px_from_f32(value: f32) -> Px {

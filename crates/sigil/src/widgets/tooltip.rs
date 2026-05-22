@@ -29,11 +29,15 @@
 //! * `.child(target)` — the wrapped node.
 //! * `.class(...)` / `.style(...)` / `.theme(...)` via the trait surface.
 
+use std::cell::Cell;
+use std::rc::Rc;
+use std::time::Duration;
+
 use animation_runtime::presets;
 use events::prelude::NodeEventsExt;
 use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, signal};
+use reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
 use style::{
     ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, Style, StyleAccess, StyleAtom, Theme,
     TransitionId,
@@ -69,6 +73,7 @@ pub struct TooltipBuilder {
     shortcut: Option<String>,
     child: Option<Box<dyn IntoNode>>,
     clamp_top: bool,
+    delay_ms: u64,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -92,9 +97,27 @@ impl TooltipBuilder {
             shortcut: None,
             child: None,
             clamp_top: false,
+            delay_ms: 0,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
+    }
+
+    /// Delay (in milliseconds) before the bubble appears after the
+    /// pointer enters the wrapper. Default `0` (immediate).
+    ///
+    /// Set to ~500-700 ms for the VSCode-style "don't flicker while
+    /// I sweep across an icon row" feel. A pointer-leave inside the
+    /// delay window cancels the pending show; subsequent re-entries
+    /// restart the timer.
+    ///
+    /// Driven via `reactive::register_interval` — the host app must
+    /// call `reactive::tick_intervals()` once per frame for the
+    /// delay to elapse (the standard reactive runtime already does).
+    #[must_use]
+    pub const fn delay(mut self, ms: u64) -> Self {
+        self.delay_ms = ms;
+        self
     }
 
     /// Set an optional keyboard-shortcut hint shown alongside the label.
@@ -159,14 +182,36 @@ impl TooltipBuilder {
         let description = bubble_description(&self.label, self.shortcut.as_deref());
         let bubble = build_bubble(&self.label, self.shortcut.as_deref(), visible, bubble_top);
 
+        // Pending one-shot timer for the delay window. Holds an
+        // `IntervalId` we cancel either on early leave or after the
+        // single fire. `None` when no timer is pending.
+        let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
+        let delay_ms = self.delay_ms;
+        let pending_for_enter = Rc::clone(&pending);
+
         let mut root = wrapper_root(&description)
             .pointer_enter(move |event| {
-                if !visible.peek() {
-                    visible.set(true);
-                }
                 event.stop_propagation();
+                if visible.peek() || pending_for_enter.get().is_some() {
+                    return;
+                }
+                if delay_ms == 0 {
+                    visible.set(true);
+                    return;
+                }
+                let pending_for_cb = Rc::clone(&pending_for_enter);
+                let id = register_interval(Duration::from_millis(delay_ms), move || {
+                    visible.set(true);
+                    if let Some(id) = pending_for_cb.take() {
+                        cancel_interval(id);
+                    }
+                });
+                pending_for_enter.set(Some(id));
             })
             .pointer_leave(move |event| {
+                if let Some(id) = pending.take() {
+                    cancel_interval(id);
+                }
                 if visible.peek() {
                     visible.set(false);
                 }

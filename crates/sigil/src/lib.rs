@@ -90,8 +90,13 @@ pub mod prelude {
     pub use style::{
         ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Sizing, Spacing, StateStyle,
         StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
-        Theme, Transitions, Typography, Visual,
+        Theme, ThemeValue, Tone, Transitions, Typography, Visual,
     };
+    // NOTE — `style::Size` (the semantic widget-size enum `Compact /
+    // Default / Wide / Grow`) is NOT in the prelude because it
+    // collides with `hal::Size::fixed(w, h)` re-exported through
+    // `layout::prelude`. Reach for it as `style::Size` at the call
+    // site (the widget builders' `.size(...)` methods accept it).
     pub use tasks::{OwnerHandle, dispatch_to_owner};
 
     pub use crate::interaction::InteractionState;
@@ -99,14 +104,15 @@ pub mod prelude {
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
-        ButtonBuilder, ButtonTone, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard,
-        DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, MenuBuilder, MenuItem,
-        ModalBuilder, NumberFieldBuilder, NumericKind, Orientation, PanelBuilder, ProgressBuilder,
-        ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, SliderBuilder, SplitterBuilder,
-        SplitterOrientation, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder,
-        TooltipBuilder, VirtualListBuilder, button, checkbox, chip, divider_horizontal,
-        divider_vertical, dropdown, floating_text, kv_row, label, menu, modal, number_field, panel,
-        progress, scroll, slider, splitter, status_bar, tabs, text_edit, text_field, toggle,
+        ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard, DotBuilder,
+        DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, IconBuilder,
+        MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
+        PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder,
+        SelectionMode, SelectionState, SliderBuilder, SplitterBuilder, SplitterOrientation,
+        TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder,
+        VirtualListBuilder, button, checkbox, chip, divider_horizontal, divider_vertical, dot,
+        dropdown, floating_text, icon, kv_row, label, menu, modal, number_field, panel, progress,
+        radio_group, scroll, slider, splitter, status_bar, tabs, text_edit, text_field, toggle,
         tooltip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, launch};

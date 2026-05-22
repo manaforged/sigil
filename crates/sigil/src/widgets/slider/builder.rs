@@ -33,9 +33,13 @@ const VERTICAL_WIDTH: f32 = 28.0;
 const VERTICAL_HEIGHT: f32 = 180.0;
 const THUMB_SIZE: f32 = 22.0;
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+// Track uses `border` rather than `surface-hover` so it stays
+// visible when the slider lives inside a `surface-hover` card
+// (form rows in patterns + the playground category card both use
+// `bg-surface-hover` — a surface-hover track was indistinguishable).
+static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 static TRACK_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::BackgroundThemeRef("border"),
     StyleAtom::Opacity(5_000),
 ];
 static THUMB_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];

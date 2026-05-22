@@ -5,7 +5,14 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::{AnimatorOverlay, RenderStyle, StyleAtom};
+use crate::{AnimatorOverlay, RenderStyle, StateSlot, StyleAtom, StyleOverlay};
+
+/// Shared current-state-slot cell.
+///
+/// A widget's reactive style effect captures a clone and writes the
+/// slot it just resolved; the resolver reads through the binding to
+/// pick the matching per-instance [`StyleOverlay`] slice.
+pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
 /// Shared reactive style slice updated by a node-owned effect.
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
@@ -20,6 +27,17 @@ pub struct StyleBinding {
     /// a `Transition` atom (zero-overhead path); `Some` when one or
     /// more numeric atoms differ between base and a state-slot overlay.
     attached_animators: Option<Box<dyn AnimatorOverlay>>,
+    /// DS2 Phase 2: per-instance user state overlay attached via
+    /// `.hover()` / `.focus()` / `.pressed()` / `.disabled()` on a
+    /// widget builder. The resolver applies these atoms AFTER the
+    /// widget's reactive slot atoms, so render-pass last-wins
+    /// resolution gives the user override priority per property.
+    state_overlay: Option<Box<StyleOverlay>>,
+    /// Cell shared with the widget's reactive style effect. Each
+    /// reactive evaluation publishes the slot it just resolved; the
+    /// resolver reads it back to pick the matching slice from
+    /// [`Self::state_overlay`].
+    state_overlay_slot: Option<ReactiveStateSlot>,
     resolved_render: RenderStyle,
     cx_generation: u64,
     layout_generation: u64,
@@ -33,6 +51,8 @@ impl core::fmt::Debug for StyleBinding {
             .field("dynamic_atoms", &self.dynamic_atoms)
             .field("reactive_atoms", &self.reactive_atoms)
             .field("attached_animators", &self.attached_animators.is_some())
+            .field("state_overlay", &self.state_overlay.is_some())
+            .field("state_overlay_slot", &self.state_overlay_slot.is_some())
             .field("resolved_render", &self.resolved_render)
             .field("cx_generation", &self.cx_generation)
             .field("layout_generation", &self.layout_generation)
@@ -48,6 +68,8 @@ impl Default for StyleBinding {
             dynamic_atoms: SmallVec::new(),
             reactive_atoms: None,
             attached_animators: None,
+            state_overlay: None,
+            state_overlay_slot: None,
             resolved_render: RenderStyle::default(),
             cx_generation: 0,
             layout_generation: 0,
@@ -168,6 +190,41 @@ impl StyleBinding {
         if let Some(overlay) = self.attached_animators.as_deref_mut() {
             overlay.retarget_to_slot(slot, base);
         }
+    }
+
+    /// Borrow the per-instance user state overlay, if any.
+    #[must_use]
+    pub fn state_overlay(&self) -> Option<&StyleOverlay> {
+        self.state_overlay.as_deref()
+    }
+
+    /// Atoms from the user state overlay for the current slot.
+    ///
+    /// Returns an empty slice when no overlay is installed, the slot
+    /// cell is missing, or the current slot has no user atoms.
+    #[must_use]
+    pub fn state_overlay_atoms(&self) -> &[StyleAtom] {
+        let Some(overlay) = self.state_overlay.as_deref() else {
+            return &[];
+        };
+        let slot = self
+            .state_overlay_slot
+            .as_ref()
+            .map_or(StateSlot::Rest, |cell| cell.get());
+        overlay.atoms_for(slot)
+    }
+
+    /// Install a per-instance user state overlay plus the slot cell
+    /// the widget's reactive style effect uses to publish the current
+    /// interaction state.
+    ///
+    /// Passing `overlay.is_empty()` and the matching empty slot cell
+    /// is harmless — the resolver skips the overlay pass when the
+    /// returned slice is empty.
+    pub fn set_state_overlay(&mut self, overlay: StyleOverlay, slot: ReactiveStateSlot) {
+        self.state_overlay = Some(Box::new(overlay));
+        self.state_overlay_slot = Some(slot);
+        self.invalidate();
     }
 
     pub(crate) fn all_atoms(&self) -> SmallVec<[StyleAtom; 32]> {
