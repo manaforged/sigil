@@ -95,12 +95,11 @@ pub(super) fn atlas_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-pub(super) fn uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn uniform_buffer(device: &wgpu::Device, uniforms: &SpriteUniforms) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer sprite uniforms"),
-        size: core::mem::size_of::<SpriteUniforms>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(uniforms),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -149,17 +148,12 @@ pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-pub(super) fn instance_buffer(device: &wgpu::Device, capacity: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn instance_buffer(device: &wgpu::Device, instance: &SpriteInstance) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer sprite instance buffer"),
-        size: capacity * sprite_instance_stride(),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(instance),
+        usage: wgpu::BufferUsages::VERTEX,
     })
-}
-
-pub(super) const fn sprite_instance_stride() -> u64 {
-    core::mem::size_of::<SpriteInstance>() as u64
 }
 
 pub(super) const UNIT_QUAD_VERTEX_COUNT: u32 = 6;

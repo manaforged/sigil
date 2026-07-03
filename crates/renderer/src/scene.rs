@@ -93,13 +93,25 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: &Theme
     // descendant ignored an ancestor's `.theme(Theme::dark())` and
     // resolved colors against the default light theme.
     let effective = node.get_extension::<Theme>().unwrap_or(inherited);
-    let rect = node.get_extension::<LayoutResult>().map(LayoutResult::rect);
-    if let Some(rect) = rect {
+    if let Some(result) = node.get_extension::<LayoutResult>() {
+        let rect = result.rect();
         push_focus_ring(scene, id, node, rect, effective);
         push_node(scene, id, node, rect, effective);
+        // `overflow: hidden`/`scroll` → scissor descendants to this node's box, so a
+        // too-tall child (a long file in the editor pane, scrolled-out content) is
+        // cut at the edge instead of painting over its siblings. The command walker
+        // skips any glyph run / fill whose rect falls outside the active clip.
+        if result.clips() {
+            scene.with_clip(rect, |scene| push_children(scene, cx, node, effective));
+            return;
+        }
     }
+    push_children(scene, cx, node, effective);
+}
+
+fn push_children(scene: &mut SceneBuilder, cx: &Cx, node: &Node, inherited: &Theme) {
     for child in node.children().iter().copied() {
-        push_subtree(scene, cx, child, effective);
+        push_subtree(scene, cx, child, inherited);
     }
 }
 

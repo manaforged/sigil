@@ -79,6 +79,9 @@ impl<T: 'static> Context<'_, T> {
                 return;
             };
             let subs: SmallVec<[ObserverKey; 4]> = slot.subscribers.clone();
+            if !subs.is_empty() {
+                rt.frame_dirty = true;
+            }
             for observer in subs {
                 rt.pending_observers.push_back(PendingObserver {
                     observer,

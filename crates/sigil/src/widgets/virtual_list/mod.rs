@@ -20,8 +20,8 @@ use reactive::{Signal, effect, signal};
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use keyboard::{KeyboardRuntime, KeyboardRuntimeInit, attach_key_handlers};
 use render::{
-    HeightSpec, VisibleRenderSpec, build_visible_window, content_container, row_slot,
-    viewport_container, width_apply, width_spec,
+    HeightSpec, VisibleRenderSpec, build_visible_window, content_container, content_container_auto,
+    row_slot, viewport_container, width_apply, width_spec,
 };
 use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
@@ -476,8 +476,12 @@ where
             selection,
         });
         let initial_rows = bound.initial_rows;
-        let content_height = window::total_height(initial_rows, axes.row_height);
-        let content = content_container(content_height, axes.width).child(visible);
+        // The bound path renders the full list and rebuilds on every
+        // signal change, so the content sizes to its current children
+        // (auto height) — a fixed height from the build-time row count is
+        // stale the instant the signal changes and collapses the list to
+        // its first row under incremental layout.
+        let content = content_container_auto(axes.width).child(visible);
         let root = viewport_container(axes.viewport_height, axes.width).child(content);
         let root = apply_viewport_overrides(
             root,

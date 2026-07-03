@@ -165,6 +165,7 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "font-sans" => return Ok(StyleAtom::FontFamily("sans")),
         "font-mono" => return Ok(StyleAtom::FontFamily("mono")),
         "font-serif" => return Ok(StyleAtom::FontFamily("serif")),
+        "font-icon" => return Ok(StyleAtom::FontFamily("icon")),
         _ => {}
     }
     parse_prefixed_token(token).ok_or_else(|| unknown(token))

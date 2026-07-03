@@ -24,6 +24,18 @@ reactive = { workspace = true }
 style = { workspace = true }
 arboard = { workspace = true }
 
+# Optional GPU text + render surface for external host engines (e.g. a game engine).
+# Off by default; enabled via the `render` feature. Pure-widget/desktop
+# consumers (`sigil::launch`) are unaffected. See DR-054.
+renderer = { workspace = true, optional = true }
+text = { workspace = true, optional = true }
+hal = { workspace = true, optional = true }
+
+[features]
+# Exposes `sigil::{render, text}` — the Slug text pipeline + scene
+# compositing an embedding host drives. See DR-054.
+render = ["dep:renderer", "dep:text", "dep:hal"]
+
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 animation = { workspace = true }

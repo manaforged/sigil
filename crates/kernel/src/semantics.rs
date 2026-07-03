@@ -65,6 +65,10 @@ pub struct A11yProps {
     pub actions: SmallVec<[accesskit::Action; 4]>,
     /// Whether this node participates in focus navigation.
     pub focusable: bool,
+    /// When focused, this node receives a plain `Tab` key instead of the router
+    /// moving focus (code editors / grids that indent with Tab). `Shift+Tab` still
+    /// moves focus, so the node is never a keyboard trap (WCAG 2.1.2).
+    pub traps_tab: bool,
     /// Optional explicit tab order index.
     pub tab_index: Option<i32>,
     /// Optional keyboard shortcut advertised by the node.
@@ -105,6 +109,7 @@ impl Default for A11yProps {
             description: None,
             actions: SmallVec::new(),
             focusable: false,
+            traps_tab: false,
             tab_index: None,
             keyboard_shortcut: None,
             hittable: true,

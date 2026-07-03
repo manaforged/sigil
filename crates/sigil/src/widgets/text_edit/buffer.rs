@@ -211,6 +211,48 @@ impl TextEdit {
         self.caret = self.buffer.len();
     }
 
+    /// Place the caret at `byte`, collapsing any active selection.
+    ///
+    /// Used by pointer-down to set the caret at the click position. `byte` is
+    /// clamped to a UTF-8 boundary at or below the buffer length, so callers
+    /// may pass a raw hit-test result. Caret moves are not undoable, so this
+    /// records no history (consistent with [`Self::move_left`] et al.).
+    pub(crate) fn place_caret(&mut self, byte: usize) {
+        self.caret = self.clamp_boundary(byte);
+        self.selection = None;
+        self.debug_assert_invariants();
+    }
+
+    /// Move the caret to `byte`, extending the selection from its anchor.
+    ///
+    /// Used by pointer-drag. The first call after [`Self::place_caret`] turns
+    /// the current caret into the anchor; a drag that lands back on the anchor
+    /// collapses the selection (mirrors [`Self::shift_left`]).
+    pub(crate) fn extend_to(&mut self, byte: usize) {
+        let byte = self.clamp_boundary(byte);
+        let anchor = *self.selection.get_or_insert(self.caret);
+        self.caret = byte;
+        if self.caret == anchor {
+            self.selection = None;
+        }
+        self.debug_assert_invariants();
+    }
+
+    /// Current selection anchor, or `None` when the caret is collapsed.
+    #[must_use]
+    pub(crate) const fn selection(&self) -> Option<usize> {
+        self.selection
+    }
+
+    /// Clamp `byte` to the nearest UTF-8 boundary at or below the buffer length.
+    fn clamp_boundary(&self, byte: usize) -> usize {
+        let mut byte = byte.min(self.buffer.len());
+        while byte > 0 && !self.buffer.is_char_boundary(byte) {
+            byte -= 1;
+        }
+        byte
+    }
+
     #[must_use]
     pub(crate) const fn len(&self) -> usize {
         self.buffer.len()
@@ -288,4 +330,50 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         .char_indices()
         .nth(1)
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TextEdit;
+
+    #[test]
+    fn place_caret_sets_caret_and_collapses_selection() {
+        let mut edit = TextEdit::new("hello world".to_owned());
+        edit.select_all();
+        assert!(edit.selection().is_some());
+        edit.place_caret(3);
+        assert_eq!(edit.caret(), 3);
+        assert_eq!(edit.selection(), None, "click collapses the selection");
+    }
+
+    #[test]
+    fn place_caret_clamps_past_end_and_off_boundary() {
+        // "café" — the 'é' is 2 bytes (3..5), so byte 4 is mid-codepoint.
+        let mut edit = TextEdit::new("café".to_owned());
+        edit.place_caret(999);
+        assert_eq!(edit.caret(), edit.len(), "past-end clamps to length");
+        edit.place_caret(4);
+        assert_eq!(edit.caret(), 3, "mid-codepoint snaps back to a boundary");
+    }
+
+    #[test]
+    fn extend_to_anchors_at_starting_caret_then_grows() {
+        let mut edit = TextEdit::new("hello world".to_owned());
+        edit.place_caret(2); // caret at 2, no selection
+        edit.extend_to(6); // drag right to byte 6 (exclusive)
+        assert_eq!(edit.caret(), 6);
+        assert_eq!(edit.selection(), Some(2), "anchor stays at the drag origin");
+        assert_eq!(edit.selected_text(), Some("llo "));
+    }
+
+    #[test]
+    fn extend_to_back_onto_anchor_collapses() {
+        let mut edit = TextEdit::new("hello".to_owned());
+        edit.place_caret(1);
+        edit.extend_to(4);
+        assert_eq!(edit.selection(), Some(1));
+        edit.extend_to(1); // drag back to the origin
+        assert_eq!(edit.selection(), None, "a zero-width drag collapses");
+        assert_eq!(edit.caret(), 1);
+    }
 }

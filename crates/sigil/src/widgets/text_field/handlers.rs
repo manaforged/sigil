@@ -3,7 +3,9 @@ use std::rc::Rc;
 
 use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use kernel::NodeBuilder;
-use reactive::Signal;
+use layout::with_text_geometry;
+use reactive::{Signal, signal};
+use style::TextStyle;
 
 use super::super::shared::disabled_now;
 use super::super::text_edit::TextEdit;
@@ -18,13 +20,6 @@ impl Clipboard for NoopClipboard {
     }
 }
 
-/// Approximate visible characters that fit in the inner content area.
-///
-/// Inner width is 156 px (178 px container minus 2×12 px padding). At an
-/// assumed average advance of 8 px per ASCII character this gives ~19 chars.
-/// The constant is a conservative approximation — only used for scroll math.
-pub(super) const VISIBLE_CHAR_APPROX: usize = 19;
-
 #[derive(Clone)]
 pub(super) struct TextFieldRuntime {
     pub(super) value: Signal<String>,
@@ -34,7 +29,18 @@ pub(super) struct TextFieldRuntime {
     pub(super) submit: TextChange,
     pub(super) clipboard: Rc<dyn Clipboard>,
     pub(super) caret_visible: Signal<bool>,
-    pub(super) scroll_offset: Signal<usize>,
+    /// Horizontal scroll of the text track in logical px (>= 0). The render
+    /// layer translates the glyph/caret/selection track left by this much so
+    /// the caret stays inside the clipped viewport. Pixel-, not character-,
+    /// based so it stays correct at any field width and font.
+    pub(super) scroll: Signal<f32>,
+    /// Visible inner column width in logical px — the viewport the caret must
+    /// stay within. Fed into the scroll math so a wider field scrolls later.
+    pub(super) column: f32,
+    /// Caret byte offset mirrored from the buffer for the render overlay.
+    pub(super) caret: Signal<usize>,
+    /// Selection anchor mirrored from the buffer (`None` = collapsed caret).
+    pub(super) selection: Signal<Option<usize>>,
 }
 
 impl TextFieldRuntime {
@@ -46,17 +52,24 @@ impl TextFieldRuntime {
         submit: TextChange,
         clipboard: Rc<dyn Clipboard>,
         caret_visible: Signal<bool>,
-        scroll_offset: Signal<usize>,
+        scroll: Signal<f32>,
+        column: f32,
     ) -> Self {
+        let edit = TextEdit::new(value.peek());
+        let caret = signal(edit.caret());
+        let selection = signal(edit.selection());
         Self {
             value,
             disabled,
-            edit: Rc::new(RefCell::new(TextEdit::new(value.peek()))),
+            edit: Rc::new(RefCell::new(edit)),
             change,
             submit,
             clipboard,
             caret_visible,
-            scroll_offset,
+            scroll,
+            column,
+            caret,
+            selection,
         }
     }
 
@@ -199,8 +212,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     edit.insert_str(text);
     write_value(runtime.value, edit.as_str());
     (runtime.change)(edit.as_str());
-    update_scroll(&edit, runtime.scroll_offset);
-    runtime.caret_visible.set(true);
+    commit(runtime, &edit);
     event.stop_propagation();
 }
 
@@ -216,8 +228,7 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
         write_value(runtime.value, state.as_str());
         (runtime.change)(state.as_str());
     }
-    update_scroll(&state, runtime.scroll_offset);
-    runtime.caret_visible.set(true);
+    commit(runtime, &state);
 }
 
 fn move_caret(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnce(&mut TextEdit)) {
@@ -226,8 +237,7 @@ fn move_caret(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
         let mut state = runtime.edit.borrow_mut();
         edit(&mut state);
         debug_assert!(state.caret() <= state.len());
-        update_scroll(&state, runtime.scroll_offset);
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     }
 }
 
@@ -254,8 +264,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         state.backspace();
         write_value(runtime.value, state.as_str());
         (runtime.change)(state.as_str());
-        update_scroll(&state, runtime.scroll_offset);
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     }
 }
 
@@ -278,15 +287,15 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     }
     write_value(runtime.value, state.as_str());
     (runtime.change)(state.as_str());
-    update_scroll(&state, runtime.scroll_offset);
-    runtime.caret_visible.set(true);
+    commit(runtime, &state);
 }
 
 fn select_all_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     event.stop_propagation();
     if !runtime.disabled() {
-        runtime.edit.borrow_mut().select_all();
-        runtime.caret_visible.set(true);
+        let mut state = runtime.edit.borrow_mut();
+        state.select_all();
+        commit(runtime, &state);
     }
 }
 
@@ -299,8 +308,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if state.undo() {
         write_value(runtime.value, state.as_str());
         (runtime.change)(state.as_str());
-        update_scroll(&state, runtime.scroll_offset);
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     }
 }
 
@@ -313,8 +321,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if state.redo() {
         write_value(runtime.value, state.as_str());
         (runtime.change)(state.as_str());
-        update_scroll(&state, runtime.scroll_offset);
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     }
 }
 
@@ -334,13 +341,46 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
     });
 }
 
-pub(super) fn update_scroll(edit: &TextEdit, scroll_offset: Signal<usize>) {
-    let caret = edit.caret();
-    let current = scroll_offset.peek();
-    if caret < current {
-        scroll_offset.set(caret);
-    } else if caret > current + VISIBLE_CHAR_APPROX {
-        scroll_offset.set(caret.saturating_sub(VISIBLE_CHAR_APPROX));
+/// Publish post-mutation state: keep the caret visible, scroll it into view,
+/// and mirror the buffer's caret + selection into the render signals that
+/// drive the caret/selection overlay. Called after every buffer mutation
+/// (keyboard or pointer) so the visible caret tracks the model.
+pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
+    update_scroll(state, runtime.scroll, runtime.column);
+    runtime.caret_visible.set(true);
+    if runtime.caret.peek() != state.caret() {
+        runtime.caret.set(state.caret());
+    }
+    if runtime.selection.peek() != state.selection() {
+        runtime.selection.set(state.selection());
+    }
+}
+
+/// Slide the horizontal scroll so the caret stays inside the `column`-wide
+/// viewport. Pixel-based: the caret's x comes from the real text engine
+/// (`with_text_geometry`), so this is correct at any width and font — unlike
+/// the old fixed "≈19 chars" guess that mis-scrolled wider fields like the
+/// composer. With no geometry provider installed (headless layout tests) the
+/// caret x is unknown, so scroll is left untouched (stays 0).
+pub(super) fn update_scroll(edit: &TextEdit, scroll: Signal<f32>, column: f32) {
+    let Some(caret_x) = with_text_geometry(|engine| {
+        engine
+            .caret(edit.as_str(), &TextStyle::default(), edit.caret())
+            .x
+    }) else {
+        return;
+    };
+    let mut offset = scroll.peek();
+    if caret_x < offset {
+        // Caret moved left of the window — pin it to the left edge.
+        offset = caret_x;
+    } else if caret_x > offset + column {
+        // Caret moved past the right edge — pin it to the right edge.
+        offset = caret_x - column;
+    }
+    let offset = offset.max(0.0);
+    if (offset - scroll.peek()).abs() > f32::EPSILON {
+        scroll.set(offset);
     }
 }
 

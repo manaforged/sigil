@@ -95,7 +95,7 @@ pub use scene_command::{
     Transform,
 };
 pub use shadow_paint::{Shadow, ShadowKind};
-pub use slug::{DrawParams, SlugTextPipeline};
+pub use slug::{DrawParams, SlugTextPipeline, TextTuning, set_text_tuning, text_tuning};
 #[doc(hidden)]
 pub use sprite_paint::BUILTIN_SPRITE_ATLAS_ID;
 pub use style_adapter::unsupported_style_warning_count_for;

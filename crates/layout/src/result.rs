@@ -9,6 +9,7 @@ use crate::ResolvedBox;
 pub struct LayoutResult {
     rect: Rect,
     content_size: Point,
+    clips: bool,
 }
 
 impl LayoutResult {
@@ -34,10 +35,21 @@ impl LayoutResult {
         self.content_size
     }
 
-    pub(crate) const fn from_resolved_box(layout: &ResolvedBox) -> Self {
+    /// Whether this node clips overflowing descendants (`overflow: hidden`
+    /// or `scroll` on either axis). The scene walker wraps the node's
+    /// children in a clip scope so glyphs and fills outside the box are
+    /// scissored instead of painting over siblings. Without this the
+    /// overflow setting affects layout only, never the rendered pixels.
+    #[must_use]
+    pub const fn clips(&self) -> bool {
+        self.clips
+    }
+
+    pub(crate) const fn from_resolved_box(layout: &ResolvedBox, clips: bool) -> Self {
         Self {
             rect: Rect::new(Point::new(layout.x, layout.y), layout.w, layout.h),
             content_size: Point::new(layout.w, layout.h),
+            clips,
         }
     }
 }

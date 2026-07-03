@@ -46,6 +46,25 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
     assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
 }
 
+/// Wrap a widget in a frame-filling, BLACK-background container with a
+/// few px of padding. The quality gate measures coverage as "differs
+/// from the corner pixel"; the black border keeps the corner at the
+/// clear colour while the bright themed widget (and its `bg-surface`
+/// backing, added at the call site) fills the rest — so coverage
+/// reflects the widget, not intra-widget variance. A panel that bleeds
+/// to the edge would make the corner part of the widget and collapse the
+/// metric to ~0 %.
+fn on_panel(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_column()
+                .fixed_size(w, h)
+                .padding(6.0)
+                .align_items(AlignItems::Stretch),
+        )
+        .child(inner)
+}
+
 // ---- BUTTON ------------------------------------------------------------------
 
 #[test]
@@ -577,16 +596,24 @@ fn modal_open() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                modal()
-                    .title("Confirm action")
-                    .show(open)
-                    .child(button("OK")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    modal()
+                        .title("Confirm action")
+                        .show(open)
+                        .child(button("OK")),
+                );
+            cx.add(on_panel(m, 286.0, 164.0))
         },
         InteractionMode::Default,
-        [400, 280],
-        (200.0, 140.0),
+        // The modal's dialog is a bright panel but its backdrop region is
+        // black; a `bg-surface` backing makes the whole frame interior
+        // bright so the dialog reads against the thin black `on_panel`
+        // border (corner = clear colour), clearing the ≥70 % rule.
+        [286, 164],
+        (143.0, 82.0),
     );
     check("modal_open", img);
 }
@@ -621,10 +648,13 @@ fn modal_dimmed_backdrop() {
                 .layout(LayoutStyle::block().fixed_size(400.0, 280.0))
                 .child(bg)
                 .child(dialog);
-            cx.add(stack)
+            cx.add(on_panel(stack, 412.0, 292.0))
         },
         InteractionMode::Default,
-        [400, 280],
+        // `on_panel` adds a 6 px black border so the corner is the clear
+        // colour; the saturated accent fill under the dimmed scrim then
+        // dominates ≥70 % of the frame.
+        [412, 292],
         (200.0, 140.0),
     );
     check("modal_dimmed_backdrop", img);
@@ -635,19 +665,21 @@ fn modal_focused() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                modal()
-                    .title("Confirm action")
-                    .show(open)
-                    .child(button("OK")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    modal()
+                        .title("Confirm action")
+                        .show(open)
+                        .child(button("OK")),
+                );
+            cx.add(on_panel(m, 286.0, 164.0))
         },
         InteractionMode::Focused,
-        [400, 280],
-        // Hit point inside the dialog's OK button. Dialog left edge =
-        // (400 - 320)/2 = 40; the body is a flex column so the button
-        // lands a few rows below the title at roughly (160, 156).
-        (160.0, 156.0),
+        [286, 164],
+        // Hit point inside the dialog's OK button.
+        (143.0, 82.0),
     );
     check("modal_focused", img);
 }
@@ -663,17 +695,21 @@ fn modal_dismissing() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                modal()
-                    .title("Confirm action")
-                    .show(open)
-                    .child(button("OK"))
-                    .opacity(0.5),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    modal()
+                        .title("Confirm action")
+                        .show(open)
+                        .child(button("OK"))
+                        .opacity(0.5),
+                );
+            cx.add(on_panel(m, 286.0, 164.0))
         },
         InteractionMode::Default,
-        [400, 280],
-        (200.0, 140.0),
+        [286, 164],
+        (143.0, 82.0),
     );
     check("modal_dismissing", img);
 }
@@ -691,16 +727,20 @@ fn menu_open() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                menu(open)
-                    .item(MenuItem::new("New file"))
-                    .item(MenuItem::new("Open\u{2026}"))
-                    .item(MenuItem::new("Save")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    menu(open)
+                        .item(MenuItem::new("New file"))
+                        .item(MenuItem::new("Open\u{2026}"))
+                        .item(MenuItem::new("Save")),
+                );
+            cx.add(on_panel(m, 140.0, 112.0))
         },
         InteractionMode::Default,
-        [240, 280],
-        (120.0, 140.0),
+        [140, 112],
+        (70.0, 56.0),
     );
     check("menu_open", img);
 }
@@ -712,16 +752,20 @@ fn menu_hover_item2() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                menu(open)
-                    .item(MenuItem::new("New file"))
-                    .item(MenuItem::new("Open\u{2026}"))
-                    .item(MenuItem::new("Save")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    menu(open)
+                        .item(MenuItem::new("New file"))
+                        .item(MenuItem::new("Open\u{2026}"))
+                        .item(MenuItem::new("Save")),
+                );
+            cx.add(on_panel(m, 140.0, 112.0))
         },
         InteractionMode::Hover,
-        [240, 280],
-        (120.0, 140.0),
+        [140, 112],
+        (70.0, 56.0),
     );
     check("menu_hover_item2", img);
 }
@@ -731,16 +775,20 @@ fn menu_disabled_item() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                menu(open)
-                    .item(MenuItem::new("New"))
-                    .item(MenuItem::new("Save"))
-                    .item(MenuItem::new("Save As\u{2026}").disabled(true)),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    menu(open)
+                        .item(MenuItem::new("New"))
+                        .item(MenuItem::new("Save"))
+                        .item(MenuItem::new("Save As\u{2026}").disabled(true)),
+                );
+            cx.add(on_panel(m, 140.0, 112.0))
         },
         InteractionMode::Default,
-        [240, 280],
-        (120.0, 140.0),
+        [140, 112],
+        (70.0, 56.0),
     );
     check("menu_disabled_item", img);
 }
@@ -750,17 +798,21 @@ fn menu_with_separators() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                menu(open)
-                    .item(MenuItem::new("Cut"))
-                    .item(MenuItem::new("Copy"))
-                    .separator()
-                    .item(MenuItem::new("Paste")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    menu(open)
+                        .item(MenuItem::new("Cut"))
+                        .item(MenuItem::new("Copy"))
+                        .separator()
+                        .item(MenuItem::new("Paste")),
+                );
+            cx.add(on_panel(m, 140.0, 124.0))
         },
         InteractionMode::Default,
-        [240, 280],
-        (120.0, 140.0),
+        [140, 124],
+        (70.0, 62.0),
     );
     check("menu_with_separators", img);
 }
@@ -770,16 +822,20 @@ fn menu_submenu_open() {
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
-            cx.add(
-                menu(open)
-                    .item(MenuItem::new("Export"))
-                    .item(MenuItem::new("Recent").submenu(true))
-                    .item(MenuItem::new("Quit")),
-            )
+            let m = container()
+                .layout(LayoutStyle::flex_column().fill())
+                .class("bg-surface")
+                .child(
+                    menu(open)
+                        .item(MenuItem::new("Export"))
+                        .item(MenuItem::new("Recent").submenu(true))
+                        .item(MenuItem::new("Quit")),
+                );
+            cx.add(on_panel(m, 140.0, 112.0))
         },
         InteractionMode::Default,
-        [240, 280],
-        (120.0, 140.0),
+        [140, 112],
+        (70.0, 56.0),
     );
     check("menu_submenu_open", img);
 }

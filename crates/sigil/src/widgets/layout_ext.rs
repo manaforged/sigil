@@ -91,6 +91,15 @@ impl LayoutOverrides {
         self.padding = Some(px);
     }
 
+    /// The recorded width override, if any. Lets a widget thread a
+    /// caller-set `.width(px)` past its own outer node into nested
+    /// children (e.g. `text_field` sizing its inner text block to match
+    /// the field) before [`apply`](Self::apply) consumes the overrides.
+    #[must_use]
+    pub const fn width_hint(&self) -> Option<f32> {
+        self.width
+    }
+
     /// Apply the overrides to `base`, returning the merged
     /// [`LayoutStyle`]. The full-override (if set) replaces `base`;
     /// then `width` / `height` / `grow` / `padding` apply on top.

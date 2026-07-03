@@ -148,6 +148,15 @@ pub(crate) struct RuntimeState {
     /// `expanded`, `text_value`, `live`, …) changes. Cleared by the
     /// drain in [`crate::runtime_drain::drain_a11y_updates`].
     pub(crate) a11y_dirty: bool,
+    /// Whether any visual-affecting reactive mutation occurred during the
+    /// current frame. Reset to `false` at [`Runtime::begin_effect`]; flipped on
+    /// by every mutation source that schedules observer/effect work (signal
+    /// `set`/`update`, `Context::notify`, `set_global`). The application frame
+    /// driver reads it via [`Runtime::frame_dirty`] to skip layout + paint when
+    /// a frame (e.g. a bare cursor-move) changed nothing. Errs toward dirty: an
+    /// extra paint is cheap, a missed one is a visible freeze. Starts `true` so
+    /// the first frame always paints.
+    pub(crate) frame_dirty: bool,
     /// W5.2 / DR-050 §G10-phase-2 — installed publisher callback that
     /// the end-of-frame drain invokes to snapshot the current `Cx` into a
     /// `TreeUpdate` and forward it to the installed `A11yBridge`.
@@ -196,6 +205,7 @@ impl RuntimeState {
             dispatcher: None,
             local_executor: None,
             a11y_dirty: false,
+            frame_dirty: true,
             a11y_publisher: None,
             runtime_id: 0,
         }

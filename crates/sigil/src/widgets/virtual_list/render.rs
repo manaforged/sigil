@@ -34,6 +34,16 @@ pub(super) fn content_container(height: f32, width: WidthSpec) -> NodeBuilder {
     container().layout(width.apply(LayoutStyle::block().height(height)))
 }
 
+/// Content wrapper for the reactive (`items_bind`) path, which renders
+/// the full bound `Vec` and re-builds it on every signal change. Its
+/// height is **auto** (sized to the rebuilt children) rather than a
+/// build-time row-count snapshot — a fixed height taken when the bound
+/// signal was empty collapses the list to its first row under the
+/// incremental layout path. The enclosing viewport clips overflow.
+pub(super) fn content_container_auto(width: WidthSpec) -> NodeBuilder {
+    container().layout(width.apply(LayoutStyle::block()))
+}
+
 pub(super) fn build_visible_window<T, R>(
     items: &[T],
     render: &R,

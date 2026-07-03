@@ -101,7 +101,7 @@ fn quad_y_roots(vy: f32, curve: &QuadCurve) -> SmallVec<[f32; 2]> {
             }
         }
     } else {
-        let discriminant = coeff_b * coeff_b - 4.0 * coeff_a * coeff_c;
+        let discriminant = (4.0 * coeff_a).mul_add(-coeff_c, coeff_b * coeff_b);
         if discriminant >= 0.0 {
             let sq = discriminant.sqrt();
             for &sign in &[-1.0_f32, 1.0] {

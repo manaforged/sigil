@@ -46,13 +46,32 @@ use renderer as _;
 #[cfg(test)]
 use wgpu as _;
 
-pub use app::{AppConfig, AppResult, Error, PanicPolicy, TreeRoot, launch};
+pub use app::{
+    AppConfig, AppResult, DefaultFonts, Error, PanicPolicy, TextTuning, TreeRoot, launch,
+    set_default_fonts, set_text_tuning, text_tuning,
+};
 
 pub mod clipboard;
 pub mod interaction;
 pub mod testing;
 pub mod widget_dev;
 pub mod widgets;
+
+/// GPU render + scene-compositing surface for embedding host engines.
+/// Off unless the `render` feature is enabled. See DR-054.
+#[cfg(feature = "render")]
+pub mod render;
+/// Text-shaping surface for embedding host engines.
+/// Off unless the `render` feature is enabled. See DR-054.
+#[cfg(feature = "render")]
+pub mod text;
+
+/// Host-agnostic UI driver (`UiContext`) for embedding sigil in another
+/// engine's frame loop. Off unless the `render` feature is enabled. See DR-054.
+#[cfg(feature = "render")]
+pub mod ui {
+    pub use app::UiContext;
+}
 
 /// Reactive primitives re-exported unchanged.
 pub mod reactive {
@@ -88,9 +107,9 @@ pub mod prelude {
     /// `text-lg`, `text-xl`, `font-normal`, `font-medium`, `font-bold`,
     /// `font-sans`, `font-mono`, `font-serif`, `leading-N`, `opacity-N`.
     pub use style::{
-        ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Sizing, Spacing, StateStyle,
-        StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
-        Theme, ThemeValue, Tone, Transitions, Typography, Visual,
+        ColorAtom, ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Rgba8, Sizing,
+        Spacing, StateStyle, StateVariants, Style, StyleAccess, StyleAtom, StyleState,
+        StyleVariant, Styleable, Styled, Theme, ThemeValue, Tone, Transitions, Typography, Visual,
     };
     // NOTE — `style::Size` (the semantic widget-size enum `Compact /
     // Default / Wide / Grow`) is NOT in the prelude because it
@@ -104,16 +123,16 @@ pub mod prelude {
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
-        ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard, DotBuilder,
-        DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, IconBuilder,
-        MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
-        PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder,
+        ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard, CodeEditBuilder,
+        DotBuilder, DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, HlSpan,
+        IconBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind,
+        Orientation, PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder,
         SelectionMode, SelectionState, SliderBuilder, SplitterBuilder, SplitterOrientation,
         TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder,
-        VirtualListBuilder, button, checkbox, chip, divider_horizontal, divider_vertical, dot,
-        dropdown, floating_text, icon, kv_row, label, menu, modal, number_field, panel, progress,
-        radio_group, scroll, slider, splitter, status_bar, tabs, text_edit, text_field, toggle,
-        tooltip, virtual_list,
+        VirtualListBuilder, button, checkbox, chip, code_edit, divider_horizontal,
+        divider_vertical, dot, dropdown, floating_text, icon, kv_row, label, menu, modal,
+        number_field, panel, progress, radio_group, scroll, slider, splitter, status_bar, tabs,
+        text_edit, text_field, toggle, tooltip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, launch};
 }

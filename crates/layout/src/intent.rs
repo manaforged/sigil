@@ -185,11 +185,29 @@ impl LayoutStyle {
         self
     }
 
+    /// Set the inline-axis (width) overflow behavior.
+    #[must_use]
+    pub const fn overflow_x(mut self, overflow: Overflow) -> Self {
+        self.0.overflow.width = overflow;
+        self
+    }
+
     /// Set the block-axis (height) overflow behavior.
     #[must_use]
     pub const fn overflow_y(mut self, overflow: Overflow) -> Self {
         self.0.overflow.height = overflow;
         self
+    }
+
+    /// True when paint must clip descendants to this node's rect —
+    /// either axis is `Hidden` or `Scroll`. Scene emission consults this
+    /// so `overflow_y(Overflow::Hidden)` actually clips at render time
+    /// (`virtual_list` / scroll viewports previously painted overscan rows
+    /// past their viewport edge).
+    #[must_use]
+    pub const fn clips_paint(&self) -> bool {
+        !matches!(self.0.overflow.height, Overflow::Visible)
+            || !matches!(self.0.overflow.width, Overflow::Visible)
     }
 
     /// Set a fixed logical-pixel top inset (for `Position::Absolute`).

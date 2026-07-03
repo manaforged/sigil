@@ -20,9 +20,9 @@ use style::TextStyle;
 use crate::block::BlockSolver;
 use crate::error::LayoutError;
 use crate::flex::FlexSolver;
-use crate::forest::{AvailableSpace, LayoutForest, LayoutText, LocalId, MeasureScope};
+use crate::forest::{AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope};
 use crate::measure::TextMeasure;
-use crate::style_data::{Display, Size, StyleData};
+use crate::style_data::{Display, Overflow, Size, StyleData};
 
 /// Geometry resolved by [`LayoutDrive::measure`] for one node.
 ///
@@ -210,14 +210,35 @@ impl LayoutDrive {
         root: NodeHandle,
         avail: AvailableSpace,
     ) -> Result<(), LayoutError> {
-        let root_id = root.0;
         // Bump the frame tag before dispatching so every box the
         // solver scatter-writes through `MeasureScope::write` lands
         // stamped with the current frame. `computed_box` compares
         // against this tag to detect "reached this measure" vs
         // "stale slab entry" — replaces the previous per-frame
         // `AHashSet<LocalId>`.
+        self.begin_measure_frame();
+        self.measure_keep_frame(root, avail)
+    }
+
+    /// Bump the frame tag once. Callers measuring several roots that
+    /// belong to the *same* logical layout pass (the incremental path's
+    /// containment roots) must bump once and then use
+    /// [`Self::measure_keep_frame`] per root — bumping per root would
+    /// stamp each root's boxes with a different tag, so `computed_box`
+    /// would treat every root but the last as stale.
+    pub(crate) const fn begin_measure_frame(&mut self) {
         let _ = self.forest.next_frame();
+    }
+
+    /// Measure a root under the *current* frame tag without bumping it.
+    /// See [`Self::begin_measure_frame`]. Takes `&self`: the forest's
+    /// box slab is written through interior mutability by the solver.
+    pub(crate) fn measure_keep_frame(
+        &self,
+        root: NodeHandle,
+        avail: AvailableSpace,
+    ) -> Result<(), LayoutError> {
+        let root_id = root.0;
         let handle = self
             .forest
             .refer(root_id)
@@ -254,6 +275,60 @@ impl LayoutDrive {
             w: cb.w,
             h: cb.h,
         })
+    }
+
+    /// Whether `node` clips its overflowing content (`overflow: hidden` or
+    /// `scroll` on either axis). Drives the renderer's clip scope so a node
+    /// like a scroll viewport or the editor pane scissors descendants that
+    /// fall outside its box instead of letting them paint over siblings.
+    #[must_use]
+    pub fn clips_content(&self, node: NodeHandle) -> bool {
+        self.forest.style_for(node.0).is_some_and(|style| {
+            style.overflow.width != Overflow::Visible || style.overflow.height != Overflow::Visible
+        })
+    }
+
+    /// Offset every computed box in `root`'s subtree by `(dx, dy)` logical px.
+    ///
+    /// The incremental remeasure path re-solves a containment root as an
+    /// isolated layout root, which anchors it at `(0, 0)`. Shifting the whole
+    /// subtree back to the root's true in-tree origin keeps the drive boxes —
+    /// the single source of truth read by paint (via the attached
+    /// `LayoutResult`), hit-testing, and pointer dispatch (both via
+    /// `LayoutEngine::result`) — in absolute root coordinates and mutually
+    /// consistent. A `(0, 0)` shift is a no-op.
+    ///
+    /// Reads through the frame-checked [`Self::computed_box`], not the raw
+    /// slab: a node the solver skipped this measure (e.g. `display: none`)
+    /// keeps a stale box + old frame tag and must stay unreached. Translating
+    /// it via the raw box would re-stamp the current frame and resurrect it as
+    /// a live (mispositioned) node.
+    pub(crate) fn translate_subtree(
+        &mut self,
+        root: NodeHandle,
+        dx: f32,
+        dy: f32,
+    ) -> Result<(), LayoutError> {
+        if dx == 0.0 && dy == 0.0 {
+            return Ok(());
+        }
+        let mut handles = Vec::new();
+        self.collect_subtree(root, &mut handles)?;
+        for handle in handles {
+            let Some(box_) = self.computed_box(handle) else {
+                continue;
+            };
+            self.forest.write(
+                handle.0,
+                ComputedBox {
+                    x: box_.x + dx,
+                    y: box_.y + dy,
+                    w: box_.w,
+                    h: box_.h,
+                },
+            )?;
+        }
+        Ok(())
     }
 
     fn collect_subtree(

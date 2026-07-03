@@ -73,7 +73,8 @@ impl LayoutEngine {
     pub fn result(&self, id: NodeId) -> Option<LayoutResult> {
         let handle = self.core_to_handle.get(id.key()).copied()?;
         let layout = self.drive.computed_box(handle)?;
-        Some(LayoutResult::from_resolved_box(&layout))
+        let clips = self.drive.clips_content(handle);
+        Some(LayoutResult::from_resolved_box(&layout, clips))
     }
 
     /// Return the parent's resolved content-box size for `id` from the
@@ -283,11 +284,37 @@ impl LayoutEngine {
             self.gc(cx)?;
         }
         let roots = self.containment_roots(cx, dirty, root);
+        // `remeasure_roots` re-solves each root as an isolated layout root,
+        // which anchors it at (0,0) — size-correct but position-destroying for
+        // any root that is not the tree root. Capture each root's true in-tree
+        // origin (still set by its unchanged parent) BEFORE the remeasure, then
+        // shift its subtree's DRIVE boxes back so every downstream reader —
+        // paint (attached `LayoutResult`), hit-testing and pointer dispatch
+        // (both via `result()` → the drive) — agrees on one absolute position
+        // (GLM review MAJOR-1). The tree root's origin is (0,0), a no-op shift.
+        let origins: SmallVec<[(f32, f32); 4]> =
+            roots.iter().map(|&r| self.published_origin(r)).collect();
         self.remeasure_roots(&roots, available)?;
+        for (&subroot, &(dx, dy)) in roots.iter().zip(origins.iter()) {
+            let handle = self.handle(subroot)?;
+            self.drive.translate_subtree(handle, dx, dy)?;
+        }
         for subroot in roots {
             self.attach_subtree_results(cx, subroot)?;
         }
         Ok(())
+    }
+
+    /// The root-coordinate top-left a node was last published at, or `(0, 0)`
+    /// if it has no published result yet. The incremental remeasure path reads
+    /// this before zeroing the root, to restore its position afterward.
+    fn published_origin(&self, id: NodeId) -> (f32, f32) {
+        self.published_result
+            .get(id.key())
+            .map_or((0.0, 0.0), |res| {
+                let origin = res.rect().origin;
+                (origin.x, origin.y)
+            })
     }
 
     fn resolve_cache_key(&self, cx: &Cx, root: NodeId, available: Size) -> CacheDecision {
@@ -379,9 +406,14 @@ impl LayoutEngine {
         // binding installed" and "reactive binding currently empty";
         // the cell-pointer identity check disambiguates by comparing
         // against the canonical empty-slice constant.
+        // A reactive style binding OR a reactive position both mutate
+        // through interior-mutable channels that bypass `Node::version`,
+        // so force a re-sync for either (the downstream style-equality /
+        // signature checks still cheap-out when nothing actually changed).
         let has_reactive = node
             .get_extension::<StyleBinding>()
-            .is_some_and(StyleBinding::has_reactive);
+            .is_some_and(StyleBinding::has_reactive)
+            || node.get_extension::<crate::ReactivePosition>().is_some();
         let version_matches = !has_reactive
             && existing_handle.is_some()
             && self.synced_version.get(id.key()).copied() == Some(kernel_version);
@@ -492,6 +524,17 @@ impl LayoutEngine {
                 apply_text_binding(engine, binding, style);
             }
         }
+        // Reactive absolute position (leak-free, Copy-cell channel) wins
+        // over any static inset: it forces `position: absolute` and binds
+        // the inset to a live signal. Applied last so a dragged node tracks
+        // the pointer (see `reactive_position`).
+        if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
+            let (x, y) = pos.get();
+            intent = intent
+                .position(crate::style_data::Position::Absolute)
+                .inset_left(x)
+                .inset_top(y);
+        }
         let text_content = match &node.kind {
             NodeType::Text { content } => Some(content.clone()),
             NodeType::Container | NodeType::Fragment => None,
@@ -574,7 +617,27 @@ impl LayoutEngine {
                 roots.push(containment);
             }
         }
+        // Drop any containment root nested under another. `remeasure_roots`
+        // solves each root as an isolated layout root anchored at (0,0); a root
+        // that is a descendant of another root would have its real in-tree
+        // position clobbered to the origin (the editor's tall scrolled body
+        // escaping to the top-left, painting over the explorer). The ancestor's
+        // remeasure already covers the descendant, so keep only ancestor-most
+        // roots.
+        roots.retain(|id| !Self::has_ancestor_in(cx, &seen, *id));
         roots
+    }
+
+    /// True when any *other* node in `set` is a proper ancestor of `id`.
+    fn has_ancestor_in(cx: &Cx, set: &AHashSet<NodeId>, id: NodeId) -> bool {
+        let mut current = cx.parent(id);
+        while let Some(parent) = current {
+            if set.contains(&parent) {
+                return true;
+            }
+            current = cx.parent(parent);
+        }
+        false
     }
 
     fn find_containment_root(cx: &Cx, start: NodeId, root: NodeId) -> NodeId {
@@ -623,6 +686,9 @@ impl LayoutEngine {
         ids: SmallVec<[NodeId; 32]>,
     ) -> Result<(), LayoutError> {
         for id in ids {
+            // Drive boxes are already in absolute coordinates here: the
+            // incremental path shifted the isolated-remeasure subtree back to
+            // its origin before this attach (see `incremental_sync_and_measure`).
             let Some(result) = self.result(id) else {
                 continue;
             };

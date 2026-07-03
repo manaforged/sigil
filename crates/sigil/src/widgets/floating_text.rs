@@ -373,8 +373,8 @@ fn advance_slot(slot: &mut Particle, dt: f32, inv_dur: f32) {
         *slot = Particle::empty();
         return;
     }
-    slot.position[0] += slot.drift[0] * dt;
-    slot.position[1] += slot.drift[1] * dt;
+    slot.position[0] = slot.drift[0].mul_add(dt, slot.position[0]);
+    slot.position[1] = slot.drift[1].mul_add(dt, slot.position[1]);
     slot.alpha = (slot.remaining * inv_dur).clamp(0.0, 1.0);
 }
 

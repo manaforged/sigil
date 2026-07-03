@@ -8,8 +8,8 @@ use crate::device_state::ReadyState;
 use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
 use crate::layer_composite::LayerCompositePipeline;
-use crate::layer_pool::LayerPool;
-use crate::renderer::{WgpuRenderer, submit_clear};
+use crate::layer_pool::{LayerHandle, LayerPool};
+use crate::renderer::{WgpuRenderer, record_clear};
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::scene_paint::ScenePipeline;
@@ -46,17 +46,29 @@ impl WgpuRenderer {
         clear_color: Color,
     ) -> Result<(), RendererError> {
         let ready = self.state.ensure_ready_headless()?;
-        submit_clear(target.device, target.queue, target.view, clear_color);
-        if ready.device == *target.device {
-            walk_with_ready(ready, target, scene)
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("sigil-renderer offscreen encoder"),
+            });
+        record_clear(&mut encoder, target.view, clear_color);
+        // Transient layer textures must outlive the recorded passes; they live
+        // here until after the submit below.
+        let mut retained = Vec::new();
+        let result = if ready.device == *target.device {
+            walk_with_ready(ready, &mut encoder, &mut retained, target, scene)
         } else {
-            walk_with_temporary_pipelines(target, scene)
-        }
+            walk_with_temporary_pipelines(&mut encoder, &mut retained, target, scene)
+        };
+        target.queue.submit(core::iter::once(encoder.finish()));
+        result
     }
 }
 
 fn walk_with_ready(
     ready: &mut ReadyState,
+    encoder: &mut wgpu::CommandEncoder,
+    retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
@@ -76,8 +88,13 @@ fn walk_with_ready(
         WalkCtx {
             device: target.device,
             queue: target.queue,
+            encoder,
+            retained,
             view: target.view,
             viewport: target.viewport,
+            // Offscreen targets render at the viewport's own pixel size (no HiDPI
+            // surface), so logical == physical and the text AA needs no scaling.
+            scale: 1.0,
             format: target.format,
             scene_pipelines,
             fill_pipelines,
@@ -98,6 +115,8 @@ fn walk_with_ready(
     reason = "`offscreen` is a private module; pub(crate) reads cleaner than pub-and-then-re-export"
 )]
 pub(crate) fn walk_with_temporary_pipelines(
+    encoder: &mut wgpu::CommandEncoder,
+    retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
@@ -114,8 +133,13 @@ pub(crate) fn walk_with_temporary_pipelines(
         WalkCtx {
             device: target.device,
             queue: target.queue,
+            encoder,
+            retained,
             view: target.view,
             viewport: target.viewport,
+            // Offscreen targets render at the viewport's own pixel size (no HiDPI
+            // surface), so logical == physical and the text AA needs no scaling.
+            scale: 1.0,
             format: target.format,
             scene_pipelines: &mut scene_pipelines,
             fill_pipelines: &mut fill_pipelines,

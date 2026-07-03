@@ -135,6 +135,9 @@ impl<T: 'static> Signal<T> {
             if slot.subscribers.is_empty() {
                 return (old, None);
             }
+            // A write with live subscribers can change the visual tree; mark the
+            // frame dirty so the driver paints (see `Runtime::frame_dirty`).
+            rt.frame_dirty = true;
             let subs = fan_out_signal(
                 SignalFanOut {
                     batch_depth: rt.batch_depth,
@@ -194,6 +197,7 @@ impl<T: 'static> Signal<T> {
             if slot.subscribers.is_empty() {
                 return None;
             }
+            rt.frame_dirty = true;
             fan_out_signal(
                 SignalFanOut {
                     batch_depth: rt.batch_depth,

@@ -6,9 +6,7 @@ use wgpu::util::DeviceExt as _;
 #[path = "shadow_shader.rs"]
 mod shadow_shader;
 
-use crate::scene_instance::{
-    SceneUniforms, ShadowInstance, shadow_instance_stride, srgb_channel_to_linear,
-};
+use crate::scene_instance::{SceneUniforms, ShadowInstance, srgb_channel_to_linear};
 use crate::scene_paint::PaintCtx;
 use shadow_shader::SHADOW_SHADER;
 
@@ -94,34 +92,28 @@ impl Shadow {
 }
 
 /// Wgpu resources for painting rounded-rectangle drop shadows.
+///
+/// Instance + uniform buffers are allocated fresh per call (not persistent
+/// `queue.write_buffer` targets) so draws batched into one submission stay
+/// independent — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct ShadowPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    bind_group: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     unit_quad: wgpu::Buffer,
-    instance_cap: u64,
-    instance_buffer: wgpu::Buffer,
 }
 
 impl ShadowPipeline {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = shader(device);
         let uniform_layout = uniform_layout(device);
-        let uniform_buffer = uniform_buffer(device);
-        let bind_group = bind_group(device, &uniform_layout, &uniform_buffer);
         let pipeline = pipeline(device, format, &shader, &uniform_layout);
         let unit_quad = unit_quad(device);
-        let instance_cap = 64_u64;
-        let instance_buffer = instance_buffer(device, instance_cap);
         Self {
             format,
             pipeline,
-            uniform_buffer,
-            bind_group,
+            uniform_layout,
             unit_quad,
-            instance_cap,
-            instance_buffer,
         }
     }
 
@@ -129,27 +121,25 @@ impl ShadowPipeline {
         self.format
     }
 
-    pub(crate) fn paint_instances(&mut self, ctx: PaintCtx<'_>, instances: &[ShadowInstance]) {
+    pub(crate) fn paint_instances(&self, ctx: PaintCtx<'_>, instances: &[ShadowInstance]) {
         if instances.is_empty() {
             return;
         }
-        let mut ctx = ctx;
-        self.upload(ctx.device, ctx.queue, instances);
-        self.draw(&mut ctx, u32::try_from(instances.len()).unwrap_or(u32::MAX));
-    }
-
-    fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, instances: &[ShadowInstance]) {
-        self.ensure_instance_capacity(device, instances.len() as u64);
-        queue_viewport(&self.uniform_buffer, queue, (1.0, 1.0));
-        queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(instances));
-    }
-
-    fn draw(&self, ctx: &mut PaintCtx<'_>, instance_count: u32) {
-        queue_viewport(&self.uniform_buffer, ctx.queue, ctx.viewport);
-        let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let PaintCtx {
+            device,
+            encoder,
+            view,
+            viewport,
+            ..
+        } = ctx;
+        let instance_buf = instance_buffer(device, instances);
+        let uniform_buf = uniform_buffer(device, viewport);
+        let bind_group = bind_group(device, &self.uniform_layout, &uniform_buf);
+        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer shadow paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: ctx.view,
+                view,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -163,19 +153,10 @@ impl ShadowPipeline {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.bind_group, &[]);
+        pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_slice(&self.instance_buffer, instance_count));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instance_count);
-    }
-
-    fn ensure_instance_capacity(&mut self, device: &wgpu::Device, required: u64) {
-        if required <= self.instance_cap {
-            return;
-        }
-        let new_cap = doubled_capacity(self.instance_cap, required);
-        self.instance_buffer = instance_buffer(device, new_cap);
-        self.instance_cap = new_cap;
+        pass.set_vertex_buffer(1, instance_buf.slice(..));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
     }
 }
 
@@ -245,12 +226,14 @@ fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-fn uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer shadow uniforms"),
-        size: u64::try_from(core::mem::size_of::<SceneUniforms>()).unwrap_or(0),
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(&SceneUniforms {
+            viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
+            _pad: [0.0, 0.0],
+        }),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -277,36 +260,12 @@ fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-fn instance_buffer(device: &wgpu::Device, capacity: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn instance_buffer(device: &wgpu::Device, instances: &[ShadowInstance]) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer shadow instance buffer"),
-        size: capacity * shadow_instance_stride(),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::cast_slice(instances),
+        usage: wgpu::BufferUsages::VERTEX,
     })
-}
-
-fn queue_viewport(buffer: &wgpu::Buffer, queue: &wgpu::Queue, viewport: (f32, f32)) {
-    queue.write_buffer(
-        buffer,
-        0,
-        bytemuck::bytes_of(&SceneUniforms {
-            viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-            _pad: [0.0, 0.0],
-        }),
-    );
-}
-
-fn instance_slice(buffer: &wgpu::Buffer, instance_count: u32) -> wgpu::BufferSlice<'_> {
-    buffer.slice(0..shadow_instance_stride() * u64::from(instance_count))
-}
-
-fn doubled_capacity(current: u64, required: u64) -> u64 {
-    let mut new_cap = current.max(1);
-    while new_cap < required {
-        new_cap = new_cap.saturating_mul(2);
-    }
-    new_cap
 }
 
 const UNIT_QUAD_VERTEX_COUNT: u32 = 6;

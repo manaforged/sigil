@@ -58,6 +58,9 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     let root = tree.install(&mut cx);
 
     let mut layout = LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new()));
+    // Install pointer→glyph geometry so text widgets can hit-test clicks and
+    // draw caret/selection overlays (mirrors the measurer install above).
+    layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
     layout_for_scale(&mut cx, root, &mut layout, Scale::ONE, logical_size).map_err(Error::new)?;
 
     let mut router = EventRouter::new();
@@ -72,6 +75,17 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // before `Runtime::begin_effect` consumes the reactive
     // `pending_completions` queue.
     let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
+    // Wake the winit loop whenever a worker thread posts a reactive completion, so
+    // background async work (e.g. streamed agent output via `Context::spawn` +
+    // `AsyncContext::update`) repaints promptly instead of stalling in
+    // `ControlFlow::Wait` until an unrelated OS input event. The wake delivers a
+    // `WakeEvent` through the shell's `EventLoopProxy`, whose `user_event` handler
+    // requests a redraw → next `frame_once` drains the bridge via
+    // `pump_completions_into_reactive`. (DR-048 §5 left this waker a no-op.)
+    let waker = shell.waker();
+    async_rt.set_bridge_waker(move || {
+        let _ = WinitShell::wake(&waker);
+    });
     install_g5_executor(&async_rt);
 
     shell
@@ -179,6 +193,20 @@ fn frame_once(ctx: FrameCtx<'_>) {
         surface,
         viewport,
     });
+    // Drain input events during the EFFECT phase — symmetric with the
+    // `pump_completions_into_reactive` hoist above, and what this frame
+    // driver's own docs already describe ("Effect phase brackets every
+    // reactive write produced during the frame: drain_events runs router
+    // handlers that call signal.set"). Router handlers fire here
+    // (pointer_down → signal.set, key input → draft.set, Send →
+    // entity.update); those writes are legal in Effect and are now
+    // produced BEFORE begin_layout drains observers to fixpoint. That
+    // makes a click/keystroke visible in THIS frame's layout + paint
+    // instead of stalling under ControlFlow::Wait until the next
+    // unrelated OS event (the previous order drained input *after*
+    // begin_layout, so every discrete interaction rendered one event
+    // late). Hit-testing uses the layout the user actually saw — the
+    // previous frame's, recomputed just below.
     drain_events(DrainCtx {
         shell,
         cx,
@@ -194,16 +222,24 @@ fn frame_once(ctx: FrameCtx<'_>) {
     if *exit_requested {
         shell.request_exit();
     }
-    // Layout phase: recompute Taffy boxes. Reactive writes still legal
-    // by phase contract but invalidate the in-flight pass — discouraged
-    // by convention, not by panic.
+    // Layout phase: recompute Taffy boxes, now reflecting the reactive
+    // writes drained above (children_reactive rebuilds, selection tints,
+    // new chat bubbles). Writes during this phase still invalidate the
+    // in-flight pass — discouraged by convention, not by panic.
     Runtime::begin_layout();
     let logical = logical_size_from_viewport(*viewport);
     recompute_layout(cx, root, layout, cx.scale(), logical);
-    // Paint phase: scene emit + GPU submit. Reactive writes panic in
-    // debug; dispatch_action defers to next frame's Effect drain.
     Runtime::begin_paint();
-    paint(cx, root, renderer, surface, *viewport);
+    // Change-gate: skip scene emit + GPU submit + present (the vsync block) when
+    // nothing visible changed — the dominant cost of a bare cursor-move. Read
+    // after begin_layout's observer fixpoint; reactive writes and structural
+    // changes (ensure_surface, resize) both flag `frame_dirty` at their source.
+    // `take_force_paint` honours OS-driven redraws (first-show / un-occlude /
+    // resize) that carry no signal write — skipping those shows a gray drawable.
+    // Layout recompute above is a cheap Taffy cache-hit when clean, so it stays.
+    if shell.take_force_paint() || Runtime::frame_dirty() {
+        paint(cx, root, renderer, surface, *viewport);
+    }
     // end_frame transitions Paint → Effect (replay deferred writes) →
     // Idle so the next iteration enters begin_effect from a clean
     // resting state.

@@ -9,6 +9,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
 use crate::scene_command::{DecorationKind, DrawDecoration};
+use crate::scene_instance::BlendSpace;
 use crate::scene_paint::PaintCtx;
 
 // ── WGSL source ──────────────────────────────────────────────────────────────
@@ -38,10 +39,6 @@ pub(crate) struct DecorationInstance {
 }
 
 const _: () = assert!(core::mem::size_of::<DecorationInstance>() == 48);
-
-const fn instance_stride() -> u64 {
-    core::mem::size_of::<DecorationInstance>() as u64
-}
 
 // ── Uniform block ─────────────────────────────────────────────────────────────
 
@@ -82,34 +79,27 @@ const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 
 /// Wgpu resources for painting text decorations. One per surface format.
+///
+/// Instance + uniform buffers are allocated fresh per call (not persistent
+/// `queue.write_buffer` targets) — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct DecorationPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    bind_group: wgpu::BindGroup,
+    bgl: wgpu::BindGroupLayout,
     unit_quad: wgpu::Buffer,
-    instance_cap: u64,
-    instance_buffer: wgpu::Buffer,
 }
 
 impl DecorationPipeline {
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = make_shader(device);
         let bgl = make_bgl(device);
-        let uniform_buffer = make_uniform_buffer(device);
-        let bind_group = make_bind_group(device, &bgl, &uniform_buffer);
         let pipeline = make_pipeline(device, format, &shader, &bgl);
         let unit_quad = make_unit_quad(device);
-        let initial_cap = 16_u64;
-        let instance_buffer = make_instance_buffer(device, initial_cap);
         Self {
             format,
             pipeline,
-            uniform_buffer,
-            bind_group,
+            bgl,
             unit_quad,
-            instance_cap: initial_cap,
-            instance_buffer,
         }
     }
 
@@ -117,42 +107,18 @@ impl DecorationPipeline {
         self.format
     }
 
-    fn ensure_instance_capacity(&mut self, device: &wgpu::Device, required: u64) {
-        if required <= self.instance_cap {
-            return;
-        }
-        let mut cap = self.instance_cap.max(1);
-        while cap < required {
-            cap = cap.saturating_mul(2);
-        }
-        self.instance_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("sigil-renderer decoration instance buffer"),
-            size: cap * instance_stride(),
-            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        self.instance_cap = cap;
-    }
-
     /// Upload one instance and draw.
-    pub(crate) fn paint_instance(&mut self, ctx: PaintCtx<'_>, instance: &DecorationInstance) {
+    pub(crate) fn paint_instance(&self, ctx: PaintCtx<'_>, instance: &DecorationInstance) {
         let PaintCtx {
             device,
-            queue,
             encoder,
             view,
             viewport,
+            ..
         } = ctx;
-        self.ensure_instance_capacity(device, 1);
-        queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&DecUniforms {
-                viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-                _pad: [0.0, 0.0],
-            }),
-        );
-        queue.write_buffer(&self.instance_buffer, 0, bytemuck::bytes_of(instance));
+        let instance_buf = make_instance_buffer(device, instance);
+        let uniform_buf = make_uniform_buffer(device, viewport);
+        let bind_group = make_bind_group(device, &self.bgl, &uniform_buf);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer decoration paint pass"),
@@ -171,9 +137,9 @@ impl DecorationPipeline {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.bind_group, &[]);
+        pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, self.instance_buffer.slice(0..instance_stride()));
+        pass.set_vertex_buffer(1, instance_buf.slice(..));
         pass.draw(0..6, 0..1);
     }
 }
@@ -203,12 +169,14 @@ fn make_bgl(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-fn make_uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn make_uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer decoration uniforms"),
-        size: core::mem::size_of::<DecUniforms>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(&DecUniforms {
+            viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
+            _pad: [0.0, 0.0],
+        }),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -273,19 +241,22 @@ fn make_unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-fn make_instance_buffer(device: &wgpu::Device, cap: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn make_instance_buffer(device: &wgpu::Device, instance: &DecorationInstance) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer decoration instance buffer"),
-        size: cap * instance_stride(),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(instance),
+        usage: wgpu::BufferUsages::VERTEX,
     })
 }
 
 // ── Instance builder ──────────────────────────────────────────────────────────
 
 /// Convert a [`DrawDecoration`] command into a GPU instance record.
-pub(crate) fn decoration_instance(draw: &DrawDecoration, opacity_scale: f32) -> DecorationInstance {
+pub(crate) fn decoration_instance(
+    draw: &DrawDecoration,
+    opacity_scale: f32,
+    space: BlendSpace,
+) -> DecorationInstance {
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let kind_f32 = match draw.kind {
         DecorationKind::Underline => 0.0_f32,
@@ -299,22 +270,8 @@ pub(crate) fn decoration_instance(draw: &DrawDecoration, opacity_scale: f32) -> 
             draw.band.width,
             draw.band.height,
         ],
-        color: [
-            srgb_to_linear(draw.color.r),
-            srgb_to_linear(draw.color.g),
-            srgb_to_linear(draw.color.b),
-            f32::from(draw.color.a) / 255.0,
-        ],
+        color: space.rgba(draw.color),
         params: [opacity, draw.period, draw.line_width, kind_f32],
-    }
-}
-
-fn srgb_to_linear(channel: u8) -> f32 {
-    let v = f32::from(channel) / 255.0;
-    if v <= 0.04045 {
-        v / 12.92
-    } else {
-        ((v + 0.055) / 1.055).powf(2.4)
     }
 }
 

@@ -87,6 +87,9 @@ pub fn set_global<G: 'static>(value: G) {
         slot.value = Box::new(value);
         // Notify observers — first install of a global is a "change."
         let subs: SmallVec<[crate::runtime::ObserverKey; 4]> = slot.subscribers.clone();
+        if !subs.is_empty() {
+            rt.frame_dirty = true;
+        }
         for observer in subs {
             rt.pending_observers.push_back(PendingObserver {
                 observer,

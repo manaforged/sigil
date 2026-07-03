@@ -5,7 +5,9 @@
 
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
-#![allow(clippy::unwrap_used, clippy::panic)]
+// Integration tests intentionally keep assertions direct and use
+// indexing for fixed test topology. See the hygiene framework.
+#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
 use reactive as _;
 

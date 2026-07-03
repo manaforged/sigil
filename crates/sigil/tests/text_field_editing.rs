@@ -1,5 +1,11 @@
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
+// The geometry stub uses simple px↔byte casts; precision is irrelevant in tests.
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
 
 use actions as _;
 use animation as _;
@@ -11,22 +17,43 @@ use events as _;
 use hal as _;
 use image as _;
 use kernel as _;
-use layout as _;
 use pollster as _;
 use reactive as _;
 use renderer as _;
-use style as _;
 use tasks as _;
 use wgpu as _;
 
-use hal::{KeyEventInit, PhysicalKey};
+use hal::{
+    KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEvent, PointerEventInit,
+    PointerKind, PointerPhase,
+};
+use layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
+use style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
         hal::LogicalSize::new(40.0, 16.0)
+    }
+}
+
+/// Deterministic geometry: a uniform 10 px per byte. Lets pointer tests assert
+/// exact byte hits without depending on real font metrics.
+struct StubGeometry;
+
+impl TextGeometry for StubGeometry {
+    fn hit(&self, text: &str, _style: &TextStyle, x: f32) -> usize {
+        ((x / 10.0).round().max(0.0) as usize).min(text.len())
+    }
+
+    fn caret(&self, _text: &str, _style: &TextStyle, byte: usize) -> CaretGeometry {
+        CaretGeometry {
+            x: byte as f32 * 10.0,
+            top: 0.0,
+            height: 16.0,
+        }
     }
 }
 
@@ -87,12 +114,78 @@ fn text_field_select_all_then_type_replaces_buffer() {
     });
 }
 
+#[test]
+fn text_field_pointer_drag_selects_then_type_replaces() {
+    // A click-drag across "hello" must select those bytes so the next keystroke
+    // replaces them — the externally-observable proof of the full pointer chain
+    // (hit-test → place_caret → captured pointer_move → extend_to → selection).
+    sigil::reactive::Runtime::scope("text-field-pointer-drag", || {
+        set_text_geometry(std::rc::Rc::new(StubGeometry));
+        let value = signal(String::from("hello world"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let layout = compute(&mut cx, root);
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        // The text region lays out at global x=13, y=52..68 (verified via the
+        // layout tree). Local x = global − 13, then 10 px/byte (StubGeometry):
+        // global 14 → byte 0, global 64 → byte 5 (the space after "hello").
+        router.route(&mut cx, &layout, pointer_down(14.0, 60.0));
+        router.route(&mut cx, &layout, pointer_move(64.0, 60.0));
+        router.route(&mut cx, &layout, pointer_up(64.0, 60.0));
+        router.route(&mut cx, &layout, type_char("q", PhysicalKey::KeyQ));
+
+        assert_eq!(
+            value.get(),
+            "q world",
+            "drag-selected 'hello' should be replaced by the typed 'q'"
+        );
+    });
+}
+
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     layout
         .compute(cx, root, Size::fixed(320.0, 120.0))
         .expect("layout computes");
     layout
+}
+
+fn pointer_down(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(MouseButton::Left),
+        buttons: MouseButtons::LEFT,
+        modifiers: ModifiersState::empty(),
+        phase: PointerPhase::Down,
+    }))
+}
+
+fn pointer_move(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: None,
+        buttons: MouseButtons::LEFT,
+        modifiers: ModifiersState::empty(),
+        phase: PointerPhase::Move,
+    }))
+}
+
+fn pointer_up(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(MouseButton::Left),
+        buttons: MouseButtons::empty(),
+        modifiers: ModifiersState::empty(),
+        phase: PointerPhase::Up,
+    }))
 }
 
 fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {

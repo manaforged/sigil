@@ -15,11 +15,23 @@ use super::curve::{QuadBez, cubic_to_quads, line_to_quad};
 /// Number of horizontal bands per glyph.
 pub(super) const BANDS: usize = 16;
 /// Maximum quadratic arcs stored per band.
-pub(super) const MAX_CURVES_PER_BAND: usize = 16;
+///
+/// A curve is bucketed into every band its extent spans, so a glyph's middle
+/// band accumulates every stroke that crosses the x-height — dense Latin glyphs
+/// (`@`, `&`, `B`, nested brackets) and most CJK reach into the high teens. At 16
+/// those overflowed and the surplus curves were silently dropped at pack time,
+/// punching holes in the affected glyph. 32 clears the observed Latin worst case
+/// (~19) with headroom; the GPU stride below derives from this, so the shader's
+/// `MAX_CURVES` / `FLOATS_PER_BAND` constants must be kept in lockstep.
+pub(super) const MAX_CURVES_PER_BAND: usize = 32;
 /// `f32` entries per band: 1 (count) + `MAX_CURVES_PER_BAND` × 6 (p0, p1, p2).
 pub(super) const FLOATS_PER_BAND: usize = 1 + MAX_CURVES_PER_BAND * 6;
-/// Total `f32` entries in one `BandData` buffer.
-pub(super) const FLOATS_TOTAL: usize = BANDS * FLOATS_PER_BAND;
+/// `f32` entries for one axis's `BANDS` bands (the horizontal OR the vertical set).
+pub(super) const FLOATS_PER_AXIS: usize = BANDS * FLOATS_PER_BAND;
+/// Total `f32` entries in one `BandData` buffer: horizontal bands (partitioned by
+/// y, for the +x coverage ray) followed by vertical bands (partitioned by x, for
+/// the +y ray). Two-axis coverage is what anti-aliases near-horizontal edges.
+pub(super) const FLOATS_TOTAL: usize = 2 * FLOATS_PER_AXIS;
 
 /// Glyph bounding box in design (unscaled) coordinates.
 #[derive(Copy, Clone, Debug)]
@@ -210,32 +222,71 @@ fn normalise_quad(quad: &QuadBez, bbox: GlyphBbox) -> QuadBez {
     }
 }
 
-/// Partition normalised quads into bands and pack into a flat `f32` buffer.
+/// Partition normalised quads into two band sets and pack into a flat `f32`
+/// buffer: horizontal bands (by y-extent) then vertical bands (by x-extent). The
+/// shader casts a +x ray against the horizontal set and a +y ray against the
+/// vertical set, so near-horizontal edges get antialiased instead of jagged.
+fn pack_into_bands(quads: &[QuadBez], bbox: GlyphBbox, units_per_em: u16) -> BandData {
+    let h_bands = partition_bands(quads, |q| {
+        (
+            q.p0[1].min(q.p1[1]).min(q.p2[1]),
+            q.p0[1].max(q.p1[1]).max(q.p2[1]),
+        )
+    });
+    let v_bands = partition_bands(quads, |q| {
+        (
+            q.p0[0].min(q.p1[0]).min(q.p2[0]),
+            q.p0[0].max(q.p1[0]).max(q.p2[0]),
+        )
+    });
+
+    #[cfg(debug_assertions)]
+    {
+        warn_band_overflow(&h_bands);
+        warn_band_overflow(&v_bands);
+    }
+
+    let mut data = vec![0.0f32; FLOATS_TOTAL];
+    let (h_out, v_out) = data.split_at_mut(FLOATS_PER_AXIS);
+    pack_bands(&h_bands, h_out);
+    pack_bands(&v_bands, v_out);
+
+    BandData {
+        data,
+        bbox,
+        units_per_em,
+    }
+}
+
+/// Bucket each quad into the `BANDS` bands its `extent` (normalised lo, hi) spans.
 #[allow(
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss
 )]
-fn pack_into_bands(quads: &[QuadBez], bbox: GlyphBbox, units_per_em: u16) -> BandData {
-    let mut band_curves: [Vec<QuadBez>; BANDS] = core::array::from_fn(|_| Vec::new());
-
+fn partition_bands(
+    quads: &[QuadBez],
+    extent: impl Fn(&QuadBez) -> (f32, f32),
+) -> [Vec<QuadBez>; BANDS] {
+    let mut bands: [Vec<QuadBez>; BANDS] = core::array::from_fn(|_| Vec::new());
     for quad in quads {
-        let y_lo = quad.p0[1].min(quad.p1[1]).min(quad.p2[1]);
-        let y_hi = quad.p0[1].max(quad.p1[1]).max(quad.p2[1]);
-        let b_lo = ((y_lo * BANDS as f32).floor() as usize).min(BANDS - 1);
-        let b_hi = ((y_hi * BANDS as f32).ceil() as usize).min(BANDS);
+        let (lo, hi) = extent(quad);
+        let b_lo = ((lo * BANDS as f32).floor() as usize).min(BANDS - 1);
+        let b_hi = ((hi * BANDS as f32).ceil() as usize).min(BANDS);
         for b in b_lo..b_hi {
-            if let Some(band) = band_curves.get_mut(b) {
+            if let Some(band) = bands.get_mut(b) {
                 band.push(*quad);
             }
         }
     }
+    bands
+}
 
-    #[cfg(debug_assertions)]
-    warn_band_overflow(&band_curves);
-
-    let mut data = vec![0.0f32; FLOATS_TOTAL];
-    for (chunk, band) in data
+/// Pack one axis's bands into `out` (exactly `FLOATS_PER_AXIS` entries): per band,
+/// a clamped curve count followed by up to `MAX_CURVES_PER_BAND` × 6 coordinates.
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+fn pack_bands(band_curves: &[Vec<QuadBez>; BANDS], out: &mut [f32]) {
+    for (chunk, band) in out
         .chunks_exact_mut(FLOATS_PER_BAND)
         .zip(band_curves.iter())
     {
@@ -255,12 +306,6 @@ fn pack_into_bands(quads: &[QuadBez], bbox: GlyphBbox, units_per_em: u16) -> Ban
                 }
             }
         }
-    }
-
-    BandData {
-        data,
-        bbox,
-        units_per_em,
     }
 }
 

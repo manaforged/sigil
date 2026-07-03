@@ -82,12 +82,11 @@ pub(super) fn make_texture_layout(device: &wgpu::Device) -> wgpu::BindGroupLayou
     })
 }
 
-pub(super) fn make_uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn make_uniform_buffer(device: &wgpu::Device, uniforms: &BlurUniforms) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer blur uniforms"),
-        size: core::mem::size_of::<BlurUniforms>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(uniforms),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -144,12 +143,11 @@ pub(super) fn make_unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-pub(super) fn make_instance_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn make_instance_buffer(device: &wgpu::Device, instance: &BlurInstance) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer blur instance buffer"),
-        size: core::mem::size_of::<BlurInstance>() as u64,
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(instance),
+        usage: wgpu::BufferUsages::VERTEX,
     })
 }
 

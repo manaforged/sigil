@@ -294,7 +294,17 @@ impl TabsBuilder {
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
-        root.layout(self.layout_overrides.apply(tab_list_layout(count)))
+        // Strip-only tabs are a fixed-size flex_row of tab chips. With
+        // content routing the root is the strip + content column built by
+        // `wrap_with_content` — forcing the strip's row layout onto it
+        // collapsed the whole widget to a 34px-tall row with the content
+        // beside the strip.
+        let base = if has_content {
+            LayoutStyle::flex_column().align_items(AlignItems::Stretch)
+        } else {
+            tab_list_layout(count)
+        };
+        root.layout(self.layout_overrides.apply(base))
     }
 }
 

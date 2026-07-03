@@ -30,6 +30,7 @@ mod cache;
 mod config;
 mod engine;
 mod error;
+mod fonts;
 mod paragraph;
 
 pub mod bidi;
@@ -44,5 +45,6 @@ pub(crate) mod shaping_complex;
 pub use config::TextConfig;
 pub use engine::{FontCollection, OwnedTextEngine};
 pub use error::TextError;
+pub use fonts::{DefaultFonts, set_default_fonts};
 pub use paragraph::Paragraph;
 pub use shaper::Font;

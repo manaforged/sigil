@@ -126,3 +126,31 @@
              on_accent_b={on_accent_brightness}, contrast={contrast}",
         );
     }
+
+    /// `console_dark()` resolves shadcn token names to the exact sRGB captured from the
+    /// running the host app dark app (docs/specs/console-theme.md). This is the parity
+    /// contract: a ported React `className` keeps its token words and renders identically.
+    #[test]
+    fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
+        let t = Theme::console_dark();
+        let rgba = |r, g, b, a| Rgba8 { r, g, b, a };
+        assert_eq!(t.resolve_color("background"), rgba(10, 10, 10, 255));
+        assert_eq!(t.resolve_color("card"), rgba(23, 23, 23, 255));
+        assert_eq!(t.resolve_color("primary"), rgba(229, 229, 229, 255));
+        assert_eq!(t.resolve_color("muted-foreground"), rgba(161, 161, 161, 255));
+        assert_eq!(t.resolve_color("destructive"), rgba(255, 100, 103, 255));
+        assert_eq!(t.resolve_color("sidebar-primary"), rgba(20, 71, 230, 255));
+        // Explicit token wins over the built-in `accent` (Sigil iris) — the resolution
+        // reorder — and `border` carries its shadcn alpha (white at 10%).
+        assert_eq!(t.resolve_color("accent"), rgba(38, 38, 38, 255));
+        assert_eq!(t.resolve_color("border"), rgba(245, 255, 255, 26));
+    }
+
+    /// The resolution reorder must not disturb themes with an empty token map: `dark()`
+    /// still resolves `accent` to its built-in iris step, not a console value.
+    #[test]
+    fn dark_built_in_accent_unaffected_by_token_first_resolution() {
+        let t = Theme::dark();
+        assert_eq!(t.resolve_color("accent"), t.accent);
+        assert_ne!(t.resolve_color("accent"), Rgba8 { r: 38, g: 38, b: 38, a: 255 });
+    }

@@ -38,6 +38,10 @@ impl Runtime {
                 rt.phase,
             );
             rt.phase = DrawPhase::Effect;
+            // New frame: clear the dirty flag so only mutations produced *this*
+            // frame (by the drains below, by input drained in Effect, and by the
+            // observer fixpoint in begin_layout) mark it again.
+            rt.frame_dirty = false;
         });
         // G5 — drain task completions FIRST (DR-048 §4). Handlers may
         // entity.update / signal.set / cx.notify; phase is Effect so
@@ -130,5 +134,23 @@ impl Runtime {
         // observed signal changed this frame.
         drain_a11y_updates();
         with_rt(|rt| rt.phase = DrawPhase::Idle);
+    }
+
+    /// Whether a visual-affecting reactive mutation occurred since the current
+    /// frame's [`Self::begin_effect`]. The frame driver reads this after
+    /// `begin_layout` (the observer fixpoint has run by then) to decide whether
+    /// layout + paint are needed, or whether the frame changed nothing (e.g. a
+    /// bare cursor-move over inert UI) and the prior frame can stand.
+    #[must_use]
+    pub fn frame_dirty() -> bool {
+        with_rt(|rt| rt.frame_dirty)
+    }
+
+    /// Force the current frame dirty from a non-reactive source — a structural
+    /// change (first surface, resize) that the viewer must see but that writes
+    /// no signal. Reactive mutations flag themselves; this is the escape hatch
+    /// for the frame driver's own state changes.
+    pub fn mark_frame_dirty() {
+        with_rt(|rt| rt.frame_dirty = true);
     }
 }

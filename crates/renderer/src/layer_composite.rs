@@ -25,12 +25,10 @@ struct LayerInstance {
 pub(crate) struct LayerCompositePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    uniform_bind_group: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     unit_quad: wgpu::Buffer,
-    instance_buffer: wgpu::Buffer,
 }
 
 impl LayerCompositePipeline {
@@ -41,8 +39,6 @@ impl LayerCompositePipeline {
         });
         let uniform_layout = uniform_layout(device);
         let texture_layout = texture_layout(device);
-        let uniform_buffer = uniform_buffer(device);
-        let uniform_bind_group = uniform_bind_group(device, &uniform_layout, &uniform_buffer);
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("sigil-renderer layer composite sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -54,12 +50,10 @@ impl LayerCompositePipeline {
         Self {
             format,
             pipeline: pipeline(device, format, &shader, &uniform_layout, &texture_layout),
-            uniform_buffer,
-            uniform_bind_group,
+            uniform_layout,
             texture_layout,
             sampler,
             unit_quad: unit_quad(device),
-            instance_buffer: instance_buffer(device),
         }
     }
 
@@ -82,23 +76,22 @@ impl LayerCompositePipeline {
             opacity: request.opacity.clamp(0.0, 1.0),
             _pad: 0.0,
         };
-        ctx.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&LayerUniforms {
+        let uniform_buf = uniform_buffer(
+            ctx.device,
+            &LayerUniforms {
                 viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
                 _pad: [0.0, 0.0],
-            }),
+            },
         );
-        ctx.queue
-            .write_buffer(&self.instance_buffer, 0, bytemuck::bytes_of(&instance));
-        let texture_bind_group = texture_bind_group(
+        let uniform_bg = uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
+        let instance_buf = instance_buffer(ctx.device, &instance);
+        let texture_bg = texture_bind_group(
             ctx.device,
             &self.texture_layout,
             request.layer_view,
             &self.sampler,
         );
-        draw(self, &mut ctx, &texture_bind_group);
+        draw(self, &mut ctx, &uniform_bg, &instance_buf, &texture_bg);
     }
 }
 
@@ -113,7 +106,9 @@ pub(crate) struct CompositeRequest<'a> {
 fn draw(
     pipeline: &LayerCompositePipeline,
     ctx: &mut PaintCtx<'_>,
-    texture_bind_group: &wgpu::BindGroup,
+    uniform_bg: &wgpu::BindGroup,
+    instance_buf: &wgpu::Buffer,
+    texture_bg: &wgpu::BindGroup,
 ) {
     let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer layer composite pass"),
@@ -132,10 +127,10 @@ fn draw(
         multiview_mask: None,
     });
     pass.set_pipeline(&pipeline.pipeline);
-    pass.set_bind_group(0, &pipeline.uniform_bind_group, &[]);
-    pass.set_bind_group(1, texture_bind_group, &[]);
+    pass.set_bind_group(0, uniform_bg, &[]);
+    pass.set_bind_group(1, texture_bg, &[]);
     pass.set_vertex_buffer(0, pipeline.unit_quad.slice(..));
-    pass.set_vertex_buffer(1, pipeline.instance_buffer.slice(..));
+    pass.set_vertex_buffer(1, instance_buf.slice(..));
     pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
 }
 
@@ -218,12 +213,11 @@ fn texture_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-fn uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn uniform_buffer(device: &wgpu::Device, uniforms: &LayerUniforms) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer layer uniforms"),
-        size: core::mem::size_of::<LayerUniforms>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(uniforms),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -272,12 +266,11 @@ fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-fn instance_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+fn instance_buffer(device: &wgpu::Device, instance: &LayerInstance) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer layer instance buffer"),
-        size: core::mem::size_of::<LayerInstance>() as u64,
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(instance),
+        usage: wgpu::BufferUsages::VERTEX,
     })
 }
 

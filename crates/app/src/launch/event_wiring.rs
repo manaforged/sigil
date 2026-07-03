@@ -4,6 +4,7 @@ use events::EventRouter;
 use hal::{Key, KeyPhase, PhysicalSize, Scale, Shell as _, ShellEvent, WindowEvent};
 use kernel::Cx;
 use layout::LayoutEngine;
+use reactive::Runtime;
 use renderer::{WgpuRenderer, WgpuSurface};
 use shell::{WinitShell, WinitWindowHandle};
 
@@ -66,7 +67,11 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
 
     let handle = into_window_handle(Arc::clone(window));
     match renderer.create_surface(handle, scale.to_physical(logical)) {
-        Ok(new_surface) => *surface = Some(new_surface),
+        Ok(new_surface) => {
+            *surface = Some(new_surface);
+            // First surface (or a re-created one) must paint — it writes no signal.
+            Runtime::mark_frame_dirty();
+        }
         Err(err) => tracing::warn!("sigil-app: create_surface failed: {err}"),
     }
 }
@@ -138,6 +143,8 @@ fn handle_resized(ctx: &mut WindowEventCtx<'_>, physical: PhysicalSize) {
     let logical = scale.to_logical(clamp_physical_size(physical));
     set_viewport(ctx.viewport, logical);
     recompute_layout(ctx.cx, ctx.root, ctx.layout, scale, logical);
+    // Resize repaints at the new size — it writes no signal.
+    Runtime::mark_frame_dirty();
 }
 
 fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
@@ -145,4 +152,6 @@ fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
     let logical = logical_size_from_viewport(*ctx.viewport);
     resize_surface(ctx.renderer, ctx.surface, scale.to_physical(logical));
     recompute_layout(ctx.cx, ctx.root, ctx.layout, scale, logical);
+    // DPI change repaints (text re-rasterizes at the new scale) — no signal.
+    Runtime::mark_frame_dirty();
 }

@@ -117,7 +117,7 @@ fn render_layer(
     else {
         return Ok(());
     };
-    clear_view(ctx.device, ctx.queue, &handle.view);
+    clear_view(ctx.encoder, &handle.view);
     render_layer_children(
         ctx,
         children,
@@ -126,6 +126,9 @@ fn render_layer(
         (handle.width, handle.height),
     )?;
     apply_effect_and_composite(ctx, parent_view, parent_viewport, scope, &handle);
+    // The composite pass that samples `handle` only runs when the owner submits
+    // the encoder, so the texture must outlive this function — retain it.
+    ctx.retained.push(handle);
     Ok(())
 }
 
@@ -148,23 +151,32 @@ fn apply_effect_and_composite(
             );
         }
         LayerEffect::LayerBlur { sigma } if sigma > 0.0 => {
-            let pctx = PassCtx {
-                device: ctx.device,
-                queue: ctx.queue,
+            // The blurred result is the same logical size as the source layer
+            // (the final upsample writes back to the layer dimensions).
+            let blurred = {
+                let mut pctx = PassCtx {
+                    device: ctx.device,
+                    encoder: ctx.encoder,
+                    retained: ctx.retained,
+                };
+                let pool = ctx.layer_pool.get_or_insert_with(Default::default);
+                let blur = blur_pipeline_for(ctx.blur_pipelines, ctx.device, ctx.format);
+                let src = crate::blur_paint::PassSrc {
+                    view: &handle.view,
+                    w: handle.width,
+                    h: handle.height,
+                };
+                blur.apply(&mut pctx, pool, src, sigma)
             };
-            let pool = ctx.layer_pool.get_or_insert_with(Default::default);
-            let blur = blur_pipeline_for(ctx.blur_pipelines, ctx.device, ctx.format);
-            let src = crate::blur_paint::PassSrc {
-                view: &handle.view,
-                w: handle.width,
-                h: handle.height,
-            };
-            let blurred = blur.apply(pctx, pool, src, sigma);
-            let (view, size) = blurred.as_ref().map_or_else(
-                || (&handle.view, handle_size(handle)),
-                |b| (&b.view, (b.width, b.height)),
+            let view = blurred.as_ref().unwrap_or(&handle.view);
+            composite_layer(
+                ctx,
+                parent_view,
+                parent_viewport,
+                scope,
+                view,
+                handle_size(handle),
             );
-            composite_layer(ctx, parent_view, parent_viewport, scope, view, size);
         }
         LayerEffect::LayerBlur { .. } => {
             // sigma == 0: treat as identity
@@ -233,17 +245,12 @@ fn composite_layer(
     layer_view: &wgpu::TextureView,
     texture_size: (u32, u32),
 ) {
-    let mut encoder = ctx
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("sigil-renderer layer composite encoder"),
-        });
     let pipeline = layer_pipeline_for(ctx.layer_pipelines, ctx.device, ctx.format);
     pipeline.composite(
         PaintCtx {
             device: ctx.device,
             queue: ctx.queue,
-            encoder: &mut encoder,
+            encoder: &mut *ctx.encoder,
             view: parent_view,
             viewport: parent_viewport,
         },
@@ -254,7 +261,6 @@ fn composite_layer(
             opacity: scope.opacity,
         },
     );
-    ctx.queue.submit(core::iter::once(encoder.finish()));
 }
 
 fn reborrow_ctx<'a>(
@@ -265,8 +271,11 @@ fn reborrow_ctx<'a>(
     WalkCtx {
         device: ctx.device,
         queue: ctx.queue,
+        encoder: &mut *ctx.encoder,
+        retained: &mut *ctx.retained,
         view,
         viewport,
+        scale: ctx.scale,
         format: ctx.format,
         scene_pipelines: &mut *ctx.scene_pipelines,
         fill_pipelines: &mut *ctx.fill_pipelines,
@@ -314,29 +323,23 @@ fn blur_pipeline_for<'a>(
         .expect("blur pipeline index was just constructed from the vec")
 }
 
-fn clear_view(device: &wgpu::Device, queue: &wgpu::Queue, view: &wgpu::TextureView) {
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("sigil-renderer layer clear encoder"),
+fn clear_view(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+    let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("sigil-renderer layer clear pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
     });
-    {
-        let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("sigil-renderer layer clear pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
-    }
-    queue.submit(core::iter::once(encoder.finish()));
 }
 
 fn layer_depth(nodes: &[Node]) -> usize {

@@ -225,6 +225,74 @@ impl Theme {
             runtime_tokens: HashMap::new(),
         }
     }
+
+    /// Build the the host app parity theme: Sigil's dark scales plus the shadcn
+    /// (new-york, dark) token set bound to the exact sRGB the React app renders.
+    ///
+    /// Values are captured from the running app, not hand-computed — see
+    /// `docs/specs/console-theme.md` (source: `the host app/scripts/extract-tokens.mjs`).
+    /// Because these tokens are registered explicitly, `resolve_color` lets them win over
+    /// the built-in `accent` / `border`, so a ported React `className` keeps its token
+    /// words verbatim: `bg-card`, `text-muted-foreground`, `bg-destructive`. `border` and
+    /// `input` carry their shadcn alpha (white at 10% / 15%).
+    #[must_use]
+    // Not `const`: DS2.5's `runtime_tokens` HashMap made `dark()`
+    // non-const, and this preset builds on it via struct update.
+    pub fn console_dark() -> Self {
+        Self {
+            tokens: phf::phf_map! {
+                "background" => ThemeValue::Color(Rgba8 { r: 10, g: 10, b: 10, a: 255 }),
+                "foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "card" => ThemeValue::Color(Rgba8 { r: 23, g: 23, b: 23, a: 255 }),
+                "card-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "popover" => ThemeValue::Color(Rgba8 { r: 23, g: 23, b: 23, a: 255 }),
+                "popover-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "primary" => ThemeValue::Color(Rgba8 { r: 229, g: 229, b: 229, a: 255 }),
+                "primary-foreground" => ThemeValue::Color(Rgba8 { r: 23, g: 23, b: 23, a: 255 }),
+                "secondary" => ThemeValue::Color(Rgba8 { r: 38, g: 38, b: 38, a: 255 }),
+                "secondary-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "muted" => ThemeValue::Color(Rgba8 { r: 38, g: 38, b: 38, a: 255 }),
+                "muted-foreground" => ThemeValue::Color(Rgba8 { r: 161, g: 161, b: 161, a: 255 }),
+                "accent" => ThemeValue::Color(Rgba8 { r: 38, g: 38, b: 38, a: 255 }),
+                "accent-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "destructive" => ThemeValue::Color(Rgba8 { r: 255, g: 100, b: 103, a: 255 }),
+                // shadcn pairs `bg-destructive` with `text-destructive-foreground`
+                // (e.g. the chat Stop chip). The React extract only captured the
+                // `destructive` bg; its foreground is the same near-white the rest
+                // of this dark theme uses for on-color text, so the label stays
+                // readable on the red. Without this, resolving the class panics
+                // (debug) / renders magenta (release).
+                "destructive-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "border" => ThemeValue::Color(Rgba8 { r: 245, g: 255, b: 255, a: 26 }),
+                "input" => ThemeValue::Color(Rgba8 { r: 255, g: 255, b: 255, a: 38 }),
+                "ring" => ThemeValue::Color(Rgba8 { r: 115, g: 115, b: 115, a: 255 }),
+                "sidebar" => ThemeValue::Color(Rgba8 { r: 23, g: 23, b: 23, a: 255 }),
+                "sidebar-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "sidebar-primary" => ThemeValue::Color(Rgba8 { r: 20, g: 71, b: 230, a: 255 }),
+                "sidebar-primary-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "sidebar-accent" => ThemeValue::Color(Rgba8 { r: 38, g: 38, b: 38, a: 255 }),
+                "sidebar-accent-foreground" => ThemeValue::Color(Rgba8 { r: 250, g: 250, b: 250, a: 255 }),
+                "sidebar-border" => ThemeValue::Color(Rgba8 { r: 245, g: 255, b: 255, a: 26 }),
+                "sidebar-ring" => ThemeValue::Color(Rgba8 { r: 115, g: 115, b: 115, a: 255 }),
+                // Syntax-highlight palette (One Dark-ish), consumed by `code_edit` via
+                // per-run `text_theme("syntax-*")`. Capture kinds map to these in the
+                // editor consumer; an unmapped kind falls back to `foreground`.
+                "syntax-keyword" => ThemeValue::Color(Rgba8 { r: 198, g: 120, b: 221, a: 255 }),
+                "syntax-string" => ThemeValue::Color(Rgba8 { r: 152, g: 195, b: 121, a: 255 }),
+                "syntax-comment" => ThemeValue::Color(Rgba8 { r: 117, g: 123, b: 138, a: 255 }),
+                "syntax-function" => ThemeValue::Color(Rgba8 { r: 97, g: 175, b: 239, a: 255 }),
+                "syntax-type" => ThemeValue::Color(Rgba8 { r: 229, g: 192, b: 123, a: 255 }),
+                "syntax-number" => ThemeValue::Color(Rgba8 { r: 209, g: 154, b: 102, a: 255 }),
+                "syntax-constant" => ThemeValue::Color(Rgba8 { r: 209, g: 154, b: 102, a: 255 }),
+                "syntax-property" => ThemeValue::Color(Rgba8 { r: 224, g: 108, b: 117, a: 255 }),
+                "syntax-operator" => ThemeValue::Color(Rgba8 { r: 86, g: 182, b: 194, a: 255 }),
+                "syntax-punctuation" => ThemeValue::Color(Rgba8 { r: 171, g: 178, b: 191, a: 255 }),
+                "syntax-variable" => ThemeValue::Color(Rgba8 { r: 224, g: 108, b: 117, a: 255 }),
+                "syntax-tag" => ThemeValue::Color(Rgba8 { r: 224, g: 108, b: 117, a: 255 }),
+            },
+            ..Self::dark()
+        }
+    }
 }
 
 impl Default for Theme {
@@ -266,6 +334,13 @@ impl Default for Theme {
 
 impl Theme {
     pub(crate) fn resolve_color(&self, token: &'static str) -> Rgba8 {
+        // Explicit theme tokens win over the built-in defaults and scale steps, so a
+        // preset (e.g. `console_dark`) can rebind `accent` / `border` to a target design
+        // system's exact values. Default/dark themes carry an empty token map, so their
+        // resolution is unchanged.
+        if let Some(ThemeValue::Color(color)) = self.tokens.get(token).copied() {
+            return color;
+        }
         if let Some(color) = self.built_in_color(token) {
             return color;
         }
@@ -273,9 +348,6 @@ impl Theme {
             return color;
         }
         if let Some(ThemeValue::Color(color)) = self.runtime_tokens.get(token).copied() {
-            return color;
-        }
-        if let Some(ThemeValue::Color(color)) = self.tokens.get(token).copied() {
             return color;
         }
         self.missing_color(token)

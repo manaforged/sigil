@@ -7,6 +7,7 @@
 mod button;
 mod checkbox;
 mod chip;
+mod code_edit;
 mod composition;
 mod divider;
 mod dot;
@@ -36,6 +37,7 @@ mod virtual_list;
 pub use button::{ButtonBuilder, button};
 pub use checkbox::{CheckboxBuilder, CheckboxTone, checkbox};
 pub use chip::{ChipTone, chip};
+pub use code_edit::{CodeEditBuilder, HlSpan, code_edit};
 pub use composition::{kv_row, status_bar};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
 pub use dot::{DotBuilder, dot};

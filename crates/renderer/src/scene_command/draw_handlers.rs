@@ -12,8 +12,8 @@ use crate::scene_command::{
     DrawDecoration, DrawGlyphRun, DrawGradient, DrawPattern, DrawRect, DrawSprite, GlyphRun,
 };
 use crate::scene_instance::{
-    draw_gradient_instance, draw_pattern_instance, draw_rect_instance, draw_shadow_instance,
-    gradient_stop_records, srgb_channel_to_linear,
+    BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
+    draw_shadow_instance, gradient_stop_records,
 };
 use crate::scene_paint::{PaintCtx, ScenePipeline};
 use crate::shadow_paint::{Shadow, ShadowPipeline};
@@ -28,26 +28,20 @@ impl Walk<'_> {
             return;
         };
         transformed.rect = rect;
-        let instance = draw_rect_instance(&transformed, self.current_opacity());
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene rect encoder"),
-            });
+        let space = BlendSpace::from_format(self.ctx.format);
+        let instance = draw_rect_instance(&transformed, self.current_opacity(), space);
         let pipeline =
             scene_pipeline_for(self.ctx.scene_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_instances(
             PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             core::slice::from_ref(&instance),
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_gradient(&mut self, draw: &DrawGradient) {
@@ -59,32 +53,26 @@ impl Walk<'_> {
             return;
         };
         transformed.rect = rect;
-        let stops = gradient_stop_records(&transformed.gradient.stops);
+        let space = BlendSpace::from_format(self.ctx.format);
+        let stops = gradient_stop_records(&transformed.gradient.stops, space);
         let instance = draw_gradient_instance(
             &transformed,
             self.current_opacity(),
             0,
             u32::try_from(stops.len()).unwrap_or(u32::MAX),
         );
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene gradient encoder"),
-            });
         let pipeline = fill_pipeline_for(self.ctx.fill_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_instances(
             PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             core::slice::from_ref(&instance),
             &stops,
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_pattern(&mut self, draw: &DrawPattern) {
@@ -94,26 +82,20 @@ impl Walk<'_> {
             return;
         };
         transformed.rect = rect;
-        let instance = draw_pattern_instance(&transformed, self.current_opacity());
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene pattern encoder"),
-            });
+        let space = BlendSpace::from_format(self.ctx.format);
+        let instance = draw_pattern_instance(&transformed, self.current_opacity(), space);
         let pipeline = fill_pipeline_for(self.ctx.fill_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_instances(
             PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             core::slice::from_ref(&instance),
             &[],
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_shadow(
@@ -128,25 +110,18 @@ impl Walk<'_> {
             return;
         };
         instance.rect = rect_fields(expanded);
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene shadow encoder"),
-            });
         let pipeline =
             shadow_pipeline_for(self.ctx.shadow_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_instances(
             PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             core::slice::from_ref(&instance),
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_decoration(&mut self, draw: &DrawDecoration) {
@@ -156,13 +131,8 @@ impl Walk<'_> {
         }
         let mut transformed = *draw;
         transformed.band = band;
-        let instance = decoration_instance(&transformed, self.current_opacity());
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene decoration encoder"),
-            });
+        let space = BlendSpace::from_format(self.ctx.format);
+        let instance = decoration_instance(&transformed, self.current_opacity(), space);
         let pipeline = decoration_pipeline_for(
             self.ctx.decoration_pipelines,
             self.ctx.device,
@@ -172,13 +142,12 @@ impl Walk<'_> {
             PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             &instance,
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_sprite(&mut self, draw: &DrawSprite) {
@@ -187,28 +156,23 @@ impl Walk<'_> {
             return;
         }
         let opacity = self.current_opacity();
+        let space = BlendSpace::from_format(self.ctx.format);
         let mut transformed = draw.clone();
         transformed.destination = dest;
-        let mut encoder = self
-            .ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer command-scene sprite encoder"),
-            });
         let pipeline =
             sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_sprite(
             &mut PaintCtx {
                 device: self.ctx.device,
                 queue: self.ctx.queue,
-                encoder: &mut encoder,
+                encoder: &mut *self.ctx.encoder,
                 view: self.ctx.view,
                 viewport: self.ctx.viewport,
             },
             &transformed,
             opacity,
+            space,
         );
-        self.ctx.queue.submit(core::iter::once(encoder.finish()));
     }
 
     pub(super) fn draw_glyph_run(&mut self, draw: &DrawGlyphRun) -> Result<(), RendererError> {
@@ -217,22 +181,31 @@ impl Walk<'_> {
         if self.clip_rect(rect).is_none() {
             return Ok(());
         }
+        // The active clip becomes a GPU scissor so a run larger than its box (a
+        // scrolled editor paragraph) is cut at the edge per-pixel, not painted whole.
+        let clip = self.current_clip();
         let Some(paragraph) = run.paragraph() else {
             return Ok(());
         };
-        let color = glyph_run_color(run, self.current_opacity());
+        let space = BlendSpace::from_format(self.ctx.format);
+        let color = glyph_run_color(run, self.current_opacity(), space);
         let pipeline = slug_pipeline_for(self.ctx.slug_pipelines, self.ctx.device, self.ctx.format);
-        pipeline.draw_paragraph(&DrawParams {
-            device: self.ctx.device,
-            queue: self.ctx.queue,
-            view: self.ctx.view,
-            surface_width: self.ctx.viewport.0,
-            surface_height: self.ctx.viewport.1,
-            paragraph,
-            glyphs: Some(run.positioned_glyphs()),
-            origin: (rect.origin.x, rect.origin.y),
-            color: Some(color),
-        })
+        pipeline.record_paragraph(
+            &mut *self.ctx.encoder,
+            &DrawParams {
+                device: self.ctx.device,
+                queue: self.ctx.queue,
+                view: self.ctx.view,
+                surface_width: self.ctx.viewport.0,
+                surface_height: self.ctx.viewport.1,
+                scale: self.ctx.scale,
+                paragraph,
+                glyphs: Some(run.positioned_glyphs()),
+                origin: (rect.origin.x, rect.origin.y),
+                color: Some(color),
+                clip,
+            },
+        )
     }
 }
 
@@ -338,12 +311,8 @@ fn sprite_pipeline_for<'a>(
         .expect("sprite pipeline index was just constructed from the vec")
 }
 
-fn glyph_run_color(run: &GlyphRun, opacity_scale: f32) -> Color {
+fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Color {
     let opacity = (f32::from(run.opacity) / 10_000.0) * opacity_scale;
-    Color::rgba(
-        srgb_channel_to_linear(run.color.r),
-        srgb_channel_to_linear(run.color.g),
-        srgb_channel_to_linear(run.color.b),
-        (f32::from(run.color.a) / 255.0) * opacity.clamp(0.0, 1.0),
-    )
+    let [r, g, b, a] = space.rgba(run.color);
+    Color::rgba(r, g, b, a * opacity.clamp(0.0, 1.0))
 }

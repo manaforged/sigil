@@ -26,13 +26,14 @@ mod builder;
 mod icon;
 
 use crate::scene_command::{DrawSprite, SpriteKind};
+use crate::scene_instance::BlendSpace;
 use crate::scene_paint::PaintCtx;
 use crate::sprite_atlas::{BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8};
 
 use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, push_atlas, valid_atlas_desc};
 use self::builder::{
-    UNIT_QUAD_VERTEX_COUNT, atlas_layout, instance_buffer, pipeline, shader,
-    sprite_instance_stride, uniform_bind_group, uniform_buffer, uniform_layout, unit_quad,
+    UNIT_QUAD_VERTEX_COUNT, atlas_layout, instance_buffer, pipeline, shader, uniform_bind_group,
+    uniform_buffer, uniform_layout, unit_quad,
 };
 use self::icon::is_builtin_icon_atlas;
 
@@ -69,12 +70,9 @@ struct SpriteUniforms {
 pub(crate) struct SpritePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    uniform_bind_group: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     atlas_layout: wgpu::BindGroupLayout,
     unit_quad: wgpu::Buffer,
-    instance_cap: u64,
-    instance_buffer: wgpu::Buffer,
     atlases: Vec<AtlasEntry>,
     atlas_bind_groups: Vec<wgpu::BindGroup>,
     sampler: wgpu::Sampler,
@@ -89,12 +87,8 @@ impl SpritePipeline {
         let shader = shader(device);
         let uniform_layout = uniform_layout(device);
         let atlas_layout = atlas_layout(device);
-        let uniform_buffer = uniform_buffer(device);
-        let uniform_bind_group = uniform_bind_group(device, &uniform_layout, &uniform_buffer);
         let pipeline = pipeline(device, format, &shader, &uniform_layout, &atlas_layout);
         let unit_quad = unit_quad(device);
-        let initial_cap = 64_u64;
-        let instance_buffer = instance_buffer(device, initial_cap);
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("sigil-renderer sprite sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -106,12 +100,9 @@ impl SpritePipeline {
         Self {
             format,
             pipeline,
-            uniform_buffer,
-            uniform_bind_group,
+            uniform_layout,
             atlas_layout,
             unit_quad,
-            instance_cap: initial_cap,
-            instance_buffer,
             atlases: Vec::new(),
             atlas_bind_groups: Vec::new(),
             sampler,
@@ -169,11 +160,12 @@ impl SpritePipeline {
         ctx: &mut PaintCtx<'_>,
         draw: &DrawSprite,
         opacity_scale: f32,
+        space: BlendSpace,
     ) {
         let Some(atlas_id) = self.resolve_atlas(ctx.device, ctx.queue, draw.source.atlas) else {
             return;
         };
-        let Some(instance) = self.build_instance(atlas_id, draw, opacity_scale) else {
+        let Some(instance) = self.build_instance(atlas_id, draw, opacity_scale, space) else {
             return;
         };
         let Some((aw, ah)) = self.atlas_dims(atlas_id) else {
@@ -182,15 +174,10 @@ impl SpritePipeline {
         let Some(bind_group) = self.atlas_bind_groups.get(atlas_id).cloned() else {
             return;
         };
-        self.ensure_instance_capacity(ctx.device, 1);
-        ctx.queue
-            .write_buffer(&self.instance_buffer, 0, bytemuck::bytes_of(&instance));
-        ctx.queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&sprite_uniforms(ctx.viewport, aw, ah)),
-        );
-        self.encode_pass(ctx, &bind_group);
+        let instance_buf = instance_buffer(ctx.device, &instance);
+        let uniform_buf = uniform_buffer(ctx.device, &sprite_uniforms(ctx.viewport, aw, ah));
+        let uniform_bg = uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
+        self.encode_pass(ctx, &uniform_bg, &instance_buf, &bind_group);
     }
 
     /// Translate a raw sentinel id to a concrete `atlases` index, uploading
@@ -236,6 +223,7 @@ impl SpritePipeline {
         atlas_id: usize,
         draw: &DrawSprite,
         opacity_scale: f32,
+        space: BlendSpace,
     ) -> Option<SpriteInstance> {
         let (aw, ah) = self.atlas_dims(atlas_id)?;
         let r = &draw.source.region;
@@ -250,7 +238,7 @@ impl SpritePipeline {
         Some(SpriteInstance {
             dest: [dest.origin.x, dest.origin.y, dest.width, dest.height],
             uv_rect,
-            color: rgba8_to_linear(draw.color),
+            color: space.rgba(draw.color),
             params: [opacity, sprite_kind_f32(draw.kind), draw.source.phase, 0.0],
         })
     }
@@ -261,7 +249,13 @@ impl SpritePipeline {
         Some((entry.width as f32, entry.height as f32))
     }
 
-    fn encode_pass(&self, ctx: &mut PaintCtx<'_>, bind_group: &wgpu::BindGroup) {
+    fn encode_pass(
+        &self,
+        ctx: &mut PaintCtx<'_>,
+        uniform_bg: &wgpu::BindGroup,
+        instance_buf: &wgpu::Buffer,
+        atlas_bg: &wgpu::BindGroup,
+    ) {
         let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer sprite pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -279,23 +273,11 @@ impl SpritePipeline {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        pass.set_bind_group(1, bind_group, &[]);
+        pass.set_bind_group(0, uniform_bg, &[]);
+        pass.set_bind_group(1, atlas_bg, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, self.instance_buffer.slice(0..sprite_instance_stride()));
+        pass.set_vertex_buffer(1, instance_buf.slice(..));
         pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
-    }
-
-    fn ensure_instance_capacity(&mut self, device: &wgpu::Device, required: u64) {
-        if required <= self.instance_cap {
-            return;
-        }
-        let mut new_cap = self.instance_cap.max(1);
-        while new_cap < required {
-            new_cap = new_cap.saturating_mul(2);
-        }
-        self.instance_buffer = instance_buffer(device, new_cap);
-        self.instance_cap = new_cap;
     }
 }
 
@@ -313,24 +295,6 @@ const fn sprite_kind_f32(kind: SpriteKind) -> f32 {
         SpriteKind::Mono => 0.0,
         SpriteKind::Subpixel => 1.0,
         SpriteKind::Poly => 2.0,
-    }
-}
-
-fn rgba8_to_linear(color: style::Rgba8) -> [f32; 4] {
-    [
-        srgb_to_linear(color.r),
-        srgb_to_linear(color.g),
-        srgb_to_linear(color.b),
-        f32::from(color.a) / 255.0,
-    ]
-}
-
-fn srgb_to_linear(channel: u8) -> f32 {
-    let v = f32::from(channel) / 255.0;
-    if v <= 0.040_45 {
-        v / 12.92
-    } else {
-        ((v + 0.055) / 1.055).powf(2.4)
     }
 }
 

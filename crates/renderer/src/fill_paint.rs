@@ -6,30 +6,27 @@
 //! (2). The WGSL fragment shader branches on the `fill_kind` discriminator
 //! packed into `stop_range.z`.
 
-use crate::scene_instance::{FillInstance, GpuStop, SceneUniforms};
+use crate::scene_instance::{FillInstance, GpuStop};
 use crate::scene_paint::PaintCtx;
 
 mod setup;
 
 use setup::{
-    UNIT_QUAD_VERTEX_COUNT, doubled_capacity, instance_buffer, instance_slice, pipeline,
-    queue_viewport, shader, stops_bind_group, stops_buffer, stops_layout, uniform_bind_group,
-    uniform_buffer, uniform_layout, unit_quad,
+    UNIT_QUAD_VERTEX_COUNT, instance_buffer, pipeline, shader, stops_bind_group, stops_buffer,
+    stops_layout, uniform_bind_group, uniform_buffer, uniform_layout, unit_quad,
 };
 
 /// Wgpu resources for painting fill rounded rectangles (gradient + patterns).
+///
+/// Instance / stops / uniform buffers are allocated fresh per call (not
+/// persistent `queue.write_buffer` targets) so draws batched into one
+/// submission stay independent — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct FillPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    uniform_bind_group: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     stops_layout: wgpu::BindGroupLayout,
-    stops_bind_group: wgpu::BindGroup,
-    stops_buffer: wgpu::Buffer,
     unit_quad: wgpu::Buffer,
-    instance_cap: u64,
-    instance_buffer: wgpu::Buffer,
-    stops_cap: u64,
 }
 
 impl FillPipeline {
@@ -37,26 +34,14 @@ impl FillPipeline {
         let shader = shader(device);
         let uniform_layout = uniform_layout(device);
         let stops_layout = stops_layout(device);
-        let uniform_buffer = uniform_buffer(device);
-        let uniform_bind_group = uniform_bind_group(device, &uniform_layout, &uniform_buffer);
-        let initial_cap = 64_u64;
-        let stops_buffer = stops_buffer(device, initial_cap);
-        let stops_bind_group = stops_bind_group(device, &stops_layout, &stops_buffer);
         let pipeline = pipeline(device, format, &shader, &uniform_layout, &stops_layout);
         let unit_quad = unit_quad(device);
-        let instance_buffer = instance_buffer(device, initial_cap);
         Self {
             format,
             pipeline,
-            uniform_buffer,
-            uniform_bind_group,
+            uniform_layout,
             stops_layout,
-            stops_bind_group,
-            stops_buffer,
             unit_quad,
-            instance_cap: initial_cap,
-            instance_buffer,
-            stops_cap: initial_cap,
         }
     }
 
@@ -65,7 +50,7 @@ impl FillPipeline {
     }
 
     pub(crate) fn paint_instances(
-        &mut self,
+        &self,
         ctx: PaintCtx<'_>,
         instances: &[FillInstance],
         stops: &[GpuStop],
@@ -73,8 +58,7 @@ impl FillPipeline {
         if instances.is_empty() {
             return;
         }
-        // Patterns don't use stops but the buffer must be non-empty for the
-        // storage binding. Provide a one-element sentinel when stops is empty.
+        // Patterns don't use stops but the storage buffer must be non-empty.
         let sentinel = [GpuStop {
             offset_bits: 0,
             rgba01: 0,
@@ -87,38 +71,24 @@ impl FillPipeline {
             stops
         };
 
-        let mut ctx = ctx;
-        self.upload(ctx.device, ctx.queue, instances, stops_slice);
-        self.draw(&mut ctx, u32::try_from(instances.len()).unwrap_or(u32::MAX));
-    }
+        let PaintCtx {
+            device,
+            encoder,
+            view,
+            viewport,
+            ..
+        } = ctx;
+        let instance_buf = instance_buffer(device, instances);
+        let stops_buf = stops_buffer(device, stops_slice);
+        let uniform_buf = uniform_buffer(device, viewport);
+        let uniform_bg = uniform_bind_group(device, &self.uniform_layout, &uniform_buf);
+        let stops_bg = stops_bind_group(device, &self.stops_layout, &stops_buf);
+        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
 
-    fn upload(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        instances: &[FillInstance],
-        stops: &[GpuStop],
-    ) {
-        self.ensure_instance_capacity(device, instances.len() as u64);
-        self.ensure_stops_capacity(device, stops.len() as u64);
-        queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&SceneUniforms {
-                viewport: [1.0, 1.0],
-                _pad: [0.0, 0.0],
-            }),
-        );
-        queue.write_buffer(&self.instance_buffer, 0, bytemuck::cast_slice(instances));
-        queue.write_buffer(&self.stops_buffer, 0, bytemuck::cast_slice(stops));
-    }
-
-    fn draw(&self, ctx: &mut PaintCtx<'_>, instance_count: u32) {
-        queue_viewport(&self.uniform_buffer, ctx.queue, ctx.viewport);
-        let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer fill paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: ctx.view,
+                view,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -132,30 +102,11 @@ impl FillPipeline {
             multiview_mask: None,
         });
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-        pass.set_bind_group(1, &self.stops_bind_group, &[]);
+        pass.set_bind_group(0, &uniform_bg, &[]);
+        pass.set_bind_group(1, &stops_bg, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_slice(&self.instance_buffer, instance_count));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instance_count);
-    }
-
-    fn ensure_instance_capacity(&mut self, device: &wgpu::Device, required: u64) {
-        if required <= self.instance_cap {
-            return;
-        }
-        let new_cap = doubled_capacity(self.instance_cap, required);
-        self.instance_buffer = instance_buffer(device, new_cap);
-        self.instance_cap = new_cap;
-    }
-
-    fn ensure_stops_capacity(&mut self, device: &wgpu::Device, required: u64) {
-        if required <= self.stops_cap {
-            return;
-        }
-        let new_cap = doubled_capacity(self.stops_cap, required);
-        self.stops_buffer = stops_buffer(device, new_cap);
-        self.stops_bind_group = stops_bind_group(device, &self.stops_layout, &self.stops_buffer);
-        self.stops_cap = new_cap;
+        pass.set_vertex_buffer(1, instance_buf.slice(..));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
     }
 }
 

@@ -7,7 +7,7 @@ use crate::decoration_paint::DecorationPipeline;
 use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
 use crate::layer_composite::LayerCompositePipeline;
-use crate::layer_pool::LayerPool;
+use crate::layer_pool::{LayerHandle, LayerPool};
 use crate::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
@@ -19,8 +19,24 @@ const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
+    /// Shared command encoder. Every draw handler records its pass into this
+    /// instead of creating + submitting its own — the wrapper that built the
+    /// `WalkCtx` owns the single `queue.submit`, so a host can compose the
+    /// whole scene into its frame graph in one submission (DR-054).
+    pub(crate) encoder: &'a mut wgpu::CommandEncoder,
+    /// Sink for transient offscreen layer textures. The layer walker pushes
+    /// each `LayerHandle` here instead of dropping it at the end of the layer,
+    /// so the texture outlives the recorded composite pass — which only runs
+    /// when the owner submits `encoder`. The owner clears this after submit.
+    pub(crate) retained: &'a mut Vec<LayerHandle>,
     pub(crate) view: &'a wgpu::TextureView,
     pub(crate) viewport: (f32, f32),
+    /// Device pixel ratio (physical surface pixels per logical pixel). 1.0 for the
+    /// offscreen/record paths, which render at the viewport's own pixel size. The Slug
+    /// text shader multiplies its glyph-coverage AA ramp by this so the ramp is one
+    /// *physical* pixel (sharp on high-DPI displays) rather than one logical pixel
+    /// (blurry at 2×).
+    pub(crate) scale: f32,
     pub(crate) format: wgpu::TextureFormat,
     pub(crate) scene_pipelines: &'a mut Vec<ScenePipeline>,
     pub(crate) fill_pipelines: &'a mut Vec<FillPipeline>,
@@ -122,6 +138,15 @@ impl<'a> Walk<'a> {
 
     pub(super) fn clip_rect(&self, rect: Rect) -> Option<Rect> {
         self.clips.iter().copied().try_fold(rect, intersect_rect)
+    }
+
+    /// The active clip region (intersection of the clip stack), or `None` when no
+    /// clip is pushed. Draw handlers pass it down as a GPU scissor so partially
+    /// visible runs are cut at the box edge per-pixel, not just culled whole.
+    pub(super) fn current_clip(&self) -> Option<Rect> {
+        let mut clips = self.clips.iter().copied();
+        let first = clips.next()?;
+        clips.try_fold(first, intersect_rect)
     }
 
     pub(super) fn current_transform(&self) -> Transform {

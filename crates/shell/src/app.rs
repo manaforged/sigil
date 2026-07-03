@@ -23,6 +23,12 @@ use crate::{shell::WinitShell, waker::WakeEvent};
 pub(crate) struct WinitApp<F> {
     pub(crate) shell: WinitShell,
     pub(crate) frame: F,
+    /// True when we issued `request_redraws()` to coalesce a buffered input event,
+    /// so the resulting `RedrawRequested` is ours and the change-gate may skip its
+    /// paint if the input changed nothing. Cleared on each `RedrawRequested`; when
+    /// it is already clear, that redraw is OS-driven (first-show / un-occlude /
+    /// resize) and must force a paint — otherwise the drawable shows gray.
+    pub(crate) input_redraw_pending: bool,
 }
 
 impl<F> ApplicationHandler<WakeEvent> for WinitApp<F>
@@ -87,6 +93,14 @@ where
                 // creation calls complete before the frame callback
                 // runs.
                 self.shell.materialise_pending(event_loop);
+                // A redraw we did NOT schedule for input coalescing is OS-driven
+                // (first-show / un-occlude / resize): the drawable needs pixels, so
+                // force the change-gate to paint this frame. Our own input-coalescing
+                // redraws leave the gate free to skip a no-op paint.
+                if !self.input_redraw_pending {
+                    self.shell.set_force_paint();
+                }
+                self.input_redraw_pending = false;
                 (self.frame)(&mut self.shell);
                 if self.shell.exit_requested() {
                     event_loop.exit();
@@ -94,6 +108,7 @@ where
             }
             event => {
                 if self.shell.buffer_window_event(window_id, event) {
+                    self.input_redraw_pending = true;
                     self.shell.request_redraws();
                 }
             }

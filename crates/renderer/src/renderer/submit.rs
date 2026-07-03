@@ -4,6 +4,7 @@ use hal::Color;
 
 use crate::device_state::ReadyState;
 use crate::error::RendererError;
+use crate::layer_pool::LayerHandle;
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::surface::WgpuSurface;
@@ -80,6 +81,37 @@ pub(super) fn acquire_frame(
     Ok(Some((frame, view)))
 }
 
+/// Record a clear-to-`color` pass into `encoder` without submitting.
+/// The caller owns the submission — used by the encoder-recording paths so a
+/// clear is sequenced with the scene's draws in one submission (DR-054).
+pub(crate) fn record_clear(
+    encoder: &mut wgpu::CommandEncoder,
+    view: &wgpu::TextureView,
+    color: Color,
+) {
+    let _p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: Some("sigil-renderer clear pass"),
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+            view,
+            depth_slice: None,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color {
+                    r: f64::from(color.r),
+                    g: f64::from(color.g),
+                    b: f64::from(color.b),
+                    a: f64::from(color.a),
+                }),
+                store: wgpu::StoreOp::Store,
+            },
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
+}
+
 /// Clear `view` to `color` by submitting a single render pass.
 pub fn submit_clear(
     device: &wgpu::Device,
@@ -90,41 +122,21 @@ pub fn submit_clear(
     let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("sigil-renderer clear encoder"),
     });
-    {
-        let _p = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("sigil-renderer clear pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: f64::from(color.r),
-                        g: f64::from(color.g),
-                        b: f64::from(color.b),
-                        a: f64::from(color.a),
-                    }),
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-            multiview_mask: None,
-        });
-    }
+    record_clear(&mut enc, view, color);
     queue.submit(core::iter::once(enc.finish()));
 }
 
-/// Walk `scene` into `view` using the format-keyed pipeline caches in `ready`.
+/// Record `scene` into `view` and the caller-owned `encoder` using the
+/// format-keyed pipeline caches in `ready`. The caller submits `encoder`.
 ///
-/// Private helper shared by `submit_screen` and the deprecated
-/// `render_command_scene_offscreen` path in `offscreen.rs`.
+/// Shared by `submit_screen` / `record_screen` and the surface present path.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn walk_screen(
     ready: &mut ReadyState,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
+    encoder: &mut wgpu::CommandEncoder,
+    retained: &mut Vec<LayerHandle>,
     view: &wgpu::TextureView,
     viewport: (f32, f32),
     format: wgpu::TextureFormat,
@@ -146,8 +158,12 @@ pub(super) fn walk_screen(
         WalkCtx {
             device,
             queue,
+            encoder,
+            retained,
             view,
             viewport,
+            // Record path renders at the viewport's own pixel size — logical == physical.
+            scale: 1.0,
             format,
             scene_pipelines,
             fill_pipelines,
@@ -182,6 +198,14 @@ where
     Ok(())
 }
 
+/// Device pixel ratio: physical surface width divided by the logical viewport width — the
+/// window scale factor (1.0 on standard displays, 2.0 on high-DPI). Drives the text
+/// shader's coverage-ramp scaling so glyph edges stay one physical pixel wide.
+#[allow(clippy::cast_precision_loss)]
+fn surface_text_scale(surface: &WgpuSurface, viewport: (f32, f32)) -> f32 {
+    surface.config.width as f32 / viewport.0.max(1.0)
+}
+
 /// Acquire surface frame, clear, walk `scene`, and present.
 pub(super) fn render_command_scene_surface(
     ready: &mut ReadyState,
@@ -190,11 +214,16 @@ pub(super) fn render_command_scene_surface(
     clear_color: hal::Color,
     viewport: (f32, f32),
 ) -> Result<(), RendererError> {
-    let format = surface.config.format;
     let Some((frame, view)) = acquire_frame(ready, surface)? else {
         return Ok(());
     };
-    submit_clear(&ready.device, &ready.queue, &view, clear_color);
+    let mut encoder = ready
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("sigil-renderer surface frame encoder"),
+        });
+    record_clear(&mut encoder, &view, clear_color);
+    let mut retained = Vec::new();
     let ReadyState {
         device,
         queue,
@@ -213,9 +242,12 @@ pub(super) fn render_command_scene_surface(
         WalkCtx {
             device,
             queue,
+            encoder: &mut encoder,
+            retained: &mut retained,
             view: &view,
             viewport,
-            format,
+            scale: surface_text_scale(surface, viewport),
+            format: surface.config.format,
             scene_pipelines,
             fill_pipelines,
             shadow_pipelines,
@@ -228,6 +260,7 @@ pub(super) fn render_command_scene_surface(
         },
         scene,
     )?;
+    queue.submit(core::iter::once(encoder.finish()));
     frame.present();
     Ok(())
 }

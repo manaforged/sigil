@@ -10,7 +10,7 @@ use crate::interaction::InteractionState;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::handlers::{NoopClipboard, TextFieldRuntime, attach_key_handlers, noop_change};
-use super::render::{build_base_node, field_layout};
+use super::render::{FieldInputs, build_base_node, field_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
@@ -32,7 +32,7 @@ pub struct TextFieldBuilder {
     pub(super) submit: Option<TextChange>,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
-    pub(super) scroll_offset: Option<Signal<usize>>,
+    pub(super) scroll_offset: Option<Signal<f32>>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -85,12 +85,14 @@ impl TextFieldBuilder {
         *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
-    /// Byte offset of the left edge of the visible viewport within the buffer.
+    /// Horizontal scroll of the text in logical px (left edge of the visible
+    /// viewport).
     ///
-    /// Updated after every caret movement so that the caret stays in view.
+    /// Updated after every caret movement so the caret stays in view; pixel-,
+    /// not character-, based so it is correct at any field width and font.
     /// Tests can read this to assert scroll behavior after long input.
-    pub fn scroll_offset(&mut self) -> Signal<usize> {
-        *self.scroll_offset.get_or_insert_with(|| signal(0_usize))
+    pub fn scroll_offset(&mut self) -> Signal<f32> {
+        *self.scroll_offset.get_or_insert_with(|| signal(0.0_f32))
     }
 
     /// Set placeholder text rendered while the field is empty and unfocused.
@@ -169,7 +171,13 @@ impl TextFieldBuilder {
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);
         let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
-        let scroll_offset = self.scroll_offset.unwrap_or_else(|| signal(0_usize));
+        let scroll = self.scroll_offset.unwrap_or_else(|| signal(0.0_f32));
+
+        // Read the caller's `.width(px)` (if any) before `apply` consumes the
+        // overrides, so the text track and the scroll math both size against
+        // the field's real inner column instead of the default.
+        let width = layout_overrides.width_hint();
+        let column = super::selection::column_width(width);
         let runtime = TextFieldRuntime::new(
             value,
             disabled,
@@ -177,10 +185,16 @@ impl TextFieldBuilder {
             submit,
             clipboard,
             caret_visible,
-            scroll_offset,
+            scroll,
+            column,
         );
 
-        let node = build_base_node(value, disabled, invalid, &placeholder, interaction);
+        let inputs = FieldInputs {
+            value,
+            disabled,
+            invalid,
+        };
+        let node = build_base_node(inputs, &placeholder, interaction, width, runtime.clone());
         let mut node = interaction.install(attach_key_handlers(node, runtime.clone()));
         for mutate in mutators {
             node = mutate(node);

@@ -157,14 +157,19 @@ impl GlyphAtlas {
             self.capacity = new_cap;
         }
 
-        // Pack glyphs contiguously; record each one's f32 index.
-        let mut byte_offset: u64 = 0;
+        // Pack each glyph at its STABLE slot offset (`slot * BYTES_PER_GLYPH`),
+        // not sequential iteration order. HashMap order is non-deterministic and
+        // reshuffles as glyphs are inserted, so sequential packing reassigned a
+        // glyph's offset on every re-upload — scrambling any draw already
+        // recorded earlier in the same frame against the old offset (the
+        // cold-cache "garbled first frame"). Slot addressing pins each offset for
+        // the cache's lifetime, so mid-frame re-uploads never move a glyph.
         for (key, cached) in cache.iter() {
+            let byte_offset = u64::from(cached.slot) * BYTES_PER_GLYPH;
             // Store the f32 index (byte_offset / 4) so the shader can index
             // directly into `array<f32>` without an extra shift.
             self.layout.record_offset(key, byte_offset);
             queue.write_buffer(&self.buffer, byte_offset, cached.band_data.as_bytes());
-            byte_offset += BYTES_PER_GLYPH;
         }
 
         self.layout.finish_upload(current_gen);

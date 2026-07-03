@@ -6,6 +6,11 @@ use reactive::{Signal, signal};
 use style::{FocusRing, NodeStyleExt, StyleState};
 
 /// Shared hover/press/focus state for focusable widgets.
+///
+/// `focused` tracks logical focus (set on any focus, pointer or keyboard) and
+/// drives state-styles + caret/display. `ring_visible` is the `:focus-visible`
+/// signal: set only when focus arrives via the keyboard (or programmatically),
+/// so a mouse click focuses a widget without raising the keyboard focus ring.
 #[derive(Clone, Copy)]
 pub struct InteractionState {
     enabled: bool,
@@ -13,6 +18,7 @@ pub struct InteractionState {
     pressed: Signal<bool>,
     dragging: Signal<bool>,
     focused: Signal<bool>,
+    ring_visible: Signal<bool>,
 }
 
 impl InteractionState {
@@ -31,6 +37,7 @@ impl InteractionState {
             pressed: signal(false),
             dragging: signal(false),
             focused: signal(false),
+            ring_visible: signal(false),
         }
     }
 
@@ -73,9 +80,9 @@ impl InteractionState {
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
         node.focusable(self.enabled)
             .hittable(self.enabled)
-            .focus_ring(FocusRing::new(self.focus_visible()))
-            .focus_in(move || self.set_focused(true))
-            .focus_out(move || self.set_focused(false))
+            .focus_ring(FocusRing::new(self.ring_visible))
+            .focus_in(move || self.on_focus_in())
+            .focus_out(move || self.on_focus_out())
             .pointer_enter(move |event| self.pointer_enter(event))
             .pointer_leave(move |event| self.pointer_leave(event))
             .pointer_down(move |event| self.pointer_down(event))
@@ -132,6 +139,19 @@ impl InteractionState {
 
     fn set_focused(self, next: bool) {
         set_if_changed(self.focused, next);
+    }
+
+    /// On gaining focus: always logically focused (drives state-style + caret),
+    /// but only raise the focus-visible ring when focus came from the keyboard
+    /// (or programmatically) — not from a mouse click.
+    fn on_focus_in(self) {
+        self.set_focused(true);
+        set_if_changed(self.ring_visible, events::focus_from_keyboard());
+    }
+
+    fn on_focus_out(self) {
+        self.set_focused(false);
+        set_if_changed(self.ring_visible, false);
     }
 }
 

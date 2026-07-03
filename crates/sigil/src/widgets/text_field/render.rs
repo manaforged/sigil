@@ -1,11 +1,13 @@
 use animation_runtime::presets;
 use events::prelude::{NodeEventsExt, PointerEvent};
-use kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
+use kernel::{NodeBuilder, Role, TextContent, container};
 use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use reactive::{Signal, derived_eq};
 use style::{ColorAtom, NodeStyleExt, Rgba8, StateStyle, StyleAtom, StyleVariant, TransitionId};
 
 use crate::interaction::InteractionState;
+
+use super::handlers::TextFieldRuntime;
 
 use super::super::shared::binary_style_state;
 use super::super::transition_seam::install_transition_animators;
@@ -46,13 +48,27 @@ pub(super) static FIELD_INVALID: &[StyleAtom] =
         a: 255,
     }))];
 
+/// The reactive signal inputs a text field binds — grouped so the
+/// render entry point stays within the 5-argument hygiene cap.
+#[derive(Clone, Copy)]
+pub(super) struct FieldInputs {
+    pub(super) value: Signal<String>,
+    pub(super) disabled: Option<Signal<bool>>,
+    pub(super) invalid: Option<Signal<bool>>,
+}
+
 pub(super) fn build_base_node(
-    value: Signal<String>,
-    disabled: Option<Signal<bool>>,
-    invalid: Option<Signal<bool>>,
+    inputs: FieldInputs,
     placeholder: &TextContent,
     interaction: InteractionState,
+    width: Option<f32>,
+    runtime: TextFieldRuntime,
 ) -> NodeBuilder {
+    let FieldInputs {
+        value,
+        disabled,
+        invalid,
+    } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
     let displayed = displayed_text(value, interaction.focus_visible(), placeholder.clone());
     let state_style = field_state_style();
@@ -76,7 +92,7 @@ pub(super) fn build_base_node(
             }
         })
         .pointer_up(move |event| pointer_up(event, interaction))
-        .child(field_inner(displayed));
+        .child(field_inner(runtime, interaction, displayed, width));
     install_transition_animators(
         node,
         TEXT_FIELD_ANIM_BASE,
@@ -103,34 +119,38 @@ pub(super) fn field_layout() -> LayoutStyle {
         .padding(1.0)
 }
 
-fn field_inner(displayed: Signal<String>) -> NodeBuilder {
+fn field_inner(
+    runtime: TextFieldRuntime,
+    interaction: InteractionState,
+    displayed: Signal<String>,
+    width: Option<f32>,
+) -> NodeBuilder {
     container()
-        .layout(field_inner_layout())
+        .layout(field_inner_layout(width))
         .class("rounded-sm")
         .class("bg-surface")
-        .child(field_text(displayed))
+        .child(super::selection::text_region(
+            runtime,
+            interaction,
+            displayed,
+            width,
+        ))
 }
 
-fn field_inner_layout() -> LayoutStyle {
-    // Inner fills whatever the outer (1 px-padded border frame) gives
-    // it. The old fixed `width(178)` produced a "gray right cap" in any
-    // host wider than 180 px — the outer fill_width'd to the host while
-    // the inner stayed pinned at 178, exposing a strip of the outer's
-    // border-coloured background on the right (visual review
-    // 2026-05-21). Adaptive width keeps the 1 px border uniform on all
-    // four sides regardless of the host's chosen width.
-    LayoutStyle::flex_row()
-        .fill_width()
-        .grow(1.0)
-        .align_items(AlignItems::Center)
+fn field_inner_layout(width: Option<f32>) -> LayoutStyle {
+    // An explicit builder width pins the inner track to width − 2 (the
+    // 1 px outer padding band each side). With no override the inner
+    // fills whatever the outer border frame gives it — the old fixed
+    // `width(178)` default produced a "gray right cap" in any host
+    // wider than 180 px, exposing a strip of the outer's border-coloured
+    // background on the right (visual review 2026-05-21).
+    let base = width.map_or_else(
+        || LayoutStyle::flex_row().fill_width().grow(1.0),
+        |w| LayoutStyle::flex_row().width((w - 2.0).max(0.0)),
+    );
+    base.align_items(AlignItems::Center)
         .padding_x(12.0)
         .padding_y(8.0)
-}
-
-fn field_text(displayed: Signal<String>) -> TextBuilder {
-    text(displayed)
-        .layout(LayoutStyle::block().fill_width().grow(1.0))
-        .class("text-on-surface")
 }
 
 fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {

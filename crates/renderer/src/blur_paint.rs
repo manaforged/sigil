@@ -45,12 +45,10 @@ pub(crate) struct BlurPipeline {
     format: wgpu::TextureFormat,
     down_pipeline: wgpu::RenderPipeline,
     up_pipeline: wgpu::RenderPipeline,
-    uniform_buffer: wgpu::Buffer,
-    uniform_bind_group: wgpu::BindGroup,
+    uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
     unit_quad: wgpu::Buffer,
-    instance_buffer: wgpu::Buffer,
 }
 
 impl BlurPipeline {
@@ -61,8 +59,6 @@ impl BlurPipeline {
         });
         let uniform_layout = make_uniform_layout(device);
         let texture_layout = make_texture_layout(device);
-        let uniform_buffer = make_uniform_buffer(device);
-        let uniform_bind_group = make_uniform_bind_group(device, &uniform_layout, &uniform_buffer);
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("sigil-renderer blur sampler"),
             address_mode_u: wgpu::AddressMode::ClampToEdge,
@@ -82,12 +78,10 @@ impl BlurPipeline {
             format,
             down_pipeline,
             up_pipeline,
-            uniform_buffer,
-            uniform_bind_group,
+            uniform_layout,
             texture_layout,
             sampler,
             unit_quad: make_unit_quad(device),
-            instance_buffer: make_instance_buffer(device),
         }
     }
 
@@ -95,17 +89,20 @@ impl BlurPipeline {
         self.format
     }
 
-    /// Apply dual-Kawase blur to `src_view` and return the blurred result.
+    /// Apply dual-Kawase blur to `src` and return the blurred result's view.
     ///
-    /// Intermediate textures are borrowed from `pool`. Returns `None` when
-    /// `sigma == 0` (skip) or pool allocation fails.
+    /// Every intermediate texture (downsample pyramid + upsample outputs) is
+    /// moved into `retained` so it outlives the recorded passes, which only run
+    /// when the owner submits the encoder. Returns a clone of the final view
+    /// (Arc-backed, so it keeps its texture alive) or `None` when `sigma == 0`
+    /// or pool allocation fails.
     pub(crate) fn apply(
         &self,
-        ctx: PassCtx<'_>,
+        ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         src: PassSrc<'_>,
         sigma: f32,
-    ) -> Option<LayerHandle> {
+    ) -> Option<wgpu::TextureView> {
         let passes = pass_count_for(sigma);
         if passes == 0 {
             return None;
@@ -114,7 +111,12 @@ impl BlurPipeline {
         if pyramid.is_empty() {
             return None;
         }
-        self.upsample(ctx, pool, &pyramid, (src.w, src.h))
+        let (result, intermediates) = self.upsample(ctx, pool, &pyramid, (src.w, src.h))?;
+        let view = result.view.clone();
+        ctx.retained.extend(pyramid);
+        ctx.retained.extend(intermediates);
+        ctx.retained.push(result);
+        Some(view)
     }
 
     /// Build the N-level downsample pyramid. Returns the allocated handles.
@@ -124,7 +126,7 @@ impl BlurPipeline {
     /// rather than keeping a dangling borrow across the `push`.
     fn downsample(
         &self,
-        ctx: PassCtx<'_>,
+        ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         src: PassSrc<'_>,
         passes: u32,
@@ -170,14 +172,15 @@ impl BlurPipeline {
     /// pass writes into a texture sized to `src_dims` (the original layer).
     fn upsample(
         &self,
-        ctx: PassCtx<'_>,
+        ctx: &mut PassCtx<'_>,
         pool: &mut LayerPool,
         pyramid: &[LayerHandle],
         src_dims: (u32, u32),
-    ) -> Option<LayerHandle> {
+    ) -> Option<(LayerHandle, Vec<LayerHandle>)> {
         let (src_width, src_height) = src_dims;
         let n = pyramid.len();
         let seed = pyramid.last()?;
+        let mut intermediates: Vec<LayerHandle> = Vec::new();
         let mut current: Option<LayerHandle> = None;
         for up_pass in 0..n {
             let (target_w, target_h) = if up_pass + 1 == n {
@@ -210,85 +213,77 @@ impl BlurPipeline {
                     },
                 );
             }
+            if let Some(prev) = current.take() {
+                intermediates.push(prev);
+            }
             current = Some(out_handle);
         }
-        current
+        current.map(|result| (result, intermediates))
     }
 
     fn run_pass(
         &self,
-        ctx: PassCtx<'_>,
+        ctx: &mut PassCtx<'_>,
         pipeline: &wgpu::RenderPipeline,
         src: PassSrc<'_>,
         dst: PassDst<'_>,
     ) {
-        self.upload_pass_state(ctx.queue, src, dst.viewport);
-        let tex_bg =
-            make_texture_bind_group(ctx.device, &self.texture_layout, src.view, &self.sampler);
-        let mut encoder = ctx
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer blur pass"),
-            });
-        {
-            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("sigil-renderer blur pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: dst.view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            pass.set_pipeline(pipeline);
-            pass.set_bind_group(0, &self.uniform_bind_group, &[]);
-            pass.set_bind_group(1, &tex_bg, &[]);
-            pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-            pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-            pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
-        }
-        ctx.queue.submit(core::iter::once(encoder.finish()));
-    }
-
-    fn upload_pass_state(&self, queue: &wgpu::Queue, src: PassSrc<'_>, viewport: (f32, f32)) {
-        let _ = src;
-        let dst_w = viewport.0.max(0.0) as u32;
-        let dst_h = viewport.1.max(0.0) as u32;
-        // Kawase passes always read the entire source pyramid level into the
-        // entire destination level. UV is the unit quad → full source extent.
-        // (`uv_max = dst/src` was copy-pasta from LayerCompositePipeline, where
-        // it crops a rounded layer to its logical content region. That cropping
-        // semantic does not apply inside the pyramid.)
+        let (vw, vh) = dst.viewport;
+        // Kawase passes read the full source level into the full destination
+        // level — UV spans the unit quad. Fresh per-pass buffers + bind group
+        // keep each recorded pass independent under one submission (DR-054).
         let instance = BlurInstance {
-            dest: [0.0, 0.0, dst_w as f32, dst_h as f32],
+            dest: [0.0, 0.0, vw.max(0.0), vh.max(0.0)],
             uv_max: [1.0, 1.0],
             opacity: 1.0,
             _pad: 0.0,
         };
-        queue.write_buffer(
-            &self.uniform_buffer,
-            0,
-            bytemuck::bytes_of(&BlurUniforms {
-                viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
+        let uniform_buf = make_uniform_buffer(
+            ctx.device,
+            &BlurUniforms {
+                viewport: [vw.max(1.0), vh.max(1.0)],
                 _pad: [0.0, 0.0],
-            }),
+            },
         );
-        queue.write_buffer(&self.instance_buffer, 0, bytemuck::bytes_of(&instance));
+        let uniform_bg = make_uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
+        let instance_buf = make_instance_buffer(ctx.device, &instance);
+        let tex_bg =
+            make_texture_bind_group(ctx.device, &self.texture_layout, src.view, &self.sampler);
+        let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("sigil-renderer blur pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: dst.view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+            multiview_mask: None,
+        });
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &uniform_bg, &[]);
+        pass.set_bind_group(1, &tex_bg, &[]);
+        pass.set_vertex_buffer(0, self.unit_quad.slice(..));
+        pass.set_vertex_buffer(1, instance_buf.slice(..));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
     }
 }
 
 /// Borrowed GPU context for a single blur pass.
-#[derive(Clone, Copy)]
 pub(crate) struct PassCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
-    pub(crate) queue: &'a wgpu::Queue,
+    /// Shared encoder the blur passes record into. The layer walker owns the
+    /// single submission, so blur output is sequenced with the surrounding
+    /// clear / composite passes in one encoder (DR-054).
+    pub(crate) encoder: &'a mut wgpu::CommandEncoder,
+    /// Sink for the intermediate pyramid + upsample textures, kept alive until
+    /// the owner submits `encoder` (the recorded passes reference them).
+    pub(crate) retained: &'a mut Vec<LayerHandle>,
 }
 
 /// Source texture and logical dimensions for a single blur pass.

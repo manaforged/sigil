@@ -4,8 +4,8 @@ use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use style::{NodeStyleExt, Rgba8};
 
 use super::{
-    RectInstance, collect_instances, draw_gradient_instance, draw_rect_instance,
-    draw_shadow_instance, expanded_shadow_rect, instance_stride,
+    BlendSpace, RectInstance, collect_instances, draw_gradient_instance, draw_rect_instance,
+    draw_shadow_instance, expanded_shadow_rect,
 };
 use crate::CornerRadii;
 use crate::scene::emit_scene;
@@ -77,17 +77,9 @@ fn rect_instance_carries_position_and_color() {
 }
 
 #[test]
-fn instance_stride_matches_struct_size() {
-    assert_eq!(
-        instance_stride(),
-        core::mem::size_of::<RectInstance>() as u64
-    );
-}
-
-#[test]
 fn draw_rect_instance_packs_solid_centered_stroke() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [2.0, 0.0, 0.0, 0.0]);
@@ -96,7 +88,7 @@ fn draw_rect_instance_packs_solid_centered_stroke() {
 #[test]
 fn draw_rect_instance_packs_dashed_inside_stroke() {
     let stroke = stroke(StrokeStyle::Dashed(6.0), StrokeAlign::Inside, 3.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [3.0, 1.0, 1.0, 6.0]);
@@ -115,7 +107,7 @@ fn draw_gradient_instance_packs_outside_stroke() {
 #[test]
 fn draw_rect_instance_packs_corner_radii() {
     let style = SceneRectStyle::new(color(), CornerRadii::top(8.0), 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.corner_radii, [8.0, 8.0, 0.0, 0.0]);
 }
@@ -123,7 +115,7 @@ fn draw_rect_instance_packs_corner_radii() {
 #[test]
 fn draw_rect_instance_packs_uniform_corner_radii() {
     let style = SceneRectStyle::new(color(), CornerRadii::uniform(6.0), 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.corner_radii, [6.0, 6.0, 6.0, 6.0]);
 }
@@ -139,7 +131,7 @@ fn draw_gradient_instance_packs_corner_radii() {
 #[test]
 fn draw_rect_instance_packs_zero_stroke_when_none() {
     let style = SceneRectStyle::new(color(), CornerRadii::ZERO, 10_000);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), style), 1.0, BlendSpace::Linear);
 
     assert_array_close(inst.stroke_params, [0.0; 4]);
     assert_array_close(inst.stroke_meta, [0.0; 4]);

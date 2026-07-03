@@ -26,10 +26,52 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use actions::DeriveAction;
-use reactive::{DrawPhase, Entity, Runtime, set_global, signal};
+use reactive::{DrawPhase, Entity, Runtime, effect, set_global, signal};
 
 #[derive(Clone, DeriveAction)]
 struct Tick;
+
+// frame_dirty — the change-gate the app frame driver reads to skip paint.
+#[test]
+fn frame_dirty_tracks_visual_mutations() {
+    Runtime::scope("frame_dirty_tracks_visual_mutations", || {
+        let tracked = signal(0_i32);
+        // Reading `tracked` in an effect subscribes it; writes then schedule
+        // observer work — exactly the mutation that must mark a frame dirty.
+        effect(move || {
+            let _ = tracked.get();
+        });
+        let untracked = signal(0_i32);
+
+        Runtime::begin_effect();
+        assert!(!Runtime::frame_dirty(), "begin_effect clears the flag");
+        untracked.set(1);
+        assert!(
+            !Runtime::frame_dirty(),
+            "a write with no subscribers changes nothing visible"
+        );
+        tracked.set(1);
+        assert!(
+            Runtime::frame_dirty(),
+            "a write to a subscribed signal marks the frame dirty"
+        );
+        Runtime::begin_layout();
+        Runtime::begin_paint();
+        Runtime::end_frame();
+
+        // Each frame starts clean; a structural mark (no signal) still paints.
+        Runtime::begin_effect();
+        assert!(!Runtime::frame_dirty(), "the next frame starts clean");
+        Runtime::mark_frame_dirty();
+        assert!(
+            Runtime::frame_dirty(),
+            "an explicit structural mark sets it"
+        );
+        Runtime::begin_layout();
+        Runtime::begin_paint();
+        Runtime::end_frame();
+    });
+}
 
 // 1. -----------------------------------------------------------------
 #[test]

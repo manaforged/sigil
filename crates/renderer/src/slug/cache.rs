@@ -26,6 +26,12 @@ pub(super) struct GlyphKey {
 pub(super) struct CachedGlyph {
     /// Slug band data ready for GPU upload.
     pub band_data: BandData,
+    /// Stable atlas slot assigned at first insertion. The glyph's byte offset
+    /// in the atlas buffer is `slot * BYTES_PER_GLYPH`, so the offset is fixed
+    /// for the cache's lifetime regardless of `HashMap` iteration order. This is
+    /// what keeps a draw's baked offset valid after a later glyph forces a
+    /// mid-frame atlas re-upload (see `GlyphAtlas::rebuild`).
+    pub slot: u32,
 }
 
 /// Cache mapping [`GlyphKey`] → [`CachedGlyph`].
@@ -71,8 +77,17 @@ impl GlyphCache {
     }
 
     /// Insert preprocessed band data for a glyph.
+    ///
+    /// A new key is assigned the next dense slot (`map.len()`); re-inserting an
+    /// existing key keeps its slot so its atlas offset never moves. Slots stay
+    /// dense and stable for the cache's lifetime, which is what the atlas relies
+    /// on to keep already-baked draw offsets valid across re-uploads.
     pub(super) fn insert(&mut self, key: GlyphKey, band_data: BandData) {
-        self.map.insert(key, CachedGlyph { band_data });
+        let slot = self.map.get(&key).map_or_else(
+            || u32::try_from(self.map.len()).unwrap_or(u32::MAX),
+            |existing| existing.slot,
+        );
+        self.map.insert(key, CachedGlyph { band_data, slot });
         self.generation = self.generation.wrapping_add(1);
     }
 
@@ -91,5 +106,58 @@ impl GlyphCache {
     pub(super) fn clear(&mut self) {
         self.map.clear();
         self.generation = self.generation.wrapping_add(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+    use crate::slug::bands::{FLOATS_TOTAL, GlyphBbox};
+
+    fn band() -> BandData {
+        BandData {
+            data: vec![0.0; FLOATS_TOTAL],
+            bbox: GlyphBbox {
+                x_min: 0.0,
+                y_min: 0.0,
+                x_max: 1.0,
+                y_max: 1.0,
+            },
+            units_per_em: 1000,
+        }
+    }
+
+    fn key(glyph_id: u32) -> GlyphKey {
+        GlyphKey {
+            font_id: 1,
+            font_index: 0,
+            glyph_id,
+            variation_coords: Box::new([]),
+        }
+    }
+
+    #[test]
+    fn slots_are_dense_stable_and_survive_reinsert() {
+        let mut cache = GlyphCache::new();
+        cache.insert(key(10), band());
+        cache.insert(key(20), band());
+        cache.insert(key(30), band());
+
+        // Fresh keys take dense, insertion-ordered slots.
+        assert_eq!(cache.get(&key(10)).unwrap().slot, 0);
+        assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
+        assert_eq!(cache.get(&key(30)).unwrap().slot, 2);
+
+        // Re-inserting an existing key MUST keep its slot — the atlas derives a
+        // glyph's byte offset from its slot, and a mid-frame offset move is the
+        // cold-cache scramble this addressing scheme exists to prevent.
+        cache.insert(key(20), band());
+        assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
+
+        // A brand-new glyph after the churn still appends densely.
+        cache.insert(key(40), band());
+        assert_eq!(cache.get(&key(40)).unwrap().slot, 3);
     }
 }

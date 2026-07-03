@@ -21,14 +21,20 @@ use windows_core as _;
 use style as _;
 
 mod config;
+mod embed;
 mod error;
 mod launch;
+mod text_geometry;
 mod text_measure;
 mod tree_root;
 
 pub use config::{AppConfig, PanicPolicy};
+pub use embed::UiContext;
 pub use error::{AppResult, Error};
 pub use launch::launch;
+pub use renderer::{TextTuning, set_text_tuning, text_tuning};
+pub use text::{DefaultFonts, set_default_fonts};
+pub use text_geometry::EngineGeometry;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::TreeRoot;
 

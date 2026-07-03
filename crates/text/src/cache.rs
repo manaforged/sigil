@@ -9,6 +9,11 @@ use style::{TextLineHeight, TextStyle};
 
 use crate::Paragraph;
 
+/// Upper bound on retained paragraphs. Caps memory for the standalone
+/// (never-frame-cleared) geometry engine while staying far above the working
+/// set of any single frame's text nodes.
+const MAX_ENTRIES: usize = 256;
+
 /// Shared deterministic hasher — initialised once, reused everywhere.
 fn hasher() -> &'static RandomState {
     static HASHER: OnceLock<RandomState> = OnceLock::new();
@@ -103,6 +108,18 @@ impl ParagraphCache {
         para: Paragraph,
     ) {
         let key = Self::key(text, max_width, style);
+        // Bound memory. The per-frame measure engine is cleared every frame, but
+        // the standalone geometry engine (used for caret/selection hit-testing)
+        // has no frame hook, so without a cap it would retain every distinct
+        // string ever hit-tested for the whole session. The cache exists only
+        // for short-term reuse, so evicting an arbitrary entry on overflow costs
+        // at most a re-shape on the next miss.
+        if self.map.len() >= MAX_ENTRIES
+            && !self.map.contains_key(&key)
+            && let Some(victim) = self.map.keys().next().copied()
+        {
+            self.map.remove(&victim);
+        }
         self.map.insert(
             key,
             CacheEntry {

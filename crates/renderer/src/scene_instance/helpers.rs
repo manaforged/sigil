@@ -2,27 +2,21 @@
 //! payloads from public scene-command types.
 
 use hal::Rect;
-use style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_command::{Stroke, StrokeAlign, StrokeStyle};
-use crate::scene_instance::srgb_channel_to_linear;
 
 use super::RectInstance;
 
+/// `color` is the blend-space-resolved `[r, g, b, a]` (see [`super::BlendSpace`]);
+/// callers convert the source `Rgba8` so this stays a pure geometry/packing step.
 pub(super) fn rect_instance_parts(
     rect: Rect,
-    color: Rgba8,
+    color: [f32; 4],
     corner_radii: CornerRadii,
     opacity: f32,
     stroke: Option<Stroke>,
 ) -> RectInstance {
-    let color = [
-        srgb_channel_to_linear(color.r),
-        srgb_channel_to_linear(color.g),
-        srgb_channel_to_linear(color.b),
-        f32::from(color.a) / 255.0,
-    ];
     let (stroke_params, stroke_meta) = stroke_fields(stroke);
     // Inflate the draw quad outward by the stroke width so the
     // Outside/Centered halves of the stroke have actual fragments to

@@ -252,8 +252,8 @@ fn toggle_hover_settled() {
             frames: u32::MAX,
             dt: DT,
         },
-        [60, 40],
-        (26.0, 16.0),
+        [50, 32],
+        (35.0, 22.4),
     );
     check("toggle_hover_settled", img);
 }
@@ -263,14 +263,18 @@ fn toggle_hover_midflight() {
     let img = render_widget_to_png(
         toggle_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
-        [60, 40],
-        (26.0, 16.0),
+        [50, 32],
+        (35.0, 22.4),
     );
     check("toggle_hover_midflight", img);
 }
 
 #[test]
 fn toggle_hover_filmstrip() {
-    let img = capture_filmstrip(toggle_widget, [60, 40], (26.0, 16.0), 6, DT);
+    // Per-frame box tight to the toggle's natural extent (matches the
+    // settled/midflight goldens' [50, 32] frame) so each stitched frame
+    // is dominated by the widget, not empty canvas. A 200×125 box left
+    // the ~44×24 toggle filling < 6 % of the frame.
+    let img = capture_filmstrip(toggle_widget, [50, 32], (35.0, 22.4), 6, DT);
     check("toggle_hover_filmstrip", img);
 }

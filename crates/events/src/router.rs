@@ -94,18 +94,22 @@ impl EventRouter {
         self.focus.focus()
     }
 
-    /// Set focus explicitly.
+    /// Set focus explicitly. Programmatic focus is treated as focus-visible
+    /// (ring shown), matching keyboard focus.
     pub fn set_focus(&mut self, cx: &mut Cx, target: Option<NodeId>) {
+        crate::note_focus_source(true);
         self.focus.set_focus(cx, target);
     }
 
-    /// Advance focus through the tab ring.
+    /// Advance focus through the tab ring (keyboard → focus-visible).
     pub fn focus_next(&mut self, cx: &mut Cx) {
+        crate::note_focus_source(true);
         self.focus.focus_next(cx);
     }
 
-    /// Move focus backward through the tab ring.
+    /// Move focus backward through the tab ring (keyboard → focus-visible).
     pub fn focus_prev(&mut self, cx: &mut Cx) {
+        crate::note_focus_source(true);
         self.focus.focus_prev(cx);
     }
 
@@ -213,11 +217,22 @@ impl EventRouter {
         if phase != PointerPhase::Down {
             return;
         }
+        // Focus the nearest focusable node on the hit path, walking leaf→root
+        // (the path is root→leaf) so the innermost focusable wins. Checking
+        // only the leaf misses composite widgets whose focusable outer node
+        // wraps non-focusable children: a `text_field`'s click lands on its
+        // inner text/caret node, so a leaf-only check never focuses the field
+        // and keyboard input never routes to it.
         let target = path
-            .last()
+            .iter()
+            .rev()
             .copied()
-            .filter(|id| cx.get(*id).is_some_and(|node| node.a11y.focusable));
+            .find(|id| cx.get(*id).is_some_and(|node| node.a11y.focusable));
         if target.is_some() {
+            // Pointer-initiated focus is NOT focus-visible: a mouse click
+            // focuses the widget (so keyboard input routes there) but must
+            // not raise the keyboard focus ring (`:focus-visible` semantics).
+            crate::note_focus_source(false);
             self.focus.set_focus(cx, target);
         }
     }
@@ -230,6 +245,8 @@ impl EventRouter {
         if self.shortcuts.dispatch(cx, &mut event) || event.propagation_stopped() {
             return;
         }
+        // Tab moves focus via the keyboard → focus-visible (ring shown).
+        crate::note_focus_source(true);
         if route_tab_key(&mut self.focus, cx, &event) {
             return;
         }
@@ -340,10 +357,23 @@ fn route_tab_key(focus: &mut FocusManager, cx: &mut Cx, event: &KeyEvent) -> boo
     }
     if event.modifiers.shift() {
         focus.focus_prev(cx);
+    } else if traps_tab(focus, cx) {
+        // The focused node wants the raw Tab (code editor indent). Let the key fall
+        // through to the focused-key dispatch instead of moving focus. Shift+Tab is
+        // unaffected above, so there is always a keyboard way out.
+        return false;
     } else {
         focus.focus_next(cx);
     }
     true
+}
+
+/// Whether the currently focused node opts to receive a plain `Tab` itself.
+fn traps_tab(focus: &FocusManager, cx: &Cx) -> bool {
+    focus
+        .focus()
+        .and_then(|id| cx.get(id))
+        .is_some_and(|node| node.a11y.traps_tab)
 }
 
 fn path_to_node(cx: &Cx, target: NodeId) -> SmallVec<[NodeId; 64]> {

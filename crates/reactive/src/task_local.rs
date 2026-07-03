@@ -83,12 +83,20 @@ impl<R> LocalTask<R> {
         }
     }
 
-    /// True if the task has finished (completed or aborted).
+    /// True if the task has finished (completed or aborted) AND the
+    /// result has been consumed via [`LocalTask::await_or_cancel`] or
+    /// [`Future::poll`]. Returns `false` when the task is still
+    /// running OR when it completed but the result has not yet been
+    /// awaited.
+    ///
+    /// Note: the stricter "completed-but-not-yet-awaited" detection
+    /// requires `tokio::sync::oneshot::Receiver::is_terminated`, which
+    /// landed in tokio 1.42. The workspace currently targets tokio 1.40,
+    /// so this implementation conservatively returns `true` only after
+    /// the receiver slot has been consumed.
     #[must_use]
-    pub fn is_finished(&self) -> bool {
-        self.result_rx
-            .as_ref()
-            .is_none_or(oneshot::Receiver::is_terminated)
+    pub const fn is_finished(&self) -> bool {
+        self.result_rx.is_none()
     }
 
     /// Await the task and surface framework-level cancellation / panic.

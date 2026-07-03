@@ -1,10 +1,34 @@
 //! Focus ring and AccessKit focus update support.
 
+use std::cell::Cell;
+
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use kernel::{Cx, NodeId};
 use smallvec::{SmallVec, smallvec};
 
 use crate::EventHandlers;
+
+thread_local! {
+    /// Whether the focus change currently being applied originated from the
+    /// keyboard (Tab / programmatic) rather than a pointer press. The router
+    /// stamps this immediately before each focus mutation; widget focus-in
+    /// handlers read it to implement `:focus-visible` — show a focus ring on
+    /// keyboard focus, but not on a mouse click.
+    static FOCUS_FROM_KEYBOARD: Cell<bool> = const { Cell::new(true) };
+}
+
+/// Record the source of the focus change about to be applied. `true` =
+/// keyboard / programmatic (ring-visible); `false` = pointer press.
+pub fn note_focus_source(keyboard: bool) {
+    FOCUS_FROM_KEYBOARD.with(|cell| cell.set(keyboard));
+}
+
+/// Whether the most recently stamped focus change came from the keyboard.
+/// Read by widget focus-in handlers to gate the focus-visible ring.
+#[must_use]
+pub fn focus_from_keyboard() -> bool {
+    FOCUS_FROM_KEYBOARD.with(Cell::get)
+}
 
 /// One entry on the focus-scope stack.
 ///

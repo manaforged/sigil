@@ -7,7 +7,7 @@
 //! alias for the prior backend type was retired in G1.7 once every
 //! in-tree caller had been migrated.
 
-use std::cell::RefCell;
+use std::cell::{Cell, Ref, RefCell};
 
 use hal::TextEngine;
 use style::{StyledTextEngine, TextLineHeight, TextStyle};
@@ -18,7 +18,7 @@ use crate::cache::ParagraphCache;
 use crate::config::TextConfig;
 use crate::error::TextError;
 use crate::glyph::GlyphRun;
-use crate::paragraph::{LayoutLine, Paragraph};
+use crate::paragraph::{LayoutLine, Paragraph, TextMetrics};
 use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
 
 /// Owned text engine — skrifa + unicode-segmentation backed.
@@ -30,7 +30,10 @@ use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
 /// the underlying [`Shaper`] is, so future rayon use sites can be added
 /// without revisiting this type.
 pub struct OwnedTextEngine {
-    fonts: FontCollection,
+    fonts: RefCell<FontCollection>,
+    /// Generation of the process-global default fonts this engine last shaped with.
+    /// When it falls behind, [`Self::refresh_fonts`] rebuilds `fonts`.
+    font_gen: Cell<u64>,
     config: TextConfig,
     cache: RefCell<ParagraphCache>,
 }
@@ -45,9 +48,22 @@ impl OwnedTextEngine {
     #[must_use]
     pub fn new(config: TextConfig) -> Self {
         Self {
-            fonts: FontCollection::with_default(),
+            fonts: RefCell::new(FontCollection::with_default()),
+            font_gen: Cell::new(crate::fonts::default_fonts_generation()),
             config,
             cache: RefCell::new(ParagraphCache::new()),
+        }
+    }
+
+    /// Rebuild the font collection when the process-global default fonts changed
+    /// since this engine last shaped, and clear the paragraph cache so stale-face
+    /// entries don't survive the swap. A cheap atomic load on the common path.
+    fn refresh_fonts(&self) {
+        let generation = crate::fonts::default_fonts_generation();
+        if generation != self.font_gen.get() {
+            *self.fonts.borrow_mut() = FontCollection::with_default();
+            self.font_gen.set(generation);
+            self.cache.borrow_mut().clear();
         }
     }
 
@@ -69,6 +85,8 @@ impl OwnedTextEngine {
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Result<Paragraph, TextError> {
+        // Pick up a runtime font swap (e.g. the debug panel A/B) before shaping.
+        self.refresh_fonts();
         if let Some(cached) = self.cache.borrow().get(text, max_width, style) {
             return Ok(cached.clone());
         }
@@ -81,8 +99,8 @@ impl OwnedTextEngine {
 
     /// Borrow the font collection (for tests + font-registration).
     #[must_use]
-    pub const fn fonts(&self) -> &FontCollection {
-        &self.fonts
+    pub fn fonts(&self) -> Ref<'_, FontCollection> {
+        self.fonts.borrow()
     }
 
     /// Debug-only segment snapshot for the integration test suite.
@@ -90,8 +108,8 @@ impl OwnedTextEngine {
     #[cfg(any(test, debug_assertions))]
     #[must_use]
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
-        let font = self.fonts.primary();
-        let shaper = Shaper::new(font);
+        let fonts = self.fonts.borrow();
+        let shaper = Shaper::new(fonts.primary());
         let style = to_shaper_style(&self.config.text_style());
         shape_segments(&shaper, text, &style)
             .into_iter()
@@ -116,13 +134,14 @@ impl OwnedTextEngine {
     /// Returns [`TextError::InvalidFont`] when the bytes do not parse
     /// as a valid OpenType/TrueType face.
     pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
-        self.fonts.register(bytes, face_index)?;
+        self.fonts.borrow_mut().register(bytes, face_index)?;
         self.cache.borrow_mut().clear();
         Ok(())
     }
 
     fn build_paragraph(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Paragraph {
-        let font = self.fonts.select(&style.font_family);
+        let fonts = self.fonts.borrow();
+        let font = fonts.select(&style.font_family);
         let shaper = Shaper::new(font);
         let shaper_style = to_shaper_style(style);
         let line_height = resolve_line_height(style);
@@ -135,7 +154,12 @@ impl OwnedTextEngine {
         let lines = break_lines(&runs, max_width, line_height);
         Paragraph::new(
             lines,
-            line_height,
+            // font_size is the em-scale for ink; line_height is only row leading.
+            // Use the shaper's size_px so ink matches the advances it produced.
+            TextMetrics {
+                font_size: shaper_style.size_px,
+                line_height,
+            },
             font.bytes_arc(),
             font.face_index(),
             min_content_hint,
@@ -177,16 +201,38 @@ pub struct FontCollection {
     sans: Font,
     mono: Font,
     serif: Option<Font>,
+    icon: Option<Font>,
 }
 
 impl FontCollection {
-    /// Construct with the embedded sans + mono faces.
+    /// Construct with the bootstrap sans + mono faces.
+    ///
+    /// Honors any process-global override registered via
+    /// [`set_default_fonts`](crate::set_default_fonts) before falling back to
+    /// the embedded `FiraSans` + `CascadiaMono` faces — including when an
+    /// override's bytes fail to parse, so a malformed consumer font can never
+    /// blank the UI.
     #[must_use]
     pub fn with_default() -> Self {
+        let over = crate::fonts::default_fonts_snapshot();
+        let face = |slot: Option<&(std::sync::Arc<Vec<u8>>, u32)>| -> Option<Font> {
+            let (bytes, index) = slot?;
+            Font::from_bytes(bytes.as_ref().clone(), *index).ok()
+        };
         Self {
-            sans: load_sans_font(),
-            mono: load_mono_font(),
+            sans: over
+                .as_ref()
+                .and_then(|f| face(f.sans.as_ref()))
+                .unwrap_or_else(load_sans_font),
+            mono: over
+                .as_ref()
+                .and_then(|f| face(f.mono.as_ref()))
+                .unwrap_or_else(load_mono_font),
             serif: None,
+            // No bundled icon face — `select("icon")` falls back to sans until a
+            // consumer registers one (e.g. the host app's codicon) via the
+            // `DefaultFonts.icon` override.
+            icon: over.as_ref().and_then(|f| face(f.icon.as_ref())),
         }
     }
 
@@ -207,6 +253,8 @@ impl FontCollection {
             &self.mono
         } else if name.eq_ignore_ascii_case("serif") {
             self.serif.as_ref().unwrap_or(&self.sans)
+        } else if name.eq_ignore_ascii_case("icon") {
+            self.icon.as_ref().unwrap_or(&self.sans)
         } else {
             &self.sans
         }
@@ -249,6 +297,8 @@ impl FontCollection {
             self.mono = font;
         } else if name.eq_ignore_ascii_case("serif") {
             self.serif = Some(font);
+        } else if name.eq_ignore_ascii_case("icon") {
+            self.icon = Some(font);
         } else {
             return Err(TextError::InvalidFont);
         }

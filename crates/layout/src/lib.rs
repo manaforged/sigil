@@ -35,10 +35,12 @@ mod intent;
 mod measure;
 mod parallel;
 pub mod prelude;
+pub mod reactive_position;
 mod result;
 pub mod style_adapter;
 mod style_data;
 mod text_adapter;
+pub mod text_geometry;
 mod text_style;
 
 pub use builder_ext::LayoutBuilderExt;
@@ -47,6 +49,7 @@ pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use error::LayoutError;
 pub use intent::LayoutStyle;
 pub use measure::TextMeasure;
+pub use reactive_position::{LayoutReactiveExt, ReactivePosition};
 pub use result::LayoutResult;
 pub use style_data::{
     AlignContent, AlignItems as StyleAlignItems, AlignSelf as StyleAlignSelf, BoxSizing, Dimension,
@@ -57,3 +60,4 @@ pub use style_data::{
     Position as StylePosition, Rect, Size, StyleData,
 };
 pub use text_adapter::TextEngineMeasure;
+pub use text_geometry::{CaretGeometry, TextGeometry, set_text_geometry, with_text_geometry};

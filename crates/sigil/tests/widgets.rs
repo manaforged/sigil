@@ -15,20 +15,38 @@ use animation_runtime as _;
 use app as _;
 use events as _;
 use kernel as _;
-use layout as _;
 use reactive as _;
-use style as _;
 use tasks as _;
 
 use hal::{KeyEventInit, Point, PointerEventInit};
+use layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
+use style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
         hal::LogicalSize::new(40.0, 16.0)
+    }
+}
+
+/// Deterministic geometry: a uniform 10 px per byte (matches the editing
+/// suite). Lets the scroll test assert pixel advance without real font metrics.
+struct StubGeometry;
+
+impl TextGeometry for StubGeometry {
+    fn hit(&self, text: &str, _style: &TextStyle, x: f32) -> usize {
+        ((x / 10.0).round().max(0.0) as usize).min(text.len())
+    }
+
+    fn caret(&self, _text: &str, _style: &TextStyle, byte: usize) -> CaretGeometry {
+        CaretGeometry {
+            x: byte as f32 * 10.0,
+            top: 0.0,
+            height: 16.0,
+        }
     }
 }
 
@@ -746,6 +764,9 @@ fn text_field_caret_visible_resets_on_keystroke() {
 #[test]
 fn text_field_scroll_offset_advances_past_visible_window() {
     sigil::reactive::Runtime::scope("sigil-widget-text-field-scroll", || {
+        // Pixel scroll is driven by real caret geometry; install the stub so
+        // the caret x is known (10 px/byte) instead of staying at 0.
+        set_text_geometry(Rc::new(StubGeometry));
         let value = signal(String::new());
         let mut builder = text_field(value);
         let scroll_offset = builder.scroll_offset();
@@ -767,8 +788,10 @@ fn text_field_scroll_offset_advances_past_visible_window() {
                 type_char_owned(key_str, PhysicalKey::KeyA),
             );
         }
+        // 26 chars × 10 px = 260 px caret, past the 156 px inner column, so the
+        // track must have scrolled right (260 − 156 = 104 px) to keep it in view.
         assert!(
-            scroll_offset.get() > 0,
+            scroll_offset.get() > 0.0,
             "scroll_offset should advance after long input, got {}",
             scroll_offset.get()
         );

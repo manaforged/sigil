@@ -22,7 +22,43 @@ use events::prelude::*;
 use kernel::prelude::*;
 use layout::prelude::*;
 
-use routing_helpers::{compute_layout, focus_tree, record_focus, route_event, tab};
+use routing_helpers::{compute_layout, focus_tree, pointer_down, record_focus, route_event, tab};
+
+#[test]
+fn pointer_down_focuses_nearest_focusable_ancestor() {
+    // Mirrors a `text_field`: a focusable outer node wrapping non-focusable
+    // inner children (its text/caret). A click lands on the inner leaf, so a
+    // leaf-only focus check would never focus the field — and keyboard input
+    // would never route to it. The hit must focus the focusable ancestor.
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .child(
+                container()
+                    .focusable(true)
+                    .layout(LayoutStyle::block().fixed_size(80.0, 40.0))
+                    .child(container().layout(LayoutStyle::block().fixed_size(60.0, 20.0))),
+            ),
+    );
+    let field = cx.nth_child(root, 0).unwrap();
+    let inner = cx.nth_child(field, 0).unwrap();
+    assert!(
+        !cx.get(inner).unwrap().a11y.focusable,
+        "inner leaf is not focusable"
+    );
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    // Click inside the non-focusable inner child.
+    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+
+    assert_eq!(
+        router.focus(),
+        Some(field),
+        "pointer-down on a non-focusable child focuses the nearest focusable ancestor",
+    );
+}
 
 #[test]
 fn tab_cycles_in_insertion_order() {

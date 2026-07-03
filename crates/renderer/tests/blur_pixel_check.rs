@@ -109,13 +109,14 @@ const RECT_CENTRE_Y: u32 = 180; // 60 + 240/2
 // ---- entry point ------------------------------------------------------------
 
 /// Render the R12 backdrop-blur scene and assert all four pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
+/// Loud-skip doctrine (see golden_support): a silent return on a missing
+/// adapter is a ghost-pass — the test reports green while certifying
+/// nothing. Headless CI must run this `--ignored`, never pass it vacuously.
 #[test]
 fn blur_pixel_check() {
-    let Some((device, queue)) = try_request_device() else {
-        println!("no adapter — skipping blur_pixel_check");
-        return;
-    };
+    let (device, queue) = try_request_device().expect(
+        "no wgpu adapter — blur_pixel_check needs a real GPU (run --ignored on headless CI)",
+    );
 
     let pixels = render_backdrop_blur_scene(&device, &queue);
     let phys_w = (1024_u32 * SCALE) as u32;

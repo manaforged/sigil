@@ -19,11 +19,11 @@ smallvec = { workspace = true }
 kernel = { workspace = true }
 hal = { workspace = true }
 style = { workspace = true }
+reactive = { workspace = true }
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
-reactive = { workspace = true }
 taffy = "0.10"
 
 [[bench]]

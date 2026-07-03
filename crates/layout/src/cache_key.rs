@@ -104,6 +104,14 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
                 }
             }
         }
+        // Reactive position lives in a `Copy` cell that bypasses
+        // `Node::version` (same channel concern as reactive style atoms);
+        // fold its live `(x, y)` into the signature so a drag invalidates.
+        if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
+            let (x, y) = pos.get();
+            x.to_bits().hash(&mut hasher);
+            y.to_bits().hash(&mut hasher);
+        }
         if let NodeType::Text {
             content: content @ TextContent::Reactive(_),
         } = &node.kind

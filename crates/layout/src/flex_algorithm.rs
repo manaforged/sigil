@@ -958,8 +958,13 @@ fn container_intrinsic_cross(
         (cb_cross, cb_main)
     };
     layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
-    let cb = probe.solver.scope().forest().boxed(node.id())?;
-    Some(if axes.row { cb.h } else { cb.w })
+    // Read the content far-edge along the cross axis, NOT the node's own
+    // box. For a child whose flex-direction differs from the parent's, the
+    // cross dimension is the child's MAIN axis, which `container_inner_size`
+    // inflated to the available main — reading the box directly returned the
+    // parent's full extent (a column card inside a row reported height 750
+    // instead of its 80 px of content).
+    Some(probed_content_extent(ctx, node, false, axes))
 }
 
 pub(crate) fn item_main_basis(
@@ -1052,17 +1057,37 @@ fn container_intrinsic_main(
         suppress_stretch: true,
     };
     layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+    Some(probed_content_extent(ctx, node, true, axes))
+}
+
+/// Read the natural extent of `node`'s already-probed subtree along one
+/// axis: the far edge of its child boxes minus the leading padding/border,
+/// plus this node's own chrome on that axis.
+///
+/// `along_main` selects the outer-axis dimension to read (`true` = the
+/// parent's main axis, `false` = its cross). Both intrinsic probes share
+/// this so they read CONTENT extent rather than the child box's own size —
+/// which, for an auto-main flex container, was inflated to the available
+/// main (`container_inner_size`). Reading the box directly therefore
+/// over-reported a column child's height inside a row as the parent's full
+/// height; the content far-edge is direction-agnostic and correct.
+///
+/// The hypothetical pass placed `node` at origin (0, 0), so its child
+/// boxes sit at content-origin = padding-start + border-start in
+/// viewport-absolute coordinates. We subtract that leading offset before
+/// re-adding it as chrome — otherwise the leading padding double-counts.
+fn probed_content_extent(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    along_main: bool,
+    axes: Axis2,
+) -> f32 {
     let style = node.style();
     let edges = NodeEdges::build(style, ctx.cb.w);
-    // The hypothetical layout placed `node` at origin (0, 0); its child
-    // boxes sit at content-origin = padding-start + border-start, in
-    // viewport-absolute coordinates. Subtract that leading offset
-    // before re-adding it as part of chrome — otherwise the leading
-    // padding is double-counted (a chip with `padding_x(8)` and text
-    // "NEUTRAL" returned 24+text instead of 16+text, which collapsed
-    // every chip in a flex_row to a zero-or-too-small basis and
-    // overlapped them at x=0).
-    let (chrome_main, lead_main) = if axes.row {
+    // The requested axis is horizontal exactly when reading the parent's
+    // main on a row, or the parent's cross on a column.
+    let horizontal = axes.row == along_main;
+    let (chrome, lead) = if horizontal {
         (
             edges.inline_chrome(),
             edges.padding.left + edges.border.left,
@@ -1075,10 +1100,9 @@ fn container_intrinsic_main(
         .children()
         .iter()
         .filter_map(|child_id| forest.boxed(*child_id))
-        .map(|cb| if axes.row { cb.x + cb.w } else { cb.y + cb.h })
+        .map(|cb| if horizontal { cb.x + cb.w } else { cb.y + cb.h })
         .fold(0.0_f32, f32::max);
-    let inner_content = (far_edge - lead_main).max(0.0);
-    Some(inner_content + chrome_main)
+    (far_edge - lead).max(0.0) + chrome
 }
 
 fn text_intrinsic(

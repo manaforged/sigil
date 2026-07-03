@@ -6,6 +6,7 @@
 
 mod submit;
 
+pub(crate) use submit::record_clear;
 pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
 
 use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
@@ -28,6 +29,11 @@ use crate::window_handle::WindowHandle;
 /// number of [`WgpuSurface`]s.
 pub struct WgpuRenderer {
     pub(crate) state: DeviceState,
+    /// Transient offscreen layer textures from the most recent `record_screen`.
+    /// The host submits its encoder after `record_screen` returns, so these
+    /// must outlive the call; they are cleared at the start of the next
+    /// `record_screen` (by which point the prior submission has completed).
+    frame_transients: Vec<crate::layer_pool::LayerHandle>,
 }
 
 impl WgpuRenderer {
@@ -41,6 +47,7 @@ impl WgpuRenderer {
     pub fn new() -> Result<Self, RendererError> {
         Ok(Self {
             state: DeviceState::new(),
+            frame_transients: Vec::new(),
         })
     }
 
@@ -128,24 +135,62 @@ impl WgpuRenderer {
         target: &ScreenSubmission<'_>,
         scene: &CommandScene,
     ) -> Result<(), RendererError> {
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("sigil-renderer submit_screen encoder"),
+            });
+        let result = self.record_screen(target, scene, &mut encoder);
+        target.queue.submit(core::iter::once(encoder.finish()));
+        result
+    }
+
+    /// Record a screen-space scene into a caller-owned `encoder` *without*
+    /// submitting — the scene-wide analogue of
+    /// [`SlugTextPipeline::record_paragraph`][crate::SlugTextPipeline::record_paragraph].
+    ///
+    /// The host submits `encoder`, letting it order this UI *after* its own
+    /// passes (sprites / meshes) in a single submission so menus and HUD
+    /// composite on top of the game frame. [`Self::submit_screen`] is the
+    /// owns-the-encoder convenience wrapper around this. See DR-054.
+    ///
+    /// If `target.clear` is `Some(color)`, a clear pass is recorded first;
+    /// otherwise the scene composites over existing content.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RendererError::InvalidViewport`] when either viewport
+    /// dimension is zero or negative.
+    pub fn record_screen(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), RendererError> {
         if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
             return Err(RendererError::InvalidViewport);
         }
-        let ready = self.state.ensure_ready_headless()?;
         if let Some(color) = target.clear {
-            submit_clear(target.device, target.queue, target.view, color);
+            record_clear(encoder, target.view, color);
         }
+        // Drop the previous call's transient layer textures (their submission
+        // has completed by now) and capture this call's into the same buffer,
+        // so they outlive the host's deferred submit of `encoder`.
+        self.frame_transients.clear();
+        let retained = &mut self.frame_transients;
+        let ready = self.state.ensure_ready_headless()?;
         // Device-equality guard: the renderer's cached pipelines are bound to
-        // `ready.device`. Submitting against a foreign device would poison the
-        // caches with handles created on the wrong device. The deprecated
-        // `render_command_scene_offscreen` had this guard; we restore it here.
-        // Foreign-device callers get a fresh per-call pipeline set via
+        // `ready.device`. Recording against a foreign device would poison the
+        // caches with handles created on the wrong device. Foreign-device
+        // callers get a fresh per-call pipeline set via
         // `walk_with_temporary_pipelines` (no cache mutation).
         if ready.device == *target.device {
             walk_screen(
                 ready,
                 target.device,
                 target.queue,
+                encoder,
+                retained,
                 target.view,
                 target.viewport,
                 target.format,
@@ -153,6 +198,8 @@ impl WgpuRenderer {
             )
         } else {
             crate::offscreen::walk_with_temporary_pipelines(
+                encoder,
+                retained,
                 crate::offscreen::OffscreenTarget {
                     device: target.device,
                     queue: target.queue,

@@ -114,6 +114,50 @@ fn hit_test_multibyte_utf8_index_is_char_boundary() {
     }
 }
 
+#[test]
+fn hit_right_half_of_interior_multibyte_lands_after_it() {
+    // Regression: clicking the right half of an interior multibyte glyph must
+    // place the caret AFTER it, not snap a whole codepoint to the left.
+    // "aébc": a=0, é=1..3 (2 bytes), b=3, c=4. The post-é boundary is byte 3.
+    let e = engine();
+    let text = "aébc";
+    let para = e.layout_paragraph(text, None).unwrap();
+    // Locate é's pixel span via caret geometry, then hit its right quarter.
+    let x_start = para
+        .caret_rect(
+            HitPosition {
+                byte_index: 1,
+                affinity: TextAffinity::Downstream,
+            },
+            1.0,
+        )
+        .origin
+        .x;
+    let x_end = para
+        .caret_rect(
+            HitPosition {
+                byte_index: 3,
+                affinity: TextAffinity::Upstream,
+            },
+            1.0,
+        )
+        .origin
+        .x;
+    let right_of_e = x_start + (x_end - x_start) * 0.75;
+
+    let hit = para.hit_test(right_of_e, 0.0);
+    assert!(
+        text.is_char_boundary(hit.byte_index),
+        "hit byte {} is mid-codepoint in {text:?}",
+        hit.byte_index
+    );
+    assert_eq!(
+        hit.byte_index, 3,
+        "right half of interior 'é' must place the caret after it (byte 3), got {}",
+        hit.byte_index
+    );
+}
+
 // ---------------------------------------------------------------------------
 // caret_rect
 // ---------------------------------------------------------------------------

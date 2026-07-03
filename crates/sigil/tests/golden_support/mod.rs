@@ -269,9 +269,7 @@ pub fn render_widget_to_png_with(
             .expect("layout-after-state");
 
         let scene = emit_scene(&cx, root);
-        let Some((device, queue)) = try_request_device() else {
-            return;
-        };
+        let (device, queue) = request_device();
         image = Some(render_scene_to_image(
             &device,
             &queue,
@@ -430,7 +428,13 @@ fn pointer_down(x: f32, y: f32) -> ShellEvent {
 
 // ---- wgpu offscreen plumbing -------------------------------------------------
 
-fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
+/// Acquire the offscreen wgpu device, panicking loudly when no adapter is
+/// available. Loud-skip doctrine: a golden suite that silently returns
+/// `None` and lets every `#[test]` pass green on a machine with no GPU is a
+/// ghost-pass — the tests certify nothing while reporting success. Run the
+/// golden suite only where a real adapter exists (CI without a GPU must mark
+/// these `--ignored`, never let them pass vacuously).
+fn request_device() -> (wgpu::Device, wgpu::Queue) {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -439,7 +443,7 @@ fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             force_fallback_adapter: false,
         })
         .block_on()
-        .ok()?;
+        .expect("no wgpu adapter — visual goldens need a real GPU (run --ignored on headless CI)");
     adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("visual-golden device"),
@@ -450,7 +454,7 @@ fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             trace: wgpu::Trace::Off,
         })
         .block_on()
-        .ok()
+        .expect("wgpu adapter has no usable device for the visual-golden suite")
 }
 
 fn render_scene_to_image(

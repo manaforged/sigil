@@ -104,6 +104,15 @@ impl NodeBuilder {
         self
     }
 
+    /// Trap a plain `Tab` key on this node when it is focused, so the node
+    /// receives the key (e.g. to insert an indent) instead of the router moving
+    /// focus. `Shift+Tab` still moves focus, so the node is never a keyboard trap.
+    #[must_use]
+    pub const fn traps_tab(mut self, yes: bool) -> Self {
+        self.a11y.traps_tab = yes;
+        self
+    }
+
     /// Set an explicit tab index.
     #[must_use]
     pub const fn tab_index(mut self, index: i32) -> Self {

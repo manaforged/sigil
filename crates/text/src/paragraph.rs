@@ -148,9 +148,26 @@ struct ContentWidths {
     max: f32,
 }
 
+/// Em-scale and leading for a paragraph, kept distinct.
+///
+/// `font_size` is the point size the outlines were shaped at — it is the
+/// em→pixel scale the renderer must use for glyph ink. `line_height` is the
+/// line-box height (leading) that drives baseline-to-baseline row advance.
+/// Conflating the two (rasterising ink at `line_height`) oversizes every glyph
+/// by the line-height factor; they are carried separately so that cannot happen.
+#[derive(Clone, Copy)]
+pub(crate) struct TextMetrics {
+    /// Point size the glyphs were shaped at, in logical pixels (the em-scale).
+    pub font_size: f32,
+    /// Line-box height (leading), in logical pixels — row advance, not ink scale.
+    pub line_height: f32,
+}
+
 /// Shared inner state behind `Rc`.
 struct ParagraphInner {
     lines: Vec<LayoutLine>,
+    /// Em-scale for glyph ink — the size outlines were shaped at.
+    font_size: f32,
     line_height: f32,
     font_bytes: Arc<Vec<u8>>,
     font_index: u32,
@@ -176,7 +193,7 @@ pub struct Paragraph {
 impl Paragraph {
     pub(crate) fn new(
         lines: Vec<LayoutLine>,
-        line_height: f32,
+        metrics: TextMetrics,
         font_bytes: Arc<Vec<u8>>,
         font_index: u32,
         min_content_hint: f32,
@@ -185,7 +202,8 @@ impl Paragraph {
         Self {
             inner: Rc::new(ParagraphInner {
                 lines,
-                line_height,
+                font_size: metrics.font_size,
+                line_height: metrics.line_height,
                 font_bytes,
                 font_index,
                 font_id,
@@ -310,7 +328,11 @@ impl Paragraph {
                     glyph_id: g.glyph_id,
                     x: g.x,
                     y: line.baseline_y + g.offset_y,
-                    size: self.inner.line_height,
+                    // Em-scale is the shaped point size — NOT line_height. Stamping
+                    // line_height here rasterised every glyph 1.2× too large for the
+                    // advances it was positioned with (the renderer uses this as the
+                    // sole em→px scale at draw.rs `scale = g.size / upem`).
+                    size: self.inner.font_size,
                     color: Color::WHITE,
                     variation_coords: Box::new([]),
                 });
@@ -387,8 +409,14 @@ fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
     let (byte_index, affinity) = if x < mid {
         (best.cluster as usize, TextAffinity::Downstream)
     } else {
+        // "After this glyph" is the next cluster boundary, NOT cluster+1: a
+        // multibyte codepoint (e.g. the 2-byte `é`) spans >1 byte, so a +1
+        // floor lands mid-codepoint, which the caller then snaps back BEFORE
+        // the glyph (off by a whole codepoint). The shaper records every
+        // cluster offset, so the true post-glyph boundary is the smallest
+        // cluster greater than this one (or the line end for the last glyph).
         (
-            (best.cluster + glyph_byte_len(best)) as usize,
+            next_cluster_after(line, best.cluster) as usize,
             TextAffinity::Upstream,
         )
     };
@@ -416,13 +444,17 @@ fn first_cluster(line: &LayoutLine) -> u32 {
     line.glyphs.first().map_or(line.byte_start, |g| g.cluster)
 }
 
-const fn glyph_byte_len(_g: &LineGlyph) -> u32 {
-    // The shaper writes one glyph per codepoint; downstream byte
-    // distance to the next cluster is "at least 1". We don't know the
-    // exact UTF-8 width without the source text, so 1 is the safe
-    // monotonic floor (the test `hit_test_then_caret_rect_stays_on_screen`
-    // checks for non-decreasing byte index, not exact placement).
-    1
+/// Byte offset of the cluster boundary immediately after `cluster` within the
+/// line — i.e. the real UTF-8 width of the glyph at `cluster`, taken from the
+/// shaper's recorded cluster offsets rather than guessed. Returns `byte_end`
+/// when `cluster` belongs to the line's last glyph.
+fn next_cluster_after(line: &LayoutLine, cluster: u32) -> u32 {
+    line.glyphs
+        .iter()
+        .map(|glyph| glyph.cluster)
+        .filter(|&candidate| candidate > cluster)
+        .min()
+        .unwrap_or(line.byte_end)
 }
 
 fn caret_x_in_line(line: &LayoutLine, pos: HitPosition) -> f32 {

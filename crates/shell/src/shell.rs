@@ -78,6 +78,12 @@ pub struct WinitShell {
     wake_hook: Option<WakeHook>,
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
+    /// Set when a `RedrawRequested` is OS-driven (window first-show, un-occlude,
+    /// resize) rather than one we scheduled to coalesce input. The frame loop's
+    /// change-gate MUST paint such a frame even when no signal changed — the
+    /// drawable needs pixels or it shows an unpainted (gray) buffer. Consumed
+    /// once per frame via [`Self::take_force_paint`].
+    force_paint: bool,
 }
 
 impl Drop for WinitShell {
@@ -116,6 +122,7 @@ impl WinitShell {
             wake_hook: None,
             deadline_hook: None,
             exit_requested: false,
+            force_paint: false,
         })
     }
 
@@ -195,6 +202,19 @@ impl WinitShell {
         for (_, window) in &self.windows {
             window.request_redraw();
         }
+    }
+
+    /// Flag the next frame as one the change-gate must paint regardless of the
+    /// dirty state — used for OS-driven redraws (first-show, un-occlude, resize)
+    /// where the drawable needs pixels even though no signal changed.
+    pub(crate) const fn set_force_paint(&mut self) {
+        self.force_paint = true;
+    }
+
+    /// Take (and clear) the force-paint flag. Read once at the gate in the frame
+    /// loop; returns `true` when this frame must paint irrespective of dirtiness.
+    pub fn take_force_paint(&mut self) -> bool {
+        std::mem::take(&mut self.force_paint)
     }
 
     const fn allocate_handle(&mut self) -> WinitWindowHandle {
@@ -328,7 +348,11 @@ impl Shell for WinitShell {
         F: FnMut(&mut Self) + 'static,
     {
         let event_loop = self.event_loop.take().ok_or(ShellError::AlreadyRun)?;
-        let mut app = WinitApp { shell: self, frame };
+        let mut app = WinitApp {
+            shell: self,
+            frame,
+            input_redraw_pending: false,
+        };
         event_loop.run_app(&mut app)?;
         Ok(())
     }

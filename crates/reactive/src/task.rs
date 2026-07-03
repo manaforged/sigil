@@ -155,22 +155,20 @@ impl<T> Task<T> {
         }
     }
 
-    /// True if the task has finished (completed or aborted).
+    /// True if the task has finished (completed or aborted) AND the
+    /// result has been consumed via [`Task::await_or_cancel`] or
+    /// [`Future::poll`]. Returns `false` when the task is still
+    /// running OR when it completed but the result has not yet been
+    /// awaited.
     ///
-    /// `is_finished` reads the oneshot receiver's state without
-    /// consuming it. A finished oneshot may have a value buffered
-    /// (the task completed) or have a closed sender (the task was
-    /// aborted or panicked); both count as finished.
+    /// Note: the stricter "completed-but-not-yet-awaited" detection
+    /// requires `tokio::sync::oneshot::Receiver::is_terminated`, which
+    /// landed in tokio 1.42. The workspace currently targets tokio 1.40,
+    /// so this implementation conservatively returns `true` only after
+    /// the receiver slot has been consumed.
     #[must_use]
-    pub fn is_finished(&self) -> bool {
-        // The oneshot receiver reports terminated when the sender
-        // either sent a value or was dropped without sending. Both
-        // states count as "finished" from the Task perspective —
-        // the future has either produced its result or been aborted.
-        self.inner
-            .result_rx
-            .as_ref()
-            .is_none_or(oneshot::Receiver::is_terminated)
+    pub const fn is_finished(&self) -> bool {
+        self.inner.result_rx.is_none()
     }
 
     /// Await the task and surface framework-level cancellation / panic.

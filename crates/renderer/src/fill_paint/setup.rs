@@ -3,7 +3,7 @@
 
 use wgpu::util::DeviceExt as _;
 
-use crate::scene_instance::{SceneUniforms, fill_instance_stride};
+use crate::scene_instance::{FillInstance, GpuStop, SceneUniforms};
 
 pub(super) const FILL_SHADER: &str = include_str!("../fill_paint.wgsl");
 
@@ -122,12 +122,14 @@ pub(super) fn stops_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-pub(super) fn uniform_buffer(device: &wgpu::Device) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer fill paint uniforms"),
-        size: core::mem::size_of::<SceneUniforms>() as u64,
-        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::bytes_of(&SceneUniforms {
+            viewport: [viewport.0, viewport.1],
+            _pad: [0.0, 0.0],
+        }),
+        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -169,43 +171,18 @@ pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-pub(super) fn instance_buffer(device: &wgpu::Device, capacity: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn instance_buffer(device: &wgpu::Device, instances: &[FillInstance]) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer fill paint instance buffer"),
-        size: capacity * fill_instance_stride(),
-        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::cast_slice(instances),
+        usage: wgpu::BufferUsages::VERTEX,
     })
 }
 
-pub(super) fn stops_buffer(device: &wgpu::Device, capacity: u64) -> wgpu::Buffer {
-    device.create_buffer(&wgpu::BufferDescriptor {
+pub(super) fn stops_buffer(device: &wgpu::Device, stops: &[GpuStop]) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer fill paint stops buffer"),
-        size: capacity * crate::scene_instance::gpu_stop_stride(),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
+        contents: bytemuck::cast_slice(stops),
+        usage: wgpu::BufferUsages::STORAGE,
     })
-}
-
-pub(super) fn queue_viewport(buffer: &wgpu::Buffer, queue: &wgpu::Queue, viewport: (f32, f32)) {
-    let uniforms = SceneUniforms {
-        viewport: [viewport.0, viewport.1],
-        _pad: [0.0, 0.0],
-    };
-    queue.write_buffer(buffer, 0, bytemuck::bytes_of(&uniforms));
-}
-
-pub(super) fn instance_slice(buffer: &wgpu::Buffer, instance_count: u32) -> wgpu::BufferSlice<'_> {
-    buffer.slice(0..fill_instance_stride() * u64::from(instance_count))
-}
-
-pub(super) fn doubled_capacity(current: u64, required: u64) -> u64 {
-    if required <= current {
-        return current;
-    }
-    let mut next = current.max(64);
-    while next < required {
-        next *= 2;
-    }
-    next
 }
