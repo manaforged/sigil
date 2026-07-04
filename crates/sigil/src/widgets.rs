@@ -8,11 +8,13 @@ mod button;
 mod checkbox;
 mod chip;
 mod code_edit;
+mod command_menu;
 mod composition;
 mod divider;
 mod dot;
 mod dropdown;
 mod floating_text;
+mod gauge;
 mod icon;
 pub mod layout_ext;
 mod menu;
@@ -32,19 +34,23 @@ mod text_field;
 mod toggle;
 mod tooltip;
 pub mod transition_seam;
+mod turn_strip;
 mod virtual_list;
 
 pub use button::{ButtonBuilder, button};
 pub use checkbox::{CheckboxBuilder, CheckboxTone, checkbox};
 pub use chip::{ChipTone, chip};
 pub use code_edit::{CodeEditBuilder, HlSpan, code_edit};
+pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
 pub use dot::{DotBuilder, dot};
 pub use dropdown::{DropdownBuilder, dropdown};
 pub use floating_text::{
-    FCT_POOL_CAPACITY, FctNode, FctSpawn, FctState, FloatingTextBuilder, Particle, floating_text,
+    FCT_POOL_CAPACITY, FctNode, FctSpawn, FctState, FloaterStyle, FloatingTextBuilder, Particle,
+    floating_text,
 };
+pub use gauge::{GaugeBuilder, gauge};
 pub use icon::{IconBuilder, icon};
 pub use menu::{MenuBuilder, MenuItem, menu};
 pub use modal::{ModalBuilder, modal};
@@ -62,6 +68,7 @@ pub use text_edit::{TextEditBuilder, text_edit};
 pub use text_field::{Clipboard, TextFieldBuilder, text_field};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
+pub use turn_strip::{TurnStripBuilder, turn_strip};
 pub use virtual_list::{
     ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
 };

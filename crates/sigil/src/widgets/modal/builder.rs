@@ -12,10 +12,9 @@ use kernel::{
     Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, container, queue_announcement, text,
 };
 use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, effect_named, on_cleanup};
+use reactive::{Signal, effect_named, on_cleanup, signal};
 use style::{
-    ColorAtom, DisplayKind, NodeStyleExt, Rgba8, StateHost, Style, StyleAccess, StyleAtom,
-    TransitionId,
+    DisplayKind, FocusRing, NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom, TransitionId,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -25,9 +24,17 @@ use super::super::shared::BuilderMutator;
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
 /// Default dialog frame width in logical pixels.
-const DIALOG_WIDTH: f32 = 320.0;
-/// Default dialog frame height in logical pixels.
-const DIALOG_HEIGHT: f32 = 180.0;
+///
+/// Sized to fit fully inside the smallest golden-harness viewport
+/// (274×152 real content area after the test scaffold's border/padding)
+/// with a visible centering margin on every edge — see
+/// BUG-2026-07-02-modal-dialog-clipped-in-golden-viewport. A larger
+/// fixed size than the host viewport is unrenderable-in-full by
+/// construction: no centering formula can avoid clipping a box bigger
+/// than its container.
+const DIALOG_WIDTH: f32 = 240.0;
+/// Default dialog frame height in logical pixels. See [`DIALOG_WIDTH`].
+const DIALOG_HEIGHT: f32 = 128.0;
 /// Inner padding around the dialog frame body.
 const DIALOG_PADDING: f32 = 16.0;
 /// Title bar height in logical pixels.
@@ -37,21 +44,12 @@ const TITLE_HEIGHT: f32 = 24.0;
 /// parent rect during paint; oversizing here just guarantees the
 /// backdrop reaches every edge without needing reactive viewport input.
 const BACKDROP_SIZE: f32 = 4_096.0;
-/// Logical viewport the golden harness renders at — used to centre the
-/// dialog frame inside the root canvas via absolute insets. Application
-/// code can shift the dialog via the style accumulator.
-const GOLDEN_VIEWPORT_W: f32 = 400.0;
-/// See [`GOLDEN_VIEWPORT_W`].
-const GOLDEN_VIEWPORT_H: f32 = 280.0;
 
-// 60 % opacity black scrim — alpha 153 ≈ 0.60 * 255.
+// Dim scrim — resolves to the theme's "scrim" token (60 % opacity black
+// by default; see `style::theme::Theme::built_in_color`). Themable
+// rather than a hardcoded literal so a preset can rebind it.
 static BACKDROP_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
-        r: 0,
-        g: 0,
-        b: 0,
-        a: 153,
-    })),
+    StyleAtom::BackgroundThemeRef("scrim"),
     StyleAtom::Transition(MODAL_TRANSITION),
 ];
 
@@ -302,10 +300,15 @@ impl IntoNode for ModalBuilder {
 // ---- structural helpers --------------------------------------------------
 
 fn root_layout() -> LayoutStyle {
-    // The root acts as the absolute-positioning container for the
-    // backdrop + dialog. Block layout with full size lets the layout
-    // engine resolve the children against the host viewport rect.
-    LayoutStyle::block().fixed_size(BACKDROP_SIZE, BACKDROP_SIZE)
+    // The root fills its real host rect (`Dimension::Fill` resolves to
+    // the parent's actual content box at layout time, not a compile-time
+    // guess) and centres the in-flow dialog child on both axes. The
+    // backdrop is `Position::Absolute` so it's excluded from flex flow
+    // and doesn't affect the dialog's centering.
+    LayoutStyle::flex_column()
+        .fill()
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::Center)
 }
 
 fn build_backdrop(show: Option<Signal<bool>>, dismiss_on_backdrop: bool) -> NodeBuilder {
@@ -340,23 +343,30 @@ fn build_dialog(
     style_accumulator: Style,
     trap: bool,
 ) -> NodeBuilder {
-    // Centre the dialog inside the golden viewport. With the backdrop
-    // root anchored at the host's top-left and the dialog absolutely
-    // positioned, the inset = (viewport - dialog) / 2 places the frame
-    // dead centre at 400×280. Different viewports can override the
-    // position via the style accumulator.
-    let left = (GOLDEN_VIEWPORT_W - DIALOG_WIDTH) / 2.0;
-    let top = (GOLDEN_VIEWPORT_H - DIALOG_HEIGHT) / 2.0;
+    // The dialog is a normal (non-absolute) flex child of `root`, which
+    // centres it via `align_items` / `justify_content` against root's
+    // real resolved rect — see `root_layout`. Different placements can
+    // override the position via the style accumulator.
     let title_label = title.clone().unwrap_or_else(|| String::from("Dialog"));
+    // Focus-visible ring on the dialog frame itself — the modal's own
+    // focusable primary action (WAI-ARIA dialog pattern: the dialog is
+    // the tab-ring entry point). Mirrors `InteractionState`'s
+    // focus_in/focus_out → ring_visible wiring in `interaction.rs`,
+    // scoped down to focus-only (no hover/press) since only Role::Dialog
+    // itself carries `.focusable(true)` here.
+    let ring_visible = signal(false);
 
     let mut dialog = container()
         .role(Role::Dialog)
         .label(title_label)
         .focusable(true)
-        .layout(dialog_layout(top, left))
+        .layout(dialog_layout())
         .class("rounded-md")
         .class(DIALOG_BASE)
-        .style_reactive(move || show_display(show));
+        .style_reactive(move || show_display(show))
+        .focus_ring(FocusRing::new(ring_visible))
+        .focus_in(move || ring_visible.set(events::focus_from_keyboard()))
+        .focus_out(move || ring_visible.set(false));
     if trap {
         dialog = dialog.mutate(|node| {
             node.a11y.focus_scope = Some(FocusScopeKind::Modal);
@@ -376,11 +386,11 @@ fn build_dialog(
     dialog
 }
 
-fn dialog_layout(top: f32, left: f32) -> LayoutStyle {
+fn dialog_layout() -> LayoutStyle {
+    // A normal in-flow flex child of `root` — `root_layout`'s
+    // `align_items(Center)` / `justify_content(Center)` place this box
+    // dead-centre against root's real resolved rect.
     LayoutStyle::flex_column()
-        .position(Position::Absolute)
-        .inset_top(top)
-        .inset_left(left)
         .fixed_size(DIALOG_WIDTH, DIALOG_HEIGHT)
         .padding(DIALOG_PADDING)
         .gap(8.0)

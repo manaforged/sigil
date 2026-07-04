@@ -33,7 +33,8 @@ use sigil::prelude::*;
 mod golden_support;
 
 use golden_support::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
+    InteractionMode, assert_goldens_differ, assert_png_matches_golden, golden_path,
+    render_widget_to_png, render_widget_to_png_focus_descendant,
 };
 
 const DELTA_PCT: f32 = 0.5;
@@ -557,7 +558,15 @@ fn tabs_active_tab2() {
 
 #[test]
 fn tabs_focused() {
-    let img = render_widget_to_png(
+    // `render_widget_to_png_focus_descendant`, not `render_widget_to_png`:
+    // the tabs root is a non-focusable `Role::TabList` wrapper — routing
+    // focus there fires no `focus_in` handler on anything. The individual
+    // `Role::Tab` children are the focusable primitives (see
+    // `crate::interaction::InteractionState::install` in
+    // `widgets/tabs/builder.rs`), matching the same root-mismatch bug
+    // `modal_focused` had. See
+    // BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
+    let img = render_widget_to_png_focus_descendant(
         |cx| {
             let active = signal(0_usize);
             cx.add(tabs(active, tab_labels()))
@@ -567,6 +576,11 @@ fn tabs_focused() {
         (40.0, 17.0),
     );
     check("tabs_focused", img);
+}
+
+#[test]
+fn tabs_focused_differs_from_default() {
+    assert_goldens_differ("tabs_focused", "tabs_default");
 }
 
 #[test]
@@ -662,7 +676,14 @@ fn modal_dimmed_backdrop() {
 
 #[test]
 fn modal_focused() {
-    let img = render_widget_to_png(
+    // `render_widget_to_png_focus_descendant`, not `render_widget_to_png`:
+    // the tree root here is the `on_panel` coverage backing, not the
+    // modal's own focusable dialog frame — plain `InteractionMode::Focused`
+    // would set keyboard focus on the (non-focusable) panel wrapper and
+    // never reach the dialog at all. The descendant-aware variant finds
+    // the dialog (first focusable node in document order) and focuses
+    // that instead. See BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
+    let img = render_widget_to_png_focus_descendant(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -678,10 +699,20 @@ fn modal_focused() {
         },
         InteractionMode::Focused,
         [286, 164],
-        // Hit point inside the dialog's OK button.
+        // Hit point inside the dialog's OK button (unused by Focused
+        // mode itself, kept for signature parity with the other modes).
         (143.0, 82.0),
     );
     check("modal_focused", img);
+}
+
+#[test]
+fn modal_focused_differs_from_open() {
+    // Ghost-pass guard: a focus-visible golden that renders identical to
+    // its baseline state means the focus indicator authored no visible
+    // pixels — WCAG 2.4.7 gap that a plain pixel-diff `check()` can't
+    // catch on its own. See BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
+    assert_goldens_differ("modal_focused", "modal_open");
 }
 
 #[test]

@@ -248,10 +248,53 @@ pub fn render_widget_to_png_with(
     hit_point: (f32, f32),
     text_measure: Box<dyn layout::TextMeasure>,
 ) -> Option<image::RgbaImage> {
+    render_core(build, mode, size_px, hit_point, text_measure, |_, root| {
+        root
+    })
+}
+
+/// Same as [`render_widget_to_png`], but for composite widgets whose
+/// render root is not itself the focusable primitive (e.g. a modal
+/// wrapped in a coverage-panel backing container for the golden's
+/// corner-clear-color trick, where the panel — not the modal's dialog
+/// frame — is what `build` returns).
+///
+/// `InteractionMode::Focused` / `FocusedAfterFrames` route focus to the
+/// first focusable descendant of `root` in document order instead of
+/// `root` itself. Falls back to `root` when the subtree has no
+/// focusable node, matching [`render_widget_to_png`]'s behavior.
+#[must_use]
+pub fn render_widget_to_png_focus_descendant(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    size_px: [u32; 2],
+    hit_point: (f32, f32),
+) -> Option<image::RgbaImage> {
+    render_core(
+        build,
+        mode,
+        size_px,
+        hit_point,
+        Box::new(StubMeasure),
+        |cx, root| find_first_focusable(cx, root).unwrap_or(root),
+    )
+}
+
+/// Shared render pipeline: build → layout → drive state (focused via
+/// `focus_target`) → re-layout → emit scene → rasterize.
+fn render_core(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    size_px: [u32; 2],
+    hit_point: (f32, f32),
+    text_measure: Box<dyn layout::TextMeasure>,
+    focus_target: impl Fn(&Cx, NodeId) -> NodeId,
+) -> Option<image::RgbaImage> {
     let mut image: Option<image::RgbaImage> = None;
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
         let mut cx = Cx::new_root();
         let root = build(&mut cx);
+        let target = focus_target(&cx, root);
 
         let viewport_w = size_px[0] as f32;
         let viewport_h = size_px[1] as f32;
@@ -261,7 +304,7 @@ pub fn render_widget_to_png_with(
             .expect("layout");
 
         let mut router = EventRouter::new();
-        drive_state(&mut router, &mut cx, &layout, root, mode, hit_point);
+        drive_state(&mut router, &mut cx, &layout, target, mode, hit_point);
 
         // Re-run layout: state changes may have updated reactive size signals.
         layout
@@ -279,6 +322,18 @@ pub fn render_widget_to_png_with(
         ));
     });
     image
+}
+
+/// Depth-first search for the first focusable descendant of `id`
+/// (inclusive of `id` itself), in document order.
+fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
+    let node = cx.get(id)?;
+    if node.a11y.focusable {
+        return Some(id);
+    }
+    node.children()
+        .iter()
+        .find_map(|child| find_first_focusable(cx, *child))
 }
 
 /// Either assert the captured image matches `golden_path`, or — when
@@ -338,13 +393,37 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
     );
 }
 
+/// Assert that two committed golden PNGs (by stem, resolved through
+/// [`golden_path`]) are byte-different.
+///
+/// Guards the ghost-pass failure mode where a state-driven golden
+/// (hover / focus / disabled / ...) accidentally renders identical to
+/// its baseline counterpart: the state transition the pair exists to
+/// capture authors no visible difference, so a plain `check()` call
+/// passes green while certifying nothing. See
+/// BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
+pub fn assert_goldens_differ(name_a: &str, name_b: &str) {
+    let path_a = golden_path(name_a);
+    let path_b = golden_path(name_b);
+    let bytes_a = std::fs::read(&path_a)
+        .unwrap_or_else(|err| panic!("read golden {}: {err}", path_a.display()));
+    let bytes_b = std::fs::read(&path_b)
+        .unwrap_or_else(|err| panic!("read golden {}: {err}", path_b.display()));
+    assert_ne!(
+        bytes_a, bytes_b,
+        "goldens '{name_a}' and '{name_b}' are byte-identical — the state \
+         change they exist to capture renders no visible difference. Fix the \
+         widget, then re-bake with SIGIL_REGEN_GOLDENS=1.",
+    );
+}
+
 // ---- state driving -----------------------------------------------------------
 
 fn drive_state(
     router: &mut EventRouter,
     cx: &mut Cx,
     layout: &LayoutEngine,
-    root: NodeId,
+    focus_target: NodeId,
     mode: InteractionMode,
     hit: (f32, f32),
 ) {
@@ -358,7 +437,7 @@ fn drive_state(
             router.route(cx, layout, pointer_down(hit.0, hit.1));
         }
         InteractionMode::Focused => {
-            router.set_focus(cx, Some(root));
+            router.set_focus(cx, Some(focus_target));
         }
         InteractionMode::HoverAfterFrames { frames, dt } => {
             router.route(cx, layout, pointer_move(hit.0, hit.1));
@@ -370,7 +449,7 @@ fn drive_state(
             tick_animation_runtime(frames, dt);
         }
         InteractionMode::FocusedAfterFrames { frames, dt } => {
-            router.set_focus(cx, Some(root));
+            router.set_focus(cx, Some(focus_target));
             tick_animation_runtime(frames, dt);
         }
     }

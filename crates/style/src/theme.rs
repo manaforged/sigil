@@ -11,7 +11,7 @@ use crate::variant::{FontFamilyHint, Variant};
 use crate::{Dimension, LengthPercentage, Px, Rgba8, Size};
 
 #[cfg(debug_assertions)]
-const BUILT_IN_COLOR_TOKENS: [&str; 9] = [
+const BUILT_IN_COLOR_TOKENS: [&str; 10] = [
     "accent",
     "accent-hover",
     "on-accent",
@@ -21,6 +21,7 @@ const BUILT_IN_COLOR_TOKENS: [&str; 9] = [
     "surface-pressed-strong",
     "on-surface",
     "border",
+    "scrim",
 ];
 
 /// A value stored in the user-extensible theme token map.
@@ -389,6 +390,16 @@ impl Theme {
             "surface-subtle" => Some(self.surface_subtle()),
             "on-surface-muted" => Some(self.text_muted()),
             "on-solid" => Some(self.on_solid),
+            // Modal-style overlay scrim — 60 % opacity black
+            // (alpha 153 ≈ 0.60 * 255). Themable so a preset can
+            // rebind it via `tokens` / `runtime_tokens` like any
+            // other color token.
+            "scrim" => Some(Rgba8 {
+                r: 0,
+                g: 0,
+                b: 0,
+                a: 153,
+            }),
             _ => None,
         }
     }

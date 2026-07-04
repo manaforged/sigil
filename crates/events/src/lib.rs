@@ -27,6 +27,6 @@ pub mod prelude;
 mod router;
 
 pub use builder_ext::NodeEventsExt;
-pub use focus::{focus_from_keyboard, note_focus_source};
+pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source};
 pub use handlers::EventHandlers;
 pub use router::EventRouter;

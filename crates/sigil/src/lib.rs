@@ -124,15 +124,16 @@ pub mod prelude {
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
         ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipTone, Clipboard, CodeEditBuilder,
-        DotBuilder, DropdownBuilder, FctSpawn, FloatingTextBuilder, HintOverlayBuilder, HlSpan,
-        IconBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind,
-        Orientation, PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder,
-        SelectionMode, SelectionState, SliderBuilder, SplitterBuilder, SplitterOrientation,
+        CommandMenuBuilder, DotBuilder, DropdownBuilder, FctSpawn, FloaterStyle,
+        FloatingTextBuilder, GaugeBuilder, HintOverlayBuilder, HlSpan, IconBuilder, MenuBuilder,
+        MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation, PanelBuilder,
+        ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder, SelectionMode,
+        SelectionState, SliderBuilder, SplitterBuilder, SplitterOrientation, SubmenuBuilder,
         TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder,
-        VirtualListBuilder, button, checkbox, chip, code_edit, divider_horizontal,
-        divider_vertical, dot, dropdown, floating_text, icon, kv_row, label, menu, modal,
-        number_field, panel, progress, radio_group, scroll, slider, splitter, status_bar, tabs,
-        text_edit, text_field, toggle, tooltip, virtual_list,
+        TurnStripBuilder, VirtualListBuilder, button, checkbox, chip, code_edit, command_menu,
+        divider_horizontal, divider_vertical, dot, dropdown, floating_text, gauge, icon, kv_row,
+        label, menu, modal, number_field, panel, progress, radio_group, scroll, slider, splitter,
+        status_bar, tabs, text_edit, text_field, toggle, tooltip, turn_strip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, launch};
 }

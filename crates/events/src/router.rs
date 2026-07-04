@@ -10,7 +10,7 @@ use layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::EventHandlers;
-use crate::focus::FocusManager;
+use crate::focus::{FocusIntent, FocusManager};
 use crate::hit_test::{HitTestCache, NodePath};
 use crate::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
@@ -111,6 +111,17 @@ impl EventRouter {
     pub fn focus_prev(&mut self, cx: &mut Cx) {
         crate::note_focus_source(true);
         self.focus.focus_prev(cx);
+    }
+
+    /// Move focus directionally (dpad / analog-stick shaped navigation),
+    /// independent of Tab order. Resolves the nearest focusable node in
+    /// `intent`'s direction from laid-out rect centers, falling back to
+    /// Tab-order next/prev when nothing lies strictly in that direction
+    /// so focus never dead-ends. The host maps hardware to `intent`;
+    /// Sigil stays device-agnostic.
+    pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+        crate::note_focus_source(true);
+        self.focus.focus_intent(cx, layout, intent);
     }
 
     /// Build an AccessKit focus-only update.

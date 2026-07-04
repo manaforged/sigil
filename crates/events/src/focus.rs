@@ -3,10 +3,31 @@
 use std::cell::Cell;
 
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
+use hal::Point;
 use kernel::{Cx, NodeId};
+use layout::LayoutEngine;
 use smallvec::{SmallVec, smallvec};
 
 use crate::EventHandlers;
+
+/// Directional focus-navigation intent (dpad / analog-stick shaped).
+///
+/// Distinct from Tab order: Sigil stays device-agnostic and never reads
+/// hardware directly. The host maps a gamepad dpad, arrow keys, or a
+/// thumbstick's dominant axis to one of these four variants and calls
+/// [`crate::EventRouter::focus_intent`]; Sigil resolves the target purely
+/// from laid-out node rects.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum FocusIntent {
+    /// Move focus to the nearest focusable node above the current one.
+    Up,
+    /// Move focus to the nearest focusable node below the current one.
+    Down,
+    /// Move focus to the nearest focusable node to the left.
+    Left,
+    /// Move focus to the nearest focusable node to the right.
+    Right,
+}
 
 thread_local! {
     /// Whether the focus change currently being applied originated from the
@@ -109,6 +130,56 @@ impl FocusManager {
             return;
         };
         self.set_focus(cx, Some(next));
+    }
+
+    /// Resolve `intent` spatially against laid-out node rects and move
+    /// focus to the winning candidate. Falls back to Tab-order next/prev
+    /// (Down/Right → next, Up/Left → prev) when nothing lies strictly in
+    /// that direction — including when nothing is currently focused —
+    /// so directional navigation never dead-ends.
+    pub(crate) fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {
+        self.ensure_ring(cx);
+        if let Some(target) = self.nearest_in_intent(cx, layout, intent) {
+            self.set_focus(cx, Some(target));
+            return;
+        }
+        match intent {
+            FocusIntent::Down | FocusIntent::Right => self.focus_next(cx),
+            FocusIntent::Up | FocusIntent::Left => self.focus_prev(cx),
+        }
+    }
+
+    /// Rank every other node on the ring that lies strictly in `intent`'s
+    /// direction from the focused node's rect center. Cost is
+    /// travel-axis distance plus 2x the cross-axis deviation — the
+    /// standard Manhattan-biased TV-navigation heuristic. Ties (equal
+    /// cost) are broken by ring order: the first-encountered candidate
+    /// wins since later matches must be strictly better to replace it.
+    fn nearest_in_intent(
+        &self,
+        cx: &Cx,
+        layout: &LayoutEngine,
+        intent: FocusIntent,
+    ) -> Option<NodeId> {
+        let focused = self.focused?;
+        let origin = node_center(cx, layout, focused)?;
+        let mut best: Option<(f32, NodeId)> = None;
+        for &candidate in &self.ring {
+            if candidate == focused {
+                continue;
+            }
+            let Some(center) = node_center(cx, layout, candidate) else {
+                continue;
+            };
+            let Some(cost) = intent_cost(intent, origin, center) else {
+                continue;
+            };
+            let better = best.is_none_or(|(best_cost, _)| cost < best_cost);
+            if better {
+                best = Some((cost, candidate));
+            }
+        }
+        best.map(|(_, id)| id)
     }
 
     pub(crate) fn a11y_focus_update(&self) -> TreeUpdate {
@@ -225,6 +296,31 @@ fn fire_focus_out(cx: &Cx, id: NodeId) {
     {
         handlers.invoke_focus_out();
     }
+}
+
+/// Center point of `id`'s laid-out rect, in root coordinates. `None` if
+/// the node is absent from the tree or has no computed rect.
+fn node_center(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Option<Point> {
+    cx.get(id)?;
+    let rect = layout.result(id)?.rect();
+    Some(Point::new(
+        rect.origin.x + rect.width / 2.0,
+        rect.origin.y + rect.height / 2.0,
+    ))
+}
+
+/// Cost of moving from `origin` to `candidate` under `intent`, or `None`
+/// if `candidate` does not lie strictly in `intent`'s direction. Cost is
+/// travel-axis distance plus 2x the absolute cross-axis deviation — the
+/// standard Manhattan-biased heuristic for dpad/TV focus navigation.
+fn intent_cost(intent: FocusIntent, origin: Point, candidate: Point) -> Option<f32> {
+    let (travel, cross) = match intent {
+        FocusIntent::Right => (candidate.x - origin.x, candidate.y - origin.y),
+        FocusIntent::Left => (origin.x - candidate.x, candidate.y - origin.y),
+        FocusIntent::Down => (candidate.y - origin.y, candidate.x - origin.x),
+        FocusIntent::Up => (origin.y - candidate.y, candidate.x - origin.x),
+    };
+    (travel > 0.0).then(|| 2.0_f32.mul_add(cross.abs(), travel))
 }
 
 fn collect_focusable(
