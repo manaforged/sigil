@@ -12,7 +12,9 @@ use hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
 use kernel::Cx;
 use layout::LayoutEngine;
 use layout::prelude::Size;
-use reactive::{MainThreadDispatcher, Runtime, TaskExecutor};
+use reactive::{
+    MainThreadDispatcher, Runtime, TaskExecutor, next_interval_deadline, tick_intervals,
+};
 use renderer::{WgpuRenderer, WgpuSurface, emit_scene};
 use shell::{WinitShell, WinitWindowHandle};
 use tasks::AsyncRuntime;
@@ -87,6 +89,13 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
         let _ = WinitShell::wake(&waker);
     });
     install_g5_executor(&async_rt);
+
+    // Wake the loop when the soonest `cx.interval` is due, so periodic
+    // callbacks (clocks, live metrics) fire without waiting on an OS
+    // input event. The shell turns this into `ControlFlow::WaitUntil`;
+    // `None` (no intervals registered) falls back to `Wait` at zero cost.
+    // Paired with the `tick_intervals` drain in `frame_once`.
+    shell.on_idle_deadline(next_interval_deadline);
 
     shell
         .run(move |shell| {
@@ -183,6 +192,12 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // completions and any deferred actions queued in the previous
     // frame's Paint.
     Runtime::begin_effect();
+    // Fire any `cx.interval` callbacks that have come due. Runs in the
+    // Effect phase so the callbacks' signal writes are legal and reach
+    // this frame's layout + paint via `begin_layout`'s observer fixpoint.
+    // Cheap no-op when no intervals are registered. Paired with the
+    // `on_idle_deadline` wake wired in `run`.
+    let _ = tick_intervals();
     ensure_surface(EnsureSurfaceCtx {
         shell,
         window_handle,

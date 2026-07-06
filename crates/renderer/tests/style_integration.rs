@@ -197,3 +197,47 @@ fn rects_for_node(scene: &CommandScene, node: NodeId) -> Vec<&DrawRect> {
 fn find_text<'a>(scene: &'a CommandScene, expected: &str) -> Option<&'a DrawGlyphRun> {
     scene.find_text(expected)
 }
+
+#[test]
+fn container_text_class_cascades_to_child_glyphs() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+            .class("text-accent")
+            .child(text("Doom")),
+    );
+
+    layout(&mut cx, root);
+
+    let scene = emit_scene(&cx, root);
+    let run = find_text(&scene, "Doom").expect("child glyph run emitted");
+    assert_eq!(
+        run.run.color,
+        Theme::default().accent,
+        "a bare text child must inherit the nearest ancestor's text-* class \
+         (pre-cascade it silently painted theme.on_surface — the chip-tone \
+         ghost-pass and the turn-strip WCAG blocker)"
+    );
+}
+
+#[test]
+fn own_text_class_beats_inherited_cascade() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+            .class("text-accent")
+            .child(text("Own").class("text-on-accent")),
+    );
+
+    layout(&mut cx, root);
+
+    let scene = emit_scene(&cx, root);
+    let run = find_text(&scene, "Own").expect("child glyph run emitted");
+    assert_eq!(
+        run.run.color,
+        Theme::default().on_accent,
+        "a text node's own text-* class must beat the inherited color"
+    );
+}

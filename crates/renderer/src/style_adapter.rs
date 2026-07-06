@@ -39,11 +39,22 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
     usize::from(warned.contains(&(UnsupportedSlot::UnknownThemeRef(token), id)))
 }
 
-pub(crate) fn render_style_for(id: NodeId, node: &Node, inherited: &Theme) -> RenderStyle {
+pub(crate) fn render_style_for(
+    id: NodeId,
+    node: &Node,
+    inherited: &Theme,
+    inherited_text: Option<Rgba8>,
+) -> RenderStyle {
     let mut render = RenderStyle::default();
     let theme = node.get_extension::<Theme>().unwrap_or(inherited);
     if matches!(node.kind, kernel::NodeType::Text { .. }) {
-        render.text_color = Some(theme.on_surface);
+        // CSS-style color cascade: a bare text node paints the nearest
+        // ancestor's resolved text color (a container's `text-*` class,
+        // including reactive `class_when` atoms), falling back to the
+        // theme's on-surface at the root. Before this, container text
+        // classes never reached child glyphs — chip tones only looked
+        // right because on-surface == gray-12 in the light theme.
+        render.text_color = Some(inherited_text.unwrap_or(theme.on_surface));
     }
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return render;

@@ -11,7 +11,7 @@ use std::sync::atomic::Ordering;
 
 use winit::{
     application::ApplicationHandler,
-    event::WindowEvent as WinitWindowEvent,
+    event::{StartCause, WindowEvent as WinitWindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow},
     window::WindowId,
 };
@@ -62,6 +62,19 @@ where
         // signal-driven updates land in the next frame.
         for (_, window) in self.shell.windows() {
             window.request_redraw();
+        }
+    }
+
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        // A `WaitUntil` deadline elapsed — a `cx.interval` (via
+        // `on_idle_deadline` → `next_interval_deadline`) has come due.
+        // winit does not raise `RedrawRequested` on its own for a timed
+        // wake, so request one here; the ensuing frame runs
+        // `tick_intervals`, firing the due callbacks. Only
+        // `ResumeTimeReached` triggers this — `Poll` / `WaitCancelled`
+        // must not, or the loop would busy-spin.
+        if matches!(cause, StartCause::ResumeTimeReached { .. }) {
+            self.shell.request_redraws();
         }
     }
 

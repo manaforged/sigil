@@ -3,7 +3,7 @@
 use hal::{Point, Rect};
 use kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use layout::LayoutResult;
-use style::{DisplayKind, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
+use style::{DisplayKind, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
 use text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
@@ -76,11 +76,26 @@ pub struct SceneText {
 #[must_use]
 pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     let mut scene = SceneBuilder::new();
-    push_subtree(&mut scene, cx, root, default_inherited_theme());
+    let inherited = Inherited {
+        theme: default_inherited_theme(),
+        text_color: None,
+    };
+    push_subtree(&mut scene, cx, root, inherited);
     scene.finish()
 }
 
-fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: &Theme) {
+/// Style context cascading down the scene walk: the effective theme plus
+/// the nearest ancestor's resolved text color. The color half is the
+/// CSS-style `color` cascade — a container's `text-*` class (static or
+/// reactive `class_when`) colors every descendant text node that doesn't
+/// set its own.
+#[derive(Clone, Copy)]
+struct Inherited<'t> {
+    theme: &'t Theme,
+    text_color: Option<Rgba8>,
+}
+
+fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: Inherited<'_>) {
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -92,24 +107,42 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: &Theme
     // otherwise we keep the inherited one. Without this every
     // descendant ignored an ancestor's `.theme(Theme::dark())` and
     // resolved colors against the default light theme.
-    let effective = node.get_extension::<Theme>().unwrap_or(inherited);
+    let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
+    // Resolve once, whether or not this node paints: even a layout-less
+    // container contributes its `text-*` classes to the color cascade.
+    let style = render_style_for(id, node, theme, inherited.text_color);
+    let child_inherited = Inherited {
+        theme,
+        text_color: style.text_color.or(inherited.text_color),
+    };
     if let Some(result) = node.get_extension::<LayoutResult>() {
         let rect = result.rect();
-        push_focus_ring(scene, id, node, rect, effective);
-        push_node(scene, id, node, rect, effective);
+        push_focus_ring(scene, id, node, rect, theme);
+        push_node(
+            scene,
+            id,
+            node,
+            rect,
+            &NodePaint {
+                style: &style,
+                theme,
+            },
+        );
         // `overflow: hidden`/`scroll` → scissor descendants to this node's box, so a
         // too-tall child (a long file in the editor pane, scrolled-out content) is
         // cut at the edge instead of painting over its siblings. The command walker
         // skips any glyph run / fill whose rect falls outside the active clip.
         if result.clips() {
-            scene.with_clip(rect, |scene| push_children(scene, cx, node, effective));
+            scene.with_clip(rect, |scene| {
+                push_children(scene, cx, node, child_inherited);
+            });
             return;
         }
     }
-    push_children(scene, cx, node, effective);
+    push_children(scene, cx, node, child_inherited);
 }
 
-fn push_children(scene: &mut SceneBuilder, cx: &Cx, node: &Node, inherited: &Theme) {
+fn push_children(scene: &mut SceneBuilder, cx: &Cx, node: &Node, inherited: Inherited<'_>) {
     for child in node.children().iter().copied() {
         push_subtree(scene, cx, child, inherited);
     }
@@ -169,8 +202,15 @@ fn focus_ring_rects(rect: Rect, ring: ResolvedFocusRing) -> [Rect; 4] {
     ]
 }
 
-fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, inherited: &Theme) {
-    let style = render_style_for(id, node, inherited);
+/// The resolved paint inputs for one node: its render style plus the
+/// effective theme (still needed for glyph-run text styling).
+struct NodePaint<'a> {
+    style: &'a RenderStyle,
+    theme: &'a Theme,
+}
+
+fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
+    let style = paint.style;
     match &node.kind {
         NodeType::Container => {
             if let Some(color) = style.background_color {
@@ -193,7 +233,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, inhe
                         rect,
                         text_content(content),
                         color,
-                        text_style_for(node, inherited),
+                        text_style_for(node, paint.theme),
                         style.opacity,
                     ),
                 );
