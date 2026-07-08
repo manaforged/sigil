@@ -253,6 +253,43 @@ pub fn render_widget_to_png_with(
     })
 }
 
+/// DPI-scale capture variant of [`render_widget_to_png_with`]: renders
+/// `build` into a LOGICAL viewport of `logical_size_px`, but captures into
+/// a PHYSICAL texture of `logical_size_px * scale` (rounded to the nearest
+/// pixel). Use this to exercise the DPI-scale axis from
+/// `docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 0.
+///
+/// Until Wave 1 lands, `crates/renderer/src/offscreen.rs:97,142` hardcode
+/// `scale: 1.0` in the walk context regardless of what's passed here — so
+/// captures at `scale != 1.0` bake today's stretched/soft output (the
+/// texture is upscaled from the same logical-space geometry with no AA
+/// re-tuning). That is the documented Wave-0 baseline these goldens exist
+/// to track; Wave 1 rebases them once real DPI scaling lands.
+#[must_use]
+pub fn render_widget_to_png_scaled(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    logical_size_px: [u32; 2],
+    scale: f32,
+    hit_point: (f32, f32),
+    text_measure: Box<dyn layout::TextMeasure>,
+) -> Option<image::RgbaImage> {
+    let logical = [logical_size_px[0] as f32, logical_size_px[1] as f32];
+    let physical = [
+        (logical[0] * scale).round() as u32,
+        (logical[1] * scale).round() as u32,
+    ];
+    render_core_scaled(
+        build,
+        mode,
+        logical,
+        physical,
+        hit_point,
+        text_measure,
+        |_, root| root,
+    )
+}
+
 /// Same as [`render_widget_to_png`], but for composite widgets whose
 /// render root is not itself the focusable primitive (e.g. a modal
 /// wrapped in a coverage-panel backing container for the golden's
@@ -281,11 +318,39 @@ pub fn render_widget_to_png_focus_descendant(
 }
 
 /// Shared render pipeline: build → layout → drive state (focused via
-/// `focus_target`) → re-layout → emit scene → rasterize.
+/// `focus_target`) → re-layout → emit scene → rasterize. Delegates to
+/// [`render_core_scaled`] with logical viewport == physical texture size
+/// (scale 1.0), which is exactly what every pre-existing caller expects —
+/// this keeps their output byte-identical.
 fn render_core(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
     size_px: [u32; 2],
+    hit_point: (f32, f32),
+    text_measure: Box<dyn layout::TextMeasure>,
+    focus_target: impl Fn(&Cx, NodeId) -> NodeId,
+) -> Option<image::RgbaImage> {
+    let logical = [size_px[0] as f32, size_px[1] as f32];
+    render_core_scaled(
+        build,
+        mode,
+        logical,
+        size_px,
+        hit_point,
+        text_measure,
+        focus_target,
+    )
+}
+
+/// Generalization of [`render_core`] over a distinct LOGICAL viewport and
+/// PHYSICAL capture-texture size, enabling DPI-scale capture: build →
+/// layout (at `logical_size`) → drive state → re-layout → emit scene →
+/// rasterize into a `physical_size_px` texture.
+fn render_core_scaled(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    logical_size: [f32; 2],
+    physical_size_px: [u32; 2],
     hit_point: (f32, f32),
     text_measure: Box<dyn layout::TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
@@ -296,8 +361,7 @@ fn render_core(
         let root = build(&mut cx);
         let target = focus_target(&cx, root);
 
-        let viewport_w = size_px[0] as f32;
-        let viewport_h = size_px[1] as f32;
+        let [viewport_w, viewport_h] = logical_size;
         let mut layout = LayoutEngine::with_text_measure(text_measure);
         layout
             .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
@@ -318,7 +382,7 @@ fn render_core(
             &queue,
             &scene,
             (viewport_w, viewport_h),
-            size_px,
+            physical_size_px,
         ));
     });
     image
