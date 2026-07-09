@@ -79,6 +79,9 @@ pub fn run_split(
                         view,
                         format,
                         viewport,
+                        // Window created at `viewport` physical px; scene coords use the
+                        // same numbers as logical — logical == physical here.
+                        scale: 1.0,
                         clear: Some(clear),
                     },
                     &scenes[0],
@@ -90,6 +93,7 @@ pub fn run_split(
                         view,
                         format,
                         viewport,
+                        scale: 1.0,
                         clear: None,
                     },
                     &scenes[1],

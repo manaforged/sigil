@@ -193,6 +193,7 @@ impl WgpuRenderer {
                 retained,
                 target.view,
                 target.viewport,
+                target.scale,
                 target.format,
                 scene,
             )
@@ -206,6 +207,7 @@ impl WgpuRenderer {
                     view: target.view,
                     format: target.format,
                     viewport: target.viewport,
+                    scale: target.scale,
                 },
                 scene,
             )

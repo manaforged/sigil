@@ -30,6 +30,18 @@ pub struct OffscreenTarget<'a> {
     pub format: wgpu::TextureFormat,
     /// Logical viewport used by scene-to-NDC conversion.
     pub viewport: (f32, f32),
+    /// Physical pixels per logical pixel of `view` — the target's DPI scale
+    /// factor. `1.0` means logical == physical (`view` is exactly `viewport`
+    /// pixels); `2.0` means `view` is a `2×` high-DPI capture (`2 * viewport`
+    /// pixels). Text draws multiply their glyph-coverage AA ramp by this so the
+    /// ramp stays one *physical* pixel wide — sharp on high-DPI captures instead
+    /// of blurry. Mirrors [`ScreenSubmission::scale`][crate::ScreenSubmission].
+    ///
+    /// **Required, no default.** Callers must state their capture's DPI: a
+    /// silent `1.0` renders text at logical scale into a physical texture, which
+    /// is exactly the blur this field exists to prevent. Logical == physical
+    /// captures (the common case) pass `1.0` explicitly.
+    pub scale: f32,
 }
 
 impl WgpuRenderer {
@@ -92,9 +104,10 @@ fn walk_with_ready(
             retained,
             view: target.view,
             viewport: target.viewport,
-            // Offscreen targets render at the viewport's own pixel size (no HiDPI
-            // surface), so logical == physical and the text AA needs no scaling.
-            scale: 1.0,
+            // Physical-per-logical ratio of the capture texture: 1.0 for
+            // logical == physical captures, > 1.0 for HiDPI goldens, so the
+            // text AA ramp stays one physical pixel wide.
+            scale: target.scale,
             format: target.format,
             scene_pipelines,
             fill_pipelines,
@@ -137,9 +150,10 @@ pub(crate) fn walk_with_temporary_pipelines(
             retained,
             view: target.view,
             viewport: target.viewport,
-            // Offscreen targets render at the viewport's own pixel size (no HiDPI
-            // surface), so logical == physical and the text AA needs no scaling.
-            scale: 1.0,
+            // Physical-per-logical ratio of the capture texture: 1.0 for
+            // logical == physical captures, > 1.0 for HiDPI goldens, so the
+            // text AA ramp stays one physical pixel wide.
+            scale: target.scale,
             format: target.format,
             scene_pipelines: &mut scene_pipelines,
             fill_pipelines: &mut fill_pipelines,

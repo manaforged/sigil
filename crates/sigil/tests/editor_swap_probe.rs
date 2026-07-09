@@ -123,6 +123,7 @@ fn render(
                 view: &view,
                 format: FORMAT,
                 viewport: (W as f32, H as f32),
+                scale: 1.0,
             },
             &scene,
             Color {

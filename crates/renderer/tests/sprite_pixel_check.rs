@@ -102,6 +102,7 @@ fn render_sprite_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
                 view: &view,
                 format: FORMAT,
                 viewport,
+                scale: 1.0,
             },
             &command_scene,
             clear,

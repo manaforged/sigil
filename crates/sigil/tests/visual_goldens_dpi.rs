@@ -110,9 +110,9 @@ fn button_label_dpi_scale_200() {
 /// not just a same-size-different-content regression.
 #[test]
 fn button_label_dpi_scales_are_pairwise_distinct() {
-    for i in 0..SCALE_STEMS.len() {
-        for j in (i + 1)..SCALE_STEMS.len() {
-            assert_goldens_differ(SCALE_STEMS[i].0, SCALE_STEMS[j].0);
+    for (i, (stem_a, _)) in SCALE_STEMS.iter().enumerate() {
+        for (stem_b, _) in &SCALE_STEMS[i + 1..] {
+            assert_goldens_differ(stem_a, stem_b);
         }
     }
 }

@@ -129,6 +129,7 @@ fn render_pattern_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
                 view: &view,
                 format: FORMAT,
                 viewport: VIEWPORT,
+                scale: 1.0,
             },
             &scene,
             Color::rgba(0.06, 0.07, 0.10, 1.0),

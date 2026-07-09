@@ -131,6 +131,7 @@ fn render_scene(
                 view: &view,
                 format: FORMAT,
                 viewport: VIEWPORT,
+                scale: 1.0,
             },
             scene,
             Color::rgba(0.05, 0.06, 0.09, 1.0),

@@ -219,6 +219,7 @@ fn render_one(
                     view,
                     format: FORMAT,
                     viewport: size_px,
+                    scale: 1.0,
                 },
                 &scene,
                 clear,

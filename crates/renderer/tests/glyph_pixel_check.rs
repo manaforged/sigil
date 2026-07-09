@@ -1,10 +1,13 @@
-//! Glyph pixel-sharpness check — Wave 0 (`docs/plans/2026-07-07-text-quality-and-gap-closure.md`).
-//! Rasterizes real glyphs via [`renderer::SlugTextPipeline`], reads back raw
-//! RGBA8 pixels, and measures the AA ramp width across a vertical stem in
-//! PHYSICAL pixels. **Active**: the direct [`renderer::DrawParams`] path,
-//! whose `scale` field sizes the ramp per DPI — must pass today. **Red**:
-//! simulates the screen/embed path (`ScreenSubmission`/`submit_screen`),
-//! which has no scale field — `#[ignore]`d until Wave 1 lands.
+//! Glyph pixel-sharpness check — Wave 0/1 (`docs/plans/2026-07-07-text-quality-and-gap-closure.md`).
+//! Rasterizes real glyphs, reads back raw RGBA8 pixels, and measures the AA
+//! ramp width across a vertical stem in PHYSICAL pixels. Two families:
+//! - **Direct path** — [`renderer::DrawParams`] with an explicit `scale`; sharp
+//!   at every DPI.
+//! - **Embed path** — the real screen path (`renderer::shape_glyph_run` →
+//!   `ScreenSubmission`/`submit_screen`). Wave 1 added `ScreenSubmission.scale`;
+//!   these prove it is load-bearing: a matching `scale` into a 6× physical
+//!   texture is sharp, `scale: 1.0` into the same texture is soft (the shipped
+//!   blur). No `#[ignore]` — both must pass now.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -33,8 +36,11 @@ use windows_core as _;
 use std::sync::mpsc;
 
 use pollster::FutureExt as _;
-use renderer::{DrawParams, SlugTextPipeline};
-use style::{TextLineHeight, TextStyle};
+use renderer::{
+    CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, WgpuRenderer,
+    shape_glyph_run,
+};
+use style::{Rgba8, TextLineHeight, TextStyle};
 use text::{OwnedTextEngine, TextConfig};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -81,7 +87,7 @@ fn assert_direct_path_is_sharp(scale: f32) {
     assert_sharp(&format!("scale {scale}"), &pixels, w, h);
 }
 
-// ---- red-harness tests: embed path has no scale field (Wave 1 bug) --------
+// ---- embed-path tests: ScreenSubmission.scale is load-bearing (Wave 1) ----
 
 // 6x, not the more obvious 2x: shipped tuning (`sharpen: 2.0` — see
 // slug/tuning.rs) narrows the AA ramp enough that a realistic 2x embed
@@ -89,28 +95,106 @@ fn assert_direct_path_is_sharp(scale: f32) {
 // RAMP_THRESHOLD_PX. The defect scales linearly with the mismatch instead of
 // staying flat; 6x reliably crosses the threshold. See dispatch return for
 // the 2x/8x measured values.
-#[test]
-#[ignore = "red until Wave 1: embed path has no DPI scale (ScreenSubmission)"]
-fn embed_path_glyph_edges_are_soft_at_6x_dpi_mismatch() {
-    assert_embed_path_is_sharp(6.0);
-}
+const EMBED_TEXTURE_SCALE: f32 = 6.0;
 
-/// Simulates today's screen/embed path: paints a LOGICAL scene into a
-/// PHYSICAL (`texture_scale`×) texture with `DrawParams.scale` stuck at 1.0
-/// (no DPI field on `ScreenSubmission`) — the AA ramp is sized for 1x and
-/// comes out proportionally wider once stretched onto the target.
-fn assert_embed_path_is_sharp(texture_scale: f32) {
-    let Some((device, queue)) = try_request_device() else {
-        println!("no adapter — skipping embed_path glyph_pixel_check");
-        return;
-    };
-    let (pixels, w, h) = render_text(&device, &queue, texture_scale, 1.0);
+/// Real embed/screen path: a `CommandScene` built the way an embedding host
+/// (the host engine) builds one — `shape_glyph_run` + `SceneBuilder` — submitted via
+/// `submit_screen` into a physically-larger-than-logical target. With
+/// `ScreenSubmission.scale` set to the target's true DPI ratio, the AA ramp
+/// must stay sharp — this is the Wave 1 fix.
+#[test]
+fn embed_path_glyph_edges_are_sharp_with_matching_scale() {
+    let (pixels, w, h) = render_embed_text(EMBED_TEXTURE_SCALE);
     assert_sharp(
-        &format!("texture_scale {texture_scale} (draw_scale 1.0)"),
+        &format!("embed scale {EMBED_TEXTURE_SCALE} (matching submission scale)"),
         &pixels,
         w,
         h,
     );
+}
+
+/// Companion negative case: the identical scene into the identical 6×
+/// physical target, but `ScreenSubmission.scale` stuck at 1.0 (today's
+/// shipped default before this field existed) — proves the field is
+/// load-bearing, not just present. Must stay soft; if this regresses to
+/// sharp, `scale` stopped reaching the Slug draw.
+#[test]
+fn embed_path_glyph_edges_are_soft_with_mismatched_scale() {
+    let (pixels, w, h) = render_embed_text(1.0);
+    assert_soft(
+        &format!("embed scale 1.0 (mismatched — {EMBED_TEXTURE_SCALE}x physical target)"),
+        &pixels,
+        w,
+        h,
+    );
+}
+
+/// Render `TEXT` through the real screen/embed path: build a `CommandScene`
+/// via `shape_glyph_run`, submit via `submit_screen` with
+/// `ScreenSubmission.scale = submission_scale` into a physical texture fixed
+/// at `EMBED_TEXTURE_SCALE`× the logical viewport, read back raw pixels.
+fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
+    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+    renderer
+        .ensure_headless_for_tests()
+        .expect("headless renderer device — no adapter available for glyph_pixel_check");
+    let device = renderer.device().expect("headless device").clone();
+    let queue = renderer.queue().expect("headless queue").clone();
+
+    let phys_w = (LOGICAL_W * EMBED_TEXTURE_SCALE).round() as u32;
+    let phys_h = (LOGICAL_H * EMBED_TEXTURE_SCALE).round() as u32;
+    let texture = create_capture_texture(&device, phys_w, phys_h);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    let scene = build_text_scene();
+    renderer
+        .submit_screen(
+            &ScreenSubmission {
+                device: &device,
+                queue: &queue,
+                view: &view,
+                format: FORMAT,
+                viewport: (LOGICAL_W, LOGICAL_H),
+                scale: submission_scale,
+                clear: Some(hal::Color::BLACK),
+            },
+            &scene,
+        )
+        .expect("submit_screen");
+
+    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h);
+    (pixels, phys_w, phys_h)
+}
+
+/// Build the embed-path `CommandScene`: one glyph run positioned at `ORIGIN`,
+/// shaped the same way an embedding host emits text (`shape_glyph_run`).
+fn build_text_scene() -> CommandScene {
+    let style = TextStyle {
+        font_family: String::from("system-ui"),
+        font_size: FONT_SIZE,
+        font_weight: 400,
+        line_height: TextLineHeight::FontSizeRelative(1.2),
+    };
+    let rect = hal::Rect::new(
+        hal::Point::new(ORIGIN.0, ORIGIN.1),
+        LOGICAL_W - ORIGIN.0,
+        LOGICAL_H - ORIGIN.1,
+    );
+    let run = shape_glyph_run(
+        rect,
+        TEXT.to_string(),
+        Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
+        style,
+        10_000,
+    );
+    let mut builder = SceneBuilder::new();
+    builder.draw_glyph_run(run);
+    builder.finish()
 }
 
 /// Shared assertion body for both scenario families: measure `pixels`, print
@@ -134,8 +218,35 @@ fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     assert!(
         ramp_px <= RAMP_THRESHOLD_PX,
         "{label}: AA ramp width {ramp_px:.3}px exceeds {RAMP_THRESHOLD_PX}px threshold \
-         (ink_fraction={:.4}). Direct path should hold this at every DPI; the embed path \
-         is the known Wave 1 defect.",
+         (ink_fraction={:.4}). Direct path should hold this at every DPI; a correctly \
+         DPI-scaled embed path should too.",
+        measurement.ink_fraction,
+    );
+}
+
+/// Inverse of [`assert_sharp`]: proves a mismatched `ScreenSubmission.scale`
+/// actually degrades sharpness — i.e. the field is load-bearing, not inert.
+fn assert_soft(label: &str, pixels: &[u8], w: u32, h: u32) {
+    let measurement = measure(pixels, w, h);
+    assert!(
+        measurement.ink_fraction > 0.0,
+        "{label}: ink_fraction was 0 — no glyph pixels rendered ({w}x{h})"
+    );
+    let ramp_px = measurement.softest_ramp_px.unwrap_or_else(|| {
+        panic!(
+            "{label}: no ink stem found; max_luminance={}",
+            measurement.max_lum
+        )
+    });
+    println!(
+        "{label}: measured ramp_px={ramp_px:.3} (ink_fraction={:.4})",
+        measurement.ink_fraction
+    );
+    assert!(
+        ramp_px > RAMP_THRESHOLD_PX,
+        "{label}: AA ramp width {ramp_px:.3}px is within {RAMP_THRESHOLD_PX}px threshold \
+         (ink_fraction={:.4}) — expected a mismatched scale to soften the ramp. If this now \
+         passes as sharp, ScreenSubmission.scale stopped reaching the Slug draw.",
         measurement.ink_fraction,
     );
 }

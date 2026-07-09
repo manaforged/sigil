@@ -26,6 +26,17 @@ pub struct ScreenSubmission<'a> {
     pub format: wgpu::TextureFormat,
     /// Logical viewport in pixels — matches scene-build coordinates.
     pub viewport: (f32, f32),
+    /// Physical pixels per logical pixel of `view` — the target's DPI scale
+    /// factor. `1.0` means logical == physical (`view` is exactly `viewport`
+    /// pixels); `2.0` means `view` is a `2×` high-DPI target (`2 * viewport`
+    /// pixels). Text draws multiply their glyph-coverage AA ramp by this so the
+    /// ramp stays one *physical* pixel wide — sharp on high-DPI displays instead
+    /// of blurry. Mirrors [`DrawParams::scale`][crate::DrawParams::scale].
+    ///
+    /// **Required, no default.** Embedders must state their target's DPI: a
+    /// silent `1.0` renders text at logical scale into a physical texture, which
+    /// is exactly the blur this field exists to prevent.
+    pub scale: f32,
     /// Optional clear colour applied before drawing.
     /// `None` means the caller pre-clears or is compositing on top.
     pub clear: Option<Color>,
@@ -139,6 +150,7 @@ pub(super) fn walk_screen(
     retained: &mut Vec<LayerHandle>,
     view: &wgpu::TextureView,
     viewport: (f32, f32),
+    scale: f32,
     format: wgpu::TextureFormat,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
@@ -162,8 +174,8 @@ pub(super) fn walk_screen(
             retained,
             view,
             viewport,
-            // Record path renders at the viewport's own pixel size — logical == physical.
-            scale: 1.0,
+            // Caller-declared DPI: physical pixels per logical pixel of `view`.
+            scale,
             format,
             scene_pipelines,
             fill_pipelines,

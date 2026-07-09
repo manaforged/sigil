@@ -147,6 +147,7 @@ fn render_backdrop_blur_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec
                 view: &view,
                 format: FORMAT,
                 viewport,
+                scale: 1.0,
             },
             &command_scene,
             clear,

@@ -219,6 +219,10 @@ fn capture_phase(
             view: &view,
             format: FORMAT,
             viewport: request.viewport,
+            // The capture texture is supersampled (`CaptureExtent::from_viewport`
+            // scales the logical viewport up for screenshot resolution); the honest
+            // DPI factor is that physical/logical ratio, so screenshot text is sharp.
+            scale: request.extent.width as f32 / request.viewport.0.max(1.0),
             clear: Some(request.clear),
         },
         request.scene,
@@ -283,6 +287,8 @@ fn render_split_scene(
             view: &view,
             format: FORMAT,
             viewport: SPLIT_VIEWPORT,
+            // Split capture extent equals SPLIT_VIEWPORT — logical == physical.
+            scale: 1.0,
             clear: clear_in_submit.then_some(scene.2),
         },
         &scene.0,

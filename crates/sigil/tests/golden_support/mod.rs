@@ -257,14 +257,12 @@ pub fn render_widget_to_png_with(
 /// `build` into a LOGICAL viewport of `logical_size_px`, but captures into
 /// a PHYSICAL texture of `logical_size_px * scale` (rounded to the nearest
 /// pixel). Use this to exercise the DPI-scale axis from
-/// `docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 0.
+/// `docs/plans/2026-07-07-text-quality-and-gap-closure.md`.
 ///
-/// Until Wave 1 lands, `crates/renderer/src/offscreen.rs:97,142` hardcode
-/// `scale: 1.0` in the walk context regardless of what's passed here — so
-/// captures at `scale != 1.0` bake today's stretched/soft output (the
-/// texture is upscaled from the same logical-space geometry with no AA
-/// re-tuning). That is the documented Wave-0 baseline these goldens exist
-/// to track; Wave 1 rebases them once real DPI scaling lands.
+/// As of Wave 1, the offscreen path is DPI-aware: the physical/logical ratio
+/// is threaded through as [`OffscreenTarget::scale`], so captures at
+/// `scale != 1.0` render the text AA ramp one *physical* pixel wide (sharp),
+/// not the Wave-0 stretched/soft baseline.
 #[must_use]
 pub fn render_widget_to_png_scaled(
     build: impl FnOnce(&mut Cx) -> NodeId,
@@ -616,6 +614,13 @@ fn render_scene_to_image(
         a: 1.0,
     };
 
+    // Physical-per-logical ratio of this capture: the width of the physical
+    // texture over the width of the logical viewport. Plain (non-scaled)
+    // captures pass physical == logical, so this is exactly 1.0 and their
+    // output stays byte-identical; DPI captures pass a larger physical
+    // texture, so the offscreen path scales the text AA ramp for sharpness.
+    let scale = size_px[0] as f32 / viewport.0;
+
     WgpuRenderer::new()
         .expect("WgpuRenderer::new")
         .render_command_scene_offscreen(
@@ -625,6 +630,7 @@ fn render_scene_to_image(
                 view: &view,
                 format: FORMAT,
                 viewport,
+                scale,
             },
             scene,
             clear,

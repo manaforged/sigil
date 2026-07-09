@@ -144,6 +144,7 @@ fn submission<'a>(
         view,
         format: FORMAT,
         viewport: VIEWPORT,
+        scale: 1.0,
         clear: Some(Color::BLACK),
     }
 }
