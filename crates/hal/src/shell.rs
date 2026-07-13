@@ -37,7 +37,7 @@ use alloc::vec::IntoIter;
 
 use crate::{
     ShellEvent,
-    geometry::PhysicalSize,
+    geometry::{PhysicalSize, Rect},
     size::{LogicalSize, Scale},
 };
 
@@ -145,4 +145,40 @@ pub trait Shell: Sized {
     fn run<F>(self, frame: F) -> Result<(), Self::Error>
     where
         F: FnMut(&mut Self) + 'static;
+
+    /// Toggle whether the OS IME is allowed for `window`. Drives
+    /// focus-change-based enable/disable — the application calls this
+    /// when focus enters/leaves an IME-targeting widget so IME
+    /// candidate UI only appears over a composition-aware field. See
+    /// DR-051 §4.8.
+    ///
+    /// Default is a no-op so headless/test shells don't need an impl.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the platform reports an IME toggle
+    /// failure (rare; most adapters can't fail this call).
+    fn set_ime_allowed(&mut self, window: &Self::Window, allowed: bool) -> Result<(), Self::Error> {
+        let _ = (window, allowed);
+        Ok(())
+    }
+
+    /// Forward the candidate-window anchor rect to the OS IME. `rect`
+    /// is window-relative logical pixels; the shell adapter converts
+    /// to whatever coordinate space its backend needs. See DR-051
+    /// §4.8 / §Decision-4.
+    ///
+    /// Default is a no-op so headless/test shells don't need an impl.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the platform rejects the rect.
+    fn set_ime_cursor_area(
+        &mut self,
+        window: &Self::Window,
+        rect: Rect,
+    ) -> Result<(), Self::Error> {
+        let _ = (window, rect);
+        Ok(())
+    }
 }

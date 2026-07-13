@@ -95,6 +95,47 @@ fn modal_open_pushes_focus_scope() {
     });
 }
 
+/// A dismissed modal must release its focus scope: after `show` flips
+/// false (Display::None) and layout recomputes, Tab must reach the
+/// focusable OUTSIDE the dialog — not stay trapped in an invisible
+/// scope (the reviewer adversarial finding, 2026-07-12).
+#[test]
+fn dismissed_modal_releases_focus_trap() {
+    sigil::reactive::Runtime::scope("sigil-modal-trap-release", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
+                .child(
+                    container()
+                        .focusable(true)
+                        .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
+                )
+                .child(modal().show(show)),
+        );
+        let mut layout = compute(&mut cx, root);
+        let outside = cx.nth_child(root, 0).expect("outside focusable");
+        let modal_root = cx.nth_child(root, 1).expect("modal root");
+        let dialog = modal_dialog(&cx, modal_root);
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        assert_eq!(router.focus(), Some(dialog), "modal traps focus while open");
+
+        show.set(false);
+        layout
+            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .expect("recompute after dismiss");
+        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        assert_eq!(
+            router.focus(),
+            Some(outside),
+            "Tab after dismissal must escape the hidden dialog's scope"
+        );
+    });
+}
+
 #[test]
 fn escape_closes_modal_when_enabled_default() {
     sigil::reactive::Runtime::scope("sigil-modal-trap-escape", || {
@@ -126,7 +167,20 @@ fn backdrop_click_closes_when_opt_in() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        router.route(&mut cx, &layout, pointer_down(60.0, 70.0));
+        // Click the centre of the dialog's real laid-out rect — the modal
+        // centres the dialog in the viewport, so a hardcoded point rots
+        // whenever the layout evolves.
+        let dialog = modal_dialog(&cx, root);
+        let rect = layout.result(dialog).expect("dialog layout").rect();
+        let (cx_mid, cy_mid) = (
+            rect.origin.x + rect.width / 2.0,
+            rect.origin.y + rect.height / 2.0,
+        );
+        assert!(
+            !(rect.origin.x <= 5.0 && rect.origin.y <= 5.0),
+            "backdrop probe point (5,5) must lie outside the dialog rect {rect:?}"
+        );
+        router.route(&mut cx, &layout, pointer_down(cx_mid, cy_mid));
         assert!(show.get(), "dialog click must not dismiss");
 
         router.route(&mut cx, &layout, pointer_down(5.0, 5.0));

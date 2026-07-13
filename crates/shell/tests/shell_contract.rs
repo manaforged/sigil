@@ -35,6 +35,9 @@
 
 // `winit` is a regular dep of `sigil-shell`; integration tests inherit
 // its dep graph even though they don't reference winit directly.
+use accesskit as _;
+use accesskit_winit as _;
+use crossbeam_channel as _;
 use smol_str as _;
 use winit as _;
 

@@ -145,13 +145,14 @@ impl OwnedTextEngine {
         let shaper = Shaper::new(font);
         let shaper_style = to_shaper_style(style);
         let line_height = resolve_line_height(style);
+        let (ascent, descent) = shaper.strut(&shaper_style);
         let runs = shape_segments(&shaper, text, &shaper_style);
         let min_content_hint = runs
             .iter()
             .filter(|s| !s.is_break_opportunity)
             .map(|s| s.advance)
             .fold(0.0_f32, f32::max);
-        let lines = break_lines(&runs, max_width, line_height);
+        let lines = break_lines(&runs, max_width, line_height, ascent, descent);
         Paragraph::new(
             lines,
             // font_size is the em-scale for ink; line_height is only row leading.
@@ -636,21 +637,25 @@ fn break_lines(
     segments: &[ShapedSegment],
     max_width: Option<f32>,
     line_height: f32,
+    ascent: f32,
+    descent: f32,
 ) -> Vec<LayoutLine> {
     if segments.is_empty() {
-        return vec![LayoutLine::empty(0, line_height)];
+        let mut line = LayoutLine::empty(0, line_height);
+        line.set_baseline_to(line_height, ascent, descent);
+        return vec![line];
     }
     let mut lines: Vec<LayoutLine> = Vec::new();
     let mut current = LayoutLine::empty(0, line_height);
     for seg in segments {
         if seg.is_hard_break {
-            finalize_line(&mut lines, current, line_height);
+            finalize_line(&mut lines, current, line_height, ascent, descent);
             current =
                 LayoutLine::empty(u32::try_from(lines.len()).unwrap_or(u32::MAX), line_height);
             continue;
         }
         if should_wrap(&current, seg, max_width) {
-            finalize_line(&mut lines, current, line_height);
+            finalize_line(&mut lines, current, line_height, ascent, descent);
             current =
                 LayoutLine::empty(u32::try_from(lines.len()).unwrap_or(u32::MAX), line_height);
             if seg.is_break_opportunity {
@@ -660,7 +665,7 @@ fn break_lines(
         }
         current.append_segment(&seg.run, seg.advance, seg.start, seg.end);
     }
-    finalize_line(&mut lines, current, line_height);
+    finalize_line(&mut lines, current, line_height, ascent, descent);
     lines
 }
 
@@ -677,7 +682,13 @@ fn should_wrap(current: &LayoutLine, seg: &ShapedSegment, max_width: Option<f32>
     current.width() + seg.advance > limit
 }
 
-fn finalize_line(out: &mut Vec<LayoutLine>, mut line: LayoutLine, line_height: f32) {
-    line.set_baseline_to(line_height);
+fn finalize_line(
+    out: &mut Vec<LayoutLine>,
+    mut line: LayoutLine,
+    line_height: f32,
+    ascent: f32,
+    descent: f32,
+) {
+    line.set_baseline_to(line_height, ascent, descent);
     out.push(line);
 }

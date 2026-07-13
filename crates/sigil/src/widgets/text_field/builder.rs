@@ -10,6 +10,7 @@ use crate::interaction::InteractionState;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::handlers::{NoopClipboard, TextFieldRuntime, attach_key_handlers, noop_change};
+use super::ime::attach_ime_handlers;
 use super::render::{FieldInputs, build_base_node, field_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
@@ -195,7 +196,8 @@ impl TextFieldBuilder {
             invalid,
         };
         let node = build_base_node(inputs, &placeholder, interaction, width, runtime.clone());
-        let mut node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        let node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {
             node = mutate(node);
         }

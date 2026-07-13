@@ -159,6 +159,7 @@ pub(super) fn walk_screen(
         fill_pipelines,
         shadow_pipelines,
         slug_pipelines,
+        raster_pipelines,
         sprite_pipelines,
         decoration_pipelines,
         layer_pipelines,
@@ -181,6 +182,7 @@ pub(super) fn walk_screen(
             fill_pipelines,
             shadow_pipelines,
             slug_pipelines,
+            raster_pipelines,
             sprite_pipelines,
             decoration_pipelines,
             layer_pipelines,
@@ -229,47 +231,28 @@ pub(super) fn render_command_scene_surface(
     let Some((frame, view)) = acquire_frame(ready, surface)? else {
         return Ok(());
     };
-    let mut encoder = ready
-        .device
-        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("sigil-renderer surface frame encoder"),
-        });
+    // Clone (Arc-backed, cheap) so `device`/`queue` can be passed alongside
+    // `ready` without a double-mutable-borrow — mirrors `walk_screen`'s other
+    // callers (`record_screen`).
+    let device = ready.device.clone();
+    let queue = ready.queue.clone();
+    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("sigil-renderer surface frame encoder"),
+    });
     record_clear(&mut encoder, &view, clear_color);
     let mut retained = Vec::new();
-    let ReadyState {
-        device,
-        queue,
-        scene_pipelines,
-        fill_pipelines,
-        shadow_pipelines,
-        slug_pipelines,
-        sprite_pipelines,
-        decoration_pipelines,
-        layer_pipelines,
-        blur_pipelines,
-        layer_pool,
-        ..
-    } = ready;
-    walk_command_scene(
-        WalkCtx {
-            device,
-            queue,
-            encoder: &mut encoder,
-            retained: &mut retained,
-            view: &view,
-            viewport,
-            scale: surface_text_scale(surface, viewport),
-            format: surface.config.format,
-            scene_pipelines,
-            fill_pipelines,
-            shadow_pipelines,
-            slug_pipelines,
-            sprite_pipelines,
-            decoration_pipelines,
-            layer_pipelines,
-            blur_pipelines,
-            layer_pool,
-        },
+    let scale = surface_text_scale(surface, viewport);
+    let format = surface.config.format;
+    walk_screen(
+        ready,
+        &device,
+        &queue,
+        &mut encoder,
+        &mut retained,
+        &view,
+        viewport,
+        scale,
+        format,
         scene,
     )?;
     queue.submit(core::iter::once(encoder.finish()));

@@ -44,6 +44,35 @@ pub(super) fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroup
     })
 }
 
+/// Per-vertex UV-quad attribute (slot 0).
+const QUAD_ATTRS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
+
+/// Per-instance `GlyphInstance` attributes (slot 1, stride = 40 bytes).
+///   1 origin (0)  2 size (8)  3 color (16)  4 `atlas_offset` (32)  5 polarity (36)
+const INSTANCE_ATTRS: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+    1 => Float32x2,
+    2 => Float32x2,
+    3 => Float32x4,
+    4 => Uint32,
+    5 => Float32,
+];
+
+/// The Slug vertex-buffer layouts: UV quad (per-vertex) + `GlyphInstance` (per-instance).
+const fn vertex_buffers<'a>() -> [wgpu::VertexBufferLayout<'a>; 2] {
+    [
+        wgpu::VertexBufferLayout {
+            array_stride: 8, // 2 × f32
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &QUAD_ATTRS,
+        },
+        wgpu::VertexBufferLayout {
+            array_stride: 40,
+            step_mode: wgpu::VertexStepMode::Instance,
+            attributes: &INSTANCE_ATTRS,
+        },
+    ]
+}
+
 /// Create the Slug render pipeline for `surface_format`.
 pub(super) fn create_pipeline(
     device: &wgpu::Device,
@@ -62,25 +91,7 @@ pub(super) fn create_pipeline(
         vertex: wgpu::VertexState {
             module: &shader,
             entry_point: Some("vs_main"),
-            buffers: &[
-                // slot 0: UV quad (per-vertex)
-                wgpu::VertexBufferLayout {
-                    array_stride: 8, // 2 × f32
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float32x2],
-                },
-                // slot 1: GlyphInstance (per-instance, stride = 40 bytes)
-                wgpu::VertexBufferLayout {
-                    array_stride: 40,
-                    step_mode: wgpu::VertexStepMode::Instance,
-                    attributes: &wgpu::vertex_attr_array![
-                        1 => Float32x2, // origin       offset  0
-                        2 => Float32x2, // size         offset  8
-                        3 => Float32x4, // color        offset 16
-                        4 => Uint32,    // atlas_offset offset 32
-                    ],
-                },
-            ],
+            buffers: &vertex_buffers(),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
         },
         fragment: Some(wgpu::FragmentState {

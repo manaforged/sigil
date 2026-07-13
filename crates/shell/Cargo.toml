@@ -22,6 +22,13 @@ smol_str = { workspace = true }
 # stabilises. Add the dep (and replace the hook closure with a typed
 # `sigil_async::AsyncRuntime` handle) when the `sigil-async` surface lands.
 winit = { workspace = true }
+# W5-A11Y (DR-050 §1) — the production `accesskit_winit::Adapter` wiring.
+# `crossbeam-channel` bridges the adapter's `Send`-bound `ActionHandler`
+# callback (may run on a platform AT-SPI/UIA/AX thread) back to the `!Send`
+# UI thread; see `crates/shell/src/shell/a11y.rs`.
+accesskit = { workspace = true }
+accesskit_winit = { workspace = true }
+crossbeam-channel = { workspace = true }
 
 [lints]
 workspace = true

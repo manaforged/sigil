@@ -6,7 +6,19 @@
 //! the full `TreeUpdate`.
 
 use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, Tree, TreeId, TreeUpdate};
+use hal::Rect;
 use kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+
+/// Node-bounds lookup injected by the caller (DR-050 §2, mapping table
+/// row `LayoutResult bounds → Node::set_bounds`).
+///
+/// A plain function-pointer-shaped closure rather than `&LayoutEngine`
+/// directly: `sigil-a11y` deliberately does not depend on `sigil-layout`
+/// (DR-050 §1 lists `kernel` + `reactive` + `hal` as its only
+/// dependencies), and every caller already has a natural way to answer
+/// "what's this node's rect" — production via
+/// `LayoutEngine::result(id).map(|r| r.rect())`, tests via `|_| None`.
+pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
 
 /// Build the AccessKit tree for the current [`Cx`] state.
 ///
@@ -15,12 +27,12 @@ use kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 /// provided — AccessKit requires a non-zero focus node and uses the
 /// root as the sentinel.
 #[must_use]
-pub fn tree(cx: &Cx, focus: Option<NodeId>) -> TreeUpdate {
+pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
     let mut nodes = Vec::with_capacity(cx.len());
     let mut first_root_ak: Option<AkNodeId> = None;
     let roots = cx.roots();
     for root in roots.iter().copied() {
-        walk_subtree(cx, root, &mut nodes, &mut first_root_ak);
+        walk_subtree(cx, root, bounds, &mut nodes, &mut first_root_ak);
     }
     let root_ak = first_root_ak.unwrap_or(AkNodeId(0));
     let focus_ak = focus.map_or(root_ak, NodeId::to_accesskit);
@@ -35,6 +47,7 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>) -> TreeUpdate {
 fn walk_subtree(
     cx: &Cx,
     id: NodeId,
+    bounds: BoundsLookup<'_>,
     out: &mut Vec<(AkNodeId, AkNode)>,
     first_root: &mut Option<AkNodeId>,
 ) {
@@ -43,18 +56,18 @@ fn walk_subtree(
     };
     if matches!(kernel_node.kind, NodeType::Fragment) {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, out, first_root);
+            walk_subtree(cx, child, bounds, out, first_root);
         }
         return;
     }
-    let projected = node(cx, id);
+    let projected = node(cx, id, bounds);
     let ak_id = id.to_accesskit();
     if first_root.is_none() {
         *first_root = Some(ak_id);
     }
     out.push((ak_id, projected));
     for &child in kernel_node.children() {
-        walk_subtree(cx, child, out, first_root);
+        walk_subtree(cx, child, bounds, out, first_root);
     }
 }
 
@@ -64,7 +77,7 @@ fn walk_subtree(
 /// observer registered on attach is the subscription path; projecting
 /// must not register duplicate subscriptions every frame.
 #[must_use]
-pub fn node(cx: &Cx, id: NodeId) -> AkNode {
+pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     let Some(kernel_node) = cx.get(id) else {
         return AkNode::new(accesskit::Role::Unknown);
     };
@@ -76,8 +89,19 @@ pub fn node(cx: &Cx, id: NodeId) -> AkNode {
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
+    apply_bounds(&mut ak, id, bounds);
     apply_children(cx, kernel_node, &mut ak);
     ak
+}
+
+fn apply_bounds(ak: &mut AkNode, id: NodeId, bounds: BoundsLookup<'_>) {
+    let Some(rect) = bounds(id) else { return };
+    ak.set_bounds(accesskit::Rect {
+        x0: f64::from(rect.origin.x),
+        y0: f64::from(rect.origin.y),
+        x1: f64::from(rect.origin.x + rect.width),
+        y1: f64::from(rect.origin.y + rect.height),
+    });
 }
 
 fn apply_name(ak: &mut AkNode, name: &AccessibleName) {

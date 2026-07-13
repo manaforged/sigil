@@ -13,6 +13,7 @@
 //     @location(2) size         vec2<f32>  px width × height
 //     @location(3) color        vec4<f32>  RGBA linear
 //     @location(4) atlas_offset u32        f32 index into atlas[]
+//     @location(5) polarity     f32        1.0 = light-on-dark, 0.0 = dark-on-light
 //
 // Band-data layout (per glyph, starting at atlas_offset):
 //   16 bands × (1 count f32 + 16 curves × 6 f32) = 1552 f32 entries.
@@ -27,17 +28,23 @@
 //   • sharpen  — AA-ramp narrowing (GreenLightning's `antiAliasingWindowSize`,
 //     inverted). >1 concentrates a fractional stem into fewer, higher-coverage
 //     columns (crisper) at the cost of slight diagonal aliasing. 1.0 = reference.
-//   • gamma    — grayscale stem darkening: pow(coverage, 1/gamma) restores the
-//     perceptual stem weight that linear-space sRGB coverage blending thins. 1.0 = off.
+//   • gamma_lod / gamma_dol — per-polarity grayscale stem darkening applied as
+//     pow(coverage, 1/gamma). Linear-space sRGB coverage blending thins stems by
+//     an amount that depends on contrast polarity, so a single global gamma is
+//     right for only one polarity. `gamma_lod` corrects LIGHT-on-dark text (the
+//     dominant thinning case — needs stronger darkening); `gamma_dol` corrects
+//     DARK-on-light text. The per-instance `polarity` flag (1.0 = light-on-dark,
+//     0.0 = dark-on-light, classified from text luminance CPU-side) selects
+//     which one each glyph uses. 1.0 = off.
 //   • enabled  — master A/B: 0.0 forces raw Slug (dilation 0, sharpen 1, gamma 1).
 struct SurfaceParams {
     surface_size: vec2<f32>,
     scale:        f32,
     dilation:     f32,
     sharpen:      f32,
-    gamma:        f32,
+    gamma_lod:    f32,
+    gamma_dol:    f32,
     enabled:      f32,
-    _pad:         f32,
 }
 
 @group(0) @binding(0) var<uniform>       surface: SurfaceParams;
@@ -58,6 +65,7 @@ struct VertexOutput {
     @location(2) @interpolate(flat) atlas_offset: u32,
     @location(3)                    glyph_width:  f32,
     @location(4)                    glyph_height: f32,
+    @location(5) @interpolate(flat) polarity:     f32,
 }
 
 @vertex
@@ -67,6 +75,7 @@ fn vs_main(
     @location(2) size:         vec2<f32>,
     @location(3) color:        vec4<f32>,
     @location(4) atlas_offset: u32,
+    @location(5) polarity:     f32,
 ) -> VertexOutput {
     // glyph_width / glyph_height feed the fragment coverage ramps (one per axis);
     // express them in physical pixels (× scale) so each 1-px antialias window is one
@@ -98,6 +107,7 @@ fn vs_main(
         atlas_offset,
         glyph_w,
         glyph_h,
+        polarity,
     );
 }
 
@@ -186,7 +196,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // A/B gating: when `enabled` is 0 fall back to raw Slug — unit-width AA ramp
     // (sharpen 1) and no stem darkening (gamma 1).
     let sharpen = mix(1.0, surface.sharpen, surface.enabled);
-    let gamma   = mix(1.0, surface.gamma,   surface.enabled);
+    // Per-polarity stem darkening: the flat `polarity` flag (1.0 = light-on-dark,
+    // 0.0 = dark-on-light) selects the polarity-tuned gamma, then `enabled` gates
+    // it to 1.0 (off) for the raw-Slug baseline.
+    let gamma_sel = mix(surface.gamma_dol, surface.gamma_lod, in.polarity);
+    let gamma     = mix(1.0, gamma_sel, surface.enabled);
 
     // uv can fall slightly outside [0,1] now (dilation), so clamp the band-index
     // selection — u32() of a negative float is undefined in WGSL. The coverage
@@ -210,7 +224,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Average the two rays (Slug's 2D coverage), per Lengyel (2017) / GreenLightning.
     let cov = clamp(0.5 * (abs(cov_h) + abs(cov_v)), 0.0, 1.0);
     if cov < 1e-6 { return vec4(0.0); }
-    // Stem darkening for linear-space sRGB blending (1.0 = off).
+    // Per-polarity stem darkening for linear-space sRGB blending (1.0 = off).
     let alpha = pow(cov, 1.0 / gamma);
     return vec4(in.color.rgb, in.color.a * alpha);
 }

@@ -2,7 +2,10 @@
 
 #![allow(missing_docs)]
 
+use a11y as _;
+use accesskit as _;
 use app as _;
+use crossbeam_channel as _;
 use events as _;
 use hal as _;
 use layout as _;

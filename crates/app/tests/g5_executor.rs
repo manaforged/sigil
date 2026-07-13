@@ -27,6 +27,9 @@
 // every integration test's compilation unit; alias the ones this test
 // doesn't reference directly so `-D unused-crate-dependencies` stays
 // silent (same pattern as `scale_handling.rs`).
+use a11y as _;
+use accesskit as _;
+use crossbeam_channel as _;
 use events as _;
 use hal as _;
 use kernel as _;

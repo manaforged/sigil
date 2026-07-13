@@ -62,6 +62,8 @@ mod fill_paint;
 mod layer_composite;
 mod layer_pool;
 mod offscreen;
+mod raster;
+mod raster_paint;
 mod renderer;
 mod scene;
 mod scene_builder;

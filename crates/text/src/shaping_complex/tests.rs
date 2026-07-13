@@ -1,4 +1,4 @@
-//! Integration-style tests for HarfRust complex-script shaping (G1.6).
+//! Integration-style tests for `HarfRust` complex-script shaping (G1.6).
 //!
 //! Fixture fonts ship in `crates/text/tests/fixtures/` (Noto Sans
 //! Arabic + Noto Sans Hebrew, SIL OFL 1.1). Tests live under
@@ -21,6 +21,7 @@ use crate::shaping_complex;
 
 const NOTO_ARABIC: &[u8] = include_bytes!("../../tests/fixtures/NotoSansArabic-Regular.ttf");
 const NOTO_HEBREW: &[u8] = include_bytes!("../../tests/fixtures/NotoSansHebrew-Regular.ttf");
+const FIRA_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Regular.ttf");
 
 fn noto_arabic() -> Font {
     Font::from_bytes(NOTO_ARABIC.to_vec(), 0).expect("NotoSansArabic fixture must parse")
@@ -28,6 +29,10 @@ fn noto_arabic() -> Font {
 
 fn noto_hebrew() -> Font {
     Font::from_bytes(NOTO_HEBREW.to_vec(), 0).expect("NotoSansHebrew fixture must parse")
+}
+
+fn fira_regular() -> Font {
+    Font::from_bytes(FIRA_REGULAR.to_vec(), 0).expect("FiraSans-Regular fixture must parse")
 }
 
 #[test]
@@ -163,6 +168,60 @@ fn empty_segment_returns_empty_run() {
     let run = shaping_complex::shape(&segment, &style, &font)
         .expect("empty segment must short-circuit cleanly");
     assert!(run.glyphs.is_empty());
+}
+
+#[test]
+fn latin_kerning_pair_av_advance_less_than_sum_of_individual() {
+    // Wave 4: HarfRust is the default shaper for Latin too. FiraSans
+    // carries a GPOS kern pair for "AV" — the classic capital-kerning
+    // case — so the joint advance must be strictly less than shaping
+    // 'A' and 'V' apart and summing.
+    let font = fira_regular();
+    let style = Style::regular(16.0);
+    let joint =
+        shaping_complex::shape(&TextSegment::ltr("AV"), &style, &font).expect("AV must shape");
+    assert_eq!(joint.glyphs.len(), 2, "AV must shape into exactly 2 glyphs");
+    let joint_total: f32 = joint.glyphs.iter().map(|g| g.advance).sum();
+
+    let a_advance = shaping_complex::shape(&TextSegment::ltr("A"), &style, &font)
+        .expect("A must shape")
+        .glyphs[0]
+        .advance;
+    let v_advance = shaping_complex::shape(&TextSegment::ltr("V"), &style, &font)
+        .expect("V must shape")
+        .glyphs[0]
+        .advance;
+    let separate_total = a_advance + v_advance;
+
+    assert!(
+        joint_total < separate_total - 0.01,
+        "FiraSans kerns AV: joint advance {joint_total} must be less than the unkerned sum {separate_total}",
+    );
+}
+
+#[test]
+fn latin_fi_ligature_differs_from_separate_f_and_i() {
+    // FiraSans has the 'fi' GSUB ligature. Shaped together it must
+    // differ from shaping 'f' and 'i' apart — either by collapsing
+    // to one glyph, or by substituting a distinct ligature glyph id.
+    let font = fira_regular();
+    let style = Style::regular(16.0);
+    let joint =
+        shaping_complex::shape(&TextSegment::ltr("fi"), &style, &font).expect("fi must shape");
+    let f = shaping_complex::shape(&TextSegment::ltr("f"), &style, &font).expect("f must shape");
+    let i = shaping_complex::shape(&TextSegment::ltr("i"), &style, &font).expect("i must shape");
+
+    let differs = joint.glyphs.len() != f.glyphs.len() + i.glyphs.len()
+        || joint.glyphs[0].id != f.glyphs[0].id
+        || joint.glyphs.get(1).map(|g| g.id) != Some(i.glyphs[0].id);
+    assert!(
+        differs,
+        "FiraSans's fi ligature must produce a different glyph stream than f+i shaped apart, \
+         got joint_len={} f_id={:?} i_id={:?}",
+        joint.glyphs.len(),
+        f.glyphs[0].id,
+        i.glyphs[0].id,
+    );
 }
 
 #[test]

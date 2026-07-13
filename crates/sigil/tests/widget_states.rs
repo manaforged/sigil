@@ -35,6 +35,7 @@ use hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
 use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
 use style::Rgba8;
+use style::scale::ScaleRole;
 
 struct StubMeasure;
 
@@ -379,8 +380,12 @@ fn text_field_rest_emits_border_color() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
         compute(&mut cx, root);
+        // The rest-state field frame paints gray step 9, not theme.border:
+        // step 7 measures ~1.5:1 against the surface, below the 3:1 WCAG
+        // 1.4.11 floor for non-text boundaries (see text_field/render.rs).
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.border));
+        let border = theme.scale(ScaleRole::Gray).step(9);
+        assert!(rect_colors(&cx, root).contains(&border));
     });
 }
 

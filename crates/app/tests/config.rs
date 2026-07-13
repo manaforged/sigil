@@ -7,6 +7,9 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use a11y as _;
+use accesskit as _;
+use crossbeam_channel as _;
 use events as _;
 use hal as _;
 use kernel as _;

@@ -1,9 +1,14 @@
 //! Builder extension trait for installing event handlers.
 
-use hal::{KeyEvent, PointerEvent, ScrollEvent, Shortcut};
+use std::cell::Cell;
+use std::rc::Rc;
+
+use hal::{ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
 use kernel::{Node, NodeBuilder};
+use layout::CaretGeometry;
 
 use crate::EventHandlers;
+use crate::ime_handlers::{CaretAnchorExt, ImeHandlers};
 
 /// Adds event-handler methods to [`NodeBuilder`].
 pub trait NodeEventsExt {
@@ -94,6 +99,31 @@ pub trait NodeEventsExt {
     fn focus_out<H>(self, h: H) -> Self
     where
         H: Fn() + 'static;
+
+    /// Run `h` when an IME composition event reaches this node while it is
+    /// focused. See `EventRouter::route_ime`.
+    #[must_use]
+    fn on_ime<H>(self, h: H) -> Self
+    where
+        H: Fn(&ImeEvent) + 'static;
+
+    /// Publish the node-relative caret anchor used to resolve
+    /// `EventRouter::ime_caret_rect`. The widget updates the shared cell
+    /// from its own commit/preedit logic; the router combines it with the
+    /// node's laid-out origin at end-of-Layout.
+    #[must_use]
+    fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self;
+
+    /// Register a live "am I currently eligible for IME composition"
+    /// query, consulted by the router before every dispatch and by
+    /// `EventRouter::focus_wants_ime`. Lets a widget's own
+    /// disabled/read-only state gate IME independently of whether
+    /// `.on_ime(...)` was ever registered. Defaults to always-eligible
+    /// when never called.
+    #[must_use]
+    fn ime_eligible<F>(self, f: F) -> Self
+    where
+        F: Fn() -> bool + 'static;
 }
 
 impl NodeEventsExt for NodeBuilder {
@@ -214,6 +244,40 @@ impl NodeEventsExt for NodeBuilder {
     {
         with_handlers(self, move |handlers| handlers.add_focus_out(Box::new(h)))
     }
+
+    fn on_ime<H>(self, h: H) -> Self
+    where
+        H: Fn(&ImeEvent) + 'static,
+    {
+        with_ime_handlers(self, move |handlers| handlers.add(Box::new(h)))
+    }
+
+    fn ime_caret(self, anchor: Rc<Cell<Option<CaretGeometry>>>) -> Self {
+        self.mutate(move |node| {
+            node.attach(CaretAnchorExt(anchor));
+        })
+    }
+
+    fn ime_eligible<F>(self, f: F) -> Self
+    where
+        F: Fn() -> bool + 'static,
+    {
+        with_ime_handlers(self, move |handlers| handlers.set_eligible(Box::new(f)))
+    }
+}
+
+fn with_ime_handlers(
+    builder: NodeBuilder,
+    mutate: impl FnOnce(&mut ImeHandlers) + 'static,
+) -> NodeBuilder {
+    builder.mutate(move |node| {
+        if node.get_extension::<ImeHandlers>().is_none() {
+            let _ = node.attach(ImeHandlers::default());
+        }
+        if let Some(handlers) = node.get_extension_mut::<ImeHandlers>() {
+            mutate(handlers);
+        }
+    })
 }
 
 fn with_handlers(

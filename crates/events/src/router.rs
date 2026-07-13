@@ -1,10 +1,7 @@
 //! Event router implementation.
 
 use accesskit::TreeUpdate;
-use hal::{
-    Key, KeyEvent, KeyPhase, LogicalKey, Point, PointerEvent, PointerPhase, ScrollEvent,
-    ShellEvent, Shortcut,
-};
+use hal::{Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
 use kernel::{Cx, NodeId};
 use layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -17,10 +14,18 @@ use crate::pointer_dispatch::{
     pointer_target_for_node, pointer_targets, synthetic_leave_source,
 };
 
+mod keyboard;
+
 /// Routes shell events through a composed node tree.
 #[derive(Debug, Default)]
 pub struct EventRouter {
     focus: FocusManager,
+    /// Node the active IME composition belongs to, set on the focused
+    /// node when a session opens and cleared on `Disabled` or when the
+    /// owner stops being a valid dispatch target. `pub(crate)` — driven
+    /// entirely by the `ime_handlers` sibling module, a non-descendant
+    /// of `router` under Rust's module privacy rules.
+    pub(crate) ime_session: crate::ime_handlers::ImeSession,
     pointer_capture: Option<NodeId>,
     // Hover path cached with absolute origins so that Enter/Leave
     // synthesis on each transition is O(depth), not O(depth²). Rebuilding
@@ -41,10 +46,10 @@ impl EventRouter {
 
     /// Route one shell event through the tree and layout state.
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
-        self.focus.sync_scopes(cx);
+        self.focus.sync_scopes(cx, Some(layout));
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
-            ShellEvent::Key(event) => self.route_key(cx, event),
+            ShellEvent::Key(event) => self.route_key(cx, layout, event),
             ShellEvent::Window(hal::WindowEvent::Focused(false)) => {
                 // Window lost focus: the pointer is effectively no longer
                 // over anything. Dispatch Leave through every node in the
@@ -59,7 +64,8 @@ impl EventRouter {
                 self.clear_hover(cx, &source);
             }
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
-            ShellEvent::Window(_) | ShellEvent::Ime(_) => {}
+            ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
+            ShellEvent::Window(_) => {}
         }
     }
 
@@ -102,15 +108,18 @@ impl EventRouter {
     }
 
     /// Advance focus through the tab ring (keyboard → focus-visible).
+    /// Programmatic call — no layout in scope, so hidden-subtree ring
+    /// filtering only applies on the routed-event path.
     pub fn focus_next(&mut self, cx: &mut Cx) {
         crate::note_focus_source(true);
-        self.focus.focus_next(cx);
+        self.focus.focus_next(cx, None);
     }
 
     /// Move focus backward through the tab ring (keyboard → focus-visible).
+    /// Programmatic call — see `focus_next` on the layout-less ring.
     pub fn focus_prev(&mut self, cx: &mut Cx) {
         crate::note_focus_source(true);
-        self.focus.focus_prev(cx);
+        self.focus.focus_prev(cx, None);
     }
 
     /// Move focus directionally (dpad / analog-stick shaped navigation),
@@ -130,11 +139,34 @@ impl EventRouter {
         self.focus.a11y_focus_update()
     }
 
+    /// Whether `target` is a legitimate focus target this frame —
+    /// focusable, laid out, and inside the active focus scope. AT
+    /// `Action::Focus` requests must pass this before `set_focus`.
+    #[must_use]
+    pub fn is_focus_target(&mut self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
+        self.focus.is_focusable_target(cx, layout, target)
+    }
+
+    /// Whether `target` is a legitimate AT click target this frame —
+    /// laid out, hit-test-enabled, and inside the active focus scope.
+    #[must_use]
+    pub fn is_click_target(&self, cx: &Cx, layout: &LayoutEngine, target: NodeId) -> bool {
+        self.focus.is_hittable_target(cx, layout, target)
+    }
+
     /// Test-only: current focus-scope stack depth.
     #[cfg(test)]
     #[must_use]
     pub const fn scope_depth(&self) -> usize {
         self.focus.scope_depth()
+    }
+
+    /// Whether `id` sits inside the topmost active focus scope. Used by
+    /// IME dispatch gating (`ime_handlers.rs`) — see
+    /// `FocusManager::is_within_active_scope`.
+    #[must_use]
+    pub(crate) fn ime_target_in_scope(&self, cx: &Cx, id: NodeId) -> bool {
+        self.focus.is_within_active_scope(cx, id)
     }
 
     fn route_pointer(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: PointerEvent) {
@@ -247,31 +279,6 @@ impl EventRouter {
             self.focus.set_focus(cx, target);
         }
     }
-
-    fn route_key(&mut self, cx: &mut Cx, mut event: KeyEvent) {
-        if event.phase != KeyPhase::Down {
-            return;
-        }
-        self.shortcuts.refresh(cx);
-        if self.shortcuts.dispatch(cx, &mut event) || event.propagation_stopped() {
-            return;
-        }
-        // Tab moves focus via the keyboard → focus-visible (ring shown).
-        crate::note_focus_source(true);
-        if route_tab_key(&mut self.focus, cx, &event) {
-            return;
-        }
-        self.dispatch_focused_key(cx, &mut event);
-    }
-
-    fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) {
-        let Some(focused) = self.focus.focus().filter(|id| cx.get(*id).is_some()) else {
-            self.focus.set_focus(cx, None);
-            return;
-        };
-        let path = path_to_node(cx, focused);
-        dispatch_key_path(cx, &path, event);
-    }
 }
 
 fn ids_match(left: &PointerTargets, right: &PointerTargets) -> bool {
@@ -285,115 +292,19 @@ fn target_common_prefix_len(left: &PointerTargets, right: &PointerTargets) -> us
         .count()
 }
 
-fn dispatch_key_path(cx: &Cx, path: &[NodeId], event: &mut KeyEvent) {
-    for id in path {
-        invoke_key(cx, *id, event, true);
-        if event.propagation_stopped() {
-            return;
-        }
-    }
-    for id in path.iter().rev().copied() {
-        invoke_key(cx, id, event, false);
-        if event.propagation_stopped() {
-            return;
-        }
-    }
-}
-
-fn invoke_key(cx: &Cx, id: NodeId, event: &mut KeyEvent, capture: bool) -> bool {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<EventHandlers>())
-        .is_some_and(|handlers| handlers.invoke_key(event, capture))
-}
-
 /// Lazily built index of nodes that advertise a semantic shortcut.
 ///
 /// Rebuilt whenever `Cx::mutation_generation()` advances. Dispatch is
 /// a linear scan over this compact list instead of a full tree walk.
 /// Inline capacity of 8 keeps steady-state dispatch allocation-free
 /// for typical menus; larger shortcut sets spill once per rebuild.
+///
+/// Field type only — the `Default` impl and `refresh`/`dispatch`
+/// methods live in `router/keyboard.rs` alongside the rest of the
+/// keyboard-routing concern; the struct itself stays here since it is
+/// the type of `EventRouter::shortcuts`.
 #[derive(Debug)]
 struct ShortcutIndex {
     generation: u64,
     entries: SmallVec<[(Shortcut, NodeId); 8]>,
-}
-
-impl Default for ShortcutIndex {
-    fn default() -> Self {
-        Self {
-            generation: u64::MAX,
-            entries: SmallVec::new(),
-        }
-    }
-}
-
-impl ShortcutIndex {
-    fn refresh(&mut self, cx: &Cx) {
-        let generation = cx.mutation_generation();
-        if self.generation == generation {
-            return;
-        }
-        self.entries.clear();
-        for root in cx.roots().iter().copied() {
-            collect_shortcuts(cx, root, &mut self.entries);
-        }
-        self.generation = generation;
-    }
-
-    fn dispatch(&self, cx: &Cx, event: &mut KeyEvent) -> bool {
-        for (shortcut, id) in &self.entries {
-            if shortcut.matches(event) && invoke_key(cx, *id, event, false) {
-                return true;
-            }
-        }
-        false
-    }
-}
-
-fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, NodeId); 8]>) {
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if let Some(shortcut) = node.a11y.keyboard_shortcut.as_ref() {
-        entries.push((shortcut.clone(), id));
-    }
-    for child in node.children().iter().copied() {
-        collect_shortcuts(cx, child, entries);
-    }
-}
-
-fn route_tab_key(focus: &mut FocusManager, cx: &mut Cx, event: &KeyEvent) -> bool {
-    if event.key != LogicalKey::Named(Key::Tab) || event.modifiers.ctrl() || event.modifiers.alt() {
-        return false;
-    }
-    if event.modifiers.shift() {
-        focus.focus_prev(cx);
-    } else if traps_tab(focus, cx) {
-        // The focused node wants the raw Tab (code editor indent). Let the key fall
-        // through to the focused-key dispatch instead of moving focus. Shift+Tab is
-        // unaffected above, so there is always a keyboard way out.
-        return false;
-    } else {
-        focus.focus_next(cx);
-    }
-    true
-}
-
-/// Whether the currently focused node opts to receive a plain `Tab` itself.
-fn traps_tab(focus: &FocusManager, cx: &Cx) -> bool {
-    focus
-        .focus()
-        .and_then(|id| cx.get(id))
-        .is_some_and(|node| node.a11y.traps_tab)
-}
-
-fn path_to_node(cx: &Cx, target: NodeId) -> SmallVec<[NodeId; 64]> {
-    let mut reversed = SmallVec::<[NodeId; 64]>::new();
-    let mut current = Some(target);
-    while let Some(id) = current {
-        reversed.push(id);
-        current = cx.parent(id);
-    }
-    reversed.reverse();
-    reversed
 }

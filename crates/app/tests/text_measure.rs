@@ -2,6 +2,9 @@
 
 #![allow(missing_docs)]
 
+use a11y as _;
+use accesskit as _;
+use crossbeam_channel as _;
 use events as _;
 use reactive as _;
 use renderer as _;

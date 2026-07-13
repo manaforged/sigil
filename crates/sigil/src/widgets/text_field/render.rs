@@ -70,7 +70,13 @@ pub(super) fn build_base_node(
         invalid,
     } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
-    let displayed = displayed_text(value, interaction.focus_visible(), placeholder.clone());
+    let displayed = displayed_text(
+        value,
+        interaction.focus_visible(),
+        placeholder.clone(),
+        runtime.ime.preedit,
+        runtime.caret,
+    );
     let state_style = field_state_style();
     let node = container()
         .role(Role::TextInput)
@@ -157,19 +163,40 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
     let _ = interaction.release_pointer(event);
 }
 
+/// The field's displayed text: the committed buffer with any in-flight
+/// IME preedit spliced in at the caret for display only (`value` never
+/// carries preedit text — DR-051 §Decision-3's `Commit` handler is the
+/// only writer of the committed buffer).
 fn displayed_text(
     value: Signal<String>,
     focused: Signal<bool>,
     placeholder: TextContent,
+    preedit: Signal<String>,
+    caret: Signal<usize>,
 ) -> Signal<String> {
     derived_eq(move || {
         let current = value.get();
-        if current.is_empty() && !focused.get() {
+        let composing = preedit.get();
+        if !composing.is_empty() {
+            splice_preedit(&current, caret.get(), &composing)
+        } else if current.is_empty() && !focused.get() {
             text_content(&placeholder)
         } else {
             current
         }
     })
+}
+
+/// Insert `preedit` into `value` at the `caret` byte offset, for display
+/// only. `caret` mirrors `TextEdit`'s caret, which is always a valid
+/// UTF-8 boundary by construction.
+fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
+    let caret = caret.min(value.len());
+    let mut out = String::with_capacity(value.len() + preedit.len());
+    out.push_str(&value[..caret]);
+    out.push_str(preedit);
+    out.push_str(&value[caret..]);
+    out
 }
 
 fn text_content(content: &TextContent) -> String {

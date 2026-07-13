@@ -1,6 +1,6 @@
 //! Core measurement correctness tests.
 
-#![allow(missing_docs, clippy::unwrap_used)]
+#![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use ahash as _;
 use criterion as _;
@@ -9,7 +9,8 @@ use harfrust as _;
 use kernel as _;
 use layout as _;
 use reactive as _;
-use skrifa as _;
+use skrifa::instance::{LocationRef, Size};
+use skrifa::{FontRef, MetadataProvider};
 use smallvec as _;
 use tracing as _;
 use unicode_bidi as _;
@@ -113,5 +114,43 @@ fn styled_font_size_and_line_height_change_metrics() {
         "larger line height should be taller: {} vs {}",
         large.height(),
         small.height()
+    );
+}
+
+/// The baseline must come from the face's real ascent/descent under the
+/// CSS half-leading model, not a fixed fraction of the line box.
+/// Expectation computed independently from the same font bytes via skrifa.
+#[test]
+fn baseline_is_half_leading_plus_real_ascent() {
+    const FONT_SIZE: f32 = 16.0;
+    const LINE_HEIGHT: f32 = 32.0;
+
+    let bytes = std::fs::read("tests/fixtures/FiraSans-Regular.ttf").unwrap();
+    let font = FontRef::new(&bytes).unwrap();
+    let m = font.metrics(Size::new(FONT_SIZE), LocationRef::default());
+    let (ascent, descent) = (m.ascent, -m.descent);
+    let expected = (LINE_HEIGHT - (ascent + descent)) / 2.0 + ascent;
+
+    let mut e = engine();
+    e.register_font(bytes.clone(), 0).unwrap();
+    let style = TextStyle {
+        font_size: FONT_SIZE,
+        line_height: TextLineHeight::Absolute(LINE_HEIGHT),
+        ..TextStyle::default()
+    };
+    let para = e.layout_paragraph_styled("A\ng", None, &style).unwrap();
+
+    let glyphs = para.rendered_glyphs();
+    assert_eq!(glyphs.len(), 2, "one glyph per line");
+    assert!(
+        (glyphs[0].y - expected).abs() < 1e-3,
+        "line 0 baseline {} != half-leading + ascent {expected} (ascent {ascent}, descent {descent})",
+        glyphs[0].y,
+    );
+    assert!(
+        (glyphs[1].y - (expected + LINE_HEIGHT)).abs() < 1e-3,
+        "line 1 baseline {} != {} (line 0 + line height)",
+        glyphs[1].y,
+        expected + LINE_HEIGHT,
     );
 }

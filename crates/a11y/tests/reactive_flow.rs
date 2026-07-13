@@ -21,6 +21,11 @@ use hal as _;
 // `sigil` is a dev-dep for Phase 1.3.C's `live_regions.rs`; every
 // integration test pulls all dev-deps, so alias here too.
 use sigil as _;
+// W5-A11Y's `AccessKitBridge` backing dep, unused by this file's
+// `RecordingBridge`-based flow. `layout` backs RC-focus finding 1's
+// `bounds_projection.rs`, also unused here.
+use crossbeam_channel as _;
+use layout as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -47,7 +52,7 @@ fn install_cx_publisher(cx: &SharedCx, bridge: &SharedBridge) {
     let cx_for_pub = Rc::clone(cx);
     let bridge_for_pub = Rc::clone(bridge);
     Runtime::install_a11y_publisher(Box::new(move || {
-        let update = tree(&cx_for_pub.borrow(), None);
+        let update = tree(&cx_for_pub.borrow(), None, &|_| None);
         let _ = hal::A11yBridge::publish(&mut *bridge_for_pub.borrow_mut(), update);
     }));
 }

@@ -94,6 +94,9 @@ where
         window_id: WindowId,
         event: WinitWindowEvent,
     ) {
+        // AccessKit's own contract: `process_event` must see every window
+        // event before the application handles it (DR-050 §1).
+        self.shell.process_a11y_event(window_id, &event);
         match event {
             WinitWindowEvent::CloseRequested => {
                 self.shell

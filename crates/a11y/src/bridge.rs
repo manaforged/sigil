@@ -5,9 +5,14 @@
 //! - [`RecordingBridge`] — the test-side bridge that stores published
 //!   `TreeUpdate`s in a `Vec` and serves enqueued action requests from
 //!   a FIFO. Tests pull the last published update to assert.
-//! - The production [`accesskit::Adapter`] wiring is shell-side and
-//!   not included here — the shell crate constructs a concrete adapter
-//!   per platform per DR-050 §1.
+//! - [`AccessKitBridge`] — the production bridge. It does not own the
+//!   `accesskit_winit::Adapter` itself (that stays shell-side, per
+//!   DR-050 §1 — `sigil-a11y` does not depend on `winit`); instead it
+//!   forwards `publish` through a caller-supplied sink closure and
+//!   drains inbound actions from a `crossbeam-channel` receiver fed by
+//!   the shell's `Send`-bound adapter handlers
+//!   (`crates/shell/src/shell/a11y.rs`) — the shape
+//!   `crates/hal/src/a11y.rs`'s doc comment anticipated.
 
 use core::fmt;
 use std::collections::VecDeque;
@@ -94,3 +99,48 @@ impl fmt::Display for BridgeError {
 }
 
 impl core::error::Error for BridgeError {}
+
+/// Production `A11yBridge` — forwards outbound `TreeUpdate`s through a
+/// caller-supplied sink and drains inbound `ActionRequest`s from a
+/// `crossbeam-channel` receiver.
+///
+/// `F` is generic (not `Box<dyn FnMut(TreeUpdate)>`) so the frame loop
+/// can construct one per frame over a fresh `&mut WinitShell` borrow
+/// with zero heap allocation — see `crates/app/src/launch.rs`'s
+/// `publish_a11y` helper. The bridge itself is cheap to construct: the
+/// `Receiver` clone is an `Arc` bump, not a channel allocation.
+pub struct AccessKitBridge<F: FnMut(TreeUpdate)> {
+    publish_sink: F,
+    action_rx: crossbeam_channel::Receiver<ActionRequest>,
+}
+
+impl<F: FnMut(TreeUpdate)> AccessKitBridge<F> {
+    /// Construct a bridge over an inbound-action receiver and an
+    /// outbound-publish sink.
+    pub const fn new(
+        action_rx: crossbeam_channel::Receiver<ActionRequest>,
+        publish_sink: F,
+    ) -> Self {
+        Self {
+            publish_sink,
+            action_rx,
+        }
+    }
+}
+
+impl<F: FnMut(TreeUpdate)> A11yBridge for AccessKitBridge<F> {
+    type Error = BridgeError;
+    type Update = TreeUpdate;
+    type Action = ActionRequest;
+    type NodeId = NodeId;
+
+    fn publish(&mut self, update: Self::Update) -> Result<(), Self::Error> {
+        (self.publish_sink)(update);
+        Ok(())
+    }
+
+    fn take_action(&mut self) -> Option<(Self::NodeId, Self::Action)> {
+        let request = self.action_rx.try_recv().ok()?;
+        Some((NodeId::from_accesskit(request.target_node), request))
+    }
+}

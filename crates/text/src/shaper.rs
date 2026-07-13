@@ -1,12 +1,13 @@
 //! Owned shaper — skrifa-backed glyph layout (DR-044, G1.3).
 //!
 //! Per-grapheme glyph lookup via `skrifa::charmap::Charmap`; advances
-//! from `skrifa::metrics::GlyphMetrics`. The shaper handles Latin,
-//! CJK (ideographs + the U+3000..U+303F and U+FF00..U+FFEF punctuation
-//! blocks), and emoji as a passthrough (G1.5 routes polychrome glyph
-//! IDs into the R7 sprite-split atlas). Complex shaping (Arabic,
-//! Devanagari, Thai) is gated behind the `shaping-complex` feature
-//! and lands in G1.6.
+//! from `skrifa::metrics::GlyphMetrics`. Fallback path: since Wave 4,
+//! `HarfRust` (`shaping_complex.rs`) is the default shaper for every
+//! script (kerning/ligatures/marks) behind the crate-default
+//! `shaping-complex` feature. This module only runs when `HarfRust`
+//! returns nothing or the feature is off — still Latin, CJK
+//! (ideographs + `U+3000..U+303F` / `U+FF00..U+FFEF` punctuation),
+//! and emoji passthrough (G1.5 atlas), just no kerning/ligatures.
 //!
 //! `Shaper` is `Send + Sync` — skrifa lookups are read-only against
 //! owned font data, so the engine can shape across rayon threads
@@ -14,15 +15,13 @@
 //!
 //! G1.3 ships the implementation + tests but the engine layer (G1.4)
 //! still consumes the Parley path, so every type here is technically
-//! dead from the lib's point of view. The G1.1 stub used a crate-root
-//! `#![allow(dead_code, ...)]` for the same reason; the comment block
-//! below repeats the justification.
+//! dead from the lib's point of view — see the hygiene-exception
+//! comment below.
 
 // Hygiene exception: until G1.4 rewires engine.rs through this module,
 // every public-to-crate item here is unreferenced from the lib graph.
 // `redundant_pub_crate` fires because shaper is a `pub(crate) mod`;
-// `missing_const_for_fn` fires on accessors that could be const but
-// don't gain anything from it. Both lifted from the G1.1 skeleton.
+// `missing_const_for_fn` fires on accessors that could be const.
 #![allow(dead_code, clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
 
 use std::sync::Arc;
@@ -217,33 +216,41 @@ impl<'a> Shaper<'a> {
 
     /// Shape `segment` under `style`, producing a [`GlyphRun`].
     ///
-    /// Complex scripts (Arabic, Hebrew, Devanagari, Khmer, Thai, Lao)
-    /// route through the optional `HarfRust` path when the
-    /// `shaping-complex` feature is on; otherwise they fall through
-    /// to the owned shaper with a one-shot per-script warning.
+    /// Every script routes through `HarfRust` when `shaping-complex`
+    /// is on (the crate default). `shape_simple` is the fallback when
+    /// `HarfRust` returns nothing or the feature is off, with a
+    /// one-shot per-script warning for complex scripts in that case.
     pub(crate) fn shape(&self, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
         if segment.text.is_empty() {
             return GlyphRun::empty();
         }
-        let script = classify_segment_script(segment);
-        if script.is_complex() {
-            #[cfg(feature = "shaping-complex")]
-            {
-                if let Some(run) = crate::shaping_complex::shape(segment, style, self.font) {
-                    return run;
-                }
-                // `HarfRust` returned nothing (malformed face / empty
-                // buffer); fall through to the owned shaper rather
-                // than emit nothing.
+        #[cfg(feature = "shaping-complex")]
+        {
+            if let Some(run) = crate::shaping_complex::shape(segment, style, self.font) {
+                return run;
             }
-            #[cfg(not(feature = "shaping-complex"))]
-            {
+            // `HarfRust` returned nothing; fall through to the owned
+            // shaper rather than emit nothing.
+        }
+        #[cfg(not(feature = "shaping-complex"))]
+        {
+            let script = classify_segment_script(segment);
+            if script.is_complex() {
                 warn_complex_without_feature(script);
             }
         }
         // Silence the unused-field warning when the feature is off.
         let _ = self.font;
         shape_simple(&self.font_ref, segment, style)
+    }
+
+    /// Face ascent + descent (both positive, px at `style.size_px`) —
+    /// the paragraph strut that anchors every line's baseline.
+    pub(crate) fn strut(&self, style: &Style) -> (f32, f32) {
+        let size = Size::new(style.size_px.max(1.0));
+        let m = self.font_ref.metrics(size, LocationRef::default());
+        // skrifa reports descent as negative (below baseline).
+        (m.ascent, -m.descent)
     }
 }
 
@@ -391,8 +398,3 @@ const fn is_emoji(cp: u32) -> bool {
 #[cfg(test)]
 #[path = "shaper/tests.rs"]
 mod tests;
-
-// G1.3 oracle-parity module retired in G1.7. The owned shaper has been
-// production-verified through G1.4–G1.6; the historical comparison
-// dependency is no longer needed. See DR-044 and the G1.7 closeout
-// commit for the rationale.

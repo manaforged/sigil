@@ -2,6 +2,9 @@
 
 #![allow(missing_docs)]
 
+use accesskit as _;
+use accesskit_winit as _;
+use crossbeam_channel as _;
 use shell as _;
 use smol_str as _;
 

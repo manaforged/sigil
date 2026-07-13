@@ -77,7 +77,9 @@ fn hello_word_is_five_glyphs_monotonic() {
         assert_ne!(g.id, GlyphId(0));
         assert!(g.advance > 0.0);
     }
-    // bbox width must equal sum of advances (no kerning at G1.3).
+    // bbox width must equal the pen's total travel — Σadvance — which
+    // holds whether or not kerning shifted individual advances, since
+    // bbox is derived from the same per-glyph advances.
     let total: f32 = run.glyphs.iter().map(|g| g.advance).sum();
     assert!(
         (run.bbox.w - total).abs() < 0.01,
@@ -226,10 +228,41 @@ fn mixed_latin_and_cjk_punctuation_cluster_order() {
 }
 
 #[test]
-fn combining_mark_clusters_with_base_glyph() {
+#[cfg(feature = "shaping-complex")]
+fn combining_mark_composes_into_single_glyph_via_harfrust() {
     // 'e' + COMBINING ACUTE ACCENT (U+0301) is one grapheme cluster.
-    // The shaper emits 2 glyph positions sharing cluster=0; the
-    // combining mark carries zero advance.
+    // Wave 4: `Shaper::shape` routes Latin through `HarfRust` by
+    // default, and `HarfRust`'s Unicode normalization step canonically
+    // composes this into precomposed 'é' (U+00E9) before shaping —
+    // FiraSans covers 'é' directly, so the mark is folded into the
+    // base glyph's outline rather than emitted as a separate
+    // zero-advance position (the behaviour the owned-only shaper
+    // below has when the feature is off). This is the intentional
+    // upgrade this test pins.
+    let font = fira_regular();
+    let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
+    assert_eq!(
+        run.glyphs.len(),
+        1,
+        "HarfRust composes 'e' + combining acute into one precomposed glyph"
+    );
+    assert_ne!(
+        run.glyphs[0].id,
+        GlyphId(0),
+        "composed 'é' must not be .notdef in FiraSans"
+    );
+    assert_eq!(run.glyphs[0].cluster, 0);
+    assert!(run.glyphs[0].advance > 0.0);
+}
+
+#[test]
+#[cfg(not(feature = "shaping-complex"))]
+fn combining_mark_clusters_with_base_glyph_owned_shaper() {
+    // Feature-off fallback: the owned skrifa shaper doesn't normalize
+    // or apply GPOS mark attachment, so 'e' + COMBINING ACUTE ACCENT
+    // stays 2 glyph positions sharing cluster=0, with the mark at
+    // zero advance. See `combining_mark_composes_into_single_glyph_via_harfrust`
+    // for the feature-on (default) behaviour.
     let font = fira_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
     assert_eq!(run.glyphs.len(), 2, "base + combining = 2 glyph positions");

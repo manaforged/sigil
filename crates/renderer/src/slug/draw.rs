@@ -56,9 +56,11 @@ struct SurfaceUniform {
     scale: f32,
     dilation: f32,
     sharpen: f32,
-    gamma: f32,
+    /// Stem-darkening gamma for light-on-dark glyphs (selected per-instance).
+    gamma_lod: f32,
+    /// Stem-darkening gamma for dark-on-light glyphs (selected per-instance).
+    gamma_dol: f32,
     enabled: f32,
-    _pad: f32,
 }
 
 /// Per-instance glyph data for the GPU instance vertex buffer (40 bytes).
@@ -73,7 +75,11 @@ struct GlyphInstance {
     size: [f32; 2],
     color: [f32; 4],
     atlas_offset: u32,
-    _pad: u32,
+    /// Contrast polarity of this glyph over its backdrop: `1.0` = light-on-dark,
+    /// `0.0` = dark-on-light. Selects which per-polarity stem-darkening gamma the
+    /// fragment shader applies. Occupies the trailing pad slot, so the 40-byte
+    /// instance stride is unchanged.
+    polarity: f32,
 }
 
 /// Six UV vertices for two triangles covering \[0,1\]².
@@ -312,12 +318,13 @@ impl SlugTextPipeline {
             } else {
                 ink_left
             };
+            let color = glyph_color(g, params);
             instances.push(GlyphInstance {
                 origin: [origin_x, bbox.y_max.mul_add(-scale, pen_y)],
                 size: [bbox.width() * scale, bbox.height() * scale],
-                color: glyph_color(g, params),
+                color,
                 atlas_offset,
-                _pad: 0,
+                polarity: polarity_flag(color, self.format),
             });
         }
         instances
@@ -398,6 +405,37 @@ fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
     [color.r, color.g, color.b, color.a]
 }
 
+/// Classify a glyph's contrast polarity from its own colour: `1.0` for
+/// light-on-dark (bright text, assumed dark backdrop), `0.0` for dark-on-light.
+///
+/// The instance colour is already in the render target's blend space, so the
+/// Rec.709 luminance is decoded back to a *perceptual* value before thresholding
+/// at mid-grey: on an sRGB target the channels are linear-light (encode with the
+/// sRGB transfer curve first); on a `Unorm` target they are already sRGB-encoded
+/// (use directly). UI text sits near the black/white extremes where the choice is
+/// unambiguous; the space-correct decode keeps mid-grey text classified sanely.
+fn polarity_flag(color: [f32; 4], format: wgpu::TextureFormat) -> f32 {
+    let lum = 0.0722f32.mul_add(color[2], 0.7152f32.mul_add(color[1], 0.2126 * color[0]));
+    let perceptual = if format.is_srgb() {
+        linear_to_srgb(lum)
+    } else {
+        lum
+    };
+    f32::from(u8::from(perceptual >= 0.5))
+}
+
+/// Encode a linear-light channel to sRGB — the inverse of the renderer's
+/// `srgb_channel_to_linear` decode, used to recover a perceptual luminance for
+/// polarity classification.
+fn linear_to_srgb(value: f32) -> f32 {
+    let v = value.clamp(0.0, 1.0);
+    if v <= 0.003_130_8 {
+        v * 12.92
+    } else {
+        1.055f32.mul_add(v.powf(1.0 / 2.4), -0.055)
+    }
+}
+
 /// Build the per-frame bind group: surface uniform (binding 0) + atlas (binding 1).
 fn make_bind_group(
     params: &DrawParams<'_>,
@@ -415,9 +453,9 @@ fn make_bind_group(
         scale: params.scale.max(1.0),
         dilation: tuning.dilation,
         sharpen: tuning.sharpen,
-        gamma: tuning.gamma,
+        gamma_lod: tuning.gamma_light_on_dark,
+        gamma_dol: tuning.gamma_dark_on_light,
         enabled: f32::from(u8::from(tuning.enabled)),
-        _pad: 0.0,
     };
     let ubuf = params
         .device

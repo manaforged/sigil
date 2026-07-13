@@ -251,18 +251,170 @@ fn assert_soft(label: &str, pixels: &[u8], w: u32, h: u32) {
     );
 }
 
+// ---- polarity parity: stroke weight must match across contrast polarity ----
+
+// Max relative difference permitted between the two contrast polarities'
+// measured stroke weight. The Wave-2 per-polarity gamma defaults
+// (`slug/tuning.rs`) are tuned until both land inside this — the honest
+// stroke-weight-parity gate. Do NOT widen past 0.15.
+const POLARITY_TOLERANCE: f32 = 0.15;
+
+// Curvy mixed-case string for the parity check: unlike the "IIIIII" stem probe
+// (whose pure vertical edges the dilation+sharpen path hard-clips, leaving no
+// partial coverage for gamma to act on), curved/diagonal glyphs carry genuine
+// AA-edge coverage — the exact region the per-polarity gamma transfer corrects.
+const POLARITY_TEXT: &str = "sample";
+
+#[test]
+fn polarity_stroke_weight_parity_scale_1_0() {
+    assert_polarity_parity(1.0);
+}
+#[test]
+fn polarity_stroke_weight_parity_scale_2_0() {
+    assert_polarity_parity(2.0);
+}
+
+/// Render [`POLARITY_TEXT`] as WHITE-on-black (light-on-dark) and BLACK-on-white
+/// (dark-on-light) at `scale`, then assert the two measured stroke weights match
+/// within [`POLARITY_TOLERANCE`]. Proves the per-polarity gamma transfer removes
+/// the polarity-dependent stem-weight drift a single global gamma leaves behind
+/// (uncorrected drift is ~19% at scale 1.0 — see the dispatch return).
+///
+/// Two weight metrics, both gated at 15%: `ink_mass` (mean normalised coverage,
+/// integrates the AA-edge pixels) is the primary continuous measure; the
+/// brief-named `ink_fraction` (50%-threshold core count) is the coarser check.
+fn assert_polarity_parity(scale: f32) {
+    let Some((device, queue)) = try_request_device() else {
+        println!("no adapter — skipping polarity parity at scale {scale}");
+        return;
+    };
+    let (lod_px, lw, lh) = render_text_string(
+        &device,
+        &queue,
+        scale,
+        POLARITY_TEXT,
+        (hal::Color::WHITE, wgpu::Color::BLACK),
+    );
+    let lod = measure(&lod_px, lw, lh);
+    // Dark-on-light: invert R so the shared measure (which keys "ink" to high
+    // luminance) reads the dark stems on the light field as ink.
+    let (dol_raw, dw, dh) = render_text_string(
+        &device,
+        &queue,
+        scale,
+        POLARITY_TEXT,
+        (hal::Color::BLACK, wgpu::Color::WHITE),
+    );
+    let dol_px: Vec<u8> = dol_raw.iter().map(|b| 255 - b).collect();
+    let dol = measure(&dol_px, dw, dh);
+
+    let mass_rel = rel_diff(lod.ink_mass, dol.ink_mass);
+    let ink_rel = rel_diff(lod.ink_fraction, dol.ink_fraction);
+    println!(
+        "polarity scale {scale}: LOD mass={:.5} ink={:.5} | DOL mass={:.5} ink={:.5} | \
+         mass_rel={:.3} ink_rel={:.3}",
+        lod.ink_mass, lod.ink_fraction, dol.ink_mass, dol.ink_fraction, mass_rel, ink_rel,
+    );
+
+    assert!(
+        mass_rel <= POLARITY_TOLERANCE,
+        "scale {scale}: stroke-weight (ink_mass) parity {:.1}% exceeds {:.0}% budget — \
+         LOD {:.5} vs DOL {:.5}. Re-tune gamma_dark_on_light in slug/tuning.rs.",
+        mass_rel * 100.0,
+        POLARITY_TOLERANCE * 100.0,
+        lod.ink_mass,
+        dol.ink_mass,
+    );
+    assert!(
+        ink_rel <= POLARITY_TOLERANCE,
+        "scale {scale}: stroke-weight (ink_fraction) parity {:.1}% exceeds {:.0}% budget — \
+         LOD {:.5} vs DOL {:.5}.",
+        ink_rel * 100.0,
+        POLARITY_TOLERANCE * 100.0,
+        lod.ink_fraction,
+        dol.ink_fraction,
+    );
+}
+
+/// Relative difference of two non-negative measurements, normalised by the
+/// larger. Zero when both are (near) zero — identically sharp edges are parity.
+fn rel_diff(a: f32, b: f32) -> f32 {
+    let m = a.max(b);
+    if m <= f32::EPSILON {
+        0.0
+    } else {
+        (a - b).abs() / m
+    }
+}
+
 // ---- render -----------------------------------------------------------------
 
 /// Render `TEXT` into an offscreen RGBA texture, read back raw pixels.
 /// `texture_scale` sets physical resolution; `draw_scale` is
 /// `DrawParams.scale`. Equal args = correct direct path; `draw_scale=1.0`
-/// with `texture_scale>1.0` = embed-path defect.
+/// with `texture_scale>1.0` = embed-path defect. White text on black.
 fn render_text(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture_scale: f32,
     draw_scale: f32,
 ) -> (Vec<u8>, u32, u32) {
+    render_text_inner(
+        &RenderArgs {
+            texture_scale,
+            draw_scale,
+            content: TEXT,
+            text: hal::Color::WHITE,
+            background: wgpu::Color::BLACK,
+        },
+        device,
+        queue,
+    )
+}
+
+/// Render `content` at `scale` (physical == draw scale) with an explicit text
+/// and background colour, for the contrast-polarity parity checks.
+fn render_text_string(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    scale: f32,
+    content: &str,
+    colors: (hal::Color, wgpu::Color),
+) -> (Vec<u8>, u32, u32) {
+    render_text_inner(
+        &RenderArgs {
+            texture_scale: scale,
+            draw_scale: scale,
+            content,
+            text: colors.0,
+            background: colors.1,
+        },
+        device,
+        queue,
+    )
+}
+
+/// Grouped render inputs — keeps the render helper under the 5-arg cap.
+struct RenderArgs<'a> {
+    texture_scale: f32,
+    draw_scale: f32,
+    content: &'a str,
+    text: hal::Color,
+    background: wgpu::Color,
+}
+
+fn render_text_inner(
+    args: &RenderArgs<'_>,
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+) -> (Vec<u8>, u32, u32) {
+    let &RenderArgs {
+        texture_scale,
+        draw_scale,
+        content,
+        text,
+        background,
+    } = args;
     let phys_w = (LOGICAL_W * texture_scale).round() as u32;
     let phys_h = (LOGICAL_H * texture_scale).round() as u32;
 
@@ -277,14 +429,14 @@ fn render_text(
         line_height: TextLineHeight::FontSizeRelative(1.2),
     };
     let paragraph = engine
-        .layout_paragraph_styled(TEXT, None, &style)
+        .layout_paragraph_styled(content, None, &style)
         .expect("layout_paragraph_styled");
 
     let mut pipeline = SlugTextPipeline::new(device, FORMAT);
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
         label: Some("glyph-pixel-check encoder"),
     });
-    clear_black(&mut encoder, &view);
+    clear_to(&mut encoder, &view, background);
     pipeline
         .record_paragraph(
             &mut encoder,
@@ -298,7 +450,7 @@ fn render_text(
                 paragraph: &paragraph,
                 glyphs: None,
                 origin: ORIGIN,
-                color: Some(hal::Color::WHITE),
+                color: Some(text),
                 clip: None,
             },
         )
@@ -309,7 +461,7 @@ fn render_text(
     (pixels, phys_w, phys_h)
 }
 
-fn clear_black(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+fn clear_to(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, color: wgpu::Color) {
     encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("glyph-pixel-check clear"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -317,7 +469,7 @@ fn clear_black(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
             depth_slice: None,
             resolve_target: None,
             ops: wgpu::Operations {
-                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                load: wgpu::LoadOp::Clear(color),
                 store: wgpu::StoreOp::Store,
             },
         })],
@@ -333,6 +485,11 @@ fn clear_black(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
 struct Measurement {
     max_lum: u8,
     ink_fraction: f32,
+    /// Mean normalised coverage across every pixel (Σ luminance/max ÷ N). Unlike
+    /// `ink_fraction`'s 50%-threshold count, this integrates the *partial*-
+    /// coverage AA-edge pixels — exactly the region the per-polarity gamma
+    /// transfer acts on — so it is the continuous stroke-weight-parity metric.
+    ink_mass: f32,
     /// The widest AA ramp (physical px) found on any glyph edge in the
     /// image. Taking the MAX rather than a single "widest run" avoids being
     /// fooled by a run whose boundary happens to land on an exact pixel
@@ -344,14 +501,30 @@ fn measure(pixels: &[u8], width: u32, height: u32) -> Measurement {
     let max_lum = global_max_luminance(pixels, width, height);
     let max_f = f32::from(max_lum);
     let ink_fraction = ink_fraction(pixels, width, height, max_f);
+    let ink_mass = ink_mass(pixels, width, height, max_f);
     let softest_ramp_px = (max_f >= 1.0)
         .then(|| softest_edge_ramp(pixels, width, height, max_f))
         .flatten();
     Measurement {
         max_lum,
         ink_fraction,
+        ink_mass,
         softest_ramp_px,
     }
+}
+
+/// Mean normalised luminance over every pixel — the total ink "mass", including
+/// partial-coverage AA-edge pixels. `0.0` for an empty frame.
+fn ink_mass(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> f32 {
+    if max_lum < 1.0 {
+        return 0.0;
+    }
+    let total = (width * height) as f32;
+    let sum: f32 = (0..height)
+        .flat_map(|y| (0..width).map(move |x| (x, y)))
+        .map(|(x, y)| f32::from(luminance(pixels, width, x, y)) / max_lum)
+        .sum();
+    sum / total
 }
 
 // Text is achromatic; the R channel alone carries luminance.

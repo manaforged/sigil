@@ -26,7 +26,7 @@ use crate::tree_root::TreeRoot;
 
 mod event_wiring;
 
-use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface};
+use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime};
 
 /// Launch a sigil app.
 ///
@@ -66,6 +66,10 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     layout_for_scale(&mut cx, root, &mut layout, Scale::ONE, logical_size).map_err(Error::new)?;
 
     let mut router = EventRouter::new();
+    // W5-A11Y (DR-050 §1) — clone the inbound `ActionRequest` receiver
+    // before `shell` is moved into `Shell::run` below; the frame loop
+    // drains it every frame via `drain_a11y_actions`.
+    let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = WgpuRenderer::new()?;
     let mut surface: Option<WgpuSurface> = None;
     let mut viewport = (logical_size.width, logical_size.height);
@@ -112,6 +116,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                 viewport: &mut viewport,
                 exit_requested: &mut exit_requested,
                 async_rt: &mut async_rt,
+                a11y_action_rx: &a11y_action_rx,
             });
         })
         .map_err(Error::new)?;
@@ -158,6 +163,9 @@ struct FrameCtx<'a> {
     /// G5 (DR-048 §5) — pulled from for `pump_completions_into_reactive`
     /// at frame start, before `Runtime::begin_effect`.
     async_rt: &'a mut AsyncRuntime,
+    /// W5-A11Y (DR-050 §4) — inbound AT-initiated `ActionRequest`s,
+    /// drained in `drain_events` and routed via `EventRouter`.
+    a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
 }
 
 fn frame_once(ctx: FrameCtx<'_>) {
@@ -174,6 +182,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
         viewport,
         exit_requested,
         async_rt,
+        a11y_action_rx,
     } = ctx;
 
     // G5 (DR-048 §5) — forward any worker-thread completion callbacks
@@ -209,19 +218,14 @@ fn frame_once(ctx: FrameCtx<'_>) {
         viewport,
     });
     // Drain input events during the EFFECT phase — symmetric with the
-    // `pump_completions_into_reactive` hoist above, and what this frame
-    // driver's own docs already describe ("Effect phase brackets every
-    // reactive write produced during the frame: drain_events runs router
-    // handlers that call signal.set"). Router handlers fire here
-    // (pointer_down → signal.set, key input → draft.set, Send →
+    // `pump_completions_into_reactive` hoist above. Router handlers fire
+    // here (pointer_down → signal.set, key input → draft.set, Send →
     // entity.update); those writes are legal in Effect and are now
-    // produced BEFORE begin_layout drains observers to fixpoint. That
-    // makes a click/keystroke visible in THIS frame's layout + paint
-    // instead of stalling under ControlFlow::Wait until the next
-    // unrelated OS event (the previous order drained input *after*
-    // begin_layout, so every discrete interaction rendered one event
-    // late). Hit-testing uses the layout the user actually saw — the
-    // previous frame's, recomputed just below.
+    // produced BEFORE begin_layout drains observers to fixpoint, so a
+    // click/keystroke is visible in THIS frame's layout + paint instead of
+    // stalling under ControlFlow::Wait until the next unrelated OS event.
+    // Hit-testing uses the layout the user actually saw — the previous
+    // frame's, recomputed just below.
     drain_events(DrainCtx {
         shell,
         cx,
@@ -234,9 +238,6 @@ fn frame_once(ctx: FrameCtx<'_>) {
         config,
         exit_requested,
     });
-    if *exit_requested {
-        shell.request_exit();
-    }
     // Layout phase: recompute Taffy boxes, now reflecting the reactive
     // writes drained above (children_reactive rebuilds, selection tints,
     // new chat bubbles). Writes during this phase still invalidate the
@@ -244,17 +245,20 @@ fn frame_once(ctx: FrameCtx<'_>) {
     Runtime::begin_layout();
     let logical = logical_size_from_viewport(*viewport);
     recompute_layout(cx, root, layout, cx.scale(), logical);
+    // AT action validation needs THIS frame's fresh layout/scopes, not
+    // last frame's (RC-focus finding, round 2) — see
+    // `event_wiring::drain_a11y_actions`'s own doc comment. Drain before
+    // publish so a Focus action's effect (a plain field write) is
+    // visible in this frame's tree too.
+    event_wiring::drain_a11y_actions(a11y_action_rx, cx, router, layout);
+    // IME sync reads focus state — after the action drain, so an
+    // AT-initiated focus move updates set_ime_allowed the same frame.
+    sync_ime(shell, window_handle, cx, layout, router);
     Runtime::begin_paint();
-    // Change-gate: skip scene emit + GPU submit + present (the vsync block) when
-    // nothing visible changed — the dominant cost of a bare cursor-move. Read
-    // after begin_layout's observer fixpoint; reactive writes and structural
-    // changes (ensure_surface, resize) both flag `frame_dirty` at their source.
-    // `take_force_paint` honours OS-driven redraws (first-show / un-occlude /
-    // resize) that carry no signal write — skipping those shows a gray drawable.
-    // Layout recompute above is a cheap Taffy cache-hit when clean, so it stays.
-    if shell.take_force_paint() || Runtime::frame_dirty() {
-        paint(cx, root, renderer, surface, *viewport);
-    }
+    // Change-gate + a11y publish share this dirty read (RC-focus finding 1).
+    let dirty = shell.take_force_paint() || Runtime::frame_dirty();
+    let _ = dirty.then(|| paint(cx, root, renderer, surface, *viewport));
+    event_wiring::publish_a11y(shell, cx, router, layout, dirty);
     // end_frame transitions Paint → Effect (replay deferred writes) →
     // Idle so the next iteration enters begin_effect from a clean
     // resting state.

@@ -14,6 +14,12 @@ description = "Owned text engine for Sigil (skrifa + unicode-segmentation)."
 doctest = false
 
 [features]
+default = ["shaping-complex"]
+# HarfRust-backed shaping (kerning, ligatures, marks) for every
+# script — default-on since Wave 4. Disable with
+# `default-features = false` to fall back to the naive skrifa-only
+# path (no kerning/ligatures); a `shaping-minimal` feature name is
+# reserved if that path needs promoting to its own opt-in surface.
 shaping-complex = ["dep:harfrust"]
 
 [dependencies]

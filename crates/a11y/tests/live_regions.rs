@@ -22,7 +22,11 @@
 // Workspace-shape integration-test dev-deps that aren't named here.
 // `sigil-reactive` is exercised through the modal's effect machinery
 // and through `Runtime::scope`, but we don't name it directly.
+// `crossbeam-channel` backs W5-A11Y's `AccessKitBridge`, unused by this
+// file's bounds-free `tree(&cx, None, &|_| None)` calls.
+use crossbeam_channel as _;
 use hal as _;
+use layout as _;
 use reactive as _;
 
 use a11y::tree;
@@ -71,7 +75,7 @@ fn modal_open_announces_polite_in_accesskit_tree() {
 
         // Now snapshot the AccessKit projection — the full pipeline
         // including the mapping-layer `set_live` + `set_label`.
-        let update = tree(&cx, None);
+        let update = tree(&cx, None, &|_| None);
         let (_, live_node) = find_live_node(&update)
             .expect("modal rising edge must surface a live-region node in the AccessKit tree");
 
@@ -97,7 +101,7 @@ fn multiple_announces_overwrite_label_polite() {
     cx.announce("foo");
     cx.announce("bar");
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     assert_eq!(
         count_live_nodes(&update),
         1,
@@ -126,7 +130,7 @@ fn no_announce_no_live_region_node() {
     let mut cx = Cx::new_root();
     let _ = cx.add(container().label("just a button"));
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     assert!(
         !update.nodes.is_empty(),
         "sanity: author widget must still appear in the projection"
@@ -147,7 +151,7 @@ fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
     let mut cx = Cx::new_root();
     cx.announce_assertive("Connection lost");
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     let (_, live_node) = find_live_node(&update)
         .expect("announce_assertive must create a live-region node visible in projection");
     assert_eq!(

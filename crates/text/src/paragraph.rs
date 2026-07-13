@@ -91,20 +91,35 @@ impl LayoutLine {
     }
 
     /// Stamp the baseline at `baseline_y` measured from the top of
-    /// the paragraph.
-    pub(crate) fn set_baseline_to(&mut self, line_height: f32) {
+    /// the paragraph, from the paragraph strut (`ascent`/`descent`
+    /// both positive, px).
+    ///
+    /// CSS half-leading model: the strut's ascent+descent block is
+    /// centred in the line box, so the baseline sits
+    /// `(lh − (ascent + descent)) / 2 + ascent` below the line top.
+    /// A degenerate strut (broken face metrics) falls back to an
+    /// 80%-of-line-box baseline.
+    pub(crate) fn set_baseline_to(&mut self, line_height: f32, ascent: f32, descent: f32) {
         let lh = line_height.max(1.0);
         self.height = lh;
-        // Baseline ≈ 80% down the line box — matches Parley default.
+        let offset = if ascent > 0.0 {
+            (lh - (ascent + descent)).mul_add(0.5, ascent)
+        } else {
+            lh * 0.8
+        };
         // Precision loss on line_index → f32 is fine: line counts > 2^23
         // are unreachable in practice for a single paragraph.
         #[allow(clippy::cast_precision_loss)]
         let idx = self.line_index as f32;
-        self.baseline_y = idx.mul_add(lh, lh * 0.8);
+        self.baseline_y = idx.mul_add(lh, offset);
     }
 
     fn line_top(&self) -> f32 {
-        self.height.mul_add(-0.8, self.baseline_y)
+        // Lines are uniform-height boxes stacked from the paragraph
+        // top — independent of where the baseline falls inside them.
+        #[allow(clippy::cast_precision_loss)]
+        let idx = self.line_index as f32;
+        idx * self.height
     }
 
     fn line_bottom(&self) -> f32 {

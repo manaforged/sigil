@@ -1,8 +1,11 @@
-//! `HarfRust`-backed complex-script shaping (G1.6).
+//! `HarfRust`-backed shaping (G1.6; default shaper since Wave 4).
 //!
-//! Gated behind the `shaping-complex` cargo feature. Owns the
-//! Arabic / Hebrew / Devanagari / Khmer / Thai / Lao path; everything
-//! else stays on the owned skrifa shaper in `shaper.rs`.
+//! Gated behind the `shaping-complex` cargo feature, which is on by
+//! default. Shapes every script `Shaper::shape` dispatches to it —
+//! Latin/Greek/Cyrillic get kerning, ligatures, and mark positioning
+//! in addition to the Arabic/Hebrew/Devanagari/Khmer/Thai/Lao joining
+//! and reordering it always handled. The owned skrifa shaper in
+//! `shaper.rs` is the fallback for when this returns `None`.
 //!
 //! `HarfRust` shapes in font design units (`units_per_em`-relative);
 //! we scale `x_advance` / `x_offset` to user pixels using the
@@ -24,7 +27,7 @@ use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
 use crate::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
-use crate::shaper::{Font, Script, Style, TextSegment};
+use crate::shaper::{Font, Script, Style, TextSegment, classify_segment_script};
 
 /// Shape `segment` via `HarfRust` under `style`.
 ///
@@ -43,7 +46,7 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
         .point_size(Some(style.size_px))
         .build();
 
-    let script = classify_codepoint(segment.text.chars().next()?);
+    let script = classify_segment_script(segment);
     let hr_script = map_script(script);
     let direction = if segment.level & 1 == 1 {
         Direction::RightToLeft
@@ -79,18 +82,27 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
 }
 
 /// Map our internal `Script` to `HarfRust`'s iso15924 `Script`.
+///
+/// Since Wave 4 this feeds every segment (not just the scripts that
+/// strictly need GSUB/GPOS to render) — Latin and Cjk need their own
+/// tags so `HarfRust` selects the font's per-script `kern`/`liga`
+/// lookups (many fonts key those under `latn`/`hani`, not `DFLT`).
 const fn map_script(script: Script) -> HrScript {
     match script {
+        Script::Latin => hr_script::LATIN,
+        // ponytail: Han tag for all CJK; Hiragana/Katakana/Hangul get
+        // their own iso15924 tags too, but the owned Script enum
+        // doesn't split them out yet — split when vertical/CJK-
+        // specific GSUB features need it.
+        Script::Cjk => hr_script::HAN,
         Script::Arabic => hr_script::ARABIC,
         Script::Hebrew => hr_script::HEBREW,
         Script::Devanagari => hr_script::DEVANAGARI,
         Script::Khmer => hr_script::KHMER,
         Script::Thai => hr_script::THAI,
         Script::Lao => hr_script::LAO,
-        // Owned shaper handles the rest; we only land here for
-        // complex scripts. Common is a defensible default for
-        // `HarfRust` to inspect text-derived properties itself.
-        _ => hr_script::COMMON,
+        // Common/Other: let `HarfRust` inspect text-derived properties.
+        Script::Common | Script::Other => hr_script::COMMON,
     }
 }
 
@@ -156,29 +168,6 @@ fn build_glyph_run(
     }
 }
 
-/// Single-codepoint classification used only inside this module to
-/// pick the HarfBuzz `Script` tag for the segment. The public,
-/// caller-facing classifier lives in `shaper.rs` and operates on
-/// whole segments.
 #[cfg(test)]
 #[path = "shaping_complex/tests.rs"]
 mod tests;
-
-fn classify_codepoint(ch: char) -> Script {
-    use unicode_script::{Script as UScript, UnicodeScript};
-    match ch.script() {
-        UScript::Arabic => Script::Arabic,
-        UScript::Hebrew => Script::Hebrew,
-        UScript::Devanagari => Script::Devanagari,
-        UScript::Khmer => Script::Khmer,
-        UScript::Thai => Script::Thai,
-        UScript::Lao => Script::Lao,
-        UScript::Han
-        | UScript::Hiragana
-        | UScript::Katakana
-        | UScript::Hangul
-        | UScript::Bopomofo => Script::Cjk,
-        UScript::Common | UScript::Inherited | UScript::Unknown => Script::Common,
-        _ => Script::Other,
-    }
-}

@@ -13,8 +13,14 @@ use kernel::{Cx, container, fragment};
 // named directly in this test file.
 use hal as _;
 // sigil-reactive (Wave 5.2 reactive_flow.rs dev-dep) + sigil
-// (Phase 1.3.C live_regions.rs dev-dep) — every integration test
-// pulls all dev-deps, so we alias to silence `unused_crate_dependencies`.
+// (Phase 1.3.C live_regions.rs dev-dep) + crossbeam-channel (W5-A11Y
+// AccessKitBridge's action-request channel, unused by this file's
+// bounds-free `tree(&cx, None, &|_| None)` calls) — every integration
+// test pulls all dev-deps, so we alias to silence
+// `unused_crate_dependencies`. `layout` (RC-focus finding 1's
+// `bounds_projection.rs` dev-dep) is unused here too.
+use crossbeam_channel as _;
+use layout as _;
 use reactive as _;
 use sigil as _;
 
@@ -23,7 +29,7 @@ fn button_role_and_name() {
     let mut cx = Cx::new_root();
     let _ = container().role(Role::Button).label("Save").add(&mut cx);
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
     assert_eq!(text, "[Role=Button, Name=\"Save\", Focused=true]\n");
@@ -37,7 +43,7 @@ fn checkbox_role_surfaces() {
         .label("Accept terms")
         .add(&mut cx);
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
     assert_eq!(
@@ -51,7 +57,7 @@ fn generic_container_default_role() {
     let mut cx = Cx::new_root();
     let _ = container().add(&mut cx);
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
     assert_eq!(text, "[Role=GenericContainer, Focused=true]\n");
@@ -66,7 +72,7 @@ fn fragment_reparents_children_in_projection() {
         .child(container().role(Role::Button).label("Inner"))
         .add(&mut cx);
 
-    let update = tree(&cx, None);
+    let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
     assert_eq!(text, "[Role=Button, Name=\"Inner\", Focused=true]\n");

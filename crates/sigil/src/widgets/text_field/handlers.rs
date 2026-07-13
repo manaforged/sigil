@@ -10,6 +10,7 @@ use style::TextStyle;
 use super::super::shared::disabled_now;
 use super::super::text_edit::TextEdit;
 use super::builder::{Clipboard, TextChange};
+use super::ime::ImeState;
 
 pub(super) struct NoopClipboard;
 
@@ -41,6 +42,9 @@ pub(super) struct TextFieldRuntime {
     pub(super) caret: Signal<usize>,
     /// Selection anchor mirrored from the buffer (`None` = collapsed caret).
     pub(super) selection: Signal<Option<usize>>,
+    /// Widget-local IME composition state (preedit text + caret anchor).
+    /// See `super::ime` — DR-051's "widget-local signal" default.
+    pub(super) ime: ImeState,
 }
 
 impl TextFieldRuntime {
@@ -70,6 +74,7 @@ impl TextFieldRuntime {
             column,
             caret,
             selection,
+            ime: ImeState::new(),
         }
     }
 

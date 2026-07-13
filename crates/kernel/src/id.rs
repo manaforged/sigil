@@ -1,6 +1,6 @@
 //! Stable node identity.
 
-use slotmap::{DefaultKey, Key};
+use slotmap::{DefaultKey, Key, KeyData};
 
 /// Stable, generational identity for a node in a [`Cx`](crate::Cx).
 ///
@@ -19,6 +19,16 @@ impl NodeId {
     #[must_use]
     pub fn to_accesskit(self) -> accesskit::NodeId {
         accesskit::NodeId(self.0.data().as_ffi())
+    }
+
+    /// Reconstruct a `NodeId` from AccessKit's `u64`-backed node identity.
+    ///
+    /// Inverse of [`Self::to_accesskit`]. Used when an inbound
+    /// `accesskit::ActionRequest::target_node` needs to be resolved back
+    /// to the kernel node that authored it (W5-A11Y, DR-050 §4).
+    #[must_use]
+    pub fn from_accesskit(id: accesskit::NodeId) -> Self {
+        Self(DefaultKey::from(KeyData::from_ffi(id.0)))
     }
 
     /// Slotmap key backing this node identity.

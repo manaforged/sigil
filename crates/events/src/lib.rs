@@ -22,6 +22,7 @@ mod builder_ext;
 mod focus;
 mod handlers;
 mod hit_test;
+mod ime_handlers;
 mod pointer_dispatch;
 pub mod prelude;
 mod router;
@@ -30,3 +31,14 @@ pub use builder_ext::NodeEventsExt;
 pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source};
 pub use handlers::EventHandlers;
 pub use router::EventRouter;
+
+/// Synthesize a click on `target` by node id.
+///
+/// The AT-initiated `accesskit::Action::Click` dispatch seam (DR-050
+/// §4). Free function rather than an `EventRouter` method: the
+/// dispatch is stateless (reads `cx`/`layout`, invokes handlers) and
+/// doesn't touch router state, so callers (e.g. `sigil-app`'s a11y
+/// action drain) don't need a router borrow for it.
+pub fn invoke_node(cx: &kernel::Cx, layout: &layout::LayoutEngine, target: kernel::NodeId) {
+    pointer_dispatch::invoke_node(cx, layout, target);
+}

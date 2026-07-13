@@ -9,7 +9,8 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use hal::{
-    ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase,
 };
 use kernel::{Cx, NodeId};
 use layout::LayoutEngine;
@@ -87,6 +88,39 @@ pub(crate) fn pointer_targets(layout: &LayoutEngine, path: &NodePath) -> Pointer
         targets.push(PointerTarget { id, origin });
     }
     targets
+}
+
+/// Synthesize a click on `target`, dispatched directly to that node
+/// rather than via hit-testing a screen position (DR-050 §4,
+/// `EventRouter::invoke_node`).
+///
+/// AT-initiated `accesskit::Action::Click` requests name a node id, not
+/// a pointer coordinate. The Enter → Down → Up → Leave sequence mirrors
+/// what a real mouse click produces so `InteractionState::release_pointer`'s
+/// hover+press gate (every button/checkbox/etc. widget's activation
+/// guard) sees the same state a physical click would — a bare Down+Up
+/// leaves `hovered` false and silently no-ops the activation.
+pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
+    let target = pointer_target_for_node(cx, layout, target);
+    for phase in [
+        PointerPhase::Enter,
+        PointerPhase::Down,
+        PointerPhase::Up,
+        PointerPhase::Leave,
+    ] {
+        let button =
+            matches!(phase, PointerPhase::Down | PointerPhase::Up).then_some(MouseButton::Left);
+        let mut event = PointerEvent::new(PointerEventInit {
+            position: target.origin,
+            delta: Point::new(0.0, 0.0),
+            kind: PointerKind::Mouse,
+            button,
+            buttons: MouseButtons::empty(),
+            modifiers: ModifiersState::empty(),
+            phase,
+        });
+        dispatch_pointer_target(cx, target, &mut event, target.origin);
+    }
 }
 
 pub(crate) fn pointer_target_for_node(

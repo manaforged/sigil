@@ -8,6 +8,7 @@ use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
+use crate::raster_paint::RasterTextPipeline;
 use crate::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
@@ -42,6 +43,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) fill_pipelines: &'a mut Vec<FillPipeline>,
     pub(crate) shadow_pipelines: &'a mut Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: &'a mut Vec<SlugTextPipeline>,
+    pub(crate) raster_pipelines: &'a mut Vec<RasterTextPipeline>,
     pub(crate) sprite_pipelines: &'a mut Vec<SpritePipeline>,
     pub(crate) decoration_pipelines: &'a mut Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
@@ -151,6 +153,12 @@ impl<'a> Walk<'a> {
 
     pub(super) fn current_transform(&self) -> Transform {
         self.transforms.last().copied().unwrap_or(IDENTITY)
+    }
+
+    /// `true` when no transform is active — the seam the raster text path
+    /// (DR-055) uses to stay vector-only under rotation/scale/skew.
+    pub(super) fn is_identity_transform(&self) -> bool {
+        self.current_transform() == IDENTITY
     }
 
     pub(super) fn current_opacity(&self) -> f32 {

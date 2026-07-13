@@ -15,6 +15,12 @@ doctest = false
 accesskit = { workspace = true }
 hal = { workspace = true }
 kernel = { workspace = true }
+# W5-A11Y (DR-050 §1) — `AccessKitBridge::take_action` drains the
+# inbound `ActionRequest` channel the shell-side winit adapter feeds
+# (`crates/shell/src/shell/a11y.rs`). Same channel primitive already
+# used workspace-wide (`crates/hal/src/a11y.rs`'s doc comment
+# anticipated this exact shape).
+crossbeam-channel = { workspace = true }
 
 [dev-dependencies]
 # W5.2 — `reactive_flow` integration test drives `A11yObserver` +
@@ -25,6 +31,12 @@ reactive = { workspace = true }
 # projection. Dev-dep only — no cycle, since `sigil` does not depend on
 # `sigil-a11y`.
 sigil = { workspace = true }
+# RC-focus adversarial finding 1 — `bounds_projection.rs` drives a real
+# `LayoutEngine::compute` pass (not injected bounds) to prove a
+# signal-moved/resized node's projected bounds reflect the FRESH layout,
+# not a stale one. Dev-dep only — production `mapping.rs` stays decoupled
+# from `sigil-layout` (see `BoundsLookup`'s own doc comment).
+layout = { workspace = true }
 
 [lints]
 workspace = true

@@ -33,6 +33,7 @@ pollster = { workspace = true }
 raw-window-handle = { workspace = true }
 bytemuck = { workspace = true }
 skrifa = { workspace = true }
+zeno = { workspace = true }
 smallvec = { workspace = true }
 half = { workspace = true }
 

@@ -13,11 +13,14 @@ use std::sync::{
 use std::time::Instant;
 
 use hal::{
-    LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Scale, Shell,
-    ShellEvent, WindowEvent as SigilWindowEvent,
+    LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Rect, Scale,
+    Shell, ShellEvent, WindowEvent as SigilWindowEvent,
 };
 use winit::{
-    dpi::{LogicalSize as WinitLogicalSize, PhysicalSize as WinitPhysicalSize, Size as WinitSize},
+    dpi::{
+        LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize,
+        PhysicalSize as WinitPhysicalSize, Size as WinitSize,
+    },
     event::WindowEvent as WinitWindowEvent,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     window::{Window, WindowAttributes, WindowId},
@@ -30,6 +33,7 @@ use crate::{
     waker::{WakeEvent, WinitWaker},
 };
 
+mod a11y;
 mod events;
 
 /// Pending window specification recorded before the event loop is
@@ -60,6 +64,14 @@ pub(crate) type WakeHook = Arc<dyn Fn() + Send + Sync + 'static>;
 /// `reactive::next_interval_deadline()` to the event loop.
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
+/// One window's AccessKit adapter plus its latest-published-tree cache
+/// (RC-focus adversarial finding 2 — see `shell/a11y.rs`).
+type A11yAdapterEntry = (
+    WinitWindowHandle,
+    accesskit_winit::Adapter,
+    Arc<Mutex<Option<accesskit::TreeUpdate>>>,
+);
+
 /// winit-backed [`Shell`] implementation.
 pub struct WinitShell {
     event_loop: Option<EventLoop<WakeEvent>>,
@@ -84,6 +96,15 @@ pub struct WinitShell {
     /// drawable needs pixels or it shows an unpainted (gray) buffer. Consumed
     /// once per frame via [`Self::take_force_paint`].
     force_paint: bool,
+    /// One AccessKit adapter (+ its latest-published-tree cache, RC-focus
+    /// finding 2) per materialised window (DR-050 §1). See `shell/a11y.rs`.
+    a11y_adapters: Vec<A11yAdapterEntry>,
+    /// Send half of the AT-initiated action-request channel, cloned into
+    /// every adapter's `ActionHandler` at construction time.
+    a11y_action_tx: crossbeam_channel::Sender<accesskit::ActionRequest>,
+    /// Receive half; the app's frame loop clones this once via
+    /// [`Self::a11y_action_receiver`] and drains it every frame.
+    a11y_action_rx: crossbeam_channel::Receiver<accesskit::ActionRequest>,
 }
 
 impl Drop for WinitShell {
@@ -105,6 +126,7 @@ impl WinitShell {
     pub fn new() -> Result<Self, ShellError> {
         let event_loop = EventLoop::<WakeEvent>::with_user_event().build()?;
         let proxy = Arc::new(Mutex::new(event_loop.create_proxy()));
+        let (a11y_action_tx, a11y_action_rx) = crossbeam_channel::unbounded();
         Ok(Self {
             event_loop: Some(event_loop),
             proxy,
@@ -123,6 +145,9 @@ impl WinitShell {
             deadline_hook: None,
             exit_requested: false,
             force_paint: false,
+            a11y_adapters: Vec::new(),
+            a11y_action_tx,
+            a11y_action_rx,
         })
     }
 
@@ -238,11 +263,16 @@ impl WinitShell {
                     f64::from(size.height),
                 )),
             };
+            // Hidden until the AccessKit adapter is attached below —
+            // `accesskit_winit::Adapter::with_direct_handlers` panics if
+            // constructed against an already-visible window.
             let attrs = WindowAttributes::default()
                 .with_title(spec.title)
-                .with_inner_size(size);
+                .with_inner_size(size)
+                .with_visible(false);
             match active.create_window(attrs) {
                 Ok(window) => {
+                    self.install_a11y_adapter(active, spec.handle, &window);
                     self.window_scales
                         .push((spec.handle, scale_from_f64(window.scale_factor())));
                     self.windows.push((spec.handle, Arc::new(window)));
@@ -341,6 +371,27 @@ impl Shell for WinitShell {
 
     fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
         std::mem::take(&mut self.events).into_iter()
+    }
+
+    fn set_ime_allowed(&mut self, window: &Self::Window, allowed: bool) -> Result<(), Self::Error> {
+        if let Some(window) = self.window_for(*window) {
+            window.set_ime_allowed(allowed);
+        }
+        Ok(())
+    }
+
+    fn set_ime_cursor_area(
+        &mut self,
+        window: &Self::Window,
+        rect: Rect,
+    ) -> Result<(), Self::Error> {
+        if let Some(window) = self.window_for(*window) {
+            window.set_ime_cursor_area(
+                WinitLogicalPosition::new(f64::from(rect.origin.x), f64::from(rect.origin.y)),
+                WinitLogicalSize::new(f64::from(rect.width), f64::from(rect.height)),
+            );
+        }
+        Ok(())
     }
 
     fn run<F>(mut self, frame: F) -> Result<(), Self::Error>

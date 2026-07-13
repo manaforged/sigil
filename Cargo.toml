@@ -142,6 +142,9 @@ bytemuck = { version = "1", features = ["derive"] }
 half = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
 skrifa = "0.40"
+# CPU AA path rasterizer for the Wave-3 hinted small-text atlas — already
+# in-graph transitively (cosmic-text -> swash -> zeno), zero-dep crate.
+zeno = "0.3"
 smallvec = "1"
 rayon = "1.10"
 phf = { version = "0.11", features = ["macros"] }
@@ -150,6 +153,27 @@ slotmap = "1"
 ahash = "0.8"
 tracing = "0.1"
 accesskit = "0.24"
+# W5-A11Y (DR-050 §1) — the winit-side platform adapter half of the
+# AccessKit bridge. `tokio` (not the default `async-io`) matches DR-008's
+# zbus-panic workaround already assumed for the bare `accesskit` dep on
+# Linux; sigil's own tokio runtime (`sigil-async`) already exists so this
+# adds no new async-executor surface. `accesskit_unix` keeps the Linux
+# AT-SPI2 backend available (it is opt-out only via `default-features`,
+# there is no separate always-on gate). `winit/x11` + `winit/wayland`
+# (accesskit_winit's own defaults) are NOT re-requested here — Cargo
+# can't accept a transitive `dep/feature` string from a downstream
+# manifest, only from the crate that owns the `[features]` table; our
+# own direct `winit` dependency below already turns those backends on
+# via default features, and Cargo's feature unification carries that
+# into accesskit_winit's copy of the same `winit` crate. Pinned 0.32 —
+# matches the `accesskit = "0.24"` line above per accesskit_winit's own
+# dependency manifest (verified against the vendored crate source, not
+# web-fetched).
+accesskit_winit = { version = "0.32", default-features = false, features = [
+    "accesskit_unix",
+    "tokio",
+    "rwh_06",
+] }
 keyboard-types = { version = "0.8.3", default-features = false }
 smol_str = { version = "0.3.6", default-features = false }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros"] }

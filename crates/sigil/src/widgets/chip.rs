@@ -8,18 +8,19 @@
 //! ## Theme token mapping (DS1 scale tokens)
 //!
 //! Each [`ChipTone`] maps to a Radix-style background/foreground pair on
-//! its role scale — step 3 for the background (light-tinted), step 11
-//! for the text (high-contrast same-hue). This convention keeps status
-//! chips legible against any theme surface and makes the success / warn
-//! / error chips visually distinct without crossing into the saturated
-//! step-9 brand color (reserved for solid buttons).
+//! its role scale — step 3 for the background (light-tinted), and the
+//! darkest same-hue text step clearing WCAG AA 4.5:1 against it (see
+//! [`ChipTone::class`]). This convention keeps status chips legible
+//! against any theme surface and makes the success / warn / error chips
+//! visually distinct without crossing into the saturated step-9 brand
+//! color (reserved for solid buttons).
 //!
 //! | `ChipTone` | Background    | Foreground         |
 //! |------------|---------------|--------------------|
 //! | `Neutral`  | `bg-gray-3`   | `text-gray-12`     |
-//! | `Info`     | `bg-info-3`   | `text-info-11`     |
-//! | `Success`  | `bg-success-3`| `text-success-11`  |
-//! | `Warn`     | `bg-warn-3`   | `text-warn-11`     |
+//! | `Info`     | `bg-info-3`   | `text-info-12`     |
+//! | `Success`  | `bg-success-3`| `text-success-12`  |
+//! | `Warn`     | `bg-warn-3`   | `text-warn-12`     |
 //! | `Error`    | `bg-error-3`  | `text-error-11`    |
 
 use kernel::{NodeBuilder, Role, TextContent, container, text};
@@ -44,14 +45,18 @@ pub enum ChipTone {
 
 impl ChipTone {
     /// Background + foreground utility-class fragment for this tone.
-    /// Each chip uses Radix step-3 as a soft tinted background and
-    /// step-11 as the legible same-hue text color.
+    /// Each chip uses Radix step-3 as a soft tinted background with the
+    /// darkest same-hue text step that clears WCAG AA 4.5:1 at the
+    /// chip's `text-xs` size: step-11 where it measures ≥4.5:1 against
+    /// step-3 (error 4.70:1), step-12 for the hues where step-11 falls
+    /// short (info 4.26:1, success 4.21:1, warn 4.08:1 — ui-review gate
+    /// 2026-07-12).
     const fn class(self) -> &'static str {
         match self {
             Self::Neutral => "bg-gray-3 text-gray-12",
-            Self::Info => "bg-info-3 text-info-11",
-            Self::Success => "bg-success-3 text-success-11",
-            Self::Warn => "bg-warn-3 text-warn-11",
+            Self::Info => "bg-info-3 text-info-12",
+            Self::Success => "bg-success-3 text-success-12",
+            Self::Warn => "bg-warn-3 text-warn-12",
             Self::Error => "bg-error-3 text-error-11",
         }
     }
@@ -148,6 +153,49 @@ mod tests {
             for b in &tones[i + 1..] {
                 assert_ne!(a.class(), b.class(), "{a:?} and {b:?} class collide");
             }
+        }
+    }
+
+    /// The tone pairings must HOLD WCAG AA 4.5:1, not just match token
+    /// strings — a palette change can silently reintroduce the failure
+    /// the 2026-07-12 ui-review gate caught (the reviewer adversarial finding).
+    #[test]
+    fn every_tone_clears_wcag_aa_contrast() {
+        use style::Rgba8;
+        use style::scale::ScaleRole;
+        use style::theme::Theme;
+
+        fn luminance(c: Rgba8) -> f64 {
+            let ch = |v: u8| {
+                let v = f64::from(v) / 255.0;
+                if v <= 0.039_28 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
+        }
+
+        let theme = Theme::default();
+        // (tone, role, text step) — bg is always step 3, matching
+        // `ChipTone::class`. Error stays step 11 (measures 4.70:1).
+        let cases = [
+            (ChipTone::Neutral, ScaleRole::Gray, 12),
+            (ChipTone::Info, ScaleRole::Info, 12),
+            (ChipTone::Success, ScaleRole::Success, 12),
+            (ChipTone::Warn, ScaleRole::Warn, 12),
+            (ChipTone::Error, ScaleRole::Error, 11),
+        ];
+        for (tone, role, text_step) in cases {
+            let scale = theme.scale(role);
+            let (bg, fg) = (scale.step(3), scale.step(text_step));
+            let (lb, lf) = (luminance(bg), luminance(fg));
+            let ratio = (lb.max(lf) + 0.05) / (lb.min(lf) + 0.05);
+            assert!(
+                ratio >= 4.5,
+                "{tone:?}: step-{text_step} on step-3 measures {ratio:.2}:1, below WCAG AA 4.5:1"
+            );
         }
     }
 
