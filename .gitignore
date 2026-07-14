@@ -7,3 +7,6 @@ Cargo.lock.bak
 *.swo
 .DS_Store
 .worktrees
+mutants.out/
+mutants.out.old/
+showcase/

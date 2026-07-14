@@ -702,8 +702,25 @@ impl LayoutEngine {
             if self.published_result.get(id.key()).copied() == Some(result) {
                 continue;
             }
-            let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
-            let _ = node.attach(result);
+            // Take the size binding (if any) and DROP the `cx` borrow before publishing:
+            // `Signal::set` runs dependent effects synchronously, and a `size_reactive`
+            // consumer's `children_reactive` rebuild must be free to read `cx` without
+            // colliding with this mutable borrow.
+            let size_binding = {
+                let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
+                let _ = node.attach(result);
+                node.get_extension::<crate::SizeReactive>().copied()
+            };
+            // Publish the new size to the binding. Only reached when the box changed (the
+            // dedup above), and `publish` dedups the size itself (so position-only changes
+            // are a no-op), so this is free on steady frames. The write is legal in the
+            // Layout phase (only Paint forbids writes). The dependent effect runs inline
+            // here, but its tree mutation is enqueued and flushed by the next `compute`;
+            // `frame_dirty` is set so that next frame applies the new size.
+            if let Some(sr) = size_binding {
+                let rect = result.rect();
+                sr.publish((rect.width, rect.height));
+            }
             self.published_result.insert(id.key(), result);
         }
         Ok(())

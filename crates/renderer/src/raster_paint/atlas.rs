@@ -13,12 +13,47 @@
 //! ponytail: no eviction — add LRU shelf reuse if a real app fills 2048².
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use crate::raster::{GlyphMask, RasterKey};
 
 const INITIAL_ATLAS_SIZE: u32 = 1024;
 const MAX_ATLAS_SIZE: u32 = 2048;
+
+// ---- Wave-3 D3 test hook (docs/plans/2026-07-07-text-quality-and-gap-closure.md) --
+//
+// Process-global override for the atlas's initial/max edge length, in
+// texels. `0` (the default) disables the override and falls back to the
+// real `INITIAL_ATLAS_SIZE`/`MAX_ATLAS_SIZE` constants above. Exists so an
+// integration test can force a growth-boundary or atlas-full crossing with
+// a paragraph of a few dozen glyphs instead of the ~10k a real 2048² atlas
+// would need — see `tests/raster_atlas_growth.rs`.
+static TEST_INITIAL_SIZE: AtomicU32 = AtomicU32::new(0);
+static TEST_MAX_SIZE: AtomicU32 = AtomicU32::new(0);
+
+/// Set (or clear, with `(0, 0)`) the test-only atlas size override. This is
+/// a process global: callers must serialize (`--test-threads=1`) and reset
+/// to `(0, 0)` after use (a `Drop` guard in the test is the safe pattern —
+/// see `tests/raster_atlas_growth.rs`) so later tests see production sizes.
+#[doc(hidden)]
+pub fn set_test_atlas_size_override(initial: u32, max: u32) {
+    TEST_INITIAL_SIZE.store(initial, Ordering::Relaxed);
+    TEST_MAX_SIZE.store(max, Ordering::Relaxed);
+}
+
+fn initial_atlas_size() -> u32 {
+    match TEST_INITIAL_SIZE.load(Ordering::Relaxed) {
+        0 => INITIAL_ATLAS_SIZE,
+        v => v,
+    }
+}
+
+fn max_atlas_size() -> u32 {
+    match TEST_MAX_SIZE.load(Ordering::Relaxed) {
+        0 => MAX_ATLAS_SIZE,
+        v => v,
+    }
+}
 
 /// Resolved atlas placement for one cached glyph mask: texel-space rect
 /// plus the pixel geometry the draw path needs to size and offset the quad.
@@ -72,11 +107,12 @@ pub(super) struct RasterAtlas {
 
 impl RasterAtlas {
     pub(super) fn new(device: &wgpu::Device) -> Self {
-        let (texture, view) = create_texture(device, INITIAL_ATLAS_SIZE);
+        let size = initial_atlas_size();
+        let (texture, view) = create_texture(device, size);
         Self {
             texture,
             view,
-            size: INITIAL_ATLAS_SIZE,
+            size,
             cursor_x: 0,
             cursor_y: 0,
             shelf_height: 0,
@@ -185,11 +221,12 @@ impl RasterAtlas {
         Some(rect)
     }
 
-    /// Recreate the texture at double size (capped at [`MAX_ATLAS_SIZE`]) and
+    /// Recreate the texture at double size (capped at [`MAX_ATLAS_SIZE`], or
+    /// the test override — see [`set_test_atlas_size_override`]) and
     /// re-upload every cached mask. Existing pixel rects stay valid — only
     /// the canvas grew — so shelf-packer cursor state is untouched.
     fn grow(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let new_size = (self.size * 2).min(MAX_ATLAS_SIZE);
+        let new_size = (self.size * 2).min(max_atlas_size());
         let (texture, view) = create_texture(device, new_size);
         for cached in self.cache.values() {
             upload_rows(queue, &texture, cached.rect, &cached.data);

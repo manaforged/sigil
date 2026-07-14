@@ -1,14 +1,15 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
 use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use kernel::NodeBuilder;
-use reactive::Signal;
+use reactive::{Signal, batch, signal};
 
 use super::super::shared::disabled_now;
 use super::super::text_field::Clipboard;
 use super::TextEdit;
 use super::builder::TextChange;
+use super::ime::ImeState;
 
 pub(super) struct NoopClipboard;
 
@@ -28,6 +29,15 @@ pub(super) struct TextEditRuntime {
     pub(super) submit: TextChange,
     pub(super) clipboard: Rc<dyn Clipboard>,
     pub(super) caret_visible: Signal<bool>,
+    /// Caret byte offset mirrored from the buffer — used to splice the
+    /// IME preedit span into the displayed text and to compute the
+    /// published IME caret anchor. `text_edit` has no visible caret/
+    /// selection overlay yet (unlike `text_field`); this mirror exists
+    /// solely for IME, not general caret rendering.
+    pub(super) caret: Signal<usize>,
+    /// Widget-local IME composition state (preedit text + caret
+    /// anchor). See `super::ime`.
+    pub(super) ime: ImeState,
 }
 
 impl TextEditRuntime {
@@ -40,19 +50,52 @@ impl TextEditRuntime {
         clipboard: Rc<dyn Clipboard>,
         caret_visible: Signal<bool>,
     ) -> Self {
+        let edit = TextEdit::new(value.peek());
+        let caret = signal(edit.caret());
         Self {
             value,
             disabled,
-            edit: Rc::new(RefCell::new(TextEdit::new(value.peek()))),
+            edit: Rc::new(RefCell::new(edit)),
             change,
             submit,
             clipboard,
             caret_visible,
+            caret,
+            ime: ImeState::new(),
         }
     }
 
     pub(super) fn disabled(&self) -> bool {
         disabled_now(self.disabled)
+    }
+
+    /// Borrow the internal edit buffer for mutation, first
+    /// resynchronizing it against the bound `value` signal if the app
+    /// wrote to `value` directly since the last widget-originated
+    /// mutation (external doc replace, host-driven undo, etc.) —
+    /// otherwise a stale internal buffer would silently clobber that
+    /// external write on the next keystroke or IME commit. The
+    /// equality check inside `sync_external` makes this a no-op on
+    /// our own writes (a widget-originated mutation always leaves
+    /// `edit.as_str() == value.peek()` immediately after `commit`),
+    /// so no separate origin-tracking flag is needed.
+    pub(super) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
+        let mut edit = self.edit.borrow_mut();
+        edit.sync_external(self.value.peek());
+        edit
+    }
+}
+
+/// Publish post-mutation state: keep the caret visible and mirror the
+/// buffer's caret into the render/IME-anchor signal. Mirrors
+/// `text_field::handlers::commit`, minus selection/scroll — `text_edit`
+/// has no selection overlay or scroll signal to keep in sync (pre-
+/// existing gap, tracked in docs/followups.md; this dispatch only
+/// wires IME, not that).
+pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
+    runtime.caret_visible.set(true);
+    if runtime.caret.peek() != state.caret() {
+        runtime.caret.set(state.caret());
     }
 }
 
@@ -187,7 +230,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     let Some(text) = event.text.as_deref().filter(|text| is_printable(text)) else {
         return;
     };
-    let mut edit = runtime.edit.borrow_mut();
+    let mut edit = runtime.edit_mut();
     edit.insert_str(text);
     sync_value(runtime, &edit);
     event.stop_propagation();
@@ -202,7 +245,7 @@ fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if event.modifiers.contains(ModifiersState::CONTROL) {
         return;
     }
-    let mut edit = runtime.edit.borrow_mut();
+    let mut edit = runtime.edit_mut();
     edit.insert_str("\n");
     sync_value(runtime, &edit);
 }
@@ -212,11 +255,11 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     let before = (state.len(), state.is_empty());
     edit(&mut state);
     if (state.len(), state.is_empty()) == before {
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     } else {
         sync_value(runtime, &state);
     }
@@ -225,10 +268,10 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce
 fn move_caret(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce(&mut TextEdit)) {
     event.stop_propagation();
     if !runtime.disabled() {
-        let mut state = runtime.edit.borrow_mut();
+        let mut state = runtime.edit_mut();
         edit(&mut state);
         debug_assert!(state.caret() <= state.len());
-        runtime.caret_visible.set(true);
+        commit(runtime, &state);
     }
 }
 
@@ -251,7 +294,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     let selected = runtime.edit.borrow().selected_text().map(ToOwned::to_owned);
     if let Some(text) = selected {
         runtime.clipboard.set(&text);
-        let mut state = runtime.edit.borrow_mut();
+        let mut state = runtime.edit_mut();
         state.backspace();
         sync_value(runtime, &state);
     }
@@ -265,7 +308,7 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     let Some(text) = runtime.clipboard.get() else {
         return;
     };
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     // text_edit preserves newlines from clipboard; only normalise \r\n.
     let normalised = text.replace("\r\n", "\n").replace('\r', "\n");
     state.insert_str(&normalised);
@@ -275,8 +318,9 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
 fn select_all_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     event.stop_propagation();
     if !runtime.disabled() {
-        runtime.edit.borrow_mut().select_all();
-        runtime.caret_visible.set(true);
+        let mut state = runtime.edit_mut();
+        state.select_all();
+        commit(runtime, &state);
     }
 }
 
@@ -285,7 +329,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     if state.undo() {
         sync_value(runtime, &state);
     }
@@ -296,7 +340,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     if state.redo() {
         sync_value(runtime, &state);
     }
@@ -311,13 +355,25 @@ fn submit_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     (runtime.submit)(value.as_str());
 }
 
+/// Publish a mutated buffer's `value` + `caret` as one atomic reactive
+/// unit. Without `batch`, `write_value`'s `Signal::update` would run
+/// every dependent effect synchronously (including `text_edit`'s
+/// preedit-splice `derived_eq`) BEFORE `commit` gets a chance to
+/// publish the matching new caret — a reader observing `value` after
+/// the shrink but `caret` before it can slice a preedit splice
+/// mid-codepoint. `batch` coalesces both writes into a single drain
+/// after this closure returns, so every dependent effect always sees
+/// the post-mutation `(value, caret)` pair together, never the
+/// half-updated one (the reviewer adversarial finding [W5-IME-TE] HIGH-1).
 fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
-    write_value(runtime.value, state.as_str());
-    (runtime.change)(state.as_str());
-    runtime.caret_visible.set(true);
+    batch(|| {
+        write_value(runtime.value, state.as_str());
+        (runtime.change)(state.as_str());
+        commit(runtime, state);
+    });
 }
 
-fn write_value(value: Signal<String>, next: &str) {
+pub(super) fn write_value(value: Signal<String>, next: &str) {
     value.update(|current| {
         current.clear();
         current.push_str(next);

@@ -18,7 +18,7 @@ use crate::cache::ParagraphCache;
 use crate::config::TextConfig;
 use crate::error::TextError;
 use crate::glyph::GlyphRun;
-use crate::paragraph::{LayoutLine, Paragraph, TextMetrics};
+use crate::paragraph::{LayoutLine, Paragraph, SegmentAppend, TextMetrics};
 use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
 
 /// Owned text engine — skrifa + unicode-segmentation backed.
@@ -109,9 +109,10 @@ impl OwnedTextEngine {
     #[must_use]
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
         let fonts = self.fonts.borrow();
-        let shaper = Shaper::new(fonts.primary());
+        let chain = fonts.fallback_chain(fonts.primary());
         let style = to_shaper_style(&self.config.text_style());
-        shape_segments(&shaper, text, &style)
+        let paragraph_bidi = bidi::ParagraphBidi::new(text);
+        shape_segments(&chain, text, &style, &paragraph_bidi)
             .into_iter()
             .map(|s| (s.start, s.end, s.level, script_name(s.script)))
             .collect()
@@ -139,30 +140,60 @@ impl OwnedTextEngine {
         Ok(())
     }
 
+    /// Register a user-supplied font face for a named family, replacing
+    /// the bundled default for that family (see
+    /// [`FontCollection::register_family`] for recognised names).
+    ///
+    /// Unlike [`Self::register_font`] (which always replaces the sans
+    /// primary), this targets one family slot so a caller can add e.g.
+    /// a Hebrew face as `serif` for the per-run fallback chain
+    /// ([`FontCollection::fallback_chain`]) to discover when the
+    /// active style's family lacks coverage for a run.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TextError::InvalidFont`] when the bytes are
+    /// unparseable or the family name is unknown.
+    pub fn register_font_family(
+        &mut self,
+        family: &str,
+        bytes: Vec<u8>,
+        face_index: u32,
+    ) -> Result<(), TextError> {
+        self.fonts
+            .borrow_mut()
+            .register_family(family, bytes, face_index)?;
+        self.cache.borrow_mut().clear();
+        Ok(())
+    }
+
     fn build_paragraph(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Paragraph {
         let fonts = self.fonts.borrow();
-        let font = fonts.select(&style.font_family);
-        let shaper = Shaper::new(font);
+        let primary = fonts.select(&style.font_family);
+        let chain = fonts.fallback_chain(primary);
+        let shaper = Shaper::new(primary);
         let shaper_style = to_shaper_style(style);
-        let line_height = resolve_line_height(style);
-        let (ascent, descent) = shaper.strut(&shaper_style);
-        let runs = shape_segments(&shaper, text, &shaper_style);
+        let strut = LineStrut::from_shaper(&shaper, &shaper_style, resolve_line_height(style));
+        // Analysed once and reused for run segmentation (paragraph-wide
+        // levels) and visual line reordering (line-aware L1 + L2) — see
+        // `bidi::ParagraphBidi`.
+        let paragraph_bidi = bidi::ParagraphBidi::new(text);
+        let runs = shape_segments(&chain, text, &shaper_style, &paragraph_bidi);
         let min_content_hint = runs
             .iter()
             .filter(|s| !s.is_break_opportunity)
             .map(|s| s.advance)
             .fold(0.0_f32, f32::max);
-        let lines = break_lines(&runs, max_width, line_height, ascent, descent);
+        let lines = break_lines(&runs, max_width, strut, &paragraph_bidi);
         Paragraph::new(
             lines,
             // font_size is the em-scale for ink; line_height is only row leading.
             // Use the shaper's size_px so ink matches the advances it produced.
             TextMetrics {
                 font_size: shaper_style.size_px,
-                line_height,
+                line_height: strut.line_height,
             },
-            font.bytes_arc(),
-            font.face_index(),
+            &chain,
             min_content_hint,
         )
     }
@@ -305,6 +336,31 @@ impl FontCollection {
         }
         Ok(())
     }
+
+    /// Deterministic per-run fallback order for `primary`: `primary`
+    /// itself first, then the collection's other distinct registered
+    /// faces (sans, mono, serif, icon, in that fixed order) so a
+    /// cluster missing from `primary` can still find coverage instead
+    /// of rendering `.notdef` tofu (Wave 4 fallback chain). Faces are
+    /// deduped by identity — registering the same bytes under two
+    /// family names doesn't repeat them in the chain. `Font::clone` is
+    /// an `Arc` bump, so the chain is cheap to build once per paragraph.
+    #[must_use]
+    pub(crate) fn fallback_chain(&self, primary: &Font) -> Vec<Font> {
+        let mut chain: Vec<Font> = vec![primary.clone()];
+        let candidates = [
+            Some(&self.sans),
+            Some(&self.mono),
+            self.serif.as_ref(),
+            self.icon.as_ref(),
+        ];
+        for candidate in candidates.into_iter().flatten() {
+            if chain.iter().all(|f| f.id() != candidate.id()) {
+                chain.push(candidate.clone());
+            }
+        }
+        chain
+    }
 }
 
 /// Embedded `FiraSans` Regular — sans bootstrap face.
@@ -339,6 +395,28 @@ fn resolve_line_height(style: &TextStyle) -> f32 {
     }
 }
 
+/// Baseline geometry shared by every line in a paragraph — the strut
+/// (ascent + descent, both positive px) the CSS half-leading model
+/// centers each line box against. Bundled so the line-assembly
+/// functions below stay under the 5-argument hygiene cap.
+#[derive(Clone, Copy)]
+struct LineStrut {
+    line_height: f32,
+    ascent: f32,
+    descent: f32,
+}
+
+impl LineStrut {
+    fn from_shaper(shaper: &Shaper<'_>, style: &Style, line_height: f32) -> Self {
+        let (ascent, descent) = shaper.strut(style);
+        Self {
+            line_height,
+            ascent,
+            descent,
+        }
+    }
+}
+
 /// One shaped segment between two break opportunities.
 struct ShapedSegment {
     /// Byte range in the source string `[start, end)`.
@@ -355,17 +433,19 @@ struct ShapedSegment {
     /// force a new line — set at segmentation time so the line breaker
     /// never has to guess from glyph metrics.
     is_hard_break: bool,
-    /// UAX #9 bidi embedding level — even = LTR, odd = RTL.
-    /// Travels through to the shaper so `HarfRust` sees the right
-    /// direction. Visual reorder (G2) consumes this; in G1.7 it is
-    /// read only by the engine tests via `segments_for_tests`.
-    #[allow(dead_code)]
+    /// UAX #9 bidi embedding level — even = LTR, odd = RTL. Travels
+    /// through to the shaper so `HarfRust` sees the right direction,
+    /// and drives the L2 visual reorder at line assembly
+    /// ([`bidi::visual_order`]) since Wave 4.
     level: u8,
     /// Dominant script of this run (drives complex-shaper dispatch).
     /// Read only by the engine tests in G1.7 — kept on the segment
-    /// because the next phase's logging + reorder paths consume it.
+    /// because the next phase's logging path consumes it.
     #[allow(dead_code)]
     script: Script,
+    /// Index into the paragraph's per-run font fallback chain — which
+    /// face this segment was shaped with (Wave 4 per-glyph fallback).
+    face_slot: u16,
 }
 
 /// Shape `text` honouring word boundaries, bidi runs, and script runs.
@@ -379,12 +459,25 @@ struct ShapedSegment {
 /// line breaker can elide them at wrap points. The bidi level travels
 /// through to the shaper so the `HarfRust` dispatch + skrifa shaper
 /// see the correct direction.
-fn shape_segments(shaper: &Shaper<'_>, text: &str, style: &Style) -> Vec<ShapedSegment> {
+///
+/// `chain` is the paragraph's per-run font fallback chain
+/// ([`FontCollection::fallback_chain`]) — `chain[0]` is the primary
+/// face selected for the active style; each run independently picks
+/// the first face in `chain` with full cmap coverage (Wave 4).
+/// `paragraph_bidi` is the paragraph's precomputed bidi analysis
+/// (shared with [`break_lines`] so `unicode_bidi`'s class-detection
+/// pass runs once per paragraph, not once per line).
+fn shape_segments(
+    chain: &[Font],
+    text: &str,
+    style: &Style,
+    paragraph_bidi: &bidi::ParagraphBidi<'_>,
+) -> Vec<ShapedSegment> {
     if text.is_empty() {
         return Vec::new();
     }
 
-    let levels = bidi::paragraph_levels(text);
+    let levels = paragraph_bidi.levels();
 
     let mut out: Vec<ShapedSegment> = Vec::new();
     for (word_start, fragment) in text.split_word_bound_indices() {
@@ -404,6 +497,7 @@ fn shape_segments(shaper: &Shaper<'_>, text: &str, style: &Style) -> Vec<ShapedS
                 is_hard_break: true,
                 level: 0,
                 script: Script::Common,
+                face_slot: 0,
             });
             continue;
         }
@@ -411,7 +505,7 @@ fn shape_segments(shaper: &Shaper<'_>, text: &str, style: &Style) -> Vec<ShapedS
             word: fragment,
             word_start,
             is_ws: fragment.chars().all(char::is_whitespace),
-            shaper,
+            chain,
             style,
         };
         split_word_into_uniform_runs(&ctx, &levels, &mut out);
@@ -429,22 +523,18 @@ fn is_line_terminator(fragment: &str) -> bool {
 }
 
 /// Shaping context held by the segmenter while it walks a word.
-struct WordCtx<'a, 'b> {
+struct WordCtx<'a> {
     word: &'a str,
     word_start: usize,
     is_ws: bool,
-    shaper: &'a Shaper<'b>,
+    chain: &'a [Font],
     style: &'a Style,
 }
 
 /// Sub-segment `ctx.word` into maximal runs uniform in (bidi-level,
 /// script). Each run is shaped and pushed onto `out` with the correct
 /// level + script tag.
-fn split_word_into_uniform_runs(
-    ctx: &WordCtx<'_, '_>,
-    levels: &[u8],
-    out: &mut Vec<ShapedSegment>,
-) {
+fn split_word_into_uniform_runs(ctx: &WordCtx<'_>, levels: &[u8], out: &mut Vec<ShapedSegment>) {
     let mut acc = RunAccumulator::new();
 
     for (ch_offset, ch) in ctx.word.char_indices() {
@@ -506,7 +596,7 @@ impl RunAccumulator {
         }
     }
 
-    fn flush_to(&self, ctx: &WordCtx<'_, '_>, end_offset: usize, out: &mut Vec<ShapedSegment>) {
+    fn flush_to(&self, ctx: &WordCtx<'_>, end_offset: usize, out: &mut Vec<ShapedSegment>) {
         if self.start >= end_offset {
             return;
         }
@@ -517,7 +607,7 @@ impl RunAccumulator {
             script: self.script.unwrap_or(Script::Common),
             is_break_opportunity: ctx.is_ws,
         };
-        push_run(&args, ctx.shaper, ctx.style, out);
+        push_run(&args, ctx.chain, ctx.style, out);
     }
 }
 
@@ -543,21 +633,84 @@ struct PushRunArgs<'a> {
     is_break_opportunity: bool,
 }
 
-fn push_run(
-    args: &PushRunArgs<'_>,
-    shaper: &Shaper<'_>,
-    style: &Style,
-    out: &mut Vec<ShapedSegment>,
-) {
+/// Shape `args.fragment`, splitting it further at grapheme-cluster
+/// boundaries by which chain face covers each cluster. A single
+/// uniform bidi/script run can still mix coverage across faces — e.g.
+/// a base-text cluster the primary covers next to a symbol/emoji
+/// cluster only a fallback face covers, both absorbed into one run
+/// because their script classifies as `Common`/`Other` — so requiring
+/// one face to cover the WHOLE run swallows it entirely to `.notdef`
+/// even when the fallback chain collectively covers every cluster.
+///
+/// Adjacent clusters that pick the same face are coalesced into one
+/// sub-run before shaping (grapheme-granularity, never finer — a
+/// cluster's codepoints must always stay on the same face, since
+/// splitting *inside* a grapheme cluster across two fonts is
+/// shaping-nonsensical).
+fn push_run(args: &PushRunArgs<'_>, chain: &[Font], style: &Style, out: &mut Vec<ShapedSegment>) {
     if args.fragment.is_empty() {
         return;
     }
-    let end_byte = args.start_byte + args.fragment.len();
-    let seg = TextSegment::at_level(args.fragment, args.level);
-    let run = shaper.shape(&seg, style);
+    for span in coalesce_face_spans(chain, args.fragment) {
+        push_face_span(args, chain, style, &span, out);
+    }
+}
+
+/// One coalesced sub-run of `push_run`'s fragment: a byte range
+/// (relative to the fragment) every grapheme cluster in which picked
+/// the same fallback-chain face.
+struct FaceSpan {
+    start: usize,
+    end: usize,
+    face_slot: u16,
+}
+
+/// Segment `fragment` into [`FaceSpan`]s by per-grapheme-cluster face
+/// selection ([`select_face`]), coalescing adjacent clusters that pick
+/// the same face.
+fn coalesce_face_spans(chain: &[Font], fragment: &str) -> Vec<FaceSpan> {
+    let mut spans: Vec<FaceSpan> = Vec::new();
+    for (offset, cluster) in fragment.grapheme_indices(true) {
+        let (face_slot, _) = select_face(chain, cluster);
+        let end = offset + cluster.len();
+        if let Some(last) = spans.last_mut()
+            && last.face_slot == face_slot
+            && last.end == offset
+        {
+            last.end = end;
+        } else {
+            spans.push(FaceSpan {
+                start: offset,
+                end,
+                face_slot,
+            });
+        }
+    }
+    spans
+}
+
+/// Shape one [`FaceSpan`] of `args.fragment` and push the resulting
+/// [`ShapedSegment`]. Validates the shape ([`shape_validated`]) rather
+/// than trusting the cmap-coverage pre-filter blindly (finding 2).
+fn push_face_span(
+    args: &PushRunArgs<'_>,
+    chain: &[Font],
+    style: &Style,
+    span: &FaceSpan,
+    out: &mut Vec<ShapedSegment>,
+) {
+    let Some(sub_fragment) = args.fragment.get(span.start..span.end) else {
+        return;
+    };
+    if sub_fragment.is_empty() {
+        return;
+    }
+    let start_byte = args.start_byte + span.start;
+    let end_byte = args.start_byte + span.end;
+    let (face_slot, run) = shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
     let advance = run_total_advance(&run);
     out.push(ShapedSegment {
-        start: u32_clamp(args.start_byte),
+        start: u32_clamp(start_byte),
         end: u32_clamp(end_byte),
         run,
         advance,
@@ -565,7 +718,108 @@ fn push_run(
         is_hard_break: false,
         level: args.level,
         script: args.script,
+        face_slot,
     });
+}
+
+/// Pick the first face in `chain` with full cmap coverage of
+/// `fragment` (see [`Font::covers`] for the default-ignorable
+/// transparency), falling back to `chain[0]` (the paragraph's primary
+/// face — rendering `.notdef` tofu) when no registered face covers
+/// it. `chain` is never empty: [`FontCollection::fallback_chain`]
+/// always seeds it with the primary face.
+///
+/// This is a cheap cmap pre-filter, not a shaping-success guarantee —
+/// [`shape_validated`] is what actually confirms the pick worked.
+fn select_face<'a>(chain: &'a [Font], fragment: &str) -> (u16, &'a Font) {
+    for (idx, font) in chain.iter().enumerate() {
+        if font.covers(fragment) {
+            return (u16::try_from(idx).unwrap_or(0), font);
+        }
+    }
+    let primary = chain
+        .first()
+        .expect("fallback_chain always seeds the primary face");
+    (0, primary)
+}
+
+/// Shape `fragment` with `chain[initial_slot]` and validate the result
+/// has no disallowed `.notdef` glyph (a glyph clustered to a
+/// non-default-ignorable byte); if it does, retry against the rest of
+/// `chain` in order and take the first clean shape. Falls back to the
+/// initial attempt — still better than nothing — if none is clean.
+///
+/// Closes the gap `select_face`'s cmap pre-filter can't: cmap presence
+/// doesn't prove the shaped buffer avoids `.notdef` (a face can map a
+/// codepoint but still fail to produce the glyph a script's GSUB rules
+/// substitute).
+fn shape_validated(
+    chain: &[Font],
+    initial_slot: u16,
+    fragment: &str,
+    level: u8,
+    style: &Style,
+) -> (u16, GlyphRun) {
+    let seg = TextSegment::at_level(fragment, level);
+    if let Some(font) = chain.get(initial_slot as usize) {
+        let run = Shaper::new(font).shape(&seg, style);
+        if !run_has_disallowed_notdef(&run, fragment) {
+            return (initial_slot, run);
+        }
+        for (idx, candidate) in chain.iter().enumerate() {
+            let slot = u16::try_from(idx).unwrap_or(0);
+            if slot == initial_slot {
+                continue;
+            }
+            let candidate_run = Shaper::new(candidate).shape(&seg, style);
+            if !run_has_disallowed_notdef(&candidate_run, fragment) {
+                return (slot, candidate_run);
+            }
+        }
+        return (initial_slot, run);
+    }
+    let primary = chain
+        .first()
+        .expect("fallback_chain always seeds the primary face");
+    (0, Shaper::new(primary).shape(&seg, style))
+}
+
+/// Whether `run` contains a `.notdef` glyph whose grapheme cluster has
+/// no default-ignorable codepoint (ZWJ/ZWNJ/VS15/VS16/CGJ/etc — see
+/// [`crate::shaper::is_default_ignorable`]) that could explain it. A
+/// `.notdef` on a default-ignorable control is expected — those carry
+/// no visible glyph by design — so it doesn't disqualify the shape.
+///
+/// Checks the WHOLE grapheme cluster starting at `g.cluster`, not just
+/// the codepoint at that exact byte offset: the owned (non-`HarfRust`)
+/// shaper positions every codepoint of a multi-codepoint cluster (a
+/// base plus a combining mark or ignorable control) at the SAME
+/// `cluster` value — e.g. `"a" + VS17` clusters both glyphs at byte 0,
+/// so checking only `fragment[0..]`'s first char would classify a
+/// VS17-caused `.notdef` against `'a'` (non-ignorable) and wrongly
+/// flag it.
+///
+/// ponytail: per-cluster (not per-glyph) attribution — a `.notdef` for
+/// a genuinely-uncovered BASE character sharing a cluster with an
+/// ignorable mark would also be (wrongly) excused here, since OpenType
+/// clustering doesn't expose which glyph came from which codepoint.
+/// Upgrade path: thread per-glyph source-codepoint provenance through
+/// `GlyphPos` if a real fixture exercises this combination.
+fn run_has_disallowed_notdef(run: &GlyphRun, fragment: &str) -> bool {
+    run.glyphs.iter().any(|g| {
+        if g.id.0 != 0 {
+            return false;
+        }
+        let Some(rest) = fragment.get(g.cluster as usize..) else {
+            return true;
+        };
+        let grapheme_len = rest
+            .grapheme_indices(true)
+            .next()
+            .map_or(rest.len(), |(_, cluster)| cluster.len());
+        let grapheme = rest.get(..grapheme_len).unwrap_or(rest);
+        !grapheme.chars().any(crate::shaper::is_default_ignorable)
+    })
 }
 
 /// Lookup the bidi level for the byte at `byte`, returning `0` when
@@ -627,6 +881,34 @@ const fn u32_clamp(v: usize) -> u32 {
     }
 }
 
+/// Segments collected for the line currently being assembled, in
+/// logical (source) order. Wrap decisions only need the
+/// order-independent sum of advances, so the visual reorder
+/// ([`push_visual_line`]) happens once per completed line rather than
+/// per segment.
+struct PendingLine<'a> {
+    segs: Vec<&'a ShapedSegment>,
+    width: f32,
+}
+
+impl<'a> PendingLine<'a> {
+    const fn new() -> Self {
+        Self {
+            segs: Vec::new(),
+            width: 0.0,
+        }
+    }
+
+    const fn is_empty(&self) -> bool {
+        self.segs.is_empty()
+    }
+
+    fn push(&mut self, seg: &'a ShapedSegment) {
+        self.width += seg.advance;
+        self.segs.push(seg);
+    }
+}
+
 /// Break `segments` into [`LayoutLine`]s honouring `max_width`.
 ///
 /// Algorithm: greedy word-boundary fit. A non-whitespace segment that
@@ -636,59 +918,112 @@ const fn u32_clamp(v: usize) -> u32 {
 fn break_lines(
     segments: &[ShapedSegment],
     max_width: Option<f32>,
-    line_height: f32,
-    ascent: f32,
-    descent: f32,
+    strut: LineStrut,
+    paragraph_bidi: &bidi::ParagraphBidi<'_>,
 ) -> Vec<LayoutLine> {
     if segments.is_empty() {
-        let mut line = LayoutLine::empty(0, line_height);
-        line.set_baseline_to(line_height, ascent, descent);
+        let mut line = LayoutLine::empty(0, strut.line_height);
+        line.set_empty_byte_position(0);
+        line.set_baseline_to(strut.line_height, strut.ascent, strut.descent);
         return vec![line];
     }
     let mut lines: Vec<LayoutLine> = Vec::new();
-    let mut current = LayoutLine::empty(0, line_height);
+    let mut pending = PendingLine::new();
+    // Logical byte position for the line CURRENTLY being assembled,
+    // used only when it turns out empty (consecutive hard breaks, or a
+    // leading/trailing hard break) — a non-empty line's true byte
+    // range comes from its own segments instead (see `push_visual_line`).
+    let mut cursor: u32 = 0;
     for seg in segments {
         if seg.is_hard_break {
-            finalize_line(&mut lines, current, line_height, ascent, descent);
-            current =
-                LayoutLine::empty(u32::try_from(lines.len()).unwrap_or(u32::MAX), line_height);
+            push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
+            pending = PendingLine::new();
+            cursor = seg.end;
             continue;
         }
-        if should_wrap(&current, seg, max_width) {
-            finalize_line(&mut lines, current, line_height, ascent, descent);
-            current =
-                LayoutLine::empty(u32::try_from(lines.len()).unwrap_or(u32::MAX), line_height);
+        if should_wrap(&pending, seg, max_width) {
+            push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
+            pending = PendingLine::new();
+            cursor = seg.start;
             if seg.is_break_opportunity {
                 // Elide the leading whitespace at the start of a wrapped line.
                 continue;
             }
         }
-        current.append_segment(&seg.run, seg.advance, seg.start, seg.end);
+        pending.push(seg);
     }
-    finalize_line(&mut lines, current, line_height, ascent, descent);
+    push_visual_line(&mut lines, &pending, strut, paragraph_bidi, cursor);
     lines
 }
 
-fn should_wrap(current: &LayoutLine, seg: &ShapedSegment, max_width: Option<f32>) -> bool {
+fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option<f32>) -> bool {
     let Some(limit) = max_width else {
         return false;
     };
     if seg.is_break_opportunity {
         return false;
     }
-    if current.is_empty() {
+    if pending.is_empty() {
         return false;
     }
-    current.width() + seg.advance > limit
+    pending.width + seg.advance > limit
 }
 
-fn finalize_line(
-    out: &mut Vec<LayoutLine>,
-    mut line: LayoutLine,
-    line_height: f32,
-    ascent: f32,
-    descent: f32,
+/// Assemble one [`LayoutLine`] from `pending`'s logical-order segments,
+/// reordering them into UAX #9 visual (paint) order first.
+///
+/// Uses [`bidi::ParagraphBidi::visual_order_for_line`] — rule L1 (reset
+/// trailing whitespace/separators to the paragraph level) for THIS
+/// line's actual byte range, then rule L2 — rather than feeding
+/// paragraph-resolved segment levels straight into L2: L1 depends on
+/// where a line ends after word-wrapping, which a paragraph-wide
+/// levels array can't know. Each segment is already uniform in bidi
+/// level by construction, so reordering at segment granularity is
+/// equivalent to reordering at codepoint granularity.
+///
+/// `empty_line_byte` is the true logical byte position to stamp on
+/// `pending` when it turns out to be empty (consecutive hard breaks,
+/// or a leading/trailing one) — see
+/// [`LayoutLine::set_empty_byte_position`].
+fn push_visual_line(
+    lines: &mut Vec<LayoutLine>,
+    pending: &PendingLine<'_>,
+    strut: LineStrut,
+    paragraph_bidi: &bidi::ParagraphBidi<'_>,
+    empty_line_byte: u32,
 ) {
-    line.set_baseline_to(line_height, ascent, descent);
+    let index = u32::try_from(lines.len()).unwrap_or(u32::MAX);
+    let mut line = LayoutLine::empty(index, strut.line_height);
+    let (line_start, line_end) =
+        if let (Some(first), Some(last)) = (pending.segs.first(), pending.segs.last()) {
+            (first.start, last.end)
+        } else {
+            line.set_empty_byte_position(empty_line_byte);
+            (empty_line_byte, empty_line_byte)
+        };
+    let segment_ends: Vec<u32> = pending.segs.iter().map(|s| s.end).collect();
+    let order =
+        paragraph_bidi.visual_order_for_line(line_start as usize, line_end as usize, &segment_ends);
+    for logical_idx in order {
+        let Some(seg) = pending.segs.get(logical_idx) else {
+            continue;
+        };
+        line.append_segment(&SegmentAppend {
+            run: &seg.run,
+            advance: seg.advance,
+            byte_start: seg.start,
+            byte_end: seg.end,
+            face_slot: seg.face_slot,
+        });
+    }
+    finalize_line(lines, line, strut);
+}
+
+fn finalize_line(out: &mut Vec<LayoutLine>, mut line: LayoutLine, strut: LineStrut) {
+    line.set_baseline_to(strut.line_height, strut.ascent, strut.descent);
     out.push(line);
 }
+
+#[cfg(test)]
+#[path = "engine/tests.rs"]
+mod tests;

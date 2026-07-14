@@ -11,6 +11,7 @@ use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::super::text_field::Clipboard;
 use super::handlers::{NoopClipboard, TextEditRuntime, attach_key_handlers, noop_change};
+use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, edit_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
@@ -142,8 +143,9 @@ impl TextEditBuilder {
         let runtime =
             TextEditRuntime::new(value, disabled, change, submit, clipboard, caret_visible);
 
-        let node = build_base_node(value, disabled, &placeholder, interaction);
-        let mut node = interaction.install(attach_key_handlers(node, runtime));
+        let node = build_base_node(&runtime, &placeholder, interaction);
+        let node = interaction.install(attach_key_handlers(node, runtime.clone()));
+        let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {
             node = mutate(node);
         }

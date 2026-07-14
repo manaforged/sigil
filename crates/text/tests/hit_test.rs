@@ -413,3 +413,34 @@ fn hit_test_then_caret_rect_stays_on_screen() {
         );
     }
 }
+
+#[test]
+fn hit_test_then_caret_rect_stays_on_screen_over_a_reordered_bidi_line() {
+    // Same round-trip invariant as above, over a mixed LTR/RTL line
+    // (Wave 4 visual bidi reorder — crates/text/tests/bidi_visual_order.rs
+    // covers the geometry in depth; this pins the hit_test.rs contract
+    // still holds once a line mixes bidi runs).
+    let e = engine();
+    let text = "abc \u{05D0}\u{05D1}\u{05D2} def";
+    let para = e.layout_paragraph(text, None).unwrap();
+
+    for frac in [0.0_f32, 0.25, 0.5, 0.75, 1.0] {
+        let x = para.width() * frac;
+        let pos = para.hit_test(x, 0.0);
+        assert!(
+            text.is_char_boundary(pos.byte_index),
+            "hit_test byte_index {} is not a UTF-8 char boundary in {text:?} at x={x}",
+            pos.byte_index,
+        );
+        let rect = para.caret_rect(pos, 1.0);
+        assert!(
+            rect.origin.x >= 0.0,
+            "caret x should be non-negative at sample x={x}, got {}",
+            rect.origin.x,
+        );
+        assert!(
+            rect.height > 0.0,
+            "caret height should be positive at sample x={x}"
+        );
+    }
+}

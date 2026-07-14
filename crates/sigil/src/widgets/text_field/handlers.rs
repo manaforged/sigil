@@ -4,7 +4,7 @@ use std::rc::Rc;
 use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use kernel::NodeBuilder;
 use layout::with_text_geometry;
-use reactive::{Signal, signal};
+use reactive::{Signal, batch, signal};
 use style::TextStyle;
 
 use super::super::shared::disabled_now;
@@ -215,9 +215,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     };
     let mut edit = runtime.edit.borrow_mut();
     edit.insert_str(text);
-    write_value(runtime.value, edit.as_str());
-    (runtime.change)(edit.as_str());
-    commit(runtime, &edit);
+    publish(runtime, &edit);
     event.stop_propagation();
 }
 
@@ -229,11 +227,13 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
     let mut state = runtime.edit.borrow_mut();
     let before = (state.len(), state.is_empty());
     edit(&mut state);
-    if (state.len(), state.is_empty()) != before {
-        write_value(runtime.value, state.as_str());
-        (runtime.change)(state.as_str());
-    }
-    commit(runtime, &state);
+    batch(|| {
+        if (state.len(), state.is_empty()) != before {
+            write_value(runtime.value, state.as_str());
+            (runtime.change)(state.as_str());
+        }
+        commit(runtime, &state);
+    });
 }
 
 fn move_caret(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnce(&mut TextEdit)) {
@@ -267,9 +267,7 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         runtime.clipboard.set(&text);
         let mut state = runtime.edit.borrow_mut();
         state.backspace();
-        write_value(runtime.value, state.as_str());
-        (runtime.change)(state.as_str());
-        commit(runtime, &state);
+        publish(runtime, &state);
     }
 }
 
@@ -290,9 +288,7 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
         };
         state.insert_str(&buf);
     }
-    write_value(runtime.value, state.as_str());
-    (runtime.change)(state.as_str());
-    commit(runtime, &state);
+    publish(runtime, &state);
 }
 
 fn select_all_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
@@ -311,9 +307,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     }
     let mut state = runtime.edit.borrow_mut();
     if state.undo() {
-        write_value(runtime.value, state.as_str());
-        (runtime.change)(state.as_str());
-        commit(runtime, &state);
+        publish(runtime, &state);
     }
 }
 
@@ -324,9 +318,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     }
     let mut state = runtime.edit.borrow_mut();
     if state.redo() {
-        write_value(runtime.value, state.as_str());
-        (runtime.change)(state.as_str());
-        commit(runtime, &state);
+        publish(runtime, &state);
     }
 }
 
@@ -350,6 +342,18 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
 /// and mirror the buffer's caret + selection into the render signals that
 /// drive the caret/selection overlay. Called after every buffer mutation
 /// (keyboard or pointer) so the visible caret tracks the model.
+/// Atomically publish a mutation: value, change callback, and caret/
+/// selection mirrors coalesce into one signal drain so no effect (the
+/// preedit splice above all) observes a new value with a stale caret —
+/// the `text_edit` HIGH-1 shape, mirrored here (the reviewer gate, 2026-07-13).
+pub(super) fn publish(runtime: &TextFieldRuntime, state: &TextEdit) {
+    batch(|| {
+        write_value(runtime.value, state.as_str());
+        (runtime.change)(state.as_str());
+        commit(runtime, state);
+    });
+}
+
 pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
     update_scroll(state, runtime.scroll, runtime.column);
     runtime.caret_visible.set(true);

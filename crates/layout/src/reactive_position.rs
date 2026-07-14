@@ -68,7 +68,37 @@ impl ReactivePosition {
     }
 }
 
-/// Adds `.position_reactive()` to [`NodeBuilder`].
+/// Node extension that PUBLISHES the node's computed border-box size into a signal.
+///
+/// The inverse of [`ReactivePosition`]: layout writes out; the widget reads to size
+/// itself (e.g. a virtualized list deriving its visible-row count from the real viewport
+/// height, which it otherwise can't know at build time). The engine publishes from
+/// `attach_results` only when the node's box changes, and [`Self::publish`] dedups against
+/// the signal's current value, so a steady frame does no work and there's no feedback loop
+/// (a resize publishes once, the dependent rebuild leaves the box unchanged, it settles).
+///
+/// Caveats (safe under the single-consumer pattern, but know them): the convergence
+/// guarantee assumes the bound node's size is **content-independent** (it's driven by its
+/// parent, like a `h-full` pane) — binding it on an `h-auto` node whose content reacts to
+/// the published size would oscillate. Bind ONE node per signal (two nodes ping-pong the
+/// last write). The signal must outlive the node, which holds for a widget that owns both.
+#[derive(Clone, Copy)]
+pub struct SizeReactive {
+    size: Signal<(f32, f32)>,
+}
+
+impl SizeReactive {
+    /// Write `(w, h)` into the bound signal iff it changed. Called by the layout engine
+    /// during the Layout phase (writes are legal there; the dependent effect defers to the
+    /// next Effect phase, so the in-flight paint is never invalidated).
+    pub fn publish(&self, size: (f32, f32)) {
+        if self.size.peek() != size {
+            self.size.set(size);
+        }
+    }
+}
+
+/// Adds `.position_reactive()` / `.size_reactive()` to [`NodeBuilder`].
 pub trait LayoutReactiveExt {
     /// Bind this node's absolute inset (`inset_left`, `inset_top`) to
     /// `pos`, forcing `position: absolute`. The node keeps a stable
@@ -77,12 +107,24 @@ pub trait LayoutReactiveExt {
     /// signal, never interned into a `&'static` atom slice.
     #[must_use]
     fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self;
+
+    /// Publish this node's computed border-box size into `size` after every layout pass
+    /// that changes it. Lets a widget react to its own (dynamic, parent-driven) size —
+    /// e.g. virtualize against the real viewport height instead of a fixed guess.
+    #[must_use]
+    fn size_reactive(self, size: Signal<(f32, f32)>) -> Self;
 }
 
 impl LayoutReactiveExt for NodeBuilder {
     fn position_reactive(self, pos: Signal<(f32, f32)>) -> Self {
         self.mutate(move |node| {
             let _ = node.attach(ReactivePosition { pos });
+        })
+    }
+
+    fn size_reactive(self, size: Signal<(f32, f32)>) -> Self {
+        self.mutate(move |node| {
+            let _ = node.attach(SizeReactive { size });
         })
     }
 }

@@ -12,7 +12,7 @@ use style::{
 use crate::interaction::InteractionState;
 
 use super::super::shared::{
-    Activate, BuilderMutator, activate_pointer, disabled_now, noop_activate,
+    Activate, BuilderMutator, activate_pointer_reactive, disabled_now, noop_activate,
 };
 use super::super::transition_seam::install_transition_animators;
 use super::popup::{OptionCtx, SURFACE, SURFACE_HOVER, TRIGGER_HEIGHT, TRIGGER_WIDTH, build_popup};
@@ -119,7 +119,7 @@ impl DropdownBuilder {
         // / `.hover()` shape the trigger appearance directly.
         let trigger = build_trigger(ctx, &options, interaction, self.style_accumulator);
         let popup = build_popup(ctx, &options, &on_change);
-        let mut root = dropdown_root(open, cursor, Rc::clone(&options))
+        let mut root = dropdown_root(open, cursor, Rc::clone(&options), disabled)
             .child(trigger)
             .child(popup);
 
@@ -149,6 +149,7 @@ fn dropdown_root(
     open: Signal<bool>,
     cursor: Signal<usize>,
     options: Rc<Vec<String>>,
+    disabled: Option<Signal<bool>>,
 ) -> NodeBuilder {
     container()
         .role(Role::ComboBox)
@@ -160,6 +161,9 @@ fn dropdown_root(
         })
         .key(Key::ArrowDown, move |ev| {
             ev.stop_propagation();
+            if disabled_now(disabled) {
+                return;
+            }
             if !open.peek() {
                 open.set(true);
                 return;
@@ -171,6 +175,9 @@ fn dropdown_root(
         })
         .key(Key::ArrowUp, move |ev| {
             ev.stop_propagation();
+            if disabled_now(disabled) {
+                return;
+            }
             if cursor.peek() > 0 {
                 cursor.set(cursor.peek() - 1);
             }
@@ -208,7 +215,10 @@ fn build_trigger(
                 open.set(!open.peek());
                 cursor.set(selected.peek());
             });
-            activate_pointer(ev, interaction, &cb);
+            // Reactive guard: a `disabled` flip between down and up
+            // must veto activation on release, matching the Enter
+            // handler below (the reviewer re-gate 2026-07-13).
+            activate_pointer_reactive(ev, interaction, disabled, &cb);
         })
         .key(Key::Enter, move |ev| {
             if interaction.activate_key(ev) && !disabled_now(disabled) {
@@ -230,7 +240,53 @@ fn build_trigger(
     if !styled.is_empty() {
         node = node.style(styled);
     }
-    node
+    trigger_rest_frame(node, ctx, interaction)
+}
+
+// Rest border — 1 px `gray-9` frame via the nested-fill idiom (no
+// border atom exists; text_field's frame is the precedent). The bare
+// trigger painted the same `surface` token as the panel behind it: a
+// 1.00:1 boundary, invisible at rest (Fable visual adversarial
+// 2026-07-13). Frame keeps the exact TRIGGER_WIDTH × TRIGGER_HEIGHT
+// footprint so the popup's `inset_top(TRIGGER_HEIGHT)` anchor is
+// unchanged.
+//
+// The frame mirrors the trigger's release handler: the 1 px border is
+// part of the hit surface, and without this a click landing exactly
+// on it dies on a handler-less node (the reviewer gate 2026-07-13). No
+// double-toggle risk: `release_pointer` consumes the pressed flag and
+// the inner handler stops propagation, so interior clicks never reach
+// this handler. AT click dispatch targets the inner `Role::Button`
+// node directly and is unaffected.
+fn trigger_rest_frame(
+    node: NodeBuilder,
+    ctx: OptionCtx,
+    interaction: InteractionState,
+) -> NodeBuilder {
+    let OptionCtx {
+        selected,
+        open,
+        cursor,
+        disabled,
+    } = ctx;
+    container()
+        .layout(trigger_frame_layout())
+        .class("rounded-md")
+        .class("bg-gray-9")
+        .pointer_up(move |ev| {
+            let cb: Activate = Rc::new(move || {
+                open.set(!open.peek());
+                cursor.set(selected.peek());
+            });
+            activate_pointer_reactive(ev, interaction, disabled, &cb);
+        })
+        .child(node)
+}
+
+fn trigger_frame_layout() -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fixed_size(TRIGGER_WIDTH, TRIGGER_HEIGHT)
+        .padding(1.0)
 }
 
 // Push the chevron flush against the right padding edge: SpaceBetween
@@ -240,8 +296,8 @@ fn build_trigger(
 // renders mid-trigger (the v2 bug).
 fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
-        .fixed_size(TRIGGER_WIDTH, TRIGGER_HEIGHT)
-        .padding(8.0)
+        .fill()
+        .padding(7.0)
         .gap(8.0)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)

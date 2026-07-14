@@ -56,6 +56,8 @@ fn build_100k_tree() -> (Cx, NodeId) {
     (cx, root)
 }
 
+// ponytail: linear profiling script — splitting it into functions would hide the timeline
+#[allow(clippy::too_many_lines)]
 fn main() {
     eprintln!("=== build 100k-node flex tree ===");
     let t0 = Instant::now();

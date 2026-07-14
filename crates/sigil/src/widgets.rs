@@ -40,7 +40,7 @@ mod virtual_list;
 pub use button::{ButtonBuilder, button};
 pub use checkbox::{CheckboxBuilder, CheckboxTone, checkbox};
 pub use chip::{ChipTone, chip};
-pub use code_edit::{CodeEditBuilder, HlSpan, code_edit};
+pub use code_edit::{ChangeKind, CodeEditBuilder, DiagSeverity, DiagSpan, HlSpan, code_edit};
 pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};

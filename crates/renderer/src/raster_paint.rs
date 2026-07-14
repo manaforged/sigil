@@ -15,6 +15,8 @@ use crate::raster::{self, RasterKey};
 mod atlas;
 mod setup;
 
+#[doc(hidden)]
+pub use atlas::set_test_atlas_size_override;
 use atlas::{Placement, RasterAtlas};
 use setup::{
     UNIT_QUAD_VERTEX_COUNT, bind_group, bind_group_layout, instance_buffer, pipeline, sampler,
@@ -85,9 +87,13 @@ impl RasterTextPipeline {
     }
 
     /// Place every eligible glyph in `params.glyphs` into the atlas and
-    /// record a raster draw for them. Returns the glyphs that could not be
-    /// placed (atlas full) — the caller draws those through vector Slug
-    /// instead, per DR-055's "at most two draws per run".
+    /// record a single raster draw covering every face
+    /// `params.paragraph` uses (Wave 4 fallback chain — a paragraph can
+    /// reference more than one face; review finding 4). Returns the
+    /// glyphs that could not be placed (atlas full, or a defensive
+    /// catch-all for a glyph matching no enumerated face) — the caller
+    /// draws those through vector Slug instead, per DR-055's "at most
+    /// two draws per run".
     pub(crate) fn record_paragraph(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -96,49 +102,72 @@ impl RasterTextPipeline {
         if params.glyphs.is_empty() {
             return Vec::new();
         }
+        let mut all_instances: Vec<RasterInstance> = Vec::new();
+        let mut leftover: Vec<RenderedGlyph> = Vec::new();
+        let mut claimed = vec![false; params.glyphs.len()];
+        let mut any_face = false;
         // `for_each_font`'s callback signature erases the byte-slice lifetime
         // (HRTB `for<'a> FnMut(u64, &'a [u8], u32)`), so the placement work
         // has to happen INSIDE the closure — `font_bytes` cannot escape it.
-        let mut result = None;
         params
             .paragraph
             .for_each_font(|font_id, font_bytes, font_index| {
-                if result.is_none() {
-                    result = Some(self.place_glyphs(params, font_id, font_bytes, font_index));
+                any_face = true;
+                let result = self.place_glyphs_for_face(params, font_id, font_bytes, font_index);
+                all_instances.extend(result.instances);
+                leftover.extend(result.leftover);
+                for idx in result.claimed_indices {
+                    if let Some(slot) = claimed.get_mut(idx) {
+                        *slot = true;
+                    }
                 }
             });
-        let Some((instances, leftover)) = result else {
+        if !any_face {
             return params.glyphs.to_vec();
-        };
-        if !instances.is_empty() {
-            self.draw_instances(encoder, params, &instances);
+        }
+        // Defensive: a glyph matching no enumerated face still falls
+        // back to vector Slug instead of silently vanishing.
+        for (g, was_claimed) in params.glyphs.iter().zip(&claimed) {
+            if !was_claimed {
+                leftover.push(g.clone());
+            }
+        }
+        // Normalised once against the atlas's FINAL size across every
+        // face's placements — a mid-draw grow from ANY face invalidates
+        // an earlier normalize (review finding, 2026-07-12).
+        normalize_uvs(&mut all_instances, self.atlas.size());
+        if !all_instances.is_empty() {
+            self.draw_instances(encoder, params, &all_instances);
         }
         leftover
     }
 
-    /// Rasterize/allocate each glyph, splitting into GPU instances (placed)
-    /// and leftover [`RenderedGlyph`]s (atlas full — vector fallback).
-    fn place_glyphs(
+    /// Rasterize/allocate every `params.glyphs` entry belonging to ONE
+    /// face `(font_id, font_index)`, splitting into GPU instances
+    /// (placed) and leftover [`RenderedGlyph`]s (atlas full). A glyph
+    /// belonging to a DIFFERENT face is skipped, not leftover'd — a
+    /// later `for_each_font` call (or the caller's catch-all) handles it.
+    fn place_glyphs_for_face(
         &mut self,
         params: &RasterDrawParams<'_>,
         font_id: u64,
         font_bytes: &[u8],
         font_index: u32,
-    ) -> (Vec<RasterInstance>, Vec<RenderedGlyph>) {
+    ) -> FaceRasterResult {
         let color = [
             params.color.r,
             params.color.g,
             params.color.b,
             params.color.a,
         ];
-        let mut instances = Vec::with_capacity(params.glyphs.len());
+        let mut instances = Vec::new();
         let mut leftover = Vec::new();
-        for g in params.glyphs {
+        let mut claimed_indices = Vec::new();
+        for (idx, g) in params.glyphs.iter().enumerate() {
             if g.font_id != font_id || g.font_index != font_index {
-                // Defensive: a paragraph carries one font (see text::Paragraph).
-                leftover.push(g.clone());
                 continue;
             }
+            claimed_indices.push(idx);
             match self.place_one(params, font_bytes, g) {
                 GlyphOutcome::Placed(instance) => {
                     instances.push(RasterInstance { color, ..instance });
@@ -147,11 +176,11 @@ impl RasterTextPipeline {
                 GlyphOutcome::AtlasFull => leftover.push(g.clone()),
             }
         }
-        // AFTER all placements: a mid-loop atlas grow doubles the texture,
-        // so UVs can only be normalised against the final size (the reviewer
-        // adversarial finding, 2026-07-12).
-        normalize_uvs(&mut instances, self.atlas.size());
-        (instances, leftover)
+        FaceRasterResult {
+            instances,
+            leftover,
+            claimed_indices,
+        }
     }
 
     /// Resolve one glyph's atlas placement (cache hit or fresh rasterize +
@@ -245,6 +274,16 @@ impl RasterTextPipeline {
         pass.set_vertex_buffer(1, instance_buf.slice(..));
         pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
     }
+}
+
+/// Output of [`RasterTextPipeline::place_glyphs_for_face`] for one face.
+struct FaceRasterResult {
+    instances: Vec<RasterInstance>,
+    leftover: Vec<RenderedGlyph>,
+    /// Indices into the caller's `params.glyphs` this face claimed
+    /// (placed, blank, or atlas-full) — used to detect glyphs no
+    /// enumerated face claimed at all.
+    claimed_indices: Vec<usize>,
 }
 
 /// Result of resolving one glyph against the atlas.
@@ -359,59 +398,5 @@ fn scissor_rect(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::float_cmp)]
-mod tests {
-    use super::*;
-
-    /// Wrap boundary: frac >= 0.875 must carry +1px into the anchor, not
-    /// silently alias to bin 0 of the CURRENT pixel (review finding 2).
-    #[test]
-    fn subpixel_wrap_carries_into_anchor() {
-        assert_eq!(subpixel_quantize(10.0), (0, 0.0));
-        assert_eq!(subpixel_quantize(10.1), (0, 0.0));
-        assert_eq!(subpixel_quantize(10.4), (2, 0.0));
-        assert_eq!(subpixel_quantize(10.874), (3, 0.0));
-        assert_eq!(subpixel_quantize(10.875), (0, 1.0));
-        assert_eq!(subpixel_quantize(10.999), (0, 1.0));
-    }
-
-    /// Invariant: the quantized placement (anchor + bin offset) stays within
-    /// half a bin (0.125px) of the true pen position across the whole range.
-    #[test]
-    fn quantized_placement_error_bounded_by_half_bin() {
-        let bins = f32::from(raster::SUBPIXEL_BINS);
-        for i in 0..1000 {
-            #[allow(clippy::cast_precision_loss)]
-            let pen = 10.0 + (i as f32) / 1000.0;
-            let (bin, carry) = subpixel_quantize(pen);
-            let placed = (pen + carry).floor() + f32::from(bin) / bins;
-            assert!(
-                (placed - pen).abs() <= 0.5 / bins + 1e-4,
-                "pen {pen}: placed {placed}, err {}",
-                (placed - pen).abs()
-            );
-        }
-    }
-
-    /// UVs are normalised against the FINAL atlas size — texel rects divided
-    /// by whatever size the atlas ended the accumulation at (review finding 1).
-    #[test]
-    fn normalize_uvs_divides_by_final_size() {
-        let mut instances = vec![
-            RasterInstance {
-                quad_rect: [0.0; 4],
-                uv_rect: [0.0, 0.0, 512.0, 512.0],
-                color: [0.0; 4],
-            },
-            RasterInstance {
-                quad_rect: [0.0; 4],
-                uv_rect: [1024.0, 0.0, 2048.0, 1024.0],
-                color: [0.0; 4],
-            },
-        ];
-        // Simulates growth to 2048 AFTER the first instance was placed.
-        normalize_uvs(&mut instances, 2048);
-        assert_eq!(instances[0].uv_rect, [0.0, 0.0, 0.25, 0.25]);
-        assert_eq!(instances[1].uv_rect, [0.5, 0.0, 1.0, 0.5]);
-    }
-}
+#[path = "raster_paint/tests.rs"]
+mod tests;

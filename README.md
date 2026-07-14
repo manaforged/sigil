@@ -1,5 +1,18 @@
 # Sigil
 
+## Owned-host verification
+
+GitHub Actions is not part of the test path. Run these gates directly on every supported native
+builder before promotion:
+
+```bash
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo check --workspace --all-targets
+cargo test --workspace --no-fail-fast
+cargo deny check
+```
+
 Sigil is a Rust-native desktop UI system for building serious,
 data-heavy applications without retreating to a webview. It owns the
 experience layer above the hard foundations: reactive state, typed node

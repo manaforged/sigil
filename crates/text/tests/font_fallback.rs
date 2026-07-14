@@ -1,0 +1,132 @@
+//! Per-run font fallback chain integration tests (Wave 4, W4.2).
+//!
+//! `FiraSans` (the bundled sans primary) has no Hebrew coverage; these
+//! tests prove a mixed Latin+Hebrew paragraph resolves the Hebrew run
+//! against a separately-registered face instead of rendering
+//! `.notdef` tofu, and that the renderer-facing invariant
+//! (`Paragraph::for_each_font` enumerating every face a glyph
+//! actually references) holds.
+
+#![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
+
+use std::collections::HashSet;
+
+use ahash as _;
+use criterion as _;
+#[cfg(feature = "shaping-complex")]
+use harfrust as _;
+use kernel as _;
+use layout as _;
+use reactive as _;
+use skrifa as _;
+use smallvec as _;
+use style as _;
+use tracing as _;
+use unicode_bidi as _;
+use unicode_script as _;
+use unicode_segmentation as _;
+
+use hal::{ParagraphMetrics, TextEngine};
+use text::{OwnedTextEngine, TextConfig};
+
+const NOTO_HEBREW: &[u8] = include_bytes!("fixtures/NotoSansHebrew-Regular.ttf");
+/// SHIN LAMED VAV MEM-FINAL — "שלום" (Shalom).
+const HEBREW_WORD: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
+
+fn engine() -> OwnedTextEngine {
+    OwnedTextEngine::new(TextConfig::default())
+}
+
+#[test]
+fn without_a_fallback_face_hebrew_renders_as_tofu() {
+    // Control: proves the scenario below is exercising a real
+    // codepath (FiraSans genuinely lacks Hebrew), not masking an
+    // already-covering primary face.
+    let e = engine();
+    let p = e.layout_paragraph(HEBREW_WORD, None).unwrap();
+    let glyphs = p.rendered_glyphs();
+    assert!(
+        glyphs.iter().any(|g| g.glyph_id == 0),
+        "FiraSans has no Hebrew coverage; without a fallback face this must be .notdef tofu",
+    );
+}
+
+#[test]
+fn mixed_latin_hebrew_falls_back_to_registered_face() {
+    let mut e = engine();
+    e.register_font_family("serif", NOTO_HEBREW.to_vec(), 0)
+        .expect("NotoSansHebrew fixture must register");
+
+    let p = e
+        .layout_paragraph(&format!("Hello {HEBREW_WORD}"), None)
+        .unwrap();
+    let glyphs = p.rendered_glyphs();
+    assert!(!glyphs.is_empty(), "mixed paragraph must produce glyphs");
+    assert!(
+        glyphs.iter().all(|g| g.glyph_id != 0),
+        "no glyph should be .notdef once a covering face is registered: {glyphs:?}",
+    );
+
+    // Renderer-facing invariant: the Latin run (FiraSans) and the
+    // Hebrew run (fallback face) must carry two DISTINCT font ids —
+    // proving fallback actually happened, not just luck.
+    let distinct_fonts: HashSet<u64> = glyphs.iter().map(|g| g.font_id).collect();
+    assert_eq!(
+        distinct_fonts.len(),
+        2,
+        "Latin run (FiraSans) and Hebrew run (fallback) must use two distinct font ids, \
+         got {distinct_fonts:?}",
+    );
+}
+
+#[test]
+fn for_each_font_yields_every_face_a_glyph_actually_uses() {
+    let mut e = engine();
+    e.register_font_family("serif", NOTO_HEBREW.to_vec(), 0)
+        .expect("NotoSansHebrew fixture must register");
+    let p = e
+        .layout_paragraph(&format!("Hi {HEBREW_WORD}"), None)
+        .unwrap();
+
+    let mut registered = HashSet::new();
+    p.for_each_font(|font_id, bytes, _index| {
+        assert!(!bytes.is_empty(), "font bytes must not be empty");
+        registered.insert(font_id);
+    });
+
+    let glyph_font_ids: HashSet<u64> = p.rendered_glyphs().iter().map(|g| g.font_id).collect();
+    assert!(
+        glyph_font_ids.is_subset(&registered),
+        "every font_id a rendered glyph references must be registered via for_each_font: \
+         glyph ids {glyph_font_ids:?}, registered {registered:?}",
+    );
+    assert_eq!(
+        glyph_font_ids.len(),
+        2,
+        "expect exactly the primary + one fallback face to be referenced, got {glyph_font_ids:?}",
+    );
+}
+
+#[test]
+fn fallback_face_registration_does_not_disturb_pure_latin_layout() {
+    // Registering a Hebrew fallback face must not change how a
+    // Latin-only paragraph shapes or measures.
+    let e_baseline = engine();
+    let baseline = e_baseline.layout_paragraph("Hello world", None).unwrap();
+
+    let mut e_with_fallback = engine();
+    e_with_fallback
+        .register_font_family("serif", NOTO_HEBREW.to_vec(), 0)
+        .unwrap();
+    let with_fallback = e_with_fallback
+        .layout_paragraph("Hello world", None)
+        .unwrap();
+
+    assert!(
+        (baseline.width() - with_fallback.width()).abs() < f32::EPSILON,
+        "registering an unrelated fallback face must not perturb Latin-only width: \
+         {} vs {}",
+        baseline.width(),
+        with_fallback.width(),
+    );
+}

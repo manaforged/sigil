@@ -783,7 +783,15 @@ fn layout_item_subtree(
                 cb: CbSize { w, h },
                 suppress_stretch: ctx.suppress_stretch,
             };
-            layout_root(&nested, node, origin)
+            // The flex placement pass already baked this node's margins into `origin`,
+            // but `layout_root` re-applies them (it expects a PRE-margin origin). Feed the
+            // pre-margin position so the margin lands exactly once — the same correction
+            // `dispatch_block_subtree` makes for a block child. Without it a nested flex
+            // container's margin is applied twice.
+            let edges = NodeEdges::build(style, w);
+            let m = edges.margin.or_zero();
+            let pre = Position2::new(origin.x - m.left, origin.y - m.top);
+            layout_root(&nested, node, pre)
         }
         // `Display::None` skipped upstream in `build_items`; `Grid`
         // falls back to BlockSolver until the owned grid solver lands

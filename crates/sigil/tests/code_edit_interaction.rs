@@ -12,7 +12,6 @@
 use actions as _;
 use animation as _;
 use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
 use events as _;
@@ -27,7 +26,7 @@ use wgpu as _;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use hal::{KeyEventInit, Point, PointerEventInit};
+use hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit};
 use sigil::prelude::*;
 
 /// A measure that reports a fixed *wide* box for any text, so a single line is far
@@ -65,6 +64,15 @@ fn pointer_down(x: f32, y: f32) -> ShellEvent {
         buttons: MouseButtons::LEFT,
         modifiers: ModifiersState::empty(),
         phase: PointerPhase::Down,
+    }))
+}
+
+fn scroll_at(x: f32, y: f32, dy: f32) -> ShellEvent {
+    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+        position: Point::new(x, y),
+        delta: ScrollDelta::Pixels(Point::new(0.0, dy)),
+        modifiers: ModifiersState::empty(),
+        phase: ScrollPhase::Moved,
     }))
 }
 
@@ -131,6 +139,44 @@ fn long_line_does_not_grow_the_box_past_its_pane() {
         assert!(
             result.clips(),
             "code_edit must clip overflow so a long line can't paint/hit outside its pane",
+        );
+    });
+}
+
+/// Regression: a line wider than the pane must keep its run at full intrinsic width, not
+/// shrink it to the pane. A run that shrinks to the available width gets RE-WRAPPED at
+/// paint time (the engine wraps to the box width), drawing extra visual lines that
+/// overflow the rigid row and bleed onto the next — the "long lines overlap" half of the
+/// editor bug that row-level `shrink(0)` does not catch (the row box stays correct; the
+/// text inside spills). `WideMeasure` reports every line at 1600px, far past the 580px
+/// pane, so the run's laid-out width must stay ~1600 (the container clips it), not ~580.
+#[test]
+fn long_line_run_keeps_intrinsic_width_so_paint_does_not_wrap() {
+    sigil::reactive::Runtime::scope("code-edit-nowrap-run", || {
+        let pane_w = 580.0;
+        let lines = signal(vec!["x".repeat(200)]); // measured 1600px wide by WideMeasure
+        let caret = signal((0_usize, 0_usize));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(pane_w, 400.0))
+                .child(code_edit(lines, caret)),
+        );
+        let layout = layout_in(&mut cx, root, pane_w, 400.0);
+
+        // The run is the widest node in the tree (the editor box itself clips to the
+        // pane). With the no-wrap fix it keeps its ~1600px intrinsic width; without it,
+        // flex shrinks it toward the ~580px pane and paint then wraps it.
+        let mut widest = 0.0_f32;
+        cx.visit_preorder(root, |id, _node| {
+            if let Some(r) = layout.result(id) {
+                widest = widest.max(r.rect().width);
+            }
+        });
+        assert!(
+            widest > pane_w + 100.0,
+            "run was shrunk to the pane ({widest} <= {pane_w}) — paint will re-wrap it and \
+             the long line will overlap the next row; the run must keep intrinsic width",
         );
     });
 }
@@ -336,6 +382,189 @@ fn caret_visible_when_doc_exceeds_max_rows() {
         assert!(
             caret_bar_present(&cx, &layout, root),
             "caret on line 2400 of a 2500-line doc must stay in the rendered window",
+        );
+    });
+}
+
+/// Regression: a file taller than the editor pane must NOT compress its rows.
+///
+/// The rows live in a `flex_column` bounded by the pane height; once they overflow it,
+/// flex's default shrink would squeeze every row below `ROW_H` to fit — the lines pile
+/// up and their text overlaps (worse the longer the file). `row_container` pins
+/// `shrink(0.0)` so rows stay rigid and the column clips the overflow instead. This
+/// asserts the invariant directly: consecutive row tops stay exactly `ROW_H` apart, no
+/// matter how far the content overflows. Guards the "editor text overlaps itself" bug
+/// that a render golden at a short doc length never catches.
+#[test]
+fn overflowing_rows_keep_full_height_and_do_not_compress() {
+    sigil::reactive::Runtime::scope("code-edit-overflow-compress", || {
+        // Pin the row height the test controls (via `row_height`) rather than mirroring
+        // the widget's private default, so this asserts shrink behavior only — not an
+        // incidental default-height change.
+        const ROW_H: f32 = 18.0;
+        let pane_h = 200.0; // 11 rows fit; 60 rows overflow by ~5x.
+        let lines = signal((0..60).map(|i| format!("line {i}")).collect::<Vec<_>>());
+        let caret = signal((0_usize, 0_usize));
+        let mut cx = Cx::new_root();
+        let editor_node = code_edit(lines, caret).row_height(ROW_H);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(400.0, pane_h))
+                .child(editor_node),
+        );
+        let layout = layout_in(&mut cx, root, 400.0, pane_h);
+
+        // The rows live in the scrolling inner column — the viewport's single child —
+        // not directly under the viewport. Read each row top in order and assert the step
+        // never falls below ROW_H (compression would shrink it).
+        let editor = first_text_input(&cx, root);
+        let inner = cx.nth_child(editor, 0).expect("scroll body column");
+        let count = cx.child_count(inner);
+        assert!(
+            count >= 12,
+            "expected the overflowing rows to be laid out, got {count}"
+        );
+        let tops: Vec<f32> = (0..count)
+            .filter_map(|i| cx.nth_child(inner, i))
+            .filter_map(|row| layout.result(row).map(|r| r.rect().origin.y))
+            .collect();
+        for pair in tops.windows(2) {
+            let step = pair[1] - pair[0];
+            assert!(
+                (step - ROW_H).abs() < 0.5,
+                "rows compressed under overflow: step {step} != ROW_H {ROW_H} (tops={tops:?})",
+            );
+        }
+    });
+}
+
+/// Perf + scroll regression: the editor must VIRTUALIZE (materialize only a window of
+/// rows, not the whole file — re-solving every row each frame was the ~110ms stall), and
+/// a wheel must move that window past the caret (free scroll, not caret-locked).
+#[test]
+fn wheel_virtualizes_and_scrolls_the_window_past_the_caret() {
+    sigil::reactive::Runtime::scope("code-edit-virtualize", || {
+        const ROW_H: f32 = 18.0;
+        let pane_h = 200.0;
+        let lines = signal((0..400).map(|i| format!("line {i}")).collect::<Vec<_>>());
+        let caret = signal((0_usize, 0_usize)); // caret parks on the first line
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(400.0, pane_h))
+                .child(code_edit(lines, caret).row_height(ROW_H)),
+        );
+        let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
+        let editor = first_text_input(&cx, root);
+        let inner = cx.nth_child(editor, 0).expect("scroll body column");
+
+        // Virtualization: a 400-line doc must materialize only a window, never 400 rows.
+        let materialized = cx.child_count(inner);
+        assert!(
+            (10..150).contains(&materialized),
+            "editor must render a bounded window of a 400-line file, got {materialized} rows",
+        );
+        // The caret on line 0 is visible before scrolling.
+        assert!(caret_bar_present(&cx, &layout, root));
+
+        // Wheel down well past the caret (50 rows). Because follow only fires on caret
+        // MOVEMENT, the window leaves the caret behind — proving free scrolling.
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, scroll_at(200.0, 100.0, -50.0 * ROW_H));
+        layout
+            .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+            .unwrap();
+        assert!(
+            !caret_bar_present(&cx, &layout, root),
+            "a wheel-scroll must move the window past the line-0 caret (free scroll)",
+        );
+    });
+}
+
+/// The virtualization budget tracks the REAL viewport height (`size_reactive`), not a
+/// fixed guess: a short pane materializes few rows. A discriminator — a stuck default
+/// (800px) budget would render ~50, so a small result proves the published height fed back.
+#[test]
+fn render_budget_tracks_the_published_viewport_height() {
+    sigil::reactive::Runtime::scope("code-edit-size-reactive", || {
+        const ROW_H: f32 = 18.0;
+        let pane_h = 200.0; // ~11 visible rows — far below the 800px default
+        let lines = signal((0..400).map(|i| format!("line {i}")).collect::<Vec<_>>());
+        let caret = signal((0_usize, 0_usize));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(400.0, pane_h))
+                .child(code_edit(lines, caret).row_height(ROW_H)),
+        );
+        let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
+        // Drive real frames so `size_reactive` publishes the 200px height during attach and
+        // the next Effect phase rebuilds the window at the now-smaller budget.
+        for _ in 0..3 {
+            app::__drive_test_frame(
+                || {
+                    layout
+                        .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+                        .unwrap();
+                },
+                || {},
+            );
+        }
+        let editor = first_text_input(&cx, root);
+        let inner = cx.nth_child(editor, 0).expect("scroll body column");
+        let materialized = cx.child_count(inner);
+        // ~11 visible + 6 buffer ≈ 17, and crucially well under the ~50 a stuck 1600px
+        // default would render — that gap is the proof the real height fed back.
+        assert!(
+            (10..40).contains(&materialized),
+            "budget must shrink to the 200px pane via size_reactive, got {materialized}"
+        );
+    });
+}
+
+/// Regression (adversarial review M1): a document that FITS the pane must not scroll into
+/// blank space. `max_scroll` is now `(content - viewport).max(0)` using the real height
+/// from `size_reactive`, so a wheel on a short doc is a no-op (was `(lines-1)*row_h`, which
+/// let a 5-line doc scroll 4 rows up, revealing blank below).
+#[test]
+fn short_doc_does_not_scroll_into_blank_space() {
+    sigil::reactive::Runtime::scope("code-edit-shortdoc", || {
+        const ROW_H: f32 = 18.0;
+        let pane_h = 200.0; // fits ~11 rows
+        let lines = signal((0..5).map(|i| format!("line {i}")).collect::<Vec<_>>()); // 5 < 11
+        let caret = signal((0_usize, 0_usize));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(400.0, pane_h))
+                .child(code_edit(lines, caret).row_height(ROW_H)),
+        );
+        let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
+        // Publish the real 200px height so max_scroll knows the doc fits.
+        for _ in 0..3 {
+            app::__drive_test_frame(
+                || {
+                    layout
+                        .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+                        .unwrap();
+                },
+                || {},
+            );
+        }
+        assert!(
+            caret_bar_present(&cx, &layout, root),
+            "line-0 caret shows before scroll"
+        );
+
+        // A hard wheel-down must do nothing: the doc fits, so there's nowhere to scroll.
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, scroll_at(200.0, 100.0, -50.0 * ROW_H));
+        layout
+            .compute(&mut cx, root, Size::fixed(400.0, pane_h))
+            .unwrap();
+        assert!(
+            caret_bar_present(&cx, &layout, root),
+            "a doc that fits the pane must not scroll line 0 off into blank space",
         );
     });
 }

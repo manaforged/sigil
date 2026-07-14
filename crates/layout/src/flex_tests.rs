@@ -719,6 +719,51 @@ fn margin_on_item_offsets_main_position() {
     assert!(near(s.boxed(a).unwrap().x, 15.0));
 }
 
+#[test]
+fn margin_on_a_nested_flex_container_applies_once_not_twice() {
+    // Regression: a flex CONTAINER that is itself a flex ITEM had its own top margin
+    // applied twice — the parent's placement baked it into the child's origin, then the
+    // child's `layout_root` re-added it (the block-child dispatch already subtracts it;
+    // the flex-child dispatch didn't). A leaf item never tripped this (it returns before
+    // the recursive dispatch), so it needs a child to reproduce.
+    let mut f = LayoutForest::new();
+    let parent = f.insert(
+        None,
+        StyleData {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            size: StyleSize::new(Dimension::Px(300.0), Dimension::Px(300.0)),
+            ..StyleData::default()
+        },
+    );
+    let child_style = StyleData {
+        display: Display::Flex, // a flex container, not a leaf
+        flex_direction: FlexDirection::Column,
+        size: StyleSize::new(Dimension::Px(100.0), Dimension::Px(50.0)),
+        margin: Rect {
+            left: LengthPercentageAuto::Px(0.0),
+            right: LengthPercentageAuto::Px(0.0),
+            top: LengthPercentageAuto::Px(20.0),
+            bottom: LengthPercentageAuto::Px(0.0),
+        },
+        ..StyleData::default()
+    };
+    let child = add_child(&mut f, parent, child_style);
+    // A grandchild makes `child` a real flex container (drives the recursive dispatch).
+    let grandchild_style = StyleData {
+        size: StyleSize::new(Dimension::Px(10.0), Dimension::Px(10.0)),
+        ..StyleData::default()
+    };
+    let _gc = add_child(&mut f, child, grandchild_style);
+
+    let s = run(&f, parent, 400.0, 400.0);
+    let y = s.boxed(child).unwrap().y;
+    assert!(
+        near(y, 20.0),
+        "nested flex container top margin must apply once (expected 20, got {y})"
+    );
+}
+
 // ---------------------------------------------------------------------
 // min/max clamping
 // ---------------------------------------------------------------------

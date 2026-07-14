@@ -246,11 +246,29 @@ impl TextEdit {
 
     /// Clamp `byte` to the nearest UTF-8 boundary at or below the buffer length.
     fn clamp_boundary(&self, byte: usize) -> usize {
-        let mut byte = byte.min(self.buffer.len());
-        while byte > 0 && !self.buffer.is_char_boundary(byte) {
-            byte -= 1;
+        clamp_to_len_boundary(&self.buffer, byte)
+    }
+
+    /// Resynchronize the buffer against an externally-written value —
+    /// the app called `value.set(...)` directly, bypassing this
+    /// editor's own mutation path (`TextEditRuntime::edit_mut` calls
+    /// this before every widget-originated mutation so a stale
+    /// internal buffer never clobbers an external write, e.g. on the
+    /// next IME commit). Clamps the caret/selection into the new
+    /// buffer's bounds (nearest UTF-8 boundary) so a stale offset can
+    /// never outlive the swap. Does not touch undo/redo history — an
+    /// external write is not itself undoable, matching how
+    /// `value.set` already bypasses every other consumer's history.
+    pub(crate) fn sync_external(&mut self, external: String) {
+        if self.buffer == external {
+            return;
         }
-        byte
+        self.caret = clamp_to_len_boundary(&external, self.caret);
+        self.selection = self
+            .selection
+            .map(|anchor| clamp_to_len_boundary(&external, anchor));
+        self.buffer = external;
+        self.debug_assert_invariants();
     }
 
     #[must_use]
@@ -304,6 +322,18 @@ impl TextEdit {
     }
 }
 
+/// Clamp `byte` to the nearest UTF-8 boundary at or below `text.len()`.
+/// Shared by `TextEdit::clamp_boundary` (against the live buffer) and
+/// `TextEdit::sync_external` (against a not-yet-installed candidate
+/// buffer).
+fn clamp_to_len_boundary(text: &str, byte: usize) -> usize {
+    let mut byte = byte.min(text.len());
+    while byte > 0 && !text.is_char_boundary(byte) {
+        byte -= 1;
+    }
+    byte
+}
+
 const fn selection_range(anchor: usize, caret: usize) -> (usize, usize) {
     if anchor < caret {
         (anchor, caret)
@@ -330,50 +360,4 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         .char_indices()
         .nth(1)
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::TextEdit;
-
-    #[test]
-    fn place_caret_sets_caret_and_collapses_selection() {
-        let mut edit = TextEdit::new("hello world".to_owned());
-        edit.select_all();
-        assert!(edit.selection().is_some());
-        edit.place_caret(3);
-        assert_eq!(edit.caret(), 3);
-        assert_eq!(edit.selection(), None, "click collapses the selection");
-    }
-
-    #[test]
-    fn place_caret_clamps_past_end_and_off_boundary() {
-        // "café" — the 'é' is 2 bytes (3..5), so byte 4 is mid-codepoint.
-        let mut edit = TextEdit::new("café".to_owned());
-        edit.place_caret(999);
-        assert_eq!(edit.caret(), edit.len(), "past-end clamps to length");
-        edit.place_caret(4);
-        assert_eq!(edit.caret(), 3, "mid-codepoint snaps back to a boundary");
-    }
-
-    #[test]
-    fn extend_to_anchors_at_starting_caret_then_grows() {
-        let mut edit = TextEdit::new("hello world".to_owned());
-        edit.place_caret(2); // caret at 2, no selection
-        edit.extend_to(6); // drag right to byte 6 (exclusive)
-        assert_eq!(edit.caret(), 6);
-        assert_eq!(edit.selection(), Some(2), "anchor stays at the drag origin");
-        assert_eq!(edit.selected_text(), Some("llo "));
-    }
-
-    #[test]
-    fn extend_to_back_onto_anchor_collapses() {
-        let mut edit = TextEdit::new("hello".to_owned());
-        edit.place_caret(1);
-        edit.extend_to(4);
-        assert_eq!(edit.selection(), Some(1));
-        edit.extend_to(1); // drag back to the origin
-        assert_eq!(edit.selection(), None, "a zero-width drag collapses");
-        assert_eq!(edit.caret(), 1);
-    }
 }

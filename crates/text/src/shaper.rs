@@ -111,6 +111,89 @@ impl Font {
     pub fn id(&self) -> u64 {
         Arc::as_ptr(&self.data) as u64
     }
+
+    /// Whether every non-default-ignorable codepoint in `text` has a
+    /// cmap entry in this face.
+    ///
+    /// Used by the engine's per-run fallback chain (Wave 4) to pick the
+    /// first registered face with full coverage for a run before
+    /// falling back to `.notdef` tofu. A single cmap lookup per
+    /// codepoint — cheap relative to a full shape.
+    ///
+    /// the reviewer adversarial review, finding 2: default-ignorable shaping
+    /// controls (ZWJ, ZWNJ, VS15/VS16) commonly have no standalone cmap
+    /// glyph — they're consumed during shaping (joining, variation
+    /// selection), not drawn — so requiring one rejected faces that
+    /// actually shape the surrounding text correctly. They're skipped
+    /// here rather than checked.
+    ///
+    /// cmap presence alone still doesn't prove the SHAPED result avoids
+    /// `.notdef` (a face can map a codepoint but fail to produce the
+    /// substituted glyph a script's GSUB rules need) — the engine's
+    /// [`shape_validated`](crate::engine) closes that gap by validating
+    /// the actual shaped buffer and falling through the chain if this
+    /// face's cmap coverage didn't pan out.
+    #[must_use]
+    pub(crate) fn covers(&self, text: &str) -> bool {
+        let charmap = self.font_ref().charmap();
+        text.chars()
+            .filter(|&ch| !is_default_ignorable(ch))
+            .all(|ch| charmap.map(ch as u32).is_some())
+    }
+}
+
+/// Unicode's `Default_Ignorable_Code_Point` derived property —
+/// shaping/formatting controls consumed during text processing rather
+/// than drawn as a visible glyph (ZWJ/ZWNJ, variation selectors, bidi
+/// formatting controls, Mongolian FVS, tag characters, etc). Codepoints
+/// that commonly have no standalone cmap glyph but are NOT rejected
+/// coverage failures.
+///
+/// Range table generated from `DerivedCoreProperties.txt`
+/// (Unicode 14.0, `grep '; Default_Ignorable_Code_Point '`). No
+/// crate already in this workspace's dependency graph exposes the
+/// property publicly (checked `unicode-properties` 0.1.4, pulled in
+/// transitively via `rustybuzz`: only `emoji`/`general_category`
+/// modules, no `Default_Ignorable_Code_Point`; `skrifa`/`harfrust`
+/// have no public surface for it — `harfrust`'s own
+/// `is_default_ignorable` in `src/hb/unicode.rs` is `pub(crate)`).
+///
+/// Deliberately excludes 4 codepoints the raw property nominally
+/// covers but that real fonts render as ordinary spacing glyphs
+/// (U+115F/U+1160 Hangul Choseong/Jungseong Filler, U+3164 Hangul
+/// Filler, U+FFA0 Halfwidth Hangul Filler) and the Shorthand Format
+/// controls U+1BCA0..=U+1BCA3 — matching `HarfBuzz`'s documented
+/// practical exceptions (`harfbuzz/harfbuzz#503`): a font missing one
+/// of THOSE is a real, visible coverage gap, not an invisible control
+/// safe to skip. Since `HarfRust` is this crate's shaping backend,
+/// aligning with its own ignorable set keeps `covers`/`shape_validated`
+/// consistent with what actually shapes the text.
+pub(crate) const fn is_default_ignorable(ch: char) -> bool {
+    let cp = ch as u32;
+    let plane = cp >> 16;
+    if plane == 0 {
+        match cp >> 8 {
+            0x00 => cp == 0x00AD,
+            0x03 => cp == 0x034F,
+            0x06 => cp == 0x061C,
+            0x17 => matches!(cp, 0x17B4..=0x17B5),
+            0x18 => matches!(cp, 0x180B..=0x180F),
+            0x20 => {
+                matches!(cp, 0x200B..=0x200F)
+                    || matches!(cp, 0x202A..=0x202E)
+                    || matches!(cp, 0x2060..=0x206F)
+            }
+            0xFE => matches!(cp, 0xFE00..=0xFE0F) || cp == 0xFEFF,
+            0xFF => matches!(cp, 0xFFF0..=0xFFF8),
+            _ => false,
+        }
+    } else {
+        match plane {
+            0x01 => matches!(cp, 0x1D173..=0x1D17A),
+            0x0E => matches!(cp, 0xE0000..=0xE0FFF),
+            _ => false,
+        }
+    }
 }
 
 // Skrifa's `FontRef` is `Send + Sync`; `Vec<u8>` is too. Marker is
@@ -398,3 +481,7 @@ const fn is_emoji(cp: u32) -> bool {
 #[cfg(test)]
 #[path = "shaper/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "shaper/covers_tests.rs"]
+mod covers_tests;

@@ -188,10 +188,11 @@ fn displayed_text(
 }
 
 /// Insert `preedit` into `value` at the `caret` byte offset, for display
-/// only. `caret` mirrors `TextEdit`'s caret, which is always a valid
-/// UTF-8 boundary by construction.
+/// only. The caret mirrors `TextEdit`'s caret, but value and caret publish
+/// through separate signals — the clamp guards the transient state between
+/// the two writes (same fix as `text_edit`'s gated HIGH-1).
 fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
-    let caret = caret.min(value.len());
+    let caret = crate::widgets::text_edit::floor_char_boundary(value, caret.min(value.len()));
     let mut out = String::with_capacity(value.len() + preedit.len());
     out.push_str(&value[..caret]);
     out.push_str(preedit);

@@ -153,31 +153,46 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
                 MARK_EMPTY
             }
         });
-    // Outer frame — NEUTRAL border. Borders are neutral by design
-    // (step-7 of the gray scale = Radix "non-text borders" at
-    // ≥3:1 against surface). Earlier passes attached the widget's
-    // tone here too, which made the frame pale-lavender on iris
-    // and failed the 3:1 floor on light surfaces (the reviewer visual
-    // adversarial 2026-05-21). The `bg-gray-7` class resolves
-    // through the gray scale directly, ignoring the tone context.
+    // Surface core — punches the interior out of the outer disc so
+    // the frame reads as a 2 px ring (the nested-fill border idiom;
+    // text_field's frame is the precedent — no border atom exists).
+    // ponytail: core paints the global `surface` token, so a radio on
+    // a tinted panel shows a surface-colored hole; correct on every
+    // current call site (all bg-surface). Upgrade path: SDF ring /
+    // stroke primitive in the renderer (followup 2026-07-13).
+    let mark_core = container()
+        .layout(mark_core_layout())
+        // MARK_CORE is 12 px; explicit radius avoids the Px(9_999) SDF clipping bug.
+        .style(Style::new().radius(6))
+        .class("bg-surface")
+        .child(mark_inner);
+    // Outer ring — NEUTRAL border. `gray-9` is the sanctioned rest-
+    // border step (text_field frame, the reviewer visual 2026-05-21): the
+    // previous flat `gray-7` fill measured 1.49:1 against the gray-2
+    // surface, failing the 3:1 non-text floor this comment used to
+    // claim it met (Fable visual adversarial 2026-07-13); gray-9
+    // measures 3.14:1. The class resolves through the gray scale
+    // directly, ignoring the tone context;
+    // `mark_ring_clears_non_text_contrast` pins the floor.
     container()
         .role(Role::GenericContainer)
         .layout(mark_outer_layout())
         // MARK_OUTER is 16 px; explicit radius avoids the Px(9_999) SDF clipping bug.
         .style(Style::new().radius(8))
-        .class("bg-gray-7")
-        .child(mark_inner)
+        .class("bg-gray-9")
+        .child(mark_core)
 }
 
 // Inner-fill atoms — read on the tonal inner node, so step-9
 // resolves through the accent (iris / success / error / etc.)
-// scale. MARK_OUTER_FRAME is no longer needed; the outer ring's
-// neutral border is supplied via the `bg-gray-7` class above.
+// scale. The outer ring's neutral border is supplied via the
+// `bg-gray-9` class above.
 static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
 const ROW_HEIGHT: f32 = 28.0;
 const MARK_OUTER: f32 = 16.0;
+const MARK_CORE: f32 = 12.0;
 const MARK_INNER: f32 = 8.0;
 
 fn group_layout() -> LayoutStyle {
@@ -195,6 +210,13 @@ fn option_layout() -> LayoutStyle {
 fn mark_outer_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fixed_size(MARK_OUTER, MARK_OUTER)
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::Center)
+}
+
+fn mark_core_layout() -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fixed_size(MARK_CORE, MARK_CORE)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }
@@ -264,5 +286,38 @@ mod tests {
             let group = radio_group(signal(String::from("a"))).option("a", "A");
             assert!(matches!(group.tone, Tone::Primary));
         });
+    }
+
+    #[test]
+    fn mark_ring_clears_non_text_contrast() {
+        use style::Rgba8;
+        use style::scale::ScaleRole;
+        use style::theme::Theme;
+
+        fn luminance(c: Rgba8) -> f64 {
+            let ch = |v: u8| {
+                let v = f64::from(v) / 255.0;
+                if v <= 0.039_28 {
+                    v / 12.92
+                } else {
+                    ((v + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
+        }
+
+        // The `bg-gray-9` ring must clear the WCAG 1.4.11 non-text
+        // 3:1 floor against the surface it floats on, in both themes.
+        // The previous flat gray-7 mark measured 1.49:1 on light
+        // (Fable visual adversarial 2026-07-13).
+        for (name, theme) in [("light", Theme::default()), ("dark", Theme::dark())] {
+            let ring = theme.scale(ScaleRole::Gray).step(9);
+            let (lr, ls) = (luminance(ring), luminance(theme.surface));
+            let ratio = (lr.max(ls) + 0.05) / (lr.min(ls) + 0.05);
+            assert!(
+                ratio >= 3.0,
+                "{name}: gray-9 ring on surface measures {ratio:.2}:1, below the 3:1 non-text floor"
+            );
+        }
     }
 }

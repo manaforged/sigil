@@ -277,3 +277,56 @@ fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
     });
     found
 }
+
+fn arrow_left() -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(hal::KeyEventInit {
+        key: Key::ArrowLeft.into(),
+        physical: hal::PhysicalKey::ArrowLeft,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+fn backspace() -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(hal::KeyEventInit {
+        key: Key::Backspace.into(),
+        physical: hal::PhysicalKey::Backspace,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}
+
+/// Mirror of text_edit's HIGH-1 (the reviewer gate, 2026-07-13): text_field's
+/// handlers publish value and caret through separate signal writes, so a
+/// raw Backspace during an active preedit can splice mid-codepoint on the
+/// transient state. Red before the batch fix, green after.
+#[test]
+fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
+    sigil::reactive::Runtime::scope("text-field-ime-multibyte-backspace", || {
+        let value = signal(String::from("a\u{e9}"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let layout = compute(&mut cx, root);
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, arrow_left());
+
+        router.route(
+            &mut cx,
+            &layout,
+            ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
+        );
+        router.route(&mut cx, &layout, backspace());
+
+        assert_eq!(
+            value.get(),
+            "\u{e9}",
+            "backspace must land on the shrunk buffer"
+        );
+    });
+}

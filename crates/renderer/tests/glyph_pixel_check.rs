@@ -37,8 +37,8 @@ use std::sync::mpsc;
 
 use pollster::FutureExt as _;
 use renderer::{
-    CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, WgpuRenderer,
-    shape_glyph_run,
+    CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, TextTuning,
+    WgpuRenderer, set_text_tuning, shape_glyph_run,
 };
 use style::{Rgba8, TextLineHeight, TextStyle};
 use text::{OwnedTextEngine, TextConfig};
@@ -345,6 +345,154 @@ fn rel_diff(a: f32, b: f32) -> f32 {
     } else {
         (a - b).abs() / m
     }
+}
+
+// ---- Wave-3 D3: raster-vs-vector sharpness comparison (measurement gate) ---
+
+// Small sizes named in the DR-055/plan gate. All are within
+// `raster::RASTER_MAX_LOGICAL_PX` (20px) — the raster path's eligibility
+// ceiling — so both families are reachable at every size below.
+const RASTER_COMPARE_SIZES_PX: [f32; 3] = [12.0, 14.0, 16.0];
+
+/// Restores [`TextTuning`] to its default on drop — including on panic —
+/// since the tuning flag is a shared process global other tests read.
+struct TuningGuard;
+impl Drop for TuningGuard {
+    fn drop(&mut self) {
+        set_text_tuning(TextTuning::default());
+    }
+}
+
+#[test]
+fn raster_vs_vector_sharpness_at_scale_1_0() {
+    measure_raster_vs_vector(1.0);
+}
+#[test]
+fn raster_vs_vector_sharpness_at_scale_1_25() {
+    measure_raster_vs_vector(1.25);
+}
+#[test]
+fn raster_vs_vector_sharpness_at_scale_1_5() {
+    measure_raster_vs_vector(1.5);
+}
+#[test]
+fn raster_vs_vector_sharpness_at_scale_2_0() {
+    measure_raster_vs_vector(2.0);
+}
+
+/// Wave-3 D3 measurement gate (DR-055 §3, plan Wave 3): for each of
+/// [`RASTER_COMPARE_SIZES_PX`], render `TEXT` through the real embed path
+/// (`shape_glyph_run` → `submit_screen`, the same path production hosts
+/// use) twice at matched texture/submission `scale` — once with
+/// `TextTuning.raster` on, once off — and print ramp_px/ink_fraction side
+/// by side.
+///
+/// This is a DATA-COLLECTION test, not a winner-take-all gate: it asserts
+/// both paths actually produce ink (a broken raster pass would silently
+/// render nothing, which is a real bug this test would catch) but does
+/// NOT assert raster beats vector on sharpness — the default-on decision
+/// is the driver's, made from this printed evidence, per the dispatch
+/// brief ("do not flip the default yourself").
+fn measure_raster_vs_vector(scale: f32) {
+    for &size_px in &RASTER_COMPARE_SIZES_PX {
+        let (vec_px, vw, vh) = render_embed_at(scale, size_px, false);
+        let vector = measure(&vec_px, vw, vh);
+        let (ras_px, rw, rh) = render_embed_at(scale, size_px, true);
+        let raster = measure(&ras_px, rw, rh);
+
+        let v_ramp = vector.softest_ramp_px.unwrap_or(f32::NAN);
+        let r_ramp = raster.softest_ramp_px.unwrap_or(f32::NAN);
+        println!(
+            "raster-vs-vector scale={scale} size={size_px}px | vector ramp_px={v_ramp:.3} \
+             ink={:.4} | raster ramp_px={r_ramp:.3} ink={:.4}",
+            vector.ink_fraction, raster.ink_fraction,
+        );
+        assert!(
+            vector.ink_fraction > 0.0,
+            "scale {scale} size {size_px}: vector path produced no ink"
+        );
+        assert!(
+            raster.ink_fraction > 0.0,
+            "scale {scale} size {size_px}: raster path produced no ink — raster pass broken?"
+        );
+    }
+}
+
+/// Render `TEXT` at `size_px` through the real embed path with texture and
+/// submission scale matched (no DPI-mismatch defect in play — raster-vs-
+/// vector is the only variable). Toggles `TextTuning.raster` for the
+/// duration; a [`TuningGuard`] restores the default even if an assertion
+/// panics, since the flag is a shared process global other tests read.
+fn render_embed_at(scale: f32, size_px: f32, raster: bool) -> (Vec<u8>, u32, u32) {
+    let _guard = TuningGuard;
+    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
+    renderer
+        .ensure_headless_for_tests()
+        .expect("headless renderer device — no adapter available for glyph_pixel_check");
+    let device = renderer.device().expect("headless device").clone();
+    let queue = renderer.queue().expect("headless queue").clone();
+
+    let phys_w = (LOGICAL_W * scale).round() as u32;
+    let phys_h = (LOGICAL_H * scale).round() as u32;
+    let texture = create_capture_texture(&device, phys_w, phys_h);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    set_text_tuning(TextTuning {
+        raster,
+        ..TextTuning::default()
+    });
+
+    let scene = build_text_scene_sized(size_px);
+    renderer
+        .submit_screen(
+            &ScreenSubmission {
+                device: &device,
+                queue: &queue,
+                view: &view,
+                format: FORMAT,
+                viewport: (LOGICAL_W, LOGICAL_H),
+                scale,
+                clear: Some(hal::Color::BLACK),
+            },
+            &scene,
+        )
+        .expect("submit_screen");
+
+    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h);
+    (pixels, phys_w, phys_h)
+}
+
+/// Like [`build_text_scene`] but with a configurable font size — the
+/// raster path's eligibility gate is `font_size <= RASTER_MAX_LOGICAL_PX`
+/// (20px), so the small sizes in [`RASTER_COMPARE_SIZES_PX`] are the ones
+/// that matter here.
+fn build_text_scene_sized(size_px: f32) -> CommandScene {
+    let style = TextStyle {
+        font_family: String::from("system-ui"),
+        font_size: size_px,
+        font_weight: 400,
+        line_height: TextLineHeight::FontSizeRelative(1.2),
+    };
+    let rect = hal::Rect::new(
+        hal::Point::new(ORIGIN.0, ORIGIN.1),
+        LOGICAL_W - ORIGIN.0,
+        LOGICAL_H - ORIGIN.1,
+    );
+    let run = shape_glyph_run(
+        rect,
+        TEXT.to_string(),
+        Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
+        style,
+        10_000,
+    );
+    let mut builder = SceneBuilder::new();
+    builder.draw_glyph_run(run);
+    builder.finish()
 }
 
 // ---- render -----------------------------------------------------------------

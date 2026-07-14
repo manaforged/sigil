@@ -84,6 +84,8 @@ pub use corner_radii::CornerRadii;
 pub use error::RendererError;
 pub use layer_pool::{LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
+#[doc(hidden)]
+pub use raster_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer, WorldSubmission, submit_clear};
 #[doc(hidden)]
 pub use scene::shape_glyph_run;
