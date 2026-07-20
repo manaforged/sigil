@@ -8,12 +8,12 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use hal::{
+use sigil_hal::{
     ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
     PointerPhase,
 };
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::EventHandlers;

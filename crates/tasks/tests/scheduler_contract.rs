@@ -39,9 +39,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
-use hal::Scheduler;
-use reactive::{Owner, Runtime};
-use tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
+use sigil_hal::Scheduler;
+use sigil_reactive::{Owner, Runtime};
+use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
 
 /// Small helper: create an `AsyncRuntime` + capture the current owner
 /// as an `OwnerHandle`. Called inside a `Runtime::scope` closure.
@@ -218,7 +218,7 @@ fn dispatch_to_owner_sets_current_owner_during_callback() {
         || {
             let (mut scheduler, handle) = setup();
             let expected = handle.id();
-            let observed: Arc<std::sync::Mutex<Option<reactive::OwnerId>>> =
+            let observed: Arc<std::sync::Mutex<Option<sigil_reactive::OwnerId>>> =
                 Arc::new(std::sync::Mutex::new(None));
             let observed_cb = Arc::clone(&observed);
 

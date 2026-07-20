@@ -47,18 +47,18 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use hal::{LogicalSize, Size};
-use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use slotmap as _;
 use smallvec as _;
-use style as _;
 
 const VIEWPORT_WIDTH: f32 = 1_280.0;
 const VIEWPORT_HEIGHT: f32 = 720.0;

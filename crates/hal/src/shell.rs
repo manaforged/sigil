@@ -41,6 +41,35 @@ use crate::{
     size::{LogicalSize, Scale},
 };
 
+/// Placement of a window on the primary monitor at creation time.
+///
+/// Resolved by the shell adapter when the OS window materialises; a
+/// platform without a discoverable primary monitor skips positioning
+/// and accepts the OS default.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Anchor {
+    /// Horizontally centred, `margin` logical pixels above the
+    /// monitor's bottom edge.
+    BottomCenter {
+        /// Gap between the window's bottom edge and the monitor's, in
+        /// logical pixels (scaled by the monitor's factor).
+        margin: f32,
+    },
+}
+
+/// Extra window-creation options. `Default` is a normal window.
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct WindowOpts {
+    /// Overlay bundle: undecorated, transparent, always-on-top,
+    /// shadowless, created inactive, click-through, and (on macOS)
+    /// accessory activation — no Dock icon or Cmd-Tab entry. One flag
+    /// on purpose: the pieces are useless separately and the bundle is
+    /// the smallest complete surface for status-pill overlays.
+    pub overlay: bool,
+    /// Optional placement, resolved against the primary monitor.
+    pub anchor: Option<Anchor>,
+}
+
 /// OS window and event loop abstraction.
 ///
 /// See the module-level documentation for the scope and lifecycle
@@ -119,6 +148,26 @@ pub trait Shell: Sized {
         initial: LogicalSize,
     ) -> Result<Self::Window, Self::Error> {
         self.create_window(title, Scale::ONE.to_physical(initial))
+    }
+
+    /// Create a window with extra options ([`WindowOpts`]).
+    ///
+    /// The default implementation ignores the options and delegates to
+    /// [`Self::create_window_logical`], so adapters that cannot express
+    /// overlays (headless/test shells) keep compiling and behave like a
+    /// normal window.
+    /// # Errors
+    ///
+    /// Returns an error when the shell cannot queue or create the
+    /// requested window.
+    fn create_window_with(
+        &mut self,
+        title: &str,
+        initial: LogicalSize,
+        opts: WindowOpts,
+    ) -> Result<Self::Window, Self::Error> {
+        let _ = opts;
+        self.create_window_logical(title, initial)
     }
 
     /// Drain input and lifecycle events buffered since the last frame.

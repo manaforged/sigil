@@ -1,31 +1,31 @@
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::trivially_copy_pass_by_ref, clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
+use sigil_hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 
 const ROW_HEIGHT: f32 = 32.0;
 const VIEWPORT_WIDTH: f32 = 1_280.0;
@@ -33,8 +33,8 @@ const VIEWPORT_WIDTH: f32 = 1_280.0;
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

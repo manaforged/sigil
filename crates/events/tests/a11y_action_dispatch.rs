@@ -4,7 +4,7 @@
 //! `drain_a11y_actions` does (a validated match on `request.action`),
 //! since that function is private to the `app` crate. This proves the
 //! primitives it calls — `EventRouter::{is_focus_target, set_focus,
-//! is_click_target}` and `events::invoke_node` — actually produce the
+//! is_click_target}` and `sigil_events::invoke_node` — actually produce the
 //! sigil-side effect a screen reader's Focus/Invoke gesture expects
 //! (focus moves, a button's click-activation handler fires through the
 //! SAME hover+press gate a real pointer click uses), AND that AT
@@ -27,13 +27,13 @@ use std::rc::Rc;
 use accesskit::{Action, ActionRequest, TreeId};
 use allocation_counter as _;
 use criterion as _;
-use events::prelude::*;
-use kernel::FocusScopeKind;
-use kernel::prelude::*;
-use layout::prelude::*;
-use reactive::{Runtime, signal};
+use sigil_events::prelude::*;
+use sigil_kernel::FocusScopeKind;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
+use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 use smallvec as _;
-use style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use routing_helpers::{compute_layout, pointer_move, route_event};
 
@@ -46,13 +46,13 @@ fn dispatch(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, reques
             router.set_focus(cx, Some(target));
         }
         Action::Click if router.is_click_target(cx, layout, target) => {
-            events::invoke_node(cx, layout, target);
+            sigil_events::invoke_node(cx, layout, target);
         }
         _ => {}
     }
 }
 
-fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut kernel::Node) {
+fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut sigil_kernel::Node) {
     move |node| {
         node.a11y.focus_scope = Some(kind);
     }
@@ -318,7 +318,7 @@ fn click_outside_the_active_modal_scope_is_a_no_op() {
 // ---- RC-focus adversarial finding (round 2, HIGH): validation must use
 // THIS frame's fresh layout, not a stale pre-recompute snapshot. --------
 
-fn hidden_atoms(show: reactive::Signal<bool>) -> &'static [StyleAtom] {
+fn hidden_atoms(show: sigil_reactive::Signal<bool>) -> &'static [StyleAtom] {
     if show.get() {
         &[]
     } else {
@@ -333,7 +333,7 @@ fn hidden_atoms(show: reactive::Signal<bool>) -> &'static [StyleAtom] {
 /// layout, so the hidden node must be a child, not the compute root
 /// itself (a `Display::None` compute root still gets a result — there is
 /// no parent flow to exclude it from).
-fn hideable_child_tree(cx: &mut Cx, show: reactive::Signal<bool>) -> (NodeId, NodeId) {
+fn hideable_child_tree(cx: &mut Cx, show: sigil_reactive::Signal<bool>) -> (NodeId, NodeId) {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
@@ -354,7 +354,7 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
     // run the frame — action must be rejected." Mirrors production:
     // drain_a11y_actions now runs AFTER recompute_layout, so the
     // validator sees the FRESH (post-hide) layout, not last frame's.
-    Runtime::scope("a11y::hide_then_validate", || {
+    Runtime::scope("sigil_a11y::hide_then_validate", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let (root, child) = hideable_child_tree(&mut cx, show);
@@ -397,7 +397,7 @@ fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target()
     // `drain_events`, before `recompute_layout` — would have seen), still
     // reports the node as a valid target. This is the exact bug the
     // ordering fix in `frame_once` corrects.
-    Runtime::scope("a11y::stale_layout_control", || {
+    Runtime::scope("sigil_a11y::stale_layout_control", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let (root, child) = hideable_child_tree(&mut cx, show);
@@ -420,7 +420,7 @@ fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target()
 
 #[test]
 fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
-    Runtime::scope("a11y::scrolled_out_of_view", || {
+    Runtime::scope("sigil_a11y::scrolled_out_of_view", || {
         let mut cx = Cx::new_root();
         let pos = signal((10.0_f32, 10.0_f32));
         let activated = Rc::new(Cell::new(false));

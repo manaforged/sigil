@@ -1,6 +1,6 @@
-//! Handler storage attached to `kernel::Node` extensions.
+//! Handler storage attached to `sigil_kernel::Node` extensions.
 
-use hal::{KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use sigil_hal::{KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 
 type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
 type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;

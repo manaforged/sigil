@@ -11,34 +11,37 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use kernel::Cx;
-use reactive::{Runtime, signal};
 use sigil::prelude::*;
-use style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
+use sigil_kernel::Cx;
+use sigil_reactive::{Runtime, signal};
+use sigil_style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
 
-fn reactive_slice(cx: &Cx, id: kernel::NodeId) -> &'static [StyleAtom] {
-    cx.get(id)
+fn reactive_slice(cx: &Cx, id: sigil_kernel::NodeId) -> &'static [StyleAtom] {
+    let binding = cx
+        .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
-        .map(StyleBinding::reactive_slice)
-        .unwrap()
+        .unwrap();
+    // T0 composition: concatenate every reactive channel in install order.
+    let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
+    Box::leak(atoms.into_boxed_slice())
 }
 
 #[test]

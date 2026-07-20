@@ -8,7 +8,7 @@
 //! `crossbeam-channel` to the UI thread, where
 //! [`super::WinitShell::drain_a11y_actions`] (called from the app's
 //! frame loop) picks it up and routes it through `EventRouter`
-//! (`hal::A11yBridge`'s doc comment at `crates/hal/src/a11y.rs:44-48`
+//! (`sigil_hal::A11yBridge`'s doc comment at `crates/hal/src/a11y.rs:44-48`
 //! anticipated exactly this shape).
 
 use std::sync::{Arc, Mutex};

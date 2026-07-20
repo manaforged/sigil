@@ -6,32 +6,32 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
 use sigil::widgets::virtual_list;
+use sigil_renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(60.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(60.0, 16.0)
     }
 }
 
@@ -129,10 +129,16 @@ fn items_bind_via_effect_chain_still_paints_rows() {
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
-        assert_eq!(glyph_runs(&cx, root), 40, "unfiltered rows paint");
+        // Windowed (5/5 Wave 2): 200px viewport / 20px rows → 11 of the
+        // 40 unfiltered rows materialize.
+        assert_eq!(
+            glyph_runs(&cx, root),
+            11,
+            "window of unfiltered rows paints"
+        );
 
         // Per-keystroke narrowing, layout between keystrokes like frames.
-        for (typed, expect) in [("t", 40_usize), ("to", 40), ("tok", 40), ("token1", 11)] {
+        for (typed, expect) in [("t", 11_usize), ("to", 11), ("tok", 11), ("token1", 11)] {
             search.set(typed.to_string());
             layout
                 .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -147,8 +153,8 @@ fn items_bind_via_effect_chain_still_paints_rows() {
 }
 
 /// Phase-accurate variant — drives the reactive runtime through the
-/// production frame phases (Effect → Layout → Paint → end_frame) the
-/// way `app::launch` does, with the keystroke write landing in the
+/// production frame phases (Effect → Layout → Paint → `end_frame`) the
+/// way `sigil_app::launch` does, with the keystroke write landing in the
 /// Effect phase. This is the exact live-app shape.
 #[test]
 fn items_bind_shrink_paints_under_frame_phases() {
@@ -180,21 +186,24 @@ fn items_bind_shrink_paints_under_frame_phases() {
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        let mut frame = |cx: &mut Cx, write: Option<&str>| {
+        let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {
                 search.set(s.to_string());
             }
             Runtime::begin_layout();
-            layout.compute(cx, root, Size::fixed(640.0, 480.0)).unwrap();
+            layout
+                .compute(frame_cx, root, Size::fixed(640.0, 480.0))
+                .unwrap();
             Runtime::begin_paint();
-            let runs = glyph_runs(cx, root);
+            let runs = glyph_runs(frame_cx, root);
             Runtime::end_frame();
             runs
         };
 
-        assert_eq!(frame(&mut cx, None), 40, "unfiltered frame paints");
-        assert_eq!(frame(&mut cx, Some("t")), 40, "'t' frame paints");
+        // Windowed: 11 of 40 unfiltered rows materialize per frame.
+        assert_eq!(frame(&mut cx, None), 11, "unfiltered frame paints window");
+        assert_eq!(frame(&mut cx, Some("t")), 11, "'t' frame paints window");
         assert_eq!(frame(&mut cx, Some("token1")), 11, "'token1' frame paints");
         assert_eq!(frame(&mut cx, None), 11, "idle follow-up frame keeps rows");
     });
@@ -251,23 +260,23 @@ fn items_bind_app_shape_batched_keystrokes() {
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        let mut frame = |cx: &mut Cx, writes: &[&str]| {
+        let mut frame = |frame_cx: &mut Cx, writes: &[&str]| {
             Runtime::begin_effect();
             for s in writes {
                 search.set((*s).to_string());
             }
             Runtime::begin_layout();
             layout
-                .compute(cx, root, Size::fixed(1280.0, 800.0))
+                .compute(frame_cx, root, Size::fixed(1280.0, 800.0))
                 .unwrap();
             Runtime::begin_paint();
-            let runs = glyph_runs(cx, root);
+            let runs = glyph_runs(frame_cx, root);
             Runtime::end_frame();
             runs
         };
 
-        // 8 token rows × 2 texts each = 16 runs after filtering.
-        assert_eq!(frame(&mut cx, &[]), 676 * 2, "all rows paint");
+        // Windowed: 330px / 22px rows → 16 rows × 2 texts = 32 runs.
+        assert_eq!(frame(&mut cx, &[]), 16 * 2, "window of all rows paints");
         let shrunk = frame(&mut cx, &["t", "to", "tok", "toke", "token"]);
         assert_eq!(shrunk, 8 * 2, "batched shrink still paints rows");
         assert_eq!(frame(&mut cx, &[]), 8 * 2, "idle frame keeps rows");
@@ -338,26 +347,28 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        let mut frame = |cx: &mut Cx, write: Option<&str>| {
+        let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {
                 search.set(s.to_string());
             }
             Runtime::begin_layout();
             layout
-                .compute(cx, root, Size::fixed(1280.0, 800.0))
+                .compute(frame_cx, root, Size::fixed(1280.0, 800.0))
                 .unwrap();
             Runtime::begin_paint();
-            let runs = glyph_runs(cx, root);
+            let runs = glyph_runs(frame_cx, root);
             Runtime::end_frame();
             runs
         };
 
         let ballast_runs = 600;
+        // Windowed: 300px viewport / 20px rows → 16 of the 30 unfiltered
+        // rows materialize next to the ballast.
         assert_eq!(
             frame(&mut cx, None),
-            ballast_runs + 30,
-            "all rows paint next to ballast"
+            ballast_runs + 16,
+            "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));
         // Diagnostic: dump the token rows that actually painted + rects.

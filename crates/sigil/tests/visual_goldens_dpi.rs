@@ -2,7 +2,7 @@
 //!
 //! Captures ONE text-bearing widget (a button with a real label) at four
 //! DPI scales (1.0 / 1.25 / 1.5 / 2.0) through
-//! [`render_widget_to_png_scaled`] using the REAL `app::DefaultTextMeasure`
+//! [`render_widget_to_png_scaled`] using the REAL `sigil_app::DefaultTextMeasure`
 //! (an `OwnedTextEngine`-backed measurer, not the deterministic stub), per
 //! `docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 0.
 //!
@@ -31,18 +31,18 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use actions as _;
-use animation as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use kernel as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_events as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 
-use app::DefaultTextMeasure;
 use sigil::prelude::*;
+use sigil_app::DefaultTextMeasure;
 
 mod golden_support;
 

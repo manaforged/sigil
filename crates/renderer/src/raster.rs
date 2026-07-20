@@ -179,7 +179,7 @@ impl OutlinePen for ZenoPen {
 mod tests {
     use super::*;
 
-    const FIRA: &[u8] = include_bytes!("../../text/tests/fixtures/FiraSans-Regular.ttf");
+    const FIRA: &[u8] = include_bytes!("../../text/assets/fonts/FiraSans-Regular.ttf");
 
     fn glyph_a(font: &FontRef<'_>) -> u32 {
         font.charmap().map('A').unwrap().to_u32()

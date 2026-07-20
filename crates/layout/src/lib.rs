@@ -1,9 +1,10 @@
 //! Owned layout adapter for `sigil-kernel`.
 //!
-//! `sigil-layout` mirrors a `kernel::Cx` subtree into an owned
+//! `sigil-layout` mirrors a `sigil_kernel::Cx` subtree into an owned
 //! layout drive, computes layout, and writes [`LayoutResult`] extensions
 //! back onto the core nodes.
 
+#![deny(missing_docs)]
 // Dev-deps used only by specific benches/tests. Cargo pulls dev-deps
 // into the lib-test target, so keep them visible to the
 // unused-crate-dependencies lint.
@@ -14,7 +15,7 @@ use criterion as _;
 #[cfg(test)]
 use rayon as _;
 #[cfg(test)]
-use reactive as _;
+use sigil_reactive as _;
 #[cfg(test)]
 use taffy as _;
 

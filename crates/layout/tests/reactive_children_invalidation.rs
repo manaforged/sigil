@@ -19,23 +19,23 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
+use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 use stub::stub_engine;
 
-use hal::Size;
-use kernel::prelude::*;
-use layout::prelude::*;
-use reactive::{Runtime, signal};
+use sigil_hal::Size;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
 
 /// Available space fed to the layout engine in each test.
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
 
-fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result must exist")

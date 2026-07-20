@@ -5,9 +5,9 @@
 //! and to colocate instance-data tests with the helpers they cover.
 
 use bytemuck::{Pod, Zeroable};
-use hal::Rect;
 use half::f16;
-use style::Rgba8;
+use sigil_hal::Rect;
+use sigil_style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene::{Scene, SceneItem, SceneRect};
@@ -17,7 +17,8 @@ use crate::shadow_paint::{Shadow, ShadowKind};
 mod helpers;
 
 use helpers::{
-    inflate, rect_fields, rect_instance_parts, shadow_color, stroke_fields, stroke_outset,
+    RectPaint, inflate, rect_fields, rect_instance_parts, shadow_color, stroke_fields,
+    stroke_outset,
 };
 
 /// Color space in which translucent fills are alpha-composited.
@@ -201,10 +202,13 @@ pub(crate) fn collect_instances(scene: &Scene) -> Vec<RectInstance> {
 pub(crate) fn rect_instance(rect: &SceneRect) -> RectInstance {
     rect_instance_parts(
         rect.rect,
-        BlendSpace::Linear.rgba(rect.color),
         rect.border_radius,
-        f32::from(rect.opacity) / 10_000.0,
-        None,
+        RectPaint {
+            color: BlendSpace::Linear.rgba(rect.color),
+            opacity: f32::from(rect.opacity) / 10_000.0,
+            stroke: None,
+            space: BlendSpace::Linear,
+        },
     )
 }
 
@@ -215,10 +219,13 @@ pub(crate) fn draw_rect_instance(
 ) -> RectInstance {
     rect_instance_parts(
         draw.rect,
-        space.rgba(draw.color),
         draw.border_radius,
-        (f32::from(draw.opacity) / 10_000.0) * opacity_scale,
-        draw.stroke,
+        RectPaint {
+            color: space.rgba(draw.color),
+            opacity: (f32::from(draw.opacity) / 10_000.0) * opacity_scale,
+            stroke: draw.stroke,
+            space,
+        },
     )
 }
 
@@ -227,8 +234,9 @@ pub(crate) fn draw_gradient_instance(
     opacity_scale: f32,
     stop_offset: u32,
     stop_count: u32,
+    space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke);
+    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, space);
     let outset = stroke_outset(draw.stroke);
     let inflated = inflate(draw.rect, outset);
     let Rect {
@@ -270,7 +278,7 @@ pub(crate) fn draw_pattern_instance(
     opacity_scale: f32,
     space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke);
+    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, space);
     let outset = stroke_outset(draw.stroke);
     let inflated = inflate(draw.rect, outset);
     let Rect {
@@ -350,7 +358,7 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
     let [offset_x, offset_y] = shadow.offset;
     let outset = shadow.blur.mul_add(3.0, shadow.spread.abs());
     Rect::new(
-        hal::Point::new(
+        sigil_hal::Point::new(
             surface.origin.x - outset + offset_x,
             surface.origin.y - outset + offset_y,
         ),

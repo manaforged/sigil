@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 
 use accesskit::Live;
-use reactive::Owner;
+use sigil_reactive::Owner;
 
 use crate::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
@@ -120,7 +120,11 @@ impl Cx {
         id
     }
 
-    fn insert_live_region_node(&mut self, a11y: A11yProps, owner_id: reactive::OwnerId) -> NodeId {
+    fn insert_live_region_node(
+        &mut self,
+        a11y: A11yProps,
+        owner_id: sigil_reactive::OwnerId,
+    ) -> NodeId {
         NodeId(
             self.nodes
                 .insert(Node::new(NodeType::Container, a11y, owner_id)),

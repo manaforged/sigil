@@ -10,14 +10,13 @@ description = "Cross-framework bench-parity harness — locked workloads, identi
 publish = false
 
 [lib]
-doctest = false
 
 [dependencies]
-sigil = { workspace = true }
-kernel = { workspace = true }
-hal = { workspace = true }
-layout = { workspace = true }
-reactive = { workspace = true }
+sigil-ui = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-reactive = { workspace = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }

@@ -96,7 +96,7 @@ pub struct ParagraphBidi<'a> {
 
 impl<'a> ParagraphBidi<'a> {
     /// Analyse `text` once. `info` is `None` on the Latin-only fast
-    /// path ([`is_latin_only`]) — every level is 0 there, so UAX #9
+    /// path (`is_latin_only`) — every level is 0 there, so UAX #9
     /// rules L1/L2 are no-ops and there's nothing to precompute.
     #[must_use]
     pub fn new(text: &'a str) -> Self {

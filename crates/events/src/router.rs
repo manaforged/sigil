@@ -1,9 +1,9 @@
 //! Event router implementation.
 
 use accesskit::TreeUpdate;
-use hal::{Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_hal::{Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::EventHandlers;
@@ -50,7 +50,7 @@ impl EventRouter {
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, layout, event),
-            ShellEvent::Window(hal::WindowEvent::Focused(false)) => {
+            ShellEvent::Window(sigil_hal::WindowEvent::Focused(false)) => {
                 // Window lost focus: the pointer is effectively no longer
                 // over anything. Dispatch Leave through every node in the
                 // hover path so widgets (buttons, etc.) can clear their

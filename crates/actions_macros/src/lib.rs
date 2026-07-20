@@ -2,14 +2,19 @@
 //!
 //! This crate ships `#[derive(Action)]` — the one-line authoring shortcut
 //! for declaring an action type that can flow through
-//! [`actions::ActionRegistry`].
+//! `sigil_actions::ActionRegistry`.
 //!
 //! See **DR-046 §1** for the full Action trait design. Layer A (this
 //! crate + `sigil-actions`) lands the trait + derive + registry +
 //! dispatch loop. Layer B wires the focus/Context surface on top.
 //!
+//! **Resolution contract:** the derive expands to paths under
+//! `sigil::__private::…`. Consumers must depend on the `sigil-ui` facade
+//! crate (library name `sigil`) and must not rename that dependency, or
+//! the expansion will not resolve.
+//!
 //! ```rust,ignore
-//! use actions::Action;
+//! use sigil_actions::Action;
 //!
 //! #[derive(Action)]
 //! struct CloseTab;
@@ -17,15 +22,18 @@
 //! assert_eq!(CloseTab.debug_name(), "CloseTab");
 //! ```
 
+#![deny(missing_docs)]
 use proc_macro::TokenStream;
 use proc_macro2 as _;
 use quote::quote;
 use syn::{DeriveInput, parse_macro_input};
 
 #[cfg(test)]
-use actions as _;
+use sigil as _;
+#[cfg(test)]
+use sigil_actions as _;
 
-/// Derive `actions::Action` for a type.
+/// Derive `sigil_actions::Action` for a type.
 ///
 /// Generated impl provides:
 ///
@@ -49,11 +57,11 @@ pub fn derive_action(input: TokenStream) -> TokenStream {
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let expanded = quote! {
-        impl #impl_generics ::actions::Action for #name #ty_generics #where_clause {
+        impl #impl_generics ::sigil::__private::actions::Action for #name #ty_generics #where_clause {
             fn debug_name(&self) -> &'static str {
                 #name_str
             }
-            fn boxed_clone(&self) -> ::std::boxed::Box<dyn ::actions::Action> {
+            fn boxed_clone(&self) -> ::std::boxed::Box<dyn ::sigil::__private::actions::Action> {
                 ::std::boxed::Box::new(::core::clone::Clone::clone(self))
             }
             fn as_any(&self) -> &dyn ::core::any::Any {

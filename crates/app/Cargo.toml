@@ -1,5 +1,5 @@
 [package]
-name = "app"
+name = "sigil-app"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,26 +7,33 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Sigil application shell — sigil::launch, opinionated frame loop."
+readme.workspace = true
+keywords = ["gui", "framework", "app"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
-tasks = { workspace = true }
-kernel = { workspace = true }
-events = { workspace = true }
-hal = { workspace = true }
-layout = { workspace = true }
-reactive = { workspace = true }
-renderer = { workspace = true }
-shell = { workspace = true }
-style = { workspace = true }
-text = { workspace = true }
+sigil-tasks = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-events = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-renderer = { workspace = true }
+sigil-shell = { workspace = true }
+sigil-style = { workspace = true }
+sigil-text = { workspace = true }
 tracing = { workspace = true }
 # W5-A11Y (DR-050 §1) — production AccessKit wiring in the frame loop.
-a11y = { workspace = true }
+sigil-a11y = { workspace = true }
 accesskit = { workspace = true }
 crossbeam-channel = { workspace = true }
+# T14 (5/5 Wave 4) — dev-mode theme-file watch: parse theme TOML and
+# reload on fs change events.
+notify = { workspace = true }
+toml = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature

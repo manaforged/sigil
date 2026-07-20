@@ -15,7 +15,7 @@ const LIST_VIEWPORT_HEIGHT: f32 = 360.0;
 pub(crate) fn chat_pane(state: ChatState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().grow(1.0).gap(8.0).padding(8.0))
-        .class("h-full rounded-md bg-surface-hover")
+        .class(classes!("h-full rounded-md bg-surface-hover"))
         .child(tab_strip(state))
 }
 
@@ -82,7 +82,7 @@ fn message_row(_idx: usize, msg: &Message) -> NodeBuilder {
                 .gap(2.0)
                 .padding(6.0),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .child(label(author))
         .child(label(body))
 }
@@ -116,7 +116,7 @@ fn member_row(name: &str) -> NodeBuilder {
                 .padding(4.0)
                 .align_items(AlignItems::Center),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .child(label(name.to_owned()))
 }
 
@@ -149,6 +149,6 @@ fn pinned_row(line: &str) -> NodeBuilder {
                 .padding(6.0)
                 .align_items(AlignItems::Center),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .child(label(line.to_owned()))
 }

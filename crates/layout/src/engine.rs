@@ -1,18 +1,20 @@
 //! Layout engine and `sigil-kernel` synchronization.
 
 use ahash::AHashSet;
-use hal::{Dim, Size};
-use kernel::{Cx, NodeId, NodeType, TextContent};
+use sigil_hal::{Dim, Size};
+use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
+use sigil_style::{StyleBinding, StyleEngine, TextStyle};
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
-use style::{StyleBinding, StyleEngine, TextStyle};
 
 use crate::cache_key::{AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature};
 use crate::engine_drive::{LayoutDrive, NodeHandle};
 use crate::forest::{AvailableSpace, SpaceConstraint};
 use crate::style_adapter::apply_style_atoms;
 use crate::style_data::Dimension;
-use crate::text_style::{apply_text_binding, theme_for};
+use crate::text_style::{
+    InheritedText, apply_text_binding, inherited_text_style, text_style_signature, theme_for,
+};
 use crate::{LayoutError, LayoutResult, LayoutStyle, TextMeasure};
 
 /// Owned layout engine mirroring a `sigil-kernel` subtree into [`LayoutDrive`].
@@ -30,6 +32,14 @@ pub struct LayoutEngine {
     /// the two `AHashMap` lookups + `LayoutStyle` clone that were 65%
     /// of the broadcast frame post-vector-δ.
     synced_version: SecondaryMap<slotmap::DefaultKey, u32>,
+    /// Signature of the *effective* typography (inherited ⊕ own atoms)
+    /// each node saw at last sync. A node's own `Node::version` cannot
+    /// observe ancestor typography changes, so the sync fast-path
+    /// additionally requires this signature to match (DR-056
+    /// invalidation). Doubles as the prune key for the incremental
+    /// cascade: an unchanged signature proves the whole subtree's
+    /// inherited input is unchanged.
+    synced_text_sig: SecondaryMap<slotmap::DefaultKey, u64>,
     /// Last `LayoutResult` we attached to each kernel node. Read via
     /// O(1) slotmap indexing instead of the kernel's
     /// `AHashMap<TypeId, Box<dyn Any>>` extension lookup. Comparing
@@ -49,6 +59,7 @@ impl LayoutEngine {
             drive: LayoutDrive::new(measurer),
             core_to_handle: SecondaryMap::new(),
             synced_version: SecondaryMap::new(),
+            synced_text_sig: SecondaryMap::new(),
             published_result: SecondaryMap::new(),
             generation: 0,
             cached_key: None,
@@ -103,7 +114,9 @@ impl LayoutEngine {
     /// Returns [`LayoutError::NodeMissing`] when `root` is stale or a
     /// child mapping is absent.
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
-        self.sync_subtree(cx, root).map(|_handles| ())
+        let root_text = TextStyle::default();
+        self.sync_subtree(cx, root, InheritedText::new(&root_text))
+            .map(|_handles| ())
     }
 
     /// Compute layout for a `sigil-kernel` subtree and attach results back to nodes.
@@ -143,6 +156,7 @@ impl LayoutEngine {
             .is_some_and(|prev| prev.cx_instance != cache_key.cx_instance);
         if cx_instance_changed {
             self.synced_version.clear();
+            self.synced_text_sig.clear();
             self.published_result.clear();
             self.core_to_handle.clear();
         }
@@ -233,6 +247,7 @@ impl LayoutEngine {
             if let Some(core_id) = self.drive.kernel_for(*h) {
                 let _ = self.core_to_handle.remove(core_id.key());
                 let _ = self.synced_version.remove(core_id.key());
+                let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
             }
         }
@@ -363,6 +378,7 @@ impl LayoutEngine {
         &mut self,
         cx: &Cx,
         id: NodeId,
+        inherited: InheritedText<'_>,
     ) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
         let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
         let kernel_version = node.version();
@@ -374,10 +390,19 @@ impl LayoutEngine {
         if matches!(node.kind, NodeType::Fragment) {
             let mut out = SmallVec::<[NodeHandle; 4]>::new();
             for child in &children {
-                out.extend(self.sync_subtree(cx, *child)?);
+                out.extend(self.sync_subtree(cx, *child, inherited)?);
             }
             return Ok(out);
         }
+
+        // DR-056 typography inheritance: layer this node's typography
+        // atoms over the inherited style. `layered` is `None` for the
+        // common no-typography-atoms case, so containers pass the
+        // inherited value through by reference without cloning.
+        let binding = node.get_extension::<StyleBinding>();
+        let layered = binding.and_then(|b| TextStyle::layered_over_binding(inherited.style, b));
+        let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        let text_sig_matches = self.synced_text_sig.get(id.key()).copied() == Some(effective.sig);
 
         // ε1 fast-path: when the kernel-side `Node::version` matches
         // the version we cached on the last sync, every observable
@@ -410,22 +435,32 @@ impl LayoutEngine {
         // through interior-mutable channels that bypass `Node::version`,
         // so force a re-sync for either (the downstream style-equality /
         // signature checks still cheap-out when nothing actually changed).
-        let has_reactive = node
-            .get_extension::<StyleBinding>()
-            .is_some_and(StyleBinding::has_reactive)
+        let has_reactive = binding.is_some_and(StyleBinding::has_reactive)
             || node.get_extension::<crate::ReactivePosition>().is_some();
+        // DR-056: the version fast-path additionally requires the
+        // effective-typography signature to match — a node's own
+        // version cannot see an ancestor's `text-*` change, but the
+        // carried signature can.
         let version_matches = !has_reactive
             && existing_handle.is_some()
-            && self.synced_version.get(id.key()).copied() == Some(kernel_version);
+            && self.synced_version.get(id.key()).copied() == Some(kernel_version)
+            && text_sig_matches;
         if !version_matches {
-            let (intent, text_content, text_style) = Self::layout_inputs_for_node(node);
+            let (intent, text_content, text_style) =
+                Self::layout_inputs_for_node(node, inherited.style);
+            // D-U4: grid requests reject loudly at sync — never silently
+            // fall back to block (the pre-0.1.x behavior, removed).
+            if matches!(intent.0.display, crate::style_data::Display::Grid) {
+                return Err(LayoutError::GridUnsupported(id));
+            }
             self.upsert_with_text(id, existing_handle, &intent, text_content, text_style)?;
             self.synced_version.insert(id.key(), kernel_version);
         }
+        self.synced_text_sig.insert(id.key(), effective.sig);
 
         let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
         for child in &children {
-            child_handles.extend(self.sync_subtree(cx, *child)?);
+            child_handles.extend(self.sync_subtree(cx, *child, effective)?);
         }
         let parent_handle = self.handle(id)?;
         self.drive.set_children(parent_handle, &child_handles)?;
@@ -499,26 +534,99 @@ impl LayoutEngine {
         if matches!(node.kind, NodeType::Fragment) {
             return Ok(());
         }
-        let (intent, text_content, text_style) = Self::layout_inputs_for_node(node);
+        // DR-056: the incremental path has no top-down carry, so the
+        // inherited typography is resolved by ancestor walk.
+        let inherited = inherited_text_style(cx, id);
+        let (intent, text_content, text_style) = Self::layout_inputs_for_node(node, &inherited);
         let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(id, existing, &intent, text_content, text_style)
+        self.upsert_with_text(id, existing, &intent, text_content, text_style)?;
+
+        // If this node's *effective* typography changed, descendants
+        // measured against the old value are stale even though their
+        // own versions are unchanged. Cascade re-derivation, pruning
+        // at any subtree whose stored signature already matches.
+        let layered = node
+            .get_extension::<StyleBinding>()
+            .and_then(|binding| TextStyle::layered_over_binding(&inherited, binding));
+        let effective = layered.as_ref().unwrap_or(&inherited);
+        let effective_sig = text_style_signature(effective);
+        if self.synced_text_sig.get(id.key()).copied() != Some(effective_sig) {
+            self.synced_text_sig.insert(id.key(), effective_sig);
+            let children = node
+                .children()
+                .iter()
+                .copied()
+                .collect::<SmallVec<[_; 8]>>();
+            for child in children {
+                self.cascade_text_styles(cx, child, InheritedText::new(effective))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Re-derive the text inputs of descendants whose inherited
+    /// typography changed (DR-056 incremental cascade). Containers only
+    /// transmit; text nodes re-measure. A subtree whose stored
+    /// signature matches the incoming one is provably unchanged and is
+    /// pruned without descending.
+    fn cascade_text_styles(
+        &mut self,
+        cx: &Cx,
+        id: NodeId,
+        inherited: InheritedText<'_>,
+    ) -> Result<(), LayoutError> {
+        let Some(node) = cx.get(id) else {
+            return Ok(());
+        };
+        let children = node
+            .children()
+            .iter()
+            .copied()
+            .collect::<SmallVec<[_; 8]>>();
+        if matches!(node.kind, NodeType::Fragment) {
+            for child in children {
+                self.cascade_text_styles(cx, child, inherited)?;
+            }
+            return Ok(());
+        }
+        let layered = node
+            .get_extension::<StyleBinding>()
+            .and_then(|binding| TextStyle::layered_over_binding(inherited.style, binding));
+        let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        if self.synced_text_sig.get(id.key()).copied() == Some(effective.sig) {
+            return Ok(());
+        }
+        self.synced_text_sig.insert(id.key(), effective.sig);
+        if matches!(node.kind, NodeType::Text { .. }) {
+            let (intent, text_content, text_style) =
+                Self::layout_inputs_for_node(node, inherited.style);
+            let existing = self.core_to_handle.get(id.key()).copied();
+            self.upsert_with_text(id, existing, &intent, text_content, text_style)?;
+        }
+        for child in children {
+            self.cascade_text_styles(cx, child, effective)?;
+        }
+        Ok(())
     }
 
     fn layout_inputs_for_node(
-        node: &kernel::Node,
+        node: &sigil_kernel::Node,
+        inherited_text: &TextStyle,
     ) -> (LayoutStyle, Option<TextContent>, Option<TextStyle>) {
         let mut intent = node
             .get_extension::<LayoutStyle>()
             .cloned()
             .unwrap_or_default();
         let mut text_style = match &node.kind {
-            NodeType::Text { .. } => Some(TextStyle::default()),
+            NodeType::Text { .. } => Some(inherited_text.clone()),
             NodeType::Container | NodeType::Fragment => None,
         };
         if let Some(binding) = node.get_extension::<StyleBinding>() {
             apply_style_atoms(binding.static_slice(), &mut intent);
             apply_style_atoms(binding.dynamic_slice(), &mut intent);
-            apply_style_atoms(binding.reactive_slice(), &mut intent);
+            for reactive in binding.reactive_channels() {
+                apply_style_atoms(reactive, &mut intent);
+            }
             if let Some(style) = text_style.as_mut() {
                 let engine = StyleEngine::new(theme_for(node));
                 apply_text_binding(engine, binding, style);
@@ -553,7 +661,7 @@ impl LayoutEngine {
         &mut self,
         cx: &Cx,
         id: NodeId,
-        node: &kernel::Node,
+        node: &sigil_kernel::Node,
     ) -> Result<(), LayoutError> {
         let parent = if matches!(node.kind, NodeType::Fragment) {
             self.nearest_mirrored_ancestor(cx, id)

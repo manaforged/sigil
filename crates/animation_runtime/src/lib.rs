@@ -1,18 +1,19 @@
+#![deny(missing_docs)]
 // The crate is a thin set of cross-module helpers behind a small
 // public surface. Many internal fns are crate-internal by design,
 // which clippy's `redundant_pub_crate` nursery lint treats as noise.
 // Same allow as sigil-reactive uses for the same reason.
 #![allow(clippy::redundant_pub_crate)]
 
-//! Animation orchestration over [`animation`] primitives.
+//! Animation orchestration over [`sigil_animation`] primitives.
 //!
 //! See [DR-053] for the locked design. Phase 1 ships:
 //!
-//! - [`Animator`] — owns a [`Signal<f32>`](reactive::Signal) and
-//!   drives it via a wrapped [`Spring`](animation::Spring) or
-//!   [`Tween`](animation::Tween).
+//! - [`Animator`] — owns a [`Signal<f32>`](sigil_reactive::Signal) and
+//!   drives it via a wrapped [`Spring`](sigil_animation::Spring) or
+//!   [`Tween`](sigil_animation::Tween).
 //! - [`AnimationRegistry`] — `phf`-backed lookup from
-//!   [`style::TransitionId`] to [`AnimationConfig`].
+//!   [`sigil_style::TransitionId`] to [`AnimationConfig`].
 //! - [`tick`] — per-frame driver. Apps call once per frame between
 //!   `Runtime::begin_layout` and `Runtime::begin_paint`. Walks the
 //!   active animator set, writes new values, removes settled.
@@ -48,5 +49,5 @@ pub use registry::{AnimationRegistry, presets};
 // W5.1b: `NumericAtomKind` moved into `sigil-style` for the
 // `AnimatorOverlay` trait surface; re-export keeps the prior import
 // path stable for crates depending on this runtime.
+pub use sigil_style::NumericAtomKind;
 pub use state::{active_count, tick};
-pub use style::NumericAtomKind;

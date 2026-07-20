@@ -6,7 +6,7 @@
 
 use super::Font;
 
-const FIRA_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = include_bytes!("../../assets/fonts/FiraSans-Regular.ttf");
 
 fn fira_regular() -> Font {
     Font::from_bytes(FIRA_REGULAR.to_vec(), 0).expect("FiraSans-Regular fixture must parse")

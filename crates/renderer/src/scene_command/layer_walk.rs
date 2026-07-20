@@ -7,7 +7,7 @@
 )]
 //! Layer-aware command-scene walker.
 
-use hal::{Point, Rect};
+use sigil_hal::{Point, Rect};
 
 use crate::blur_paint::{BlurPipeline, PassCtx};
 use crate::error::RendererError;

@@ -2,10 +2,21 @@
 
 use std::any::{Any, TypeId};
 
-use reactive::OwnerId;
+use sigil_reactive::OwnerId;
 use smallvec::SmallVec;
 
 use crate::{A11yProps, NodeId, TextContent};
+
+/// Marker extension: paint this node's subtree on the top layer.
+///
+/// The scene walk defers a `TopLayer` subtree to the end of emission, so
+/// it renders above every sibling that follows it in tree order. This is
+/// the primitive for floating UI (dropdown popups, tooltips) that must
+/// not be overdrawn by later content. Attach at build time with
+/// `NodeBuilder::with(TopLayer)`. Layout is unaffected — only paint
+/// order changes; hit-testing already resolves through layout geometry.
+#[derive(Debug, Clone, Copy)]
+pub struct TopLayer;
 
 /// One arena node in the composed UI tree.
 #[derive(Debug)]
@@ -30,7 +41,7 @@ pub struct Node {
     /// Monotonic per-node version — bumped on every mutation
     /// (`attach` / `remove_extension` / structural reparent / child
     /// list change / accessibility update). Consumers like
-    /// `layout::LayoutEngine` cache `(NodeId, version)` and
+    /// `sigil_layout::LayoutEngine` cache `(NodeId, version)` and
     /// fast-path when a re-sync sees no version change. Wraps at
     /// `u32::MAX` (a stale wrapped value still differs from a current
     /// reading because we compare for equality, not ordering).

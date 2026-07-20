@@ -1,5 +1,5 @@
 [package]
-name = "animation"
+name = "sigil-animation"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,9 +7,12 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Spring physics, easing, and tween primitives for sigil widgets."
+readme.workspace = true
+keywords = ["animation", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 # Pure-math primitives — no upstream deps today. A future
 # `AnimatedSignal<T>` driver will add `sigil-reactive` when it lands;

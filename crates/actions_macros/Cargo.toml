@@ -1,5 +1,5 @@
 [package]
-name = "actions-macros"
+name = "sigil-actions-macros"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,10 +7,13 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Proc macros for Sigil typed actions (#[derive(Action)])."
+readme.workspace = true
+keywords = ["actions", "macros", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
 proc-macro = true
-doctest = false
 
 [dependencies]
 proc-macro2 = "1"
@@ -18,7 +21,8 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 
 [dev-dependencies]
-actions = { workspace = true }
+sigil-actions = { path = "../actions" }
+sigil-ui = { path = "../sigil" }
 
 [lints]
 workspace = true

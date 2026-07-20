@@ -2,32 +2,32 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use hal::KeyEventInit;
-use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
+use sigil_hal::KeyEventInit;
+use sigil_renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -37,7 +37,7 @@ fn compute(cx: &mut Cx, root: NodeId) {
         .expect("layout");
 }
 
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<style::Rgba8> {
+fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()

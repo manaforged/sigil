@@ -12,15 +12,16 @@
 // Silence `unused_crate_dependencies` — criterion is a dev-dep for
 // benches, smallvec a regular dep for subscriber storage; neither is
 // referenced in this test file.
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use reactive::{Owner, Runtime, derived, derived_eq, effect, signal};
+use sigil_reactive::{Owner, Runtime, derived, derived_eq, effect, signal};
 
 #[test]
 fn derived_computes_initial_value_on_registration() {
@@ -281,7 +282,7 @@ fn derived_works_with_non_partial_eq_type() {
 
     Runtime::scope("derived_non_partial_eq", || {
         let which = signal(0_i32);
-        let op: reactive::Signal<Opaque> = derived(move || {
+        let op: sigil_reactive::Signal<Opaque> = derived(move || {
             if which.get() == 0 {
                 Opaque(Rc::new(|x| x + 1))
             } else {

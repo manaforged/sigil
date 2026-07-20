@@ -1,9 +1,9 @@
 //! Glyph pixel-sharpness check — Wave 0/1 (`docs/plans/2026-07-07-text-quality-and-gap-closure.md`).
 //! Rasterizes real glyphs, reads back raw RGBA8 pixels, and measures the AA
 //! ramp width across a vertical stem in PHYSICAL pixels. Two families:
-//! - **Direct path** — [`renderer::DrawParams`] with an explicit `scale`; sharp
+//! - **Direct path** — [`sigil_renderer::DrawParams`] with an explicit `scale`; sharp
 //!   at every DPI.
-//! - **Embed path** — the real screen path (`renderer::shape_glyph_run` →
+//! - **Embed path** — the real screen path (`sigil_renderer::shape_glyph_run` →
 //!   `ScreenSubmission`/`submit_screen`). Wave 1 added `ScreenSubmission.scale`;
 //!   these prove it is load-bearing: a matching `scale` into a 6× physical
 //!   texture is sharp, `scale: 1.0` into the same texture is soft (the shipped
@@ -20,13 +20,13 @@ use ahash as _;
 use bytemuck as _;
 use criterion as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
 use skrifa as _;
 use smallvec as _;
 use tracing as _;
@@ -36,12 +36,13 @@ use windows_core as _;
 use std::sync::mpsc;
 
 use pollster::FutureExt as _;
-use renderer::{
+use sigil_renderer::{
     CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, TextTuning,
     WgpuRenderer, set_text_tuning, shape_glyph_run,
 };
-use style::{Rgba8, TextLineHeight, TextStyle};
-use text::{OwnedTextEngine, TextConfig};
+use sigil_style::{Rgba8, TextLineHeight, TextStyle};
+use sigil_text::{OwnedTextEngine, TextConfig};
+use zeno as _;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -156,7 +157,7 @@ fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
                 format: FORMAT,
                 viewport: (LOGICAL_W, LOGICAL_H),
                 scale: submission_scale,
-                clear: Some(hal::Color::BLACK),
+                clear: Some(sigil_hal::Color::BLACK),
             },
             &scene,
         )
@@ -175,8 +176,8 @@ fn build_text_scene() -> CommandScene {
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
     };
-    let rect = hal::Rect::new(
-        hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil_hal::Rect::new(
+        sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );
@@ -293,7 +294,7 @@ fn assert_polarity_parity(scale: f32) {
         &queue,
         scale,
         POLARITY_TEXT,
-        (hal::Color::WHITE, wgpu::Color::BLACK),
+        (sigil_hal::Color::WHITE, wgpu::Color::BLACK),
     );
     let lod = measure(&lod_px, lw, lh);
     // Dark-on-light: invert R so the shared measure (which keys "ink" to high
@@ -303,7 +304,7 @@ fn assert_polarity_parity(scale: f32) {
         &queue,
         scale,
         POLARITY_TEXT,
-        (hal::Color::BLACK, wgpu::Color::WHITE),
+        (sigil_hal::Color::BLACK, wgpu::Color::WHITE),
     );
     let dol_px: Vec<u8> = dol_raw.iter().map(|b| 255 - b).collect();
     let dol = measure(&dol_px, dw, dh);
@@ -452,7 +453,7 @@ fn render_embed_at(scale: f32, size_px: f32, raster: bool) -> (Vec<u8>, u32, u32
                 format: FORMAT,
                 viewport: (LOGICAL_W, LOGICAL_H),
                 scale,
-                clear: Some(hal::Color::BLACK),
+                clear: Some(sigil_hal::Color::BLACK),
             },
             &scene,
         )
@@ -473,8 +474,8 @@ fn build_text_scene_sized(size_px: f32) -> CommandScene {
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
     };
-    let rect = hal::Rect::new(
-        hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil_hal::Rect::new(
+        sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );
@@ -512,7 +513,7 @@ fn render_text(
             texture_scale,
             draw_scale,
             content: TEXT,
-            text: hal::Color::WHITE,
+            text: sigil_hal::Color::WHITE,
             background: wgpu::Color::BLACK,
         },
         device,
@@ -527,7 +528,7 @@ fn render_text_string(
     queue: &wgpu::Queue,
     scale: f32,
     content: &str,
-    colors: (hal::Color, wgpu::Color),
+    colors: (sigil_hal::Color, wgpu::Color),
 ) -> (Vec<u8>, u32, u32) {
     render_text_inner(
         &RenderArgs {
@@ -547,7 +548,7 @@ struct RenderArgs<'a> {
     texture_scale: f32,
     draw_scale: f32,
     content: &'a str,
-    text: hal::Color,
+    text: sigil_hal::Color,
     background: wgpu::Color,
 }
 

@@ -41,33 +41,48 @@ records live in [`docs/decisions/`](docs/decisions/).
 
 ```text
 crates/
-  sigil-hal/            Hardware abstraction layer: traits for Renderer,
-                     Shell, Layout, TextEngine, A11yBridge, Scheduler.
-                     Every downstream crate depends on these traits,
-                     never on upstream crates directly. Scale and
-                     logical-size primitives live here.
-  sigil-reactive/       Main-thread signal/effect owner tree.
-  sigil-kernel/           Stable node identity, arena storage, Component,
-                     Semantics, typed extensions, and builders.
-  sigil-layout/         Taffy-backed layout adapter. Mirrors sigil-kernel
-                     subtrees, computes layout, and attaches results.
-  sigil-events/         Input routing, z-order hit-testing, focus
-                     traversal, pointer capture, and handler builders.
-  sigil-style/          StyleAtom vocabulary, Theme, StyleEngine,
-                     classes! resolver, Style struct API, and
-                     style_reactive signal binding.
-  sigil-style-macros/   Proc-macro crate backing classes!; a phf
-                     structural-token table is generated at build time
-                     from grammar/structural.toml.
-  sigil-async/          Tokio runtime and owner-targeted main-thread dispatch.
-  sigil-renderer/       wgpu-backed renderer adapter. Includes
-                     WgpuRenderer::render_scene default pipeline (DR-017).
-  sigil-shell/          winit shell adapter.
-  sigil-app/            App orchestrator: sigil::launch, AppConfig,
-                     TreeRoot, frame loop, DPI-aware logical sizing,
-                     bulletproof defaults (DR-016, DR-018).
-  sigil/                User-facing facade with prelude. `use sigil::prelude::*;`
-                     is the one import line user apps need.
+  hal/ (sigil-hal)              Hardware abstraction layer: traits for Renderer,
+                               Shell, Layout, TextEngine, A11yBridge, Scheduler.
+                               Every downstream crate depends on these traits,
+                               never on upstream crates directly. no_std.
+  reactive/ (sigil-reactive)   Main-thread signal/effect owner tree.
+  kernel/ (sigil-kernel)       Stable node identity, arena storage, Component,
+                               Semantics, typed extensions, and builders.
+  layout/ (sigil-layout)       Owned incremental layout engine (DR-041).
+                               Mirrors sigil-kernel subtrees, computes layout,
+                               publishes cached results; Taffy reference corpus
+                               backs the benches.
+  events/ (sigil-events)       Input routing, z-order hit-testing, focus
+                               traversal, pointer capture, and handler builders.
+  style/ (sigil-style)         StyleAtom vocabulary, Theme, StyleEngine,
+                               classes! resolver, Style struct API, and
+                               style_reactive signal binding.
+  style-macros/ (sigil-style-macros)
+                               Proc-macro crate backing classes!; a phf
+                               structural-token table is generated at build time
+                               from grammar/structural.toml.
+  tasks/ (sigil-tasks)         Tokio runtime and owner-targeted main-thread
+                               dispatch. (Was sigil-async; `async` is reserved.)
+  text/ (sigil-text)           Owned text pipeline: shaping, measurement,
+                               paragraph cache, font fallback.
+  renderer/ (sigil-renderer)   wgpu-backed renderer adapter. Includes
+                               WgpuRenderer::render_scene default pipeline (DR-017).
+  shell/ (sigil-shell)         winit shell adapter.
+  a11y/ (sigil-a11y)           AccessKit bridge over sigil-kernel semantics.
+  actions/ + actions_macros/   Typed actions + #[derive(Action)].
+  animation/ + animation_runtime/
+                               Animation primitives + runtime.
+  icons/ (sigil-icons)         SVG icon baking (usvg → sprites).
+  app/ (sigil-app)             App orchestrator: sigil::launch, AppConfig,
+                               TreeRoot, frame loop, DPI-aware logical sizing,
+                               bulletproof defaults (DR-016, DR-018).
+  sigil/ (sigil-ui)            User-facing facade with prelude — the package is
+                               `sigil-ui` (the `sigil` name was taken), the
+                               library is `sigil`: `use sigil::prelude::*;`
+                               is the one import line user apps need.
+  ide-core/                    IDE primitives (publish = false).
+  engine_adapter/               the host engine-engine host trait (publish = false).
+  bench-parity*/               Benchmark harnesses (publish = false).
 
 examples/
   hello-counter/     Minimum viable reactive UI on `sigil::launch`:
@@ -88,9 +103,13 @@ examples/
                      `sigil::launch`. Advanced reference — opens a
                      window, clears to a colour, cycles three colours
                      on a timer, and exits cleanly.
+  widget-playground/ The widget catalog, live.
+  */                 Dogfood apps (csv-viewer, chat-client, kanban-board,
+                     api-explorer, file-browser, …) — each ships a
+                     FRICTION.md log that drives API ergonomics work.
 
 docs/
-  decisions/         Architecture decision records (DR-000..DR-018).
+  decisions/         Architecture decision records (DR-000 onward, 47+).
   plans/             Repo-local execution plans tied to accepted DRs.
 ```
 
@@ -100,7 +119,10 @@ docs/
 cargo fmt --check
 cargo check --workspace --all-targets
 cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic -W clippy::nursery
-cargo test --workspace
+cargo test --workspace            # unit + integration + doctests
+cargo deny check
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+cargo publish --workspace --dry-run --locked --all-features   # packaging gate
 cargo run -p hello-counter
 cargo run -p hello-events
 cargo run -p hello-style
@@ -112,6 +134,12 @@ cargo bench -p sigil-layout
 cargo bench -p sigil-events
 cargo bench -p sigil-style
 ```
+
+In this shared checkout, route builds through the build router (`the build router check` /
+`the build router test`, `the build router exec --tag <gate> -- <command>`) — it routes to the
+packages affected by your diff and keeps lane isolation. See
+[`RELEASING.md`](RELEASING.md) for the publish procedure (nothing publishes
+without an explicit go).
 
 All user-facing sizes and positions are logical pixels; the shell and
 launch layers convert to physical pixels at the winit/wgpu boundary.
@@ -140,12 +168,25 @@ pane demonstrating last-wins atom resolution — and exit on Escape.
 
 [![CI](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml/badge.svg)](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml)
 
-Every push and PR runs on `{ubuntu, macos, windows} x {stable, 1.90 MSRV}`:
-`cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
-`cargo check --workspace --all-targets`, `cargo test --workspace`, and
-`cargo build -p hello-rect`. Ubuntu stable additionally runs a
-`sigil-reactive` bench smoke test and `cargo deny check` for licenses,
-advisories, bans, and sources.
+Every push and PR runs:
+
+- **`{ubuntu, macos, windows} × stable`:** `cargo fmt --check`,
+  `cargo clippy --workspace --all-targets -- -D warnings`,
+  `cargo check --workspace --all-targets`, `cargo test --workspace`
+  (doctests on Linux/macOS; the Windows leg skips them pending re-verification
+  of the historical Windows-msvc merged-doctest issue), and `cargo deny check`
+  for licenses, advisories, bans, and sources.
+- **`ubuntu × 1.90` (MSRV):** `cargo check --workspace --all-targets --locked
+  --all-features` — check-only; fmt/clippy stay on stable to avoid lint
+  version-skew.
+- **docs:** `cargo doc --workspace --no-deps --all-features` with
+  `RUSTDOCFLAGS="-D warnings"` (all-features matches the docs.rs build of the
+  facade's feature-gated `render` surface).
+- **publish dry-run:** `cargo publish --workspace --dry-run --locked
+  --all-features` — verifies the publish set against a local overlay registry;
+  uploads nothing.
+- **semver-checks:** `cargo semver-checks` against the latest `v*` tag once one
+  exists (skips cleanly pre-first-publish).
 
 ## License
 

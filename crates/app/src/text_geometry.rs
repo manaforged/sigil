@@ -6,10 +6,10 @@
 //! widget reads matches the glyphs the renderer paints (shaping is
 //! deterministic for a given text + style + font set).
 
-use hal::{HitPosition, TextAffinity};
-use layout::{CaretGeometry, TextGeometry};
-use style::TextStyle;
-use text::{OwnedTextEngine, TextConfig};
+use sigil_hal::{HitPosition, TextAffinity};
+use sigil_layout::{CaretGeometry, TextGeometry};
+use sigil_style::TextStyle;
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 /// Owned-text-engine-backed geometry provider for single-line text widgets.
 pub struct EngineGeometry {

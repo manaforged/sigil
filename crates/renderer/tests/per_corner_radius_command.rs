@@ -5,27 +5,28 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal::{Color, Point, Rect};
 use half as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_hal::{Color, Point, Rect};
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style::Rgba8;
+use sigil_text as _;
 use skrifa as _;
 use smallvec::smallvec;
-use style::Rgba8;
-use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use icons as _;
+use sigil_icons as _;
+use zeno as _;
 
-use renderer::{
+use sigil_renderer::{
     CommandScene, CornerRadii, GradientStop, LinearGradient, RendererError, SceneBuilder,
     SceneCommand, SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
     WgpuRenderer, WgpuSurface,
@@ -99,7 +100,12 @@ fn gradient() -> LinearGradient {
 
 const fn solid_stroke() -> Stroke {
     Stroke {
-        color: [0.9, 0.9, 0.95, 1.0],
+        color: Rgba8 {
+            r: 230,
+            g: 230,
+            b: 242,
+            a: 255,
+        },
         width: 2.0,
         style: StrokeStyle::Solid,
         align: StrokeAlign::Centered,

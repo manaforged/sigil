@@ -10,7 +10,7 @@
 //!
 //! [`AsyncRuntime`] owns the Tokio runtime. Background tasks spawned
 //! through it push closures into an [unbounded MPSC][UnboundedSender].
-//! Each closure is tagged with an [`OwnerHandle`]; at [drain][Scheduler::drain]
+//! Each closure is tagged with an [`OwnerHandle`]; at [drain][sigil_hal::Scheduler::drain]
 //! time the dispatcher asks `sigil-reactive` whether the owner is still
 //! alive and either runs the closure or drops it silently. A
 //! caller-injected `waker` closure wires the enqueue side to
@@ -18,7 +18,7 @@
 //! tests swap it for a counter or a no-op.
 //!
 //! Task cancellation is owner-disposal-driven. Every
-//! [`AsyncRuntime::spawn`][Scheduler::spawn] call records its
+//! [`Scheduler::spawn`][sigil_hal::Scheduler::spawn] call records its
 //! `AbortHandle` in a small per-owner registry; on each `drain`, any
 //! handles whose owner is no longer live are aborted and dropped.
 //! Disposal + next drain therefore cancels the task; no separate
@@ -37,6 +37,7 @@
 //! [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
 //! [UnboundedSender]: tokio::sync::mpsc::UnboundedSender
 
+#![deny(missing_docs)]
 // `pub(crate)` on items inside private modules expresses design
 // intent ("do not leak this even if the module ever becomes pub")
 // that clippy's `redundant_pub_crate` nursery lint treats as noise.

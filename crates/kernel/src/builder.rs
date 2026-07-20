@@ -1,8 +1,8 @@
 //! Generic builders for structural nodes.
 
-use accesskit::{Action, Role};
-use hal::Shortcut;
-use reactive::Signal;
+use accesskit::{Action, Role, SortDirection};
+use sigil_hal::Shortcut;
+use sigil_reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::component::{ErasedComponent, IntoNode};
@@ -148,12 +148,59 @@ impl NodeBuilder {
         self
     }
 
+    /// Set the reactive sort direction for a grid column header.
+    ///
+    /// The signal yields `Some(direction)` while this column is the
+    /// active sort and `None` otherwise.
+    #[must_use]
+    pub const fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
+        self.a11y.sort_direction = Some(signal);
+        self
+    }
+
+    /// Set the reactive total row count for a grid (including header
+    /// rows).
+    #[must_use]
+    pub const fn row_count(mut self, signal: Signal<usize>) -> Self {
+        self.a11y.row_count = Some(signal);
+        self
+    }
+
+    /// Set the total column count for a grid.
+    #[must_use]
+    pub const fn column_count(mut self, count: usize) -> Self {
+        self.a11y.column_count = Some(count);
+        self
+    }
+
+    /// Set the 1-based row index of this node within its grid.
+    #[must_use]
+    pub const fn row_index(mut self, index: usize) -> Self {
+        self.a11y.row_index = Some(index);
+        self
+    }
+
+    /// Set the 1-based column index of this cell within its row.
+    #[must_use]
+    pub const fn column_index(mut self, index: usize) -> Self {
+        self.a11y.column_index = Some(index);
+        self
+    }
+
     /// Set a reactive numeric value for range-like controls.
     #[must_use]
     pub const fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
         self.a11y.value_now = Some(signal);
         self.a11y.value_min = Some(min);
         self.a11y.value_max = Some(max);
+        self
+    }
+
+    /// Set the increment unit AT Increment/Decrement actions apply to
+    /// this node's numeric value (defaults to 1.0 when unset).
+    #[must_use]
+    pub const fn value_step(mut self, step: f32) -> Self {
+        self.a11y.step = Some(step);
         self
     }
 
@@ -212,7 +259,7 @@ impl NodeBuilder {
     ///
     /// This is the low-level primitive. Prefer crate-provided extension
     /// methods — for example, use `.layout(LayoutStyle::…)` from
-    /// `layout::prelude::*` rather than `.with(layout_style)`.
+    /// `sigil_layout::prelude::*` rather than `.with(layout_style)`.
     #[must_use]
     pub fn with<T: 'static>(mut self, value: T) -> Self {
         self.pre_extensions.push(Box::new(move |node: &mut Node| {

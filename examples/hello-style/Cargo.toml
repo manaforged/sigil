@@ -13,7 +13,7 @@ name = "hello-style"
 path = "src/main.rs"
 
 [dependencies]
-sigil = { workspace = true }
+sigil-ui = { workspace = true }
 
 [lints]
 workspace = true

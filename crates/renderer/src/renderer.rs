@@ -1,4 +1,4 @@
-//! [`WgpuRenderer`] — the production [`hal::Renderer`] implementation.
+//! [`WgpuRenderer`] — the production [`sigil_hal::Renderer`] implementation.
 //!
 //! This module owns the public wgpu-facing API. Lazy device/adapter
 //! construction lives in [`crate::device_state`]; the scene-paint
@@ -11,7 +11,7 @@ pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
 
 use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
 
-use hal::{Color, PhysicalSize, Renderer};
+use sigil_hal::{Color, PhysicalSize, Renderer};
 
 use crate::device_state::DeviceState;
 use crate::error::RendererError;
@@ -34,6 +34,9 @@ pub struct WgpuRenderer {
     /// must outlive the call; they are cleared at the start of the next
     /// `record_screen` (by which point the prior submission has completed).
     frame_transients: Vec<crate::layer_pool::LayerHandle>,
+    /// Request an alpha-composited surface from `create_surface`, so a
+    /// transparent clear shows the desktop behind the window (overlays).
+    transparent: bool,
 }
 
 impl WgpuRenderer {
@@ -48,7 +51,21 @@ impl WgpuRenderer {
         Ok(Self {
             state: DeviceState::new(),
             frame_transients: Vec::new(),
+            transparent: false,
         })
+    }
+
+    /// Request (or drop) alpha-composited surfaces from subsequent
+    /// [`Renderer::create_surface`] calls. Backends that offer no
+    /// alpha-composite mode fall back to opaque with a warning.
+    pub const fn set_transparent(&mut self, transparent: bool) {
+        self.transparent = transparent;
+    }
+
+    /// Whether alpha-composited surfaces have been requested.
+    #[must_use]
+    pub const fn is_transparent(&self) -> bool {
+        self.transparent
     }
 
     /// Borrow the underlying `wgpu::Instance` (always available).
@@ -344,11 +361,7 @@ impl Renderer for WgpuRenderer {
             .find(wgpu::TextureFormat::is_srgb)
             .or_else(|| caps.formats.first().copied())
             .ok_or(RendererError::NoSupportedFormat)?;
-        let alpha_mode = caps
-            .alpha_modes
-            .first()
-            .copied()
-            .unwrap_or(wgpu::CompositeAlphaMode::Auto);
+        let alpha_mode = select_alpha_mode(&caps.alpha_modes, self.transparent);
         let (width, height) = surface_extent(initial_size, ready.max_texture_dimension_2d());
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -413,9 +426,32 @@ const fn clamp_extent(value: u32, max_extent: u32) -> u32 {
     }
 }
 
+/// Pick a surface composite-alpha mode. Opaque surfaces keep the
+/// backend's first offering (previous behaviour); transparent surfaces
+/// prefer the alpha-composited modes and warn when the backend offers
+/// none, falling back to opaque rather than failing.
+fn select_alpha_mode(
+    modes: &[wgpu::CompositeAlphaMode],
+    transparent: bool,
+) -> wgpu::CompositeAlphaMode {
+    use wgpu::CompositeAlphaMode as Mode;
+    if transparent {
+        for want in [Mode::PostMultiplied, Mode::PreMultiplied, Mode::Inherit] {
+            if modes.contains(&want) {
+                return want;
+            }
+        }
+        tracing::warn!(
+            "backend offers no alpha-composite mode ({modes:?}); overlay will be opaque"
+        );
+    }
+    modes.first().copied().unwrap_or(Mode::Auto)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{PhysicalSize, surface_extent};
+    use super::{PhysicalSize, select_alpha_mode, surface_extent};
+    use wgpu::CompositeAlphaMode as Mode;
 
     #[test]
     fn surface_extent_clamps_to_adapter_limit() {
@@ -428,5 +464,28 @@ mod tests {
     #[test]
     fn surface_extent_never_returns_zero() {
         assert_eq!(surface_extent(PhysicalSize::new(0, 0), 2048), (1, 1));
+    }
+
+    #[test]
+    fn transparent_prefers_post_multiplied() {
+        // Typical Metal offering.
+        let metal_modes = [Mode::Opaque, Mode::PostMultiplied];
+        assert_eq!(select_alpha_mode(&metal_modes, true), Mode::PostMultiplied);
+        // Vulkan-style premultiplied-only offering.
+        let vulkan_modes = [Mode::Opaque, Mode::PreMultiplied];
+        assert_eq!(select_alpha_mode(&vulkan_modes, true), Mode::PreMultiplied);
+    }
+
+    #[test]
+    fn transparent_falls_back_to_opaque_when_unsupported() {
+        assert_eq!(select_alpha_mode(&[Mode::Opaque], true), Mode::Opaque);
+        assert_eq!(select_alpha_mode(&[], true), Mode::Auto);
+    }
+
+    #[test]
+    fn opaque_path_keeps_first_offering() {
+        let modes = [Mode::Opaque, Mode::PostMultiplied];
+        assert_eq!(select_alpha_mode(&modes, false), Mode::Opaque);
+        assert_eq!(select_alpha_mode(&[], false), Mode::Auto);
     }
 }

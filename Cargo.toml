@@ -74,19 +74,23 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/ThomGardiner/sigil"
+readme = "README.md"
 authors = ["the author"]
 
 [workspace.lints.rust]
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
-# `priority = -1` so per-crate `[lints.rust] missing_docs = "deny"` (used
-# by library crates that contract on full rustdoc coverage) overrides
-# this workspace default. Binary / example crates inherit the warn-level.
+# NOTE: Cargo does NOT allow member crates to override workspace lints while
+# `[lints] workspace = true` is set (verified 2026-07-18 on cargo 1.97: the
+# manifest fails to parse). Per-crate strictness therefore lives in crate-root
+# attributes instead — library crates that contract on full rustdoc coverage
+# use `#![deny(missing_docs)]` in their lib.rs. Binary / example crates only
+# have bin targets, where missing_docs does not fire.
 missing_docs = { level = "warn", priority = -1 }
 unreachable_pub = "warn"
 unused_crate_dependencies = "warn"
@@ -192,30 +196,34 @@ tempfile = "3"
 # image-encoding path we do not need, so depend with `default-features = false`
 # to keep the transitive surface narrow.
 arboard = { version = "3", default-features = false }
-# Workspace leaf crates use bare names matching their directory (the host engine
-# convention). The umbrella `sigil` crate re-exports everything as the
-# public surface. `sigil-async` was renamed to `tasks` because `async`
-# is a Rust reserved keyword and would force consumers to use `r#async`.
-sigil = { path = "crates/sigil" }
-a11y = { path = "crates/a11y" }
-actions = { path = "crates/actions" }
-actions-macros = { path = "crates/actions_macros" }
-animation = { path = "crates/animation" }
-animation-runtime = { path = "crates/animation_runtime" }
-app = { path = "crates/app" }
-tasks = { path = "crates/tasks" }
-kernel = { path = "crates/kernel" }
-events = { path = "crates/events" }
-hal = { path = "crates/hal" }
-layout = { path = "crates/layout" }
-reactive = { path = "crates/reactive" }
-renderer = { path = "crates/renderer" }
-shell = { path = "crates/shell" }
-style = { path = "crates/style" }
-style-macros = { path = "crates/style-macros" }
-icons = { path = "crates/icons" }
-text = { path = "crates/text" }
-ide-core = { path = "crates/ide-core" }
+# Internal crates publish as `sigil-*`; their directories keep the short
+# names for git history (crates/kernel → package sigil-kernel). The facade is
+# the one exception: package `sigil-ui` (the bare `sigil` name was taken on
+# crates.io) with the library still named `sigil`, so `use sigil::prelude::*`
+# stays the single import user code needs. `sigil-async` became `sigil-tasks`
+# because `async` is a Rust reserved keyword and would force `r#async` on
+# consumers. Lockstep: every internal dep carries the workspace version —
+# bump them together (see RELEASING.md).
+sigil-ui = { path = "crates/sigil", version = "0.1.0-alpha.1" }
+sigil-a11y = { path = "crates/a11y", version = "0.1.0-alpha.1" }
+sigil-actions = { path = "crates/actions", version = "0.1.0-alpha.1" }
+sigil-actions-macros = { path = "crates/actions_macros", version = "0.1.0-alpha.1" }
+sigil-animation = { path = "crates/animation", version = "0.1.0-alpha.1" }
+sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0-alpha.1" }
+sigil-app = { path = "crates/app", version = "0.1.0-alpha.1" }
+sigil-tasks = { path = "crates/tasks", version = "0.1.0-alpha.1" }
+sigil-kernel = { path = "crates/kernel", version = "0.1.0-alpha.1" }
+sigil-events = { path = "crates/events", version = "0.1.0-alpha.1" }
+sigil-hal = { path = "crates/hal", version = "0.1.0-alpha.1" }
+sigil-layout = { path = "crates/layout", version = "0.1.0-alpha.1" }
+sigil-reactive = { path = "crates/reactive", version = "0.1.0-alpha.1" }
+sigil-renderer = { path = "crates/renderer", version = "0.1.0-alpha.1" }
+sigil-shell = { path = "crates/shell", version = "0.1.0-alpha.1" }
+sigil-style = { path = "crates/style", version = "0.1.0-alpha.1" }
+sigil-style-macros = { path = "crates/style-macros", version = "0.1.0-alpha.1" }
+sigil-icons = { path = "crates/icons", version = "0.1.0-alpha.1" }
+sigil-text = { path = "crates/text", version = "0.1.0-alpha.1" }
+sigil-ide-core = { path = "crates/ide-core", version = "0.1.0-alpha.1" }
 usvg = { version = "0.47", default-features = false }
 lyon_geom = { version = "1.0" }
 

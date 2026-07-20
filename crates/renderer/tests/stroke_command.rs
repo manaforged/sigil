@@ -5,27 +5,28 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal::{Point, Rect};
 use half as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_hal::{Point, Rect};
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style::Rgba8;
+use sigil_text as _;
 use skrifa as _;
 use smallvec::smallvec;
-use style::Rgba8;
-use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use icons as _;
+use sigil_icons as _;
+use zeno as _;
 
-use renderer::{
+use sigil_renderer::{
     CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand, SceneGradientStyle,
     SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
@@ -34,7 +35,15 @@ use renderer::{
 fn stroke_constructs_with_public_fields() {
     let stroke = solid_stroke(StrokeAlign::Centered, 2.0);
 
-    assert_array_close(stroke.color, [0.1, 0.2, 0.3, 0.9]);
+    assert_eq!(
+        stroke.color,
+        Rgba8 {
+            r: 26,
+            g: 51,
+            b: 77,
+            a: 230,
+        }
+    );
     assert!((stroke.width - 2.0).abs() < 1e-6);
     assert_eq!(stroke.style, StrokeStyle::Solid);
     assert_eq!(stroke.align, StrokeAlign::Centered);
@@ -97,15 +106,14 @@ const fn rect_style() -> SceneRectStyle {
     SceneRectStyle::new(color(8, 12, 20, 255), CornerRadii::uniform(8.0), 10_000)
 }
 
-fn assert_array_close(actual_values: [f32; 4], expected_values: [f32; 4]) {
-    for (actual, expected) in actual_values.into_iter().zip(expected_values) {
-        assert!((actual - expected).abs() < 1e-6);
-    }
-}
-
 const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: [0.1, 0.2, 0.3, 0.9],
+        color: Rgba8 {
+            r: 26,
+            g: 51,
+            b: 77,
+            a: 230,
+        },
         width,
         style: StrokeStyle::Solid,
         align,
@@ -114,7 +122,12 @@ const fn solid_stroke(align: StrokeAlign, width: f32) -> Stroke {
 
 const fn dashed_stroke(align: StrokeAlign, width: f32, gap: f32) -> Stroke {
     Stroke {
-        color: [0.7, 0.6, 0.2, 1.0],
+        color: Rgba8 {
+            r: 179,
+            g: 153,
+            b: 51,
+            a: 255,
+        },
         width,
         style: StrokeStyle::Dashed(gap),
         align,

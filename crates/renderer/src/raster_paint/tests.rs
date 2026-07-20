@@ -64,15 +64,15 @@ const NOTO_HEBREW: &[u8] =
 /// (mirrors `crates/text/tests/font_fallback.rs`) — used to prove
 /// `record_paragraph` processes every face, not just the primary.
 fn mixed_face_paragraph() -> Paragraph {
-    let mut engine = text::OwnedTextEngine::new(text::TextConfig::default());
+    let mut engine = sigil_text::OwnedTextEngine::new(sigil_text::TextConfig::default());
     engine
         .register_font_family("serif", NOTO_HEBREW.to_vec(), 0)
         .expect("NotoSansHebrew fixture must register");
-    let style = style::TextStyle {
+    let style = sigil_style::TextStyle {
         font_family: String::from("sans"),
         font_size: 16.0,
         font_weight: 400,
-        line_height: style::TextLineHeight::FontSizeRelative(1.2),
+        line_height: sigil_style::TextLineHeight::FontSizeRelative(1.2),
     };
     engine
         .layout_paragraph_styled("Hi \u{05E9}\u{05DC}\u{05D5}\u{05DD}", None, &style)

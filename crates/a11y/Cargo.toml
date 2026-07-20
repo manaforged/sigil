@@ -1,5 +1,5 @@
 [package]
-name = "a11y"
+name = "sigil-a11y"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,14 +7,17 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "AccessKit bridge for Sigil — projects the kernel node tree into accesskit::TreeUpdate."
+readme.workspace = true
+keywords = ["accessibility", "accesskit", "a11y", "gui"]
+categories = ["gui", "accessibility"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
 accesskit = { workspace = true }
-hal = { workspace = true }
-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-kernel = { workspace = true }
 # W5-A11Y (DR-050 §1) — `AccessKitBridge::take_action` drains the
 # inbound `ActionRequest` channel the shell-side winit adapter feeds
 # (`crates/shell/src/shell/a11y.rs`). Same channel primitive already
@@ -25,18 +28,18 @@ crossbeam-channel = { workspace = true }
 [dev-dependencies]
 # W5.2 — `reactive_flow` integration test drives `A11yObserver` +
 # `Runtime::install_a11y_publisher` against `RecordingBridge`.
-reactive = { workspace = true }
+sigil-reactive = { path = "../reactive" }
 # Phase 1.3 acceptance gate (`live_regions`) drives the modal widget's
 # rising-edge announcement effect end-to-end through the AccessKit
 # projection. Dev-dep only — no cycle, since `sigil` does not depend on
 # `sigil-a11y`.
-sigil = { workspace = true }
+sigil-ui = { path = "../sigil" }
 # RC-focus adversarial finding 1 — `bounds_projection.rs` drives a real
 # `LayoutEngine::compute` pass (not injected bounds) to prove a
 # signal-moved/resized node's projected bounds reflect the FRESH layout,
 # not a stale one. Dev-dep only — production `mapping.rs` stays decoupled
 # from `sigil-layout` (see `BoundsLookup`'s own doc comment).
-layout = { workspace = true }
+sigil-layout = { path = "../layout" }
 
 [lints]
 workspace = true

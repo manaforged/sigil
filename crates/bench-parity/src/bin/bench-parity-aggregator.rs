@@ -14,13 +14,13 @@
 // transitively via `sigil-bench-parity` itself. Silence the
 // unused-extern-crate lint.
 
-use hal as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
 use serde as _;
 use serde_json as _;
 use sigil as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
 use sysinfo as _;
 use time as _;
 

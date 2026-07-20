@@ -11,9 +11,9 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use style::{Dimension as StyleDimension, NodeStyleExt, Px, StyleAtom};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_style::{Dimension as StyleDimension, NodeStyleExt, Px, StyleAtom};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::drag::{SplitterState, install_handle_hooks};
@@ -47,7 +47,7 @@ struct PaneEntry {
 pub struct SplitterBuilder {
     orientation: SplitterOrientation,
     panes: Vec<PaneEntry>,
-    sizes_bind: Option<reactive::Signal<Vec<f32>>>,
+    sizes_bind: Option<sigil_reactive::Signal<Vec<f32>>>,
     snap_points: Vec<(usize, Vec<f32>)>,
     snap_threshold: f32,
     layout_overrides: LayoutOverrides,
@@ -96,7 +96,7 @@ impl SplitterBuilder {
     ///
     /// ```ignore
     /// use sigil::widgets::{SplitterOrientation, splitter};
-    /// use kernel::container;
+    /// use sigil_kernel::container;
     ///
     /// let _node = splitter(SplitterOrientation::Horizontal)
     ///     .pane(container()).initial(240.0).min(120.0).max(480.0)
@@ -134,7 +134,7 @@ impl SplitterBuilder {
 
     /// Bind an external signal that receives the live pane-sizes vector.
     #[must_use]
-    pub const fn sizes_bind(mut self, signal: reactive::Signal<Vec<f32>>) -> Self {
+    pub const fn sizes_bind(mut self, signal: sigil_reactive::Signal<Vec<f32>>) -> Self {
         self.sizes_bind = Some(signal);
         self
     }
@@ -199,7 +199,7 @@ impl SplitterBuilder {
 }
 
 impl IntoNode for SplitterBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -254,7 +254,7 @@ impl PaneBuilder {
 }
 
 impl IntoNode for PaneBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.commit().build(cx)
     }
 }
@@ -283,7 +283,7 @@ fn build_pane(
 }
 
 /// Build a layout for a pane using `f32` size (what `LayoutStyle::width/height`
-/// accept — they impl `From<f32>` for the internal `layout::Dimension`).
+/// accept — they impl `From<f32>` for the internal `sigil_layout::Dimension`).
 fn pane_layout(orientation: SplitterOrientation, size_px: f32) -> LayoutStyle {
     match orientation {
         SplitterOrientation::Horizontal => LayoutStyle::flex_column().width(size_px),
@@ -331,7 +331,7 @@ fn handle_layout(orientation: SplitterOrientation) -> LayoutStyle {
 // ---- atom cache helpers -----------------------------------------------------
 
 /// Cache `StyleAtom::Width` slices keyed by i16 pixel value.
-/// `style::Dimension::Px(Px(i16))` is the correct atom type.
+/// `sigil_style::Dimension::Px(Px(i16))` is the correct atom type.
 fn cached_width_atom(px: i16) -> &'static [StyleAtom] {
     static CACHE: OnceLock<Mutex<HashMap<i16, &'static [StyleAtom]>>> = OnceLock::new();
     cached_atom(&CACHE, px, |p| {

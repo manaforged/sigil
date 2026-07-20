@@ -5,25 +5,26 @@ use bytemuck as _;
 use criterion as _;
 use half as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use icons as _;
+use sigil_icons as _;
+use zeno as _;
 
-use hal::{Point, Rect};
-use renderer::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
-use style::Rgba8;
+use sigil_hal::{Point, Rect};
+use sigil_renderer::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
+use sigil_style::Rgba8;
 
 #[test]
 fn builder_emits_balanced_push_pop_for_with_clip() {

@@ -1,4 +1,4 @@
-//! IME handler storage attached to a `kernel::Node` extension, and the
+//! IME handler storage attached to a `sigil_kernel::Node` extension, and the
 //! `EventRouter` methods that dispatch through it.
 //!
 //! Separate from [`crate::EventHandlers`] (pointer/key/scroll/focus)
@@ -10,9 +10,9 @@
 //! instead — legal in Rust, and all three only need the already-public
 //! [`EventRouter::focus`] accessor, so no extra field visibility is needed.
 
-use hal::{ImeEvent, Point, Rect};
-use kernel::{Cx, NodeId};
-use layout::{CaretGeometry, LayoutEngine};
+use sigil_hal::{ImeEvent, Point, Rect};
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::{CaretGeometry, LayoutEngine};
 
 use crate::EventRouter;
 

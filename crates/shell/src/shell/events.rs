@@ -4,7 +4,7 @@
 //! readable under the 400-LoC hygiene cap. These methods translate raw
 //! winit events into the sigil-hal `ShellEvent` vocabulary.
 
-use hal::{
+use sigil_hal::{
     ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PhysicalSize, Point,
     PointerEvent, PointerEventInit, PointerKind, PointerPhase, Scale, ScrollEvent, ScrollEventInit,
     ShellEvent, WindowEvent as SigilWindowEvent,
@@ -37,6 +37,15 @@ impl WinitShell {
 
     pub(super) fn push_window(&mut self, event: SigilWindowEvent) -> bool {
         self.events.push(ShellEvent::Window(event));
+        // Window lifecycle events (first-show focus, un-occlude, resize,
+        // scale change) mean the drawable's pixels are stale or absent, so
+        // the next frame MUST paint. Setting the flag here — not just in
+        // the OS-driven RedrawRequested arm — keeps the returned redraw
+        // request from being misread as input coalescing, which would let
+        // the change-gate skip the one frame that had to paint (the
+        // intermittent never-painted gray window, Fable 2026-07-13).
+        // Input events don't route through here, so coalescing is intact.
+        self.set_force_paint();
         true
     }
 

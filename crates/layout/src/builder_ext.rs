@@ -1,18 +1,18 @@
 //! Extension trait that adds `.layout()` to `sigil-kernel::NodeBuilder`.
 //!
-//! Import this trait (or use `layout::prelude::*`) to attach a
+//! Import this trait (or use `sigil_layout::prelude::*`) to attach a
 //! [`LayoutStyle`] directly on the builder instead of post-hoc via
 //! `node.attach(...)`:
 //!
 //! ```ignore
-//! use layout::prelude::*;
+//! use sigil_layout::prelude::*;
 //!
 //! container()
 //!     .layout(LayoutStyle::flex_row().fixed_size(320.0, 80.0))
 //!     .child(text("hello"))
 //! ```
 
-use kernel::{NodeBuilder, TextBuilder};
+use sigil_kernel::{NodeBuilder, TextBuilder};
 
 use crate::LayoutStyle;
 

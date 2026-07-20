@@ -24,8 +24,8 @@ fn app_tree(cx: &mut Cx) -> NodeId {
                     .fixed_size(480.0, 240.0)
                     .gap(16.0),
             )
-            .class("p-8 bg-surface")
-            .child(text(label_text).class("text-on-surface"))
+            .class(classes!("p-8 bg-surface"))
+            .child(text(label_text).class(classes!("text-on-surface")))
             .child(button("Increment").primary().activate(move || {
                 count.set(count.peek() + 1);
             })),

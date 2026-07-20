@@ -18,9 +18,9 @@
 //! than `cx.parent()` slotmap lookups cost in the follow-up path walk.
 //! Measured on depth-64 routing — the slimmer layout wins.
 
-use hal::{Point, Rect};
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_hal::{Point, Rect};
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
 pub(crate) type NodePath = SmallVec<[NodeId; 64]>;

@@ -104,7 +104,7 @@ pub(crate) struct TaskInner<T> {
 #[must_use = "tasks are cancelled when dropped; call .detach() to keep running"]
 pub struct Task<T> {
     inner: TaskInner<T>,
-    /// `!Send + !Sync` — Task<T> belongs to the main thread.
+    /// `!Send + !Sync` — `Task<T>` belongs to the main thread.
     _not_send: PhantomData<*const ()>,
 }
 

@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
-use reactive::Signal;
 use sigil::widget_dev::*;
-use style::{SOFT_VARIANT, SOLID_VARIANT, Tone};
+use sigil_reactive::Signal;
+use sigil_style::{SOFT_VARIANT, SOLID_VARIANT, Tone};
 
 use crate::interaction::InteractionState;
 
@@ -119,7 +119,7 @@ impl ButtonBuilder {
     /// the tone paints — solid saturated fill vs. soft tinted fill.
     ///
     /// Adding a new tone is a two-line change to the [`Tone`] enum +
-    /// [`Theme`](style::Theme) — no widget code changes.
+    /// [`Theme`](sigil_style::Theme) — no widget code changes.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
@@ -162,14 +162,14 @@ impl ButtonBuilder {
     /// The constructor-time focusable / hittable bits still derive from
     /// [`enabled`](Self::enabled) and the signal's *initial* value —
     /// the reactive update covers the visual state and the activation
-    /// guard, matching the [`CheckboxBuilder::disabled`] /
-    /// [`SliderBuilder::disabled`] contract.
+    /// guard, matching the [`crate::widgets::CheckboxBuilder::disabled`] /
+    /// [`crate::widgets::SliderBuilder::disabled`] contract.
     ///
     /// # Example
     ///
     /// ```ignore
     /// use sigil::widgets::button::button;
-    /// use reactive::signal;
+    /// use sigil_reactive::signal;
     ///
     /// let saving = signal(false);
     /// let node = button("Save").disabled(saving);
@@ -252,7 +252,7 @@ impl ButtonBuilder {
         &self,
         interaction: InteractionState,
         activate: Activate,
-        user_overlay: style::StyleOverlay,
+        user_overlay: sigil_style::StyleOverlay,
     ) -> NodeBuilder {
         // DS2.5 — `.stateful_style(...)` handles the slot-cell wiring
         // internally; `ToneContext` selects which scale the variant's
@@ -321,7 +321,7 @@ impl WidgetLayoutExt for ButtonBuilder {
 impl StateHost for ButtonBuilder {}
 
 impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

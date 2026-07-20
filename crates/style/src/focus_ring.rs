@@ -1,6 +1,6 @@
 //! Focus-ring style extension.
 
-use reactive::Signal;
+use sigil_reactive::Signal;
 
 use crate::{ColorAtom, Rgba8};
 

@@ -13,8 +13,8 @@ use std::fmt;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use hal::Scheduler;
-use reactive::{BoxMainCallback, OwnerId};
+use sigil_hal::Scheduler;
+use sigil_reactive::{BoxMainCallback, OwnerId};
 use tokio::runtime::{Builder, Runtime};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio::task::{AbortHandle, JoinHandle};
@@ -30,7 +30,7 @@ use crate::reactive_bridge::{
 /// been torn down while a background task still holds a handle.
 /// The [`Full`][ScheduleError::Full] variant is reserved for the
 /// future bounded-queue behaviour documented in
-/// [`hal::scheduler`]; producing it from the current unbounded
+/// [`sigil_hal::scheduler`]; producing it from the current unbounded
 /// adapter would be a bug, but the variant stays in the public
 /// surface so that the bounded adapter (later phase) can start
 /// returning it without breaking callers.
@@ -73,7 +73,7 @@ pub(crate) struct DispatchMessage {
 ///
 /// Obtain one via [`AsyncRuntime::dispatcher`]. Background tasks
 /// spawned with [`AsyncRuntime::spawn`] (via the
-/// [`Scheduler`][hal::Scheduler] trait) move a `Dispatcher` clone
+/// [`Scheduler`][sigil_hal::Scheduler] trait) move a `Dispatcher` clone
 /// into their `async move` body and use it to call
 /// [`dispatch_to_owner`][crate::dispatch_to_owner].
 ///
@@ -124,7 +124,7 @@ const _: fn() = || {
 ///   half and the waker.
 /// - `rx`: the MPSC receiver, held by the dispatcher. Drained from
 ///   the main thread at frame start via
-///   [`Scheduler::drain`][hal::Scheduler::drain].
+///   [`Scheduler::drain`][sigil_hal::Scheduler::drain].
 /// - `owner_tasks`: per-owner `AbortHandle` registry. Updated from
 ///   any thread on spawn; swept on drain so dead owners' tasks are
 ///   aborted promptly.
@@ -199,9 +199,9 @@ impl AsyncRuntime {
     /// G5 (DR-048 §5) — clone the reactive-bridge sender half.
     ///
     /// The returned [`ReactiveBridge`] is `Send + Sync + Clone` and
-    /// implements [`reactive::MainThreadDispatcher`]. The
+    /// implements [`sigil_reactive::MainThreadDispatcher`]. The
     /// application installs this via
-    /// [`reactive::Runtime::install_executor`] (paired with the
+    /// [`sigil_reactive::Runtime::install_executor`] (paired with the
     /// [`crate::TokioExecutor`] from [`AsyncRuntime::tokio_executor`])
     /// at startup; background tasks then post completion callbacks
     /// through it.
@@ -213,9 +213,9 @@ impl AsyncRuntime {
     /// G5 (DR-048 §5) — mint a [`crate::TokioExecutor`] over this
     /// runtime's Tokio handle.
     ///
-    /// The returned executor implements [`reactive::TaskExecutor`]
+    /// The returned executor implements [`sigil_reactive::TaskExecutor`]
     /// and shares the same Tokio multi-thread runtime as
-    /// `AsyncRuntime`'s [`hal::Scheduler`] surface — there is
+    /// `AsyncRuntime`'s [`sigil_hal::Scheduler`] surface — there is
     /// only one Tokio runtime per `AsyncRuntime`.
     #[must_use]
     pub fn tokio_executor(&self) -> crate::TokioExecutor {
@@ -225,7 +225,7 @@ impl AsyncRuntime {
     /// G5 (DR-048 §5) — replace the reactive-bridge waker closure.
     ///
     /// Same shape as [`AsyncRuntime::set_waker`] but for the bridge
-    /// channel (different MPSC than the [`hal::Scheduler`]
+    /// channel (different MPSC than the [`sigil_hal::Scheduler`]
     /// queue). Tests can swap a counter waker to assert the worker
     /// fired its waker per `post_to_main` call.
     pub fn set_bridge_waker<F>(&mut self, waker: F)
@@ -237,7 +237,7 @@ impl AsyncRuntime {
 
     /// G5 (DR-048 §5) — drain the reactive-bridge MPSC, forwarding
     /// each `(owner, callback)` entry to
-    /// [`reactive::Runtime::enqueue_completion`].
+    /// [`sigil_reactive::Runtime::enqueue_completion`].
     ///
     /// Must be called on the main thread (the reactive runtime is
     /// thread-local). Returns the number of entries moved into the
@@ -246,7 +246,7 @@ impl AsyncRuntime {
     /// can't starve the caller.
     ///
     /// The frame loop invokes this just before
-    /// [`reactive::Runtime::begin_effect`], which then drains
+    /// [`sigil_reactive::Runtime::begin_effect`], which then drains
     /// the freshly-forwarded completions as the first step of the
     /// Effect phase.
     pub fn pump_completions_into_reactive(&mut self) -> usize {
@@ -279,7 +279,7 @@ impl AsyncRuntime {
     /// cancellation is hooked into the shared `owner_tasks` registry.
     /// No public surface exposes this — user code spawns via
     /// [`spawn_to_signal`][crate::spawn_to_signal] or the
-    /// [`Scheduler::spawn`][hal::Scheduler::spawn] impl below.
+    /// [`Scheduler::spawn`][sigil_hal::Scheduler::spawn] impl below.
     pub(crate) fn tokio_handle(&self) -> tokio::runtime::Handle {
         self.rt.handle().clone()
     }
@@ -320,7 +320,7 @@ pub(crate) fn sweep_owner_tasks(registry: &Mutex<HashMap<OwnerId, Vec<AbortHandl
         .lock()
         .expect("owner_tasks mutex poisoned by a panicking holder");
     map.retain(|&owner_id, handles| {
-        if !reactive::is_live(owner_id) {
+        if !sigil_reactive::is_live(owner_id) {
             // Owner has been disposed — abort every still-running
             // task and drop the entry.
             for h in handles.drain(..) {
@@ -391,8 +391,8 @@ impl Scheduler for AsyncRuntime {
         // cancel until drain" bug. `with_owner_by_id` scopes the
         // `on_cleanup` registration to `owner` without requiring us
         // to be inside that owner's `with` closure.
-        let registered = reactive::owner_by_id(owner.id(), move || {
-            reactive::on_cleanup(move || {
+        let registered = sigil_reactive::owner_by_id(owner.id(), move || {
+            sigil_reactive::on_cleanup(move || {
                 abort.abort();
             });
         });
@@ -441,7 +441,7 @@ impl Scheduler for AsyncRuntime {
                 // `Box<dyn FnOnce() + Send + 'static>` satisfies
                 // `impl FnOnce()` directly (the `Box<dyn FnOnce>`
                 // FnOnce impl) — no extra closure wrapping needed.
-                let ran_inner = reactive::owner_by_id(msg.owner.id(), callback);
+                let ran_inner = sigil_reactive::owner_by_id(msg.owner.id(), callback);
                 if ran_inner {
                     ran += 1;
                 }

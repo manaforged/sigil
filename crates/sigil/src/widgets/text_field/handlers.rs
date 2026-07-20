@@ -1,11 +1,11 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
-use kernel::NodeBuilder;
-use layout::with_text_geometry;
-use reactive::{Signal, batch, signal};
-use style::TextStyle;
+use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use sigil_kernel::NodeBuilder;
+use sigil_layout::with_text_geometry;
+use sigil_reactive::{Signal, batch, signal};
+use sigil_style::TextStyle;
 
 use super::super::shared::disabled_now;
 use super::super::text_edit::TextEdit;

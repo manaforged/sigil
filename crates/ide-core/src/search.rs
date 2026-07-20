@@ -9,7 +9,7 @@
 //! # API
 //!
 //! ```ignore
-//! use ide_core::search::{fuzzy, fuzzy_with, Match};
+//! use sigil_ide_core::search::{fuzzy, fuzzy_with, Match};
 //!
 //! let hay = ["src/main.rs", "src/lib.rs", "docs/readme.md"];
 //! let hits: Vec<Match> = fuzzy("mn", &hay);

@@ -77,6 +77,10 @@ fn insert_atom(
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "exhaustive match on StyleAtom — the long no-op arm chain is intentional; a wildcard would silently swallow new atom kinds"
+)]
 fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     match atom {
         StyleAtom::PaddingAll(px) => expand_padding_all(px, out),
@@ -94,12 +98,17 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::MarginBottom(_)
         | StyleAtom::MarginLeft(_)
         | StyleAtom::Gap(_)
+        | StyleAtom::GapX(_)
+        | StyleAtom::GapY(_)
         | StyleAtom::Width(_)
         | StyleAtom::Height(_)
         | StyleAtom::MinWidth(_)
         | StyleAtom::MaxWidth(_)
+        | StyleAtom::MinHeight(_)
+        | StyleAtom::MaxHeight(_)
         | StyleAtom::Display(_)
         | StyleAtom::FlexDirection(_)
+        | StyleAtom::FlexWrap(_)
         | StyleAtom::AlignItems(_)
         | StyleAtom::JustifyContent(_)
         | StyleAtom::FlexGrow(_)
@@ -109,6 +118,10 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
+        | StyleAtom::BorderWidth(_)
+        | StyleAtom::BorderColor(_)
+        | StyleAtom::BorderThemeRef(_)
+        | StyleAtom::BorderToneStep(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
@@ -187,12 +200,17 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::MarginBottom(_) => ResolvedSlot::MarginBottom,
         StyleAtom::MarginLeft(_) => ResolvedSlot::MarginLeft,
         StyleAtom::Gap(_) => ResolvedSlot::Gap,
+        StyleAtom::GapX(_) => ResolvedSlot::GapX,
+        StyleAtom::GapY(_) => ResolvedSlot::GapY,
         StyleAtom::Width(_) => ResolvedSlot::Width,
         StyleAtom::Height(_) => ResolvedSlot::Height,
         StyleAtom::MinWidth(_) => ResolvedSlot::MinWidth,
         StyleAtom::MaxWidth(_) => ResolvedSlot::MaxWidth,
+        StyleAtom::MinHeight(_) => ResolvedSlot::MinHeight,
+        StyleAtom::MaxHeight(_) => ResolvedSlot::MaxHeight,
         StyleAtom::Display(_) => ResolvedSlot::Display,
         StyleAtom::FlexDirection(_) => ResolvedSlot::FlexDirection,
+        StyleAtom::FlexWrap(_) => ResolvedSlot::FlexWrap,
         StyleAtom::AlignItems(_) => ResolvedSlot::AlignItems,
         StyleAtom::JustifyContent(_) => ResolvedSlot::JustifyContent,
         StyleAtom::FlexGrow(_) => ResolvedSlot::FlexGrow,
@@ -205,6 +223,10 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid => ResolvedSlot::TextColor,
         StyleAtom::BorderRadius(_) => ResolvedSlot::BorderRadius,
+        StyleAtom::BorderWidth(_) => ResolvedSlot::BorderWidth,
+        StyleAtom::BorderColor(_) | StyleAtom::BorderThemeRef(_) | StyleAtom::BorderToneStep(_) => {
+            ResolvedSlot::BorderColor
+        }
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
@@ -229,12 +251,17 @@ enum ResolvedSlot {
     MarginBottom,
     MarginLeft,
     Gap,
+    GapX,
+    GapY,
     Width,
     Height,
     MinWidth,
     MaxWidth,
+    MinHeight,
+    MaxHeight,
     Display,
     FlexDirection,
+    FlexWrap,
     AlignItems,
     JustifyContent,
     FlexGrow,
@@ -242,6 +269,8 @@ enum ResolvedSlot {
     BackgroundColor,
     TextColor,
     BorderRadius,
+    BorderWidth,
+    BorderColor,
     Opacity,
     FontSize,
     FontWeight,

@@ -1,11 +1,11 @@
 //! Semantic floater intent → theme-token color mapping.
 //!
 //! [`FloaterStyle`] keeps damage-floater callers off ad-hoc RGBA and on
-//! the same [`style::scale::ColorScale`] steps the rest of the design
+//! the same [`sigil_style::scale::ColorScale`] steps the rest of the design
 //! system draws from.
 
-use style::scale::ScaleRole;
-use style::{Rgba8, Theme};
+use sigil_style::scale::ScaleRole;
+use sigil_style::{Rgba8, Theme};
 
 /// Semantic damage-floater intent, set via [`super::FloatingTextBuilder::style`].
 ///

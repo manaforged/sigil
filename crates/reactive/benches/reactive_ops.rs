@@ -17,12 +17,13 @@ use std::rc::Rc;
 // `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
 // into every bench compilation unit. We don't reference them directly;
 // these aliases silence `unused_crate_dependencies`.
-use actions as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use reactive::{Owner, Runtime, batch, effect, signal};
+use sigil_reactive::{Owner, Runtime, batch, effect, signal};
 
 /// Reading a signal: arena lookup, type check, clone, subscribe.
 /// No current effect = no subscription path, so this measures the

@@ -21,6 +21,7 @@
 //! choreographed timelines, and a `Signal`-driving animator that ticks
 //! with the frame loop. Logged as follow-ups in the host engine roadmap.
 
+#![deny(missing_docs)]
 mod easing;
 mod spring;
 mod tween;

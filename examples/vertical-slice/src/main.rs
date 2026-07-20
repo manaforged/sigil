@@ -126,7 +126,7 @@ fn app_shell(state: DashboardState) -> NodeBuilder {
         .role(Role::Main)
         .label("Sigil vertical slice dashboard")
         .layout(LayoutStyle::flex_row().gap(16.0))
-        .class("w-full h-full p-6 bg-surface")
+        .class(classes!("w-full h-full p-6 bg-surface"))
         .pointer_move(move |_| set_if_changed(state.hovered_row, None))
         .child(sidebar())
         .child(main_panel(state))
@@ -140,7 +140,7 @@ fn sidebar() -> NodeBuilder {
                 .gap(16.0)
                 .padding(16.0),
         )
-        .class("h-full rounded-lg bg-surface-hover")
+        .class(classes!("h-full rounded-lg bg-surface-hover"))
         .child(label("SIGIL"))
         .child(label("Vertical slice"))
         .child(label("Layout"))
@@ -152,7 +152,7 @@ fn sidebar() -> NodeBuilder {
 fn main_panel(state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().grow(1.0).gap(16.0))
-        .class("h-full")
+        .class(classes!("h-full"))
         .child(header(state))
         .child(workspace(state))
         .child(status_bar(state))
@@ -168,7 +168,7 @@ fn header(state: DashboardState) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween)
                 .padding(16.0),
         )
-        .class("w-full rounded-lg bg-surface-hover")
+        .class(classes!("w-full rounded-lg bg-surface-hover"))
         .child(label("Automation control"))
         .child(header_actions(state))
 }
@@ -192,7 +192,7 @@ fn header_actions(state: DashboardState) -> NodeBuilder {
 fn workspace(state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().grow(1.0).gap(16.0))
-        .class("w-full")
+        .class(classes!("w-full"))
         .child(module_list(state))
         .child(controls_panel(state))
         .child(run_summary(state))
@@ -206,7 +206,7 @@ fn module_list(state: DashboardState) -> NodeBuilder {
                 .gap(12.0)
                 .padding(16.0),
         )
-        .class("h-full rounded-lg bg-surface-hover")
+        .class(classes!("h-full rounded-lg bg-surface-hover"))
         .child(label("Modules"))
         .child(module_row(
             0,
@@ -236,7 +236,7 @@ fn controls_panel(state: DashboardState) -> NodeBuilder {
                 .gap(12.0)
                 .padding(16.0),
         )
-        .class("h-full rounded-lg bg-surface-hover")
+        .class(classes!("h-full rounded-lg bg-surface-hover"))
         .child(label("Controls"))
         .child(
             button("Prime controls")
@@ -262,7 +262,7 @@ fn controls_panel(state: DashboardState) -> NodeBuilder {
 fn note_control(state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(8.0).padding(12.0))
-        .class("w-full rounded-md bg-surface")
+        .class(classes!("w-full rounded-md bg-surface"))
         .child(label("Notes"))
         .child(
             text_field(state.note)
@@ -277,7 +277,7 @@ fn note_control(state: DashboardState) -> NodeBuilder {
 fn delay_control(state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(8.0).padding(12.0))
-        .class("w-full rounded-md bg-surface")
+        .class(classes!("w-full rounded-md bg-surface"))
         .child(label("Delay budget"))
         .child(
             slider(state.delay_budget, 0.0..=100.0)
@@ -289,7 +289,7 @@ fn delay_control(state: DashboardState) -> NodeBuilder {
 fn run_summary(state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().grow(1.0).gap(16.0).padding(16.0))
-        .class("h-full rounded-lg bg-surface-hover")
+        .class(classes!("h-full rounded-lg bg-surface-hover"))
         .child(label("Proof points"))
         .child(summary_row("Reactive text", state.count_label))
         .child(summary_row("Selected module", state.status))
@@ -308,7 +308,7 @@ fn status_bar(state: DashboardState) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween)
                 .padding(16.0),
         )
-        .class("w-full rounded-lg bg-surface-hover")
+        .class(classes!("w-full rounded-lg bg-surface-hover"))
         .child(label(state.status).layout(LayoutStyle::block().grow(1.0)))
         .child(label(state.delay_label).layout(LayoutStyle::block().width(160.0)))
 }
@@ -330,7 +330,7 @@ fn module_row(
                 .align_items(AlignItems::Center)
                 .padding(12.0),
         )
-        .class("w-full rounded-md")
+        .class(classes!("w-full rounded-md"))
         .style_reactive(move || row_style(state, index))
         .pointer_move(move |event| hover_row(event, state, index))
         .pointer_down(move |event| select_row(event, state, index))
@@ -349,14 +349,14 @@ fn row_copy(title: &'static str, detail: &'static str) -> NodeBuilder {
 fn row_stripe(index: usize, state: DashboardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(8.0, 48.0))
-        .class("rounded-sm")
+        .class(classes!("rounded-sm"))
         .style_reactive(move || stripe_style(state, index))
 }
 
 fn summary_row(label_text: &'static str, value: Signal<String>) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(6.0).padding(12.0))
-        .class("w-full rounded-md bg-surface")
+        .class(classes!("w-full rounded-md bg-surface"))
         .child(label(label_text))
         .child(label(value))
 }

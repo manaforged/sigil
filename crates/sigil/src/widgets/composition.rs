@@ -9,9 +9,9 @@
 //! * [`kv_row`] — `Label: value` pair for settings panels, lap times,
 //!   metadata rows.
 
-use kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use style::NodeStyleExt;
+use sigil_kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_style::NodeStyleExt;
 
 /// Outer inset for a status bar in logical pixels (matches the panel
 /// padding scale at `p-2`).
@@ -84,8 +84,8 @@ pub fn kv_row(label: impl Into<TextContent>, value: impl IntoNode + 'static) -> 
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::{Cx, container as kernel_container};
-    use reactive::Runtime;
+    use sigil_kernel::{Cx, container as kernel_container};
+    use sigil_reactive::Runtime;
 
     #[test]
     fn status_bar_has_no_children_when_iterator_is_empty() {

@@ -8,7 +8,7 @@
 //!
 //! # Coalescing contract
 //!
-//! The HAL contract (see [`hal::Shell::Waker`]) requires that
+//! The HAL contract (see [`sigil_hal::Shell::Waker`]) requires that
 //! multiple `wake()` calls between two event-loop iterations collapse
 //! into a single delivered wake. An `Arc<AtomicBool>` "pending wake"
 //! flag is shared between the waker and the application handler:

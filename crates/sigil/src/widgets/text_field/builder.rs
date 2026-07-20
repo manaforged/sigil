@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use layout::prelude::LayoutBuilderExt;
-use reactive::{Signal, signal};
-use style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, TextContent};
+use sigil_layout::prelude::LayoutBuilderExt;
+use sigil_reactive::{Signal, signal};
+use sigil_style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
@@ -123,7 +123,7 @@ impl TextFieldBuilder {
     ///
     /// ```ignore
     /// use sigil::widgets::text_field::text_field;
-    /// use reactive::{derived, signal};
+    /// use sigil_reactive::{derived, signal};
     ///
     /// let value = signal(String::new());
     /// let invalid = derived(move || value.get().trim().is_empty());
@@ -162,7 +162,7 @@ impl TextFieldBuilder {
         let disabled = self.disabled;
         let invalid = self.invalid;
         let placeholder = self.placeholder;
-        let style_accumulator = self.style_accumulator;
+        let mut style_accumulator = self.style_accumulator;
         let mutators = self.mutators;
         let layout_overrides = self.layout_overrides;
         let change = self.change.unwrap_or_else(noop_change);
@@ -190,10 +190,15 @@ impl TextFieldBuilder {
             column,
         );
 
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — the field frame resolves them against
+        // its live interaction slot so `.hover(|s| s.bg(...))` paints.
+        let user_overlay = style_accumulator.take_state_overlay();
         let inputs = FieldInputs {
             value,
             disabled,
             invalid,
+            overlay: user_overlay,
         };
         let node = build_base_node(inputs, &placeholder, interaction, width, runtime.clone());
         let node = interaction.install(attach_key_handlers(node, runtime.clone()));
@@ -206,9 +211,9 @@ impl TextFieldBuilder {
         // the FIELD_BASE/FIELD_REST/FIELD_FOCUS/FIELD_HOVER/FIELD_DOWN/
         // FIELD_DISABLED state arms (additive composition per DR-049
         // §10). The accumulator's hover/focus/pressed/disabled slot
-        // overlays will compose with the existing arms at engine
-        // install time (G6.2); base atoms route through the existing
-        // `NodeStyleExt::style` class-source seam.
+        // overlays were drained above into the frame's state overlay;
+        // base atoms route through the existing `NodeStyleExt::style`
+        // class-source seam.
         if !style_accumulator.is_empty() {
             node = node.style(style_accumulator);
         }
@@ -232,7 +237,7 @@ impl WidgetLayoutExt for TextFieldBuilder {
 }
 
 impl IntoNode for TextFieldBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         let (node, _runtime) = self.into_node_builder();
         node.build(cx)
     }

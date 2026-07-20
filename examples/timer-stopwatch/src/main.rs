@@ -47,9 +47,9 @@ fn app_tree(cx: &mut Cx) -> NodeId {
                     .padding(16.0)
                     .gap(12.0),
             )
-            .class("bg-surface")
-            .child(text(display_text).class("text-on-surface text-xl font-mono"))
-            .child(text(status_text).class("text-on-surface text-sm"))
+            .class(classes!("bg-surface"))
+            .child(text(display_text).class(classes!("text-on-surface text-xl font-mono")))
+            .child(text(status_text).class(classes!("text-on-surface text-sm")))
             .child(button_row(start_at, elapsed_ms, laps))
             .child(lap_list(laps)),
     )
@@ -59,14 +59,18 @@ fn lap_list(laps: Signal<Vec<u64>>) -> NodeBuilder {
     let snapshot = laps.peek();
     let mut col = container().layout(LayoutStyle::flex_column().gap(2.0));
     if snapshot.is_empty() {
-        return col.child(text("(no laps yet)").class("text-on-surface text-sm font-mono"));
+        return col
+            .child(text("(no laps yet)").class(classes!("text-on-surface text-sm font-mono")));
     }
     for (idx, ms) in snapshot.iter().enumerate() {
         let n = idx + 1;
         let formatted = format_ms(*ms);
         col = col.child(
-            kv_row(format!("lap {n}"), text(formatted).class("font-mono"))
-                .class("text-on-surface text-sm"),
+            kv_row(
+                format!("lap {n}"),
+                text(formatted).class(classes!("font-mono")),
+            )
+            .class(classes!("text-on-surface text-sm")),
         );
     }
     col

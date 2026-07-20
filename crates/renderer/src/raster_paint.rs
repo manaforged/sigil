@@ -7,8 +7,8 @@
 //! Slug happens at the draw entry point (`scene_command::draw_handlers`),
 //! not in here — this pipeline only knows how to place glyphs it is given.
 
-use hal::{Color, Rect, RenderedGlyph};
-use text::Paragraph;
+use sigil_hal::{Color, Rect, RenderedGlyph};
+use sigil_text::Paragraph;
 
 use crate::raster::{self, RasterKey};
 

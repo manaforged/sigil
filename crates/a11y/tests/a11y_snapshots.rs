@@ -3,15 +3,15 @@
 //!
 //! Each test builds a tiny `Cx` arena, runs the projection, and asserts
 //! against an inline snapshot. The snapshot format is the indented-text
-//! formatter from [`a11y::snapshot`].
+//! formatter from [`sigil_a11y::snapshot`].
 
-use a11y::{snapshot, tree};
 use accesskit::Role;
-use kernel::{Cx, container, fragment};
+use sigil_a11y::{snapshot, tree};
+use sigil_kernel::{Cx, container, fragment};
 
 // hal is needed by sigil-a11y's public bridge trait but not
 // named directly in this test file.
-use hal as _;
+use sigil_hal as _;
 // sigil-reactive (Wave 5.2 reactive_flow.rs dev-dep) + sigil
 // (Phase 1.3.C live_regions.rs dev-dep) + crossbeam-channel (W5-A11Y
 // AccessKitBridge's action-request channel, unused by this file's
@@ -20,9 +20,9 @@ use hal as _;
 // `unused_crate_dependencies`. `layout` (RC-focus finding 1's
 // `bounds_projection.rs` dev-dep) is unused here too.
 use crossbeam_channel as _;
-use layout as _;
-use reactive as _;
 use sigil as _;
+use sigil_layout as _;
+use sigil_reactive as _;
 
 #[test]
 fn button_role_and_name() {

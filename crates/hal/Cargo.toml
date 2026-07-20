@@ -1,5 +1,5 @@
 [package]
-name = "hal"
+name = "sigil-hal"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,11 +7,12 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Hardware abstraction layer — renderer, shell, layout, text, a11y, and scheduler traits."
+readme.workspace = true
+keywords = ["gui", "abstraction", "wgpu", "winit"]
+categories = ["gui", "no-std"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-# Rust 1.94 merged-doctests + Windows-msvc target misdetection
-# workaround. No runnable doctests are shipped.
-doctest = false
 
 [dependencies]
 keyboard-types = { workspace = true }

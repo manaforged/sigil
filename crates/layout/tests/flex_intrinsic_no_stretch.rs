@@ -20,27 +20,27 @@
 //!    as the OUTER's "natural" main extent and over-reports its
 //!    basis by the full parent dimension.
 //!
-//! Combined symptom: a `patterns::field` flex_column with a text
-//! label + a flex_row container child collapsed the label to ~1.6 px
+//! Combined symptom: a `patterns::field` `flex_column` with a text
+//! label + a `flex_row` container child collapsed the label to ~1.6 px
 //! and stretched the container to ~58 px instead of leaving them at
 //! basis 16/16 with 24 px unused.
 
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 use stub::stub_engine;
 
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
-fn rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("rect")

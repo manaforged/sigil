@@ -1,15 +1,24 @@
 //! Text field widget demo — empty, placeholder, and pre-filled.
 
-#![allow(missing_docs)]
+#![allow(missing_docs, clippy::print_stdout)]
 
-use app as _;
-use events as _;
-use hal as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
-use renderer as _;
-use style as _;
+use arboard as _;
+use criterion as _;
+use image as _;
+use pollster as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
+use wgpu as _;
 
 use sigil::prelude::*;
 
@@ -24,7 +33,7 @@ fn build(cx: &mut Cx) -> NodeId {
         container()
             .role(Role::Main)
             .layout(LayoutStyle::flex_column().gap(16.0).padding(32.0))
-            .class("w-full h-full bg-surface")
+            .class(classes!("w-full h-full bg-surface"))
             .child(
                 text_field(name)
                     .placeholder("Enter your name")
@@ -32,7 +41,7 @@ fn build(cx: &mut Cx) -> NodeId {
                         name.update(|s| {
                             s.clear();
                             s.push_str(v);
-                        })
+                        });
                     }),
             )
             .child(text_field(url).submit(|v| println!("submit: {v}"))),

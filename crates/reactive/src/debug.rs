@@ -18,7 +18,7 @@
 //! - No structured / JSON output (`dump_owner_tree_json` is a later
 //!   addition).
 //! - No end-of-session leak detector (see the module-level note on
-//!   [`run_effect_leak_check`] below).
+//!   `run_effect_leak_check` below).
 
 use core::fmt::Write as _;
 

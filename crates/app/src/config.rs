@@ -38,6 +38,20 @@ pub struct AppConfig {
     pub esc_exits: bool,
     /// Panic policy for root-level fallback. Default: isolate.
     pub panic_policy: PanicPolicy,
+    /// Overlay bundle: the window is undecorated, transparent,
+    /// always-on-top, shadowless, created inactive and click-through,
+    /// and the process runs as an accessory on macOS (no Dock icon or
+    /// Cmd-Tab entry; it never steals focus). The frame clear is fully
+    /// transparent, so whatever the tree does not paint shows the
+    /// desktop behind it. Meant for status pills. Default: `false`.
+    pub overlay: bool,
+    /// Optional placement resolved against the primary monitor when the
+    /// window materialises. `None` accepts the OS default position.
+    pub anchor: Option<sigil_hal::Anchor>,
+    /// Dev-mode edit-see loop (5/5 Wave 4 T14): watch this theme TOML
+    /// file and repaint live on save — no rebuild. See
+    /// `crates/app/src/theme_file.rs` for the format. Default: `None`.
+    pub theme_file: Option<std::path::PathBuf>,
 }
 
 impl AppConfig {
@@ -49,6 +63,9 @@ impl AppConfig {
             size: (720, 480),
             esc_exits: true,
             panic_policy: PanicPolicy::default(),
+            overlay: false,
+            anchor: None,
+            theme_file: None,
         }
     }
 
@@ -70,6 +87,27 @@ impl AppConfig {
     #[must_use]
     pub const fn panic_policy(mut self, policy: PanicPolicy) -> Self {
         self.panic_policy = policy;
+        self
+    }
+
+    /// Chainable overlay-bundle setter (see [`Self::overlay`] field docs).
+    #[must_use]
+    pub const fn overlay(mut self, yes: bool) -> Self {
+        self.overlay = yes;
+        self
+    }
+
+    /// Chainable placement setter (see [`Self::anchor`] field docs).
+    #[must_use]
+    pub const fn anchor(mut self, anchor: sigil_hal::Anchor) -> Self {
+        self.anchor = Some(anchor);
+        self
+    }
+
+    /// Chainable theme-file watcher (see [`Self::theme_file`] field docs).
+    #[must_use]
+    pub fn theme_file(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.theme_file = Some(path.into());
         self
     }
 }

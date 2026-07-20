@@ -9,8 +9,8 @@
 
 use std::cell::{Cell, Ref, RefCell};
 
-use hal::TextEngine;
-use style::{StyledTextEngine, TextLineHeight, TextStyle};
+use sigil_hal::TextEngine;
+use sigil_style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::bidi;
@@ -27,7 +27,7 @@ use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
 /// resolved default [`TextConfig`]. All interior mutability is via
 /// [`RefCell`]; single-threaded by design (matches the existing engine
 /// surface). `Send + Sync` is **not** required of the engine itself —
-/// the underlying [`Shaper`] is, so future rayon use sites can be added
+/// the underlying `Shaper` is, so future rayon use sites can be added
 /// without revisiting this type.
 pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
@@ -147,7 +147,7 @@ impl OwnedTextEngine {
     /// Unlike [`Self::register_font`] (which always replaces the sans
     /// primary), this targets one family slot so a caller can add e.g.
     /// a Hebrew face as `serif` for the per-run fallback chain
-    /// ([`FontCollection::fallback_chain`]) to discover when the
+    /// (`FontCollection::fallback_chain`) to discover when the
     /// active style's family lacks coverage for a run.
     ///
     /// # Errors
@@ -365,7 +365,7 @@ impl FontCollection {
 
 /// Embedded `FiraSans` Regular — sans bootstrap face.
 fn load_sans_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../tests/fixtures/FiraSans-Regular.ttf");
+    const BYTES: &[u8] = include_bytes!("../assets/fonts/FiraSans-Regular.ttf");
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled FiraSans-Regular.ttf must parse — fixture validated at G1.3")
 }
@@ -373,7 +373,7 @@ fn load_sans_font() -> Font {
 /// Embedded `CascadiaMono` Regular — monospace bootstrap face. OFL
 /// 1.1 (Microsoft, <https://github.com/microsoft/cascadia-code>).
 fn load_mono_font() -> Font {
-    const BYTES: &[u8] = include_bytes!("../tests/fixtures/CascadiaMono-Regular.ttf");
+    const BYTES: &[u8] = include_bytes!("../assets/fonts/CascadiaMono-Regular.ttf");
     Font::from_bytes(BYTES.to_vec(), 0).expect("bundled CascadiaMono-Regular.ttf must parse")
 }
 
@@ -461,7 +461,7 @@ struct ShapedSegment {
 /// see the correct direction.
 ///
 /// `chain` is the paragraph's per-run font fallback chain
-/// ([`FontCollection::fallback_chain`]) — `chain[0]` is the primary
+/// (`FontCollection::fallback_chain`) — `chain[0]` is the primary
 /// face selected for the active style; each run independently picks
 /// the first face in `chain` with full cmap coverage (Wave 4).
 /// `paragraph_bidi` is the paragraph's precomputed bidi analysis
@@ -726,7 +726,7 @@ fn push_face_span(
 /// `fragment` (see [`Font::covers`] for the default-ignorable
 /// transparency), falling back to `chain[0]` (the paragraph's primary
 /// face — rendering `.notdef` tofu) when no registered face covers
-/// it. `chain` is never empty: [`FontCollection::fallback_chain`]
+/// it. `chain` is never empty: `FontCollection::fallback_chain`
 /// always seeds it with the primary face.
 ///
 /// This is a cheap cmap pre-filter, not a shaping-success guarantee —

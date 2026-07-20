@@ -9,18 +9,18 @@ mod routing_helpers;
 use accesskit as _;
 use allocation_counter as _;
 use criterion as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
-use events::prelude::*;
-use kernel::FocusScopeKind;
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_events::prelude::*;
+use sigil_kernel::FocusScopeKind;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
 use routing_helpers::{compute_layout, route_event, tab};
 
-fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut kernel::Node) {
+fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut sigil_kernel::Node) {
     move |node| {
         node.a11y.focus_scope = Some(kind);
     }

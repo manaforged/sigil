@@ -1,32 +1,32 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 use sigil::prelude::*;
+use sigil_hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -96,7 +96,7 @@ fn modal_open_pushes_focus_scope() {
 }
 
 /// A dismissed modal must release its focus scope: after `show` flips
-/// false (Display::None) and layout recomputes, Tab must reach the
+/// false (`Display::None`) and layout recomputes, Tab must reach the
 /// focusable OUTSIDE the dialog — not stay trapped in an invisible
 /// scope (the reviewer adversarial finding, 2026-07-12).
 #[test]
@@ -172,7 +172,7 @@ fn backdrop_click_closes_when_opt_in() {
         // whenever the layout evolves.
         let dialog = modal_dialog(&cx, root);
         let rect = layout.result(dialog).expect("dialog layout").rect();
-        let (cx_mid, cy_mid) = (
+        let (mid_x, mid_y) = (
             rect.origin.x + rect.width / 2.0,
             rect.origin.y + rect.height / 2.0,
         );
@@ -180,7 +180,7 @@ fn backdrop_click_closes_when_opt_in() {
             !(rect.origin.x <= 5.0 && rect.origin.y <= 5.0),
             "backdrop probe point (5,5) must lie outside the dialog rect {rect:?}"
         );
-        router.route(&mut cx, &layout, pointer_down(cx_mid, cy_mid));
+        router.route(&mut cx, &layout, pointer_down(mid_x, mid_y));
         assert!(show.get(), "dialog click must not dismiss");
 
         router.route(&mut cx, &layout, pointer_down(5.0, 5.0));

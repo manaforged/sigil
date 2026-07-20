@@ -1,5 +1,5 @@
 [package]
-name = "animation-runtime"
+name = "sigil-animation-runtime"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,14 +7,17 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Animation orchestration layer over sigil-animation primitives — Animator wraps Spring/Tween and drives Signal<f32>; AnimationRegistry resolves DR-049 TransitionId atoms."
+readme.workspace = true
+keywords = ["animation", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
-animation = { workspace = true }
-reactive = { workspace = true }
-style = { workspace = true }
+sigil-animation = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

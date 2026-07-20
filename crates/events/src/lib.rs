@@ -1,12 +1,12 @@
 //! Event routing, hit-testing, focus, and builder ergonomics for Sigil.
 //!
 //! `sigil-events` sits above shell delivery and below widgets. It
-//! receives translated [`hal::ShellEvent`] values, finds the
+//! receives translated [`sigil_hal::ShellEvent`] values, finds the
 //! target node from layout geometry, runs capture/target/bubble
 //! handlers, and maintains keyboard focus.
 
 #![allow(clippy::redundant_pub_crate)]
-
+#![deny(missing_docs)]
 // `criterion` is a dev-dep used only by the `events_ops` bench. Cargo
 // pulls dev-deps into the lib-test target, so keep the dependency
 // visible to the unused-crate-dependencies lint.
@@ -15,9 +15,9 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 #[cfg(test)]
-use reactive as _;
+use sigil_reactive as _;
 #[cfg(test)]
-use style as _;
+use sigil_style as _;
 mod builder_ext;
 mod focus;
 mod handlers;
@@ -39,6 +39,10 @@ pub use router::EventRouter;
 /// dispatch is stateless (reads `cx`/`layout`, invokes handlers) and
 /// doesn't touch router state, so callers (e.g. `sigil-app`'s a11y
 /// action drain) don't need a router borrow for it.
-pub fn invoke_node(cx: &kernel::Cx, layout: &layout::LayoutEngine, target: kernel::NodeId) {
+pub fn invoke_node(
+    cx: &sigil_kernel::Cx,
+    layout: &sigil_layout::LayoutEngine,
+    target: sigil_kernel::NodeId,
+) {
     pointer_dispatch::invoke_node(cx, layout, target);
 }

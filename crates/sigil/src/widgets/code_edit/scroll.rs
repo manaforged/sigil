@@ -2,10 +2,10 @@
 //! caret-follow logic. Owns the math that turns a scroll offset + a real viewport
 //! height into the small window of rows [`render`](super::render) actually paints.
 
-use events::prelude::{ScrollDelta, ScrollEvent};
-use kernel::{NodeBuilder, container};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use reactive::Signal;
+use sigil_events::prelude::{ScrollDelta, ScrollEvent};
+use sigil_kernel::{NodeBuilder, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::Signal;
 
 use super::render::{GutterCtx, RowCtx, gutter_width, order, rows};
 use super::{ROW_BUFFER, Surface, Window};

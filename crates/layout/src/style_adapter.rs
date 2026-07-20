@@ -2,15 +2,15 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use style::{
-    AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, JustifyKind, OverflowKind, Px,
-    StyleAtom,
+use sigil_style::{
+    AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind,
+    OverflowKind, Px, StyleAtom,
 };
 
 use crate::{
     LayoutStyle,
     style_data::{
-        AlignItems, Dimension, Display, FlexDirection, JustifyContent, LengthPercentage,
+        AlignItems, Dimension, Display, FlexDirection, FlexWrap, JustifyContent, LengthPercentage,
         LengthPercentageAuto, Overflow, StyleData,
     },
 };
@@ -27,6 +27,10 @@ pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "exhaustive match on StyleAtom — the long no-op arm chain is intentional; a wildcard would silently swallow new atom kinds"
+)]
 fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
     match atom {
         StyleAtom::PaddingAll(_)
@@ -44,19 +48,30 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::MarginBottom(_)
         | StyleAtom::MarginLeft(_) => apply_margin(atom, style),
         StyleAtom::Gap(gap) => set_gap(style, gap),
+        StyleAtom::GapX(gap) => set_gap_x(style, gap),
+        StyleAtom::GapY(gap) => set_gap_y(style, gap),
         StyleAtom::Width(width) => set_width(style, width),
         StyleAtom::Height(height) => set_height(style, height),
         StyleAtom::MinWidth(width) => set_min_width(style, width),
         StyleAtom::MaxWidth(width) => set_max_width(style, width),
+        StyleAtom::MinHeight(height) => set_min_height(style, height),
+        StyleAtom::MaxHeight(height) => set_max_height(style, height),
         StyleAtom::Display(display) => set_display(style, display),
         StyleAtom::FlexDirection(direction) => set_flex_direction(style, direction),
+        StyleAtom::FlexWrap(wrap) => set_flex_wrap(style, wrap),
         StyleAtom::AlignItems(align) => set_align_items(style, align),
         StyleAtom::JustifyContent(justify) => set_justify_content(style, justify),
         StyleAtom::FlexGrow(grow) => set_flex_grow(style, grow),
         StyleAtom::FlexShrink(shrink) => set_flex_shrink(style, shrink),
         StyleAtom::OverflowX(kind) => set_overflow_x(style, kind),
         StyleAtom::OverflowY(kind) => set_overflow_y(style, kind),
-        StyleAtom::BackgroundColor(_)
+        // Border width is box-model-affecting: the solvers consume it
+        // as edge thickness (DR-057 D3). Colour halves are paint-only.
+        StyleAtom::BorderWidth(width) => set_border(style, width),
+        StyleAtom::BorderColor(_)
+        | StyleAtom::BorderThemeRef(_)
+        | StyleAtom::BorderToneStep(_)
+        | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
@@ -132,6 +147,18 @@ fn set_gap(layout: &mut LayoutStyle, gap: Px) {
     });
 }
 
+fn set_gap_x(layout: &mut LayoutStyle, gap: Px) {
+    mutate_layout(layout, |style| {
+        style.gap.width = length(gap);
+    });
+}
+
+fn set_gap_y(layout: &mut LayoutStyle, gap: Px) {
+    mutate_layout(layout, |style| {
+        style.gap.height = length(gap);
+    });
+}
+
 fn set_width(layout: &mut LayoutStyle, width: StyleDimension) {
     mutate_layout(layout, |style| style.size.width = dimension(width));
 }
@@ -148,6 +175,23 @@ fn set_max_width(layout: &mut LayoutStyle, width: StyleDimension) {
     mutate_layout(layout, |style| style.max_size.width = dimension(width));
 }
 
+fn set_min_height(layout: &mut LayoutStyle, height: StyleDimension) {
+    mutate_layout(layout, |style| style.min_size.height = dimension(height));
+}
+
+fn set_max_height(layout: &mut LayoutStyle, height: StyleDimension) {
+    mutate_layout(layout, |style| style.max_size.height = dimension(height));
+}
+
+fn set_border(layout: &mut LayoutStyle, width: Px) {
+    mutate_layout(layout, |style| {
+        style.border.left = length(width);
+        style.border.right = length(width);
+        style.border.top = length(width);
+        style.border.bottom = length(width);
+    });
+}
+
 fn set_display(layout: &mut LayoutStyle, display: DisplayKind) {
     mutate_layout(layout, |style| style.display = display_kind(display));
 }
@@ -155,6 +199,15 @@ fn set_display(layout: &mut LayoutStyle, display: DisplayKind) {
 fn set_flex_direction(layout: &mut LayoutStyle, direction: FlexDir) {
     mutate_layout(layout, |style| {
         style.flex_direction = flex_direction(direction);
+    });
+}
+
+fn set_flex_wrap(layout: &mut LayoutStyle, wrap: FlexWrapKind) {
+    mutate_layout(layout, |style| {
+        style.flex_wrap = match wrap {
+            FlexWrapKind::NoWrap => FlexWrap::NoWrap,
+            FlexWrapKind::Wrap => FlexWrap::Wrap,
+        };
     });
 }
 
@@ -192,7 +245,8 @@ const fn overflow(kind: OverflowKind) -> Overflow {
     match kind {
         OverflowKind::Visible => Overflow::Visible,
         OverflowKind::Hidden => Overflow::Hidden,
-        OverflowKind::Scroll => Overflow::Scroll,
+        // CSS `auto` currently aliases Scroll (documented on the atom).
+        OverflowKind::Scroll | OverflowKind::Auto => Overflow::Scroll,
     }
 }
 
@@ -250,5 +304,6 @@ const fn justify_content(justify: JustifyKind) -> JustifyContent {
         JustifyKind::Stretch => JustifyContent::Stretch,
         JustifyKind::Between => JustifyContent::SpaceBetween,
         JustifyKind::Around => JustifyContent::SpaceAround,
+        JustifyKind::Evenly => JustifyContent::SpaceEvenly,
     }
 }

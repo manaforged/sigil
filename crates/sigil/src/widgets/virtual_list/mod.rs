@@ -12,16 +12,20 @@ mod selection;
 mod viewport;
 mod window;
 
-use kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
-use layout::LayoutStyle;
-use layout::prelude::LayoutBuilderExt;
-use reactive::{Signal, effect, signal};
+use sigil_events::prelude::NodeEventsExt;
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use sigil_layout::LayoutStyle;
+use sigil_layout::prelude::LayoutBuilderExt;
+use sigil_reactive::{Signal, derived, effect, signal};
+
+use std::ops::Deref;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::scroll::wheel;
 use keyboard::{KeyboardRuntime, KeyboardRuntimeInit, attach_key_handlers};
 use render::{
-    HeightSpec, VisibleRenderSpec, build_visible_window, content_container, content_container_auto,
-    row_slot, viewport_container, width_apply, width_spec,
+    HeightSpec, VisibleRenderSpec, build_visible_window, content_container, viewport_container,
+    width_apply, width_spec,
 };
 use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
@@ -42,19 +46,21 @@ type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
 
 /// Runtime context passed to the `items_bind` thunk by
 /// [`VirtualListBuilder::into_node_builder`] so the thunk — which was
-/// built inside [`VirtualListBuilder::items_bind`] with `T: Clone`
-/// already resolved — can build the reactive visible-window subtree
+/// built inside [`VirtualListBuilder::items_bind`] with the item-slice
+/// bound already resolved — can build the reactive visible-window subtree
 /// without needing access to `&mut self`.
 struct BoundCtx<R> {
     render: R,
     row_height: f32,
     width: render::WidthSpec,
     selection: SelectionRuntime,
+    scroll_y: Signal<f32>,
+    viewport_height: f32,
 }
 
 /// Type-erased "build reactive visible window" thunk produced by
 /// [`VirtualListBuilder::items_bind`]. The thunk encapsulates the
-/// `T: Clone` bound so the rest of the builder body can stay generic
+/// `S: AsRef<[T]>` bound so the rest of the builder body can stay generic
 /// over `T: 'static` without forcing `Clone` on the static-`Vec` path.
 type BoundVisibleThunk<R> = dyn FnOnce(BoundCtx<R>) -> NodeBuilder + 'static;
 
@@ -66,6 +72,10 @@ type BoundVisibleThunk<R> = dyn FnOnce(BoundCtx<R>) -> NodeBuilder + 'static;
 struct BoundItems<R> {
     thunk: Box<BoundVisibleThunk<R>>,
     initial_rows: usize,
+    /// Live item count tracked from the bound signal — feeds the
+    /// keyboard runtime so navigation clamps follow filter/sort
+    /// mutations instead of the build-time snapshot.
+    live_rows: Signal<usize>,
 }
 
 /// Pre-resolved per-axis runtime values shared between
@@ -79,6 +89,33 @@ struct BuildAxes {
     scroll_y: Signal<f32>,
     focused_row: Signal<usize>,
     selection_state: Signal<SelectionState>,
+}
+
+/// Borrow the bound signal's value as an item slice. The `Deref`
+/// indirection lets `Rc<Vec<T>>` (deref → `Vec<T>` → `&[T]`) and
+/// plain `Vec<T>` (deref → `[T]`) share one bound.
+fn bound_slice<S, T>(value: &S) -> &[T]
+where
+    S: Deref,
+    S::Target: AsRef<[T]>,
+{
+    (*value).as_ref()
+}
+
+/// Attach the wheel-scroll handler to the viewport root. `max_scroll`
+/// is consulted per event so the bound (`items_bind`) path tracks the
+/// live item count — a filter can shrink the content while the pointer
+/// is hovering over the list.
+fn attach_wheel(
+    root: NodeBuilder,
+    axes: BuildAxes,
+    max_scroll: impl Fn() -> f32 + 'static,
+) -> NodeBuilder {
+    let scroll_y = axes.scroll_y;
+    let viewport_height = axes.viewport_height;
+    root.on_scroll(move |ev| {
+        wheel(ev, scroll_y, viewport_height, max_scroll());
+    })
 }
 
 /// Builder returned by [`virtual_list`].
@@ -199,7 +236,7 @@ where
     }
 
     /// Make the viewport inherit its parent's resolved content box on
-    /// both axes (sets [`layout::Dimension::Fill`] for width and
+    /// both axes (sets [`sigil_layout::Dimension::Fill`] for width and
     /// height). Overrides any explicit
     /// [`viewport_width`](Self::viewport_width) /
     /// [`viewport_height`](Self::viewport_height) settings; the layout
@@ -207,7 +244,7 @@ where
     ///
     /// ```ignore
     /// use sigil::widgets::virtual_list;
-    /// use kernel::container;
+    /// use sigil_kernel::container;
     /// let _list = virtual_list((0..1_000).collect(), |_, _| container())
     ///     .row_height(24.0)
     ///     .viewport_fill();
@@ -263,9 +300,9 @@ where
 
     /// Register a callback that fires whenever the first selected row
     /// changes. Must be called inside a reactive
-    /// [`Runtime`](reactive::Runtime) scope.
+    /// [`Runtime`](sigil_reactive::Runtime) scope.
     ///
-    /// The underlying [`effect`](reactive::effect) runs the
+    /// The underlying [`effect`](sigil_reactive::effect) runs the
     /// closure once at registration time to record subscriptions, so
     /// `f` fires ONCE synchronously during build if a selection is
     /// already present (pre-seeded selection-state signal or a prior
@@ -298,32 +335,36 @@ where
         self
     }
 
-    /// Bind the list's items to a [`Signal<Vec<T>>`].
+    /// Bind the list's items to a signal whose value derefs to an item
+    /// slice (`Signal<Vec<T>>`, `Signal<Rc<Vec<T>>>`, …).
     ///
-    /// When set, the visible-window subtree is wired through
-    /// [`NodeBuilder::children_reactive`] so signal mutations rebuild
-    /// the rendered rows in place. Selection state continues to live
-    /// in the external [`Signal<SelectionState>`](SelectionState) — row
-    /// identity is positional, matching the design in
-    /// `docs/specs/2026-05-20-children-reactive-design.md` §3.
+    /// The visible window is wired through [`NodeBuilder::children_reactive`]
+    /// so BOTH item-signal and `scroll_y` mutations re-render just the
+    /// rows overlapping the viewport — in place, no whole-widget rebuild
+    /// (5/5 Wave 2 T6-prereq; the previous full-vec render is gone).
+    /// Selection state continues to live in the external
+    /// [`Signal<SelectionState>`](SelectionState) — row identity is
+    /// positional, matching `docs/specs/2026-05-20-children-reactive-design.md`
+    /// §3.
     ///
     /// Calling `items_bind` overrides the `Vec<T>` passed to
     /// [`virtual_list`]; the static items list is ignored on the
-    /// reactive path. The reactive path currently renders the full
-    /// signal Vec on each rebuild (no virtualisation window) — this is
-    /// adequate for kilobyte-scale dynamic lists and tracks the
-    /// follow-up `children_reactive_keyed` work in the design doc.
+    /// reactive path. Pass `Signal<Rc<Vec<T>>>` for a clone-free bind —
+    /// `Rc`'s `Clone` is O(1), so 100k-row tables never copy row storage
+    /// on the reactive path.
     ///
-    /// `T: Clone` is required because the reactive rebuild thunk reads
-    /// the signal via `Signal::get()`, which clones the inner `Vec`
-    /// out of the runtime.
+    /// The keyboard runtime reads the LIVE item count derived from this
+    /// signal, so Home/End/Page clamps follow signal mutations (e.g. a
+    /// table quick-filter narrowing the visible rows).
     #[must_use]
-    pub fn items_bind(mut self, signal: Signal<Vec<T>>) -> Self
+    pub fn items_bind<S>(mut self, signal: Signal<S>) -> Self
     where
-        T: Clone,
+        S: Deref + Clone + 'static,
+        S::Target: AsRef<[T]>,
     {
-        let initial_rows = signal.peek().len();
-        // Captures `T: Clone` so the outer builder body can stay
+        let initial_rows = bound_slice(&signal.peek()).len();
+        let live_rows = derived(move || bound_slice(&signal.get()).len());
+        // Captures `S: Clone` so the outer builder body can stay
         // `T: 'static`. The thunk receives `BoundCtx<R>` at
         // into_node_builder time and produces the reactive
         // visible-window NodeBuilder.
@@ -333,23 +374,33 @@ where
                 row_height,
                 width,
                 selection,
+                scroll_y,
+                viewport_height,
             } = ctx;
             container()
-                .layout(width_apply(width, LayoutStyle::flex_column()))
+                .layout(width_apply(width, LayoutStyle::block()))
                 .children_reactive(move || {
-                    let items_vec = signal.get();
-                    items_vec
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, item)| {
-                            row_slot(idx, row_height, width, render(idx, item), selection)
-                        })
-                        .collect::<Vec<_>>()
+                    let items = signal.get();
+                    let slice = bound_slice(&items);
+                    let total = slice.len();
+                    let window =
+                        window::visible_window(scroll_y.get(), total, row_height, viewport_height);
+                    let visible = build_visible_window(
+                        slice,
+                        &render,
+                        window,
+                        VisibleRenderSpec::new((row_height, None), width, selection),
+                    );
+                    vec![
+                        content_container(window::total_height(total, row_height), width)
+                            .child(visible),
+                    ]
                 })
         });
         self.bound = Some(BoundItems {
             thunk,
             initial_rows,
+            live_rows,
         });
         self
     }
@@ -381,7 +432,7 @@ where
     /// use sigil::prelude::*;
     /// use sigil::widgets::{virtual_list, ScrollAnchor};
     /// let items = (0..200u32).collect::<Vec<_>>();
-    /// let _b = virtual_list(items, |_, n| text(n.to_string()))
+    /// let _b = virtual_list(items, |_, n| container().child(text(n.to_string())))
     ///     .initial_scroll(ScrollAnchor::Bottom);
     /// ```
     #[must_use]
@@ -397,10 +448,10 @@ where
     /// Re-seat the scroll position to keep `target` visible whenever the
     /// supplied signal mutates.
     ///
-    /// Installs a [`reactive::effect`] that reads `target.get()`
+    /// Installs a [`sigil_reactive::effect`] that reads `target.get()`
     /// and re-pins the scroll offset to that row top on every change,
     /// clamped to the maximum scroll. The effect is registered at build
-    /// time and lives for the surrounding [`Runtime`](reactive::Runtime)
+    /// time and lives for the surrounding [`Runtime`](sigil_reactive::Runtime)
     /// scope.
     ///
     /// Use for "follow the cursor" / "scroll to selected" UX where the
@@ -413,7 +464,7 @@ where
     /// use sigil::widgets::virtual_list;
     /// let cursor = signal(42usize);
     /// let items = (0..200u32).collect::<Vec<_>>();
-    /// let _b = virtual_list(items, |_, n| text(n.to_string()))
+    /// let _b = virtual_list(items, |_, n| container().child(text(n.to_string())))
     ///     .follow(cursor);
     /// ```
     #[must_use]
@@ -469,19 +520,20 @@ where
             .take()
             .expect("build_bound called without items_bind");
         let selection = SelectionRuntime::new(axes.selection_state);
-        let visible = (bound.thunk)(BoundCtx {
+        // The thunk's `children_reactive` rebuilds the content subtree
+        // (sized to the CURRENT total each time) with only the visible
+        // window materialized — items and scroll subscriptions both live
+        // inside it, so there is no build-time height snapshot to go stale.
+        let content = (bound.thunk)(BoundCtx {
             render: self.render,
             row_height: axes.row_height,
             width: axes.width,
             selection,
+            scroll_y: axes.scroll_y,
+            viewport_height: axes.viewport_height,
         });
         let initial_rows = bound.initial_rows;
-        // The bound path renders the full list and rebuilds on every
-        // signal change, so the content sizes to its current children
-        // (auto height) — a fixed height from the build-time row count is
-        // stale the instant the signal changes and collapses the list to
-        // its first row under incremental layout.
-        let content = content_container_auto(axes.width).child(visible);
+        let live_rows = bound.live_rows;
         let root = viewport_container(axes.viewport_height, axes.width).child(content);
         let root = apply_viewport_overrides(
             root,
@@ -492,11 +544,15 @@ where
                 fill: self.viewport_fill,
             },
         );
+        let root = attach_wheel(root, axes, move || {
+            (total_height(live_rows.get(), axes.row_height) - axes.viewport_height).max(0.0)
+        });
         if self.keyboard_enabled {
             attach_key_handlers(
                 root,
                 KeyboardRuntime::new(KeyboardRuntimeInit {
                     total_rows: initial_rows,
+                    total_rows_live: Some(live_rows),
                     row_height: axes.row_height,
                     viewport_height: axes.viewport_height,
                     scroll_y: axes.scroll_y,
@@ -541,11 +597,14 @@ where
                 fill: self.viewport_fill,
             },
         );
+        let max_scroll = (content_height - axes.viewport_height).max(0.0);
+        let root = attach_wheel(root, axes, move || max_scroll);
         if self.keyboard_enabled {
             attach_key_handlers(
                 root,
                 KeyboardRuntime::new(KeyboardRuntimeInit {
                     total_rows: self.items.len(),
+                    total_rows_live: None,
                     row_height: axes.row_height,
                     viewport_height: axes.viewport_height,
                     scroll_y: axes.scroll_y,

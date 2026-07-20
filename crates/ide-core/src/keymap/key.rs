@@ -19,7 +19,7 @@ use std::fmt;
 /// Bitset of pressed modifier keys.
 ///
 /// `Default` is the empty modifier set. The bit layout is opaque; use
-/// [`Modifiers::with`] / [`Modifiers::contains`] / [`Modifiers::all`].
+/// [`Modifiers::with`] / [`Modifiers::contains`] / `Modifiers::all`.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Modifiers(u8);
 

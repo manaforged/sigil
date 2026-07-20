@@ -7,7 +7,7 @@
 //! `crates/sigil/hal/src/renderer.rs` for the full decision record).
 //!
 //! The trait-object indirection is paid exactly once, inside
-//! [`Renderer::create_surface`][hal::Renderer::create_surface]. No
+//! [`Renderer::create_surface`][sigil_hal::Renderer::create_surface]. No
 //! hot path crosses this boundary.
 
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};

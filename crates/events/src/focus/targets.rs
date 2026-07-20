@@ -7,9 +7,9 @@
 //! managing the ring or scope stack itself) split into its own child
 //! module rather than compounding the existing file further.
 
-use hal::Rect;
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_hal::Rect;
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 
 use super::FocusManager;
 
@@ -132,9 +132,9 @@ const fn rects_intersect(a: Rect, b: Rect) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use hal::Point;
-    use kernel::container;
-    use layout::prelude::*;
+    use sigil_hal::Point;
+    use sigil_kernel::container;
+    use sigil_layout::prelude::*;
 
     use super::*;
     use crate::EventRouter;
@@ -142,8 +142,12 @@ mod tests {
     struct ZeroTextMeasure;
 
     impl TextMeasure for ZeroTextMeasure {
-        fn measure(&self, _content: &kernel::TextContent, _space: hal::Size) -> hal::LogicalSize {
-            hal::LogicalSize::default()
+        fn measure(
+            &self,
+            _content: &sigil_kernel::TextContent,
+            _space: sigil_hal::Size,
+        ) -> sigil_hal::LogicalSize {
+            sigil_hal::LogicalSize::default()
         }
     }
 

@@ -11,11 +11,11 @@ name = "hello-rect"
 path = "src/main.rs"
 
 [dependencies]
-hal = { workspace = true }
-reactive = { workspace = true }
-tasks = { workspace = true }
-renderer = { workspace = true }
-shell = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-tasks = { workspace = true }
+sigil-renderer = { workspace = true }
+sigil-shell = { workspace = true }
 tokio = { workspace = true, features = ["time"] }
 winit = { workspace = true }
 

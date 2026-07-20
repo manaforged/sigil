@@ -10,8 +10,8 @@
 
 use std::sync::mpsc;
 
-use hal::Color;
 use pollster::FutureExt as _;
+use sigil_hal::Color;
 
 pub(super) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub(super) const BYTES_PER_PIXEL: u32 = 4;

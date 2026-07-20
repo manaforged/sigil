@@ -8,7 +8,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use reactive::{effect, signal, Runtime};
+//! use sigil_reactive::{effect, signal, Runtime};
 //!
 //! Runtime::scope("test::counter", || {
 //!     let count = signal(0_i32);
@@ -29,6 +29,7 @@
 //!
 //! [`DR-005`]: ../../../docs/decisions/DR-005-reactivity-owner-tree.md
 
+#![deny(missing_docs)]
 // `pub(crate)` on items inside private modules expresses design
 // intent ("do not leak this even if the module ever becomes pub")
 // that clippy's `redundant_pub_crate` nursery lint treats as noise.
@@ -41,6 +42,8 @@
 // the lint without adding a real import.
 #[cfg(test)]
 use criterion as _;
+#[cfg(test)]
+use sigil as _;
 
 mod arena;
 mod async_cx;

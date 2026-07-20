@@ -21,7 +21,7 @@ use crate::shaping_complex;
 
 const NOTO_ARABIC: &[u8] = include_bytes!("../../tests/fixtures/NotoSansArabic-Regular.ttf");
 const NOTO_HEBREW: &[u8] = include_bytes!("../../tests/fixtures/NotoSansHebrew-Regular.ttf");
-const FIRA_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = include_bytes!("../../assets/fonts/FiraSans-Regular.ttf");
 
 fn noto_arabic() -> Font {
     Font::from_bytes(NOTO_ARABIC.to_vec(), 0).expect("NotoSansArabic fixture must parse")

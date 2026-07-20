@@ -6,12 +6,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use hal as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use kernel::{container, fragment};
+use sigil_kernel::{container, fragment};
 
 #[test]
 fn focusable_false_on_fragment_is_allowed() {

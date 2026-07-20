@@ -5,17 +5,17 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 mod stub;
 use stub::stub_engine;
 
-use kernel::prelude::*;
-use layout::prelude::*;
-use layout::{
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_layout::{
     Dimension as StyleDimension, LayoutDrive, StyleData, StyleDisplay, StyleLengthPercentageAuto,
     StylePosition,
 };
@@ -234,7 +234,7 @@ fn absolute_child_uses_inset_offset() {
     let child = drive.insert(child_style);
     drive.attach(root, child).expect("attach succeeds");
     drive
-        .measure(root, layout::Size::new(200.0, 100.0))
+        .measure(root, sigil_layout::Size::new(200.0, 100.0))
         .expect("measure succeeds");
 
     let result = drive.computed_box(child).expect("child result");

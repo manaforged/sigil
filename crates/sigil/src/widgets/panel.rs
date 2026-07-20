@@ -1,8 +1,8 @@
 //! Panel widget — themed surface card with optional title.
 
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil_style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
 
 const PANEL_WIDTH: f32 = 320.0;
 const PANEL_MIN_HEIGHT: f32 = 48.0;
@@ -114,7 +114,7 @@ impl StyleAccess for PanelBuilder {
 // `into_node_builder` pattern in button.rs is replicated here.
 
 impl IntoNode for PanelBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

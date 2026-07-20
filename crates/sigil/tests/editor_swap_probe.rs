@@ -11,26 +11,27 @@
 //! `children_reactive`, against a PERSISTENT engine — exactly the shell
 //! path. Goal: catch whatever "breaks the whole thing" on the second file.
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
 use image as _;
-use kernel as _;
-use layout as _;
-use style as _;
-use tasks as _;
+use pollster as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 
-use hal::{
+use sigil::prelude::*;
+use sigil_hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use pollster::FutureExt as _;
-use renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
-use sigil::prelude::*;
+use sigil_renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
 use wgpu::TextureFormat;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
@@ -38,14 +39,14 @@ const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
         // Approximate a monospace block: width by longest line, height by
         // line count — so the editor's single text node reports a realistic
         // (tall) intrinsic size, the way the real shaper would.
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1);
         let cols = text.lines().map(str::len).max().unwrap_or(0).max(1);
-        hal::LogicalSize::new(cols as f32 * 8.0, lines as f32 * 16.8)
+        sigil_hal::LogicalSize::new(cols as f32 * 8.0, lines as f32 * 16.8)
     }
 }
 
@@ -93,7 +94,7 @@ fn render(
     renderer: &mut WgpuRenderer,
     cx: &Cx,
     root: NodeId,
-    dev: &Option<(wgpu::Device, wgpu::Queue)>,
+    dev: Option<&(wgpu::Device, wgpu::Queue)>,
     label: &str,
 ) {
     let scene = emit_scene(cx, root);
@@ -226,23 +227,23 @@ fn clicking_second_file_swaps_editor_without_breaking() {
 
         let mut layout = fresh_engine();
         recompute(&mut layout, &mut cx, root);
-        render(&mut renderer, &cx, root, &dev, "file-0-initial");
+        render(&mut renderer, &cx, root, dev.as_ref(), "file-0-initial");
 
         // The click: Explorer writes the new index. Next compute flushes the
         // reactive rebuild — old editor_view (with its scroll widget) removed,
         // new one built — against the SAME engine + SAME renderer. Then re-render.
         selected.set(1);
         recompute(&mut layout, &mut cx, root);
-        render(&mut renderer, &cx, root, &dev, "file-1-after-swap");
+        render(&mut renderer, &cx, root, dev.as_ref(), "file-1-after-swap");
 
         // And back again, to shake out node-id recycling / stale owners.
         selected.set(0);
         recompute(&mut layout, &mut cx, root);
-        render(&mut renderer, &cx, root, &dev, "file-0-again");
+        render(&mut renderer, &cx, root, dev.as_ref(), "file-0-again");
 
         selected.set(1);
         recompute(&mut layout, &mut cx, root);
-        render(&mut renderer, &cx, root, &dev, "file-1-again");
+        render(&mut renderer, &cx, root, dev.as_ref(), "file-1-again");
     });
 }
 
@@ -250,7 +251,7 @@ fn fresh_engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(StubMeasure))
 }
 
-fn pointer_move(x: f32, y: f32) -> ShellEvent {
+const fn pointer_move(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -262,7 +263,7 @@ fn pointer_move(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn pointer_down(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -342,19 +343,19 @@ fn routed_clicks_through_explorer_dont_break() {
         let mut layout = fresh_engine();
         let mut router = EventRouter::new();
         recompute(&mut layout, &mut cx, root);
-        render(&mut renderer, &cx, root, &dev, "routed-0");
+        render(&mut renderer, &cx, root, dev.as_ref(), "routed-0");
 
         // Row y-centres: padding 6 + idx*22 + 11. Row1 ≈ 39, row2 ≈ 61, row0 ≈ 17.
         for (label_name, y) in [("routed-1", 39.0), ("routed-2", 61.0), ("routed-0b", 17.0)] {
             router.route(&mut cx, &layout, pointer_move(20.0, y));
             router.route(&mut cx, &layout, pointer_down(20.0, y));
             recompute(&mut layout, &mut cx, root);
-            render(&mut renderer, &cx, root, &dev, label_name);
+            render(&mut renderer, &cx, root, dev.as_ref(), label_name);
         }
     });
 }
 
-fn pointer_up(x: f32, y: f32) -> ShellEvent {
+const fn pointer_up(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -369,7 +370,7 @@ fn pointer_up(x: f32, y: f32) -> ShellEvent {
 /// The workflow's "confirmed" theory: capture the editor's scroll THUMB, then
 /// rebuild the editor (disposing that scroll widget + its signals), then route a
 /// pointer move/up. If the router dispatches the captured event to the disposed
-/// thumb, scroll's pointer_move handler peeks a disposed signal and PANICS.
+/// thumb, scroll's `pointer_move` handler peeks a disposed signal and PANICS.
 /// This test asserts that sequence does NOT crash.
 #[test]
 fn captured_scroll_thumb_survives_editor_rebuild() {

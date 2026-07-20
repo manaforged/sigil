@@ -8,32 +8,32 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use hal::{MouseButton, MouseButtons, Point, PointerEventInit};
-use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
+use sigil_hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil_renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -137,7 +137,7 @@ fn mid_gesture_disable_vetoes_border_release() {
 }
 
 /// The keyboard open path must honor a reactive disable too: focus
-/// while enabled, flip `disabled`, ArrowDown must not open the popup
+/// while enabled, flip `disabled`, `ArrowDown` must not open the popup
 /// (the reviewer re-gate round 3, 2026-07-13).
 #[test]
 fn reactive_disable_vetoes_arrow_down_open() {
@@ -157,9 +157,9 @@ fn reactive_disable_vetoes_arrow_down_open() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Key(KeyEvent::new(hal::KeyEventInit {
+            ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
                 key: Key::ArrowDown.into(),
-                physical: hal::PhysicalKey::ArrowDown,
+                physical: sigil_hal::PhysicalKey::ArrowDown,
                 modifiers: ModifiersState::empty(),
                 repeat: false,
                 phase: KeyPhase::Down,

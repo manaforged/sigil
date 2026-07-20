@@ -2,12 +2,12 @@
 
 use std::rc::Rc;
 
-use reactive::{Runtime, signal};
+use sigil_reactive::{Runtime, signal};
 
 use super::*;
 
-fn red() -> ::style::Rgba8 {
-    ::style::Rgba8 {
+fn red() -> ::sigil_style::Rgba8 {
+    ::sigil_style::Rgba8 {
         r: 255,
         g: 32,
         b: 32,
@@ -95,7 +95,7 @@ fn reactive_spawn_writes_into_pool() {
         let spawn = signal(FctSpawn::default());
         let state = Rc::new(FctState::new(1.2, [0.0, -32.0], time, FCT_POOL_CAPACITY));
         let effect = Rc::clone(&state);
-        reactive::effect(move || {
+        sigil_reactive::effect(move || {
             let payload = spawn.get();
             if !payload.text.is_empty() {
                 let _ok = effect.spawn(payload, time.peek());

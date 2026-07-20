@@ -25,9 +25,13 @@ fn tabs_row() -> NodeBuilder {
     ];
     let widget = tabs(active, labels)
         .label("Section tabs")
-        .content_for_fn(0, || text("Tab 0 — overview pane").class("text-sm"))
-        .content_for_fn(1, || text("Tab 1 — details pane").class("text-sm"))
-        .content_for_fn(2, || text("Tab 2 — logs pane").class("text-sm"))
+        .content_for_fn(0, || {
+            text("Tab 0 — overview pane").class(classes!("text-sm"))
+        })
+        .content_for_fn(1, || {
+            text("Tab 1 — details pane").class(classes!("text-sm"))
+        })
+        .content_for_fn(2, || text("Tab 2 — logs pane").class(classes!("text-sm")))
         .into_container();
     patterns::field("tabs (3 tabs, factory bodies)", widget)
 }

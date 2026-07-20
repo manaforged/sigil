@@ -9,32 +9,33 @@ use image as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_shell as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use icons as _;
+use sigil_icons as _;
+use zeno as _;
 
-use hal::Size;
-use kernel::{TextContent, prelude::*};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
-use renderer::{
+use sigil_hal::Size;
+use sigil_kernel::{TextContent, prelude::*};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
+use sigil_renderer::{
     CommandScene, DrawGlyphRun, DrawRect, SceneCommand, emit_scene,
     unsupported_style_warning_count_for,
 };
-use style::TextLineHeight;
-use style::{FocusRing, NodeStyleExt, Theme};
+use sigil_style::TextLineHeight;
+use sigil_style::{FocusRing, NodeStyleExt, Theme};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::default()
+    fn measure(&self, _source: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }
 
@@ -147,7 +148,14 @@ fn nested_text_scene_rect_is_absolute() {
 }
 
 #[test]
-fn unsupported_shadow_warns_once_across_frames() {
+fn shadow_class_rejects_at_parse_and_never_reaches_renderer() {
+    // DR-056 D2: shadow-* has no paint path, so it fails loudly at
+    // parse time (one unknown-class diagnostic) and never installs an
+    // atom — the renderer's unsupported-style warn path stays silent
+    // because there is nothing unsupported left to walk. Pre-DR-056
+    // the token silently installed UnknownThemeRef and this test
+    // asserted the renderer-side warn-once instead.
+    let before = sigil_style::unknown_class_warning_count();
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -161,7 +169,16 @@ fn unsupported_shadow_warns_once_across_frames() {
         let _scene = emit_scene(&cx, root);
     }
 
-    assert_eq!(unsupported_style_warning_count_for("shadow-xl", root), 1);
+    assert_eq!(
+        sigil_style::unknown_class_warning_count(),
+        before + 1,
+        "shadow-* must trip exactly one parse-time diagnostic"
+    );
+    assert_eq!(
+        unsupported_style_warning_count_for("shadow-xl", root),
+        0,
+        "no atom installs, so the renderer has nothing to warn about"
+    );
 }
 
 fn layout(cx: &mut Cx, root: NodeId) {
@@ -222,6 +239,91 @@ fn container_text_class_cascades_to_child_glyphs() {
 }
 
 #[test]
+fn container_font_classes_cascade_to_child_glyph_style() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+            .class("text-lg font-bold font-mono leading-6")
+            .child(text("Doom")),
+    );
+
+    layout(&mut cx, root);
+
+    let scene = emit_scene(&cx, root);
+    let run = find_text(&scene, "Doom").expect("child glyph run emitted");
+    assert_eq!(
+        run.run.style.font_size, 18.0,
+        "a bare text child must inherit the ancestor's text-lg (DR-056)"
+    );
+    assert_eq!(run.run.style.font_weight, 700, "font-bold must inherit");
+    assert_eq!(run.run.style.font_family, "mono", "font-mono must inherit");
+    assert_eq!(
+        run.run.style.line_height,
+        TextLineHeight::Absolute(24.0),
+        "leading-6 must inherit"
+    );
+}
+
+#[test]
+fn own_font_class_beats_inherited_typography() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+            .class("text-lg font-bold")
+            .child(text("Own").class("text-xs")),
+    );
+
+    layout(&mut cx, root);
+
+    let scene = emit_scene(&cx, root);
+    let run = find_text(&scene, "Own").expect("child glyph run emitted");
+    assert_eq!(
+        run.run.style.font_size, 12.0,
+        "a text node's own text-* size must beat the inherited one"
+    );
+    assert_eq!(
+        run.run.style.font_weight, 700,
+        "properties the node does not set itself keep the inherited value"
+    );
+}
+
+#[test]
+fn deferred_top_layer_subtree_keeps_inherited_typography() {
+    // The overlay work paints `TopLayer` subtrees after the main tree
+    // via a deferral queue; the queued entry must carry the ancestor's
+    // effective typography across the deferral (the Rc-owned
+    // `Inherited` context), not reset to defaults.
+    let mut cx = Cx::new_root();
+    let popup = container()
+        .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
+        .with(sigil_kernel::TopLayer)
+        .child(text("Deferred"));
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
+            .class("text-lg font-bold text-accent")
+            .child(popup),
+    );
+
+    layout(&mut cx, root);
+
+    let scene = emit_scene(&cx, root);
+    let run = find_text(&scene, "Deferred").expect("deferred glyph run emitted");
+    assert_eq!(
+        run.run.style.font_size, 18.0,
+        "top-layer deferral must not drop the inherited font size"
+    );
+    assert_eq!(run.run.style.font_weight, 700);
+    assert_eq!(
+        run.run.color,
+        Theme::default().accent,
+        "the color cascade must also survive the deferral"
+    );
+}
+
+#[test]
 fn own_text_class_beats_inherited_cascade() {
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -239,5 +341,42 @@ fn own_text_class_beats_inherited_cascade() {
         run.run.color,
         Theme::default().on_accent,
         "a text node's own text-* class must beat the inherited color"
+    );
+}
+
+#[test]
+fn top_layer_subtree_paints_after_later_siblings() {
+    let mut cx = Cx::new_root();
+    // First child is flagged TopLayer (a dropdown popup's shape); the
+    // second is an ordinary later sibling that would otherwise overdraw it.
+    let floating = container()
+        .with(TopLayer)
+        .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
+        .class("bg-accent");
+    let sibling = container()
+        .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
+        .class("bg-error-9");
+    let root = cx.add(container().child(floating).child(sibling));
+
+    layout(&mut cx, root);
+    let scene = emit_scene(&cx, root);
+
+    let theme = Theme::default();
+    let accent_pos = scene
+        .commands
+        .iter()
+        .position(|c| matches!(c, SceneCommand::Rect(r) if r.color == theme.accent))
+        .expect("top-layer rect emitted");
+    let sibling_pos = scene
+        .commands
+        .iter()
+        .position(
+            |c| matches!(c, SceneCommand::Rect(r) if r.color != theme.accent && r.node.is_some()),
+        )
+        .expect("sibling rect emitted");
+    assert!(
+        accent_pos > sibling_pos,
+        "top-layer subtree must paint after later siblings \
+         (accent at {accent_pos}, sibling at {sibling_pos})"
     );
 }

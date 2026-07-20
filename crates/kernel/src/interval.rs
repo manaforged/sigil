@@ -2,7 +2,7 @@
 //!
 //! This is the kernel-side ergonomic entry point. The actual interval
 //! registry lives in
-//! [`reactive::interval`](reactive::register_interval) — see
+//! [`sigil_reactive::interval`](sigil_reactive::register_interval) — see
 //! that module for the lifecycle / driver contract.
 //!
 //! ```text
@@ -16,7 +16,7 @@
 
 use core::time::Duration;
 
-use reactive::{IntervalId, register_interval};
+use sigil_reactive::{IntervalId, register_interval};
 
 use crate::Cx;
 
@@ -24,7 +24,7 @@ impl Cx {
     /// Register a periodic callback owned by the current component scope.
     ///
     /// The callback fires every `period` once the run loop drives
-    /// [`reactive::tick_intervals`]. The first fire occurs at
+    /// [`sigil_reactive::tick_intervals`]. The first fire occurs at
     /// `now + period`; intervals never fire immediately on registration.
     ///
     /// When the surrounding component is removed from the tree, the
@@ -32,13 +32,13 @@ impl Cx {
     /// cleanup chain — apps never need to track ids.
     ///
     /// Returns the [`IntervalId`] for explicit early cancellation via
-    /// [`reactive::cancel_interval`].
+    /// [`sigil_reactive::cancel_interval`].
     ///
     /// # Panics
     ///
     /// Panics if called outside any reactive scope (i.e., outside an
     /// [`IntoNode::build`](crate::IntoNode::build) implementation or
-    /// the [`Runtime::scope`](reactive::Runtime::scope) entry
+    /// the [`Runtime::scope`](sigil_reactive::Runtime::scope) entry
     /// point).
     #[track_caller]
     pub fn interval(&self, period: Duration, callback: impl Fn() + 'static) -> IntervalId {
@@ -58,7 +58,7 @@ mod tests {
     use std::rc::Rc;
     use std::time::Instant;
 
-    use reactive::{
+    use sigil_reactive::{
         __test_advance_clock, __test_clear_clock, __test_set_clock, Runtime, tick_intervals,
     };
 

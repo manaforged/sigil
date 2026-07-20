@@ -5,8 +5,8 @@
 use std::sync::{Mutex, OnceLock};
 
 use ahash::AHashSet;
-use kernel::{Node, NodeId};
-use style::{
+use sigil_kernel::{Node, NodeId};
+use sigil_style::{
     FocusRing, Px, RenderStyle, Rgba8, StyleAtom, StyleBinding, StyleEngine, TextStyle, Theme,
     ToneContext,
 };
@@ -47,7 +47,7 @@ pub(crate) fn render_style_for(
 ) -> RenderStyle {
     let mut render = RenderStyle::default();
     let theme = node.get_extension::<Theme>().unwrap_or(inherited);
-    if matches!(node.kind, kernel::NodeType::Text { .. }) {
+    if matches!(node.kind, sigil_kernel::NodeType::Text { .. }) {
         // CSS-style color cascade: a bare text node paints the nearest
         // ancestor's resolved text color (a container's `text-*` class,
         // including reactive `class_when` atoms), falling back to the
@@ -68,7 +68,9 @@ pub(crate) fn render_style_for(
 
     apply_atoms(engine, binding.static_slice(), &mut render, id, node);
     apply_atoms(engine, binding.dynamic_slice(), &mut render, id, node);
-    apply_atoms(engine, binding.reactive_slice(), &mut render, id, node);
+    for reactive in binding.reactive_channels() {
+        apply_atoms(engine, reactive, &mut render, id, node);
+    }
     // DS2 Phase 2: per-instance user state overlay applies last so
     // last-atom-wins gives user `.hover()` / `.pressed()` / `.focus()`
     // / `.disabled()` atoms priority over widget-baked atoms.
@@ -82,14 +84,19 @@ pub(crate) fn render_style_for(
     if let Some(overlay) = binding.animator_overlay() {
         engine.apply_with_overlay(binding.static_slice(), overlay, &mut render);
         engine.apply_with_overlay(binding.dynamic_slice(), overlay, &mut render);
-        engine.apply_with_overlay(binding.reactive_slice(), overlay, &mut render);
+        for reactive in binding.reactive_channels() {
+            engine.apply_with_overlay(reactive, overlay, &mut render);
+        }
         engine.apply_with_overlay(binding.state_overlay_atoms(), overlay, &mut render);
     }
     render
 }
 
-pub(crate) fn text_style_for(node: &Node, inherited: &Theme) -> TextStyle {
-    let mut style = TextStyle::default();
+pub(crate) fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
+    // DR-056: seed from the inherited typography carried down the scene
+    // walk, mirroring the layout engine's measurement resolution, then
+    // layer this node's own atoms (own-wins).
+    let mut style = base.clone();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return style;
     };
@@ -104,7 +111,9 @@ pub(crate) fn text_style_for(node: &Node, inherited: &Theme) -> TextStyle {
 
     engine.apply_text(binding.static_slice(), &mut style);
     engine.apply_text(binding.dynamic_slice(), &mut style);
-    engine.apply_text(binding.reactive_slice(), &mut style);
+    for reactive in binding.reactive_channels() {
+        engine.apply_text(reactive, &mut style);
+    }
     engine.apply_text(binding.state_overlay_atoms(), &mut style);
     style
 }

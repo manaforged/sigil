@@ -16,7 +16,7 @@ use winit::{
     window::WindowId,
 };
 
-use hal::{ShellEvent, WindowEvent as SigilWindowEvent};
+use sigil_hal::{ShellEvent, WindowEvent as SigilWindowEvent};
 
 use crate::{shell::WinitShell, waker::WakeEvent};
 

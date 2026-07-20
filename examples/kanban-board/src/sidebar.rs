@@ -10,7 +10,7 @@ const PROJECT_VIEWPORT_HEIGHT: f32 = 480.0;
 pub(crate) fn sidebar_pane(state: BoardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(8.0).padding(8.0))
-        .class("h-full rounded-md bg-surface-hover")
+        .class(classes!("h-full rounded-md bg-surface-hover"))
         .child(label("Projects"))
         .child(project_list(state))
 }
@@ -39,7 +39,7 @@ fn project_row(state: BoardState, idx: usize, name: &str) -> NodeBuilder {
                 .padding(6.0)
                 .align_items(AlignItems::Center),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .pointer_down(move |ev| {
             state.select_project(idx);
             ev.stop_propagation();

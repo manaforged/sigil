@@ -4,13 +4,12 @@
 
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(clippy::unwrap_used, clippy::panic, clippy::print_stdout)]
 
 use std::fs;
-use std::path::PathBuf;
 use std::sync::Arc;
 
-use app::DefaultTextMeasure;
+use sigil_app::DefaultTextMeasure;
 
 mod golden_support;
 use golden_support::{InteractionMode, render_widget_to_png_with};
@@ -47,7 +46,7 @@ fn probe_root() -> NodeBuilder {
 
 fn render_once(tag: &str) {
     let img = render_widget_to_png_with(
-        |cx| cx.add(probe_root().theme(style::Theme::dark())),
+        |cx| cx.add(probe_root().theme(sigil_style::Theme::dark())),
         InteractionMode::Default,
         [680, 180],
         (1.0, 1.0),
@@ -118,7 +117,7 @@ fn editor_column(grow: bool) -> NodeBuilder {
         }
     }
     container()
-        .theme(style::Theme::dark())
+        .theme(sigil_style::Theme::dark())
         .layout(LayoutStyle::flex_column().fill())
         .class("bg-surface")
         .child(code)
@@ -146,7 +145,7 @@ fn clip_probe() -> NodeBuilder {
         );
     }
     container()
-        .theme(style::Theme::dark())
+        .theme(sigil_style::Theme::dark())
         .layout(LayoutStyle::flex_column().fill().gap(8.0).padding(8.0))
         .class("bg-surface")
         .child(box_)
@@ -188,7 +187,7 @@ fn editor_scroll_root() -> NodeBuilder {
     }
     let extent = 40.0_f32.mul_add(16.8, 16.0);
     container()
-        .theme(style::Theme::dark())
+        .theme(sigil_style::Theme::dark())
         .layout(LayoutStyle::flex_column().fill())
         .class("bg-surface")
         .child(scroll(code, extent).width(440.0).height(170.0))
@@ -230,7 +229,7 @@ fn editor_wrap_root(mode: u8) -> NodeBuilder {
     };
     let extent = 24.0_f32.mul_add(16.8, 16.0);
     container()
-        .theme(style::Theme::dark())
+        .theme(sigil_style::Theme::dark())
         .layout(LayoutStyle::flex_column().fill().gap(6.0))
         .class("bg-surface")
         .child(scroll(code, extent).width(440.0).height(120.0))
@@ -297,8 +296,8 @@ fn render_editor_overlap() {
 }
 
 /// Two clickable rows over a `children_reactive` content area — the exact pattern the
-/// console-ui shell uses (pointer_down → selection signal → reactive content → compute flush).
-fn selection_probe_root(files: Vec<(&'static str, &'static str)>) -> NodeBuilder {
+/// console-ui shell uses (`pointer_down` → selection signal → reactive content → compute flush).
+fn selection_probe_root(files: &[(&'static str, &'static str)]) -> NodeBuilder {
     let sel = signal(0_usize);
     let mut rows = container().layout(LayoutStyle::flex_column().gap(4.0).padding(8.0));
     for (idx, (name, _)) in files.iter().enumerate() {
@@ -332,7 +331,7 @@ fn selection_probe_root(files: Vec<(&'static str, &'static str)>) -> NodeBuilder
                 .collect::<Vec<_>>()
         });
     container()
-        .theme(style::Theme::dark())
+        .theme(sigil_style::Theme::dark())
         .layout(LayoutStyle::flex_column().fill())
         .class("bg-surface")
         .child(rows)
@@ -357,7 +356,7 @@ fn render_selection_probe() {
     ];
     // Default selection (row 0 → alpha.rs).
     if let Some(img) = render_widget_to_png_with(
-        move |cx| cx.add(selection_probe_root(files.clone())),
+        move |cx| cx.add(selection_probe_root(&files)),
         InteractionMode::Default,
         [420, 200],
         (0.0, 0.0),
@@ -377,7 +376,7 @@ fn render_selection_probe() {
         ),
     ];
     if let Some(img) = render_widget_to_png_with(
-        move |cx| cx.add(selection_probe_root(files2.clone())),
+        move |cx| cx.add(selection_probe_root(&files2)),
         InteractionMode::Pressed,
         [420, 200],
         (40.0, 48.0),

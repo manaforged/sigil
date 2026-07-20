@@ -7,25 +7,25 @@
 
 #![allow(missing_docs)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel::{NodeId, NodeType};
-use layout::prelude::Dimension;
 use pollster as _;
-use reactive as _;
-use renderer as _;
 use sigil::prelude::*;
 use sigil::testing::with_cx;
 use sigil::widgets::{TextEditBuilder, text_edit};
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel::{NodeId, NodeType};
+use sigil_layout::prelude::Dimension;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 #[test]
@@ -186,7 +186,7 @@ fn text_edit_line_children_collapse_after_delete() {
 /// Walk the subtree rooted at `root` and count nodes whose kind is
 /// [`NodeType::Text`]. Fragments are descended through; containers
 /// are also descended. Used by the freeze-regression test.
-fn count_text_descendants(cx: &kernel::Cx, root: NodeId) -> usize {
+fn count_text_descendants(cx: &sigil_kernel::Cx, root: NodeId) -> usize {
     let mut stack = vec![root];
     let mut count = 0_usize;
     while let Some(id) = stack.pop() {

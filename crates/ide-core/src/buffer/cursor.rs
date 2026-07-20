@@ -24,7 +24,7 @@
 //! closure), then applies them to the rope in **descending span order**
 //! so earlier edits don't shift the offsets of later ones. After each
 //! edit lands, every other cursor's `head`/`anchor` is re-mapped using
-//! [`edit::remap_offset`].
+//! `edit::remap_offset`.
 //!
 //! # Overlap and coalescing
 //!

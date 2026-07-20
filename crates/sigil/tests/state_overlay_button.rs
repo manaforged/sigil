@@ -11,33 +11,33 @@
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use hal::{Point, PointerEventInit};
-use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
-use style::Rgba8;
-use style::Tone;
-use style::scale::{ruby_light, slate_light};
+use sigil_hal::{Point, PointerEventInit};
+use sigil_renderer::{SceneCommand, emit_scene};
+use sigil_style::Rgba8;
+use sigil_style::Tone;
+use sigil_style::scale::{ruby_light, slate_light};
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -81,13 +81,11 @@ const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
 // pointer event. The structural merge below proves the StateStyle path;
 // the live integration acceptance test goes in `state_overlay_button_live`.
 
-// NOTE: `button.disabled(|s| ...)` (StateVariants trait method for
-// state-styling) name-clashes with `ButtonBuilder::disabled(Signal<bool>)`
-// (the existing inherent method for reactive disable). Inherent methods
-// shadow trait methods, so the closure form requires explicit UFCS today.
-// Tracked as a DS3 follow-up: rename one of the two — likely
-// `ButtonBuilder::disable_when(Signal<bool>)` for the reactive form so
-// `.disabled(|s| ...)` flows naturally through StateVariants.
+// NOTE: the `disabled` name collision is resolved (5/5 Wave 1, D-U2):
+// the behavioral form keeps `.disabled(Signal<bool>)` (the common call,
+// and the one rustc's inherent-method preference already picked), and
+// the style-closure form is `.disabled_style(|s| ...)` on StateVariants.
+// This codifies in the API what method resolution was already doing.
 
 #[test]
 fn button_user_pressed_overlay_overrides_widget_pressed_bg() {

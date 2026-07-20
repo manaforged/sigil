@@ -10,13 +10,13 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 
-use a11y::tree;
 use accesskit::{Node as AkNode, Role, TreeUpdate};
-use hal::{Point, Rect};
-use kernel::{Cx, NodeId, TextContent, container};
-use layout::prelude::*;
-use reactive::{Runtime, signal};
 use sigil::widgets::{button, modal, text_field};
+use sigil_a11y::tree;
+use sigil_hal::{Point, Rect};
+use sigil_kernel::{Cx, NodeId, TextContent, container};
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
 
 // `AccessKitBridge`'s backing dep — every integration test in this crate
 // pulls all dev-deps, so alias to silence `unused_crate_dependencies`.
@@ -25,8 +25,8 @@ use crossbeam_channel as _;
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }
 
@@ -39,7 +39,7 @@ impl TextMeasure for ZeroTextMeasure {
 /// node's current position — not the position from before the move.
 #[test]
 fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
-    Runtime::scope("a11y::bounds_freshness", || {
+    Runtime::scope("sigil_a11y::bounds_freshness", || {
         let mut cx = Cx::new_root();
         let pos = signal((10.0_f32, 20.0_f32));
         let root = cx.add(
@@ -103,7 +103,7 @@ fn projected_bounds(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> (f64, f64) {
 
 #[test]
 fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
-    Runtime::scope("a11y::bounds_projection", || {
+    Runtime::scope("sigil_a11y::bounds_projection", || {
         let mut cx = Cx::new_root();
 
         let button_id = build_button(&mut cx);

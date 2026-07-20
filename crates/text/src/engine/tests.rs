@@ -18,7 +18,7 @@ use super::{
 };
 use crate::glyph::GlyphId;
 
-const FIRA_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = include_bytes!("../../assets/fonts/FiraSans-Regular.ttf");
 const NOTO_HEBREW: &[u8] = include_bytes!("../../tests/fixtures/NotoSansHebrew-Regular.ttf");
 
 fn fira_regular() -> Font {

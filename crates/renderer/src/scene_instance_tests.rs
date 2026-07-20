@@ -1,7 +1,7 @@
-use hal::{LogicalSize, Point, Rect, Size};
-use kernel::{Cx, NodeId, TextContent, prelude::*};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use style::{NodeStyleExt, Rgba8};
+use sigil_hal::{LogicalSize, Point, Rect, Size};
+use sigil_kernel::{Cx, NodeId, TextContent, prelude::*};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_style::{NodeStyleExt, Rgba8};
 
 use super::{
     BlendSpace, RectInstance, collect_instances, draw_gradient_instance, draw_rect_instance,
@@ -79,7 +79,7 @@ fn rect_instance_carries_position_and_color() {
 #[test]
 fn draw_rect_instance_packs_solid_centered_stroke() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Gamma);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [2.0, 0.0, 0.0, 0.0]);
@@ -88,7 +88,7 @@ fn draw_rect_instance_packs_solid_centered_stroke() {
 #[test]
 fn draw_rect_instance_packs_dashed_inside_stroke() {
     let stroke = stroke(StrokeStyle::Dashed(6.0), StrokeAlign::Inside, 3.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Gamma);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [3.0, 1.0, 1.0, 6.0]);
@@ -98,10 +98,27 @@ fn draw_rect_instance_packs_dashed_inside_stroke() {
 fn draw_gradient_instance_packs_outside_stroke() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Outside, 4.0);
     let draw = DrawGradient::new(rect(), gradient_style(stroke));
-    let inst = draw_gradient_instance(&draw, 1.0, 0, 2);
+    let inst = draw_gradient_instance(&draw, 1.0, 0, 2, BlendSpace::Gamma);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [4.0, 0.0, 2.0, 0.0]);
+}
+
+/// DR-057 D3 groundwork: stroke colours resolve through the SAME
+/// blend-space conversion as fills, so a theme-token border matches a
+/// theme-token fill on every render-target format. Pre-refactor the
+/// raw floats bypassed conversion and strokes were format-dependent.
+#[test]
+fn stroke_color_uses_fill_blend_space_conversion() {
+    let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
+    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
+
+    let expected = BlendSpace::Linear.rgba(stroke.color);
+    assert_array_close(inst.stroke_params, expected);
+    assert!(
+        (inst.stroke_params[0] - 0.2).abs() > 1e-3,
+        "linear target must decode the sRGB channel, not pass it raw"
+    );
 }
 
 #[test]
@@ -123,7 +140,7 @@ fn draw_rect_instance_packs_uniform_corner_radii() {
 #[test]
 fn draw_gradient_instance_packs_corner_radii() {
     let style = SceneGradientStyle::new(gradient(), CornerRadii::ZERO, 10_000);
-    let inst = draw_gradient_instance(&DrawGradient::new(rect(), style), 1.0, 0, 2);
+    let inst = draw_gradient_instance(&DrawGradient::new(rect(), style), 1.0, 0, 2, BlendSpace::Linear);
 
     assert_array_close(inst.corner_radii, [0.0, 0.0, 0.0, 0.0]);
 }
@@ -222,7 +239,12 @@ fn gradient_style(stroke: Stroke) -> SceneGradientStyle {
 
 const fn stroke(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: [0.2, 0.4, 0.6, 0.8],
+        color: Rgba8 {
+            r: 51,
+            g: 102,
+            b: 153,
+            a: 204,
+        },
         width,
         style,
         align,

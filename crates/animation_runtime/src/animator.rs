@@ -3,8 +3,8 @@
 //! the handle holds only an opaque [`AnimatorId`] and the signal it
 //! drives.
 
-use animation::{Easing, Spring, SpringPreset, Tween};
-use reactive::Signal;
+use sigil_animation::{Easing, Spring, SpringPreset, Tween};
+use sigil_reactive::Signal;
 
 use crate::config::AnimationConfig;
 use crate::motion::MotionPrefs;

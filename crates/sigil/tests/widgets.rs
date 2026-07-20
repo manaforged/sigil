@@ -1,5 +1,10 @@
 #![allow(missing_docs)]
-#![allow(clippy::unwrap_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
 
 use arboard as _;
 use criterion as _;
@@ -9,26 +14,26 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wgpu as _;
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
-use events as _;
-use kernel as _;
-use reactive as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_tasks as _;
 
-use hal::{KeyEventInit, Point, PointerEventInit};
-use layout::{CaretGeometry, TextGeometry, set_text_geometry};
-use renderer::{SceneCommand, emit_scene};
 use sigil::prelude::*;
-use style::TextStyle;
+use sigil_hal::{KeyEventInit, Point, PointerEventInit};
+use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil_renderer::{SceneCommand, emit_scene};
+use sigil_style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -831,7 +836,7 @@ fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
     }))
 }
 
-fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<style::Rgba8> {
+fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -842,7 +847,7 @@ fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<style::Rgba8> {
         .collect()
 }
 
-fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: style::Rgba8) -> f32 {
+fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil_style::Rgba8) -> f32 {
     emit_scene(cx, root)
         .commands
         .iter()

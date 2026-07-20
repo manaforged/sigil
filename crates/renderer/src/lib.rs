@@ -1,10 +1,10 @@
-//! wgpu-backed [`hal::Renderer`] adapter for Sigil.
+//! wgpu-backed [`sigil_hal::Renderer`] adapter for Sigil.
 //!
 //! This crate is the single chokepoint where `wgpu` types live. Every
-//! downstream crate names the [`hal::Renderer`] trait and treats the
+//! downstream crate names the [`sigil_hal::Renderer`] trait and treats the
 //! GPU as an opaque implementation detail. See
 //! [DR-001](../../../docs/decisions/DR-001-renderer-wgpu.md) for the
-//! rationale and [the trait docs][`hal::Renderer`] for the Phase 2
+//! rationale and [the trait docs][`sigil_hal::Renderer`] for the Phase 2
 //! surface area (create surface, resize, clear-and-present).
 //!
 //! # Usage
@@ -12,8 +12,8 @@
 //! ```text
 //! use std::sync::Arc;
 //!
-//! use hal::{Color, PhysicalSize, Renderer};
-//! use renderer::{WgpuRenderer, into_window_handle};
+//! use sigil_hal::{Color, PhysicalSize, Renderer};
+//! use sigil_renderer::{WgpuRenderer, into_window_handle};
 //!
 //! fn run(window: Arc<impl raw_window_handle::HasWindowHandle
 //!     + raw_window_handle::HasDisplayHandle
@@ -32,6 +32,7 @@
 //! because the example needs a live windowed handle to be meaningful;
 //! `hello-rect` (once ported) is the executable reference instead.
 
+#![deny(missing_docs)]
 // wgpu-hal 29.0.1 (GLES / WGL backend) expects
 // `impl std::error::Error for windows_core::Error`, which is gated
 // behind `windows-core`'s `std` feature. Features are additive across a
@@ -49,7 +50,7 @@ use image as _;
 #[cfg(test)]
 use proptest as _;
 #[cfg(test)]
-use shell as _;
+use sigil_shell as _;
 #[cfg(test)]
 use smallvec as _;
 mod blur_paint;
@@ -108,7 +109,7 @@ pub use window_handle::{WindowHandle, into_window_handle};
 
 /// Convenience re-exports for widget and renderer authors.
 ///
-/// `use renderer::prelude::*;` gives a typical scene-building session
+/// `use sigil_renderer::prelude::*;` gives a typical scene-building session
 /// all the types it needs without a 15-line import block.
 pub mod prelude {
     pub use crate::style::{Decoration, Gradient, Pattern, Rect, Sprite};

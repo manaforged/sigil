@@ -1,5 +1,6 @@
 [package]
 name = "scratchpad"
+publish = false
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +10,7 @@ authors.workspace = true
 description = "Editor-tier dogfooding example: a single-field scratchpad with a save/dirty model."
 
 [dependencies]
-sigil = { workspace = true }
+sigil-ui = { workspace = true }
 
 [lints]
 workspace = true

@@ -32,6 +32,20 @@ pub trait Sizing: StyleAccess {
         self.style_mut().push_atom(StyleAtom::MaxWidth(dim));
         self
     }
+
+    /// Set minimum height.
+    #[must_use]
+    fn min_h(mut self, dim: Dimension) -> Self {
+        self.style_mut().push_atom(StyleAtom::MinHeight(dim));
+        self
+    }
+
+    /// Set maximum height.
+    #[must_use]
+    fn max_h(mut self, dim: Dimension) -> Self {
+        self.style_mut().push_atom(StyleAtom::MaxHeight(dim));
+        self
+    }
 }
 
 impl<T: StyleAccess> Sizing for T {}

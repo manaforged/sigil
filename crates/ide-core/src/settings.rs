@@ -18,7 +18,7 @@
 //! # Example
 //!
 //! ```ignore
-//! use ide_core::settings::{Schema, Store};
+//! use sigil_ide_core::settings::{Schema, Store};
 //!
 //! let mut schema = Schema::new();
 //! schema.register("editor.tab_width", 4_i64);

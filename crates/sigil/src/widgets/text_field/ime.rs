@@ -14,11 +14,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use events::prelude::{ImeEvent, NodeEventsExt};
-use kernel::NodeBuilder;
-use layout::{CaretGeometry, with_text_geometry};
-use reactive::{Signal, effect, signal};
-use style::TextStyle;
+use sigil_events::prelude::{ImeEvent, NodeEventsExt};
+use sigil_kernel::NodeBuilder;
+use sigil_layout::{CaretGeometry, with_text_geometry};
+use sigil_reactive::{Signal, effect, signal};
+use sigil_style::TextStyle;
 
 use super::handlers::{TextFieldRuntime, commit, write_value};
 

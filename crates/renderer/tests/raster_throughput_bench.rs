@@ -12,7 +12,7 @@
 //! but this file deliberately stays plain `std::time::Instant` per the
 //! dispatch brief's "smallest harness that yields trustworthy numbers").
 //! Run with:
-//! `cargo test -p renderer --test raster_throughput_bench -- --ignored --nocapture`
+//! `cargo test -p sigil-renderer --test raster_throughput_bench -- --ignored --nocapture`
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -22,17 +22,17 @@ use ahash as _;
 use bytemuck as _;
 use criterion as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -40,11 +40,11 @@ use zeno as _;
 
 use std::time::Instant;
 
-use renderer::{
+use sigil_renderer::{
     CommandScene, SceneBuilder, ScreenSubmission, TextTuning, WgpuRenderer, set_text_tuning,
     shape_glyph_run,
 };
-use style::{Rgba8, TextLineHeight, TextStyle};
+use sigil_style::{Rgba8, TextLineHeight, TextStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -66,7 +66,7 @@ const PARAGRAPH_UNIT: &str = "The quick brown fox jumps over the lazy dog. ";
 /// path is a real bug this test would catch) — no pass/fail speed gate, per
 /// the dispatch brief ("Do NOT flip the default yourself").
 #[test]
-#[ignore = "manual throughput bench — run with `cargo test -p renderer \
+#[ignore = "manual throughput bench — run with `cargo test -p sigil-renderer \
             --test raster_throughput_bench -- --ignored --nocapture`"]
 fn raster_vs_vector_throughput() {
     let Some(mut renderer) = try_headless_renderer() else {
@@ -127,7 +127,7 @@ fn bench_path(
                     format: FORMAT,
                     viewport: (LOGICAL_W, LOGICAL_H),
                     scale: 1.0,
-                    clear: Some(hal::Color::BLACK),
+                    clear: Some(sigil_hal::Color::BLACK),
                 },
                 scene,
             )
@@ -160,8 +160,8 @@ fn build_scene(content: &str) -> (CommandScene, usize) {
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
     };
-    let rect = hal::Rect::new(
-        hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil_hal::Rect::new(
+        sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

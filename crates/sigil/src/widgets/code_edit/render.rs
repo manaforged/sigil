@@ -3,9 +3,9 @@
 //! (line number + change bar). Pure given its inputs — `scroll` decides *which* rows,
 //! this module decides how each one looks.
 
-use kernel::{NodeBuilder, TextBuilder, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use style::{NodeStyleExt, Style};
+use sigil_kernel::{NodeBuilder, TextBuilder, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_style::{NodeStyleExt, Style};
 
 use super::{
     CARET_W, CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan,

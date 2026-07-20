@@ -8,22 +8,22 @@
 
 use pollster::FutureExt as _;
 
-use hal::Size;
-use kernel::{Cx, TextContent};
-use layout::{LayoutEngine, TextMeasure};
-use renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil_hal::Size;
+use sigil_kernel::{Cx, TextContent};
+use sigil_layout::{LayoutEngine, TextMeasure};
+use sigil_renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
 
 pub(super) struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _source: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
 /// Compare an observed RGB triple against `expected` within `tolerance`
 /// per channel.
-pub(super) fn close(r: u8, g: u8, b: u8, expected: style::Rgba8, tolerance: i32) -> bool {
+pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil_style::Rgba8, tolerance: i32) -> bool {
     (i32::from(r) - i32::from(expected.r)).abs() <= tolerance
         && (i32::from(g) - i32::from(expected.g)).abs() <= tolerance
         && (i32::from(b) - i32::from(expected.b)).abs() <= tolerance
@@ -44,7 +44,7 @@ pub(super) struct InkWindow {
 pub(super) fn count_ink(
     img: &image::RgbaImage,
     window: InkWindow,
-    background: style::Rgba8,
+    background: sigil_style::Rgba8,
 ) -> u32 {
     let bg_sum = u32::from(background.r) + u32::from(background.g) + u32::from(background.b);
     let threshold = bg_sum.saturating_sub(150);
@@ -62,10 +62,10 @@ pub(super) fn count_ink(
     ink
 }
 
-/// Build → layout → emit_scene → offscreen-render → read back an
+/// Build → layout → `emit_scene` → offscreen-render → read back an
 /// `image::RgbaImage`, logical size == physical size (scale 1.0).
 pub(super) fn capture(
-    build: impl FnOnce(&mut Cx) -> kernel::NodeId,
+    build: impl FnOnce(&mut Cx) -> sigil_kernel::NodeId,
     size_px: [u32; 2],
 ) -> image::RgbaImage {
     let mut cx = Cx::new_root();
@@ -111,7 +111,7 @@ const BYTES_PER_PIXEL: u32 = 4;
 fn render_to_image(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    scene: &renderer::CommandScene,
+    scene: &sigil_renderer::CommandScene,
     viewport: (f32, f32),
     size_px: [u32; 2],
 ) -> image::RgbaImage {
@@ -130,7 +130,7 @@ fn render_to_image(
         view_formats: &[],
     });
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let clear = hal::Color {
+    let clear = sigil_hal::Color {
         r: 0.0,
         g: 0.0,
         b: 0.0,

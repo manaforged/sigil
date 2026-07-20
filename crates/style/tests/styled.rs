@@ -7,22 +7,23 @@
 
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use phf as _;
-use reactive as _;
+use sigil as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style_macros as _;
 use smallvec as _;
 use strsim as _;
-use style_macros as _;
 use tracing as _;
 
-use kernel::container;
-use style::{
+use sigil_kernel::container;
+use sigil_style::{
     ColorAtom, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8, Sizing, Spacing,
     StateStyleBuilder, StateVariants, StyleAtom, Styleable, Typography, Visual,
 };
 
 /// Helper — start a fresh styled builder on a container node.
-fn styled() -> style::NodeStyledBuilder {
+fn styled() -> sigil_style::NodeStyledBuilder {
     container().styled()
 }
 
@@ -31,7 +32,7 @@ fn default_impl_chains_correctly() {
     let b = styled().bg("surface").px(16);
     let atoms = b.style().as_atoms();
     assert!(atoms.contains(&StyleAtom::BackgroundThemeRef("surface")));
-    assert!(atoms.contains(&StyleAtom::PaddingX(style::Px(16))));
+    assert!(atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(16))));
 }
 
 #[test]
@@ -48,7 +49,7 @@ fn hover_atoms_accumulate_within_closure() {
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 2);
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("a"));
-    assert_eq!(hover[1], StyleAtom::PaddingX(style::Px(8)));
+    assert_eq!(hover[1], StyleAtom::PaddingX(sigil_style::Px(8)));
 }
 
 #[test]
@@ -69,7 +70,7 @@ fn pressed_slot_records_atoms() {
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let b = styled().disabled(|s| s.opacity(0.5));
+    let b = styled().disabled_style(|s| s.opacity(0.5));
     let disabled = b.style().disabled_atoms();
     assert_eq!(disabled.len(), 1);
     assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
@@ -124,25 +125,31 @@ fn padding_methods_sweep_order_preserved() {
         .pl(56);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
-    assert_eq!(atoms[0], StyleAtom::PaddingAll(style::Px(8)));
-    assert_eq!(atoms[1], StyleAtom::PaddingX(style::Px(16)));
-    assert_eq!(atoms[2], StyleAtom::PaddingY(style::Px(24)));
-    assert_eq!(atoms[3], StyleAtom::PaddingTop(style::Px(32)));
-    assert_eq!(atoms[4], StyleAtom::PaddingRight(style::Px(40)));
-    assert_eq!(atoms[5], StyleAtom::PaddingBottom(style::Px(48)));
-    assert_eq!(atoms[6], StyleAtom::PaddingLeft(style::Px(56)));
+    assert_eq!(atoms[0], StyleAtom::PaddingAll(sigil_style::Px(8)));
+    assert_eq!(atoms[1], StyleAtom::PaddingX(sigil_style::Px(16)));
+    assert_eq!(atoms[2], StyleAtom::PaddingY(sigil_style::Px(24)));
+    assert_eq!(atoms[3], StyleAtom::PaddingTop(sigil_style::Px(32)));
+    assert_eq!(atoms[4], StyleAtom::PaddingRight(sigil_style::Px(40)));
+    assert_eq!(atoms[5], StyleAtom::PaddingBottom(sigil_style::Px(48)));
+    assert_eq!(atoms[6], StyleAtom::PaddingLeft(sigil_style::Px(56)));
 }
 
 #[test]
 fn sizing_methods_emit_correct_atoms() {
     let b = styled()
-        .w(Dimension::Px(style::Px(100)))
-        .h(Dimension::Px(style::Px(50)))
+        .w(Dimension::Px(sigil_style::Px(100)))
+        .h(Dimension::Px(sigil_style::Px(50)))
         .w(Dimension::Full);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 3);
-    assert_eq!(atoms[0], StyleAtom::Width(Dimension::Px(style::Px(100))));
-    assert_eq!(atoms[1], StyleAtom::Height(Dimension::Px(style::Px(50))));
+    assert_eq!(
+        atoms[0],
+        StyleAtom::Width(Dimension::Px(sigil_style::Px(100)))
+    );
+    assert_eq!(
+        atoms[1],
+        StyleAtom::Height(Dimension::Px(sigil_style::Px(50)))
+    );
     assert_eq!(atoms[2], StyleAtom::Width(Dimension::Full));
 }
 
@@ -162,15 +169,15 @@ fn rounded_presets_emit_distinct_radii() {
     let lg = styled().rounded(10);
     assert_eq!(
         sm.style().as_atoms()[0],
-        StyleAtom::BorderRadius(style::Px(2))
+        StyleAtom::BorderRadius(sigil_style::Px(2))
     );
     assert_eq!(
         md.style().as_atoms()[0],
-        StyleAtom::BorderRadius(style::Px(6))
+        StyleAtom::BorderRadius(sigil_style::Px(6))
     );
     assert_eq!(
         lg.style().as_atoms()[0],
-        StyleAtom::BorderRadius(style::Px(10))
+        StyleAtom::BorderRadius(sigil_style::Px(10))
     );
 }
 
@@ -180,7 +187,7 @@ fn all_four_state_slots_populate_independently() {
         .hover(|s| s.bg("h"))
         .focus(|s| s.bg("f"))
         .pressed(|s| s.bg("p"))
-        .disabled(|s| s.opacity(0.5));
+        .disabled_style(|s| s.opacity(0.5));
     let style = b.style();
     assert_eq!(style.hover_atoms().len(), 1);
     assert_eq!(style.focus_atoms().len(), 1);
@@ -203,7 +210,7 @@ fn state_builder_implements_styled_within_closure() {
     assert_eq!(hover.len(), 4);
     assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
     assert_eq!(hover[1], StyleAtom::TextThemeRef("on-surface"));
-    assert_eq!(hover[2], StyleAtom::PaddingX(style::Px(12)));
+    assert_eq!(hover[2], StyleAtom::PaddingX(sigil_style::Px(12)));
     assert_eq!(hover[3], StyleAtom::Opacity(9_000));
 }
 
@@ -250,10 +257,10 @@ fn font_methods_emit_typography_atoms() {
         .line_height(20);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 4);
-    assert_eq!(atoms[0], StyleAtom::FontSize(style::Px(14)));
+    assert_eq!(atoms[0], StyleAtom::FontSize(sigil_style::Px(14)));
     assert_eq!(atoms[1], StyleAtom::FontWeight(600));
     assert_eq!(atoms[2], StyleAtom::FontFamily("mono"));
-    assert_eq!(atoms[3], StyleAtom::LineHeight(style::Px(20)));
+    assert_eq!(atoms[3], StyleAtom::LineHeight(sigil_style::Px(20)));
 }
 
 #[test]
@@ -268,14 +275,20 @@ fn flex_layout_methods_emit_correct_atoms() {
         .shrink(500);
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 7);
-    assert_eq!(atoms[0], StyleAtom::Display(style::DisplayKind::Flex));
-    assert_eq!(atoms[1], StyleAtom::FlexDirection(style::FlexDir::Row));
-    assert_eq!(atoms[2], StyleAtom::AlignItems(style::AlignKind::Center));
+    assert_eq!(atoms[0], StyleAtom::Display(sigil_style::DisplayKind::Flex));
+    assert_eq!(
+        atoms[1],
+        StyleAtom::FlexDirection(sigil_style::FlexDir::Row)
+    );
+    assert_eq!(
+        atoms[2],
+        StyleAtom::AlignItems(sigil_style::AlignKind::Center)
+    );
     assert_eq!(
         atoms[3],
-        StyleAtom::JustifyContent(style::JustifyKind::Between)
+        StyleAtom::JustifyContent(sigil_style::JustifyKind::Between)
     );
-    assert_eq!(atoms[4], StyleAtom::Gap(style::Px(8)));
+    assert_eq!(atoms[4], StyleAtom::Gap(sigil_style::Px(8)));
     assert_eq!(atoms[5], StyleAtom::FlexGrow(1000));
     assert_eq!(atoms[6], StyleAtom::FlexShrink(500));
 }

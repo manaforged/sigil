@@ -2,13 +2,14 @@
 //! wgpu / layout / router plumbing every app otherwise rewrites by hand.
 //!
 //! ```text
-//! fn main() -> app::AppResult<()> {
-//!     app::launch("hello-style", |cx| app_tree(cx))
+//! fn main() -> sigil_app::AppResult<()> {
+//!     sigil_app::launch("hello-style", |cx| app_tree(cx))
 //! }
 //! ```
 //!
 //! See DR-016 (app launch) and the `phase-08a-ergonomics-pass.md` plan.
 
+#![deny(missing_docs)]
 // wgpu-hal 29.0.1 GLES / WGL backend expects
 // `impl std::error::Error for windows_core::Error` gated behind
 // windows-core's `std` feature. Features are additive; enabling the
@@ -18,7 +19,7 @@
 use windows_core as _;
 
 // Transitive deps threaded through launch; names are used there.
-use style as _;
+use sigil_style as _;
 
 mod config;
 mod embed;
@@ -26,14 +27,16 @@ mod error;
 mod launch;
 mod text_geometry;
 mod text_measure;
+mod theme_file;
 mod tree_root;
 
 pub use config::{AppConfig, PanicPolicy};
 pub use embed::UiContext;
 pub use error::{AppResult, Error};
 pub use launch::launch;
-pub use renderer::{TextTuning, set_text_tuning, text_tuning};
-pub use text::{DefaultFonts, set_default_fonts};
+pub use sigil_hal::{Anchor, WindowOpts};
+pub use sigil_renderer::{TextTuning, set_text_tuning, text_tuning};
+pub use sigil_text::{DefaultFonts, set_default_fonts};
 pub use text_geometry::EngineGeometry;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::TreeRoot;

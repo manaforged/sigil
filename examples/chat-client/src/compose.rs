@@ -17,7 +17,7 @@ const COMPOSE_HEIGHT: f32 = 96.0;
 pub(crate) fn compose_box(state: ChatState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(6.0).padding(6.0))
-        .class("w-full rounded-md bg-surface")
+        .class(classes!("w-full rounded-md bg-surface"))
         .child(label("Compose"))
         .child(
             sigil::widgets::text_edit(state.compose_draft)

@@ -87,7 +87,7 @@ pub(super) struct Binding {
 /// Container for installed bindings.
 ///
 /// A sorted list backed by a stable insertion order. Layered config sits
-/// one level up ([`super::config`]); this type is the resolved-and-
+/// one level up (`super::config`); this type is the resolved-and-
 /// flattened view the resolver operates on.
 #[derive(Debug, Default, Clone)]
 pub struct Bindings {

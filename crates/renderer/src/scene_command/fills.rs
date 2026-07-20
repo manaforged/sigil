@@ -1,8 +1,8 @@
 //! Fill and stroke model types (gradients, patterns, stroke style).
 
-use hal::Point;
+use sigil_hal::Point;
+use sigil_style::Rgba8;
 use smallvec::SmallVec;
-use style::Rgba8;
 
 /// Rectangle fill model shared by future style adapters.
 #[derive(Clone, Debug, PartialEq)]
@@ -110,8 +110,11 @@ pub enum StrokeAlign {
 /// Solid-colour rectangle stroke.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Stroke {
-    /// Linear RGBA stroke colour in `[0, 1]`.
-    pub color: [f32; 4],
+    /// Straight-alpha sRGB stroke colour. Resolved to the render
+    /// target's blend space at instance build, the same as rect fills
+    /// (pre-DR-057 this was a raw `[f32; 4]` passed to the shader
+    /// unconverted, which made stroke colours format-dependent).
+    pub color: Rgba8,
     /// Stroke width in logical pixels.
     pub width: f32,
     /// Solid or dashed stroke model.

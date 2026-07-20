@@ -9,16 +9,16 @@
 //!   `EntityKey`/`FocusHandle`).
 //! - [`DispatchResult`] — `{ handled, fired_owners }`.
 //!
-//! Re-exports [`actions_macros::Action`] as the
+//! Re-exports [`sigil_actions_macros::Action`] as the
 //! [`DeriveAction`] alias so consumers can write
-//! `#[derive(actions::DeriveAction)]` when full-path clarity matters.
+//! `#[derive(sigil_actions::DeriveAction)]` when full-path clarity matters.
 //!
 //! # Example
 //!
 //! ```rust,ignore
-//! use actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
+//! use sigil_actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
 //!
-//! #[derive(actions::DeriveAction)]
+//! #[derive(sigil_actions::DeriveAction)]
 //! struct CloseTab;
 //!
 //! let mut registry = ActionRegistry::new();
@@ -29,6 +29,7 @@
 //! assert!(result.handled());
 //! ```
 
+#![deny(missing_docs)]
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
@@ -39,8 +40,10 @@ use smallvec::SmallVec;
 // trips `unused_crate_dependencies` here.
 #[cfg(test)]
 use criterion as _;
+#[cfg(test)]
+use sigil as _;
 
-pub use actions_macros::Action as DeriveAction;
+pub use sigil_actions_macros::Action as DeriveAction;
 
 /// Type-keyed dispatch identity for an action.
 ///
@@ -310,7 +313,7 @@ impl ActionRegistry {
         slot.extend(taken.entries);
     }
 
-    /// Run [`Self::dispatch_entries`] against an entry list previously
+    /// Run `Self::dispatch_entries` against an entry list previously
     /// removed by [`Self::take_entries`].
     pub fn dispatch_taken<A: Action>(
         taken: &mut TakenEntries,
@@ -325,7 +328,7 @@ impl ActionRegistry {
         Self::dispatch_entries(&mut taken.entries, action as &dyn Any, chain)
     }
 
-    /// Run [`Self::dispatch_entries`] against an entry list previously
+    /// Run `Self::dispatch_entries` against an entry list previously
     /// removed by [`Self::take_entries_by_id`], driving the dispatch
     /// from a `&dyn Action` rather than a monomorphic `&A`.
     pub fn dispatch_taken_dyn(

@@ -13,19 +13,19 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use hal::{LogicalSize, Size};
-use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 // allow unused dev-dep extern crates per repo convention
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use slotmap as _;
 use smallvec as _;
-use style as _;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;

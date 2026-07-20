@@ -42,7 +42,7 @@ pub enum ThemeValue {
 /// (`accent`, `surface`, …) are kept as a backwards-compat shim and
 /// are populated from the corresponding scale steps; new code should
 /// reach for the scale or for the semantic alias helpers
-/// ([`Theme::surface`], [`Theme::text_default`], etc.) instead.
+/// ([`Theme::surface`], `Theme::text_default`, etc.) instead.
 #[derive(Debug, PartialEq)]
 pub struct Theme {
     /// Neutral gray scale — surfaces, borders, default text.
@@ -68,7 +68,7 @@ pub struct Theme {
     /// Hover state for primary action/accent surfaces. Mirrors
     /// `accent_scale.step(10)`.
     pub accent_hover: Rgba8,
-    /// Text/icon colour on accent surfaces. Mirrors [`on_solid`].
+    /// Text/icon colour on accent surfaces. Mirrors [`Self::on_solid`].
     pub on_accent: Rgba8,
     /// Default panel/surface colour. Mirrors `gray.step(2)`.
     pub surface: Rgba8,

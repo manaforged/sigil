@@ -1,10 +1,19 @@
-//! Proc macros for Sigil utility classes.
+//! Proc macros for Sigil utility classes (`classes!`).
+//!
+//! **Resolution contract:** `classes!` expands to paths under
+//! `sigil::__private::…`. Consumers must depend on the `sigil-ui` facade
+//! crate (library name `sigil`) — not on `sigil-style` or this crate
+//! directly — and must not rename that dependency, or the expansion will
+//! not resolve.
 
+#![deny(missing_docs)]
 use proc_macro::TokenStream;
 use quote::quote;
 
 #[cfg(test)]
-use style as _;
+use sigil as _;
+#[cfg(test)]
+use sigil_style as _;
 #[cfg(test)]
 use trybuild as _;
 
@@ -38,7 +47,7 @@ fn emit_segments(
     atoms: Vec<proc_macro2::TokenStream>,
 ) -> proc_macro2::TokenStream {
     let Some((head, tail)) = segments.split_first() else {
-        return quote!(&[#(#atoms),*] as &[::style::StyleAtom]);
+        return quote!(&[#(#atoms),*] as &[::sigil::__private::style::StyleAtom]);
     };
     match head {
         parser::Segment::Static(static_atoms) => {

@@ -9,7 +9,7 @@ use crate::{Style, StyleAtom};
 
 /// Marker trait sealing state-variant methods to outer builders only.
 ///
-/// Implementors of [`Styled`] that also implement this marker can call
+/// Implementors of [`crate::Styled`] that also implement this marker can call
 /// `.rest`, `.hover`, `.focus`, `.pressed`, and `.disabled`.
 /// [`StateStyleBuilder`] deliberately does NOT implement this marker,
 /// which makes nested state-variant closures
@@ -47,8 +47,8 @@ use crate::{Style, StyleAtom};
 /// Nested state-variant closures fail to compile:
 ///
 /// ```compile_fail
-/// use kernel::container;
-/// use style::{Styled, StyledNodeBuilder};
+/// use sigil_kernel::container;
+/// use sigil_style::{Styled, StyledNodeBuilder};
 /// // `s` inside the closure is a StateStyleBuilder, which does not
 /// // implement StateHost — so `.hover` is not callable.
 /// let _ = container().styled().hover(|s| s.hover(|inner| inner));
@@ -57,7 +57,7 @@ pub trait StateHost {}
 
 /// Closure parameter for [`super::StateVariants::hover`] /
 /// [`super::StateVariants::focus`] / [`super::StateVariants::pressed`] /
-/// [`super::StateVariants::disabled`].
+/// [`super::StateVariants::disabled_style`].
 ///
 /// Implements [`StyleAccess`] so the same fluent vocabulary works inside
 /// the closure (every per-category super-trait is a blanket impl over

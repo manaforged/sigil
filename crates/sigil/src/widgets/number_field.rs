@@ -26,8 +26,8 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use kernel::{Cx, IntoNode, NodeId};
-use reactive::{Signal, effect, signal};
+use sigil_kernel::{Cx, IntoNode, NodeId};
+use sigil_reactive::{Signal, effect, signal};
 
 use super::text_field::{TextFieldBuilder, text_field};
 
@@ -139,7 +139,7 @@ impl<T: NumericKind> IntoNode for NumberFieldBuilder<T> {
 /// externally the displayed string re-syncs to match (so a host that
 /// taps a "reset to default" button sees the field update).
 ///
-/// Must be called inside a reactive [`Runtime`](reactive::Runtime)
+/// Must be called inside a reactive [`Runtime`](sigil_reactive::Runtime)
 /// scope — both internal effects and the text-field's reactive
 /// bindings expect one.
 #[must_use]
@@ -191,7 +191,7 @@ pub fn number_field<T: NumericKind>(
 #[allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 mod tests {
     use super::*;
-    use reactive::Runtime;
+    use sigil_reactive::Runtime;
 
     #[test]
     fn parse_and_clamp_int() {

@@ -9,25 +9,25 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use actions as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use animation::SpringPreset;
-use animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_count, tick};
-use reactive::{Runtime, signal};
 use sigil::prelude::*;
+use sigil_animation::SpringPreset;
+use sigil_animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_count, tick};
+use sigil_reactive::{Runtime, signal};
 
 mod golden_support;
 
@@ -63,7 +63,7 @@ fn after_frames_calls_tick_exactly_n_times() {
             // Long tween so 6 ticks are well short of settle.
             AnimationConfig::Tween {
                 ms: 10_000,
-                easing: animation::Easing::Linear,
+                easing: sigil_animation::Easing::Linear,
             },
         );
         anim.target(1.0);
@@ -141,7 +141,7 @@ fn after_frames_safety_cap_panics_on_runaway() {
                 value,
                 AnimationConfig::Tween {
                     ms: 60_000,
-                    easing: animation::Easing::Linear,
+                    easing: sigil_animation::Easing::Linear,
                 },
             );
             anim.target(1.0);

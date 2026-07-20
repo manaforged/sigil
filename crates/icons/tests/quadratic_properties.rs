@@ -1,6 +1,6 @@
 //! Property-based tests for cubic→quadratic Bezier conversion.
 //!
-//! Tests the `cubic_to_quadratics` function from `icons::quadratic` module.
+//! Tests the `cubic_to_quadratics` function from `sigil_icons::quadratic` module.
 //! Expected signature (from spec):
 //!
 //! ```ignore
@@ -33,7 +33,7 @@ use smallvec as _;
 use usvg as _;
 
 // Import from public API
-use icons::{QuadCurve, cubic_to_quadratics};
+use sigil_icons::{QuadCurve, cubic_to_quadratics};
 
 // Configuration: keep test runtime tight with 32 cases per property.
 // (Used in proptest! macro configuration; reference for maintainers)

@@ -1,14 +1,18 @@
 //! Headless scene emission for renderer integration tests.
 
-use hal::{Point, Rect};
-use kernel::{Cx, Node, NodeId, NodeType, TextContent};
-use layout::LayoutResult;
-use style::{DisplayKind, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
-use text::{OwnedTextEngine, TextConfig};
+use std::rc::Rc;
+
+use sigil_hal::{Point, Rect};
+use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
+use sigil_layout::LayoutResult;
+use sigil_style::{DisplayKind, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;
-use crate::scene_command::{CommandScene, GlyphRun, SceneRectStyle};
+use crate::scene_command::{
+    CommandScene, GlyphRun, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+};
 use crate::style_adapter::{
     ResolvedFocusRing, corner_radii_for, focus_ring_for, render_style_for, text_style_for,
 };
@@ -79,23 +83,47 @@ pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     let inherited = Inherited {
         theme: default_inherited_theme(),
         text_color: None,
+        text_style: Rc::new(TextStyle::default()),
     };
-    push_subtree(&mut scene, cx, root, inherited);
+    // `TopLayer` subtrees are deferred here and emitted after the main
+    // walk, so floating UI (dropdown popups) paints above every later
+    // sibling. Index loop: emitting a deferred subtree may discover
+    // nested top-layer descendants and grow the queue.
+    let mut deferred: Vec<(NodeId, Inherited<'_>)> = Vec::new();
+    push_subtree(&mut scene, cx, root, &inherited, &mut deferred);
+    let mut next = 0;
+    while let Some((id, inh)) = deferred.get(next).cloned() {
+        next += 1;
+        push_subtree(&mut scene, cx, id, &inh, &mut deferred);
+    }
     scene.finish()
 }
 
-/// Style context cascading down the scene walk: the effective theme plus
-/// the nearest ancestor's resolved text color. The color half is the
-/// CSS-style `color` cascade — a container's `text-*` class (static or
-/// reactive `class_when`) colors every descendant text node that doesn't
-/// set its own.
-#[derive(Clone, Copy)]
+/// Style context cascading down the scene walk: the effective theme,
+/// the nearest ancestor's resolved text color, and the effective
+/// inherited typography (DR-056). The color and typography halves are
+/// the CSS-style inheritance cascade — a container's `text-*` /
+/// `font-*` / `leading-*` classes style every descendant text node
+/// that doesn't set its own. Typography resolution mirrors the layout
+/// engine's measurement seed so text paints at the size it measured.
+#[derive(Clone)]
 struct Inherited<'t> {
     theme: &'t Theme,
     text_color: Option<Rgba8>,
+    // `Rc`, not a borrow: the top-layer deferral queue stores a
+    // subtree's inherited context past the stack frame that layered
+    // it, so the effective typography must own its data. Containers
+    // without typography atoms just bump the refcount.
+    text_style: Rc<TextStyle>,
 }
 
-fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: Inherited<'_>) {
+fn push_subtree<'t>(
+    scene: &mut SceneBuilder,
+    cx: &'t Cx,
+    id: NodeId,
+    inherited: &Inherited<'t>,
+    deferred: &mut Vec<(NodeId, Inherited<'t>)>,
+) {
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -111,9 +139,17 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: Inheri
     // Resolve once, whether or not this node paints: even a layout-less
     // container contributes its `text-*` classes to the color cascade.
     let style = render_style_for(id, node, theme, inherited.text_color);
+    // DR-056 typography inheritance: layer this node's typography atoms
+    // over the inherited style. `None` (no typography atoms — the
+    // common container case) passes the inherited value through by
+    // reference without cloning.
+    let layered_text = node
+        .get_extension::<StyleBinding>()
+        .and_then(|binding| TextStyle::layered_over_binding(&inherited.text_style, binding));
     let child_inherited = Inherited {
         theme,
         text_color: style.text_color.or(inherited.text_color),
+        text_style: layered_text.map_or_else(|| Rc::clone(&inherited.text_style), Rc::new),
     };
     if let Some(result) = node.get_extension::<LayoutResult>() {
         let rect = result.rect();
@@ -126,6 +162,7 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: Inheri
             &NodePaint {
                 style: &style,
                 theme,
+                text_base: &inherited.text_style,
             },
         );
         // `overflow: hidden`/`scroll` → scissor descendants to this node's box, so a
@@ -134,17 +171,34 @@ fn push_subtree(scene: &mut SceneBuilder, cx: &Cx, id: NodeId, inherited: Inheri
         // skips any glyph run / fill whose rect falls outside the active clip.
         if result.clips() {
             scene.with_clip(rect, |scene| {
-                push_children(scene, cx, node, child_inherited);
+                push_children(scene, cx, node, &child_inherited, deferred);
             });
             return;
         }
     }
-    push_children(scene, cx, node, child_inherited);
+    push_children(scene, cx, node, &child_inherited, deferred);
 }
 
-fn push_children(scene: &mut SceneBuilder, cx: &Cx, node: &Node, inherited: Inherited<'_>) {
+fn push_children<'t>(
+    scene: &mut SceneBuilder,
+    cx: &'t Cx,
+    node: &Node,
+    inherited: &Inherited<'t>,
+    deferred: &mut Vec<(NodeId, Inherited<'t>)>,
+) {
     for child in node.children().iter().copied() {
-        push_subtree(scene, cx, child, inherited);
+        // Deferral happens at the parent's iteration, so emitting a
+        // deferred subtree root directly (from `emit_scene`'s queue
+        // drain) never re-defers it, while nested `TopLayer` descendants
+        // still queue behind it.
+        let is_top_layer = cx
+            .get(child)
+            .is_some_and(|n| n.get_extension::<sigil_kernel::TopLayer>().is_some());
+        if is_top_layer {
+            deferred.push((child, inherited.clone()));
+        } else {
+            push_subtree(scene, cx, child, inherited, deferred);
+        }
     }
 }
 
@@ -162,7 +216,7 @@ fn is_display_none(node: &Node) -> bool {
     let target = StyleAtom::Display(DisplayKind::None);
     binding.static_slice().contains(&target)
         || binding.dynamic_slice().contains(&target)
-        || binding.reactive_slice().contains(&target)
+        || binding.reactive_contains(&target)
 }
 
 fn push_focus_ring(
@@ -202,27 +256,37 @@ fn focus_ring_rects(rect: Rect, ring: ResolvedFocusRing) -> [Rect; 4] {
     ]
 }
 
-/// The resolved paint inputs for one node: its render style plus the
-/// effective theme (still needed for glyph-run text styling).
+/// The resolved paint inputs for one node: its render style, the
+/// effective theme (still needed for glyph-run text styling), and the
+/// typography inherited from ancestors (DR-056) that the node's own
+/// atoms layer over.
 struct NodePaint<'a> {
     style: &'a RenderStyle,
     theme: &'a Theme,
+    text_base: &'a TextStyle,
 }
 
 fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
     match &node.kind {
         NodeType::Container => {
-            if let Some(color) = style.background_color {
-                scene.draw_rect_for_node(
-                    id,
-                    rect,
-                    SceneRectStyle::new(
-                        color,
-                        corner_radii_for(style.border_radius),
-                        style.opacity,
-                    ),
-                );
+            let stroke = border_stroke(style, paint.theme);
+            if style.background_color.is_some() || stroke.is_some() {
+                // A border with no background paints a transparent
+                // interior; the SDF fill contributes zero coverage and
+                // only the stroke shows.
+                let fill = style.background_color.unwrap_or(Rgba8 {
+                    r: 0,
+                    g: 0,
+                    b: 0,
+                    a: 0,
+                });
+                let mut rect_style =
+                    SceneRectStyle::new(fill, corner_radii_for(style.border_radius), style.opacity);
+                if let Some(stroke) = stroke {
+                    rect_style = rect_style.with_stroke(stroke);
+                }
+                scene.draw_rect_for_node(id, rect, rect_style);
             }
         }
         NodeType::Text { content } => {
@@ -233,7 +297,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
                         rect,
                         text_content(content),
                         color,
-                        text_style_for(node, paint.theme),
+                        text_style_for(node, paint.theme, paint.text_base),
                         style.opacity,
                     ),
                 );
@@ -267,6 +331,28 @@ pub fn shape_glyph_run(
 
 thread_local! {
     static TEXT_ENGINE: OwnedTextEngine = OwnedTextEngine::new(TextConfig::default());
+}
+
+/// Resolve a node's border into a paint stroke (DR-057 D3). Width with
+/// no explicit colour follows the CSS `currentColor` shape: the
+/// resolved text colour, then the theme's on-surface. Inside alignment
+/// matches the box model — the layout solvers already reserved the
+/// border edge inside the rect.
+fn border_stroke(style: &RenderStyle, theme: &Theme) -> Option<Stroke> {
+    let width = style.border_width?;
+    if width.0 <= 0 {
+        return None;
+    }
+    let color = style
+        .border_color
+        .or(style.text_color)
+        .unwrap_or(theme.on_surface);
+    Some(Stroke {
+        color,
+        width: f32::from(width.0),
+        style: StrokeStyle::Solid,
+        align: StrokeAlign::Inside,
+    })
 }
 
 fn text_content(content: &TextContent) -> String {

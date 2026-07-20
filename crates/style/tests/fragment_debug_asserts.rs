@@ -3,18 +3,19 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
-use ::reactive as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use phf as _;
+use sigil as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style_macros as _;
 use smallvec as _;
 use strsim as _;
-use style_macros as _;
 use tracing as _;
 
-use kernel::{Cx, container, fragment};
-use style::{NodeStyleExt, StyleAtom, Theme};
+use sigil_kernel::{Cx, container, fragment};
+use sigil_style::{NodeStyleExt, StyleAtom, Theme};
 
 static ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 

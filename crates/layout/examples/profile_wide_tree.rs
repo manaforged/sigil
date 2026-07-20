@@ -1,22 +1,35 @@
-//! Profiling harness for the wide_tree F1 corpus.
+//! Profiling harness for the `wide_tree` F1 corpus.
 //!
 //! Runs `LayoutEngine::compute` 500 times against the published
-//! wide_tree scene (1 root + 1000 flex columns + 100k block leaves).
+//! `wide_tree` scene (1 root + 1000 flex columns + 100k block leaves).
 //! Pair with `SIGIL_LAYOUT_PROFILE=1` to print per-phase timings out
 //! of the engine itself (sync / measure / preorder / attach).
 //!
 //! Build + run:
-//!     SIGIL_LAYOUT_PROFILE=1 cargo run --profile profiling --example profile_wide_tree
+//!     `SIGIL_LAYOUT_PROFILE=1` cargo run --profile profiling --example `profile_wide_tree`
 
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
-    clippy::unwrap_used
+    clippy::unwrap_used,
+    clippy::cast_precision_loss
 )]
 
-use hal::{LogicalSize, Size};
-use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+// Keep dev-dep extern crates visible to `unused_crate_dependencies` —
+// aliases silence the lint without a real import (repo convention).
+use ahash as _;
+use allocation_counter as _;
+use criterion as _;
+use rayon as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use slotmap as _;
+use smallvec as _;
+use taffy as _;
+
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 
 const ROOT_WIDTH: f32 = 12_800.0;
 const ROOT_HEIGHT: f32 = 100.0;

@@ -33,7 +33,7 @@ pub(super) fn build(files: Vec<MockFile>, selected_index: Signal<usize>) -> impl
                 .fixed_size(RIGHT_WIDTH, RIGHT_HEIGHT)
                 .gap(4.0),
         )
-        .class("bg-surface")
+        .class(classes!("bg-surface"))
         .child(
             tabs(
                 active_tab,
@@ -79,7 +79,7 @@ fn hex_tab(files: Vec<MockFile>, selected_index: Signal<usize>) -> impl IntoNode
     panel_body(
         text(body)
             .layout(LayoutStyle::block().width(RIGHT_WIDTH - 16.0))
-            .class("font-mono text-sm"),
+            .class(classes!("font-mono text-sm")),
     )
 }
 
@@ -91,7 +91,7 @@ fn panel_body(body: impl IntoNode + 'static) -> impl IntoNode {
                 .fixed_size(RIGHT_WIDTH, RIGHT_HEIGHT - 40.0)
                 .gap(4.0),
         )
-        .class("p-2 bg-surface")
+        .class(classes!("p-2 bg-surface"))
         .child(body)
 }
 

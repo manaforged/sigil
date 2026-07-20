@@ -1,14 +1,11 @@
 #![allow(unused_crate_dependencies)]
-//! W1.3 — `Display::Grid` fallback smoke fixture.
+//! Grid requests reject loudly (5/5 Wave 3, D-U4).
 //!
-//! `Grid` containers have no dedicated solver yet (post-G2 work,
-//! tracked in `docs/followups.md`). Until then the engine routes grid
-//! nodes through `BlockSolver`. These tests verify that:
-//!
-//! 1. A grid container with two block children does **not** panic.
-//! 2. Children receive real computed boxes at the parent's content
-//!    origin (block semantics, no margin/padding).
-//! 3. Children are stacked in block order (y increases per child).
+//! The pre-0.1.x silent `StyleDisplay::Grid` → `BlockSolver` fallback is
+//! removed: any node carrying `StyleDisplay::Grid` fails compute with
+//! [`LayoutError::GridUnsupported`], at the root or anywhere in the
+//! tree. A real grid solver is a later program; until then a loud
+//! error beats a silent layout lie.
 
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp, clippy::unwrap_used)]
@@ -17,96 +14,69 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
-use reactive as _;
+use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 use taffy as _;
 
 mod stub;
 
-use hal as _;
-use kernel::prelude::*;
-use layout::prelude::*;
-use style as _;
+use sigil_hal as _;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_layout::{Dimension, LayoutError, StyleDisplay};
+use sigil_style as _;
 
 use stub::stub_engine;
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("layout result must exist after compute")
-        .rect()
+fn grid_sized(w: f32, h: f32) -> LayoutStyle {
+    LayoutStyle::default().with_layout(|style| {
+        style.display = StyleDisplay::Grid;
+        style.size.width = Dimension::Px(w);
+        style.size.height = Dimension::Px(h);
+    })
 }
 
-fn children_of(cx: &Cx, parent: NodeId) -> Vec<NodeId> {
-    cx.get(parent)
-        .expect("parent node exists")
-        .children()
-        .to_vec()
-}
-
-// ── fixture tests ─────────────────────────────────────────────────────────────
-
-/// Grid container + two block children: engine must not panic and both
-/// children must receive valid boxes.
+/// A grid root rejects with `GridUnsupported` — no silent block fallback.
 #[test]
-fn grid_container_lays_out_without_panic() {
+fn grid_root_rejects_with_grid_unsupported() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::grid().fixed_size(200.0, 200.0))
-            .child(container().layout(LayoutStyle::block().fixed_size(100.0, 40.0)))
-            .child(container().layout(LayoutStyle::block().fixed_size(80.0, 30.0))),
+            .layout(grid_sized(200.0, 200.0))
+            .child(container().layout(LayoutStyle::block().fixed_size(100.0, 40.0))),
     );
-
-    stub_engine()
+    let err = stub_engine()
         .compute(&mut cx, root, Size::fixed(200.0, 200.0))
-        .expect("grid container compute must succeed");
-
-    // Root received a box.
-    let root_rect = layout_rect(&cx, root);
-    assert_eq!(root_rect.width, 200.0, "root width matches fixed size");
-    assert_eq!(root_rect.height, 200.0, "root height matches fixed size");
+        .expect_err("grid root must reject loudly");
+    assert!(
+        matches!(err, LayoutError::GridUnsupported(_)),
+        "expected GridUnsupported, got {err:?}"
+    );
 }
 
-/// Children of a grid container (routed through block semantics) must
-/// be placed at the parent's content origin and stacked in block order.
+/// A grid DESCENDANT rejects too — the check lives in per-node sync, not
+/// the root dispatch, so it fires anywhere in the tree.
 #[test]
-fn grid_children_receive_block_origin_boxes() {
+fn nested_grid_rejects_with_grid_unsupported() {
     let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::grid().fixed_size(300.0, 300.0))
-            .child(container().layout(LayoutStyle::block().fixed_size(100.0, 50.0)))
-            .child(container().layout(LayoutStyle::block().fixed_size(80.0, 40.0))),
+    let root =
+        cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(400.0, 400.0))
+                .child(
+                    container()
+                        .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
+                        .child(container().layout(grid_sized(80.0, 60.0)).child(
+                            container().layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
+                        )),
+                ),
+        );
+    let err = stub_engine()
+        .compute(&mut cx, root, Size::fixed(400.0, 400.0))
+        .expect_err("nested grid must reject loudly");
+    assert!(
+        matches!(err, LayoutError::GridUnsupported(_)),
+        "expected GridUnsupported, got {err:?}"
     );
-
-    stub_engine()
-        .compute(&mut cx, root, Size::fixed(300.0, 300.0))
-        .expect("compute must succeed");
-
-    let kids = children_of(&cx, root);
-    let first = layout_rect(&cx, *kids.first().expect("first child exists"));
-    let second = layout_rect(&cx, *kids.get(1).expect("second child exists"));
-
-    // Both children land at x=0 (parent content origin, no padding).
-    assert_eq!(first.origin.x, 0.0, "first child x at content origin");
-    assert_eq!(second.origin.x, 0.0, "second child x at content origin");
-
-    // First child anchored at y=0 (top of parent content area).
-    assert_eq!(first.origin.y, 0.0, "first child y at top of content area");
-
-    // Second child stacked below first (block semantics: y = first.h).
-    assert_eq!(
-        second.origin.y, first.height,
-        "second child y equals first child height (block stacking)",
-    );
-
-    // Sizes are preserved.
-    assert_eq!(first.width, 100.0, "first child width");
-    assert_eq!(first.height, 50.0, "first child height");
-    assert_eq!(second.width, 80.0, "second child width");
-    assert_eq!(second.height, 40.0, "second child height");
 }

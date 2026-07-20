@@ -8,17 +8,17 @@ use std::rc::Rc;
 
 use accesskit as _;
 use criterion as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
-use events::prelude::*;
-use hal::{
+use sigil_events::prelude::*;
+use sigil_hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, MouseButton, MouseButtons, PhysicalKey,
     Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
 };
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
 #[test]
 fn pointer_route_depth_64_does_not_allocate() {
@@ -267,7 +267,7 @@ fn ctrl_s() -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }

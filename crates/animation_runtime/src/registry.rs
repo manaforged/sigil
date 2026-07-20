@@ -1,4 +1,4 @@
-//! [`AnimationRegistry`] — lookup from [`style::TransitionId`] to
+//! [`AnimationRegistry`] — lookup from [`sigil_style::TransitionId`] to
 //! [`AnimationConfig`].
 //!
 //! Eight defaults ship per DR-053 §4 — five springs (`Smooth` /
@@ -11,14 +11,14 @@
 //! scale, and the macro feature gate would otherwise pull `phf_macros`
 //! into the build for no measurable win.
 
-use animation::{Easing, SpringPreset};
-use style::TransitionId;
+use sigil_animation::{Easing, SpringPreset};
+use sigil_style::TransitionId;
 
 use crate::config::AnimationConfig;
 
 /// Default transition IDs published by the registry.
 pub mod presets {
-    use style::TransitionId;
+    use sigil_style::TransitionId;
 
     /// `Smooth` spring — default desktop UI feel.
     pub const SMOOTH: TransitionId = TransitionId(0);

@@ -5,7 +5,7 @@
 
 use std::rc::Rc;
 
-use reactive::{Signal, signal};
+use sigil_reactive::{Signal, signal};
 
 use super::super::shared::Activate;
 use super::builder::{EntryDef, LevelDef};

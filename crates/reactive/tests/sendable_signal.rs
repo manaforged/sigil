@@ -16,12 +16,13 @@
 
 // Silence `unused_crate_dependencies` — criterion is a dev-dep for
 // benches, smallvec a regular dep; neither is referenced here.
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
-use reactive::{Runtime, signal};
+use sigil_reactive::{Runtime, signal};
 
 #[test]
 fn sendable_signal_rehydration_on_correct_runtime_works() {

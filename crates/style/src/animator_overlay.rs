@@ -1,4 +1,4 @@
-//! Animator-overlay seam consumed by [`StyleEngine::apply_with_overlay`].
+//! Animator-overlay seam consumed by [`crate::StyleEngine::apply_with_overlay`].
 //!
 //! W5.1b — DR-053 §5 phase 1. The seam is a trait the engine calls when
 //! a [`StyleBinding`](crate::StyleBinding) has an attached animator set.

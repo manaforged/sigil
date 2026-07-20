@@ -1,6 +1,6 @@
 //! Layer effect and sprite kind types used by [`SceneCommand`](super::SceneCommand).
 
-use hal::Rect;
+use sigil_hal::Rect;
 
 /// Row-major 2D affine transform.
 ///

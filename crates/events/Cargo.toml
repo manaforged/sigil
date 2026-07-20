@@ -1,5 +1,5 @@
 [package]
-name = "events"
+name = "sigil-events"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,22 +7,25 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Headless event routing, hit-testing, focus, and builder handlers for Sigil."
+readme.workspace = true
+keywords = ["events", "input", "gui", "keyboard"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
 accesskit = { workspace = true }
-kernel = { workspace = true }
-hal = { workspace = true }
-layout = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-layout = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
-reactive = { workspace = true }
-style = { workspace = true }
+sigil-reactive = { path = "../reactive" }
+sigil-style = { path = "../style" }
 
 [[bench]]
 name = "events_ops"

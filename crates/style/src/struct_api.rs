@@ -3,8 +3,8 @@
 use smallvec::SmallVec;
 
 use crate::{
-    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, OverflowKind,
-    Px, Rgba8, StyleAtom, TransitionId,
+    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, MillisU16,
+    OverflowKind, Px, Rgba8, StyleAtom, TransitionId,
 };
 
 /// Chainable struct API for building style atom lists.
@@ -121,7 +121,7 @@ impl Style {
         self.disabled_atoms = atoms.into_iter().collect();
     }
 
-    /// Drain the state-slot overlays into a [`StyleOverlay`].
+    /// Drain the state-slot overlays into a [`crate::StyleOverlay`].
     ///
     /// Use this in a widget builder's `into_node_builder()` to lift
     /// user-supplied `.rest()` / `.hover()` / `.focus()` /
@@ -237,6 +237,24 @@ impl Style {
         self.push(StyleAtom::Gap(Px(px)))
     }
 
+    /// Set main-axis (width-axis) gap in logical pixels.
+    #[must_use]
+    pub fn gap_x(self, px: i16) -> Self {
+        self.push(StyleAtom::GapX(Px(px)))
+    }
+
+    /// Set cross-axis (height-axis) gap in logical pixels.
+    #[must_use]
+    pub fn gap_y(self, px: i16) -> Self {
+        self.push(StyleAtom::GapY(Px(px)))
+    }
+
+    /// Set flex wrap behaviour.
+    #[must_use]
+    pub fn flex_wrap(self, wrap: FlexWrapKind) -> Self {
+        self.push(StyleAtom::FlexWrap(wrap))
+    }
+
     /// Set preferred width.
     #[must_use]
     pub fn width(self, dimension: Dimension) -> Self {
@@ -259,6 +277,36 @@ impl Style {
     #[must_use]
     pub fn max_width(self, dimension: Dimension) -> Self {
         self.push(StyleAtom::MaxWidth(dimension))
+    }
+
+    /// Set minimum height.
+    #[must_use]
+    pub fn min_height(self, dimension: Dimension) -> Self {
+        self.push(StyleAtom::MinHeight(dimension))
+    }
+
+    /// Set maximum height.
+    #[must_use]
+    pub fn max_height(self, dimension: Dimension) -> Self {
+        self.push(StyleAtom::MaxHeight(dimension))
+    }
+
+    /// Set border stroke width in logical pixels (all four sides).
+    #[must_use]
+    pub fn border_width(self, width: i16) -> Self {
+        self.push(StyleAtom::BorderWidth(Px(width)))
+    }
+
+    /// Set a border stroke colour atom.
+    #[must_use]
+    pub fn border_color(self, color: ColorAtom) -> Self {
+        self.push(StyleAtom::BorderColor(color))
+    }
+
+    /// Set a border stroke colour theme token.
+    #[must_use]
+    pub fn border_theme(self, token: &'static str) -> Self {
+        self.push(StyleAtom::BorderThemeRef(token))
     }
 
     /// Set display mode.
@@ -333,9 +381,35 @@ impl Style {
         self.push(StyleAtom::BorderRadius(Px(px)))
     }
 
-    /// Set opacity encoded as `value * 10000`.
+    /// Set opacity in the CSS-canonical `0.0..=1.0` range — the single
+    /// authoring convention shared with the fluent surface
+    /// (`Visual::opacity`) and class grammar's `opacity-N` (percent).
+    /// The `StyleAtom::Opacity` u16 encoding (×`10_000`) stays internal.
+    ///
+    /// Values outside the range are clamped and trigger a
+    /// `debug_assert!` so misuse is caught in debug builds.
     #[must_use]
-    pub fn opacity(self, opacity: u16) -> Self {
+    #[track_caller]
+    pub fn opacity(self, value: f32) -> Self {
+        debug_assert!(
+            value.is_finite() && (0.0..=1.0).contains(&value),
+            "opacity must be a finite value in 0.0..=1.0, got {value}",
+        );
+        let clamped = value.clamp(0.0, 1.0);
+        // SAFETY (lint): `clamped` is bounded 0.0..=1.0, scale is 10_000;
+        // product is in 0.0..=10_000.0, which fits losslessly in `u16`
+        // and is non-negative. No truncation or sign loss.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let encoded = (clamped * 10_000.0).round() as u16;
+        self.push(StyleAtom::Opacity(encoded))
+    }
+
+    /// Set opacity from the raw `StyleAtom::Opacity` encoding
+    /// (`value * 10_000`). Engine/roundtrip path — prefer
+    /// [`Self::opacity`] for authoring.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn opacity_raw(self, opacity: u16) -> Self {
         self.push(StyleAtom::Opacity(opacity))
     }
 

@@ -19,7 +19,7 @@
 //!
 //! ```ignore
 //! use std::borrow::Cow;
-//! use ide_core::keymap::{Bindings, Key, Keymap, Resolver, Resolution, ContextSet};
+//! use sigil_ide_core::keymap::{Bindings, Key, Keymap, Resolver, Resolution, ContextSet};
 //!
 //! let mut defaults = Bindings::new();
 //! defaults.insert(vec![Key::parse("ctrl-s").unwrap()], "buffer.save", []);
@@ -38,7 +38,7 @@
 //!   `superset` match).
 //! - Hot-reload via the [`crate::workspace`] fs-watch primitive.
 //! - Public reverse lookup ("which key triggers this action?") — the
-//!   `_reverse_index` helper exists in [`resolver`] but is `doc(hidden)`
+//!   `_reverse_index` helper exists in `resolver` but is `doc(hidden)`
 //!   until it gets a real surface.
 
 mod config;

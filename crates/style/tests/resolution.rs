@@ -3,19 +3,20 @@
 
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
-use kernel as _;
 use phf as _;
-use reactive as _;
+use sigil as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_style_macros as _;
 use smallvec as _;
 use strsim as _;
-use style_macros as _;
 use tracing as _;
 
-use style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
-use style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
-use style::{NodeStyleExt, StyleBinding};
-use style::{ParseError, parse_class_string};
+use sigil_style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
+use sigil_style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
+use sigil_style::{NodeStyleExt, StyleBinding};
+use sigil_style::{ParseError, parse_class_string};
 
 #[test]
 fn atom_size_within_budget() {
@@ -177,6 +178,10 @@ fn struct_api_produces_same_atoms_as_raw_parse() {
     );
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "exhaustive StyleAtom -> fluent-Style roundtrip — every atom must stay reachable from the struct API (DR-056 D3)"
+)]
 fn style_for_atom(atom: StyleAtom) -> Style {
     match atom {
         StyleAtom::PaddingAll(px) => Style::new().padding(px.0),
@@ -194,12 +199,17 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::MarginBottom(px) => Style::new().mb(px.0),
         StyleAtom::MarginLeft(px) => Style::new().ml(px.0),
         StyleAtom::Gap(px) => Style::new().gap(px.0),
+        StyleAtom::GapX(px) => Style::new().gap_x(px.0),
+        StyleAtom::GapY(px) => Style::new().gap_y(px.0),
         StyleAtom::Width(dimension) => Style::new().width(dimension),
         StyleAtom::Height(dimension) => Style::new().height(dimension),
         StyleAtom::MinWidth(dimension) => Style::new().min_width(dimension),
         StyleAtom::MaxWidth(dimension) => Style::new().max_width(dimension),
+        StyleAtom::MinHeight(dimension) => Style::new().min_height(dimension),
+        StyleAtom::MaxHeight(dimension) => Style::new().max_height(dimension),
         StyleAtom::Display(display) => Style::new().display(display),
         StyleAtom::FlexDirection(direction) => Style::new().flex_direction(direction),
+        StyleAtom::FlexWrap(wrap) => Style::new().flex_wrap(wrap),
         StyleAtom::AlignItems(align) => Style::new().align_items(align),
         StyleAtom::JustifyContent(justify) => Style::new().justify_content(justify),
         StyleAtom::FlexGrow(grow) => Style::new().flex_grow(grow),
@@ -209,7 +219,10 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TextColor(color) => Style::new().text_color(color),
         StyleAtom::TextThemeRef(token) => Style::new().text_theme(token),
         StyleAtom::BorderRadius(px) => Style::new().radius(px.0),
-        StyleAtom::Opacity(opacity) => Style::new().opacity(opacity),
+        StyleAtom::BorderWidth(px) => Style::new().border_width(px.0),
+        StyleAtom::BorderColor(color) => Style::new().border_color(color),
+        StyleAtom::BorderThemeRef(token) => Style::new().border_theme(token),
+        StyleAtom::Opacity(opacity) => Style::new().opacity_raw(opacity),
         StyleAtom::FontSize(px) => Style::new().font_size(px.0),
         StyleAtom::FontWeight(weight) => Style::new().font_weight(weight),
         StyleAtom::FontFamily(name) => Style::new().font_family(name),
@@ -221,7 +234,10 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::OverflowY(kind) => Style::new().overflow_y(kind),
         // Tone-parameterized atoms are emitted by `variant_kit`, not by
         // the fluent `Style` API — they have no roundtrip surface here.
-        StyleAtom::BgToneStep(_) | StyleAtom::FgToneStep(_) | StyleAtom::FgOnSolid => {
+        StyleAtom::BgToneStep(_)
+        | StyleAtom::FgToneStep(_)
+        | StyleAtom::FgOnSolid
+        | StyleAtom::BorderToneStep(_) => {
             panic!("tone-parameterized atom {atom:?} has no fluent Style roundtrip")
         }
     }
@@ -250,7 +266,7 @@ fn parse_grammar_branches() {
          items-start items-center items-end items-stretch justify-start justify-center \
          justify-end justify-between justify-around rounded rounded-sm rounded-lg rounded-full \
          text-xs text-sm text-base text-lg text-xl text-on-surface font-normal font-medium \
-         font-bold leading-6 opacity-75 border-accent",
+         font-bold leading-6 opacity-75",
     )
     .unwrap();
 
@@ -280,7 +296,6 @@ fn parse_grammar_branches() {
     assert!(parsed.contains(&StyleAtom::FontWeight(700)));
     assert!(parsed.contains(&StyleAtom::LineHeight(Px(24))));
     assert!(parsed.contains(&StyleAtom::Opacity(7_500)));
-    assert!(parsed.contains(&StyleAtom::UnknownThemeRef("border-accent")));
 }
 
 #[test]
@@ -327,8 +342,8 @@ fn parse_pseudo_prefix_not_supported() {
 fn class_string_attaches_binding() {
     let mut ptrs = Vec::new();
     for _ in 0..10 {
-        let mut cx = kernel::Cx::new_root();
-        let id = cx.add(kernel::container().class("p-4 rounded-md bg-accent"));
+        let mut cx = sigil_kernel::Cx::new_root();
+        let id = cx.add(sigil_kernel::container().class("p-4 rounded-md bg-accent"));
         let binding = cx
             .get(id)
             .and_then(|node| node.get_extension::<StyleBinding>())
@@ -345,8 +360,8 @@ fn class_string_attaches_binding() {
 
 #[test]
 fn class_string_attaches_to_text_binding() {
-    let mut cx = kernel::Cx::new_root();
-    let id = cx.add(kernel::text("label").class("text-on-surface"));
+    let mut cx = sigil_kernel::Cx::new_root();
+    let id = cx.add(sigil_kernel::text("label").class("text-on-surface"));
     let binding = cx
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
@@ -361,8 +376,8 @@ fn class_string_attaches_to_text_binding() {
 
 #[test]
 fn style_struct_attaches_binding() {
-    let mut cx = kernel::Cx::new_root();
-    let id = cx.add(kernel::container().style(Style::new().padding(8)));
+    let mut cx = sigil_kernel::Cx::new_root();
+    let id = cx.add(sigil_kernel::container().style(Style::new().padding(8)));
     let binding = cx
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
@@ -374,11 +389,34 @@ fn style_struct_attaches_binding() {
 
 #[test]
 fn theme_swap_invalidates_binding() {
-    let mut cx = kernel::Cx::new_root();
-    let id = cx.add(kernel::container().class("p-4").theme(Theme::default()));
+    let mut cx = sigil_kernel::Cx::new_root();
+    let id = cx.add(
+        sigil_kernel::container()
+            .class("p-4")
+            .theme(Theme::default()),
+    );
     let node = cx.get(id).unwrap();
     let binding = node.get_extension::<StyleBinding>().unwrap();
 
     assert!(node.get_extension::<Theme>().is_some());
     assert_eq!(binding.theme_generation(), u64::MAX);
+}
+
+/// T12 (5/5 Wave 3): flex-wrap, per-axis gap, justify-evenly, and
+/// overflow-auto round trip through the runtime parser.
+#[test]
+fn t12_vocabulary_tokens_parse() {
+    use sigil_style::{FlexWrapKind, OverflowKind};
+
+    let parsed = parse_class_string("gap-x-4 gap-y-2 flex-wrap justify-evenly overflow-auto")
+        .expect("t12 tokens parse");
+    assert!(parsed.contains(&StyleAtom::GapX(Px(16))));
+    assert!(parsed.contains(&StyleAtom::GapY(Px(8))));
+    assert!(parsed.contains(&StyleAtom::FlexWrap(FlexWrapKind::Wrap)));
+    assert!(parsed.contains(&StyleAtom::JustifyContent(JustifyKind::Evenly)));
+    assert!(parsed.contains(&StyleAtom::OverflowX(OverflowKind::Auto)));
+    assert!(parsed.contains(&StyleAtom::OverflowY(OverflowKind::Auto)));
+
+    let nowrap = parse_class_string("flex-nowrap").expect("flex-nowrap parses");
+    assert!(nowrap.contains(&StyleAtom::FlexWrap(FlexWrapKind::NoWrap)));
 }

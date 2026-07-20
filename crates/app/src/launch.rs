@@ -7,17 +7,17 @@
 
 use std::sync::Arc;
 
-use events::EventRouter;
-use hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
-use kernel::Cx;
-use layout::LayoutEngine;
-use layout::prelude::Size;
-use reactive::{
+use sigil_events::EventRouter;
+use sigil_hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
+use sigil_kernel::Cx;
+use sigil_layout::LayoutEngine;
+use sigil_layout::prelude::Size;
+use sigil_reactive::{
     MainThreadDispatcher, Runtime, TaskExecutor, next_interval_deadline, tick_intervals,
 };
-use renderer::{WgpuRenderer, WgpuSurface, emit_scene};
-use shell::{WinitShell, WinitWindowHandle};
-use tasks::AsyncRuntime;
+use sigil_renderer::{WgpuRenderer, WgpuSurface, emit_scene};
+use sigil_shell::{WinitShell, WinitWindowHandle};
+use sigil_tasks::AsyncRuntime;
 
 use crate::config::AppConfig;
 use crate::error::{AppResult, Error};
@@ -53,16 +53,25 @@ where
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     let logical_size = logical_size_from_config(config.size);
 
-    let mut shell = WinitShell::new().map_err(Error::new)?;
+    let mut shell = if config.overlay {
+        WinitShell::new_accessory()
+    } else {
+        WinitShell::new()
+    }
+    .map_err(Error::new)?;
     let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
+
+    let mut async_rt = install_async_runtime(&shell)?;
 
     let mut cx = Cx::new_root();
     let root = tree.install(&mut cx);
 
+    let theme_watch = start_theme_watch(&config, &mut cx, root);
+
     let mut layout = LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new()));
     // Install pointer→glyph geometry so text widgets can hit-test clicks and
     // draw caret/selection overlays (mirrors the measurer install above).
-    layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
+    sigil_layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
     layout_for_scale(&mut cx, root, &mut layout, Scale::ONE, logical_size).map_err(Error::new)?;
 
     let mut router = EventRouter::new();
@@ -71,28 +80,12 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // drains it every frame via `drain_a11y_actions`.
     let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = WgpuRenderer::new()?;
+    if config.overlay {
+        renderer.set_transparent(true);
+    }
     let mut surface: Option<WgpuSurface> = None;
     let mut viewport = (logical_size.width, logical_size.height);
     let mut exit_requested = false;
-
-    // G5 (DR-048 §5) — install the Tokio executor + reactive bridge so
-    // `Context::spawn` has somewhere to send its futures. The bridge's
-    // worker→main mpsc is drained at the top of every frame, just
-    // before `Runtime::begin_effect` consumes the reactive
-    // `pending_completions` queue.
-    let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
-    // Wake the winit loop whenever a worker thread posts a reactive completion, so
-    // background async work (e.g. streamed agent output via `Context::spawn` +
-    // `AsyncContext::update`) repaints promptly instead of stalling in
-    // `ControlFlow::Wait` until an unrelated OS input event. The wake delivers a
-    // `WakeEvent` through the shell's `EventLoopProxy`, whose `user_event` handler
-    // requests a redraw → next `frame_once` drains the bridge via
-    // `pump_completions_into_reactive`. (DR-048 §5 left this waker a no-op.)
-    let waker = shell.waker();
-    async_rt.set_bridge_waker(move || {
-        let _ = WinitShell::wake(&waker);
-    });
-    install_g5_executor(&async_rt);
 
     // Wake the loop when the soonest `cx.interval` is due, so periodic
     // callbacks (clocks, live metrics) fire without waiting on an OS
@@ -117,10 +110,37 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                 exit_requested: &mut exit_requested,
                 async_rt: &mut async_rt,
                 a11y_action_rx: &a11y_action_rx,
+                theme_watch: &theme_watch,
             });
         })
         .map_err(Error::new)?;
     Ok(())
+}
+
+/// G5 (DR-048 §5) — build the async runtime and install the Tokio
+/// executor + reactive bridge so `Context::spawn` has somewhere to send
+/// its futures. Called BEFORE the tree is installed, so trees may
+/// `Context::spawn` during build — matching the fixture contract in
+/// `cx_spawn.rs`. The bridge's worker→main mpsc is drained at the top of
+/// every frame, just before `Runtime::begin_effect` consumes the reactive
+/// `pending_completions` queue.
+///
+/// The bridge waker wakes the winit loop whenever a worker thread posts a
+/// reactive completion, so background async work (e.g. streamed agent
+/// output via `Context::spawn` + `AsyncContext::update`) repaints promptly
+/// instead of stalling in `ControlFlow::Wait` until an unrelated OS input
+/// event. The wake delivers a `WakeEvent` through the shell's
+/// `EventLoopProxy`, whose `user_event` handler requests a redraw → next
+/// `frame_once` drains the bridge via `pump_completions_into_reactive`.
+/// (DR-048 §5 left this waker a no-op.)
+fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
+    let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
+    let waker = shell.waker();
+    async_rt.set_bridge_waker(move || {
+        let _ = WinitShell::wake(&waker);
+    });
+    install_g5_executor(&async_rt);
+    Ok(async_rt)
 }
 
 /// G5 (DR-048 §5) — wire `Context::spawn` to the supplied async runtime.
@@ -135,6 +155,19 @@ pub fn install_g5_executor(async_rt: &AsyncRuntime) {
     Runtime::install_executor(executor, dispatcher);
 }
 
+/// T14 (5/5 Wave 4) — start the dev-mode theme watch and attach the
+/// file's current theme. Parse failure falls back to the default theme:
+/// the edit-see loop must never kill the app for a bad save.
+fn start_theme_watch(
+    config: &AppConfig,
+    cx: &mut Cx,
+    root: sigil_kernel::NodeId,
+) -> Option<crate::theme_file::ThemeWatch> {
+    let watch = crate::theme_file::start(config.theme_file.as_deref())?;
+    crate::theme_file::attach_current(cx, root, &watch);
+    Some(watch)
+}
+
 fn create_initial_window<S>(
     shell: &mut S,
     config: &AppConfig,
@@ -144,7 +177,14 @@ where
     S: Shell,
 {
     shell
-        .create_window_logical(&config.title, logical_size)
+        .create_window_with(
+            &config.title,
+            logical_size,
+            sigil_hal::WindowOpts {
+                overlay: config.overlay,
+                anchor: config.anchor,
+            },
+        )
         .map_err(Error::new)
 }
 
@@ -153,7 +193,7 @@ struct FrameCtx<'a> {
     shell: &'a mut WinitShell,
     window_handle: WinitWindowHandle,
     cx: &'a mut Cx,
-    root: kernel::NodeId,
+    root: sigil_kernel::NodeId,
     layout: &'a mut LayoutEngine,
     router: &'a mut EventRouter,
     renderer: &'a mut WgpuRenderer,
@@ -166,8 +206,16 @@ struct FrameCtx<'a> {
     /// W5-A11Y (DR-050 §4) — inbound AT-initiated `ActionRequest`s,
     /// drained in `drain_events` and routed via `EventRouter`.
     a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
+    /// T14 (5/5 Wave 4) — dev-mode theme hot reload, drained at frame top.
+    theme_watch: &'a Option<crate::theme_file::ThemeWatch>,
 }
 
+// The DR-047 frame driver is a linear phase sequencer (Idle → Effect →
+// Layout → Paint → Idle) whose ordering constraints are the contract —
+// each phase reads state the previous one wrote. Splitting it would hand
+// every extracted phase 8+ of `FrameCtx`'s borrows, breaching the 5-arg
+// cap and hiding the ordering the comments here exist to document.
+#[allow(clippy::too_many_lines)]
 fn frame_once(ctx: FrameCtx<'_>) {
     let FrameCtx {
         config,
@@ -183,7 +231,17 @@ fn frame_once(ctx: FrameCtx<'_>) {
         exit_requested,
         async_rt,
         a11y_action_rx,
+        theme_watch,
     } = ctx;
+
+    // T14 (5/5 Wave 4) — reload the watched theme file on save. Runs
+    // before the Effect phase so the re-attached theme is visible in
+    // THIS frame's layout + paint.
+    if let Some(watch) = theme_watch
+        && crate::theme_file::drain(cx, root, watch)
+    {
+        Runtime::mark_frame_dirty();
+    }
 
     // G5 (DR-048 §5) — forward any worker-thread completion callbacks
     // into the reactive `pending_completions` queue BEFORE
@@ -279,8 +337,8 @@ fn frame_once(ctx: FrameCtx<'_>) {
 ///
 /// Callers must invoke this from inside a [`Runtime::scope`].
 ///
-/// [`DrawPhase::Layout`]: reactive::DrawPhase::Layout
-/// [`DrawPhase::Paint`]: reactive::DrawPhase::Paint
+/// [`DrawPhase::Layout`]: sigil_reactive::DrawPhase::Layout
+/// [`DrawPhase::Paint`]: sigil_reactive::DrawPhase::Paint
 #[doc(hidden)]
 pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
     Runtime::begin_effect();
@@ -305,7 +363,7 @@ fn resize_surface(
 
 fn recompute_layout(
     cx: &mut Cx,
-    root: kernel::NodeId,
+    root: sigil_kernel::NodeId,
     layout: &mut LayoutEngine,
     scale: Scale,
     logical: LogicalSize,
@@ -317,11 +375,11 @@ fn recompute_layout(
 
 fn layout_for_scale(
     cx: &mut Cx,
-    root: kernel::NodeId,
+    root: sigil_kernel::NodeId,
     layout: &mut LayoutEngine,
     _scale: Scale,
     logical_viewport: LogicalSize,
-) -> core::result::Result<(), layout::LayoutError> {
+) -> core::result::Result<(), sigil_layout::LayoutError> {
     layout.compute(
         cx,
         root,
@@ -358,7 +416,7 @@ fn scale_from_f64(scale: f64) -> Scale {
 
 fn paint(
     cx: &Cx,
-    root: kernel::NodeId,
+    root: sigil_kernel::NodeId,
     renderer: &mut WgpuRenderer,
     surface: &mut Option<WgpuSurface>,
     viewport: (f32, f32),
@@ -367,9 +425,20 @@ fn paint(
         return;
     };
     let scene = emit_scene(cx, root);
-    let clear = Color::rgba(0.03, 0.04, 0.05, 1.0);
+    // Transparent (overlay) surfaces clear fully transparent so unpainted
+    // regions show the desktop behind them; normal windows keep the
+    // opaque base.
+    let clear = if renderer.is_transparent() {
+        Color::rgba(0.0, 0.0, 0.0, 0.0)
+    } else {
+        Color::rgba(0.03, 0.04, 0.05, 1.0)
+    };
     if let Err(err) = renderer.render_command_scene(surface, &scene, clear, viewport) {
         tracing::warn!("sigil-app: render_command_scene failed: {err}");
+        // The drawable still has no fresh pixels and this frame consumed
+        // the dirty flag — re-arm it so the next frame actually retries
+        // instead of change-gating away the retry forever.
+        Runtime::mark_frame_dirty();
     }
 }
 
@@ -379,10 +448,10 @@ mod tests {
 
     use std::fmt;
 
-    use hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
-    use kernel::{Cx, container};
-    use layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-    use reactive::Runtime;
+    use sigil_hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
+    use sigil_kernel::{Cx, container};
+    use sigil_layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+    use sigil_reactive::Runtime;
 
     use crate::config::AppConfig;
     use crate::launch::{create_initial_window, layout_for_scale};
@@ -406,6 +475,7 @@ mod tests {
     enum CreateCall {
         Physical(String, PhysicalSize),
         Logical(String, LogicalSize),
+        With(String, LogicalSize, sigil_hal::WindowOpts),
     }
 
     #[derive(Default)]
@@ -446,6 +516,17 @@ mod tests {
             Ok(self.calls.len() - 1)
         }
 
+        fn create_window_with(
+            &mut self,
+            title: &str,
+            initial: LogicalSize,
+            opts: sigil_hal::WindowOpts,
+        ) -> Result<Self::Window, Self::Error> {
+            self.calls
+                .push(CreateCall::With(title.to_owned(), initial, opts));
+            Ok(self.calls.len() - 1)
+        }
+
         fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
             Vec::new().into_iter()
         }
@@ -459,7 +540,7 @@ mod tests {
     }
 
     #[test]
-    fn initial_window_uses_logical_shell_creation() {
+    fn initial_window_passes_logical_size_and_default_opts() {
         let mut shell = MockShell::default();
         let config = AppConfig::new("test").size(720, 480);
         let logical = LogicalSize::new(720.0, 480.0);
@@ -469,7 +550,36 @@ mod tests {
         assert_eq!(handle, 0);
         assert_eq!(
             shell.calls,
-            vec![CreateCall::Logical("test".to_owned(), logical)]
+            vec![CreateCall::With(
+                "test".to_owned(),
+                logical,
+                sigil_hal::WindowOpts::default()
+            )]
+        );
+    }
+
+    #[test]
+    fn initial_window_threads_overlay_opts() {
+        let mut shell = MockShell::default();
+        let anchor = sigil_hal::Anchor::BottomCenter { margin: 64.0 };
+        let config = AppConfig::new("pill")
+            .size(200, 48)
+            .overlay(true)
+            .anchor(anchor);
+        let logical = LogicalSize::new(200.0, 48.0);
+
+        create_initial_window(&mut shell, &config, logical).unwrap();
+
+        assert_eq!(
+            shell.calls,
+            vec![CreateCall::With(
+                "pill".to_owned(),
+                logical,
+                sigil_hal::WindowOpts {
+                    overlay: true,
+                    anchor: Some(anchor),
+                }
+            )]
         );
     }
 

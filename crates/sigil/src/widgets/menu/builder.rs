@@ -1,13 +1,13 @@
 //! Menu widget — vertical stack of menu items in a floating panel
 //! whose visibility is bound to a reactive `open` signal.
 
-use animation_runtime::presets;
-use events::prelude::NodeEventsExt;
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, signal};
-use style::{
-    DisplayKind, NodeStyleExt, Size, StateHost, Style, StyleAccess, StyleAtom, Theme, TransitionId,
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::NodeEventsExt;
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use sigil_reactive::{Signal, signal};
+use sigil_style::{
+    DisplayKind, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme, TransitionId,
 };
 
 use super::super::shared::BuilderMutator;
@@ -130,7 +130,7 @@ pub struct MenuBuilder {
 /// `open` signal gates visibility: when it reads `false`, the panel
 /// paints `Display::None` and contributes no layout box.
 ///
-/// Position via the [`Styled`](style::Styled) surface (for
+/// Position via the [`Styled`](sigil_style::Styled) surface (for
 /// example `.style(Style::new().padding(8))`). The default placement
 /// centres the panel in the golden viewport.
 #[must_use]
@@ -258,10 +258,8 @@ impl StyleAccess for MenuBuilder {
     }
 }
 
-impl StateHost for MenuBuilder {}
-
 impl IntoNode for MenuBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -410,7 +408,7 @@ fn open_display(open: Signal<bool>) -> &'static [StyleAtom] {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use reactive::{Runtime, signal};
+    use sigil_reactive::{Runtime, signal};
 
     #[test]
     fn anchor_stores_position_for_into_node_builder() {

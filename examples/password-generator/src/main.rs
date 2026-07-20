@@ -70,9 +70,9 @@ fn app_tree(cx: &mut Cx) -> NodeId {
                     .padding(16.0)
                     .gap(12.0),
             )
-            .class("bg-surface")
-            .child(text(password).class("text-on-surface text-xl font-mono"))
-            .child(text(length_label).class("text-on-surface text-sm"))
+            .class(classes!("bg-surface"))
+            .child(text(password).class(classes!("text-on-surface text-xl font-mono")))
+            .child(text(length_label).class(classes!("text-on-surface text-sm")))
             .child(slider(length, 4.0..=64.0).step(1.0))
             .child(class_toggles(use_lower, use_upper, use_digits, use_symbols))
             .child(button("Generate").primary().activate(move || {

@@ -8,7 +8,7 @@
 //! scales.
 //!
 //! Tones are extensible: adding a new brand color is two changes —
-//! add a variant to this enum + a [`ColorScale`](crate::ColorScale)
+//! add a variant to this enum + a [`ColorScale`](crate::scale::ColorScale)
 //! field to [`Theme`](crate::Theme). No widget code touches.
 
 use crate::scale::ScaleRole;

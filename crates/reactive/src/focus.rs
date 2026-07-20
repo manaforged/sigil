@@ -1,7 +1,7 @@
 //! Focus handles + focus stack (G3 layer B / DR-046 §4).
 //!
 //! A [`FocusHandle`] is a stable identity for "the focusable region of
-//! entity X." Entities mint one via [`Context::focus_handle`] and use
+//! entity X." Entities mint one via [`crate::cx::Context::focus_handle`] and use
 //! it to (a) register action handlers ([`Context::on_action`]) and (b)
 //! push themselves onto the focus stack ([`Context::focus`]) so
 //! `dispatch_action` resolves handlers along the chain.
@@ -24,7 +24,7 @@
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use actions::HandlerKey;
+use sigil_actions::HandlerKey;
 
 use crate::runtime::EntityKey;
 
@@ -55,7 +55,7 @@ impl From<FocusHandleId> for HandlerKey {
 
 /// A focus handle.
 ///
-/// Minted by [`Context::focus_handle`]; carries the [`EntityKey`] of
+/// Minted by [`crate::cx::Context::focus_handle`]; carries the `EntityKey` of
 /// the owning entity so the owner-cascade cleanup can evict the
 /// handle from the focus stack on entity disposal.
 ///

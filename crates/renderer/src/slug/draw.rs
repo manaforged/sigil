@@ -5,8 +5,8 @@
 
 use std::collections::HashMap;
 
-use hal::{Color, Rect, RenderedGlyph};
-use text::Paragraph;
+use sigil_hal::{Color, Rect, RenderedGlyph};
+use sigil_text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
 use crate::error::RendererError;

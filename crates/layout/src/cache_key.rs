@@ -14,10 +14,10 @@
 use std::hash::{Hash as _, Hasher as _};
 
 use ahash::AHasher;
-use hal::{Dim, Size};
-use kernel::{Cx, NodeId, NodeType, TextContent};
+use sigil_hal::{Dim, Size};
+use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
+use sigil_style::StyleBinding;
 use smallvec::SmallVec;
-use style::StyleBinding;
 
 pub(crate) enum CacheDecision {
     Hit,
@@ -97,8 +97,7 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
         // `Node::version` by `attach`, so the cheap fast-path covers
         // them without paying for the AHashMap lookup here.
         if let Some(binding) = node.get_extension::<StyleBinding>() {
-            let reactive = binding.reactive_slice();
-            if !reactive.is_empty() {
+            for reactive in binding.reactive_channels() {
                 for atom in reactive {
                     atom.hash(&mut hasher);
                 }

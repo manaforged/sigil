@@ -1,4 +1,5 @@
 //! `sigil-icons` — SVG-to-alpha-mask icon baker for Sigil.
+#![deny(missing_docs)]
 // All sub-modules are private; pub(crate) inside a private module is
 // flagged as redundant by clippy. Allow it crate-wide so internal modules
 // can use pub(crate) for clarity without triggering the lint.
@@ -13,7 +14,7 @@
 //! # Example
 //!
 //! ```rust
-//! use icons::IconBaker;
+//! use sigil_icons::IconBaker;
 //!
 //! let baker = IconBaker::new();
 //! let icon = baker.bake(r#"<svg viewBox="0 0 24 24"><path d="M12 2L2 22h20Z"/></svg>"#, 32, 32).unwrap();

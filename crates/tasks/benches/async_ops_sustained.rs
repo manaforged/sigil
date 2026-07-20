@@ -15,9 +15,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use criterion::Criterion;
-use hal::Scheduler;
-use reactive::{Runtime, signal};
-use tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner, spawn_to_signal};
+use sigil_hal::Scheduler;
+use sigil_reactive::{Runtime, signal};
+use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner, spawn_to_signal};
 
 use super::spin_until;
 

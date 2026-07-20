@@ -3,9 +3,9 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use hal::{ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
-use kernel::{Node, NodeBuilder};
-use layout::CaretGeometry;
+use sigil_hal::{ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
+use sigil_kernel::{Node, NodeBuilder};
+use sigil_layout::CaretGeometry;
 
 use crate::EventHandlers;
 use crate::ime_handlers::{CaretAnchorExt, ImeHandlers};

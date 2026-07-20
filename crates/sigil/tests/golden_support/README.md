@@ -81,14 +81,14 @@ After an intentional rendering change:
 
 ```pwsh
 $env:SIGIL_REGEN_GOLDENS = "1"
-cargo test -p sigil --test visual_goldens
+cargo test -p sigil-ui --test visual_goldens
 Remove-Item Env:\SIGIL_REGEN_GOLDENS
 ```
 
 Or in bash:
 
 ```bash
-SIGIL_REGEN_GOLDENS=1 cargo test -p sigil --test visual_goldens
+SIGIL_REGEN_GOLDENS=1 cargo test -p sigil-ui --test visual_goldens
 ```
 
 When the env var is set, the harness writes each captured PNG to its

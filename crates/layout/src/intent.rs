@@ -49,16 +49,6 @@ impl LayoutStyle {
         })
     }
 
-    /// Build a grid layout intent.
-    #[must_use]
-    pub fn grid() -> Self {
-        Self(StyleData {
-            display: Display::Grid,
-            box_sizing: BoxSizing::BorderBox,
-            ..StyleData::default()
-        })
-    }
-
     /// Set the layout algorithm selector.
     #[must_use]
     pub const fn display(mut self, display: Display) -> Self {
@@ -108,7 +98,7 @@ impl LayoutStyle {
     /// column with a small inter-child gap. Equivalent to:
     ///
     /// ```ignore
-    /// use layout::prelude::*;
+    /// use sigil_layout::prelude::*;
     ///
     /// LayoutStyle::flex_column().fixed_size(width, height).gap(4.0);
     /// ```
@@ -116,7 +106,7 @@ impl LayoutStyle {
     /// # Examples
     ///
     /// ```ignore
-    /// use layout::prelude::*;
+    /// use sigil_layout::prelude::*;
     ///
     /// let style = LayoutStyle::pane(320.0, 200.0);
     /// ```
@@ -343,7 +333,7 @@ impl LayoutStyle {
     /// Borrow the underlying resolved [`StyleData`].
     ///
     /// Public so tests and other crates can verify what a builder chain
-    /// (or a slice of [`StyleAtom`]s via
+    /// (or a slice of [`sigil_style::StyleAtom`]s via
     /// [`crate::style_adapter::apply_style_atoms`]) resolved to.
     #[must_use]
     pub const fn data(&self) -> &StyleData {

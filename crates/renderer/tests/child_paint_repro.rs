@@ -25,22 +25,22 @@ use ahash as _;
 use bytemuck as _;
 use criterion as _;
 use half as _;
-use icons as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_icons as _;
+use sigil_shell as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
 use zeno as _;
 
-use kernel::{Cx, prelude::*};
-use layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use style::{NodeStyleExt, Theme};
+use sigil_kernel::{Cx, prelude::*};
+use sigil_layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil_style::{NodeStyleExt, Theme};
 
 #[path = "child_paint_repro/support.rs"]
 mod support;
@@ -81,7 +81,7 @@ fn relative_track_absolute_child_paints_under_clip() {
     );
 }
 
-fn build_relative_track_shape(cx: &mut Cx) -> kernel::NodeId {
+fn build_relative_track_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     const VIEWPORT_W: f32 = 64.0;
     const VIEWPORT_H: f32 = 96.0;
 
@@ -143,7 +143,7 @@ fn narrow_text_in_flex_child_renders_ink() {
     );
 }
 
-fn build_narrow_text_flex_shape(cx: &mut Cx) -> kernel::NodeId {
+fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     const ROOT_W: f32 = 64.0;
     const ROOT_H: f32 = 32.0;
     const WIN_X: f32 = 8.0;
@@ -206,7 +206,7 @@ fn nested_absolute_text_tooltip_shape_renders_ink() {
 /// child) as a sibling of the hovered target, both children of a
 /// `Position::Relative` wrapper — the bubble is pulled out of flow
 /// like the real tooltip widget.
-fn build_tooltip_shape(cx: &mut Cx) -> kernel::NodeId {
+fn build_tooltip_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     let bubble_text = text("Save the file")
         .layout(LayoutStyle::block().width(TOOLTIP_BUBBLE_W as f32 - 8.0))
         .class("text-on-surface");

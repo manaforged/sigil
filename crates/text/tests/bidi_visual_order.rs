@@ -11,19 +11,19 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
 use tracing as _;
 use unicode_bidi as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 
-use hal::{ParagraphMetrics, TextEngine};
-use text::{OwnedTextEngine, TextConfig};
+use sigil_hal::{ParagraphMetrics, TextEngine};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 /// SHIN LAMED VAV MEM-FINAL — "שלום" (Shalom). 4 chars, 8 UTF-8 bytes.
 const WORD_A: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
@@ -35,9 +35,9 @@ fn engine() -> OwnedTextEngine {
 }
 
 /// Caret x for `(byte_index, affinity)`, to keep call sites terse.
-fn caret_x(p: &text::Paragraph, byte_index: usize, affinity: hal::TextAffinity) -> f32 {
+fn caret_x(p: &sigil_text::Paragraph, byte_index: usize, affinity: sigil_hal::TextAffinity) -> f32 {
     p.caret_rect(
-        hal::HitPosition {
+        sigil_hal::HitPosition {
             byte_index,
             affinity,
         },
@@ -66,10 +66,10 @@ fn embedded_rtl_run_sits_between_ltr_neighbors_and_advances_rtl_internally() {
     let hebrew_start = 4_usize;
     let hebrew_end = 10_usize;
 
-    let abc_end_x = caret_x(&p, 3, hal::TextAffinity::Upstream);
-    let hebrew_start_x = caret_x(&p, hebrew_start, hal::TextAffinity::Downstream);
-    let hebrew_end_x = caret_x(&p, hebrew_end, hal::TextAffinity::Upstream);
-    let def_start_x = caret_x(&p, hebrew_end + 1, hal::TextAffinity::Downstream);
+    let abc_end_x = caret_x(&p, 3, sigil_hal::TextAffinity::Upstream);
+    let hebrew_start_x = caret_x(&p, hebrew_start, sigil_hal::TextAffinity::Downstream);
+    let hebrew_end_x = caret_x(&p, hebrew_end, sigil_hal::TextAffinity::Upstream);
+    let def_start_x = caret_x(&p, hebrew_end + 1, sigil_hal::TextAffinity::Downstream);
 
     assert!(
         abc_end_x <= hebrew_start_x.min(hebrew_end_x),
@@ -171,7 +171,7 @@ fn wrapped_line_applies_l1_reset_not_just_paragraph_wide_levels() {
     // space = byte 6). `caret_x_for_byte` resolves by exact cluster
     // match (order-independent), so this reads 'a's real visual x
     // regardless of where it landed in the reordered glyph array.
-    let abc_start = caret_x(&p, 7, hal::TextAffinity::Downstream);
+    let abc_start = caret_x(&p, 7, sigil_hal::TextAffinity::Downstream);
     assert!(
         abc_start > 0.5,
         "L1-corrected line must push 'abc' off the line's left edge (the \

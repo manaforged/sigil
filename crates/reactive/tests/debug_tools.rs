@@ -1,7 +1,7 @@
 //! Integration tests for the debug introspection module.
 //!
 //! Verifies the human-readable owner-tree renderer exposed by
-//! [`reactive::debug`]. These are behaviour tests, not unit
+//! [`sigil_reactive::debug`]. These are behaviour tests, not unit
 //! tests: they call the same public `Runtime::scope` / `Owner::new`
 //! / `signal` / `effect` surface any user would, then snapshot the
 //! dump string and assert on its structure.
@@ -23,10 +23,11 @@
 // and the library, but neither is referenced by this integration
 // test. The same shim is used in other integration tests once they
 // are tightened against `-D warnings`.
-use actions as _;
 use criterion as _;
-use reactive::debug::{dump_owner_tree, dump_subtree};
-use reactive::{Owner, Runtime, effect, on_cleanup, signal};
+use sigil as _;
+use sigil_actions as _;
+use sigil_reactive::debug::{dump_owner_tree, dump_subtree};
+use sigil_reactive::{Owner, Runtime, effect, on_cleanup, signal};
 use smallvec as _;
 use tokio as _;
 

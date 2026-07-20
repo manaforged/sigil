@@ -21,30 +21,30 @@
 
 // Dev-dep aliases — the lib-test target pulls these in via sigil's
 // dev-dep set but this file doesn't name them directly.
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 use core::time::Duration;
 use std::time::Instant;
 
-use reactive::{
+use sigil::prelude::*;
+use sigil_reactive::{
     __test_advance_clock, __test_clear_clock, __test_set_clock, Runtime, signal, tick_intervals,
 };
-use sigil::prelude::*;
 
 #[test]
 fn interval_drives_signal_via_synthetic_ticks() {

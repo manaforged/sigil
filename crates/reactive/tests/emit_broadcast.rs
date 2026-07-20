@@ -8,15 +8,16 @@
 
 #![allow(missing_docs)]
 
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use reactive::{Entity, Runtime};
+use sigil_reactive::{Entity, Runtime};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Pong(u32);

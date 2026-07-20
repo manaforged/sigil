@@ -1,6 +1,6 @@
 //! Spawn request + live-particle types for the floating-text pool.
 
-use style::Rgba8;
+use sigil_style::Rgba8;
 
 /// One spawn request — the inputs the caller provides per particle.
 #[derive(Clone, Debug, PartialEq)]

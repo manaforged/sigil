@@ -1,21 +1,27 @@
 use std::rc::Rc;
 
-use animation_runtime::presets;
-use events::prelude::{Key, NodeEventsExt};
-use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, derived_eq, signal};
-use style::{
-    NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant, TransitionId,
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use sigil_layout::prelude::{
+    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
+};
+use sigil_reactive::{Signal, derived_eq, signal};
+use sigil_style::{
+    NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay, StyleVariant,
+    TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
 use super::super::shared::{
-    Activate, BuilderMutator, activate_pointer_reactive, disabled_now, noop_activate,
+    Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
 use super::super::transition_seam::install_transition_animators;
 use super::popup::{OptionCtx, SURFACE, SURFACE_HOVER, TRIGGER_HEIGHT, TRIGGER_WIDTH, build_popup};
+
+/// Selection-change callback channel: the newly selected index.
+pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
 const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
 const DROPDOWN_COMPONENT_ID: u64 = 0xD012_D000;
@@ -50,7 +56,7 @@ pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
     disabled: Option<Signal<bool>>,
-    on_change: Option<Activate>,
+    on_change: Option<IndexChange>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -85,14 +91,17 @@ impl DropdownBuilder {
         self
     }
 
-    /// Run a callback when the selection changes (receives no args — read `selected`).
+    /// Run a callback when the selection changes, receiving the newly
+    /// selected index (5/5 Wave 1 T5 — widget callbacks carry their value:
+    /// checkbox `Fn(bool)`, slider `Fn(f32)`, `text_field` `Fn(&str)`,
+    /// dropdown `Fn(usize)`).
     #[must_use]
-    pub fn change(mut self, cb: impl Fn() + 'static) -> Self {
+    pub fn change(mut self, cb: impl Fn(usize) + 'static) -> Self {
         self.on_change = Some(Rc::new(cb));
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let open = signal(false);
@@ -100,7 +109,7 @@ impl DropdownBuilder {
         let on_change = self
             .on_change
             .as_ref()
-            .map_or_else(noop_activate, Rc::clone);
+            .map_or_else(|| Rc::new(|_| {}), Rc::clone);
 
         let selected = self.selected;
         let options = Rc::new(self.options);
@@ -117,7 +126,14 @@ impl DropdownBuilder {
         // surface, the root is an invisible event sink). Passing the
         // accumulator into `build_trigger` lets `.bg()` / `.rounded()`
         // / `.hover()` shape the trigger appearance directly.
-        let trigger = build_trigger(ctx, &options, interaction, self.style_accumulator);
+        let user_overlay = self.style_accumulator.take_state_overlay();
+        let trigger = build_trigger(
+            ctx,
+            &options,
+            interaction,
+            self.style_accumulator,
+            user_overlay,
+        );
         let popup = build_popup(ctx, &options, &on_change);
         let mut root = dropdown_root(open, cursor, Rc::clone(&options), disabled)
             .child(trigger)
@@ -140,7 +156,7 @@ impl StyleAccess for DropdownBuilder {
 impl StateHost for DropdownBuilder {}
 
 impl IntoNode for DropdownBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -189,6 +205,7 @@ fn build_trigger(
     options: &Rc<Vec<String>>,
     interaction: InteractionState,
     styled: Style,
+    user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let label_options = Rc::clone(options);
     let OptionCtx {
@@ -205,10 +222,8 @@ fn build_trigger(
         .class("rounded-md")
         .class(TRIGGER_VARIANT.base())
         .class(DROPDOWN_ANIM_BASE)
-        .style_reactive(move || {
-            let mut state = interaction.style_state();
-            state.disabled |= disabled_now(disabled);
-            TRIGGER_VARIANT.state(state)
+        .stateful_style(TRIGGER_VARIANT, user_overlay, move || {
+            reactive_style_state(interaction, disabled)
         })
         .pointer_up(move |ev| {
             let cb: Activate = Rc::new(move || {
@@ -328,11 +343,16 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
     // `grow(1.0)`) makes the SpaceBetween distribution deterministic at
     // the engine level — `grow` interacts badly with stub-measured text
     // children in golden tests, leaving the chevron mid-trigger.
+    // `overflow_x(Hidden)` clips labels wider than the slot at the
+    // trigger's edge instead of painting past the pill (Fable visual
+    // 2026-07-13); giving long options readable short labels remains
+    // the caller's concern.
     container()
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(160.0, 24.0)
-                .align_items(AlignItems::Center),
+                .align_items(AlignItems::Center)
+                .overflow_x(Overflow::Hidden),
         )
         .child(
             text(TextContent::Reactive(label_sig))
@@ -353,7 +373,8 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
 // W5.3 owns the richer glyph-or-icon affordance; this fix just
 // restores user-visible "this opens a dropdown" cue.
 fn trigger_chevron() -> impl IntoNode {
-    static CHEVRON_BG: &[style::StyleAtom] = &[style::StyleAtom::BackgroundThemeRef("accent")];
+    static CHEVRON_BG: &[sigil_style::StyleAtom] =
+        &[sigil_style::StyleAtom::BackgroundThemeRef("accent")];
     // Inset math: trigger is `TRIGGER_WIDTH` wide with 8 px right
     // padding; chevron swatch is 16 px wide. Left inset =
     // TRIGGER_WIDTH - 16 (chevron) - 8 (right padding) = 176. Top

@@ -21,18 +21,18 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 use stub::stub_engine;
 
-use hal::{Rect, Size};
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_hal::{Rect, Size};
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
 /// Available space passed to every compute (large enough that nothing
 /// hits the containing block bound).

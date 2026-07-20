@@ -18,10 +18,16 @@ pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 
 /// Style atoms and resolved caches attached to a node.
+///
+/// A binding carries any number of reactive channels: each
+/// `style_reactive` / `class_when` / `stateful_style` install appends one
+/// instead of replacing the previous (T0, 5/5 Wave 1). At resolve time
+/// the channels apply in install order, so a later install wins per
+/// property — composition instead of the old silent clobber.
 pub struct StyleBinding {
     static_atoms: &'static [StyleAtom],
     dynamic_atoms: SmallVec<[StyleAtom; 16]>,
-    reactive_atoms: Option<ReactiveStyleAtoms>,
+    reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
     /// W5.1b: attached animator overlay produced by the binding-install
     /// hook in `sigil-animation-runtime`. `None` for bindings without
     /// a `Transition` atom (zero-overhead path); `Some` when one or
@@ -49,7 +55,7 @@ impl core::fmt::Debug for StyleBinding {
         f.debug_struct("StyleBinding")
             .field("static_atoms", &self.static_atoms)
             .field("dynamic_atoms", &self.dynamic_atoms)
-            .field("reactive_atoms", &self.reactive_atoms)
+            .field("reactive_channels", &self.reactive_channels.len())
             .field("attached_animators", &self.attached_animators.is_some())
             .field("state_overlay", &self.state_overlay.is_some())
             .field("state_overlay_slot", &self.state_overlay_slot.is_some())
@@ -66,7 +72,7 @@ impl Default for StyleBinding {
         Self {
             static_atoms: &[],
             dynamic_atoms: SmallVec::new(),
-            reactive_atoms: None,
+            reactive_channels: SmallVec::new(),
             attached_animators: None,
             state_overlay: None,
             state_overlay_slot: None,
@@ -100,10 +106,9 @@ impl StyleBinding {
     /// Build a binding from a reactive atom source.
     #[must_use]
     pub fn reactive_atoms(reactive_atoms: ReactiveStyleAtoms) -> Self {
-        Self {
-            reactive_atoms: Some(reactive_atoms),
-            ..Self::default()
-        }
+        let mut binding = Self::default();
+        binding.add_reactive(reactive_atoms);
+        binding
     }
 
     /// Borrow static atoms.
@@ -118,24 +123,30 @@ impl StyleBinding {
         &self.dynamic_atoms
     }
 
-    /// Borrow the current reactive atom slice.
-    #[must_use]
-    pub fn reactive_slice(&self) -> &'static [StyleAtom] {
-        self.reactive_atoms
-            .as_ref()
-            .map_or(&[], |atoms| atoms.get())
+    /// Iterate the current atom slice of every reactive channel, in
+    /// install order (later installs resolve later — last wins per
+    /// property).
+    pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
+        self.reactive_channels.iter().map(|atoms| atoms.get())
     }
 
-    /// True when a reactive atom channel is installed on this binding.
+    /// True when `target` appears in any reactive channel's current slice.
+    #[must_use]
+    pub fn reactive_contains(&self, target: &StyleAtom) -> bool {
+        self.reactive_channels().any(|slice| slice.contains(target))
+    }
+
+    /// True when at least one reactive channel is installed on this
+    /// binding.
     ///
-    /// The reactive channel mutates through an `Rc<Cell>` that bypasses
-    /// the owning node's `version()` stamp, so consumers that cache by
+    /// Reactive channels mutate through `Rc<Cell>`s that bypass the
+    /// owning node's `version()` stamp, so consumers that cache by
     /// version (notably the layout engine's per-node sync fast-path)
-    /// need to force a re-sync for reactive nodes even when the
+    /// need to force a re-sync for reactive nodes even when every
     /// reactive slice is currently empty.
     #[must_use]
-    pub const fn has_reactive(&self) -> bool {
-        self.reactive_atoms.is_some()
+    pub fn has_reactive(&self) -> bool {
+        !self.reactive_channels.is_empty()
     }
 
     /// Borrow cached render style.
@@ -240,8 +251,10 @@ impl StyleBinding {
         self.invalidate();
     }
 
-    pub(crate) fn set_reactive(&mut self, atoms: ReactiveStyleAtoms) {
-        self.reactive_atoms = Some(atoms);
+    /// Append a reactive channel. Later installs resolve after earlier
+    /// ones; nothing is ever replaced.
+    pub(crate) fn add_reactive(&mut self, atoms: ReactiveStyleAtoms) {
+        self.reactive_channels.push(atoms);
         self.invalidate();
     }
 
@@ -258,9 +271,14 @@ impl StyleBinding {
 
 impl PartialEq for StyleBinding {
     fn eq(&self, other: &Self) -> bool {
+        let reactive_eq = self.reactive_channels.len() == other.reactive_channels.len()
+            && self
+                .reactive_channels()
+                .zip(other.reactive_channels())
+                .all(|(a, b)| a == b);
         self.static_atoms == other.static_atoms
             && self.dynamic_atoms == other.dynamic_atoms
-            && self.reactive_slice() == other.reactive_slice()
+            && reactive_eq
             && self.resolved_render == other.resolved_render
             && self.cx_generation == other.cx_generation
             && self.layout_generation == other.layout_generation

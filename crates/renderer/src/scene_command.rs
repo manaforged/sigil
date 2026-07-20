@@ -101,7 +101,7 @@ impl CommandScene {
 #[derive(Clone, Debug, PartialEq)]
 pub enum SceneCommand {
     /// Push a clip rectangle for following commands.
-    PushClip(hal::Rect),
+    PushClip(sigil_hal::Rect),
     /// Pop the current clip rectangle.
     PopClip,
     /// Push an affine transform for following commands.

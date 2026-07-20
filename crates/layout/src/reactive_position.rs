@@ -5,7 +5,7 @@
 //!
 //! ## Why a dedicated primitive
 //!
-//! The existing reactive style channel ([`style::style_reactive`]) drives
+//! The existing reactive style channel ([`sigil_style::NodeStyleExt::style_reactive`]) drives
 //! layout-affecting atoms (e.g. the splitter's pane `Width`), but it
 //! requires `&'static [StyleAtom]` — so a live, continuously-varying value
 //! must be interned into a leaked slice on every change (the splitter
@@ -16,11 +16,11 @@
 //! ## Mechanism
 //!
 //! The extension simply holds the `Signal<(f32, f32)>`. The layout engine
-//! reads it during per-node sync ([`crate::engine`]'s
+//! reads it during per-node sync (`crate::engine`'s
 //! `layout_inputs_for_node`) via an *untracked* `peek` — always the latest
 //! value — and folds it into the node's absolute inset, forcing `position:
 //! absolute`. Invalidation rides the existing layout-signature cache: the
-//! signature hashes the live position ([`crate::cache_key`]), so a signal
+//! signature hashes the live position (`crate::cache_key`), so a signal
 //! change yields a cache miss and a recompute, while an unchanged position
 //! is a cache hit (no work). No `&'static` interning, no allocation, no
 //! leak — `Signal` is `Copy`.
@@ -35,7 +35,7 @@
 //! does not mark the node dirty or bump `Cx::mutation_generation`. Instead
 //! the layout-signature cache catches it: `resolve_cache_key` re-hashes the
 //! subtree every `compute`, and the signature folds in the live position
-//! ([`crate::cache_key`]). So **any `compute` after a `set` repositions the
+//! (`crate::cache_key`). So **any `compute` after a `set` repositions the
 //! node** — no dirty mark needed. This is proven two ways:
 //!   * `crates/layout/tests/reactive_position.rs` — bare `set` + `compute`
 //!     moves the box (no events at all);
@@ -50,8 +50,8 @@
 //! per-frame ticks without input is a separate concern (a frame scheduler),
 //! not a defect in this primitive.
 
-use kernel::NodeBuilder;
-use reactive::Signal;
+use sigil_kernel::NodeBuilder;
+use sigil_reactive::Signal;
 
 /// Node extension carrying the live absolute position. Read (untracked) by
 /// the layout engine each sync and hashed into the layout signature.

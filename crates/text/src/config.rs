@@ -1,6 +1,6 @@
 //! Default text configuration.
 
-use style::{TextLineHeight, TextStyle};
+use sigil_style::{TextLineHeight, TextStyle};
 
 /// Default font and style settings used when no per-node style is set.
 #[derive(Clone, Debug)]

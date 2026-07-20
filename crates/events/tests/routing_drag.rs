@@ -30,14 +30,14 @@ mod routing_helpers;
 use accesskit as _;
 use allocation_counter as _;
 use criterion as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
-use events::prelude::*;
-use hal::{Point, PointerEventInit};
-use kernel::prelude::*;
-use layout::prelude::*;
-use reactive::{Runtime, signal};
+use sigil_events::prelude::*;
+use sigil_hal::{Point, PointerEventInit};
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
 
 use routing_helpers::{pointer_down, route_event};
 
@@ -45,7 +45,7 @@ use routing_helpers::{pointer_down, route_event};
 /// `routing_helpers::pointer_move` hard-codes `delta = (0,0)` (fine for
 /// hover/hit tests); a drag needs the real movement the winit shell
 /// would compute in `push_cursor_move`.
-fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
+const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(dx, dy),
@@ -57,7 +57,7 @@ fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
     }))
 }
 
-fn node_rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn node_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("node has a layout result")

@@ -5,7 +5,7 @@
 use std::sync::OnceLock;
 
 use ahash::{AHashMap, RandomState};
-use style::{TextLineHeight, TextStyle};
+use sigil_style::{TextLineHeight, TextStyle};
 
 use crate::Paragraph;
 
@@ -184,7 +184,7 @@ mod tests {
     use super::*;
     use crate::OwnedTextEngine;
     use crate::config::TextConfig;
-    use hal::ParagraphMetrics;
+    use sigil_hal::ParagraphMetrics;
 
     fn make_paragraph(text: &str, style: &TextStyle) -> Paragraph {
         let e = OwnedTextEngine::new(TextConfig::default());

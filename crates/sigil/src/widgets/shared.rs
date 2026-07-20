@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use events::prelude::{KeyEvent, PointerEvent};
-use kernel::{NodeBuilder, TextBuilder, TextContent, text};
-use reactive::Signal;
-use style::NodeStyleExt;
-use style::StyleState;
+use sigil_events::prelude::{KeyEvent, PointerEvent};
+use sigil_kernel::{NodeBuilder, TextBuilder, TextContent, text};
+use sigil_reactive::Signal;
+use sigil_style::NodeStyleExt;
+use sigil_style::StyleState;
 
 use crate::interaction::InteractionState;
 

@@ -4,8 +4,8 @@
 //! merge out of `mod.rs` to keep the entry-point file under the 400-line
 //! hygiene cap.
 
-use kernel::NodeBuilder;
-use layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
+use sigil_kernel::NodeBuilder;
+use sigil_layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 
 use super::super::layout_ext::LayoutOverrides;
 

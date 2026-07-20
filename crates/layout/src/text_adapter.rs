@@ -6,9 +6,9 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use hal::{Dim, LogicalSize, ParagraphMetrics, Size};
-use kernel::TextContent;
-use style::{StyledTextEngine, TextStyle};
+use sigil_hal::{Dim, LogicalSize, ParagraphMetrics, Size};
+use sigil_kernel::TextContent;
+use sigil_style::{StyledTextEngine, TextStyle};
 
 use crate::TextMeasure;
 

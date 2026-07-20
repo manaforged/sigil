@@ -1,6 +1,6 @@
 //! Per-command draw handlers for the command-scene walker.
 
-use hal::{Color, RenderedGlyph};
+use sigil_hal::{Color, RenderedGlyph};
 
 use crate::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::error::RendererError;
@@ -62,6 +62,7 @@ impl Walk<'_> {
             self.current_opacity(),
             0,
             u32::try_from(stops.len()).unwrap_or(u32::MAX),
+            space,
         );
         let pipeline = fill_pipeline_for(self.ctx.fill_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_instances(
@@ -233,10 +234,10 @@ impl Walk<'_> {
     fn raster_pass(
         &mut self,
         run: &GlyphRun,
-        paragraph: &text::Paragraph,
+        paragraph: &sigil_text::Paragraph,
         origin: (f32, f32),
         color: Color,
-        clip: Option<hal::Rect>,
+        clip: Option<sigil_hal::Rect>,
     ) -> Option<Vec<RenderedGlyph>> {
         let eligible = text_tuning().raster
             && self.is_identity_transform()

@@ -25,12 +25,12 @@
 //! The trait is intentionally named `WidgetLayoutExt` (not
 //! `LayoutBuilderExt`) to avoid a `pub use` collision in
 //! [`sigil::prelude`] with the pre-existing
-//! `layout::prelude::LayoutBuilderExt`, which adds `.layout()`
+//! `sigil_layout::prelude::LayoutBuilderExt`, which adds `.layout()`
 //! to `NodeBuilder` / `TextBuilder`. The two traits target disjoint
 //! impl sets — node primitives versus widget builders — but Rust
 //! cannot disambiguate two `pub use` re-exports under the same name.
 
-use layout::LayoutStyle;
+use sigil_layout::LayoutStyle;
 
 /// Layout overrides accumulated by [`WidgetLayoutExt`] methods on a
 /// widget builder, merged onto the builder's default layout at build
@@ -192,8 +192,8 @@ pub trait WidgetLayoutExt: Sized {
 )]
 mod tests {
     use super::*;
-    use layout::LayoutStyle;
-    use layout::prelude::Dimension;
+    use sigil_layout::LayoutStyle;
+    use sigil_layout::prelude::Dimension;
 
     // ---- LayoutOverrides unit tests -----------------------------------------
 
@@ -244,7 +244,7 @@ mod tests {
     // Each builder gains .width()/.height() from WidgetLayoutExt.
     // We verify the override reaches the root node's LayoutStyle extension.
 
-    fn root_layout_style(cx: &kernel::Cx, root: kernel::NodeId) -> LayoutStyle {
+    fn root_layout_style(cx: &sigil_kernel::Cx, root: sigil_kernel::NodeId) -> LayoutStyle {
         cx.get(root)
             .expect("root node exists")
             .get_extension::<LayoutStyle>()
@@ -255,8 +255,8 @@ mod tests {
     #[test]
     fn button_height_override_reaches_root_node() {
         use crate::widgets::button::button;
-        reactive::Runtime::scope("layout-ext-button-smoke", || {
-            let mut cx = kernel::Cx::new_root();
+        sigil_reactive::Runtime::scope("layout-ext-button-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
             // .width(100.0) calls ButtonBuilder's inherent setter (intrinsic width).
             // .height(50.0) goes through WidgetLayoutExt into layout_overrides.
             let root = cx.add(button("OK").width(100.0).height(50.0));
@@ -269,9 +269,9 @@ mod tests {
     #[test]
     fn toggle_width_height_override_reaches_root_node() {
         use crate::widgets::toggle::toggle;
-        reactive::Runtime::scope("layout-ext-toggle-smoke", || {
-            let mut cx = kernel::Cx::new_root();
-            let on = reactive::signal(false);
+        sigil_reactive::Runtime::scope("layout-ext-toggle-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
+            let on = sigil_reactive::signal(false);
             let root = cx.add(toggle(on).width(100.0).height(50.0));
             let style = root_layout_style(&cx, root);
             assert_eq!(style.data().size.width, Dimension::Px(100.0));
@@ -282,9 +282,9 @@ mod tests {
     #[test]
     fn checkbox_width_height_override_reaches_root_node() {
         use crate::widgets::checkbox::checkbox;
-        reactive::Runtime::scope("layout-ext-checkbox-smoke", || {
-            let mut cx = kernel::Cx::new_root();
-            let checked = reactive::signal(false);
+        sigil_reactive::Runtime::scope("layout-ext-checkbox-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
+            let checked = sigil_reactive::signal(false);
             let root = cx.add(checkbox(checked).width(100.0).height(50.0));
             let style = root_layout_style(&cx, root);
             assert_eq!(style.data().size.width, Dimension::Px(100.0));
@@ -295,9 +295,9 @@ mod tests {
     #[test]
     fn text_field_width_height_override_reaches_root_node() {
         use crate::widgets::text_field::text_field;
-        reactive::Runtime::scope("layout-ext-text-field-smoke", || {
-            let mut cx = kernel::Cx::new_root();
-            let value = reactive::signal(String::new());
+        sigil_reactive::Runtime::scope("layout-ext-text-field-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
+            let value = sigil_reactive::signal(String::new());
             let root = cx.add(text_field(value).width(100.0).height(50.0));
             let style = root_layout_style(&cx, root);
             assert_eq!(style.data().size.width, Dimension::Px(100.0));
@@ -308,11 +308,11 @@ mod tests {
     #[test]
     fn virtual_list_width_height_override_reaches_root_node() {
         use crate::widgets::virtual_list::virtual_list;
-        reactive::Runtime::scope("layout-ext-virtual-list-smoke", || {
-            let mut cx = kernel::Cx::new_root();
+        sigil_reactive::Runtime::scope("layout-ext-virtual-list-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
             let items: Vec<u32> = (0..10).collect();
             let root = cx.add(
-                virtual_list(items, |_, _| kernel::container())
+                virtual_list(items, |_, _| sigil_kernel::container())
                     .width(100.0)
                     .height(50.0),
             );
@@ -325,12 +325,12 @@ mod tests {
     #[test]
     fn splitter_width_height_override_reaches_root_node() {
         use crate::widgets::splitter::{SplitterOrientation, splitter};
-        reactive::Runtime::scope("layout-ext-splitter-smoke", || {
-            let mut cx = kernel::Cx::new_root();
+        sigil_reactive::Runtime::scope("layout-ext-splitter-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
             let root = cx.add(
                 splitter(SplitterOrientation::Horizontal)
-                    .child(kernel::container(), 200.0)
-                    .child(kernel::container(), 200.0)
+                    .child(sigil_kernel::container(), 200.0)
+                    .child(sigil_kernel::container(), 200.0)
                     .width(100.0)
                     .height(50.0),
             );
@@ -343,9 +343,9 @@ mod tests {
     #[test]
     fn tabs_width_height_override_reaches_root_node() {
         use crate::widgets::tabs::tabs;
-        reactive::Runtime::scope("layout-ext-tabs-smoke", || {
-            let mut cx = kernel::Cx::new_root();
-            let active = reactive::signal(0_usize);
+        sigil_reactive::Runtime::scope("layout-ext-tabs-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
+            let active = sigil_reactive::signal(0_usize);
             let labels = vec![String::from("A"), String::from("B")];
             let root = cx.add(tabs(active, labels).width(100.0).height(50.0));
             let style = root_layout_style(&cx, root);
@@ -357,9 +357,9 @@ mod tests {
     #[test]
     fn modal_width_height_override_reaches_root_node() {
         use crate::widgets::modal::modal;
-        reactive::Runtime::scope("layout-ext-modal-smoke", || {
-            let mut cx = kernel::Cx::new_root();
-            let show = reactive::signal(true);
+        sigil_reactive::Runtime::scope("layout-ext-modal-smoke", || {
+            let mut cx = sigil_kernel::Cx::new_root();
+            let show = sigil_reactive::signal(true);
             let root = cx.add(modal().show(show).width(100.0).height(50.0));
             let style = root_layout_style(&cx, root);
             assert_eq!(style.data().size.width, Dimension::Px(100.0));

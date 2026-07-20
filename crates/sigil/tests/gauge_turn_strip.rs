@@ -14,27 +14,27 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use kernel::{Cx, NodeId};
-use reactive::{Runtime, signal};
 use sigil::prelude::*;
-use style::{Dimension, Px, StyleAtom, StyleBinding};
+use sigil_kernel::{Cx, NodeId};
+use sigil_reactive::{Runtime, signal};
+use sigil_style::{Dimension, Px, StyleAtom, StyleBinding};
 
 mod golden_support;
 
@@ -42,13 +42,18 @@ use golden_support::{
     InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
 };
 
-/// Read the current reactive style slice off `id`'s [`StyleBinding`]
-/// extension — mirrors `phase_c_reactive_attrs.rs`'s helper of the
-/// same name.
+/// Read the current reactive style slices off `id`'s [`StyleBinding`]
+/// extension, concatenated in install order (T0 composition) — mirrors
+/// `phase_c_reactive_attrs.rs`'s helper of the same name.
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
-    cx.get(id)
+    let Some(binding) = cx
+        .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
-        .map_or(&[], StyleBinding::reactive_slice)
+    else {
+        return &[];
+    };
+    let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
+    Box::leak(atoms.into_boxed_slice())
 }
 
 fn only_child(cx: &Cx, id: NodeId) -> NodeId {

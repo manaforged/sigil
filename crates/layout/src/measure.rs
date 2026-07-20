@@ -1,8 +1,8 @@
 //! Text measurement hook used by the layout adapter.
 
-use hal::{LogicalSize, Size};
-use kernel::TextContent;
-use style::TextStyle;
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::TextContent;
+use sigil_style::TextStyle;
 
 /// Text measurement interface used by `LayoutEngine`.
 pub trait TextMeasure {

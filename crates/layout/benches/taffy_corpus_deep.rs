@@ -32,18 +32,18 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use hal::{LogicalSize, Size};
-use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil_layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use slotmap as _;
 use smallvec as _;
-use style as _;
 
 // Taffy's published deep shape: 2^17 = 131_072 leaves on a binary tree.
 // We use the same depth so the work-per-frame matches.
@@ -229,8 +229,8 @@ fn build_taffy_deep_auto_node(tree: &mut taffy::TaffyTree<()>, depth: usize) -> 
         let leaf = tree
             .new_leaf(taffy::Style {
                 size: taffy::Size {
-                    width: taffy::Dimension::from_length(10.0),
-                    height: taffy::Dimension::from_length(10.0),
+                    width: taffy::Dimension::from_length(10.0_f32),
+                    height: taffy::Dimension::from_length(10.0_f32),
                 },
                 ..Default::default()
             })

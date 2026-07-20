@@ -1,6 +1,6 @@
 //! Screen/world submission target descriptors and shared submit helpers.
 
-use hal::Color;
+use sigil_hal::Color;
 
 use crate::device_state::ReadyState;
 use crate::error::RendererError;
@@ -11,7 +11,7 @@ use crate::surface::WgpuSurface;
 
 /// Screen-space submission target. Orthographic, no depth, alpha-over.
 ///
-/// Pass this to [`WgpuRenderer::submit_screen`] to render UI geometry on top
+/// Pass this to [`crate::WgpuRenderer::submit_screen`] to render UI geometry on top
 /// of a frame. The renderer does not acquire or present a swapchain surface;
 /// the caller owns the full frame graph and passes in an already-acquired view.
 #[derive(Debug)]
@@ -44,7 +44,7 @@ pub struct ScreenSubmission<'a> {
 
 /// World-space submission target. View-projection transformed, depth-aware.
 ///
-/// Pass this to [`WgpuRenderer::submit_world`] to render depth-occluded UI
+/// Pass this to [`crate::WgpuRenderer::submit_world`] to render depth-occluded UI
 /// geometry (nameplates, damage numbers, 3D labels) into a world-space frame.
 ///
 /// **R13 ships `submit_world` as a stub** — see its doc comment.
@@ -197,7 +197,7 @@ pub(super) fn walk_screen(
 pub(super) fn render_frame_surface<F>(
     ready: &ReadyState,
     surface: &WgpuSurface,
-    clear_color: hal::Color,
+    clear_color: sigil_hal::Color,
     draw: F,
 ) -> Result<(), RendererError>
 where
@@ -225,7 +225,7 @@ pub(super) fn render_command_scene_surface(
     ready: &mut ReadyState,
     surface: &WgpuSurface,
     scene: &CommandScene,
-    clear_color: hal::Color,
+    clear_color: sigil_hal::Color,
     viewport: (f32, f32),
 ) -> Result<(), RendererError> {
     let Some((frame, view)) = acquire_frame(ready, surface)? else {

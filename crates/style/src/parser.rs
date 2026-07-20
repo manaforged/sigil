@@ -4,9 +4,12 @@ use core::fmt;
 
 use smallvec::SmallVec;
 
-use crate::{AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, Px, StyleAtom};
+use crate::{
+    AlignKind, Dimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, OverflowKind, Px,
+    StyleAtom,
+};
 
-const STRUCTURAL_TOKENS: [&str; 67] = [
+const STRUCTURAL_TOKENS: [&str; 77] = [
     "p-4",
     "px-4",
     "py-4",
@@ -26,6 +29,8 @@ const STRUCTURAL_TOKENS: [&str; 67] = [
     "h-4",
     "min-w-4",
     "max-w-4",
+    "min-h-4",
+    "max-h-4",
     "w-full",
     "h-full",
     "w-auto",
@@ -46,6 +51,13 @@ const STRUCTURAL_TOKENS: [&str; 67] = [
     "justify-end",
     "justify-between",
     "justify-around",
+    "grow",
+    "grow-0",
+    "shrink",
+    "shrink-0",
+    "overflow-hidden",
+    "overflow-scroll",
+    "overflow-visible",
     "rounded",
     "rounded-sm",
     "rounded-md",
@@ -63,8 +75,9 @@ const STRUCTURAL_TOKENS: [&str; 67] = [
     "text-lg",
     "text-xl",
     "text-on-surface",
+    "border",
+    "border-2",
     "border-accent",
-    "shadow-xl",
     "font-normal",
     "font-medium",
     "font-bold",
@@ -96,6 +109,13 @@ pub enum ParseError {
         /// Prefix that was rejected.
         prefix: String,
     },
+    /// Recognised CSS-shaped family with no paint path yet (DR-056 D2:
+    /// a token that parses but cannot render is rejected, never
+    /// silently dropped).
+    NotYetRenderable {
+        /// The rejected token.
+        token: String,
+    },
 }
 
 impl fmt::Display for ParseError {
@@ -112,6 +132,11 @@ impl fmt::Display for ParseError {
             Self::PseudoNotSupported { prefix } => {
                 write!(f, "Pseudo prefix '{prefix}:' is not supported")
             }
+            Self::NotYetRenderable { token } => write!(
+                f,
+                "'{token}' has no paint path yet; shadow-* tokens land with the \
+                 renderer shadow atoms (DR-056)",
+            ),
         }
     }
 }
@@ -128,6 +153,9 @@ pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, Pars
     let mut atoms = SmallVec::new();
     for token in input.split(' ').filter(|token| !token.is_empty()) {
         reject_prefix(token)?;
+        if push_overflow_atoms(token, &mut atoms)? {
+            continue;
+        }
         atoms.push(parse_token(token)?);
     }
     Ok(atoms)
@@ -145,6 +173,8 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "flex-col" => return Ok(StyleAtom::FlexDirection(FlexDir::Column)),
         "flex-row-reverse" => return Ok(StyleAtom::FlexDirection(FlexDir::RowReverse)),
         "flex-col-reverse" => return Ok(StyleAtom::FlexDirection(FlexDir::ColumnReverse)),
+        "flex-wrap" => return Ok(StyleAtom::FlexWrap(FlexWrapKind::Wrap)),
+        "flex-nowrap" => return Ok(StyleAtom::FlexWrap(FlexWrapKind::NoWrap)),
         "w-full" => return Ok(StyleAtom::Width(Dimension::Full)),
         "h-full" => return Ok(StyleAtom::Height(Dimension::Full)),
         "w-auto" => return Ok(StyleAtom::Width(Dimension::Auto)),
@@ -166,9 +196,54 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "font-mono" => return Ok(StyleAtom::FontFamily("mono")),
         "font-serif" => return Ok(StyleAtom::FontFamily("serif")),
         "font-icon" => return Ok(StyleAtom::FontFamily("icon")),
+        "grow" => return Ok(StyleAtom::FlexGrow(1000)),
+        "grow-0" => return Ok(StyleAtom::FlexGrow(0)),
+        "shrink" => return Ok(StyleAtom::FlexShrink(1000)),
+        "shrink-0" => return Ok(StyleAtom::FlexShrink(0)),
+        "border" => return Ok(StyleAtom::BorderWidth(Px(1))),
         _ => {}
     }
+    if token.starts_with("shadow-") {
+        return Err(ParseError::NotYetRenderable {
+            token: token.to_owned(),
+        });
+    }
     parse_prefixed_token(token).ok_or_else(|| unknown(token))
+}
+
+/// `overflow-*` expands to both axes, `overflow-x-*`/`overflow-y-*` to
+/// one; returns `Ok(true)` when the token was consumed.
+fn push_overflow_atoms(
+    token: &str,
+    atoms: &mut SmallVec<[StyleAtom; 16]>,
+) -> Result<bool, ParseError> {
+    let Some(rest) = token.strip_prefix("overflow-") else {
+        return Ok(false);
+    };
+    if let Some(value) = rest.strip_prefix("x-") {
+        let kind = overflow_kind(value).ok_or_else(|| unknown(token))?;
+        atoms.push(StyleAtom::OverflowX(kind));
+        return Ok(true);
+    }
+    if let Some(value) = rest.strip_prefix("y-") {
+        let kind = overflow_kind(value).ok_or_else(|| unknown(token))?;
+        atoms.push(StyleAtom::OverflowY(kind));
+        return Ok(true);
+    }
+    let kind = overflow_kind(rest).ok_or_else(|| unknown(token))?;
+    atoms.push(StyleAtom::OverflowX(kind));
+    atoms.push(StyleAtom::OverflowY(kind));
+    Ok(true)
+}
+
+const fn overflow_kind(value: &str) -> Option<OverflowKind> {
+    match value.as_bytes() {
+        b"visible" => Some(OverflowKind::Visible),
+        b"hidden" => Some(OverflowKind::Hidden),
+        b"scroll" => Some(OverflowKind::Scroll),
+        b"auto" => Some(OverflowKind::Auto),
+        _ => None,
+    }
 }
 
 fn parse_prefixed_token(token: &str) -> Option<StyleAtom> {
@@ -177,10 +252,28 @@ fn parse_prefixed_token(token: &str) -> Option<StyleAtom> {
         .or_else(|| align_atom(token))
         .or_else(|| justify_atom(token))
         .or_else(|| opacity_atom(token))
+        .or_else(|| border_atom(token))
         .or_else(|| theme_atom(token))
 }
 
+/// `border-N` is a literal pixel width (Tailwind shape: `border-2` is
+/// 2px, not on the 4px spacing scale); `border-<token>` is a theme
+/// colour reference.
+fn border_atom(token: &str) -> Option<StyleAtom> {
+    let value = token.strip_prefix("border-")?;
+    if let Ok(width) = value.parse::<i16>() {
+        return (width >= 0).then_some(StyleAtom::BorderWidth(Px(width)));
+    }
+    Some(StyleAtom::BorderThemeRef(leak_token(value)))
+}
+
 fn spacing_atom(token: &str) -> Option<StyleAtom> {
+    if let Some(value) = token.strip_prefix("gap-x-") {
+        return Some(StyleAtom::GapX(scale(value)?));
+    }
+    if let Some(value) = token.strip_prefix("gap-y-") {
+        return Some(StyleAtom::GapY(scale(value)?));
+    }
     let (prefix, value) = token.split_once('-')?;
     let px = scale(value)?;
     match prefix {
@@ -211,6 +304,12 @@ fn dimension_atom(token: &str) -> Option<StyleAtom> {
     if let Some(value) = token.strip_prefix("max-w-") {
         return Some(StyleAtom::MaxWidth(Dimension::Px(scale(value)?)));
     }
+    if let Some(value) = token.strip_prefix("min-h-") {
+        return Some(StyleAtom::MinHeight(Dimension::Px(scale(value)?)));
+    }
+    if let Some(value) = token.strip_prefix("max-h-") {
+        return Some(StyleAtom::MaxHeight(Dimension::Px(scale(value)?)));
+    }
     let (prefix, value) = token.split_once('-')?;
     let dimension = Dimension::Px(scale(value)?);
     match prefix {
@@ -239,6 +338,7 @@ fn justify_atom(token: &str) -> Option<StyleAtom> {
         "end" => Some(StyleAtom::JustifyContent(JustifyKind::End)),
         "between" => Some(StyleAtom::JustifyContent(JustifyKind::Between)),
         "around" => Some(StyleAtom::JustifyContent(JustifyKind::Around)),
+        "evenly" => Some(StyleAtom::JustifyContent(JustifyKind::Evenly)),
         _ => None,
     }
 }
@@ -256,16 +356,6 @@ fn theme_atom(token: &str) -> Option<StyleAtom> {
             token
                 .strip_prefix("text-")
                 .map(|value| StyleAtom::TextThemeRef(leak_token(value)))
-        })
-        .or_else(|| {
-            token
-                .strip_prefix("border-")
-                .map(|_| StyleAtom::UnknownThemeRef(leak_token(token)))
-        })
-        .or_else(|| {
-            token
-                .strip_prefix("shadow-")
-                .map(|_| StyleAtom::UnknownThemeRef(leak_token(token)))
         })
 }
 

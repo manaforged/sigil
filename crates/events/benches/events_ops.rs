@@ -7,23 +7,23 @@
 
 use accesskit as _;
 use allocation_counter as _;
-use reactive as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use events::{EventRouter, NodeEventsExt};
-use hal::{
+use sigil_events::{EventRouter, NodeEventsExt};
+use sigil_hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
     PhysicalKey, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
     Shortcut,
 };
-use kernel::prelude::*;
-use layout::prelude::*;
-use style::TextStyle;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_style::TextStyle;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
     let (mut cx, _root, layout) = wide_tree(1_000, false);
@@ -301,16 +301,16 @@ fn ctrl_s() -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::default()
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 
     fn measure_styled(
         &self,
         _content: &TextContent,
         _style: &TextStyle,
-        _space: hal::Size,
-    ) -> hal::LogicalSize {
-        hal::LogicalSize::default()
+        _space: sigil_hal::Size,
+    ) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::default()
     }
 }

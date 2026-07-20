@@ -33,11 +33,11 @@ fn app_tree(cx: &mut Cx) -> NodeId {
                     .fixed_size(1_024.0, 640.0)
                     .gap(0.0),
             )
-            .class("bg-surface")
+            .class(classes!("bg-surface"))
             .child(
                 text("api-explorer")
                     .layout(LayoutStyle::block().width(1_024.0))
-                    .class("text-on-surface text-lg font-bold px-4 py-2"),
+                    .class(classes!("text-on-surface text-lg font-bold px-4 py-2")),
             )
             .child(
                 splitter(SplitterOrientation::Horizontal)

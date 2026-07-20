@@ -11,7 +11,7 @@ name = "hello-tree"
 path = "src/main.rs"
 
 [dependencies]
-kernel = { workspace = true }
+sigil-kernel = { workspace = true }
 
 [lints]
 workspace = true

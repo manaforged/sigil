@@ -33,13 +33,13 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
 
-use animation_runtime::presets;
-use events::prelude::NodeEventsExt;
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
-use style::{
-    ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, Style, StyleAccess, StyleAtom, Theme,
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::NodeEventsExt;
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use sigil_reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
+use sigil_style::{
+    ClassSource, DisplayKind, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme,
     TransitionId,
 };
 
@@ -111,8 +111,8 @@ impl TooltipBuilder {
     /// delay window cancels the pending show; subsequent re-entries
     /// restart the timer.
     ///
-    /// Driven via `reactive::register_interval` — the host app must
-    /// call `reactive::tick_intervals()` once per frame for the
+    /// Driven via `sigil_reactive::register_interval` — the host app must
+    /// call `sigil_reactive::tick_intervals()` once per frame for the
     /// delay to elapse (the standard reactive runtime already does).
     #[must_use]
     pub const fn delay(mut self, ms: u64) -> Self {
@@ -240,10 +240,8 @@ impl StyleAccess for TooltipBuilder {
     }
 }
 
-impl StateHost for TooltipBuilder {}
-
 impl IntoNode for TooltipBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -319,8 +317,8 @@ const fn visibility_atoms(show: bool) -> &'static [StyleAtom] {
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::container as kernel_container;
-    use reactive::Runtime;
+    use sigil_kernel::container as kernel_container;
+    use sigil_reactive::Runtime;
 
     #[test]
     fn tooltip_builds_with_target_child() {

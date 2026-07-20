@@ -72,7 +72,7 @@ impl Font {
     ///
     /// # Errors
     ///
-    /// Returns [`ShaperError::InvalidFont`] when skrifa rejects the
+    /// Returns `ShaperError::InvalidFont` when skrifa rejects the
     /// table directory.
     pub fn from_bytes(data: Vec<u8>, index: u32) -> Result<Self, ShaperError> {
         // Validate at construction so `font_ref()` never fails downstream.
@@ -233,7 +233,7 @@ impl<'a> TextSegment<'a> {
 
 /// Resolved text-style projection driving glyph metrics.
 ///
-/// G1.4's engine populates this from `style::TextStyle`.
+/// G1.4's engine populates this from `sigil_style::TextStyle`.
 #[derive(Debug, Clone)]
 pub(crate) struct Style {
     pub(crate) size_px: f32,

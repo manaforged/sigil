@@ -71,7 +71,7 @@ where
     let prior = Rc::new(RefCell::new(SmallVec::<[NodeId; 4]>::new()));
     let prior_for_effect = Rc::clone(&prior);
 
-    reactive::effect_named("sigil-kernel::children_reactive", move || {
+    sigil_reactive::effect_named("sigil-kernel::children_reactive", move || {
         // Re-run the user closure so the effect tracks its signal deps,
         // then box the result for deferred rebuild. We can't touch `&mut Cx`
         // from here — the rebuild runs at flush time.

@@ -11,7 +11,7 @@
 //! # Coordinate convention
 //!
 //! All public `insert` / `remove` / `slice` / `line` offsets are
-//! **UTF-8 byte offsets**. The [`coords`] module provides conversions
+//! **UTF-8 byte offsets**. The `coords` module provides conversions
 //! to char, line/col, and UTF-16 units. Splitting on a non-boundary
 //! byte position is a logic error; the functions panic in debug mode.
 

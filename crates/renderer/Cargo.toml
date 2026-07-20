@@ -1,5 +1,5 @@
 [package]
-name = "renderer"
+name = "sigil-renderer"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,12 +7,15 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "wgpu-backed Renderer adapter for Sigil."
+readme.workspace = true
+keywords = ["wgpu", "rendering", "gui", "graphics"]
+categories = ["gui", "rendering"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
 # Rust 1.94 merged-doctests + Windows-msvc target misdetection
 # workaround. No runnable doctests are shipped — the lib.rs example
 # is a `text` block specifically to avoid this path.
-doctest = false
 
 [features]
 # Enables direct access to pipeline internals for criterion benches.
@@ -21,12 +24,12 @@ bench = []
 
 [dependencies]
 ahash = { workspace = true }
-kernel = { workspace = true }
-hal = { workspace = true }
-icons = { workspace = true }
-layout = { workspace = true }
-style = { workspace = true }
-text = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-icons = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-style = { workspace = true }
+sigil-text = { workspace = true }
 tracing = { workspace = true }
 wgpu = { workspace = true }
 pollster = { workspace = true }
@@ -46,7 +49,7 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 image = { workspace = true }
-shell = { workspace = true }
+sigil-shell = { path = "../shell" }
 proptest = { workspace = true }
 
 [[bench]]

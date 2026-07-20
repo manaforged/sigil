@@ -6,8 +6,8 @@
 //! caller-owned `wgpu::TextureView` — never naming the internal `renderer` /
 //! `hal` crates directly. See DR-054.
 
-pub use hal::{Color, PhysicalSize, RenderedGlyph};
-pub use renderer::{
+pub use sigil_hal::{Color, PhysicalSize, RenderedGlyph};
+pub use sigil_renderer::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,
     DrawParams, DrawPattern, DrawRect, DrawSprite, Fill, GlyphRun, GradientStop, LayerEffect,
     LayerScope, LinearGradient, OffscreenTarget, PatternKind, RendererError, Scene, SceneBuilder,

@@ -3,9 +3,9 @@
 use std::cell::Cell;
 
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
-use hal::Point;
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_hal::Point;
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::{SmallVec, smallvec};
 
 use crate::EventHandlers;

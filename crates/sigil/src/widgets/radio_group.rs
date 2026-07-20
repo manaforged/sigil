@@ -17,24 +17,22 @@
 //! loaded from disk, enum-derived keys) compose without
 //! `Box::leak`.
 //!
-//! # V1 a11y caveat
+//! # Keyboard + a11y
 //!
 //! The widget advertises `Role::RadioGroup` + `Role::RadioButton`
-//! and now wires the per-row `checked` signal so screen readers can
-//! read which option is selected. **But** the rows are not yet
-//! keyboard-operable: they're not in the focus ring, they have no
-//! focus-ring atom, and they accept neither Space/Enter activation
-//! nor arrow-key navigation. Keyboard-only users currently cannot
-//! reach or change the selection through the focus router. Use at
-//! pointer-driven call sites only until the keyboard pass lands.
+//! with per-row `checked` signals, and is fully keyboard-operable
+//! (5/5 Wave 3 T10): the group is focusable; `↓` / `↑` move the
+//! selection with wraparound, `Home` / `End` jump to the edges, and
+//! the checked row shows the focus ring while the group holds focus
+//! (ARIA roving-selection behavior — selection follows movement).
 
 use std::rc::Rc;
 
-use events::prelude::NodeEventsExt;
-use kernel::{NodeBuilder, Role, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived};
-use style::{NodeStyleExt, Style, StyleAtom, Tone};
+use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived};
+use sigil_style::{NodeStyleExt, Style, StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::prelude::{IntoNode, StyleAccess};
@@ -51,7 +49,7 @@ pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<RadioOption>,
     tone: Tone,
-    style_accumulator: style::Style,
+    style_accumulator: sigil_style::Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -69,7 +67,7 @@ impl RadioGroupBuilder {
             selected,
             options: Vec::new(),
             tone: Tone::Primary,
-            style_accumulator: style::Style::new(),
+            style_accumulator: sigil_style::Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
@@ -97,20 +95,81 @@ impl RadioGroupBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let selected = self.selected;
         let tone = self.tone;
+        let keys: Vec<String> = self.options.iter().map(|opt| opt.key.clone()).collect();
+        // Roving-selection keyboard model (5/5 Wave 3 T10): the group is
+        // focusable; Arrow/Home/End move the SELECTION itself (ARIA radio
+        // behavior — selection follows movement), and the checked row
+        // shows the focus ring while the group holds focus.
+        let group_focus = sigil_reactive::signal(false);
         let mut group = container()
             .role(Role::RadioGroup)
-            .layout(self.layout_overrides.apply(group_layout()));
+            .focusable(true)
+            .layout(self.layout_overrides.apply(group_layout()))
+            .focus_in(move || group_focus.set(true))
+            .focus_out(move || group_focus.set(false));
         for opt in self.options {
-            group = group.child(option_row(opt, selected, tone));
+            group = group.child(option_row(opt, selected, tone, group_focus));
         }
         if !self.style_accumulator.is_empty() {
             group = group.style(self.style_accumulator);
         }
+        let next_keys = keys.clone();
+        let prev_keys = keys.clone();
+        let home_keys = keys.clone();
+        let end_keys = keys;
         group
+            .key(Key::ArrowDown, move |event| {
+                select_offset(selected, &next_keys, 1);
+                event.stop_propagation();
+            })
+            .key(Key::ArrowUp, move |event| {
+                select_offset(selected, &prev_keys, -1);
+                event.stop_propagation();
+            })
+            .key(Key::Home, move |event| {
+                select_edge(selected, &home_keys, true);
+                event.stop_propagation();
+            })
+            .key(Key::End, move |event| {
+                select_edge(selected, &end_keys, false);
+                event.stop_propagation();
+            })
     }
 }
 
-fn option_row(opt: RadioOption, selected: Signal<String>, tone: Tone) -> NodeBuilder {
+/// Move the selection `delta` steps from the currently selected key,
+/// wrapping at both ends (ARIA radio navigation). No-ops on an empty
+/// option list.
+fn select_offset(selected: Signal<String>, keys: &[String], delta: isize) {
+    if keys.is_empty() {
+        return;
+    }
+    let current = selected.get();
+    let index = keys
+        .iter()
+        .position(|key| key == &current)
+        .map_or(0, usize::cast_signed);
+    let len = keys.len().cast_signed();
+    let next = (index + delta).rem_euclid(len).cast_unsigned();
+    if let Some(key) = keys.get(next) {
+        selected.set(key.clone());
+    }
+}
+
+/// Select the first (`first == true`) or last option. No-ops when empty.
+fn select_edge(selected: Signal<String>, keys: &[String], first: bool) {
+    let key = if first { keys.first() } else { keys.last() };
+    if let Some(key) = key {
+        selected.set(key.clone());
+    }
+}
+
+fn option_row(
+    opt: RadioOption,
+    selected: Signal<String>,
+    tone: Tone,
+    group_focus: Signal<bool>,
+) -> NodeBuilder {
     let RadioOption { key, label } = opt;
     let key_for_activate = key.clone();
     let activate = Rc::new(move || selected.set(key_for_activate.clone()));
@@ -121,6 +180,11 @@ fn option_row(opt: RadioOption, selected: Signal<String>, tone: Tone) -> NodeBui
     // (caught by adversarial review 2026-05-21).
     let key_for_checked = key.clone();
     let checked: Signal<bool> = derived(move || selected.get() == key_for_checked);
+    // Virtual-focus ring: visible while the group holds focus AND this
+    // row is the checked one (selection follows movement, so the ring
+    // is always on the selected row).
+    let key_for_ring = key.clone();
+    let ring_visible = derived(move || group_focus.get() && selected.get() == key_for_ring);
     container()
         .role(Role::RadioButton)
         .label(label.clone())
@@ -128,6 +192,7 @@ fn option_row(opt: RadioOption, selected: Signal<String>, tone: Tone) -> NodeBui
         .layout(option_layout())
         .class("rounded-sm")
         .tone(tone)
+        .focus_ring(sigil_style::FocusRing::new(ring_visible))
         .child(option_mark(selected, key, tone))
         .child(text(label).class("text-on-surface"))
         .pointer_up(move |_event| {
@@ -226,7 +291,7 @@ fn mark_inner_layout() -> LayoutStyle {
 }
 
 impl StyleAccess for RadioGroupBuilder {
-    fn style_mut(&mut self) -> &mut style::Style {
+    fn style_mut(&mut self) -> &mut sigil_style::Style {
         &mut self.style_accumulator
     }
 }
@@ -238,7 +303,7 @@ impl WidgetLayoutExt for RadioGroupBuilder {
 }
 
 impl IntoNode for RadioGroupBuilder {
-    fn build(self, cx: &mut kernel::Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut sigil_kernel::Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -247,8 +312,8 @@ impl IntoNode for RadioGroupBuilder {
 #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::Cx;
-    use reactive::{Runtime, signal};
+    use sigil_kernel::Cx;
+    use sigil_reactive::{Runtime, signal};
 
     #[test]
     fn group_carries_radio_group_role() {
@@ -260,7 +325,7 @@ mod tests {
                 .option("b", "B")
                 .build(&mut cx);
             let node = cx.get(id).expect("group node");
-            assert_eq!(node.a11y.role, kernel::Role::RadioGroup);
+            assert_eq!(node.a11y.role, sigil_kernel::Role::RadioGroup);
             assert_eq!(node.children().len(), 2, "two option rows");
         });
     }
@@ -273,7 +338,7 @@ mod tests {
             let id = radio_group(selected).option("a", "A").build(&mut cx);
             let group = cx.get(id).expect("group node");
             let row = cx.get(group.children()[0]).expect("row node");
-            assert_eq!(row.a11y.role, kernel::Role::RadioButton);
+            assert_eq!(row.a11y.role, sigil_kernel::Role::RadioButton);
         });
     }
 
@@ -290,10 +355,12 @@ mod tests {
 
     #[test]
     fn mark_ring_clears_non_text_contrast() {
-        use style::Rgba8;
-        use style::scale::ScaleRole;
-        use style::theme::Theme;
+        use sigil_style::Rgba8;
+        use sigil_style::scale::ScaleRole;
+        use sigil_style::theme::Theme;
 
+        // keep luminance arithmetic bit-stable for goldens
+        #[allow(clippy::suboptimal_flops)]
         fn luminance(c: Rgba8) -> f64 {
             let ch = |v: u8| {
                 let v = f64::from(v) / 255.0;

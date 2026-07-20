@@ -1,7 +1,7 @@
 //! Wave-2 dogfood widget goldens — icon, dot, radio_group, anchored menu,
 //! validated_field.
 //!
-//! Bake with `SIGIL_REGEN_GOLDENS=1 cargo test -p sigil --test
+//! Bake with `SIGIL_REGEN_GOLDENS=1 cargo test -p sigil-ui --test
 //! visual_goldens_wave2`. Skips when no GPU adapter is present.
 
 #![allow(missing_docs)]
@@ -10,22 +10,22 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 
 use sigil::prelude::*;
-use style::Size as ControlSize;
+use sigil_style::Size as ControlSize;
 
 mod golden_support;
 

@@ -21,7 +21,7 @@ fn main() -> sigil::AppResult<()> {
 
 fn build_root(cx: &mut Cx) -> NodeId {
     let state = AppState::new();
-    cx.add(app_tree(state))
+    cx.add(app_tree(&state))
 }
 
 #[cfg(test)]
@@ -34,7 +34,7 @@ mod tests {
     fn tree_builds_without_panic() {
         with_cx("csv-viewer-smoke", |cx| {
             let state = AppState::new();
-            let root = cx.add(app_tree(state));
+            let root = cx.add(app_tree(&state));
             assert!(cx.child_count(root) > 0, "root must have children");
         });
     }

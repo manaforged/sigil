@@ -6,30 +6,31 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_hal as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
+use zeno as _;
 
-use hal::{Color, Point, Rect};
-use renderer::{
+use sigil_hal::{Color, Point, Rect};
+use sigil_renderer::{
     CommandScene, CornerRadii, Fill, OffscreenTarget, PatternKind, SceneBuilder, SceneCommand,
     ScenePatternStyle, Stroke, StrokeAlign, StrokeStyle, WgpuRenderer,
 };
-use style::Rgba8;
+use sigil_style::Rgba8;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 80.0);
@@ -148,7 +149,12 @@ const fn checker() -> PatternKind {
 
 const fn outside_stroke() -> Stroke {
     Stroke {
-        color: [1.0, 1.0, 1.0, 1.0],
+        color: Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
         width: 4.0,
         style: StrokeStyle::Solid,
         align: StrokeAlign::Outside,

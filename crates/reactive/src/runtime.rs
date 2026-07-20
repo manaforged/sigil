@@ -10,9 +10,9 @@
 //!
 //! - [`runtime_slots`](crate::runtime_slots) — arena slot type
 //!   definitions (`OwnerSlot`, `SignalSlot`, …).
-//! - [`runtime_phase`](crate::runtime_phase) — frame-phase transitions
+//! - `runtime_phase` — frame-phase transitions
 //!   (`begin_effect`, `begin_layout`, `begin_paint`, `end_frame`).
-//! - [`runtime_executor`](crate::runtime_executor) — executor install
+//! - `runtime_executor` — executor install
 //!   plus the completion-queue surface.
 //! - [`runtime_drain`](crate::runtime_drain) — module-scope drain
 //!   helpers (`drain_pending_completions`, `drain_observers_to_fixpoint`,
@@ -35,7 +35,7 @@ use core::sync::atomic::{AtomicU64, Ordering};
 use std::collections::{BTreeSet, VecDeque};
 use std::sync::Arc;
 
-use actions::ActionRegistry;
+use sigil_actions::ActionRegistry;
 
 use crate::arena::Arena;
 use crate::async_cx::{MainThreadDispatcher, TaskExecutor};
@@ -260,8 +260,8 @@ pub(crate) fn runtime_id() -> u64 {
 ///
 /// The public surface is split across this module plus three siblings:
 ///
-/// - [`runtime_phase`](crate::runtime_phase) — frame-phase transitions.
-/// - [`runtime_executor`](crate::runtime_executor) — executor /
+/// - `runtime_phase` — frame-phase transitions.
+/// - `runtime_executor` — executor /
 ///   completion-queue API.
 /// - here — root-scope construction and phase introspection.
 #[derive(Debug)]
@@ -281,7 +281,7 @@ impl Runtime {
     /// # Example
     ///
     /// ```rust,ignore
-    /// use reactive::{effect, signal, Runtime};
+    /// use sigil_reactive::{effect, signal, Runtime};
     ///
     /// let result = Runtime::scope("example", || {
     ///     let n = signal(1_i32);

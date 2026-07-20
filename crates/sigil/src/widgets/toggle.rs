@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
-use animation_runtime::presets;
-use events::prelude::{Key, LogicalKey, NodeEventsExt};
-use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use reactive::Signal;
-use style::{
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::Signal;
+use sigil_style::{
     ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme,
     TransitionId,
 };
@@ -184,7 +184,7 @@ impl ToggleBuilder {
 }
 
 impl IntoNode for ToggleBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

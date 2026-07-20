@@ -1,4 +1,4 @@
-use style::classes;
+use sigil_style::classes;
 
 fn main() {
     let _classes = classes!("p-notanumber");

@@ -9,11 +9,11 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use reactive::{Signal, derived_eq, signal};
-use style::{ClassSource, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
+use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil_reactive::{Signal, derived_eq, signal};
+use sigil_style::{ClassSource, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
 
 const VIEWPORT_WIDTH: f32 = 320.0;
 const VIEWPORT_HEIGHT: f32 = 240.0;
@@ -159,10 +159,8 @@ impl StyleAccess for ScrollBuilder {
     }
 }
 
-impl StateHost for ScrollBuilder {}
-
 impl IntoNode for ScrollBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -309,7 +307,9 @@ fn jump(ev: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
 /// document in one event. Propagation only stops when the scroll
 /// position changes; at top/bottom the event bubbles so an outer
 /// scroll container can take over.
-fn wheel(ev: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, max: f32) {
+///
+/// Shared with `virtual_list`, whose viewport scrolls the same way.
+pub(crate) fn wheel(ev: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, max: f32) {
     let dy = match ev.delta {
         ScrollDelta::Pixels(p) => p.y,
         ScrollDelta::Lines(l) => (l.y * SCROLL_LINE).clamp(-height, height),

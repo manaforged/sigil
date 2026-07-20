@@ -27,17 +27,17 @@
 // every integration test's compilation unit; alias the ones this test
 // doesn't reference directly so `-D unused-crate-dependencies` stays
 // silent (same pattern as `scale_handling.rs`).
-use a11y as _;
 use accesskit as _;
 use crossbeam_channel as _;
-use events as _;
-use hal as _;
-use kernel as _;
-use layout as _;
-use renderer as _;
-use shell as _;
-use style as _;
-use text as _;
+use sigil_a11y as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_renderer as _;
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -47,9 +47,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use app::install_g5_executor;
-use reactive::{AsyncContext, Entity, Runtime, Task};
-use tasks::AsyncRuntime;
+use sigil_app::install_g5_executor;
+use sigil_reactive::{AsyncContext, Entity, Runtime, Task};
+use sigil_tasks::AsyncRuntime;
 
 /// Entity payload that carries a shared atomic counter so the worker
 /// thread can prove it observed the entity through `acx.update`.

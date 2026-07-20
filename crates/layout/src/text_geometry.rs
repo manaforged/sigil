@@ -14,7 +14,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use style::TextStyle;
+use sigil_style::TextStyle;
 
 /// Geometry of a caret at a byte offset within a single laid-out line.
 ///

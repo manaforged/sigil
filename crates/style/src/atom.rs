@@ -99,11 +99,22 @@ pub enum JustifyKind {
     Between,
     /// Distribute with space around items.
     Around,
+    /// Distribute with equal space between and around items.
+    Evenly,
+}
+
+/// Flex wrap keyword — maps to `sigil_layout::FlexWrap`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FlexWrapKind {
+    /// Single line (default).
+    NoWrap,
+    /// Multi-line: items wrap onto new lines.
+    Wrap,
 }
 
 /// Overflow clipping behaviour for a single axis.
 ///
-/// Maps to [`layout::Overflow`] during style resolution.
+/// Maps to `sigil_layout::Overflow` during style resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum OverflowKind {
     /// Content extends past the box without clipping.
@@ -112,6 +123,10 @@ pub enum OverflowKind {
     Hidden,
     /// Same as `Hidden` but reserves space for a scrollbar.
     Scroll,
+    /// CSS `auto`: currently aliases [`Scroll`](Self::Scroll)
+    /// (scrollbars-when-needed — our Scroll semantics). Kept as a
+    /// distinct variant so a future auto-specific path has a home.
+    Auto,
 }
 
 /// Stable transition preset identifier.
@@ -131,6 +146,12 @@ pub struct RenderStyle {
     pub text_color: Option<Rgba8>,
     /// Border radius in logical pixels.
     pub border_radius: Option<Px>,
+    /// Border stroke width in logical pixels.
+    pub border_width: Option<Px>,
+    /// Resolved border stroke colour. `None` with a set width means
+    /// "currentColor": the paint layer falls back to the resolved text
+    /// colour, then the theme's on-surface (the CSS border shape).
+    pub border_color: Option<Rgba8>,
     /// Opacity encoded as `value * 10000`.
     pub opacity: u16,
 }
@@ -141,6 +162,8 @@ impl Default for RenderStyle {
             background_color: None,
             text_color: None,
             border_radius: None,
+            border_width: None,
+            border_color: None,
             opacity: 10_000,
         }
     }
@@ -179,6 +202,10 @@ pub enum StyleAtom {
     MarginLeft(Px),
     /// Flex or grid gap.
     Gap(Px),
+    /// Main-axis (width-axis) gap only — `gap-x-N` in the class grammar.
+    GapX(Px),
+    /// Cross-axis (height-axis) gap only — `gap-y-N` in the class grammar.
+    GapY(Px),
     /// Preferred width.
     Width(Dimension),
     /// Preferred height.
@@ -187,10 +214,16 @@ pub enum StyleAtom {
     MinWidth(Dimension),
     /// Maximum width.
     MaxWidth(Dimension),
+    /// Minimum height.
+    MinHeight(Dimension),
+    /// Maximum height.
+    MaxHeight(Dimension),
     /// Display mode.
     Display(DisplayKind),
     /// Flex direction.
     FlexDirection(FlexDir),
+    /// Flex wrap behaviour.
+    FlexWrap(FlexWrapKind),
     /// Cross-axis alignment.
     AlignItems(AlignKind),
     /// Main-axis distribution.
@@ -229,6 +262,17 @@ pub enum StyleAtom {
     FgOnSolid,
     /// Border radius.
     BorderRadius(Px),
+    /// Border stroke width in logical pixels (all four sides).
+    /// Box-model-affecting: the layout solvers consume it as border
+    /// edge thickness; the renderer paints it as an inside-aligned
+    /// stroke (DR-057 D3).
+    BorderWidth(Px),
+    /// Concrete border stroke colour.
+    BorderColor(ColorAtom),
+    /// Theme-token border stroke colour.
+    BorderThemeRef(&'static str),
+    /// Border colour taken from the active tone scale at `step`.
+    BorderToneStep(u8),
     /// Opacity encoded as `value * 10000`.
     Opacity(u16),
     /// Font size.

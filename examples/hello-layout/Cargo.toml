@@ -1,5 +1,6 @@
 [package]
 name = "hello-layout"
+publish = false
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,9 +10,9 @@ authors.workspace = true
 description = "Headless sigil-layout example."
 
 [dependencies]
-kernel = { workspace = true }
-layout = { workspace = true }
-text = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-text = { workspace = true }
 
 [lints]
 workspace = true

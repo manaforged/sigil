@@ -4,8 +4,8 @@
 
 use std::rc::Rc;
 
-use kernel::{Cx, IntoNode};
-use style::{StateHost, Style, StyleAccess};
+use sigil_kernel::{Cx, IntoNode};
+use sigil_style::{Style, StyleAccess};
 
 use super::super::shared::Activate;
 use super::nav::SelectObserver;
@@ -157,10 +157,8 @@ impl StyleAccess for CommandMenuBuilder {
     }
 }
 
-impl StateHost for CommandMenuBuilder {}
-
 impl IntoNode for CommandMenuBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         into_node_builder(
             self.level,
             self.on_select,

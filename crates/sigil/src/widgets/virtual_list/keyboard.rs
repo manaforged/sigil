@@ -1,6 +1,6 @@
-use events::prelude::{Key, KeyEvent, NodeEventsExt};
-use kernel::NodeBuilder;
-use reactive::Signal;
+use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt};
+use sigil_kernel::NodeBuilder;
+use sigil_reactive::Signal;
 
 use super::window::{positive_px, prefix_row_top, row_top, total_height, total_height_variable};
 use super::{DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT};
@@ -8,6 +8,7 @@ use super::{DEFAULT_ROW_HEIGHT, DEFAULT_VIEWPORT_HEIGHT};
 #[derive(Clone)]
 pub(super) struct KeyboardRuntime {
     total_rows: usize,
+    total_rows_live: Option<Signal<usize>>,
     row_height: f32,
     viewport_height: f32,
     scroll_y: Signal<f32>,
@@ -17,6 +18,7 @@ pub(super) struct KeyboardRuntime {
 
 pub(super) struct KeyboardRuntimeInit {
     pub(super) total_rows: usize,
+    pub(super) total_rows_live: Option<Signal<usize>>,
     pub(super) row_height: f32,
     pub(super) viewport_height: f32,
     pub(super) scroll_y: Signal<f32>,
@@ -28,12 +30,20 @@ impl KeyboardRuntime {
     pub(super) fn new(init: KeyboardRuntimeInit) -> Self {
         Self {
             total_rows: init.total_rows,
+            total_rows_live: init.total_rows_live,
             row_height: init.row_height,
             viewport_height: init.viewport_height,
             scroll_y: init.scroll_y,
             focused_row: init.focused_row,
             row_tops: init.row_tops,
         }
+    }
+
+    /// Live row count: the bound (`items_bind`) path tracks the items
+    /// signal so filter / sort mutations re-clamp navigation targets;
+    /// the static path falls back to the build-time snapshot.
+    fn count(&self) -> usize {
+        self.total_rows_live.map_or(self.total_rows, Signal::get)
     }
 
     fn move_forward(self, event: &mut KeyEvent, rows: usize) {
@@ -54,7 +64,7 @@ impl KeyboardRuntime {
     }
 
     fn set_focus(&self, index: usize) {
-        let max_row = self.total_rows.saturating_sub(1);
+        let max_row = self.count().saturating_sub(1);
         let focused = index.min(max_row);
         self.focused_row.set(focused);
         self.scroll_focused_row_into_view(focused);
@@ -75,15 +85,16 @@ impl KeyboardRuntime {
 
     #[allow(clippy::cast_precision_loss)]
     fn average_variable_row_height(&self, row_tops: &[f32]) -> f32 {
-        if self.total_rows == 0 {
+        let count = self.count();
+        if count == 0 {
             DEFAULT_ROW_HEIGHT
         } else {
-            total_height_variable(row_tops) / self.total_rows as f32
+            total_height_variable(row_tops) / count as f32
         }
     }
 
     fn scroll_focused_row_into_view(&self, focused: usize) {
-        if self.total_rows == 0 {
+        if self.count() == 0 {
             self.scroll_y.set(0.0);
             return;
         }
@@ -118,7 +129,7 @@ impl KeyboardRuntime {
 
     fn max_scroll(&self) -> f32 {
         let content_height = self.row_tops.as_ref().map_or_else(
-            || total_height(self.total_rows, self.row_height),
+            || total_height(self.count(), self.row_height),
             |row_tops| total_height_variable(row_tops),
         );
         (content_height - self.viewport_height).max(0.0)
@@ -152,6 +163,7 @@ pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: KeyboardRuntime) -
             home.clone().jump(event, 0);
         })
         .key(Key::End, move |event| {
-            end.clone().jump(event, end.total_rows.saturating_sub(1));
+            let last = end.count().saturating_sub(1);
+            end.clone().jump(event, last);
         })
 }

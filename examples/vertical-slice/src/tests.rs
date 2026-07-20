@@ -1,8 +1,8 @@
 use super::*;
 
-use app::DefaultTextMeasure;
-use hal::{KeyEventInit, Point, PointerEventInit, Rect};
-use renderer::emit_scene;
+use sigil_app::DefaultTextMeasure;
+use sigil_hal::{KeyEventInit, Point, PointerEventInit, Rect};
+use sigil_renderer::emit_scene;
 
 #[test]
 fn slice_emits_initial_and_reactive_text() -> core::result::Result<(), Box<dyn std::error::Error>> {

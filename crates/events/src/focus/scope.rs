@@ -6,8 +6,8 @@
 //! which stays in the parent module) split into its own child module,
 //! matching the `focus/targets.rs` precedent already in this crate.
 
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use super::{FocusManager, FocusScopeEntry};
@@ -123,10 +123,10 @@ fn first_focusable_in_subtree(cx: &Cx, id: NodeId) -> Option<NodeId> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use kernel::{FocusScopeKind, container};
-    use layout::prelude::*;
+    use sigil_kernel::{FocusScopeKind, container};
+    use sigil_layout::prelude::*;
 
-    fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut kernel::Node) {
+    fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut sigil_kernel::Node) {
         move |node| {
             node.a11y.focus_scope = Some(kind);
         }

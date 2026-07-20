@@ -1,4 +1,4 @@
-//! Theme shape language — orthogonal to colour [`Palette`](crate::Palette).
+//! Theme shape language — orthogonal to colour [`Palette`](crate::palette::Palette).
 //!
 //! A `Variant` is the "shape vocabulary" of a theme: font family,
 //! corner radius, shadow strength, whether hover state lifts. Any
@@ -16,7 +16,7 @@
 //! Future variants (Brutalist, Glass, Soft) are additive — adding one
 //! does not touch palettes.
 
-/// Shape language identifier. Pair with a [`Palette`](crate::Palette)
+/// Shape language identifier. Pair with a [`Palette`](crate::palette::Palette)
 /// to produce a [`Theme`](crate::Theme).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Variant {

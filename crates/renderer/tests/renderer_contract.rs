@@ -1,4 +1,4 @@
-//! Contract tests for [`renderer::WgpuRenderer`].
+//! Contract tests for [`sigil_renderer::WgpuRenderer`].
 //!
 //! A real-GPU test suite is not practical in CI — we don't know what
 //! hardware runners have. We split the tests into two tiers:
@@ -24,28 +24,29 @@ use bytemuck as _;
 use criterion as _;
 use half as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
-use text as _;
 use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
 
-use icons as _;
+use sigil_icons as _;
+use zeno as _;
 
 use core::error::Error;
 use std::time::{Duration, Instant};
 
-use hal::{Color, PhysicalSize, Renderer};
-use renderer::{RendererError, WgpuRenderer};
+use sigil_hal::{Color, PhysicalSize, Renderer};
+use sigil_renderer::{RendererError, WgpuRenderer};
 
 const SLUG_SHADER: &str = include_str!("../src/slug/shader.wgsl");
 
@@ -128,7 +129,7 @@ fn renderer_error_is_send_sync_static() {
     assert_send_sync_static::<RendererError>();
 }
 
-/// `WgpuRenderer` must implement `hal::Renderer` with the expected
+/// `WgpuRenderer` must implement `sigil_hal::Renderer` with the expected
 /// associated types. Pure-types check — no GPU needed.
 #[test]
 fn renderer_associated_types_match_hal_contract() {

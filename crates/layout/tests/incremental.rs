@@ -5,19 +5,19 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
+use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 
-use hal::Size;
-use kernel::prelude::*;
-use layout::prelude::*;
-use reactive::{Runtime, signal};
+use sigil_hal::Size;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
+use sigil_style::{Dimension, NodeStyleExt, Px, StyleAtom};
 use stub::stub_engine;
-use style::{Dimension, NodeStyleExt, Px, StyleAtom};
 
 const AVAILABLE: Size = Size::fixed(120.0, 40.0);
 static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
@@ -406,7 +406,7 @@ fn layout_result(cx: &Cx, id: NodeId) -> LayoutResult {
         .expect("layout result exists")
 }
 
-fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")
@@ -416,12 +416,12 @@ fn layout_rect(cx: &Cx, id: NodeId) -> hal::Rect {
 struct ContentWidthMeasure;
 
 impl TextMeasure for ContentWidthMeasure {
-    fn measure(&self, content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
         };
         let clamped = u16::try_from(len).unwrap_or(u16::MAX);
-        hal::LogicalSize::new(f32::from(clamped) * 10.0, 10.0)
+        sigil_hal::LogicalSize::new(f32::from(clamped) * 10.0, 10.0)
     }
 }

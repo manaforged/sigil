@@ -13,7 +13,8 @@
 
 #![allow(missing_docs)]
 
-use actions_macros as _;
+use sigil as _;
+use sigil_actions_macros as _;
 use smallvec as _;
 
 use std::cell::Cell;
@@ -22,8 +23,8 @@ use std::rc::Rc;
 
 use std::any::Any;
 
-use actions::{Action, ActionRegistry, HandlerKey};
 use criterion::{Criterion, criterion_group, criterion_main};
+use sigil_actions::{Action, ActionRegistry, HandlerKey};
 
 #[derive(Clone)]
 struct Ping;

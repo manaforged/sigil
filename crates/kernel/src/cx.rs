@@ -4,8 +4,8 @@ use core::fmt::Write as _;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::{AHashMap, AHashSet};
-use hal::Scale;
-use reactive::{Owner, OwnerId};
+use sigil_hal::Scale;
+use sigil_reactive::{Owner, OwnerId};
 use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
@@ -260,7 +260,7 @@ impl Cx {
 
     /// The current per-window scale factor. Defaults to [`Scale::ONE`]
     /// until the shell adapter delivers the first
-    /// [`WindowEvent::ScaleFactorChanged`](hal::WindowEvent::ScaleFactorChanged).
+    /// [`WindowEvent::ScaleFactorChanged`](sigil_hal::WindowEvent::ScaleFactorChanged).
     #[must_use]
     pub const fn scale(&self) -> Scale {
         self.scale

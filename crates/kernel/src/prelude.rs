@@ -2,5 +2,5 @@
 
 pub use crate::{
     A11yProps, AccessibleName, Action, Cx, IntoNode, Node, NodeBuilder, NodeExtensions, NodeId,
-    NodeType, Role, TextBuilder, TextContent, container, fragment, text,
+    NodeType, Role, TextBuilder, TextContent, TopLayer, container, fragment, text,
 };

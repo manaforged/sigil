@@ -1,5 +1,9 @@
 #![allow(missing_docs)]
-#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::cast_precision_loss
+)]
 
 //! Regression: switching a deep `children_reactive` subtree to taller content
 //! inside a big tree (so layout takes the `incremental_sync_and_measure` path)
@@ -13,22 +17,22 @@
 //! position. A long editor file then painted over the sidebar. Fixed by
 //! dropping containment roots nested under another (engine.rs `containment_roots`).
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -38,10 +42,10 @@ const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1) as f32;
-        hal::LogicalSize::new(120.0, lines * 16.8)
+        sigil_hal::LogicalSize::new(120.0, lines * 16.8)
     }
 }
 

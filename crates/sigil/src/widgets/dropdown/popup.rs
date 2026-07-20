@@ -1,10 +1,11 @@
 use std::rc::Rc;
 
-use kernel::{NodeBuilder, Role, container, text};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use style::{DisplayKind, NodeStyleExt, StyleAtom};
+use sigil_kernel::{NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 
-use super::super::shared::{Activate, disabled_now};
+use super::super::shared::disabled_now;
+use super::builder::IndexChange;
 
 pub(super) const TRIGGER_WIDTH: f32 = 200.0;
 pub(super) const TRIGGER_HEIGHT: f32 = 40.0;
@@ -17,16 +18,16 @@ pub(super) static OPTION_ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(
 
 #[derive(Clone, Copy)]
 pub(super) struct OptionCtx {
-    pub(super) selected: reactive::Signal<usize>,
-    pub(super) open: reactive::Signal<bool>,
-    pub(super) cursor: reactive::Signal<usize>,
-    pub(super) disabled: Option<reactive::Signal<bool>>,
+    pub(super) selected: sigil_reactive::Signal<usize>,
+    pub(super) open: sigil_reactive::Signal<bool>,
+    pub(super) cursor: sigil_reactive::Signal<usize>,
+    pub(super) disabled: Option<sigil_reactive::Signal<bool>>,
 }
 
 pub(super) fn build_popup(
     ctx: OptionCtx,
     options: &Rc<Vec<String>>,
-    on_change: &Activate,
+    on_change: &IndexChange,
 ) -> NodeBuilder {
     let OptionCtx {
         selected,
@@ -40,6 +41,9 @@ pub(super) fn build_popup(
 
     let mut popup = container()
         .role(Role::ListBox)
+        // Top layer: without this the popup paints in tree order and any
+        // later sibling (the next settings row) draws over it.
+        .with(sigil_kernel::TopLayer)
         .layout(
             LayoutStyle::flex_column()
                 .fixed_size(TRIGGER_WIDTH, popup_h)
@@ -77,15 +81,18 @@ pub(super) const fn popup_display(open: bool) -> &'static [StyleAtom] {
     }
 }
 
-fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) -> NodeBuilder {
-    use events::prelude::NodeEventsExt;
+fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChange) -> NodeBuilder {
+    use sigil_events::prelude::NodeEventsExt;
     container()
         .role(Role::ListBoxOption)
         .label(label.clone())
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(TRIGGER_WIDTH, OPTION_HEIGHT)
-                .padding(8.0),
+                .padding(8.0)
+                // Clip labels wider than the row at the popup's edge
+                // instead of painting past it (matches trigger_label).
+                .overflow_x(Overflow::Hidden),
         )
         .style_reactive(move || option_atoms(idx, ctx.selected.get(), ctx.cursor.get()))
         .pointer_up(move |ev| {
@@ -97,7 +104,7 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: Activate) 
             }
             ctx.selected.set(idx);
             ctx.open.set(false);
-            on_change();
+            on_change(idx);
             ev.stop_propagation();
         })
         .pointer_enter(move |_| {

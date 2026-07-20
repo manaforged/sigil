@@ -7,31 +7,31 @@
 
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![allow(clippy::unwrap_used, clippy::panic, clippy::print_stdout)]
 
 use std::fs;
 use std::path::PathBuf;
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 mod golden_support;
-use app::DefaultTextMeasure;
 use golden_support::{InteractionMode, render_widget_to_png_with};
+use sigil_app::DefaultTextMeasure;
 
 // Mount the playground section files verbatim. Each `use crate::{…}`
 // inside them resolves against the helpers defined at the root of
@@ -135,7 +135,7 @@ pub(crate) fn wrap(node: impl IntoNode + 'static) -> NodeBuilder {
     container().child(node)
 }
 
-fn save_render(filename: &str, build: impl FnOnce(&mut Cx) -> kernel::NodeId) {
+fn save_render(filename: &str, build: impl FnOnce(&mut Cx) -> sigil_kernel::NodeId) {
     let img = render_widget_to_png_with(
         build,
         InteractionMode::Default,
@@ -163,7 +163,7 @@ fn render_playground_to_png() {
 
 #[test]
 fn render_playground_dark_to_png() {
-    use style::Theme;
+    use sigil_style::Theme;
     save_render("playground_dark.png", |cx| {
         cx.add(root().theme(Theme::dark()))
     });

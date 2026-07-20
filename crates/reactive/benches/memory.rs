@@ -71,8 +71,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 // deps pulled into every bench compilation unit. We don't reference
 // them here so the `unused_crate_dependencies` lint complains without
 // these aliases.
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 

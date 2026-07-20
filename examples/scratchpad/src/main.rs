@@ -85,7 +85,7 @@ fn scratchpad_root(state: ScratchpadState) -> NodeBuilder {
         .role(Role::Main)
         .label("Sigil scratchpad")
         .layout(LayoutStyle::flex_column().gap(12.0).padding(24.0).grow(1.0))
-        .class("w-full h-full bg-surface")
+        .class(classes!("w-full h-full bg-surface"))
         .child(header_row(state))
         .child(editor_row(state))
         .child(footer_row(state))
@@ -100,7 +100,7 @@ fn header_row(state: ScratchpadState) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween),
         )
         .child(label("Scratchpad"))
-        .child(label(state.status_label).class("text-on-surface"))
+        .child(label(state.status_label).class(classes!("text-on-surface")))
 }
 
 fn editor_row(state: ScratchpadState) -> NodeBuilder {
@@ -111,7 +111,7 @@ fn editor_row(state: ScratchpadState) -> NodeBuilder {
                 .placeholder("Type something…")
                 .submit(move |_| state.save()),
         )
-        .child(label(state.char_label).class("text-on-surface"))
+        .child(label(state.char_label).class(classes!("text-on-surface")))
 }
 
 fn footer_row(state: ScratchpadState) -> NodeBuilder {

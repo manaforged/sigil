@@ -6,15 +6,15 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use animation_runtime::presets;
-use events::prelude::{Key, NodeEventsExt};
-use kernel::{
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{
     Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, container, queue_announcement, text,
 };
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, effect_named, on_cleanup, signal};
-use style::{
-    DisplayKind, FocusRing, NodeStyleExt, StateHost, Style, StyleAccess, StyleAtom, TransitionId,
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use sigil_reactive::{Signal, effect_named, on_cleanup, signal};
+use sigil_style::{
+    DisplayKind, FocusRing, NodeStyleExt, Style, StyleAccess, StyleAtom, TransitionId,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -46,7 +46,7 @@ const TITLE_HEIGHT: f32 = 24.0;
 const BACKDROP_SIZE: f32 = 4_096.0;
 
 // Dim scrim — resolves to the theme's "scrim" token (60 % opacity black
-// by default; see `style::theme::Theme::built_in_color`). Themable
+// by default; see `sigil_style::theme::Theme::built_in_color`). Themable
 // rather than a hardcoded literal so a preset can rebind it.
 static BACKDROP_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("scrim"),
@@ -215,7 +215,7 @@ impl WidgetLayoutExt for ModalBuilder {
 ///
 /// The effect does not need `&mut Cx`. It queues the announcement via
 /// [`queue_announcement`]; the host drains it through
-/// [`kernel::Cx::flush_announcements`] on the next frame tick.
+/// [`sigil_kernel::Cx::flush_announcements`] on the next frame tick.
 fn install_open_announcement(show: Option<Signal<bool>>, title: &str) {
     let Some(signal) = show else {
         return;
@@ -289,10 +289,8 @@ impl StyleAccess for ModalBuilder {
     }
 }
 
-impl StateHost for ModalBuilder {}
-
 impl IntoNode for ModalBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -365,7 +363,7 @@ fn build_dialog(
         .class(DIALOG_BASE)
         .style_reactive(move || show_display(show))
         .focus_ring(FocusRing::new(ring_visible))
-        .focus_in(move || ring_visible.set(events::focus_from_keyboard()))
+        .focus_in(move || ring_visible.set(sigil_events::focus_from_keyboard()))
         .focus_out(move || ring_visible.set(false));
     if trap {
         dialog = dialog.mutate(|node| {
@@ -418,7 +416,7 @@ fn show_display(show: Option<Signal<bool>>) -> &'static [StyleAtom] {
 mod tests {
     use super::*;
 
-    use reactive::Runtime;
+    use sigil_reactive::Runtime;
 
     #[test]
     #[should_panic(expected = "requires .show")]

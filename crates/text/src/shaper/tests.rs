@@ -20,7 +20,7 @@ use super::{
 };
 use crate::glyph::GlyphId;
 
-const FIRA_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Regular.ttf");
+const FIRA_REGULAR: &[u8] = include_bytes!("../../assets/fonts/FiraSans-Regular.ttf");
 const FIRA_BOLD: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Bold.ttf");
 const FIRA_ITALIC: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Italic.ttf");
 const NOTO_REGULAR: &[u8] = include_bytes!("../../tests/fixtures/NotoSans-Regular.ttf");

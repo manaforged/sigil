@@ -49,7 +49,7 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 struct RegexState {
     pattern: Signal<String>,
     sample: Signal<String>,
-    /// Either "N match(es)" or "Invalid regex: <error>".
+    /// Either "N match(es)" or "Invalid regex: `<error>`."
     result_label: Signal<String>,
     /// One line per match, formatted "[start..end] `matched_text`".
     /// Empty string when there are no matches or the pattern is invalid.
@@ -143,7 +143,7 @@ fn root_view(state: RegexState) -> NodeBuilder {
         .role(Role::Main)
         .label("Sigil regex tester")
         .layout(LayoutStyle::flex_column().gap(12.0).padding(24.0).grow(1.0))
-        .class("w-full h-full bg-surface")
+        .class(classes!("w-full h-full bg-surface"))
         .child(header_row(state))
         .child(pattern_row(state))
         .child(sample_row(state))
@@ -159,21 +159,21 @@ fn header_row(state: RegexState) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::SpaceBetween),
         )
-        .child(label("Regex tester").class("text-on-surface text-lg font-bold"))
-        .child(label(state.result_label).class("text-on-surface"))
+        .child(label("Regex tester").class(classes!("text-on-surface text-lg font-bold")))
+        .child(label(state.result_label).class(classes!("text-on-surface")))
 }
 
 fn pattern_row(state: RegexState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(4.0))
-        .child(label("Pattern").class("text-on-surface text-sm"))
+        .child(label("Pattern").class(classes!("text-on-surface text-sm")))
         .child(text_field(state.pattern).placeholder(r"e.g. \w+ or \d{3}-\d{4}"))
 }
 
 fn sample_row(state: RegexState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(4.0))
-        .child(label("Sample text").class("text-on-surface text-sm"))
+        .child(label("Sample text").class(classes!("text-on-surface text-sm")))
         .child(text_field(state.sample).placeholder("Text to scan…"))
 }
 
@@ -182,12 +182,12 @@ fn results_row(state: RegexState) -> NodeBuilder {
         .role(Role::GenericContainer)
         .label("Match results")
         .layout(LayoutStyle::flex_column().gap(4.0).grow(1.0))
-        .class("p-2 bg-surface")
-        .child(label("Matches").class("text-on-surface text-sm"))
+        .class(classes!("p-2 bg-surface"))
+        .child(label("Matches").class(classes!("text-on-surface text-sm")))
         .child(
             text(state.match_body)
                 .layout(LayoutStyle::block().width(672.0))
-                .class("text-on-surface font-mono text-sm"),
+                .class(classes!("text-on-surface font-mono text-sm")),
         )
 }
 

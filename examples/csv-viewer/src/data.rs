@@ -11,6 +11,17 @@ pub(crate) const ROW_COUNT: usize = 5_000;
 /// Fixed column headers — order matches every [`Row`].
 pub(crate) const HEADERS: [&str; 6] = ["id", "ticker", "side", "qty", "price", "venue"];
 
+/// Logical pixel width allocated to each column. The id and ticker
+/// columns are widest so the seven-digit ids never wrap; the
+/// numerics get medium widths; the venue tail mops up the rest.
+const COLUMN_WIDTHS: [f32; 6] = [96.0, 96.0, 80.0, 96.0, 128.0, 432.0];
+
+/// Return the fixed pixel width for `column`, falling back to 96 px
+/// when the index is out of range.
+pub(crate) fn column_width(column: usize) -> f32 {
+    COLUMN_WIDTHS.get(column).copied().unwrap_or(96.0)
+}
+
 /// One parsed CSV row, indexed by [`HEADERS`].
 #[derive(Clone, Debug)]
 pub(crate) struct Row {

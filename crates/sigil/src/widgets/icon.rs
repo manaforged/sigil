@@ -21,9 +21,9 @@
 //! icon("\u{2699}").label("Settings").tone(Tone::Primary);
 //! ```
 
-use kernel::TextContent;
 use sigil::widget_dev::*;
-use style::Tone;
+use sigil_kernel::TextContent;
+use sigil_style::Tone;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -41,7 +41,7 @@ pub struct IconBuilder {
     tone: Tone,
     size: Size,
     label: Option<String>,
-    style_accumulator: style::Style,
+    style_accumulator: sigil_style::Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -61,7 +61,7 @@ impl IconBuilder {
             tone: Tone::Neutral,
             size: Size::Default,
             label: None,
-            style_accumulator: style::Style::new(),
+            style_accumulator: sigil_style::Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
@@ -144,7 +144,7 @@ fn icon_layout(extent: f32) -> LayoutStyle {
 }
 
 impl StyleAccess for IconBuilder {
-    fn style_mut(&mut self) -> &mut style::Style {
+    fn style_mut(&mut self) -> &mut sigil_style::Style {
         &mut self.style_accumulator
     }
 }
@@ -156,7 +156,7 @@ impl WidgetLayoutExt for IconBuilder {
 }
 
 impl IntoNode for IconBuilder {
-    fn build(self, cx: &mut kernel::Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut sigil_kernel::Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -165,8 +165,8 @@ impl IntoNode for IconBuilder {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use kernel::Cx;
-    use reactive::Runtime;
+    use sigil_kernel::Cx;
+    use sigil_reactive::Runtime;
 
     #[test]
     fn decorative_icon_uses_generic_container_role() {
@@ -174,7 +174,7 @@ mod tests {
             let mut cx = Cx::new_root();
             let id = icon("\u{2699}").build(&mut cx);
             let node = cx.get(id).expect("icon node exists");
-            assert_eq!(node.a11y.role, kernel::Role::GenericContainer);
+            assert_eq!(node.a11y.role, sigil_kernel::Role::GenericContainer);
         });
     }
 
@@ -184,7 +184,7 @@ mod tests {
             let mut cx = Cx::new_root();
             let id = icon("\u{2699}").label("Settings").build(&mut cx);
             let node = cx.get(id).expect("icon node exists");
-            assert_eq!(node.a11y.role, kernel::Role::Image);
+            assert_eq!(node.a11y.role, sigil_kernel::Role::Image);
         });
     }
 

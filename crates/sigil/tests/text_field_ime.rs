@@ -7,32 +7,32 @@
     clippy::cast_precision_loss
 )]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use kernel::{NodeType, TextContent};
-use layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use style::TextStyle;
+use sigil_kernel::{NodeType, TextContent};
+use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
+use sigil_style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -279,9 +279,9 @@ fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
 }
 
 fn arrow_left() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
         key: Key::ArrowLeft.into(),
-        physical: hal::PhysicalKey::ArrowLeft,
+        physical: sigil_hal::PhysicalKey::ArrowLeft,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,
@@ -290,9 +290,9 @@ fn arrow_left() -> ShellEvent {
 }
 
 fn backspace() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
         key: Key::Backspace.into(),
-        physical: hal::PhysicalKey::Backspace,
+        physical: sigil_hal::PhysicalKey::Backspace,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,
@@ -300,7 +300,7 @@ fn backspace() -> ShellEvent {
     }))
 }
 
-/// Mirror of text_edit's HIGH-1 (the reviewer gate, 2026-07-13): text_field's
+/// Mirror of `text_edit`'s HIGH-1 (the reviewer gate, 2026-07-13): `text_field`'s
 /// handlers publish value and caret through separate signal writes, so a
 /// raw Backspace during an active preedit can splice mid-codepoint on the
 /// transient state. Red before the batch fix, green after.

@@ -1,13 +1,13 @@
 //! Kernel-node → `accesskit::Node` projection (DR-050 §2).
 //!
-//! `node` reads one [`kernel::Node`]'s [`A11yProps`] and
+//! `node` reads one [`sigil_kernel::Node`]'s [`A11yProps`] and
 //! returns the AccessKit projection. `tree` walks the kernel
 //! arena depth-first from every root, skipping fragments, and produces
 //! the full `TreeUpdate`.
 
 use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, Tree, TreeId, TreeUpdate};
-use hal::Rect;
-use kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
+use sigil_hal::Rect;
+use sigil_kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
 /// Node-bounds lookup injected by the caller (DR-050 §2, mapping table
 /// row `LayoutResult bounds → Node::set_bounds`).
@@ -73,7 +73,7 @@ fn walk_subtree(
 
 /// Project one kernel node into an [`AkNode`].
 ///
-/// Signal reads use [`reactive::Signal::peek`] (untracked) — the
+/// Signal reads use `sigil_reactive::Signal::peek` (untracked) — the
 /// observer registered on attach is the subscription path; projecting
 /// must not register duplicate subscriptions every frame.
 #[must_use]
@@ -89,6 +89,7 @@ pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
+    apply_grid(&mut ak, a11y);
     apply_bounds(&mut ak, id, bounds);
     apply_children(cx, kernel_node, &mut ak);
     ak
@@ -167,6 +168,28 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     }
     if let Some(live) = a11y.live {
         ak.set_live(live);
+    }
+}
+
+/// Grid semantics: row/column counts on the grid root, per-node
+/// row/column indices, and the column-header sort direction.
+fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
+    if let Some(sig) = a11y.row_count {
+        ak.set_row_count(sig.peek());
+    }
+    if let Some(count) = a11y.column_count {
+        ak.set_column_count(count);
+    }
+    if let Some(index) = a11y.row_index {
+        ak.set_row_index(index);
+    }
+    if let Some(index) = a11y.column_index {
+        ak.set_column_index(index);
+    }
+    if let Some(sig) = a11y.sort_direction
+        && let Some(direction) = sig.peek()
+    {
+        ak.set_sort_direction(direction);
     }
 }
 

@@ -9,13 +9,13 @@
 //! and forwards `IntoNode` to the underlying `NodeBuilder` with the
 //! accumulator attached at build time via the existing `NodeStyleExt`.
 
-use kernel::NodeBuilder;
+use sigil_kernel::NodeBuilder;
 
 use super::{StateHost, StyleAccess};
 use crate::{ClassSource, NodeStyleExt, Style};
 
 /// Wrapper that gives a [`NodeBuilder`] a [`Style`] accumulator so it
-/// can implement [`Styled`]. Returned by [`StyledNodeBuilder::wrap`].
+/// can implement [`crate::Styled`]. Returned by [`crate::NodeStyledBuilder::wrap`].
 ///
 /// At `IntoNode::build` time the accumulator is consumed and attached
 /// to the kernel node via the existing [`crate::NodeStyleExt::style`]
@@ -70,24 +70,42 @@ impl Styleable for NodeBuilder {
     }
 }
 
-impl kernel::IntoNode for NodeStyledBuilder {
-    fn build(self, cx: &mut kernel::Cx) -> kernel::NodeId {
+impl sigil_kernel::IntoNode for NodeStyledBuilder {
+    fn build(self, cx: &mut sigil_kernel::Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
 
 /// Attach an accumulated [`Style`] to a [`NodeBuilder`] via the existing
-/// `NodeStyleExt::style` install path. State-slot overlays are deferred
-/// to G6.2 (engine wiring) per DR-049 §9.
+/// `NodeStyleExt::style` install path. State-slot overlays are drained
+/// into a Rest-pinned slot cell: the Rest slice applies unconditionally,
+/// while interaction-state slices stay inert until the node is wired for
+/// interaction (`interactive()`, 5/5 Wave 1 T2) — nothing is silently
+/// dropped (the pre-T2 "G6.2 deferral" used to discard them).
 fn attach_style(builder: NodeBuilder, style: Style) -> NodeBuilder {
     if style.is_empty() {
         return builder;
     }
-    // Base atoms go through the existing class-source path. State slot
-    // overlays land in G6.2 when StyleBinding gains StateStyle storage.
+    let mut style = style;
+    let overlay = style.take_state_overlay();
+    let builder = if overlay.is_empty() {
+        builder
+    } else {
+        builder.state_overlay(overlay, rest_slot_cell())
+    };
+    // Base atoms go through the existing class-source path.
     let base_atoms = style.into_atoms();
     if base_atoms.is_empty() {
         return builder;
     }
     builder.class(ClassSource::Owned(Box::new(base_atoms)))
+}
+
+/// Slot cell pinned to Rest for non-interactive installs: the resolver
+/// reads it and applies the Rest slice only.
+fn rest_slot_cell() -> crate::ReactiveStateSlot {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
+    Rc::new(Cell::new(crate::StateSlot::Rest))
 }

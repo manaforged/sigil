@@ -11,12 +11,12 @@
 //! buffer's mirrored caret/selection signals: the selection highlight paints
 //! behind the glyphs, the caret in front.
 
-use events::prelude::{NodeEventsExt, PointerEvent};
-use kernel::{NodeBuilder, TextBuilder, container, text};
-use layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
-use layout::with_text_geometry;
-use reactive::{Signal, derived};
-use style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom, TextStyle};
+use sigil_events::prelude::{NodeEventsExt, PointerEvent};
+use sigil_kernel::{NodeBuilder, TextBuilder, container, text};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
+use sigil_layout::with_text_geometry;
+use sigil_reactive::{Signal, derived};
+use sigil_style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom, TextStyle};
 
 use crate::interaction::InteractionState;
 

@@ -2,9 +2,9 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use hal::Rect;
-use kernel::NodeId;
-use style::Rgba8;
+use sigil_hal::Rect;
+use sigil_kernel::NodeId;
+use sigil_style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
 

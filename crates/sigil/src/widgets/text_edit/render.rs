@@ -1,9 +1,9 @@
-use animation_runtime::presets;
-use events::prelude::{NodeEventsExt, PointerEvent};
-use kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived_eq};
-use style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, TransitionId};
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{NodeEventsExt, PointerEvent};
+use sigil_kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq};
+use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleOverlay, StyleVariant, TransitionId};
 
 use crate::interaction::InteractionState;
 
@@ -63,6 +63,7 @@ pub(super) fn build_base_node(
     runtime: &TextEditRuntime,
     placeholder: &TextContent,
     interaction: InteractionState,
+    user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let value = runtime.value;
     let disabled = runtime.disabled;
@@ -83,7 +84,9 @@ pub(super) fn build_base_node(
         .layout(edit_layout())
         .class("rounded-md")
         .class(TEXT_EDIT_ANIM_BASE)
-        .style_reactive(move || edit_variant().state(edit_state(interaction, disabled)))
+        .stateful_style(edit_variant(), user_overlay, move || {
+            edit_state(interaction, disabled)
+        })
         .pointer_up(move |event| pointer_up(event, interaction))
         .child(edit_inner(displayed));
     install_transition_animators(
@@ -238,7 +241,10 @@ fn accessible_label(placeholder: &str) -> String {
         .map_or_else(|| String::from("Text editor"), ToOwned::to_owned)
 }
 
-fn edit_state(interaction: InteractionState, disabled: Option<Signal<bool>>) -> style::StyleState {
+fn edit_state(
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+) -> sigil_style::StyleState {
     binary_style_state(interaction, disabled)
 }
 

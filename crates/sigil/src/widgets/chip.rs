@@ -23,9 +23,10 @@
 //! | `Warn`     | `bg-warn-3`   | `text-warn-12`     |
 //! | `Error`    | `bg-error-3`  | `text-error-11`    |
 
-use kernel::{NodeBuilder, Role, TextContent, container, text};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use style::NodeStyleExt;
+use sigil_kernel::TextContent;
+
+mod builder;
+pub use builder::ChipBuilder;
 
 /// Semantic tone for a [`chip`] — drives the background + foreground
 /// palette choice.
@@ -74,30 +75,23 @@ const CHIP_PADDING_Y: f32 = 2.0;
 /// use sigil::prelude::*;
 ///
 /// chip("ERROR", ChipTone::Error)
+/// chip(status, ChipTone::Warn).tone_signal(level_signal)
 /// ```
 ///
 /// The chip uses `Role::Label` for accessibility — screen readers
-/// announce the label text exactly as supplied.
+/// announce the label text exactly as supplied. `.tone_signal(...)`
+/// retints reactively without a remount.
 #[must_use]
-pub fn chip(label: impl Into<TextContent>, tone: ChipTone) -> NodeBuilder {
-    container()
-        .role(Role::Label)
-        .layout(
-            LayoutStyle::flex_row()
-                .padding_x(CHIP_PADDING_X)
-                .padding_y(CHIP_PADDING_Y),
-        )
-        .class("rounded-sm text-xs")
-        .class(tone.class())
-        .child(text(label))
+pub fn chip(label: impl Into<TextContent>, tone: ChipTone) -> ChipBuilder {
+    ChipBuilder::new(label, tone)
 }
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::{Cx, IntoNode, NodeType};
-    use reactive::Runtime;
+    use sigil_kernel::{Cx, IntoNode, NodeType};
+    use sigil_reactive::Runtime;
 
     #[test]
     fn chip_uses_label_role_and_holds_text_child() {
@@ -108,7 +102,7 @@ mod tests {
             // Role::Label is the documented a11y contract — screen
             // readers must announce the chip's text verbatim, not as
             // an interactive widget.
-            assert_eq!(node.a11y.role, kernel::Role::Label);
+            assert_eq!(node.a11y.role, sigil_kernel::Role::Label);
             // The chip should hold exactly one child — the text node.
             assert_eq!(node.children().len(), 1, "chip wraps a single text child");
             let text_child = cx.get(node.children()[0]).expect("chip text child exists");
@@ -161,10 +155,12 @@ mod tests {
     /// the 2026-07-12 ui-review gate caught (the reviewer adversarial finding).
     #[test]
     fn every_tone_clears_wcag_aa_contrast() {
-        use style::Rgba8;
-        use style::scale::ScaleRole;
-        use style::theme::Theme;
+        use sigil_style::Rgba8;
+        use sigil_style::scale::ScaleRole;
+        use sigil_style::theme::Theme;
 
+        // keep luminance arithmetic bit-stable for goldens
+        #[allow(clippy::suboptimal_flops)]
         fn luminance(c: Rgba8) -> f64 {
             let ch = |v: u8| {
                 let v = f64::from(v) / 255.0;

@@ -17,7 +17,7 @@
 //! adapters harden them.
 
 #![no_std]
-
+#![deny(missing_docs)]
 extern crate alloc;
 
 pub mod a11y;
@@ -40,6 +40,6 @@ pub use geometry::{Color, PhysicalSize, Point, Rect};
 pub use layout::{Dim, Layout, Size};
 pub use renderer::Renderer;
 pub use scheduler::Scheduler;
-pub use shell::Shell;
+pub use shell::{Anchor, Shell, WindowOpts};
 pub use size::{LogicalSize, Scale};
 pub use text::{HitPosition, ParagraphMetrics, RenderedGlyph, TextAffinity, TextEngine};

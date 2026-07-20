@@ -47,7 +47,7 @@ impl Runtime {
     /// The publisher runs at the end of every frame in which an
     /// [`crate::A11yObserver`] tracking effect saw a signal change.
     /// Its job is to snapshot the kernel `Cx` into a `TreeUpdate` and
-    /// forward it to the installed [`hal::A11yBridge`]. Both the
+    /// forward it to the installed `sigil_hal::A11yBridge`. Both the
     /// `Cx` and the bridge live outside the reactive runtime — the
     /// publisher captures them by reference (typically via shared
     /// `Rc<RefCell<_>>` handles).
@@ -108,10 +108,10 @@ impl Runtime {
     /// callback is dropped silently (DR-007 invariant 4).
     ///
     /// This is the public seam that
-    /// [`MainThreadDispatcher::post_to_main`] adapters call after they
+    /// `MainThreadDispatcher::post_to_main` adapters call after they
     /// have ferried the closure across the worker→main thread boundary.
     /// The reactive crate cannot push from a worker thread directly
-    /// because [`crate::runtime::RuntimeState`] is thread-local; the
+    /// because `crate::runtime::RuntimeState` is thread-local; the
     /// adapter is responsible for the cross-thread hop, then this
     /// entry point takes over on the main thread.
     ///

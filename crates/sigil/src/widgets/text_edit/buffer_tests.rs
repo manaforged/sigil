@@ -90,3 +90,62 @@ fn sync_external_is_a_no_op_when_buffer_already_matches() {
         "matching external value must not disturb selection"
     );
 }
+
+#[test]
+fn move_up_down_keeps_byte_column_across_lines() {
+    // "abc\nde\nfghi" — lines at 0, 4, 7.
+    let mut edit = TextEdit::new("abc\nde\nfghi".to_owned());
+    edit.place_caret(6); // line 1 ("de"), column 2
+    edit.move_up();
+    assert_eq!(edit.caret(), 2, "up keeps column 2 on line 0");
+    edit.move_down();
+    assert_eq!(edit.caret(), 6, "down returns to line 1 column 2");
+    edit.move_down();
+    assert_eq!(edit.caret(), 9, "down to line 2 column 2");
+    edit.move_down();
+    assert_eq!(edit.caret(), edit.len(), "past last line clamps to end");
+}
+
+#[test]
+fn move_up_clamps_column_to_shorter_line_end() {
+    // "a\nlongline" — column 4 on line 1 maps to column 1 (line end) on line 0.
+    let mut edit = TextEdit::new("a\nlongline".to_owned());
+    edit.place_caret(6); // line 1, column 4
+    edit.move_up();
+    assert_eq!(edit.caret(), 1, "column clamps to the shorter line's end");
+}
+
+#[test]
+fn move_up_from_first_line_goes_to_start() {
+    let mut edit = TextEdit::new("abc\ndef".to_owned());
+    edit.place_caret(2);
+    edit.move_up();
+    assert_eq!(edit.caret(), 0, "above the first line is byte 0");
+}
+
+#[test]
+fn vertical_moves_never_split_multibyte_graphemes() {
+    // "é\nab" — 'é' is bytes 0..2, line 1 starts at 3.
+    let mut edit = TextEdit::new("é\nab".to_owned());
+    edit.place_caret(4); // line 1, column 1
+    edit.move_up();
+    let caret = edit.caret();
+    assert!(
+        caret == 0 || caret == 2,
+        "target floors to a boundary, got {caret}"
+    );
+    assert!(edit.as_str().is_char_boundary(caret));
+}
+
+#[test]
+fn shift_down_extends_selection_to_next_line() {
+    let mut edit = TextEdit::new("ab\ncd".to_owned());
+    edit.place_caret(1);
+    edit.shift_down();
+    assert_eq!(edit.caret(), 4, "caret lands same column on next line");
+    assert_eq!(
+        edit.selected_text(),
+        Some("b\nc"),
+        "selection spans the line break"
+    );
+}

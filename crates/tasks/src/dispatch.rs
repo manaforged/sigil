@@ -13,7 +13,7 @@
 
 use std::future::Future;
 
-use reactive::{Signal, signal};
+use sigil_reactive::{Signal, signal};
 
 use crate::handle::OwnerHandle;
 use crate::runtime::{AsyncRuntime, DispatchMessage, Dispatcher, register_abort};
@@ -23,7 +23,7 @@ use crate::status::Status;
 /// active.
 ///
 /// The closure is enqueued via the dispatcher's MPSC and runs on
-/// the next [drain][hal::Scheduler::drain]. If `handle`'s owner
+/// the next [drain][sigil_hal::Scheduler::drain]. If `handle`'s owner
 /// has been disposed by then, the closure is dropped silently —
 /// no panic, no error. This is the "no-op target" contract from
 /// DR-005 addendum §3.
@@ -136,8 +136,8 @@ where
     // Synchronous abort on owner disposal: register an `on_cleanup`
     // scoped to `owner`. The moment `owner` disposes, the cleanup
     // runs and aborts the future — no drain required.
-    let _ = reactive::owner_by_id(owner.id(), move || {
-        reactive::on_cleanup(move || {
+    let _ = sigil_reactive::owner_by_id(owner.id(), move || {
+        sigil_reactive::on_cleanup(move || {
             abort.abort();
         });
     });

@@ -112,6 +112,20 @@ pub trait Spacing: StyleAccess {
         self.style_mut().push_atom(StyleAtom::Gap(Px(px)));
         self
     }
+
+    /// Set main-axis (width-axis) gap in logical pixels.
+    #[must_use]
+    fn gap_x(mut self, px: i16) -> Self {
+        self.style_mut().push_atom(StyleAtom::GapX(Px(px)));
+        self
+    }
+
+    /// Set cross-axis (height-axis) gap in logical pixels.
+    #[must_use]
+    fn gap_y(mut self, px: i16) -> Self {
+        self.style_mut().push_atom(StyleAtom::GapY(Px(px)));
+        self
+    }
 }
 
 impl<T: StyleAccess> Spacing for T {}

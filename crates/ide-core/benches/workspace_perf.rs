@@ -16,7 +16,7 @@ use std::fs;
 use std::path::Path;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use ide_core::workspace::WorkspaceRoot;
+use sigil_ide_core::workspace::WorkspaceRoot;
 
 fn populate(root: &Path, files: usize, fanout: usize) {
     fs::create_dir_all(root).expect("mk root");

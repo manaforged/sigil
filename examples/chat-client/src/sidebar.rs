@@ -10,7 +10,7 @@ const VIEWPORT_HEIGHT: f32 = 520.0;
 pub(crate) fn sidebar_pane(state: ChatState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(8.0).padding(8.0))
-        .class("h-full rounded-md bg-surface-hover")
+        .class(classes!("h-full rounded-md bg-surface-hover"))
         .child(label("Channels"))
         .child(channel_list(state))
 }
@@ -47,7 +47,7 @@ fn channel_row(state: ChatState, idx: usize, name: &str) -> NodeBuilder {
                 .padding(6.0)
                 .align_items(AlignItems::Center),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .pointer_down(move |ev| {
             state.select_channel(idx);
             ev.stop_propagation();

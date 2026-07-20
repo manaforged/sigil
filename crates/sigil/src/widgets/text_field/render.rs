@@ -1,9 +1,15 @@
-use animation_runtime::presets;
-use events::prelude::{NodeEventsExt, PointerEvent};
-use kernel::{NodeBuilder, Role, TextContent, container};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived_eq};
-use style::{ColorAtom, NodeStyleExt, Rgba8, StateStyle, StyleAtom, StyleVariant, TransitionId};
+use std::cell::Cell;
+use std::rc::Rc;
+
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{NodeEventsExt, PointerEvent};
+use sigil_kernel::{NodeBuilder, Role, TextContent, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq};
+use sigil_style::{
+    ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StateStyle, StyleAtom,
+    StyleOverlay, StyleVariant, TransitionId,
+};
 
 use crate::interaction::InteractionState;
 
@@ -49,12 +55,14 @@ pub(super) static FIELD_INVALID: &[StyleAtom] =
     }))];
 
 /// The reactive signal inputs a text field binds — grouped so the
-/// render entry point stays within the 5-argument hygiene cap.
-#[derive(Clone, Copy)]
+/// render entry point stays within the 5-argument hygiene cap. The
+/// drained user state overlay rides along for the same reason.
+#[derive(Clone)]
 pub(super) struct FieldInputs {
     pub(super) value: Signal<String>,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) invalid: Option<Signal<bool>>,
+    pub(super) overlay: StyleOverlay,
 }
 
 pub(super) fn build_base_node(
@@ -68,6 +76,7 @@ pub(super) fn build_base_node(
         value,
         disabled,
         invalid,
+        overlay,
     } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
     let displayed = displayed_text(
@@ -78,6 +87,8 @@ pub(super) fn build_base_node(
         runtime.caret,
     );
     let state_style = field_state_style();
+    let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
+    let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
     let node = container()
         .role(Role::TextInput)
         .label(accessible_label(placeholder_str.as_str()))
@@ -86,17 +97,8 @@ pub(super) fn build_base_node(
         .layout(field_layout())
         .class("rounded-md")
         .class(TEXT_FIELD_ANIM_BASE)
-        .style_reactive(move || {
-            // Invalid overrides every other state slot — a red border
-            // is the universal "fix this before continuing" cue. We
-            // call `.get()` (not `.peek()`) so the effect re-subscribes
-            // whenever the signal flips.
-            if invalid.is_some_and(Signal::get) {
-                FIELD_INVALID
-            } else {
-                field_variant().state(field_state(interaction, disabled))
-            }
-        })
+        .style_reactive(channel)
+        .state_overlay(overlay, slot_cell)
         .pointer_up(move |event| pointer_up(event, interaction))
         .child(field_inner(runtime, interaction, displayed, width));
     install_transition_animators(
@@ -106,6 +108,30 @@ pub(super) fn build_base_node(
         TEXT_FIELD_COMPONENT_ID,
         interaction,
     )
+}
+
+/// The frame's reactive style channel: publishes the resolved slot into
+/// `slot_cell` for the per-instance user-overlay pass, then returns the
+/// invalid override or the variant atoms for the same state. Kept as a
+/// named helper so `build_base_node` stays under the 50-line cap.
+fn field_style_channel(
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+    invalid: Option<Signal<bool>>,
+    slot_cell: ReactiveStateSlot,
+) -> impl Fn() -> &'static [StyleAtom] {
+    move || {
+        let state = field_state(interaction, disabled);
+        slot_cell.set(state.slot());
+        // Invalid overrides every other state slot — a red border is the
+        // universal "fix this before continuing" cue. `.get()` (not
+        // `.peek()`) re-subscribes the effect whenever the signal flips.
+        if invalid.is_some_and(Signal::get) {
+            FIELD_INVALID
+        } else {
+            field_variant().state(state)
+        }
+    }
 }
 
 const fn field_state_style() -> StateStyle {
@@ -221,7 +247,10 @@ fn accessible_label(placeholder: &str) -> String {
         .map_or_else(|| String::from("Text field"), ToOwned::to_owned)
 }
 
-fn field_state(interaction: InteractionState, disabled: Option<Signal<bool>>) -> style::StyleState {
+fn field_state(
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+) -> sigil_style::StyleState {
     binary_style_state(interaction, disabled)
 }
 

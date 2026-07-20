@@ -2,9 +2,9 @@
 
 use std::rc::Rc;
 
-use layout::{TextEngineMeasure, TextMeasure};
-use style::TextStyle;
-use text::{OwnedTextEngine, TextConfig};
+use sigil_layout::{TextEngineMeasure, TextMeasure};
+use sigil_style::TextStyle;
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 /// Owned-text-engine-backed measurer used by the launch pipeline.
 pub struct DefaultTextMeasure {
@@ -29,16 +29,20 @@ impl DefaultTextMeasure {
 }
 
 impl TextMeasure for DefaultTextMeasure {
-    fn measure(&self, content: &kernel::TextContent, space: hal::Size) -> hal::LogicalSize {
+    fn measure(
+        &self,
+        content: &sigil_kernel::TextContent,
+        space: sigil_hal::Size,
+    ) -> sigil_hal::LogicalSize {
         self.inner.measure(content, space)
     }
 
     fn measure_styled(
         &self,
-        content: &kernel::TextContent,
+        content: &sigil_kernel::TextContent,
         style: &TextStyle,
-        space: hal::Size,
-    ) -> hal::LogicalSize {
+        space: sigil_hal::Size,
+    ) -> sigil_hal::LogicalSize {
         self.inner.measure_styled(content, style, space)
     }
 

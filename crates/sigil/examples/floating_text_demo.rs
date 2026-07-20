@@ -4,24 +4,32 @@
 //! tick at randomised positions, simulating a burst-damage scenario.
 //! Particles age + drift over `duration` seconds, then dispose.
 //!
-//! Run with `cargo run -p sigil --example floating_text_demo`.
+//! Run with `cargo run -p sigil-ui --example floating_text_demo`.
 
 #![allow(missing_docs)]
 
 // Examples inherit the host crate's dev-deps even when they don't
 // touch them. Silence the `unused_crate_dependencies` lint for the
 // ones this demo doesn't pull in directly.
-use app as _;
+use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
-use renderer as _;
+use image as _;
+use pollster as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_tasks as _;
+use wgpu as _;
 
 use sigil::prelude::*;
-use style::Rgba8;
+use sigil_style::Rgba8;
 
 fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - floating combat text", 960, 540), build)
@@ -53,7 +61,7 @@ fn build(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .role(Role::Main)
-            .class("w-full h-full bg-surface")
+            .class(classes!("w-full h-full bg-surface"))
             .child(widget),
     )
 }

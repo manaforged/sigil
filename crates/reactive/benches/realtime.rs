@@ -36,12 +36,13 @@ use std::rc::Rc;
 // `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
 // into every bench compilation unit. We don't reference them directly
 // here, so silence `unused_crate_dependencies` with marker aliases.
-use actions as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use reactive::{Runtime, batch, effect, signal};
+use sigil_reactive::{Runtime, batch, effect, signal};
 
 /// Budget: ≤ 5 ms per batch (DR-009 burst).
 ///

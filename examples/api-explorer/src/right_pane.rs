@@ -35,7 +35,7 @@ pub(super) fn build(
                 .fixed_size(PANE_WIDTH, PANE_HEIGHT)
                 .gap(4.0),
         )
-        .class("bg-surface")
+        .class(classes!("bg-surface"))
         .child(
             tabs(
                 active_tab,
@@ -66,7 +66,7 @@ fn request_tab(
     panel_body(
         text(body)
             .layout(LayoutStyle::block().width(BODY_WIDTH))
-            .class("font-mono text-sm"),
+            .class(classes!("font-mono text-sm")),
     )
 }
 
@@ -82,7 +82,7 @@ fn response_tab(
     panel_body(
         text(body)
             .layout(LayoutStyle::block().width(BODY_WIDTH))
-            .class("font-mono text-sm"),
+            .class(classes!("font-mono text-sm")),
     )
 }
 
@@ -94,7 +94,7 @@ fn headers_tab(
     panel_body(
         text(body)
             .layout(LayoutStyle::block().width(BODY_WIDTH))
-            .class("font-mono text-sm"),
+            .class(classes!("font-mono text-sm")),
     )
 }
 
@@ -120,6 +120,6 @@ fn panel_body(body: impl IntoNode + 'static) -> impl IntoNode {
                 .fixed_size(PANE_WIDTH, PANEL_HEIGHT)
                 .gap(4.0),
         )
-        .class("p-2 bg-surface")
+        .class(classes!("p-2 bg-surface"))
         .child(body)
 }

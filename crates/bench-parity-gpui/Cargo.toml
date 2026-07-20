@@ -6,11 +6,10 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "GPUI framework runner for the sigil-bench-parity cross-framework harness. Kept in a sibling crate so the heavy GPUI dependency tree (blade-graphics, etc.) does NOT leak into the default sigil-bench-parity build."
+description = "GPUI framework runner for the bench-parity cross-framework harness. Kept in a sibling crate so the heavy GPUI dependency tree (blade-graphics, etc.) does NOT leak into the default bench-parity build."
 publish = false
 
 [lib]
-doctest = false
 
 [dependencies]
 bench-parity = { path = "../bench-parity" }

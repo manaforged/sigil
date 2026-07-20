@@ -1,6 +1,6 @@
-use hal::{Point, Rect};
+use sigil_hal::{Point, Rect};
+use sigil_style::Rgba8;
 use smallvec::smallvec;
-use style::Rgba8;
 
 use crate::scene_command::ScenePatternStyle;
 use crate::{
@@ -164,7 +164,7 @@ pub(super) fn stroke_gradient() -> LinearGradient {
 
 pub(super) const fn stroke_with(style: StrokeStyle, align: StrokeAlign, width: f32) -> Stroke {
     Stroke {
-        color: [0.95, 0.95, 0.98, 1.0],
+        color: rgba(242, 242, 250, 255),
         width,
         style,
         align,

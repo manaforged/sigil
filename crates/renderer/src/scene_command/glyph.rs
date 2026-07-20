@@ -2,10 +2,10 @@
 
 use core::fmt;
 
-use hal::{Rect, RenderedGlyph};
-use kernel::NodeId;
-use style::{Rgba8, TextStyle};
-use text::Paragraph;
+use sigil_hal::{Rect, RenderedGlyph};
+use sigil_kernel::NodeId;
+use sigil_style::{Rgba8, TextStyle};
+use sigil_text::Paragraph;
 
 /// Text run payload carried by a glyph-run command.
 #[derive(Clone)]

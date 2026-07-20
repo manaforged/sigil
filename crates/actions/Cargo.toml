@@ -1,5 +1,5 @@
 [package]
-name = "actions"
+name = "sigil-actions"
 autobenches = false
 version.workspace = true
 edition.workspace = true
@@ -8,16 +8,20 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Typed action dispatch + registry — Layer A (no focus/Context yet)."
+readme.workspace = true
+keywords = ["actions", "commands", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
-actions-macros = { workspace = true }
+sigil-actions-macros = { workspace = true }
 smallvec = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+sigil-ui = { path = "../sigil" }
 
 [[bench]]
 name = "dispatch"

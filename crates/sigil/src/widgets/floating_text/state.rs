@@ -4,8 +4,8 @@
 
 use std::cell::RefCell;
 
-use reactive::Signal;
-use style::Rgba8;
+use sigil_reactive::Signal;
+use sigil_style::Rgba8;
 
 use super::spawn::{FctSpawn, Particle};
 use super::style::FloaterStyle;
@@ -120,7 +120,7 @@ impl FctState {
             last_tick: RefCell::new(time.peek()),
             anchor: opts.anchor,
             override_color: opts.override_color,
-            generation: reactive::signal(0_u32),
+            generation: sigil_reactive::signal(0_u32),
         }
     }
 

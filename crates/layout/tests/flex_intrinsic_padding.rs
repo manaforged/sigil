@@ -8,7 +8,7 @@
 //! leading padding of an auto-width flex item.
 //!
 //! Reproducer is the chip-row composition from `widget-playground`:
-//! 5 chips (flex_row + padding_x(8) + text child) inside a flex_row
+//! 5 chips (`flex_row` + `padding_x(8)` + text child) inside a `flex_row`
 //! parent with `gap(12)`. Before the fix, every chip's basis came
 //! back as `text_w + 24` (left padding counted in both the hypothetical
 //! layout's child position AND the trailing `chrome_main` add), which
@@ -22,26 +22,26 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 use stub::stub_engine;
 
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
-fn child_rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn child_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("child result")
         .rect()
 }
 
-fn chip_builder(label: &'static str) -> kernel::NodeBuilder {
+fn chip_builder(label: &'static str) -> sigil_kernel::NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()

@@ -7,10 +7,10 @@
 //! [`CommandScene`] the host paints into its own frame via the renderer's
 //! `submit_screen` (which supports a foreign device).
 
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
-use layout::prelude::Size;
-use renderer::{CommandScene, emit_scene};
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
+use sigil_layout::prelude::Size;
+use sigil_renderer::{CommandScene, emit_scene};
 
 use crate::DefaultTextMeasure;
 
@@ -37,7 +37,7 @@ impl UiContext {
     pub fn new() -> Self {
         // Install pointer→glyph geometry alongside the measurer so embedded
         // text widgets get caret/selection hit-testing (see `text_geometry`).
-        layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
+        sigil_layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
         Self {
             cx: Cx::new_root(),
             layout: LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new())),

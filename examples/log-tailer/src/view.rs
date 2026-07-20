@@ -21,7 +21,7 @@ pub(crate) fn app_tree(state: AppState) -> NodeBuilder {
         .role(Role::Main)
         .label("Sigil log tailer")
         .layout(LayoutStyle::flex_column().fixed_size(960.0, 640.0).gap(8.0))
-        .class("p-4 bg-surface")
+        .class(classes!("p-4 bg-surface"))
         .child(header(state))
         .child(log_list(state))
         .child(status_bar(state))
@@ -36,7 +36,7 @@ fn header(state: AppState) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .padding(8.0),
         )
-        .class("w-full rounded-md bg-surface-hover")
+        .class(classes!("w-full rounded-md bg-surface-hover"))
         .child(label("Filter:"))
         .child(filter_input(state))
         .child(level_buttons(state))
@@ -127,7 +127,7 @@ fn row(index: usize, line: &LogLine, selected: Signal<Option<usize>>) -> NodeBui
                 .align_items(AlignItems::Center)
                 .padding(4.0),
         )
-        .class("text-on-surface")
+        .class(classes!("text-on-surface"))
         .pointer_down(move |_| selected.set(Some(index)))
         .child(
             chip(line.level.label(), line.level.tone())
@@ -154,7 +154,7 @@ fn status_bar(state: AppState) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween)
                 .padding(8.0),
         )
-        .class("w-full rounded-md bg-surface-hover")
+        .class(classes!("w-full rounded-md bg-surface-hover"))
         .child(label(visible_label))
         .child(label(selection_label))
 }

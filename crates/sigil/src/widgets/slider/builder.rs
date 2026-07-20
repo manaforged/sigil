@@ -1,14 +1,14 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use animation_runtime::presets;
-use events::prelude::{NodeEventsExt, PointerEvent};
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use reactive::Signal;
-use style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleVariant,
-    Theme, TransitionId,
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{NodeEventsExt, PointerEvent};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::Signal;
+use sigil_style::{
+    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
+    StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -166,14 +166,18 @@ impl SliderBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let on_change = self
             .on_change
             .as_ref()
             .map_or_else(noop_value_change, Rc::clone);
-        let mut node = self.base_node(interaction, Rc::clone(&on_change));
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — they resolve against the track root's
+        // interaction slot so `.hover(|s| s.bg(...))` paints the track.
+        let user_overlay = self.style_accumulator.take_state_overlay();
+        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
@@ -196,9 +200,14 @@ impl StyleAccess for SliderBuilder {
 impl StateHost for SliderBuilder {}
 
 impl SliderBuilder {
-    fn base_node(&self, interaction: InteractionState, on_change: ValueChange) -> NodeBuilder {
+    fn base_node(
+        &self,
+        interaction: InteractionState,
+        on_change: ValueChange,
+        user_overlay: StyleOverlay,
+    ) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
-        let node = slider_root(runtime, interaction)
+        let node = slider_root(runtime, interaction, user_overlay)
             .pointer_down(move |event| pointer_down(event, interaction, runtime))
             .pointer_move(move |event| pointer_move(event, interaction, runtime))
             .pointer_up(move |event| {
@@ -209,7 +218,7 @@ impl SliderBuilder {
 }
 
 impl IntoNode for SliderBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -278,16 +287,21 @@ impl SliderRuntime {
     }
 }
 
-fn slider_root(runtime: SliderRuntime, interaction: InteractionState) -> NodeBuilder {
+fn slider_root(
+    runtime: SliderRuntime,
+    interaction: InteractionState,
+    user_overlay: StyleOverlay,
+) -> NodeBuilder {
     container()
         .role(Role::Slider)
         .label("Slider")
         .value(runtime.value, runtime.range.min, runtime.range.max)
+        .value_step(runtime.step)
         .layout(slider_layout(runtime.orientation))
         .class("rounded-md")
         .class(TRACK)
-        .style_reactive(move || {
-            slider_track_variant().state(binary_style_state(interaction, runtime.disabled))
+        .stateful_style(slider_track_variant(), user_overlay, move || {
+            binary_style_state(interaction, runtime.disabled)
         })
         .child(slider_thumb(interaction, runtime.disabled))
 }

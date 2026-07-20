@@ -1,5 +1,5 @@
 [package]
-name = "layout"
+name = "sigil-layout"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,19 +7,22 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Owned layout adapter for Sigil."
+readme.workspace = true
+keywords = ["layout", "flexbox", "gui", "ui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
-doctest = false
 
 [dependencies]
 ahash = { workspace = true }
 rayon = { workspace = true }
 slotmap = { workspace = true }
 smallvec = { workspace = true }
-kernel = { workspace = true }
-hal = { workspace = true }
-style = { workspace = true }
-reactive = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-style = { workspace = true }
+sigil-reactive = { workspace = true }
 
 [dev-dependencies]
 allocation-counter = "0.8.1"

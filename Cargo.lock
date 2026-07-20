@@ -3,19 +3,6 @@
 version = 4
 
 [[package]]
-name = "a11y"
-version = "0.0.0"
-dependencies = [
- "accesskit",
- "crossbeam-channel",
- "hal",
- "kernel",
- "layout",
- "reactive",
- "sigil",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -130,25 +117,6 @@ dependencies = [
  "accesskit_windows",
  "raw-window-handle",
  "winit",
-]
-
-[[package]]
-name = "actions"
-version = "0.0.0"
-dependencies = [
- "actions-macros",
- "criterion",
- "smallvec",
-]
-
-[[package]]
-name = "actions-macros"
-version = "0.0.0"
-dependencies = [
- "actions",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -272,20 +240,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
-name = "animation"
-version = "0.0.0"
-
-[[package]]
-name = "animation-runtime"
-version = "0.0.0"
-dependencies = [
- "animation",
- "criterion",
- "reactive",
- "style",
-]
-
-[[package]]
 name = "anstream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -343,30 +297,9 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-explorer"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
-]
-
-[[package]]
-name = "app"
-version = "0.0.0"
-dependencies = [
- "a11y",
- "accesskit",
- "crossbeam-channel",
- "events",
- "hal",
- "kernel",
- "layout",
- "reactive",
- "renderer",
- "shell",
- "style",
- "tasks",
- "text",
- "tracing",
- "windows-core 0.62.2",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -850,23 +783,23 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bench-parity"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
- "hal",
- "kernel",
- "layout",
- "reactive",
  "serde",
  "serde_json",
- "sigil",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-ui",
  "sysinfo 0.32.1",
  "time",
 ]
 
 [[package]]
 name = "bench-parity-gpui"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "bench-parity",
  "clap",
@@ -1230,9 +1163,9 @@ dependencies = [
 
 [[package]]
 name = "chat-client"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -1774,9 +1707,9 @@ dependencies = [
 
 [[package]]
 name = "csv-viewer"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -2139,21 +2072,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "events"
-version = "0.0.0"
-dependencies = [
- "accesskit",
- "allocation-counter",
- "criterion",
- "hal",
- "kernel",
- "layout",
- "reactive",
- "smallvec",
- "style",
-]
-
-[[package]]
 name = "exr"
 version = "1.74.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2200,9 +2118,9 @@ dependencies = [
 
 [[package]]
 name = "file-browser"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -3041,14 +2959,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hal"
-version = "0.0.0"
-dependencies = [
- "keyboard-types",
- "smol_str 0.3.6",
-]
-
-[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3119,36 +3029,36 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hello-counter"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
 name = "hello-events"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
 name = "hello-layout"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "kernel",
- "layout",
- "text",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-text",
 ]
 
 [[package]]
 name = "hello-rect"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "hal",
- "reactive",
- "renderer",
- "shell",
- "tasks",
+ "sigil-hal",
+ "sigil-reactive",
+ "sigil-renderer",
+ "sigil-shell",
+ "sigil-tasks",
  "tokio",
  "windows-core 0.62.2",
  "winit",
@@ -3156,16 +3066,16 @@ dependencies = [
 
 [[package]]
 name = "hello-style"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
 name = "hello-tree"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "kernel",
+ "sigil-kernel",
 ]
 
 [[package]]
@@ -3321,16 +3231,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "icons"
-version = "0.0.0"
-dependencies = [
- "lyon_geom",
- "proptest",
- "smallvec",
- "usvg 0.47.0",
-]
-
-[[package]]
 name = "icu_collections"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3417,21 +3317,6 @@ name = "id-arena"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d3067d79b975e8844ca9eb072e16b31c3c1c36928edf9c6789548c524d0d954"
-
-[[package]]
-name = "ide-core"
-version = "0.0.0"
-dependencies = [
- "criterion",
- "crossbeam-channel",
- "ignore",
- "notify",
- "proptest",
- "ropey",
- "smallvec",
- "tempfile",
- "toml 0.9.12+spec-1.1.0",
-]
 
 [[package]]
 name = "idna"
@@ -3753,22 +3638,9 @@ dependencies = [
 
 [[package]]
 name = "kanban-board"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
-]
-
-[[package]]
-name = "kernel"
-version = "0.0.0"
-dependencies = [
- "accesskit",
- "ahash",
- "criterion",
- "hal",
- "reactive",
- "slotmap",
- "smallvec",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -3847,23 +3719,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "layout"
-version = "0.0.0"
-dependencies = [
- "ahash",
- "allocation-counter",
- "criterion",
- "hal",
- "kernel",
- "rayon",
- "reactive",
- "slotmap",
- "smallvec",
- "style",
- "taffy 0.10.1",
 ]
 
 [[package]]
@@ -4015,9 +3870,9 @@ dependencies = [
 
 [[package]]
 name = "log-tailer"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -5054,9 +4909,9 @@ dependencies = [
 
 [[package]]
 name = "password-generator"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -5809,16 +5664,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "reactive"
-version = "0.0.0"
-dependencies = [
- "actions",
- "criterion",
- "smallvec",
- "tokio",
-]
-
-[[package]]
 name = "read-fonts"
 version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5937,10 +5782,10 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "regex-tester"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "regex",
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -5948,33 +5793,6 @@ name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19b30a45b0cd0bcca8037f3d0dc3421eaf95327a17cad11964fb8179b4fc4832"
-
-[[package]]
-name = "renderer"
-version = "0.0.0"
-dependencies = [
- "ahash",
- "bytemuck",
- "criterion",
- "hal",
- "half",
- "icons",
- "image",
- "kernel",
- "layout",
- "pollster 0.4.0",
- "proptest",
- "raw-window-handle",
- "shell",
- "skrifa",
- "smallvec",
- "style",
- "text",
- "tracing",
- "wgpu",
- "windows-core 0.62.2",
- "zeno",
-]
 
 [[package]]
 name = "resvg"
@@ -6287,9 +6105,9 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scratchpad"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -6505,44 +6323,294 @@ dependencies = [
 ]
 
 [[package]]
-name = "shell"
-version = "0.0.0"
-dependencies = [
- "accesskit",
- "accesskit_winit",
- "crossbeam-channel",
- "hal",
- "smol_str 0.3.6",
- "winit",
-]
-
-[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "sigil"
-version = "0.0.0"
+name = "sigil-a11y"
+version = "0.1.0-alpha.1"
 dependencies = [
- "actions",
- "animation",
- "animation-runtime",
- "app",
+ "accesskit",
+ "crossbeam-channel",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-ui",
+]
+
+[[package]]
+name = "sigil-actions"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "criterion",
+ "sigil-actions-macros",
+ "sigil-ui",
+ "smallvec",
+]
+
+[[package]]
+name = "sigil-actions-macros"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "sigil-actions",
+ "sigil-ui",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "sigil-animation"
+version = "0.1.0-alpha.1"
+
+[[package]]
+name = "sigil-animation-runtime"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "criterion",
+ "sigil-animation",
+ "sigil-reactive",
+ "sigil-style",
+]
+
+[[package]]
+name = "sigil-app"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "accesskit",
+ "crossbeam-channel",
+ "notify",
+ "sigil-a11y",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-renderer",
+ "sigil-shell",
+ "sigil-style",
+ "sigil-tasks",
+ "sigil-text",
+ "toml 0.9.12+spec-1.1.0",
+ "tracing",
+ "windows-core 0.62.2",
+]
+
+[[package]]
+name = "sigil-events"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "accesskit",
+ "allocation-counter",
+ "criterion",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-style",
+ "smallvec",
+]
+
+[[package]]
+name = "sigil-hal"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "keyboard-types",
+ "smol_str 0.3.6",
+]
+
+[[package]]
+name = "sigil-icons"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "lyon_geom",
+ "proptest",
+ "smallvec",
+ "usvg 0.47.0",
+]
+
+[[package]]
+name = "sigil-ide-core"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "criterion",
+ "crossbeam-channel",
+ "ignore",
+ "notify",
+ "proptest",
+ "ropey",
+ "smallvec",
+ "tempfile",
+ "toml 0.9.12+spec-1.1.0",
+]
+
+[[package]]
+name = "sigil-kernel"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "accesskit",
+ "ahash",
+ "criterion",
+ "sigil-hal",
+ "sigil-reactive",
+ "slotmap",
+ "smallvec",
+]
+
+[[package]]
+name = "sigil-layout"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "ahash",
+ "allocation-counter",
+ "criterion",
+ "rayon",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-reactive",
+ "sigil-style",
+ "slotmap",
+ "smallvec",
+ "taffy 0.10.1",
+]
+
+[[package]]
+name = "sigil-reactive"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "criterion",
+ "sigil-actions",
+ "sigil-ui",
+ "smallvec",
+ "tokio",
+]
+
+[[package]]
+name = "sigil-renderer"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "ahash",
+ "bytemuck",
+ "criterion",
+ "half",
+ "image",
+ "pollster 0.4.0",
+ "proptest",
+ "raw-window-handle",
+ "sigil-hal",
+ "sigil-icons",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-shell",
+ "sigil-style",
+ "sigil-text",
+ "skrifa",
+ "smallvec",
+ "tracing",
+ "wgpu",
+ "windows-core 0.62.2",
+ "zeno",
+]
+
+[[package]]
+name = "sigil-shell"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "accesskit",
+ "accesskit_winit",
+ "crossbeam-channel",
+ "sigil-hal",
+ "smol_str 0.3.6",
+ "winit",
+]
+
+[[package]]
+name = "sigil-style"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "allocation-counter",
+ "criterion",
+ "phf 0.11.3",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-reactive",
+ "sigil-style-macros",
+ "sigil-ui",
+ "smallvec",
+ "strsim",
+ "tracing",
+]
+
+[[package]]
+name = "sigil-style-macros"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "phf 0.11.3",
+ "phf_codegen",
+ "proc-macro2",
+ "quote",
+ "sigil-style",
+ "sigil-ui",
+ "syn 2.0.117",
+ "toml 0.8.23",
+ "trybuild",
+]
+
+[[package]]
+name = "sigil-tasks"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "criterion",
+ "sigil-hal",
+ "sigil-reactive",
+ "tokio",
+ "winit",
+]
+
+[[package]]
+name = "sigil-text"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "ahash",
+ "criterion",
+ "harfrust",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-style",
+ "skrifa",
+ "smallvec",
+ "tracing",
+ "unicode-bidi",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "sigil-ui"
+version = "0.1.0-alpha.1"
+dependencies = [
  "arboard",
  "criterion",
- "events",
- "hal",
  "image",
- "kernel",
- "layout",
  "pollster 0.4.0",
- "reactive",
- "renderer",
- "style",
- "tasks",
- "text",
+ "sigil-actions",
+ "sigil-animation",
+ "sigil-animation-runtime",
+ "sigil-app",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-reactive",
+ "sigil-renderer",
+ "sigil-style",
+ "sigil-tasks",
+ "sigil-text",
  "wgpu",
 ]
 
@@ -6838,36 +6906,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "style"
-version = "0.0.0"
-dependencies = [
- "allocation-counter",
- "criterion",
- "hal",
- "kernel",
- "phf 0.11.3",
- "reactive",
- "smallvec",
- "strsim",
- "style-macros",
- "tracing",
-]
-
-[[package]]
-name = "style-macros"
-version = "0.0.0"
-dependencies = [
- "phf 0.11.3",
- "phf_codegen",
- "proc-macro2",
- "quote",
- "style",
- "syn 2.0.117",
- "toml 0.8.23",
- "trybuild",
-]
-
-[[package]]
 name = "subtle"
 version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7136,17 +7174,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "591ef38edfb78ca4771ee32cf494cb8771944bee237a9b91fc9c1424ac4b777b"
 
 [[package]]
-name = "tasks"
-version = "0.0.0"
-dependencies = [
- "criterion",
- "hal",
- "reactive",
- "tokio",
- "winit",
-]
-
-[[package]]
 name = "tempfile"
 version = "3.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7177,26 +7204,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "text"
-version = "0.0.0"
-dependencies = [
- "ahash",
- "criterion",
- "hal",
- "harfrust",
- "kernel",
- "layout",
- "reactive",
- "skrifa",
- "smallvec",
- "style",
- "tracing",
- "unicode-bidi",
- "unicode-script",
- "unicode-segmentation",
 ]
 
 [[package]]
@@ -7286,9 +7293,9 @@ dependencies = [
 
 [[package]]
 name = "timer-stopwatch"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -7931,12 +7938,12 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vertical-slice"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "app",
- "hal",
- "renderer",
- "sigil",
+ "sigil-app",
+ "sigil-hal",
+ "sigil-renderer",
+ "sigil-ui",
 ]
 
 [[package]]
@@ -8452,9 +8459,9 @@ dependencies = [
 
 [[package]]
 name = "widget-playground"
-version = "0.0.0"
+version = "0.1.0-alpha.1"
 dependencies = [
- "sigil",
+ "sigil-ui",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "style-macros"
+name = "sigil-style-macros"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,10 +7,13 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Proc macros for Sigil utility classes."
+readme.workspace = true
+keywords = ["styling", "macros", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "build.rs", "grammar/**"]
 
 [lib]
 proc-macro = true
-doctest = false
 
 [dependencies]
 phf = { workspace = true }
@@ -23,7 +26,8 @@ phf_codegen = "0.11"
 toml = "0.8"
 
 [dev-dependencies]
-style = { workspace = true }
+sigil-style = { path = "../style" }
+sigil-ui = { path = "../sigil" }
 trybuild = "1"
 
 [lints]

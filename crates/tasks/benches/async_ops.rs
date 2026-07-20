@@ -11,7 +11,7 @@
 //! Run with:
 //!
 //! ```text
-//! cargo bench -p sigil-async --bench async_ops -- \
+//! cargo bench -p sigil-tasks --bench async_ops -- \
 //!     --warm-up-time 1 --measurement-time 3 --sample-size 30
 //! ```
 //!
@@ -38,9 +38,9 @@ use async_ops_sustained::{
     bench_spawn_to_signal_smoke_latency, bench_sustained_cross_thread_writes_1k_per_sec,
 };
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use hal::Scheduler;
-use reactive::{Runtime, effect, signal};
-use tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
+use sigil_hal::Scheduler;
+use sigil_reactive::{Runtime, effect, signal};
+use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
 
 /// Spin until `cond` returns true or the deadline elapses.
 /// Used by the round-trip benches to wait for cross-thread work to

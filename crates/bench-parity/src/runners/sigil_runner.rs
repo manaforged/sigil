@@ -8,11 +8,11 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use hal::{LogicalSize, Size};
-use kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use reactive::{Runtime, Signal, signal};
 use sigil::widgets::virtual_list;
+use sigil_hal::{LogicalSize, Size};
+use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_reactive::{Runtime, Signal, signal};
 
 use crate::{EquivalenceCheck, FrameworkRunner, HostInfo, RunResult, RunSummary, Workload};
 

@@ -7,9 +7,9 @@
 //! its own child module, matching the `focus/scope.rs` and
 //! `focus/targets.rs` precedent already in this crate.
 
-use hal::{Key, KeyEvent, KeyPhase, LogicalKey, Shortcut};
-use kernel::{Cx, NodeId};
-use layout::LayoutEngine;
+use sigil_hal::{Key, KeyEvent, KeyPhase, LogicalKey, Shortcut};
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use super::{EventRouter, ShortcutIndex};

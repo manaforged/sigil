@@ -15,9 +15,9 @@
 
 use std::cell::{Cell, RefCell};
 
-use events::prelude::NodeEventsExt;
-use kernel::NodeBuilder;
-use reactive::Signal;
+use sigil_events::prelude::NodeEventsExt;
+use sigil_kernel::NodeBuilder;
+use sigil_reactive::Signal;
 
 use super::builder::SplitterOrientation;
 

@@ -1,5 +1,5 @@
 [package]
-name = "reactive"
+name = "sigil-reactive"
 autobenches = false
 version.workspace = true
 edition.workspace = true
@@ -8,15 +8,18 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "Leptos 0.5+ style reactive core — signals, effects, derived, owner tree."
+readme.workspace = true
+keywords = ["signals", "reactivity", "gui", "state-management"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 
 [lib]
 # Rust 1.94 merged-doctests + Windows-msvc target misdetection
 # workaround. Crate-level examples are marked `rust,ignore`; the
 # same examples live in `tests/reactive_contract.rs` as real tests.
-doctest = false
 
 [dependencies]
-actions = { workspace = true }
+sigil-actions = { workspace = true }
 smallvec = { workspace = true }
 # G5 (DR-048): Task<T> wraps oneshot for completion routing and stores
 # AbortHandle for RAII cancel. Sync feature pulls in `oneshot`; the
@@ -27,6 +30,7 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+sigil-ui = { path = "../sigil" }
 
 [[bench]]
 name = "reactive_ops"

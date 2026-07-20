@@ -4,11 +4,11 @@
 //! absolute viewport insets) so the open stack cascades beside its
 //! parent level.
 
-use events::prelude::{Key, NodeEventsExt};
-use kernel::{NodeBuilder, Role, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived_eq, signal};
-use style::{FocusRing, NodeStyleExt, Size, Style, StyleAtom, Theme};
+use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq, signal};
+use sigil_style::{FocusRing, NodeStyleExt, Size, Style, StyleAtom, Theme};
 
 use super::super::shared::Activate;
 use super::builder::LevelDef;

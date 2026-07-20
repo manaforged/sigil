@@ -25,19 +25,19 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_hal as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -45,7 +45,8 @@ use windows_core as _;
 use std::sync::mpsc;
 
 use pollster::FutureExt as _;
-use renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_renderer::{OffscreenTarget, WgpuRenderer};
+use zeno as _;
 
 // Physical scale factor: texture dims = viewport × SCALE.
 // Viewport (960, 360) × scale 1 = (960, 360) px — under the 2048-px downlevel cap.
@@ -102,7 +103,7 @@ fn glow_pixel_check() {
 fn render_glow_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     // scenes::glow() is provided by the implementer; locked API returns
     // (CommandScene, (f32, f32) viewport, Color clear).
-    let (command_scene, viewport, clear) = renderer::scenes::glow();
+    let (command_scene, viewport, clear) = sigil_renderer::scenes::glow();
 
     let phys_w = (viewport.0 * SCALE as f32) as u32;
     let phys_h = (viewport.1 * SCALE as f32) as u32;

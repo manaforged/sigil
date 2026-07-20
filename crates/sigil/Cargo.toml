@@ -1,5 +1,5 @@
 [package]
-name = "sigil"
+name = "sigil-ui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,43 +7,55 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "The sigil UI framework — one-stop facade crate with prelude."
+readme = "README.md"
+keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
+categories = ["gui"]
+# Facade README is crate-local (crates/sigil/README.md) — it is also the
+# docs.rs front page via `#![doc = include_str!("../README.md")]` in src/lib.rs.
+# benches/** is intentionally absent: Cargo strips the four [[bench]] targets
+# from the packaged manifest, and the benches are dev-only anyway.
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
 autobenches = false
 
 [lib]
-doctest = false
+name = "sigil"
 
 [dependencies]
-actions = { workspace = true }
-animation-runtime = { workspace = true }
-app = { workspace = true }
-tasks = { workspace = true }
-kernel = { workspace = true }
-events = { workspace = true }
-layout = { workspace = true }
-reactive = { workspace = true }
-style = { workspace = true }
+sigil-actions = { workspace = true }
+sigil-animation-runtime = { workspace = true }
+sigil-app = { workspace = true }
+sigil-tasks = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-events = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
 arboard = { workspace = true }
 
 # Optional GPU text + render surface for external host engines (e.g. a game engine).
 # Off by default; enabled via the `render` feature. Pure-widget/desktop
 # consumers (`sigil::launch`) are unaffected. See DR-054.
-renderer = { workspace = true, optional = true }
-text = { workspace = true, optional = true }
-hal = { workspace = true, optional = true }
+sigil-renderer = { workspace = true, optional = true }
+sigil-text = { workspace = true, optional = true }
+sigil-hal = { workspace = true, optional = true }
 
 [features]
 # Exposes `sigil::{render, text}` — the Slug text pipeline + scene
 # compositing an embedding host drives. See DR-054.
-render = ["dep:renderer", "dep:text", "dep:hal"]
+render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-animation = { workspace = true }
-hal = { workspace = true }
-renderer = { workspace = true }
+sigil-animation = { path = "../animation" }
+sigil-hal = { path = "../hal" }
+sigil-renderer = { path = "../renderer" }
 image = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true }
+
+[[bench]]
+name = "heatmap_perf"
+harness = false
 
 [[bench]]
 name = "floating_text"
@@ -59,3 +71,10 @@ harness = false
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "table_ops"
+harness = false
+
+[package.metadata.docs.rs]
+all-features = true

@@ -6,12 +6,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use hal as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 
-use kernel::{Cx, IntoNode, NodeId, Role, container, text};
+use sigil_kernel::{Cx, IntoNode, NodeId, Role, container, text};
 
 struct LabelledPanel {
     title: &'static str,

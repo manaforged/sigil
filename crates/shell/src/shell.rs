@@ -1,4 +1,4 @@
-//! `WinitShell` — the winit-backed [`hal::Shell`] implementation.
+//! `WinitShell` — the winit-backed [`sigil_hal::Shell`] implementation.
 //! See DR-002 for the lifecycle contract: windows are queued until the
 //! event loop is alive, and the event loop is built eagerly so the
 //! [`Shell::waker`] handle can be handed to `sigil-async` before
@@ -12,18 +12,19 @@ use std::sync::{
 };
 use std::time::Instant;
 
-use hal::{
-    LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Rect, Scale,
-    Shell, ShellEvent, WindowEvent as SigilWindowEvent,
+use sigil_hal::{
+    Anchor, LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Rect,
+    Scale, Shell, ShellEvent, WindowEvent as SigilWindowEvent, WindowOpts,
 };
 use winit::{
     dpi::{
         LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize,
-        PhysicalSize as WinitPhysicalSize, Size as WinitSize,
+        PhysicalPosition as WinitPhysicalPosition, PhysicalSize as WinitPhysicalSize,
+        Size as WinitSize,
     },
     event::WindowEvent as WinitWindowEvent,
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    window::{Window, WindowAttributes, WindowId},
+    window::{Window, WindowAttributes, WindowId, WindowLevel},
 };
 
 use crate::{
@@ -42,6 +43,7 @@ pub(crate) struct PendingWindow {
     handle: WinitWindowHandle,
     title: String,
     size: PendingWindowSize,
+    opts: WindowOpts,
 }
 
 pub(crate) enum PendingWindowSize {
@@ -61,7 +63,7 @@ pub(crate) type WakeHook = Arc<dyn Fn() + Send + Sync + 'static>;
 /// the requested time without a busy spin. Returning `None` falls back
 /// to the default `Wait` behaviour. Wired by the application layer
 /// (see [`WinitShell::on_idle_deadline`]) to surface
-/// `reactive::next_interval_deadline()` to the event loop.
+/// `sigil_reactive::next_interval_deadline()` to the event loop.
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
 /// One window's AccessKit adapter plus its latest-published-tree cache
@@ -125,9 +127,32 @@ impl WinitShell {
     /// Returns an error when winit cannot construct the platform event loop.
     pub fn new() -> Result<Self, ShellError> {
         let event_loop = EventLoop::<WakeEvent>::with_user_event().build()?;
+        Ok(Self::from_event_loop(event_loop))
+    }
+
+    /// Construct a shell whose process runs as an accessory: on macOS
+    /// the app gets no Dock icon or Cmd-Tab entry and never activates.
+    /// Meant for overlay-only apps (status pills); identical to
+    /// [`Self::new`] elsewhere.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when winit cannot construct the platform event loop.
+    pub fn new_accessory() -> Result<Self, ShellError> {
+        let mut builder = EventLoop::<WakeEvent>::with_user_event();
+        #[cfg(target_os = "macos")]
+        {
+            use winit::platform::macos::{ActivationPolicy, EventLoopBuilderExtMacOS};
+            builder.with_activation_policy(ActivationPolicy::Accessory);
+        }
+        let event_loop = builder.build()?;
+        Ok(Self::from_event_loop(event_loop))
+    }
+
+    fn from_event_loop(event_loop: EventLoop<WakeEvent>) -> Self {
         let proxy = Arc::new(Mutex::new(event_loop.create_proxy()));
         let (a11y_action_tx, a11y_action_rx) = crossbeam_channel::unbounded();
-        Ok(Self {
+        Self {
             event_loop: Some(event_loop),
             proxy,
             pending_wake: Arc::new(AtomicBool::new(false)),
@@ -148,7 +173,7 @@ impl WinitShell {
             a11y_adapters: Vec::new(),
             a11y_action_tx,
             a11y_action_rx,
-        })
+        }
     }
 
     /// Register a closure invoked once per delivered `WakeEvent`
@@ -159,13 +184,13 @@ impl WinitShell {
 
     /// Register a closure consulted between event-loop iterations to
     /// discover the soonest pending deadline (e.g. the next
-    /// [`reactive::interval`](https://docs.rs/sigil-reactive) fire).
+    /// [`sigil_reactive::interval`](https://docs.rs/sigil-reactive) fire).
     ///
     /// When the hook returns `Some(deadline)`, the adapter sets winit's
     /// `ControlFlow::WaitUntil(deadline)` so the OS wakes the loop at
     /// the requested time without busy-spinning. Returning `None` falls
     /// back to the default `Wait` behaviour. Apps wire this to
-    /// `reactive::next_interval_deadline` from inside their
+    /// `sigil_reactive::next_interval_deadline` from inside their
     /// frame-driver setup.
     pub fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
         &mut self,
@@ -248,30 +273,84 @@ impl WinitShell {
         WinitWindowHandle::from_raw(id)
     }
 
+    /// Convert a logical size to physical pixels with the monitor's
+    /// scale factor, matching winit's own `WinitSize::Logical` handling.
+    fn logical_to_physical_px(size: LogicalSize, scale: f64) -> (u32, u32) {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        (
+            (f64::from(size.width) * scale).round() as u32,
+            (f64::from(size.height) * scale).round() as u32,
+        )
+    }
+
+    /// Build the winit attributes for a pending spec. The overlay opt
+    /// bundles undecorated + transparent + always-on-top + inactive
+    /// (+ shadowless on macOS); an anchor resolves against the primary
+    /// monitor when one is discoverable, otherwise the OS default
+    /// position stands. Windows start hidden until the AccessKit
+    /// adapter is attached — `accesskit_winit::Adapter` panics if
+    /// constructed against an already-visible window.
+    fn window_attrs(spec: &PendingWindow, active: &ActiveEventLoop) -> WindowAttributes {
+        let size = match spec.size {
+            PendingWindowSize::Physical(size) => {
+                WinitSize::Physical(WinitPhysicalSize::new(size.width, size.height))
+            }
+            PendingWindowSize::Logical(size) => WinitSize::Logical(WinitLogicalSize::new(
+                f64::from(size.width),
+                f64::from(size.height),
+            )),
+        };
+        let mut attrs = WindowAttributes::default()
+            .with_title(spec.title.clone())
+            .with_inner_size(size)
+            .with_visible(false);
+        if spec.opts.overlay {
+            attrs = attrs
+                .with_decorations(false)
+                .with_transparent(true)
+                .with_window_level(WindowLevel::AlwaysOnTop)
+                .with_active(false);
+            #[cfg(target_os = "macos")]
+            {
+                use winit::platform::macos::WindowAttributesExtMacOS;
+                attrs = attrs.with_has_shadow(false);
+            }
+        }
+        if let Some(anchor) = spec.opts.anchor
+            && let Some(monitor) = active.primary_monitor()
+        {
+            let scale = monitor.scale_factor();
+            let win = match spec.size {
+                PendingWindowSize::Physical(s) => (s.width, s.height),
+                PendingWindowSize::Logical(s) => Self::logical_to_physical_px(s, scale),
+            };
+            let pos = monitor.position();
+            let msize = monitor.size();
+            let (x, y) = anchor_origin(
+                anchor,
+                (pos.x, pos.y),
+                (msize.width, msize.height),
+                win,
+                scale,
+            );
+            attrs = attrs.with_position(WinitPhysicalPosition::new(x, y));
+        }
+        attrs
+    }
+
     pub(crate) fn materialise_pending(&mut self, active: &ActiveEventLoop) {
         if self.pending.is_empty() {
             return;
         }
         let pending = std::mem::take(&mut self.pending);
         for spec in pending {
-            let size = match spec.size {
-                PendingWindowSize::Physical(size) => {
-                    WinitSize::Physical(WinitPhysicalSize::new(size.width, size.height))
-                }
-                PendingWindowSize::Logical(size) => WinitSize::Logical(WinitLogicalSize::new(
-                    f64::from(size.width),
-                    f64::from(size.height),
-                )),
-            };
-            // Hidden until the AccessKit adapter is attached below —
-            // `accesskit_winit::Adapter::with_direct_handlers` panics if
-            // constructed against an already-visible window.
-            let attrs = WindowAttributes::default()
-                .with_title(spec.title)
-                .with_inner_size(size)
-                .with_visible(false);
+            let attrs = Self::window_attrs(&spec, active);
             match active.create_window(attrs) {
                 Ok(window) => {
+                    if spec.opts.overlay {
+                        // Click-through; failures are cosmetic, not fatal.
+                        let _ = window.set_cursor_hittest(false);
+                    }
                     self.install_a11y_adapter(active, spec.handle, &window);
                     self.window_scales
                         .push((spec.handle, scale_from_f64(window.scale_factor())));
@@ -351,6 +430,7 @@ impl Shell for WinitShell {
             handle,
             title: title.to_owned(),
             size: PendingWindowSize::Physical(initial_size),
+            opts: WindowOpts::default(),
         });
         Ok(handle)
     }
@@ -365,6 +445,23 @@ impl Shell for WinitShell {
             handle,
             title: title.to_owned(),
             size: PendingWindowSize::Logical(initial),
+            opts: WindowOpts::default(),
+        });
+        Ok(handle)
+    }
+
+    fn create_window_with(
+        &mut self,
+        title: &str,
+        initial: LogicalSize,
+        opts: WindowOpts,
+    ) -> Result<Self::Window, Self::Error> {
+        let handle = self.allocate_handle();
+        self.pending.push(PendingWindow {
+            handle,
+            title: title.to_owned(),
+            size: PendingWindowSize::Logical(initial),
+            opts,
         });
         Ok(handle)
     }
@@ -406,5 +503,76 @@ impl Shell for WinitShell {
         };
         event_loop.run_app(&mut app)?;
         Ok(())
+    }
+}
+
+/// Resolve an [`Anchor`] to a window origin in physical pixels.
+///
+/// `monitor_pos`/`monitor_size` and `window_size` are physical pixels;
+/// the anchor's margin is logical and scaled by the monitor's factor.
+/// Pure so it is testable without a live monitor.
+fn anchor_origin(
+    anchor: Anchor,
+    monitor_pos: (i32, i32),
+    monitor_size: (u32, u32),
+    window_size: (u32, u32),
+    scale: f64,
+) -> (i32, i32) {
+    match anchor {
+        Anchor::BottomCenter { margin } => {
+            #[allow(clippy::cast_possible_truncation)]
+            let margin_px = (f64::from(margin) * scale).round() as i32;
+            #[allow(clippy::cast_possible_wrap)]
+            let x = monitor_pos.0 + (monitor_size.0 as i32 - window_size.0 as i32) / 2;
+            #[allow(clippy::cast_possible_wrap)]
+            let y = monitor_pos.1 + monitor_size.1 as i32 - window_size.1 as i32 - margin_px;
+            (x, y)
+        }
+    }
+}
+
+#[cfg(test)]
+mod anchor_tests {
+    use super::*;
+
+    #[test]
+    fn bottom_center_centers_and_clears_margin() {
+        // 2560x1440 monitor at origin, 200x48 window, margin 64 @ 1x.
+        let (x, y) = anchor_origin(
+            Anchor::BottomCenter { margin: 64.0 },
+            (0, 0),
+            (2560, 1440),
+            (200, 48),
+            1.0,
+        );
+        assert_eq!(x, (2560 - 200) / 2);
+        assert_eq!(y, 1440 - 48 - 64);
+    }
+
+    #[test]
+    fn bottom_center_scales_margin_by_monitor_factor() {
+        // Retina 2x: 64 logical px of margin = 128 physical px.
+        let (_, y) = anchor_origin(
+            Anchor::BottomCenter { margin: 64.0 },
+            (0, 0),
+            (5120, 2880),
+            (400, 96),
+            2.0,
+        );
+        assert_eq!(y, 2880 - 96 - 128);
+    }
+
+    #[test]
+    fn bottom_center_respects_monitor_origin() {
+        // Secondary monitor left of the primary (negative origin).
+        let (x, y) = anchor_origin(
+            Anchor::BottomCenter { margin: 10.0 },
+            (-1920, 200),
+            (1920, 1080),
+            (100, 40),
+            1.0,
+        );
+        assert_eq!(x, -1920 + (1920 - 100) / 2);
+        assert_eq!(y, 200 + 1080 - 40 - 10);
     }
 }

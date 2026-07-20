@@ -15,25 +15,25 @@
 
 use std::rc::Rc;
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel::{Cx, NodeId};
-use layout as _;
 use pollster as _;
-use reactive::{Runtime, signal};
-use renderer as _;
 use sigil::prelude::*;
 use sigil::widgets::{FCT_POOL_CAPACITY, FctNode, FctState};
-use style::scale::ScaleRole;
-use style::{Rgba8, Theme};
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel::{Cx, NodeId};
+use sigil_layout as _;
+use sigil_reactive::{Runtime, signal};
+use sigil_renderer as _;
+use sigil_style::scale::ScaleRole;
+use sigil_style::{Rgba8, Theme};
+use sigil_tasks as _;
 use wgpu as _;
 
 fn placeholder_color() -> Rgba8 {

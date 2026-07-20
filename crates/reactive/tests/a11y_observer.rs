@@ -15,15 +15,16 @@
     clippy::ignored_unit_patterns
 )]
 
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use reactive::{A11yObserver, Runtime, signal};
+use sigil_reactive::{A11yObserver, Runtime, signal};
 
 /// Helper — drives the full frame phase cycle so end-of-frame drain
 /// fires.

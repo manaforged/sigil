@@ -16,6 +16,7 @@
 //! and cancels any reactive subscriptions that were created inside it.
 //! You do not need to manage owners manually — the tree drives it.
 
+#![deny(missing_docs)]
 // `pub(crate)` on module seams documents the intended boundary even
 // when clippy's nursery lint sees a currently-private path.
 #![allow(clippy::redundant_pub_crate)]
@@ -35,12 +36,12 @@ mod reactive_children;
 mod semantics;
 mod text;
 
-pub use accesskit::{Action, Live, Role};
+pub use accesskit::{Action, Live, Role, SortDirection};
 pub use announce::queue_announcement;
 pub use builder::{NodeBuilder, container, fragment};
 pub use component::IntoNode;
 pub use cx::Cx;
 pub use id::NodeId;
-pub use node::{Node, NodeExtensions, NodeType};
+pub use node::{Node, NodeExtensions, NodeType, TopLayer};
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind};
 pub use text::{TextBuilder, TextContent, text};

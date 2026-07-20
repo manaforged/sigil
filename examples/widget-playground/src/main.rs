@@ -45,7 +45,7 @@ fn root() -> NodeBuilder {
                 .padding(PAGE_PADDING)
                 .gap(SECTION_GAP),
         )
-        .class("w-full bg-surface")
+        .class(classes!("w-full bg-surface"))
         .child(page_header())
         .child(form_section())
         .child(display_section())
@@ -58,15 +58,17 @@ fn root() -> NodeBuilder {
         .height(VIEWPORT_HEIGHT);
     container()
         .layout(LayoutStyle::flex_column().fill())
-        .class("bg-surface")
+        .class(classes!("bg-surface"))
         .child(viewport)
 }
 
 fn page_header() -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().gap(4.0))
-        .child(text("Sigil widget playground").class("text-xl font-bold"))
-        .child(text("Every widget the library exposes, one instance each.").class("text-sm"))
+        .child(text("Sigil widget playground").class(classes!("text-xl font-bold")))
+        .child(
+            text("Every widget the library exposes, one instance each.").class(classes!("text-sm")),
+        )
 }
 
 /// Wrap a category in a labeled card.
@@ -77,11 +79,11 @@ fn page_header() -> NodeBuilder {
 pub(crate) fn category(title: &'static str, body: NodeBuilder) -> NodeBuilder {
     let card = container()
         .layout(LayoutStyle::flex_column().gap(12.0).padding(16.0))
-        .class("w-full rounded-md bg-surface-hover")
+        .class(classes!("w-full rounded-md bg-surface-hover"))
         .child(body);
     container()
         .layout(LayoutStyle::flex_column().fill_width().gap(8.0))
-        .child(text(title).class("text-lg font-bold"))
+        .child(text(title).class(classes!("text-lg font-bold")))
         .child(card)
 }
 

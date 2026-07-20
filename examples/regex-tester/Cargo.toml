@@ -1,5 +1,6 @@
 [package]
 name = "regex-tester"
+publish = false
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,7 +10,7 @@ authors.workspace = true
 description = "Editor-tier dogfooding example: live regex pattern tester with derived match list."
 
 [dependencies]
-sigil = { workspace = true }
+sigil-ui = { workspace = true }
 regex = "1.12"
 
 [lints]

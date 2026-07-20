@@ -2,7 +2,7 @@
 //! justification, grow/shrink.
 
 use super::StyleAccess;
-use crate::{AlignKind, DisplayKind, FlexDir, JustifyKind, StyleAtom};
+use crate::{AlignKind, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, StyleAtom};
 
 /// Display + flex methods on the fluent styling surface.
 pub trait Flex: StyleAccess {
@@ -35,6 +35,22 @@ pub trait Flex: StyleAccess {
     fn flex_row(mut self) -> Self {
         self.style_mut()
             .push_atom(StyleAtom::FlexDirection(FlexDir::Row));
+        self
+    }
+
+    /// Wrap flex items onto new lines.
+    #[must_use]
+    fn flex_wrap(mut self) -> Self {
+        self.style_mut()
+            .push_atom(StyleAtom::FlexWrap(FlexWrapKind::Wrap));
+        self
+    }
+
+    /// Keep flex items on one line (default).
+    #[must_use]
+    fn flex_nowrap(mut self) -> Self {
+        self.style_mut()
+            .push_atom(StyleAtom::FlexWrap(FlexWrapKind::NoWrap));
         self
     }
 

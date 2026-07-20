@@ -16,7 +16,7 @@
 //! readers see the meaning, not the dot.
 
 use sigil::widget_dev::*;
-use style::{Px, StyleAtom, Tone};
+use sigil_style::{Px, StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -24,7 +24,7 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 pub struct DotBuilder {
     tone: Tone,
     size: Size,
-    style_accumulator: style::Style,
+    style_accumulator: sigil_style::Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -42,7 +42,7 @@ impl DotBuilder {
         Self {
             tone,
             size: Size::Compact,
-            style_accumulator: style::Style::new(),
+            style_accumulator: sigil_style::Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
     }
@@ -85,13 +85,13 @@ impl DotBuilder {
         let inner_radius = Px((inner_extent / 2.0) as i16);
         let inner = container()
             .layout(dot_inner_layout(inner_extent))
-            .style(style::Style::new().radius(inner_radius.0))
+            .style(sigil_style::Style::new().radius(inner_radius.0))
             .tone(self.tone)
             .class(DOT_FILL_ATOMS);
         let mut node = container()
             .role(Role::GenericContainer)
             .layout(self.layout_overrides.apply(dot_outer_layout(extent)))
-            .style(style::Style::new().radius(half_radius.0))
+            .style(sigil_style::Style::new().radius(half_radius.0))
             .tone(self.tone)
             .class(DOT_RING_ATOMS)
             .child(inner);
@@ -122,7 +122,7 @@ fn dot_inner_layout(extent: f32) -> LayoutStyle {
 }
 
 impl StyleAccess for DotBuilder {
-    fn style_mut(&mut self) -> &mut style::Style {
+    fn style_mut(&mut self) -> &mut sigil_style::Style {
         &mut self.style_accumulator
     }
 }
@@ -134,7 +134,7 @@ impl WidgetLayoutExt for DotBuilder {
 }
 
 impl IntoNode for DotBuilder {
-    fn build(self, cx: &mut kernel::Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut sigil_kernel::Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -143,8 +143,8 @@ impl IntoNode for DotBuilder {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use kernel::Cx;
-    use reactive::Runtime;
+    use sigil_kernel::Cx;
+    use sigil_reactive::Runtime;
 
     #[test]
     fn dot_uses_generic_container_role() {
@@ -152,7 +152,7 @@ mod tests {
             let mut cx = Cx::new_root();
             let id = dot(Tone::Success).build(&mut cx);
             let node = cx.get(id).expect("dot node exists");
-            assert_eq!(node.a11y.role, kernel::Role::GenericContainer);
+            assert_eq!(node.a11y.role, sigil_kernel::Role::GenericContainer);
         });
     }
 

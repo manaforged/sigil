@@ -15,12 +15,12 @@ mod scroll;
 
 use std::rc::Rc;
 
-use events::prelude::{KeyEvent, NodeEventsExt};
-use kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
-use layout::LayoutReactiveExt;
-use layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow};
-use reactive::{Signal, derived_eq, effect, signal};
-use style::NodeStyleExt;
+use sigil_events::prelude::{KeyEvent, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
+use sigil_layout::LayoutReactiveExt;
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow};
+use sigil_reactive::{Signal, derived_eq, effect, signal};
+use sigil_style::NodeStyleExt;
 
 use scroll::{first_row, follow_caret, scroll_body, wheel};
 

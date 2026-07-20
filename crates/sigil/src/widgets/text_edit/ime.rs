@@ -21,8 +21,8 @@
 //! adversarial finding [W5-IME-TE] MEDIUM-3).
 //!
 //! Ceiling: the anchor query has no way to constrain text-engine
-//! layout to `render::LINE_WIDTH` — `layout::TextGeometry::caret` has
-//! no width parameter at all (confirmed: `app::EngineGeometry::caret`
+//! layout to `render::LINE_WIDTH` — `sigil_layout::TextGeometry::caret` has
+//! no width parameter at all (confirmed: `sigil_app::EngineGeometry::caret`
 //! hardcodes `None`/no-wrap). A preedit that would visually wrap
 //! inside the 334px line nodes therefore still anchors against an
 //! unconstrained single line. Fixing this needs a `TextGeometry`
@@ -34,11 +34,11 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use events::prelude::{ImeEvent, NodeEventsExt};
-use kernel::NodeBuilder;
-use layout::{CaretGeometry, with_text_geometry};
-use reactive::{Signal, batch, effect, signal};
-use style::TextStyle;
+use sigil_events::prelude::{ImeEvent, NodeEventsExt};
+use sigil_kernel::NodeBuilder;
+use sigil_layout::{CaretGeometry, with_text_geometry};
+use sigil_reactive::{Signal, batch, effect, signal};
+use sigil_style::TextStyle;
 
 use super::handlers::{TextEditRuntime, commit, write_value};
 use super::render::{CONTENT_PADDING_X, CONTENT_PADDING_Y, floor_char_boundary, splice_preedit};

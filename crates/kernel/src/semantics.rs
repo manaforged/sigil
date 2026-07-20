@@ -1,7 +1,7 @@
 //! Accessibility semantics carried by every node.
 
-use hal::Shortcut;
-use reactive::Signal;
+use sigil_hal::Shortcut;
+use sigil_reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::NodeId;
@@ -85,6 +85,10 @@ pub struct A11yProps {
     pub value_min: Option<f32>,
     /// Maximum numeric value for range-like controls.
     pub value_max: Option<f32>,
+    /// Increment unit for range-like controls — the amount one
+    /// AT-initiated Increment/Decrement action moves `value_now`
+    /// (5/5 Wave 3 T10). `None` means AT increments default to 1.0.
+    pub step: Option<f32>,
     /// Reactive text value for text-input-like controls.
     pub text_value: Option<Signal<String>>,
     /// Placeholder text for text-input-like controls.
@@ -97,6 +101,21 @@ pub struct A11yProps {
     pub live: Option<accesskit::Live>,
     /// Reactive expanded state for disclosure-like controls.
     pub expanded: Option<Signal<bool>>,
+    /// Reactive sort direction for grid column headers
+    /// ([`accesskit::Role::ColumnHeader`]). `None` while the column is
+    /// not the active sort.
+    pub sort_direction: Option<Signal<Option<accesskit::SortDirection>>>,
+    /// Reactive total row count for grids ([`accesskit::Role::Grid`]),
+    /// including header rows. Reactive because quick-filters change the
+    /// count without rebuilding the tree.
+    pub row_count: Option<Signal<usize>>,
+    /// Total column count for grids ([`accesskit::Role::Grid`]).
+    pub column_count: Option<usize>,
+    /// 1-based row index within the grid (ARIA `rowindex` semantics).
+    pub row_index: Option<usize>,
+    /// 1-based column index of a cell within its row (ARIA `colindex`
+    /// semantics).
+    pub column_index: Option<usize>,
     /// Focus-scope kind for trap regions (modal / popup / inert).
     pub focus_scope: Option<FocusScopeKind>,
 }
@@ -118,12 +137,18 @@ impl Default for A11yProps {
             value_now: None,
             value_min: None,
             value_max: None,
+            step: None,
             text_value: None,
             placeholder: None,
             owns: SmallVec::new(),
             labelled_by: None,
             live: None,
             expanded: None,
+            sort_direction: None,
+            row_count: None,
+            column_count: None,
+            row_index: None,
+            column_index: None,
             focus_scope: None,
         }
     }

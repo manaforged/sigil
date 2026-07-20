@@ -4,9 +4,9 @@
 
 use std::rc::Rc;
 
-use kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, fragment};
-use reactive::{Signal, effect_named};
-use style::{NodeStyleExt, StateHost, Style, StyleAccess};
+use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, fragment};
+use sigil_reactive::{Signal, effect_named};
+use sigil_style::{NodeStyleExt, Style, StyleAccess};
 
 use super::super::shared::BuilderMutator;
 use super::spawn::FctSpawn;
@@ -111,7 +111,7 @@ impl FloatingTextBuilder {
         let time = self
             .settings
             .time
-            .unwrap_or_else(|| reactive::signal(0.0_f32));
+            .unwrap_or_else(|| sigil_reactive::signal(0.0_f32));
         let state = Rc::new(FctState::from_settings(self.settings, time));
         let extension = Rc::clone(&state);
 
@@ -137,10 +137,8 @@ impl StyleAccess for FloatingTextBuilder {
     }
 }
 
-impl StateHost for FloatingTextBuilder {}
-
 impl IntoNode for FloatingTextBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

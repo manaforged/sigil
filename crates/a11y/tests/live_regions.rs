@@ -2,8 +2,8 @@
 //! AccessKit projection.
 //!
 //! Predecessors:
-//!   - Wave 1.3.A added [`kernel::Cx::announce`] +
-//!     [`kernel::queue_announcement`] and lazily spawns a
+//!   - Wave 1.3.A added [`sigil_kernel::Cx::announce`] +
+//!     [`sigil_kernel::queue_announcement`] and lazily spawns a
 //!     hidden live-region node on the first call.
 //!   - Wave 1.3.B added the modal's rising-edge effect that pushes
 //!     the dialog title through `queue_announcement` on every
@@ -11,7 +11,7 @@
 //!
 //! This integration test is the gate that proves the full pipeline:
 //! signal flip → effect → queue → drain → kernel live-region node →
-//! [`a11y::tree`] projection → an [`accesskit::TreeUpdate`] node
+//! [`sigil_a11y::tree`] projection → an [`accesskit::TreeUpdate`] node
 //! whose `live()` is set and whose `label()` carries the announcement
 //! text. This is what real screen readers consume; nothing about the
 //! upstream kernel-side asserts proves the AccessKit side wires up.
@@ -25,13 +25,13 @@
 // `crossbeam-channel` backs W5-A11Y's `AccessKitBridge`, unused by this
 // file's bounds-free `tree(&cx, None, &|_| None)` calls.
 use crossbeam_channel as _;
-use hal as _;
-use layout as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_layout as _;
+use sigil_reactive as _;
 
-use a11y::tree;
 use accesskit::{Live, Node as AkNode, NodeId as AkNodeId, TreeUpdate};
-use kernel::{Cx, container};
+use sigil_a11y::tree;
+use sigil_kernel::{Cx, container};
 
 use sigil::prelude::*;
 use sigil::reactive::Runtime;

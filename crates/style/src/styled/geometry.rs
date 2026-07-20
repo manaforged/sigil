@@ -12,6 +12,24 @@ pub trait Geometry: StyleAccess {
         self.style_mut().push_atom(StyleAtom::BorderRadius(Px(px)));
         self
     }
+
+    /// Set border stroke width in logical pixels (all four sides).
+    #[must_use]
+    fn border_w(mut self, px: i16) -> Self {
+        self.style_mut().push_atom(StyleAtom::BorderWidth(Px(px)));
+        self
+    }
+
+    /// Set border stroke colour.
+    ///
+    /// Accepts [`crate::Rgba8`], `&'static str` (theme token), or
+    /// [`crate::ColorAtom`].
+    #[must_use]
+    fn border_color(mut self, color: impl Into<super::ColorOrToken>) -> Self {
+        self.style_mut()
+            .push_atom(super::color::border_color_atom(color.into()));
+        self
+    }
 }
 
 impl<T: StyleAccess> Geometry for T {}

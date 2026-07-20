@@ -11,8 +11,8 @@
 //! once per group and reused across iterations to keep the measured
 //! cost on the per-frame hot path.
 //!
-//! Run with `cargo bench -p sigil --bench widget_render`. Compile-only
-//! smoke: `cargo bench -p sigil --bench widget_render -- --test`.
+//! Run with `cargo bench -p sigil-ui --bench widget_render`. Compile-only
+//! smoke: `cargo bench -p sigil-ui --bench widget_render -- --test`.
 //!
 //! The bench cleanly skips when no wgpu adapter is available on the
 //! host (same heuristic as the visual-golden tests).
@@ -30,29 +30,30 @@
 )]
 
 // Workspace deps inherited by the bench target but not directly named.
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
-use events as _;
+use arboard as _;
 use image as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
+use sigil_tasks as _;
 
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use hal::{
+use pollster::FutureExt as _;
+use sigil::prelude::*;
+use sigil::reactive::{Runtime, signal};
+use sigil_hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use pollster::FutureExt as _;
-use renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
-use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
+use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -76,8 +77,8 @@ impl Mode {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

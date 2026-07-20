@@ -17,17 +17,17 @@ use ahash as _;
 use bytemuck as _;
 use criterion as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
@@ -35,11 +35,11 @@ use zeno as _;
 
 use std::sync::mpsc;
 
-use renderer::{
+use sigil_renderer::{
     CommandScene, OffscreenTarget, SceneBuilder, TextTuning, WgpuRenderer, set_text_tuning,
     shape_glyph_run,
 };
-use style::{Rgba8, TextLineHeight, TextStyle};
+use sigil_style::{Rgba8, TextLineHeight, TextStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -118,7 +118,7 @@ fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
                 scale: 1.0,
             },
             &scene,
-            hal::Color::BLACK,
+            sigil_hal::Color::BLACK,
         )
         .expect("render_command_scene_offscreen");
 
@@ -136,8 +136,8 @@ fn build_text_scene() -> CommandScene {
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
     };
-    let rect = hal::Rect::new(
-        hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil_hal::Rect::new(
+        sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

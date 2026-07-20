@@ -1,8 +1,8 @@
-//! P0.5.2 engine driver — end-to-end `measure` over a [`LayoutForest`].
+//! P0.5.2 engine driver — end-to-end `measure` over a `LayoutForest`.
 //!
 //! Public surface for downstream crates to drive layout against an owned
 //! forest without touching an upstream layout engine. The driver dispatches the root's
-//! display to the matching solver ([`BlockSolver`] or [`FlexSolver`]),
+//! display to the matching solver (`BlockSolver` or `FlexSolver`),
 //! drains the solver's per-node results into the forest's `boxes` slab,
 //! and exposes per-node geometry through [`LayoutDrive::computed_box`].
 //!
@@ -14,8 +14,8 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
-use kernel::TextContent;
-use style::TextStyle;
+use sigil_kernel::TextContent;
+use sigil_style::TextStyle;
 
 use crate::block::BlockSolver;
 use crate::error::LayoutError;
@@ -50,7 +50,7 @@ pub struct ResolvedBox {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct NodeHandle(LocalId);
 
-/// Driver owning a [`LayoutForest`] + text measurer.
+/// Driver owning a `LayoutForest` + text measurer.
 ///
 /// `LayoutDrive` is the public entry point for the owned layout engine
 /// in P0.5. Construct one, build the tree with [`Self::insert`] +
@@ -81,13 +81,13 @@ impl LayoutDrive {
         NodeHandle(self.forest.insert(None, style))
     }
 
-    /// Insert a node carrying its originating `kernel::NodeId`
+    /// Insert a node carrying its originating `sigil_kernel::NodeId`
     /// link. `LayoutEngine` uses this path so the inverse `handle →
     /// kernel` lookup reads `LayoutNode.kernel` directly instead of a
     /// parallel hashmap.
     pub(crate) fn insert_with_kernel(
         &mut self,
-        kernel: kernel::NodeId,
+        kernel: sigil_kernel::NodeId,
         style: StyleData,
     ) -> NodeHandle {
         NodeHandle(self.forest.insert(Some(kernel), style))
@@ -96,7 +96,7 @@ impl LayoutDrive {
     /// Resolve `handle` back to its kernel `NodeId`. Returns `None`
     /// when the handle is stale or the node was inserted without a
     /// kernel link (e.g. test fixtures using `LayoutDrive::insert`).
-    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<kernel::NodeId> {
+    pub(crate) fn kernel_for(&self, handle: NodeHandle) -> Option<sigil_kernel::NodeId> {
         self.forest.refer(handle.0)?.kernel()
     }
 
@@ -180,7 +180,7 @@ impl LayoutDrive {
     /// Walk the tree from `root` and resolve every reachable node's
     /// box.
     ///
-    /// Dispatches to [`BlockSolver`] or [`FlexSolver`] based on the
+    /// Dispatches to `BlockSolver` or `FlexSolver` based on the
     /// root's `display`. The chosen solver recurses through the
     /// subtree and writes per-node boxes into an internal map; the
     /// driver then scatters those into the forest's `boxes` slab so
@@ -201,7 +201,7 @@ impl LayoutDrive {
 
     /// Measure with full owned space constraints.
     ///
-    /// `LayoutEngine` uses this path so `hal::Dim::{Fixed,
+    /// `LayoutEngine` uses this path so `sigil_hal::Dim::{Fixed,
     /// MinContent, MaxContent}` survive the cutover. The older
     /// [`Self::measure`] convenience remains for tests and callers with
     /// definite viewport sizes.
@@ -352,8 +352,8 @@ impl LayoutDrive {
 mod tests {
     use super::*;
     use crate::style_data::{Dimension, Display, Size as StyleSize, StyleData};
-    use hal::{LogicalSize, Size as HalSize};
-    use kernel::TextContent;
+    use sigil_hal::{LogicalSize, Size as HalSize};
+    use sigil_kernel::TextContent;
 
     struct NullText;
     impl TextMeasure for NullText {

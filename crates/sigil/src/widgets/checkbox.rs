@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use animation_runtime::presets;
-use events::prelude::{Key, LogicalKey, NodeEventsExt};
-use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use reactive::Signal;
-use style::{
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{Key, LogicalKey, NodeEventsExt};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::Signal;
+use sigil_style::{
     ClassSource, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleVariant, Theme, TransitionId,
+    StyleOverlay, StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -15,7 +15,7 @@ use crate::interaction::InteractionState;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
-    disabled_now, label, noop_bool_change,
+    disabled_now, label, noop_bool_change, reactive_style_state,
 };
 use super::transition_seam::install_transition_animators;
 
@@ -47,6 +47,13 @@ pub struct CheckboxBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
+// Root-row variant: every slot empty — the labelled row is transparent
+// by default and stays that way. `stateful_style` uses it purely to
+// publish the interaction slot cell on the row root so a user
+// `.hover()` / `.pressed()` overlay resolves against the surface the
+// pointer is actually over; the indicator child keeps the widget's own
+// checked-state art (DS2 Phase 2 / T1 wiring).
+static CHECKBOX_ROOT_VARIANT: StyleVariant = StyleVariant::new(EMPTY_BASE, StateStyle::EMPTY);
 // Animator-only base slice: scanned by `install_transition_animators`
 // for the `Transition` atom that flips it into the animated path. Does
 // not affect the visual variant (which is still computed reactively).
@@ -169,7 +176,7 @@ impl CheckboxBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let on_change = self
@@ -178,7 +185,11 @@ impl CheckboxBuilder {
             .map_or_else(noop_bool_change, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
         let has_label = self.label.is_some();
-        let mut node = self.base_node(interaction, Rc::clone(&on_change));
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — they resolve against the row root's
+        // interaction slot so `.hover(|s| s.bg(...))` paints the row.
+        let user_overlay = self.style_accumulator.take_state_overlay();
+        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
@@ -191,7 +202,12 @@ impl CheckboxBuilder {
         node.layout(layout_overrides.apply(checkbox_layout(has_label)))
     }
 
-    fn base_node(&self, interaction: InteractionState, on_change: BoolChange) -> NodeBuilder {
+    fn base_node(
+        &self,
+        interaction: InteractionState,
+        on_change: BoolChange,
+        user_overlay: StyleOverlay,
+    ) -> NodeBuilder {
         let checked = self.checked;
         let disabled = self.disabled;
         let tone = self.tone;
@@ -203,6 +219,9 @@ impl CheckboxBuilder {
             .label(accessible_label(self.label.as_ref()))
             .checked(checked)
             .layout(checkbox_layout(self.label.is_some()))
+            .stateful_style(CHECKBOX_ROOT_VARIANT, user_overlay, move || {
+                reactive_style_state(interaction, disabled)
+            })
             .pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, checked, &pointer_change);
             })
@@ -235,7 +254,7 @@ impl WidgetLayoutExt for CheckboxBuilder {
 }
 
 impl IntoNode for CheckboxBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

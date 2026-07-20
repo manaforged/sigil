@@ -14,36 +14,36 @@
     clippy::items_after_statements
 )]
 
-use actions as _;
-use animation as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use layout as _;
 use pollster as _;
 use sigil as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_layout as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use animation_runtime::{
+use sigil_animation_runtime::{
     AnimationRegistry, AttachedAnimators, MotionPrefs, install_animators, presets, tick,
 };
-use hal::Size;
-use kernel::{Cx, IntoNode, NodeId, TextContent, container};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use layout::{LayoutEngine, TextMeasure};
-use reactive::Runtime;
-use renderer::{SceneCommand, emit_scene};
-use style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
+use sigil_hal::Size;
+use sigil_kernel::{Cx, IntoNode, NodeId, TextContent, container};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil_layout::{LayoutEngine, TextMeasure};
+use sigil_reactive::Runtime;
+use sigil_renderer::{SceneCommand, emit_scene};
+use sigil_style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

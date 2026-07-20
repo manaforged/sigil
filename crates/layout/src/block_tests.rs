@@ -28,8 +28,8 @@ use crate::style_data::{
     BoxSizing, Dimension, Display, LengthPercentage, LengthPercentageAuto, Position, Rect,
     Size as StyleSize, StyleData,
 };
-use hal::{LogicalSize, Size as HalSize};
-use kernel::TextContent;
+use sigil_hal::{LogicalSize, Size as HalSize};
+use sigil_kernel::TextContent;
 
 const TOL: f32 = 0.001;
 

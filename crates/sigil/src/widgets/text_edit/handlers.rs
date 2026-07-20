@@ -1,9 +1,9 @@
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
-use events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
-use kernel::NodeBuilder;
-use reactive::{Signal, batch, signal};
+use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use sigil_kernel::NodeBuilder;
+use sigil_reactive::{Signal, batch, signal};
 
 use super::super::shared::disabled_now;
 use super::super::text_field::Clipboard;
@@ -116,6 +116,8 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     let delete = runtime.clone();
     let left = runtime.clone();
     let right = runtime.clone();
+    let up = runtime.clone();
+    let down = runtime.clone();
     let home = runtime.clone();
     let end = runtime.clone();
     let enter = runtime.clone();
@@ -133,6 +135,12 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
         .key(Key::ArrowRight, move |event| {
             move_caret(event, &right, TextEdit::move_right);
         })
+        .key(Key::ArrowUp, move |event| {
+            move_caret(event, &up, TextEdit::move_up);
+        })
+        .key(Key::ArrowDown, move |event| {
+            move_caret(event, &down, TextEdit::move_down);
+        })
         .key(Key::Home, move |event| {
             move_caret(event, &home, TextEdit::move_home);
         })
@@ -149,6 +157,8 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
 fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     let shift_left = runtime.clone();
     let shift_right = runtime.clone();
+    let shift_up = runtime.clone();
+    let shift_down = runtime.clone();
     let shift_home = runtime.clone();
     let shift_end = runtime;
     node.key(
@@ -161,6 +171,18 @@ fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
         Shortcut::new(Key::ArrowRight, ModifiersState::SHIFT),
         move |event| {
             move_caret(event, &shift_right, TextEdit::shift_right);
+        },
+    )
+    .key(
+        Shortcut::new(Key::ArrowUp, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_up, TextEdit::shift_up);
+        },
+    )
+    .key(
+        Shortcut::new(Key::ArrowDown, ModifiersState::SHIFT),
+        move |event| {
+            move_caret(event, &shift_down, TextEdit::shift_down);
         },
     )
     .key(

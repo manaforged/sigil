@@ -19,22 +19,23 @@ use std::path::Path;
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal as _;
 use half as _;
-use icons as _;
 use image::{ColorType, ImageFormat};
-use kernel as _;
-use layout as _;
 use pollster as _;
 use proptest as _;
 use raw_window_handle as _;
-use renderer::{CommandScene, ScreenSubmission, WgpuRenderer, scenes};
-use shell as _;
+use sigil_hal as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_renderer::{CommandScene, ScreenSubmission, WgpuRenderer, scenes};
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
-use text as _;
 use tracing as _;
+use zeno as _;
 
 const SPLIT_WIDTH: u32 = 1280;
 const SPLIT_HALF_HEIGHT: u32 = 400;
@@ -89,7 +90,7 @@ struct Phase {
     capture: PhaseCapture,
 }
 
-type SceneBundle = (CommandScene, (f32, f32), hal::Color);
+type SceneBundle = (CommandScene, (f32, f32), sigil_hal::Color);
 type SceneFactory = fn() -> SceneBundle;
 type SplitFactory = fn() -> [SceneBundle; 2];
 
@@ -199,7 +200,7 @@ struct RenderRequest<'a> {
     scene: &'a CommandScene,
     viewport: (f32, f32),
     extent: CaptureExtent,
-    clear: hal::Color,
+    clear: sigil_hal::Color,
     path: &'a Path,
 }
 

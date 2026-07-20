@@ -6,9 +6,9 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::{FontRef, MetadataProvider};
 use smallvec as _;
@@ -17,9 +17,9 @@ use unicode_bidi as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 
-use hal::{ParagraphMetrics, TextEngine};
-use style::{TextLineHeight, TextStyle};
-use text::{OwnedTextEngine, TextConfig};
+use sigil_hal::{ParagraphMetrics, TextEngine};
+use sigil_style::{TextLineHeight, TextStyle};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextConfig::default())
@@ -125,7 +125,7 @@ fn baseline_is_half_leading_plus_real_ascent() {
     const FONT_SIZE: f32 = 16.0;
     const LINE_HEIGHT: f32 = 32.0;
 
-    let bytes = std::fs::read("tests/fixtures/FiraSans-Regular.ttf").unwrap();
+    let bytes = std::fs::read("assets/fonts/FiraSans-Regular.ttf").unwrap();
     let font = FontRef::new(&bytes).unwrap();
     let m = font.metrics(Size::new(FONT_SIZE), LocationRef::default());
     let (ascent, descent) = (m.ascent, -m.descent);

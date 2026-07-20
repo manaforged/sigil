@@ -73,7 +73,7 @@ impl Shadow {
     /// applies the same Evan Wallace coverage math as [`ShadowKind::Outer`] and
     /// multiplies by the caller-supplied color to produce the halo.
     #[must_use]
-    pub fn glow(color: style::Rgba8, spread: f32, blur: f32) -> Self {
+    pub fn glow(color: sigil_style::Rgba8, spread: f32, blur: f32) -> Self {
         let c = [
             srgb_channel_to_linear(color.r),
             srgb_channel_to_linear(color.g),

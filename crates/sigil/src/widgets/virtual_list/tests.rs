@@ -8,8 +8,8 @@
 
 use super::*;
 
-use kernel::container;
-use reactive::{Runtime, signal};
+use sigil_kernel::container;
+use sigil_reactive::{Runtime, signal};
 
 #[test]
 fn build_materialises_only_visible_window() {
@@ -28,7 +28,7 @@ fn build_materialises_only_visible_window() {
 fn scroll_to_end_seeds_signal_at_bottom() {
     Runtime::scope("sigil-virtual-list-scroll-to-end", || {
         // 100 rows × 30 px = 3000 px content; viewport 200 px → max scroll = 2800
-        let scroll_y = reactive::signal(0.0_f32);
+        let scroll_y = sigil_reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..100).collect();
         let mut cx = Cx::new_root();
         let _ = cx.add(
@@ -47,7 +47,7 @@ fn scroll_into_view_seeds_signal_at_row_position() {
     Runtime::scope("sigil-virtual-list-scroll-into-view", || {
         // Row 50 starts at 50 × 30 = 1500 px. Viewport is 200 px.
         // Max scroll = 100*30 - 200 = 2800. Target 1500 is within range.
-        let scroll_y = reactive::signal(0.0_f32);
+        let scroll_y = sigil_reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..100).collect();
         let mut cx = Cx::new_root();
         let _ = cx.add(
@@ -66,7 +66,7 @@ fn scroll_into_view_seeds_signal_at_row_position() {
 fn auto_pin_to_bottom_no_op_for_static_items() {
     // Forward-compat smoke: auto_pin_to_bottom(true) must not panic.
     Runtime::scope("sigil-virtual-list-auto-pin", || {
-        let scroll_y = reactive::signal(0.0_f32);
+        let scroll_y = sigil_reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..10).collect();
         let mut cx = Cx::new_root();
         let _ = cx.add(
@@ -83,7 +83,7 @@ fn auto_pin_to_bottom_no_op_for_static_items() {
 
 #[test]
 fn viewport_fill_sets_root_dimensions_to_fill() {
-    use layout::prelude::Dimension;
+    use sigil_layout::prelude::Dimension;
     Runtime::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
@@ -91,7 +91,7 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
         let style = cx
             .get(root)
             .expect("root node")
-            .get_extension::<layout::LayoutStyle>()
+            .get_extension::<sigil_layout::LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
         // Both axes resolve against the parent content box at layout time.
@@ -104,10 +104,10 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
 fn viewport_fill_tracks_parent_pane_measured_size() {
     // Drop a virtual_list with .viewport_fill() into a fixed-size parent
     // and verify the rendered viewport rect tracks the parent's content box.
-    use hal::{LogicalSize, Size};
-    use kernel::TextContent;
-    use layout::prelude::LayoutBuilderExt;
-    use layout::{LayoutEngine, LayoutStyle, TextMeasure};
+    use sigil_hal::{LogicalSize, Size};
+    use sigil_kernel::TextContent;
+    use sigil_layout::prelude::LayoutBuilderExt;
+    use sigil_layout::{LayoutEngine, LayoutStyle, TextMeasure};
 
     struct StubMeasure;
     impl TextMeasure for StubMeasure {
@@ -184,15 +184,21 @@ fn select_fires_with_selected_index() {
 
 // ── items_bind / reactive path ────────────────────────────────────────────────
 
-/// Helper: navigate root → content → visible window for `build_bound` trees.
+/// Helper: navigate root → reactive host → content → visible window for
+/// `build_bound` trees.
 ///
-/// Tree shape produced by `build_bound`:
+/// Tree shape produced by `build_bound` (windowed, 5/5 Wave 2 T6-prereq):
 ///   root (`viewport_container`)
-///   └─ content (`content_container`)
-///      └─ visible (`children_reactive` container)
+///   └─ host (`children_reactive` container)
+///      └─ content (`content_container`, sized to current total)
+///         └─ visible window (absolute-positioned rows container)
 fn bound_visible(cx: &Cx, root: NodeId) -> NodeId {
-    let content = cx.first_child(root).expect("content child of root");
-    cx.first_child(content).expect("visible child of content")
+    let host = cx
+        .first_child(root)
+        .expect("children_reactive host child of root");
+    let content = cx.first_child(host).expect("content child of host");
+    cx.first_child(content)
+        .expect("visible window child of content")
 }
 
 #[test]
@@ -284,4 +290,50 @@ fn items_bind_empty_to_full_to_empty() {
             "0 rows after clearing Vec"
         );
     });
+}
+
+#[test]
+fn items_bind_window_advances_in_place_on_scroll() {
+    Runtime::scope("sigil-vlist-bind-scroll-advance", || {
+        let items = signal((0..10_000).collect::<Vec<usize>>());
+        let scroll_y = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            virtual_list(Vec::<usize>::new(), |index, _| {
+                container().label(format!("row {index}"))
+            })
+            .items_bind(items)
+            .scroll_bind(scroll_y)
+            .row_height(20.0)
+            .viewport_height(100.0),
+        );
+        cx.flush_reactive_children();
+        // ceil(100/20)+1 = 6 rows materialized, starting at row 0.
+        assert_eq!(cx.child_count(bound_visible(&cx, root)), 6);
+        assert_eq!(first_row_label(&cx, root), Some("row 0".to_string()));
+
+        // Scroll to row 200 WITHOUT touching the items signal — the same
+        // tree must re-render the window in place (no rebuild).
+        scroll_y.set(4_000.0);
+        cx.flush_reactive_children();
+        assert_eq!(cx.child_count(bound_visible(&cx, root)), 6);
+        assert_eq!(
+            first_row_label(&cx, root),
+            Some("row 200".to_string()),
+            "scroll_y write must advance the window in place"
+        );
+    });
+}
+
+/// Accessible name of the first row slot's child in the bound tree —
+/// proof of WHICH row the window starts on.
+fn first_row_label(cx: &Cx, root: NodeId) -> Option<String> {
+    let visible = bound_visible(cx, root);
+    let first_slot = cx.first_child(visible)?;
+    let row = cx.first_child(first_slot)?;
+    let node = cx.get(row)?;
+    match &node.a11y.name {
+        sigil_kernel::AccessibleName::Static(name) => Some(name.clone()),
+        _ => None,
+    }
 }

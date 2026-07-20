@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use layout::prelude::LayoutBuilderExt;
-use reactive::{Signal, signal};
-use style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, TextContent};
+use sigil_layout::prelude::LayoutBuilderExt;
+use sigil_reactive::{Signal, signal};
+use sigil_style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
@@ -47,7 +47,7 @@ pub struct TextEditBuilder {
 /// `NodeBuilder::children_reactive` (B1). Typing `Enter` after build
 /// grows the on-screen row count without requiring a full tree rebuild.
 /// Vertical caret navigation (Up/Down/PageUp/PageDown) is still
-/// followup work — see the [module docs](super).
+/// followup work — see the module docs.
 #[must_use]
 pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
     TextEditBuilder::new(value)
@@ -130,7 +130,7 @@ impl TextEditBuilder {
         let value = self.value;
         let disabled = self.disabled;
         let placeholder = self.placeholder;
-        let style_accumulator = self.style_accumulator;
+        let mut style_accumulator = self.style_accumulator;
         let mutators = self.mutators;
         let layout_overrides = self.layout_overrides;
         let change = self.change.unwrap_or_else(noop_change);
@@ -143,7 +143,11 @@ impl TextEditBuilder {
         let runtime =
             TextEditRuntime::new(value, disabled, change, submit, clipboard, caret_visible);
 
-        let node = build_base_node(&runtime, &placeholder, interaction);
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — the edit frame resolves them against
+        // its live interaction slot so `.hover(|s| s.bg(...))` paints.
+        let user_overlay = style_accumulator.take_state_overlay();
+        let node = build_base_node(&runtime, &placeholder, interaction, user_overlay);
         let node = interaction.install(attach_key_handlers(node, runtime.clone()));
         let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {
@@ -171,7 +175,7 @@ impl WidgetLayoutExt for TextEditBuilder {
 }
 
 impl IntoNode for TextEditBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

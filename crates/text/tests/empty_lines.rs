@@ -10,19 +10,19 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
-use kernel as _;
-use layout as _;
-use reactive as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
 use tracing as _;
 use unicode_bidi as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 
-use hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
-use text::{OwnedTextEngine, TextConfig};
+use sigil_hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
+use sigil_text::{OwnedTextEngine, TextConfig};
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextConfig::default())

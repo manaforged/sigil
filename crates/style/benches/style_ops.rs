@@ -7,18 +7,18 @@ use std::time::Duration;
 
 use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
-use hal as _;
-use kernel::{Cx, NodeId, container};
 use phf as _;
-use reactive::{Runtime, signal};
-use smallvec as _;
-use strsim as _;
-use style::{
+use sigil_hal as _;
+use sigil_kernel::{Cx, NodeId, container};
+use sigil_reactive::{Runtime, signal};
+use sigil_style::{
     AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
     RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
     TransitionId, classes, merge_classes,
 };
-use style_macros as _;
+use sigil_style_macros as _;
+use smallvec as _;
+use strsim as _;
 use tracing as _;
 
 static CLASS_50: &[StyleAtom] = classes!(
@@ -272,7 +272,13 @@ criterion_group! {
 criterion_main!(benches);
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
-    cx.get(id)
+    let Some(binding) = cx
+        .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
-        .map_or(&[], StyleBinding::reactive_slice)
+    else {
+        return &[];
+    };
+    // T0 composition: concatenate every reactive channel in install order.
+    let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
+    Box::leak(atoms.into_boxed_slice())
 }

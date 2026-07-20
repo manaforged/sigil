@@ -8,12 +8,12 @@
 //! sigil::launch(cfg, container().child(text("hi")))  // NodeBuilder
 //! ```
 
-use kernel::{Cx, NodeBuilder, NodeId};
+use sigil_kernel::{Cx, NodeBuilder, NodeId};
 
 mod sealed {
     pub trait Sealed {}
-    impl<F: FnOnce(&mut kernel::Cx) -> kernel::NodeId> Sealed for F {}
-    impl Sealed for kernel::NodeBuilder {}
+    impl<F: FnOnce(&mut sigil_kernel::Cx) -> sigil_kernel::NodeId> Sealed for F {}
+    impl Sealed for sigil_kernel::NodeBuilder {}
 }
 
 /// Anything that can install itself under a `Cx` and return the root

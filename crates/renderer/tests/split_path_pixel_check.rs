@@ -19,29 +19,30 @@
 use ahash as _;
 use bytemuck as _;
 use criterion as _;
-use hal as _;
 use half as _;
-use icons as _;
 use image as _;
-use kernel as _;
-use layout as _;
 use proptest as _;
 use raw_window_handle as _;
-use shell as _;
+use sigil_hal as _;
+use sigil_icons as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_shell as _;
+use sigil_style as _;
+use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
-use style as _;
-use text as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
+use zeno as _;
 
-use hal::Color;
-use renderer::{
+use sigil_hal::Color;
+use sigil_renderer::{
     CommandScene, CornerRadii, OffscreenTarget, SceneBuilder, SceneRectStyle, ScreenSubmission,
     WgpuRenderer, WorldSubmission,
 };
-use style::Rgba8;
+use sigil_style::Rgba8;
 
 #[path = "split_path_pixel_check/support.rs"]
 mod support;
@@ -124,8 +125,8 @@ fn assert_renderer_reusable_across_targets() {
         return;
     };
 
-    let (scene_a, vp_a, clear_a) = renderer::scenes::gradient();
-    let (scene_b, vp_b, clear_b) = renderer::scenes::pattern();
+    let (scene_a, vp_a, clear_a) = sigil_renderer::scenes::gradient();
+    let (scene_b, vp_b, clear_b) = sigil_renderer::scenes::pattern();
 
     let tex_a = create_capture_texture(&device, vp_a.0 as u32, vp_a.1 as u32, "reuse-a");
     let view_a = tex_a.create_view(&wgpu::TextureViewDescriptor::default());
@@ -271,7 +272,7 @@ fn assert_submit_world_stub_returns_ok() {
 // ---- scene builder ----------------------------------------------------------
 
 fn build_red_rect_scene() -> CommandScene {
-    use hal::{Point, Rect};
+    use sigil_hal::{Point, Rect};
     let mut scene = SceneBuilder::new();
     scene.draw_rect(
         Rect::new(Point::new(RED_RECT_X, RED_RECT_Y), RED_RECT_W, RED_RECT_H),

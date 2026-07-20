@@ -1,7 +1,7 @@
 //! Binding-install hook — DR-053 §5 / W5.1.
 //!
-//! When a node has a [`StyleBinding`](style::StyleBinding) whose
-//! atom set carries [`StyleAtom::Transition(id)`](style::StyleAtom::Transition),
+//! When a node has a [`sigil_style::StyleBinding`] whose
+//! atom set carries [`StyleAtom::Transition(id)`](sigil_style::StyleAtom::Transition),
 //! this module scans the binding's base atoms + state-slot overlays and
 //! produces an [`AttachedAnimators`] handle: one [`Animator`] per
 //! numeric atom whose value differs across slots, each driving a
@@ -9,7 +9,7 @@
 //!
 //! The hook is intentionally a *thin* layer over the existing
 //! [`AnimationRegistry`] + [`Animator`] surface — it does not touch
-//! [`StyleBinding`] internals, so the W5.1 wiring can land without
+//! [`sigil_style::StyleBinding`] internals, so the W5.1 wiring can land without
 //! refactoring the by-value `StyleAtom` storage in `sigil-style`. Engine
 //! integration that reads the animator-driven signal value during paint
 //! is a follow-up; the W5.1 contract this module satisfies is the
@@ -29,8 +29,8 @@
 //! seams (`TransitionId`, `StyleAtom`, `merge_warning_count_for_component`)
 //! the hook consumes.
 
-use reactive::{Signal, signal};
-use style::{
+use sigil_reactive::{Signal, signal};
+use sigil_style::{
     AnimatorOverlay, ColorAtomKind, ComponentId, MillisU16, NumericAtomKind, Rgba8, StateSlot,
     StateStyle, StyleAtom, Theme, TransitionId,
     merge_warning_count_for_component as _emit_warning_counter_check,
@@ -44,7 +44,7 @@ use crate::{AnimationConfig, AnimationRegistry, Animator};
 /// `ComponentId` namespace used by the binding-install hook when it
 /// fails to resolve a [`TransitionId`] in the registry.
 ///
-/// Logged via `style::merge_warning_count_for_component`. The
+/// Logged via `sigil_style::merge_warning_count_for_component`. The
 /// numeric value is arbitrary — chosen large enough that real
 /// per-widget component IDs never collide.
 pub const ANIMATION_REGISTRY_MISS: ComponentId = 0xA111_0000_0000_0001;
@@ -85,7 +85,7 @@ pub struct AttachedColorAnimator {
     pub(crate) last_target: Rgba8,
 }
 
-/// Animators attached to a single [`StyleBinding`].
+/// Animators attached to a single [`sigil_style::StyleBinding`].
 ///
 /// Returned by [`install_animators`] / [`install_animators_themed`].
 /// Owning the struct keeps each [`Animator`] alive (and therefore
@@ -202,7 +202,7 @@ impl AnimatorOverlay for AttachedAnimators {
 /// Returns [`AttachedAnimators::empty()`] when:
 /// - The binding contains no `Transition` atom (zero-overhead path).
 /// - The `Transition`'s `id` does not resolve in `registry` (after
-///   logging via `style::merge_warning_count_for_component`).
+///   logging via `sigil_style::merge_warning_count_for_component`).
 /// - No numeric atom value differs between base and the hover slot
 ///   (no work to animate).
 ///
@@ -409,7 +409,7 @@ pub mod miss_counter {
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
 
-    use style::ComponentId;
+    use sigil_style::ComponentId;
 
     static TOTAL: AtomicUsize = AtomicUsize::new(0);
     static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
@@ -443,9 +443,9 @@ pub mod miss_counter {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::panic)]
 
-    use animation::SpringPreset;
-    use reactive::Runtime;
-    use style::{Px, StateSlot, StateStyle, StyleAtom, TransitionId};
+    use sigil_animation::SpringPreset;
+    use sigil_reactive::Runtime;
+    use sigil_style::{Px, StateSlot, StateStyle, StyleAtom, TransitionId};
 
     use super::{ANIMATION_REGISTRY_MISS, install_animators, miss_counter};
     use crate::registry::presets;

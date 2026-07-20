@@ -24,19 +24,19 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 use stub::stub_engine;
 
-use kernel::prelude::*;
-use layout::prelude::*;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
 
-fn rect(cx: &Cx, id: NodeId) -> hal::Rect {
+fn rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("rect")

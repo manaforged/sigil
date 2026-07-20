@@ -4,12 +4,12 @@
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use hal as _;
-use reactive::{Runtime, signal};
+use sigil_hal as _;
+use sigil_reactive::{Runtime, signal};
 use slotmap as _;
 use smallvec as _;
 
-use kernel::{Cx, Role, container, fragment, text};
+use sigil_kernel::{Cx, Role, container, fragment, text};
 
 #[test]
 fn every_core_node_kind_has_accessible_defaults() {

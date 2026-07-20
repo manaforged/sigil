@@ -1,16 +1,16 @@
 //! Event-drain and window-event helpers for the launch loop.
 
-use events::EventRouter;
-use hal::{Key, KeyPhase, PhysicalSize, Scale, Shell as _, ShellEvent, WindowEvent};
-use kernel::Cx;
-use layout::LayoutEngine;
-use reactive::Runtime;
-use renderer::{WgpuRenderer, WgpuSurface};
-use shell::{WinitShell, WinitWindowHandle};
+use sigil_events::EventRouter;
+use sigil_hal::{Key, KeyPhase, PhysicalSize, Scale, Shell as _, ShellEvent, WindowEvent};
+use sigil_kernel::Cx;
+use sigil_layout::LayoutEngine;
+use sigil_reactive::Runtime;
+use sigil_renderer::{WgpuRenderer, WgpuSurface};
+use sigil_shell::{WinitShell, WinitWindowHandle};
 
 use crate::config::AppConfig;
-use hal::Renderer as _;
-use renderer::into_window_handle;
+use sigil_hal::Renderer as _;
+use sigil_renderer::into_window_handle;
 use std::sync::Arc;
 
 use super::{
@@ -21,7 +21,7 @@ use super::{
 pub(super) struct DrainCtx<'a> {
     pub(super) shell: &'a mut WinitShell,
     pub(super) cx: &'a mut Cx,
-    pub(super) root: kernel::NodeId,
+    pub(super) root: sigil_kernel::NodeId,
     pub(super) layout: &'a mut LayoutEngine,
     pub(super) router: &'a mut EventRouter,
     pub(super) surface: &'a mut Option<WgpuSurface>,
@@ -35,7 +35,7 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) shell: &'a WinitShell,
     pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
-    pub(super) root: kernel::NodeId,
+    pub(super) root: sigil_kernel::NodeId,
     pub(super) layout: &'a mut LayoutEngine,
     pub(super) renderer: &'a mut WgpuRenderer,
     pub(super) surface: &'a mut Option<WgpuSurface>,
@@ -138,7 +138,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
 }
 
 /// W5-A11Y (DR-050 §1, §8) — project the kernel a11y tree and publish it
-/// through a fresh [`a11y::AccessKitBridge`] over every live window's
+/// through a fresh [`sigil_a11y::AccessKitBridge`] over every live window's
 /// adapter (`shell.publish_a11y_update` broadcasts).
 ///
 /// `dirty` is the SAME whole-frame dirty decision the paint gate uses
@@ -175,14 +175,14 @@ pub(super) fn publish_a11y(
     if !dirty {
         return;
     }
-    let update = a11y::tree(cx, router.focus(), &|id| {
+    let update = sigil_a11y::tree(cx, router.focus(), &|id| {
         layout.result(id).map(|result| result.rect())
     });
     let action_rx = shell.a11y_action_receiver();
-    let mut bridge = a11y::AccessKitBridge::new(action_rx, |tree_update| {
+    let mut bridge = sigil_a11y::AccessKitBridge::new(action_rx, |tree_update| {
         shell.publish_a11y_update(&tree_update);
     });
-    let _ = hal::A11yBridge::publish(&mut bridge, update);
+    let _ = sigil_hal::A11yBridge::publish(&mut bridge, update);
 }
 
 /// W5-A11Y (DR-050 §4) — route AT-initiated actions through the same
@@ -213,9 +213,9 @@ pub(super) fn publish_a11y(
 /// directly, so the fix is purely about WHEN this runs, not the
 /// validators themselves.
 ///
-/// Drains through a throwaway [`a11y::AccessKitBridge`] (no-op publish
+/// Drains through a throwaway [`sigil_a11y::AccessKitBridge`] (no-op publish
 /// sink — nothing is published from this call) rather than the raw
-/// channel directly, so the `accesskit::NodeId → kernel::NodeId`
+/// channel directly, so the `accesskit::NodeId → sigil_kernel::NodeId`
 /// reverse mapping lives in exactly one place
 /// (`AccessKitBridge::take_action`).
 pub(super) fn drain_a11y_actions(
@@ -224,23 +224,55 @@ pub(super) fn drain_a11y_actions(
     router: &mut EventRouter,
     layout: &LayoutEngine,
 ) {
-    let mut bridge = a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
-    while let Some((target, request)) = hal::A11yBridge::take_action(&mut bridge) {
+    let mut bridge =
+        sigil_a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
+    while let Some((target, request)) = sigil_hal::A11yBridge::take_action(&mut bridge) {
         match request.action {
             accesskit::Action::Focus if router.is_focus_target(cx, layout, target) => {
                 router.set_focus(cx, Some(target));
             }
             accesskit::Action::Click if router.is_click_target(cx, layout, target) => {
-                events::invoke_node(cx, layout, target);
+                sigil_events::invoke_node(cx, layout, target);
+            }
+            accesskit::Action::Increment if router.is_focus_target(cx, layout, target) => {
+                adjust_value(cx, target, true);
+            }
+            accesskit::Action::Decrement if router.is_focus_target(cx, layout, target) => {
+                adjust_value(cx, target, false);
             }
             _ => {}
         }
     }
 }
 
+/// AT-initiated Increment/Decrement (5/5 Wave 3 T10): adjust the
+/// target's `value_now` signal by its `step` unit (default 1.0),
+/// clamped to `[value_min, value_max]`. No-ops for nodes without the
+/// full numeric triple. `SetValue` / `ScrollTo` / focus-navigation actions
+/// stay deliberately no-op — their per-widget wiring is Wave-5 work.
+fn adjust_value(cx: &Cx, target: sigil_kernel::NodeId, increase: bool) {
+    let Some(node) = cx.get(target) else {
+        return;
+    };
+    let (Some(value), Some(min), Some(max)) = (
+        node.a11y.value_now,
+        node.a11y.value_min,
+        node.a11y.value_max,
+    ) else {
+        return;
+    };
+    let step = node.a11y.step.unwrap_or(1.0);
+    let next = if increase {
+        value.peek() + step
+    } else {
+        value.peek() - step
+    };
+    value.set(next.clamp(min, max));
+}
+
 struct WindowEventCtx<'a> {
     cx: &'a mut Cx,
-    root: kernel::NodeId,
+    root: sigil_kernel::NodeId,
     layout: &'a mut LayoutEngine,
     renderer: &'a mut WgpuRenderer,
     surface: &'a mut Option<WgpuSurface>,
@@ -276,4 +308,92 @@ fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
     recompute_layout(ctx.cx, ctx.root, ctx.layout, scale, logical);
     // DPI change repaints (text re-rasterizes at the new scale) — no signal.
     Runtime::mark_frame_dirty();
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use sigil_kernel::prelude::*;
+    use sigil_reactive::{Runtime, signal};
+
+    struct StubMeasure;
+    impl sigil_layout::TextMeasure for StubMeasure {
+        fn measure(
+            &self,
+            _content: &TextContent,
+            _space: sigil_hal::Size,
+        ) -> sigil_hal::LogicalSize {
+            sigil_hal::LogicalSize::new(40.0, 16.0)
+        }
+    }
+
+    fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(cx, root, sigil_hal::Size::fixed(200.0, 100.0))
+            .expect("layout computes");
+        layout
+    }
+
+    fn action_request(
+        action: accesskit::Action,
+        target: sigil_kernel::NodeId,
+    ) -> accesskit::ActionRequest {
+        accesskit::ActionRequest {
+            action,
+            target_tree: accesskit::TreeId::ROOT,
+            target_node: target.to_accesskit(),
+            data: None,
+        }
+    }
+
+    #[test]
+    fn increment_adjusts_value_by_step_and_clamps() {
+        Runtime::scope("a11y-increment-step", || {
+            let value = signal(0.5_f32);
+            let mut cx = Cx::new_root();
+            let root = cx.add(
+                container()
+                    .focusable(true)
+                    .value(value, 0.0, 1.0)
+                    .value_step(0.25),
+            );
+            let layout = compute(&mut cx, root);
+            let mut router = EventRouter::new();
+            let (tx, rx) = crossbeam_channel::unbounded();
+
+            let _ = tx.send(action_request(accesskit::Action::Increment, root));
+            drain_a11y_actions(&rx, &mut cx, &mut router, &layout);
+            assert!((value.get() - 0.75).abs() < f32::EPSILON, "0.5 + 0.25");
+
+            let _ = tx.send(action_request(accesskit::Action::Increment, root));
+            let _ = tx.send(action_request(accesskit::Action::Increment, root));
+            drain_a11y_actions(&rx, &mut cx, &mut router, &layout);
+            assert!((value.get() - 1.0).abs() < f32::EPSILON, "clamps at max");
+
+            let _ = tx.send(action_request(accesskit::Action::Decrement, root));
+            drain_a11y_actions(&rx, &mut cx, &mut router, &layout);
+            assert!((value.get() - 0.75).abs() < f32::EPSILON, "1.0 − 0.25");
+        });
+    }
+
+    #[test]
+    fn increment_rejects_non_focus_target() {
+        Runtime::scope("a11y-increment-gated", || {
+            let value = signal(0.5_f32);
+            let mut cx = Cx::new_root();
+            // No `.focusable(true)` — the gate must reject the action.
+            let root = cx.add(container().value(value, 0.0, 1.0).value_step(0.25));
+            let layout = compute(&mut cx, root);
+            let mut router = EventRouter::new();
+            let (tx, rx) = crossbeam_channel::unbounded();
+            let _ = tx.send(action_request(accesskit::Action::Increment, root));
+            drain_a11y_actions(&rx, &mut cx, &mut router, &layout);
+            assert!(
+                (value.get() - 0.5).abs() < f32::EPSILON,
+                "unfocusable target is untouched"
+            );
+        });
+    }
 }

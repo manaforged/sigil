@@ -9,33 +9,35 @@
 //!   2. a click must focus the surface and keys must then reach `on_key`.
 
 // Dev-deps referenced so `unused_crate_dependencies` stays quiet.
-use actions as _;
-use animation as _;
-use animation_runtime as _;
 use arboard as _;
 use criterion as _;
-use events as _;
 use image as _;
-use kernel as _;
 use pollster as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_events as _;
+use sigil_kernel as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit};
 use sigil::prelude::*;
+use sigil_hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit};
 
 /// A measure that reports a fixed *wide* box for any text, so a single line is far
 /// wider than the test pane — the condition that triggered the overflow bug.
 struct WideMeasure;
 
 impl TextMeasure for WideMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(1600.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(1600.0, 16.0)
     }
 }
 
@@ -55,7 +57,7 @@ fn first_text_input(cx: &Cx, root: NodeId) -> NodeId {
     found.expect("a code_edit node with Role::TextInput")
 }
 
-fn pointer_down(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -67,7 +69,7 @@ fn pointer_down(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn scroll_at(x: f32, y: f32, dy: f32) -> ShellEvent {
+const fn scroll_at(x: f32, y: f32, dy: f32) -> ShellEvent {
     ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
         position: Point::new(x, y),
         delta: ScrollDelta::Pixels(Point::new(0.0, dy)),
@@ -501,7 +503,7 @@ fn render_budget_tracks_the_published_viewport_height() {
         // Drive real frames so `size_reactive` publishes the 200px height during attach and
         // the next Effect phase rebuilds the window at the now-smaller budget.
         for _ in 0..3 {
-            app::__drive_test_frame(
+            sigil_app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(400.0, pane_h))
@@ -542,7 +544,7 @@ fn short_doc_does_not_scroll_into_blank_space() {
         let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
         // Publish the real 200px height so max_scroll knows the doc fits.
         for _ in 0..3 {
-            app::__drive_test_frame(
+            sigil_app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(400.0, pane_h))

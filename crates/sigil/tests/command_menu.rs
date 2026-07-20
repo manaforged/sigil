@@ -5,7 +5,7 @@
 //! `LayoutEngine` pipeline the sibling widget tests use (see
 //! `modal_trap.rs` / `slider_keyboard.rs`), re-running `layout.compute`
 //! after every key so the widget's `children_reactive` navigation stack
-//! is flushed before the next assertion (see `kernel::Cx::build`'s
+//! is flushed before the next assertion (see `sigil_kernel::Cx::build`'s
 //! `children_reactive` doc: the rebuild queue only drains inside
 //! `LayoutEngine::compute`).
 //!
@@ -22,25 +22,25 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
 use arboard as _;
 use criterion as _;
-use events as _;
-use hal as _;
 use image as _;
-use kernel as _;
 use pollster as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 use wgpu as _;
 
-use hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
+use sigil_hal::{KeyEventInit, PhysicalKey};
 
 mod golden_support;
 
@@ -51,8 +51,8 @@ use golden_support::{
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: hal::Size) -> hal::LogicalSize {
-        hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        sigil_hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

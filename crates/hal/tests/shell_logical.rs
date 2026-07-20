@@ -5,7 +5,7 @@ use smol_str as _;
 
 use std::fmt;
 
-use hal::{LogicalSize, PhysicalSize, Shell, ShellEvent};
+use sigil_hal::{LogicalSize, PhysicalSize, Shell, ShellEvent};
 
 #[derive(Debug)]
 struct MockError;
@@ -73,5 +73,29 @@ fn default_create_window_logical_uses_scale_one_physical_size() {
     assert_eq!(
         shell.created,
         vec![("test".to_owned(), PhysicalSize::new(720, 480))]
+    );
+}
+
+#[test]
+fn default_create_window_with_ignores_opts_and_delegates() {
+    let mut shell = MockShell::default();
+
+    let handle = shell
+        .create_window_with(
+            "pill",
+            LogicalSize::new(200.0, 48.0),
+            sigil_hal::WindowOpts {
+                overlay: true,
+                anchor: Some(sigil_hal::Anchor::BottomCenter { margin: 64.0 }),
+            },
+        )
+        .expect("default opts create should delegate");
+
+    // Opts are dropped by the default impl: the adapter records a plain
+    // physical-size creation, exactly like create_window_logical.
+    assert_eq!(handle, 0);
+    assert_eq!(
+        shell.created,
+        vec![("pill".to_owned(), PhysicalSize::new(200, 48))]
     );
 }

@@ -19,11 +19,11 @@ pub(super) fn build(files: &[MockFile], selected_index: Signal<usize>) -> impl I
             .role(Role::ListItem)
             .label(format!("Row {index}: {path}"))
             .layout(LayoutStyle::flex_row().fixed_size(360.0, 28.0).gap(8.0))
-            .class("px-2")
+            .class(classes!("px-2"))
             .child(
                 text(*path)
                     .layout(LayoutStyle::block().width(344.0))
-                    .class("text-on-surface text-sm"),
+                    .class(classes!("text-on-surface text-sm")),
             )
     })
     .row_height(28.0)
@@ -35,11 +35,11 @@ pub(super) fn build(files: &[MockFile], selected_index: Signal<usize>) -> impl I
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column().fixed_size(360.0, 600.0).gap(4.0))
-        .class("bg-surface")
+        .class(classes!("bg-surface"))
         .child(
             text("Files")
                 .layout(LayoutStyle::block().width(360.0))
-                .class("text-on-surface text-base font-bold px-2 py-1"),
+                .class(classes!("text-on-surface text-base font-bold px-2 py-1")),
         )
         .child(list)
 }

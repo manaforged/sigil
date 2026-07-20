@@ -11,7 +11,7 @@ const BOARD_VIEWPORT_HEIGHT: f32 = 520.0;
 pub(crate) fn board_pane(state: BoardState) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().grow(1.0).gap(8.0).padding(8.0))
-        .class("h-full rounded-md bg-surface-hover")
+        .class(classes!("h-full rounded-md bg-surface-hover"))
         .child(
             tabs(
                 state.active_tab,
@@ -38,7 +38,7 @@ fn column_list(state: BoardState, col: usize) -> NodeBuilder {
 
     container()
         .layout(LayoutStyle::flex_column().grow(1.0).gap(4.0).padding(8.0))
-        .class("w-full")
+        .class(classes!("w-full"))
         .child(label(format!("{} ({count})", column_title(col))))
         .child(
             sigil::widgets::virtual_list(cards, move |idx, card| card_row(state, col, idx, card))
@@ -60,7 +60,7 @@ fn card_row(state: BoardState, col: usize, idx: usize, card: &Card) -> NodeBuild
                 .gap(2.0)
                 .padding(8.0),
         )
-        .class("w-full rounded-sm bg-surface")
+        .class(classes!("w-full rounded-sm bg-surface"))
         .pointer_down(move |ev| {
             state.open_edit(col, idx);
             ev.stop_propagation();

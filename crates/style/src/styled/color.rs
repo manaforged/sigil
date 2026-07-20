@@ -2,8 +2,8 @@
 
 use crate::{ColorAtom, Rgba8, StyleAtom};
 
-/// Polymorphic colour argument accepted by [`super::Styled::bg`] and
-/// [`super::Styled::text_color`].
+/// Polymorphic colour argument accepted by [`crate::Fill::bg`] and
+/// [`crate::Fill::text_color`].
 ///
 /// Construct via the `Into` impls — pass an [`Rgba8`], a `&'static str`
 /// theme token, or a [`ColorAtom`] and the implementations route to the
@@ -41,6 +41,14 @@ pub(super) const fn background_atom(color: ColorOrToken) -> StyleAtom {
         ColorOrToken::Rgba(rgba) => StyleAtom::BackgroundColor(ColorAtom::Rgba8(rgba)),
         ColorOrToken::Token(token) => StyleAtom::BackgroundThemeRef(token),
         ColorOrToken::Atom(atom) => StyleAtom::BackgroundColor(atom),
+    }
+}
+
+pub(super) const fn border_color_atom(color: ColorOrToken) -> StyleAtom {
+    match color {
+        ColorOrToken::Rgba(rgba) => StyleAtom::BorderColor(ColorAtom::Rgba8(rgba)),
+        ColorOrToken::Token(token) => StyleAtom::BorderThemeRef(token),
+        ColorOrToken::Atom(atom) => StyleAtom::BorderColor(atom),
     }
 }
 

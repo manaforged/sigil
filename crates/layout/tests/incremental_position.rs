@@ -29,17 +29,17 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use hal as _;
 use rayon as _;
+use sigil_hal as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
 mod stub;
 
-use hal::Size;
-use kernel::prelude::*;
-use layout::prelude::*;
-use reactive::{Runtime, signal};
+use sigil_hal::Size;
+use sigil_kernel::prelude::*;
+use sigil_layout::prelude::*;
+use sigil_reactive::{Runtime, signal};
 use stub::stub_engine;
 
 const AVAILABLE: Size = Size::fixed(200.0, 1000.0);

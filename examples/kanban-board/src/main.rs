@@ -41,7 +41,7 @@ fn root_shell(state: BoardState) -> NodeBuilder {
         .role(Role::Main)
         .label("Kanban board")
         .layout(LayoutStyle::flex_column().gap(8.0))
-        .class("w-full h-full p-4 bg-surface")
+        .class(classes!("w-full h-full p-4 bg-surface"))
         .child(top_bar(state))
         .child(work_area(state))
         .child(status_bar(state))
@@ -57,7 +57,7 @@ fn top_bar(state: BoardState) -> NodeBuilder {
                 .align_items(AlignItems::Center)
                 .padding(8.0),
         )
-        .class("w-full rounded-md bg-surface-hover")
+        .class(classes!("w-full rounded-md bg-surface-hover"))
         .child(label("Kanban"))
         .child(
             button("New card")
@@ -72,7 +72,7 @@ fn work_area(state: BoardState) -> NodeBuilder {
     // left/right split we want.
     container()
         .layout(LayoutStyle::flex_row().grow(1.0))
-        .class("w-full")
+        .class(classes!("w-full"))
         .child(
             sigil::widgets::splitter(sigil::widgets::SplitterOrientation::Horizontal)
                 .child(sidebar_pane(state), 220.0)
@@ -92,6 +92,6 @@ fn status_bar(state: BoardState) -> NodeBuilder {
                 .padding(8.0)
                 .align_items(AlignItems::Center),
         )
-        .class("w-full rounded-md bg-surface-hover")
+        .class(classes!("w-full rounded-md bg-surface-hover"))
         .child(label(state.status))
 }

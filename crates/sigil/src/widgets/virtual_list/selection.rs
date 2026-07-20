@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use events::prelude::{ModifiersState, MouseButton, PointerEvent};
-use reactive::Signal;
+use sigil_events::prelude::{ModifiersState, MouseButton, PointerEvent};
+use sigil_reactive::Signal;
 
 /// Selection behavior for a virtual list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -132,7 +132,7 @@ impl SelectionRuntime {
 
     pub(super) fn selected_signal(self, index: usize) -> Option<Signal<bool>> {
         if self.state.peek().contains(index) {
-            Some(reactive::signal(true))
+            Some(sigil_reactive::signal(true))
         } else {
             None
         }

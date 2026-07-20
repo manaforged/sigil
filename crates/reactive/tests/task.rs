@@ -25,8 +25,9 @@
     clippy::redundant_clone
 )]
 
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 
 use std::collections::VecDeque;
@@ -35,7 +36,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use reactive::{
+use sigil_reactive::{
     AsyncContext, BoxMainCallback, BoxSendFuture, DispatchError, DrawPhase, Entity,
     MainThreadDispatcher, Owner, OwnerId, Runtime, Task, TaskAwaitError, TaskExecutor,
 };
@@ -565,7 +566,7 @@ fn spawn_in_paint_panics() {
     });
 }
 
-type ProbeOut = Arc<Mutex<Option<Result<(), reactive::EntityGone>>>>;
+type ProbeOut = Arc<Mutex<Option<Result<(), sigil_reactive::EntityGone>>>>;
 
 /// Spawn a future that captures `acx`, then wait for the capture.
 /// Returns the `AsyncContext` and the originating `Task` handle.
@@ -600,7 +601,7 @@ fn capture_acx(child: Owner) -> (AsyncContext<Counter>, Task<()>) {
 fn drain_until_probe_done(
     dispatcher: &TestDispatcher,
     probe_out: &ProbeOut,
-) -> Result<(), reactive::EntityGone> {
+) -> Result<(), sigil_reactive::EntityGone> {
     let drain_deadline = Instant::now() + Duration::from_secs(2);
     while Instant::now() < drain_deadline {
         dispatcher.drain_inline();

@@ -40,15 +40,15 @@
 use ahash as _;
 use allocation_counter as _;
 use criterion as _;
-use kernel as _;
 use rayon as _;
-use reactive as _;
+use sigil_kernel as _;
+use sigil_reactive as _;
+use sigil_style as _;
 use smallvec as _;
-use style as _;
 
-use hal::{LogicalSize, Size as HalSize};
-use kernel::TextContent;
-use layout::{
+use sigil_hal::{LogicalSize, Size as HalSize};
+use sigil_kernel::TextContent;
+use sigil_layout::{
     Dimension, LayoutDrive, Size as StyleSize, StyleData, StyleDisplay as Display,
     StyleFlexDirection as FlexDirection, TextMeasure,
 };

@@ -31,7 +31,7 @@ const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
 
 /// A 12-step color scale.
 ///
-/// Indexed 1..=12 (Radix Colors convention). The accessor [`step`]
+/// Indexed 1..=12 (Radix Colors convention). The accessor `step`
 /// clamps out-of-range inputs to the nearest valid step.
 ///
 /// `on_solid` is the WCAG-AA-passing text color when painting on

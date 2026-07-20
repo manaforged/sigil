@@ -1,5 +1,5 @@
 [package]
-name = "icons"
+name = "sigil-icons"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -7,9 +7,12 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "SVG-to-alpha-mask icon baker for Sigil (CPU rasterizer, 4×4 SSAA)."
+readme.workspace = true
+keywords = ["icons", "svg", "gui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "assets/**"]
 
 [lib]
-doctest = false
 
 [dependencies]
 # usvg 0.47+ is Apache-2.0 OR MIT (relicensed from MPL-2.0 at 0.45.0).

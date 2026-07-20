@@ -3,15 +3,15 @@
 //! Reuses the [`chip`](super::chip) widget's tone surface for each
 //! entry. The chip at `.active(index)` gets an accent-tone highlight
 //! plus a focus-ring-style emphasis ring (the same
-//! [`FocusRing`](style::FocusRing) primitive the `command_menu` cursor
+//! [`FocusRing`](sigil_style::FocusRing) primitive the `command_menu` cursor
 //! row uses), both driven reactively off the active-index signal —
 //! moving the signal re-highlights the corresponding chip without
 //! rebuilding the strip's child list.
 
-use kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived_eq};
-use style::{FocusRing, NodeStyleExt, StateHost, Style, StyleAccess};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq};
+use sigil_style::{FocusRing, NodeStyleExt, Style, StyleAccess};
 
 use super::chip::{ChipTone, chip};
 
@@ -86,10 +86,8 @@ impl StyleAccess for TurnStripBuilder {
     }
 }
 
-impl StateHost for TurnStripBuilder {}
-
 impl IntoNode for TurnStripBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -106,6 +104,7 @@ fn strip_layout() -> LayoutStyle {
 fn chip_entry(label: String, idx: usize, active: Option<Signal<usize>>) -> NodeBuilder {
     let is_active = derived_eq(move || active.is_some_and(|active| active.get() == idx));
     chip(label, ChipTone::Neutral)
+        .into_node_builder()
         .class_when(is_active, ACTIVE_CLASS)
         .focus_ring(FocusRing::new(is_active))
 }

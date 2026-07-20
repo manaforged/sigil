@@ -10,10 +10,10 @@
 //!
 //! [DR-005 addendum §3]: ../../../docs/decisions/DR-005-reactivity-owner-tree.md
 
-use reactive::OwnerId;
+use sigil_reactive::OwnerId;
 
 /// An identity-only, `Send + Sync` weak reference to a reactive
-/// [`Owner`][reactive::Owner].
+/// [`Owner`][sigil_reactive::Owner].
 ///
 /// Constructed from an `OwnerId` (see [`OwnerHandle::from_id`] or
 /// [`OwnerHandle::current`]). Holding one grants **no** reactive
@@ -26,7 +26,7 @@ use reactive::OwnerId;
 /// # Thread safety
 ///
 /// The underlying [`OwnerId`] is a generational `(index, generation)`
-/// key (see [`reactive`] arena). Copying it across threads is
+/// key (see [`sigil_reactive`] arena). Copying it across threads is
 /// always safe; resolving it touches the thread-local reactive
 /// runtime and must therefore happen on the main thread.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -51,7 +51,7 @@ impl OwnerHandle {
     /// be called on the thread that owns the reactive runtime.
     #[must_use]
     pub fn current() -> Option<Self> {
-        reactive::Owner::current().map(Self::from_id)
+        sigil_reactive::Owner::current().map(Self::from_id)
     }
 
     /// The underlying [`OwnerId`].
@@ -70,7 +70,7 @@ impl OwnerHandle {
     /// can reuse the same check without a second dispatch round-trip.
     #[must_use]
     pub fn is_alive(&self) -> bool {
-        reactive::is_live(self.id)
+        sigil_reactive::is_live(self.id)
     }
 }
 

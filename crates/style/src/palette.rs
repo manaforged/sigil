@@ -1,5 +1,5 @@
 //! Arcane brand palettes — six-colour role vocabulary applied to any
-//! [`Variant`](crate::Variant) to produce a [`Theme`](crate::Theme).
+//! [`StyleVariant`](crate::StyleVariant) to produce a [`Theme`](crate::Theme).
 //!
 //! Each palette is a fixed set of six role colours:
 //! `background`, `text`, `primary`, `success`, `warning`, `danger`.
@@ -18,7 +18,7 @@ use crate::Rgba8;
 use hsv::{perceived_brightness, tint_toward_hue};
 
 /// Six-colour role palette. Combine with a
-/// [`Variant`](crate::Variant) to assemble a full theme.
+/// [`StyleVariant`](crate::StyleVariant) to assemble a full theme.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Palette {
     /// Page / window background.

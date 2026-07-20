@@ -11,7 +11,7 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use ide_core::search::fuzzy;
+use sigil_ide_core::search::fuzzy;
 
 // `smallvec` and `proptest` are listed as deps (smallvec via the
 // runtime crate, proptest dev-only). The bench binary inherits the

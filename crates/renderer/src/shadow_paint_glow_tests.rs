@@ -25,7 +25,7 @@ fn glow_kind_as_f32_is_two() {
 
 #[test]
 fn shadow_glow_constructor_sets_kind_and_zero_offset() {
-    use style::Rgba8;
+    use sigil_style::Rgba8;
     let g = super::Shadow::glow(
         Rgba8 {
             r: 80,

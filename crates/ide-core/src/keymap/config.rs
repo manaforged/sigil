@@ -90,7 +90,7 @@ impl KeymapDiagnostic {
 /// Layered keymap: compile-in defaults + user TOML + workspace TOML.
 ///
 /// Construct with [`Keymap::open`]. The resolver in
-/// [`super::resolver`] operates on the flattened [`Bindings`] exposed
+/// `super::resolver` operates on the flattened [`Bindings`] exposed
 /// by [`Keymap::bindings`].
 pub struct Keymap {
     defaults: Bindings,

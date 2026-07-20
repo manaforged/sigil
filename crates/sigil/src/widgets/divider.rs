@@ -21,7 +21,7 @@
 //! Windows / atspi but "Splitter" on macOS, so the inconsistency
 //! would surface only on macOS.
 //!
-//! Instead, we mark the divider [`hittable(false)`](kernel::NodeBuilder::hittable),
+//! Instead, we mark the divider [`hittable(false)`](sigil_kernel::NodeBuilder::hittable),
 //! which routes through the kernel's a11y projection as
 //! `accesskit::Node::set_hidden`. The hairline is then omitted from
 //! every assistive-tech tree — the correct semantic for a purely
@@ -32,9 +32,9 @@
 //! was a `flex_row` + layout-gap, which left no visible rule between
 //! stacked blocks.
 
-use kernel::{NodeBuilder, container};
-use layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use style::{NodeStyleExt, StyleAtom};
+use sigil_kernel::{NodeBuilder, container};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil_style::{NodeStyleExt, StyleAtom};
 
 /// Thickness in logical pixels for both axes.
 const HAIRLINE_PX: f32 = 1.0;
@@ -73,8 +73,8 @@ pub fn vertical() -> NodeBuilder {
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::{Cx, IntoNode};
-    use reactive::Runtime;
+    use sigil_kernel::{Cx, IntoNode};
+    use sigil_reactive::Runtime;
 
     #[test]
     fn horizontal_is_decorative_not_a_focusable_splitter() {

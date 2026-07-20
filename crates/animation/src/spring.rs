@@ -203,10 +203,10 @@ impl Spring {
 
     /// Advance the spring one frame at delta-time `dt`. Reading the
     /// state afterwards yields the new value/velocity. Calling `step`
-    /// after [`is_settled`] returns `true` is a no-op (the spring
+    /// after [`Self::is_settled`] returns `true` is a no-op (the spring
     /// snaps to the target and freezes).
     ///
-    /// Sub-steps internally at [`Self::MAX_SUBSTEP_DT`] so a long frame
+    /// Sub-steps internally at `Self::MAX_SUBSTEP_DT` so a long frame
     /// (hitch, debugger break) cannot push the integrator outside its
     /// stable region.
     pub fn step(&mut self, dt: f32) {

@@ -16,20 +16,20 @@ use image as _;
 use pollster as _;
 use wgpu as _;
 
-use actions as _;
-use animation as _;
-use animation_runtime as _;
-use app as _;
-use events as _;
-use hal as _;
-use layout as _;
-use reactive as _;
-use renderer as _;
-use style as _;
-use tasks as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
 
-use kernel::{AccessibleName, Live};
 use sigil::prelude::*;
+use sigil_kernel::{AccessibleName, Live};
 
 #[test]
 fn modal_announces_title_on_open_rising_edge() {

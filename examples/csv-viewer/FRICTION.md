@@ -1,5 +1,31 @@
 # csv-viewer — friction log
 
+## 2026-07-19 — migrated to `table(state)`
+
+The hand-rolled header + `virtual_list` body is gone; the view is now
+`table(state.table)` over a `TableState<Row>` with six sortable fixed-
+width columns. What the hand-rolled version lacked, in its own words
+(see below): no column/cell concept (widths declared twice, header and
+body kept in sync by hand), no sticky-header widget, selection stored
+twice (my `Signal<Option<usize>>` AND the list's internal
+`SelectionState`), and no sort at all. After the migration:
+
+- Header and body share one column definition (`TableColumn::width` +
+  `.cell`) — the dual-declaration footgun from note 4 is closed.
+- Clicking a header cell cycles none → ▲ → ▼ → none through
+  `TableState::toggle_sort`; sort was previously out of scope.
+- Selection lives only in the engine (`state.selection()`); the footer
+  reads it via `derived`. No second signal to drift.
+- Rows paint a hover slice and a selected highlight out of the box;
+  the old version had neither (the FRICTION note below tried
+  `"bg-selection"`, which did not exist — the widget uses the real
+  `bg-accent-3` / `surface-hover` tokens).
+- Wheel scrolling works (previously keyboard-only).
+
+The old log is kept below for reference.
+
+---
+
 Dogfood v2 of a viewer-class app on Sigil. Built a virtualised CSV table
 with a fixed header row, ~5k synthesised rows, single-row click-to-select.
 

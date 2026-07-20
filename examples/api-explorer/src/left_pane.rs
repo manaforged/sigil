@@ -43,11 +43,11 @@ pub(super) fn build(
                 .fixed_size(PANE_WIDTH, PANE_HEIGHT)
                 .gap(4.0),
         )
-        .class("bg-surface")
+        .class(classes!("bg-surface"))
         .child(
             text("Endpoints")
                 .layout(LayoutStyle::block().width(PANE_WIDTH))
-                .class("text-on-surface text-base font-bold px-2 py-1"),
+                .class(classes!("text-on-surface text-base font-bold px-2 py-1")),
         )
         .child(list)
 }
@@ -61,7 +61,7 @@ fn endpoint_row(index: usize, method: Method, path: &'static str) -> NodeBuilder
                 .fixed_size(PANE_WIDTH, ROW_HEIGHT)
                 .gap(8.0),
         )
-        .class("px-2")
+        .class(classes!("px-2"))
         .child(
             text(method.0)
                 .layout(LayoutStyle::block().width(METHOD_COL_WIDTH))
@@ -70,7 +70,7 @@ fn endpoint_row(index: usize, method: Method, path: &'static str) -> NodeBuilder
         .child(
             text(path)
                 .layout(LayoutStyle::block().width(PANE_WIDTH - METHOD_COL_WIDTH - 16.0))
-                .class("text-on-surface text-sm"),
+                .class(classes!("text-on-surface text-sm")),
         )
 }
 

@@ -19,7 +19,7 @@ pub struct Error {
 }
 
 impl Error {
-    /// Wrap any `std::error::Error` into a [`sigil::Error`].
+    /// Wrap any `std::error::Error` into a [`crate::Error`].
     pub fn new<E: StdError + Send + Sync + 'static>(err: E) -> Self {
         Self {
             inner: Box::new(err),
@@ -51,8 +51,8 @@ impl From<Box<dyn StdError + Send + Sync + 'static>> for Error {
     }
 }
 
-impl From<renderer::RendererError> for Error {
-    fn from(err: renderer::RendererError) -> Self {
+impl From<sigil_renderer::RendererError> for Error {
+    fn from(err: sigil_renderer::RendererError) -> Self {
         Self::new(err)
     }
 }

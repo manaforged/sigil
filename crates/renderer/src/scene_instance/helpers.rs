@@ -1,23 +1,37 @@
 //! Internal helpers for building [`super::RectInstance`] / [`super::ShadowInstance`]
 //! payloads from public scene-command types.
 
-use hal::Rect;
+use sigil_hal::Rect;
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_command::{Stroke, StrokeAlign, StrokeStyle};
 
-use super::RectInstance;
+use super::{BlendSpace, RectInstance};
 
-/// `color` is the blend-space-resolved `[r, g, b, a]` (see [`super::BlendSpace`]);
-/// callers convert the source `Rgba8` so this stays a pure geometry/packing step.
+/// Fill + stroke visuals for one rect instance. `color` is the
+/// blend-space-resolved `[r, g, b, a]` (see [`super::BlendSpace`]);
+/// callers convert the source fill `Rgba8` so packing stays pure. The
+/// stroke's `Rgba8` converts here through the same `space`.
+#[derive(Clone, Copy)]
+pub(super) struct RectPaint {
+    pub(super) color: [f32; 4],
+    pub(super) opacity: f32,
+    pub(super) stroke: Option<Stroke>,
+    pub(super) space: BlendSpace,
+}
+
 pub(super) fn rect_instance_parts(
     rect: Rect,
-    color: [f32; 4],
     corner_radii: CornerRadii,
-    opacity: f32,
-    stroke: Option<Stroke>,
+    paint: RectPaint,
 ) -> RectInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(stroke);
+    let RectPaint {
+        color,
+        opacity,
+        stroke,
+        space,
+    } = paint;
+    let (stroke_params, stroke_meta) = stroke_fields(stroke, space);
     // Inflate the draw quad outward by the stroke width so the
     // Outside/Centered halves of the stroke have actual fragments to
     // paint into. The vertex shader recovers the original surface
@@ -52,7 +66,7 @@ pub(super) fn inflate(rect: Rect, outset: f32) -> Rect {
         return rect;
     }
     Rect {
-        origin: hal::Point::new(rect.origin.x - outset, rect.origin.y - outset),
+        origin: sigil_hal::Point::new(rect.origin.x - outset, rect.origin.y - outset),
         width: outset.mul_add(2.0, rect.width),
         height: outset.mul_add(2.0, rect.height),
     }
@@ -77,12 +91,12 @@ pub(super) fn shadow_color(color: [f32; 4], opacity_scale: f32) -> [f32; 4] {
     ]
 }
 
-pub(super) fn stroke_fields(stroke: Option<Stroke>) -> ([f32; 4], [f32; 4]) {
+pub(super) fn stroke_fields(stroke: Option<Stroke>, space: BlendSpace) -> ([f32; 4], [f32; 4]) {
     let Some(stroke) = stroke else {
         return ([0.0; 4], [0.0; 4]);
     };
     (
-        stroke.color.map(|channel| channel.clamp(0.0, 1.0)),
+        space.rgba(stroke.color),
         [
             stroke.width.max(0.0),
             stroke_style_f32(stroke.style),

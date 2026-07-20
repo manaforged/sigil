@@ -60,9 +60,7 @@ impl<'theme> StyleEngine<'theme> {
     /// Apply typography atoms into the text style sink.
     #[allow(clippy::unused_self)]
     pub fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
-        for atom in atoms {
-            apply_text_atom(*atom, text);
-        }
+        apply_text_atoms(atoms, text);
     }
 
     /// Resolve a tone-step atom through this engine's theme + tone.
@@ -102,6 +100,12 @@ impl<'theme> StyleEngine<'theme> {
                 render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
+            StyleAtom::BorderWidth(width) => render.border_width = Some(width),
+            StyleAtom::BorderColor(color) => render.border_color = Some(self.resolve_color(color)),
+            StyleAtom::BorderThemeRef(token) => {
+                render.border_color = Some(self.theme.resolve_color(token));
+            }
+            StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
             StyleAtom::PaddingAll(_)
             | StyleAtom::PaddingX(_)
@@ -118,12 +122,17 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::MarginBottom(_)
             | StyleAtom::MarginLeft(_)
             | StyleAtom::Gap(_)
+            | StyleAtom::GapX(_)
+            | StyleAtom::GapY(_)
             | StyleAtom::Width(_)
             | StyleAtom::Height(_)
             | StyleAtom::MinWidth(_)
             | StyleAtom::MaxWidth(_)
+            | StyleAtom::MinHeight(_)
+            | StyleAtom::MaxHeight(_)
             | StyleAtom::Display(_)
             | StyleAtom::FlexDirection(_)
+            | StyleAtom::FlexWrap(_)
             | StyleAtom::AlignItems(_)
             | StyleAtom::JustifyContent(_)
             | StyleAtom::FlexGrow(_)
@@ -216,6 +225,20 @@ fn encode_px(value: f32) -> Px {
     Px(clamped as i16)
 }
 
+/// Apply typography atoms into the text style sink. Typography atoms
+/// carry their values directly (no theme resolution), so this is a free
+/// function shared by [`StyleEngine::apply_text`] and
+/// [`TextStyle::layered_over_binding`](crate::TextStyle::layered_over_binding).
+pub(crate) fn apply_text_atoms(atoms: &[StyleAtom], text: &mut TextStyle) {
+    for atom in atoms {
+        apply_text_atom(*atom, text);
+    }
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "exhaustive match on StyleAtom — the long no-op arm chain is intentional; a wildcard would silently swallow new atom kinds"
+)]
 fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
     match atom {
         StyleAtom::FontSize(px) => text.font_size = f32::from(px.0).max(1.0),
@@ -239,12 +262,17 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::MarginBottom(_)
         | StyleAtom::MarginLeft(_)
         | StyleAtom::Gap(_)
+        | StyleAtom::GapX(_)
+        | StyleAtom::GapY(_)
         | StyleAtom::Width(_)
         | StyleAtom::Height(_)
         | StyleAtom::MinWidth(_)
         | StyleAtom::MaxWidth(_)
+        | StyleAtom::MinHeight(_)
+        | StyleAtom::MaxHeight(_)
         | StyleAtom::Display(_)
         | StyleAtom::FlexDirection(_)
+        | StyleAtom::FlexWrap(_)
         | StyleAtom::AlignItems(_)
         | StyleAtom::JustifyContent(_)
         | StyleAtom::FlexGrow(_)
@@ -254,6 +282,10 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
+        | StyleAtom::BorderWidth(_)
+        | StyleAtom::BorderColor(_)
+        | StyleAtom::BorderThemeRef(_)
+        | StyleAtom::BorderToneStep(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)

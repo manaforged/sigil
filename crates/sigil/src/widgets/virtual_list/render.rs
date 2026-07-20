@@ -1,6 +1,6 @@
-use events::prelude::NodeEventsExt;
-use kernel::{NodeBuilder, Role, container};
-use layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil_events::prelude::NodeEventsExt;
+use sigil_kernel::{NodeBuilder, Role, container};
+use sigil_layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow, Position};
 
 use super::selection::SelectionRuntime;
 use super::window::{VisibleWindow, prefix_row_top, row_top, total_height};
@@ -32,16 +32,6 @@ pub(super) fn viewport_container(height: f32, width: WidthSpec) -> NodeBuilder {
 
 pub(super) fn content_container(height: f32, width: WidthSpec) -> NodeBuilder {
     container().layout(width.apply(LayoutStyle::block().height(height)))
-}
-
-/// Content wrapper for the reactive (`items_bind`) path, which renders
-/// the full bound `Vec` and re-builds it on every signal change. Its
-/// height is **auto** (sized to the rebuilt children) rather than a
-/// build-time row-count snapshot — a fixed height taken when the bound
-/// signal was empty collapses the list to its first row under the
-/// incremental layout path. The enclosing viewport clips overflow.
-pub(super) fn content_container_auto(width: WidthSpec) -> NodeBuilder {
-    container().layout(width.apply(LayoutStyle::block()))
 }
 
 pub(super) fn build_visible_window<T, R>(

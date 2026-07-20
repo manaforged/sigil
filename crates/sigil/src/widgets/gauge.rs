@@ -11,10 +11,10 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use reactive::Signal;
-use style::{Dimension, NodeStyleExt, Px, StateHost, Style, StyleAccess, StyleAtom};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::Signal;
+use sigil_style::{Dimension, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 10.0;
@@ -114,10 +114,8 @@ impl StyleAccess for GaugeBuilder {
     }
 }
 
-impl StateHost for GaugeBuilder {}
-
 impl IntoNode for GaugeBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }

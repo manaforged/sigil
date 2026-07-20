@@ -6,7 +6,7 @@
 //!
 //! - [`TokioExecutor`] — `Send + Sync + 'static` wrapper around a
 //!   [`tokio::runtime::Handle`]. Implements
-//!   [`reactive::TaskExecutor`] by spawning the boxed future on
+//!   [`sigil_reactive::TaskExecutor`] by spawning the boxed future on
 //!   the Tokio runtime and returning the corresponding
 //!   [`AbortHandle`]. Owner-cascade cancellation is wired by the
 //!   reactive crate's `Context::spawn` (via an `on_cleanup` registered
@@ -14,21 +14,21 @@
 //!   duplicate that tracking.
 //!
 //! - [`ReactiveBridge`] — `Send + Sync + 'static` main-thread
-//!   dispatcher. Implements [`reactive::MainThreadDispatcher`]
+//!   dispatcher. Implements [`sigil_reactive::MainThreadDispatcher`]
 //!   by sending `(OwnerId, callback)` pairs across an MPSC channel.
 //!   The main thread pulls from the receiver via
 //!   [`AsyncRuntime::pump_completions_into_reactive`] and forwards each
-//!   entry to [`reactive::Runtime::enqueue_completion`].
+//!   entry to [`sigil_reactive::Runtime::enqueue_completion`].
 //!
 //! The two are kept separate from [`AsyncRuntime`]'s existing
-//! [`hal::Scheduler`] surface (which has different drain
+//! [`sigil_hal::Scheduler`] surface (which has different drain
 //! semantics — Scheduler drain runs callbacks inline; the bridge
 //! routes through `pending_completions` so DR-048 §4 phase rules
 //! apply).
 
 use std::sync::Arc;
 
-use reactive::{
+use sigil_reactive::{
     BoxMainCallback, BoxSendFuture, DispatchError, MainThreadDispatcher, OwnerId, Runtime,
     TaskExecutor,
 };
@@ -40,7 +40,7 @@ use tokio::task::AbortHandle;
 /// runtime handle.
 ///
 /// Constructed via [`crate::AsyncRuntime::tokio_executor`].
-/// Owner-cascade abort wiring lives in `reactive::Context::spawn`
+/// Owner-cascade abort wiring lives in `sigil_reactive::Context::spawn`
 /// — the executor only needs to spawn + return the abort handle.
 ///
 /// # Layout
@@ -90,7 +90,7 @@ const _: fn() = || {
 /// main thread inside [`crate::AsyncRuntime`]; calls to
 /// [`crate::AsyncRuntime::pump_completions_into_reactive`] drain the
 /// MPSC and forward each entry to
-/// [`reactive::Runtime::enqueue_completion`], which puts the
+/// [`sigil_reactive::Runtime::enqueue_completion`], which puts the
 /// callback on the reactive runtime's `pending_completions` for
 /// drain at the top of the next [`Runtime::begin_effect`].
 ///
@@ -139,7 +139,7 @@ pub(crate) fn build_bridge() -> (
 }
 
 /// Pull every queued `(owner, callback)` pair off `rx` and forward to
-/// [`reactive::Runtime::enqueue_completion`].
+/// [`sigil_reactive::Runtime::enqueue_completion`].
 ///
 /// Must be called on the main thread. Returns the number of entries
 /// forwarded (informational — tests assert against it).

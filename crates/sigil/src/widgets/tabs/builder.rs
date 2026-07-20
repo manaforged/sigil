@@ -7,14 +7,14 @@
 
 use std::rc::Rc;
 
-use animation_runtime::presets;
-use events::prelude::{Key, NodeEventsExt};
-use kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use reactive::{Signal, derived_eq};
-use style::{
+use sigil_animation_runtime::presets;
+use sigil_events::prelude::{Key, NodeEventsExt};
+use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_reactive::{Signal, derived_eq};
+use sigil_style::{
     ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess,
-    StyleAtom, StyleVariant, Theme, TransitionId,
+    StyleAtom, StyleOverlay, StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -260,7 +260,7 @@ impl TabsBuilder {
         container().child(self)
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let count = self.labels.len();
         let has_content = self.contents.iter().any(Option::is_some);
         let order_signal = self.order;
@@ -270,6 +270,11 @@ impl TabsBuilder {
             None
         };
 
+        // Drain user-supplied state-slot overlays before the base
+        // accumulator attaches — each tab clones the overlay and
+        // resolves it against its own interaction slot, so
+        // `.hover(|s| s.bg(...))` paints the tab under the pointer.
+        let user_overlay = self.style_accumulator.take_state_overlay();
         let tab_list = build_tab_list(
             self.active,
             self.labels,
@@ -279,6 +284,7 @@ impl TabsBuilder {
             drag,
             self.closeable,
             self.close_handler.as_ref().map(Rc::clone),
+            user_overlay,
         );
 
         let mut root = if has_content {
@@ -323,7 +329,7 @@ impl WidgetLayoutExt for TabsBuilder {
 }
 
 impl IntoNode for TabsBuilder {
-    fn build(self, cx: &mut Cx) -> kernel::NodeId {
+    fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.into_node_builder().build(cx)
     }
 }
@@ -357,6 +363,7 @@ fn build_tab_list(
     drag: Option<DragState>,
     closeable: bool,
     close_handler: Option<CloseHandler>,
+    user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let count = labels.len();
     let disabled = Rc::new(disabled.to_vec());
@@ -389,6 +396,7 @@ fn build_tab_list(
             drag,
             closeable,
             close_handler.as_ref().map(Rc::clone),
+            user_overlay.clone(),
         );
         root = root.child(tab);
     }
@@ -495,6 +503,7 @@ fn build_tab(
     drag: Option<DragState>,
     closeable: bool,
     close_handler: Option<CloseHandler>,
+    user_overlay: StyleOverlay,
 ) -> NodeBuilder {
     let is_disabled = disabled.contains(&index);
     let interaction = InteractionState::new(!is_disabled);
@@ -540,7 +549,7 @@ fn build_tab(
         .layout(tab_layout())
         .class("rounded-sm")
         .class(base_atoms)
-        .style_reactive(move || variant.state(interaction.style_state()))
+        .stateful_style(variant, user_overlay, move || interaction.style_state())
         .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
         .key(Key::Enter, move |event| {
             activate_key(event, interaction, &key_activate);

@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use kernel::{Node, NodeBuilder, TextBuilder};
-use reactive::Signal;
+use sigil_kernel::{Node, NodeBuilder, TextBuilder};
+use sigil_reactive::Signal;
 use smallvec::SmallVec;
 
 use std::cell::Cell;
@@ -147,17 +147,18 @@ pub trait NodeStyleExt {
     /// that gives callers a one-line reactive opt-in to a class without
     /// writing the `if signal.get()` boilerplate.
     ///
-    /// Same caveat as [`style_reactive`](Self::style_reactive): a later
-    /// `class_when` / `style_reactive` call on the same node replaces
-    /// the previous reactive slot. Use multiple atoms in one class
-    /// string when multiple toggles must compose.
+    /// Multiple reactive installs on the same node compose (T0): each
+    /// `class_when` / `style_reactive` appends a channel, and channels
+    /// resolve in install order, so later installs win per property.
+    /// Use multiple atoms in one class string when multiple toggles
+    /// must compose inside a single source.
     ///
     /// # Example
     ///
     /// ```ignore
-    /// use kernel::container;
-    /// use reactive::signal;
-    /// use style::NodeStyleExt;
+    /// use sigil_kernel::container;
+    /// use sigil_reactive::signal;
+    /// use sigil_style::NodeStyleExt;
     ///
     /// let highlighted = signal(false);
     /// let node = container().class_when(highlighted, "bg-accent");
@@ -275,7 +276,7 @@ fn install_class(node: &mut Node, source: ClassSource) {
 
 fn debug_assert_not_fragment(node: &Node, op: &'static str) {
     debug_assert!(
-        !matches!(node.kind, kernel::NodeType::Fragment),
+        !matches!(node.kind, sigil_kernel::NodeType::Fragment),
         "{op}() on a Fragment: fragments have no paint box; see DR-015"
     );
 }
@@ -301,13 +302,13 @@ where
     let reactive = StyleReactiveEffect::new();
     let atoms = reactive.atoms();
     if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
-        binding.set_reactive(atoms);
+        binding.add_reactive(atoms);
     } else {
         let _previous = node.attach(StyleBinding::reactive_atoms(atoms));
     }
 
     let effect_state = reactive.clone();
-    reactive::effect_named("sigil-style::style_reactive", move || {
+    sigil_reactive::effect_named("sigil-style::style_reactive", move || {
         effect_state.set_slice(f());
     });
     let _previous = node.attach(reactive);
@@ -361,7 +362,7 @@ mod diagnostic {
     pub(super) fn class_parse(input: &str, err: &ParseError) {
         bump_unknown_class_count();
         tracing::warn!(
-            target: "style::class",
+            target: "sigil_style::class",
             input,
             error = %err,
             "unknown class token ignored",

@@ -9,12 +9,12 @@ use std::rc::Rc;
 use accesskit as _;
 use ahash as _;
 use criterion as _;
-use hal as _;
+use sigil_hal as _;
 use slotmap as _;
 use smallvec as _;
 
-use kernel::{Cx, NodeId, container, text};
-use reactive::{Runtime, signal};
+use sigil_kernel::{Cx, NodeId, container, text};
+use sigil_reactive::{Runtime, signal};
 
 fn child_ids(cx: &Cx, parent: NodeId) -> Vec<NodeId> {
     cx.get(parent).expect("parent alive").children().to_vec()

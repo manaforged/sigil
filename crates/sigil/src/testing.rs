@@ -5,7 +5,7 @@
 //! See DR-049 / dogfood-gap-closure plan Phase B for the rationale.
 
 use crate::prelude::{Cx, NodeId};
-use reactive::Runtime;
+use sigil_reactive::Runtime;
 
 /// Run a closure inside a fresh [`Cx`] and reactive scope. Convenient
 /// for tree-build smoke tests that need to construct signals.
@@ -73,7 +73,7 @@ pub fn tree_size(name: &'static str, f: impl FnOnce(&mut Cx) -> NodeId) -> usize
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reactive::{Signal, signal};
+    use sigil_reactive::{Signal, signal};
 
     #[test]
     fn closure_runs_with_fresh_cx() {

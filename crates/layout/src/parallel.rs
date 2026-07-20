@@ -2,7 +2,7 @@
 //!
 //! Signatures originally sketched by
 //! [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md). The
-//! sketch named boundaries by `kernel::NodeId`; the forest that
+//! sketch named boundaries by `sigil_kernel::NodeId`; the forest that
 //! actually landed in P0.1 indexes nodes by [`LocalId`] (generational
 //! slab id). This file therefore uses `LocalId` internally — the forest
 //! does not expose a `NodeId → LocalId` map, and forging one would be a
@@ -279,13 +279,13 @@ mod tests {
     use crate::forest::AvailableSpace;
     use crate::measure::TextMeasure;
     use crate::style_data::{Display, StyleData};
-    use hal::{LogicalSize, Size as HalSize};
+    use sigil_hal::{LogicalSize, Size as HalSize};
     use std::collections::HashSet;
 
     struct NullText;
 
     impl TextMeasure for NullText {
-        fn measure(&self, _: &kernel::TextContent, _: HalSize) -> LogicalSize {
+        fn measure(&self, _: &sigil_kernel::TextContent, _: HalSize) -> LogicalSize {
             LogicalSize::default()
         }
     }

@@ -133,6 +133,38 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
+    /// Move the caret to the same byte-column on the previous line
+    /// (clamped to that line's end; never splits a grapheme).
+    pub(crate) fn move_up(&mut self) {
+        self.selection = None;
+        self.caret = vertical_target(&self.buffer, self.caret, -1);
+        self.debug_assert_invariants();
+    }
+
+    /// Move the caret to the same byte-column on the next line
+    /// (clamped to that line's end; never splits a grapheme).
+    pub(crate) fn move_down(&mut self) {
+        self.selection = None;
+        self.caret = vertical_target(&self.buffer, self.caret, 1);
+        self.debug_assert_invariants();
+    }
+
+    /// Extend selection one line up (same column semantics as
+    /// [`Self::move_up`]).
+    pub(crate) fn shift_up(&mut self) {
+        self.selection.get_or_insert(self.caret);
+        self.caret = vertical_target(&self.buffer, self.caret, -1);
+        self.debug_assert_invariants();
+    }
+
+    /// Extend selection one line down (same column semantics as
+    /// [`Self::move_down`]).
+    pub(crate) fn shift_down(&mut self) {
+        self.selection.get_or_insert(self.caret);
+        self.caret = vertical_target(&self.buffer, self.caret, 1);
+        self.debug_assert_invariants();
+    }
+
     /// Extend selection to the start of the buffer.
     pub(crate) fn shift_home(&mut self) {
         if self.caret == 0 {
@@ -360,4 +392,38 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         .char_indices()
         .nth(1)
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
+}
+
+/// Byte offset on the line above (`dir < 0`) or below (`dir > 0`)
+/// `caret` at the same byte column, clamped to the target line's end
+/// and floored to a char boundary so multibyte content never splits.
+/// Above the first line the target is 0; past the last line it is
+/// `buffer.len()`.
+fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
+    let mut starts = vec![0_usize];
+    for (index, byte) in buffer.bytes().enumerate() {
+        if byte == b'\n' {
+            starts.push(index + 1);
+        }
+    }
+    let line_index = starts.partition_point(|start| *start <= caret) - 1;
+    let target_index = line_index.cast_signed() + dir;
+    if target_index < 0 {
+        return 0;
+    }
+    let Ok(target_index) = usize::try_from(target_index) else {
+        return 0;
+    };
+    let Some(&target_start) = starts.get(target_index) else {
+        return buffer.len();
+    };
+    // `line_index` is always in range (`partition_point` is >= 1 on a
+    // vec that always holds a leading 0), so the fallback never fires.
+    let column = caret - starts.get(line_index).copied().unwrap_or(0);
+    // Target line's end excludes its trailing newline.
+    let line_end = starts
+        .get(target_index + 1)
+        .map_or(buffer.len(), |end| end.saturating_sub(1));
+    let target = (target_start + column).min(line_end);
+    super::floor_char_boundary(buffer, target)
 }

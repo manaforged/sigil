@@ -3,13 +3,13 @@
 
 use accesskit as _;
 use criterion as _;
-use hal as _;
-use reactive as _;
+use sigil_hal as _;
+use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
 
 use ahash::AHashSet;
-use kernel::{Cx, NodeId, container, text};
+use sigil_kernel::{Cx, NodeId, container, text};
 
 fn dirty_set(cx: &Cx) -> AHashSet<NodeId> {
     cx.dirty().collect()

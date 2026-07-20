@@ -1,6 +1,6 @@
 //! R10 / R11 showcase scenes (glow and offscreen layer pool).
 
-use hal::{Color, Point};
+use sigil_hal::{Color, Point};
 
 use super::helpers::{rect, rgba};
 use crate::scene_command::{GradientStop, LinearGradient};

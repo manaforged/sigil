@@ -11,10 +11,10 @@
 //!   re-export of [`super::tooltip`], the existing widget.
 //! * [`hint_overlay`] — translucent keybinding cheat-sheet.
 
-use kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
-use layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use reactive::{Signal, derived};
-use style::{DisplayKind, NodeStyleExt, StyleAtom};
+use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use sigil_reactive::{Signal, derived};
+use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use super::shared::label;
 use super::text_field::TextFieldBuilder;
@@ -129,7 +129,7 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
 ///
 /// ```ignore
 /// use sigil::prelude::*;
-/// use reactive::{signal, derived};
+/// use sigil_reactive::{signal, derived};
 ///
 /// let email = signal(String::new());
 /// let email_error = derived(move || {
@@ -350,8 +350,8 @@ pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
 #[allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 mod tests {
     use super::*;
-    use kernel::container as kernel_container;
-    use reactive::Runtime;
+    use sigil_kernel::container as kernel_container;
+    use sigil_reactive::Runtime;
 
     #[test]
     fn app_shell_without_modal_has_three_children() {
@@ -404,8 +404,8 @@ mod tests {
         use crate::widgets::text_field::text_field;
         Runtime::scope("validated-field-shape", || {
             let mut cx = Cx::new_root();
-            let error: reactive::Signal<Option<String>> = reactive::signal(None);
-            let value = reactive::signal(String::new());
+            let error: sigil_reactive::Signal<Option<String>> = sigil_reactive::signal(None);
+            let value = sigil_reactive::signal(String::new());
             let id = validated_field("Email", text_field(value), error).build(&mut cx);
             let node = cx.get(id).expect("validated field root");
             assert_eq!(

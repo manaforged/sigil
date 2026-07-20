@@ -22,14 +22,14 @@ fn panel_row() -> NodeBuilder {
         .title("Panel title")
         .padding(12.0)
         .elevation(1)
-        .child(text("Panel body content").class("text-sm"));
+        .child(text("Panel body content").class(classes!("text-sm")));
     patterns::field("panel", widget)
 }
 
 fn nested_scroll_row() -> NodeBuilder {
     let mut inner = container().layout(LayoutStyle::flex_column().gap(4.0));
     for i in 0..40 {
-        inner = inner.child(text(format!("scroll row {i}")).class("text-sm"));
+        inner = inner.child(text(format!("scroll row {i}")).class(classes!("text-sm")));
     }
     let widget = scroll(inner, 800.0).width(280.0).height(160.0);
     patterns::field("scroll (nested, 40 rows)", widget)
@@ -38,11 +38,11 @@ fn nested_scroll_row() -> NodeBuilder {
 fn splitter_row() -> NodeBuilder {
     let left = container()
         .layout(LayoutStyle::flex_column().padding(8.0).fill())
-        .class("bg-accent")
-        .child(text("left pane").class("text-on-accent"));
+        .class(classes!("bg-accent"))
+        .child(text("left pane").class(classes!("text-on-accent")));
     let right = container()
         .layout(LayoutStyle::flex_column().padding(8.0).fill())
-        .class("bg-surface-pressed")
+        .class(classes!("bg-surface-pressed"))
         .child(text("right pane"));
     let widget = container()
         .layout(LayoutStyle::flex_row().fixed_size(560.0, 120.0))
@@ -75,7 +75,7 @@ fn modal_row() -> NodeBuilder {
                 .align_items(AlignItems::Center),
         )
         .child(trigger)
-        .child(text("(click to open the modal)").class("text-sm"))
+        .child(text("(click to open the modal)").class(classes!("text-sm")))
         .child(dialog);
     patterns::field("modal (button-triggered)", row(vec![host]))
 }

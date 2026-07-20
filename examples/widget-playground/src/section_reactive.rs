@@ -31,7 +31,7 @@ fn virtual_list_row() -> NodeBuilder {
         });
     });
     let list = virtual_list(items.peek(), |idx, n: &u32| {
-        crate::wrap(text(format!("row {idx}: {n}")).class("text-sm"))
+        crate::wrap(text(format!("row {idx}: {n}")).class(classes!("text-sm")))
     })
     .row_height(22.0)
     .viewport_height(180.0)
@@ -78,25 +78,23 @@ fn reactive_chip_row() -> NodeBuilder {
         });
     });
 
-    let toggle_widget = toggle(success).label("flip tone (Success / Error)");
-    // `chip` returns `NodeBuilder` (no builder type), so reactive tone
-    // flips by mounting / unmounting the two chip instances via a
-    // `children_reactive` host container.
-    let chip_host = container()
-        .layout(LayoutStyle::flex_row())
-        .children_reactive(move || {
-            let tone = if success.get() {
-                ChipTone::Success
-            } else {
-                ChipTone::Error
-            };
-            let label_text = if success.get() { "SUCCESS" } else { "ERROR" };
-            vec![chip(label_text, tone)]
+    let tone = signal(ChipTone::Success);
+    effect(move || {
+        tone.set(if success.get() {
+            ChipTone::Success
+        } else {
+            ChipTone::Error
         });
+    });
+
+    let toggle_widget = toggle(success).label("flip tone (Success / Error)");
+    // ChipBuilder::tone_signal retints in place (5/5 Wave 1 T5) — no
+    // `children_reactive` remount host needed anymore.
+    let chip_widget = chip("STATUS", ChipTone::Success).tone_signal(tone);
     let stack = container()
         .layout(LayoutStyle::flex_column().gap(6.0))
         .child(toggle_widget)
-        .child(chip_host)
+        .child(chip_widget)
         .child(label(tone_label));
     patterns::field("chip (reactive tone flip)", row(vec![stack]))
 }

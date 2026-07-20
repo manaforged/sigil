@@ -75,8 +75,12 @@ pub trait StateVariants: StyleAccess + StateHost {
     }
 
     /// Configure the disabled-slot overlay via a closure.
+    ///
+    /// Named `disabled_style` (5/5 Wave 1, D-U2) so behavioral
+    /// `.disabled(Signal<bool>)` — the far more common call — keeps the
+    /// short name without a method-resolution collision.
     #[must_use]
-    fn disabled<F>(mut self, configure: F) -> Self
+    fn disabled_style<F>(mut self, configure: F) -> Self
     where
         F: FnOnce(StateStyleBuilder) -> StateStyleBuilder,
     {

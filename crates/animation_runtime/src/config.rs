@@ -1,7 +1,7 @@
 //! `AnimationConfig` — the type the [`AnimationRegistry`] returns. Names
 //! a concrete spring shape or a duration tween.
 
-use animation::{Easing, SpringPreset};
+use sigil_animation::{Easing, SpringPreset};
 
 /// Either a spring preset or a duration tween. Re-targetable after
 /// construction. Returned by [`crate::AnimationRegistry::get`].

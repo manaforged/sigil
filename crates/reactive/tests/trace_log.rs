@@ -2,7 +2,7 @@
 //! log (DR-005 addendum item 6).
 //!
 //! These tests never touch the `SIGIL_TRACE_EFFECTS` environment
-//! variable. `OnceLock` in [`reactive::trace`] latches the env
+//! variable. `OnceLock` in [`sigil_reactive::trace`] latches the env
 //! result at the first effect fire in the process, so toggling env
 //! from tests would be flaky under parallel or ordered runs. Instead
 //! we exercise the per-thread capture hook exposed via
@@ -17,15 +17,16 @@
 
 // `smallvec` and `criterion` are dev-deps; this test references
 // neither. Silence `unused_crate_dependencies`.
-use actions as _;
 use criterion as _;
+use sigil as _;
+use sigil_actions as _;
 use smallvec as _;
 use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
-use reactive::{__trace_test_hook, Runtime, effect, effect_named, signal};
+use sigil_reactive::{__trace_test_hook, Runtime, effect, effect_named, signal};
 
 /// Guard that turns capture off at test end so a failure in one
 /// test does not leak state into the next on this thread.
@@ -134,7 +135,7 @@ fn unnamed_effect_records_default_name() {
 
 #[test]
 fn batched_writes_report_pending_queue_depth() {
-    use reactive::batch;
+    use sigil_reactive::batch;
 
     with_capture(|| {
         Runtime::scope("trace::batched", || {

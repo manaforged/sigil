@@ -9,13 +9,13 @@
 // indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
-use reactive as _;
+use sigil_reactive as _;
 
-use style::scale::{
+use sigil_style::scale::{
     amber_light, cyan_light, green_light, iris_dark, iris_light, ruby_light, slate_dark,
     slate_light,
 };
-use style::{ColorAtom, Rgba8, StyleAtom, Theme, parse_class_string};
+use sigil_style::{ColorAtom, Rgba8, StyleAtom, Theme, parse_class_string};
 
 fn resolved_bg(theme: &Theme, class: &str) -> Rgba8 {
     let atoms = parse_class_string(class).expect("parse");
@@ -26,7 +26,7 @@ fn resolved_bg(theme: &Theme, class: &str) -> Rgba8 {
         );
     };
     let atom = ColorAtom::ThemeRef(token);
-    let engine = style::StyleEngine::new(theme);
+    let engine = sigil_style::StyleEngine::new(theme);
     engine.resolve_color(atom)
 }
 
@@ -36,7 +36,7 @@ fn resolved_text(theme: &Theme, class: &str) -> Rgba8 {
         panic!("expected TextThemeRef from {class}, got {:?}", atoms[0]);
     };
     let atom = ColorAtom::ThemeRef(token);
-    let engine = style::StyleEngine::new(theme);
+    let engine = sigil_style::StyleEngine::new(theme);
     engine.resolve_color(atom)
 }
 
