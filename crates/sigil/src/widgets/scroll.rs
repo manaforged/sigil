@@ -15,7 +15,6 @@ use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use sigil_reactive::{Signal, derived_eq, signal};
 use sigil_style::{ClassSource, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
 
-const VIEWPORT_WIDTH: f32 = 320.0;
 const VIEWPORT_HEIGHT: f32 = 240.0;
 const SCROLLBAR_WIDTH: f32 = 8.0;
 const THUMB_MIN_HEIGHT: f32 = 24.0;
@@ -35,7 +34,7 @@ pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Signal<f32>,
     height: f32,
-    width: f32,
+    width: Option<f32>,
     extra: Option<ClassSource>,
     style_accumulator: Style,
 }
@@ -74,7 +73,7 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
         content,
         extent: extent.into_extent(),
         height: VIEWPORT_HEIGHT,
-        width: VIEWPORT_WIDTH,
+        width: None,
         extra: None,
         style_accumulator: Style::new(),
     }
@@ -98,7 +97,7 @@ impl ScrollBuilder {
     /// Set the visible viewport width in pixels.
     #[must_use]
     pub const fn width(mut self, px: f32) -> Self {
-        self.width = px;
+        self.width = Some(px);
         self
     }
 
@@ -111,14 +110,16 @@ impl ScrollBuilder {
 
         let max_scroll = derived_eq(move || (extent.get() - height).max(0.0));
         let initial = extent.peek().max(height);
-        let body = wrap_content(content, scroll_y, max_scroll, initial, width);
-        let track = scrollbar_track(height);
-        let thumb = scrollbar_thumb(scroll_y, max_scroll, initial, height, width);
+        let body = wrap_content(content, scroll_y, max_scroll, initial);
+        let thumb = scrollbar_thumb(scroll_y, max_scroll, initial, height);
+        // The thumb lives INSIDE the track: absolutes resolve against their
+        // parent container, so it needs no viewport width to find the right
+        // gutter (there is no `inset_right` to anchor against).
+        let track = scrollbar_track(height).child(thumb);
 
         let mut root = viewport_container(width, height)
             .child(body)
             .child(track)
-            .child(thumb)
             .key(Key::ArrowDown, move |ev| {
                 step(ev, scroll_y, SCROLL_LINE, max_scroll.peek());
             })
@@ -165,14 +166,19 @@ impl IntoNode for ScrollBuilder {
     }
 }
 
-fn viewport_container(width: f32, height: f32) -> NodeBuilder {
+fn viewport_container(width: Option<f32>, height: f32) -> NodeBuilder {
+    // Fill the parent's width by default; `.width()` pins an explicit
+    // extent. Height stays explicit: `max_scroll`, thumb size and travel
+    // are all derived from it, so a filled height would need the measured
+    // viewport fed back into those signals.
+    let base = LayoutStyle::flex_row().height(height);
+    let base = match width {
+        Some(px) => base.width(px),
+        None => base.fill_width(),
+    };
     container()
         .role(Role::ScrollView)
-        .layout(
-            LayoutStyle::flex_row()
-                .fixed_size(width, height)
-                .overflow_y(Overflow::Hidden),
-        )
+        .layout(base.overflow_y(Overflow::Hidden))
         .class(VIEWPORT_ATOMS)
 }
 
@@ -181,7 +187,6 @@ fn wrap_content(
     scroll_y: Signal<f32>,
     max_scroll: Signal<f32>,
     initial: f32,
-    width: f32,
 ) -> NodeBuilder {
     let offset_px = derived_eq(move || {
         let clamped = scroll_y.get().clamp(0.0, max_scroll.get());
@@ -197,7 +202,7 @@ fn wrap_content(
     // replaces on TypeId collision. Option B: the sizing box owns the
     // fixed_size; content is added as its child unchanged.
     container()
-        .layout(LayoutStyle::block().fixed_size(width - SCROLLBAR_WIDTH, initial))
+        .layout(LayoutStyle::block().grow(1.0).width(0.0).height(initial))
         .child(content)
         .style_reactive(move || margin_top_atoms(offset_px.get()))
 }
@@ -213,7 +218,6 @@ fn scrollbar_thumb(
     max_scroll: Signal<f32>,
     initial: f32,
     height: f32,
-    width: f32,
 ) -> NodeBuilder {
     let ratio = (height / initial).clamp(0.0, 1.0);
     let thumb_h = (ratio * height).max(THUMB_MIN_HEIGHT);
@@ -244,7 +248,7 @@ fn scrollbar_thumb(
     // sigil layout model). Pin it to the right gutter at
     // `width - SCROLLBAR_WIDTH` left inset; the reactive
     // `margin_top_atoms` slides it vertically as scroll progresses.
-    let thumb_left = width - SCROLLBAR_WIDTH;
+    let thumb_left = 0.0_f32;
     container()
         .layout(
             LayoutStyle::block()

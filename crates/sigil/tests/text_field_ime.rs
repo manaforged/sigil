@@ -260,9 +260,11 @@ fn displayed_text(cx: &Cx, root: NodeId) -> String {
     match &node.kind {
         NodeType::Text {
             content: TextContent::Reactive(signal),
+            ..
         } => signal.peek(),
         NodeType::Text {
             content: TextContent::Static(text),
+            ..
         } => text.clone(),
         _ => String::new(),
     }

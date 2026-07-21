@@ -87,13 +87,29 @@ impl<'a> BlockSolver<'a> {
         cb: Size<f32>,
         origin: Position2,
     ) -> Result<(), LayoutError> {
+        self.solve_at_assigned(subtree, cb, origin, None)
+    }
+
+    /// As [`Self::solve_at`], but with the border-box width a flex parent
+    /// already resolved for this node.
+    ///
+    /// A block-display flex item still gets its used width from the flex
+    /// algorithm; without this it re-derives the width from its own style
+    /// and a `grow(1).width(0)` item collapses to zero.
+    pub(crate) fn solve_at_assigned(
+        &self,
+        subtree: NodeRef<'_>,
+        cb: Size<f32>,
+        origin: Position2,
+        assigned_w: Option<f32>,
+    ) -> Result<(), LayoutError> {
         let style = subtree.style();
         let edges = NodeEdges::build(style, cb.width);
         let border_origin = Position2::new(
             origin.x + edges.margin.left.unwrap_or(0.0),
             origin.y + edges.margin_top(),
         );
-        solve_box(self, subtree, cb, border_origin).map(|_| ())
+        solve_box_assigned(self, subtree, cb, border_origin, assigned_w).map(|_| ())
     }
 
     /// Borrow the measure scope (used by per-subtree dispatch helpers
@@ -181,9 +197,18 @@ fn solve_box(
     cb: Size<f32>,
     border_origin: Position2,
 ) -> Result<Resolved, LayoutError> {
-    let style = node.style();
-    let edges = NodeEdges::build(style, cb.width);
-    let intent = SizeIntent::build(style, cb, &edges);
+    solve_box_assigned(solver, node, cb, border_origin, None)
+}
+
+/// Content-derived border-box width, plus the text measurement it came
+/// from (the caller reuses that for the content height).
+fn natural_width(
+    solver: &BlockSolver<'_>,
+    node: NodeRef<'_>,
+    intent: &SizeIntent,
+    cb_width: f32,
+    edges: &NodeEdges,
+) -> (f32, Option<Size<f32>>) {
     let text_size = if node.children().is_empty() {
         solver.scope.measure_text(
             node,
@@ -191,15 +216,35 @@ fn solve_box(
                 width: intent.w.preferred,
                 height: intent.h.preferred,
             },
+            // Wrapping text breaks to this node's content box within its
+            // containing block.
+            Some((cb_width - edges.inline_chrome()).max(0.0)),
         )
     } else {
         None
     };
-    let natural_w = text_size.map_or_else(
-        || width_for(style, intent.w, cb.width, &edges),
+    let width = text_size.map_or_else(
+        || width_for(node.style(), intent.w, cb_width, edges),
         |size| size.width + edges.inline_chrome(),
     );
-    let box_w = intent.w.clamp(natural_w);
+    (width, text_size)
+}
+
+/// `assigned_w` is a width the flex parent already resolved for this node;
+/// it wins over both the style width and the content measurement, with
+/// min/max still clamping.
+fn solve_box_assigned(
+    solver: &BlockSolver<'_>,
+    node: NodeRef<'_>,
+    cb: Size<f32>,
+    border_origin: Position2,
+    assigned_w: Option<f32>,
+) -> Result<Resolved, LayoutError> {
+    let style = node.style();
+    let edges = NodeEdges::build(style, cb.width);
+    let intent = SizeIntent::build(style, cb, &edges);
+    let (natural_w, text_size) = natural_width(solver, node, &intent, cb.width, &edges);
+    let box_w = intent.w.clamp(assigned_w.unwrap_or(natural_w));
     let inner_w = (box_w - edges.inline_chrome()).max(0.0);
     let inner_cb = Size {
         width: inner_w,
@@ -217,18 +262,13 @@ fn solve_box(
         width: inner_w + edges.padding.left + edges.padding.right,
         height: inner_cb.height + edges.padding.top + edges.padding.bottom,
     };
-    let content_height = if let Some(size) = text_size {
-        size.height
-    } else {
-        layout_children(
-            solver,
-            node,
-            inner_cb,
-            content_origin,
-            padding_box,
-            content_origin,
-        )?
-    };
+    let content_height = content_height_of(
+        solver,
+        node,
+        text_size,
+        (inner_cb, padding_box),
+        content_origin,
+    )?;
     let auto_h = content_height + edges.block_chrome();
     let box_h = intent
         .h
@@ -247,6 +287,29 @@ fn solve_box(
         box_h,
         edges,
     })
+}
+
+/// Height of this node's content: the measured text extent for a leaf,
+/// otherwise the extent its laid-out children occupy.
+fn content_height_of(
+    solver: &BlockSolver<'_>,
+    node: NodeRef<'_>,
+    text_size: Option<Size<f32>>,
+    boxes: (Size<f32>, Size<f32>),
+    content_origin: Position2,
+) -> Result<f32, LayoutError> {
+    let (inner_cb, padding_box) = boxes;
+    if let Some(size) = text_size {
+        return Ok(size.height);
+    }
+    layout_children(
+        solver,
+        node,
+        inner_cb,
+        content_origin,
+        padding_box,
+        content_origin,
+    )
 }
 
 /// Inline-axis sizing for one node. `Auto` widths fill the containing

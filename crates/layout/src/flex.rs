@@ -63,6 +63,9 @@ impl<'a> FlexSolver<'a> {
             axes,
             cb,
             suppress_stretch: false,
+            // Layout root: no parent assignment, shrink-to-fit applies.
+            assigned_w: None,
+            assigned_h: None,
         };
         layout_root(&ctx, subtree, Position2::origin())
     }
@@ -94,6 +97,9 @@ impl<'a> FlexSolver<'a> {
             axes,
             cb,
             suppress_stretch: false,
+            // Layout root: no parent assignment, shrink-to-fit applies.
+            assigned_w: None,
+            assigned_h: None,
         };
         layout_root(&ctx, subtree, origin)
     }

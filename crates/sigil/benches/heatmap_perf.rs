@@ -4,7 +4,19 @@
 
 #![allow(missing_docs, clippy::panic)]
 
+use arboard as _;
+use image as _;
+use pollster as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
+use sigil_renderer as _;
+use sigil_tasks as _;
 use std::hint::black_box;
+use wgpu as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::widgets::overlay::heatmap;

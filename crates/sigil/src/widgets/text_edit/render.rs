@@ -1,9 +1,13 @@
 use sigil_animation_runtime::presets;
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil_reactive::{Signal, derived_eq};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
+use sigil_reactive::{Signal, derived, derived_eq, effect, signal};
 use sigil_style::{NodeStyleExt, StateStyle, StyleAtom, StyleOverlay, StyleVariant, TransitionId};
+
+use sigil_layout::prelude::Position;
+use sigil_layout::with_text_geometry;
+use sigil_style::TextStyle;
 
 use crate::interaction::InteractionState;
 
@@ -30,7 +34,14 @@ static EDIT_DISABLED: &[StyleAtom] = &[
 
 /// Cap on the number of physical line children we emit so a runaway
 /// multi-megabyte paste doesn't blow up the tree on first paint.
-const MAX_LINES: usize = 64;
+///
+/// Every line above this is not rendered, but the cap is now LOUD: a
+/// trailing indicator line reports how many were withheld, so content
+/// past the limit can never silently disappear (the old 64-line cap hid
+/// a 65th line with no sign). A true fix — a scrolled viewport that only
+/// renders visible lines — is the larger `text_edit` editor work, tracked
+/// on the production-readiness plan.
+const MAX_LINES: usize = 2000;
 
 /// Default outer width in logical pixels for the text-edit chrome.
 const DEFAULT_WIDTH: f32 = 360.0;
@@ -87,8 +98,7 @@ pub(super) fn build_base_node(
         .stateful_style(edit_variant(), user_overlay, move || {
             edit_state(interaction, disabled)
         })
-        .pointer_up(move |event| pointer_up(event, interaction))
-        .child(edit_inner(displayed));
+        .child(edit_inner(displayed, runtime, interaction));
     install_transition_animators(
         node,
         TEXT_EDIT_ANIM_BASE,
@@ -108,20 +118,266 @@ pub(super) fn edit_layout() -> LayoutStyle {
         .height(DEFAULT_HEIGHT)
 }
 
-fn edit_inner(displayed: Signal<String>) -> NodeBuilder {
+fn edit_inner(
+    displayed: Signal<String>,
+    runtime: &TextEditRuntime,
+    interaction: InteractionState,
+) -> NodeBuilder {
+    // Pointer handlers live HERE, on the content box, because it is the
+    // deepest hittable node → the router binds pointer capture to it, so a
+    // drag that leaves the widget still routes back (router.rs sets
+    // `pointer_capture = path.last()`). Its children are non-hittable so
+    // none of them becomes the capture target instead.
+    let down = runtime.clone();
+    let moved = runtime.clone();
+    let scroll_y = scroll_into_view(runtime);
+    // The content wrapper carries BOTH the content padding and the scroll
+    // offset in one absolute position, so the lines it flows and the
+    // overlays it holds share one origin. `edit_inner` itself is unpadded
+    // (padding lives here) — so the overlays inset from this origin without
+    // re-adding padding, and the clip box is the full inner rect.
+    let content_pos = derived(move || (CONTENT_PADDING_X, CONTENT_PADDING_Y - scroll_y.get()));
+    let content = container()
+        .hittable(false)
+        .layout(LayoutStyle::block())
+        .position_reactive(content_pos)
+        // Order is paint order: selection behind the glyphs, caret in front.
+        .child(selection_layer(runtime))
+        .child(edit_lines(displayed))
+        .child(caret_layer(runtime, interaction));
     container()
         .layout(edit_inner_layout())
         .class("rounded-sm")
         .class("bg-surface")
-        .child(edit_lines(displayed))
+        .pointer_down(move |event| pointer_drag_start(event, &down, scroll_y))
+        .pointer_move(move |event| pointer_drag_move(event, &moved, scroll_y))
+        .pointer_up(move |event| pointer_up(event, interaction))
+        .child(content)
+}
+
+/// Visible content height: the inner box minus its vertical padding.
+const VISIBLE_H: f32 = INNER_HEIGHT - CONTENT_PADDING_Y - CONTENT_PADDING_Y;
+
+/// Reactive vertical scroll offset that keeps the caret line in view.
+///
+/// An effect watches the caret + buffer and nudges the offset by the
+/// minimum needed to bring the caret line inside `[scroll, scroll +
+/// VISIBLE_H]`, so typing past the bottom scrolls down and arrowing back up
+/// scrolls up, without jumping when the caret is already visible.
+fn scroll_into_view(runtime: &TextEditRuntime) -> Signal<f32> {
+    let scroll_y = signal(0.0_f32);
+    let value = runtime.value;
+    let caret = runtime.caret;
+    effect(move || {
+        let buffer = value.get();
+        let byte = caret.get().min(buffer.len());
+        let line = caret_line_col(&buffer, byte).0;
+        let line_h = line_height();
+        #[allow(clippy::cast_precision_loss)]
+        let top = line as f32 * line_h;
+        let cur = scroll_y.peek();
+        let next = if top < cur {
+            top
+        } else if top + line_h > cur + VISIBLE_H {
+            top + line_h - VISIBLE_H
+        } else {
+            cur
+        };
+        if (next - cur).abs() > f32::EPSILON {
+            scroll_y.set(next.max(0.0));
+        }
+    });
+    scroll_y
+}
+
+/// Tinted-blue selection highlight — matches `text_field`.
+static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(
+    sigil_style::ColorAtom::Rgba8(sigil_style::Rgba8 {
+        r: 56,
+        g: 118,
+        b: 224,
+        a: 130,
+    }),
+)];
+/// Width shown for a selected trailing newline / empty line, so a
+/// multi-line selection reads as continuous rather than a stack of gaps.
+const NEWLINE_SEL_W: f32 = 6.0;
+
+/// A selection highlight that spans lines: one rect per covered line,
+/// partial on the first and last, full on the lines between. Driven by the
+/// buffer's selection anchor (keyboard shift-select and, once wired,
+/// drag-select).
+fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
+    let value = runtime.value;
+    let caret = runtime.caret;
+    let selection = runtime.selection;
+    fragment()
+        .layout(LayoutStyle::block())
+        .children_reactive(move || {
+            let buffer = value.get();
+            let Some(anchor) = selection.get() else {
+                return Vec::new();
+            };
+            let caret = caret.get().min(buffer.len());
+            let anchor = anchor.min(buffer.len());
+            let (lo, hi) = (anchor.min(caret), anchor.max(caret));
+            selection_rects(&buffer, lo, hi)
+        })
+}
+
+/// Build one highlight rect per line covered by the byte range `lo..hi`.
+fn selection_rects(buffer: &str, lo: usize, hi: usize) -> Vec<NodeBuilder> {
+    if lo >= hi {
+        return Vec::new();
+    }
+    let (lo_line, lo_col) = caret_line_col(buffer, lo);
+    let (hi_line, hi_col) = caret_line_col(buffer, hi);
+    let line_h = line_height();
+    (lo_line..=hi_line)
+        .filter_map(|line| {
+            let start_col = if line == lo_line { lo_col } else { 0 };
+            let end_col = if line == hi_line { hi_col } else { usize::MAX };
+            line_highlight(buffer, line, (start_col, end_col), hi_line, line_h)
+        })
+        .collect()
+}
+
+/// One selection highlight rect for `line`, from `start_col` to `end_col`
+/// (both clamped to the line). `None` when zero-width or geometry is
+/// unavailable.
+fn line_highlight(
+    buffer: &str,
+    line: usize,
+    cols: (usize, usize),
+    hi_line: usize,
+    line_h: f32,
+) -> Option<NodeBuilder> {
+    let (start_col, end_col) = cols;
+    let line_text = nth_line(buffer, line);
+    let (x0, x1) = with_text_geometry(|engine| {
+        let style = TextStyle::default();
+        let a = engine
+            .caret(line_text, &style, start_col.min(line_text.len()))
+            .x;
+        let b = engine
+            .caret(line_text, &style, end_col.min(line_text.len()))
+            .x;
+        (a, b)
+    })?;
+    // Lines before the last include the selected newline: show a small
+    // trailing width so a fully-selected or empty line still reads.
+    let min_w = if line < hi_line { NEWLINE_SEL_W } else { 0.0 };
+    let width = (x1 - x0).max(min_w);
+    if width <= 0.0 {
+        return None;
+    }
+    #[allow(clippy::cast_precision_loss)]
+    let y = line as f32 * line_h;
+    Some(
+        container()
+            .hittable(false)
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_left(x0)
+                    .inset_top(y)
+                    .width(width)
+                    .height(line_h),
+            )
+            .class(SELECTION_ATOMS),
+    )
+}
+
+/// Caret colour — the field's own text token.
+static CARET_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
+/// Caret thickness in logical pixels.
+const CARET_W: f32 = 1.5;
+/// Line height fallback when no text-geometry provider is installed
+/// (headless layout / golden tests without the engine).
+const FALLBACK_LINE_H: f32 = 16.0;
+
+/// An absolutely-positioned caret overlay that tracks the buffer's caret
+/// across lines. Reactive on the caret offset, the buffer, focus and the
+/// blink phase, so it appears only while focused and on-phase.
+fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> NodeBuilder {
+    let value = runtime.value;
+    let caret = runtime.caret;
+    let caret_visible = runtime.caret_visible;
+    fragment()
+        .layout(LayoutStyle::block())
+        .children_reactive(move || {
+            if !interaction.focus_visible().get() || !caret_visible.get() {
+                return Vec::new();
+            }
+            let buffer = value.get();
+            let byte = caret.get().min(buffer.len());
+            caret_rect(&buffer, byte).into_iter().collect()
+        })
+}
+
+/// Build the caret rectangle for byte offset `byte` in `buffer`, or `None`
+/// when geometry is unavailable. Insets are relative to the content
+/// wrapper (which already carries the padding + scroll offset), so this is
+/// just the caret's (line, column) position within the text.
+fn caret_rect(buffer: &str, byte: usize) -> Option<NodeBuilder> {
+    let (line, col_byte) = caret_line_col(buffer, byte);
+    let line_text = nth_line(buffer, line);
+    let line_h = line_height();
+    let x = with_text_geometry(|engine| {
+        engine
+            .caret(
+                line_text,
+                &TextStyle::default(),
+                col_byte.min(line_text.len()),
+            )
+            .x
+    })?;
+    #[allow(clippy::cast_precision_loss)]
+    let y = line as f32 * line_h;
+    Some(
+        container().hittable(false).layout(
+            LayoutStyle::block()
+                .position(Position::Absolute)
+                .inset_left(x)
+                .inset_top(y)
+                .width(CARET_W)
+                .height(line_h),
+        ),
+    )
+    .map(|node: NodeBuilder| node.class(CARET_ATOMS))
+}
+
+/// Line height from the installed text engine, or the headless fallback.
+fn line_height() -> f32 {
+    with_text_geometry(|engine| engine.caret("", &TextStyle::default(), 0).height)
+        .filter(|h| *h > 0.0)
+        .unwrap_or(FALLBACK_LINE_H)
+}
+
+/// Byte `caret` in `buffer` → (line index, byte offset within that line).
+fn caret_line_col(buffer: &str, caret: usize) -> (usize, usize) {
+    let caret = caret.min(buffer.len());
+    let before = &buffer[..caret];
+    let line = before.bytes().filter(|&b| b == b'\n').count();
+    let col = before.rfind('\n').map_or(caret, |nl| caret - (nl + 1));
+    (line, col)
+}
+
+/// The `n`th `\n`-delimited line of `buffer` (empty when out of range).
+fn nth_line(buffer: &str, n: usize) -> &str {
+    buffer.split('\n').nth(n).unwrap_or("")
 }
 
 fn edit_inner_layout() -> LayoutStyle {
+    // No padding here: the content wrapper carries the content padding in its
+    // absolute position (so it can also apply the scroll offset in one go),
+    // and the clip region is the full inner box.
     LayoutStyle::flex_column()
         .width(INNER_WIDTH)
         .height(INNER_HEIGHT)
-        .padding_x(CONTENT_PADDING_X)
-        .padding_y(CONTENT_PADDING_Y)
+        // Clip lines that scroll past the viewport instead of painting
+        // over the widget's neighbours.
+        .overflow_y(Overflow::Hidden)
 }
 
 /// Render the buffer as one child text node per `\n`-delimited line.
@@ -143,15 +399,37 @@ fn line_nodes(lines: Vec<String>) -> Vec<TextBuilder> {
     if lines.is_empty() {
         return vec![text(String::new()).class("text-on-surface")];
     }
-    lines
+    let total = lines.len();
+    let mut nodes: Vec<TextBuilder> = lines
         .into_iter()
         .take(MAX_LINES)
         .map(|line| {
             text(line)
+                .hittable(false)
                 .layout(LayoutStyle::block().width(LINE_WIDTH))
                 .class("text-on-surface")
         })
-        .collect()
+        .collect();
+    if let Some(notice) = truncation_notice(total) {
+        // Never hide content silently: report the withheld lines so the
+        // limit is visible instead of a phantom truncation.
+        nodes.push(
+            text(notice)
+                .layout(LayoutStyle::block().width(LINE_WIDTH))
+                .class("text-muted-foreground"),
+        );
+    }
+    nodes
+}
+
+/// The withheld-lines notice for a `total`-line document, or `None` when
+/// nothing is hidden. Pure so the truncation contract is testable without
+/// laying out thousands of line nodes.
+fn truncation_notice(total: usize) -> Option<String> {
+    total
+        .checked_sub(MAX_LINES)
+        .filter(|&hidden| hidden > 0)
+        .map(|hidden| format!("… {hidden} more line(s) not shown"))
 }
 
 fn split_lines(source: &str) -> Vec<String> {
@@ -163,6 +441,63 @@ fn split_lines(source: &str) -> Vec<String> {
 
 fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
     let _ = interaction.release_pointer(event);
+}
+
+/// Drag-start: place the caret at the press and capture so the drag
+/// routes back here even if it leaves the widget. `capture_pointer` binds
+/// to the HIT TARGET, so the content below must be non-hittable or it
+/// would steal the capture (router.rs binds `pointer_capture` to
+/// `path.last()`).
+fn pointer_drag_start(event: &mut PointerEvent, runtime: &TextEditRuntime, scroll_y: Signal<f32>) {
+    let buffer = runtime.value.peek();
+    let offset = offset_at_point(&buffer, event.position.x, event.position.y, scroll_y.peek());
+    let mut edit = runtime.edit_mut();
+    edit.place_caret(offset);
+    super::handlers::commit(runtime, &edit);
+    event.capture_pointer();
+}
+
+/// Drag-move: extend the selection to the current position.
+fn pointer_drag_move(event: &PointerEvent, runtime: &TextEditRuntime, scroll_y: Signal<f32>) {
+    if !event.is_captured() {
+        return;
+    }
+    let buffer = runtime.value.peek();
+    let offset = offset_at_point(&buffer, event.position.x, event.position.y, scroll_y.peek());
+    let mut edit = runtime.edit_mut();
+    edit.extend_to(offset);
+    super::handlers::commit(runtime, &edit);
+}
+
+/// Pointer position (node-local) → nearest buffer byte offset. Inverse of
+/// the caret geometry: `y` selects the line, `x` the column within it via
+/// the text engine's hit-test.
+fn offset_at_point(buffer: &str, x: f32, y: f32, scroll_y: f32) -> usize {
+    let line_h = line_height();
+    // The content is shifted up by `scroll_y`, so a pointer at screen `y`
+    // maps to a document position `scroll_y` further down.
+    let content_y = (y - CONTENT_PADDING_Y + scroll_y).max(0.0);
+    let content_x = (x - CONTENT_PADDING_X).max(0.0);
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let raw_line = (content_y / line_h) as usize;
+    let last_line = buffer.bytes().filter(|&b| b == b'\n').count();
+    let line = raw_line.min(last_line);
+    let line_text = nth_line(buffer, line);
+    let col = with_text_geometry(|engine| engine.hit(line_text, &TextStyle::default(), content_x))
+        .unwrap_or(0)
+        .min(line_text.len());
+    line_start_byte(buffer, line) + col
+}
+
+/// Byte offset where `line` starts (sum of earlier lines' bytes plus their
+/// newline terminators). Clamped to the buffer length.
+fn line_start_byte(buffer: &str, line: usize) -> usize {
+    buffer
+        .split('\n')
+        .take(line)
+        .map(|l| l.len() + 1)
+        .sum::<usize>()
+        .min(buffer.len())
 }
 
 /// The editor's displayed text: the committed buffer with any in-flight
@@ -253,4 +588,62 @@ const fn edit_variant() -> StyleVariant {
         EDIT_BASE,
         StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MAX_LINES, truncation_notice};
+
+    #[test]
+    fn no_notice_at_or_under_the_cap() {
+        assert!(truncation_notice(0).is_none());
+        assert!(truncation_notice(MAX_LINES).is_none());
+    }
+
+    #[test]
+    fn notice_counts_the_withheld_lines() {
+        let notice = truncation_notice(MAX_LINES + 3).expect("notice past the cap");
+        assert!(
+            notice.contains('3') && notice.contains("more line"),
+            "truncation must be loud and name the count, got {notice:?}",
+        );
+    }
+}
+
+#[cfg(test)]
+mod caret_tests {
+    use super::caret_line_col;
+
+    #[test]
+    fn caret_line_col_maps_offsets_across_lines() {
+        let buf = "ab\ncde\nf";
+        // "ab" | "cde" | "f", newlines at bytes 2 and 6.
+        assert_eq!(caret_line_col(buf, 0), (0, 0), "start of line 0");
+        assert_eq!(caret_line_col(buf, 2), (0, 2), "end of line 0 (before \\n)");
+        assert_eq!(
+            caret_line_col(buf, 3),
+            (1, 0),
+            "start of line 1 (after \\n)"
+        );
+        assert_eq!(caret_line_col(buf, 5), (1, 2), "middle of line 1");
+        assert_eq!(caret_line_col(buf, 7), (2, 0), "start of line 2");
+        assert_eq!(caret_line_col(buf, 8), (2, 1), "end of buffer");
+    }
+
+    #[test]
+    fn caret_line_col_clamps_past_the_end() {
+        assert_eq!(caret_line_col("hi", 99), (0, 2), "clamped to buffer length");
+    }
+
+    #[test]
+    fn line_start_byte_sums_prior_lines_and_newlines() {
+        use super::line_start_byte;
+        let buf = "ab
+cde
+f"; // lines start at 0, 3, 7
+        assert_eq!(line_start_byte(buf, 0), 0);
+        assert_eq!(line_start_byte(buf, 1), 3, "after 'ab\n'");
+        assert_eq!(line_start_byte(buf, 2), 7, "after 'ab\ncde\n'");
+        assert_eq!(line_start_byte(buf, 99), buf.len(), "clamped past the end");
+    }
 }

@@ -355,15 +355,6 @@ fn rel_diff(a: f32, b: f32) -> f32 {
 // ceiling — so both families are reachable at every size below.
 const RASTER_COMPARE_SIZES_PX: [f32; 3] = [12.0, 14.0, 16.0];
 
-/// Restores [`TextTuning`] to its default on drop — including on panic —
-/// since the tuning flag is a shared process global other tests read.
-struct TuningGuard;
-impl Drop for TuningGuard {
-    fn drop(&mut self) {
-        set_text_tuning(TextTuning::default());
-    }
-}
-
 #[test]
 fn raster_vs_vector_sharpness_at_scale_1_0() {
     measure_raster_vs_vector(1.0);
@@ -425,7 +416,7 @@ fn measure_raster_vs_vector(scale: f32) {
 /// duration; a [`TuningGuard`] restores the default even if an assertion
 /// panics, since the flag is a shared process global other tests read.
 fn render_embed_at(scale: f32, size_px: f32, raster: bool) -> (Vec<u8>, u32, u32) {
-    let _guard = TuningGuard;
+    let _guard = sigil_renderer::lock_global_text_state();
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     renderer
         .ensure_headless_for_tests()

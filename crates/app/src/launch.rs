@@ -19,7 +19,7 @@ use sigil_renderer::{WgpuRenderer, WgpuSurface, emit_scene};
 use sigil_shell::{WinitShell, WinitWindowHandle};
 use sigil_tasks::AsyncRuntime;
 
-use crate::config::AppConfig;
+use crate::config::{AppConfig, PanicPolicy};
 use crate::error::{AppResult, Error};
 use crate::text_measure::DefaultTextMeasure;
 use crate::tree_root::TreeRoot;
@@ -94,9 +94,10 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // Paired with the `tick_intervals` drain in `frame_once`.
     shell.on_idle_deadline(next_interval_deadline);
 
+    let panic_policy = config.panic_policy;
     shell
         .run(move |shell| {
-            frame_once(FrameCtx {
+            let frame = FrameCtx {
                 config: &config,
                 shell,
                 window_handle,
@@ -111,7 +112,8 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                 async_rt: &mut async_rt,
                 a11y_action_rx: &a11y_action_rx,
                 theme_watch: &theme_watch,
-            });
+            };
+            run_frame(panic_policy, frame);
         })
         .map_err(Error::new)?;
     Ok(())
@@ -208,6 +210,45 @@ struct FrameCtx<'a> {
     a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
     /// T14 (5/5 Wave 4) — dev-mode theme hot reload, drained at frame top.
     theme_watch: &'a Option<crate::theme_file::ThemeWatch>,
+}
+
+/// Run one frame under the configured [`PanicPolicy`].
+///
+/// `Abort` runs the frame directly, so a panic propagates and the process
+/// dies (paired with `panic = "abort"` when a crash-report pipeline should
+/// own the failure). `Isolate` catches a panic in this frame — a widget
+/// handler, an effect, a paint closure — logs it, and resets the reactive
+/// runtime to a clean resting state so the NEXT frame still runs. Without
+/// this the loop simply dies, which made `PanicPolicy::Isolate` (the
+/// default) a promise the app did not keep.
+fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) {
+    match policy {
+        PanicPolicy::Abort => frame_once(ctx),
+        PanicPolicy::Isolate => {
+            // AssertUnwindSafe: the frame borrows `&mut` UI state across the
+            // boundary. After a caught panic we do not read that state as if
+            // the frame had completed — we drop this frame's partial work and
+            // let `recover_from_panic` reset the runtime for the next one.
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame_once(ctx)));
+            if let Err(payload) = result {
+                let detail = panic_message(&*payload);
+                tracing::error!("sigil-app: frame isolated after panic: {detail}");
+                Runtime::recover_from_panic();
+            }
+        }
+    }
+}
+
+/// Best-effort human-readable text from a caught panic payload.
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> &str {
+    payload.downcast_ref::<&'static str>().map_or_else(
+        || {
+            payload
+                .downcast_ref::<String>()
+                .map_or("<non-string panic payload>", String::as_str)
+        },
+        |s| s,
+    )
 }
 
 // The DR-047 frame driver is a linear phase sequencer (Idle → Effect →

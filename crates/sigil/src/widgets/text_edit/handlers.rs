@@ -35,6 +35,9 @@ pub(super) struct TextEditRuntime {
     /// selection overlay yet (unlike `text_field`); this mirror exists
     /// solely for IME, not general caret rendering.
     pub(super) caret: Signal<usize>,
+    /// Selection anchor mirrored from the buffer for the selection
+    /// overlay. `None` means caret-only (no selection).
+    pub(super) selection: Signal<Option<usize>>,
     /// Widget-local IME composition state (preedit text + caret
     /// anchor). See `super::ime`.
     pub(super) ime: ImeState,
@@ -52,6 +55,7 @@ impl TextEditRuntime {
     ) -> Self {
         let edit = TextEdit::new(value.peek());
         let caret = signal(edit.caret());
+        let selection = signal(edit.selection());
         Self {
             value,
             disabled,
@@ -61,6 +65,7 @@ impl TextEditRuntime {
             clipboard,
             caret_visible,
             caret,
+            selection,
             ime: ImeState::new(),
         }
     }
@@ -96,6 +101,9 @@ pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
     runtime.caret_visible.set(true);
     if runtime.caret.peek() != state.caret() {
         runtime.caret.set(state.caret());
+    }
+    if runtime.selection.peek() != state.selection() {
+        runtime.selection.set(state.selection());
     }
 }
 

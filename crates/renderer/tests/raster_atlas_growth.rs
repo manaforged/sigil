@@ -39,7 +39,7 @@ use zeno as _;
 use std::sync::mpsc;
 
 use sigil_renderer::{
-    CommandScene, SceneBuilder, ScreenSubmission, TextTuning, WgpuRenderer,
+    CommandScene, SceneBuilder, ScreenSubmission, TextTuning, WgpuRenderer, lock_global_text_state,
     set_test_atlas_size_override, set_text_tuning, shape_glyph_run,
 };
 use sigil_style::{Rgba8, TextLineHeight, TextStyle};
@@ -54,18 +54,6 @@ const LOGICAL_W: f32 = 460.0;
 const LOGICAL_H: f32 = 90.0;
 const FONT_SIZE: f32 = 14.0; // within RASTER_MAX_LOGICAL_PX (20px)
 const ORIGIN: (f32, f32) = (8.0, 12.0);
-
-/// Restores both process globals this file mutates — [`TextTuning`] and the
-/// atlas size override — on drop, including on panic. Both are shared
-/// state other tests in the same `--test-threads=1` run depend on seeing
-/// at their production defaults.
-struct TestGuard;
-impl Drop for TestGuard {
-    fn drop(&mut self) {
-        set_text_tuning(TextTuning::default());
-        set_test_atlas_size_override(0, 0);
-    }
-}
 
 /// ~30 unique glyphs (upper/lower case, digits, punctuation) — enough that
 /// a 64² atlas (holding roughly two dozen ~10×14px hinted masks) fills and
@@ -87,7 +75,7 @@ const GROWTH_TEXT: &str = "The Quick Brown Fox Jumps 0123456789!?.,\n\
 /// mere "is there ink" check would NOT catch it. A pixel comparison does.
 #[test]
 fn growth_crossing_produces_correctly_placed_ink() {
-    let _guard = TestGuard;
+    let _guard = lock_global_text_state();
     let Some(mut ref_renderer) = try_headless_renderer() else {
         println!("no adapter — skipping growth_crossing_produces_correctly_placed_ink");
         return;
@@ -146,7 +134,7 @@ const OVERFLOW_BANDS: u32 = 3;
 /// catching a dropped line regardless of where in the sequence it falls.
 #[test]
 fn atlas_full_falls_back_to_vector_with_ink_throughout() {
-    let _guard = TestGuard;
+    let _guard = lock_global_text_state();
     let Some(mut vector_renderer) = try_headless_renderer() else {
         println!("no adapter — skipping atlas_full_falls_back_to_vector_with_ink_throughout");
         return;

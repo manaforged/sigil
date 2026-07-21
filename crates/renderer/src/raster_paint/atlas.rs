@@ -41,6 +41,18 @@ pub fn set_test_atlas_size_override(initial: u32, max: u32) {
     TEST_MAX_SIZE.store(max, Ordering::Relaxed);
 }
 
+/// Read the current test-only atlas size override.
+///
+/// Exists so [`crate::lock_global_text_state`] can snapshot and restore it;
+/// prefer that guard over calling the setter directly.
+#[must_use]
+pub(crate) fn test_atlas_size_override() -> (u32, u32) {
+    (
+        TEST_INITIAL_SIZE.load(Ordering::Relaxed),
+        TEST_MAX_SIZE.load(Ordering::Relaxed),
+    )
+}
+
 fn initial_atlas_size() -> u32 {
     match TEST_INITIAL_SIZE.load(Ordering::Relaxed) {
         0 => INITIAL_ATLAS_SIZE,

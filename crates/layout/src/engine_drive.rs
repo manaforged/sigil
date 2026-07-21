@@ -119,8 +119,13 @@ impl LayoutDrive {
         node: NodeHandle,
         content: Option<TextContent>,
         style: Option<TextStyle>,
+        wrap: bool,
     ) -> Result<(), LayoutError> {
-        let text = content.map(|content| LayoutText { content, style });
+        let text = content.map(|content| LayoutText {
+            content,
+            style,
+            wrap,
+        });
         self.forest.set_text(node.0, text)
     }
 

@@ -76,6 +76,8 @@ pub(super) struct SliderRuntime {
     pub(super) step: f32,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) orientation: Orientation,
+    /// Main-axis extent override; `None` uses the built-in default.
+    pub(super) length: Option<f32>,
 }
 
 /// Builder returned by [`slider`].
@@ -86,6 +88,7 @@ pub struct SliderBuilder {
     disabled: Option<Signal<bool>>,
     on_change: Option<ValueChange>,
     orientation: Orientation,
+    length: Option<f32>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -109,9 +112,23 @@ impl SliderBuilder {
             disabled: None,
             on_change: None,
             orientation: Orientation::Horizontal,
+            length: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
+    }
+
+    /// Set the track's extent along the slider's own axis: width for a
+    /// horizontal slider, height for a vertical one.
+    ///
+    /// Without this the track takes a fixed default (180px), which is
+    /// what makes a bare slider overflow a narrower parent. Pointer
+    /// mapping follows the measured track, so any length here stays
+    /// click-accurate.
+    #[must_use]
+    pub const fn length(mut self, length: f32) -> Self {
+        self.length = Some(length);
+        self
     }
 
     /// Set the step used for pointer quantization and keyboard movement.
@@ -248,6 +265,7 @@ impl SliderRuntime {
             step: builder.step,
             disabled: builder.disabled,
             orientation: builder.orientation,
+            length: builder.length,
         }
     }
 
@@ -256,9 +274,19 @@ impl SliderRuntime {
     }
 
     pub(super) fn set_from_position(self, event: &PointerEvent) {
+        // Divide by the track's MEASURED extent, not the default constant:
+        // a slider laid out at any other width would otherwise map clicks
+        // to the wrong value, and a drag past the default extent would
+        // saturate early. Fall back to the default only when the event
+        // arrived without a laid-out target (synthesized/direct dispatch).
+        let (extent, fallback) = match self.orientation {
+            Orientation::Horizontal => (event.target_size.width, HORIZONTAL_WIDTH),
+            Orientation::Vertical => (event.target_size.height, VERTICAL_HEIGHT),
+        };
+        let extent = if extent > 0.0 { extent } else { fallback };
         let ratio = match self.orientation {
-            Orientation::Horizontal => event.position.x / HORIZONTAL_WIDTH,
-            Orientation::Vertical => 1.0 - (event.position.y / VERTICAL_HEIGHT),
+            Orientation::Horizontal => event.position.x / extent,
+            Orientation::Vertical => 1.0 - (event.position.y / extent),
         };
         let raw = self
             .range
@@ -297,7 +325,7 @@ fn slider_root(
         .label("Slider")
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(slider_layout(runtime.orientation))
+        .layout(slider_layout(runtime.orientation, runtime.length))
         .class("rounded-md")
         .class(TRACK)
         .stateful_style(slider_track_variant(), user_overlay, move || {
@@ -306,16 +334,29 @@ fn slider_root(
         .child(slider_thumb(interaction, runtime.disabled))
 }
 
-fn slider_layout(orientation: Orientation) -> LayoutStyle {
+fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
+    // A slider track spans the row it sits in (the `<input type=range>`
+    // convention); `.length()` opts back out. Pointer mapping already
+    // divides by the MEASURED track, so a filled track stays accurate.
     match orientation {
-        Orientation::Horizontal => LayoutStyle::flex_row()
-            .fixed_size(HORIZONTAL_WIDTH, HORIZONTAL_HEIGHT)
-            .align_items(AlignItems::Center)
-            .justify_content(JustifyContent::Center),
-        Orientation::Vertical => LayoutStyle::flex_column()
-            .fixed_size(VERTICAL_WIDTH, VERTICAL_HEIGHT)
-            .align_items(AlignItems::Center)
-            .justify_content(JustifyContent::Center),
+        Orientation::Horizontal => {
+            let base = LayoutStyle::flex_row().height(HORIZONTAL_HEIGHT);
+            let base = match length {
+                Some(px) => base.width(px),
+                None => base.fill_width(),
+            };
+            base.align_items(AlignItems::Center)
+                .justify_content(JustifyContent::Center)
+        }
+        Orientation::Vertical => {
+            let base = LayoutStyle::flex_column().width(VERTICAL_WIDTH);
+            let base = match length {
+                Some(px) => base.height(px),
+                None => base.fill_height(),
+            };
+            base.align_items(AlignItems::Center)
+                .justify_content(JustifyContent::Center)
+        }
     }
 }
 

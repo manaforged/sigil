@@ -76,6 +76,7 @@ pub mod widget_dev;
 pub mod widgets;
 
 /// GPU render + scene-compositing surface for embedding host engines.
+///
 /// Off unless the `render` feature is enabled. See DR-054.
 #[cfg(feature = "render")]
 pub mod render;

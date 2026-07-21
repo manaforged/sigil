@@ -50,6 +50,7 @@ impl From<Signal<String>> for TextContent {
 pub struct TextBuilder {
     source: TextContent,
     a11y: A11yProps,
+    wrap: bool,
     pre_extensions: Vec<TextMutator>,
 }
 
@@ -62,11 +63,25 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
             role: Role::Label,
             ..A11yProps::default()
         },
+        wrap: false,
         pre_extensions: Vec::new(),
     }
 }
 
 impl TextBuilder {
+    /// Wrap the text to its containing block's width instead of hugging
+    /// its content on one line.
+    ///
+    /// Off by default: a bare label hugs its content and the container
+    /// clips or scrolls any overflow. Turn it on for prose that should
+    /// reflow — descriptions, chat bodies, help text — where the height
+    /// grows with the content and the width follows the container.
+    #[must_use]
+    pub const fn wrap(mut self) -> Self {
+        self.wrap = true;
+        self
+    }
+
     /// Set the accessibility role.
     #[must_use]
     pub const fn role(mut self, role: Role) -> Self {
@@ -141,6 +156,7 @@ impl IntoNode for TextBuilder {
         let id = cx.new_node(
             NodeType::Text {
                 content: self.source,
+                wrap: self.wrap,
             },
             self.a11y,
         );

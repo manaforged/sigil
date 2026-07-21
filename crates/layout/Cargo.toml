@@ -16,7 +16,6 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APAC
 
 [dependencies]
 ahash = { workspace = true }
-rayon = { workspace = true }
 slotmap = { workspace = true }
 smallvec = { workspace = true }
 sigil-kernel = { workspace = true }
@@ -27,6 +26,10 @@ sigil-reactive = { workspace = true }
 [dev-dependencies]
 allocation-counter = "0.8.1"
 criterion = { version = "0.5", features = ["html_reports"] }
+# Threadpool primitive for the layout_ops benchmark only. Was a regular
+# dependency for the (deleted) ParallelMeasure substrate; demoted to
+# dev-only so it leaves the published dependency set.
+rayon = { workspace = true }
 taffy = "0.10"
 
 [[bench]]

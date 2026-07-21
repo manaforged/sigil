@@ -5,6 +5,9 @@
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
+// Exact layout math: the widths under test are integer pixel results, so
+// asserting them with `==` is correct, not a float-precision hazard.
+#![allow(clippy::float_cmp)]
 
 use arboard as _;
 use criterion as _;

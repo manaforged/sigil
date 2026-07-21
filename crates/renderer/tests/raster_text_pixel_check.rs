@@ -94,6 +94,9 @@ fn raster_path_renders_ink_matching_vector_position() {
 /// the default tuning afterward so this test stays hermetic within its
 /// binary (other `#[test]`s in this file run `--test-threads=1`).
 fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
+    // Serialise + auto-restore the process-global tuning rather than relying
+    // on the caller passing `--test-threads=1`.
+    let _guard = sigil_renderer::lock_global_text_state();
     set_text_tuning(TextTuning {
         raster,
         ..TextTuning::default()

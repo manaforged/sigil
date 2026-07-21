@@ -8,6 +8,9 @@
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
+// Probe closures and re-laid-out snapshots reuse names (`cx`, `_layout`,
+// `selected`) across a test body by design; the shadowing is intentional.
+#![allow(clippy::shadow_unrelated)]
 
 use arboard as _;
 use criterion as _;
@@ -112,7 +115,7 @@ fn glyph_texts(cx: &Cx, root: NodeId) -> Vec<String> {
         .collect()
 }
 
-fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: ModifiersState) -> ShellEvent {
+const fn pointer(phase: PointerPhase, x: f32, y: f32, modifiers: ModifiersState) -> ShellEvent {
     let (button, buttons) = match phase {
         PointerPhase::Down => (Some(MouseButton::Left), MouseButtons::LEFT),
         _ => (None, MouseButtons::empty()),
@@ -232,7 +235,11 @@ fn row_click_drives_selection_with_modifiers() {
         let mut router = EventRouter::new();
 
         // Body row N sits at y = HEADER_H + N * ROW_H .. +ROW_H.
-        let row_y = |n: usize| HEADER_H + (n as f32 + 0.5) * ROW_H;
+        let row_y = |n: usize| {
+            #[allow(clippy::cast_precision_loss)]
+            let n = n as f32;
+            (n + 0.5).mul_add(ROW_H, HEADER_H)
+        };
         router.route(
             &mut cx,
             &layout,

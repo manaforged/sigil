@@ -56,14 +56,17 @@ pub(super) fn text_region(
     runtime: TextFieldRuntime,
     interaction: InteractionState,
     displayed: Signal<String>,
-    width: Option<f32>,
 ) -> NodeBuilder {
-    let column = column_width(width);
+    // Fill the field's content box rather than pinning a pixel column: a
+    // field that fills its parent has no build-time width, and the 156px
+    // fallback overflowed any narrower container (found by
+    // `layout_invariants`). An explicit `.width()` still resolves through
+    // the containing block, so both cases land on the same geometry.
     let region = container()
         .layout(
             LayoutStyle::block()
                 .position(Position::Relative)
-                .width(column)
+                .fill_width()
                 .height(line_height())
                 // Clip overflow so a long line scrolls within the field
                 // instead of painting over its neighbours (Send button, etc.).
@@ -94,6 +97,14 @@ fn track(
         .child(caret_layer(runtime, interaction))
 }
 
+/// Inner column width used by the caret-in-view scroll maths.
+///
+/// KNOWN GAP: with no explicit `.width()` this still falls back to 156px,
+/// so horizontal caret scrolling is calibrated to the wrong viewport in a
+/// filled field. The region's *geometry* no longer depends on it (it fills),
+/// but `update_scroll` does. The real fix is the same one the slider got —
+/// divide by the MEASURED extent — which needs the measured width reaching
+/// key handlers, not just pointer handlers.
 pub(super) fn column_width(width: Option<f32>) -> f32 {
     width.map_or(156.0, |w| (w - 26.0).max(0.0))
 }

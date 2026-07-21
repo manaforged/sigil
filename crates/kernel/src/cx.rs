@@ -385,7 +385,7 @@ impl Cx {
             NodeType::Fragment => {
                 let _ = writeln!(out, "Fragment role={:?}", node.a11y.role);
             }
-            NodeType::Text { content } => {
+            NodeType::Text { content, .. } => {
                 let _ = writeln!(
                     out,
                     "Text {} role={:?}",

@@ -10,8 +10,8 @@
 #![allow(dead_code, clippy::redundant_pub_crate)]
 
 use crate::flex_algorithm::{
-    FlexCtx, NodeEdges, align_self_of, item_cross_basis, item_main_basis, item_min_max_main,
-    resolve_lp,
+    FlexCtx, NodeEdges, align_self_of, automatic_min_main, item_cross_basis, item_main_basis,
+    item_min_max_main, resolve_lp,
 };
 use crate::forest::{LocalId, NodeRef};
 use crate::style_data::{AlignSelf, FlexWrap, StyleData};
@@ -58,6 +58,19 @@ impl FlexItem {
         let (cross_resolved, was_auto) =
             item_cross_basis(ctx, node, style, ctx.axes, cb_main, cb_cross, &edges);
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
+        // CSS §4.5 automatic minimum size, scoped to leaf items (text and
+        // other childless content). `basis` is their content main size.
+        // A crushed text leaf is what collapses stacked labels on top of
+        // each other; flooring leaves fixes that. Containers are left free
+        // to shrink so an over-full parent overflows/scrolls rather than
+        // pushing siblings off-screen — matching the existing engine
+        // behaviour the golden corpus was baked against.
+        let min_main = min_main.or_else(|| {
+            node.children()
+                .is_empty()
+                .then(|| automatic_min_main(style, ctx.axes, basis))
+                .flatten()
+        });
         let m = edges.margin.or_zero();
         Self {
             id: node.id(),

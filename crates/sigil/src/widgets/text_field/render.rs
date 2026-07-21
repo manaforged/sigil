@@ -165,7 +165,6 @@ fn field_inner(
             runtime,
             interaction,
             displayed,
-            width,
         ))
 }
 

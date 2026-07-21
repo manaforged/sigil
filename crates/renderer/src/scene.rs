@@ -289,7 +289,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
                 scene.draw_rect_for_node(id, rect, rect_style);
             }
         }
-        NodeType::Text { content } => {
+        NodeType::Text { content, .. } => {
             if let Some(color) = style.text_color {
                 scene.draw_glyph_run_for_node(
                     id,

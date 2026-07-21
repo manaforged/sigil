@@ -17,6 +17,7 @@ mod setup;
 
 #[doc(hidden)]
 pub use atlas::set_test_atlas_size_override;
+pub(crate) use atlas::test_atlas_size_override;
 use atlas::{Placement, RasterAtlas};
 use setup::{
     UNIT_QUAD_VERTEX_COUNT, bind_group, bind_group_layout, instance_buffer, pipeline, sampler,

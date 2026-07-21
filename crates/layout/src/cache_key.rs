@@ -113,6 +113,7 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
         }
         if let NodeType::Text {
             content: content @ TextContent::Reactive(_),
+            ..
         } = &node.kind
         {
             hash_text_content(content, &mut hasher);

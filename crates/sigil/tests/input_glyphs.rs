@@ -5,12 +5,28 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
 
+use arboard as _;
+use criterion as _;
+use image as _;
+use pollster as _;
 use sigil::input_glyphs::{
     InputAction, InputDevice, current_input_device, glyph, glyph_for, glyph_id, reset_for_tests,
 };
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_events as _;
+use sigil_hal as _;
 use sigil_kernel::{NodeType, TextContent};
+use sigil_layout as _;
+use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_style as _;
+use sigil_tasks as _;
+use wgpu as _;
 
 #[test]
 fn glyph_id_covers_every_action_on_every_device() {
@@ -53,6 +69,7 @@ fn glyph_for_emits_reactive_text_with_correct_static_glyph() {
         match &node.kind {
             NodeType::Text {
                 content: TextContent::Static(value),
+                ..
             } => assert_eq!(value, "✕"),
             other => panic!("expected static text, got {other:?}"),
         }
@@ -71,7 +88,8 @@ fn glyph_emits_reactive_text_bound_to_current_input_device() {
             matches!(
                 &node.kind,
                 NodeType::Text {
-                    content: TextContent::Reactive(_)
+                    content: TextContent::Reactive(_),
+                    ..
                 }
             ),
             "glyph() must emit reactive text so hot-swap re-renders without invalidation"
@@ -96,6 +114,7 @@ fn hot_swap_re_renders_glyph_when_device_signal_changes() {
         let signal = match &cx.get(child).expect("text node").kind {
             NodeType::Text {
                 content: TextContent::Reactive(sig),
+                ..
             } => *sig,
             other => panic!("expected reactive text, got {other:?}"),
         };

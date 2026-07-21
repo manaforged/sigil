@@ -4,7 +4,6 @@ use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use sigil_style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
 
-const PANEL_WIDTH: f32 = 320.0;
 const PANEL_MIN_HEIGHT: f32 = 48.0;
 const DEFAULT_PADDING: f32 = 16.0;
 const TITLE_HEIGHT: f32 = 40.0;
@@ -19,6 +18,16 @@ pub struct PanelBuilder {
     pub elevation: u32,
     content: Option<Box<dyn IntoNode>>,
     style_accumulator: Style,
+    width: Option<f32>,
+}
+
+impl PanelBuilder {
+    /// Pin the panel to an explicit width instead of filling its parent.
+    #[must_use]
+    pub const fn width(mut self, px: f32) -> Self {
+        self.width = Some(px);
+        self
+    }
 }
 
 /// Create a panel widget — a themed surface card.
@@ -37,6 +46,7 @@ impl PanelBuilder {
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
+            width: None,
         }
     }
 
@@ -71,7 +81,7 @@ impl PanelBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(panel_layout(self.padding))
+            .layout(panel_layout(self.padding, self.width))
             .class("rounded-md")
             .class(surface_atoms(self.elevation));
 
@@ -119,10 +129,17 @@ impl IntoNode for PanelBuilder {
     }
 }
 
-fn panel_layout(padding: f32) -> LayoutStyle {
-    LayoutStyle::flex_column()
-        .padding(padding)
-        .min_size(PANEL_WIDTH, PANEL_MIN_HEIGHT)
+fn panel_layout(padding: f32, width: Option<f32>) -> LayoutStyle {
+    // A card fills the column it sits in; `.width()` pins an explicit
+    // extent. The previous `min_size(PANEL_WIDTH, ..)` floor meant a panel
+    // overflowed any parent narrower than 320px instead of adapting.
+    // The MIN HEIGHT is kept: an empty panel should still read as a card.
+    let base = LayoutStyle::flex_column().padding(padding);
+    let base = match width {
+        Some(px) => base.width(px),
+        None => base.fill_width(),
+    };
+    base.min_size(sigil_layout::Dimension::Auto, PANEL_MIN_HEIGHT)
 }
 
 fn panel_title(title: String) -> impl IntoNode {

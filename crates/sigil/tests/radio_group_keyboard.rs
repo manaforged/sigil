@@ -1,10 +1,13 @@
-//! radio_group keyboard operation (5/5 Wave 3 T10): the group is
+//! `radio_group` keyboard operation (5/5 Wave 3 T10): the group is
 //! focusable and Arrow/Home/End move the selection with wraparound —
 //! ARIA roving-selection behavior, selection follows movement.
 
 #![allow(missing_docs)]
 #![allow(unused_crate_dependencies)]
 #![allow(clippy::unwrap_used)]
+// Probe closures take a `&Cx` param named `cx` mirroring the outer test
+// binding — the shadowing is intentional and local.
+#![allow(clippy::shadow_unrelated)]
 
 use arboard as _;
 use criterion as _;
@@ -136,7 +139,7 @@ fn checked_row_shows_focus_ring_only_while_group_focused() {
         let ring_visible = |cx: &Cx| {
             cx.get(checked_row)
                 .and_then(|node| node.get_extension::<FocusRing>())
-                .is_some_and(|ring| ring.visible())
+                .is_some_and(FocusRing::visible)
         };
 
         assert!(!ring_visible(&cx), "unfocused group shows no ring");

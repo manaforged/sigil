@@ -45,7 +45,7 @@ fn builds_expected_tree_shape() {
     assert_eq!(cx.get(tail).expect("tail child").parent(), Some(root));
 
     match &cx.get(first).expect("first child").kind {
-        NodeType::Text { content } => assert_eq!(content.as_static_str(), Some("Hello")),
+        NodeType::Text { content, .. } => assert_eq!(content.as_static_str(), Some("Hello")),
         other => panic!("expected text child, got {other:?}"),
     }
 
@@ -59,7 +59,7 @@ fn builds_expected_tree_shape() {
         Some(nested)
     );
     match &cx.get(nested_text).expect("nested text").kind {
-        NodeType::Text { content } => assert_eq!(content.as_static_str(), Some("Nested")),
+        NodeType::Text { content, .. } => assert_eq!(content.as_static_str(), Some("Nested")),
         other => panic!("expected nested text, got {other:?}"),
     }
 

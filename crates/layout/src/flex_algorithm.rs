@@ -32,7 +32,7 @@ use crate::flex_lines::{FlexItem, FlexLine, collect_lines};
 use crate::forest::{ComputedBox, NodeRef};
 use crate::style_data::{
     AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection,
-    JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, StyleData,
+    JustifyContent, LengthPercentage, LengthPercentageAuto, Overflow, Position, Rect, StyleData,
 };
 
 /// Axis orientation flags derived from `FlexDirection` + `FlexWrap`.
@@ -77,6 +77,23 @@ pub(crate) struct FlexCtx<'s, 'a> {
     /// `align-items: stretch` inflation so basis reads back the
     /// children's natural extent instead of a stretched value.
     pub(crate) suppress_stretch: bool,
+    /// Extent the parent's *flexible-length* pass resolved for this node,
+    /// along the parent's main axis. Exactly one of these is set.
+    ///
+    /// Without them `write_container` re-derives the box from this node's
+    /// own style and content, discarding what the parent just resolved:
+    /// a `grow(1)` item collapses to its content (or to a `width(0)`
+    /// flex-basis) the moment it has children, since childless items
+    /// return early from `layout_item_subtree` and never reach the
+    /// overwrite.
+    ///
+    /// Set only for a growing item, and only on the axis the parent
+    /// actually flexed. Deliberately *not* set for `align-items: stretch`:
+    /// a stretched item may legitimately be smaller than the line, and
+    /// forcing it to fill overflows its parent's border.
+    pub(crate) assigned_w: Option<f32>,
+    /// See [`Self::assigned_w`].
+    pub(crate) assigned_h: Option<f32>,
 }
 
 /// Resolved pixel edges (no `auto`).
@@ -259,12 +276,24 @@ fn container_inner_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, edges: &NodeEd
     } else {
         (chrome_block, chrome_inline)
     };
-    let inner_main = dim_to_border_box(size_main, cb_main, chrome_main, style.box_sizing)
-        .map_or(cb_main - margin_lateral(edges, ctx.axes), |v| v)
-        - chrome_main;
-    let inner_cross = dim_to_border_box(size_cross, cb_cross, chrome_cross, style.box_sizing)
-        .map_or(cb_cross - margin_lateral_cross(edges, ctx.axes), |v| v)
-        - chrome_cross;
+    // A parent-flexed extent is authoritative for the WHOLE pass, not just
+    // the box written at the end: this node's children are laid out against
+    // these values, so patching only the final write would size the box
+    // correctly while its contents had already resolved against the
+    // pre-flex (often zero) extent.
+    let (assigned_main, assigned_cross) = if ctx.axes.row {
+        (ctx.assigned_w, ctx.assigned_h)
+    } else {
+        (ctx.assigned_h, ctx.assigned_w)
+    };
+    let inner_main = assigned_main.unwrap_or_else(|| {
+        dim_to_border_box(size_main, cb_main, chrome_main, style.box_sizing)
+            .unwrap_or_else(|| cb_main - margin_lateral(edges, ctx.axes))
+    }) - chrome_main;
+    let inner_cross = assigned_cross.unwrap_or_else(|| {
+        dim_to_border_box(size_cross, cb_cross, chrome_cross, style.box_sizing)
+            .unwrap_or_else(|| cb_cross - margin_lateral_cross(edges, ctx.axes))
+    }) - chrome_cross;
     (inner_main.max(0.0), inner_cross.max(0.0))
 }
 
@@ -568,45 +597,133 @@ fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
         }
         return;
     }
-    if free > 0.0 {
-        grow_items(&mut line.items, free);
-    } else {
-        shrink_items(&mut line.items, -free);
-    }
-}
-
-fn grow_items(items: &mut [FlexItem], free: f32) {
-    let total: f32 = items.iter().map(|i| i.flex_grow.max(0.0)).sum();
-    if total <= f32::EPSILON {
-        for item in items.iter_mut() {
-            item.main_size = clamp_main(item, item.flex_basis_resolved);
+    // §9.7.4 is a LOOP, not a single pass. Distributing once and then
+    // clamping strands the space a min/max-violating item refused: two
+    // `grow:1` items sharing 300px where one caps at 110 must give the
+    // other 190, not leave 40px unused.
+    let growing = free > 0.0;
+    let mut frozen = freeze_inflexible(&mut line.items, growing);
+    while frozen.contains(&false) {
+        let remaining = remaining_free(&line.items, &frozen, container_main, gap_total);
+        if !flex_round(&mut line.items, &mut frozen, remaining, growing) {
+            break;
         }
-        return;
-    }
-    for item in items.iter_mut() {
-        let share = free * (item.flex_grow.max(0.0) / total);
-        let target = item.flex_basis_resolved + share;
-        item.main_size = clamp_main(item, target);
     }
 }
 
-fn shrink_items(items: &mut [FlexItem], deficit: f32) {
+/// This item's flex factor for the direction being resolved. Shrink is
+/// weighted by the base size ("scaled flex shrink factor", §9.7.4).
+fn flex_factor(item: &FlexItem, growing: bool) -> f32 {
+    if growing {
+        item.flex_grow.max(0.0)
+    } else {
+        item.flex_shrink.max(0.0) * item.flex_basis_resolved
+    }
+}
+
+/// §9.7.2 — freeze every item that cannot flex in this direction, at its
+/// clamped base size. Returns the frozen mask.
+fn freeze_inflexible(items: &mut [FlexItem], growing: bool) -> Vec<bool> {
+    items
+        .iter_mut()
+        .map(|item| {
+            let inflexible = flex_factor(item, growing) <= f32::EPSILON;
+            item.main_size = if inflexible {
+                clamp_main(item, item.flex_basis_resolved)
+            } else {
+                item.flex_basis_resolved
+            };
+            inflexible
+        })
+        .collect()
+}
+
+/// §9.7.4.b — space left once frozen items keep their resolved size and
+/// unfrozen items are counted at their flex base size.
+fn remaining_free(items: &[FlexItem], frozen: &[bool], container_main: f32, gap_total: f32) -> f32 {
+    let used: f32 = items
+        .iter()
+        .zip(frozen)
+        .map(|(item, &is_frozen)| {
+            let base = if is_frozen {
+                item.main_size
+            } else {
+                item.flex_basis_resolved
+            };
+            base + item.margin_main_start() + item.margin_main_end()
+        })
+        .sum();
+    container_main - used - gap_total
+}
+
+/// One §9.7.4 pass: distribute `remaining` across the unfrozen items,
+/// clamp each to its min/max, then freeze the items whose clamp fought
+/// the distribution in the same direction as the net violation. Their
+/// surrendered space is what the next pass hands to the survivors.
+///
+/// Returns false when no further progress is possible.
+fn flex_round(items: &mut [FlexItem], frozen: &mut [bool], remaining: f32, growing: bool) -> bool {
     let total: f32 = items
         .iter()
-        .map(|i| i.flex_shrink.max(0.0) * i.flex_basis_resolved)
+        .zip(frozen.iter())
+        .filter(|(_, f)| !**f)
+        .map(|(item, _)| flex_factor(item, growing))
         .sum();
     if total <= f32::EPSILON {
-        for item in items.iter_mut() {
-            item.main_size = clamp_main(item, item.flex_basis_resolved);
+        for (item, is_frozen) in items.iter_mut().zip(frozen.iter_mut()) {
+            if !*is_frozen {
+                item.main_size = clamp_main(item, item.flex_basis_resolved);
+                *is_frozen = true;
+            }
         }
-        return;
+        return false;
     }
-    for item in items.iter_mut() {
-        let weight = item.flex_shrink.max(0.0) * item.flex_basis_resolved;
-        let share = deficit * (weight / total);
-        let target = item.flex_basis_resolved - share;
+    let mut violations = vec![0.0_f32; items.len()];
+    let mut net = 0.0_f32;
+    for ((item, &is_frozen), violation) in items
+        .iter_mut()
+        .zip(frozen.iter())
+        .zip(violations.iter_mut())
+    {
+        if is_frozen {
+            continue;
+        }
+        let target = item.flex_basis_resolved + remaining * (flex_factor(item, growing) / total);
         item.main_size = clamp_main(item, target);
+        *violation = item.main_size - target;
+        net += *violation;
     }
+    freeze_violations(frozen, &violations, net)
+}
+
+/// §9.7.4.e — no net violation freezes everything; a positive net freezes
+/// the min-clamped items, a negative net the max-clamped ones.
+fn freeze_violations(frozen: &mut [bool], violations: &[f32], net: f32) -> bool {
+    let mut progressed = false;
+    for (is_frozen, &violation) in frozen.iter_mut().zip(violations) {
+        if *is_frozen {
+            continue;
+        }
+        let freeze = if net.abs() < f32::EPSILON {
+            true
+        } else if net > 0.0 {
+            violation > 0.0
+        } else {
+            violation < 0.0
+        };
+        if freeze {
+            *is_frozen = true;
+            progressed = true;
+        }
+    }
+    // Guard against a pathological round that freezes nothing: without
+    // this the loop could spin forever on NaN-ish factors.
+    if !progressed {
+        for f in frozen.iter_mut() {
+            *f = true;
+        }
+    }
+    progressed
 }
 
 fn clamp_main(item: &FlexItem, value: f32) -> f32 {
@@ -770,6 +887,10 @@ fn layout_item_subtree(
         return Ok(());
     }
     let style = node.style();
+    // What the parent's flexible-length pass resolved for THIS child,
+    // along the parent's main axis. Shared by both dispatch branches.
+    let assigned_w = (style.flex_grow > 0.0 && ctx.axes.row).then_some(w);
+    let assigned_h = (style.flex_grow > 0.0 && !ctx.axes.row).then_some(h);
     // Q1 tertiary — per-subtree solver dispatch. The child's own
     // `display` decides which formatting context owns its children,
     // regardless of the parent's display. CSS interleaves block-in-flex
@@ -782,6 +903,13 @@ fn layout_item_subtree(
                 axes,
                 cb: CbSize { w, h },
                 suppress_stretch: ctx.suppress_stretch,
+                // Carried on the axis the parent flexed so the nested
+                // `write_container` cannot shrink-wrap it away. Applies
+                // whether the child's own direction matches the parent's
+                // (row-in-row: the parent flexed the child's main axis) or
+                // is perpendicular (column-in-row: its cross axis).
+                assigned_w,
+                assigned_h,
             };
             // The flex placement pass already baked this node's margins into `origin`,
             // but `layout_root` re-applies them (it expects a PRE-margin origin). Feed the
@@ -797,7 +925,7 @@ fn layout_item_subtree(
         // falls back to BlockSolver until the owned grid solver lands
         // (post-G2, see docs/followups.md).
         Display::Block | Display::None | Display::Grid => {
-            dispatch_block_subtree(ctx, node, style, origin, w, h)
+            dispatch_block_subtree(ctx, node, style, origin, w, h, assigned_w)
         }
     }
 }
@@ -814,6 +942,7 @@ fn dispatch_block_subtree(
     origin: Position2,
     w: f32,
     h: f32,
+    assigned_w: Option<f32>,
 ) -> Result<(), LayoutError> {
     let scope = ctx.solver.scope();
     let nested = crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
@@ -828,7 +957,9 @@ fn dispatch_block_subtree(
         x: origin.x - m.left,
         y: origin.y - m.top,
     };
-    solver.solve_at(node, cb, pre)
+    // Carry the flex-resolved width so a block-display item with
+    // `grow(1).width(0)` is not re-derived back to zero.
+    solver.solve_at_assigned(node, cb, pre, assigned_w)
 }
 
 /// Write the container's own resolved box. Main size = container's
@@ -862,6 +993,13 @@ fn write_container(
         .map(|p| p.cross_pos + p.cross_size)
         .fold(0.0_f32, f32::max)
         + chrome_cross;
+    // With no explicit cross size, prefer the extent the parent's
+    // flexible-length pass already resolved for this item over
+    // shrink-wrapping to content. Without this, an item with `grow(1)`
+    // collapses back to its content extent the moment it has children,
+    // since childless items return early from `layout_item_subtree` and
+    // never reach this overwrite.
+    //
     let cross_size = cross_explicit.unwrap_or(auto_cross);
     let main_size = container_main + chrome_main;
     let (w, h) = if ctx.axes.row {
@@ -869,6 +1007,13 @@ fn write_container(
     } else {
         (cross_size, main_size)
     };
+    // Precedence: the flexed extent wins over both the specified size and
+    // the shrink-wrapped content. CSS Flexbox §9.7 — a flex item's *used*
+    // main size is the result of resolving flexible lengths, overriding
+    // its own `width`/`height`. `flex: 1 1 0` is authored
+    // `grow(1).width(0)`, so honouring the literal 0 collapses the item.
+    let w = ctx.assigned_w.unwrap_or(w);
+    let h = ctx.assigned_h.unwrap_or(h);
     ctx.solver.write(
         node.id(),
         ComputedBox {
@@ -959,6 +1104,9 @@ fn container_intrinsic_cross(
         axes: ctx.axes,
         cb: ctx.cb,
         suppress_stretch: true,
+        // Measurement probe: shrink-to-fit is the wanted behaviour.
+        assigned_w: None,
+        assigned_h: None,
     };
     let (w, h) = if axes.row {
         (cb_main, cb_cross)
@@ -1063,6 +1211,9 @@ fn container_intrinsic_main(
         axes: ctx.axes,
         cb: ctx.cb,
         suppress_stretch: true,
+        // Measurement probe: shrink-to-fit is the wanted behaviour.
+        assigned_w: None,
+        assigned_h: None,
     };
     layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
     Some(probed_content_extent(ctx, node, true, axes))
@@ -1136,7 +1287,9 @@ fn text_intrinsic(
             style.box_sizing,
         ),
     };
-    ctx.solver.scope().measure_text(node, known)
+    // Text wraps to its containing block's horizontal extent (cb.w is
+    // physical width regardless of flex direction).
+    ctx.solver.scope().measure_text(node, known, Some(ctx.cb.w))
 }
 
 pub(crate) fn item_min_max_main(
@@ -1159,6 +1312,39 @@ pub(crate) fn item_min_max_main(
         dim_to_border_box(mn, cb_main, chrome_main, style.box_sizing),
         dim_to_border_box(mx, cb_main, chrome_main, style.box_sizing),
     )
+}
+
+/// CSS Flexbox §4.5 automatic minimum size.
+///
+/// A flex item whose main-axis minimum is `auto` (no explicit `min-*`),
+/// whose basis is content-derived (no explicit `flex-basis` or main size),
+/// and whose main-axis overflow is `visible` must not shrink below its
+/// content size. `content_basis` is that content main size — the resolved
+/// flex base size, which for these items equals the measured content.
+///
+/// Without this floor the shrink pass can crush a content-sized item (a
+/// text node especially) toward zero when its flex container is shorter
+/// than the content, collapsing stacked text on top of itself. Items with
+/// clipping/scrolling overflow, an explicit size, or an explicit basis are
+/// intentionally excluded — they are free to shrink.
+pub(crate) fn automatic_min_main(
+    style: &StyleData,
+    axes: Axis2,
+    content_basis: f32,
+) -> Option<f32> {
+    let (overflow_main, size_main) = if axes.row {
+        (style.overflow.width, style.size.width)
+    } else {
+        (style.overflow.height, style.size.height)
+    };
+    if overflow_main == Overflow::Visible
+        && style.flex_basis == Dimension::Auto
+        && size_main == Dimension::Auto
+    {
+        Some(content_basis.max(0.0))
+    } else {
+        None
+    }
 }
 
 pub(crate) fn align_self_of(style: &StyleData) -> Option<AlignSelf> {

@@ -45,17 +45,19 @@ fn scroll_preserves_content_layout_style() {
         // Wrap content in scroll — this is the operation that used to clobber.
         let root = cx.add(scroll(content, 800.0_f32));
 
-        // Tree shape post-fix:
+        // Tree shape:
         //   root (viewport_container, flex_row)
-        //     ├── body (sizing container, block.fixed_size) ← new wrapper
+        //     ├── body (sizing container, grows into the space left by the
+        //     │         gutter) ← wrapper
         //     │     └── content (user node — must retain flex_column.padding.gap)
-        //     ├── track (scrollbar track)
-        //     └── thumb (scrollbar thumb, absolute)
+        //     └── track (scrollbar track)
+        //           └── thumb (absolute, anchored inside the track so it
+        //                      needs no viewport width)
         let root_node = cx.get(root).expect("root node exists");
         let root_children = root_node.children().to_vec();
         assert!(
-            root_children.len() >= 3,
-            "scroll root must have at least 3 children (body, track, thumb), got {}",
+            root_children.len() >= 2,
+            "scroll root must have at least 2 children (body, track), got {}",
             root_children.len()
         );
 

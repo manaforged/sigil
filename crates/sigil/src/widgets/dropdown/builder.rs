@@ -3,9 +3,7 @@ use std::rc::Rc;
 use sigil_animation_runtime::presets;
 use sigil_events::prelude::{Key, NodeEventsExt};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use sigil_layout::prelude::{
-    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
-};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use sigil_reactive::{Signal, derived_eq, signal};
 use sigil_style::{
     NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay, StyleVariant,
@@ -18,7 +16,7 @@ use super::super::shared::{
     Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
 use super::super::transition_seam::install_transition_animators;
-use super::popup::{OptionCtx, SURFACE, SURFACE_HOVER, TRIGGER_HEIGHT, TRIGGER_WIDTH, build_popup};
+use super::popup::{OptionCtx, SURFACE, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
 
 /// Selection-change callback channel: the newly selected index.
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
@@ -59,6 +57,7 @@ pub struct DropdownBuilder {
     on_change: Option<IndexChange>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    width: Option<f32>,
 }
 
 /// Create a dropdown (combobox) widget.
@@ -81,6 +80,7 @@ impl DropdownBuilder {
             on_change: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            width: None,
         }
     }
 
@@ -88,6 +88,18 @@ impl DropdownBuilder {
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
+        self
+    }
+
+    /// Override the trigger width in logical pixels.
+    ///
+    /// The default is a fixed 200px, which is what makes a bare dropdown
+    /// ignore the width of whatever it is placed in. The popup and its
+    /// option rows follow this width so the menu stays flush with the
+    /// control that opened it.
+    #[must_use]
+    pub const fn width(mut self, px: f32) -> Self {
+        self.width = Some(px);
         self
     }
 
@@ -120,6 +132,7 @@ impl DropdownBuilder {
             open,
             cursor,
             disabled,
+            width: self.width,
         };
         // The Styled trait surface targets the TRIGGER — that is the
         // user-visible chrome of the dropdown (the popup is a transient
@@ -135,7 +148,7 @@ impl DropdownBuilder {
             user_overlay,
         );
         let popup = build_popup(ctx, &options, &on_change);
-        let mut root = dropdown_root(open, cursor, Rc::clone(&options), disabled)
+        let mut root = dropdown_root(open, cursor, Rc::clone(&options), disabled, self.width)
             .child(trigger)
             .child(popup);
 
@@ -166,11 +179,16 @@ fn dropdown_root(
     cursor: Signal<usize>,
     options: Rc<Vec<String>>,
     disabled: Option<Signal<bool>>,
+    width: Option<f32>,
 ) -> NodeBuilder {
+    let root_layout = width.map_or_else(
+        || LayoutStyle::block().fill_width().height(TRIGGER_HEIGHT),
+        |px| LayoutStyle::block().width(px).height(TRIGGER_HEIGHT),
+    );
     container()
         .role(Role::ComboBox)
         .label("Dropdown")
-        .layout(LayoutStyle::block().fixed_size(TRIGGER_WIDTH, TRIGGER_HEIGHT))
+        .layout(root_layout)
         .key(Key::Escape, move |ev| {
             ev.stop_propagation();
             open.set(false);
@@ -213,6 +231,7 @@ fn build_trigger(
         open,
         cursor,
         disabled,
+        width: _,
     } = ctx;
     let state_style = dropdown_trigger_state_style();
     let mut node = container()
@@ -283,9 +302,10 @@ fn trigger_rest_frame(
         open,
         cursor,
         disabled,
+        width,
     } = ctx;
     container()
-        .layout(trigger_frame_layout())
+        .layout(trigger_frame_layout(width))
         .class("rounded-md")
         .class("bg-gray-9")
         .pointer_up(move |ev| {
@@ -298,10 +318,13 @@ fn trigger_rest_frame(
         .child(node)
 }
 
-fn trigger_frame_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(TRIGGER_WIDTH, TRIGGER_HEIGHT)
-        .padding(1.0)
+fn trigger_frame_layout(width: Option<f32>) -> LayoutStyle {
+    let base = LayoutStyle::flex_row().height(TRIGGER_HEIGHT);
+    let base = match width {
+        Some(px) => base.width(px),
+        None => base.fill_width(),
+    };
+    base.padding(1.0)
 }
 
 // Push the chevron flush against the right padding edge: SpaceBetween
@@ -338,11 +361,12 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
     // padding edge. A `LayoutStyle::block()` text child sits inside
     // the wrapper so the text laying-out behaviour matches the v2
     // single-line block formatting.
-    // Fixed width 160 = TRIGGER_WIDTH (200) - padding_x (16) - chevron (16)
-    // - gap (8) = 160. Hard-coding the width here (rather than using
-    // `grow(1.0)`) makes the SpaceBetween distribution deterministic at
-    // the engine level — `grow` interacts badly with stub-measured text
-    // children in golden tests, leaving the chevron mid-trigger.
+    // The wrapper takes the row's free space via `grow(1.0)`, so the
+    // chevron lands flush against the trailing padding edge at ANY
+    // trigger width. This previously used a width computed from the
+    // fixed trigger size because `grow` did not distribute free space to
+    // an item that had children (fixed earlier on this branch), which
+    // left the chevron mid-trigger.
     // `overflow_x(Hidden)` clips labels wider than the slot at the
     // trigger's edge instead of painting past the pill (Fable visual
     // 2026-07-13); giving long options readable short labels remains
@@ -350,13 +374,15 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
     container()
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(160.0, 24.0)
+                .grow(1.0)
+                .width(0.0)
+                .height(24.0)
                 .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )
         .child(
             text(TextContent::Reactive(label_sig))
-                .layout(LayoutStyle::block().width(160.0))
+                .layout(LayoutStyle::block().fill_width())
                 .class("text-on-surface"),
         )
 }
@@ -375,20 +401,13 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
 fn trigger_chevron() -> impl IntoNode {
     static CHEVRON_BG: &[sigil_style::StyleAtom] =
         &[sigil_style::StyleAtom::BackgroundThemeRef("accent")];
-    // Inset math: trigger is `TRIGGER_WIDTH` wide with 8 px right
-    // padding; chevron swatch is 16 px wide. Left inset =
-    // TRIGGER_WIDTH - 16 (chevron) - 8 (right padding) = 176. Top
-    // inset = (TRIGGER_HEIGHT - 16) / 2 = 12, vertically centred.
-    let left = TRIGGER_WIDTH - 16.0 - 8.0;
-    let top = (TRIGGER_HEIGHT - 16.0) / 2.0;
+    // In-flow flex child: the label wrapper's `grow(1.0)` eats the free
+    // space, so the chevron sits flush at the trailing padding edge
+    // whatever the trigger's width. It used to be absolutely positioned
+    // at `width - 24`, which only worked for a fixed-width trigger (and
+    // there is no `inset_right` to anchor against instead).
     container()
-        .layout(
-            LayoutStyle::block()
-                .fixed_size(16.0, 16.0)
-                .position(Position::Absolute)
-                .inset_left(left)
-                .inset_top(top),
-        )
+        .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
         .class("rounded-sm")
         .class(CHEVRON_BG)
 }

@@ -20,8 +20,10 @@ use sigil_style::{Fill, NodeStyleExt, StateVariants};
 use super::super::interactive::interactive;
 use super::state::TableState;
 
-/// Selected-row class — the soft accent tint (Radix step 3) so cell
-/// text keeps its `on-surface` colour against the highlight.
+/// Selected-row class — the accent tint (Radix step 5) so cell text
+/// keeps its `on-surface` colour against the highlight. Step 3 read as
+/// effectively invisible (1.05:1 against the unselected row); step 5
+/// measures 1.28:1 while keeping text contrast at 13.4:1.
 const SELECTED_CLASS: &str = "bg-accent-5";
 
 /// Build the row render closure the table's body `virtual_list`

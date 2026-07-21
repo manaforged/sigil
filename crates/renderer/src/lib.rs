@@ -79,6 +79,7 @@ mod sprite_paint;
 pub mod style;
 mod style_adapter;
 mod surface;
+mod test_state;
 mod window_handle;
 
 pub use corner_radii::CornerRadii;
@@ -105,6 +106,7 @@ pub use slug::{DrawParams, SlugTextPipeline, TextTuning, set_text_tuning, text_t
 pub use sprite_paint::BUILTIN_SPRITE_ATLAS_ID;
 pub use style_adapter::unsupported_style_warning_count_for;
 pub use surface::WgpuSurface;
+pub use test_state::{GlobalTextState, lock_global_text_state};
 pub use window_handle::{WindowHandle, into_window_handle};
 
 /// Convenience re-exports for widget and renderer authors.

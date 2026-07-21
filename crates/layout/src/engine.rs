@@ -219,7 +219,7 @@ impl LayoutEngine {
         intent: &LayoutStyle,
     ) -> Result<(), LayoutError> {
         let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(id, existing, intent, None, None)
+        self.upsert_with_text(id, existing, intent, None, None, false)
     }
 
     pub(crate) fn set_children_mirror(
@@ -446,14 +446,14 @@ impl LayoutEngine {
             && self.synced_version.get(id.key()).copied() == Some(kernel_version)
             && text_sig_matches;
         if !version_matches {
-            let (intent, text_content, text_style) =
+            let (intent, text_content, text_style, wrap) =
                 Self::layout_inputs_for_node(node, inherited.style);
             // D-U4: grid requests reject loudly at sync — never silently
             // fall back to block (the pre-0.1.x behavior, removed).
             if matches!(intent.0.display, crate::style_data::Display::Grid) {
                 return Err(LayoutError::GridUnsupported(id));
             }
-            self.upsert_with_text(id, existing_handle, &intent, text_content, text_style)?;
+            self.upsert_with_text(id, existing_handle, &intent, text_content, text_style, wrap)?;
             self.synced_version.insert(id.key(), kernel_version);
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
@@ -478,6 +478,7 @@ impl LayoutEngine {
         intent: &LayoutStyle,
         text_content: Option<TextContent>,
         text_style: Option<TextStyle>,
+        wrap: bool,
     ) -> Result<(), LayoutError> {
         if let Some(handle) = existing_handle {
             // Cheap-out: if both the style and the text payload already
@@ -501,13 +502,15 @@ impl LayoutEngine {
             }
             let style = intent.data().clone();
             self.drive.set_style(handle, style)?;
-            self.drive.set_text(handle, text_content, text_style)?;
+            self.drive
+                .set_text(handle, text_content, text_style, wrap)?;
             return Ok(());
         }
 
         let style = intent.data().clone();
         let handle = self.drive.insert_with_kernel(id, style);
-        self.drive.set_text(handle, text_content, text_style)?;
+        self.drive
+            .set_text(handle, text_content, text_style, wrap)?;
         self.core_to_handle.insert(id.key(), handle);
         Ok(())
     }
@@ -537,9 +540,10 @@ impl LayoutEngine {
         // DR-056: the incremental path has no top-down carry, so the
         // inherited typography is resolved by ancestor walk.
         let inherited = inherited_text_style(cx, id);
-        let (intent, text_content, text_style) = Self::layout_inputs_for_node(node, &inherited);
+        let (intent, text_content, text_style, wrap) =
+            Self::layout_inputs_for_node(node, &inherited);
         let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(id, existing, &intent, text_content, text_style)?;
+        self.upsert_with_text(id, existing, &intent, text_content, text_style, wrap)?;
 
         // If this node's *effective* typography changed, descendants
         // measured against the old value are stale even though their
@@ -598,10 +602,10 @@ impl LayoutEngine {
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
         if matches!(node.kind, NodeType::Text { .. }) {
-            let (intent, text_content, text_style) =
+            let (intent, text_content, text_style, wrap) =
                 Self::layout_inputs_for_node(node, inherited.style);
             let existing = self.core_to_handle.get(id.key()).copied();
-            self.upsert_with_text(id, existing, &intent, text_content, text_style)?;
+            self.upsert_with_text(id, existing, &intent, text_content, text_style, wrap)?;
         }
         for child in children {
             self.cascade_text_styles(cx, child, effective)?;
@@ -612,7 +616,7 @@ impl LayoutEngine {
     fn layout_inputs_for_node(
         node: &sigil_kernel::Node,
         inherited_text: &TextStyle,
-    ) -> (LayoutStyle, Option<TextContent>, Option<TextStyle>) {
+    ) -> (LayoutStyle, Option<TextContent>, Option<TextStyle>, bool) {
         let mut intent = node
             .get_extension::<LayoutStyle>()
             .cloned()
@@ -643,11 +647,11 @@ impl LayoutEngine {
                 .inset_left(x)
                 .inset_top(y);
         }
-        let text_content = match &node.kind {
-            NodeType::Text { content } => Some(content.clone()),
-            NodeType::Container | NodeType::Fragment => None,
+        let (text_content, wrap) = match &node.kind {
+            NodeType::Text { content, wrap } => (Some(content.clone()), *wrap),
+            NodeType::Container | NodeType::Fragment => (None, false),
         };
-        (intent, text_content, text_style)
+        (intent, text_content, text_style, wrap)
     }
 
     fn remove_mirror_if_present(&mut self, id: NodeId) -> Result<(), LayoutError> {

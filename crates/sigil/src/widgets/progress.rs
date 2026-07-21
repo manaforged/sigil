@@ -6,9 +6,8 @@ use std::sync::{Mutex, OnceLock};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
-use sigil_style::{Dimension, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
+use sigil_style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
 
-const TRACK_WIDTH: f32 = 240.0;
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
 
@@ -26,6 +25,7 @@ pub struct ProgressBuilder {
     pub indeterminate: bool,
     /// Override the track height in logical pixels (default: 8.0).
     track_height: f32,
+    track_width: Option<f32>,
     style_accumulator: Style,
 }
 
@@ -48,6 +48,7 @@ impl ProgressBuilder {
             max: max.max(f32::EPSILON),
             indeterminate: false,
             track_height: TRACK_HEIGHT,
+            track_width: None,
             style_accumulator: Style::new(),
         }
     }
@@ -70,10 +71,23 @@ impl ProgressBuilder {
         self
     }
 
+    /// Override the track width in logical pixels.
+    ///
+    /// The default is a fixed 240px, which is what makes a bare progress
+    /// bar ignore the width of whatever it is placed in. The fill and the
+    /// indeterminate sweep are both measured against this width, so they
+    /// stay proportional at any value set here.
+    #[must_use]
+    pub const fn width(mut self, px: f32) -> Self {
+        self.track_width = Some(px);
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let value = self.value;
         let max = self.max;
         let track_h = self.track_height;
+        let track_w = self.track_width;
         let is_indeterminate = self.indeterminate;
         let style_accumulator = self.style_accumulator;
 
@@ -86,7 +100,7 @@ impl ProgressBuilder {
         let mut node = container()
             .role(Role::ProgressIndicator)
             .value(value, 0.0, max)
-            .layout(track_layout(track_h))
+            .layout(track_layout(track_h, track_w))
             .class("rounded-md")
             .class(TRACK)
             .child(fill);
@@ -112,51 +126,85 @@ impl IntoNode for ProgressBuilder {
     }
 }
 
-fn track_layout(track_h: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(TRACK_WIDTH, track_h)
-        .align_items(AlignItems::Center)
+fn track_layout(track_h: f32, track_w: Option<f32>) -> LayoutStyle {
+    // Fill the parent by default; `.width()` pins an explicit extent.
+    let base = LayoutStyle::flex_row().height(track_h);
+    let base = match track_w {
+        Some(w) => base.width(w),
+        None => base.fill_width(),
+    };
+    base.align_items(AlignItems::Center)
 }
 
+/// Determinate fill as a PROPORTION of the track.
+///
+/// The fill and a trailing spacer split the track by flex-grow, so the
+/// bar stays correct at any track width — including a track that fills
+/// its parent, where no pixel width is known at build time. (Expressing
+/// this as a percentage is not possible: the style layer's `Dimension`
+/// has only `Px`/`Full`/`Auto`.)
 fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
-    let fill_px = derived_eq(move || {
-        let ratio = (value.get() / max).clamp(0.0, 1.0);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let px = (ratio * TRACK_WIDTH).round() as i16;
-        px
-    });
-
+    let filled = derived_eq(move || grow_units(value.get() / max));
+    let empty = derived_eq(move || GROW_SCALE - grow_units(value.get() / max));
     container()
-        .layout(LayoutStyle::block().height(track_h))
-        .class("rounded-md")
-        .style_reactive(move || width_atoms_px(fill_px.get()))
-        .class(FILL)
+        .layout(LayoutStyle::flex_row().fill_width().height(track_h))
+        .child(
+            container()
+                .layout(LayoutStyle::block().height(track_h).width(0.0))
+                .class("rounded-md")
+                .style_reactive(move || grow_atoms(filled.get()))
+                .class(FILL),
+        )
+        .child(
+            container()
+                .layout(LayoutStyle::block().height(track_h).width(0.0))
+                .style_reactive(move || grow_atoms(empty.get())),
+        )
 }
 
+/// `FlexGrow` is a u16 scaled by 1000 in the style->layout adapter.
+const GROW_SCALE: u16 = 1_000;
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn grow_units(ratio: f32) -> u16 {
+    (ratio.clamp(0.0, 1.0) * f32::from(GROW_SCALE)).round() as u16
+}
+
+fn grow_atoms(units: u16) -> &'static [StyleAtom] {
+    #[allow(clippy::cast_possible_wrap)]
+    cached_atoms(units as i16, || vec![StyleAtom::FlexGrow(units)])
+}
+
+/// Indeterminate sweep, also proportional: a leading spacer, the bar at a
+/// fixed fraction of the track, then a trailing spacer. Same reason as
+/// [`determinate_fill`] — no pixel width is known when the track fills its
+/// parent.
 fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
-    let offset_px = derived_eq(move || {
+    let lead = derived_eq(move || {
         let t = phase.get().clamp(0.0, 1.0);
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let px = (t * TRACK_WIDTH * (1.0 - INDETERMINATE_RATIO)).round() as i16;
-        px
+        grow_units(t * (1.0 - INDETERMINATE_RATIO))
     });
-
-    let bar_width_px = (TRACK_WIDTH * INDETERMINATE_RATIO).round();
+    let trail = derived_eq(move || {
+        let t = phase.get().clamp(0.0, 1.0);
+        let used = t * (1.0 - INDETERMINATE_RATIO) + INDETERMINATE_RATIO;
+        GROW_SCALE - grow_units(used)
+    });
+    let spacer = move |units: sigil_reactive::Signal<u16>| {
+        container()
+            .layout(LayoutStyle::block().height(track_h).width(0.0))
+            .style_reactive(move || grow_atoms(units.get()))
+    };
     container()
-        .layout(LayoutStyle::block().width(bar_width_px).height(track_h))
-        .class("rounded-md")
-        .style_reactive(move || left_margin_atoms_px(offset_px.get()))
-        .class(FILL)
-}
-
-fn width_atoms_px(px: i16) -> &'static [StyleAtom] {
-    cached_atoms(px, || vec![StyleAtom::Width(Dimension::Px(Px(px)))])
-}
-
-fn left_margin_atoms_px(px: i16) -> &'static [StyleAtom] {
-    cached_atoms(px.wrapping_add(i16::MAX / 2), || {
-        vec![StyleAtom::MarginLeft(Px(px))]
-    })
+        .layout(LayoutStyle::flex_row().fill_width().height(track_h))
+        .child(spacer(lead))
+        .child(
+            container()
+                .layout(LayoutStyle::block().height(track_h).width(0.0))
+                .class("rounded-md")
+                .style_reactive(|| grow_atoms(grow_units(INDETERMINATE_RATIO)))
+                .class(FILL),
+        )
+        .child(spacer(trail))
 }
 
 fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [StyleAtom] {

@@ -34,7 +34,6 @@ mod flex_lines;
 mod forest;
 mod intent;
 mod measure;
-mod parallel;
 pub mod prelude;
 pub mod reactive_position;
 mod result;

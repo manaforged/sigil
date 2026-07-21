@@ -408,6 +408,7 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
     const CHANNEL_TOLERANCE: u8 = 2;
 
     if regen_enabled() {
+        guard_regen_does_not_erase_content(actual, golden);
         std::fs::create_dir_all(golden.parent().expect("golden parent")).expect("mkdir goldens");
         actual.save(golden).expect("write golden png");
         println!("REGEN: wrote {}", golden.display());
@@ -462,6 +463,59 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
 /// (hover / focus / disabled / ...) accidentally renders identical to
 /// its baseline counterpart: the state transition the pair exists to
 /// capture authors no visible difference, so a plain `check()` call
+/// Count of pixels that are not the image's single most common colour —
+/// a proxy for "how much is actually drawn here".
+fn ink(image: &image::RgbaImage) -> usize {
+    use std::collections::HashMap;
+    let mut census: HashMap<[u8; 4], usize> = HashMap::new();
+    for px in image.pixels() {
+        *census.entry(px.0).or_default() += 1;
+    }
+    let background = census.values().copied().max().unwrap_or(0);
+    (image.width() as usize * image.height() as usize).saturating_sub(background)
+}
+
+/// Refuse a re-bake that erases most of what the widget used to draw.
+///
+/// A re-bake overwrites the reference with whatever just rendered, so a
+/// regression that DELETES content certifies itself: the suite goes green
+/// on an image of the bug. This happened twice on 2026-07-20 — a dropdown
+/// whose label vanished, and a page collapsed to its left margin — and both
+/// times the tests passed after regenerating.
+///
+/// Losing most of the drawn content is nearly always a bug rather than an
+/// intended redesign, so it must be acknowledged explicitly via
+/// `SIGIL_REGEN_ALLOW_CONTENT_LOSS=1`.
+fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) {
+    const RETAINED_FRACTION: f32 = 0.5;
+
+    if std::env::var("SIGIL_REGEN_ALLOW_CONTENT_LOSS").as_deref() == Ok("1") {
+        return;
+    }
+    let Ok(previous) = image::open(golden) else {
+        return; // first bake: nothing to compare against
+    };
+    let before = ink(&previous.to_rgba8());
+    let after = ink(actual);
+    #[allow(clippy::cast_precision_loss)]
+    let retained = if before == 0 {
+        1.0
+    } else {
+        after as f32 / before as f32
+    };
+    assert!(
+        retained >= RETAINED_FRACTION,
+        "re-bake of {} would erase {:.0}% of the drawn content \
+         ({before} -> {after} non-background pixels).\n\
+         A re-bake overwrites the reference, so a regression that deletes \
+         content would certify itself. Look at the render before accepting \
+         it; if the reduction really is intended, set \
+         SIGIL_REGEN_ALLOW_CONTENT_LOSS=1.",
+        golden.display(),
+        (1.0 - retained) * 100.0,
+    );
+}
+
 /// passes green while certifying nothing. See
 /// BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
 pub fn assert_goldens_differ(name_a: &str, name_b: &str) {

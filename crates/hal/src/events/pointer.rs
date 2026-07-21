@@ -1,6 +1,6 @@
 //! Pointer and mouse-button event vocabulary.
 
-use crate::{ModifiersState, Point};
+use crate::{LogicalSize, ModifiersState, Point};
 
 /// Pointer device family.
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
@@ -110,6 +110,18 @@ pub struct PointerEvent {
     pub modifiers: ModifiersState,
     /// Event phase.
     pub phase: PointerPhase,
+    /// Border-box size of the node currently handling this event, in the
+    /// same logical pixels as [`Self::position`].
+    ///
+    /// Handlers that turn a pointer position into a ratio (slider tracks,
+    /// scrollbar thumbs) must divide by this rather than by a
+    /// compile-time constant, or they silently mis-map input the moment
+    /// the widget is any size other than its default.
+    ///
+    /// Zero when the event has not been routed through a laid-out node
+    /// (synthesized events, direct handler invocation) — treat a zero
+    /// extent as "no ratio available" rather than dividing by it.
+    pub target_size: LogicalSize,
     capture_requested: bool,
     captured: bool,
     propagation_stopped: bool,
@@ -146,6 +158,8 @@ impl PointerEvent {
             buttons: init.buttons,
             modifiers: init.modifiers,
             phase: init.phase,
+            // Populated by the router once the target node is known.
+            target_size: LogicalSize::new(0.0, 0.0),
             capture_requested: false,
             captured: false,
             propagation_stopped: false,

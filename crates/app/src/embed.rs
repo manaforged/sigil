@@ -7,6 +7,8 @@
 //! [`CommandScene`] the host paints into its own frame via the renderer's
 //! `submit_screen` (which supports a foreign device).
 
+use sigil_events::EventRouter;
+use sigil_hal::ShellEvent;
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout::LayoutEngine;
 use sigil_layout::prelude::Size;
@@ -54,6 +56,19 @@ impl UiContext {
     /// Borrow the underlying `Cx` (for event routing / reactive updates).
     pub const fn cx(&mut self) -> &mut Cx {
         &mut self.cx
+    }
+
+    /// Route a host-translated shell event (pointer/key/scroll) into the
+    /// built tree via `router`, using this context's private layout state.
+    /// The embedding host owns the [`EventRouter`] (it carries hover/focus
+    /// state across frames); the context supplies the `Cx` + `LayoutEngine`
+    /// pair the router needs — the borrow it could not otherwise reach
+    /// (`arcane_kingdom` sigil-gaps #3, the host engine `crates/ui` item-2 blocker).
+    /// No-op until [`UiContext::build`] has run.
+    pub fn route(&mut self, router: &mut EventRouter, event: ShellEvent) {
+        if self.root.is_some() {
+            router.route(&mut self.cx, &self.layout, event);
+        }
     }
 
     /// Lay the tree out at `viewport` (logical pixels) and emit the paint

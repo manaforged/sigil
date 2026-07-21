@@ -7,8 +7,12 @@
 /// How the default keyboard shortcut policy dismisses a window.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum PanicPolicy {
-    /// Default: the process continues; a panic in an effect/subtree is
-    /// isolated by the error-boundary machinery (Phase 16).
+    /// Default: a panic inside a frame (a widget handler, an effect, a
+    /// paint closure) is caught by the launch loop, logged via `tracing`,
+    /// and the reactive runtime is reset to a clean resting state so the
+    /// next frame still runs. The panicking effect itself is dropped (the
+    /// reactive runtime disposes an effect that unwinds mid-run); the app
+    /// stays alive. Wired in `launch::run_frame`.
     #[default]
     Isolate,
     /// Abort the process on any panic. Matches `panic = "abort"` in the

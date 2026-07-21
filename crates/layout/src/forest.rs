@@ -101,6 +101,8 @@ impl LayoutNode {
 pub(crate) struct LayoutText {
     pub(crate) content: TextContent,
     pub(crate) style: Option<TextStyle>,
+    /// Wrap to the containing block instead of hugging content.
+    pub(crate) wrap: bool,
 }
 
 /// Computed geometry for a node — populated by the measure + arrange
@@ -683,10 +685,24 @@ impl<'a> MeasureScope<'a> {
         &self,
         node: NodeRef<'_>,
         known: crate::style_data::Size<Option<f32>>,
+        wrap_to: Option<f32>,
     ) -> Option<crate::style_data::Size<f32>> {
         let text = node.text()?;
+        // A wrapping node measures against its containing block's content
+        // width (explicit width first, else the `wrap_to` the solver
+        // supplies), so the paragraph engine breaks lines there. A hugging
+        // node keeps the historic behaviour: measure against the pass's
+        // available space and take the natural single-line extent.
+        let width = if text.wrap {
+            known.width.or(wrap_to).map_or_else(
+                || space_constraint_to_hal_dim(self.available.w),
+                sigil_hal::Dim::Fixed,
+            )
+        } else {
+            space_constraint_to_hal_dim(self.available.w)
+        };
         let space = sigil_hal::Size {
-            width: space_constraint_to_hal_dim(self.available.w),
+            width,
             height: space_constraint_to_hal_dim(self.available.h),
         };
         let measured = text.style.as_ref().map_or_else(

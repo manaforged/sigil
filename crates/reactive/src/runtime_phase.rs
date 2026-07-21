@@ -22,6 +22,32 @@ use crate::runtime_drain::{
 };
 
 impl Runtime {
+    /// Force the runtime back to a clean [`DrawPhase::Idle`] resting state
+    /// after a frame was abandoned mid-flight by a panic.
+    ///
+    /// The normal `begin_*`/`end_frame` transitions assert their starting
+    /// phase and run drains that assume consistent state; neither holds once
+    /// a user callback has unwound through the middle of a frame. This makes
+    /// no such assumption: it drops the phase to `Idle` and clears the
+    /// in-flight effect bookkeeping so the NEXT frame starts clean.
+    ///
+    /// Clearing `running` is the load-bearing part: an effect that panicked
+    /// is still recorded as running and would never be scheduled again
+    /// (pinned by `panic_inside_effect_clears_running_set`). `pending` /
+    /// `pending_set` are dropped too so no half-queued effect from the dead
+    /// frame leaks into the next one. Signal *values* are intentionally left
+    /// as they were: whatever writes committed before the panic stand, which
+    /// matches "isolate the frame, keep the app" rather than "roll back".
+    pub fn recover_from_panic() {
+        with_rt(|rt| {
+            rt.phase = DrawPhase::Idle;
+            rt.running.clear();
+            rt.pending.clear();
+            rt.pending_set.clear();
+            rt.frame_dirty = false;
+        });
+    }
+
     /// Idle → Effect. Drain G5 completion callbacks (DR-048 §4), then
     /// the deferred writes captured during the prior frame's Paint
     /// pass, before observers run.

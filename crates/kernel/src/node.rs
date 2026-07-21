@@ -152,6 +152,11 @@ pub enum NodeType {
     Text {
         /// Static or reactive text content.
         content: TextContent,
+        /// When `true`, the text wraps to its containing block's width
+        /// (multi-line). When `false` (the default), it hugs its content
+        /// on a single line and the container decides what to do with
+        /// any overflow. Set via [`crate::TextBuilder::wrap`].
+        wrap: bool,
     },
     /// A grouping node with **no layout box of its own**.
     ///

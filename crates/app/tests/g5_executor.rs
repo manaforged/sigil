@@ -29,6 +29,7 @@
 // silent (same pattern as `scale_handling.rs`).
 use accesskit as _;
 use crossbeam_channel as _;
+use notify as _;
 use sigil_a11y as _;
 use sigil_events as _;
 use sigil_hal as _;
@@ -38,6 +39,7 @@ use sigil_renderer as _;
 use sigil_shell as _;
 use sigil_style as _;
 use sigil_text as _;
+use toml as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;

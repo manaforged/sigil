@@ -122,7 +122,7 @@ mod tests {
             assert_eq!(node.children().len(), 1, "chip wraps one text child");
             let text_child = cx.get(node.children()[0]).expect("chip text child exists");
             match &text_child.kind {
-                NodeType::Text { content } => {
+                NodeType::Text { content, .. } => {
                     assert_eq!(
                         content.as_static_str(),
                         Some("ERROR"),

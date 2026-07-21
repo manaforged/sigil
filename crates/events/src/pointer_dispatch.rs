@@ -9,8 +9,8 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase,
+    LogicalSize, ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit,
+    PointerKind, PointerPhase,
 };
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout::LayoutEngine;
@@ -25,6 +25,10 @@ pub(crate) type PointerTargets = SmallVec<[PointerTarget; 64]>;
 pub(crate) struct PointerTarget {
     pub(crate) id: NodeId,
     pub(crate) origin: Point,
+    /// Border-box extent, handed to handlers as `PointerEvent::target_size`
+    /// so position->ratio math divides by the real width instead of a
+    /// compile-time default.
+    pub(crate) size: LogicalSize,
 }
 
 pub(crate) fn dispatch_pointer_path(
@@ -82,10 +86,12 @@ pub(crate) const fn synthetic_leave_source() -> PointerEvent {
 pub(crate) fn pointer_targets(layout: &LayoutEngine, path: &NodePath) -> PointerTargets {
     let mut targets = PointerTargets::new();
     for id in path.iter().copied() {
-        let origin = layout
-            .result(id)
-            .map_or(Point::new(0.0, 0.0), |result| result.rect().origin);
-        targets.push(PointerTarget { id, origin });
+        let rect = layout.result(id).map(|result| result.rect());
+        let origin = rect.map_or(Point::new(0.0, 0.0), |r| r.origin);
+        let size = rect.map_or(LogicalSize::new(0.0, 0.0), |r| {
+            LogicalSize::new(r.width, r.height)
+        });
+        targets.push(PointerTarget { id, origin, size });
     }
     targets
 }
@@ -134,6 +140,7 @@ pub(crate) fn pointer_target_for_node(
         .unwrap_or(PointerTarget {
             id: target,
             origin: Point::new(0.0, 0.0),
+            size: LogicalSize::new(0.0, 0.0),
         })
 }
 
@@ -151,12 +158,15 @@ fn invoke_pointer(
         return;
     };
     let previous_position = event.position;
+    let previous_size = event.target_size;
     event.position = Point::new(
         global_position.x - target.origin.x,
         global_position.y - target.origin.y,
     );
+    event.target_size = target.size;
     handlers.invoke_pointer(event.phase, capture, event);
     event.position = previous_position;
+    event.target_size = previous_size;
 }
 
 fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {
