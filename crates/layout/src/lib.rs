@@ -32,6 +32,7 @@ mod flex;
 mod flex_algorithm;
 mod flex_lines;
 mod forest;
+mod grid;
 mod intent;
 mod measure;
 pub mod prelude;
@@ -57,7 +58,7 @@ pub use style_data::{
     JustifyContent as StyleJustifyContent, LengthPercentage,
     LengthPercentage as StyleLengthPercentage, LengthPercentageAuto,
     LengthPercentageAuto as StyleLengthPercentageAuto, Overflow, Position,
-    Position as StylePosition, Rect, Size, StyleData,
+    Position as StylePosition, Rect, Size, StyleData, TrackSize,
 };
 pub use text_adapter::TextEngineMeasure;
 pub use text_geometry::{CaretGeometry, TextGeometry, set_text_geometry, with_text_geometry};

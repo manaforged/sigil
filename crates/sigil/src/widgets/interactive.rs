@@ -70,6 +70,24 @@ impl InteractiveBuilder {
         self
     }
 
+    /// Attach utility classes, including `hover:` / `focus:` / `active:` /
+    /// `disabled:` state prefixes. Base tokens style the rest state; the
+    /// prefixed tokens feed this wrapper's overlay slots, which its
+    /// interaction channel already drives — so a class string is a full
+    /// alternative to the `.hover(|s| …)` / `.pressed(|s| …)` closures.
+    ///
+    /// ```rust,no_run
+    /// use sigil::prelude::*;
+    ///
+    /// interactive(container())
+    ///     .class("p-4 rounded-md bg-surface hover:bg-accent-9 active:bg-accent-11");
+    /// ```
+    #[must_use]
+    pub fn class(mut self, classes: &str) -> Self {
+        self.style = core::mem::take(&mut self.style).class(classes);
+        self
+    }
+
     /// Consume into a [`NodeBuilder`] with the interaction wiring
     /// installed: signals → slot cell → resolver overlay application.
     #[must_use]

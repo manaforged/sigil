@@ -5,7 +5,9 @@ use std::rc::Rc;
 use sigil_hal::{Point, Rect};
 use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_layout::LayoutResult;
-use sigil_style::{DisplayKind, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme};
+use sigil_style::{
+    DisplayKind, Elevation, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme,
+};
 use sigil_text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
@@ -13,6 +15,7 @@ use crate::scene_builder::SceneBuilder;
 use crate::scene_command::{
     CommandScene, GlyphRun, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
+use crate::shadow_paint::Shadow;
 use crate::style_adapter::{
     ResolvedFocusRing, corner_radii_for, focus_ring_for, render_style_for, text_style_for,
 };
@@ -266,42 +269,64 @@ struct NodePaint<'a> {
     text_base: &'a TextStyle,
 }
 
+fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
+    let style = paint.style;
+    // Shadow first so it sits behind the surface it lifts.
+    if let Some(elevation) = style.shadow {
+        scene.draw_shadow(
+            rect,
+            corner_radii_for(style.border_radius),
+            elevation_shadow(elevation),
+        );
+    }
+    let stroke = border_stroke(style, paint.theme);
+    if style.background_color.is_some() || stroke.is_some() {
+        // A border with no background paints a transparent interior; the
+        // SDF fill contributes zero coverage and only the stroke shows.
+        let fill = style.background_color.unwrap_or(Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        });
+        let mut rect_style =
+            SceneRectStyle::new(fill, corner_radii_for(style.border_radius), style.opacity);
+        if let Some(stroke) = stroke {
+            rect_style = rect_style.with_stroke(stroke);
+        }
+        scene.draw_rect_for_node(id, rect, rect_style);
+    }
+}
+
 fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
     match &node.kind {
-        NodeType::Container => {
-            let stroke = border_stroke(style, paint.theme);
-            if style.background_color.is_some() || stroke.is_some() {
-                // A border with no background paints a transparent
-                // interior; the SDF fill contributes zero coverage and
-                // only the stroke shows.
-                let fill = style.background_color.unwrap_or(Rgba8 {
-                    r: 0,
-                    g: 0,
-                    b: 0,
-                    a: 0,
-                });
-                let mut rect_style =
-                    SceneRectStyle::new(fill, corner_radii_for(style.border_radius), style.opacity);
-                if let Some(stroke) = stroke {
-                    rect_style = rect_style.with_stroke(stroke);
-                }
-                scene.draw_rect_for_node(id, rect, rect_style);
-            }
-        }
-        NodeType::Text { content, .. } => {
+        NodeType::Container => push_container(scene, id, rect, paint),
+        NodeType::Text {
+            content, ellipsis, ..
+        } => {
             if let Some(color) = style.text_color {
                 scene.draw_glyph_run_for_node(
                     id,
-                    shape_glyph_run(
+                    shape_glyph_run_with(
                         rect,
                         text_content(content),
                         color,
                         text_style_for(node, paint.theme, paint.text_base),
                         style.opacity,
+                        *ellipsis,
                     ),
                 );
             }
+        }
+        NodeType::Image { source, fit } => {
+            scene.draw_image(crate::scene_command::DrawImage {
+                node: Some(id),
+                source: source.clone(),
+                fit: *fit,
+                destination: rect,
+                opacity: style.opacity,
+            });
         }
         NodeType::Fragment => {}
     }
@@ -317,14 +342,38 @@ pub fn shape_glyph_run(
     style: TextStyle,
     opacity: u16,
 ) -> GlyphRun {
-    let max_width = Some(rect.width.max(1.0));
+    shape_glyph_run_with(rect, text, color, style, opacity, false)
+}
+
+/// Shape a text run, optionally single-line ellipsis-truncated to `rect`.
+///
+/// `ellipsize` selects [`OwnedTextEngine::layout_paragraph_ellipsized`]
+/// (one line, `…` when it overflows `rect.width`) over the default
+/// wrap-to-width paragraph. The paint pass sets it from the text node's
+/// `ellipsis` flag; other callers use [`shape_glyph_run`].
+// The five glyph-run fields are all intrinsic to `GlyphRun::new`; the flag
+// is one more. Splitting them into a struct here would only obscure them.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+fn shape_glyph_run_with(
+    rect: Rect,
+    text: String,
+    color: Rgba8,
+    style: TextStyle,
+    opacity: u16,
+    ellipsize: bool,
+) -> GlyphRun {
+    let max_width = rect.width.max(1.0);
     // The shared engine bootstraps with bundled FiraSans (G1.4 owned
     // engine). Layout failure is unreachable unless a future caller
     // hot-swaps in a malformed user font via FontCollection::register.
     let paragraph = TEXT_ENGINE.with(|engine| {
-        engine
-            .layout_paragraph_styled(&text, max_width, &style)
-            .unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"))
+        let result = if ellipsize {
+            engine.layout_paragraph_ellipsized(&text, max_width, &style)
+        } else {
+            engine.layout_paragraph_styled(&text, Some(max_width), &style)
+        };
+        result.unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"))
     });
     GlyphRun::new(rect, text, color, style, opacity).with_paragraph(paragraph)
 }
@@ -338,6 +387,23 @@ thread_local! {
 /// resolved text colour, then the theme's on-surface. Inside alignment
 /// matches the box model — the layout solvers already reserved the
 /// border edge inside the rect.
+/// Map a semantic [`Elevation`] level to drop-shadow geometry. A
+/// single black layer whose vertical offset, blur, and alpha grow with
+/// the level (a single-layer approximation of the Tailwind `shadow-*`
+/// scale). Black is `[0,0,0]` in both sRGB and linear space, so the
+/// linear colour the shadow shader wants is `[0,0,0,alpha]` directly;
+/// alpha is not gamma-encoded.
+const fn elevation_shadow(elevation: Elevation) -> Shadow {
+    let (offset_y, blur, spread, alpha) = match elevation {
+        Elevation::Sm => (1.0, 2.0, 0.0, 0.10),
+        Elevation::Base => (2.0, 4.0, 0.0, 0.12),
+        Elevation::Md => (4.0, 8.0, -1.0, 0.14),
+        Elevation::Lg => (8.0, 16.0, -2.0, 0.16),
+        Elevation::Xl => (16.0, 28.0, -4.0, 0.20),
+    };
+    Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
+}
+
 fn border_stroke(style: &RenderStyle, theme: &Theme) -> Option<Stroke> {
     let width = style.border_width?;
     if width.0 <= 0 {

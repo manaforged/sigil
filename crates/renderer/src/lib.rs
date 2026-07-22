@@ -94,11 +94,11 @@ pub use scene::shape_glyph_run;
 pub use scene::{Scene, SceneItem, SceneRect, SceneText, emit_scene};
 pub use scene_builder::SceneBuilder;
 pub use scene_command::{
-    CommandScene, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient, DrawPattern,
-    DrawRect, DrawSprite, Fill, GlyphRun, GradientStop, LayerEffect, LayerScope, LinearGradient,
-    PatternKind, SceneCommand, SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle,
-    SceneRectStyle, SceneSpriteStyle, SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle,
-    Transform,
+    CommandScene, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage,
+    DrawPattern, DrawRect, DrawSprite, Fill, GlyphRun, GradientStop, LayerEffect, LayerScope,
+    LinearGradient, PatternKind, SceneCommand, SceneDecorationStyle, SceneGradientStyle,
+    ScenePatternStyle, SceneRectStyle, SceneSpriteStyle, SpriteKind, SpriteSource, Stroke,
+    StrokeAlign, StrokeStyle, Transform,
 };
 pub use shadow_paint::{Shadow, ShadowKind};
 pub use slug::{DrawParams, SlugTextPipeline, TextTuning, set_text_tuning, text_tuning};

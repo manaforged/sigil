@@ -276,6 +276,7 @@ fn build_bubble(
         .label(aria_label)
         .layout(bubble_layout(top_px, shortcut.is_some()))
         .class("rounded-sm")
+        .class("shadow-md")
         .class(BUBBLE_BASE)
         .style_reactive(move || visibility_atoms(visible.get()));
 

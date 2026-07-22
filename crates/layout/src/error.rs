@@ -11,10 +11,6 @@ pub enum LayoutError {
     LayoutInvalid(String),
     /// A `sigil-kernel` node was missing from either `Cx` or the layout mirror.
     NodeMissing(NodeId),
-    /// A node requested grid layout, which is not supported in 0.1.x.
-    /// Previously this silently fell back to block (removed per D-U4 —
-    /// a silent fallback is worse than a loud rejection).
-    GridUnsupported(NodeId),
 }
 
 impl Display for LayoutError {
@@ -22,11 +18,6 @@ impl Display for LayoutError {
         match self {
             Self::LayoutInvalid(message) => write!(f, "layout error: {message}"),
             Self::NodeMissing(id) => write!(f, "layout node missing: {id:?}"),
-            Self::GridUnsupported(id) => write!(
-                f,
-                "grid layout is not supported in 0.1.x (node {id:?}); \
-                 use flex or block — a real grid solver is a later program"
-            ),
         }
     }
 }

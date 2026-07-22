@@ -86,6 +86,7 @@ impl LayoutLine {
                 advance: g.advance,
                 offset_y: g.offset_y,
                 cluster: g.cluster + seg.byte_start,
+                level: seg.level,
                 face_slot: seg.face_slot,
             });
             pen_x += g.advance;
@@ -157,9 +158,41 @@ struct LineGlyph {
     offset_y: f32,
     /// UTF-8 byte index in the source string.
     cluster: u32,
+    /// UAX #9 bidi embedding level — even is LTR, odd is RTL. Drives
+    /// direction-aware caret placement, hit-testing, and per-visual-run
+    /// selection geometry.
+    level: u8,
     /// Index into the paragraph's [`FaceEntry`] table — which face
     /// this glyph was shaped with (Wave 4 per-run font fallback).
     face_slot: u16,
+}
+
+impl LineGlyph {
+    /// `true` when this glyph belongs to a right-to-left bidi run.
+    const fn is_rtl(&self) -> bool {
+        self.level & 1 == 1
+    }
+
+    /// Visual x of the glyph's logical *leading* edge — where a caret
+    /// sits when placed *before* this glyph in logical order. The left
+    /// edge for LTR, the right edge for RTL.
+    fn leading_edge(&self) -> f32 {
+        if self.is_rtl() {
+            self.x + self.advance
+        } else {
+            self.x
+        }
+    }
+
+    /// Visual x of the glyph's logical *trailing* edge — where a caret
+    /// sits when placed *after* this glyph in logical order.
+    fn trailing_edge(&self) -> f32 {
+        if self.is_rtl() {
+            self.x
+        } else {
+            self.x + self.advance
+        }
+    }
 }
 
 /// Arguments for [`LayoutLine::append_segment`] — one shaped run
@@ -169,6 +202,8 @@ pub(crate) struct SegmentAppend<'a> {
     pub(crate) advance: f32,
     pub(crate) byte_start: u32,
     pub(crate) byte_end: u32,
+    /// UAX #9 bidi embedding level of this run (even LTR, odd RTL).
+    pub(crate) level: u8,
     /// Index into the paragraph's per-run font fallback chain.
     pub(crate) face_slot: u16,
 }
@@ -328,19 +363,21 @@ impl Paragraph {
         )
     }
 
-    /// Calls `f` with each bounding rectangle of the selection range.
+    /// Calls `f` with each bounding rectangle of the selection range, one
+    /// per contiguous VISUAL span.
     ///
-    /// ponytail: display-only bidi ceiling (the reviewer adversarial review,
-    /// 2026-07-13) — this fills the interval between the two LOGICAL
-    /// endpoint x positions as ONE rectangle per line. A contiguous
-    /// logical selection can map to multiple disjoint VISUAL spans
-    /// after bidi reordering (a selection spanning an embedded RTL run
-    /// plus its LTR neighbours), which this can highlight incorrectly
-    /// (unrelated text between spans, or omitted glyphs) instead of
-    /// emitting one rectangle per visual run. Upgrade path: intersect
-    /// the logical selection with each visual bidi run and emit one
-    /// rectangle per contiguous visual span, respecting run direction
-    /// and endpoint affinity. Tracked in `docs/followups.md`.
+    /// A logically-contiguous selection can map to several disjoint visual
+    /// spans once bidi reordering interleaves runs (an RTL run embedded in
+    /// LTR text, or the reverse). Rather than fill the gap between the two
+    /// logical endpoints as one rectangle — which would paint over unrelated
+    /// text between the spans — this walks the line's glyphs in visual order
+    /// and emits one rectangle per maximal run of selected glyphs. Because a
+    /// bidi run is contiguous in visual order, each emitted rectangle covers
+    /// exactly one run's contribution to the selection.
+    ///
+    /// Selection granularity is whole glyphs: a glyph counts as selected when
+    /// its logical cluster start falls in `[lo, hi)`. Endpoints are grapheme
+    /// boundaries, so no glyph is split.
     pub fn selection_rects_with(
         &self,
         anchor: HitPosition,
@@ -351,25 +388,18 @@ impl Paragraph {
         if lo.byte_index == hi.byte_index {
             return;
         }
+        let (lo_b, hi_b) = (u32_clamp(lo.byte_index), u32_clamp(hi.byte_index));
         for line in &self.inner.lines {
-            let line_lo = line.byte_start;
-            let line_hi = line.byte_end;
-            let sel_lo = u32_clamp(lo.byte_index).max(line_lo);
-            let sel_hi = u32_clamp(hi.byte_index).min(line_hi);
-            if sel_hi <= sel_lo {
-                continue;
+            let mut span: Option<(f32, f32)> = None;
+            for g in &line.glyphs {
+                if g.cluster >= lo_b && g.cluster < hi_b {
+                    let (gl, gr) = (g.x, g.x + g.advance);
+                    span = Some(span.map_or((gl, gr), |(l, r)| (l.min(gl), r.max(gr))));
+                } else {
+                    emit_span(span.take(), line, &mut f);
+                }
             }
-            let x_lo = caret_x_for_byte(line, sel_lo as usize);
-            let x_hi = caret_x_for_byte(line, sel_hi as usize);
-            let (l, r) = (x_lo.min(x_hi), x_lo.max(x_hi));
-            if r - l <= 0.0 {
-                continue;
-            }
-            f(Rect::new(
-                Point::new(l, line.line_top()),
-                r - l,
-                line.height,
-            ));
+            emit_span(span.take(), line, &mut f);
         }
     }
 
@@ -479,17 +509,20 @@ fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
             affinity: TextAffinity::Downstream,
         };
     }
-    if x <= 0.0 {
-        return HitPosition {
-            byte_index: first_cluster(line) as usize,
-            affinity: TextAffinity::Downstream,
-        };
+    // The visual-left/right edges of the line are the logical START of the
+    // leftmost/rightmost VISUAL glyph only for LTR; for an RTL edge glyph
+    // they are its logical END. Resolve each edge from that glyph's direction
+    // so a click past a pure-RTL line's left edge lands at the reading end,
+    // not the start.
+    if x <= 0.0
+        && let Some(g) = line.glyphs.first()
+    {
+        return edge_hit(line, g, true);
     }
-    if x >= line.width {
-        return HitPosition {
-            byte_index: line.byte_end as usize,
-            affinity: TextAffinity::Upstream,
-        };
+    if x >= line.width
+        && let Some(g) = line.glyphs.last()
+    {
+        return edge_hit(line, g, false);
     }
     let Some(best) = pick_nearest_glyph(&line.glyphs, x) else {
         return HitPosition {
@@ -498,15 +531,16 @@ fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
         };
     };
     let mid = best.advance.mul_add(0.5, best.x);
-    let (byte_index, affinity) = if x < mid {
+    // The cluster start sits at the glyph's LOGICAL leading edge: the visual
+    // LEFT for an LTR glyph, the visual RIGHT for an RTL one. So the half of
+    // the glyph nearest the leading edge picks this cluster (downstream); the
+    // other half picks the next cluster boundary (upstream). "Next" is the
+    // smallest recorded cluster greater than this one, not `+1`, so a
+    // multibyte codepoint (e.g. the 2-byte `é`) is not split mid-sequence.
+    let near_leading = if best.is_rtl() { x >= mid } else { x < mid };
+    let (byte_index, affinity) = if near_leading {
         (best.cluster as usize, TextAffinity::Downstream)
     } else {
-        // "After this glyph" is the next cluster boundary, NOT cluster+1: a
-        // multibyte codepoint (e.g. the 2-byte `é`) spans >1 byte, so a +1
-        // floor lands mid-codepoint, which the caller then snaps back BEFORE
-        // the glyph (off by a whole codepoint). The shaper records every
-        // cluster offset, so the true post-glyph boundary is the smallest
-        // cluster greater than this one (or the line end for the last glyph).
         (
             next_cluster_after(line, best.cluster) as usize,
             TextAffinity::Upstream,
@@ -515,6 +549,26 @@ fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
     HitPosition {
         byte_index,
         affinity,
+    }
+}
+
+/// Resolve the hit at one visual edge of glyph `g` (`visual_left` picks its
+/// left edge, else its right). The glyph's leading (logical-start) edge is
+/// its visual left for LTR and its visual right for RTL, so the caret is the
+/// cluster start (downstream) at the leading edge and the next boundary
+/// (upstream) at the trailing edge.
+fn edge_hit(line: &LayoutLine, g: &LineGlyph, visual_left: bool) -> HitPosition {
+    let leading_is_left = !g.is_rtl();
+    if visual_left == leading_is_left {
+        HitPosition {
+            byte_index: g.cluster as usize,
+            affinity: TextAffinity::Downstream,
+        }
+    } else {
+        HitPosition {
+            byte_index: next_cluster_after(line, g.cluster) as usize,
+            affinity: TextAffinity::Upstream,
+        }
     }
 }
 
@@ -532,10 +586,6 @@ fn pick_nearest_glyph(glyphs: &[LineGlyph], x: f32) -> Option<&LineGlyph> {
     Some(best)
 }
 
-fn first_cluster(line: &LayoutLine) -> u32 {
-    line.glyphs.first().map_or(line.byte_start, |g| g.cluster)
-}
-
 /// Byte offset of the cluster boundary immediately after `cluster` within the
 /// line — i.e. the real UTF-8 width of the glyph at `cluster`, taken from the
 /// shaper's recorded cluster offsets rather than guessed. Returns `byte_end`
@@ -549,51 +599,81 @@ fn next_cluster_after(line: &LayoutLine, cluster: u32) -> u32 {
         .unwrap_or(line.byte_end)
 }
 
-/// ponytail: display-only bidi ceiling (the reviewer adversarial review,
-/// 2026-07-13) — discards `pos.affinity`, so at a mixed-direction
-/// boundary the same byte index can't distinguish the two distinct
-/// visual caret positions upstream/downstream affinity is supposed to
-/// resolve. Upgrade path: retain bidi level/run-boundary metadata in
-/// `LayoutLine` and resolve caret x using both byte index AND
-/// affinity, with exact-edge and dual-affinity tests for pure RTL,
-/// embedded RTL, and wrapped mixed lines. Tracked in
-/// `docs/followups.md`.
-fn caret_x_in_line(line: &LayoutLine, pos: HitPosition) -> f32 {
-    caret_x_for_byte(line, pos.byte_index)
+/// Resolve the physical caret x for `(byte, affinity)` on `line`, correct
+/// across bidi runs.
+///
+/// `line.glyphs` is in VISUAL (paint) order after the Wave 4 reorder, but
+/// each glyph carries its logical `cluster` and bidi `level`, so the caret
+/// is placed relative to the glyph its byte + affinity picks in LOGICAL
+/// order, using that glyph's direction:
+///
+/// - **Downstream** binds the caret to the glyph that *starts* at `byte`
+///   (the next glyph logically), at that glyph's leading edge.
+/// - **Upstream** binds it to the glyph that *ends* at `byte` (the previous
+///   glyph logically), at that glyph's trailing edge.
+///
+/// A glyph's leading/trailing edge is its left/right for LTR and swapped
+/// for RTL, so a caret at a run boundary resolves to two distinct visual x
+/// positions per affinity, and a pure-RTL line's logical start sits at the
+/// visual right edge (not `0.0`).
+/// Emit one selection rectangle for a completed visual span `(left, right)`
+/// on `line`, skipping empty spans.
+fn emit_span(span: Option<(f32, f32)>, line: &LayoutLine, f: &mut impl FnMut(Rect)) {
+    if let Some((l, r)) = span
+        && r > l
+    {
+        f(Rect::new(
+            Point::new(l, line.line_top()),
+            r - l,
+            line.height,
+        ));
+    }
 }
 
-/// Resolve the physical x for logical byte `byte` on `line`.
-///
-/// `line.glyphs` is stored in VISUAL (paint) order since the Wave 4
-/// bidi reorder — a plain "first glyph in iteration order with
-/// `cluster >= target`" search (the pre-reorder implementation) picks
-/// the wrong glyph whenever a line has more than one bidi run, because
-/// visual-iteration order no longer tracks ascending cluster order.
-/// The exact-match / order-independent-nearest search below is
-/// correct regardless of how many runs or directions the line mixes.
-///
-/// ponytail: the two fast paths (`target <= line.byte_start` -> 0.0,
-/// `target >= line.byte_end` -> `line.width`) still assume the
-/// logical line start/end is always the visual left/right edge —
-/// true for an LTR-base line, false for a pure-RTL-base line (whose
-/// logical start renders at the visual RIGHT edge). See
-/// [`caret_x_in_line`]'s ceiling note; same upgrade path.
-fn caret_x_for_byte(line: &LayoutLine, byte: usize) -> f32 {
-    let target = u32_clamp(byte);
-    if target <= line.byte_start {
+fn caret_x_in_line(line: &LayoutLine, pos: HitPosition) -> f32 {
+    if line.glyphs.is_empty() {
         return 0.0;
     }
-    if target >= line.byte_end {
-        return line.width;
+    let target = u32_clamp(pos.byte_index);
+    match pos.affinity {
+        TextAffinity::Downstream => line
+            .glyphs
+            .iter()
+            .find(|g| g.cluster == target)
+            .or_else(|| {
+                line.glyphs
+                    .iter()
+                    .filter(|g| g.cluster > target)
+                    .min_by_key(|g| g.cluster)
+            })
+            .map_or_else(
+                || {
+                    // No glyph starts at/after `target` — it is the logical
+                    // line end. Sit at the last logical glyph's trailing edge.
+                    line.glyphs
+                        .iter()
+                        .max_by_key(|g| g.cluster)
+                        .map_or(line.width, LineGlyph::trailing_edge)
+                },
+                LineGlyph::leading_edge,
+            ),
+        TextAffinity::Upstream => line
+            .glyphs
+            .iter()
+            .filter(|g| g.cluster < target)
+            .max_by_key(|g| g.cluster)
+            .map_or_else(
+                || {
+                    // Nothing before `target` — the logical line start. Sit at
+                    // the first logical glyph's leading edge.
+                    line.glyphs
+                        .iter()
+                        .min_by_key(|g| g.cluster)
+                        .map_or(0.0, LineGlyph::leading_edge)
+                },
+                LineGlyph::trailing_edge,
+            ),
     }
-    if let Some(g) = line.glyphs.iter().find(|g| g.cluster == target) {
-        return g.x;
-    }
-    line.glyphs
-        .iter()
-        .filter(|g| g.cluster >= target)
-        .min_by_key(|g| g.cluster)
-        .map_or(line.width, |g| g.x)
 }
 
 const fn order_positions(a: HitPosition, b: HitPosition) -> (HitPosition, HitPosition) {

@@ -292,6 +292,14 @@ fn checkbox_indicator(
                 .justify_content(JustifyContent::Center),
         )
         .class("rounded-md")
+        // 1px muted outline so the box reads as a checkbox against a
+        // same-tone surface. Without it the near-white `bg-surface` box
+        // vanishes into the panel and only the inner mark shows, so an
+        // unchecked box is invisible and a checked one reads as a bullet.
+        // (The old "renderer has no border primitive" note is stale —
+        // DR-057 wired the border stroke.)
+        .class("border")
+        .class("border-border")
         .class(CHECKBOX_ANIM_BASE)
         .style_reactive(move || {
             checkbox_variant(tone, checked.get()).state(binary_style_state(interaction, disabled))

@@ -80,6 +80,9 @@ pub(crate) struct SpritePipeline {
     /// until the first call that needs it.
     builtin_atlas_slot: Option<usize>,
     builtin_icon_slots: [Option<usize>; BUILTIN_ICON_ATLAS_COUNT],
+    /// `ImageSource::id` → registered atlas id, so a raster image uploads
+    /// its texture exactly once however many frames or nodes draw it.
+    image_slots: std::collections::HashMap<u64, u32>,
 }
 
 impl SpritePipeline {
@@ -108,7 +111,35 @@ impl SpritePipeline {
             sampler,
             builtin_atlas_slot: None,
             builtin_icon_slots: [None; BUILTIN_ICON_ATLAS_COUNT],
+            image_slots: std::collections::HashMap::new(),
         }
+    }
+
+    /// Resolve a raster image to a registered atlas id, uploading its
+    /// pixels exactly once per content id. Returns `u32::MAX` when the
+    /// registry is full or the pixels fail atlas validation (the sprite
+    /// draw then no-ops, same as any invalid atlas id).
+    pub(crate) fn register_image(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        source: &sigil_kernel::ImageSource,
+    ) -> u32 {
+        if let Some(&id) = self.image_slots.get(&source.id()) {
+            return id;
+        }
+        let id = self.register_atlas(
+            device,
+            queue,
+            &AtlasDesc {
+                bytes: source.rgba(),
+                width: source.width(),
+                height: source.height(),
+                format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            },
+        );
+        self.image_slots.insert(source.id(), id);
+        id
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {

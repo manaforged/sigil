@@ -14,6 +14,7 @@ use skrifa::{FontRef, MetadataProvider};
 use smallvec as _;
 use tracing as _;
 use unicode_bidi as _;
+use unicode_linebreak as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 
@@ -80,6 +81,56 @@ fn line_count_is_one_for_short_text() {
     let e = engine();
     let para = e.layout_paragraph("Hi", None).unwrap();
     assert_eq!(para.line_count(), 1);
+}
+
+/// UAX #14 glue: a no-break space (U+00A0) must keep its neighbours on
+/// one line even when the same width wraps the ordinary-space version.
+/// The pre-UAX#14 breaker treated U+00A0 as ordinary whitespace and
+/// split it — this is the regression pin for that fix.
+#[test]
+fn nbsp_glues_across_a_wrap_boundary() {
+    let e = engine();
+    // Width that comfortably wraps "10 km" but is narrower than the full
+    // run, so the ordinary space is the only thing that can break.
+    let full = e.layout_paragraph("10 km", None).unwrap().width();
+    let limit = Some(full * 0.6);
+
+    let spaced = e.layout_paragraph("10 km", limit).unwrap();
+    let glued = e.layout_paragraph("10\u{00A0}km", limit).unwrap();
+
+    assert!(
+        spaced.line_count() >= 2,
+        "an ordinary space must wrap at this width, got {} line(s)",
+        spaced.line_count()
+    );
+    assert_eq!(
+        glued.line_count(),
+        1,
+        "U+00A0 is glue and must never introduce a soft break"
+    );
+}
+
+/// UAX #14 hyphen: a break is permitted after U+002D, so a hyphenated
+/// run wraps, while the same characters with no hyphen have no soft
+/// break opportunity and overflow on a single line.
+#[test]
+fn hyphen_offers_a_break_but_solid_run_does_not() {
+    let e = engine();
+    let limit = Some(e.layout_paragraph("aaa-", None).unwrap().width() * 1.2);
+
+    let hyphenated = e.layout_paragraph("aaa-bbb-ccc", limit).unwrap();
+    let solid = e.layout_paragraph("aaabbbccc", limit).unwrap();
+
+    assert!(
+        hyphenated.line_count() >= 2,
+        "a hyphenated run must wrap after the hyphen, got {} line(s)",
+        hyphenated.line_count()
+    );
+    assert_eq!(
+        solid.line_count(),
+        1,
+        "a run with no break opportunity overflows on one line"
+    );
 }
 
 #[test]

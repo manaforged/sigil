@@ -10,6 +10,7 @@ use arboard as _;
 use criterion as _;
 use image as _;
 use pollster as _;
+use sigil_bidi as _;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wgpu as _;

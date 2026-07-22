@@ -9,7 +9,7 @@
 
 use std::cell::{Cell, Ref, RefCell};
 
-use sigil_hal::TextEngine;
+use sigil_hal::{ParagraphMetrics, TextEngine};
 use sigil_style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -95,6 +95,66 @@ impl OwnedTextEngine {
             .borrow_mut()
             .insert(text, max_width, style, para.clone());
         Ok(para)
+    }
+
+    /// Lay out `text` as a single line truncated to fit `max_width`, with a
+    /// trailing ellipsis (`…`) when it does not fit (CSS `text-overflow:
+    /// ellipsis`). If the text already fits, the untruncated single-line
+    /// paragraph is returned unchanged; if not even the ellipsis fits, the
+    /// bare ellipsis is returned (the caller's clip handles the rest).
+    ///
+    /// The fitting prefix is found by binary search over character
+    /// boundaries — `O(log n)` shaping passes, each served by the paragraph
+    /// cache — so a long string costs a handful of measures, not one per
+    /// character.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`TextError`] if paragraph layout fails.
+    pub fn layout_paragraph_ellipsized(
+        &self,
+        text: &str,
+        max_width: f32,
+        style: &TextStyle,
+    ) -> Result<Paragraph, TextError> {
+        const ELLIPSIS: &str = "\u{2026}";
+        let full = self.layout_paragraph_styled(text, None, style)?;
+        if full.width() <= max_width {
+            return Ok(full);
+        }
+        let ellipsis = self.layout_paragraph_styled(ELLIPSIS, None, style)?;
+        if ellipsis.width() >= max_width {
+            return Ok(ellipsis);
+        }
+        let budget = max_width - ellipsis.width();
+
+        // Character-boundary byte offsets, plus the end, as search points.
+        let bounds: Vec<usize> = text
+            .char_indices()
+            .map(|(i, _)| i)
+            .chain(std::iter::once(text.len()))
+            .collect();
+        // Largest `k` such that the prefix ending at `bounds[k]` fits `budget`.
+        let bound_at = |k: usize| bounds.get(k).copied().unwrap_or(text.len());
+        let (mut lo, mut hi) = (0usize, bounds.len() - 1);
+        while lo < hi {
+            let mid = lo + (hi - lo).div_ceil(2);
+            let prefix = text.get(..bound_at(mid)).unwrap_or("");
+            let fits = self
+                .layout_paragraph_styled(prefix, None, style)
+                .is_ok_and(|p| p.width() <= budget);
+            if fits {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        // Trim trailing spaces before the ellipsis so it reads as "word…".
+        let kept = text.get(..bound_at(lo)).unwrap_or("").trim_end();
+        let mut out = String::with_capacity(kept.len() + ELLIPSIS.len());
+        out.push_str(kept);
+        out.push_str(ELLIPSIS);
+        self.layout_paragraph_styled(&out, None, style)
     }
 
     /// Borrow the font collection (for tests + font-registration).
@@ -428,6 +488,12 @@ struct ShapedSegment {
     advance: f32,
     /// `true` if the trailing whitespace can be elided at a line break.
     is_break_opportunity: bool,
+    /// `true` if a UAX #14 line break is permitted immediately BEFORE
+    /// this segment's start byte. Computed once per paragraph by
+    /// [`mark_break_opportunities`]; the greedy breaker may only wrap at
+    /// segments where this holds, so glue (NBSP) and prohibited breaks
+    /// (before closing punctuation) keep their neighbours together.
+    breakable_before: bool,
     /// `true` if this segment is a hard line terminator (`\n`, `\r\n`,
     /// `\r`, U+2028, U+2029). Hard breaks are never shaped and always
     /// force a new line — set at segmentation time so the line breaker
@@ -494,6 +560,7 @@ fn shape_segments(
                 run: GlyphRun::empty(),
                 advance: 0.0,
                 is_break_opportunity: true,
+                breakable_before: false,
                 is_hard_break: true,
                 level: 0,
                 script: Script::Common,
@@ -510,7 +577,37 @@ fn shape_segments(
         };
         split_word_into_uniform_runs(&ctx, &levels, &mut out);
     }
+    mark_break_opportunities(text, &mut out);
     out
+}
+
+/// Fill each segment's `breakable_before` from UAX #14 line-break
+/// analysis of the whole paragraph.
+///
+/// `unicode_linebreak::linebreaks` yields the byte index immediately
+/// AFTER each opportunity, i.e. the index a break may fall BEFORE. We
+/// record only `Allowed` (soft) opportunities in a byte-indexed table;
+/// `Mandatory` breaks already travel as `is_hard_break` segments, so
+/// folding them in here would double-count. A segment is breakable-
+/// before when its start byte is such an allowed index — which is why
+/// glue (NBSP), infix punctuation, and closing marks keep their
+/// neighbours together even though they sit on word boundaries.
+///
+/// Face-fallback sub-splits land mid-run, never on a UAX #14 boundary,
+/// so they correctly read `false` and never introduce a wrap inside a
+/// word.
+fn mark_break_opportunities(text: &str, segments: &mut [ShapedSegment]) {
+    let mut allowed = vec![false; text.len().saturating_add(1)];
+    for (index, opportunity) in unicode_linebreak::linebreaks(text) {
+        if matches!(opportunity, unicode_linebreak::BreakOpportunity::Allowed)
+            && let Some(slot) = allowed.get_mut(index)
+        {
+            *slot = true;
+        }
+    }
+    for seg in segments {
+        seg.breakable_before = allowed.get(seg.start as usize).copied().unwrap_or(false);
+    }
 }
 
 /// Recognise the UAX #14 mandatory line-break fragments that UAX #29
@@ -715,6 +812,8 @@ fn push_face_span(
         run,
         advance,
         is_break_opportunity: args.is_break_opportunity,
+        // Set in the paragraph-wide post-pass, mark_break_opportunities.
+        breakable_before: false,
         is_hard_break: false,
         level: args.level,
         script: args.script,
@@ -960,7 +1059,11 @@ fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option
     let Some(limit) = max_width else {
         return false;
     };
-    if seg.is_break_opportunity {
+    // UAX #14: a soft wrap may only fall where a break is permitted
+    // before this segment. Elidable whitespace never starts a line, and
+    // glue / prohibited-break boundaries keep the run intact (overflowing
+    // rather than splitting), matching CSS `overflow-wrap: normal`.
+    if seg.is_break_opportunity || !seg.breakable_before {
         return false;
     }
     if pending.is_empty() {
@@ -1013,6 +1116,7 @@ fn push_visual_line(
             advance: seg.advance,
             byte_start: seg.start,
             byte_end: seg.end,
+            level: seg.level,
             face_slot: seg.face_slot,
         });
     }

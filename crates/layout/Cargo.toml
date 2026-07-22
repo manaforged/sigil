@@ -62,3 +62,7 @@ harness = false
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "resize_rig"
+harness = false

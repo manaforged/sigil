@@ -5,8 +5,8 @@ use core::fmt;
 use smallvec::SmallVec;
 
 use crate::{
-    AlignKind, Dimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, OverflowKind, Px,
-    StyleAtom,
+    AlignKind, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, JustifyKind, OverflowKind,
+    Px, StateSlot, StyleAtom,
 };
 
 const STRUCTURAL_TOKENS: [&str; 77] = [
@@ -109,13 +109,6 @@ pub enum ParseError {
         /// Prefix that was rejected.
         prefix: String,
     },
-    /// Recognised CSS-shaped family with no paint path yet (DR-056 D2:
-    /// a token that parses but cannot render is rejected, never
-    /// silently dropped).
-    NotYetRenderable {
-        /// The rejected token.
-        token: String,
-    },
 }
 
 impl fmt::Display for ParseError {
@@ -132,11 +125,6 @@ impl fmt::Display for ParseError {
             Self::PseudoNotSupported { prefix } => {
                 write!(f, "Pseudo prefix '{prefix}:' is not supported")
             }
-            Self::NotYetRenderable { token } => write!(
-                f,
-                "'{token}' has no paint path yet; shadow-* tokens land with the \
-                 renderer shadow atoms (DR-056)",
-            ),
         }
     }
 }
@@ -161,6 +149,60 @@ pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, Pars
     Ok(atoms)
 }
 
+/// A parsed class token: the overlay slot it targets (`None` for an
+/// unprefixed base token) and the atoms it expands to.
+pub struct StatefulToken {
+    /// Overlay slot the atoms belong to, or `None` for base atoms.
+    pub slot: Option<StateSlot>,
+    /// Atoms the token body expands to.
+    pub atoms: SmallVec<[StyleAtom; 2]>,
+}
+
+/// Parse a single class token that may carry a state prefix.
+///
+/// `hover:` / `focus:` / `active:` (or `pressed:`) / `disabled:` route into
+/// their [`StateSlot`]; an unprefixed token yields base atoms; any other
+/// prefix errors exactly as [`parse_class_string`] would.
+///
+/// This is the stateful counterpart of [`parse_class_string`]: it is what
+/// lets `interactive(...).class("bg-surface hover:bg-accent-9")` express a
+/// hover overlay through a class string instead of a `.hover(|s| …)`
+/// closure. A plain `container().class(...)` still rejects state prefixes,
+/// because a bare container has no interaction channel to drive them.
+///
+/// # Errors
+///
+/// Returns a [`ParseError`] for a responsive prefix, an unknown pseudo
+/// prefix, or an unknown utility in the token body.
+pub fn parse_stateful_token(token: &str) -> Result<StatefulToken, ParseError> {
+    let Some((prefix, rest)) = token.split_once(':') else {
+        return Ok(StatefulToken {
+            slot: None,
+            atoms: parse_class_string(token)?.into_iter().collect(),
+        });
+    };
+    let slot = match prefix {
+        "hover" => StateSlot::Hovered,
+        "focus" => StateSlot::Focused,
+        "active" | "pressed" => StateSlot::Pressed,
+        "disabled" => StateSlot::Disabled,
+        "sm" | "md" | "lg" => {
+            return Err(ParseError::ResponsiveNotSupported {
+                prefix: prefix.to_owned(),
+            });
+        }
+        _ => {
+            return Err(ParseError::PseudoNotSupported {
+                prefix: prefix.to_owned(),
+            });
+        }
+    };
+    Ok(StatefulToken {
+        slot: Some(slot),
+        atoms: parse_class_string(rest)?.into_iter().collect(),
+    })
+}
+
 fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
     if malformed_theme_token(token) {
         return Err(unknown(token));
@@ -168,6 +210,7 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
     match token {
         "flex" => return Ok(StyleAtom::Display(DisplayKind::Flex)),
         "block" => return Ok(StyleAtom::Display(DisplayKind::Block)),
+        "grid" => return Ok(StyleAtom::Display(DisplayKind::Grid)),
         "hidden" => return Ok(StyleAtom::Display(DisplayKind::None)),
         "flex-row" => return Ok(StyleAtom::FlexDirection(FlexDir::Row)),
         "flex-col" => return Ok(StyleAtom::FlexDirection(FlexDir::Column)),
@@ -201,12 +244,11 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "shrink" => return Ok(StyleAtom::FlexShrink(1000)),
         "shrink-0" => return Ok(StyleAtom::FlexShrink(0)),
         "border" => return Ok(StyleAtom::BorderWidth(Px(1))),
+        "shadow" => return Ok(StyleAtom::Shadow(Elevation::Base)),
         _ => {}
     }
-    if token.starts_with("shadow-") {
-        return Err(ParseError::NotYetRenderable {
-            token: token.to_owned(),
-        });
+    if let Some(atom) = shadow_atom(token) {
+        return Ok(atom);
     }
     parse_prefixed_token(token).ok_or_else(|| unknown(token))
 }
@@ -253,7 +295,33 @@ fn parse_prefixed_token(token: &str) -> Option<StyleAtom> {
         .or_else(|| justify_atom(token))
         .or_else(|| opacity_atom(token))
         .or_else(|| border_atom(token))
+        .or_else(|| grid_atom(token))
         .or_else(|| theme_atom(token))
+}
+
+/// `grid-cols-N` / `grid-rows-N` map to N equal grid tracks (and imply
+/// `display: grid` at the layout adapter).
+fn grid_atom(token: &str) -> Option<StyleAtom> {
+    if let Some(n) = token.strip_prefix("grid-cols-") {
+        return n.parse::<u16>().ok().map(StyleAtom::GridColumns);
+    }
+    if let Some(n) = token.strip_prefix("grid-rows-") {
+        return n.parse::<u16>().ok().map(StyleAtom::GridRows);
+    }
+    None
+}
+
+/// `shadow-<level>` maps to a drop-shadow elevation preset. Bare
+/// `shadow` (the Tailwind default) is handled in `parse_token`.
+fn shadow_atom(token: &str) -> Option<StyleAtom> {
+    let level = match token {
+        "shadow-sm" => Elevation::Sm,
+        "shadow-md" => Elevation::Md,
+        "shadow-lg" => Elevation::Lg,
+        "shadow-xl" => Elevation::Xl,
+        _ => return None,
+    };
+    Some(StyleAtom::Shadow(level))
 }
 
 /// `border-N` is a literal pixel width (Tailwind shape: `border-2` is

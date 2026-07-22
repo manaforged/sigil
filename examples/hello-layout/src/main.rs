@@ -60,6 +60,7 @@ const fn kind_name(kind: &NodeType) -> &'static str {
     match kind {
         NodeType::Container => "container",
         NodeType::Text { .. } => "text",
+        NodeType::Image { .. } => "image",
         NodeType::Fragment => "fragment",
     }
 }

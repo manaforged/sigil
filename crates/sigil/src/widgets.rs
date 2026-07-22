@@ -17,6 +17,7 @@ mod dropdown;
 mod floating_text;
 mod gauge;
 mod icon;
+mod image;
 pub mod interactive;
 pub mod layout_ext;
 mod menu;
@@ -57,6 +58,9 @@ pub use floating_text::{
 };
 pub use gauge::{GaugeBuilder, gauge};
 pub use icon::{IconBuilder, icon};
+#[cfg(feature = "image-decode")]
+pub use image::image_bytes;
+pub use image::{ImageBuilder, image_rgba};
 pub use interactive::{InteractiveBuilder, interactive};
 pub use menu::{MenuBuilder, MenuItem, menu};
 pub use modal::{ModalBuilder, modal};

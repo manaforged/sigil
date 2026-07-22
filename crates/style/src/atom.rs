@@ -50,6 +50,8 @@ pub enum DisplayKind {
     Flex,
     /// Block layout.
     Block,
+    /// Grid layout.
+    Grid,
     /// No layout box.
     None,
 }
@@ -137,6 +139,25 @@ pub struct TransitionId(pub u16);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MillisU16(pub u16);
 
+/// Drop-shadow elevation preset, following the Tailwind `shadow-*` scale.
+///
+/// A semantic level rather than raw offset/blur/spread values: the paint
+/// layer owns the geometry so the scale stays consistent across widgets
+/// and the style vocabulary carries intent (`shadow-lg`), not pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Elevation {
+    /// `shadow-sm` — a hairline lift (subtle controls).
+    Sm,
+    /// `shadow` — the default resting card/control elevation.
+    Base,
+    /// `shadow-md` — hovered cards, popovers.
+    Md,
+    /// `shadow-lg` — dropdowns, menus.
+    Lg,
+    /// `shadow-xl` — modals, dialogs.
+    Xl,
+}
+
 /// Renderer-facing style values after theme resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderStyle {
@@ -152,6 +173,9 @@ pub struct RenderStyle {
     /// "currentColor": the paint layer falls back to the resolved text
     /// colour, then the theme's on-surface (the CSS border shape).
     pub border_color: Option<Rgba8>,
+    /// Drop-shadow elevation, if any. The paint layer maps the level to
+    /// offset/blur/spread and draws it under the node's rounded rect.
+    pub shadow: Option<Elevation>,
     /// Opacity encoded as `value * 10000`.
     pub opacity: u16,
 }
@@ -164,6 +188,7 @@ impl Default for RenderStyle {
             border_radius: None,
             border_width: None,
             border_color: None,
+            shadow: None,
             opacity: 10_000,
         }
     }
@@ -232,6 +257,11 @@ pub enum StyleAtom {
     FlexGrow(u16),
     /// Flex shrink encoded as `value * 1000`.
     FlexShrink(u16),
+    /// `grid-cols-N`: N equal `1fr` grid columns (implies `display: grid`).
+    GridColumns(u16),
+    /// `grid-rows-N`: N equal auto grid rows (currently informational; row
+    /// heights are content-sized, so this only pins the implied grid mode).
+    GridRows(u16),
     /// Concrete or nested theme background colour.
     BackgroundColor(ColorAtom),
     /// Runtime theme-token background colour.
@@ -273,6 +303,8 @@ pub enum StyleAtom {
     BorderThemeRef(&'static str),
     /// Border colour taken from the active tone scale at `step`.
     BorderToneStep(u8),
+    /// Drop-shadow elevation preset (Tailwind `shadow-*` scale).
+    Shadow(Elevation),
     /// Opacity encoded as `value * 10000`.
     Opacity(u16),
     /// Font size.

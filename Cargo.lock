@@ -6400,6 +6400,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sigil-bidi"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "unicode-bidi",
+]
+
+[[package]]
 name = "sigil-events"
 version = "0.1.0-alpha.1"
 dependencies = [
@@ -6586,6 +6593,7 @@ dependencies = [
  "smallvec",
  "tracing",
  "unicode-bidi",
+ "unicode-linebreak",
  "unicode-script",
  "unicode-segmentation",
 ]
@@ -6602,6 +6610,7 @@ dependencies = [
  "sigil-animation",
  "sigil-animation-runtime",
  "sigil-app",
+ "sigil-bidi",
  "sigil-events",
  "sigil-hal",
  "sigil-kernel",

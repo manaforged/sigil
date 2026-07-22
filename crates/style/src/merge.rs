@@ -113,6 +113,8 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::JustifyContent(_)
         | StyleAtom::FlexGrow(_)
         | StyleAtom::FlexShrink(_)
+        | StyleAtom::GridColumns(_)
+        | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::TextColor(_)
@@ -122,6 +124,7 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
+        | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
@@ -215,6 +218,8 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::JustifyContent(_) => ResolvedSlot::JustifyContent,
         StyleAtom::FlexGrow(_) => ResolvedSlot::FlexGrow,
         StyleAtom::FlexShrink(_) => ResolvedSlot::FlexShrink,
+        StyleAtom::GridColumns(_) => ResolvedSlot::GridColumns,
+        StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
         StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::BgToneStep(_) => ResolvedSlot::BackgroundColor,
@@ -227,6 +232,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::BorderColor(_) | StyleAtom::BorderThemeRef(_) | StyleAtom::BorderToneStep(_) => {
             ResolvedSlot::BorderColor
         }
+        StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
@@ -266,11 +272,14 @@ enum ResolvedSlot {
     JustifyContent,
     FlexGrow,
     FlexShrink,
+    GridColumns,
+    GridRows,
     BackgroundColor,
     TextColor,
     BorderRadius,
     BorderWidth,
     BorderColor,
+    Shadow,
     Opacity,
     FontSize,
     FontWeight,

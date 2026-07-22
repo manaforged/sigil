@@ -21,8 +21,8 @@ pub use fills::{
 };
 pub use glyph::{DrawGlyphRun, GlyphRun};
 pub use payloads::{
-    DrawDecoration, DrawGradient, DrawPattern, DrawRect, DrawSprite, SceneDecorationStyle,
-    SceneGradientStyle, ScenePatternStyle, SceneRectStyle, SceneSpriteStyle,
+    DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
+    SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle, SceneSpriteStyle,
 };
 
 /// A scene represented as ordered drawing and state commands.
@@ -73,6 +73,7 @@ impl CommandScene {
                 | SceneCommand::Pattern(_)
                 | SceneCommand::DrawShadow { .. }
                 | SceneCommand::Sprite(_)
+                | SceneCommand::Image(_)
                 | SceneCommand::Decoration(_)
                 | SceneCommand::PushClip(_)
                 | SceneCommand::PopClip
@@ -141,6 +142,8 @@ pub enum SceneCommand {
     GlyphRun(DrawGlyphRun),
     /// Draw a sprite from an atlas (mono / subpixel / poly).
     Sprite(DrawSprite),
+    /// Draw a raster image (decoded pixels uploaded to a texture at paint).
+    Image(DrawImage),
     /// Draw a text decoration (underline / strikethrough / wavy underline).
     Decoration(DrawDecoration),
 }

@@ -19,6 +19,7 @@ use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -136,10 +137,18 @@ pub(crate) fn wrap(node: impl IntoNode + 'static) -> NodeBuilder {
 }
 
 fn save_render(filename: &str, build: impl FnOnce(&mut Cx) -> sigil_kernel::NodeId) {
+    save_render_sized(filename, [1100, 800], build);
+}
+
+fn save_render_sized(
+    filename: &str,
+    size: [u32; 2],
+    build: impl FnOnce(&mut Cx) -> sigil_kernel::NodeId,
+) {
     let img = render_widget_to_png_with(
         build,
         InteractionMode::Default,
-        [1100, 800],
+        size,
         (1.0, 1.0),
         Box::new(DefaultTextMeasure::new()),
     );
@@ -159,6 +168,29 @@ fn save_render(filename: &str, build: impl FnOnce(&mut Cx) -> sigil_kernel::Node
 #[test]
 fn render_playground_to_png() {
     save_render("playground.png", |cx| cx.add(root()));
+}
+
+#[test]
+fn render_playground_full_to_png() {
+    save_render_sized("playground_full.png", [1100, 2048], |cx| {
+        let content = container()
+            .role(Role::Main)
+            .label("Widget playground")
+            .layout(
+                LayoutStyle::flex_column()
+                    .padding(PAGE_PADDING)
+                    .gap(SECTION_GAP)
+                    .fill_width(),
+            )
+            .class("w-full bg-surface")
+            .child(page_header())
+            .child(form_section())
+            .child(display_section())
+            .child(navigation_section())
+            .child(container_section())
+            .child(reactive_section());
+        cx.add(content)
+    });
 }
 
 #[test]

@@ -149,3 +149,37 @@ fn shift_down_extends_selection_to_next_line() {
         "selection spans the line break"
     );
 }
+
+#[test]
+fn rtl_arrow_keys_move_visually() {
+    // Hebrew "אבג" (pure RTL, 2 bytes/letter). Displayed right-to-left, so
+    // ArrowRight (visual-right) steps the caret LOGICALLY BACKWARD and
+    // ArrowLeft forward. `new` places the caret at the logical end, which
+    // is the visual-LEFT edge.
+    let mut edit = TextEdit::new("אבג".to_owned());
+    assert_eq!(edit.caret(), 6, "caret starts at logical end");
+    edit.move_right();
+    assert_eq!(edit.caret(), 4, "visual-right = logical back");
+    edit.move_right();
+    assert_eq!(edit.caret(), 2);
+    edit.move_right();
+    assert_eq!(
+        edit.caret(),
+        0,
+        "reached the visual-right edge (logical start)"
+    );
+    edit.move_right();
+    assert_eq!(edit.caret(), 0, "no move past the visual-right edge");
+    edit.move_left();
+    assert_eq!(edit.caret(), 2, "visual-left = logical forward");
+}
+
+#[test]
+fn ltr_arrow_keys_stay_logical() {
+    let mut edit = TextEdit::new("abc".to_owned());
+    edit.place_caret(1);
+    edit.move_right();
+    assert_eq!(edit.caret(), 2);
+    edit.move_left();
+    assert_eq!(edit.caret(), 1);
+}

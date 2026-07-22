@@ -372,7 +372,8 @@ fn layout_children(
         // stacking pass for vertical advance + margin collapse.
         let resolved = match style.display {
             Display::Flex => solve_flex_child(solver, child, inner_cb, child_border_origin)?,
-            Display::Block | Display::None | Display::Grid => {
+            Display::Grid => solve_grid_child(solver, child, inner_cb, child_border_origin)?,
+            Display::Block | Display::None => {
                 solve_box(solver, child, inner_cb, child_border_origin)?
             }
         };
@@ -418,6 +419,42 @@ fn solve_flex_child(
     let computed = solver.boxed(child.id()).ok_or_else(|| {
         LayoutError::LayoutInvalid(format!(
             "flex subtree did not write a box for {:?}",
+            child.id()
+        ))
+    })?;
+    Ok(Resolved {
+        box_w: computed.w,
+        box_h: computed.h,
+        edges,
+    })
+}
+
+/// Lay out a `display: grid` child of a block parent through the
+/// [`crate::grid::GridSolver`], mirroring [`solve_flex_child`]: the grid
+/// writes its own box, then we re-read it for the stacking pass.
+fn solve_grid_child(
+    solver: &BlockSolver<'_>,
+    child: NodeRef<'_>,
+    inner_cb: Size<f32>,
+    child_border_origin: Position2,
+) -> Result<Resolved, LayoutError> {
+    let style = child.style();
+    let edges = NodeEdges::build(style, inner_cb.width);
+    let scope = solver.scope();
+    let nested = crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
+    let grid = crate::grid::GridSolver::new(nested);
+    let border_w = match style.size.width {
+        crate::style_data::Dimension::Px(px) => px,
+        _ => inner_cb.width,
+    };
+    let pre = Position2 {
+        x: child_border_origin.x - edges.margin.left.unwrap_or(0.0),
+        y: child_border_origin.y - edges.margin_top(),
+    };
+    grid.solve_at(child, border_w, pre)?;
+    let computed = solver.boxed(child.id()).ok_or_else(|| {
+        LayoutError::LayoutInvalid(format!(
+            "grid subtree did not write a box for {:?}",
             child.id()
         ))
     })?;

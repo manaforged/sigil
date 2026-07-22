@@ -114,17 +114,18 @@ impl LayoutDrive {
     }
 
     /// Replace the optional text measurement context for a node.
-    pub fn set_text(
+    pub(crate) fn set_text(
         &mut self,
         node: NodeHandle,
         content: Option<TextContent>,
         style: Option<TextStyle>,
-        wrap: bool,
+        flags: crate::forest::TextFlags,
     ) -> Result<(), LayoutError> {
         let text = content.map(|content| LayoutText {
             content,
             style,
-            wrap,
+            wrap: flags.wrap,
+            ellipsis: flags.ellipsis,
         });
         self.forest.set_text(node.0, text)
     }
@@ -255,9 +256,11 @@ impl LayoutDrive {
                 let solver = FlexSolver::new(scope);
                 solver.solve(handle)?;
             }
-            // Grid falls back to BlockSolver until the owned grid solver
-            // lands (post-G2, tracked in docs/followups.md).
-            Display::Block | Display::None | Display::Grid => {
+            Display::Grid => {
+                let solver = crate::grid::GridSolver::new(scope);
+                solver.solve(handle)?;
+            }
+            Display::Block | Display::None => {
                 let solver = BlockSolver::new(scope);
                 solver.solve(handle)?;
             }

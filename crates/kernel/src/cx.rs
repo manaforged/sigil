@@ -224,6 +224,17 @@ impl Cx {
         self.nodes.get_mut(id.key())
     }
 
+    /// Borrow a node mutably WITHOUT marking it dirty.
+    ///
+    /// Counterpart to [`Node::attach_untracked`]: the layout engine writes a
+    /// resolved `LayoutResult` back onto each node every frame, and routing
+    /// that through [`Self::get_mut`] would re-dirty the whole tree it just
+    /// laid out. Reserved for writing layout *output*; a real input mutation
+    /// must go through [`Self::get_mut`] so the dirty set and version track it.
+    pub fn get_mut_untracked(&mut self, id: NodeId) -> Option<&mut Node> {
+        self.nodes.get_mut(id.key())
+    }
+
     /// Iterate kernel `NodeId`s mutated since the last `clear_dirty()`
     /// call. When `dirty_all` is set (after `mark_mutated`), yields
     /// every live node id without ever populating the underlying
@@ -390,6 +401,15 @@ impl Cx {
                     out,
                     "Text {} role={:?}",
                     dump_text_content(content),
+                    node.a11y.role
+                );
+            }
+            NodeType::Image { source, .. } => {
+                let _ = writeln!(
+                    out,
+                    "Image {}x{} role={:?}",
+                    source.width(),
+                    source.height(),
                     node.a11y.role
                 );
             }

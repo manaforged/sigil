@@ -345,3 +345,43 @@ fn trap2_opacity_clamps_at_boundaries() {
     let one = styled().opacity(1.0);
     assert_eq!(one.style().as_atoms()[0], StyleAtom::Opacity(10_000));
 }
+
+/// `Style::class` routes each state-prefixed token into its overlay slot
+/// while unprefixed tokens stay in the base list — the parse half of the
+/// `hover:`/`focus:`/`active:`/`disabled:` class support.
+#[test]
+fn class_routes_state_prefixes_to_overlay_slots() {
+    let s = sigil_style::Style::new()
+        .class("bg-surface hover:bg-surface-hover active:bg-surface-pressed focus:rounded-md disabled:opacity-50");
+
+    assert_eq!(s.as_atoms(), [StyleAtom::BackgroundThemeRef("surface")]);
+    assert_eq!(
+        s.hover_atoms(),
+        [StyleAtom::BackgroundThemeRef("surface-hover")]
+    );
+    assert_eq!(
+        s.pressed_atoms(),
+        [StyleAtom::BackgroundThemeRef("surface-pressed")]
+    );
+    assert_eq!(
+        s.focus_atoms(),
+        [StyleAtom::BorderRadius(sigil_style::Px(6))]
+    );
+    assert_eq!(s.disabled_atoms(), [StyleAtom::Opacity(5_000)]);
+}
+
+/// Multiple tokens for the same slot accumulate, and an unknown / plain
+/// unsupported prefix is skipped without derailing the rest of the string.
+#[test]
+fn class_accumulates_slot_and_skips_unknown() {
+    let s = sigil_style::Style::new().class("hover:bg-accent hover:rounded-md bogus:x px-4");
+
+    assert_eq!(
+        s.hover_atoms(),
+        [
+            StyleAtom::BackgroundThemeRef("accent"),
+            StyleAtom::BorderRadius(sigil_style::Px(6)),
+        ]
+    );
+    assert_eq!(s.as_atoms(), [StyleAtom::PaddingX(sigil_style::Px(16))]);
+}

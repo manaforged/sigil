@@ -15,6 +15,7 @@ use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -128,12 +129,13 @@ fn text_field_pointer_drag_selects_then_type_replaces() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        // The text region lays out at global x=13, y=52..68 (verified via the
-        // layout tree). Local x = global − 13, then 10 px/byte (StubGeometry):
-        // global 14 → byte 0, global 64 → byte 5 (the space after "hello").
-        router.route(&mut cx, &layout, pointer_down(14.0, 60.0));
-        router.route(&mut cx, &layout, pointer_move(64.0, 60.0));
-        router.route(&mut cx, &layout, pointer_up(64.0, 60.0));
+        // The field hugs its single line (no longer fills the 120 px canvas),
+        // so the text region sits near the top: global x=13, y≈10..26. Local
+        // x = global − 13, then 10 px/byte (StubGeometry): global 14 → byte 0,
+        // global 64 → byte 5 (the space after "hello").
+        router.route(&mut cx, &layout, pointer_down(14.0, 18.0));
+        router.route(&mut cx, &layout, pointer_move(64.0, 18.0));
+        router.route(&mut cx, &layout, pointer_up(64.0, 18.0));
         router.route(&mut cx, &layout, type_char("q", PhysicalKey::KeyQ));
 
         assert_eq!(

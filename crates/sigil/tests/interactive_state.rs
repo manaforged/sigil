@@ -18,6 +18,7 @@ use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -29,7 +30,7 @@ use wgpu as _;
 use sigil::prelude::*;
 use sigil_hal::{Point, PointerEventInit};
 use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_style::Rgba8;
+use sigil_style::{Rgba8, Theme};
 
 const HOVER_BG: Rgba8 = Rgba8 {
     r: 10,
@@ -129,6 +130,44 @@ fn interactive_hover_overlay_paints_on_pointer_enter() {
         assert!(
             !rect_colors(&cx, root).contains(&HOVER_BG),
             "pointer leave must return to rest"
+        );
+    });
+}
+
+#[test]
+fn interactive_class_hover_prefix_paints_on_pointer_enter() {
+    // The `.class("hover:…")` form must drive the same interaction
+    // channel as the `.hover(|s| …)` closure: a state-prefixed class
+    // populates the overlay slot, and pointer enter repaints it.
+    Runtime::scope("interactive-class-hover", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .theme(Theme::dark())
+                .child(interactive(rest_pane()).class("hover:bg-accent-9")),
+        );
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+
+        let rest = rect_colors(&cx, root);
+        assert!(rest.contains(&REST_BG), "rest state paints the base bg");
+
+        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        let hovered = rect_colors(&cx, root);
+        assert_ne!(
+            rest, hovered,
+            "class hover overlay must repaint on pointer enter"
+        );
+        assert!(
+            !hovered.contains(&REST_BG),
+            "hover slice must override the base bg, got {hovered:?}"
+        );
+
+        router.route(&mut cx, &layout, pointer_move_event(300.0, 300.0));
+        assert_eq!(
+            rect_colors(&cx, root),
+            rest,
+            "pointer leave must restore the rest state"
         );
     });
 }

@@ -258,11 +258,50 @@ pub(crate) fn layout_root(
         padding_box,
         border_origin,
     )?;
+    // Auto-main sizing: a container whose main size is not DEFINITE (no
+    // explicit main length, and no extent the parent's flex pass assigned)
+    // sizes to its CONTENT on the main axis, not to the containing block.
+    // Without this, an auto-height column inside a shorter parent (a scroll
+    // viewport especially) fills the parent's main extent and then §9.7
+    // shrinks its items to fit — crushing stacked rows. Sizing to content
+    // makes `free == 0`, so nothing grows or shrinks and the container
+    // overflows its parent (and scrolls, under a clipping ancestor) instead.
+    // Items that fill are unaffected: `grow` distributes from a definite
+    // container, and an explicit/assigned size keeps `main_definite`.
+    let container_main = if main_is_definite(ctx, style)
+        || !matches!(style.flex_wrap, crate::style_data::FlexWrap::NoWrap)
+    {
+        container_main
+    } else {
+        content_main_size(ctx, style, &items)
+    };
     let lines = collect_lines(ctx, items, style, container_main);
     let placed = place_lines(ctx, lines, style, container_main, container_cross);
     write_items(ctx, &placed, content_origin)?;
     write_container(ctx, node, &edges, border_origin, container_main, &placed);
     Ok(())
+}
+
+/// `true` when the container's MAIN size is definite: an explicit main-axis
+/// length (or `Fill`), or an extent the parent's flex pass assigned. When
+/// false the main size is `auto` and shrinks to content.
+fn main_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
+    let (size_main, _) = main_cross_size(style, ctx.axes);
+    let assigned_main = if ctx.axes.row {
+        ctx.assigned_w
+    } else {
+        ctx.assigned_h
+    };
+    assigned_main.is_some() || !matches!(size_main, Dimension::Auto)
+}
+
+/// Content-based main size of the container: the sum of the items' outer
+/// main bases plus the gaps between them (single-line `NoWrap` shape).
+fn content_main_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, items: &[FlexItem]) -> f32 {
+    let count = items.len();
+    let gap = main_gap(ctx, style, count);
+    let bases: f32 = items.iter().map(FlexItem::outer_main_basis).sum();
+    bases + gap * (count.saturating_sub(1) as f32)
 }
 
 /// Resolved inner content area of the container (main, cross) in px.
@@ -470,6 +509,20 @@ fn place_lines(
     container_cross: f32,
 ) -> Vec<PlacedItem> {
     let line_count = lines.len();
+    // A single line only stretches to the container's cross size when that
+    // size is DEFINITE (explicit `height`/`width` on the cross axis, or an
+    // extent the parent's flex pass assigned). When the cross size is auto,
+    // the container shrinks to fit its content, so the line keeps its own
+    // cross extent — otherwise the auto fallback to the containing block's
+    // cross (in `container_inner_size`) makes `align-items: center` place the
+    // item halfway down an oversized band and inflate the shrink-wrapped box.
+    let (_, size_cross) = main_cross_size(style, ctx.axes);
+    let assigned_cross = if ctx.axes.row {
+        ctx.assigned_h
+    } else {
+        ctx.assigned_w
+    };
+    let cross_definite = assigned_cross.is_some() || !matches!(size_cross, Dimension::Auto);
     for line in &mut lines {
         resolve_flexible(line, container_main);
         line.cross = line_cross_size(line);
@@ -498,7 +551,11 @@ fn place_lines(
         // explicit `Stretch` distributes the free cross space across
         // lines; otherwise lines keep their natural cross size.
         let line_cross = if line_count == 1 {
-            container_cross.max(line.cross)
+            if cross_definite {
+                container_cross.max(line.cross)
+            } else {
+                line.cross
+            }
         } else if matches!(style.align_content, Some(AlignContent::Stretch)) && line_count > 0 {
             container_cross / (line_count as f32).max(1.0)
         } else {
@@ -921,10 +978,23 @@ fn layout_item_subtree(
             let pre = Position2::new(origin.x - m.left, origin.y - m.top);
             layout_root(&nested, node, pre)
         }
-        // `Display::None` skipped upstream in `build_items`; `Grid`
-        // falls back to BlockSolver until the owned grid solver lands
-        // (post-G2, see docs/followups.md).
-        Display::Block | Display::None | Display::Grid => {
+        // A grid child of a flex container runs its own grid solver at the
+        // flex-resolved width; the flex placement pass already baked this
+        // node's margin into `origin`, so feed the pre-margin position.
+        Display::Grid => {
+            let scope = ctx.solver.scope();
+            let nested =
+                crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
+            let edges = NodeEdges::build(style, w);
+            let m = edges.margin.or_zero();
+            let pre = crate::block::Position2 {
+                x: origin.x - m.left,
+                y: origin.y - m.top,
+            };
+            crate::grid::GridSolver::new(nested).solve_at(node, w, pre)
+        }
+        // `Display::None` skipped upstream in `build_items`.
+        Display::Block | Display::None => {
             dispatch_block_subtree(ctx, node, style, origin, w, h, assigned_w)
         }
     }

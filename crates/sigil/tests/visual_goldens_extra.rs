@@ -20,7 +20,8 @@ use criterion as _;
 use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
-use sigil_app as _;
+use sigil_app::DefaultTextMeasure;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -36,6 +37,7 @@ mod golden_support;
 
 use golden_support::{
     InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
+    render_widget_to_png_with,
 };
 
 const DELTA_PCT: f32 = 0.5;
@@ -453,7 +455,7 @@ fn number_field_focused() {
 
 #[test]
 fn hint_overlay_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_with(
         |cx| {
             // Canonical framing (mirrors `kv_row_default`): mount the overlay on
             // a fixed-size `bg-surface` box that fills the inner crop, then wrap
@@ -474,6 +476,10 @@ fn hint_overlay_default() {
         InteractionMode::Default,
         [232, 96],
         (1.0, 1.0),
+        // Two-column chord/description rows: box widths are driven by real
+        // glyph advances, so the deterministic 40px StubMeasure would place
+        // the columns on top of each other. Use the production measure.
+        Box::new(DefaultTextMeasure::new()),
     );
     check("hint_overlay_default", img);
 }
@@ -544,7 +550,7 @@ fn pattern_field() {
 
 #[test]
 fn pattern_kv_grid() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_with(
         |cx| {
             let grid = container()
                 .layout(
@@ -563,6 +569,9 @@ fn pattern_kv_grid() {
         InteractionMode::Default,
         [292, 108],
         (146.0, 54.0),
+        // Key/value columns are sized from real glyph advances; the 40px
+        // StubMeasure would overlap them. Use the production measure.
+        Box::new(DefaultTextMeasure::new()),
     );
     check("pattern_kv_grid", img);
 }

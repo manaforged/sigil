@@ -15,6 +15,7 @@ use image as _;
 use pollster as _;
 use sigil_actions as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;

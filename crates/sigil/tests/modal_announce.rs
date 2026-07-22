@@ -14,6 +14,7 @@ use arboard as _;
 use criterion as _;
 use image as _;
 use pollster as _;
+use sigil_bidi as _;
 use wgpu as _;
 
 use sigil_actions as _;

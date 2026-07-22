@@ -64,6 +64,7 @@ pub(super) fn build_popup(
                 .inset_left(0.0),
         )
         .class("rounded-md")
+        .class("shadow-lg")
         .class(SURFACE_HOVER)
         .style_reactive(move || popup_display(open.get()));
 

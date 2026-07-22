@@ -31,6 +31,9 @@ sigil-layout = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
 arboard = { workspace = true }
+# Bidi visual-order caret stepping for text_edit (its own crate so the
+# unicode-bidi dep stays off this facade's many test targets).
+sigil-bidi = { workspace = true }
 
 # Optional GPU text + render surface for external host engines (e.g. a game engine).
 # Off by default; enabled via the `render` feature. Pure-widget/desktop
@@ -39,10 +42,18 @@ sigil-renderer = { workspace = true, optional = true }
 sigil-text = { workspace = true, optional = true }
 sigil-hal = { workspace = true, optional = true }
 
+# Optional PNG decode for `image_bytes`. Off by default so the core lib
+# carries no image-format decoders; the raw-RGBA `image_rgba` path needs
+# nothing. The workspace `image` dep is already PNG-only + lean.
+image = { workspace = true, optional = true }
+
 [features]
 # Exposes `sigil::{render, text}` — the Slug text pipeline + scene
 # compositing an embedding host drives. See DR-054.
 render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal"]
+# Exposes `image_bytes(&[u8])` — decode an encoded image (PNG) to a
+# widget. `image_rgba` (raw pixels) is always available without this.
+image-decode = ["dep:image"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

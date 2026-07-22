@@ -387,27 +387,18 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
         )
 }
 
-// Down-arrow chevron — a small filled `accent`-coloured swatch pinned
-// to the trigger's right edge. The previous design rendered a Latin
-// `v` glyph over a `surface-pressed` swatch, but the single-character
-// text payload never reached the rasteriser through the 14 px
-// width-clipped block-flow, leaving the swatch reading as
-// "featureless grey square". Switching the swatch to the `accent`
-// token gives it enough visual weight to read as an affordance on
-// its own (high contrast against the trigger's `surface` resting
-// background, ~50 sRGB delta minimum across every state slot).
-// W5.3 owns the richer glyph-or-icon affordance; this fix just
-// restores user-visible "this opens a dropdown" cue.
+// Down-triangle chevron (U+25BE) as a content-sized text leaf. An
+// earlier raw-text `v` glyph never rasterised because it flowed through
+// a 14 px *width-clipped* block, so the fallback was an accent-coloured
+// swatch — visible but reading as a "featureless square", not a menu
+// affordance. A content-sized leaf (no width clip; §4.5 gives text
+// leaves their measured width) paints the real triangle and cannot
+// overflow — it is itself the leaf. In-flow flex child: the label
+// wrapper's `grow(1.0)` eats the free space, so the chevron sits flush
+// at the trailing padding edge whatever the trigger's width.
 fn trigger_chevron() -> impl IntoNode {
-    static CHEVRON_BG: &[sigil_style::StyleAtom] =
-        &[sigil_style::StyleAtom::BackgroundThemeRef("accent")];
-    // In-flow flex child: the label wrapper's `grow(1.0)` eats the free
-    // space, so the chevron sits flush at the trailing padding edge
-    // whatever the trigger's width. It used to be absolutely positioned
-    // at `width - 24`, which only worked for a fixed-width trigger (and
-    // there is no `inset_right` to anchor against instead).
-    container()
-        .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-        .class("rounded-sm")
-        .class(CHEVRON_BG)
+    text("\u{25BE}")
+        .layout(LayoutStyle::block())
+        .class("text-xs")
+        .class("text-on-surface")
 }

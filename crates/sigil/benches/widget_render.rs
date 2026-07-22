@@ -36,6 +36,7 @@ use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_kernel as _;
 use sigil_layout as _;

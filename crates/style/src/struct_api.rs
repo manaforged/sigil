@@ -3,8 +3,9 @@
 use smallvec::SmallVec;
 
 use crate::{
-    AlignKind, ColorAtom, Dimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind, MillisU16,
-    OverflowKind, Px, Rgba8, StyleAtom, TransitionId,
+    AlignKind, ColorAtom, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, JustifyKind,
+    MillisU16, OverflowKind, Px, Rgba8, StateSlot, StyleAtom, TransitionId,
+    parser::{StatefulToken, parse_stateful_token},
 };
 
 /// Chainable struct API for building style atom lists.
@@ -48,6 +49,52 @@ impl Style {
     #[must_use]
     pub fn into_atoms(self) -> SmallVec<[StyleAtom; 16]> {
         self.atoms
+    }
+
+    /// Parse a utility-class string and merge it into this style.
+    ///
+    /// Base tokens append to the base atoms; `hover:` / `focus:` /
+    /// `active:` / `disabled:` tokens append to the matching state-slot
+    /// overlay (see [`parse_stateful_token`](crate::parse_stateful_token)).
+    /// A state overlay only paints once the style drives an interaction
+    /// channel, so route the style through `interactive(…)` or a widget
+    /// builder. Unknown tokens warn and are skipped, matching `.class()`
+    /// on a node.
+    ///
+    /// ```
+    /// use sigil_style::Style;
+    /// let s = Style::new().class("px-4 rounded-md hover:bg-accent-9");
+    /// assert!(!s.hover_atoms().is_empty());
+    /// ```
+    #[must_use]
+    pub fn class(mut self, input: &str) -> Self {
+        for token in input.split(' ').filter(|token| !token.is_empty()) {
+            match parse_stateful_token(token) {
+                Ok(parsed) => self.absorb_token(parsed),
+                Err(err) => {
+                    crate::merge::bump_unknown_class_count();
+                    tracing::warn!(
+                        target: "sigil_style::class",
+                        input,
+                        error = %err,
+                        "unknown class token ignored",
+                    );
+                }
+            }
+        }
+        self
+    }
+
+    /// Route a parsed token into the base atoms or its state-slot overlay.
+    fn absorb_token(&mut self, parsed: StatefulToken) {
+        match parsed.slot {
+            None => self.atoms.extend(parsed.atoms),
+            Some(StateSlot::Rest) => self.rest_atoms.extend(parsed.atoms),
+            Some(StateSlot::Hovered) => self.hover_atoms.extend(parsed.atoms),
+            Some(StateSlot::Focused) => self.focus_atoms.extend(parsed.atoms),
+            Some(StateSlot::Pressed) => self.pressed_atoms.extend(parsed.atoms),
+            Some(StateSlot::Disabled) => self.disabled_atoms.extend(parsed.atoms),
+        }
     }
 
     /// Borrow rest-slot overlay atoms.
@@ -303,6 +350,12 @@ impl Style {
         self.push(StyleAtom::BorderColor(color))
     }
 
+    /// Set a drop-shadow elevation preset (Tailwind `shadow-*` scale).
+    #[must_use]
+    pub fn shadow(self, elevation: Elevation) -> Self {
+        self.push(StyleAtom::Shadow(elevation))
+    }
+
     /// Set a border stroke colour theme token.
     #[must_use]
     pub fn border_theme(self, token: &'static str) -> Self {
@@ -337,6 +390,18 @@ impl Style {
     #[must_use]
     pub fn flex_grow(self, grow: u16) -> Self {
         self.push(StyleAtom::FlexGrow(grow))
+    }
+
+    /// Lay out as a grid of `n` equal `1fr` columns (`grid-cols-N`).
+    #[must_use]
+    pub fn grid_columns(self, n: u16) -> Self {
+        self.push(StyleAtom::GridColumns(n))
+    }
+
+    /// Lay out as a grid with `n` auto rows (`grid-rows-N`).
+    #[must_use]
+    pub fn grid_rows(self, n: u16) -> Self {
+        self.push(StyleAtom::GridRows(n))
     }
 
     /// Set flex shrink encoded as `value * 1000`.

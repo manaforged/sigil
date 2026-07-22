@@ -169,7 +169,22 @@ impl LayoutEngine {
             .cached_key
             .is_some_and(|key| key.cx_generation != cx.mutation_generation());
 
-        if broadcast {
+        // Resize fast-path: the frame is a MISS with an empty dirty set and an
+        // input signature identical to the last compute, so nothing in the
+        // kernel tree changed — only `available` did (a viewport resize is the
+        // common trigger). The kernel->drive mirror is therefore already
+        // current, so skip the O(nodes) `sync` walk (the dominant cost of a
+        // full re-layout) and only re-solve the drive against the new
+        // constraints, then re-publish. Requires a prior mirror on the same Cx.
+        let mirror_current = dirty.is_empty()
+            && self.cached_key.is_some_and(|prev| {
+                prev.cx_instance == cache_key.cx_instance
+                    && prev.root == cache_key.root
+                    && prev.input_signature == cache_key.input_signature
+            });
+        if mirror_current {
+            self.remeasure_and_publish(cx, root, available)?;
+        } else if broadcast {
             self.full_sync_and_measure(cx, root, available)?;
         } else {
             self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
@@ -177,18 +192,16 @@ impl LayoutEngine {
 
         cx.clear_dirty();
         self.generation = self.generation.wrapping_add(1);
-        // ε-cache: re-hash the signature *after* work completes so the
-        // value reflects the post-attach `Node::version` state. The
-        // next `compute` call computes the same post-attach hash, sees
-        // a match, and returns `CacheDecision::Hit` — skipping the
-        // entire sync + measure + attach work cycle for unchanged
-        // inputs. This is the legitimate path to "beat" Taffy on
-        // repeated re-layouts of a stable tree.
-        let post_signature = layout_input_signature(cx, root);
-        self.cached_key = Some(LayoutCacheKey {
-            input_signature: post_signature,
-            ..cache_key
-        });
+        // Store the key as-is: no post-work signature re-hash. Layout output
+        // is attached UNTRACKED (`attach_untracked`), so nothing this compute
+        // did moved a version the signature folds in — the input signature at
+        // the end of the frame equals the one already in `cache_key`. So a
+        // later CLEAN frame that re-hashes and matches this value is still an
+        // immediate cache HIT, without paying an O(nodes) re-walk here.
+        // (On a dirty-driven miss `cache_key.input_signature` is the carried
+        // prior value; the first clean frame after the dirty burst re-hashes
+        // and misses once, then hits — never a false hit.)
+        self.cached_key = Some(cache_key);
         Ok(())
     }
 
@@ -219,7 +232,14 @@ impl LayoutEngine {
         intent: &LayoutStyle,
     ) -> Result<(), LayoutError> {
         let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(id, existing, intent, None, None, false)
+        self.upsert_with_text(
+            id,
+            existing,
+            intent,
+            None,
+            None,
+            crate::forest::TextFlags::default(),
+        )
     }
 
     pub(crate) fn set_children_mirror(
@@ -265,6 +285,23 @@ impl LayoutEngine {
         Ok(())
     }
 
+    /// Re-solve the existing (already-current) mirror against new constraints
+    /// and republish results, skipping the kernel->drive `sync`. Used by the
+    /// resize fast-path when the kernel tree is unchanged and only `available`
+    /// differs. No node was added or removed, so there are no stale extensions
+    /// to reap and the id set is the live preorder walk.
+    fn remeasure_and_publish(
+        &mut self,
+        cx: &mut Cx,
+        root: NodeId,
+        available: Size,
+    ) -> Result<(), LayoutError> {
+        self.compute_mirror(root, available)?;
+        let mut ids = SmallVec::<[_; 32]>::new();
+        cx.visit_preorder(root, |id, _node| ids.push(id));
+        self.attach_results(cx, ids)
+    }
+
     fn full_sync_and_measure(
         &mut self,
         cx: &mut Cx,
@@ -295,7 +332,16 @@ impl LayoutEngine {
         structural: bool,
     ) -> Result<(), LayoutError> {
         self.apply_dirty_nodes(cx, dirty)?;
-        if structural {
+        // `gc` scans every mirror to drop the ones whose kernel node is gone
+        // — an O(nodes) walk. `structural` (the generation changed) is far
+        // broader than "a node was removed": a plain style mutation bumps the
+        // generation too, and on a 100k-node tree that made every restyle pay
+        // a full stale-mirror scan that found nothing. After `apply_dirty_nodes`
+        // has synced the dirty set (adding new mirrors, dropping dirty-gone
+        // ones), a lingering stale mirror can only exist when the mirror count
+        // exceeds the live kernel count — an O(1) check that gates the scan to
+        // the frames that actually removed a subtree.
+        if structural && self.core_to_handle.len() > cx.len() {
             self.gc(cx)?;
         }
         let roots = self.containment_roots(cx, dirty, root);
@@ -336,13 +382,26 @@ impl LayoutEngine {
         let cx_instance = cx.instance_id();
         let cx_generation = cx.mutation_generation();
         let available_key = AvailableKey::from_size(available);
-        if self.cached_key.is_some() && cx.dirty().next().is_some() {
+        if let Some(prev) = self.cached_key
+            && cx.dirty().next().is_some()
+        {
+            // The dirty set is non-empty, so this frame is already a MISS: it
+            // WILL re-sync + re-measure regardless of the input signature. The
+            // signature exists only to catch reactive changes that bypass the
+            // dirty set on an otherwise-CLEAN frame, so computing it here is
+            // pure waste — a full O(nodes) tree hash (3-5 ms on a 100k tree),
+            // which dominated every animating/interacting frame. Carry the
+            // previous signature forward instead. It can only differ from this
+            // frame's real state (a dirty mutation bumps a version the hash
+            // folds in), so the first CLEAN frame after the dirty burst
+            // recomputes the real signature and misses once, then hits — never
+            // a false hit (which would strand a stale layout).
             return CacheDecision::Miss(LayoutCacheKey {
                 cx_instance,
                 root,
                 available: available_key,
                 cx_generation,
-                input_signature: layout_input_signature(cx, root),
+                input_signature: prev.input_signature,
             });
         }
         let cheap_match = self.cached_key.is_some_and(|prev| {
@@ -411,10 +470,8 @@ impl LayoutEngine {
         // (two AHashMap lookups + LayoutStyle clone) and `upsert_with_text`
         // entirely. Children still recurse — their versions are checked
         // independently. `set_children` will cheap-out (δ9) when its
-        // child list is byte-identical.
-        // Single lookup feeds both the version-match fast-path and (on
-        // miss) `upsert_with_text`'s existing-handle branch — saves one
-        // slotmap secondary probe per synced node on the broadcast path.
+        // child list is byte-identical. This single lookup also feeds
+        // `upsert_with_text`'s existing-handle branch on a miss.
         let existing_handle = self.core_to_handle.get(id.key()).copied();
         // Reactive style bindings mutate the kernel node's reactive
         // atom slice through an `Rc<Cell>` channel that bypasses
@@ -446,15 +503,7 @@ impl LayoutEngine {
             && self.synced_version.get(id.key()).copied() == Some(kernel_version)
             && text_sig_matches;
         if !version_matches {
-            let (intent, text_content, text_style, wrap) =
-                Self::layout_inputs_for_node(node, inherited.style);
-            // D-U4: grid requests reject loudly at sync — never silently
-            // fall back to block (the pre-0.1.x behavior, removed).
-            if matches!(intent.0.display, crate::style_data::Display::Grid) {
-                return Err(LayoutError::GridUnsupported(id));
-            }
-            self.upsert_with_text(id, existing_handle, &intent, text_content, text_style, wrap)?;
-            self.synced_version.insert(id.key(), kernel_version);
+            self.write_synced_node(id, node, inherited.style, kernel_version)?;
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
 
@@ -478,7 +527,7 @@ impl LayoutEngine {
         intent: &LayoutStyle,
         text_content: Option<TextContent>,
         text_style: Option<TextStyle>,
-        wrap: bool,
+        flags: crate::forest::TextFlags,
     ) -> Result<(), LayoutError> {
         if let Some(handle) = existing_handle {
             // Cheap-out: if both the style and the text payload already
@@ -503,14 +552,14 @@ impl LayoutEngine {
             let style = intent.data().clone();
             self.drive.set_style(handle, style)?;
             self.drive
-                .set_text(handle, text_content, text_style, wrap)?;
+                .set_text(handle, text_content, text_style, flags)?;
             return Ok(());
         }
 
         let style = intent.data().clone();
         let handle = self.drive.insert_with_kernel(id, style);
         self.drive
-            .set_text(handle, text_content, text_style, wrap)?;
+            .set_text(handle, text_content, text_style, flags)?;
         self.core_to_handle.insert(id.key(), handle);
         Ok(())
     }
@@ -540,10 +589,10 @@ impl LayoutEngine {
         // DR-056: the incremental path has no top-down carry, so the
         // inherited typography is resolved by ancestor walk.
         let inherited = inherited_text_style(cx, id);
-        let (intent, text_content, text_style, wrap) =
+        let (intent, text_content, text_style, flags) =
             Self::layout_inputs_for_node(node, &inherited);
         let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(id, existing, &intent, text_content, text_style, wrap)?;
+        self.upsert_with_text(id, existing, &intent, text_content, text_style, flags)?;
 
         // If this node's *effective* typography changed, descendants
         // measured against the old value are stale even though their
@@ -602,10 +651,10 @@ impl LayoutEngine {
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
         if matches!(node.kind, NodeType::Text { .. }) {
-            let (intent, text_content, text_style, wrap) =
+            let (intent, text_content, text_style, flags) =
                 Self::layout_inputs_for_node(node, inherited.style);
             let existing = self.core_to_handle.get(id.key()).copied();
-            self.upsert_with_text(id, existing, &intent, text_content, text_style, wrap)?;
+            self.upsert_with_text(id, existing, &intent, text_content, text_style, flags)?;
         }
         for child in children {
             self.cascade_text_styles(cx, child, effective)?;
@@ -613,18 +662,56 @@ impl LayoutEngine {
         Ok(())
     }
 
+    /// Extract a node's layout inputs and write them into the mirror,
+    /// recording the version that produced them. Split out of
+    /// `sync_subtree` to keep that hot path within the line budget.
+    fn write_synced_node(
+        &mut self,
+        id: NodeId,
+        node: &sigil_kernel::Node,
+        inherited_text: &TextStyle,
+        kernel_version: u32,
+    ) -> Result<(), LayoutError> {
+        let existing_handle = self.core_to_handle.get(id.key()).copied();
+        let (intent, text_content, text_style, flags) =
+            Self::layout_inputs_for_node(node, inherited_text);
+        self.upsert_with_text(
+            id,
+            existing_handle,
+            &intent,
+            text_content,
+            text_style,
+            flags,
+        )?;
+        self.synced_version.insert(id.key(), kernel_version);
+        Ok(())
+    }
+
     fn layout_inputs_for_node(
         node: &sigil_kernel::Node,
         inherited_text: &TextStyle,
-    ) -> (LayoutStyle, Option<TextContent>, Option<TextStyle>, bool) {
+    ) -> (
+        LayoutStyle,
+        Option<TextContent>,
+        Option<TextStyle>,
+        crate::forest::TextFlags,
+    ) {
         let mut intent = node
             .get_extension::<LayoutStyle>()
             .cloned()
             .unwrap_or_default();
         let mut text_style = match &node.kind {
             NodeType::Text { .. } => Some(inherited_text.clone()),
-            NodeType::Container | NodeType::Fragment => None,
+            NodeType::Container | NodeType::Fragment | NodeType::Image { .. } => None,
         };
+        // A raster image is a leaf sized to its pixels unless the author
+        // pinned a dimension: seed any `Auto` axis with the intrinsic
+        // extent so an unsized image lays out at its natural size while a
+        // `.width()`/`.height()` override (already folded into `intent`
+        // above) still wins.
+        if let NodeType::Image { source, .. } = &node.kind {
+            intent = apply_intrinsic_image_size(intent, source.width(), source.height());
+        }
         if let Some(binding) = node.get_extension::<StyleBinding>() {
             apply_style_atoms(binding.static_slice(), &mut intent);
             apply_style_atoms(binding.dynamic_slice(), &mut intent);
@@ -647,11 +734,23 @@ impl LayoutEngine {
                 .inset_left(x)
                 .inset_top(y);
         }
-        let (text_content, wrap) = match &node.kind {
-            NodeType::Text { content, wrap } => (Some(content.clone()), *wrap),
-            NodeType::Container | NodeType::Fragment => (None, false),
+        let (text_content, flags) = match &node.kind {
+            NodeType::Text {
+                content,
+                wrap,
+                ellipsis,
+            } => (
+                Some(content.clone()),
+                crate::forest::TextFlags {
+                    wrap: *wrap,
+                    ellipsis: *ellipsis,
+                },
+            ),
+            NodeType::Container | NodeType::Fragment | NodeType::Image { .. } => {
+                (None, crate::forest::TextFlags::default())
+            }
         };
-        (intent, text_content, text_style, wrap)
+        (intent, text_content, text_style, flags)
     }
 
     fn remove_mirror_if_present(&mut self, id: NodeId) -> Result<(), LayoutError> {
@@ -819,8 +918,15 @@ impl LayoutEngine {
             // consumer's `children_reactive` rebuild must be free to read `cx` without
             // colliding with this mutable borrow.
             let size_binding = {
-                let node = cx.get_mut(id).ok_or(LayoutError::NodeMissing(id))?;
-                let _ = node.attach(result);
+                // Layout OUTPUT: attach untracked so writing the resolved box
+                // back onto the node neither re-dirties it nor bumps the input
+                // version — otherwise every laid-out node would invalidate the
+                // input signature its own layout produced, forcing a full
+                // O(nodes) re-hash each frame and defeating the cache.
+                let node = cx
+                    .get_mut_untracked(id)
+                    .ok_or(LayoutError::NodeMissing(id))?;
+                let _ = node.attach_untracked(result);
                 node.get_extension::<crate::SizeReactive>().copied()
             };
             // Publish the new size to the binding. Only reached when the box changed (the
@@ -879,4 +985,20 @@ const fn to_space_constraint(dim: Dim) -> SpaceConstraint {
         Dim::MinContent => SpaceConstraint::MinContent,
         Dim::MaxContent => SpaceConstraint::MaxContent,
     }
+}
+
+/// Seed an image node's intent with its intrinsic pixel size on any axis
+/// the author left `Auto`. A pinned `.width()`/`.height()` is already in
+/// `intent`, so it is preserved; only the unset axes fall back to the
+/// natural extent.
+#[allow(clippy::cast_precision_loss)]
+fn apply_intrinsic_image_size(intent: LayoutStyle, width: u32, height: u32) -> LayoutStyle {
+    let mut intent = intent;
+    if intent.data().size.width == Dimension::Auto {
+        intent = intent.width(Dimension::Px(width as f32));
+    }
+    if intent.data().size.height == Dimension::Auto {
+        intent = intent.height(Dimension::Px(height as f32));
+    }
+    intent
 }

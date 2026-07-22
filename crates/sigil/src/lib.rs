@@ -135,8 +135,9 @@ pub mod prelude {
     /// the fluent (`.px(16)`) and struct (`Style::padding(16)`) APIs take
     /// raw logical px instead. `opacity-N` is a percent (`opacity-50` =
     /// 50%) while `.opacity(0.5)` everywhere takes the CSS-canonical
-    /// fraction. `shadow-*` and `sm:`/`hover:` prefixes are rejected
-    /// loudly rather than silently ignored.
+    /// fraction. `shadow-sm`/`shadow`/`shadow-md`/`shadow-lg`/`shadow-xl`
+    /// paint elevation drop shadows; the `sm:`/`hover:` prefixes are still
+    /// rejected loudly rather than silently ignored.
     ///
     /// Prefer `classes!("p-4 bg-accent")` for string literals: it validates
     /// tokens at compile time (with nearest-match suggestions) instead of
@@ -156,21 +157,24 @@ pub mod prelude {
 
     pub use crate::interaction::InteractionState;
     pub use crate::reactive::Runtime;
+    #[cfg(feature = "image-decode")]
+    pub use crate::widgets::image_bytes;
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
         ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipBuilder, ChipTone, Clipboard,
         CodeEditBuilder, ColWidth, CommandMenuBuilder, DotBuilder, DropdownBuilder, FctSpawn,
         FloaterStyle, FloatingTextBuilder, GaugeBuilder, HintOverlayBuilder, HlSpan, IconBuilder,
-        InteractiveBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind,
-        Orientation, PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder,
-        SelectionMode, SelectionState, SliderBuilder, SplitterBuilder, SplitterOrientation,
-        SubmenuBuilder, TableBuilder, TableColumn, TableState, TabsBuilder, TextEditBuilder,
-        TextFieldBuilder, ToggleBuilder, TooltipBuilder, TurnStripBuilder, VirtualListBuilder,
-        axis_drag, button, checkbox, chip, code_edit, command_menu, divider_horizontal,
-        divider_vertical, dot, dropdown, floating_text, gauge, icon, interactive, kv_row, label,
-        menu, modal, number_field, panel, progress, radio_group, scroll, slider, splitter,
-        status_bar, table, tabs, text_edit, text_field, toggle, tooltip, turn_strip, virtual_list,
+        ImageBuilder, InteractiveBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder,
+        NumericKind, Orientation, PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor,
+        ScrollBuilder, SelectionMode, SelectionState, SliderBuilder, SplitterBuilder,
+        SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn, TableState, TabsBuilder,
+        TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder, TurnStripBuilder,
+        VirtualListBuilder, axis_drag, button, checkbox, chip, code_edit, command_menu,
+        divider_horizontal, divider_vertical, dot, dropdown, floating_text, gauge, icon,
+        image_rgba, interactive, kv_row, label, menu, modal, number_field, panel, progress,
+        radio_group, scroll, slider, splitter, status_bar, table, tabs, text_edit, text_field,
+        toggle, tooltip, turn_strip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, launch};
 }

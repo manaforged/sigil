@@ -172,6 +172,7 @@ fn command_kinds(commands: &[SceneCommand]) -> Vec<&'static str> {
             SceneCommand::Gradient(_) => "Gradient",
             SceneCommand::Pattern(_) => "Pattern",
             SceneCommand::Sprite(_) => "Sprite",
+            SceneCommand::Image(_) => "Image",
             SceneCommand::Decoration(_) => "Decoration",
             SceneCommand::DrawShadow { .. } => "DrawShadow",
             SceneCommand::GlyphRun(_) => "GlyphRun",

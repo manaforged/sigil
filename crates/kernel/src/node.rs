@@ -88,6 +88,21 @@ impl Node {
             .attach(value)
     }
 
+    /// Attach a typed extension WITHOUT bumping the node's version.
+    ///
+    /// `version` tracks layout-*input* changes, and downstream invalidation
+    /// (the layout engine's input signature) folds it in. Use this only for
+    /// layout *output* written back onto the node — a resolved
+    /// `LayoutResult`, say — whose presence must not invalidate the very
+    /// cache it came from. Attaching a real input this way would strand a
+    /// stale layout; attaching output this way keeps the input signature
+    /// stable across a compute so a following unchanged frame is a cache hit.
+    pub fn attach_untracked<T: 'static>(&mut self, value: T) -> Option<T> {
+        self.extensions
+            .get_or_insert_with(|| Box::new(NodeExtensions::default()))
+            .attach(value)
+    }
+
     /// Borrow a typed extension component from this node.
     #[must_use]
     pub fn get_extension<T: 'static>(&self) -> Option<&T> {
@@ -157,6 +172,20 @@ pub enum NodeType {
         /// on a single line and the container decides what to do with
         /// any overflow. Set via [`crate::TextBuilder::wrap`].
         wrap: bool,
+        /// When `true`, the text stays on one line and is truncated with a
+        /// trailing ellipsis (`…`) if it is given less width than it needs
+        /// (CSS `text-overflow: ellipsis`). Mutually exclusive with `wrap`.
+        /// Set via [`crate::TextBuilder::ellipsize`].
+        ellipsis: bool,
+    },
+    /// Raster image content. A leaf whose intrinsic size is its pixel
+    /// dimensions; the renderer uploads the pixels to a GPU texture and
+    /// samples them into the node's laid-out rect.
+    Image {
+        /// Decoded pixels plus a stable content id for texture caching.
+        source: crate::ImageSource,
+        /// How the pixels map into the laid-out box (CSS `object-fit`).
+        fit: crate::ObjectFit,
     },
     /// A grouping node with **no layout box of its own**.
     ///

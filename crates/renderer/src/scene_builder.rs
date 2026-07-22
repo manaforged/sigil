@@ -84,6 +84,12 @@ impl SceneBuilder {
         });
     }
 
+    /// Emit a raster-image draw command carrying the decoded pixels to
+    /// paint time (where they upload to a texture once per content id).
+    pub fn draw_image(&mut self, draw: crate::scene_command::DrawImage) {
+        self.commands.push(SceneCommand::Image(draw));
+    }
+
     #[doc(hidden)]
     pub fn draw_rect_for_node(&mut self, node: NodeId, rect: Rect, style: SceneRectStyle) {
         self.commands.push(SceneCommand::Rect(

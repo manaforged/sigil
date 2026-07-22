@@ -67,7 +67,11 @@ impl LayoutOverrides {
     }
 
     /// Replace the full layout style.
-    pub const fn layout(&mut self, style: LayoutStyle) {
+    ///
+    /// Not `const`: `LayoutStyle` now owns a `Vec` (grid tracks), so
+    /// dropping the previous `Option<LayoutStyle>` here is a non-trivial
+    /// destructor a `const fn` cannot run.
+    pub fn layout(&mut self, style: LayoutStyle) {
         self.full = Some(style);
     }
 

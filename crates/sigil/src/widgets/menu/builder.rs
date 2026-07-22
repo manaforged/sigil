@@ -18,14 +18,6 @@ const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 const MENU_WIDTH: f32 = 200.0;
 /// Separator stripe thickness in logical pixels.
 const SEPARATOR_HEIGHT: f32 = 1.0;
-/// Submenu indicator dimensions. The indicator is a small `accent`
-/// swatch at the row's trailing edge — the same affordance pattern the
-/// dropdown trigger uses for its down-chevron. A textual `›` glyph was
-/// tried first but the kernel's text raster path (with the goldens'
-/// stub text measure) collapses single-character siblings inside a
-/// flex row to zero width, so the swatch is the deterministic
-/// "more here" cue.
-const SUBMENU_INDICATOR_SIZE: f32 = 8.0;
 /// Logical viewport the golden harness renders at — used to centre the
 /// menu inside the canvas via absolute insets when no anchor is set.
 /// Application code that needs trigger-anchored placement should call
@@ -212,6 +204,7 @@ impl MenuBuilder {
             .label(menu_label)
             .layout(panel_layout(top, left, panel_h))
             .class("rounded-md")
+            .class("shadow-lg")
             .class(MENU_BASE)
             .style_reactive(move || open_display(open));
 
@@ -374,13 +367,16 @@ const fn row_atoms(hover: bool, disabled: bool) -> &'static [StyleAtom] {
     }
 }
 
-static SUBMENU_BG: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-
-fn submenu_swatch() -> NodeBuilder {
-    container()
-        .layout(LayoutStyle::block().fixed_size(SUBMENU_INDICATOR_SIZE, SUBMENU_INDICATOR_SIZE))
-        .class("rounded-sm")
-        .class(SUBMENU_BG)
+fn submenu_swatch() -> impl IntoNode {
+    // Real U+25B8 right-triangle as a content-sized text leaf, matching
+    // the dropdown chevron. The old accent swatch was a placeholder for
+    // a glyph the earlier width-clipped path collapsed to zero width;
+    // §4.5 min-size now gives single-char leaves their measured width,
+    // so the glyph paints (confirmed in the stub-measure golden path).
+    text("\u{25B8}")
+        .layout(LayoutStyle::block())
+        .class("text-xs")
+        .class("text-on-surface")
 }
 
 fn build_separator() -> NodeBuilder {

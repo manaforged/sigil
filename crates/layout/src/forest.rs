@@ -103,6 +103,18 @@ pub(crate) struct LayoutText {
     pub(crate) style: Option<TextStyle>,
     /// Wrap to the containing block instead of hugging content.
     pub(crate) wrap: bool,
+    /// Single-line, truncated with an ellipsis when narrower than content.
+    pub(crate) ellipsis: bool,
+}
+
+/// The two mutually-exclusive text overflow modes, carried together so the
+/// sync path passes one value instead of a widening list of `bool`s.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct TextFlags {
+    /// Wrap to the containing block (multi-line).
+    pub(crate) wrap: bool,
+    /// Single-line, ellipsis-truncated when narrower than content.
+    pub(crate) ellipsis: bool,
 }
 
 /// Computed geometry for a node — populated by the measure + arrange
@@ -557,6 +569,13 @@ static DEFAULT_STYLE: StyleData = StyleData {
     },
     order: 0,
     box_sizing: crate::style_data::BoxSizing::ContentBox,
+    grid_template_columns: Vec::new(),
+    grid_template_rows: Vec::new(),
+    grid_column_span: 1,
+    grid_row_span: 1,
+    grid_column_start: 0,
+    grid_row_start: 0,
+    grid_auto_flow_dense: false,
 };
 
 /// Phase tag for the engine's two-pass measure-then-arrange driver.
@@ -709,8 +728,20 @@ impl<'a> MeasureScope<'a> {
             || self.text.measure(&text.content, space),
             |style| self.text.measure_styled(&text.content, style, space),
         );
+        // An ellipsizing node stays one line (measured above, unconstrained)
+        // but must not force its container wider than the box: clamp the
+        // reported width to the containing block so a long value fits and
+        // the paint pass truncates it, while a short value still hugs.
+        let natural_w = if text.ellipsis {
+            known
+                .width
+                .or(wrap_to)
+                .map_or(measured.width, |box_w| measured.width.min(box_w))
+        } else {
+            measured.width
+        };
         Some(crate::style_data::Size {
-            width: known.width.unwrap_or(measured.width),
+            width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
         })
     }

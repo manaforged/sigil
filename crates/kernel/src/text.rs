@@ -51,6 +51,7 @@ pub struct TextBuilder {
     source: TextContent,
     a11y: A11yProps,
     wrap: bool,
+    ellipsis: bool,
     pre_extensions: Vec<TextMutator>,
 }
 
@@ -64,6 +65,7 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
             ..A11yProps::default()
         },
         wrap: false,
+        ellipsis: false,
         pre_extensions: Vec::new(),
     }
 }
@@ -79,6 +81,21 @@ impl TextBuilder {
     #[must_use]
     pub const fn wrap(mut self) -> Self {
         self.wrap = true;
+        self
+    }
+
+    /// Keep the text on one line and truncate it with a trailing ellipsis
+    /// (`…`) when it is given less width than it needs (CSS `text-overflow:
+    /// ellipsis`).
+    ///
+    /// Off by default (a bare label hugs its content and overflows). Turn
+    /// it on for single-line controls in a width-constrained slot — a file
+    /// name in a fixed column, a title in a card — so a long value reads as
+    /// "Some long va…" instead of overflowing or clipping mid-glyph. Takes
+    /// precedence over [`Self::wrap`]; a node should set one or the other.
+    #[must_use]
+    pub const fn ellipsize(mut self) -> Self {
+        self.ellipsis = true;
         self
     }
 
@@ -157,6 +174,7 @@ impl IntoNode for TextBuilder {
             NodeType::Text {
                 content: self.source,
                 wrap: self.wrap,
+                ellipsis: self.ellipsis,
             },
             self.a11y,
         );

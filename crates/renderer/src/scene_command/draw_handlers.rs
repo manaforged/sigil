@@ -11,7 +11,8 @@ use crate::scene_command::walk::{
     Walk, rect_fields, rect_from_fields, transform_point, transform_rect,
 };
 use crate::scene_command::{
-    DrawDecoration, DrawGlyphRun, DrawGradient, DrawPattern, DrawRect, DrawSprite, GlyphRun,
+    DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
+    GlyphRun, SpriteKind, SpriteSource,
 };
 use crate::scene_instance::{
     BlendSpace, draw_gradient_instance, draw_pattern_instance, draw_rect_instance,
@@ -176,6 +177,46 @@ impl Walk<'_> {
             opacity,
             space,
         );
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    pub(super) fn draw_image(&mut self, draw: &DrawImage) {
+        // Upload the pixels once per content id, then reuse the whole
+        // sprite paint path (transform, clip, opacity, draw) via a Poly
+        // sprite that samples the freshly-registered atlas full-frame.
+        let atlas = {
+            let pipeline =
+                sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
+            pipeline.register_image(self.ctx.device, self.ctx.queue, &draw.source)
+        };
+        if atlas == u32::MAX {
+            return;
+        }
+        let (region, destination) = fit_image(
+            draw.fit,
+            draw.source.width() as f32,
+            draw.source.height() as f32,
+            draw.destination,
+        );
+        let sprite = DrawSprite {
+            node: draw.node,
+            source: SpriteSource {
+                atlas,
+                region,
+                phase: 0.0,
+            },
+            kind: SpriteKind::Poly,
+            destination,
+            // Ignored for `Poly`; the atlas texel colour is used directly.
+            color: sigil_style::Rgba8 {
+                r: 255,
+                g: 255,
+                b: 255,
+                a: 255,
+            },
+            opacity: draw.opacity,
+        };
+        self.draw_sprite(&sprite);
     }
 
     pub(super) fn draw_glyph_run(&mut self, draw: &DrawGlyphRun) -> Result<(), RendererError> {
@@ -389,4 +430,82 @@ fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Col
     let opacity = (f32::from(run.opacity) / 10_000.0) * opacity_scale;
     let [r, g, b, a] = space.rgba(run.color);
     Color::rgba(r, g, b, a * opacity.clamp(0.0, 1.0))
+}
+
+/// Map an `iw`×`ih` image into `dest` per `fit`, returning the
+/// (source-atlas region, destination rect) the sprite draw uses. `Fill`
+/// stretches (full source → full dest); `Contain` letterboxes (full
+/// source → a centred sub-rect); `Cover` crops (a centred source region →
+/// full dest). Degenerate sizes fall back to `Fill`.
+fn fit_image(
+    fit: sigil_kernel::ObjectFit,
+    iw: f32,
+    ih: f32,
+    dest: sigil_hal::Rect,
+) -> (sigil_hal::Rect, sigil_hal::Rect) {
+    use sigil_hal::{Point, Rect};
+    let full_src = Rect::new(Point::new(0.0, 0.0), iw, ih);
+    if iw <= 0.0 || ih <= 0.0 || dest.width <= 0.0 || dest.height <= 0.0 {
+        return (full_src, dest);
+    }
+    match fit {
+        sigil_kernel::ObjectFit::Fill => (full_src, dest),
+        sigil_kernel::ObjectFit::Contain => {
+            let scale = (dest.width / iw).min(dest.height / ih);
+            let (w, h) = (iw * scale, ih * scale);
+            let x = dest.origin.x + (dest.width - w) / 2.0;
+            let y = dest.origin.y + (dest.height - h) / 2.0;
+            (full_src, Rect::new(Point::new(x, y), w, h))
+        }
+        sigil_kernel::ObjectFit::Cover => {
+            let scale = (dest.width / iw).max(dest.height / ih);
+            let (vw, vh) = (dest.width / scale, dest.height / scale);
+            let sx = (iw - vw) / 2.0;
+            let sy = (ih - vh) / 2.0;
+            (Rect::new(Point::new(sx, sy), vw, vh), dest)
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod fit_tests {
+    use super::fit_image;
+    use sigil_hal::{Point, Rect};
+    use sigil_kernel::ObjectFit;
+
+    // A 40x20 (2:1) image mapped into a 100x100 box.
+    fn dest() -> Rect {
+        Rect::new(Point::new(0.0, 0.0), 100.0, 100.0)
+    }
+
+    #[test]
+    fn fill_stretches_full_source_to_full_dest() {
+        let (src, out) = fit_image(ObjectFit::Fill, 40.0, 20.0, dest());
+        assert_eq!((src.width, src.height), (40.0, 20.0));
+        assert_eq!((out.width, out.height), (100.0, 100.0));
+    }
+
+    #[test]
+    fn contain_letterboxes_and_centers() {
+        // Fit-to-width: 100 wide, 50 tall, centered vertically at y=25.
+        let (src, out) = fit_image(ObjectFit::Contain, 40.0, 20.0, dest());
+        assert_eq!((src.width, src.height), (40.0, 20.0), "full source sampled");
+        assert_eq!((out.width, out.height), (100.0, 50.0));
+        assert_eq!((out.origin.x, out.origin.y), (0.0, 25.0));
+    }
+
+    #[test]
+    fn cover_crops_source_and_fills_dest() {
+        // Cover a square with a 2:1 image: scale to height, crop width.
+        // Visible source width = 20 (of 40), centered at x=10.
+        let (src, out) = fit_image(ObjectFit::Cover, 40.0, 20.0, dest());
+        assert_eq!(
+            (out.width, out.height),
+            (100.0, 100.0),
+            "dest fully covered"
+        );
+        assert_eq!((src.width, src.height), (20.0, 20.0));
+        assert_eq!((src.origin.x, src.origin.y), (10.0, 0.0));
+    }
 }

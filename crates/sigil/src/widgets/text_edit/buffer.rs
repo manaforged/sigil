@@ -84,18 +84,41 @@ impl TextEdit {
 
     pub(crate) fn move_left(&mut self) {
         self.selection = None;
-        if let Some(previous) = previous_boundary(&self.buffer, self.caret) {
-            self.caret = previous;
+        if let Some(next) = self.step(false) {
+            self.caret = next;
         }
         self.debug_assert_invariants();
     }
 
     pub(crate) fn move_right(&mut self) {
         self.selection = None;
-        if let Some(next) = next_boundary(&self.buffer, self.caret) {
+        if let Some(next) = self.step(true) {
             self.caret = next;
         }
         self.debug_assert_invariants();
+    }
+
+    /// One caret step in the visual direction (`right` = display-right),
+    /// bidi-aware. In a single-direction line (pure LTR or pure RTL) this
+    /// moves the caret by its *visual* neighbour (Left = visually left,
+    /// whatever the logical direction). Mixed-direction or multi-line
+    /// buffers keep the plain logical char walk (see [`super::bidi`]).
+    fn step(&self, right: bool) -> Option<usize> {
+        let logical = || {
+            if right {
+                next_boundary(&self.buffer, self.caret)
+            } else {
+                previous_boundary(&self.buffer, self.caret)
+            }
+        };
+        if self.buffer.contains('\n') {
+            return logical();
+        }
+        match sigil_bidi::visual_step(&self.buffer, self.caret, right) {
+            sigil_bidi::Step::To(pos) => Some(pos),
+            sigil_bidi::Step::Edge => None,
+            sigil_bidi::Step::Logical => logical(),
+        }
     }
 
     pub(crate) const fn move_home(&mut self) {
@@ -109,25 +132,25 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one character to the left.
+    /// Extend selection one visual position to the left.
     pub(crate) fn shift_left(&mut self) {
-        let anchor = self.selection.get_or_insert(self.caret);
-        if let Some(previous) = previous_boundary(&self.buffer, self.caret) {
+        let anchor = *self.selection.get_or_insert(self.caret);
+        if let Some(previous) = self.step(false) {
             self.caret = previous;
         }
-        if self.caret == *anchor {
+        if self.caret == anchor {
             self.selection = None;
         }
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one character to the right.
+    /// Extend selection one visual position to the right.
     pub(crate) fn shift_right(&mut self) {
-        let anchor = self.selection.get_or_insert(self.caret);
-        if let Some(next) = next_boundary(&self.buffer, self.caret) {
+        let anchor = *self.selection.get_or_insert(self.caret);
+        if let Some(next) = self.step(true) {
             self.caret = next;
         }
-        if self.caret == *anchor {
+        if self.caret == anchor {
             self.selection = None;
         }
         self.debug_assert_invariants();

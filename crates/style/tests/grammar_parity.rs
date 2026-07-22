@@ -26,7 +26,7 @@ use tracing as _;
 use std::fs;
 use std::path::PathBuf;
 
-use sigil_style::{ParseError, StyleAtom, parse_class_string};
+use sigil_style::{StyleAtom, parse_class_string};
 
 fn grammar_tokens() -> Vec<String> {
     let path =
@@ -70,16 +70,16 @@ fn every_grammar_token_parses_to_a_real_atom() {
 }
 
 #[test]
-fn shadow_family_is_rejected_not_silenced() {
-    for token in ["shadow-xl", "shadow-sm"] {
-        match parse_class_string(token) {
-            Err(ParseError::NotYetRenderable { token: rejected }) => {
-                assert_eq!(rejected, token);
-            }
-            other => panic!(
-                "'{token}' must reject as NotYetRenderable until a paint path exists, got {other:?}"
-            ),
-        }
+fn shadow_family_resolves_to_elevation_atoms() {
+    // Once rejected as NotYetRenderable; the drop-shadow paint path is now
+    // wired, so every `shadow-*` token resolves to a `Shadow` atom.
+    for token in ["shadow", "shadow-sm", "shadow-md", "shadow-lg", "shadow-xl"] {
+        let atoms = parse_class_string(token)
+            .unwrap_or_else(|e| panic!("'{token}' must parse now, got {e:?}"));
+        assert!(
+            atoms.iter().any(|a| matches!(a, StyleAtom::Shadow(_))),
+            "'{token}' must resolve to a Shadow atom, got {atoms:?}"
+        );
     }
 }
 

@@ -106,6 +106,7 @@ impl<'theme> StyleEngine<'theme> {
                 render.border_color = Some(self.theme.resolve_color(token));
             }
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
+            StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
             StyleAtom::PaddingAll(_)
             | StyleAtom::PaddingX(_)
@@ -137,6 +138,8 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::JustifyContent(_)
             | StyleAtom::FlexGrow(_)
             | StyleAtom::FlexShrink(_)
+            | StyleAtom::GridColumns(_)
+            | StyleAtom::GridRows(_)
             | StyleAtom::FontSize(_)
             | StyleAtom::FontWeight(_)
             | StyleAtom::FontFamily(_)
@@ -277,6 +280,8 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::JustifyContent(_)
         | StyleAtom::FlexGrow(_)
         | StyleAtom::FlexShrink(_)
+        | StyleAtom::GridColumns(_)
+        | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
         | StyleAtom::TextColor(_)
@@ -286,6 +291,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
+        | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)

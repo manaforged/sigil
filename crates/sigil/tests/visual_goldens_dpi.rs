@@ -35,6 +35,7 @@ use arboard as _;
 use criterion as _;
 use sigil_actions as _;
 use sigil_animation as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_kernel as _;
 use sigil_reactive as _;

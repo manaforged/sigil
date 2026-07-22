@@ -6,6 +6,7 @@ pub use crate::{
     StyleAlignSelf as AlignSelf, StyleDisplay as Display, StyleFlexDirection as FlexDirection,
     StyleJustifyContent as JustifyContent, StyleLengthPercentage as LengthPercentage,
     StyleLengthPercentageAuto as LengthPercentageAuto, StylePosition as Position, TextMeasure,
+    TrackSize,
 };
 pub use sigil_hal::{Dim, LogicalSize, Size};
 

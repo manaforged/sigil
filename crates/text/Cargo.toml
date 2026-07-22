@@ -30,6 +30,7 @@ sigil-style = { workspace = true }
 skrifa = { workspace = true }
 smallvec = { workspace = true }
 tracing = { workspace = true }
+unicode-linebreak = "0.1"
 unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-bidi = "0.3"

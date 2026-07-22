@@ -25,6 +25,7 @@ use sigil_actions as _;
 use sigil_animation as _;
 use sigil_animation_runtime as _;
 use sigil_app as _;
+use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
@@ -107,7 +108,10 @@ fn deep_reactive_scroll_switch_stays_positioned() {
         cx.visit_preorder(root, |id, _node| {
             if let Some(res) = layout.result(id) {
                 let r = res.rect();
-                if r.height > 900.0 && r.origin.x < 60.0 && r.origin.y < 60.0 {
+                // Width targets the scroll body (`width(2000)`), not the viewport-width
+                // filler column, which now legitimately sits tall (auto-height column
+                // sizes to content, not shrinks).
+                if r.height > 900.0 && r.width > 1500.0 && r.origin.x < 60.0 && r.origin.y < 60.0 {
                     escaped.push((r.origin.x, r.origin.y, r.width, r.height));
                 }
             }

@@ -57,6 +57,8 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         StyleAtom::MinHeight(height) => set_min_height(style, height),
         StyleAtom::MaxHeight(height) => set_max_height(style, height),
         StyleAtom::Display(display) => set_display(style, display),
+        StyleAtom::GridColumns(n) => set_grid_columns(style, n),
+        StyleAtom::GridRows(n) => set_grid_rows(style, n),
         StyleAtom::FlexDirection(direction) => set_flex_direction(style, direction),
         StyleAtom::FlexWrap(wrap) => set_flex_wrap(style, wrap),
         StyleAtom::AlignItems(align) => set_align_items(style, align),
@@ -76,6 +78,7 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
+        | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
         // Typography is resolved in `text_style.rs::apply_text_binding`;
         // keep cache-key coverage in sync with that function.
@@ -196,6 +199,20 @@ fn set_display(layout: &mut LayoutStyle, display: DisplayKind) {
     mutate_layout(layout, |style| style.display = display_kind(display));
 }
 
+fn set_grid_columns(layout: &mut LayoutStyle, n: u16) {
+    mutate_layout(layout, |style| {
+        style.display = Display::Grid;
+        style.grid_template_columns = vec![crate::TrackSize::Fr(1.0); n as usize];
+    });
+}
+
+fn set_grid_rows(layout: &mut LayoutStyle, n: u16) {
+    mutate_layout(layout, |style| {
+        style.display = Display::Grid;
+        style.grid_template_rows = vec![crate::TrackSize::Auto; n as usize];
+    });
+}
+
 fn set_flex_direction(layout: &mut LayoutStyle, direction: FlexDir) {
     mutate_layout(layout, |style| {
         style.flex_direction = flex_direction(direction);
@@ -274,6 +291,7 @@ const fn display_kind(display: DisplayKind) -> Display {
     match display {
         DisplayKind::Flex => Display::Flex,
         DisplayKind::Block => Display::Block,
+        DisplayKind::Grid => Display::Grid,
         DisplayKind::None => Display::None,
     }
 }

@@ -118,6 +118,7 @@ impl<'a> Walk<'a> {
             } => self.draw_shadow(*rect, *radii, *shadow),
             SceneCommand::GlyphRun(draw) => self.draw_glyph_run(draw)?,
             SceneCommand::Sprite(draw) => self.draw_sprite(draw),
+            SceneCommand::Image(draw) => self.draw_image(draw),
             SceneCommand::Decoration(draw) => self.draw_decoration(draw),
         }
         Ok(())

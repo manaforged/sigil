@@ -49,6 +49,71 @@ impl LayoutStyle {
         })
     }
 
+    /// Build a grid layout intent with the given column tracks. Children
+    /// flow row-major into the columns; rows are added as needed and
+    /// sized to their tallest cell.
+    #[must_use]
+    pub fn grid(columns: Vec<crate::TrackSize>) -> Self {
+        Self(StyleData {
+            display: Display::Grid,
+            box_sizing: BoxSizing::BorderBox,
+            grid_template_columns: columns,
+            ..StyleData::default()
+        })
+    }
+
+    /// Set the grid column tracks (see [`Self::grid`]).
+    #[must_use]
+    pub fn grid_columns(mut self, columns: Vec<crate::TrackSize>) -> Self {
+        self.0.grid_template_columns = columns;
+        self
+    }
+
+    /// Set explicit grid row tracks. A `Px` track pins that row's height;
+    /// `Auto`/`Fr` and any implicit rows past the template fall back to the
+    /// measured (tallest-cell) height.
+    #[must_use]
+    pub fn grid_rows(mut self, rows: Vec<crate::TrackSize>) -> Self {
+        self.0.grid_template_rows = rows;
+        self
+    }
+
+    /// Set how many columns this node spans as a grid item (min 1). The
+    /// parent grid's auto-flow places it across that many tracks and wraps
+    /// to the next row when it would overflow the remaining columns.
+    #[must_use]
+    pub const fn grid_column_span(mut self, span: u16) -> Self {
+        self.0.grid_column_span = if span > 0 { span } else { 1 };
+        self
+    }
+
+    /// Set how many rows this node spans as a grid item (min 1). The
+    /// auto-flow reserves a `column_span × row_span` block and later items
+    /// flow around it.
+    #[must_use]
+    pub const fn grid_row_span(mut self, span: u16) -> Self {
+        self.0.grid_row_span = if span > 0 { span } else { 1 };
+        self
+    }
+
+    /// Explicitly place this grid item at 1-based grid lines `(col, row)`
+    /// instead of auto-flowing it. Auto items flow around the placed block.
+    #[must_use]
+    pub const fn grid_area(mut self, col: u16, row: u16) -> Self {
+        self.0.grid_column_start = col;
+        self.0.grid_row_start = row;
+        self
+    }
+
+    /// Enable `grid-auto-flow: dense` on this grid CONTAINER. Auto-placed
+    /// items then backfill gaps left by spanning or explicitly-placed
+    /// items, instead of only advancing the placement cursor forward.
+    #[must_use]
+    pub const fn grid_dense(mut self) -> Self {
+        self.0.grid_auto_flow_dense = true;
+        self
+    }
+
     /// Set the layout algorithm selector.
     #[must_use]
     pub const fn display(mut self, display: Display) -> Self {

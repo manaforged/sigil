@@ -261,6 +261,25 @@ impl DrawPattern {
     }
 }
 
+/// Raster-image draw payload emitted into a command scene.
+///
+/// Carries the decoded [`sigil_kernel::ImageSource`] straight to paint
+/// time: `emit_scene` has no GPU access, so the pixels ride the command
+/// and the paint pass uploads them to a texture once per content id.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DrawImage {
+    /// Source node, when emitted from a core tree.
+    pub node: Option<NodeId>,
+    /// Decoded pixels plus the stable id used as the texture-cache key.
+    pub source: sigil_kernel::ImageSource,
+    /// How the pixels map into `destination` (CSS `object-fit`).
+    pub fit: sigil_kernel::ObjectFit,
+    /// Destination rectangle in scene logical pixels.
+    pub destination: Rect,
+    /// Opacity encoded as `value * 10000`.
+    pub opacity: u16,
+}
+
 /// Sprite draw payload emitted into a command scene.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawSprite {

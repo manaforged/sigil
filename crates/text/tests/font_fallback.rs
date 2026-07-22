@@ -23,6 +23,7 @@ use skrifa as _;
 use smallvec as _;
 use tracing as _;
 use unicode_bidi as _;
+use unicode_linebreak as _;
 use unicode_script as _;
 use unicode_segmentation as _;
 

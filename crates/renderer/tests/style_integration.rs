@@ -24,10 +24,7 @@ use zeno as _;
 use sigil_hal::Size;
 use sigil_kernel::{TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
-use sigil_renderer::{
-    CommandScene, DrawGlyphRun, DrawRect, SceneCommand, emit_scene,
-    unsupported_style_warning_count_for,
-};
+use sigil_renderer::{CommandScene, DrawGlyphRun, DrawRect, SceneCommand, emit_scene};
 use sigil_style::TextLineHeight;
 use sigil_style::{FocusRing, NodeStyleExt, Theme};
 
@@ -148,37 +145,33 @@ fn nested_text_scene_rect_is_absolute() {
 }
 
 #[test]
-fn shadow_class_rejects_at_parse_and_never_reaches_renderer() {
-    // DR-056 D2: shadow-* has no paint path, so it fails loudly at
-    // parse time (one unknown-class diagnostic) and never installs an
-    // atom — the renderer's unsupported-style warn path stays silent
-    // because there is nothing unsupported left to walk. Pre-DR-056
-    // the token silently installed UnknownThemeRef and this test
-    // asserted the renderer-side warn-once instead.
+fn shadow_class_parses_cleanly_and_paints() {
+    // `shadow-*` was rejected at parse under DR-056 (no paint path). It
+    // now resolves to `StyleAtom::Shadow` and drives the pre-existing
+    // Evan Wallace shadow pass, so it must parse WITHOUT an unknown-class
+    // diagnostic and emit a DrawShadow command through `emit_scene`.
     let before = sigil_style::unknown_class_warning_count();
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-            .class("shadow-xl"),
+            .class("bg-surface shadow-xl"),
     );
 
     layout(&mut cx, root);
 
-    for _frame in 0..60 {
-        let _scene = emit_scene(&cx, root);
-    }
+    let scene = emit_scene(&cx, root);
+    let has_shadow = scene
+        .commands
+        .iter()
+        .any(|command| matches!(command, sigil_renderer::SceneCommand::DrawShadow { .. }));
 
     assert_eq!(
         sigil_style::unknown_class_warning_count(),
-        before + 1,
-        "shadow-* must trip exactly one parse-time diagnostic"
+        before,
+        "shadow-* now parses cleanly — no unknown-class diagnostic"
     );
-    assert_eq!(
-        unsupported_style_warning_count_for("shadow-xl", root),
-        0,
-        "no atom installs, so the renderer has nothing to warn about"
-    );
+    assert!(has_shadow, "shadow-xl must emit a DrawShadow command");
 }
 
 fn layout(cx: &mut Cx, root: NodeId) {

@@ -360,6 +360,7 @@ fn build_dialog(
         .focusable(true)
         .layout(dialog_layout())
         .class("rounded-md")
+        .class("shadow-xl")
         .class(DIALOG_BASE)
         .style_reactive(move || show_display(show))
         .focus_ring(FocusRing::new(ring_visible))

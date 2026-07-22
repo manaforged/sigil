@@ -10,6 +10,7 @@ members = [
     "crates/app",
     "crates/tasks",
     "crates/kernel",
+    "crates/bidi",
     "crates/events",
     "crates/hal",
     "crates/icons",
@@ -52,6 +53,7 @@ default-members = [
     "crates/app",
     "crates/tasks",
     "crates/kernel",
+    "crates/bidi",
     "crates/events",
     "crates/hal",
     "crates/icons",
@@ -213,6 +215,7 @@ sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0-
 sigil-app = { path = "crates/app", version = "0.1.0-alpha.1" }
 sigil-tasks = { path = "crates/tasks", version = "0.1.0-alpha.1" }
 sigil-kernel = { path = "crates/kernel", version = "0.1.0-alpha.1" }
+sigil-bidi = { path = "crates/bidi", version = "0.1.0-alpha.1" }
 sigil-events = { path = "crates/events", version = "0.1.0-alpha.1" }
 sigil-hal = { path = "crates/hal", version = "0.1.0-alpha.1" }
 sigil-layout = { path = "crates/layout", version = "0.1.0-alpha.1" }

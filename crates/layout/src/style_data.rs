@@ -297,8 +297,32 @@ pub enum BoxSizing {
 /// Owned style atom consumed by the P0.5 owned layout engine.
 ///
 /// Mirrors the layout fields the sigil widget code and solvers actually
-/// read. Plain Rust — no `Copy` because nested enums
-/// preclude it; cheap to `Clone` (every field is `Copy`).
+/// One column (or row) track size in a grid template.
+///
+/// The minimal grid supports the three common track kinds: a fixed pixel
+/// width, a flexible `fr` fraction of the leftover space, and `auto`
+/// (sized to the widest cell in the track). No `minmax()`, spanning, or
+/// named lines yet — see [`crate::grid`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TrackSize {
+    /// Fixed track size in logical pixels.
+    Px(f32),
+    /// A fraction of the free space left after fixed + auto tracks.
+    Fr(f32),
+    /// Sized to the widest cell placed in this track.
+    Auto,
+    /// `minmax(min_px, fr)`: flexes like `Fr(fr)` but never shrinks below
+    /// `min_px`. The common responsive-column shape, e.g.
+    /// `minmax(100.0, 1.0)` for a 1fr column that stays at least 100px.
+    MinMax(f32, f32),
+}
+
+/// Renderer-agnostic resolved layout inputs for one node.
+///
+/// Held by value on the drive so the hot path clones cheaply and the
+/// cache can diff by value. No `Copy` because
+/// [`StyleData::grid_template_columns`] is a `Vec` (empty and
+/// allocation-free for the common non-grid node).
 #[derive(Clone, Debug, PartialEq)]
 pub struct StyleData {
     /// Layout algorithm selector.
@@ -345,6 +369,32 @@ pub struct StyleData {
     pub order: i32,
     /// Whether `size` includes padding + border.
     pub box_sizing: BoxSizing,
+    /// Column tracks for `display: grid`. Empty on non-grid nodes.
+    pub grid_template_columns: Vec<TrackSize>,
+    /// Explicit row tracks for `display: grid`. Empty means every row is
+    /// auto (sized to its tallest cell); a `Px` track pins that row's
+    /// height, `Auto`/`Fr` fall back to the measured height. Rows past the
+    /// template length are implicit and auto-sized.
+    pub grid_template_rows: Vec<TrackSize>,
+    /// Number of columns this node spans as a grid item (default 1). Read
+    /// by the parent grid's auto-flow placement; ignored elsewhere.
+    pub grid_column_span: u16,
+    /// Number of rows this node spans as a grid item (default 1). The
+    /// auto-flow reserves a `column_span × row_span` block and later items
+    /// flow around it.
+    pub grid_row_span: u16,
+    /// Explicit 1-based column line to place this grid item at (`0` = auto).
+    /// When both starts are set the item is placed there and auto items
+    /// flow around it.
+    pub grid_column_start: u16,
+    /// Explicit 1-based row line to place this grid item at (`0` = auto).
+    pub grid_row_start: u16,
+    /// `grid-auto-flow: dense` on a grid CONTAINER (default `false` =
+    /// sparse). When set, each auto-placed item restarts its search from
+    /// the grid origin, backfilling gaps that a spanning or explicitly-
+    /// placed item left earlier, instead of only moving the cursor
+    /// forward. Read on the container; ignored on items.
+    pub grid_auto_flow_dense: bool,
 }
 
 impl Default for StyleData {
@@ -374,6 +424,13 @@ impl Default for StyleData {
             max_size: Size::splat(Dimension::Auto),
             order: 0,
             box_sizing: BoxSizing::ContentBox,
+            grid_template_columns: Vec::new(),
+            grid_template_rows: Vec::new(),
+            grid_column_span: 1,
+            grid_row_span: 1,
+            grid_column_start: 0,
+            grid_row_start: 0,
+            grid_auto_flow_dense: false,
         }
     }
 }
