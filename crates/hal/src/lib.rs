@@ -32,9 +32,10 @@ pub mod text;
 
 pub use a11y::A11yBridge;
 pub use events::{
-    ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
-    MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent, Shortcut, WindowEvent,
+    FileDropEvent, FileDropPhase, ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey,
+    ModifiersState, MouseButton, MouseButtons, PhysicalKey, PointerEvent, PointerEventInit,
+    PointerKind, PointerPhase, ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
+    Shortcut, WindowEvent,
 };
 pub use geometry::{Color, PhysicalSize, Point, Rect};
 pub use layout::{Dim, Layout, Size};

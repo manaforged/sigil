@@ -306,17 +306,26 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             content, ellipsis, ..
         } => {
             if let Some(color) = style.text_color {
-                scene.draw_glyph_run_for_node(
-                    id,
-                    shape_glyph_run_with(
-                        rect,
-                        text_content(content),
-                        color,
-                        text_style_for(node, paint.theme, paint.text_base),
-                        style.opacity,
-                        *ellipsis,
-                    ),
+                let run = shape_glyph_run_with(
+                    rect,
+                    text_content(content),
+                    color,
+                    text_style_for(node, paint.theme, paint.text_base),
+                    style.opacity,
+                    *ellipsis,
                 );
+                // Color-bitmap glyphs (emoji) have no outline for the Slug
+                // pass; emit them as RGBA images alongside the mono run.
+                if let Some(paragraph) = run.paragraph() {
+                    crate::color_glyph_paint::emit_color_glyphs(
+                        scene,
+                        id,
+                        rect,
+                        paragraph,
+                        style.opacity,
+                    );
+                }
+                scene.draw_glyph_run_for_node(id, run);
             }
         }
         NodeType::Image { source, fit } => {

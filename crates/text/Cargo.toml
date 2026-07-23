@@ -36,6 +36,7 @@ unicode-segmentation = "1"
 unicode-bidi = "0.3"
 ahash = { workspace = true }
 harfrust = { version = "0.6", optional = true }
+image = { workspace = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

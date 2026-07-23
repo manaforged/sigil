@@ -1,7 +1,9 @@
 //! Event router implementation.
 
 use accesskit::TreeUpdate;
-use sigil_hal::{Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
+use sigil_hal::{
+    FileDropEvent, Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut,
+};
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
@@ -65,7 +67,25 @@ impl EventRouter {
             }
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
             ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
+            ShellEvent::FileDrop(event) => Self::route_file_drop(cx, &event),
             ShellEvent::Window(_) => {}
+        }
+    }
+
+    /// Broadcast a file drag-and-drop to every node carrying a file-drop
+    /// handler. The OS reports no drop position, so there is no target to
+    /// hit-test: a drop is delivered to all registered handlers (typically
+    /// one drop zone) which decide whether the file is theirs.
+    fn route_file_drop(cx: &Cx, event: &FileDropEvent) {
+        let mut stack: Vec<NodeId> = cx.roots().to_vec();
+        while let Some(id) = stack.pop() {
+            let Some(node) = cx.get(id) else {
+                continue;
+            };
+            if let Some(handlers) = node.get_extension::<EventHandlers>() {
+                handlers.invoke_file_drop(event);
+            }
+            stack.extend(node.children().iter().copied());
         }
     }
 

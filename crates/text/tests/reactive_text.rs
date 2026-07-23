@@ -8,6 +8,7 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
+use image as _;
 use sigil_style as _;
 use skrifa as _;
 use smallvec as _;

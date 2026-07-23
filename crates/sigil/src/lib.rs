@@ -62,6 +62,12 @@ use sigil_renderer as _;
 #[cfg(test)]
 use wgpu as _;
 
+/// Native file dialogs (open / save / folder) — see [`sigil_app::dialog`].
+pub use sigil_app::dialog;
+/// Native menu bar — see [`sigil_app::menu`].
+pub use sigil_app::menu;
+/// System tray icon — see [`sigil_app::tray`].
+pub use sigil_app::tray;
 pub use sigil_app::{Anchor, WindowOpts};
 pub use sigil_app::{
     AppConfig, AppResult, DefaultFonts, Error, PanicPolicy, TextTuning, TreeRoot, launch,
@@ -166,15 +172,15 @@ pub mod prelude {
         CodeEditBuilder, ColWidth, CommandMenuBuilder, DotBuilder, DropdownBuilder, FctSpawn,
         FloaterStyle, FloatingTextBuilder, GaugeBuilder, HintOverlayBuilder, HlSpan, IconBuilder,
         ImageBuilder, InteractiveBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder,
-        NumericKind, Orientation, PanelBuilder, ProgressBuilder, RadioGroupBuilder, ScrollAnchor,
-        ScrollBuilder, SelectionMode, SelectionState, SliderBuilder, SplitterBuilder,
-        SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn, TableState, TabsBuilder,
-        TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder, TurnStripBuilder,
-        VirtualListBuilder, axis_drag, button, checkbox, chip, code_edit, command_menu,
-        divider_horizontal, divider_vertical, dot, dropdown, floating_text, gauge, icon,
-        image_rgba, interactive, kv_row, label, menu, modal, number_field, panel, progress,
-        radio_group, scroll, slider, splitter, status_bar, table, tabs, text_edit, text_field,
-        toggle, tooltip, turn_strip, virtual_list,
+        NumericKind, Orientation, PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder,
+        RadioGroupBuilder, ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState,
+        SliderBuilder, SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder,
+        TableColumn, TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder,
+        TooltipBuilder, TurnStripBuilder, VirtualListBuilder, axis_drag, button, checkbox, chip,
+        code_edit, command_menu, divider_horizontal, divider_vertical, dot, dropdown,
+        floating_text, gauge, icon, image_rgba, interactive, kv_row, label, menu, modal,
+        number_field, panel, path, progress, radio_group, scroll, slider, splitter, status_bar,
+        table, tabs, text_edit, text_field, toggle, tooltip, turn_strip, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, launch};
 }

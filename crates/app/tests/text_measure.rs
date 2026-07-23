@@ -4,7 +4,10 @@
 
 use accesskit as _;
 use crossbeam_channel as _;
+use muda as _;
 use notify as _;
+use raw_window_handle as _;
+use rfd as _;
 use sigil_a11y as _;
 use sigil_events as _;
 use sigil_reactive as _;
@@ -15,6 +18,7 @@ use sigil_tasks as _;
 use sigil_text as _;
 use toml as _;
 use tracing as _;
+use tray_icon as _;
 #[cfg(windows)]
 use windows_core as _;
 

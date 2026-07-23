@@ -208,6 +208,30 @@ pub fn regen_enabled() -> bool {
     )
 }
 
+/// Return `true` when `SIGIL_REAL_MEASURE=1` is set. Diagnostic switch:
+/// the `StubMeasure`-backed `render_widget_to_png` then measures text
+/// through the production [`DefaultTextMeasure`](sigil_app::DefaultTextMeasure)
+/// instead of the constant 40x16 stub, so an audit run reveals which
+/// goldens depend on true glyph advances (their layout shifts). Off by
+/// default so ordinary golden runs stay deterministic and stub-fast.
+#[must_use]
+pub fn real_measure_enabled() -> bool {
+    matches!(
+        std::env::var("SIGIL_REAL_MEASURE").ok().as_deref(),
+        Some("1" | "true" | "yes" | "on"),
+    )
+}
+
+/// The measure `render_widget_to_png` installs: the production measure
+/// under `SIGIL_REAL_MEASURE=1`, otherwise the deterministic stub.
+fn default_text_measure() -> Box<dyn sigil_layout::TextMeasure> {
+    if real_measure_enabled() {
+        Box::new(sigil_app::DefaultTextMeasure::new())
+    } else {
+        Box::new(StubMeasure)
+    }
+}
+
 /// Resolve a golden PNG path relative to this crate.
 #[must_use]
 pub fn golden_path(stem: &str) -> PathBuf {
@@ -232,7 +256,7 @@ pub fn render_widget_to_png(
     size_px: [u32; 2],
     hit_point: (f32, f32),
 ) -> Option<image::RgbaImage> {
-    render_widget_to_png_with(build, mode, size_px, hit_point, Box::new(StubMeasure))
+    render_widget_to_png_with(build, mode, size_px, hit_point, default_text_measure())
 }
 
 /// Same as [`render_widget_to_png`] but lets the caller inject a

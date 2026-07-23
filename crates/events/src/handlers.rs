@@ -1,11 +1,12 @@
 //! Handler storage attached to `sigil_kernel::Node` extensions.
 
-use sigil_hal::{KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use sigil_hal::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 
 type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
 type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;
 type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
+type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
 
 struct KeyBinding {
     shortcut: Shortcut,
@@ -29,6 +30,7 @@ pub struct EventHandlers {
     key_any: Vec<KeyHandler>,
     focus_in: Vec<FocusHandler>,
     focus_out: Vec<FocusHandler>,
+    file_drop: Vec<FileDropHandler>,
 }
 
 impl EventHandlers {
@@ -66,6 +68,15 @@ impl EventHandlers {
 
     pub(crate) fn add_scroll(&mut self, handler: ScrollHandler) {
         self.scroll.push(handler);
+    }
+    pub(crate) fn add_file_drop(&mut self, handler: FileDropHandler) {
+        self.file_drop.push(handler);
+    }
+    pub(crate) fn invoke_file_drop(&self, event: &FileDropEvent) -> bool {
+        for handler in &self.file_drop {
+            handler(event);
+        }
+        !self.file_drop.is_empty()
     }
 
     pub(crate) fn invoke_scroll(&self, event: &mut ScrollEvent) -> bool {

@@ -55,6 +55,7 @@ use sigil_shell as _;
 use smallvec as _;
 mod blur_paint;
 mod blur_shader;
+mod color_glyph_paint;
 mod corner_radii;
 mod decoration_paint;
 mod device_state;

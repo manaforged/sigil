@@ -30,6 +30,7 @@ use sigil_layout as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;

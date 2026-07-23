@@ -28,6 +28,7 @@ use sigil_style::Rgba8;
 // Silence unused-crate-dependencies for dev-only crates the sigil
 // facade pulls in.
 use sigil_layout as _;
+use tiny_skia as _;
 
 const fn cell_color(x: usize, y: usize) -> Rgba8 {
     Rgba8 {

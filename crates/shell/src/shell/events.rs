@@ -4,10 +4,12 @@
 //! readable under the 400-LoC hygiene cap. These methods translate raw
 //! winit events into the sigil-hal `ShellEvent` vocabulary.
 
+use std::path::PathBuf;
+
 use sigil_hal::{
-    ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase, MouseButton, PhysicalSize, Point,
-    PointerEvent, PointerEventInit, PointerKind, PointerPhase, Scale, ScrollEvent, ScrollEventInit,
-    ShellEvent, WindowEvent as SigilWindowEvent,
+    FileDropEvent, FileDropPhase, ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase,
+    MouseButton, PhysicalSize, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    Scale, ScrollEvent, ScrollEventInit, ShellEvent, WindowEvent as SigilWindowEvent,
 };
 use smol_str::SmolStr;
 use winit::{
@@ -98,6 +100,16 @@ impl WinitShell {
             WinitIme::Disabled => ImeEvent::Disabled,
         };
         self.events.push(ShellEvent::Ime(event));
+        true
+    }
+
+    /// Translate a winit file drag-and-drop into a `ShellEvent::FileDrop`.
+    /// The platform `PathBuf` is flattened to a UTF-8 string for the
+    /// `no_std` HAL event vocabulary.
+    pub(super) fn push_file_drop(&mut self, path: Option<PathBuf>, phase: FileDropPhase) -> bool {
+        let path = path.map(|p| p.to_string_lossy().into_owned());
+        self.events
+            .push(ShellEvent::FileDrop(FileDropEvent { path, phase }));
         true
     }
 

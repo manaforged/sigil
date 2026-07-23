@@ -13,8 +13,8 @@ use std::sync::{
 use std::time::Instant;
 
 use sigil_hal::{
-    Anchor, LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, PointerPhase, Rect,
-    Scale, Shell, ShellEvent, WindowEvent as SigilWindowEvent, WindowOpts,
+    Anchor, FileDropPhase, LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point,
+    PointerPhase, Rect, Scale, Shell, ShellEvent, WindowEvent as SigilWindowEvent, WindowOpts,
 };
 use winit::{
     dpi::{
@@ -397,6 +397,15 @@ impl WinitShell {
             }
             WinitWindowEvent::Occluded(occluded) => {
                 self.push_window(SigilWindowEvent::Occluded(occluded))
+            }
+            WinitWindowEvent::HoveredFile(path) => {
+                self.push_file_drop(Some(path), FileDropPhase::Hovered)
+            }
+            WinitWindowEvent::DroppedFile(path) => {
+                self.push_file_drop(Some(path), FileDropPhase::Dropped)
+            }
+            WinitWindowEvent::HoveredFileCancelled => {
+                self.push_file_drop(None, FileDropPhase::Cancelled)
             }
             _ => false,
         }

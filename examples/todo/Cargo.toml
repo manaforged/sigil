@@ -1,0 +1,24 @@
+[package]
+name = "todo"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "A to-do app on Sigil: native menu bar, file dialogs, and system tray."
+
+[[bin]]
+name = "todo"
+path = "src/main.rs"
+
+[dependencies]
+sigil-ui = { workspace = true }
+
+[dev-dependencies]
+# The dialog test seam: mock file-picker responses in tests, no native UI.
+sigil-ui = { workspace = true, features = ["test-support"] }
+
+[lints]
+workspace = true

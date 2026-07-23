@@ -58,6 +58,41 @@ fn pointer_down_hits_top_of_z_stack() {
 }
 
 #[test]
+fn file_drop_broadcasts_to_registered_handlers() {
+    // A window-level file drop (no OS drop position) is delivered to every
+    // node carrying a file-drop handler. Here the sole drop zone records
+    // the dropped path.
+    let dropped = Rc::new(RefCell::new(Vec::<String>::new()));
+    let mut cx = Cx::new_root();
+    let root = cx.add({
+        let dropped = Rc::clone(&dropped);
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .file_drop(move |event: &FileDropEvent| {
+                if event.phase == FileDropPhase::Dropped
+                    && let Some(path) = &event.path
+                {
+                    dropped.borrow_mut().push(path.clone());
+                }
+            })
+    });
+    let layout = compute_layout(&mut cx, root, 100.0, 100.0);
+    let mut router = EventRouter::new();
+
+    route_event(
+        &mut router,
+        &mut cx,
+        &layout,
+        ShellEvent::FileDrop(FileDropEvent {
+            path: Some("/tmp/data.csv".to_owned()),
+            phase: FileDropPhase::Dropped,
+        }),
+    );
+
+    assert_eq!(dropped.borrow().as_slice(), ["/tmp/data.csv"]);
+}
+
+#[test]
 fn capture_runs_root_to_target() {
     let order = Rc::new(RefCell::new(Vec::new()));
     let mut cx = Cx::new_root();

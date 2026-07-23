@@ -27,6 +27,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_layout as _;
 use sigil_tasks as _;
+use tiny_skia as _;
 use wgpu as _;
 
 use sigil_animation_runtime::{

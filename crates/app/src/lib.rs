@@ -22,12 +22,18 @@ use windows_core as _;
 use sigil_style as _;
 
 mod config;
+/// Native file dialogs (open / save / folder).
+pub mod dialog;
 mod embed;
 mod error;
 mod launch;
+/// Native menu bar.
+pub mod menu;
 mod text_geometry;
 mod text_measure;
 mod theme_file;
+/// System tray icon.
+pub mod tray;
 mod tree_root;
 
 pub use config::{AppConfig, PanicPolicy};

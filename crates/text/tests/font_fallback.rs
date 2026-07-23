@@ -15,6 +15,7 @@ use ahash as _;
 use criterion as _;
 #[cfg(feature = "shaping-complex")]
 use harfrust as _;
+use image as _;
 use sigil_kernel as _;
 use sigil_layout as _;
 use sigil_reactive as _;
@@ -76,6 +77,30 @@ fn mixed_latin_hebrew_falls_back_to_registered_face() {
         distinct_fonts.len(),
         2,
         "Latin run (FiraSans) and Hebrew run (fallback) must use two distinct font ids, \
+         got {distinct_fonts:?}",
+    );
+}
+
+#[test]
+fn emoji_falls_back_to_the_bundled_color_face() {
+    // No registration needed: the bundled Noto Color Emoji subset is the
+    // built-in last-resort fallback. "A✅" must resolve the check mark to
+    // that face (a real glyph, a distinct font id from the Latin "A"),
+    // not render .notdef tofu.
+    let e = engine();
+    let p = e.layout_paragraph("A\u{2705}", None).unwrap();
+    let glyphs = p.rendered_glyphs();
+
+    assert!(!glyphs.is_empty(), "must produce glyphs");
+    assert!(
+        glyphs.iter().all(|g| g.glyph_id != 0),
+        "the emoji must not be .notdef tofu — the bundled fallback covers it: {glyphs:?}",
+    );
+    let distinct_fonts: HashSet<u64> = glyphs.iter().map(|g| g.font_id).collect();
+    assert_eq!(
+        distinct_fonts.len(),
+        2,
+        "Latin 'A' (FiraSans) and ✅ (emoji fallback) must use two distinct font ids, \
          got {distinct_fonts:?}",
     );
 }

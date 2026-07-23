@@ -3,7 +3,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil_hal::{ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
+use sigil_hal::{FileDropEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
 use sigil_kernel::{Node, NodeBuilder};
 use sigil_layout::CaretGeometry;
 
@@ -59,6 +59,15 @@ pub trait NodeEventsExt {
     fn pointer_leave<H>(self, h: H) -> Self
     where
         H: Fn(&mut PointerEvent) + 'static;
+
+    /// Run `h` when a file is dragged over, dropped on, or dragged off the
+    /// window. The OS gives no drop position, so every file-drop handler in
+    /// the tree receives the event and decides whether the file is theirs
+    /// (inspect [`FileDropEvent::phase`] and `path`).
+    #[must_use]
+    fn file_drop<H>(self, h: H) -> Self
+    where
+        H: Fn(&FileDropEvent) + 'static;
 
     /// Run `h` when a scroll event lands on this node or an ancestor.
     /// Bubbles target-first; handlers can call `event.stop_propagation()`
@@ -181,6 +190,15 @@ impl NodeEventsExt for NodeBuilder {
     {
         with_handlers(self, move |handlers| {
             handlers.add_pointer_enter(Box::new(h));
+        })
+    }
+
+    fn file_drop<H>(self, h: H) -> Self
+    where
+        H: Fn(&FileDropEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_file_drop(Box::new(h));
         })
     }
 

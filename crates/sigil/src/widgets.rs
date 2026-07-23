@@ -40,6 +40,7 @@ mod toggle;
 mod tooltip;
 pub mod transition_seam;
 mod turn_strip;
+mod vector;
 mod virtual_list;
 
 pub use button::{ButtonBuilder, button};
@@ -81,6 +82,7 @@ pub use text_field::{Clipboard, TextFieldBuilder, text_field};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
 pub use turn_strip::{TurnStripBuilder, turn_strip};
+pub use vector::{PathCmd, PathFill, PathNode, path};
 pub use virtual_list::{
     ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
 };

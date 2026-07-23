@@ -41,6 +41,7 @@ use sigil_kernel as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+use tiny_skia as _;
 
 use sigil::prelude::*;
 use sigil_app::DefaultTextMeasure;

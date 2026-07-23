@@ -38,6 +38,7 @@ members = [
     "examples/kanban-board",
     "examples/password-generator",
     "examples/csv-viewer",
+    "examples/todo",
     "examples/regex-tester",
     "examples/api-explorer",
     "examples/chat-client",

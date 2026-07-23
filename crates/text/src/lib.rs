@@ -35,6 +35,7 @@ mod fonts;
 mod paragraph;
 
 pub mod bidi;
+pub mod color_glyph;
 pub mod glyph;
 pub mod segment;
 

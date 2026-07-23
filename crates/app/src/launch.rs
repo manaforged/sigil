@@ -221,6 +221,19 @@ struct FrameCtx<'a> {
 /// runtime to a clean resting state so the NEXT frame still runs. Without
 /// this the loop simply dies, which made `PanicPolicy::Isolate` (the
 /// default) a promise the app did not keep.
+/// Resolve the main window's Win32 handle for muda's `init_for_hwnd`. The
+/// `RawWindowHandle` enum carries every variant on all platforms, so this
+/// compiles cross-platform and yields `None` off Windows — macOS uses
+/// `init_for_nsapp`, which needs no handle.
+fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let window = shell.window_for(handle)?;
+    match window.window_handle().ok()?.as_raw() {
+        RawWindowHandle::Win32(win32) => Some(win32.hwnd.get()),
+        _ => None,
+    }
+}
+
 fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) {
     match policy {
         PanicPolicy::Abort => frame_once(ctx),
@@ -291,6 +304,24 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // `acx.update(...)` visible to the next frame's Effect phase.
     let _moved = async_rt.pump_completions_into_reactive();
 
+    // First live frame: install the registered native menu bar (macOS
+    // `init_for_nsapp` / Windows `init_for_hwnd`). muda's item events wake
+    // the loop and bridge onto `menu::events()`, drained in `menu::pump`.
+    if crate::menu::has_pending() {
+        let waker = shell.waker();
+        crate::menu::install(menu_hwnd(shell, window_handle), move || {
+            let _ = waker.wake();
+        });
+    }
+    // Same for the system tray icon: build it on the first frame; its clicks
+    // wake the loop and bridge onto `tray::events()`.
+    if crate::tray::has_pending() {
+        let waker = shell.waker();
+        crate::tray::install(move || {
+            let _ = waker.wake();
+        });
+    }
+
     // DR-047 frame driver: Idle → Effect → Layout → Paint → Idle.
     //
     // Effect phase brackets every reactive write produced during the
@@ -325,6 +356,10 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // stalling under ControlFlow::Wait until the next unrelated OS event.
     // Hit-testing uses the layout the user actually saw — the previous
     // frame's, recomputed just below.
+    // Drain native menu-item clicks onto the reactive channel. Effect phase,
+    // so subscriber effects (`menu::events().subscribe(...)`) run this frame.
+    crate::menu::pump();
+    crate::tray::pump();
     drain_events(DrainCtx {
         shell,
         cx,

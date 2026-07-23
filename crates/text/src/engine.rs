@@ -294,6 +294,10 @@ pub struct FontCollection {
     mono: Font,
     serif: Option<Font>,
     icon: Option<Font>,
+    /// Bundled Noto Color Emoji subset — the last-resort fallback face so
+    /// emoji codepoints no text face covers resolve to a color glyph
+    /// instead of tofu. Rendered through [`crate::color_glyph`], not Slug.
+    emoji: Font,
 }
 
 impl FontCollection {
@@ -325,6 +329,7 @@ impl FontCollection {
             // consumer registers one (e.g. the host app's codicon) via the
             // `DefaultFonts.icon` override.
             icon: over.as_ref().and_then(|f| face(f.icon.as_ref())),
+            emoji: load_emoji_font(),
         }
     }
 
@@ -413,6 +418,8 @@ impl FontCollection {
             Some(&self.mono),
             self.serif.as_ref(),
             self.icon.as_ref(),
+            // Emoji last: only reached for codepoints no text face covers.
+            Some(&self.emoji),
         ];
         for candidate in candidates.into_iter().flatten() {
             if chain.iter().all(|f| f.id() != candidate.id()) {
@@ -428,6 +435,12 @@ fn load_sans_font() -> Font {
     const BYTES: &[u8] = include_bytes!("../assets/fonts/FiraSans-Regular.ttf");
     Font::from_bytes(BYTES.to_vec(), 0)
         .expect("bundled FiraSans-Regular.ttf must parse — fixture validated at G1.3")
+}
+
+fn load_emoji_font() -> Font {
+    const BYTES: &[u8] = include_bytes!("../assets/fonts/NotoColorEmoji-subset.ttf");
+    Font::from_bytes(BYTES.to_vec(), 0)
+        .expect("bundled NotoColorEmoji-subset.ttf must parse — validated in color_glyph tests")
 }
 
 /// Embedded `CascadiaMono` Regular — monospace bootstrap face. OFL

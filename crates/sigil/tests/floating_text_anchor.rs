@@ -35,6 +35,7 @@ use sigil_renderer as _;
 use sigil_style::scale::ScaleRole;
 use sigil_style::{Rgba8, Theme};
 use sigil_tasks as _;
+use tiny_skia as _;
 use wgpu as _;
 
 fn placeholder_color() -> Rgba8 {

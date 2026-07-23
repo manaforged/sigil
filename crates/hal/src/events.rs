@@ -27,8 +27,37 @@ pub enum ShellEvent {
     Ime(ImeEvent),
     /// Scroll wheel or touchpad scroll event.
     Scroll(ScrollEvent),
+    /// A file was dragged over, dropped on, or dragged off the window.
+    /// Window-level (the OS gives no drop position), so it is broadcast to
+    /// every node carrying a file-drop handler.
+    FileDrop(FileDropEvent),
     /// Window lifecycle or focus event.
     Window(WindowEvent),
+}
+
+/// Stage of a file drag-and-drop interaction over the window.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FileDropPhase {
+    /// A file is being dragged over the window (drop not yet released).
+    Hovered,
+    /// A file was released onto the window.
+    Dropped,
+    /// The drag left the window without dropping.
+    Cancelled,
+}
+
+/// A single file drag-and-drop event. The OS reports one per file, with no
+/// drop position, so handlers receive each `path` and decide what to do.
+///
+/// `path` is the filesystem path as a UTF-8 string (the shell converts the
+/// platform `PathBuf` via `to_string_lossy`); a consumer rebuilds a
+/// `PathBuf` from it when needed.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FileDropEvent {
+    /// The file involved, or `None` for [`FileDropPhase::Cancelled`].
+    pub path: Option<alloc::string::String>,
+    /// Which stage of the drag-and-drop this event represents.
+    pub phase: FileDropPhase,
 }
 
 /// Logical key used for event matching.
