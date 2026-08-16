@@ -42,6 +42,10 @@ pub(super) struct TextFieldRuntime {
     pub(super) caret: Signal<usize>,
     /// Selection anchor mirrored from the buffer (`None` = collapsed caret).
     pub(super) selection: Signal<Option<usize>>,
+    /// Effective inherited typography published by layout for the field frame.
+    /// Geometry reads this same style so caret, selection, hit testing, and IME
+    /// stay aligned with the descendant glyph run.
+    pub(super) text_style: Signal<TextStyle>,
     /// Widget-local IME composition state (preedit text + caret anchor).
     /// See `super::ime` — DR-051's "widget-local signal" default.
     pub(super) ime: ImeState,
@@ -62,6 +66,7 @@ impl TextFieldRuntime {
         let edit = TextEdit::new(value.peek());
         let caret = signal(edit.caret());
         let selection = signal(edit.selection());
+        let text_style = signal(TextStyle::default());
         Self {
             value,
             disabled,
@@ -74,6 +79,7 @@ impl TextFieldRuntime {
             column,
             caret,
             selection,
+            text_style,
             ime: ImeState::new(),
         }
     }
@@ -355,7 +361,7 @@ pub(super) fn publish(runtime: &TextFieldRuntime, state: &TextEdit) {
 }
 
 pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
-    update_scroll(state, runtime.scroll, runtime.column);
+    update_scroll(state, runtime);
     runtime.caret_visible.set(true);
     if runtime.caret.peek() != state.caret() {
         runtime.caret.set(state.caret());
@@ -371,25 +377,24 @@ pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
 /// the old fixed "≈19 chars" guess that mis-scrolled wider fields like the
 /// composer. With no geometry provider installed (headless layout tests) the
 /// caret x is unknown, so scroll is left untouched (stays 0).
-pub(super) fn update_scroll(edit: &TextEdit, scroll: Signal<f32>, column: f32) {
-    let Some(caret_x) = with_text_geometry(|engine| {
-        engine
-            .caret(edit.as_str(), &TextStyle::default(), edit.caret())
-            .x
-    }) else {
+pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
+    let style = runtime.text_style.peek();
+    let Some(caret_x) =
+        with_text_geometry(|engine| engine.caret(edit.as_str(), &style, edit.caret()).x)
+    else {
         return;
     };
-    let mut offset = scroll.peek();
+    let mut offset = runtime.scroll.peek();
     if caret_x < offset {
         // Caret moved left of the window — pin it to the left edge.
         offset = caret_x;
-    } else if caret_x > offset + column {
+    } else if caret_x > offset + runtime.column {
         // Caret moved past the right edge — pin it to the right edge.
-        offset = caret_x - column;
+        offset = caret_x - runtime.column;
     }
     let offset = offset.max(0.0);
-    if (offset - scroll.peek()).abs() > f32::EPSILON {
-        scroll.set(offset);
+    if (offset - runtime.scroll.peek()).abs() > f32::EPSILON {
+        runtime.scroll.set(offset);
     }
 }
 

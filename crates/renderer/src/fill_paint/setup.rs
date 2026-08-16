@@ -3,8 +3,6 @@
 
 use wgpu::util::DeviceExt as _;
 
-use crate::scene_instance::{FillInstance, GpuStop, SceneUniforms};
-
 pub(super) const FILL_SHADER: &str = include_str!("../fill_paint.wgsl");
 
 pub(super) const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
@@ -122,17 +120,6 @@ pub(super) fn stops_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-pub(super) fn uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer fill paint uniforms"),
-        contents: bytemuck::bytes_of(&SceneUniforms {
-            viewport: [viewport.0, viewport.1],
-            _pad: [0.0, 0.0],
-        }),
-        usage: wgpu::BufferUsages::UNIFORM,
-    })
-}
-
 pub(super) fn uniform_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
@@ -168,21 +155,5 @@ pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
         label: Some("sigil-renderer fill paint unit quad"),
         contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
         usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-pub(super) fn instance_buffer(device: &wgpu::Device, instances: &[FillInstance]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer fill paint instance buffer"),
-        contents: bytemuck::cast_slice(instances),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-pub(super) fn stops_buffer(device: &wgpu::Device, stops: &[GpuStop]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer fill paint stops buffer"),
-        contents: bytemuck::cast_slice(stops),
-        usage: wgpu::BufferUsages::STORAGE,
     })
 }

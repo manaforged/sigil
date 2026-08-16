@@ -10,7 +10,9 @@
 use sigil_hal::{Color, Rect, RenderedGlyph};
 use sigil_text::Paragraph;
 
-use crate::raster::{self, RasterKey};
+use crate::frame_stats::FrameStats;
+use crate::frame_upload::{FrameUploads, UploadedRange};
+use crate::raster::{self, RasterFont, RasterKey};
 
 mod atlas;
 mod setup;
@@ -55,6 +57,7 @@ struct RasterInstance {
 }
 
 const _: () = assert!(core::mem::size_of::<RasterInstance>() == 48);
+pub(crate) const RASTER_INSTANCE_BYTES: usize = core::mem::size_of::<RasterInstance>();
 
 /// GPU-side raster text pipeline: owns the render pipeline, sampler, and the
 /// shared [`RasterAtlas`]. Construct once per surface format; reuse across
@@ -99,6 +102,7 @@ impl RasterTextPipeline {
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
         params: &RasterDrawParams<'_>,
+        frame: Option<(&mut FrameUploads, &mut FrameStats)>,
     ) -> Vec<RenderedGlyph> {
         if params.glyphs.is_empty() {
             return Vec::new();
@@ -138,7 +142,7 @@ impl RasterTextPipeline {
         // an earlier normalize (review finding, 2026-07-12).
         normalize_uvs(&mut all_instances, self.atlas.size());
         if !all_instances.is_empty() {
-            self.draw_instances(encoder, params, &all_instances);
+            self.draw_instances(encoder, params, &all_instances, frame);
         }
         leftover
     }
@@ -202,14 +206,22 @@ impl RasterTextPipeline {
             font_index: g.font_index,
             glyph_id: g.glyph_id,
             physical_px_bits: physical_px.to_bits(),
+            variation_coords: g.variation_coords.clone(),
             bin,
         };
         let placement = if let Some(p) = self.atlas.get(&key) {
             p
         } else {
-            let Some(mask) =
-                raster::rasterize_glyph(font_bytes, g.font_index, g.glyph_id, physical_px, bin)
-            else {
+            let Some(mask) = raster::rasterize_glyph(
+                RasterFont {
+                    bytes: font_bytes,
+                    index: g.font_index,
+                    variation_coords: &g.variation_coords,
+                },
+                g.glyph_id,
+                physical_px,
+                bin,
+            ) else {
                 return GlyphOutcome::Blank;
             };
             let Some(p) = self.atlas.insert(params.device, params.queue, key, mask) else {
@@ -228,11 +240,13 @@ impl RasterTextPipeline {
         ))
     }
 
+    #[allow(clippy::too_many_lines)]
     fn draw_instances(
         &self,
         encoder: &mut wgpu::CommandEncoder,
         params: &RasterDrawParams<'_>,
         instances: &[RasterInstance],
+        frame: Option<(&mut FrameUploads, &mut FrameStats)>,
     ) {
         let uniform = uniform_buffer(
             params.device,
@@ -248,8 +262,17 @@ impl RasterTextPipeline {
             self.atlas.view(),
             &self.sampler,
         );
-        let instance_buf = instance_buffer(params.device, instances);
-        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
+        let uploaded = frame
+            .and_then(|(uploads, stats)| uploads.upload_raster(params.queue, instances, stats));
+        let instances = uploaded.unwrap_or_else(|| {
+            let buffer = instance_buffer(params.device, instances);
+            UploadedRange {
+                buffer,
+                bytes: 0..u64::try_from(instances.len() * RASTER_INSTANCE_BYTES)
+                    .unwrap_or(u64::MAX),
+                count: u32::try_from(instances.len()).unwrap_or(u32::MAX),
+            }
+        });
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("raster-text-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -266,14 +289,19 @@ impl RasterTextPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !apply_clip_scissor(&mut pass, params) {
+        if !crate::scissor::apply(
+            &mut pass,
+            params.clip,
+            params.scale,
+            (params.surface_width, params.surface_height),
+        ) {
             return;
         }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bg, &[]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
     }
 }
 
@@ -351,51 +379,6 @@ fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
     let bins = f32::from(raster::SUBPIXEL_BINS);
     let q = (physical_pen_x.rem_euclid(1.0) * bins).round();
     if q >= bins { (0, 1.0) } else { (q as u8, 0.0) }
-}
-
-/// Apply the active clip (if any) as a GPU scissor. Mirrors
-/// `slug::draw::apply_clip_scissor` — small enough that duplicating it here
-/// keeps the two pipelines independent per DR-055 §1 (watch the rule of
-/// three before extracting a shared helper).
-fn apply_clip_scissor(pass: &mut wgpu::RenderPass<'_>, params: &RasterDrawParams<'_>) -> bool {
-    let Some(clip) = params.clip else {
-        return true;
-    };
-    match scissor_rect(
-        clip,
-        params.scale,
-        params.surface_width,
-        params.surface_height,
-    ) {
-        Some((x, y, w, h)) => {
-            pass.set_scissor_rect(x, y, w, h);
-            true
-        }
-        None => false,
-    }
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn scissor_rect(
-    clip: Rect,
-    scale: f32,
-    surface_w: f32,
-    surface_h: f32,
-) -> Option<(u32, u32, u32, u32)> {
-    let fb_w = (surface_w * scale).max(0.0);
-    let fb_h = (surface_h * scale).max(0.0);
-    let x0 = (clip.origin.x * scale).floor().clamp(0.0, fb_w);
-    let y0 = (clip.origin.y * scale).floor().clamp(0.0, fb_h);
-    let x1 = ((clip.origin.x + clip.width) * scale)
-        .ceil()
-        .clamp(0.0, fb_w);
-    let y1 = ((clip.origin.y + clip.height) * scale)
-        .ceil()
-        .clamp(0.0, fb_h);
-    if x1 <= x0 || y1 <= y0 {
-        return None;
-    }
-    Some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 #[cfg(test)]

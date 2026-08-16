@@ -21,8 +21,8 @@ use super::transition_seam::install_transition_animators;
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
 const CHECKBOX_COMPONENT_ID: u64 = 0xC4EC_B0CC;
-const CHECKBOX_BOX_SIZE: f32 = 20.0;
-const CHECKBOX_MARK_SIZE: f32 = 8.0;
+const CHECKBOX_BOX_SIZE: f32 = 18.0;
+const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
 /// Visual tone for [`checkbox`].
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -61,10 +61,13 @@ static CHECKBOX_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(CHECKBOX_TRANS
 static PRIMARY_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
 static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static NEUTRAL_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+// Neutral checked: a strong neutral fill (gray-9) rather than the old
+// surface-hover tint, which read as "hovered", not "checked".
+static NEUTRAL_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-10")];
 static NEUTRAL_CHECKED_DOWN: &[StyleAtom] =
-    &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
+    &[StyleAtom::BackgroundThemeRef("gray-10")];
+static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-inset")];
 // Hover skips straight to surface-pressed (rather than surface-hover)
 // so the default→hover delta is perceptible on a 16-20px indicator.
 // A border-darkening cue would be richer but the renderer has no
@@ -98,9 +101,13 @@ static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-p
 // enough to `surface-pressed` after gamma to confuse the hover ↔
 // disabled comparison. W5.3 owns the richer faded semantic.
 static CHECKBOX_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static PRIMARY_MARK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-accent")];
-static NEUTRAL_MARK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
-static NO_MARK: &[StyleAtom] = &[];
+// The mark is a stroked vector check (the square-fill mark read as a
+// radio dot / indeterminate dash — Fable + the reviewer 2026-08-15). White in
+// both built-in themes: on_accent is white in each. ponytail: a scoped
+// theme with a dark on_accent gets a white check anyway — the path
+// primitive paints concrete colors; upgrade when paths take theme refs.
+static MARK_VISIBLE: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
+static MARK_HIDDEN: &[StyleAtom] = &[StyleAtom::Opacity(0)];
 
 /// Create a checkbox widget.
 #[must_use]
@@ -291,10 +298,10 @@ fn checkbox_indicator(
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .class("rounded-md")
+        .class("rounded")
         // 1px muted outline so the box reads as a checkbox against a
-        // same-tone surface. Without it the near-white `bg-surface` box
-        // vanishes into the panel and only the inner mark shows, so an
+        // same-tone surface. Without it the near-white `bg-surface-inset`
+        // box vanishes into the panel and only the inner mark shows, so an
         // unchecked box is invisible and a checked one reads as a bullet.
         // (The old "renderer has no border primitive" note is stale —
         // DR-057 wired the border stroke.)
@@ -304,7 +311,7 @@ fn checkbox_indicator(
         .style_reactive(move || {
             checkbox_variant(tone, checked.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(checkbox_mark(checked, tone));
+        .child(checkbox_mark(checked));
     install_transition_animators(
         node,
         CHECKBOX_ANIM_BASE,
@@ -325,8 +332,8 @@ const fn checkbox_state_style(tone: CheckboxTone, checked: bool) -> StateStyle {
         ),
         (CheckboxTone::Neutral, true) => StateStyle::new(
             NEUTRAL_CHECKED,
-            NEUTRAL_CHECKED,
-            NEUTRAL_CHECKED,
+            NEUTRAL_CHECKED_HOVER,
+            NEUTRAL_CHECKED_HOVER,
             NEUTRAL_CHECKED_DOWN,
             CHECKBOX_DISABLED,
         ),
@@ -340,11 +347,36 @@ const fn checkbox_state_style(tone: CheckboxTone, checked: bool) -> StateStyle {
     }
 }
 
-fn checkbox_mark(checked: Signal<bool>, tone: CheckboxTone) -> NodeBuilder {
+fn checkbox_mark(checked: Signal<bool>) -> NodeBuilder {
     container()
+        .hittable(false)
+        .layout(
+            LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE),
+        )
+        .style_reactive(move || {
+            if checked.get() {
+                MARK_VISIBLE
+            } else {
+                MARK_HIDDEN
+            }
+        })
+        .child(check_path())
+}
+
+// Stroked ✓ rasterized at 2x the logical mark size and pinned back
+// down via `.layout()` so it stays crisp on hi-dpi targets.
+fn check_path() -> super::vector::PathNode {
+    super::vector::path(24, 24)
+        .move_to(5.0, 12.5)
+        .line_to(10.0, 18.0)
+        .line_to(19.0, 6.5)
+        .stroke(sigil_style::Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        }, 3.0)
         .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE))
-        .class("rounded-md")
-        .style_reactive(move || checkbox_mark_atoms(tone, checked.get()))
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
@@ -375,8 +407,8 @@ const fn checkbox_variant(tone: CheckboxTone, checked: bool) -> StyleVariant {
             EMPTY_BASE,
             StateStyle::new(
                 NEUTRAL_CHECKED,
-                NEUTRAL_CHECKED,
-                NEUTRAL_CHECKED,
+                NEUTRAL_CHECKED_HOVER,
+                NEUTRAL_CHECKED_HOVER,
                 NEUTRAL_CHECKED_DOWN,
                 CHECKBOX_DISABLED,
             ),
@@ -391,13 +423,5 @@ const fn checkbox_variant(tone: CheckboxTone, checked: bool) -> StyleVariant {
                 CHECKBOX_DISABLED,
             ),
         ),
-    }
-}
-
-const fn checkbox_mark_atoms(tone: CheckboxTone, checked: bool) -> &'static [StyleAtom] {
-    match (tone, checked) {
-        (CheckboxTone::Primary, true) => PRIMARY_MARK,
-        (CheckboxTone::Neutral, true) => NEUTRAL_MARK,
-        (_, false) => NO_MARK,
     }
 }

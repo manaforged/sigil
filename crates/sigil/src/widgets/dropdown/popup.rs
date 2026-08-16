@@ -2,13 +2,13 @@ use std::rc::Rc;
 
 use sigil_kernel::{NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
+use sigil_style::{NodeStyleExt, StyleAtom};
 
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
 
-pub(super) const TRIGGER_HEIGHT: f32 = 40.0;
-pub(super) const OPTION_HEIGHT: f32 = 36.0;
+pub(super) const TRIGGER_HEIGHT: f32 = 32.0;
+pub(super) const OPTION_HEIGHT: f32 = 28.0;
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
 pub(super) static SURFACE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
@@ -25,6 +25,7 @@ pub(super) struct OptionCtx {
     /// popup and its rows follow it either way, so the menu stays flush
     /// with the control that opened it.
     pub(super) width: Option<f32>,
+    pub(super) trigger_height: f32,
 }
 
 /// Apply an explicit width, or fill the containing block when the trigger
@@ -47,6 +48,7 @@ pub(super) fn build_popup(
         cursor,
         disabled,
         width,
+        trigger_height,
     } = ctx;
     let n = options.len();
     #[allow(clippy::cast_precision_loss)]
@@ -60,13 +62,12 @@ pub(super) fn build_popup(
         .layout(
             sized(LayoutStyle::flex_column(), width, popup_h)
                 .position(Position::Absolute)
-                .inset_top(TRIGGER_HEIGHT)
+                .inset_top(trigger_height)
                 .inset_left(0.0),
         )
         .class("rounded-md")
         .class("shadow-lg")
-        .class(SURFACE_HOVER)
-        .style_reactive(move || popup_display(open.get()));
+        .class(SURFACE_HOVER);
 
     let item_ctx = OptionCtx {
         selected,
@@ -74,6 +75,7 @@ pub(super) fn build_popup(
         cursor,
         disabled,
         width,
+        trigger_height,
     };
     attach_options(popup, options, item_ctx, on_change, popup_h)
 }
@@ -111,14 +113,6 @@ fn attach_options(
         )
     } else {
         popup.child(list)
-    }
-}
-
-pub(super) const fn popup_display(open: bool) -> &'static [StyleAtom] {
-    if open {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
     }
 }
 

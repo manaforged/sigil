@@ -25,12 +25,14 @@
 #![allow(dead_code, clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use skrifa::FontRef;
 use skrifa::MetadataProvider;
 use skrifa::charmap::Charmap;
-use skrifa::instance::{LocationRef, Size};
+use skrifa::instance::{Location, LocationRef, Size};
 use skrifa::metrics::GlyphMetrics;
+use skrifa::raw::types::Tag;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -38,6 +40,8 @@ use crate::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
 
 #[path = "shaper/classify.rs"]
 mod classify_mod;
+#[path = "shaper/variations.rs"]
+mod variations;
 
 #[cfg(not(feature = "shaping-complex"))]
 use classify_mod::warn_complex_without_feature;
@@ -62,7 +66,11 @@ pub(crate) struct FeatureTag(pub [u8; 4]);
 pub struct Font {
     data: Arc<Vec<u8>>,
     index: u32,
+    id: u64,
+    variations: variations::VariationModel,
 }
+
+static NEXT_FONT_ID: AtomicU64 = AtomicU64::new(1);
 
 impl Font {
     /// Construct a font from owned TTF/OTF bytes.
@@ -75,11 +83,19 @@ impl Font {
     /// Returns `ShaperError::InvalidFont` when skrifa rejects the
     /// table directory.
     pub fn from_bytes(data: Vec<u8>, index: u32) -> Result<Self, ShaperError> {
+        Self::from_shared(Arc::new(data), index)
+    }
+
+    /// Construct a font while sharing an already-owned sfnt blob.
+    pub(crate) fn from_shared(data: Arc<Vec<u8>>, index: u32) -> Result<Self, ShaperError> {
         // Validate at construction so `font_ref()` never fails downstream.
-        FontRef::from_index(&data, index).map_err(|_| ShaperError::InvalidFont)?;
+        let font_ref = FontRef::from_index(&data, index).map_err(|_| ShaperError::InvalidFont)?;
+        let variations = variations::VariationModel::new(&font_ref);
         Ok(Self {
-            data: Arc::new(data),
+            data,
             index,
+            id: NEXT_FONT_ID.fetch_add(1, Ordering::Relaxed),
+            variations,
         })
     }
 
@@ -103,13 +119,46 @@ impl Font {
         self.index
     }
 
-    /// Stable identifier derived from the bytes pointer.
+    /// Stable engine-assigned face identifier.
     ///
-    /// Two clones of the same `Font` share the same id; two faces
-    /// constructed independently from the same bytes do not.
+    /// Two clones share an id. Distinct faces in the same collection have
+    /// distinct ids even though their sfnt bytes are shared.
     #[must_use]
-    pub fn id(&self) -> u64 {
-        Arc::as_ptr(&self.data) as u64
+    pub const fn id(&self) -> u64 {
+        self.id
+    }
+
+    /// Whether this face can resolve CSS weights through an OpenType `wght` axis.
+    pub(crate) fn has_weight_axis(&self) -> bool {
+        self.font_ref()
+            .axes()
+            .get_by_tag(Tag::new(b"wght"))
+            .is_some()
+    }
+
+    /// Resolve weight and optical size into this face's normalized axis order.
+    pub(crate) fn location(&self, weight: u16, size_px: f32) -> Location {
+        let settings = self.variation_settings(weight, size_px);
+        self.font_ref()
+            .axes()
+            .location(settings.iter().map(|(tag, value)| (Tag::new(tag), *value)))
+    }
+
+    pub(crate) fn variation_settings(
+        &self,
+        weight: u16,
+        size_px: f32,
+    ) -> variations::VariationSettings {
+        self.variations.settings(weight, size_px)
+    }
+
+    /// Normalized variation coordinates carried through renderer caches.
+    pub(crate) fn variation_coords(&self, weight: u16, size_px: f32) -> Box<[i16]> {
+        self.location(weight, size_px)
+            .coords()
+            .iter()
+            .map(|coord| coord.to_bits())
+            .collect()
     }
 
     /// Whether every non-default-ignorable codepoint in `text` has a
@@ -322,27 +371,31 @@ impl<'a> Shaper<'a> {
                 warn_complex_without_feature(script);
             }
         }
-        // Silence the unused-field warning when the feature is off.
-        let _ = self.font;
-        shape_simple(&self.font_ref, segment, style)
+        shape_simple(self.font, segment, style)
     }
 
     /// Face ascent + descent (both positive, px at `style.size_px`) —
     /// the paragraph strut that anchors every line's baseline.
     pub(crate) fn strut(&self, style: &Style) -> (f32, f32) {
         let size = Size::new(style.size_px.max(1.0));
-        let m = self.font_ref.metrics(size, LocationRef::default());
+        let location = self.font.location(style.weight, style.size_px);
+        let m = self
+            .font_ref
+            .metrics(size, LocationRef::new(location.coords()));
         // skrifa reports descent as negative (below baseline).
         (m.ascent, -m.descent)
     }
 }
 
 /// Shape `segment` along the simple (Latin/CJK/emoji) path.
-fn shape_simple(font_ref: &FontRef<'_>, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &Style) -> GlyphRun {
+    let font_ref = font.font_ref();
     let charmap = font_ref.charmap();
     let size = Size::new(style.size_px.max(1.0));
-    let metrics = GlyphMetrics::new(font_ref, size, LocationRef::default());
-    let face_metrics = font_ref.metrics(size, LocationRef::default());
+    let location = font.location(style.weight, style.size_px);
+    let location_ref = LocationRef::new(location.coords());
+    let metrics = GlyphMetrics::new(&font_ref, size, location_ref);
+    let face_metrics = font_ref.metrics(size, location_ref);
 
     let text = segment.text;
     let mut glyphs: SmallVec<[GlyphPos; 16]> = SmallVec::with_capacity(text.len() / 2 + 1);

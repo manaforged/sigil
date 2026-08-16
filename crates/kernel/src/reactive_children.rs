@@ -45,8 +45,21 @@ thread_local! {
 }
 
 /// Push a rebuild onto the thread-local queue.
+///
+/// Multiple signal writes can re-run the same effect before the next layout
+/// flush. Only the latest child list is observable; mounting an older queued
+/// builder can also read state already disposed by the subsequent effect run.
 fn enqueue(rebuild: DeferredRebuild) {
-    PENDING.with(|cell| cell.borrow_mut().push(rebuild));
+    PENDING.with(|cell| {
+        let mut pending = cell.borrow_mut();
+        if let Some(queued) = pending.iter_mut().rev().find(|queued| {
+            queued.parent == rebuild.parent && Rc::ptr_eq(&queued.prior, &rebuild.prior)
+        }) {
+            *queued = rebuild;
+        } else {
+            pending.push(rebuild);
+        }
+    });
 }
 
 /// Drain the queue into the caller's vector. Used by

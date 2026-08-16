@@ -185,27 +185,40 @@ fn text_edit_user_hover_overlay_paints_frame() {
 #[test]
 fn slider_thumb_hover_variant_intact_without_overlay() {
     // Regression: with no user overlay installed the widget's own
-    // variant machinery must keep resolving — hovering the thumb paints
-    // `accent-hover` (THUMB_HOVER), layered by the same reactive
-    // channel the T1 wiring now also publishes the overlay slot from.
+    // variant machinery must keep resolving — hovering the slider lifts
+    // the thumb's rim from gray-7 (THUMB_REST) to gray-8 (THUMB_HOVER),
+    // layered by the same reactive channel the T1 wiring publishes the
+    // overlay slot from. The thumb is the only stroked rect in the
+    // slider scene, so the stroke color identifies it.
     sigil::reactive::Runtime::scope("t1-slider-thumb-variant-intact", || {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0));
         let layout = compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(
-            !rect_colors(&cx, root).contains(&theme.accent_hover),
-            "thumb must rest at `accent`, not `accent-hover`",
+        let thumb_rim = |cx: &Cx, root: NodeId| {
+            emit_scene(cx, root)
+                .commands
+                .iter()
+                .filter_map(|command| match command {
+                    SceneCommand::Rect(rect) => rect.stroke.map(|stroke| stroke.color),
+                    _ => None,
+                })
+                .next()
+        };
+        assert_eq!(
+            thumb_rim(&cx, root),
+            Some(theme.border),
+            "thumb rim must rest at gray-7"
         );
         let mut router = EventRouter::new();
-        // (90, 14) is the centre of the 22×22 thumb in the 180×28 root.
-        router.route(&mut cx, &layout, pointer_move_event(90.0, 14.0));
-        assert!(
-            rect_colors(&cx, root).contains(&theme.accent_hover),
-            "thumb hover must paint `accent-hover` with no user overlay; \
-             scene colours: {:?}",
-            rect_colors(&cx, root),
+        // (320, 12) is the horizontal centre of the value-50 thumb in
+        // the fill-width root (24 px tall).
+        router.route(&mut cx, &layout, pointer_move_event(320.0, 12.0));
+        assert_eq!(
+            thumb_rim(&cx, root),
+            Some(theme.border_strong()),
+            "thumb rim must lift to gray-8 on hover with no user overlay"
         );
     });
 }

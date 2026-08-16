@@ -149,6 +149,9 @@ bytemuck = { version = "1", features = ["derive"] }
 half = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
 skrifa = "0.40"
+# Native desktop font discovery and CSS weight matching. This is Zed's
+# cross-platform CoreText / DirectWrite / Fontconfig fork of font-kit.
+zed-font-kit = "0.14.1-zed"
 # CPU AA path rasterizer for the Wave-3 hinted small-text atlas — already
 # in-graph transitively (cosmic-text -> swash -> zeno), zero-dep crate.
 zeno = "0.3"

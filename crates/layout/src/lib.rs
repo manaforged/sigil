@@ -61,4 +61,6 @@ pub use style_data::{
     Position as StylePosition, Rect, Size, StyleData, TrackSize,
 };
 pub use text_adapter::TextEngineMeasure;
-pub use text_geometry::{CaretGeometry, TextGeometry, set_text_geometry, with_text_geometry};
+pub use text_geometry::{
+    CaretGeometry, TextGeometry, TextStyleCapture, set_text_geometry, with_text_geometry,
+};

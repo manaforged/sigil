@@ -34,7 +34,7 @@ impl Default for TextStyle {
     fn default() -> Self {
         Self {
             font_family: String::from("system-ui"),
-            font_size: 16.0,
+            font_size: 14.0,
             font_weight: 400,
             line_height: TextLineHeight::default(),
         }

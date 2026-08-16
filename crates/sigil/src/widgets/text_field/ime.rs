@@ -18,7 +18,6 @@ use sigil_events::prelude::{ImeEvent, NodeEventsExt};
 use sigil_kernel::NodeBuilder;
 use sigil_layout::{CaretGeometry, with_text_geometry};
 use sigil_reactive::{Signal, effect, signal};
-use sigil_style::TextStyle;
 
 use super::handlers::{TextFieldRuntime, commit, write_value};
 
@@ -128,6 +127,7 @@ fn install_caret_anchor_sync(runtime: &TextFieldRuntime) {
     let value = runtime.value;
     let caret = runtime.caret;
     let scroll = runtime.scroll;
+    let text_style = runtime.text_style;
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
     effect(move || {
         let composing = !preedit.get().is_empty();
@@ -139,8 +139,9 @@ fn install_caret_anchor_sync(runtime: &TextFieldRuntime) {
         let text = value.get();
         let caret_byte = caret.get();
         let scroll_px = scroll.get();
+        let style = text_style.get();
         let rect = with_text_geometry(|engine| {
-            let pos = engine.caret(&text, &TextStyle::default(), caret_byte);
+            let pos = engine.caret(&text, &style, caret_byte);
             CaretGeometry {
                 x: (pos.x - scroll_px).max(0.0),
                 top: pos.top,

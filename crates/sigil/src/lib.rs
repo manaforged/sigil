@@ -71,7 +71,7 @@ pub use sigil_app::tray;
 pub use sigil_app::{Anchor, WindowOpts};
 pub use sigil_app::{
     AppConfig, AppResult, DefaultFonts, Error, PanicPolicy, TextTuning, TreeRoot, launch,
-    set_default_fonts, set_text_tuning, text_tuning,
+    set_default_fonts, set_text_tuning, text_tuning, use_system_fonts,
 };
 
 pub mod clipboard;

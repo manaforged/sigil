@@ -24,7 +24,9 @@ use zeno as _;
 use sigil_hal::Size;
 use sigil_kernel::{TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
-use sigil_renderer::{CommandScene, DrawGlyphRun, DrawRect, SceneCommand, emit_scene};
+use sigil_renderer::{
+    CommandScene, DrawGlyphRun, DrawRect, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
+};
 use sigil_style::TextLineHeight;
 use sigil_style::{FocusRing, NodeStyleExt, Theme};
 
@@ -100,11 +102,12 @@ fn styled_text_typography_emits_in_scene() {
 }
 
 #[test]
-fn visible_focus_ring_emits_four_rects() {
+fn visible_focus_ring_emits_one_rounded_outside_stroke() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
+            .class("rounded-lg")
             .focus_ring(FocusRing::static_visible(true)),
     );
 
@@ -113,13 +116,20 @@ fn visible_focus_ring_emits_four_rects() {
     let scene = emit_scene(&cx, root);
     let rects = rects_for_node(&scene, root);
 
-    assert_eq!(rects.len(), 4);
+    assert_eq!(rects.len(), 1);
     let first = rects.first().unwrap();
-    assert_eq!(first.rect.origin.x, -4.0);
-    assert_eq!(first.rect.origin.y, -4.0);
-    assert_eq!(first.rect.width, 108.0);
-    assert_eq!(first.rect.height, 2.0);
-    assert_eq!(first.color, Theme::default().accent);
+    assert_eq!(first.rect.origin.x, -2.0);
+    assert_eq!(first.rect.origin.y, -2.0);
+    assert_eq!(first.rect.width, 104.0);
+    assert_eq!(first.rect.height, 44.0);
+    assert_eq!(first.border_radius.0, [10.0; 4]);
+    assert_eq!(first.color.a, 0);
+
+    let stroke = first.stroke.expect("focus ring has an outside stroke");
+    assert_eq!(stroke.color, Theme::default().accent);
+    assert_eq!(stroke.width, 2.0);
+    assert_eq!(stroke.style, StrokeStyle::Solid);
+    assert_eq!(stroke.align, StrokeAlign::Outside);
 }
 
 #[test]

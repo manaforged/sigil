@@ -54,6 +54,11 @@ fn pattern_commands_walk_and_populate_fill_pipeline_cache() {
     render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
     render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
 
+    let stats = renderer.last_frame_stats();
+    assert_eq!(stats.scene_commands, 3);
+    assert_eq!(stats.fill_batches, 1);
+    assert_eq!(stats.fill_instances, 3);
+
     let (_, fill_pipelines, _, _, _) = renderer
         .pipeline_cache_counts()
         .expect("renderer should have headless cache state");

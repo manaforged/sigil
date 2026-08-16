@@ -6872,6 +6872,7 @@ dependencies = [
  "raw-window-handle",
  "rfd",
  "sigil-a11y",
+ "sigil-animation-runtime",
  "sigil-events",
  "sigil-hal",
  "sigil-kernel",
@@ -7071,6 +7072,7 @@ name = "sigil-text"
 version = "0.1.0-alpha.1"
 dependencies = [
  "ahash",
+ "core-text",
  "criterion",
  "harfrust",
  "image",
@@ -7086,6 +7088,7 @@ dependencies = [
  "unicode-linebreak",
  "unicode-script",
  "unicode-segmentation",
+ "zed-font-kit",
 ]
 
 [[package]]

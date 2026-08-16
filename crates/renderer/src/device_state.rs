@@ -167,7 +167,7 @@ fn request_adapter_and_device(
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("sigil-renderer device"),
             required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
+            required_limits: renderer_limits(adapter.limits()),
             experimental_features: wgpu::ExperimentalFeatures::disabled(),
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
@@ -175,4 +175,27 @@ fn request_adapter_and_device(
         .block_on()?;
 
     Ok((adapter, device, queue))
+}
+
+const fn renderer_limits(adapter_limits: wgpu::Limits) -> wgpu::Limits {
+    wgpu::Limits::downlevel_defaults().using_resolution(adapter_limits)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::renderer_limits;
+
+    #[test]
+    fn renderer_uses_adapter_resolution_for_the_swapchain() {
+        let mut adapter = wgpu::Limits::downlevel_defaults();
+        adapter.max_texture_dimension_1d = 8_192;
+        adapter.max_texture_dimension_2d = 16_384;
+        adapter.max_texture_dimension_3d = 2_048;
+
+        let actual = renderer_limits(adapter);
+
+        assert_eq!(actual.max_texture_dimension_1d, 8_192);
+        assert_eq!(actual.max_texture_dimension_2d, 16_384);
+        assert_eq!(actual.max_texture_dimension_3d, 2_048);
+    }
 }

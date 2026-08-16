@@ -17,6 +17,8 @@ use crate::bidi;
 use crate::cache::ParagraphCache;
 use crate::config::TextConfig;
 use crate::error::TextError;
+use crate::font_family::FontFamily;
+use crate::fonts::DefaultFontSource;
 use crate::glyph::GlyphRun;
 use crate::paragraph::{LayoutLine, Paragraph, SegmentAppend, TextMetrics};
 use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
@@ -169,7 +171,8 @@ impl OwnedTextEngine {
     #[must_use]
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
         let fonts = self.fonts.borrow();
-        let chain = fonts.fallback_chain(fonts.primary());
+        let primary = fonts.select_weight("sans", self.config.font_weight);
+        let chain = fonts.fallback_chain(primary, self.config.font_weight);
         let style = to_shaper_style(&self.config.text_style());
         let paragraph_bidi = bidi::ParagraphBidi::new(text);
         shape_segments(&chain, text, &style, &paragraph_bidi)
@@ -229,8 +232,8 @@ impl OwnedTextEngine {
 
     fn build_paragraph(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Paragraph {
         let fonts = self.fonts.borrow();
-        let primary = fonts.select(&style.font_family);
-        let chain = fonts.fallback_chain(primary);
+        let primary = fonts.select_weight(&style.font_family, style.font_weight);
+        let chain = fonts.fallback_chain(primary, style.font_weight);
         let shaper = Shaper::new(primary);
         let shaper_style = to_shaper_style(style);
         let strut = LineStrut::from_shaper(&shaper, &shaper_style, resolve_line_height(style));
@@ -254,6 +257,7 @@ impl OwnedTextEngine {
                 line_height: strut.line_height,
             },
             &chain,
+            style.font_weight,
             min_content_hint,
         )
     }
@@ -290,9 +294,9 @@ impl StyledTextEngine for OwnedTextEngine {
 /// primary and `CascadiaMono` Regular as the monospace face. Callers
 /// can register additional families via [`Self::register_family`].
 pub struct FontCollection {
-    sans: Font,
-    mono: Font,
-    serif: Option<Font>,
+    sans: FontFamily,
+    mono: FontFamily,
+    serif: Option<FontFamily>,
     icon: Option<Font>,
     /// Bundled Noto Color Emoji subset — the last-resort fallback face so
     /// emoji codepoints no text face covers resolve to a color glyph
@@ -310,20 +314,40 @@ impl FontCollection {
     /// blank the UI.
     #[must_use]
     pub fn with_default() -> Self {
-        let over = crate::fonts::default_fonts_snapshot();
+        let source = crate::fonts::default_font_source();
+        if matches!(source, DefaultFontSource::System) {
+            let system = crate::system_fonts::load();
+            return Self {
+                sans: system
+                    .sans
+                    .unwrap_or_else(|| FontFamily::new(load_sans_font())),
+                mono: system
+                    .mono
+                    .unwrap_or_else(|| FontFamily::new(load_mono_font())),
+                serif: system.serif,
+                icon: None,
+                emoji: load_emoji_font(),
+            };
+        }
+        let over = match source {
+            DefaultFontSource::Custom(fonts) => Some(fonts),
+            DefaultFontSource::Bundled | DefaultFontSource::System => None,
+        };
         let face = |slot: Option<&(std::sync::Arc<Vec<u8>>, u32)>| -> Option<Font> {
             let (bytes, index) = slot?;
-            Font::from_bytes(bytes.as_ref().clone(), *index).ok()
+            Font::from_shared(std::sync::Arc::clone(bytes), *index).ok()
         };
         Self {
-            sans: over
-                .as_ref()
-                .and_then(|f| face(f.sans.as_ref()))
-                .unwrap_or_else(load_sans_font),
-            mono: over
-                .as_ref()
-                .and_then(|f| face(f.mono.as_ref()))
-                .unwrap_or_else(load_mono_font),
+            sans: FontFamily::new(
+                over.as_ref()
+                    .and_then(|f| face(f.sans.as_ref()))
+                    .unwrap_or_else(load_sans_font),
+            ),
+            mono: FontFamily::new(
+                over.as_ref()
+                    .and_then(|f| face(f.mono.as_ref()))
+                    .unwrap_or_else(load_mono_font),
+            ),
             serif: None,
             // No bundled icon face — `select("icon")` falls back to sans until a
             // consumer registers one (e.g. the host app's codicon) via the
@@ -336,8 +360,8 @@ impl FontCollection {
     /// Borrow the sans/primary face. Retained for compatibility with
     /// callers that don't yet pick a family — equivalent to `select("sans")`.
     #[must_use]
-    pub const fn primary(&self) -> &Font {
-        &self.sans
+    pub fn primary(&self) -> &Font {
+        self.sans.select(400)
     }
 
     /// Resolve a family name to a font handle. Unknown families fall
@@ -345,15 +369,23 @@ impl FontCollection {
     /// something legible. Case-insensitive on the well-known names.
     #[must_use]
     pub fn select(&self, family: &str) -> &Font {
+        self.select_weight(family, 400)
+    }
+
+    /// Resolve a family and CSS weight to the matching static or variable face.
+    #[must_use]
+    pub fn select_weight(&self, family: &str, weight: u16) -> &Font {
         let name = family.trim();
         if name.eq_ignore_ascii_case("mono") || name.eq_ignore_ascii_case("monospace") {
-            &self.mono
+            self.mono.select(weight)
         } else if name.eq_ignore_ascii_case("serif") {
-            self.serif.as_ref().unwrap_or(&self.sans)
+            self.serif.as_ref().unwrap_or(&self.sans).select(weight)
         } else if name.eq_ignore_ascii_case("icon") {
-            self.icon.as_ref().unwrap_or(&self.sans)
+            self.icon
+                .as_ref()
+                .unwrap_or_else(|| self.sans.select(weight))
         } else {
-            &self.sans
+            self.sans.select(weight)
         }
     }
 
@@ -365,7 +397,7 @@ impl FontCollection {
     /// a valid OpenType/TrueType face.
     pub fn register(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
         let font = Font::from_bytes(bytes, face_index).map_err(|_| TextError::InvalidFont)?;
-        self.sans = font;
+        self.sans.replace(font);
         Ok(())
     }
 
@@ -389,11 +421,11 @@ impl FontCollection {
             || name.eq_ignore_ascii_case("sans-serif")
             || name.eq_ignore_ascii_case("system-ui")
         {
-            self.sans = font;
+            self.sans.replace(font);
         } else if name.eq_ignore_ascii_case("mono") || name.eq_ignore_ascii_case("monospace") {
-            self.mono = font;
+            self.mono.replace(font);
         } else if name.eq_ignore_ascii_case("serif") {
-            self.serif = Some(font);
+            self.serif = Some(FontFamily::new(font));
         } else if name.eq_ignore_ascii_case("icon") {
             self.icon = Some(font);
         } else {
@@ -411,12 +443,12 @@ impl FontCollection {
     /// family names doesn't repeat them in the chain. `Font::clone` is
     /// an `Arc` bump, so the chain is cheap to build once per paragraph.
     #[must_use]
-    pub(crate) fn fallback_chain(&self, primary: &Font) -> Vec<Font> {
+    pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16) -> Vec<Font> {
         let mut chain: Vec<Font> = vec![primary.clone()];
         let candidates = [
-            Some(&self.sans),
-            Some(&self.mono),
-            self.serif.as_ref(),
+            Some(self.sans.select(weight)),
+            Some(self.mono.select(weight)),
+            self.serif.as_ref().map(|family| family.select(weight)),
             self.icon.as_ref(),
             // Emoji last: only reached for codepoints no text face covers.
             Some(&self.emoji),

@@ -7,6 +7,7 @@ use crate::decoration_paint::DecorationPipeline;
 use crate::device_state::ReadyState;
 use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
+use crate::frame_stats::FrameStats;
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
 use crate::raster_paint::RasterTextPipeline;
@@ -58,7 +59,13 @@ impl WgpuRenderer {
         scene: &CommandScene,
         clear_color: Color,
     ) -> Result<(), RendererError> {
-        let ready = self.state.ensure_ready_headless()?;
+        self.last_frame_stats = FrameStats::default();
+        let Self {
+            state,
+            last_frame_stats,
+            ..
+        } = self;
+        let ready = state.ensure_ready_headless()?;
         let mut encoder = target
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -69,21 +76,36 @@ impl WgpuRenderer {
         // here until after the submit below.
         let mut retained = Vec::new();
         let result = if ready.device == *target.device {
-            walk_with_ready(ready, &mut encoder, &mut retained, target, scene)
+            walk_with_ready(
+                ready,
+                &mut encoder,
+                &mut retained,
+                target,
+                scene,
+                last_frame_stats,
+            )
         } else {
-            walk_with_temporary_pipelines(&mut encoder, &mut retained, target, scene)
+            walk_with_temporary_pipelines(
+                &mut encoder,
+                &mut retained,
+                target,
+                scene,
+                last_frame_stats,
+            )
         };
         target.queue.submit(core::iter::once(encoder.finish()));
         result
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn walk_with_ready(
     ready: &mut ReadyState,
     encoder: &mut wgpu::CommandEncoder,
     retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,
+    stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
     let ReadyState {
         scene_pipelines,
@@ -121,6 +143,7 @@ fn walk_with_ready(
             layer_pipelines,
             blur_pipelines,
             layer_pool,
+            stats,
         },
         scene,
     )
@@ -135,6 +158,7 @@ pub(crate) fn walk_with_temporary_pipelines(
     retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,
+    stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
     let mut scene_pipelines = Vec::<ScenePipeline>::new();
     let mut fill_pipelines = Vec::<FillPipeline>::new();
@@ -169,6 +193,7 @@ pub(crate) fn walk_with_temporary_pipelines(
             layer_pipelines: &mut layer_pipelines,
             blur_pipelines: &mut blur_pipelines,
             layer_pool: &mut layer_pool,
+            stats,
         },
         scene,
     )

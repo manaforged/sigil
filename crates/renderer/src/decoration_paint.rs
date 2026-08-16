@@ -8,6 +8,7 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
+use crate::frame_upload::UploadedRange;
 use crate::scene_command::{DecorationKind, DrawDecoration};
 use crate::scene_instance::BlendSpace;
 use crate::scene_paint::PaintCtx;
@@ -39,15 +40,6 @@ pub(crate) struct DecorationInstance {
 }
 
 const _: () = assert!(core::mem::size_of::<DecorationInstance>() == 48);
-
-// ── Uniform block ─────────────────────────────────────────────────────────────
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-struct DecUniforms {
-    viewport: [f32; 2],
-    _pad: [f32; 2],
-}
 
 // ── Vertex buffer layouts ─────────────────────────────────────────────────────
 
@@ -107,18 +99,23 @@ impl DecorationPipeline {
         self.format
     }
 
-    /// Upload one instance and draw.
-    pub(crate) fn paint_instance(&self, ctx: PaintCtx<'_>, instance: &DecorationInstance) {
+    /// Upload one ordered instance batch and draw it in a single pass.
+    pub(crate) fn paint_uploaded(
+        &self,
+        ctx: PaintCtx<'_>,
+        instances: UploadedRange,
+        uniform: &wgpu::Buffer,
+    ) {
         let PaintCtx {
             device,
             encoder,
             view,
             viewport,
+            clip,
+            scale,
             ..
         } = ctx;
-        let instance_buf = make_instance_buffer(device, instance);
-        let uniform_buf = make_uniform_buffer(device, viewport);
-        let bind_group = make_bind_group(device, &self.bgl, &uniform_buf);
+        let bind_group = make_bind_group(device, &self.bgl, uniform);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer decoration paint pass"),
@@ -136,11 +133,14 @@ impl DecorationPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if !crate::scissor::apply(&mut pass, clip, scale, viewport) {
+            return;
+        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..6, 0..1);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..6, 0..instances.count);
     }
 }
 
@@ -166,17 +166,6 @@ fn make_bgl(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             },
             count: None,
         }],
-    })
-}
-
-fn make_uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer decoration uniforms"),
-        contents: bytemuck::bytes_of(&DecUniforms {
-            viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-            _pad: [0.0, 0.0],
-        }),
-        usage: wgpu::BufferUsages::UNIFORM,
     })
 }
 
@@ -237,14 +226,6 @@ fn make_unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer decoration unit quad"),
         contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-fn make_instance_buffer(device: &wgpu::Device, instance: &DecorationInstance) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer decoration instance buffer"),
-        contents: bytemuck::bytes_of(instance),
         usage: wgpu::BufferUsages::VERTEX,
     })
 }

@@ -304,6 +304,7 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
     let clip = Rect::new(Point::new(x, y), w, h);
     scene.push_layer(LayerScope {
         clip,
+        clip_radii: CornerRadii::ZERO,
         effect: blur_effect(sigma),
         opacity: 1.0,
     });

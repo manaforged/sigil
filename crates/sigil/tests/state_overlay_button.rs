@@ -184,14 +184,15 @@ fn button_without_overlay_keeps_widget_defaults() {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root);
-        // Default button is soft + neutral — Radix step 3 of the gray
-        // scale (interactive subtle bg).
-        let gray_3 = slate_light().step(3);
+        // Default button is soft + neutral — the raised-control slot at
+        // step 4 of the gray scale, one step above the step-3 element
+        // rest.
+        let gray_4 = slate_light().step(4);
         let colors = rect_colors(&cx, root);
         assert!(
-            colors.contains(&gray_3),
+            colors.contains(&gray_4),
             "no overlay must leave widget defaults intact; \
-             gray-3 {gray_3:?} not in {colors:?}",
+             gray-4 {gray_4:?} not in {colors:?}",
         );
     });
 }

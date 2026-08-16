@@ -11,8 +11,8 @@ use sigil_style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border-strong")];
+static FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-8")];
 
 /// Builder returned by [`progress`].
 pub struct ProgressBuilder {

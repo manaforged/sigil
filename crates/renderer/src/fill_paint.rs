@@ -6,14 +6,14 @@
 //! (2). The WGSL fragment shader branches on the `fill_kind` discriminator
 //! packed into `stop_range.z`.
 
-use crate::scene_instance::{FillInstance, GpuStop};
+use crate::frame_upload::UploadedRange;
 use crate::scene_paint::PaintCtx;
 
 mod setup;
 
 use setup::{
-    UNIT_QUAD_VERTEX_COUNT, instance_buffer, pipeline, shader, stops_bind_group, stops_buffer,
-    stops_layout, uniform_bind_group, uniform_buffer, uniform_layout, unit_quad,
+    UNIT_QUAD_VERTEX_COUNT, pipeline, shader, stops_bind_group, stops_layout, uniform_bind_group,
+    uniform_layout, unit_quad,
 };
 
 /// Wgpu resources for painting fill rounded rectangles (gradient + patterns).
@@ -49,41 +49,24 @@ impl FillPipeline {
         self.format
     }
 
-    pub(crate) fn paint_instances(
+    pub(crate) fn paint_uploaded(
         &self,
         ctx: PaintCtx<'_>,
-        instances: &[FillInstance],
-        stops: &[GpuStop],
+        instances: UploadedRange,
+        stops: &wgpu::Buffer,
+        uniform: &wgpu::Buffer,
     ) {
-        if instances.is_empty() {
-            return;
-        }
-        // Patterns don't use stops but the storage buffer must be non-empty.
-        let sentinel = [GpuStop {
-            offset_bits: 0,
-            rgba01: 0,
-            rgba23: 0,
-            _pad: 0,
-        }];
-        let stops_slice = if stops.is_empty() {
-            &sentinel[..]
-        } else {
-            stops
-        };
-
         let PaintCtx {
             device,
             encoder,
             view,
             viewport,
+            clip,
+            scale,
             ..
         } = ctx;
-        let instance_buf = instance_buffer(device, instances);
-        let stops_buf = stops_buffer(device, stops_slice);
-        let uniform_buf = uniform_buffer(device, viewport);
-        let uniform_bg = uniform_bind_group(device, &self.uniform_layout, &uniform_buf);
-        let stops_bg = stops_bind_group(device, &self.stops_layout, &stops_buf);
-        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
+        let uniform_bg = uniform_bind_group(device, &self.uniform_layout, uniform);
+        let stops_bg = stops_bind_group(device, &self.stops_layout, stops);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer fill paint pass"),
@@ -101,12 +84,15 @@ impl FillPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if !crate::scissor::apply(&mut pass, clip, scale, viewport) {
+            return;
+        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &uniform_bg, &[]);
         pass.set_bind_group(1, &stops_bg, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
     }
 }
 

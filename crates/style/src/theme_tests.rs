@@ -140,14 +140,14 @@
         assert_eq!(t.resolve_color("muted-foreground"), rgba(161, 161, 161, 255));
         assert_eq!(t.resolve_color("destructive"), rgba(255, 100, 103, 255));
         assert_eq!(t.resolve_color("sidebar-primary"), rgba(20, 71, 230, 255));
-        // Explicit token wins over the built-in `accent` (Sigil iris) — the resolution
-        // reorder — and `border` carries its shadcn alpha (white at 10%).
+        // Explicit token wins over the built-in `accent` (Sigil steel blue) — the
+        // resolution reorder — and `border` carries its shadcn alpha (white at 10%).
         assert_eq!(t.resolve_color("accent"), rgba(38, 38, 38, 255));
         assert_eq!(t.resolve_color("border"), rgba(245, 255, 255, 26));
     }
 
     /// The resolution reorder must not disturb themes with an empty token map: `dark()`
-    /// still resolves `accent` to its built-in iris step, not a console value.
+    /// still resolves `accent` to its built-in steel-blue step, not a console value.
     #[test]
     fn dark_built_in_accent_unaffected_by_token_first_resolution() {
         let t = Theme::dark();

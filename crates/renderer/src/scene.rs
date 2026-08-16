@@ -13,12 +13,11 @@ use sigil_text::{OwnedTextEngine, TextConfig};
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;
 use crate::scene_command::{
-    CommandScene, GlyphRun, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+    CommandScene, GlyphRun, LayerEffect, LayerScope, SceneRectStyle, Stroke, StrokeAlign,
+    StrokeStyle,
 };
 use crate::shadow_paint::Shadow;
-use crate::style_adapter::{
-    ResolvedFocusRing, corner_radii_for, focus_ring_for, render_style_for, text_style_for,
-};
+use crate::style_adapter::{corner_radii_for, focus_ring_for, render_style_for, text_style_for};
 
 /// A headless list of primitives that would be submitted to the renderer.
 #[derive(Debug, Default, Clone, PartialEq)]
@@ -156,26 +155,34 @@ fn push_subtree<'t>(
     };
     if let Some(result) = node.get_extension::<LayoutResult>() {
         let rect = result.rect();
-        push_focus_ring(scene, id, node, rect, theme);
-        push_node(
-            scene,
-            id,
-            node,
-            rect,
-            &NodePaint {
-                style: &style,
-                theme,
-                text_base: &inherited.text_style,
-            },
-        );
+        let paint = NodePaint {
+            style: &style,
+            theme,
+            text_base: &inherited.text_style,
+        };
+        push_focus_ring(scene, id, node, rect, &paint);
+        push_node(scene, id, node, rect, &paint);
         // `overflow: hidden`/`scroll` → scissor descendants to this node's box, so a
         // too-tall child (a long file in the editor pane, scrolled-out content) is
         // cut at the edge instead of painting over its siblings. The command walker
         // skips any glyph run / fill whose rect falls outside the active clip.
         if result.clips() {
-            scene.with_clip(rect, |scene| {
-                push_children(scene, cx, node, &child_inherited, deferred);
-            });
+            let clip_radii = corner_radii_for(style.border_radius);
+            if clip_radii.0.iter().any(|radius| *radius > 0.0) {
+                scene.with_composite_layer(
+                    LayerScope {
+                        clip: rect,
+                        clip_radii,
+                        effect: LayerEffect::Identity,
+                        opacity: 1.0,
+                    },
+                    |scene| push_children(scene, cx, node, &child_inherited, deferred),
+                );
+            } else {
+                scene.with_clip(rect, |scene| {
+                    push_children(scene, cx, node, &child_inherited, deferred);
+                });
+            }
             return;
         }
     }
@@ -227,36 +234,38 @@ fn push_focus_ring(
     id: NodeId,
     node: &Node,
     rect: Rect,
-    inherited: &Theme,
+    paint: &NodePaint<'_>,
 ) {
-    let Some(ring) = focus_ring_for(node, inherited).filter(|ring| ring.width > 0.0) else {
+    let Some(ring) = focus_ring_for(node, paint.theme).filter(|ring| ring.width > 0.0) else {
         return;
     };
-    for ring_rect in focus_ring_rects(rect, ring) {
-        scene.draw_rect_for_node(
-            id,
-            ring_rect,
-            SceneRectStyle::new(ring.color, CornerRadii::ZERO, ring.opacity),
-        );
-    }
-}
-
-fn focus_ring_rects(rect: Rect, ring: ResolvedFocusRing) -> [Rect; 4] {
-    let width = ring.width;
     let offset = ring.offset;
-    let outer_x = rect.origin.x - offset - width;
-    let outer_y = rect.origin.y - offset - width;
-    let inner_y = rect.origin.y - offset;
-    let right_x = rect.origin.x + rect.width + offset;
-    let bottom_y = rect.origin.y + rect.height + offset;
-    let outer_width = (offset + width).mul_add(2.0, rect.width);
-    let side_height = offset.mul_add(2.0, rect.height);
-    [
-        Rect::new(Point::new(outer_x, outer_y), outer_width, width),
-        Rect::new(Point::new(outer_x, bottom_y), outer_width, width),
-        Rect::new(Point::new(outer_x, inner_y), width, side_height),
-        Rect::new(Point::new(right_x, inner_y), width, side_height),
-    ]
+    let ring_rect = Rect::new(
+        Point::new(rect.origin.x - offset, rect.origin.y - offset),
+        offset.mul_add(2.0, rect.width),
+        offset.mul_add(2.0, rect.height),
+    );
+    let radii = CornerRadii(
+        corner_radii_for(paint.style.border_radius)
+            .0
+            .map(|radius| radius + offset),
+    );
+    let transparent = Rgba8 {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 0,
+    };
+    scene.draw_rect_for_node(
+        id,
+        ring_rect,
+        SceneRectStyle::new(transparent, radii, ring.opacity).with_stroke(Stroke {
+            color: ring.color,
+            width: ring.width,
+            style: StrokeStyle::Solid,
+            align: StrokeAlign::Outside,
+        }),
+    );
 }
 
 /// The resolved paint inputs for one node: its render style, the

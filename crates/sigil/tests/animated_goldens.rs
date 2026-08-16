@@ -61,7 +61,7 @@ fn button_hover_settled() {
             dt: DT,
         },
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_hover_settled", img);
 }
@@ -72,14 +72,14 @@ fn button_hover_midflight() {
         |cx| cx.add(button("Save")),
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_hover_midflight", img);
 }
 
 #[test]
 fn button_hover_filmstrip() {
-    let img = capture_filmstrip(|cx| cx.add(button("Save")), [160, 56], (74.0, 22.0), 6, DT);
+    let img = capture_filmstrip(|cx| cx.add(button("Save")), [160, 56], (24.0, 16.0), 6, DT);
     check("button_hover_filmstrip", img);
 }
 

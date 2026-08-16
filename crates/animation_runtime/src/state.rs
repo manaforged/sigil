@@ -10,7 +10,7 @@ use core::cell::{Cell, RefCell};
 use sigil_animation::{Easing, SpringPreset};
 use sigil_reactive::Signal;
 
-use crate::animator::{AnimatorStatus, Motion, SpringMotion, TweenMotion};
+use crate::animator::{Motion, SpringMotion, TweenMotion};
 
 /// Opaque per-thread handle. Animators carry one; the runtime uses it
 /// to locate the entry on retarget / settle queries / deregistration.
@@ -95,14 +95,14 @@ pub(crate) fn peek_value(id: AnimatorId) -> Option<f32> {
 
 /// Advance every active animator by `dt` seconds.
 ///
-/// Writes new values into the bound signals and removes any animator
-/// whose motion reports [`AnimatorStatus::Settled`]. Idempotent on
-/// empty: zero cost when nothing is in flight.
+/// Writes new values into the bound signals. Settled entries stay registered
+/// until their [`Animator`](crate::Animator) handle is dropped so a later
+/// [`Animator::target`](crate::Animator::target) can re-arm the same motion;
+/// [`active_count`] excludes those idle entries. Idempotent on empty: zero
+/// cost when nothing is in flight.
 ///
-/// Apps drive this once per frame between `Runtime::begin_layout` and
-/// `Runtime::begin_paint` per DR-053 §2. The tick writes are observed
-/// by the next `Runtime::begin_effect` via the normal reactive seam —
-/// no special phase plumbing required for phase 1.
+/// Apps drive this once per animation frame during the Effect phase, before
+/// layout, so geometry and paint observe the same value in that frame.
 pub fn tick(dt: f32) {
     if !dt.is_finite() || dt <= 0.0 {
         return;
@@ -112,11 +112,11 @@ pub fn tick(dt: f32) {
     let drained: Vec<Entry> = ENTRIES.with(|cell| core::mem::take(&mut *cell.borrow_mut()));
     let mut kept: Vec<Entry> = Vec::with_capacity(drained.len());
     for mut entry in drained {
-        let status = entry.motion.tick(dt);
-        entry.signal.set(entry.motion.value());
-        if matches!(status, AnimatorStatus::Running) {
-            kept.push(entry);
+        if !entry.motion.is_settled() {
+            let _ = entry.motion.tick(dt);
+            entry.signal.set(entry.motion.value());
         }
+        kept.push(entry);
     }
     ENTRIES.with(|cell| {
         let mut entries = cell.borrow_mut();
@@ -131,15 +131,19 @@ pub fn tick(dt: f32) {
     });
 }
 
-/// Number of currently active animators on this thread.
+/// Number of currently moving animators on this thread.
 ///
 /// Public test seam used by the visual-golden harness and by this
-/// crate's unit tests. Apps should not depend on this — production
-/// frame loops drive [`tick`] unconditionally and let the runtime
-/// eviction logic handle the active set.
+/// crate's unit tests. Production frame loops also use it to stop requesting
+/// animation frames once every registered handle is idle.
 #[must_use]
 pub fn active_count() -> usize {
-    ENTRIES.with(|cell| cell.borrow().len())
+    ENTRIES.with(|cell| {
+        cell.borrow()
+            .iter()
+            .filter(|entry| !entry.motion.is_settled())
+            .count()
+    })
 }
 
 #[cfg(test)]
@@ -209,8 +213,8 @@ mod tests {
     }
 
     #[test]
-    fn settled_animator_is_evicted_after_one_more_tick() {
-        Runtime::scope("settled_animator_is_evicted_after_one_more_tick", || {
+    fn settled_animator_becomes_idle_and_can_retarget() {
+        Runtime::scope("settled_animator_becomes_idle_and_can_retarget", || {
             MotionPrefs::set(false);
             let value = signal(0.0_f32);
             let baseline = active_count();
@@ -234,16 +238,24 @@ mod tests {
             }
             assert!(animator.settled());
 
-            // One more tick after settled must remove from active set.
-            tick(DT_60HZ);
             assert_eq!(
                 active_count(),
                 baseline,
-                "settled animator was not evicted from active set"
+                "settled animator must stop consuming animation frames"
             );
 
-            // Drop is a no-op — the handle still holds an id but the
-            // entry is already gone; deregister tolerates the miss.
+            animator.target(0.25);
+            assert_eq!(
+                active_count(),
+                baseline + 1,
+                "target must re-arm a settled animator"
+            );
+            tick(DT_60HZ);
+            assert!(
+                animator.value() < 1.0,
+                "re-armed animator must move toward its new target"
+            );
+
             drop(animator);
             assert_eq!(active_count(), baseline);
         });

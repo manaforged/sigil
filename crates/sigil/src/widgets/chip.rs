@@ -45,20 +45,22 @@ pub enum ChipTone {
 }
 
 impl ChipTone {
-    /// Background + foreground utility-class fragment for this tone.
-    /// Each chip uses Radix step-3 as a soft tinted background with the
-    /// darkest same-hue text step that clears WCAG AA 4.5:1 at the
+    /// Background + foreground + border utility-class fragment for this
+    /// tone. Each chip uses Radix step-3 as a soft tinted background with
+    /// the darkest same-hue text step that clears WCAG AA 4.5:1 at the
     /// chip's `text-xs` size: step-11 where it measures ≥4.5:1 against
     /// step-3 (error 4.70:1), step-12 for the hues where step-11 falls
     /// short (info 4.26:1, success 4.21:1, warn 4.08:1 — ui-review gate
-    /// 2026-07-12).
+    /// 2026-07-12). The 1px step-6 tonal border gives the pill a
+    /// boundary — the bare step-3 fill measured ~1.1:1 against the card,
+    //  reading as colored text floating on the surface (Fable 2026-08-15).
     const fn class(self) -> &'static str {
         match self {
-            Self::Neutral => "bg-gray-3 text-gray-12",
-            Self::Info => "bg-info-3 text-info-12",
-            Self::Success => "bg-success-3 text-success-12",
-            Self::Warn => "bg-warn-3 text-warn-12",
-            Self::Error => "bg-error-3 text-error-11",
+            Self::Neutral => "bg-gray-3 text-gray-12 border border-gray-6",
+            Self::Info => "bg-info-3 text-info-12 border border-info-6",
+            Self::Success => "bg-success-3 text-success-12 border border-success-6",
+            Self::Warn => "bg-warn-3 text-warn-12 border border-warn-6",
+            Self::Error => "bg-error-3 text-error-11 border border-error-6",
         }
     }
 }

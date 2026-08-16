@@ -11,6 +11,7 @@ readme.workspace = true
 keywords = ["text", "shaping", "fonts", "typography", "gui"]
 categories = ["gui", "text-processing"]
 include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "assets/**"]
+autotests = false
 
 [lib]
 
@@ -38,10 +39,20 @@ ahash = { workspace = true }
 harfrust = { version = "0.6", optional = true }
 image = { workspace = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+zed-font-kit = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-text = "21"
+
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 sigil-kernel = { path = "../kernel" }
 sigil-layout = { path = "../layout" }
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
 
 [lints]
 workspace = true

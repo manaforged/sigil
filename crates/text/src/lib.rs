@@ -31,8 +31,10 @@ mod cache;
 mod config;
 mod engine;
 mod error;
+mod font_family;
 mod fonts;
 mod paragraph;
+mod system_fonts;
 
 pub mod bidi;
 pub mod color_glyph;
@@ -47,6 +49,8 @@ pub(crate) mod shaping_complex;
 pub use config::TextConfig;
 pub use engine::{FontCollection, OwnedTextEngine};
 pub use error::TextError;
-pub use fonts::{DefaultFonts, set_default_fonts};
+#[doc(hidden)]
+pub use fonts::prefer_system_fonts;
+pub use fonts::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub use paragraph::Paragraph;
 pub use shaper::Font;

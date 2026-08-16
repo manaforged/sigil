@@ -43,7 +43,7 @@ pub(super) fn rect_instance_parts(
     RectInstance {
         rect: rect_fields(inflated),
         color,
-        corner_radii: corner_radii.nonnegative_array(),
+        corner_radii: corner_radii.normalized_for(rect.width, rect.height),
         params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
         stroke_params,
         stroke_meta,

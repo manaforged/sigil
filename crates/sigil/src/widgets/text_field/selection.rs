@@ -15,7 +15,7 @@ use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{NodeBuilder, TextBuilder, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
 use sigil_layout::with_text_geometry;
-use sigil_reactive::{Signal, derived};
+use sigil_reactive::{Signal, derived, derived_eq};
 use sigil_style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom, TextStyle};
 
 use crate::interaction::InteractionState;
@@ -39,6 +39,8 @@ static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::R
 
 /// Caret colour — matches the field's text token (`text-on-surface`).
 static CARET_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
+static FIELD_TEXT_ATOMS: &[StyleAtom] = &[StyleAtom::TextThemeRef("on-surface")];
+static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[StyleAtom::TextThemeRef("on-surface-muted")];
 
 /// Fallback line height (logical px) when no text-geometry provider is
 /// installed (headless layout / golden tests). Matches the default text-cell
@@ -88,12 +90,14 @@ fn track(
 ) -> NodeBuilder {
     let scroll = runtime.scroll;
     let track_pos = derived(move || (-scroll.get(), 0.0));
+    let placeholder_visible =
+        derived_eq(move || runtime.value.get().is_empty() && runtime.ime.preedit.get().is_empty());
     container()
         .hittable(false)
         .layout(LayoutStyle::block())
         .position_reactive(track_pos)
         .child(selection_layer(runtime.clone()))
-        .child(field_text(displayed))
+        .child(field_text(displayed, placeholder_visible))
         .child(caret_layer(runtime, interaction))
 }
 
@@ -118,19 +122,25 @@ fn line_height() -> f32 {
         .unwrap_or(FALLBACK_LINE_H)
 }
 
-/// The text glyphs. Geometry is computed against `TextStyle::default()` because
-/// the field applies no size/weight class (only `text-on-surface`); if that
-/// changes, the overlay style must change in lockstep. No width constraint, so
-/// the line never wraps — horizontal scroll + the viewport clip handle overflow.
+/// The text glyphs. The layout engine publishes their inherited typography into
+/// the field runtime, and every interaction-geometry path consumes that same
+/// style. No width constraint, so the line never wraps — horizontal scroll +
+/// the viewport clip handle overflow.
 ///
 /// Non-hittable so the wrapping region stays the hit-path leaf: the router
 /// binds pointer capture to the leaf (`router::route_pointer`), and the drag
 /// handlers live on the region — a hittable text node would steal the capture.
-fn field_text(displayed: Signal<String>) -> TextBuilder {
+fn field_text(displayed: Signal<String>, placeholder_visible: Signal<bool>) -> TextBuilder {
     text(displayed)
         .hittable(false)
         .layout(LayoutStyle::block())
-        .class("text-on-surface")
+        .style_reactive(move || {
+            if placeholder_visible.get() {
+                PLACEHOLDER_TEXT_ATOMS
+            } else {
+                FIELD_TEXT_ATOMS
+            }
+        })
 }
 
 fn selection_layer(runtime: TextFieldRuntime) -> NodeBuilder {
@@ -162,9 +172,10 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
     } else {
         (caret, anchor)
     };
+    let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let start = engine.caret(&value, &TextStyle::default(), lo);
-        let end = engine.caret(&value, &TextStyle::default(), hi);
+        let start = engine.caret(&value, &style, lo);
+        let end = engine.caret(&value, &style, hi);
         (start.x, end.x, start.top, start.height)
     });
     let Some((x0, x1, top, height)) = geom else {
@@ -184,8 +195,9 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
     }
     let value = runtime.value.get();
     let caret = runtime.caret.get();
+    let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let pos = engine.caret(&value, &TextStyle::default(), caret);
+        let pos = engine.caret(&value, &style, caret);
         (pos.x, pos.top, pos.height)
     });
     let Some((x, top, height)) = geom else {
@@ -258,5 +270,6 @@ fn hit(runtime: &TextFieldRuntime, x: f32) -> usize {
     // the position in text space is `x + scroll`. At rest (scroll 0) this is a
     // no-op — clicks land exactly where the glyphs are.
     let text_x = x + runtime.scroll.peek();
-    with_text_geometry(|engine| engine.hit(&value, &TextStyle::default(), text_x)).unwrap_or(0)
+    let style = runtime.text_style.peek();
+    with_text_geometry(|engine| engine.hit(&value, &style, text_x)).unwrap_or(0)
 }

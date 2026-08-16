@@ -15,6 +15,7 @@ use sigil_hal::{Color, PhysicalSize, Renderer};
 
 use crate::device_state::DeviceState;
 use crate::error::RendererError;
+use crate::frame_stats::FrameStats;
 use crate::scene::Scene;
 use crate::scene_command::CommandScene;
 use crate::scene_command::adapter::flat_to_commands;
@@ -37,6 +38,7 @@ pub struct WgpuRenderer {
     /// Request an alpha-composited surface from `create_surface`, so a
     /// transparent clear shows the desktop behind the window (overlays).
     transparent: bool,
+    pub(crate) last_frame_stats: FrameStats,
 }
 
 impl WgpuRenderer {
@@ -52,6 +54,7 @@ impl WgpuRenderer {
             state: DeviceState::new(),
             frame_transients: Vec::new(),
             transparent: false,
+            last_frame_stats: FrameStats::default(),
         })
     }
 
@@ -66,6 +69,12 @@ impl WgpuRenderer {
     #[must_use]
     pub const fn is_transparent(&self) -> bool {
         self.transparent
+    }
+
+    /// Exact command/compiler counters from the most recent scene render.
+    #[must_use]
+    pub const fn last_frame_stats(&self) -> FrameStats {
+        self.last_frame_stats
     }
 
     /// Borrow the underlying `wgpu::Instance` (always available).
@@ -184,6 +193,7 @@ impl WgpuRenderer {
         scene: &CommandScene,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), RendererError> {
+        self.last_frame_stats = FrameStats::default();
         if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
             return Err(RendererError::InvalidViewport);
         }
@@ -193,9 +203,15 @@ impl WgpuRenderer {
         // Drop the previous call's transient layer textures (their submission
         // has completed by now) and capture this call's into the same buffer,
         // so they outlive the host's deferred submit of `encoder`.
-        self.frame_transients.clear();
-        let retained = &mut self.frame_transients;
-        let ready = self.state.ensure_ready_headless()?;
+        let Self {
+            state,
+            frame_transients,
+            last_frame_stats,
+            ..
+        } = self;
+        frame_transients.clear();
+        let retained = frame_transients;
+        let ready = state.ensure_ready_headless()?;
         // Device-equality guard: the renderer's cached pipelines are bound to
         // `ready.device`. Recording against a foreign device would poison the
         // caches with handles created on the wrong device. Foreign-device
@@ -213,6 +229,7 @@ impl WgpuRenderer {
                 target.scale,
                 target.format,
                 scene,
+                last_frame_stats,
             )
         } else {
             crate::offscreen::walk_with_temporary_pipelines(
@@ -227,6 +244,7 @@ impl WgpuRenderer {
                     scale: target.scale,
                 },
                 scene,
+                last_frame_stats,
             )
         }
     }
@@ -332,8 +350,21 @@ impl WgpuRenderer {
         clear_color: Color,
         viewport: (f32, f32),
     ) -> Result<(), RendererError> {
-        let ready = self.state.ready_mut()?;
-        render_command_scene_surface(ready, surface, scene, clear_color, viewport)
+        self.last_frame_stats = FrameStats::default();
+        let Self {
+            state,
+            last_frame_stats,
+            ..
+        } = self;
+        let ready = state.ready_mut()?;
+        render_command_scene_surface(
+            ready,
+            surface,
+            scene,
+            clear_color,
+            viewport,
+            last_frame_stats,
+        )
     }
 }
 

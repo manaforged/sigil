@@ -14,9 +14,9 @@
 //!   [`Tween`](sigil_animation::Tween).
 //! - [`AnimationRegistry`] — `phf`-backed lookup from
 //!   [`sigil_style::TransitionId`] to [`AnimationConfig`].
-//! - [`tick`] — per-frame driver. Apps call once per frame between
-//!   `Runtime::begin_layout` and `Runtime::begin_paint`. Walks the
-//!   active animator set, writes new values, removes settled.
+//! - [`tick`] — per-animation-frame driver. Apps call during Effect,
+//!   before layout. Walks the moving animator set and writes new values;
+//!   settled handles stay registered so a later target can re-arm them.
 //! - Reduced-motion gate — see [`MotionPrefs`]. Phase 1 is a
 //!   thread-local override; phase 2 wires AccessKit's
 //!   `prefers_reduced_motion` from DR-050.

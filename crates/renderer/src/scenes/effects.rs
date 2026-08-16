@@ -82,6 +82,7 @@ pub fn layer_pool() -> (CommandScene, (f32, f32), Color) {
     scene.draw_rect(rect(100.0, 80.0, 180.0, 160.0), fill);
     scene.push_layer(LayerScope {
         clip: rect(390.0, 80.0, 180.0, 160.0),
+        clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::Identity,
         opacity: 0.5,
     });

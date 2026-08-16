@@ -48,15 +48,16 @@ pub const SOLID_VARIANT: StyleVariant = StyleVariant::new(SOLID_BASE, SOLID_STAT
 
 // === Soft variant =============================================================
 //
-// Tinted background at step 3, hover 4, pressed 5. Step 11 text for
-// readable on-tinted contrast. The "secondary action" or "informational
-// chip" look.
+// Raised surface at step 4, hover 5, pressed 6 — the elevation sits one
+// step above the step-3 "element rest" so a secondary button reads as a
+// raised control on a step-2 card (Zed/ShadCN separate controls by fill,
+// not outline). Step 11 text for readable on-tinted contrast.
 
-static SOFT_BASE: &[StyleAtom] = &[StyleAtom::BgToneStep(3), StyleAtom::FgToneStep(11)];
+static SOFT_BASE: &[StyleAtom] = &[StyleAtom::BgToneStep(4), StyleAtom::FgToneStep(11)];
 static SOFT_REST: &[StyleAtom] = &[];
-static SOFT_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static SOFT_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static SOFT_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
+static SOFT_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
+static SOFT_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
+static SOFT_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(6)];
 static SOFT_DISABLED: &[StyleAtom] = &[StyleAtom::BgToneStep(2), StyleAtom::Opacity(5_000)];
 
 const SOFT_STATES: StateStyle = StateStyle::new(

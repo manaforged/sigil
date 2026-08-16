@@ -17,6 +17,10 @@ pub enum Dimension {
     Px(Px),
     /// Fills the available parent extent.
     Full,
+    /// A fraction of the parent extent, encoded as `ratio * 10000`
+    /// (the same fixed-point scheme as `Opacity`). `Fraction(10000)`
+    /// equals `Full`.
+    Fraction(u16),
     /// Lets the layout engine choose the size.
     Auto,
 }

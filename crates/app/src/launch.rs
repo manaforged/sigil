@@ -6,16 +6,18 @@
 //! bulletproof table becomes unreachable at this layer.
 
 use std::sync::Arc;
+use std::time::Instant;
 
+use sigil_animation_runtime::{active_count as active_animation_count, tick as tick_animations};
 use sigil_events::EventRouter;
-use sigil_hal::{Color, LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
+use sigil_hal::{LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
 use sigil_kernel::Cx;
 use sigil_layout::LayoutEngine;
 use sigil_layout::prelude::Size;
 use sigil_reactive::{
     MainThreadDispatcher, Runtime, TaskExecutor, next_interval_deadline, tick_intervals,
 };
-use sigil_renderer::{WgpuRenderer, WgpuSurface, emit_scene};
+use sigil_renderer::{WgpuRenderer, WgpuSurface};
 use sigil_shell::{WinitShell, WinitWindowHandle};
 use sigil_tasks::AsyncRuntime;
 
@@ -25,8 +27,11 @@ use crate::text_measure::DefaultTextMeasure;
 use crate::tree_root::TreeRoot;
 
 mod event_wiring;
+#[path = "scene_cache.rs"]
+mod scene_cache;
 
 use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime};
+use scene_cache::{PaintRequest, SceneCache};
 
 /// Launch a sigil app.
 ///
@@ -51,6 +56,9 @@ where
 }
 
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
+    // Live desktop apps use the platform UI families by default. A consumer
+    // that installed bundled/custom faces before launch keeps that choice.
+    sigil_text::prefer_system_fonts();
     let logical_size = logical_size_from_config(config.size);
 
     let mut shell = if config.overlay {
@@ -80,12 +88,11 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // drains it every frame via `drain_a11y_actions`.
     let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = WgpuRenderer::new()?;
-    if config.overlay {
-        renderer.set_transparent(true);
-    }
+    renderer.set_transparent(config.overlay);
     let mut surface: Option<WgpuSurface> = None;
     let mut viewport = (logical_size.width, logical_size.height);
     let mut exit_requested = false;
+    let mut frame_state = FrameState::default();
 
     // Wake the loop when the soonest `cx.interval` is due, so periodic
     // callbacks (clocks, live metrics) fire without waiting on an OS
@@ -112,11 +119,23 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                 async_rt: &mut async_rt,
                 a11y_action_rx: &a11y_action_rx,
                 theme_watch: &theme_watch,
+                frame_state: &mut frame_state,
             };
             run_frame(panic_policy, frame);
+            request_animation_frame(shell, window_handle);
         })
         .map_err(Error::new)?;
     Ok(())
+}
+
+fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
+    if active_animation_count() > 0
+        && let Some(window) = shell.window_for(handle)
+    {
+        // `AutoVsync` paces presentation; requesting the successor here keeps
+        // the event loop asleep whenever no motion is active.
+        window.request_redraw();
+    }
 }
 
 /// G5 (DR-048 §5) — build the async runtime and install the Tokio
@@ -210,6 +229,43 @@ struct FrameCtx<'a> {
     a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
     /// T14 (5/5 Wave 4) — dev-mode theme hot reload, drained at frame top.
     theme_watch: &'a Option<crate::theme_file::ThemeWatch>,
+    frame_state: &'a mut FrameState,
+}
+
+#[derive(Default)]
+struct FrameState {
+    animation_clock: AnimationClock,
+    scene_cache: SceneCache,
+}
+
+const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
+const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
+
+#[derive(Default)]
+struct AnimationClock {
+    previous: Option<Instant>,
+}
+
+impl AnimationClock {
+    fn tick_active(&mut self, now: Instant) -> bool {
+        if active_animation_count() == 0 {
+            self.previous = None;
+            return false;
+        }
+        let dt = self
+            .previous
+            .replace(now)
+            .map_or(NOMINAL_FRAME_SECS, |previous| {
+                now.saturating_duration_since(previous)
+                    .as_secs_f32()
+                    .min(MAX_ANIMATION_FRAME_SECS)
+            });
+        tick_animations(dt);
+        if active_animation_count() == 0 {
+            self.previous = None;
+        }
+        true
+    }
 }
 
 /// Run one frame under the configured [`PanicPolicy`].
@@ -286,6 +342,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
         async_rt,
         a11y_action_rx,
         theme_watch,
+        frame_state,
     } = ctx;
 
     // T14 (5/5 Wave 4) — reload the watched theme file on save. Runs
@@ -341,8 +398,6 @@ fn frame_once(ctx: FrameCtx<'_>) {
         shell,
         window_handle,
         cx,
-        root,
-        layout,
         renderer,
         surface,
         viewport,
@@ -363,7 +418,6 @@ fn frame_once(ctx: FrameCtx<'_>) {
     drain_events(DrainCtx {
         shell,
         cx,
-        root,
         layout,
         router,
         surface,
@@ -372,13 +426,21 @@ fn frame_once(ctx: FrameCtx<'_>) {
         config,
         exit_requested,
     });
+    // Advance motion while writes are legal, before layout reads animated
+    // geometry. The frame callback requests a successor redraw only while the
+    // runtime still has moving animators, so idle windows consume no frame loop.
+    let animation_advanced = frame_state.animation_clock.tick_active(Instant::now());
     // Layout phase: recompute Taffy boxes, now reflecting the reactive
     // writes drained above (children_reactive rebuilds, selection tints,
     // new chat bubbles). Writes during this phase still invalidate the
     // in-flight pass — discouraged by convention, not by panic.
     Runtime::begin_layout();
-    let logical = logical_size_from_viewport(*viewport);
-    recompute_layout(cx, root, layout, cx.scale(), logical);
+    let force_paint = shell.take_force_paint();
+    let layout_dirty = Runtime::frame_dirty();
+    run_layout_if_dirty(layout_dirty, || {
+        let logical = logical_size_from_viewport(*viewport);
+        recompute_layout(cx, root, layout, cx.scale(), logical);
+    });
     // AT action validation needs THIS frame's fresh layout/scopes, not
     // last frame's (RC-focus finding, round 2) — see
     // `event_wiring::drain_a11y_actions`'s own doc comment. Drain before
@@ -390,13 +452,31 @@ fn frame_once(ctx: FrameCtx<'_>) {
     sync_ime(shell, window_handle, cx, layout, router);
     Runtime::begin_paint();
     // Change-gate + a11y publish share this dirty read (RC-focus finding 1).
-    let dirty = shell.take_force_paint() || Runtime::frame_dirty();
-    let _ = dirty.then(|| paint(cx, root, renderer, surface, *viewport));
-    event_wiring::publish_a11y(shell, cx, router, layout, dirty);
+    let paint_dirty = Runtime::frame_dirty();
+    let paint_needed = force_paint || paint_dirty;
+    let allow_scene_replay = force_paint && !paint_dirty && !animation_advanced;
+    let _ = paint_needed.then(|| {
+        frame_state.scene_cache.paint(PaintRequest {
+            cx,
+            root,
+            renderer,
+            surface,
+            viewport: *viewport,
+            allow_replay: allow_scene_replay,
+        });
+    });
+    event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
     // end_frame transitions Paint → Effect (replay deferred writes) →
     // Idle so the next iteration enters begin_effect from a clean
     // resting state.
     Runtime::end_frame();
+}
+
+fn run_layout_if_dirty(dirty: bool, layout_pass: impl FnOnce()) -> bool {
+    if dirty {
+        layout_pass();
+    }
+    dirty
 }
 
 /// Drive one frame's phase transitions, calling `layout_pass` while
@@ -490,47 +570,25 @@ fn scale_from_f64(scale: f64) -> Scale {
     Scale::new(scale as f32)
 }
 
-fn paint(
-    cx: &Cx,
-    root: sigil_kernel::NodeId,
-    renderer: &mut WgpuRenderer,
-    surface: &mut Option<WgpuSurface>,
-    viewport: (f32, f32),
-) {
-    let Some(surface) = surface.as_mut() else {
-        return;
-    };
-    let scene = emit_scene(cx, root);
-    // Transparent (overlay) surfaces clear fully transparent so unpainted
-    // regions show the desktop behind them; normal windows keep the
-    // opaque base.
-    let clear = if renderer.is_transparent() {
-        Color::rgba(0.0, 0.0, 0.0, 0.0)
-    } else {
-        Color::rgba(0.03, 0.04, 0.05, 1.0)
-    };
-    if let Err(err) = renderer.render_command_scene(surface, &scene, clear, viewport) {
-        tracing::warn!("sigil-app: render_command_scene failed: {err}");
-        // The drawable still has no fresh pixels and this frame consumed
-        // the dirty flag — re-arm it so the next frame actually retries
-        // instead of change-gating away the retry forever.
-        Runtime::mark_frame_dirty();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
 
     use std::fmt;
+    use std::time::{Duration, Instant};
 
+    use sigil_animation_runtime::{
+        AnimationRegistry, Animator, MotionPrefs, active_count, presets,
+    };
     use sigil_hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
     use sigil_kernel::{Cx, container};
     use sigil_layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-    use sigil_reactive::Runtime;
+    use sigil_reactive::{Runtime, signal};
 
     use crate::config::AppConfig;
-    use crate::launch::{create_initial_window, layout_for_scale};
+    use crate::launch::{
+        AnimationClock, create_initial_window, layout_for_scale, run_layout_if_dirty,
+    };
     use crate::text_measure::DefaultTextMeasure;
 
     #[derive(Debug)]
@@ -676,6 +734,70 @@ mod tests {
             assert_eq!(one_x, two_x);
             assert_eq!(two_x.width.to_bits(), 720.0_f32.to_bits());
             assert_eq!(two_x.height.to_bits(), 480.0_f32.to_bits());
+        });
+    }
+
+    #[test]
+    fn layout_gate_skips_clean_input_and_runs_only_for_dirty_frames() {
+        Runtime::scope("layout_gate", || {
+            let mut passes = 0;
+
+            Runtime::begin_effect();
+            Runtime::begin_layout();
+            assert!(!run_layout_if_dirty(false, || passes += 1));
+            Runtime::begin_paint();
+            Runtime::end_frame();
+            assert_eq!(passes, 0, "clean input must not enter layout");
+
+            Runtime::begin_effect();
+            Runtime::mark_frame_dirty();
+            Runtime::begin_layout();
+            assert!(run_layout_if_dirty(Runtime::frame_dirty(), || passes += 1));
+            Runtime::begin_paint();
+            Runtime::end_frame();
+
+            Runtime::begin_effect();
+            Runtime::begin_layout();
+            assert!(run_layout_if_dirty(true, || passes += 1));
+            Runtime::begin_paint();
+            Runtime::end_frame();
+            assert_eq!(passes, 2);
+        });
+    }
+
+    #[test]
+    fn animation_clock_advances_until_idle_and_rearms() {
+        Runtime::scope("animation_clock_advances_until_idle_and_rearms", || {
+            MotionPrefs::set(false);
+            let value = signal(0.0_f32);
+            let config = AnimationRegistry::default()
+                .get(presets::DEFAULT)
+                .expect("default animation preset");
+            let mut animator = Animator::new(value, config);
+            let mut clock = AnimationClock::default();
+            let mut now = Instant::now();
+
+            animator.target(1.0);
+            clock.tick_active(now);
+            assert!(value.peek() > 0.0, "first live frame advances motion");
+
+            for _ in 0..30 {
+                now += Duration::from_millis(16);
+                clock.tick_active(now);
+                if active_count() == 0 {
+                    break;
+                }
+            }
+            assert_eq!(active_count(), 0, "settled motion stops frame demand");
+            assert!(clock.previous.is_none(), "idle clock drops its timestamp");
+
+            animator.target(0.0);
+            assert_eq!(active_count(), 1, "settled handle re-arms on a new target");
+            clock.tick_active(now + Duration::from_millis(16));
+            assert!(
+                value.peek() < 1.0,
+                "re-armed motion advances on the next frame"
+            );
         });
     }
 }

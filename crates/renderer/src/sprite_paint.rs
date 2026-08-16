@@ -303,6 +303,9 @@ impl SpritePipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if !crate::scissor::apply(&mut pass, ctx.clip, ctx.scale, ctx.viewport) {
+            return;
+        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, uniform_bg, &[]);
         pass.set_bind_group(1, atlas_bg, &[]);

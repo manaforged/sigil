@@ -96,7 +96,7 @@ impl TextFieldBuilder {
         *self.scroll_offset.get_or_insert_with(|| signal(0.0_f32))
     }
 
-    /// Set placeholder text rendered while the field is empty and unfocused.
+    /// Set placeholder text rendered while the field is empty.
     #[must_use]
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
@@ -178,6 +178,7 @@ impl TextFieldBuilder {
         // overrides, so the text track and the scroll math both size against
         // the field's real inner column instead of the default.
         let width = layout_overrides.width_hint();
+        let height = layout_overrides.height_hint();
         let column = super::selection::column_width(width);
         let runtime = TextFieldRuntime::new(
             value,
@@ -199,8 +200,10 @@ impl TextFieldBuilder {
             disabled,
             invalid,
             overlay: user_overlay,
+            width,
+            height,
         };
-        let node = build_base_node(inputs, &placeholder, interaction, width, runtime.clone());
+        let node = build_base_node(inputs, &placeholder, interaction, runtime.clone());
         let node = interaction.install(attach_key_handlers(node, runtime.clone()));
         let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {

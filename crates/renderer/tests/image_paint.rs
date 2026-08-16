@@ -33,8 +33,8 @@ use zeno as _;
 #[allow(dead_code)]
 mod support;
 
-use sigil_kernel::{ImageSource, ObjectFit, image};
-use sigil_layout::LayoutStyle;
+use sigil_kernel::{ImageSource, ObjectFit, container, image};
+use sigil_layout::{LayoutBuilderExt, LayoutStyle, Overflow};
 use sigil_renderer::{SceneCommand, emit_scene};
 use support::{capture, close};
 
@@ -152,4 +152,46 @@ fn image_samples_its_texture_with_correct_orientation() {
             px[2],
         );
     }
+}
+
+#[test]
+fn overflow_hidden_scissors_image_pixels() {
+    let source = ImageSource::from_rgba8(32, 32, [255, 0, 0, 255].repeat(32 * 32)).unwrap();
+    let img = capture(
+        |cx| {
+            let child = move |child_cx: &mut sigil_kernel::Cx| {
+                let id = child_cx.add(image(source));
+                let _ = child_cx
+                    .get_mut(id)
+                    .unwrap()
+                    .attach(LayoutStyle::block().fixed_size(32.0, 32.0));
+                id
+            };
+            let clipped = container()
+                .layout(
+                    LayoutStyle::block()
+                        .fixed_size(16.0, 16.0)
+                        .overflow_x(Overflow::Hidden)
+                        .overflow_y(Overflow::Hidden),
+                )
+                .child(child);
+            cx.add(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
+                    .child(clipped),
+            )
+        },
+        [32, 32],
+    );
+
+    let inside = img.get_pixel(12, 12).0;
+    let outside = img.get_pixel(27, 12).0;
+    assert!(
+        inside[0] > 240 && inside[1] < 12 && inside[2] < 12,
+        "{inside:?}"
+    );
+    assert!(
+        outside[0] < 8 && outside[1] < 8 && outside[2] < 8,
+        "{outside:?}"
+    );
 }

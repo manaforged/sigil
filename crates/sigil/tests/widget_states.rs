@@ -35,7 +35,7 @@ use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil_renderer::{SceneCommand, StrokeAlign, emit_scene};
 use sigil_style::Rgba8;
 use sigil_style::scale::ScaleRole;
 
@@ -105,16 +105,15 @@ fn enter_key() -> ShellEvent {
 
 #[test]
 fn button_rest_emits_surface_color() {
-    // DS2.5 — default button is the SOFT variant on the gray scale.
-    // Rest state paints `BgToneStep(3)` which resolves to gray step 3
-    // (gray.step(3)), the Radix "interactive subtle bg" slot. Prior
-    // to DS2.5 the rest slot was `theme.surface` (gray.step(2)); this
-    // test was not updated in the same wave and rotted at HEAD.
+    // Default button is the SOFT variant on the neutral (slate) scale.
+    // Rest state paints `BgToneStep(4)` — the raised-control slot, one
+    // step above the step-3 element rest so the button reads on a
+    // step-2 card.
     sigil::reactive::Runtime::scope("c4-button-rest", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root);
-        let expected = sigil_style::scale::slate_light().step(3);
+        let expected = sigil_style::scale::slate_light().step(4);
         assert!(rect_colors(&cx, root).contains(&expected));
     });
 }
@@ -154,29 +153,31 @@ fn button_disabled_is_not_focusable() {
 }
 
 #[test]
-fn button_hovered_emits_surface_hover_on_pointer_enter() {
+fn button_hovered_emits_soft_hover_on_pointer_enter() {
     sigil::reactive::Runtime::scope("c4-button-hovered", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(74.0, 22.0));
+        router.route(&mut cx, &layout, pointer_move_event(24.0, 16.0));
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface_hover));
+        // SOFT hover lifts the step-4 rest fill to gray step 5.
+        assert!(rect_colors(&cx, root).contains(&theme.gray.step(5)));
     });
 }
 
 // ---- CHECKBOX (5 states) -----------------------------------------------------
 
 #[test]
-fn checkbox_unchecked_rest_emits_surface() {
+fn checkbox_unchecked_rest_emits_surface_inset() {
     sigil::reactive::Runtime::scope("c4-checkbox-unchecked", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface));
+        // Unchecked fill is the `surface-inset` well — gray step 1.
+        assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
     });
 }
 
@@ -240,9 +241,9 @@ fn slider_rest_emits_track_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // Q10 fix: track switched from `surface-hover` to `border` so
-        // the slider stays visible inside a `bg-surface-hover` card.
-        assert!(rect_colors(&cx, root).contains(&theme.border));
+        // Track rest paints `border-strong` (gray-8): quiet but
+        // measurable against both step-1 and step-2 surfaces.
+        assert!(rect_colors(&cx, root).contains(&theme.border_strong()));
     });
 }
 
@@ -254,7 +255,9 @@ fn slider_thumb_emits_accent_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        // The accent FILL bar (muted accent-8 state-fill register) —
+        // the thumb itself is `on-accent` white with a gray rim.
+        assert!(rect_colors(&cx, root).contains(&theme.accent_scale.step(8)));
     });
 }
 
@@ -330,7 +333,11 @@ fn toggle_on_emits_accent() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.accent));
+        // ON track paints the accent scale at step 8 (one below the
+        // step-9 solid so the white thumb reads against it).
+        assert!(
+            rect_colors(&cx, root).contains(&theme.accent_scale.step(8))
+        );
     });
 }
 
@@ -382,12 +389,27 @@ fn text_field_rest_emits_border_color() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
         compute(&mut cx, root);
-        // The rest-state field frame paints gray step 9, not theme.border:
-        // step 7 measures ~1.5:1 against the surface, below the 3:1 WCAG
-        // 1.4.11 floor for non-text boundaries (see text_field/render.rs).
         let theme = Theme::default();
         let border = theme.scale(ScaleRole::Gray).step(9);
-        assert!(rect_colors(&cx, root).contains(&border));
+        let scene = emit_scene(&cx, root);
+        let rects = scene
+            .commands
+            .iter()
+            .filter_map(|command| match command {
+                SceneCommand::Rect(rect) => Some(rect),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        assert_eq!(rects.len(), 1, "field must paint one rounded surface");
+        let rect = rects.first().expect("field surface");
+        let stroke = rect.stroke.expect("field border stroke");
+        // Fill is the `surface-inset` well (gray step 1); the rest
+        // border stays at gray step 9.
+        assert_eq!(rect.color, theme.gray.step(1));
+        assert_eq!(stroke.color, border);
+        assert!((stroke.width - 1.0).abs() < f32::EPSILON);
+        assert_eq!(stroke.align, StrokeAlign::Inside);
     });
 }
 

@@ -35,7 +35,13 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
         walk_subtree(cx, root, bounds, &mut nodes, &mut first_root_ak);
     }
     let root_ak = first_root_ak.unwrap_or(AkNodeId(0));
-    let focus_ak = focus.map_or(root_ak, NodeId::to_accesskit);
+    // Reactive subtree replacement can remove the focused kernel node before
+    // the event router observes another focus change. AccessKit requires the
+    // focus id to name a node in this exact update.
+    let focus_ak = focus
+        .map(NodeId::to_accesskit)
+        .filter(|candidate| nodes.iter().any(|(id, _)| id == candidate))
+        .unwrap_or(root_ak);
     TreeUpdate {
         nodes,
         tree: Some(Tree::new(root_ak)),

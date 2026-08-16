@@ -1,5 +1,4 @@
-//! Process-global override for the bootstrap faces every [`OwnedTextEngine`]
-//! starts with.
+//! Process-global font source for every [`OwnedTextEngine`].
 //!
 //! Sigil bundles `FiraSans` + `CascadiaMono` so a freshly launched app always
 //! renders *something*. A consumer that wants different faces app-wide (e.g.
@@ -33,7 +32,15 @@ pub struct DefaultFonts {
     pub icon: Option<(Arc<Vec<u8>>, u32)>,
 }
 
-static DEFAULT_FONTS: RwLock<Option<DefaultFonts>> = RwLock::new(None);
+#[derive(Clone, Default)]
+pub(crate) enum DefaultFontSource {
+    #[default]
+    Bundled,
+    Custom(DefaultFonts),
+    System,
+}
+
+static DEFAULT_FONTS: RwLock<DefaultFontSource> = RwLock::new(DefaultFontSource::Bundled);
 /// Bumped on every [`set_default_fonts`]; a live [`OwnedTextEngine`](crate::OwnedTextEngine)
 /// compares it against the generation it last shaped with to know when to rebuild.
 static GENERATION: AtomicU64 = AtomicU64::new(0);
@@ -46,15 +53,37 @@ static GENERATION: AtomicU64 = AtomicU64::new(0);
 /// paragraph cache — so a debug panel can A/B fonts against the running window.
 pub fn set_default_fonts(fonts: DefaultFonts) {
     if let Ok(mut guard) = DEFAULT_FONTS.write() {
-        *guard = Some(fonts);
+        *guard = DefaultFontSource::Custom(fonts);
         GENERATION.fetch_add(1, Ordering::Release);
     }
 }
 
-/// A clone of the registered override, if any. Read by `FontCollection::with_default`.
-/// Cloning is cheap (Arc bumps) and keeps the read lock off the font-construction path.
-pub(crate) fn default_fonts_snapshot() -> Option<DefaultFonts> {
-    DEFAULT_FONTS.read().ok().and_then(|guard| guard.clone())
+/// Use the native desktop UI families selected by CoreText, DirectWrite, or Fontconfig.
+///
+/// This replaces a prior custom override. Call before constructing a text engine.
+pub fn use_system_fonts() {
+    if let Ok(mut guard) = DEFAULT_FONTS.write() {
+        *guard = DefaultFontSource::System;
+        GENERATION.fetch_add(1, Ordering::Release);
+    }
+}
+
+/// Select system fonts only while the caller has not installed custom defaults.
+#[doc(hidden)]
+pub fn prefer_system_fonts() {
+    if let Ok(mut guard) = DEFAULT_FONTS.write()
+        && matches!(*guard, DefaultFontSource::Bundled)
+    {
+        *guard = DefaultFontSource::System;
+        GENERATION.fetch_add(1, Ordering::Release);
+    }
+}
+
+/// Clone the selected source without holding its read lock during font parsing.
+pub(crate) fn default_font_source() -> DefaultFontSource {
+    DEFAULT_FONTS
+        .read()
+        .map_or_else(|_| DefaultFontSource::Bundled, |guard| guard.clone())
 }
 
 /// The current override generation. Changes whenever [`set_default_fonts`] is called.

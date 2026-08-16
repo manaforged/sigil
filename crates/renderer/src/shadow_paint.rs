@@ -6,7 +6,8 @@ use wgpu::util::DeviceExt as _;
 #[path = "shadow_shader.rs"]
 mod shadow_shader;
 
-use crate::scene_instance::{SceneUniforms, ShadowInstance, srgb_channel_to_linear};
+use crate::frame_upload::UploadedRange;
+use crate::scene_instance::{ShadowInstance, srgb_channel_to_linear};
 use crate::scene_paint::PaintCtx;
 use shadow_shader::SHADOW_SHADER;
 
@@ -121,21 +122,22 @@ impl ShadowPipeline {
         self.format
     }
 
-    pub(crate) fn paint_instances(&self, ctx: PaintCtx<'_>, instances: &[ShadowInstance]) {
-        if instances.is_empty() {
-            return;
-        }
+    pub(crate) fn paint_uploaded(
+        &self,
+        ctx: PaintCtx<'_>,
+        instances: UploadedRange,
+        uniform: &wgpu::Buffer,
+    ) {
         let PaintCtx {
             device,
             encoder,
             view,
             viewport,
+            clip,
+            scale,
             ..
         } = ctx;
-        let instance_buf = instance_buffer(device, instances);
-        let uniform_buf = uniform_buffer(device, viewport);
-        let bind_group = bind_group(device, &self.uniform_layout, &uniform_buf);
-        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
+        let bind_group = bind_group(device, &self.uniform_layout, uniform);
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer shadow paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -152,11 +154,14 @@ impl ShadowPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if !crate::scissor::apply(&mut pass, clip, scale, viewport) {
+            return;
+        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
     }
 }
 
@@ -226,17 +231,6 @@ fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-fn uniform_buffer(device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer shadow uniforms"),
-        contents: bytemuck::bytes_of(&SceneUniforms {
-            viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-            _pad: [0.0, 0.0],
-        }),
-        usage: wgpu::BufferUsages::UNIFORM,
-    })
-}
-
 fn bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
@@ -256,14 +250,6 @@ fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer shadow unit quad"),
         contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-fn instance_buffer(device: &wgpu::Device, instances: &[ShadowInstance]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer shadow instance buffer"),
-        contents: bytemuck::cast_slice(instances),
         usage: wgpu::BufferUsages::VERTEX,
     })
 }

@@ -17,8 +17,8 @@ use wgpu::util::DeviceExt as _;
 #[path = "rect_shader.rs"]
 mod rect_shader;
 
-use crate::scene::Scene;
-use crate::scene_instance::{RectInstance, SceneUniforms, collect_instances};
+use crate::frame_upload::UploadedRange;
+use crate::scene_instance::RectInstance;
 use rect_shader::RECT_SHADER;
 
 /// Arguments to [`ScenePipeline::paint`]. Bundled to keep the argument
@@ -29,6 +29,8 @@ pub(crate) struct PaintCtx<'a> {
     pub encoder: &'a mut wgpu::CommandEncoder,
     pub view: &'a wgpu::TextureView,
     pub viewport: (f32, f32),
+    pub clip: Option<sigil_hal::Rect>,
+    pub scale: f32,
 }
 
 /// Wgpu resources for painting `SceneItem::Rect`. One per surface format.
@@ -117,27 +119,11 @@ impl ScenePipeline {
         self.format
     }
 
-    /// Upload instances + draw.
-    ///
-    /// `viewport` is the logical-pixel size matching the surface
-    /// coordinate system the scene rects were laid out in.
-    #[allow(dead_code)]
-    pub(crate) fn paint(&self, ctx: PaintCtx<'_>, scene: &Scene) {
-        let instances = collect_instances(scene);
-        self.paint_instances(ctx, &instances);
-    }
-
-    /// Build a fresh uniforms bind group. The created uniform buffer is kept
-    /// alive by the returned bind group (wgpu holds it via Arc).
-    fn uniforms_bind_group(&self, device: &wgpu::Device, viewport: (f32, f32)) -> wgpu::BindGroup {
-        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("sigil-renderer scene uniforms"),
-            contents: bytemuck::bytes_of(&SceneUniforms {
-                viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
-                _pad: [0.0, 0.0],
-            }),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+    fn uniforms_bind_group(
+        &self,
+        device: &wgpu::Device,
+        uniform_buffer: &wgpu::Buffer,
+    ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("sigil-renderer scene uniforms bind group"),
             layout: &self.bind_group_layout,
@@ -148,25 +134,22 @@ impl ScenePipeline {
         })
     }
 
-    pub(crate) fn paint_instances(&self, ctx: PaintCtx<'_>, instances: &[RectInstance]) {
+    pub(crate) fn paint_uploaded(
+        &self,
+        ctx: PaintCtx<'_>,
+        instances: UploadedRange,
+        uniform: &wgpu::Buffer,
+    ) {
         let PaintCtx {
             device,
             encoder,
             view,
             viewport,
+            clip,
+            scale,
             ..
         } = ctx;
-        if instances.is_empty() {
-            return;
-        }
-
-        let instance_count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("sigil-renderer scene instances"),
-            contents: bytemuck::cast_slice(instances),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-        let bind_group = self.uniforms_bind_group(device, viewport);
+        let bind_group = self.uniforms_bind_group(device, uniform);
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer scene paint pass"),
@@ -184,11 +167,14 @@ impl ScenePipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if !crate::scissor::apply(&mut pass, clip, scale, viewport) {
+            return;
+        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buffer.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instance_count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
     }
 }
 

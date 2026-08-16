@@ -42,7 +42,7 @@ pub use error::{AppResult, Error};
 pub use launch::launch;
 pub use sigil_hal::{Anchor, WindowOpts};
 pub use sigil_renderer::{TextTuning, set_text_tuning, text_tuning};
-pub use sigil_text::{DefaultFonts, set_default_fonts};
+pub use sigil_text::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub use text_geometry::EngineGeometry;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::TreeRoot;

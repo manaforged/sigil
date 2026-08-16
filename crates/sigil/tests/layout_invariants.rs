@@ -59,6 +59,27 @@ impl TextMeasure for ProportionalText {
     }
 }
 
+struct NativeLineGeometry;
+
+impl sigil_layout::TextGeometry for NativeLineGeometry {
+    fn hit(&self, _text: &str, _style: &sigil_style::TextStyle, _x: f32) -> usize {
+        0
+    }
+
+    fn caret(
+        &self,
+        _text: &str,
+        _style: &sigil_style::TextStyle,
+        _byte: usize,
+    ) -> sigil_layout::CaretGeometry {
+        sigil_layout::CaretGeometry {
+            x: 0.0,
+            top: 0.0,
+            height: 19.2,
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Violation {
     depth: usize,
@@ -221,6 +242,25 @@ fn stacked_widgets_are_sound_at_every_width() {
                 ))
         });
     }
+}
+
+#[test]
+fn compact_text_field_contains_native_line_height() {
+    sigil::reactive::Runtime::scope("compact-text-field-layout", || {
+        sigil_layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));
+        layout
+            .compute(&mut cx, root, Size::fixed(560.0, 34.0))
+            .expect("layout computes");
+
+        let found = violations(&cx, &layout, root);
+        assert!(
+            found.is_empty(),
+            "34px field must contain a 19.2px native line: {found:#?}"
+        );
+    });
 }
 
 /// Long CONTENT inside widgets must stay inside them — the widgets clip it.

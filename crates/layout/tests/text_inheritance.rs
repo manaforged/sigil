@@ -102,7 +102,7 @@ fn text_child_measures_with_inherited_typography() {
     );
     for style in styles {
         assert_eq!(
-            style.font_size, 18.0,
+            style.font_size, 16.0,
             "measurement must see the ancestor's text-lg, not TextStyle::default()"
         );
         assert_eq!(
@@ -136,7 +136,7 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     {
         let first = calls.borrow();
         let target_styles = styles_for(&first, "Target");
-        assert!(target_styles.iter().all(|style| style.font_size == 18.0));
+        assert!(target_styles.iter().all(|style| style.font_size == 16.0));
     }
     calls.borrow_mut().clear();
 
@@ -159,6 +159,6 @@ fn ancestor_typography_change_remeasures_descendant_text() {
          (its own Node::version is unchanged — this is the DR-056 cascade)"
     );
     for style in target_styles {
-        assert_eq!(style.font_size, 20.0, "re-measure must see text-xl");
+        assert_eq!(style.font_size, 18.0, "re-measure must see text-xl");
     }
 }

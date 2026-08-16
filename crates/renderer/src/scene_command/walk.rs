@@ -3,13 +3,16 @@
 use sigil_hal::{Point, Rect};
 
 use crate::blur_paint::BlurPipeline;
-use crate::decoration_paint::DecorationPipeline;
+use crate::decoration_paint::{DecorationInstance, DecorationPipeline};
 use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
+use crate::frame_stats::FrameStats;
+use crate::frame_upload::{FrameUploads, UploadCapacities};
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
 use crate::raster_paint::RasterTextPipeline;
 use crate::scene_command::{CommandScene, SceneCommand, Transform};
+use crate::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
 use crate::slug::SlugTextPipeline;
@@ -49,12 +52,17 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
+    pub(crate) stats: &'a mut FrameStats,
 }
 
 pub(crate) fn walk_command_scene(
     ctx: WalkCtx<'_>,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
+    *ctx.stats = FrameStats {
+        scene_commands: scene.commands.len(),
+        ..FrameStats::default()
+    };
     if scene
         .commands
         .iter()
@@ -62,7 +70,8 @@ pub(crate) fn walk_command_scene(
     {
         return super::layer_walk::walk_layer_command_scene(ctx, scene);
     }
-    Walk::new(ctx).walk(scene)
+    let capacity = UploadCapacities::from_commands(scene.commands.iter());
+    Walk::new(ctx, capacity).walk(scene)
 }
 
 pub(super) struct Walk<'a> {
@@ -70,15 +79,34 @@ pub(super) struct Walk<'a> {
     clips: Vec<Rect>,
     transforms: Vec<Transform>,
     layers: Vec<f32>,
+    pub(super) uploads: FrameUploads,
+    pub(super) pending_rects: Vec<RectInstance>,
+    pub(super) pending_fills: Vec<FillInstance>,
+    pub(super) pending_stops: Vec<GpuStop>,
+    pub(super) pending_shadows: Vec<ShadowInstance>,
+    pub(super) pending_decorations: Vec<DecorationInstance>,
 }
 
 impl<'a> Walk<'a> {
-    pub(super) fn new(ctx: WalkCtx<'a>) -> Self {
+    pub(super) fn new(ctx: WalkCtx<'a>, capacity: UploadCapacities) -> Self {
+        let uploads = FrameUploads::new(
+            ctx.device,
+            ctx.queue,
+            ctx.viewport,
+            capacity,
+            &mut *ctx.stats,
+        );
         Self {
             ctx,
             clips: Vec::new(),
             transforms: vec![IDENTITY],
             layers: vec![1.0],
+            uploads,
+            pending_rects: Vec::new(),
+            pending_fills: Vec::new(),
+            pending_stops: Vec::new(),
+            pending_shadows: Vec::new(),
+            pending_decorations: Vec::new(),
         }
     }
 
@@ -86,10 +114,15 @@ impl<'a> Walk<'a> {
         for command in &scene.commands {
             self.handle(command)?;
         }
+        self.finish();
         Ok(())
     }
 
     pub(super) fn handle(&mut self, command: &SceneCommand) -> Result<(), RendererError> {
+        if self.queue_batchable(command) {
+            return Ok(());
+        }
+        self.finish();
         match command {
             SceneCommand::PushClip(rect) => self.push_clip(*rect),
             SceneCommand::PopClip => {
@@ -108,20 +141,70 @@ impl<'a> Walk<'a> {
                 }
             }
             SceneCommand::PushLayer(_) | SceneCommand::PopLayer => {}
-            SceneCommand::Rect(draw) => self.draw_rect(draw),
-            SceneCommand::Gradient(draw) => self.draw_gradient(draw),
-            SceneCommand::Pattern(draw) => self.draw_pattern(draw),
+            SceneCommand::Rect(_)
+            | SceneCommand::Gradient(_)
+            | SceneCommand::Pattern(_)
+            | SceneCommand::DrawShadow { .. }
+            | SceneCommand::Decoration(_) => {
+                unreachable!("batchable commands return before dispatch")
+            }
+            SceneCommand::GlyphRun(draw) => self.draw_glyph_run(draw)?,
+            SceneCommand::Sprite(draw) => self.draw_sprite(draw),
+            SceneCommand::Image(draw) => self.draw_image(draw),
+        }
+        Ok(())
+    }
+
+    fn queue_batchable(&mut self, command: &SceneCommand) -> bool {
+        match command {
+            SceneCommand::Rect(draw) => {
+                self.flush_fills();
+                self.flush_shadows();
+                self.flush_decorations();
+                self.queue_rect(draw);
+                true
+            }
+            SceneCommand::Gradient(draw) => {
+                self.flush_rects();
+                self.flush_shadows();
+                self.flush_decorations();
+                self.queue_gradient(draw);
+                true
+            }
+            SceneCommand::Pattern(draw) => {
+                self.flush_rects();
+                self.flush_shadows();
+                self.flush_decorations();
+                self.queue_pattern(draw);
+                true
+            }
             SceneCommand::DrawShadow {
                 rect,
                 radii,
                 shadow,
-            } => self.draw_shadow(*rect, *radii, *shadow),
-            SceneCommand::GlyphRun(draw) => self.draw_glyph_run(draw)?,
-            SceneCommand::Sprite(draw) => self.draw_sprite(draw),
-            SceneCommand::Image(draw) => self.draw_image(draw),
-            SceneCommand::Decoration(draw) => self.draw_decoration(draw),
+            } => {
+                self.flush_rects();
+                self.flush_fills();
+                self.flush_decorations();
+                self.queue_shadow(*rect, *radii, *shadow);
+                true
+            }
+            SceneCommand::Decoration(draw) => {
+                self.flush_rects();
+                self.flush_fills();
+                self.flush_shadows();
+                self.queue_decoration(draw);
+                true
+            }
+            _ => false,
         }
-        Ok(())
+    }
+
+    pub(super) fn finish(&mut self) {
+        self.flush_rects();
+        self.flush_fills();
+        self.flush_shadows();
+        self.flush_decorations();
     }
 
     pub(super) fn push_clip(&mut self, rect: Rect) {
@@ -221,15 +304,6 @@ fn bounding_rect(points: [Point; 4]) -> Rect {
 pub(super) const fn rect_from_fields(fields: [f32; 4]) -> Rect {
     let [x, y, width, height] = fields;
     Rect::new(Point::new(x, y), width, height)
-}
-
-pub(super) const fn rect_fields(rect: Rect) -> [f32; 4] {
-    let Rect {
-        origin,
-        width,
-        height,
-    } = rect;
-    [origin.x, origin.y, width, height]
 }
 
 fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use sigil::widget_dev::*;
 use sigil_reactive::Signal;
-use sigil_style::{SOFT_VARIANT, SOLID_VARIANT, Tone};
+use sigil_style::{Px, SOFT_VARIANT, SOLID_VARIANT, Tone};
 
 use crate::interaction::InteractionState;
 
@@ -16,10 +16,25 @@ use super::transition_seam::install_transition_animators;
 const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 const BUTTON_COMPONENT_ID: u64 = 0xB117_7000;
 
+#[derive(Clone, Copy)]
+enum ButtonWidth {
+    Hug,
+    Fixed(f32),
+    Fill,
+}
+
 /// Static transition atom shared across all button variants — keeps
 /// the SMOOTH spring on every state change so the visual is the same
 /// whether the button is soft+neutral or solid+error.
 static BUTTON_TRANSITION_ATOMS: &[StyleAtom] = &[StyleAtom::Transition(BUTTON_TRANSITION)];
+
+/// 1px tonal edge at step 6. On soft fills it supplies the quiet
+/// boundary (the Zed/ShadCN fill+border idiom); on solid fills it reads
+/// as a slightly darker rim of the same hue.
+static BUTTON_FRAME: &[StyleAtom] = &[
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderToneStep(6),
+];
 
 /// Label text-color atoms per variant. The label is a separate text
 /// node so it must repeat the variant's text-color choice. `FgOnSolid`
@@ -38,8 +53,9 @@ pub struct ButtonBuilder {
     /// `variant` because the label is a separate text node — the
     /// variant's text-color atom sits on the container, not the label.
     label_atoms: &'static [StyleAtom],
-    width: f32,
+    width: ButtonWidth,
     height: f32,
+    padding_x: f32,
     enabled: bool,
     disabled: Option<Signal<bool>>,
     activate: Option<Activate>,
@@ -70,8 +86,9 @@ impl ButtonBuilder {
             tone: Tone::Neutral,
             variant: SOFT_VARIANT,
             label_atoms: LABEL_TEXT_SOFT,
-            width: theme.control_width(Size::Wide).px_or_zero(),
-            height: theme.control_height(Size::Wide).px_or_zero(),
+            width: ButtonWidth::Hug,
+            height: theme.control_height(Size::Default).px_or_zero(),
+            padding_x: theme.padding(Size::Default).px_or_zero(),
             enabled: true,
             disabled: None,
             activate: None,
@@ -185,15 +202,22 @@ impl ButtonBuilder {
     #[must_use]
     pub fn size(mut self, size: Size) -> Self {
         let theme = Theme::default();
-        self.width = theme.control_width(size).px_or_zero();
-        self.height = theme.control_height(size).px_or_zero();
+        if size == Size::Grow {
+            self.width = ButtonWidth::Fill;
+            self.height = theme.control_height(Size::Default).px_or_zero();
+            self.padding_x = theme.padding(Size::Default).px_or_zero();
+        } else {
+            self.width = ButtonWidth::Hug;
+            self.height = theme.control_height(size).px_or_zero();
+            self.padding_x = theme.padding(size).px_or_zero();
+        }
         self
     }
 
     /// Set a fixed logical-pixel width.
     #[must_use]
     pub const fn width(mut self, width: f32) -> Self {
-        self.width = width;
+        self.width = ButtonWidth::Fixed(width);
         self
     }
 
@@ -245,7 +269,7 @@ impl ButtonBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.layout(layout_overrides.apply(button_layout(self.width, self.height)))
+        node.layout(layout_overrides.apply(button_layout(self.width, self.height, self.padding_x)))
     }
 
     fn base_node(
@@ -267,8 +291,9 @@ impl ButtonBuilder {
         let node = container()
             .role(Role::Button)
             .label(self.label.clone())
-            .layout(button_layout(self.width, self.height))
+            .layout(button_layout(self.width, self.height, self.padding_x))
             .class("rounded-md")
+            .class(BUTTON_FRAME)
             .class(variant.base())
             .class(BUTTON_TRANSITION_ATOMS)
             .tone(self.tone)
@@ -293,14 +318,10 @@ impl ButtonBuilder {
     }
 
     fn label_node(&self) -> TextBuilder {
-        let theme = Theme::default();
-        let label_pad_x = theme.padding(Size::Wide).px_or_zero();
-        let width = 2.0_f32.mul_add(-label_pad_x, self.width).max(1.0);
         // Label paints with the same tone as the button container,
         // using the variant's preferred text atoms (FgOnSolid for
         // solid, FgToneStep(11) for soft).
         text(self.label.clone())
-            .layout(LayoutStyle::block().width(width))
             .tone(self.tone)
             .class(self.label_atoms)
     }
@@ -326,9 +347,15 @@ impl IntoNode for ButtonBuilder {
     }
 }
 
-fn button_layout(width: f32, height: f32) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .fixed_size(width, height)
+fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle {
+    let layout = LayoutStyle::flex_row()
+        .height(height)
+        .padding_x(padding_x)
         .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::Center)
+        .justify_content(JustifyContent::Center);
+    match width {
+        ButtonWidth::Hug => layout,
+        ButtonWidth::Fixed(px) => layout.width(px),
+        ButtonWidth::Fill => layout.fill_width(),
+    }
 }

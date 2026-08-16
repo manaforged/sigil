@@ -252,7 +252,9 @@ pub(crate) fn draw_gradient_instance(
             draw.gradient.end.x,
             draw.gradient.end.y,
         ],
-        corner_radii: draw.border_radius.nonnegative_array(),
+        corner_radii: draw
+            .border_radius
+            .normalized_for(draw.rect.width, draw.rect.height),
         params: [
             ((f32::from(draw.opacity) / 10_000.0) * opacity_scale).clamp(0.0, 1.0),
             outset,
@@ -291,7 +293,9 @@ pub(crate) fn draw_pattern_instance(
     FillInstance {
         rect: [origin.x, origin.y, width, height],
         line: [0.0; 4],
-        corner_radii: draw.border_radius.nonnegative_array(),
+        corner_radii: draw
+            .border_radius
+            .normalized_for(draw.rect.width, draw.rect.height),
         params: [opacity, outset, 0.0, 0.0],
         stop_range: [0, 0, fill_kind, 0],
         stroke_params,
@@ -344,7 +348,7 @@ pub(crate) fn draw_shadow_instance(
     ShadowInstance {
         rect: rect_fields(expanded),
         surface_rect: rect_fields(surface),
-        corner_radii: radii.nonnegative_array(),
+        corner_radii: radii.normalized_for(surface.width, surface.height),
         color: shadow_color(shadow.color, opacity_scale),
         shadow_params: [offset_x, offset_y, shadow.blur.max(0.0), shadow.spread],
         shadow_meta: [shadow.kind.as_f32(), 0.0, 0.0, 0.0],

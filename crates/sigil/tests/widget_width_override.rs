@@ -39,6 +39,19 @@ impl TextMeasure for StubMeasure {
     }
 }
 
+struct ProportionalMeasure;
+
+impl TextMeasure for ProportionalMeasure {
+    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+        let len = match content {
+            TextContent::Static(value) => value.len(),
+            TextContent::Reactive(value) => value.peek().len(),
+        };
+        let bounded = u16::try_from(len).unwrap_or(u16::MAX);
+        sigil_hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)
+    }
+}
+
 /// Width of `widget`, laid out inside a `parent_w`-wide parent.
 fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) -> f32 {
     let mut width = -1.0;
@@ -120,6 +133,95 @@ fn button_honours_its_width() {
         (sized - 140.0).abs() < 0.5,
         "button.width(140) should measure 140, got {sized}",
     );
+}
+
+#[test]
+fn button_hugs_its_label_at_desktop_density() {
+    sigil::reactive::Runtime::scope("button-hug", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(button("Save"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(300.0, 100.0))
+            .expect("layout");
+        let rect = layout.result(root).expect("button rect").rect();
+
+        assert!(
+            (rect.width - 50.0).abs() < 0.5,
+            "expected 28 + 2×10 padding + 2×1 edge, got {rect:?}"
+        );
+        assert!(
+            (rect.height - 28.0).abs() < 0.5,
+            "expected 28px control, got {rect:?}"
+        );
+    });
+}
+
+#[test]
+fn grow_size_fills_button_without_collapsing_its_height() {
+    sigil::reactive::Runtime::scope("button-grow-size", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(300.0, 100.0))
+                .child(button("Save").size(sigil_style::Size::Grow)),
+        );
+        let button = cx
+            .get(root)
+            .expect("root")
+            .children()
+            .first()
+            .copied()
+            .expect("button");
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(300.0, 100.0))
+            .expect("layout");
+        let rect = layout.result(button).expect("button rect").rect();
+
+        assert!(
+            (rect.width - 300.0).abs() < 0.5,
+            "expected fill width, got {rect:?}"
+        );
+        assert!(
+            (rect.height - 28.0).abs() < 0.5,
+            "expected 28px control, got {rect:?}"
+        );
+    });
+}
+
+#[test]
+fn text_field_inner_surface_leaves_one_pixel_frame() {
+    sigil::reactive::Runtime::scope("text-field-frame", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            text_field(signal(String::from("Hello")))
+                .width(600.0)
+                .height(42.0),
+        );
+        let inner = cx
+            .get(root)
+            .expect("field")
+            .children()
+            .first()
+            .copied()
+            .expect("inner surface");
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(600.0, 42.0))
+            .expect("layout");
+        let outer = layout.result(root).expect("field rect").rect();
+        let inner = layout.result(inner).expect("inner rect").rect();
+
+        assert!(
+            (inner.origin.y - outer.origin.y - 1.0).abs() < 0.5,
+            "inner surface must start after the 1px frame: outer={outer:?} inner={inner:?}",
+        );
+        assert!(
+            (inner.height - (outer.height - 2.0)).abs() < 0.5,
+            "inner surface must fill the frame: outer={outer:?} inner={inner:?}",
+        );
+    });
 }
 
 /// Fixed-size-by-design controls (button, toggle) opt INTO filling with

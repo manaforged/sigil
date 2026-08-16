@@ -4,10 +4,11 @@ use std::rc::Rc;
 use sigil_animation_runtime::presets;
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{NodeBuilder, Role, TextContent, container};
+use sigil_layout::TextStyleCapture;
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
 use sigil_style::{
-    ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StateStyle, StyleAtom,
+    ColorAtom, NodeStyleExt, Px, ReactiveStateSlot, Rgba8, StateSlot, StateStyle, StyleAtom,
     StyleOverlay, StyleVariant, TransitionId,
 };
 
@@ -29,47 +30,43 @@ static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_T
 // (visual review 2026-05-21). `gray-9` (#8B8D98 in slate-light)
 // measures ~3.3:1 and lifts the field edge to a compliant boundary
 // without going so dark it reads as a focused-state border.
-static FIELD_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
-static FIELD_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
-static FIELD_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
-static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
-static FIELD_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("on-surface"),
-    StyleAtom::Opacity(8_800),
+static FIELD_BASE: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("surface-inset"),
+    StyleAtom::BorderWidth(Px(1)),
 ];
-static FIELD_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("gray-9"),
-    StyleAtom::Opacity(5_000),
-];
+static FIELD_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(9)];
+static FIELD_FOCUS: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
+static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BorderToneStep(10)];
+static FIELD_DOWN: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
+static FIELD_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(8), StyleAtom::Opacity(5_000)];
 // Invalid-state overlay: a saturated red border paint that overrides
 // every other state slot when the `invalid_when` signal peeks `true`.
 // Colour matches WCAG AAA-compliant Material "error" (#D32F2F → sRGB
 // (211,47,47)) so the 1 px-thick outer band stays legible against the
 // default light + dark surfaces.
 pub(super) static FIELD_INVALID: &[StyleAtom] =
-    &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
+    &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
         r: 211,
         g: 47,
         b: 47,
         a: 255,
     }))];
 
-/// The reactive signal inputs a text field binds — grouped so the
-/// render entry point stays within the 5-argument hygiene cap. The
-/// drained user state overlay rides along for the same reason.
+/// Inputs a text field binds while building its frame.
 #[derive(Clone)]
 pub(super) struct FieldInputs {
     pub(super) value: Signal<String>,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) invalid: Option<Signal<bool>>,
     pub(super) overlay: StyleOverlay,
+    pub(super) width: Option<f32>,
+    pub(super) height: Option<f32>,
 }
 
 pub(super) fn build_base_node(
     inputs: FieldInputs,
     placeholder: &TextContent,
     interaction: InteractionState,
-    width: Option<f32>,
     runtime: TextFieldRuntime,
 ) -> NodeBuilder {
     let FieldInputs {
@@ -77,11 +74,12 @@ pub(super) fn build_base_node(
         disabled,
         invalid,
         overlay,
+        width,
+        height,
     } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
     let displayed = displayed_text(
         value,
-        interaction.focus_visible(),
         placeholder.clone(),
         runtime.ime.preedit,
         runtime.caret,
@@ -89,18 +87,23 @@ pub(super) fn build_base_node(
     let state_style = field_state_style();
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
     let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
+    let text_style = runtime.text_style;
     let node = container()
+        .mutate(move |node| {
+            let _ = node.attach(TextStyleCapture::new(text_style));
+        })
         .role(Role::TextInput)
         .label(accessible_label(placeholder_str.as_str()))
         .text_value(value)
         .placeholder(placeholder_str)
         .layout(field_layout())
         .class("rounded-md")
+        .class(FIELD_BASE)
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
         .state_overlay(overlay, slot_cell)
         .pointer_up(move |event| pointer_up(event, interaction))
-        .child(field_inner(runtime, interaction, displayed, width));
+        .child(field_inner(runtime, interaction, displayed, width, height));
     install_transition_animators(
         node,
         TEXT_FIELD_ANIM_BASE,
@@ -145,10 +148,13 @@ const fn field_state_style() -> StateStyle {
 }
 
 pub(super) fn field_layout() -> LayoutStyle {
+    // min-width 0 releases the min-content floor (placeholder or a long
+    // single-line value), so a fill-width field inside a flex row shrinks
+    // beside fixed siblings instead of overflowing the row.
     LayoutStyle::flex_row()
         .fill_width()
+        .min_size(0.0, sigil_layout::prelude::Dimension::Auto)
         .align_items(AlignItems::Center)
-        .padding(1.0)
 }
 
 fn field_inner(
@@ -156,11 +162,10 @@ fn field_inner(
     interaction: InteractionState,
     displayed: Signal<String>,
     width: Option<f32>,
+    height: Option<f32>,
 ) -> NodeBuilder {
     container()
-        .layout(field_inner_layout(width))
-        .class("rounded-sm")
-        .class("bg-surface")
+        .layout(field_inner_layout(width, height))
         .child(super::selection::text_region(
             runtime,
             interaction,
@@ -168,20 +173,21 @@ fn field_inner(
         ))
 }
 
-fn field_inner_layout(width: Option<f32>) -> LayoutStyle {
-    // An explicit builder width pins the inner track to width − 2 (the
-    // 1 px outer padding band each side). With no override the inner
-    // fills whatever the outer border frame gives it — the old fixed
-    // `width(178)` default produced a "gray right cap" in any host
-    // wider than 180 px, exposing a strip of the outer's border-coloured
-    // background on the right (visual review 2026-05-21).
+fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
+    // An explicit builder width pins the content track to width − 2 so
+    // the field's one-pixel border remains inside the requested width.
+    // With no override the content fills the frame's available width.
     let base = width.map_or_else(
         || LayoutStyle::flex_row().fill_width().grow(1.0),
         |w| LayoutStyle::flex_row().width((w - 2.0).max(0.0)),
     );
+    let base = match height {
+        Some(h) => base.height((h - 2.0).max(0.0)),
+        None => base,
+    };
     base.align_items(AlignItems::Center)
         .padding_x(12.0)
-        .padding_y(8.0)
+        .padding_y(6.0)
 }
 
 fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
@@ -194,7 +200,6 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
 /// only writer of the committed buffer).
 fn displayed_text(
     value: Signal<String>,
-    focused: Signal<bool>,
     placeholder: TextContent,
     preedit: Signal<String>,
     caret: Signal<usize>,
@@ -204,7 +209,7 @@ fn displayed_text(
         let composing = preedit.get();
         if !composing.is_empty() {
             splice_preedit(&current, caret.get(), &composing)
-        } else if current.is_empty() && !focused.get() {
+        } else if current.is_empty() {
             text_content(&placeholder)
         } else {
             current

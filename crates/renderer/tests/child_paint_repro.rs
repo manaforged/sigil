@@ -109,6 +109,75 @@ fn build_relative_track_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     cx.add(viewport)
 }
 
+#[test]
+fn rounded_overflow_masks_child_pixels() {
+    const SIZE: u32 = 80;
+    let img = capture(build_rounded_overflow_shape, [SIZE, SIZE]);
+    let accent = Theme::default().accent;
+    let corner = img.get_pixel(9, 9).0;
+    let edge = img.get_pixel(40, 9).0;
+    let centre = img.get_pixel(40, 40).0;
+
+    assert!(
+        corner[0] < 8 && corner[1] < 8 && corner[2] < 8,
+        "rounded overflow leaked its child into the corner: {corner:?}"
+    );
+    assert!(
+        close(edge[0], edge[1], edge[2], accent, 6),
+        "rounded overflow removed the top-edge midpoint: {edge:?}"
+    );
+    assert!(
+        close(centre[0], centre[1], centre[2], accent, 6),
+        "rounded overflow removed the child centre: {centre:?}"
+    );
+}
+
+fn build_rounded_overflow_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
+    let child = container()
+        .layout(LayoutStyle::block().fixed_size(64.0, 64.0))
+        .class("bg-accent");
+    let clipped = container()
+        .layout(LayoutStyle::block().fixed_size(64.0, 64.0))
+        .class("rounded-full overflow-hidden")
+        .child(child);
+    cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(80.0, 80.0).padding(8.0))
+            .child(clipped),
+    )
+}
+
+#[test]
+fn rectangular_clip_preserves_child_corner_geometry() {
+    let img = capture(build_partially_clipped_round_rect, [32, 32]);
+    let accent = Theme::default().accent;
+    let visible_top = img.get_pixel(22, 10).0;
+
+    assert!(
+        close(visible_top[0], visible_top[1], visible_top[2], accent, 8),
+        "rectangular clipping reshaped the child's original rounded box: {visible_top:?}"
+    );
+}
+
+fn build_partially_clipped_round_rect(cx: &mut Cx) -> sigil_kernel::NodeId {
+    let child = container()
+        .layout(LayoutStyle::block().fixed_size(24.0, 16.0))
+        .class("rounded-full bg-accent");
+    let clipped = container()
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(16.0, 16.0)
+                .overflow_x(Overflow::Hidden)
+                .overflow_y(Overflow::Hidden),
+        )
+        .child(child);
+    cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(32.0, 32.0).padding(8.0))
+            .child(clipped),
+    )
+}
+
 /// (c) — narrow text glyph inside a flex child. `text("v")` clipped to
 /// a 14px block width, nested inside a 16x16 wrapper that is itself a
 /// flex item (not the simpler block-in-block nesting), must still

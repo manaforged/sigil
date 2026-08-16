@@ -14,14 +14,12 @@ use sigil_renderer::into_window_handle;
 use std::sync::Arc;
 
 use super::{
-    clamp_physical_size, logical_size_from_viewport, recompute_layout, resize_surface,
-    scale_from_f64, set_viewport,
+    clamp_physical_size, logical_size_from_viewport, resize_surface, scale_from_f64, set_viewport,
 };
 
 pub(super) struct DrainCtx<'a> {
     pub(super) shell: &'a mut WinitShell,
     pub(super) cx: &'a mut Cx,
-    pub(super) root: sigil_kernel::NodeId,
     pub(super) layout: &'a mut LayoutEngine,
     pub(super) router: &'a mut EventRouter,
     pub(super) surface: &'a mut Option<WgpuSurface>,
@@ -35,11 +33,9 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) shell: &'a WinitShell,
     pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
-    pub(super) root: sigil_kernel::NodeId,
-    pub(super) layout: &'a mut LayoutEngine,
     pub(super) renderer: &'a mut WgpuRenderer,
     pub(super) surface: &'a mut Option<WgpuSurface>,
-    pub(super) viewport: &'a mut (f32, f32),
+    pub(super) viewport: &'a (f32, f32),
 }
 
 pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
@@ -47,8 +43,6 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
         shell,
         window_handle,
         cx,
-        root,
-        layout,
         renderer,
         surface,
         viewport,
@@ -63,7 +57,6 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
     let scale = scale_from_f64(window.scale_factor());
     cx.set_scale(scale);
     let logical = logical_size_from_viewport(*viewport);
-    recompute_layout(cx, root, layout, scale, logical);
 
     let handle = into_window_handle(Arc::clone(window));
     match renderer.create_surface(handle, scale.to_physical(logical)) {
@@ -98,7 +91,6 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     let DrainCtx {
         shell,
         cx,
-        root,
         layout,
         router,
         surface,
@@ -111,8 +103,6 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         if let ShellEvent::Window(window_event) = &event {
             let mut window_ctx = WindowEventCtx {
                 cx,
-                root,
-                layout,
                 renderer,
                 surface,
                 viewport,
@@ -272,8 +262,6 @@ fn adjust_value(cx: &Cx, target: sigil_kernel::NodeId, increase: bool) {
 
 struct WindowEventCtx<'a> {
     cx: &'a mut Cx,
-    root: sigil_kernel::NodeId,
-    layout: &'a mut LayoutEngine,
     renderer: &'a mut WgpuRenderer,
     surface: &'a mut Option<WgpuSurface>,
     viewport: &'a mut (f32, f32),
@@ -296,16 +284,18 @@ fn handle_resized(ctx: &mut WindowEventCtx<'_>, physical: PhysicalSize) {
     let scale = ctx.cx.scale();
     let logical = scale.to_logical(clamp_physical_size(physical));
     set_viewport(ctx.viewport, logical);
-    recompute_layout(ctx.cx, ctx.root, ctx.layout, scale, logical);
-    // Resize repaints at the new size — it writes no signal.
+    // The Layout phase computes once at the new viewport after every queued
+    // event has drained. Computing here as well doubled resize work.
     Runtime::mark_frame_dirty();
 }
 
 fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
     ctx.cx.set_scale(scale);
-    let logical = logical_size_from_viewport(*ctx.viewport);
-    resize_surface(ctx.renderer, ctx.surface, scale.to_physical(logical));
-    recompute_layout(ctx.cx, ctx.root, ctx.layout, scale, logical);
+    resize_surface(
+        ctx.renderer,
+        ctx.surface,
+        scale.to_physical(super::logical_size_from_viewport(*ctx.viewport)),
+    );
     // DPI change repaints (text re-rasterizes at the new scale) — no signal.
     Runtime::mark_frame_dirty();
 }

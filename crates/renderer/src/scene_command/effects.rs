@@ -2,6 +2,8 @@
 
 use sigil_hal::Rect;
 
+use crate::CornerRadii;
+
 /// Row-major 2D affine transform.
 ///
 /// The two rows encode the transform from local coordinates to parent
@@ -54,6 +56,8 @@ pub enum DecorationKind {
 pub struct LayerScope {
     /// Logical-pixel clip rectangle for this layer.
     pub clip: Rect,
+    /// Corner radii applied when the layer is composited back.
+    pub clip_radii: CornerRadii,
     /// Effect applied to the layer content before compositing.
     pub effect: LayerEffect,
     /// Layer opacity multiplier in `[0.0, 1.0]`.

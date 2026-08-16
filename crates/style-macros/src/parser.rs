@@ -162,15 +162,6 @@ fn reject_token(origin: &syn::LitStr, token: &str) -> syn::Result<()> {
             "classes! does not support string interpolation",
         ));
     }
-    if token.starts_with("shadow-") {
-        return Err(syn::Error::new(
-            origin.span(),
-            format!(
-                "'{token}' has no paint path yet; shadow-* tokens land with the \
-                 renderer shadow atoms (DR-056)"
-            ),
-        ));
-    }
     if let Some((prefix, _rest)) = token.split_once(':') {
         return match prefix {
             "sm" | "md" | "lg" => Err(syn::Error::new(
@@ -191,7 +182,24 @@ fn reject_token(origin: &syn::LitStr, token: &str) -> syn::Result<()> {
 }
 
 fn fixed_token(token: &str) -> Option<TokenStream> {
-    fixed_layout_token(token).or_else(|| fixed_typo_token(token))
+    fixed_layout_token(token)
+        .or_else(|| fixed_typo_token(token))
+        .or_else(|| shadow_token(token))
+}
+
+/// Compile-time half of the runtime parser's `shadow_atom` mapping.
+fn shadow_token(token: &str) -> Option<TokenStream> {
+    let elevation = match token {
+        "shadow-sm" => quote!(::sigil::__private::style::Elevation::Sm),
+        "shadow" => quote!(::sigil::__private::style::Elevation::Base),
+        "shadow-md" => quote!(::sigil::__private::style::Elevation::Md),
+        "shadow-lg" => quote!(::sigil::__private::style::Elevation::Lg),
+        "shadow-xl" => quote!(::sigil::__private::style::Elevation::Xl),
+        _ => return None,
+    };
+    Some(quote!(::sigil::__private::style::StyleAtom::Shadow(
+        #elevation
+    )))
 }
 
 fn fixed_layout_token(token: &str) -> Option<TokenStream> {

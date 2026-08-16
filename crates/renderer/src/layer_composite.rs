@@ -4,7 +4,12 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
+#[path = "layer_composite/shader.rs"]
+mod shader;
+
+use crate::CornerRadii;
 use crate::scene_paint::PaintCtx;
+use shader::LAYER_SHADER;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -17,6 +22,7 @@ struct LayerUniforms {
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct LayerInstance {
     dest: [f32; 4],
+    clip_radii: [f32; 4],
     uv_max: [f32; 2],
     opacity: f32,
     _pad: f32,
@@ -69,9 +75,12 @@ impl LayerCompositePipeline {
                 request.dest.width,
                 request.dest.height,
             ],
+            clip_radii: request
+                .clip_radii
+                .normalized_for(request.dest.width, request.dest.height),
             uv_max: [
-                request.dest.width / request.texture_size.0.max(1) as f32,
-                request.dest.height / request.texture_size.1.max(1) as f32,
+                request.source_extent.0 as f32 / request.texture_size.0.max(1) as f32,
+                request.source_extent.1 as f32 / request.texture_size.1.max(1) as f32,
             ],
             opacity: request.opacity.clamp(0.0, 1.0),
             _pad: 0.0,
@@ -100,7 +109,9 @@ pub(crate) struct CompositeRequest<'a> {
     pub(crate) layer_view: &'a wgpu::TextureView,
     pub(crate) dest: sigil_hal::Rect,
     pub(crate) texture_size: (u32, u32),
+    pub(crate) source_extent: (u32, u32),
     pub(crate) opacity: f32,
+    pub(crate) clip_radii: CornerRadii,
 }
 
 fn draw(
@@ -126,6 +137,9 @@ fn draw(
         occlusion_query_set: None,
         multiview_mask: None,
     });
+    if !crate::scissor::apply(&mut pass, ctx.clip, ctx.scale, ctx.viewport) {
+        return;
+    }
     pass.set_pipeline(&pipeline.pipeline);
     pass.set_bind_group(0, uniform_bg, &[]);
     pass.set_bind_group(1, texture_bg, &[]);
@@ -295,57 +309,8 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
         1 => Float32x4,
-        2 => Float32x2,
-        3 => Float32,
+        2 => Float32x4,
+        3 => Float32x2,
+        4 => Float32,
     ],
 };
-
-const LAYER_SHADER: &str = r"
-struct Uniforms {
-    viewport: vec2<f32>,
-    _pad: vec2<f32>,
-};
-
-@group(0) @binding(0) var<uniform> u: Uniforms;
-@group(1) @binding(0) var layer_tex: texture_2d<f32>;
-@group(1) @binding(1) var layer_sampler: sampler;
-
-struct VertexIn {
-    @location(0) unit: vec2<f32>,
-};
-
-struct InstanceIn {
-    @location(1) dest: vec4<f32>,
-    @location(2) uv_max: vec2<f32>,
-    @location(3) opacity: f32,
-};
-
-struct VertexOut {
-    @builtin(position) clip: vec4<f32>,
-    @location(0) uv: vec2<f32>,
-    @location(1) opacity: f32,
-};
-
-@vertex
-fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
-    var out: VertexOut;
-    let pos_px = inst.dest.xy + v.unit * inst.dest.zw;
-    let ndc = vec2<f32>(
-        (pos_px.x / u.viewport.x) * 2.0 - 1.0,
-        1.0 - (pos_px.y / u.viewport.y) * 2.0,
-    );
-    out.clip = vec4<f32>(ndc, 0.0, 1.0);
-    out.uv = v.unit * inst.uv_max;
-    out.opacity = inst.opacity;
-    return out;
-}
-
-@fragment
-fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
-    // The offscreen layer texture is already premultiplied (output of prior
-    // ALPHA_BLENDING passes), so texel.rgb is already original_rgb * texel.a.
-    // We only attenuate by the caller-supplied opacity — no second premult.
-    let texel = textureSample(layer_tex, layer_sampler, in.uv);
-    return vec4<f32>(texel.rgb * in.opacity, texel.a * in.opacity);
-}
-";

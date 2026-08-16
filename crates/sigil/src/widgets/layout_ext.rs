@@ -104,6 +104,13 @@ impl LayoutOverrides {
         self.width
     }
 
+    /// The recorded height override, if any. Nested widget surfaces use this
+    /// to preserve their frame thickness when callers size the outer control.
+    #[must_use]
+    pub const fn height_hint(&self) -> Option<f32> {
+        self.height
+    }
+
     /// Apply the overrides to `base`, returning the merged
     /// [`LayoutStyle`]. The full-override (if set) replaces `base`;
     /// then `width` / `height` / `grow` / `padding` apply on top.

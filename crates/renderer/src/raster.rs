@@ -18,7 +18,7 @@
 // the G1.1 shaper skeleton.
 #![allow(dead_code)]
 
-use skrifa::instance::{LocationRef, Size};
+use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{DrawSettings, HintingInstance, HintingOptions, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 use zeno::{Command, Mask, Origin, Vector};
@@ -48,7 +48,7 @@ pub(crate) struct GlyphMask {
 
 /// Cache key for one rasterized mask. Physical pixel size is quantized
 /// to bits so `f32` keys hash exactly; `bin` is the subpixel x bin.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct RasterKey {
     /// Identity of the font data (engine-assigned).
     pub font_id: u64,
@@ -58,8 +58,18 @@ pub(crate) struct RasterKey {
     pub glyph_id: u32,
     /// Physical pixel size (`size_px * scale`), bit-exact.
     pub physical_px_bits: u32,
+    /// Normalized variable-font location in axis order.
+    pub variation_coords: Box<[i16]>,
     /// Subpixel x-offset bin, `0..SUBPIXEL_BINS`.
     pub bin: u8,
+}
+
+/// Font-instance identity needed to resolve a variable glyph outline.
+#[derive(Clone, Copy)]
+pub(crate) struct RasterFont<'a> {
+    pub bytes: &'a [u8],
+    pub index: u32,
+    pub variation_coords: &'a [i16],
 }
 
 /// Rasterize `glyph_id` at `physical_px` (logical size × DPI scale)
@@ -69,32 +79,30 @@ pub(crate) struct RasterKey {
 /// zero-coverage results, or unparseable font data — the draw path
 /// falls back to Slug for those.
 pub(crate) fn rasterize_glyph(
-    font_bytes: &[u8],
-    font_index: u32,
+    font: RasterFont<'_>,
     glyph_id: u32,
     physical_px: f32,
     bin: u8,
 ) -> Option<GlyphMask> {
-    let font = FontRef::from_index(font_bytes, font_index).ok()?;
-    let outlines = font.outline_glyphs();
+    let font_ref = FontRef::from_index(font.bytes, font.index).ok()?;
+    let outlines = font_ref.outline_glyphs();
     let glyph = outlines.get(GlyphId::new(glyph_id))?;
     let size = Size::new(physical_px.max(1.0));
+    let coords: Vec<NormalizedCoord> = font
+        .variation_coords
+        .iter()
+        .copied()
+        .map(NormalizedCoord::from_bits)
+        .collect();
+    let location = LocationRef::new(&coords);
 
     // Hinted draw; a face the hinter rejects falls back to unhinted
     // rather than losing the glyph.
     let mut pen = ZenoPen::new(f32::from(bin % SUBPIXEL_BINS) / f32::from(SUBPIXEL_BINS));
-    let hinter = HintingInstance::new(
-        &outlines,
-        size,
-        LocationRef::default(),
-        HintingOptions::default(),
-    );
+    let hinter = HintingInstance::new(&outlines, size, location, HintingOptions::default());
     let drawn = match &hinter {
         Ok(instance) => glyph.draw(DrawSettings::hinted(instance, false), &mut pen),
-        Err(_) => glyph.draw(
-            DrawSettings::unhinted(size, LocationRef::default()),
-            &mut pen,
-        ),
+        Err(_) => glyph.draw(DrawSettings::unhinted(size, location), &mut pen),
     };
     drawn.ok()?;
     if pen.commands.is_empty() {
@@ -189,7 +197,7 @@ mod tests {
     fn small_glyph_has_ink_and_sane_dims() {
         let font = FontRef::new(FIRA).unwrap();
         let gid = glyph_a(&font);
-        let mask = rasterize_glyph(FIRA, 0, gid, 12.0, 0).unwrap();
+        let mask = rasterize_glyph(test_font(), gid, 12.0, 0).unwrap();
         assert!(mask.width > 0 && mask.width <= 16, "width {}", mask.width);
         assert!(
             mask.height > 0 && mask.height <= 16,
@@ -212,7 +220,7 @@ mod tests {
     fn mask_is_not_vertically_flipped() {
         let font = FontRef::new(FIRA).unwrap();
         let gid = font.charmap().map('L').unwrap().to_u32();
-        let mask = rasterize_glyph(FIRA, 0, gid, 16.0, 0).unwrap();
+        let mask = rasterize_glyph(test_font(), gid, 16.0, 0).unwrap();
         let w = mask.width as usize;
         let row_ink = |r: usize| -> u32 {
             mask.data[r * w..(r + 1) * w]
@@ -232,8 +240,8 @@ mod tests {
     fn subpixel_bins_shift_coverage() {
         let font = FontRef::new(FIRA).unwrap();
         let gid = glyph_a(&font);
-        let bin0 = rasterize_glyph(FIRA, 0, gid, 12.0, 0).unwrap();
-        let bin2 = rasterize_glyph(FIRA, 0, gid, 12.0, 2).unwrap();
+        let bin0 = rasterize_glyph(test_font(), gid, 12.0, 0).unwrap();
+        let bin2 = rasterize_glyph(test_font(), gid, 12.0, 2).unwrap();
         // A half-pixel shift must change the coverage distribution.
         assert!(
             bin0.width != bin2.width || bin0.data != bin2.data,
@@ -245,8 +253,8 @@ mod tests {
     fn physical_size_scales_mask() {
         let font = FontRef::new(FIRA).unwrap();
         let gid = glyph_a(&font);
-        let s100 = rasterize_glyph(FIRA, 0, gid, 12.0, 0).unwrap();
-        let s200 = rasterize_glyph(FIRA, 0, gid, 24.0, 0).unwrap();
+        let s100 = rasterize_glyph(test_font(), gid, 12.0, 0).unwrap();
+        let s200 = rasterize_glyph(test_font(), gid, 24.0, 0).unwrap();
         let ratio = f64::from(s200.height) / f64::from(s100.height);
         assert!(
             (1.6..=2.4).contains(&ratio),
@@ -258,6 +266,65 @@ mod tests {
     fn outline_less_glyph_returns_none() {
         let font = FontRef::new(FIRA).unwrap();
         let space = font.charmap().map(' ').unwrap().to_u32();
-        assert!(rasterize_glyph(FIRA, 0, space, 12.0, 0).is_none());
+        assert!(rasterize_glyph(test_font(), space, 12.0, 0).is_none());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn variable_weight_changes_mask_and_cache_identity() {
+        use skrifa::MetadataProvider as _;
+
+        let bytes = std::fs::read("/System/Library/Fonts/SFNSMono.ttf")
+            .expect("macOS system mono variable font");
+        let font = FontRef::new(&bytes).expect("system mono parses");
+        let gid = glyph_a(&font);
+        let regular_location = font.axes().location([("wght", 400.0)]);
+        let bold_location = font.axes().location([("wght", 700.0)]);
+        let regular: Box<[i16]> = regular_location
+            .coords()
+            .iter()
+            .map(|coord| coord.to_bits())
+            .collect();
+        let bold: Box<[i16]> = bold_location
+            .coords()
+            .iter()
+            .map(|coord| coord.to_bits())
+            .collect();
+        let regular_mask = rasterize_glyph(
+            RasterFont {
+                bytes: &bytes,
+                index: 0,
+                variation_coords: &regular,
+            },
+            gid,
+            16.0,
+            0,
+        )
+        .expect("regular mask");
+        let bold_mask = rasterize_glyph(
+            RasterFont {
+                bytes: &bytes,
+                index: 0,
+                variation_coords: &bold,
+            },
+            gid,
+            16.0,
+            0,
+        )
+        .expect("bold mask");
+
+        assert_ne!(regular, bold);
+        assert!(
+            regular_mask.width != bold_mask.width || regular_mask.data != bold_mask.data,
+            "font weight must change the rasterized glyph mask",
+        );
+    }
+
+    const fn test_font() -> RasterFont<'static> {
+        RasterFont {
+            bytes: FIRA,
+            index: 0,
+            variation_coords: &[],
+        }
     }
 }

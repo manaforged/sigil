@@ -12,6 +12,7 @@ use crate::engine_drive::{LayoutDrive, NodeHandle};
 use crate::forest::{AvailableSpace, SpaceConstraint};
 use crate::style_adapter::apply_style_atoms;
 use crate::style_data::Dimension;
+use crate::text_geometry::TextStyleCapture;
 use crate::text_style::{
     InheritedText, apply_text_binding, inherited_text_style, text_style_signature, theme_for,
 };
@@ -461,6 +462,7 @@ impl LayoutEngine {
         let binding = node.get_extension::<StyleBinding>();
         let layered = binding.and_then(|b| TextStyle::layered_over_binding(inherited.style, b));
         let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        publish_text_style(node, effective.style);
         let text_sig_matches = self.synced_text_sig.get(id.key()).copied() == Some(effective.sig);
 
         // ε1 fast-path: when the kernel-side `Node::version` matches
@@ -602,6 +604,7 @@ impl LayoutEngine {
             .get_extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(&inherited, binding));
         let effective = layered.as_ref().unwrap_or(&inherited);
+        publish_text_style(node, effective);
         let effective_sig = text_style_signature(effective);
         if self.synced_text_sig.get(id.key()).copied() != Some(effective_sig) {
             self.synced_text_sig.insert(id.key(), effective_sig);
@@ -646,6 +649,7 @@ impl LayoutEngine {
             .get_extension::<StyleBinding>()
             .and_then(|binding| TextStyle::layered_over_binding(inherited.style, binding));
         let effective = layered.as_ref().map_or(inherited, InheritedText::new);
+        publish_text_style(node, effective.style);
         if self.synced_text_sig.get(id.key()).copied() == Some(effective.sig) {
             return Ok(());
         }
@@ -969,6 +973,12 @@ impl LayoutEngine {
             .get(id.key())
             .copied()
             .ok_or(LayoutError::NodeMissing(id))
+    }
+}
+
+fn publish_text_style(node: &sigil_kernel::Node, style: &TextStyle) {
+    if let Some(capture) = node.get_extension::<TextStyleCapture>() {
+        capture.publish(style);
     }
 }
 

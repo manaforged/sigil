@@ -20,8 +20,6 @@ use sigil_events::prelude::NodeEventsExt;
 use sigil_kernel::NodeBuilder;
 use sigil_reactive::Signal;
 
-use super::builder::TAB_WIDTH;
-
 /// Shared per-tabs-instance drag state. Each `tabs(...)` invocation
 /// allocates one shared cell triple that lives for the program lifetime
 /// — the cost is a single small leak per widget instance and saves us
@@ -40,6 +38,12 @@ struct DragStateInner {
     /// extra args through `build_tab`.
     order: Cell<Option<Signal<Vec<usize>>>>,
     count: Cell<u16>,
+    /// Measured width of the drag-source tab, captured from the
+    /// pointer-down event. ponytail: bucket math assumes every tab
+    /// shares the source's width — exact for uniform labels, approximate
+    /// for mixed-length ones; upgrade trigger is plumbing per-tab
+    /// LayoutResults into the drag handlers.
+    tab_width: Cell<f32>,
 }
 
 impl DragState {
@@ -50,6 +54,7 @@ impl DragState {
             just_dragged: Cell::new(false),
             order: Cell::new(None),
             count: Cell::new(0),
+            tab_width: Cell::new(0.0),
         }));
         Self { inner }
     }
@@ -63,10 +68,19 @@ impl DragState {
             .set(u16::try_from(count).unwrap_or(u16::MAX));
     }
 
-    fn begin(self, visual_index: u16) {
+    fn begin(self, visual_index: u16, width: f32) {
         self.inner.source.set(Some(visual_index));
         self.inner.current.set(Some(visual_index));
         self.inner.just_dragged.set(false);
+        self.inner.tab_width.set(width);
+    }
+
+    fn tab_width(self) -> f32 {
+        let width = self.inner.tab_width.get();
+        // Defensive: a move without a recorded down width falls back to
+        // a sane bucket rather than dividing the strip into zero-width
+        // slots.
+        if width > 1.0 { width } else { 80.0 }
     }
 
     const fn current(self) -> Option<u16> {
@@ -119,7 +133,7 @@ pub(super) fn install_label_drag_hooks(
 ) -> NodeBuilder {
     let slot = u16::try_from(visual_index).unwrap_or(u16::MAX);
     node.pointer_down(move |event| {
-        drag.begin(slot);
+        drag.begin(slot, event.target_size.width);
         event.capture_pointer();
     })
     .pointer_move(move |event| {
@@ -133,8 +147,9 @@ pub(super) fn install_label_drag_hooks(
         // while the pointer is still over it). Reconstruct the
         // tab-list-relative x by anchoring against the current visual
         // slot the drag is tracking.
-        let tab_list_x = f32::from(current).mul_add(TAB_WIDTH, event.position.x);
-        let target = visual_index_for(tab_list_x, drag.count());
+        let tab_width = drag.tab_width();
+        let tab_list_x = f32::from(current).mul_add(tab_width, event.position.x);
+        let target = visual_index_for(tab_list_x, tab_width, drag.count());
         if target != current {
             apply_swap(drag.order(), current, target, usize::from(drag.count()));
             drag.set_current(target);
@@ -145,7 +160,7 @@ pub(super) fn install_label_drag_hooks(
     })
 }
 
-fn visual_index_for(x: f32, count: u16) -> u16 {
+fn visual_index_for(x: f32, tab_width: f32, count: u16) -> u16 {
     if count == 0 {
         return 0;
     }
@@ -157,7 +172,7 @@ fn visual_index_for(x: f32, count: u16) -> u16 {
     let mut bucket: u16 = 0;
     let mut probe: u16 = 1;
     while probe <= max {
-        let left = f32::from(probe) * TAB_WIDTH;
+        let left = f32::from(probe) * tab_width;
         if x >= left {
             bucket = probe;
         } else {

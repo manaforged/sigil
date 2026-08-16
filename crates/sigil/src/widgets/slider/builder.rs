@@ -1,58 +1,32 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
-use sigil_animation_runtime::presets;
 use sigil_events::prelude::{NodeEventsExt, PointerEvent};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
 use sigil_style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
-    StyleVariant, Theme, TransitionId,
+    ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, StyleOverlay, Theme,
 };
 
 use crate::interaction::InteractionState;
 
 use super::super::shared::{BuilderMutator, binary_style_state, disabled_now};
-use super::super::transition_seam::install_transition_animators;
 use super::handlers::{
     attach_key_handlers, normalized_step, pointer_down, pointer_move, pointer_up, quantize,
 };
-
-const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
-const SLIDER_COMPONENT_ID: u64 = 0x5110_E000;
-// Animator-only base slice: scanned by `install_transition_animators`
-// for the `Transition` atom that flips the thumb into the animated path.
-static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
+use super::track::{slider_root_variant, slider_thumb, track_fill, track_rest};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
 
+fn noop_value_change() -> ValueChange {
+    Rc::new(|_| {})
+}
+
 const HORIZONTAL_WIDTH: f32 = 180.0;
-const HORIZONTAL_HEIGHT: f32 = 28.0;
-const VERTICAL_WIDTH: f32 = 28.0;
+const HORIZONTAL_HEIGHT: f32 = 24.0;
+const VERTICAL_WIDTH: f32 = 24.0;
 const VERTICAL_HEIGHT: f32 = 180.0;
-const THUMB_SIZE: f32 = 22.0;
-
-// Track uses `border` rather than `surface-hover` so it stays
-// visible when the slider lives inside a `surface-hover` card
-// (form rows in patterns + the playground category card both use
-// `bg-surface-hover` — a surface-hover track was indistinguishable).
-static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
-static TRACK_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("border"),
-    StyleAtom::Opacity(5_000),
-];
-static THUMB_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static THUMB_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static THUMB_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
-    StyleAtom::Opacity(8_800),
-];
-static THUMB_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::Opacity(5_000),
-];
-
 /// Slider orientation.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Orientation {
@@ -320,22 +294,35 @@ fn slider_root(
     interaction: InteractionState,
     user_overlay: StyleOverlay,
 ) -> NodeBuilder {
-    container()
+    // Thin-track idiom (native range inputs, ShadCN, Zed): the root is a
+    // transparent 28px hit area; the visible track is a 4px line split
+    // into an accent fill (value fraction) and a neutral rest, with the
+    // round thumb flowing between them so the fill always meets the
+    // thumb's leading edge exactly.
+    let root = container()
         .role(Role::Slider)
         .label("Slider")
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
         .layout(slider_layout(runtime.orientation, runtime.length))
-        .class("rounded-md")
-        .class(TRACK)
-        .stateful_style(slider_track_variant(), user_overlay, move || {
+        .stateful_style(slider_root_variant(), user_overlay, move || {
             binary_style_state(interaction, runtime.disabled)
-        })
-        .child(slider_thumb(interaction, runtime.disabled))
+        });
+    match runtime.orientation {
+        Orientation::Horizontal => root
+            .child(track_fill(runtime))
+            .child(slider_thumb(interaction, runtime.disabled))
+            .child(track_rest(runtime)),
+        // Value grows upward: rest on top, fill below the thumb.
+        Orientation::Vertical => root
+            .child(track_rest(runtime))
+            .child(slider_thumb(interaction, runtime.disabled))
+            .child(track_fill(runtime)),
+    }
 }
 
 fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
-    // A slider track spans the row it sits in (the `<input type=range>`
+    // A slider spans the row it sits in (the `<input type=range>`
     // convention); `.length()` opts back out. Pointer mapping already
     // divides by the MEASURED track, so a filled track stays accurate.
     match orientation {
@@ -346,7 +333,6 @@ fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
                 None => base.fill_width(),
             };
             base.align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Center)
         }
         Orientation::Vertical => {
             let base = LayoutStyle::flex_column().width(VERTICAL_WIDTH);
@@ -355,59 +341,7 @@ fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
                 None => base.fill_height(),
             };
             base.align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Center)
         }
     }
 }
 
-fn slider_thumb(interaction: InteractionState, disabled: Option<Signal<bool>>) -> NodeBuilder {
-    let state_style = slider_thumb_state_style();
-    let node = container()
-        .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
-        .class("rounded-md")
-        .class(SLIDER_THUMB_ANIM_BASE)
-        .style_reactive(move || {
-            slider_thumb_variant().state(binary_style_state(interaction, disabled))
-        });
-    install_transition_animators(
-        node,
-        SLIDER_THUMB_ANIM_BASE,
-        state_style,
-        SLIDER_COMPONENT_ID,
-        interaction,
-    )
-}
-
-const fn slider_thumb_state_style() -> StateStyle {
-    StateStyle::new(
-        THUMB_REST,
-        THUMB_HOVER,
-        THUMB_HOVER,
-        THUMB_DOWN,
-        THUMB_DISABLED,
-    )
-}
-
-fn noop_value_change() -> ValueChange {
-    Rc::new(|_| {})
-}
-
-const fn slider_track_variant() -> StyleVariant {
-    StyleVariant::new(
-        TRACK,
-        StateStyle::new(TRACK, TRACK, TRACK, TRACK, TRACK_DISABLED),
-    )
-}
-
-const fn slider_thumb_variant() -> StyleVariant {
-    StyleVariant::new(
-        THUMB_REST,
-        StateStyle::new(
-            THUMB_REST,
-            THUMB_HOVER,
-            THUMB_HOVER,
-            THUMB_DOWN,
-            THUMB_DISABLED,
-        ),
-    )
-}

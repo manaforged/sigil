@@ -21,6 +21,7 @@ use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
+use sigil_hal::{Point, ScrollEventInit};
 use sigil_renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
@@ -135,5 +136,54 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
             .filter(|c| matches!(c, SceneCommand::Rect(_)))
             .count();
         assert!(rect_count >= 2);
+    });
+}
+
+#[test]
+fn scroll_fill_uses_measured_parent_height_for_bounds() {
+    sigil::reactive::Runtime::scope("sigil-scroll-fill-height", || {
+        let mut cx = Cx::new_root();
+        let viewport = scroll(container(), 800.0).fill();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(500.0, 360.0))
+                .child(viewport),
+        );
+        let scroll_id = cx.nth_child(root, 0).expect("scroll viewport exists");
+        let body_id = cx.nth_child(scroll_id, 0).expect("scroll body exists");
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .expect("initial layout computes");
+
+        let viewport_height = layout
+            .result(scroll_id)
+            .expect("scroll layout")
+            .rect()
+            .height;
+        assert!(
+            (viewport_height - 360.0).abs() < 1.0,
+            "fill viewport must inherit the 360px parent height, got {viewport_height}"
+        );
+
+        EventRouter::new().route(
+            &mut cx,
+            &layout,
+            ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+                position: Point::new(250.0, 180.0),
+                delta: ScrollDelta::Pixels(Point::new(0.0, -1_000.0)),
+                modifiers: ModifiersState::empty(),
+                phase: ScrollPhase::Moved,
+            })),
+        );
+        layout
+            .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+            .expect("scrolled layout computes");
+
+        let body_y = layout.result(body_id).expect("body layout").rect().origin.y;
+        assert!(
+            (body_y + 440.0).abs() < 1.0,
+            "800px content in a measured 360px viewport must clamp at -440px, got {body_y}"
+        );
     });
 }

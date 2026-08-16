@@ -143,3 +143,31 @@ fn children_reactive_reorder_visibly_rebuilds() {
         }
     });
 }
+
+#[test]
+fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
+    Runtime::scope("sigil_kernel_children_reactive_coalesce", || {
+        let value = signal(0_u32);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container().children_reactive(move || {
+            let current = value.get();
+            let captured = signal(current);
+            [move |child_cx: &mut Cx| child_cx.add(text(captured.get().to_string()))]
+        }));
+        cx.flush_reactive_children();
+
+        value.set(1);
+        value.set(2);
+        cx.flush_reactive_children();
+
+        let children = child_ids(&cx, parent);
+        let [child] = children.as_slice() else {
+            panic!("latest reactive child must be mounted exactly once");
+        };
+        let rendered = cx.dump_tree(*child);
+        assert!(
+            rendered.contains('2'),
+            "only the latest queued child may mount: {rendered}"
+        );
+    });
+}

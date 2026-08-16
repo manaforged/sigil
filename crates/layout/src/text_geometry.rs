@@ -14,7 +14,32 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use sigil_reactive::Signal;
 use sigil_style::TextStyle;
+
+/// Publishes a node's resolved inherited typography into a reactive signal.
+///
+/// Widgets attach this extension to the node whose effective text style their
+/// interaction geometry must share. The layout sync updates the signal only
+/// when the resolved style changes, so caret, selection, and hit-test code can
+/// consume the same typography used to measure and paint descendant text.
+pub struct TextStyleCapture {
+    target: Signal<TextStyle>,
+}
+
+impl TextStyleCapture {
+    /// Create a capture that writes resolved typography into `target`.
+    #[must_use]
+    pub const fn new(target: Signal<TextStyle>) -> Self {
+        Self { target }
+    }
+
+    pub(crate) fn publish(&self, style: &TextStyle) {
+        if self.target.peek() != *style {
+            self.target.set(style.clone());
+        }
+    }
+}
 
 /// Geometry of a caret at a byte offset within a single laid-out line.
 ///

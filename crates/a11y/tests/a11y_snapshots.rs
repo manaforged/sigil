@@ -77,3 +77,16 @@ fn fragment_reparents_children_in_projection() {
 
     assert_eq!(text, "[Role=Button, Name=\"Inner\", Focused=true]\n");
 }
+
+#[test]
+fn removed_focus_target_falls_back_to_live_root() {
+    let mut cx = Cx::new_root();
+    let root = container().child(container()).add(&mut cx);
+    let stale_focus = cx.nth_child(root, 0).unwrap_or(root);
+    assert!(cx.remove(stale_focus));
+
+    let update = tree(&cx, Some(stale_focus), &|_| None);
+
+    assert_eq!(update.focus, root.to_accesskit());
+    assert!(update.nodes.iter().any(|(id, _)| *id == update.focus));
+}

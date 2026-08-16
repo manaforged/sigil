@@ -91,6 +91,14 @@ fn has_accent_tone(atoms: &[StyleAtom]) -> bool {
         .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("accent")))
 }
 
+// Gauge fills use the muted state-fill register (accent-8); turn_strip's
+// active chip keeps the full accent highlight.
+fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
+    atoms
+        .iter()
+        .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("accent-8")))
+}
+
 // ---- gauge: state machine -----------------------------------------------------
 
 #[test]
@@ -103,8 +111,8 @@ fn gauge_warn_tone_below_threshold() {
 
         let before = reactive_slice(&cx, fill_id);
         assert!(
-            has_accent_tone(before),
-            "0.5 / 1.0 is above the 0.3 threshold — fill starts on the accent tone; got {before:?}"
+            has_muted_accent_tone(before),
+            "0.5 / 1.0 is above the 0.3 threshold — fill starts on the muted accent-8 tone; got {before:?}"
         );
         assert!(!has_warn_tone(before));
 
@@ -115,7 +123,7 @@ fn gauge_warn_tone_below_threshold() {
             has_warn_tone(after),
             "value/max below the warn threshold must switch the fill to warn-9; got {after:?}"
         );
-        assert!(!has_accent_tone(after));
+        assert!(!has_muted_accent_tone(after));
         assert_ne!(before, after, "the resolved fill tone must change");
     });
 }

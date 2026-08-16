@@ -174,6 +174,32 @@ fn text_field_typing_updates_signal() {
 }
 
 #[test]
+fn text_field_typing_emits_the_updated_glyph_run() {
+    sigil::reactive::Runtime::scope("sigil-widget-text-field-typing-paint", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).placeholder("Notes"));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout computes");
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, text_down("a"));
+        layout
+            .compute(&mut cx, root, Size::fixed(320.0, 120.0))
+            .expect("layout recomputes");
+
+        assert_eq!(value.get(), "a", "typing must update editing state");
+        assert!(
+            scene_has_text(&cx, root, "a"),
+            "typing must replace the placeholder glyph run with the edited value"
+        );
+    });
+}
+
+#[test]
 fn text_field_backspace_removes_last_character() {
     sigil::reactive::Runtime::scope("sigil-widget-text-field-backspace", || {
         let value = signal(String::from("ab"));
@@ -299,12 +325,22 @@ fn text_field_placeholder_renders_when_empty_and_unfocused() {
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
 
-        assert!(scene_has_text(&cx, root, "Add note"));
+        let scene = emit_scene(&cx, root);
+        let placeholder = scene
+            .commands
+            .iter()
+            .find_map(|command| match command {
+                SceneCommand::GlyphRun(run) if run.run.text == "Add note" => Some(&run.run),
+                _ => None,
+            })
+            .expect("placeholder glyph run");
+
+        assert_eq!(placeholder.color, Theme::default().text_muted());
     });
 }
 
 #[test]
-fn text_field_placeholder_hides_when_focused() {
+fn text_field_placeholder_remains_visible_when_focused() {
     sigil::reactive::Runtime::scope("sigil-widget-text-field-placeholder-focus", || {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
@@ -320,7 +356,7 @@ fn text_field_placeholder_hides_when_focused() {
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout recomputes");
 
-        assert!(!scene_has_text(&cx, root, "Add note"));
+        assert!(scene_has_text(&cx, root, "Add note"));
     });
 }
 
@@ -444,12 +480,25 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
 
         let theme = Theme::default();
         let unchecked_colors = scene_rect_colors(&cx, root);
-        assert!(unchecked_colors.contains(&theme.surface));
+        // Unchecked fill is the `surface-inset` well — gray step 1.
+        assert!(unchecked_colors.contains(&theme.gray.step(1)));
 
         checked.set(true);
         let checked_colors = scene_rect_colors(&cx, root);
         assert!(checked_colors.contains(&theme.accent));
-        assert!(checked_colors.contains(&theme.on_accent));
+        // The check mark is a white stroked vector rasterized to an
+        // `Image` command — visibility is its opacity, not a rect
+        // colour. Checked means the mark paints at full opacity.
+        assert!(
+            emit_scene(&cx, root)
+                .commands
+                .iter()
+                .any(|command| matches!(
+                    command,
+                    SceneCommand::Image(image) if image.opacity == 10_000
+                )),
+            "checked scene must paint the white vector check mark"
+        );
     });
 }
 
@@ -526,7 +575,8 @@ fn toggle_scene_emits_on_and_off_variants() {
             .expect("layout recomputes");
         let on_colors = scene_rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
-        assert!(on_colors.contains(&theme.accent));
+        // ON track paints the accent scale at step 8.
+        assert!(on_colors.contains(&theme.accent_scale.step(8)));
         assert!(on_thumb_x > off_thumb_x);
     });
 }

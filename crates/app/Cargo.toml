@@ -22,6 +22,7 @@ test-support = []
 
 [dependencies]
 sigil-tasks = { workspace = true }
+sigil-animation-runtime = { workspace = true }
 sigil-kernel = { workspace = true }
 sigil-events = { workspace = true }
 sigil-hal = { workspace = true }

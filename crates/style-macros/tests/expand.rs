@@ -8,7 +8,7 @@ use sigil_style_macros as _;
 use syn as _;
 use trybuild as _;
 
-use sigil_style::{ColorAtom, Px, StyleAtom, classes};
+use sigil_style::{ColorAtom, Elevation, Px, StyleAtom, classes};
 
 #[test]
 fn expands_static_literal() {
@@ -42,6 +42,20 @@ fn expands_match_literal() {
             StyleAtom::BackgroundThemeRef("accent"),
             StyleAtom::Height(sigil_style::Dimension::Px(Px(40))),
             StyleAtom::FontSize(Px(16)),
+        ],
+    );
+}
+
+#[test]
+fn expands_shadow_elevations() {
+    assert_eq!(
+        classes!("shadow-sm shadow shadow-md shadow-lg shadow-xl"),
+        &[
+            StyleAtom::Shadow(Elevation::Sm),
+            StyleAtom::Shadow(Elevation::Base),
+            StyleAtom::Shadow(Elevation::Md),
+            StyleAtom::Shadow(Elevation::Lg),
+            StyleAtom::Shadow(Elevation::Xl),
         ],
     );
 }

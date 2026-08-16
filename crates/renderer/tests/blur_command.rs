@@ -31,7 +31,7 @@ use zeno as _;
 
 use sigil_hal::{Color, Point, Rect};
 use sigil_renderer::{
-    CommandScene, LayerEffect, LayerScope, OffscreenTarget, SceneBuilder, WgpuRenderer,
+    CommandScene, CornerRadii, LayerEffect, LayerScope, OffscreenTarget, SceneBuilder, WgpuRenderer,
 };
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -110,6 +110,7 @@ fn blur_scene(sigma: f32) -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.push_layer(LayerScope {
         clip: rect(16.0, 8.0, 96.0, 48.0),
+        clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::LayerBlur { sigma },
         opacity: 1.0,
     });

@@ -170,7 +170,7 @@ fn fallback_face_glyph_lands_in_atlas_not_leftover() {
         color: Color::WHITE,
         clip: None,
     };
-    let leftover = pipeline.record_paragraph(&mut encoder, &params);
+    let leftover = pipeline.record_paragraph(&mut encoder, &params, None);
     queue.submit(core::iter::once(encoder.finish()));
 
     assert!(
@@ -187,6 +187,7 @@ fn fallback_face_glyph_lands_in_atlas_not_leftover() {
         font_index: fallback_glyph.font_index,
         glyph_id: fallback_glyph.glyph_id,
         physical_px_bits: (fallback_glyph.size * params.scale).to_bits(),
+        variation_coords: fallback_glyph.variation_coords.clone(),
         bin,
     };
     assert!(

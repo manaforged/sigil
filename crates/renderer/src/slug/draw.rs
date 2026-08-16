@@ -10,6 +10,8 @@ use sigil_text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
 use crate::error::RendererError;
+use crate::frame_stats::FrameStats;
+use crate::frame_upload::{FrameUploads, UploadedRange};
 use crate::slug::{
     atlas::GlyphAtlas,
     bands::preprocess_glyph,
@@ -81,6 +83,7 @@ struct GlyphInstance {
     /// instance stride is unchanged.
     polarity: f32,
 }
+pub(crate) const SLUG_INSTANCE_BYTES: usize = core::mem::size_of::<GlyphInstance>();
 
 /// Six UV vertices for two triangles covering \[0,1\]².
 const QUAD_UVS: &[f32] = &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
@@ -168,6 +171,16 @@ impl SlugTextPipeline {
         encoder: &mut wgpu::CommandEncoder,
         params: &DrawParams<'_>,
     ) -> Result<(), RendererError> {
+        self.record_paragraph_in_frame(encoder, params, None)
+    }
+
+    #[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
+    pub(crate) fn record_paragraph_in_frame(
+        &mut self,
+        encoder: &mut wgpu::CommandEncoder,
+        params: &DrawParams<'_>,
+        frame: Option<(&mut FrameUploads, &mut FrameStats)>,
+    ) -> Result<(), RendererError> {
         let owned_glyphs;
         let glyphs = if let Some(glyphs) = params.glyphs {
             glyphs
@@ -184,8 +197,16 @@ impl SlugTextPipeline {
         if instances.is_empty() {
             return Ok(());
         }
-        let count = u32::try_from(instances.len()).expect("paragraph glyph count overflows u32");
-        let instance_buf = upload_instances(params.device, &instances);
+        let uploaded =
+            frame.and_then(|(uploads, stats)| uploads.upload_slug(params.queue, &instances, stats));
+        let instances = uploaded.unwrap_or_else(|| {
+            let buffer = upload_instances(params.device, &instances);
+            UploadedRange {
+                buffer,
+                bytes: 0..u64::try_from(instances.len() * SLUG_INSTANCE_BYTES).unwrap_or(u64::MAX),
+                count: u32::try_from(instances.len()).expect("paragraph glyph count overflows u32"),
+            }
+        });
         let bind_group = make_bind_group(params, &self.bgl, self.atlas.buffer());
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("slug-pass"),
@@ -206,14 +227,19 @@ impl SlugTextPipeline {
         // Scissor the glyph draw to the active clip so a paragraph larger than its
         // box (a scrolled editor body, an overflow-hidden pane) is cut per-pixel at
         // the edge instead of painting over siblings. Empty clip ⇒ nothing to paint.
-        if !apply_clip_scissor(&mut pass, params) {
+        if !crate::scissor::apply(
+            &mut pass,
+            params.clip,
+            params.scale,
+            (params.surface_width, params.surface_height),
+        ) {
             return Ok(());
         }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..6, 0..count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..6, 0..instances.count);
         Ok(())
     }
 
@@ -351,53 +377,6 @@ fn snap_to_physical_grid(logical: f32, scale: f32) -> f32 {
         return logical;
     }
     (logical * scale).round() / scale
-}
-
-/// Apply the active clip (if any) as a GPU scissor on `pass`. Returns `false`
-/// when the clip is non-empty but resolves to an empty region — the caller skips
-/// the draw entirely. No clip ⇒ `true` (paint unclipped).
-fn apply_clip_scissor(pass: &mut wgpu::RenderPass<'_>, params: &DrawParams<'_>) -> bool {
-    let Some(clip) = params.clip else {
-        return true;
-    };
-    match scissor_rect(
-        clip,
-        params.scale,
-        params.surface_width,
-        params.surface_height,
-    ) {
-        Some((x, y, w, h)) => {
-            pass.set_scissor_rect(x, y, w, h);
-            true
-        }
-        None => false,
-    }
-}
-
-/// Convert a logical-pixel clip rect into a physical-pixel scissor `(x, y, w, h)`,
-/// clamped to the framebuffer. `None` when the resulting region is empty (the clip
-/// fell entirely outside the target). Casts are guarded by the clamps above them.
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn scissor_rect(
-    clip: Rect,
-    scale: f32,
-    surface_w: f32,
-    surface_h: f32,
-) -> Option<(u32, u32, u32, u32)> {
-    let fb_w = (surface_w * scale).max(0.0);
-    let fb_h = (surface_h * scale).max(0.0);
-    let x0 = (clip.origin.x * scale).floor().clamp(0.0, fb_w);
-    let y0 = (clip.origin.y * scale).floor().clamp(0.0, fb_h);
-    let x1 = ((clip.origin.x + clip.width) * scale)
-        .ceil()
-        .clamp(0.0, fb_w);
-    let y1 = ((clip.origin.y + clip.height) * scale)
-        .ceil()
-        .clamp(0.0, fb_h);
-    if x1 <= x0 || y1 <= y0 {
-        return None;
-    }
-    Some((x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32))
 }
 
 fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {

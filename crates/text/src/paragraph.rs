@@ -237,14 +237,16 @@ struct FaceEntry {
     bytes: Arc<Vec<u8>>,
     index: u32,
     id: u64,
+    variation_coords: Box<[i16]>,
 }
 
-impl From<&Font> for FaceEntry {
-    fn from(font: &Font) -> Self {
+impl FaceEntry {
+    fn new(font: &Font, weight: u16, size_px: f32) -> Self {
         Self {
             bytes: font.bytes_arc(),
             index: font.face_index(),
             id: font.id(),
+            variation_coords: font.variation_coords(weight, size_px),
         }
     }
 }
@@ -286,9 +288,13 @@ impl Paragraph {
         lines: Vec<LayoutLine>,
         metrics: TextMetrics,
         faces: &[Font],
+        weight: u16,
         min_content_hint: f32,
     ) -> Self {
-        let fonts: Vec<FaceEntry> = faces.iter().map(FaceEntry::from).collect();
+        let fonts: Vec<FaceEntry> = faces
+            .iter()
+            .map(|font| FaceEntry::new(font, weight, metrics.font_size))
+            .collect();
         Self {
             inner: Rc::new(ParagraphInner {
                 lines,
@@ -435,7 +441,7 @@ impl Paragraph {
                     // sole em→px scale at draw.rs `scale = g.size / upem`).
                     size: self.inner.font_size,
                     color: Color::WHITE,
-                    variation_coords: Box::new([]),
+                    variation_coords: face.variation_coords.clone(),
                 });
             }
         }

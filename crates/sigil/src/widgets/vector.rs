@@ -81,6 +81,7 @@ pub struct PathNode {
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
     stroke: Option<(Rgba8, f32)>,
+    layout: Option<sigil_layout::prelude::LayoutStyle>,
 }
 
 /// Start a vector path rasterized onto a `width × height` RGBA canvas.
@@ -92,6 +93,7 @@ pub const fn path(width: u32, height: u32) -> PathNode {
         cmds: Vec::new(),
         fill: None,
         stroke: None,
+        layout: None,
     }
 }
 
@@ -178,6 +180,15 @@ impl PathNode {
         self
     }
 
+    /// Pin the node's laid-out size, overriding the raster's intrinsic
+    /// pixel size. Rasterize at 2x the intended logical size and pin the
+    /// logical box here for crisp output on hi-dpi targets.
+    #[must_use]
+    pub fn layout(mut self, style: sigil_layout::prelude::LayoutStyle) -> Self {
+        self.layout = Some(style);
+        self
+    }
+
     /// Rasterize into an [`ImageSource`], or `None` if the path is empty or
     /// the canvas size is degenerate.
     fn rasterize(&self) -> Option<ImageSource> {
@@ -214,7 +225,15 @@ impl PathNode {
 impl IntoNode for PathNode {
     fn build(self, cx: &mut Cx) -> NodeId {
         match self.rasterize() {
-            Some(source) => image(source).build(cx),
+            Some(source) => {
+                let id = image(source).build(cx);
+                if let Some(style) = self.layout
+                    && let Some(node) = cx.get_mut(id)
+                {
+                    let _ = node.attach(style);
+                }
+                id
+            }
             // Empty / degenerate path: a zero-size node so callers can still
             // place it without a special case.
             None => container().build(cx),

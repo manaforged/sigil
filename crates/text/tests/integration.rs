@@ -1,0 +1,30 @@
+//! Text engine integration suite in one crate so dependency-hygiene lints are meaningful.
+
+#![allow(missing_docs)]
+
+#[cfg(target_os = "macos")]
+use core_text as _;
+use zed_font_kit as _;
+
+#[path = "bidi_visual_order.rs"]
+mod bidi_visual_order;
+#[path = "cache_lifecycle.rs"]
+mod cache_lifecycle;
+#[path = "ellipsize.rs"]
+mod ellipsize;
+#[path = "empty_lines.rs"]
+mod empty_lines;
+#[path = "font_fallback.rs"]
+mod font_fallback;
+#[path = "hit_test.rs"]
+mod hit_test;
+#[path = "measurement.rs"]
+mod measurement;
+#[path = "min_max_content.rs"]
+mod min_max_content;
+#[path = "reactive_text.rs"]
+mod reactive_text;
+#[path = "rtl_caret_geometry.rs"]
+mod rtl_caret_geometry;
+#[path = "engine_segmentation.rs"]
+mod segmentation;

@@ -283,6 +283,7 @@ fn dimension(value: StyleDimension) -> Dimension {
     match value {
         StyleDimension::Px(px) => Dimension::Px(f32::from(px.0)),
         StyleDimension::Full => Dimension::Percent(1.0),
+        StyleDimension::Fraction(scaled) => Dimension::Percent(f32::from(scaled) / 10_000.0),
         StyleDimension::Auto => Dimension::Auto,
     }
 }

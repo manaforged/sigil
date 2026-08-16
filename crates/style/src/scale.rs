@@ -111,7 +111,10 @@ pub const fn slate_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Iris (cool blue-purple) — light theme accent default.
+/// Iris (cool blue-purple) — light theme accent option.
+///
+/// Was the default accent until the steel-blue `blue_*` scales took
+/// over (2026 professional restyle); kept for palette variety.
 #[must_use]
 pub const fn iris_light() -> ColorScale {
     ColorScale::from_steps([
@@ -235,7 +238,10 @@ pub const fn slate_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Iris (cool blue-purple) — dark theme accent default.
+/// Iris (cool blue-purple) — dark theme accent option.
+///
+/// Was the default accent until the steel-blue `blue_*` scales took
+/// over (2026 professional restyle); kept for palette variety.
 #[must_use]
 pub const fn iris_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -251,6 +257,54 @@ pub const fn iris_dark() -> ColorScale {
         rgb(0x6E, 0x6A, 0xDE),
         rgb(0xB1, 0xA9, 0xFF),
         rgb(0xE1, 0xDE, 0xFF),
+    ])
+    .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
+}
+
+/// Steel blue — light theme accent default.
+///
+/// Muted, desaturated professional accent (Zed/ShadCN register) on the
+/// same luminance curve as `iris_light`, so state deltas and contrast
+/// relationships carry over. Step 9 (#3D6BB3) holds white text at
+/// ~5.3:1 (WCAG AA).
+#[must_use]
+pub const fn blue_light() -> ColorScale {
+    ColorScale::from_steps([
+        rgb(0xFB, 0xFC, 0xFE),
+        rgb(0xF5, 0xF8, 0xFC),
+        rgb(0xEA, 0xF1, 0xFA),
+        rgb(0xDD, 0xE9, 0xF8),
+        rgb(0xCF, 0xE0, 0xF5),
+        rgb(0xBA, 0xD2, 0xEF),
+        rgb(0x9D, 0xBF, 0xE6),
+        rgb(0x7A, 0xA5, 0xD8),
+        rgb(0x3D, 0x6B, 0xB3),
+        rgb(0x35, 0x61, 0x9F),
+        rgb(0x2F, 0x5B, 0xA8),
+        rgb(0x1E, 0x3A, 0x6B),
+    ])
+    .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
+}
+
+/// Steel blue — dark theme accent default.
+///
+/// Same luminance curve as `iris_dark`, hue shifted to a desaturated
+/// steel blue. Step 11 on step 3 (soft variant) holds ~7:1.
+#[must_use]
+pub const fn blue_dark() -> ColorScale {
+    ColorScale::from_steps([
+        rgb(0x10, 0x13, 0x19),
+        rgb(0x15, 0x1A, 0x24),
+        rgb(0x1C, 0x27, 0x40),
+        rgb(0x22, 0x31, 0x52),
+        rgb(0x2A, 0x3C, 0x63),
+        rgb(0x33, 0x48, 0x76),
+        rgb(0x3E, 0x57, 0x8C),
+        rgb(0x4C, 0x68, 0xA4),
+        rgb(0x3D, 0x6B, 0xB3),
+        rgb(0x4C, 0x7C, 0xC4),
+        rgb(0x8F, 0xB4, 0xE8),
+        rgb(0xD8, 0xE4, 0xF8),
     ])
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }

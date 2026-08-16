@@ -6,8 +6,8 @@ use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use sigil_reactive::{Signal, derived_eq, signal};
 use sigil_style::{
-    NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay, StyleVariant,
-    TransitionId,
+    NodeStyleExt, Px, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
+    StyleVariant, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -16,7 +16,7 @@ use super::super::shared::{
     Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
 use super::super::transition_seam::install_transition_animators;
-use super::popup::{OptionCtx, SURFACE, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
+use super::popup::{OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
 
 /// Selection-change callback channel: the newly selected index.
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
@@ -26,6 +26,11 @@ const DROPDOWN_COMPONENT_ID: u64 = 0xD012_D000;
 // Animator-only base slice scanned by `install_transition_animators`.
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
+static TRIGGER_BASE: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("surface-inset"),
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderToneStep(9),
+];
 static TRIGGER_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
 // Disabled paints `surface-pressed-strong` at full opacity. The
 // previous design used `surface-hover` + 50 % opacity, but the alpha
@@ -39,7 +44,7 @@ static TRIGGER_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pre
 static TRIGGER_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
 
 static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
-    SURFACE,
+    TRIGGER_BASE,
     StateStyle::new(
         &[],
         SURFACE_HOVER,
@@ -53,11 +58,13 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
+    label: String,
     disabled: Option<Signal<bool>>,
     on_change: Option<IndexChange>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     width: Option<f32>,
+    height: f32,
 }
 
 /// Create a dropdown (combobox) widget.
@@ -76,12 +83,21 @@ impl DropdownBuilder {
         Self {
             selected,
             options,
+            label: "Dropdown".to_owned(),
             disabled: None,
             on_change: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
             width: None,
+            height: TRIGGER_HEIGHT,
         }
+    }
+
+    /// Set the accessible name announced for this combobox.
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = label.into();
+        self
     }
 
     /// Set a reactive disabled signal.
@@ -100,6 +116,13 @@ impl DropdownBuilder {
     #[must_use]
     pub const fn width(mut self, px: f32) -> Self {
         self.width = Some(px);
+        self
+    }
+
+    /// Override the trigger height in logical pixels.
+    #[must_use]
+    pub const fn height(mut self, px: f32) -> Self {
+        self.height = px;
         self
     }
 
@@ -133,6 +156,7 @@ impl DropdownBuilder {
             cursor,
             disabled,
             width: self.width,
+            trigger_height: self.height,
         };
         // The Styled trait surface targets the TRIGGER — that is the
         // user-visible chrome of the dropdown (the popup is a transient
@@ -147,10 +171,17 @@ impl DropdownBuilder {
             self.style_accumulator,
             user_overlay,
         );
-        let popup = build_popup(ctx, &options, &on_change);
-        let mut root = dropdown_root(open, cursor, Rc::clone(&options), disabled, self.width)
+        let popup_options = Rc::clone(&options);
+        let popup_on_change = Rc::clone(&on_change);
+        let mut root = dropdown_root(ctx, Rc::clone(&options), self.label)
             .child(trigger)
-            .child(popup);
+            .children_reactive(move || {
+                if ctx.open.get() {
+                    vec![build_popup(ctx, &popup_options, &popup_on_change)]
+                } else {
+                    Vec::new()
+                }
+            });
 
         for mutate in self.mutators {
             root = mutate(root);
@@ -174,20 +205,22 @@ impl IntoNode for DropdownBuilder {
     }
 }
 
-fn dropdown_root(
-    open: Signal<bool>,
-    cursor: Signal<usize>,
-    options: Rc<Vec<String>>,
-    disabled: Option<Signal<bool>>,
-    width: Option<f32>,
-) -> NodeBuilder {
+fn dropdown_root(ctx: OptionCtx, options: Rc<Vec<String>>, label: String) -> NodeBuilder {
+    let OptionCtx {
+        open,
+        cursor,
+        disabled,
+        width,
+        trigger_height,
+        ..
+    } = ctx;
     let root_layout = width.map_or_else(
-        || LayoutStyle::block().fill_width().height(TRIGGER_HEIGHT),
-        |px| LayoutStyle::block().width(px).height(TRIGGER_HEIGHT),
+        || LayoutStyle::block().fill_width().height(trigger_height),
+        |px| LayoutStyle::block().width(px).height(trigger_height),
     );
     container()
         .role(Role::ComboBox)
-        .label("Dropdown")
+        .label(label)
         .layout(root_layout)
         .key(Key::Escape, move |ev| {
             ev.stop_propagation();
@@ -232,6 +265,7 @@ fn build_trigger(
         cursor,
         disabled,
         width: _,
+        trigger_height: _,
     } = ctx;
     let state_style = dropdown_trigger_state_style();
     let mut node = container()
@@ -274,57 +308,7 @@ fn build_trigger(
     if !styled.is_empty() {
         node = node.style(styled);
     }
-    trigger_rest_frame(node, ctx, interaction)
-}
-
-// Rest border — 1 px `gray-9` frame via the nested-fill idiom (no
-// border atom exists; text_field's frame is the precedent). The bare
-// trigger painted the same `surface` token as the panel behind it: a
-// 1.00:1 boundary, invisible at rest (Fable visual adversarial
-// 2026-07-13). Frame keeps the exact TRIGGER_WIDTH × TRIGGER_HEIGHT
-// footprint so the popup's `inset_top(TRIGGER_HEIGHT)` anchor is
-// unchanged.
-//
-// The frame mirrors the trigger's release handler: the 1 px border is
-// part of the hit surface, and without this a click landing exactly
-// on it dies on a handler-less node (the reviewer gate 2026-07-13). No
-// double-toggle risk: `release_pointer` consumes the pressed flag and
-// the inner handler stops propagation, so interior clicks never reach
-// this handler. AT click dispatch targets the inner `Role::Button`
-// node directly and is unaffected.
-fn trigger_rest_frame(
-    node: NodeBuilder,
-    ctx: OptionCtx,
-    interaction: InteractionState,
-) -> NodeBuilder {
-    let OptionCtx {
-        selected,
-        open,
-        cursor,
-        disabled,
-        width,
-    } = ctx;
-    container()
-        .layout(trigger_frame_layout(width))
-        .class("rounded-md")
-        .class("bg-gray-9")
-        .pointer_up(move |ev| {
-            let cb: Activate = Rc::new(move || {
-                open.set(!open.peek());
-                cursor.set(selected.peek());
-            });
-            activate_pointer_reactive(ev, interaction, disabled, &cb);
-        })
-        .child(node)
-}
-
-fn trigger_frame_layout(width: Option<f32>) -> LayoutStyle {
-    let base = LayoutStyle::flex_row().height(TRIGGER_HEIGHT);
-    let base = match width {
-        Some(px) => base.width(px),
-        None => base.fill_width(),
-    };
-    base.padding(1.0)
+    node
 }
 
 // Push the chevron flush against the right padding edge: SpaceBetween
@@ -335,7 +319,7 @@ fn trigger_frame_layout(width: Option<f32>) -> LayoutStyle {
 fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill()
-        .padding(7.0)
+        .padding_x(10.0)
         .gap(8.0)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
@@ -399,6 +383,6 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
 fn trigger_chevron() -> impl IntoNode {
     text("\u{25BE}")
         .layout(LayoutStyle::block())
-        .class("text-xs")
-        .class("text-on-surface")
+        .class("text-sm")
+        .class("text-on-surface-muted")
 }

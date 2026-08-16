@@ -4,6 +4,7 @@ use sigil_hal::Color;
 
 use crate::device_state::ReadyState;
 use crate::error::RendererError;
+use crate::frame_stats::FrameStats;
 use crate::layer_pool::LayerHandle;
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
@@ -153,6 +154,7 @@ pub(super) fn walk_screen(
     scale: f32,
     format: wgpu::TextureFormat,
     scene: &CommandScene,
+    stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
     let ReadyState {
         scene_pipelines,
@@ -188,6 +190,7 @@ pub(super) fn walk_screen(
             layer_pipelines,
             blur_pipelines,
             layer_pool,
+            stats,
         },
         scene,
     )
@@ -221,12 +224,14 @@ fn surface_text_scale(surface: &WgpuSurface, viewport: (f32, f32)) -> f32 {
 }
 
 /// Acquire surface frame, clear, walk `scene`, and present.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn render_command_scene_surface(
     ready: &mut ReadyState,
     surface: &WgpuSurface,
     scene: &CommandScene,
     clear_color: sigil_hal::Color,
     viewport: (f32, f32),
+    stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
     let Some((frame, view)) = acquire_frame(ready, surface)? else {
         return Ok(());
@@ -254,6 +259,7 @@ pub(super) fn render_command_scene_surface(
         scale,
         format,
         scene,
+        stats,
     )?;
     queue.submit(core::iter::once(encoder.finish()));
     frame.present();

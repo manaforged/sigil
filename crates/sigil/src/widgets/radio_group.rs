@@ -202,7 +202,7 @@ fn option_row(
 
 fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder {
     // Inner dot — TONAL fill (resolves through the tone's scale at
-    // step 9 when selected). The tone context lives on this node so
+    // step 8 when selected). The tone context lives on this node so
     // the FILL gets the accent color while the OUTER ring stays
     // neutral.
     let mark_inner = container()
@@ -219,7 +219,7 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
             }
         });
     // Surface core — punches the interior out of the outer disc so
-    // the frame reads as a 2 px ring (the nested-fill border idiom;
+    // the frame reads as a 1.5 px ring (the nested-fill border idiom;
     // text_field's frame is the precedent — no border atom exists).
     // ponytail: core paints the global `surface` token, so a radio on
     // a tinted panel shows a surface-colored hole; correct on every
@@ -227,8 +227,8 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
     // stroke primitive in the renderer (followup 2026-07-13).
     let mark_core = container()
         .layout(mark_core_layout())
-        // MARK_CORE is 12 px; explicit radius avoids the Px(9_999) SDF clipping bug.
-        .style(Style::new().radius(6))
+        // MARK_CORE is 13 px; explicit radius avoids the Px(9_999) SDF clipping bug.
+        .style(Style::new().radius(7))
         .class("bg-surface")
         .child(mark_inner);
     // Outer ring — NEUTRAL border. `gray-9` is the sanctioned rest-
@@ -248,16 +248,20 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
         .child(mark_core)
 }
 
-// Inner-fill atoms — read on the tonal inner node, so step-9
-// resolves through the accent (iris / success / error / etc.)
-// scale. The outer ring's neutral border is supplied via the
-// `bg-gray-9` class above.
-static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
+// Inner-fill atoms — read on the tonal inner node, so the step
+// resolves through the accent (steel-blue / success / error / etc.)
+// scale. Step 8, not 9: the selected dot uses the muted state-fill
+// register (same discipline as the toggle on-state); step 9 is
+// reserved for primary actions. The outer ring's neutral border is
+// supplied via the `bg-gray-9` class above.
+static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(8)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
 const ROW_HEIGHT: f32 = 28.0;
 const MARK_OUTER: f32 = 16.0;
-const MARK_CORE: f32 = 12.0;
+// Core 13 px inside a 16 px ring = a 1.5 px stroke — the previous
+// 2.5 px read clunky next to ShadCN's ~1 px rings (Fable 2026-08-15).
+const MARK_CORE: f32 = 13.0;
 const MARK_INNER: f32 = 8.0;
 
 fn group_layout() -> LayoutStyle {

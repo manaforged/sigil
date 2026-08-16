@@ -1,7 +1,7 @@
 use sigil_hal::{Color, Rect};
 
 use super::helpers::{rect, rgba};
-use crate::{CommandScene, LayerEffect, LayerScope, SceneBuilder, SceneRectStyle};
+use crate::{CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneRectStyle};
 
 /// Build the R12 backdrop-blur showcase scene.
 #[must_use]
@@ -25,6 +25,7 @@ pub fn backdrop_blur() -> (CommandScene, (f32, f32), Color) {
 fn push_blur_surface(scene: &mut SceneBuilder, clip: Rect, sigma: f32) {
     scene.push_layer(LayerScope {
         clip,
+        clip_radii: CornerRadii::ZERO,
         effect: LayerEffect::LayerBlur { sigma },
         opacity: 1.0,
     });

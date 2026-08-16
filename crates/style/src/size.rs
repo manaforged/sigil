@@ -47,7 +47,7 @@ impl Dimension {
     pub const fn px_or_zero(self) -> f32 {
         match self {
             Self::Px(Px(px)) => px as f32,
-            Self::Full | Self::Auto => 0.0,
+            Self::Full | Self::Fraction(_) | Self::Auto => 0.0,
         }
     }
 }

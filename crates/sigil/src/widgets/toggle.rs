@@ -43,15 +43,18 @@ static EMPTY_BASE: &[StyleAtom] = &[];
 // for the `Transition` atom that flips it into the animated path.
 static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
+    // Step 8, not 9: the on-state is a muted slate-blue (Zed's toggle
+    // register), reserving the full-saturation step 9 for primary
+    // actions and focus.
+    StyleAtom::BackgroundThemeRef("accent-8"),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
+    StyleAtom::BackgroundThemeRef("accent-9"),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
+    StyleAtom::BackgroundThemeRef("accent-9"),
     StyleAtom::JustifyContent(JustifyKind::End),
     StyleAtom::Opacity(8_800),
 ];
@@ -190,9 +193,9 @@ impl IntoNode for ToggleBuilder {
 }
 
 fn toggle_layout(has_label: bool) -> LayoutStyle {
-    let width = if has_label { 184.0 } else { 52.0 };
+    let width = if has_label { 164.0 } else { 36.0 };
     LayoutStyle::flex_row()
-        .fixed_size(width, 32.0)
+        .fixed_size(width, 28.0)
         .gap(8.0)
         .align_items(AlignItems::Center)
 }
@@ -206,11 +209,13 @@ fn toggle_track(
     let node = container()
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(48.0, 28.0)
+                .fixed_size(36.0, 20.0)
                 .padding(3.0)
                 .align_items(AlignItems::Center),
         )
-        .class("rounded-md")
+        // TRACK is 20 px; explicit radius avoids the Px(9_999) SDF clipping bug
+        // (radio_group's mark is the precedent). Radius 10 = full capsule.
+        .style(Style::new().radius(10))
         .class(TOGGLE_ANIM_BASE)
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
@@ -247,8 +252,10 @@ const fn toggle_state_style(on: bool) -> StateStyle {
 
 fn toggle_thumb() -> NodeBuilder {
     container()
-        .layout(LayoutStyle::block().fixed_size(22.0, 22.0))
-        .class("rounded-md")
+        .layout(LayoutStyle::block().fixed_size(14.0, 14.0))
+        // THUMB is 14 px; explicit radius avoids the Px(9_999) SDF
+        // clipping bug. Radius 7 = full circle.
+        .style(Style::new().radius(7))
         .class(TOGGLE_THUMB)
 }
 

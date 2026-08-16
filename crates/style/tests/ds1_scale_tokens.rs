@@ -12,7 +12,7 @@
 use sigil_reactive as _;
 
 use sigil_style::scale::{
-    amber_light, cyan_light, green_light, iris_dark, iris_light, ruby_light, slate_dark,
+    amber_light, blue_dark, blue_light, cyan_light, green_light, ruby_light, slate_dark,
     slate_light,
 };
 use sigil_style::{ColorAtom, Rgba8, StyleAtom, Theme, parse_class_string};
@@ -46,7 +46,7 @@ fn role_step_tokens_resolve_to_scale_steps() {
     // Each `<role>-<step>` token routes through `Theme::scale(role).step(n)`.
     assert_eq!(resolved_bg(&theme, "bg-gray-2"), slate_light().step(2));
     assert_eq!(resolved_bg(&theme, "bg-gray-12"), slate_light().step(12));
-    assert_eq!(resolved_bg(&theme, "bg-accent-9"), iris_light().step(9));
+    assert_eq!(resolved_bg(&theme, "bg-accent-9"), blue_light().step(9));
     assert_eq!(resolved_bg(&theme, "bg-success-3"), green_light().step(3));
     assert_eq!(resolved_bg(&theme, "bg-warn-9"), amber_light().step(9));
     assert_eq!(resolved_bg(&theme, "bg-error-9"), ruby_light().step(9));
@@ -88,12 +88,12 @@ fn dark_theme_flips_every_scale_and_semantic_alias() {
     // Scales: step values flip from light to dark Radix.
     assert_eq!(resolved_bg(&theme, "bg-gray-2"), slate_dark().step(2));
     assert_eq!(resolved_bg(&theme, "bg-gray-12"), slate_dark().step(12));
-    assert_eq!(resolved_bg(&theme, "bg-accent-9"), iris_dark().step(9));
+    assert_eq!(resolved_bg(&theme, "bg-accent-9"), blue_dark().step(9));
 
     // Flat-field shim populated from dark scales.
     assert_eq!(theme.surface, slate_dark().step(2));
     assert_eq!(theme.on_surface, slate_dark().step(12));
-    assert_eq!(theme.accent, iris_dark().step(9));
+    assert_eq!(theme.accent, blue_dark().step(9));
     assert_eq!(theme.border, slate_dark().step(7));
 
     // Semantic aliases keep their step references — values flip.

@@ -61,6 +61,8 @@ mod decoration_paint;
 mod device_state;
 mod error;
 mod fill_paint;
+mod frame_stats;
+mod frame_upload;
 mod layer_composite;
 mod layer_pool;
 mod offscreen;
@@ -73,6 +75,7 @@ mod scene_command;
 mod scene_instance;
 mod scene_paint;
 pub mod scenes;
+mod scissor;
 mod shadow_paint;
 mod slug;
 mod sprite_atlas;
@@ -85,6 +88,7 @@ mod window_handle;
 
 pub use corner_radii::CornerRadii;
 pub use error::RendererError;
+pub use frame_stats::FrameStats;
 pub use layer_pool::{LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
 #[doc(hidden)]

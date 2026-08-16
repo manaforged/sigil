@@ -136,6 +136,7 @@ pub struct ImageBuilder {
     source: ImageSource,
     fit: ObjectFit,
     a11y: A11yProps,
+    pre_extensions: Vec<Box<dyn FnOnce(&mut crate::Node)>>,
 }
 
 /// Create a raster image node from decoded pixels.
@@ -151,6 +152,7 @@ pub fn image(source: ImageSource) -> ImageBuilder {
             role: Role::Image,
             ..A11yProps::default()
         },
+        pre_extensions: Vec::new(),
     }
 }
 
@@ -168,17 +170,32 @@ impl ImageBuilder {
         self.fit = fit;
         self
     }
+
+    /// Post-construction escape hatch, mirroring `TextBuilder::mutate` —
+    /// used by downstream builder extension traits (e.g. attaching a
+    /// `LayoutStyle` to pin an image smaller than its intrinsic pixels).
+    #[must_use]
+    pub fn mutate(mut self, apply: impl FnOnce(&mut crate::Node) + 'static) -> Self {
+        self.pre_extensions.push(Box::new(apply));
+        self
+    }
 }
 
 impl IntoNode for ImageBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        cx.new_node(
+        let id = cx.new_node(
             NodeType::Image {
                 source: self.source,
                 fit: self.fit,
             },
             self.a11y,
-        )
+        );
+        if let Some(node) = cx.get_mut(id) {
+            for apply in self.pre_extensions {
+                apply(node);
+            }
+        }
+        id
     }
 }
 

@@ -18,8 +18,8 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use harfrust::{
-    Direction, FontRef as HrFontRef, GlyphBuffer, Script as HrScript, ShaperData, UnicodeBuffer,
-    script as hr_script,
+    Direction, FontRef as HrFontRef, GlyphBuffer, Script as HrScript, ShaperData, ShaperInstance,
+    Tag, UnicodeBuffer, Variation, script as hr_script,
 };
 use skrifa::FontRef;
 use skrifa::MetadataProvider;
@@ -41,8 +41,10 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
     let bytes = font.bytes_arc();
     let hr_font = HrFontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
     let data = ShaperData::new(&hr_font);
+    let instance = shaper_instance(&hr_font, style, font);
     let hr_shaper = data
         .shaper(&hr_font)
+        .instance(Some(&instance))
         .point_size(Some(style.size_px))
         .build();
 
@@ -70,7 +72,8 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
     // bbox, both of which we still source from skrifa.
     let skrifa_font = FontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
     let size = Size::new(style.size_px.max(1.0));
-    let face_metrics = skrifa_font.metrics(size, LocationRef::default());
+    let location = font.location(style.weight, style.size_px);
+    let face_metrics = skrifa_font.metrics(size, LocationRef::new(location.coords()));
     let upem = f32::from(face_metrics.units_per_em);
     let scale = if upem > 0.0 {
         style.size_px / upem
@@ -79,6 +82,17 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
     };
 
     Some(build_glyph_run(&glyphs_buf, scale, &face_metrics))
+}
+
+fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> ShaperInstance {
+    let settings = font.variation_settings(style.weight, style.size_px);
+    ShaperInstance::from_variations(
+        font_ref,
+        settings.iter().map(|(tag, value)| Variation {
+            tag: Tag::new(tag),
+            value: *value,
+        }),
+    )
 }
 
 /// Map our internal `Script` to `HarfRust`'s iso15924 `Script`.

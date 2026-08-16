@@ -3,9 +3,7 @@
 //! `style-macros/grammar/structural.toml` is the single source of truth
 //! for the utility-token catalog. Every token it lists must parse
 //! through the runtime parser into a real atom (never
-//! `UnknownThemeRef`), and the CSS-shaped families with no paint path
-//! (`border-*`, `shadow-*`) must be rejected loudly, not silently
-//! dropped. The macro side of the same contract is pinned by
+//! `UnknownThemeRef`). The macro side of the same contract is pinned by
 //! `style-macros/tests/expand.rs` + trybuild compile-fail cases.
 
 #![allow(missing_docs)]

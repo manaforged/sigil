@@ -13,8 +13,8 @@ use sigil_kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, t
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, derived_eq};
 use sigil_style::{
-    ClassSource, DisplayKind, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess,
-    StyleAtom, StyleOverlay, StyleVariant, Theme, TransitionId,
+    ClassSource, DisplayKind, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+    StyleOverlay, StyleVariant, Theme, TransitionId,
 };
 
 use crate::interaction::InteractionState;
@@ -27,8 +27,8 @@ use super::drag::{DragState, install_label_drag_hooks};
 const TABS_TRANSITION: TransitionId = presets::SMOOTH;
 /// Component id for tabs container — per-tab ids OR-in the tab index.
 const TABS_COMPONENT_ID: u64 = 0x7AB5_0000;
-pub(super) const TAB_HEIGHT: f32 = 34.0;
-pub(super) const TAB_WIDTH: f32 = 80.0;
+pub(super) const TAB_HEIGHT: f32 = 30.0;
+const TAB_PADDING_X: f32 = 12.0;
 const CLOSE_AFFORDANCE_WIDTH: f32 = 16.0;
 
 // ---- atoms ---------------------------------------------------------------
@@ -308,7 +308,7 @@ impl TabsBuilder {
         let base = if has_content {
             LayoutStyle::flex_column().align_items(AlignItems::Stretch)
         } else {
-            tab_list_layout(count)
+            tab_list_layout()
         };
         root.layout(self.layout_overrides.apply(base))
     }
@@ -342,14 +342,13 @@ fn accessible_label(label: &str) -> AccessibleName {
     }
 }
 
-fn tab_list_layout(count: usize) -> LayoutStyle {
-    // Width = N tabs × TAB_WIDTH. Caller can override via `.class()` or
-    // the styled accumulator when a flexible layout is needed. Cast via
-    // u16 first — tab counts always fit in 16 bits, and u16 → f32 is
-    // exact (mantissa is 23 bits wide).
-    let width = f32::from(u16::try_from(count).unwrap_or(u16::MAX)) * TAB_WIDTH;
+fn tab_list_layout() -> LayoutStyle {
+    // Tabs hug their labels (measured by the layout engine's text
+    // measure), so the strip's width is content-driven. A fixed
+    // per-tab width clipped longer labels mid-glyph (Fable visual
+    // review 2026-08-15: "Appearance" sheared to "Appearanc").
     LayoutStyle::flex_row()
-        .fixed_size(width, TAB_HEIGHT)
+        .height(TAB_HEIGHT)
         .align_items(AlignItems::Center)
 }
 
@@ -371,7 +370,7 @@ fn build_tab_list(
     let mut root = container()
         .role(Role::TabList)
         .label(accessible_label(aria_label))
-        .layout(tab_list_layout(count));
+        .layout(tab_list_layout());
 
     let visual_order: Vec<usize> = order.map_or_else(
         || identity_order(count),
@@ -570,26 +569,22 @@ fn build_tab(
 }
 
 fn tab_layout() -> LayoutStyle {
-    let theme = Theme::default();
-    let padding = theme.padding(Size::Compact).px_or_zero();
     LayoutStyle::flex_row()
-        .fixed_size(TAB_WIDTH, TAB_HEIGHT)
-        .padding(padding)
+        .height(TAB_HEIGHT)
+        .padding_x(TAB_PADDING_X)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::Center)
 }
 
 fn tab_label(label: String) -> impl IntoNode {
-    let theme = Theme::default();
-    let padding = theme.padding(Size::Compact).px_or_zero();
-    let width = 2.0_f32.mul_add(-padding, TAB_WIDTH).max(1.0);
-    // Labels are not hittable on their own — the router captures
-    // pointer events to `path.last()`, which would land on this text
-    // node and starve the tab's drag handlers. Letting the tab itself
-    // be the deepest hit keeps the capture target where the drag
-    // handlers live.
+    // Hug width: the text leaf takes its measured width; the tab's
+    // padding supplies the chrome. Labels are not hittable on their
+    // own — the router captures pointer events to `path.last()`, which
+    // would land on this text node and starve the tab's drag handlers.
+    // Letting the tab itself be the deepest hit keeps the capture
+    // target where the drag handlers live.
     text(label)
-        .layout(LayoutStyle::block().width(width))
+        .layout(LayoutStyle::block())
         .class("text-on-surface")
         .hittable(false)
 }

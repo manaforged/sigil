@@ -61,7 +61,7 @@ fn dropdown_has_combobox_role() {
 }
 
 #[test]
-fn dropdown_trigger_emits_surface_rect() {
+fn dropdown_trigger_emits_surface_inset_rect() {
     sigil::reactive::Runtime::scope("dd-surface", || {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(
@@ -70,7 +70,8 @@ fn dropdown_trigger_emits_surface_rect() {
         ));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface));
+        // Trigger fill is the `surface-inset` well — gray step 1.
+        assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
     });
 }
 
@@ -86,8 +87,8 @@ fn dropdown_popup_hidden_emits_trigger_rect_only() {
         let colors = rect_colors(&cx, root);
         assert!(!colors.is_empty(), "trigger rect should emit when closed");
         assert!(
-            colors.contains(&theme.surface),
-            "trigger uses surface color"
+            colors.contains(&theme.gray.step(1)),
+            "trigger uses the surface-inset color (gray step 1)"
         );
     });
 }

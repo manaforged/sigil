@@ -76,7 +76,7 @@ fn button_default() {
         |cx| cx.add(button("Save")),
         InteractionMode::Default,
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_default", img);
 }
@@ -87,7 +87,7 @@ fn button_hover() {
         |cx| cx.add(button("Save")),
         InteractionMode::Hover,
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_hover", img);
 }
@@ -98,7 +98,7 @@ fn button_pressed() {
         |cx| cx.add(button("Save")),
         InteractionMode::Pressed,
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_pressed", img);
 }
@@ -109,7 +109,7 @@ fn button_focused() {
         |cx| cx.add(button("Save")),
         InteractionMode::Focused,
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_focused", img);
 }
@@ -120,7 +120,7 @@ fn button_disabled() {
         |cx| cx.add(button("Save").enabled(false)),
         InteractionMode::Disabled,
         [160, 56],
-        (74.0, 22.0),
+        (24.0, 16.0),
     );
     check("button_disabled", img);
 }

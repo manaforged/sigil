@@ -4,14 +4,14 @@ use std::collections::HashMap;
 
 use crate::palette::Palette;
 use crate::scale::{
-    ColorScale, ScaleRole, amber_dark, amber_light, cyan_dark, cyan_light, green_dark, green_light,
-    iris_dark, iris_light, ruby_dark, ruby_light, slate_dark, slate_light,
+    ColorScale, ScaleRole, amber_dark, amber_light, blue_dark, blue_light, cyan_dark, cyan_light,
+    green_dark, green_light, ruby_dark, ruby_light, slate_dark, slate_light,
 };
 use crate::variant::{FontFamilyHint, Variant};
 use crate::{Dimension, LengthPercentage, Px, Rgba8, Size};
 
 #[cfg(debug_assertions)]
-const BUILT_IN_COLOR_TOKENS: [&str; 10] = [
+const BUILT_IN_COLOR_TOKENS: [&str; 12] = [
     "accent",
     "accent-hover",
     "on-accent",
@@ -19,8 +19,10 @@ const BUILT_IN_COLOR_TOKENS: [&str; 10] = [
     "surface-hover",
     "surface-pressed",
     "surface-pressed-strong",
+    "surface-inset",
     "on-surface",
     "border",
+    "border-strong",
     "scrim",
 ];
 
@@ -198,7 +200,7 @@ impl Theme {
     #[must_use]
     pub fn dark() -> Self {
         let gray = slate_dark();
-        let accent_scale = iris_dark();
+        let accent_scale = blue_dark();
         let success = green_dark();
         let warn = amber_dark();
         let error = ruby_dark();
@@ -303,7 +305,7 @@ impl Default for Theme {
         // reaches for `theme.surface` / `theme.accent` keeps working
         // verbatim.
         let gray = slate_light();
-        let accent_scale = iris_light();
+        let accent_scale = blue_light();
         let success = green_light();
         let warn = amber_light();
         let error = ruby_light();
@@ -383,11 +385,19 @@ impl Theme {
             "surface-pressed-strong" => Some(self.surface_pressed_strong),
             "on-surface" => Some(self.on_surface),
             "border" => Some(self.border),
+            // Step 8 — quiet-but-measurable track/boundary color for
+            // linear meters (slider rest, gauge, progress).
+            "border-strong" => Some(self.border_strong()),
             // DS1 semantic aliases. The parser strips the `bg-` /
             // `text-` prefix before lookup, so utility classes like
             // `bg-surface-subtle` / `text-on-surface-muted` route here
             // by their stripped suffix.
             "surface-subtle" => Some(self.surface_subtle()),
+            // Inset well for text fields / dropdowns: step 1 reads darker
+            // than the card in dark themes and lighter (white) in light
+            // themes — the Zed/ShadCN input idiom, where the fill (not a
+            // heavy border) carries the control boundary.
+            "surface-inset" => Some(self.gray.step(1)),
             "on-surface-muted" => Some(self.text_muted()),
             "on-solid" => Some(self.on_solid),
             // Modal-style overlay scrim — 60 % opacity black
@@ -491,7 +501,7 @@ impl Theme {
         // around each palette role color.
         Self {
             gray: slate_light(),
-            accent_scale: iris_light(),
+            accent_scale: blue_light(),
             success: green_light(),
             warn: amber_light(),
             error: ruby_light(),
@@ -547,9 +557,9 @@ impl Theme {
                 Size::Grow => return Dimension::Auto,
             },
             match size {
-                Size::Compact => 24,
-                Size::Default => 32,
-                Size::Wide => 44,
+                Size::Compact => 22,
+                Size::Default => 28,
+                Size::Wide => 36,
                 Size::Grow => unreachable!(),
             },
         )
@@ -566,9 +576,9 @@ impl Theme {
                 Size::Grow => return LengthPercentage::Percent(1.0),
             },
             match size {
-                Size::Compact => 8,
-                Size::Default => 12,
-                Size::Wide => 16,
+                Size::Compact => 6,
+                Size::Default => 10,
+                Size::Wide => 14,
                 Size::Grow => unreachable!(),
             },
         )

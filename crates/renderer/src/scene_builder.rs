@@ -149,6 +149,11 @@ impl SceneBuilder {
         self.with_scope(SceneCommand::SaveLayer { opacity }, ScopeKind::Layer, body);
     }
 
+    /// Run `body` inside an offscreen compositing layer.
+    pub fn with_composite_layer<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
+        self.with_scope(SceneCommand::PushLayer(scope), ScopeKind::Offscreen, body);
+    }
+
     /// Begin an offscreen layer scope.
     pub fn push_layer(&mut self, scope: LayerScope) {
         self.commands.push(SceneCommand::PushLayer(scope));
@@ -192,6 +197,7 @@ enum ScopeKind {
     Clip,
     Transform,
     Layer,
+    Offscreen,
 }
 
 impl ScopeKind {
@@ -200,6 +206,7 @@ impl ScopeKind {
             Self::Clip => SceneCommand::PopClip,
             Self::Transform => SceneCommand::PopTransform,
             Self::Layer => SceneCommand::RestoreLayer,
+            Self::Offscreen => SceneCommand::PopLayer,
         }
     }
 }

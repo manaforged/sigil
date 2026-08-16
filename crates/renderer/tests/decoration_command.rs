@@ -53,6 +53,11 @@ fn decoration_commands_walk_and_populate_decoration_pipeline_cache() {
     render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
     render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
 
+    let stats = renderer.last_frame_stats();
+    assert_eq!(stats.scene_commands, 3);
+    assert_eq!(stats.decoration_batches, 1);
+    assert_eq!(stats.decoration_instances, 3);
+
     let decoration_pipelines = renderer
         .decoration_pipeline_cache_count()
         .expect("renderer should have headless cache state");

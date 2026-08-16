@@ -96,7 +96,8 @@ fn typography_atoms_drive_text_measurement() {
         .expect("compute succeeds");
 
     let rect = layout_rect(&cx, root);
-    assert_eq!(rect.width, 27.0);
+    // text-xl = 18px, font-bold = 700 → 18 + 7 wide; leading-8 = 32px tall.
+    assert_eq!(rect.width, 25.0);
     assert_eq!(rect.height, 32.0);
 }
 

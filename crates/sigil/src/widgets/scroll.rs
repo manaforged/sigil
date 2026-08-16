@@ -11,15 +11,19 @@ use std::sync::{Mutex, OnceLock};
 
 use sigil_events::prelude::{Key, KeyEvent, NodeEventsExt, ScrollDelta, ScrollEvent};
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use sigil_layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
 use sigil_reactive::{Signal, derived_eq, signal};
-use sigil_style::{ClassSource, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
+use sigil_style::{
+    ClassSource, Dimension as StyleDimension, NodeStyleExt, Px, Style, StyleAccess, StyleAtom,
+};
 
 const VIEWPORT_HEIGHT: f32 = 240.0;
 const SCROLLBAR_WIDTH: f32 = 8.0;
 const THUMB_MIN_HEIGHT: f32 = 24.0;
 const SCROLL_LINE: f32 = 40.0;
 const ATOM_CACHE_CAP: usize = 256;
+
+type AtomCache = OnceLock<Mutex<HashMap<(i16, i16), &'static [StyleAtom]>>>;
 
 static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 // Thumb paints `surface-pressed-strong` — visibly darker than the
@@ -35,6 +39,7 @@ pub struct ScrollBuilder {
     extent: Signal<f32>,
     height: f32,
     width: Option<f32>,
+    fill: bool,
     extra: Option<ClassSource>,
     style_accumulator: Style,
 }
@@ -74,6 +79,7 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
         extent: extent.into_extent(),
         height: VIEWPORT_HEIGHT,
         width: None,
+        fill: false,
         extra: None,
         style_accumulator: Style::new(),
     }
@@ -101,23 +107,32 @@ impl ScrollBuilder {
         self
     }
 
+    /// Fill the parent's resolved height and use that measured height for
+    /// scroll bounds, page steps, and scrollbar geometry.
+    #[must_use]
+    pub const fn fill(mut self) -> Self {
+        self.fill = true;
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let scroll_y = signal(0.0_f32);
         let extent = self.extent;
         let height = self.height;
         let width = self.width;
+        let fill = self.fill;
         let content = self.content;
+        let (viewport, viewport_height) = viewport_signals(width, height, fill);
 
-        let max_scroll = derived_eq(move || (extent.get() - height).max(0.0));
-        let initial = extent.peek().max(height);
-        let body = wrap_content(content, scroll_y, max_scroll, initial);
-        let thumb = scrollbar_thumb(scroll_y, max_scroll, initial, height);
+        let max_scroll = derived_eq(move || (extent.get() - viewport_height.get()).max(0.0));
+        let body = wrap_content(content, scroll_y, max_scroll, extent, viewport_height);
+        let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height);
         // The thumb lives INSIDE the track: absolutes resolve against their
         // parent container, so it needs no viewport width to find the right
         // gutter (there is no `inset_right` to anchor against).
-        let track = scrollbar_track(height).child(thumb);
+        let track = scrollbar_track(height, fill).child(thumb);
 
-        let mut root = viewport_container(width, height)
+        let mut root = viewport_container(width, height, fill)
             .child(body)
             .child(track)
             .key(Key::ArrowDown, move |ev| {
@@ -127,10 +142,10 @@ impl ScrollBuilder {
                 step(ev, scroll_y, -SCROLL_LINE, max_scroll.peek());
             })
             .key(Key::PageDown, move |ev| {
-                step(ev, scroll_y, height, max_scroll.peek());
+                step(ev, scroll_y, viewport_height.peek(), max_scroll.peek());
             })
             .key(Key::PageUp, move |ev| {
-                step(ev, scroll_y, -height, max_scroll.peek());
+                step(ev, scroll_y, -viewport_height.peek(), max_scroll.peek());
             })
             .key(Key::Home, move |ev| {
                 jump(ev, scroll_y, 0.0);
@@ -139,8 +154,11 @@ impl ScrollBuilder {
                 jump(ev, scroll_y, max_scroll.peek());
             })
             .on_scroll(move |ev| {
-                wheel(ev, scroll_y, height, max_scroll.peek());
+                wheel(ev, scroll_y, viewport_height.peek(), max_scroll.peek());
             });
+        if fill {
+            root = root.size_reactive(viewport);
+        }
         if let Some(classes) = self.extra {
             root = root.class(classes);
         }
@@ -152,6 +170,23 @@ impl ScrollBuilder {
         }
         root
     }
+}
+
+fn viewport_signals(
+    width: Option<f32>,
+    height: f32,
+    fill: bool,
+) -> (Signal<(f32, f32)>, Signal<f32>) {
+    let viewport = signal((width.unwrap_or(0.0), height));
+    let viewport_height = derived_eq(move || {
+        let measured = viewport.get().1;
+        if fill && measured > 0.0 {
+            measured
+        } else {
+            height
+        }
+    });
+    (viewport, viewport_height)
 }
 
 impl StyleAccess for ScrollBuilder {
@@ -166,12 +201,12 @@ impl IntoNode for ScrollBuilder {
     }
 }
 
-fn viewport_container(width: Option<f32>, height: f32) -> NodeBuilder {
-    // Fill the parent's width by default; `.width()` pins an explicit
-    // extent. Height stays explicit: `max_scroll`, thumb size and travel
-    // are all derived from it, so a filled height would need the measured
-    // viewport fed back into those signals.
-    let base = LayoutStyle::flex_row().height(height);
+fn viewport_container(width: Option<f32>, height: f32, fill: bool) -> NodeBuilder {
+    let base = if fill {
+        LayoutStyle::flex_row().fill_height()
+    } else {
+        LayoutStyle::flex_row().height(height)
+    };
     let base = match width {
         Some(px) => base.width(px),
         None => base.fill_width(),
@@ -186,13 +221,15 @@ fn wrap_content(
     content: NodeBuilder,
     scroll_y: Signal<f32>,
     max_scroll: Signal<f32>,
-    initial: f32,
+    extent: Signal<f32>,
+    viewport_height: Signal<f32>,
 ) -> NodeBuilder {
-    let offset_px = derived_eq(move || {
+    let geometry = derived_eq(move || {
         let clamped = scroll_y.get().clamp(0.0, max_scroll.get());
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let px = clamped.round() as i16;
-        px
+        (
+            to_i16(clamped),
+            to_i16(extent.get().max(viewport_height.get())),
+        )
     });
     // Wrap the user's content in a fresh anonymous sizing container so
     // that the user's own LayoutStyle (flex_column, padding, gap, etc.)
@@ -202,37 +239,42 @@ fn wrap_content(
     // replaces on TypeId collision. Option B: the sizing box owns the
     // fixed_size; content is added as its child unchanged.
     container()
-        .layout(LayoutStyle::block().grow(1.0).width(0.0).height(initial))
+        .layout(
+            LayoutStyle::block()
+                .grow(1.0)
+                .width(0.0)
+                .height(extent.peek().max(viewport_height.peek())),
+        )
         .child(content)
-        .style_reactive(move || margin_top_atoms(offset_px.get()))
+        .style_reactive(move || content_geometry_atoms(geometry.get()))
 }
 
-fn scrollbar_track(height: f32) -> NodeBuilder {
+fn scrollbar_track(height: f32, fill: bool) -> NodeBuilder {
+    let layout = if fill {
+        LayoutStyle::block().width(SCROLLBAR_WIDTH).fill_height()
+    } else {
+        LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, height)
+    };
     container()
-        .layout(LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, height))
+        .layout(layout)
         .class(&[StyleAtom::BackgroundThemeRef("border")] as &[_])
 }
 
 fn scrollbar_thumb(
     scroll_y: Signal<f32>,
     max_scroll: Signal<f32>,
-    initial: f32,
-    height: f32,
+    extent: Signal<f32>,
+    viewport_height: Signal<f32>,
 ) -> NodeBuilder {
-    let ratio = (height / initial).clamp(0.0, 1.0);
-    let thumb_h = (ratio * height).max(THUMB_MIN_HEIGHT);
-    let max_travel = (height - thumb_h).max(0.0);
-
-    let thumb_top = derived_eq(move || {
+    let geometry = derived_eq(move || {
+        let (thumb_h, max_travel) = thumb_metrics(extent.get(), viewport_height.get());
         let max = max_scroll.get();
         let t = if max > 0.0 {
             scroll_y.get().clamp(0.0, max) / max
         } else {
             0.0
         };
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        let px = (t * max_travel).round() as i16;
-        px
+        (to_i16(thumb_h), to_i16(t * max_travel))
     });
 
     // Track-relative drag: record the down-position and the
@@ -252,13 +294,13 @@ fn scrollbar_thumb(
     container()
         .layout(
             LayoutStyle::block()
-                .fixed_size(SCROLLBAR_WIDTH, thumb_h)
+                .fixed_size(SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT)
                 .position(Position::Absolute)
                 .inset_left(thumb_left)
                 .inset_top(0.0),
         )
         .class(THUMB_ATOMS)
-        .style_reactive(move || margin_top_atoms(thumb_top.get()))
+        .style_reactive(move || thumb_geometry_atoms(geometry.get()))
         .pointer_down(move |ev| {
             ev.capture_pointer();
             drag_anchor.set(Some((ev.position.y, scroll_y.peek())));
@@ -274,6 +316,7 @@ fn scrollbar_thumb(
                 return;
             };
             let max = max_scroll.peek();
+            let (_, max_travel) = thumb_metrics(extent.peek(), viewport_height.peek());
             if max_travel <= 0.0 || max <= 0.0 {
                 return;
             }
@@ -283,6 +326,20 @@ fn scrollbar_thumb(
             scroll_y.set(next);
             ev.stop_propagation();
         })
+}
+
+fn thumb_metrics(extent: f32, viewport_height: f32) -> (f32, f32) {
+    let height = viewport_height.max(0.0);
+    let content = extent.max(height);
+    let ratio = if content > 0.0 {
+        (height / content).clamp(0.0, 1.0)
+    } else {
+        1.0
+    };
+    let thumb_h = (ratio * height)
+        .max(THUMB_MIN_HEIGHT.min(height))
+        .min(height);
+    (thumb_h, (height - thumb_h).max(0.0))
 }
 
 /// Apply a fixed pixel step (arrow / page keys). Only stops
@@ -329,13 +386,32 @@ pub(crate) fn wheel(ev: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, ma
     }
 }
 
-fn margin_top_atoms(px: i16) -> &'static [StyleAtom] {
-    cached_atoms(px, || vec![StyleAtom::MarginTop(Px(px.wrapping_neg()))])
+fn content_geometry_atoms((offset, height): (i16, i16)) -> &'static [StyleAtom] {
+    static CACHE: AtomCache = OnceLock::new();
+    cached_atoms(&CACHE, (offset, height), || {
+        vec![
+            StyleAtom::MarginTop(Px(offset.wrapping_neg())),
+            StyleAtom::Height(StyleDimension::Px(Px(height))),
+        ]
+    })
 }
 
-fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [StyleAtom] {
-    static CACHE: OnceLock<Mutex<HashMap<i16, &'static [StyleAtom]>>> = OnceLock::new();
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+fn thumb_geometry_atoms((height, offset): (i16, i16)) -> &'static [StyleAtom] {
+    static CACHE: AtomCache = OnceLock::new();
+    cached_atoms(&CACHE, (height, offset), || {
+        vec![
+            StyleAtom::Height(StyleDimension::Px(Px(height))),
+            StyleAtom::MarginTop(Px(offset)),
+        ]
+    })
+}
+
+fn cached_atoms(
+    cache: &'static AtomCache,
+    key: (i16, i16),
+    build: impl FnOnce() -> Vec<StyleAtom>,
+) -> &'static [StyleAtom] {
+    let cache = cache.get_or_init(|| Mutex::new(HashMap::new()));
     let Ok(mut map) = cache.lock() else {
         return Box::leak(build().into_boxed_slice());
     };
@@ -347,4 +423,11 @@ fn cached_atoms(key: i16, build: impl FnOnce() -> Vec<StyleAtom>) -> &'static [S
         map.insert(key, leaked);
     }
     leaked
+}
+
+fn to_i16(px: f32) -> i16 {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    {
+        px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16
+    }
 }

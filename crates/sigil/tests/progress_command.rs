@@ -71,7 +71,7 @@ fn progress_aria_value_updates_reactively() {
 }
 
 #[test]
-fn progress_track_emits_surface_hover_color() {
+fn progress_track_emits_border_strong_color() {
     sigil::reactive::Runtime::scope("sigil-progress-track-color", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
@@ -84,8 +84,8 @@ fn progress_track_emits_surface_hover_color() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.surface_hover),
-            "track should emit surface-hover color"
+            colors.contains(&theme.border_strong()),
+            "track should emit the border-strong (gray-8) color"
         );
     });
 }
@@ -104,8 +104,8 @@ fn progress_fill_emits_accent_color() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent),
-            "fill should emit accent color"
+            colors.contains(&theme.accent_scale.step(8)),
+            "fill should emit the muted accent-8 color"
         );
     });
 }
@@ -124,8 +124,8 @@ fn progress_indeterminate_emits_accent_fill() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent),
-            "indeterminate fill should emit accent color"
+            colors.contains(&theme.accent_scale.step(8)),
+            "indeterminate fill should emit the muted accent-8 color"
         );
     });
 }

@@ -1,7 +1,7 @@
 //! Gauge widget — labeled HP/CT bar for battler HUDs.
 //!
 //! Reuses the [`progress`](super::progress) widget's track/fill shape
-//! (a `surface-hover` track holding a reactive-width `accent` fill)
+//! (a `border-strong` track holding a reactive-width `accent` fill)
 //! and adds two things a battler HUD needs on top: an optional visible
 //! plus accessible label, and a `.warn(threshold)` tone shift. Once
 //! `value / max` drops below `threshold` the fill flips from the
@@ -17,10 +17,10 @@ use sigil_reactive::Signal;
 use sigil_style::{Dimension, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
 
 const TRACK_WIDTH: f32 = 160.0;
-const TRACK_HEIGHT: f32 = 10.0;
+const TRACK_HEIGHT: f32 = 8.0;
 const GAUGE_GAP: f32 = 8.0;
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border-strong")];
 
 /// Cache key: fill width in px + whether the warn tone is active.
 type FillAtomCache = HashMap<(i16, bool), &'static [StyleAtom]>;
@@ -180,7 +180,7 @@ fn cached_fill_atoms(px: i16, is_warn: bool) -> &'static [StyleAtom] {
 }
 
 fn build_fill_atoms(px: i16, is_warn: bool) -> Vec<StyleAtom> {
-    let tone = if is_warn { "warn-9" } else { "accent" };
+    let tone = if is_warn { "warn-9" } else { "accent-8" };
     vec![
         StyleAtom::Width(Dimension::Px(Px(px))),
         StyleAtom::BackgroundThemeRef(tone),
