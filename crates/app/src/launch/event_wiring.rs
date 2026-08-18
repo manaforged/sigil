@@ -1,7 +1,9 @@
 //! Event-drain and window-event helpers for the launch loop.
 
 use sigil_events::EventRouter;
-use sigil_hal::{Key, KeyPhase, PhysicalSize, Scale, Shell as _, ShellEvent, WindowEvent};
+use sigil_hal::{
+    Key, KeyPhase, PhysicalSize, PointerPhase, Scale, Shell as _, ShellEvent, WindowEvent,
+};
 use sigil_kernel::Cx;
 use sigil_layout::LayoutEngine;
 use sigil_reactive::Runtime;
@@ -100,6 +102,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         exit_requested,
     } = ctx;
     for event in shell.drain_events() {
+        note_input(&event);
         if let ShellEvent::Window(window_event) = &event {
             let mut window_ctx = WindowEventCtx {
                 cx,
@@ -124,6 +127,26 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     }
     if *exit_requested {
         shell.request_exit();
+    }
+}
+
+fn note_input(event: &ShellEvent) {
+    if !sigil_profile::enabled() {
+        return;
+    }
+    match event {
+        ShellEvent::Pointer(pointer) => match pointer.phase {
+            PointerPhase::Down | PointerPhase::Up => sigil_profile::interact("pointer"),
+            PointerPhase::Move => sigil_profile::interact("hover"),
+            PointerPhase::Enter | PointerPhase::Leave | PointerPhase::Cancel => {}
+        },
+        ShellEvent::Key(_) => sigil_profile::interact("key"),
+        ShellEvent::Scroll(_) => sigil_profile::interact("scroll"),
+        ShellEvent::Ime(_) => sigil_profile::interact("ime"),
+        ShellEvent::Window(WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged(_)) => {
+            sigil_profile::interact("resize");
+        }
+        ShellEvent::Window(_) | ShellEvent::FileDrop(_) => {}
     }
 }
 
@@ -217,6 +240,7 @@ pub(super) fn drain_a11y_actions(
     let mut bridge =
         sigil_a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
     while let Some((target, request)) = sigil_hal::A11yBridge::take_action(&mut bridge) {
+        sigil_profile::interact("a11y");
         match request.action {
             accesskit::Action::Focus if router.is_focus_target(cx, layout, target) => {
                 router.set_focus(cx, Some(target));

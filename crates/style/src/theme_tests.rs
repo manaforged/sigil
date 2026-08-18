@@ -154,3 +154,17 @@
         assert_eq!(t.resolve_color("accent"), t.accent);
         assert_ne!(t.resolve_color("accent"), Rgba8 { r: 38, g: 38, b: 38, a: 255 });
     }
+
+    #[test]
+    fn runtime_token_rebinding_accent_wins_over_builtin() {
+        let gold = Rgba8 { r: 0xE8, g: 0xC0, b: 0x60, a: 255 };
+        let navy = Rgba8 { r: 0x0D, g: 0x12, b: 0x20, a: 255 };
+        let t = Theme::dark()
+            .with_token("accent", ThemeValue::Color(gold))
+            .with_token("on-accent", ThemeValue::Color(navy));
+        assert_eq!(t.resolve_color("accent"), gold);
+        assert_eq!(t.accent, gold);
+        assert_eq!(t.accent_scale.step(9), gold);
+        assert_eq!(t.accent_scale.on_solid, navy);
+        assert_ne!(t.resolve_color("accent"), Theme::dark().accent);
+    }

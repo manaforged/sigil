@@ -25,10 +25,6 @@
 #![allow(clippy::panic)]
 #![allow(missing_docs)]
 
-// `winit` is a regular dep on `sigil-async` (future event-loop-proxy
-// wiring) but is not used by any of these tests; silence the
-// unused-dep lint that flows into every integration-test binary.
-use winit as _;
 // `criterion` is a dev-dep used only by `benches/async_ops.rs`. Cargo
 // pulls every dev-dep into every test binary, which trips
 // `unused_crate_dependencies` here. Alias silences the lint without a

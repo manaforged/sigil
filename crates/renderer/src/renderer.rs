@@ -16,9 +16,7 @@ use sigil_hal::{Color, PhysicalSize, Renderer};
 use crate::device_state::DeviceState;
 use crate::error::RendererError;
 use crate::frame_stats::FrameStats;
-use crate::scene::Scene;
 use crate::scene_command::CommandScene;
-use crate::scene_command::adapter::flat_to_commands;
 use crate::surface::WgpuSurface;
 use crate::window_handle::WindowHandle;
 
@@ -200,18 +198,8 @@ impl WgpuRenderer {
         if let Some(color) = target.clear {
             record_clear(encoder, target.view, color);
         }
-        // Drop the previous call's transient layer textures (their submission
-        // has completed by now) and capture this call's into the same buffer,
-        // so they outlive the host's deferred submit of `encoder`.
-        let Self {
-            state,
-            frame_transients,
-            last_frame_stats,
-            ..
-        } = self;
-        frame_transients.clear();
-        let retained = frame_transients;
-        let ready = state.ensure_ready_headless()?;
+        self.recycle_transients();
+        let ready = self.state.ensure_ready_headless()?;
         // Device-equality guard: the renderer's cached pipelines are bound to
         // `ready.device`. Recording against a foreign device would poison the
         // caches with handles created on the wrong device. Foreign-device
@@ -223,29 +211,38 @@ impl WgpuRenderer {
                 target.device,
                 target.queue,
                 encoder,
-                retained,
+                &mut self.frame_transients,
                 target.view,
                 target.viewport,
                 target.scale,
                 target.format,
                 scene,
-                last_frame_stats,
+                &mut self.last_frame_stats,
             )
         } else {
             crate::offscreen::walk_with_temporary_pipelines(
                 encoder,
-                retained,
-                crate::offscreen::OffscreenTarget {
-                    device: target.device,
-                    queue: target.queue,
-                    view: target.view,
-                    format: target.format,
-                    viewport: target.viewport,
-                    scale: target.scale,
-                },
+                &mut self.frame_transients,
+                crate::offscreen::OffscreenTarget::from(target),
                 scene,
-                last_frame_stats,
+                &mut self.last_frame_stats,
             )
+        }
+    }
+
+    /// Drop the previous call's transient layer textures (their submission
+    /// has completed by now), so this call's captures reuse the same buffer.
+    fn recycle_transients(&mut self) {
+        if let DeviceState::Ready(ready) = &mut self.state {
+            if let Some(pool) = ready.layer_pool.as_mut() {
+                for handle in self.frame_transients.drain(..) {
+                    pool.release(handle);
+                }
+            } else {
+                self.frame_transients.clear();
+            }
+        } else {
+            self.frame_transients.clear();
         }
     }
 
@@ -304,39 +301,8 @@ impl WgpuRenderer {
         render_frame_surface(ready, surface, clear_color, draw)
     }
 
-    /// Acquire the surface texture, clear, paint every `SceneItem::Rect`
-    /// and `SceneItem::Text` from `scene`, then present.
-    ///
-    /// The scene's rectangles are interpreted in logical pixels; the
-    /// `viewport` argument is also logical pixels and must match the
-    /// layout root size used to emit the scene. The WGSL scene shader
-    /// uses this logical viewport for its NDC conversion math. The
-    /// acquired surface texture is the physical-pixel part of the call;
-    /// do not pass physical surface dimensions as `viewport`.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`RendererError::NotInitialized`] if called before
-    /// [`Self::create_surface`]. Surface-lost / timeout returns `Ok(())` —
-    /// the next frame retries.
-    pub fn render_scene(
-        &mut self,
-        surface: &mut WgpuSurface,
-        scene: &Scene,
-        clear_color: Color,
-        viewport: (f32, f32),
-    ) -> Result<(), RendererError> {
-        let commands = flat_to_commands(scene);
-        self.render_command_scene(surface, &commands, clear_color, viewport)
-    }
-
     /// Acquire the surface texture, clear, walk every command from `scene`,
     /// and present.
-    ///
-    /// This is the command-buffer counterpart to [`Self::render_scene`].
-    /// `render_scene` remains the flat-scene compatibility entry point and
-    /// compiles its input through the Step 3 adapter before calling this
-    /// method.
     ///
     /// # Errors
     ///

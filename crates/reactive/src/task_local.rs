@@ -8,7 +8,7 @@
 //! delivered through a `tokio::sync::oneshot` whose sender lives in the
 //! future body on the same thread as the receiver in the handle.
 //!
-//! See [`crate::Context::spawn_local`] for the producer side.
+//! See [`crate::EntityCx::spawn_local`] for the producer side.
 
 use core::fmt;
 use core::future::Future;
@@ -48,7 +48,7 @@ pub struct LocalTask<R> {
 
 impl<R> LocalTask<R> {
     /// Construct from raw parts. `pub(crate)` so only
-    /// [`crate::cx::Context::spawn_local`] can mint a `LocalTask`.
+    /// [`crate::cx::EntityCx::spawn_local`] can mint a `LocalTask`.
     #[track_caller]
     #[allow(
         clippy::missing_const_for_fn,
@@ -56,7 +56,7 @@ impl<R> LocalTask<R> {
     )]
     #[allow(
         dead_code,
-        reason = "consumed by Context::spawn_local in the same W4.99.B3 landing — module landing order"
+        reason = "consumed by EntityCx::spawn_local in the same W4.99.B3 landing — module landing order"
     )]
     pub(crate) fn from_parts(abort: AbortHandle, result_rx: oneshot::Receiver<R>) -> Self {
         Self {

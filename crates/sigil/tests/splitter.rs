@@ -27,11 +27,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -185,6 +185,36 @@ fn pane_builder_carries_initial_min_max_into_layout() {
         (wb - 250.0).abs() < 0.5,
         "pane b expected ~250 px wide, got {wb}",
     );
+}
+
+#[test]
+fn grow_pane_takes_leftover_width() {
+    sigil::reactive::Runtime::scope("phase-2-4::splitter-grow", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            splitter(SplitterOrientation::Horizontal)
+                .pane(container().label("side"))
+                .initial(120.0)
+                .pane(container().label("main"))
+                .grow(1.0)
+                .commit()
+                .width(406.0)
+                .height(200.0),
+        );
+        let layout = compute(&mut cx, root, 406.0, 200.0);
+        let side = cx.nth_child(root, 0).expect("side pane");
+        let main = cx.nth_child(root, 2).expect("main pane");
+        let side_w = layout.result(side).expect("side").rect().width;
+        let main_w = layout.result(main).expect("main").rect().width;
+        assert!(
+            (side_w - 120.0).abs() < 0.5,
+            "fixed pane stays 120, got {side_w}"
+        );
+        assert!(
+            (main_w - 280.0).abs() < 0.5,
+            "grow pane takes leftover (406 - 120 - 6 handle), got {main_w}"
+        );
+    });
 }
 
 #[test]

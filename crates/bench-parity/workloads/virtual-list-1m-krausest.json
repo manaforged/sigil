@@ -1,0 +1,32 @@
+{
+  "workload_id": "virtual-list-1m-krausest",
+  "description": "1M uniform list, krausest 4-cell row, rebuild tree each sample. Book is 1_000_000 rows; the window is the viewport page plus Sigil overscan. Voids if book_held fails.",
+  "category": "virtual-list",
+  "params": {
+    "row_count": 1000000,
+    "row_height_px": 32.0,
+    "viewport_width_px": 1280.0,
+    "viewport_height_px": 1280.0,
+    "row_shape": "krausest-4-cell",
+    "scroll_pattern": "linear-one-row-per-frame",
+    "iterations": 40,
+    "warmup": 6,
+    "surface": "layout",
+    "reuse": false,
+    "cells_per_row": 4
+  },
+  "equivalence_checks": [
+    {
+      "name": "visible_window_indices",
+      "description": "Materialised row count is the viewport page, or Sigil page plus one page of overscan each side"
+    },
+    {
+      "name": "book_held",
+      "description": "Runner allocated 1_000_000 source rows, not only the window"
+    },
+    {
+      "name": "text_did_work",
+      "description": "text.measure covers visible id/label/remove cells"
+    }
+  ]
+}

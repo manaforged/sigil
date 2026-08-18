@@ -105,8 +105,11 @@ fn take_for_update(key: SignalKey, caller: &'static Location<'static>) -> Box<dy
     })
 }
 
-impl<T: 'static> Signal<T> {
+impl<T: PartialEq + 'static> Signal<T> {
     /// Replace the signal's value and schedule dependent effects.
+    ///
+    /// Equal to the current value: no notify, no frame dirty. Authors
+    /// do not have to remember a second `set_if_changed`.
     ///
     /// The old `T` is dropped *outside* the runtime borrow so a
     /// `Drop` impl that touches the runtime cannot deadlock.
@@ -131,12 +134,66 @@ impl<T: 'static> Signal<T> {
                 .value
                 .downcast_mut::<T>()
                 .expect("signal type mismatch");
+            if *current == value {
+                return (None, None);
+            }
+            let old = core::mem::replace(current, value);
+            if slot.subscribers.is_empty() {
+                return (Some(old), None);
+            }
+            // A write with live subscribers can change the visual tree; mark the
+            // frame dirty so the driver paints (see `Runtime::frame_dirty`).
+            rt.frame_dirty = true;
+            let subs = fan_out_signal(
+                SignalFanOut {
+                    batch_depth: rt.batch_depth,
+                    effects: &rt.effects,
+                    running: &rt.running,
+                    pending: &mut rt.pending,
+                    pending_set: &mut rt.pending_set,
+                },
+                &slot.subscribers,
+                self.key,
+            );
+            (Some(old), subs)
+        });
+        drop(old);
+        if let Some(subs) = subscribers {
+            schedule_effects(subs);
+        }
+    }
+}
+
+impl<T: 'static> Signal<T> {
+    /// Replace the value and always notify, even when it compares equal.
+    ///
+    /// Prefer [`Signal::set`] when `T: PartialEq`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the signal has been disposed, or if this signal's
+    /// update closure is still running.
+    #[inline]
+    #[track_caller]
+    pub fn set_always(self, value: T) {
+        let caller = Location::caller();
+        let (old, subscribers) = with_rt(|rt| {
+            crate::phase::assert_paint_safe(rt, "Signal::set_always");
+            let Some(slot) = rt.signals.get_mut(self.key) else {
+                crate::diagnostic::disposed_signal("set_always", caller);
+            };
+            assert!(
+                !slot.value.is::<UpdateInProgress>(),
+                "Signal::set_always on a signal whose own update closure is still running (at {caller})"
+            );
+            let current = slot
+                .value
+                .downcast_mut::<T>()
+                .expect("signal type mismatch");
             let old = core::mem::replace(current, value);
             if slot.subscribers.is_empty() {
                 return (old, None);
             }
-            // A write with live subscribers can change the visual tree; mark the
-            // frame dirty so the driver paints (see `Runtime::frame_dirty`).
             rt.frame_dirty = true;
             let subs = fan_out_signal(
                 SignalFanOut {

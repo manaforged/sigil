@@ -120,6 +120,14 @@ impl Node {
         self.extensions.as_mut().and_then(|bag| bag.get_mut::<T>())
     }
 
+    /// Mutably borrow an extension without bumping `version`.
+    ///
+    /// Paint-only writes (hover overlay, slot cell) use this so layout
+    /// can cache the last input signature.
+    pub fn get_extension_mut_untracked<T: 'static>(&mut self) -> Option<&mut T> {
+        self.extensions.as_mut().and_then(|bag| bag.get_mut::<T>())
+    }
+
     /// Remove a typed extension component from this node.
     pub fn remove_extension<T: 'static>(&mut self) -> Option<T> {
         self.bump_version();
@@ -167,10 +175,9 @@ pub enum NodeType {
     Text {
         /// Static or reactive text content.
         content: TextContent,
-        /// When `true`, the text wraps to its containing block's width
-        /// (multi-line). When `false` (the default), it hugs its content
-        /// on a single line and the container decides what to do with
-        /// any overflow. Set via [`crate::TextBuilder::wrap`].
+        /// When `true` (the default), the text wraps to its containing
+        /// block's width. When `false`, it stays one line. Set via
+        /// [`crate::TextBuilder::wrap`] / [`crate::TextBuilder::nowrap`].
         wrap: bool,
         /// When `true`, the text stays on one line and is truncated with a
         /// trailing ellipsis (`…`) if it is given less width than it needs

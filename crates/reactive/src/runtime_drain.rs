@@ -73,46 +73,6 @@ pub(crate) fn push_pending_completion(
     });
 }
 
-/// Drain the a11y-dirty flag — W5.2 / DR-050 §G10-phase-2.
-///
-/// Called from [`crate::Runtime::end_frame`] after the deferred-write
-/// replay and the observer fixpoint pass, when every signal mutation
-/// produced this frame has settled. If the runtime has had its dirty
-/// flag flipped (by an `entity_a11y_observer` effect body that read a
-/// changed signal), invoke the installed publisher closure; the
-/// publisher itself is responsible for snapshotting the kernel `Cx`
-/// into a `TreeUpdate` and forwarding it to the bridge.
-///
-/// No-op when `a11y_dirty` is false (the steady-state path after a
-/// frame where no observed signal changed). No-op without a panic when
-/// no publisher has been installed — the bridge install is optional
-/// and the kernel must still drive frames in tests that do not exercise
-/// the a11y surface.
-///
-/// The dirty flag is cleared *before* the publisher runs so a
-/// publisher that itself touches a tracked signal (rare but legal)
-/// re-flips dirty for the next frame instead of being clobbered by a
-/// post-drain reset.
-pub(crate) fn drain_a11y_updates() {
-    let dirty = with_rt(|rt| rt.a11y_dirty);
-    if !dirty {
-        return;
-    }
-    let mut publisher = with_rt(|rt| rt.a11y_publisher.take());
-    with_rt(|rt| rt.a11y_dirty = false);
-    if let Some(ref mut publish) = publisher {
-        publish();
-    }
-    with_rt(|rt| {
-        // Restore the publisher unless `install_a11y_publisher` was
-        // called *during* the publish closure (in which case the
-        // freshly-installed publisher wins).
-        if rt.a11y_publisher.is_none() {
-            rt.a11y_publisher = publisher;
-        }
-    });
-}
-
 /// Drain `pending_observers` until the queue is stable, with a fixed
 /// `MAX_DRAIN_PASSES` cap on the number of observer-fan-out passes.
 ///

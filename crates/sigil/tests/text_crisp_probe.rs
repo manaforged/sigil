@@ -29,6 +29,7 @@ fn install_geist() -> bool {
         sans: Some((Arc::new(sans), 0)),
         mono: Some((Arc::new(mono), 0)),
         icon: None,
+        display: None,
     });
     true
 }
@@ -410,6 +411,7 @@ fn render_font_ab() {
         sans: Some((Arc::new(sans), 0)),
         mono: Some((Arc::new(mono), 0)),
         icon: None,
+        display: None,
     });
     render_once("font_sf");
     install_geist(); // restore for any later test on this thread

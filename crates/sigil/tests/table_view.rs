@@ -25,6 +25,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
@@ -67,12 +68,12 @@ fn demo_state() -> TableState<Item> {
         demo_rows(),
         vec![
             TableColumn::new("name", "Name")
-                .sortable(|a: &Item, b: &Item| a.name.cmp(&b.name))
+                .sort_by(|row: &Item| row.name.clone())
                 .filterable(|row: &Item, query: &str| row.name.contains(query))
                 .width(ColWidth::Fixed(100.0))
                 .cell(|row: &Item| container().child(text(row.name.clone()))),
             TableColumn::new("count", "Count")
-                .sortable(|a: &Item, b: &Item| a.count.cmp(&b.count))
+                .sort_by(|row: &Item| row.count)
                 .width(ColWidth::Fixed(100.0))
                 .cell(|row: &Item| container().child(text(row.count.to_string()))),
         ],
@@ -185,7 +186,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
         // Header cell "name": x in [0, 100), y in [0, 28).
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
-            state.sort().get(),
+            state.sort_key().get(),
             Some(SortKey {
                 column: "name",
                 dir: SortDir::Ascending,
@@ -196,7 +197,7 @@ fn header_click_cycles_sort_and_reorders_rows() {
 
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
-            state.sort().get(),
+            state.sort_key().get(),
             Some(SortKey {
                 column: "name",
                 dir: SortDir::Descending,
@@ -205,13 +206,13 @@ fn header_click_cycles_sort_and_reorders_rows() {
         assert_eq!(visible_names(&state), ["gamma", "delta", "beta", "alpha"]);
 
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
-        assert_eq!(state.sort().get(), None, "third click clears the sort");
+        assert_eq!(state.sort_key().get(), None, "third click clears the sort");
         assert_eq!(visible_names(&state), ["gamma", "alpha", "delta", "beta"]);
 
         // The second column ("count", x in [100, 200)) sorts too.
         click(&mut router, &mut cx, &layout, 150.0, 14.0);
         assert_eq!(
-            state.sort().get(),
+            state.sort_key().get(),
             Some(SortKey {
                 column: "count",
                 dir: SortDir::Ascending,
@@ -315,15 +316,13 @@ fn hover_row_paints_hover_slice() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
         let hover = Theme::default().surface_hover;
-        // The header row rests at surface-hover; a hovered body row
-        // adds a second occurrence.
         assert_eq!(
             rect_colors(&cx, root)
                 .iter()
                 .filter(|c| **c == hover)
                 .count(),
-            1,
-            "rest: only the header paints surface-hover",
+            0,
+            "rest: header is surface, no hover tint",
         );
         router.route(
             &mut cx,
@@ -340,8 +339,8 @@ fn hover_row_paints_hover_slice() {
                 .iter()
                 .filter(|c| **c == hover)
                 .count(),
-            2,
-            "hovered row paints a second surface-hover slice",
+            1,
+            "hovered row paints a surface-hover slice",
         );
         router.route(
             &mut cx,
@@ -353,7 +352,7 @@ fn hover_row_paints_hover_slice() {
                 .iter()
                 .filter(|c| **c == hover)
                 .count(),
-            1,
+            0,
             "pointer leave restores the rest paint",
         );
     });
@@ -369,7 +368,7 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
             rows,
             vec![
                 TableColumn::new("name", "Name")
-                    .sortable(|a: &Item, b: &Item| a.name.cmp(&b.name))
+                    .sort_by(|row: &Item| row.name.clone())
                     .width(ColWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
             ],
@@ -417,7 +416,7 @@ fn quick_filter_keeps_keyboard_row_count_live() {
             rows,
             vec![
                 TableColumn::new("name", "Name")
-                    .sortable(|a: &Item, b: &Item| a.name.cmp(&b.name))
+                    .sort_by(|row: &Item| row.name.clone())
                     .filterable(|row: &Item, query: &str| row.name.contains(query))
                     .width(ColWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
@@ -466,7 +465,7 @@ fn wheel_scroll_advances_the_window() {
             rows,
             vec![
                 TableColumn::new("name", "Name")
-                    .sortable(|a: &Item, b: &Item| a.name.cmp(&b.name))
+                    .sort_by(|row: &Item| row.name.clone())
                     .width(ColWidth::Fixed(WIDTH))
                     .cell(|row: &Item| container().child(text(row.name.clone()))),
             ],
@@ -509,6 +508,28 @@ fn wheel_scroll_advances_the_window() {
 }
 
 #[test]
+fn empty_filter_shows_no_rows() {
+    sigil::reactive::Runtime::scope("table-view-empty", || {
+        let state = demo_state();
+        state.quick_filter().set("zzzz".into());
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            table(state)
+                .row_height(ROW_H)
+                .header_height(HEADER_H)
+                .viewport_width(WIDTH)
+                .viewport_height(VIEW_H),
+        );
+        let _ = compute(&mut cx, root);
+        let texts = glyph_texts(&cx, root);
+        assert!(
+            texts.iter().any(|text| text.contains("No rows")),
+            "empty table shows the default empty copy: {texts:?}"
+        );
+    });
+}
+
+#[test]
 fn grid_a11y_channels_attach() {
     sigil::reactive::Runtime::scope("table-view-a11y", || {
         let state = demo_state();
@@ -541,6 +562,158 @@ fn grid_a11y_channels_attach() {
         assert!(
             header_cell.a11y.sort_direction.is_some(),
             "sortable header carries the sort-direction channel",
+        );
+    });
+}
+
+const fn pointer_button(
+    phase: PointerPhase,
+    x: f32,
+    y: f32,
+    button: MouseButton,
+    buttons: MouseButtons,
+) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(button),
+        buttons,
+        modifiers: ModifiersState::empty(),
+        phase,
+    }))
+}
+
+#[test]
+fn resize_handle_pins_column_width() {
+    sigil::reactive::Runtime::scope("table-view-resize", || {
+        let state = demo_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            table(state.clone())
+                .row_height(ROW_H)
+                .header_height(HEADER_H)
+                .viewport_width(WIDTH)
+                .viewport_height(VIEW_H),
+        );
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+        // Name column is Fixed(100); handle sits on the trailing 6 px.
+        router.route(
+            &mut cx,
+            &layout,
+            pointer_button(
+                PointerPhase::Down,
+                97.0,
+                14.0,
+                MouseButton::Left,
+                MouseButtons::LEFT,
+            ),
+        );
+        router.route(
+            &mut cx,
+            &layout,
+            pointer_button(
+                PointerPhase::Move,
+                137.0,
+                14.0,
+                MouseButton::Left,
+                MouseButtons::LEFT,
+            ),
+        );
+        router.route(
+            &mut cx,
+            &layout,
+            pointer_button(
+                PointerPhase::Up,
+                137.0,
+                14.0,
+                MouseButton::Left,
+                MouseButtons::empty(),
+            ),
+        );
+        assert_eq!(
+            state.column_width("name"),
+            Some(140.0),
+            "drag +40 px pins the name column",
+        );
+    });
+}
+
+#[test]
+fn right_click_row_selects() {
+    sigil::reactive::Runtime::scope("table-view-context", || {
+        let state = demo_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            table(state.clone())
+                .row_height(ROW_H)
+                .header_height(HEADER_H)
+                .viewport_width(WIDTH)
+                .viewport_height(VIEW_H),
+        );
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+        let row_y = ROW_H.mul_add(1.5, HEADER_H);
+        router.route(
+            &mut cx,
+            &layout,
+            pointer_button(
+                PointerPhase::Down,
+                50.0,
+                row_y,
+                MouseButton::Right,
+                MouseButtons::RIGHT,
+            ),
+        );
+        assert!(
+            state.selection().get().contains(&1),
+            "right-click selects the row",
+        );
+    });
+}
+
+#[test]
+fn fraction_column_honours_min_width() {
+    sigil::reactive::Runtime::scope("table-min-width", || {
+        let state = TableState::new(
+            demo_rows(),
+            vec![
+                TableColumn::new("name", "Name")
+                    .width(ColWidth::Fixed(300.0))
+                    .cell(|row: &Item| container().child(text(row.name.clone()))),
+                TableColumn::new("count", "Count")
+                    .width(ColWidth::Fraction(1.0))
+                    .min_width(192.0)
+                    .cell(|row: &Item| container().child(text(row.count.to_string()))),
+            ],
+        );
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            table(state)
+                .row_height(ROW_H)
+                .header_height(HEADER_H)
+                .viewport_width(400.0)
+                .viewport_height(VIEW_H),
+        );
+        let layout = compute(&mut cx, root);
+        let header = *cx
+            .get(root)
+            .expect("grid")
+            .children()
+            .first()
+            .expect("header");
+        let count_cell = cx
+            .get(header)
+            .expect("header row")
+            .children()
+            .get(1)
+            .copied()
+            .expect("count header");
+        let width = layout.result(count_cell).expect("count rect").rect().width;
+        assert!(
+            width >= 192.0,
+            "Fraction min_width(192) must hold in a 400px table beside Fixed(300), got {width}"
         );
     });
 }

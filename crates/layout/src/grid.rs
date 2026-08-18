@@ -10,12 +10,16 @@
 //! its children (block / flex / nested grid), like a flex item.
 //!
 //! Out of scope, and documented rather than silently wrong: explicit line
-//! placement, named lines, dense packing, implicit/auto *columns*, and
-//! vertical stretch of cells to their row. A row-spanning item's height is
-//! spread evenly over the rows it covers (not the full CSS distribution).
+//! placement, named lines, dense packing, implicit/auto *columns*. A
+//! row-spanning item's height is spread evenly over the rows it covers
+//! (not the full CSS distribution).
 //! `Auto` **columns** are treated as `Fr(1.0)` (there is no content-based
 //! column measurement pass yet). A grid with no column tracks lays its
 //! children out in a single full-width column.
+//! `Fr` rows share leftover height when the grid box has a definite
+//! height (`Px`, `Fill`, `Percent`) or a definite available height
+//! (a flex item that grew). Grid items stretch to their track area
+//! when their own height is `Auto`.
 
 // Track/row indices are derived from the very lengths being indexed
 // (`col < ncols`, `row < nrows`), so the slice accesses cannot go out of
@@ -26,10 +30,10 @@ use ahash::AHashSet;
 
 use crate::LayoutError;
 use crate::block::{BlockSolver, Position2};
-use crate::block_size::NodeEdges;
 use crate::flex::{CbSize, FlexSolver};
 use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef, SpaceConstraint};
-use crate::style_data::{Dimension, Display, LengthPercentage, Size, TrackSize};
+use crate::resolve::NodeEdges;
+use crate::style_data::{Dimension, Display, LengthPercentage, Size, StyleData, TrackSize};
 
 /// Minimal two-dimensional grid layout.
 pub(crate) struct GridSolver<'a> {
@@ -42,6 +46,42 @@ struct Cols {
     widths: Vec<f32>,
     x: Vec<f32>,
     n: usize,
+}
+
+impl Cols {
+    fn new(content_x: f32, widths: Vec<f32>, gap_x: f32) -> Self {
+        Self {
+            n: widths.len().max(1),
+            x: offsets(content_x, &widths, gap_x),
+            widths,
+        }
+    }
+}
+
+/// Resolved row geometry: each track's height and top edge, plus the
+/// inter-track gap. Bundled so the placement passes take one argument.
+struct RowTracks<'a> {
+    y: &'a [f32],
+    h: &'a [f32],
+    gap: f32,
+}
+
+impl<'a> RowTracks<'a> {
+    const fn new(y: &'a [f32], h: &'a [f32], gap: f32) -> Self {
+        Self { y, h, gap }
+    }
+}
+
+/// Derived geometry for one grid solve: the node's edges, the row gap,
+/// column tracks, and border/content origins. Bundled so the solve
+/// passes take one argument.
+struct GridFrame<'a> {
+    style: &'a StyleData,
+    edges: NodeEdges,
+    gap_y: f32,
+    cols: Cols,
+    border: Position2,
+    content: Position2,
 }
 
 /// One auto-flow-placed grid item: its node, grid area top-left (`row`,
@@ -147,39 +187,78 @@ impl<'a> GridSolver<'a> {
         let gap_x = resolve_gap(style.gap.width, inner_w);
         let gap_y = resolve_gap(style.gap.height, inner_w);
         let widths = resolve_columns(&style.grid_template_columns, inner_w, gap_x);
-
-        let border_x = origin.x + edges.margin.left.unwrap_or(0.0);
-        let border_y = origin.y + edges.margin_top();
-        let content_x = border_x + edges.padding.left + edges.border.left;
-        let content_y = border_y + edges.padding.top + edges.border.top;
-
+        let border = Position2 {
+            x: origin.x + edges.margin.left.unwrap_or(0.0),
+            y: origin.y + edges.margin_top(),
+        };
+        let content = Position2 {
+            x: border.x + edges.padding.left + edges.border.left,
+            y: border.y + edges.padding.top + edges.border.top,
+        };
+        let frame = GridFrame {
+            style,
+            edges,
+            gap_y,
+            cols: Cols::new(content.x, widths, gap_x),
+            border,
+            content,
+        };
         let children: Vec<LocalId> = subtree.children().to_vec();
-        let cols = Cols {
-            n: widths.len().max(1),
-            x: offsets(content_x, &widths, gap_x),
-            widths,
-        };
-        let places = self.flow_children(&children, cols.n, style.grid_auto_flow_dense);
-        let mut row_h = self.measure_row_heights(&places, &cols)?;
-        apply_row_template(&mut row_h, &style.grid_template_rows);
-        let row_y = offsets(content_y, &row_h, gap_y);
-        self.place_cells(&places, &cols, &row_y)?;
+        let places = self.flow_children(&children, frame.cols.n, frame.style.grid_auto_flow_dense);
+        let row_h = self.layout_rows(&places, &frame)?;
 
-        let content_h = row_h.iter().sum::<f32>() + gap_y * (row_h.len().saturating_sub(1) as f32);
-        let box_h = match style.size.height {
-            Dimension::Px(px) => px,
-            _ => content_h + edges.block_chrome(),
-        };
+        let avail_h = definite(self.scope.available().h);
+        let content_h = frame.gap_y.mul_add(
+            (row_h.len().saturating_sub(1)) as f32,
+            row_h.iter().sum::<f32>(),
+        );
+        let box_h = grid_box_h(frame.style, avail_h, content_h, frame.edges.block_chrome());
         self.scope.write_node(
             &subtree,
             ComputedBox {
-                x: border_x,
-                y: border_y,
+                x: frame.border.x,
+                y: frame.border.y,
                 w: border_w,
                 h: box_h,
             },
         );
         Ok(())
+    }
+
+    /// Resolve the final row tracks (measure → template → `fr`
+    /// distribution), then re-lay each cell into its grid area.
+    /// Returns the final row heights.
+    fn layout_rows(
+        &self,
+        places: &[Placement],
+        frame: &GridFrame<'_>,
+    ) -> Result<Vec<f32>, LayoutError> {
+        let mut row_h = self.measure_row_heights(places, &frame.cols)?;
+        apply_row_template(&mut row_h, &frame.style.grid_template_rows);
+        let avail_h = definite(self.scope.available().h);
+        let chrome = frame.edges.block_chrome();
+        let inner_h = match frame.style.size.height {
+            Dimension::Px(px) => Some((px - chrome).max(0.0)),
+            Dimension::Fill => Some((avail_h - chrome).max(0.0)),
+            Dimension::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
+            Dimension::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
+            Dimension::Auto => None,
+        };
+        if let Some(height) = inner_h {
+            distribute_fr_rows(
+                &mut row_h,
+                &frame.style.grid_template_rows,
+                height,
+                frame.gap_y,
+            );
+        }
+        let row_y = offsets(frame.content.y, &row_h, frame.gap_y);
+        self.place_cells(
+            places,
+            &frame.cols,
+            &RowTracks::new(&row_y, &row_h, frame.gap_y),
+        )?;
+        Ok(row_h)
     }
 
     /// Placement: explicitly-placed items reserve their block first, then
@@ -260,6 +339,7 @@ impl<'a> GridSolver<'a> {
             self.layout_cell(
                 p.cid,
                 spanned_width(cols, p.col, p.span),
+                0.0,
                 Position2 { x: 0.0, y: 0.0 },
             )?;
             let h = self.scope.forest().boxed(p.cid).map_or(0.0, |b| b.h);
@@ -273,35 +353,44 @@ impl<'a> GridSolver<'a> {
         Ok(row_h)
     }
 
-    /// Pass 2: re-lay each cell at its final grid-area top-left.
+    /// Pass 2: re-lay each cell at its final grid-area top-left,
+    /// stretched to the spanned track size.
     fn place_cells(
         &self,
         places: &[Placement],
         cols: &Cols,
-        row_y: &[f32],
+        rows: &RowTracks<'_>,
     ) -> Result<(), LayoutError> {
         for p in places {
             let origin = Position2 {
                 x: cols.x[p.col],
-                y: row_y[p.row],
+                y: rows.y[p.row],
             };
-            self.layout_cell(p.cid, spanned_width(cols, p.col, p.span), origin)?;
+            let w = spanned_width(cols, p.col, p.span);
+            let h = spanned_height(rows.h, p.row, p.row_span, rows.gap);
+            self.layout_cell(p.cid, w, h, origin)?;
         }
         Ok(())
     }
 
-    /// Lay out one cell subtree into a `w`-wide column at `origin`,
-    /// dispatching on the cell's own `display` (block / flex / grid).
-    fn layout_cell(&self, cid: LocalId, w: f32, origin: Position2) -> Result<(), LayoutError> {
+    /// Lay out one cell subtree into its grid area at `origin`.
+    fn layout_cell(
+        &self,
+        cid: LocalId,
+        w: f32,
+        h: f32,
+        origin: Position2,
+    ) -> Result<(), LayoutError> {
         let forest = self.scope.forest();
         let cell = forest
             .refer(cid)
             .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale grid cell {cid:?}")))?;
+        let stretch = matches!(cell.style().size.height, Dimension::Auto);
         let nested = MeasureScope::new(forest, self.scope.text(), self.scope.available());
         match cell.style().display {
-            Display::Flex => FlexSolver::new(nested).solve_at(
+            Display::Flex => FlexSolver::new(nested).solve_at_area(
                 cell,
-                CbSize { w, h: 0.0 },
+                CbSize { w, h },
                 crate::flex::Position2 {
                     x: origin.x,
                     y: origin.y,
@@ -312,13 +401,62 @@ impl<'a> GridSolver<'a> {
                 cell,
                 Size {
                     width: w,
-                    height: 0.0,
+                    height: h,
                 },
                 origin,
                 Some(w),
             ),
+        }?;
+        if stretch && h > 0.0 {
+            self.stretch_box(cid, h);
         }
+        Ok(())
     }
+
+    /// Stretch an Auto-height item to the track so the cell fills the area.
+    fn stretch_box(&self, cid: LocalId, track_h: f32) {
+        let Some(current) = self.scope.forest().boxed(cid) else {
+            return;
+        };
+        if current.h + 0.5 >= track_h {
+            return;
+        }
+        let Some(node) = self.scope.forest().refer(cid) else {
+            return;
+        };
+        self.scope.write_node(
+            &node,
+            ComputedBox {
+                x: current.x,
+                y: current.y,
+                w: current.w,
+                h: track_h,
+            },
+        );
+    }
+}
+
+/// Outer box height of a grid node for its `size.height` dimension.
+fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
+    match style.size.height {
+        Dimension::Px(px) => px,
+        Dimension::Fill => avail_h,
+        Dimension::Percent(pct) => avail_h * pct,
+        Dimension::Auto if avail_h > 0.0 => avail_h,
+        Dimension::Auto => content_h + chrome,
+    }
+}
+
+fn spanned_height(row_h: &[f32], row: usize, span: usize, gap: f32) -> f32 {
+    let end = (row + span).min(row_h.len());
+    if row >= end {
+        return 0.0;
+    }
+    let tracks = &row_h[row..end];
+    gap.mul_add(
+        (tracks.len().saturating_sub(1)) as f32,
+        tracks.iter().sum::<f32>(),
+    )
 }
 
 /// Cumulative left/top offset of each track: `start`, then each previous
@@ -403,10 +541,36 @@ const fn flex_weight(track: &TrackSize) -> f32 {
     }
 }
 
+/// Share leftover inner height across `Fr` / `MinMax` / `Auto` row
+/// tracks, on top of each row's measured minimum. No-op when the grid
+/// has no definite height or no flexible tracks.
+fn distribute_fr_rows(row_h: &mut [f32], tracks: &[TrackSize], inner_h: f32, gap: f32) {
+    if row_h.is_empty() {
+        return;
+    }
+    let gaps = gap * (row_h.len().saturating_sub(1) as f32);
+    let used: f32 = row_h.iter().sum::<f32>() + gaps;
+    let leftover = inner_h - used;
+    if leftover <= 0.0 {
+        return;
+    }
+    let weight: f32 = (0..row_h.len())
+        .map(|index| tracks.get(index).map_or(0.0, flex_weight))
+        .sum();
+    if weight <= 0.0 {
+        return;
+    }
+    for (index, height) in row_h.iter_mut().enumerate() {
+        let share = tracks.get(index).map_or(0.0, flex_weight);
+        if share > 0.0 {
+            *height = leftover.mul_add(share / weight, *height);
+        }
+    }
+}
+
 /// Override measured row heights with any explicit `Px` row track. `Auto`
 /// and `Fr` tracks, plus implicit rows past the template length, keep
-/// their measured (tallest-cell) height. `Fr` rows are treated as `Auto`
-/// here because a content-sized grid has no definite height to share.
+/// their measured (tallest-cell) height until [`distribute_fr_rows`].
 fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
     for (row, h) in row_h.iter_mut().enumerate() {
         if let Some(TrackSize::Px(px)) = tracks.get(row) {

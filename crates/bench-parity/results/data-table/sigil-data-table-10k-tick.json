@@ -1,0 +1,137 @@
+{
+  "framework": "sigil",
+  "workload_id": "data-table-10k-tick",
+  "samples_ns": [
+    6917,
+    6791,
+    6583,
+    6792,
+    7709,
+    8375,
+    8417,
+    8125,
+    8416,
+    8250,
+    8209,
+    8250,
+    6958,
+    6875,
+    6958,
+    7708,
+    8750,
+    8792,
+    8708,
+    9041,
+    7250,
+    6834,
+    8709,
+    8459,
+    7125,
+    7000,
+    7041,
+    7167,
+    7042,
+    7125,
+    7459,
+    6834,
+    7500,
+    8958,
+    8000,
+    7000,
+    7083,
+    7083,
+    7125,
+    7333,
+    7125,
+    7209,
+    7084,
+    7292,
+    7083,
+    6958,
+    7041,
+    7000,
+    7041,
+    7000,
+    7708,
+    8833,
+    8042,
+    6875,
+    7125,
+    6958,
+    8166,
+    8250,
+    7959,
+    6750,
+    6833,
+    6708,
+    6875,
+    6791,
+    8042,
+    7208,
+    6791,
+    6750,
+    6666,
+    7125,
+    8166,
+    8042,
+    8834,
+    8458,
+    7375,
+    7166,
+    8792,
+    7084,
+    7042,
+    7250
+  ],
+  "summary": {
+    "iterations": 80,
+    "median_us": 7.166,
+    "p95_us": 8.792,
+    "p99_us": 8.958,
+    "mean_us": 7.503100000000001,
+    "cv": 0.09280200087958557
+  },
+  "equivalence_check_results": {
+    "layout_did_work": {
+      "status": "pass"
+    },
+    "visible_window_indices": {
+      "status": "pass"
+    },
+    "column_count": {
+      "status": "pass"
+    },
+    "text_did_work": {
+      "status": "pass"
+    },
+    "identity_did_hold": {
+      "status": "pass"
+    },
+    "book_held": {
+      "status": "pass"
+    },
+    "scene_did_work": {
+      "status": "not_applicable"
+    }
+  },
+  "host": {
+    "os": "Darwin 26.5.1",
+    "cpu": "Apple M2 Max",
+    "cpu_cores": 12,
+    "total_memory_bytes": 34359738368,
+    "rustc_version": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "process_rss_bytes": 27344896
+  },
+  "verify": {
+    "visible_last": 38,
+    "scene_glyphs_last": 0,
+    "tick": 1,
+    "reuse": 1,
+    "text_measure_last": 0,
+    "layout_hits": 80,
+    "samples": 80,
+    "layout_misses": 0,
+    "scene_cmds_last": 0,
+    "book_rows": 10000
+  }
+}

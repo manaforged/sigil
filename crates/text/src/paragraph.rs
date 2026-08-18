@@ -1,9 +1,8 @@
 //! Owned paragraph wrapper (DR-044, G1.4).
 //!
 //! A [`Paragraph`] is a list of [`LayoutLine`]s plus shared font data,
-//! held behind [`Rc`] so cache hits return a cheap clone. The Parley
-//! `Layout<Color>` substrate is gone — every method below operates on
-//! the owned glyph runs produced by the engine.
+//! held behind [`Rc`] so cache hits return a cheap clone. Every method
+//! below operates on the owned glyph runs the engine produces.
 
 #![allow(
     clippy::redundant_pub_crate,
@@ -270,10 +269,7 @@ struct ParagraphInner {
 /// A laid-out paragraph of text (owned shaper output).
 ///
 /// Inner state is held behind [`Rc`] so the engine cache returns cheap
-/// clones; consumers should treat the paragraph as immutable. The
-/// public surface matches the historical Parley-backed version
-/// modulo `inner()` which is gone (`Layout<Color>` is no longer the
-/// substrate).
+/// clones; consumers should treat the paragraph as immutable.
 #[derive(Clone)]
 pub struct Paragraph {
     inner: Rc<ParagraphInner>,

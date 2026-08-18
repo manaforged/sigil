@@ -155,6 +155,24 @@ fn display_inside_effect_subscribes() {
 }
 
 #[test]
+fn set_equal_does_not_rerun_effects() {
+    Runtime::scope("set-equal-skips", || {
+        let n = signal(1_i32);
+        let runs = Rc::new(Cell::new(0_u32));
+        let runs_c = Rc::clone(&runs);
+        effect(move || {
+            let _ = n.get();
+            runs_c.set(runs_c.get() + 1);
+        });
+        assert_eq!(runs.get(), 1);
+        n.set(1);
+        assert_eq!(runs.get(), 1, "equal set must not notify");
+        n.set(2);
+        assert_eq!(runs.get(), 2);
+    });
+}
+
+#[test]
 fn assign_op_respects_recursion_guard() {
     use std::panic::{AssertUnwindSafe, catch_unwind};
 

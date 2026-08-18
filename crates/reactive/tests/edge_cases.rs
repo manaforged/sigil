@@ -157,10 +157,11 @@ fn signals_of_different_types_dont_conflate() {
 }
 
 #[test]
-fn set_with_same_value_still_fires_effects() {
-    // We do not equality-check writes. Memoization is the caller's
-    // job (or `derived`'s once it lands). This test pins the
-    // current behaviour so a future "smart" change is intentional.
+fn set_with_same_value_does_not_fire_effects() {
+    // `set` equality-checks writes: an equal value is a no-op (no
+    // notify, no frame dirty). `set_always` keeps the fire-anyway
+    // path for values whose equality is identity or whose effects
+    // must run regardless.
     Runtime::scope("set_same_value", || {
         let n = signal(7_i32);
         let runs = Rc::new(Cell::new(0_u32));
@@ -175,7 +176,9 @@ fn set_with_same_value_still_fires_effects() {
         n.set(7);
         n.set(7);
         n.set(7);
-        assert_eq!(runs.get(), 4);
+        assert_eq!(runs.get(), 1, "equal sets are no-ops");
+        n.set_always(7);
+        assert_eq!(runs.get(), 2, "set_always always fires");
     });
 }
 

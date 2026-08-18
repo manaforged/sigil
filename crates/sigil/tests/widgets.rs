@@ -1,6 +1,7 @@
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
+    clippy::panic,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation
@@ -11,6 +12,7 @@ use criterion as _;
 use image as _;
 use pollster as _;
 use sigil_bidi as _;
+use sigil_profile as _;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use wgpu as _;
@@ -23,7 +25,6 @@ use sigil_events as _;
 use sigil_kernel as _;
 use sigil_reactive as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 
 use sigil::prelude::*;
 use sigil_hal::{KeyEventInit, Point, PointerEventInit};
@@ -38,6 +39,7 @@ impl TextMeasure for StubMeasure {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
+            TextContent::Compute(build) => build().len(),
         };
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
     }
@@ -59,6 +61,35 @@ impl TextGeometry for StubGeometry {
             height: 16.0,
         }
     }
+}
+
+#[test]
+fn button_label_accepts_a_signal() {
+    sigil::reactive::Runtime::scope("sigil-widget-button-signal-label", || {
+        let caption = signal(String::from("Save"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(button(caption));
+        let node = cx.get(root).expect("button");
+        assert_eq!(node.a11y.role, Role::Button);
+        let child_id = *node.children().first().expect("label text");
+        let child = cx.get(child_id).expect("label text");
+        match &child.kind {
+            NodeType::Text { content, .. } => match content {
+                TextContent::Reactive(value) => assert_eq!(value.get(), "Save"),
+                TextContent::Static(value) => panic!("expected reactive label, got {value}"),
+                TextContent::Compute(_) => panic!("expected reactive label, got compute"),
+            },
+            other => panic!("expected text child, got {other:?}"),
+        }
+        caption.set(String::from("Saving"));
+        match &cx.get(child_id).expect("label text").kind {
+            NodeType::Text {
+                content: TextContent::Reactive(value),
+                ..
+            } => assert_eq!(value.get(), "Saving"),
+            other => panic!("expected reactive label after set, got {other:?}"),
+        }
+    });
 }
 
 #[test]
@@ -468,11 +499,7 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
     sigil::reactive::Runtime::scope("sigil-widget-checkbox-scene", || {
         let checked = signal(false);
         let mut cx = Cx::new_root();
-        let root = cx.add(
-            checkbox(checked)
-                .label("Visual")
-                .tone(CheckboxTone::Primary),
-        );
+        let root = cx.add(checkbox(checked).label("Visual").tone(Tone::Primary));
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
@@ -583,10 +610,10 @@ fn toggle_scene_emits_on_and_off_variants() {
 
 #[test]
 fn toggle_and_checkbox_share_styled_interaction_path() {
-    let interaction_src = include_str!("../src/interaction.rs");
-    let shared_src = include_str!("../src/widgets/shared.rs");
-    let checkbox_src = include_str!("../src/widgets/checkbox.rs");
-    let toggle_src = include_str!("../src/widgets/toggle.rs");
+    let interaction_src = include_str!("../../widgets/src/interaction.rs");
+    let shared_src = include_str!("../../widgets/src/shared.rs");
+    let checkbox_src = include_str!("../../widgets/src/checkbox.rs");
+    let toggle_src = include_str!("../../widgets/src/toggle.rs");
 
     assert!(interaction_src.contains("pub fn style_state"));
     assert!(interaction_src.contains("pub fn release_pointer"));

@@ -13,8 +13,15 @@ use sigil_hal as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_kernel::{Cx, NodeId, container, text};
+use sigil_kernel::{Cx, NodeId, NodeType, TextContent, container, node, text};
 use sigil_reactive::{Runtime, signal};
+
+fn text_value(cx: &Cx, id: NodeId) -> String {
+    match &cx.get(id).expect("node").kind {
+        NodeType::Text { content, .. } => content.resolve(),
+        other => panic!("expected text, got {other:?}"),
+    }
+}
 
 fn child_ids(cx: &Cx, parent: NodeId) -> Vec<NodeId> {
     cx.get(parent).expect("parent alive").children().to_vec()
@@ -119,6 +126,68 @@ fn children_reactive_empty_vec_removes_all() {
 }
 
 #[test]
+fn node_erases_mixed_children() {
+    Runtime::scope("sigil_kernel_node_mixed", || {
+        let items = signal(0_u32);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container().children_reactive(move || {
+            let _ = items.get();
+            [node(text("label")), node(container())]
+        }));
+        cx.flush_reactive_children();
+        assert_eq!(child_ids(&cx, parent).len(), 2);
+    });
+}
+
+#[test]
+fn children_keyed_reorder_keeps_ids() {
+    Runtime::scope("sigil_kernel_children_keyed_reorder", || {
+        let items = signal(vec!["a", "b", "c"]);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(
+            container()
+                .children_keyed(move || items.get().into_iter().map(|label| (label, text(label)))),
+        );
+        cx.flush_reactive_children();
+        let before = child_ids(&cx, parent);
+        assert_eq!(before.len(), 3);
+
+        items.set(vec!["c", "b", "a"]);
+        cx.flush_reactive_children();
+        let after = child_ids(&cx, parent);
+
+        assert_eq!(after, vec![before[2], before[1], before[0]]);
+        for id in &before {
+            assert!(cx.get(*id).is_some(), "keyed child {id:?} stays live");
+        }
+    });
+}
+
+#[test]
+fn children_keyed_drops_missing_and_mounts_new() {
+    Runtime::scope("sigil_kernel_children_keyed_diff", || {
+        let items = signal(vec!["a", "b"]);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(
+            container()
+                .children_keyed(move || items.get().into_iter().map(|label| (label, text(label)))),
+        );
+        cx.flush_reactive_children();
+        let before = child_ids(&cx, parent);
+        let first = before[0];
+
+        items.set(vec!["a", "d"]);
+        cx.flush_reactive_children();
+        let after = child_ids(&cx, parent);
+
+        assert_eq!(after.len(), 2);
+        assert_eq!(after[0], first, "key a keeps its node");
+        assert!(cx.get(before[1]).is_none(), "key b is removed");
+        assert_ne!(after[1], before[1], "key d is a new node");
+    });
+}
+
+#[test]
 fn children_reactive_reorder_visibly_rebuilds() {
     Runtime::scope("sigil_kernel_children_reactive_reorder", || {
         let items = signal(vec!["a", "b", "c"]);
@@ -169,5 +238,44 @@ fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
             rendered.contains('2'),
             "only the latest queued child may mount: {rendered}"
         );
+    });
+}
+
+#[test]
+fn children_keyed_compute_text_is_node_owned() {
+    Runtime::scope("sigil_kernel_children_keyed_compute", || {
+        let label = signal("alpha".to_string());
+        let keys = signal(vec![0_u32]);
+        let mut cx = Cx::new_root();
+        let parent = cx.add(container().children_keyed(move || {
+            keys.get()
+                .into_iter()
+                .map(move |key| (key, text(TextContent::compute(move || label.get()))))
+                .collect::<Vec<_>>()
+        }));
+        cx.flush_reactive_children();
+        let [child] = child_ids(&cx, parent).try_into().expect("one keyed child");
+        assert_eq!(text_value(&cx, child), "alpha");
+        assert!(
+            matches!(
+                cx.get(child).expect("child").kind,
+                NodeType::Text {
+                    content: TextContent::Reactive(_),
+                    ..
+                }
+            ),
+            "compute text becomes a node-owned signal at build"
+        );
+
+        keys.set(vec![0]);
+        cx.flush_reactive_children();
+        let [kept] = child_ids(&cx, parent)
+            .try_into()
+            .expect("one keyed child after keep");
+        assert_eq!(kept, child, "same key keeps NodeId");
+
+        label.set("omega".to_string());
+        assert_eq!(text_value(&cx, kept), "omega");
+        assert!(cx.get(kept).is_some(), "node-owned derived stays live");
     });
 }

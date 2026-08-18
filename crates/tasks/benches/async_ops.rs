@@ -24,11 +24,6 @@
 
 mod async_ops_sustained;
 
-// `winit` is a regular dep on `sigil-async` (event-loop wiring) but is
-// not used by this bench binary; silence the unused-dep lint that
-// flows into every bench compilation unit.
-use winit as _;
-
 use std::hint::black_box;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

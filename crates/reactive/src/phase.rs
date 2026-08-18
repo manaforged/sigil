@@ -4,7 +4,7 @@
 //! Holds the [`DrawPhase`] enum that lives on [`crate::runtime::RuntimeState`]
 //! plus the [`assert_paint_safe`] helper every reactive write seam
 //! consults, the deferred-write queue that captures Paint-phase
-//! `crate::cx::Context::dispatch_action` calls, and the drain that
+//! `crate::cx::EntityCx::dispatch_action` calls, and the drain that
 //! replays them at the top of the next Effect phase.
 //!
 //! See DR-047 for the contract and `docs/specs/g4-drawphase-api-sketch.md`
@@ -46,7 +46,7 @@ pub enum DrawPhase {
     Layout,
     /// Paint pass — renderer walks the styled tree emitting GPU
     /// commands. Reactive writes are illegal: direct mutations panic
-    /// in debug and no-op in release; `crate::cx::Context::dispatch_action`
+    /// in debug and no-op in release; `crate::cx::EntityCx::dispatch_action`
     /// defers to the next Effect phase.
     Paint,
 }
@@ -63,7 +63,7 @@ pub(crate) const MAX_DRAIN_PASSES: u32 = 16;
 ///
 /// Captures the cloned action plus the dispatch path. When called
 /// during [`drain_deferred_writes`], the closure re-enters
-/// `crate::cx::Context::dispatch_action` against the focus stack as
+/// `crate::cx::EntityCx::dispatch_action` against the focus stack as
 /// it exists at replay time (DR-047 §5).
 pub(crate) type ReplayFn = Box<dyn FnOnce()>;
 
@@ -85,9 +85,9 @@ pub(crate) struct DeferredWrite {
 /// [`DrawPhase::Paint`].
 ///
 /// Called from every reactive write seam (`Signal::set`, `Signal::update`,
-/// `Entity::update` / `run_update`, `Context::notify`, `Context::emit`,
-/// `Context::focus`, `Context::blur`, `set_global`). The
-/// `crate::cx::Context::dispatch_action` path takes a different
+/// `Entity::update` / `run_update`, `EntityCx::notify`, `EntityCx::emit`,
+/// `EntityCx::focus`, `EntityCx::blur`, `set_global`). The
+/// `crate::cx::EntityCx::dispatch_action` path takes a different
 /// branch (it defers in release rather than no-op) via
 /// [`enqueue_deferred`].
 ///
@@ -106,7 +106,7 @@ pub(crate) fn assert_paint_safe(rt: &RuntimeState, site: &'static str) {
 
 /// Enqueue a deferred replay closure.
 ///
-/// Called from `crate::cx::Context::dispatch_action` when the
+/// Called from `crate::cx::EntityCx::dispatch_action` when the
 /// runtime is in [`DrawPhase::Paint`] and (in release) the
 /// debug-assert was compiled out. The closure executes at the top of
 /// [`crate::Runtime::end_frame`] / [`drain_deferred_writes`] under the

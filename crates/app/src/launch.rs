@@ -55,6 +55,7 @@ where
     Runtime::scope("sigil-app", || run(config, tree))
 }
 
+#[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // Live desktop apps use the platform UI families by default. A consumer
     // that installed bundled/custom faces before launch keeps that choice.
@@ -102,30 +103,36 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     shell.on_idle_deadline(next_interval_deadline);
 
     let panic_policy = config.panic_policy;
-    shell
-        .run(move |shell| {
-            let frame = FrameCtx {
-                config: &config,
-                shell,
-                window_handle,
-                cx: &mut cx,
-                root,
-                layout: &mut layout,
-                router: &mut router,
-                renderer: &mut renderer,
-                surface: &mut surface,
-                viewport: &mut viewport,
-                exit_requested: &mut exit_requested,
-                async_rt: &mut async_rt,
-                a11y_action_rx: &a11y_action_rx,
-                theme_watch: &theme_watch,
-                frame_state: &mut frame_state,
-            };
-            run_frame(panic_policy, frame);
-            request_animation_frame(shell, window_handle);
-        })
-        .map_err(Error::new)?;
-    Ok(())
+    finish(
+        shell
+            .run(move |shell| {
+                let frame = FrameCtx {
+                    config: &config,
+                    shell,
+                    window_handle,
+                    cx: &mut cx,
+                    root,
+                    layout: &mut layout,
+                    router: &mut router,
+                    renderer: &mut renderer,
+                    surface: &mut surface,
+                    viewport: &mut viewport,
+                    exit_requested: &mut exit_requested,
+                    async_rt: &mut async_rt,
+                    a11y_action_rx: &a11y_action_rx,
+                    theme_watch: &theme_watch,
+                    frame_state: &mut frame_state,
+                };
+                run_frame(panic_policy, frame);
+                request_animation_frame(shell, window_handle);
+            })
+            .map_err(Error::new),
+    )
+}
+
+fn finish(result: AppResult<()>) -> AppResult<()> {
+    sigil_profile::dump_if_enabled();
+    result
 }
 
 fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
@@ -138,24 +145,12 @@ fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
     }
 }
 
-/// G5 (DR-048 §5) — build the async runtime and install the Tokio
-/// executor + reactive bridge so `Context::spawn` has somewhere to send
-/// its futures. Called BEFORE the tree is installed, so trees may
-/// `Context::spawn` during build — matching the fixture contract in
-/// `cx_spawn.rs`. The bridge's worker→main mpsc is drained at the top of
-/// every frame, just before `Runtime::begin_effect` consumes the reactive
-/// `pending_completions` queue.
-///
-/// The bridge waker wakes the winit loop whenever a worker thread posts a
-/// reactive completion, so background async work (e.g. streamed agent
-/// output via `Context::spawn` + `AsyncContext::update`) repaints promptly
-/// instead of stalling in `ControlFlow::Wait` until an unrelated OS input
-/// event. The wake delivers a `WakeEvent` through the shell's
-/// `EventLoopProxy`, whose `user_event` handler requests a redraw → next
-/// `frame_once` drains the bridge via `pump_completions_into_reactive`.
-/// (DR-048 §5 left this waker a no-op.)
+/// Build the Tokio runtime, install [`sigil_tasks::spawn`] on this
+/// thread, and wire the worker→main bridge so a completion wakes
+/// the event loop and paints on the next frame.
 fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
     let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
+    async_rt.install_current();
     let waker = shell.waker();
     async_rt.set_bridge_waker(move || {
         let _ = WinitShell::wake(&waker);
@@ -164,7 +159,7 @@ fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
     Ok(async_rt)
 }
 
-/// G5 (DR-048 §5) — wire `Context::spawn` to the supplied async runtime.
+/// Wire hidden `EntityCx::spawn` to the supplied async runtime.
 ///
 /// Public-in-crate so the integration test
 /// `crates/app/tests/g5_executor.rs` can install the same pair against
@@ -379,6 +374,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
         });
     }
 
+    sigil_profile::begin_frame();
     // DR-047 frame driver: Idle → Effect → Layout → Paint → Idle.
     //
     // Effect phase brackets every reactive write produced during the
@@ -387,13 +383,16 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // for the initial-scale path. begin_effect also drains G5 task
     // completions and any deferred actions queued in the previous
     // frame's Paint.
+    let effect = sigil_profile::span("effect");
     Runtime::begin_effect();
     // Fire any `cx.interval` callbacks that have come due. Runs in the
     // Effect phase so the callbacks' signal writes are legal and reach
     // this frame's layout + paint via `begin_layout`'s observer fixpoint.
     // Cheap no-op when no intervals are registered. Paired with the
     // `on_idle_deadline` wake wired in `run`.
-    let _ = tick_intervals();
+    if tick_intervals() > 0 {
+        sigil_profile::interact("interval");
+    }
     ensure_surface(EnsureSurfaceCtx {
         shell,
         window_handle,
@@ -430,17 +429,24 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // geometry. The frame callback requests a successor redraw only while the
     // runtime still has moving animators, so idle windows consume no frame loop.
     let animation_advanced = frame_state.animation_clock.tick_active(Instant::now());
-    // Layout phase: recompute Taffy boxes, now reflecting the reactive
+    if animation_advanced {
+        sigil_profile::interact("animation");
+    }
+    drop(effect);
+    // Layout phase: recompute layout boxes, now reflecting the reactive
     // writes drained above (children_reactive rebuilds, selection tints,
     // new chat bubbles). Writes during this phase still invalidate the
     // in-flight pass — discouraged by convention, not by panic.
     Runtime::begin_layout();
     let force_paint = shell.take_force_paint();
     let layout_dirty = Runtime::frame_dirty();
-    run_layout_if_dirty(layout_dirty, || {
-        let logical = logical_size_from_viewport(*viewport);
-        recompute_layout(cx, root, layout, cx.scale(), logical);
-    });
+    {
+        let _layout = sigil_profile::span("layout");
+        run_layout_if_dirty(layout_dirty, || {
+            let logical = logical_size_from_viewport(*viewport);
+            recompute_layout(cx, root, layout, cx.scale(), logical);
+        });
+    }
     // AT action validation needs THIS frame's fresh layout/scopes, not
     // last frame's (RC-focus finding, round 2) — see
     // `event_wiring::drain_a11y_actions`'s own doc comment. Drain before
@@ -455,21 +461,31 @@ fn frame_once(ctx: FrameCtx<'_>) {
     let paint_dirty = Runtime::frame_dirty();
     let paint_needed = force_paint || paint_dirty;
     let allow_scene_replay = force_paint && !paint_dirty && !animation_advanced;
-    let _ = paint_needed.then(|| {
-        frame_state.scene_cache.paint(PaintRequest {
-            cx,
-            root,
-            renderer,
-            surface,
-            viewport: *viewport,
-            allow_replay: allow_scene_replay,
+    if allow_scene_replay {
+        sigil_profile::interact("expose");
+    }
+    {
+        let _paint = sigil_profile::span("paint");
+        let _ = paint_needed.then(|| {
+            frame_state.scene_cache.paint(PaintRequest {
+                cx,
+                root,
+                renderer,
+                surface,
+                viewport: *viewport,
+                allow_replay: allow_scene_replay,
+            });
         });
-    });
-    event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
+    }
+    {
+        let _a11y = sigil_profile::span("a11y");
+        event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
+    }
     // end_frame transitions Paint → Effect (replay deferred writes) →
     // Idle so the next iteration enters begin_effect from a clean
     // resting state.
     Runtime::end_frame();
+    sigil_profile::tick_frame();
 }
 
 fn run_layout_if_dirty(dirty: bool, layout_pass: impl FnOnce()) -> bool {
@@ -577,9 +593,7 @@ mod tests {
     use std::fmt;
     use std::time::{Duration, Instant};
 
-    use sigil_animation_runtime::{
-        AnimationRegistry, Animator, MotionPrefs, active_count, presets,
-    };
+    use sigil_animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
     use sigil_hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
     use sigil_kernel::{Cx, container};
     use sigil_layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
@@ -770,9 +784,7 @@ mod tests {
         Runtime::scope("animation_clock_advances_until_idle_and_rearms", || {
             MotionPrefs::set(false);
             let value = signal(0.0_f32);
-            let config = AnimationRegistry::default()
-                .get(presets::DEFAULT)
-                .expect("default animation preset");
+            let config = config(presets::DEFAULT).expect("default animation preset");
             let mut animator = Animator::new(value, config);
             let mut clock = AnimationClock::default();
             let mut now = Instant::now();

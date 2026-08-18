@@ -11,6 +11,9 @@ use crate::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, reactive_chil
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
 type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 
+/// One-shot hook run against the tree once the node has an id.
+type AddedHook = Box<dyn FnOnce(&mut Cx, NodeId)>;
+
 /// Builder for structural nodes.
 pub struct NodeBuilder {
     a11y: A11yProps,
@@ -18,6 +21,7 @@ pub struct NodeBuilder {
     kind: NodeType,
     pre_extensions: Vec<NodeMutator>,
     reactive_children: Option<ReactiveChildrenInstall>,
+    on_added: Option<AddedHook>,
 }
 
 /// Create a container node builder.
@@ -40,6 +44,7 @@ impl NodeBuilder {
             kind,
             pre_extensions: Vec::new(),
             reactive_children: None,
+            on_added: None,
         }
     }
 
@@ -225,6 +230,13 @@ impl NodeBuilder {
         self
     }
 
+    /// Run after this node and its static children exist in `cx`.
+    #[must_use]
+    pub fn on_added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
+        self.on_added = Some(Box::new(hook));
+        self
+    }
+
     /// Bind this node's children to a reactive closure.
     ///
     /// The closure runs once at build and re-runs whenever any signal
@@ -238,10 +250,8 @@ impl NodeBuilder {
     /// owner — removing the parent via [`Cx::remove`] disposes the
     /// subscription automatically.
     ///
-    /// Until B1.b wires the drain into `LayoutEngine::compute`, callers
-    /// must invoke [`Cx::flush_reactive_children`] explicitly after
-    /// signal mutations (and after the initial `cx.add(...)`) to apply
-    /// the queued rebuild.
+    /// Layout compute drains the queue. Call
+    /// [`Cx::flush_reactive_children`] only when you do not run layout.
     #[must_use]
     pub fn children_reactive<F, I, N>(mut self, f: F) -> Self
     where
@@ -251,6 +261,34 @@ impl NodeBuilder {
     {
         self.reactive_children = Some(Box::new(move |parent| {
             reactive_children::install(parent, f);
+        }));
+        self
+    }
+
+    /// Bind children by key. A key that stays keeps its [`NodeId`].
+    ///
+    /// The closure returns `(key, child)` pairs. On each rebuild:
+    /// matching keys keep the live node (the new child builder is
+    /// dropped), new keys mount, missing keys dispose. Update label
+    /// and style through signals on the kept node — a kept node is
+    /// not rebuilt. Do not call `derived` in the factory; use
+    /// [`crate::TextContent::compute`] so the derived is created in
+    /// [`IntoNode::build`].
+    ///
+    /// First key wins when the list repeats a key. Use unique domain
+    /// ids.
+    ///
+    /// Mix widget types with [`node`](crate::node).
+    #[must_use]
+    pub fn children_keyed<F, I, K, N>(mut self, f: F) -> Self
+    where
+        F: Fn() -> I + 'static,
+        I: IntoIterator<Item = (K, N)>,
+        K: Clone + Eq + std::hash::Hash + 'static,
+        N: IntoNode + 'static,
+    {
+        self.reactive_children = Some(Box::new(move |parent| {
+            reactive_children::install_keyed(parent, f);
         }));
         self
     }
@@ -299,6 +337,9 @@ impl IntoNode for NodeBuilder {
         }
         if let Some(install) = self.reactive_children {
             install(id);
+        }
+        if let Some(hook) = self.on_added {
+            hook(cx, id);
         }
         id
     }

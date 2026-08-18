@@ -3,10 +3,8 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::corner_radii::CornerRadii;
-use crate::scene::{Scene, SceneItem, SceneRect, SceneText};
 use crate::shadow_paint::Shadow;
 
-pub(crate) mod adapter;
 mod draw_handlers;
 pub(crate) mod effects;
 pub(crate) mod fills;
@@ -37,55 +35,6 @@ impl CommandScene {
     #[must_use]
     pub(crate) const fn new(commands: Vec<SceneCommand>) -> Self {
         Self { commands }
-    }
-
-    /// Convert this command scene back to the legacy flat scene shape.
-    #[deprecated(note = "migrate to CommandScene walk; removed in Phase 12")]
-    #[must_use]
-    pub fn to_flat(&self) -> Scene {
-        let mut scene = Scene::default();
-        for command in &self.commands {
-            match command {
-                SceneCommand::Rect(draw) => {
-                    if let Some(node) = draw.node {
-                        scene.push(SceneItem::Rect(SceneRect {
-                            node,
-                            rect: draw.rect,
-                            color: draw.color,
-                            border_radius: draw.border_radius,
-                            opacity: draw.opacity,
-                        }));
-                    }
-                }
-                SceneCommand::GlyphRun(draw) => {
-                    if let Some(node) = draw.run.node {
-                        scene.push(SceneItem::Text(SceneText {
-                            node,
-                            rect: draw.run.rect,
-                            text: draw.run.text.clone(),
-                            color: draw.run.color,
-                            style: draw.run.style.clone(),
-                            opacity: draw.run.opacity,
-                        }));
-                    }
-                }
-                SceneCommand::Gradient(_)
-                | SceneCommand::Pattern(_)
-                | SceneCommand::DrawShadow { .. }
-                | SceneCommand::Sprite(_)
-                | SceneCommand::Image(_)
-                | SceneCommand::Decoration(_)
-                | SceneCommand::PushClip(_)
-                | SceneCommand::PopClip
-                | SceneCommand::PushTransform(_)
-                | SceneCommand::PopTransform
-                | SceneCommand::SaveLayer { .. }
-                | SceneCommand::RestoreLayer
-                | SceneCommand::PushLayer(_)
-                | SceneCommand::PopLayer => {}
-            }
-        }
-        scene
     }
 
     /// Find the first glyph-run draw command with exact text content.

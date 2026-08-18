@@ -101,6 +101,10 @@ impl<'theme> StyleEngine<'theme> {
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
             StyleAtom::BorderWidth(width) => render.border_width = Some(width),
+            StyleAtom::BorderTop(width) => render.border_top = Some(width),
+            StyleAtom::BorderRight(width) => render.border_right = Some(width),
+            StyleAtom::BorderBottom(width) => render.border_bottom = Some(width),
+            StyleAtom::BorderLeft(width) => render.border_left = Some(width),
             StyleAtom::BorderColor(color) => render.border_color = Some(self.resolve_color(color)),
             StyleAtom::BorderThemeRef(token) => {
                 render.border_color = Some(self.theme.resolve_color(token));
@@ -144,6 +148,8 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::FontWeight(_)
             | StyleAtom::FontFamily(_)
             | StyleAtom::LineHeight(_)
+            | StyleAtom::LetterSpacing(_)
+            | StyleAtom::TextDecoration(_)
             | StyleAtom::OverflowX(_)
             | StyleAtom::OverflowY(_)
             | StyleAtom::Transition(_)
@@ -250,6 +256,10 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         StyleAtom::LineHeight(px) => {
             text.line_height = TextLineHeight::Absolute(f32::from(px.0).max(1.0));
         }
+        StyleAtom::LetterSpacing(thousandths) => {
+            text.letter_spacing_em = f32::from(thousandths) / 1000.0;
+        }
+        StyleAtom::TextDecoration(decoration) => text.decoration = decoration,
         StyleAtom::PaddingAll(_)
         | StyleAtom::PaddingX(_)
         | StyleAtom::PaddingY(_)
@@ -288,6 +298,10 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::BorderWidth(_)
+        | StyleAtom::BorderTop(_)
+        | StyleAtom::BorderRight(_)
+        | StyleAtom::BorderBottom(_)
+        | StyleAtom::BorderLeft(_)
         | StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)

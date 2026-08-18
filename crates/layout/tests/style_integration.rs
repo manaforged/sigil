@@ -41,6 +41,28 @@ fn p_4_applies_sixteen_px_padding() {
 }
 
 #[test]
+fn layout_style_padding_wins_over_class() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
+            .class("p-4")
+            .child(container().class("w-full h-full")),
+    );
+    let child = first_child(&cx, root);
+
+    stub_engine()
+        .compute(&mut cx, root, Size::fixed(100.0, 50.0))
+        .expect("compute succeeds");
+
+    let rect = layout_rect(&cx, child);
+    assert_eq!(rect.origin.x, 24.0);
+    assert_eq!(rect.origin.y, 24.0);
+    assert_eq!(rect.width, 52.0);
+    assert_eq!(rect.height, 2.0);
+}
+
+#[test]
 fn w_full_is_percent_100() {
     let mut cx = Cx::new_root();
     let root = cx.add(

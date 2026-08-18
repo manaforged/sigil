@@ -101,6 +101,14 @@ fn border_tokens_resolve_to_width_and_color_atoms() {
             .any(|a| matches!(a, StyleAtom::BorderThemeRef("accent"))),
         "border-<token> must resolve as a theme colour reference"
     );
+    let left = parse_class_string("border-l-4").unwrap();
+    assert!(
+        left.iter()
+            .any(|a| matches!(a, StyleAtom::BorderLeft(px) if px.0 == 4)),
+        "border-l-4 must resolve as a left-edge width"
+    );
+    let axis = parse_class_string("border-x").unwrap();
+    assert_eq!(axis.len(), 2, "border-x sets left and right");
 }
 
 #[test]
@@ -126,13 +134,21 @@ type AtomCheck = fn(&StyleAtom) -> bool;
 
 #[test]
 fn new_parity_tokens_resolve_to_expected_atoms() {
-    let cases: [(&str, AtomCheck); 6] = [
+    let cases: [(&str, AtomCheck); 9] = [
         ("min-h-4", |a| matches!(a, StyleAtom::MinHeight(_))),
         ("max-h-4", |a| matches!(a, StyleAtom::MaxHeight(_))),
         ("grow", |a| matches!(a, StyleAtom::FlexGrow(1000))),
         ("grow-0", |a| matches!(a, StyleAtom::FlexGrow(0))),
         ("shrink", |a| matches!(a, StyleAtom::FlexShrink(1000))),
         ("shrink-0", |a| matches!(a, StyleAtom::FlexShrink(0))),
+        ("grid-cols-2", |a| matches!(a, StyleAtom::GridColumns(2))),
+        ("grid-rows-2", |a| matches!(a, StyleAtom::GridRows(2))),
+        ("line-through", |a| {
+            matches!(
+                a,
+                StyleAtom::TextDecoration(sigil_style::TextDecoration::LineThrough)
+            )
+        }),
     ];
     for (token, check) in cases {
         let atoms = parse_class_string(token).unwrap();

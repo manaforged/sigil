@@ -1,0 +1,56 @@
+{
+  "framework": "sigil",
+  "workload_id": "flex-tree-2k",
+  "samples_ns": [
+    12447542,
+    14051584,
+    11507167,
+    14685084,
+    15849458,
+    16549042,
+    16112500,
+    15514625,
+    16271709,
+    17661334,
+    16521584,
+    15837125,
+    15236459,
+    16058792,
+    17022042,
+    16034791,
+    15418292,
+    15525459,
+    16523667,
+    16567916
+  ],
+  "summary": {
+    "iterations": 20,
+    "median_us": 16034.791,
+    "p95_us": 17022.042,
+    "p99_us": 17661.334,
+    "mean_us": 15569.8086,
+    "cv": 0.09210107047660081
+  },
+  "equivalence_check_results": {
+    "layout_did_work": {
+      "status": "pass"
+    }
+  },
+  "host": {
+    "os": "Darwin 26.5.1",
+    "cpu": "Apple M2 Max",
+    "cpu_cores": 12,
+    "total_memory_bytes": 34359738368,
+    "rustc_version": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "process_rss_bytes": 234274816
+  },
+  "verify": {
+    "reuse": 0,
+    "layout_misses": 20,
+    "tick": 0,
+    "layout_hits": 0,
+    "visible_last": 0,
+    "samples": 20,
+    "text_measure_last": 0
+  }
+}

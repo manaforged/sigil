@@ -36,11 +36,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::{
@@ -370,7 +370,10 @@ fn modal_accepts_styled_surface() {
         // accumulator's atoms compose with (not displace) the dialog's
         // `surface-hover` default. The pixel-level merge is covered by
         // the `modal_dismissing` golden (opacity composition).
-        let mut b = modal().title("Confirm action").bg("surface").px(20);
+        let mut b = modal(signal(false))
+            .title("Confirm action")
+            .bg("surface")
+            .px(20);
         // 5/5 Wave 1: `impl StateHost` removed from this display-only
         // widget — `.hover()`/`.pressed()` on it is now a compile error by
         // design (panel precedent). Only base StyleAccess is exercised here.

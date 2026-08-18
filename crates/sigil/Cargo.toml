@@ -22,18 +22,17 @@ name = "sigil"
 
 [dependencies]
 sigil-actions = { workspace = true }
-sigil-animation-runtime = { workspace = true }
 sigil-app = { workspace = true }
+sigil-tui = { workspace = true, optional = true }
 sigil-tasks = { workspace = true }
 sigil-kernel = { workspace = true }
 sigil-events = { workspace = true }
 sigil-layout = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
+sigil-profile = { workspace = true }
+sigil-widgets = { workspace = true }
 arboard = { workspace = true }
-# Bidi visual-order caret stepping for text_edit (its own crate so the
-# unicode-bidi dep stays off this facade's many test targets).
-sigil-bidi = { workspace = true }
 
 # Optional GPU text + render surface for external host engines (e.g. a game engine).
 # Off by default; enabled via the `render` feature. Pure-widget/desktop
@@ -45,18 +44,19 @@ sigil-hal = { workspace = true, optional = true }
 # Optional PNG decode for `image_bytes`. Off by default so the core lib
 # carries no image-format decoders; the raw-RGBA `image_rgba` path needs
 # nothing. The workspace `image` dep is already PNG-only + lean.
-image = { workspace = true, optional = true }
-# CPU vector-path rasterizer for `path()` — Bézier fills/strokes into RGBA,
-# rendered through the image node. Already in the tree (transitive).
-tiny-skia = "0.11"
-
 [features]
+default = ["desktop"]
+# winit + wgpu `launch`. Default so existing desktop binaries stay unchanged.
+desktop = ["sigil-app/desktop"]
+# Terminal host. Does not enable wgpu. Combine with `default-features = false`
+# for a TUI-only binary.
+tui = ["dep:sigil-tui"]
 # Exposes `sigil::{render, text}` — the Slug text pipeline + scene
 # compositing an embedding host drives. See DR-054.
 render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal"]
 # Exposes `image_bytes(&[u8])` — decode an encoded image (PNG) to a
 # widget. `image_rgba` (raw pixels) is always available without this.
-image-decode = ["dep:image"]
+image-decode = ["sigil-widgets/image-decode"]
 # Exposes `dialog::mock` — inject canned file-dialog responses in your app's
 # tests without opening a native picker. Enable in dev-dependencies.
 test-support = ["sigil-app/test-support"]
@@ -64,6 +64,8 @@ test-support = ["sigil-app/test-support"]
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 sigil-animation = { path = "../animation" }
+sigil-animation-runtime = { path = "../animation_runtime" }
+sigil-bidi = { path = "../bidi" }
 sigil-hal = { path = "../hal" }
 sigil-renderer = { path = "../renderer" }
 image = { workspace = true }
@@ -91,6 +93,10 @@ workspace = true
 
 [[bench]]
 name = "table_ops"
+harness = false
+
+[[bench]]
+name = "frame_phases"
 harness = false
 
 [package.metadata.docs.rs]

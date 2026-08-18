@@ -10,7 +10,6 @@ use sigil_hal::Rect;
 use sigil_style::Rgba8;
 
 use crate::corner_radii::CornerRadii;
-use crate::scene::{Scene, SceneItem, SceneRect};
 use crate::scene_command::{DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind};
 use crate::shadow_paint::{Shadow, ShadowKind};
 
@@ -185,31 +184,6 @@ pub(crate) struct GpuStop {
 pub(crate) struct SceneUniforms {
     pub(crate) viewport: [f32; 2],
     pub(crate) _pad: [f32; 2],
-}
-
-#[allow(dead_code)]
-pub(crate) fn collect_instances(scene: &Scene) -> Vec<RectInstance> {
-    let mut out = Vec::with_capacity(scene.items().len());
-    for item in scene.items() {
-        if let SceneItem::Rect(rect) = item {
-            out.push(rect_instance(rect));
-        }
-    }
-    out
-}
-
-#[allow(dead_code)]
-pub(crate) fn rect_instance(rect: &SceneRect) -> RectInstance {
-    rect_instance_parts(
-        rect.rect,
-        rect.border_radius,
-        RectPaint {
-            color: BlendSpace::Linear.rgba(rect.color),
-            opacity: f32::from(rect.opacity) / 10_000.0,
-            stroke: None,
-            space: BlendSpace::Linear,
-        },
-    )
 }
 
 pub(crate) fn draw_rect_instance(

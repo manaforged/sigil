@@ -62,23 +62,9 @@ impl<T: 'static> Signal<T> {
     /// carried into a background task and re-hydrated back into a
     /// `Signal<T>` on the main thread.
     ///
-    /// Used by `sigil-async::spawn_to_signal` to publish a
-    /// background-produced value into a pre-existing main-thread
-    /// signal: the main thread creates the signal and extracts its
-    /// sendable identity; the background future owns the sendable
-    /// handle and posts it back through `dispatch_to_owner`, where the
-    /// main-thread closure re-hydrates and writes it.
-    ///
-    /// Re-hydration is only safe on the thread that owns the reactive
-    /// runtime — i.e., inside a `dispatch_to_owner` closure or on the
-    /// main thread in general. The re-hydrated `Signal<T>` is still
-    /// subject to the normal stale-handle panic if its owner has been
-    /// disposed.
-    ///
-    /// Marked `#[doc(hidden)]` because the only legitimate consumer
-    /// is `sigil-async`. User code that thinks it needs this is almost
-    /// certainly doing something wrong — use `spawn_to_signal` or
-    /// `dispatch_to_owner` directly.
+    /// Used by [`sigil_tasks::spawn`] to publish a background value
+    /// into a main-thread signal. Re-hydrate only on the reactive
+    /// thread. Authors call `spawn`, not this.
     #[doc(hidden)]
     #[must_use]
     pub fn into_sendable(self) -> SendableSignal<T> {
@@ -301,6 +287,20 @@ impl<T: Clone + 'static> Signal<T> {
                 .downcast_ref::<T>()
                 .expect("signal type mismatch")
                 .clone()
+        })
+    }
+
+    /// Read the signal without subscribing. `None` when the signal is
+    /// disposed.
+    #[inline]
+    #[must_use]
+    pub fn try_peek(self) -> Option<T> {
+        with_rt(|rt| {
+            let slot = rt.signals.get(self.key)?;
+            if slot.value.is::<crate::signal_write::UpdateInProgress>() {
+                return None;
+            }
+            slot.value.downcast_ref::<T>().cloned()
         })
     }
 }

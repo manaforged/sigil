@@ -1,13 +1,14 @@
 //! Layout-backed node hit-testing with a flat cached scene.
 //!
-//! Naive recursive hit-testing walks the tree on every pointer event and
-//! does an `AHashMap` lookup per node to fetch layout geometry. At 10k
-//! nodes that adds up. The cache here flattens the tree into a `Vec` of
-//! `(NodeId, absolute_rect, flags)` tuples in document preorder, rebuilt
-//! only when either [`Cx::mutation_generation`] or
-//! [`LayoutEngine::generation`] advances. Hit-testing becomes a tight
-//! reverse scan over contiguous memory — no recursion, no hashmap hits,
-//! no parent-origin accumulation per event.
+//! Contract: hit-test reads published `LayoutResult` boxes. The
+//! frame loop routes events in Effect, then computes layout. Pointer
+//! targets are therefore last frame's boxes — the layout the user
+//! saw. A node with no published result is not hittable.
+//!
+//! The cache flattens the tree into `(NodeId, absolute_rect, flags)`
+//! in document preorder, rebuilt only when either
+//! [`Cx::mutation_generation`] or [`LayoutEngine::generation`]
+//! advances. Hit-testing is a reverse scan over that vec.
 //!
 //! Reverse preorder matches the recursive "rightmost child first"
 //! traversal: a deeper later-drawn node still claims a shared hit before

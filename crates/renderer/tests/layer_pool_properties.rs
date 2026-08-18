@@ -1,4 +1,4 @@
-//! Property-style coverage for Phase R11 `LayerPool` key-cache behavior.
+//! Coverage for [`LayerPool`] reuse and fail-closed acquire.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
@@ -26,15 +26,15 @@ use tracing as _;
 use windows_core as _;
 
 use pollster::FutureExt as _;
-use sigil_renderer::LayerPool;
+use sigil_renderer::{LayerError, LayerPool};
 use zeno as _;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[test]
-fn prop_acquire_returns_rounded_dims() {
+fn acquire_returns_rounded_dims() {
     let Some(device) = try_request_device() else {
-        eprintln!("no adapter - skipping layer_pool_properties::prop_acquire_returns_rounded_dims");
+        eprintln!("no adapter - skipping acquire_returns_rounded_dims");
         return;
     };
     let mut pool = LayerPool::new();
@@ -44,132 +44,77 @@ fn prop_acquire_returns_rounded_dims() {
         assert_eq!(handle.width, round_up(w, 16));
         assert_eq!(handle.height, round_up(h, 16));
         assert_eq!(handle.format, FORMAT);
+        pool.release(handle);
     }
 }
 
 #[test]
-fn prop_cache_hit_on_matching_dims() {
+fn release_then_acquire_reuses_same_size() {
     let Some(device) = try_request_device() else {
-        eprintln!("no adapter - skipping layer_pool_properties::prop_cache_hit_on_matching_dims");
+        eprintln!("no adapter - skipping release_then_acquire_reuses_same_size");
         return;
     };
     let mut pool = LayerPool::new();
 
     let first = pool.acquire(&device, 31, 47, FORMAT).expect("first");
-    assert_eq!(pool.len(), 1);
-    let second = pool.acquire(&device, 32, 48, FORMAT).expect("second");
-    assert_eq!(pool.len(), 1, "rounded matching dimensions reuse one key");
-    assert_eq!((first.width, first.height), (second.width, second.height));
-}
-
-#[test]
-fn prop_distinct_dims_distinct_entries() {
-    let Some(device) = try_request_device() else {
-        eprintln!(
-            "no adapter - skipping layer_pool_properties::prop_distinct_dims_distinct_entries"
-        );
-        return;
-    };
-    let mut pool = LayerPool::new();
-
-    let a = pool.acquire(&device, 16, 16, FORMAT).expect("a");
-    let b = pool.acquire(&device, 33, 16, FORMAT).expect("b");
-    assert_ne!((a.width, a.height), (b.width, b.height));
-    assert_eq!(pool.len(), 2);
-}
-
-#[test]
-fn prop_lru_evicts_oldest_at_capacity() {
-    let Some(device) = try_request_device() else {
-        eprintln!(
-            "no adapter - skipping layer_pool_properties::prop_lru_evicts_oldest_at_capacity"
-        );
-        return;
-    };
-    let mut pool = LayerPool::new();
-
-    for width in [16, 32, 48, 64] {
-        let _ = pool
-            .acquire(&device, width, 16, FORMAT)
-            .expect("warm entry");
-        pool.next_frame();
-    }
-    assert_eq!(pool.len(), LayerPool::MAX_ENTRIES);
-
-    let _ = pool
-        .acquire(&device, 80, 16, FORMAT)
-        .expect("evicting entry");
-    assert_eq!(pool.len(), LayerPool::MAX_ENTRIES);
-
-    let _ = pool
-        .acquire(&device, 16, 16, FORMAT)
-        .expect("reinsert first key");
-    assert_eq!(
-        pool.len(),
-        LayerPool::MAX_ENTRIES,
-        "reinsert after eviction keeps cache at capacity"
-    );
-}
-
-#[test]
-fn prop_format_keyed() {
-    let Some(device) = try_request_device() else {
-        eprintln!("no adapter - skipping layer_pool_properties::prop_format_keyed");
-        return;
-    };
-    let mut pool = LayerPool::new();
-
-    let srgb = pool.acquire(&device, 120, 80, FORMAT).expect("srgb");
-    let linear = pool
-        .acquire(&device, 120, 80, wgpu::TextureFormat::Rgba8Unorm)
-        .expect("linear");
-    assert_eq!(pool.len(), 2);
-    assert_eq!(srgb.format, FORMAT);
-    assert_eq!(linear.format, wgpu::TextureFormat::Rgba8Unorm);
-    assert_eq!((srgb.width, srgb.height), (linear.width, linear.height));
-}
-
-#[test]
-fn prop_clear_drops_all_entries() {
-    let Some(device) = try_request_device() else {
-        eprintln!("no adapter - skipping layer_pool_properties::prop_clear_drops_all_entries");
-        return;
-    };
-    let mut pool = LayerPool::new();
-
-    for width in [16, 32, 48, 64] {
-        let _ = pool.acquire(&device, width, 32, FORMAT).expect("entry");
-    }
-    assert_eq!(pool.len(), LayerPool::MAX_ENTRIES);
-    pool.clear();
-    assert_eq!(pool.len(), 0);
     assert!(pool.is_empty());
-
-    let handle = pool
-        .acquire(&device, 16, 32, FORMAT)
-        .expect("fresh after clear");
-    assert_eq!((handle.width, handle.height), (16, 32));
+    pool.release(first);
     assert_eq!(pool.len(), 1);
+    let second = pool.acquire(&device, 32, 48, FORMAT).expect("reuse");
+    assert!(
+        pool.is_empty(),
+        "matching rounded size leaves the free list"
+    );
+    assert_eq!((second.width, second.height), (32, 48));
+    pool.release(second);
 }
 
 #[test]
-fn prop_oversized_returns_none() {
+fn free_list_caps_at_max_entries() {
     let Some(device) = try_request_device() else {
-        eprintln!("no adapter - skipping layer_pool_properties::prop_oversized_returns_none");
+        eprintln!("no adapter - skipping free_list_caps_at_max_entries");
+        return;
+    };
+    let mut pool = LayerPool::new();
+    for width in [16, 32, 48, 64, 80] {
+        let handle = pool.acquire(&device, width, 16, FORMAT).expect("warm");
+        pool.release(handle);
+    }
+    assert_eq!(pool.len(), LayerPool::MAX_ENTRIES);
+}
+
+#[test]
+fn oversized_returns_err() {
+    let Some(device) = try_request_device() else {
+        eprintln!("no adapter - skipping oversized_returns_err");
         return;
     };
     let mut pool = LayerPool::new();
     let max = device.limits().max_texture_dimension_2d;
 
-    assert!(
-        pool.acquire(&device, max.saturating_add(1), 16, FORMAT)
-            .is_none()
-    );
-    assert!(
-        pool.acquire(&device, 16, max.saturating_add(1), FORMAT)
-            .is_none()
-    );
+    assert!(matches!(
+        pool.acquire(&device, max.saturating_add(1), 16, FORMAT),
+        Err(LayerError::TooLarge { .. })
+    ));
+    assert!(matches!(
+        pool.acquire(&device, 16, max.saturating_add(1), FORMAT),
+        Err(LayerError::TooLarge { .. })
+    ));
     assert_eq!(pool.len(), 0);
+}
+
+#[test]
+fn zero_extent_returns_empty() {
+    let mut pool = LayerPool::new();
+    // Device is unused on the empty path.
+    let Some(device) = try_request_device() else {
+        eprintln!("no adapter - skipping zero_extent_returns_empty");
+        return;
+    };
+    assert!(matches!(
+        pool.acquire(&device, 0, 16, FORMAT),
+        Err(LayerError::Empty)
+    ));
 }
 
 fn try_request_device() -> Option<wgpu::Device> {

@@ -6,81 +6,37 @@ use sigil_hal::{Point, Rect};
 use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_layout::LayoutResult;
 use sigil_style::{
-    DisplayKind, Elevation, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextStyle, Theme,
+    DisplayKind, Elevation, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextDecoration, TextStyle,
+    Theme,
 };
-use sigil_text::{OwnedTextEngine, TextConfig};
 
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;
 use crate::scene_command::{
-    CommandScene, GlyphRun, LayerEffect, LayerScope, SceneRectStyle, Stroke, StrokeAlign,
-    StrokeStyle,
+    CommandScene, DecorationKind, GlyphRun, LayerEffect, LayerScope, SceneDecorationStyle,
+    SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
 use crate::shadow_paint::Shadow;
 use crate::style_adapter::{corner_radii_for, focus_ring_for, render_style_for, text_style_for};
 
-/// A headless list of primitives that would be submitted to the renderer.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct Scene {
-    items: Vec<SceneItem>,
-}
-
-impl Scene {
-    /// Borrow emitted scene items.
-    #[must_use]
-    pub fn items(&self) -> &[SceneItem] {
-        &self.items
-    }
-
-    pub(crate) fn push(&mut self, item: SceneItem) {
-        self.items.push(item);
-    }
-}
-
-/// Headless renderer primitive.
-#[derive(Debug, Clone, PartialEq)]
-pub enum SceneItem {
-    /// Filled rectangle.
-    Rect(SceneRect),
-    /// Text run.
-    Text(SceneText),
-}
-
-/// Filled rectangle emitted from a container node.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SceneRect {
-    /// Source node.
-    pub node: NodeId,
-    /// Layout rectangle.
-    pub rect: Rect,
-    /// Resolved fill colour.
-    pub color: Rgba8,
-    /// Corner radii in top-left, top-right, bottom-right, bottom-left order.
-    pub border_radius: CornerRadii,
-    /// Opacity encoded as `value * 10000`.
-    pub opacity: u16,
-}
-
-/// Text run emitted from a text node.
-#[derive(Debug, Clone, PartialEq)]
-pub struct SceneText {
-    /// Source node.
-    pub node: NodeId,
-    /// Layout rectangle.
-    pub rect: Rect,
-    /// Text content.
-    pub text: String,
-    /// Resolved text colour.
-    pub color: Rgba8,
-    /// Resolved typography.
-    pub style: TextStyle,
-    /// Opacity encoded as `value * 10000`.
-    pub opacity: u16,
-}
+/// Extra logical pixels around the viewport clip so a scroll step does
+/// not pop a newly-visible row in unshaped.
+const VIEW_OVERSCAN: f32 = 64.0;
 
 /// Emit a command-buffer scene for a laid-out core subtree.
 #[must_use]
 pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
+    emit_scene_clipped(cx, root, None)
+}
+
+/// Emit a scene, skipping nodes whose layout box is fully outside `clip`.
+///
+/// `clip` is the window (or host) viewport in the same logical space as
+/// [`LayoutResult::rect`]. Overflow `hidden`/`scroll` ancestors tighten
+/// the clip further so a long scrolled list only shapes visible rows.
+#[must_use]
+pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
+    let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
     let inherited = Inherited {
         theme: default_inherited_theme(),
@@ -91,14 +47,25 @@ pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     // walk, so floating UI (dropdown popups) paints above every later
     // sibling. Index loop: emitting a deferred subtree may discover
     // nested top-layer descendants and grow the queue.
-    let mut deferred: Vec<(NodeId, Inherited<'_>)> = Vec::new();
-    push_subtree(&mut scene, cx, root, &inherited, &mut deferred);
+    let mut deferred: Vec<(NodeId, Inherited<'_>, Option<Rect>)> = Vec::new();
+    let mut walk = EmitWalk {
+        scene: &mut scene,
+        cx,
+        deferred: &mut deferred,
+    };
+    push_subtree(&mut walk, root, &inherited, clip);
     let mut next = 0;
-    while let Some((id, inh)) = deferred.get(next).cloned() {
+    while let Some((id, inh, child_clip)) = walk.deferred.get(next).cloned() {
         next += 1;
-        push_subtree(&mut scene, cx, id, &inh, &mut deferred);
+        push_subtree(&mut walk, id, &inh, child_clip);
     }
     scene.finish()
+}
+
+struct EmitWalk<'a, 't> {
+    scene: &'a mut SceneBuilder,
+    cx: &'t Cx,
+    deferred: &'a mut Vec<(NodeId, Inherited<'t>, Option<Rect>)>,
 }
 
 /// Style context cascading down the scene walk: the effective theme,
@@ -120,16 +87,18 @@ struct Inherited<'t> {
 }
 
 fn push_subtree<'t>(
-    scene: &mut SceneBuilder,
-    cx: &'t Cx,
+    walk: &mut EmitWalk<'_, 't>,
     id: NodeId,
     inherited: &Inherited<'t>,
-    deferred: &mut Vec<(NodeId, Inherited<'t>)>,
+    clip: Option<Rect>,
 ) {
-    let Some(node) = cx.get(id) else {
+    let Some(node) = walk.cx.get(id) else {
         return;
     };
     if is_display_none(node) {
+        return;
+    }
+    if outside_clip(node, clip) {
         return;
     }
     // Theme inheritance: if this node attached its own `Theme`, that
@@ -160,54 +129,109 @@ fn push_subtree<'t>(
             theme,
             text_base: &inherited.text_style,
         };
-        push_focus_ring(scene, id, node, rect, &paint);
-        push_node(scene, id, node, rect, &paint);
-        // `overflow: hidden`/`scroll` → scissor descendants to this node's box, so a
-        // too-tall child (a long file in the editor pane, scrolled-out content) is
-        // cut at the edge instead of painting over its siblings. The command walker
-        // skips any glyph run / fill whose rect falls outside the active clip.
+        let inherit = crate::emit_cache::inherit_key(
+            theme,
+            inherited.text_color,
+            inherited.text_style.as_ref(),
+        ) ^ crate::emit_cache::content_key(node);
+        let cx_id = walk.cx.instance_id();
+        if !crate::emit_cache::replay(walk.scene, cx_id, id, node, rect, inherit) {
+            let start = walk.scene.command_len();
+            push_focus_ring(walk.scene, id, node, rect, &paint);
+            push_node(walk.scene, id, node, rect, &paint);
+            crate::emit_cache::store(cx_id, id, node, rect, inherit, walk.scene.copy_from(start));
+        }
+        // `overflow: hidden`/`scroll` → scissor descendants to this node's box.
         if result.clips() {
-            let clip_radii = corner_radii_for(style.border_radius);
-            if clip_radii.0.iter().any(|radius| *radius > 0.0) {
-                scene.with_composite_layer(
-                    LayerScope {
-                        clip: rect,
-                        clip_radii,
-                        effect: LayerEffect::Identity,
-                        opacity: 1.0,
-                    },
-                    |scene| push_children(scene, cx, node, &child_inherited, deferred),
-                );
-            } else {
-                scene.with_clip(rect, |scene| {
-                    push_children(scene, cx, node, &child_inherited, deferred);
-                });
-            }
+            emit_clipped_children(walk, node, &child_inherited, clip, rect, &style);
             return;
         }
     }
-    push_children(scene, cx, node, &child_inherited, deferred);
+    push_children(walk, node, &child_inherited, clip);
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "clip walk needs the node, inherit, and both clip rects"
+)]
+fn emit_clipped_children<'t>(
+    walk: &mut EmitWalk<'_, 't>,
+    node: &Node,
+    inherited: &Inherited<'t>,
+    clip: Option<Rect>,
+    rect: Rect,
+    style: &RenderStyle,
+) {
+    let Some(inner) = tighten_clip(clip, rect) else {
+        return;
+    };
+    // Include the box that sits on the far edge (virtual-list overscan).
+    let inner = inner.expand(1.0);
+    let clip_radii = corner_radii_for(style.border_radius);
+    let cx = walk.cx;
+    let deferred = &mut *walk.deferred;
+    if clip_radii.0.iter().any(|radius| *radius > 0.0) {
+        walk.scene.with_composite_layer(
+            LayerScope {
+                clip: rect,
+                clip_radii,
+                effect: LayerEffect::Identity,
+                opacity: 1.0,
+            },
+            |scene| {
+                let mut nested = EmitWalk {
+                    scene,
+                    cx,
+                    deferred,
+                };
+                push_children(&mut nested, node, inherited, Some(inner));
+            },
+        );
+    } else {
+        walk.scene.with_clip(rect, |scene| {
+            let mut nested = EmitWalk {
+                scene,
+                cx,
+                deferred,
+            };
+            push_children(&mut nested, node, inherited, Some(inner));
+        });
+    }
+}
+
+fn outside_clip(node: &Node, clip: Option<Rect>) -> bool {
+    let Some(clip) = clip else {
+        return false;
+    };
+    let Some(result) = node.get_extension::<LayoutResult>() else {
+        return false;
+    };
+    !result.rect().intersects(clip)
+}
+
+fn tighten_clip(clip: Option<Rect>, rect: Rect) -> Option<Rect> {
+    clip.map_or(Some(rect), |clip| clip.intersection(rect))
 }
 
 fn push_children<'t>(
-    scene: &mut SceneBuilder,
-    cx: &'t Cx,
+    walk: &mut EmitWalk<'_, 't>,
     node: &Node,
     inherited: &Inherited<'t>,
-    deferred: &mut Vec<(NodeId, Inherited<'t>)>,
+    clip: Option<Rect>,
 ) {
     for child in node.children().iter().copied() {
         // Deferral happens at the parent's iteration, so emitting a
         // deferred subtree root directly (from `emit_scene`'s queue
         // drain) never re-defers it, while nested `TopLayer` descendants
         // still queue behind it.
-        let is_top_layer = cx
+        let is_top_layer = walk
+            .cx
             .get(child)
             .is_some_and(|n| n.get_extension::<sigil_kernel::TopLayer>().is_some());
         if is_top_layer {
-            deferred.push((child, inherited.clone()));
+            walk.deferred.push((child, inherited.clone(), clip));
         } else {
-            push_subtree(scene, cx, child, inherited, deferred);
+            push_subtree(walk, child, inherited, clip);
         }
     }
 }
@@ -278,6 +302,35 @@ struct NodePaint<'a> {
     text_base: &'a TextStyle,
 }
 
+fn push_text_decoration(
+    scene: &mut SceneBuilder,
+    rect: Rect,
+    color: Rgba8,
+    opacity: u16,
+    text_style: &TextStyle,
+) {
+    let kind = match text_style.decoration {
+        TextDecoration::None => return,
+        TextDecoration::Underline => DecorationKind::Underline,
+        TextDecoration::LineThrough => DecorationKind::Strikethrough,
+    };
+    let thickness = (text_style.font_size * 0.06).max(1.0);
+    let y = match kind {
+        DecorationKind::Strikethrough => rect.origin.y + (rect.height - thickness) / 2.0,
+        DecorationKind::Underline | DecorationKind::WavyUnderline => {
+            rect.origin.y + rect.height - thickness
+        }
+    };
+    scene.draw_decoration(SceneDecorationStyle {
+        kind,
+        band: Rect::new(Point::new(rect.origin.x, y), rect.width, thickness),
+        color,
+        opacity,
+        period: 0.0,
+        line_width: thickness,
+    });
+}
+
 fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
     // Shadow first so it sits behind the surface it lifts.
@@ -305,6 +358,7 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
         }
         scene.draw_rect_for_node(id, rect, rect_style);
     }
+    push_side_borders(scene, id, rect, style, paint.theme);
 }
 
 fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
@@ -315,11 +369,12 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             content, ellipsis, ..
         } => {
             if let Some(color) = style.text_color {
+                let text_style = text_style_for(node, paint.theme, paint.text_base);
                 let run = shape_glyph_run_with(
                     rect,
                     text_content(content),
                     color,
-                    text_style_for(node, paint.theme, paint.text_base),
+                    text_style.clone(),
                     style.opacity,
                     *ellipsis,
                 );
@@ -335,6 +390,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
                     );
                 }
                 scene.draw_glyph_run_for_node(id, run);
+                push_text_decoration(scene, rect, color, style.opacity, &text_style);
             }
         }
         NodeType::Image { source, fit } => {
@@ -385,19 +441,14 @@ fn shape_glyph_run_with(
     // The shared engine bootstraps with bundled FiraSans (G1.4 owned
     // engine). Layout failure is unreachable unless a future caller
     // hot-swaps in a malformed user font via FontCollection::register.
-    let paragraph = TEXT_ENGINE.with(|engine| {
-        let result = if ellipsize {
-            engine.layout_paragraph_ellipsized(&text, max_width, &style)
-        } else {
-            engine.layout_paragraph_styled(&text, Some(max_width), &style)
-        };
-        result.unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"))
-    });
+    let engine = sigil_text::OwnedTextEngine::thread();
+    let paragraph = if ellipsize {
+        engine.layout_paragraph_ellipsized(&text, max_width, &style)
+    } else {
+        engine.layout_paragraph_styled(&text, Some(max_width), &style)
+    }
+    .unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"));
     GlyphRun::new(rect, text, color, style, opacity).with_paragraph(paragraph)
-}
-
-thread_local! {
-    static TEXT_ENGINE: OwnedTextEngine = OwnedTextEngine::new(TextConfig::default());
 }
 
 /// Resolve a node's border into a paint stroke (DR-057 D3). Width with
@@ -422,26 +473,100 @@ const fn elevation_shadow(elevation: Elevation) -> Shadow {
     Shadow::new([0.0, offset_y], blur, spread, [0.0, 0.0, 0.0, alpha])
 }
 
-fn border_stroke(style: &RenderStyle, theme: &Theme) -> Option<Stroke> {
-    let width = style.border_width?;
-    if width.0 <= 0 {
-        return None;
-    }
-    let color = style
+fn border_edges(style: &RenderStyle) -> [f32; 4] {
+    let uniform = style.border_width.map_or(0.0, |px| f32::from(px.0));
+    [
+        style.border_top.map_or(uniform, |px| f32::from(px.0)),
+        style.border_right.map_or(uniform, |px| f32::from(px.0)),
+        style.border_bottom.map_or(uniform, |px| f32::from(px.0)),
+        style.border_left.map_or(uniform, |px| f32::from(px.0)),
+    ]
+}
+
+fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
+    style
         .border_color
         .or(style.text_color)
-        .unwrap_or(theme.on_surface);
+        .unwrap_or(theme.on_surface)
+}
+
+/// All four border edges hold the same width. Edges derive from the
+/// same `Px` values, so bit equality is exact.
+const fn borders_uniform([top, right, bottom, left]: [f32; 4]) -> bool {
+    top.to_bits() == right.to_bits()
+        && right.to_bits() == bottom.to_bits()
+        && bottom.to_bits() == left.to_bits()
+}
+
+fn border_stroke(style: &RenderStyle, theme: &Theme) -> Option<Stroke> {
+    let [top, right, bottom, left] = border_edges(style);
+    if top <= 0.0 || !borders_uniform([top, right, bottom, left]) {
+        return None;
+    }
     Some(Stroke {
-        color,
-        width: f32::from(width.0),
+        color: border_color(style, theme),
+        width: top,
         style: StrokeStyle::Solid,
         align: StrokeAlign::Inside,
     })
 }
 
-fn text_content(content: &TextContent) -> String {
-    match content {
-        TextContent::Static(value) => value.clone(),
-        TextContent::Reactive(value) => value.get(),
+fn push_side_borders(
+    scene: &mut SceneBuilder,
+    id: NodeId,
+    rect: Rect,
+    style: &RenderStyle,
+    theme: &Theme,
+) {
+    let [top, right, bottom, left] = border_edges(style);
+    if top <= 0.0 && right <= 0.0 && bottom <= 0.0 && left <= 0.0 {
+        return;
     }
+    if top > 0.0 && borders_uniform([top, right, bottom, left]) {
+        return;
+    }
+    let color = border_color(style, theme);
+    let fill = SceneRectStyle::new(color, CornerRadii::new(0.0, 0.0, 0.0, 0.0), style.opacity);
+    if top > 0.0 {
+        scene.draw_rect_for_node(
+            id,
+            Rect::new(rect.origin, rect.width, top.min(rect.height)),
+            fill,
+        );
+    }
+    if bottom > 0.0 {
+        let height = bottom.min(rect.height);
+        scene.draw_rect_for_node(
+            id,
+            Rect::new(
+                Point::new(rect.origin.x, rect.origin.y + rect.height - height),
+                rect.width,
+                height,
+            ),
+            fill,
+        );
+    }
+    if left > 0.0 {
+        scene.draw_rect_for_node(
+            id,
+            Rect::new(rect.origin, left.min(rect.width), rect.height),
+            fill,
+        );
+    }
+    if right > 0.0 {
+        let width = right.min(rect.width);
+        scene.draw_rect_for_node(
+            id,
+            Rect::new(
+                Point::new(rect.origin.x + rect.width - width, rect.origin.y),
+                width,
+                rect.height,
+            ),
+            fill,
+        );
+    }
+}
+
+fn text_content(content: &TextContent) -> String {
+    content.resolve()
 }

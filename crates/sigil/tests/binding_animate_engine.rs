@@ -26,13 +26,11 @@ use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
-use sigil_animation_runtime::{
-    AnimationRegistry, AttachedAnimators, MotionPrefs, install_animators, presets, tick,
-};
+use sigil_animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
 use sigil_hal::Size;
 use sigil_kernel::{Cx, IntoNode, NodeId, TextContent, container};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
@@ -118,8 +116,7 @@ fn engine_reads_animator_signal_over_ticks() {
             StyleAtom::Transition(presets::DEFAULT),
         ];
         let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(OPACITY_HOVER)]);
-        let registry = AnimationRegistry::default();
-        let mut attached = install_animators(&atoms, state_style, &registry, 1);
+        let mut attached = install_animators(&atoms, state_style, 1);
         assert_eq!(
             attached.len(),
             1,

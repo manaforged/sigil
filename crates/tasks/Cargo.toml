@@ -23,7 +23,6 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APAC
 [dependencies]
 sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }
-winit = { workspace = true }
 tokio = { workspace = true }
 
 [dev-dependencies]

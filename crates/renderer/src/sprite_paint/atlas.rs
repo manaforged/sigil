@@ -19,7 +19,7 @@ pub(crate) struct AtlasDesc<'a> {
     pub(crate) format: wgpu::TextureFormat,
 }
 
-pub(super) struct AtlasEntry {
+pub(crate) struct AtlasEntry {
     /// Kept alive so the GPU texture object is not dropped while referenced.
     #[allow(dead_code)]
     pub(super) texture: wgpu::Texture,

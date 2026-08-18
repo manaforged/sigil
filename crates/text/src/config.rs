@@ -24,6 +24,8 @@ impl TextConfig {
             font_size: self.font_size.max(1.0),
             font_weight: self.font_weight,
             line_height: TextLineHeight::FontSizeRelative(self.line_height.max(0.1)),
+            letter_spacing_em: 0.0,
+            ..Default::default()
         }
     }
 }

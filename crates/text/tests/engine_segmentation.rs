@@ -35,6 +35,8 @@ mod engine_segmentation {
             font_size: size,
             font_weight: 400,
             line_height: TextLineHeight::FontSizeRelative(1.2),
+            letter_spacing_em: 0.0,
+            ..Default::default()
         }
     }
 

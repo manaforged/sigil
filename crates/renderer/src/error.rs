@@ -40,6 +40,8 @@ pub enum RendererError {
     /// A viewport dimension passed to `submit_screen` or `submit_world` was
     /// zero or negative. Both width and height must be strictly positive.
     InvalidViewport,
+    /// An offscreen layer could not be allocated.
+    Layer(crate::layer_pool::LayerError),
 }
 
 impl fmt::Display for RendererError {
@@ -63,6 +65,15 @@ impl fmt::Display for RendererError {
             Self::InvalidViewport => {
                 f.write_str("viewport dimensions must be strictly positive (width > 0, height > 0)")
             }
+            Self::Layer(crate::layer_pool::LayerError::Empty) => {
+                f.write_str("offscreen layer extent is zero")
+            }
+            Self::Layer(crate::layer_pool::LayerError::TooLarge { requested, max }) => {
+                write!(
+                    f,
+                    "offscreen layer {requested}px exceeds device limit {max}px"
+                )
+            }
         }
     }
 }
@@ -77,7 +88,8 @@ impl core::error::Error for RendererError {
             | Self::SurfaceValidation
             | Self::NotInitialized
             | Self::InvalidViewProj
-            | Self::InvalidViewport => None,
+            | Self::InvalidViewport
+            | Self::Layer(_) => None,
         }
     }
 }

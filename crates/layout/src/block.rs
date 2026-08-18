@@ -17,12 +17,13 @@
 //! `current_frame` tag stamped into each slot. Tests read results back
 //! through [`BlockSolver::boxed`], which delegates to `forest.boxed`.
 
-#![allow(dead_code, clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
 
 use crate::LayoutError;
 use crate::block_collapse::OpenMargin;
-use crate::block_size::{AxisIntent, NodeEdges, SizeIntent};
+use crate::block_size::{AxisIntent, SizeIntent};
 use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
+use crate::resolve::NodeEdges;
 use crate::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData};
 
 /// CSS block layout subset.
@@ -65,29 +66,6 @@ impl<'a> BlockSolver<'a> {
         let me = solve_box(self, subtree, cb, border_origin)?;
         let _ = me;
         Ok(())
-    }
-
-    /// Run the block layout algorithm against `subtree` as a child of
-    /// some containing block of size `cb`, anchored at `origin` (the
-    /// subtree root's border-box top-left BEFORE this node's own margin
-    /// is applied). Used by per-subtree solver dispatch when a block-
-    /// display node lands inside a flex parent.
-    ///
-    /// Mirrors [`Self::solve`]'s margin-then-border-origin shape so a
-    /// `display: block` flex item that recurses through here resolves
-    /// its own margins against the supplied containing block.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LayoutError::LayoutInvalid`] when `subtree` references a
-    /// stale id.
-    pub(crate) fn solve_at(
-        &self,
-        subtree: NodeRef<'_>,
-        cb: Size<f32>,
-        origin: Position2,
-    ) -> Result<(), LayoutError> {
-        self.solve_at_assigned(subtree, cb, origin, None)
     }
 
     /// As [`Self::solve_at`], but with the border-box width a flex parent
@@ -153,7 +131,6 @@ impl Position2 {
 /// Resolved geometry of a single layout pass on one node.
 #[derive(Clone, Copy, Debug)]
 struct Resolved {
-    box_w: f32,
     box_h: f32,
     edges: NodeEdges,
 }
@@ -230,6 +207,25 @@ fn natural_width(
     (width, text_size)
 }
 
+fn write_none(
+    solver: &BlockSolver<'_>,
+    node: NodeRef<'_>,
+    cb: Size<f32>,
+    border_origin: Position2,
+) -> Resolved {
+    let edges = NodeEdges::build(node.style(), cb.width);
+    solver.write(
+        node.id(),
+        ComputedBox {
+            x: border_origin.x,
+            y: border_origin.y,
+            w: 0.0,
+            h: 0.0,
+        },
+    );
+    Resolved { box_h: 0.0, edges }
+}
+
 /// `assigned_w` is a width the flex parent already resolved for this node;
 /// it wins over both the style width and the content measurement, with
 /// min/max still clamping.
@@ -241,6 +237,9 @@ fn solve_box_assigned(
     assigned_w: Option<f32>,
 ) -> Result<Resolved, LayoutError> {
     let style = node.style();
+    if matches!(style.display, Display::None) {
+        return Ok(write_none(solver, node, cb, border_origin));
+    }
     let edges = NodeEdges::build(style, cb.width);
     let intent = SizeIntent::build(style, cb, &edges);
     let (natural_w, text_size) = natural_width(solver, node, &intent, cb.width, &edges);
@@ -282,11 +281,7 @@ fn solve_box_assigned(
             h: box_h,
         },
     );
-    Ok(Resolved {
-        box_w,
-        box_h,
-        edges,
-    })
+    Ok(Resolved { box_h, edges })
 }
 
 /// Height of this node's content: the measured text extent for a leaf,
@@ -423,7 +418,6 @@ fn solve_flex_child(
         ))
     })?;
     Ok(Resolved {
-        box_w: computed.w,
         box_h: computed.h,
         edges,
     })
@@ -459,7 +453,6 @@ fn solve_grid_child(
         ))
     })?;
     Ok(Resolved {
-        box_w: computed.w,
         box_h: computed.h,
         edges,
     })

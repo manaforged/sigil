@@ -67,7 +67,7 @@ fn insert_atom(
             .iter_mut()
             .find(|(existing, _atom)| *existing == slot)
         {
-            if *existing_atom != expanded_atom {
+            if *existing_atom != expanded_atom && component_id != 0 {
                 diagnostic::warn_conflict(slot, component_id);
             }
             *existing_atom = expanded_atom;
@@ -121,6 +121,10 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
         | StyleAtom::BorderWidth(_)
+        | StyleAtom::BorderTop(_)
+        | StyleAtom::BorderRight(_)
+        | StyleAtom::BorderBottom(_)
+        | StyleAtom::BorderLeft(_)
         | StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
@@ -130,6 +134,8 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::FontWeight(_)
         | StyleAtom::FontFamily(_)
         | StyleAtom::LineHeight(_)
+        | StyleAtom::LetterSpacing(_)
+        | StyleAtom::TextDecoration(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)
         | StyleAtom::Transition(_)
@@ -229,6 +235,10 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         | StyleAtom::FgOnSolid => ResolvedSlot::TextColor,
         StyleAtom::BorderRadius(_) => ResolvedSlot::BorderRadius,
         StyleAtom::BorderWidth(_) => ResolvedSlot::BorderWidth,
+        StyleAtom::BorderTop(_) => ResolvedSlot::BorderTop,
+        StyleAtom::BorderRight(_) => ResolvedSlot::BorderRight,
+        StyleAtom::BorderBottom(_) => ResolvedSlot::BorderBottom,
+        StyleAtom::BorderLeft(_) => ResolvedSlot::BorderLeft,
         StyleAtom::BorderColor(_) | StyleAtom::BorderThemeRef(_) | StyleAtom::BorderToneStep(_) => {
             ResolvedSlot::BorderColor
         }
@@ -238,6 +248,8 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
         StyleAtom::FontFamily(_) => ResolvedSlot::FontFamily,
         StyleAtom::LineHeight(_) => ResolvedSlot::LineHeight,
+        StyleAtom::LetterSpacing(_) => ResolvedSlot::LetterSpacing,
+        StyleAtom::TextDecoration(_) => ResolvedSlot::TextDecoration,
         StyleAtom::OverflowX(_) => ResolvedSlot::OverflowX,
         StyleAtom::OverflowY(_) => ResolvedSlot::OverflowY,
         StyleAtom::Transition(_) => ResolvedSlot::Transition,
@@ -278,6 +290,10 @@ enum ResolvedSlot {
     TextColor,
     BorderRadius,
     BorderWidth,
+    BorderTop,
+    BorderRight,
+    BorderBottom,
+    BorderLeft,
     BorderColor,
     Shadow,
     Opacity,
@@ -285,6 +301,8 @@ enum ResolvedSlot {
     FontWeight,
     FontFamily,
     LineHeight,
+    LetterSpacing,
+    TextDecoration,
     OverflowX,
     OverflowY,
     Transition,

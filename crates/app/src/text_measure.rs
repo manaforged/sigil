@@ -1,10 +1,8 @@
 //! Default text measure used by `sigil::launch`.
 
-use std::rc::Rc;
-
 use sigil_layout::{TextEngineMeasure, TextMeasure};
 use sigil_style::TextStyle;
-use sigil_text::{OwnedTextEngine, TextConfig};
+use sigil_text::OwnedTextEngine;
 
 /// Owned-text-engine-backed measurer used by the launch pipeline.
 pub struct DefaultTextMeasure {
@@ -21,9 +19,8 @@ impl DefaultTextMeasure {
     /// Create the default text measurer.
     #[must_use]
     pub fn new() -> Self {
-        let engine = Rc::new(OwnedTextEngine::new(TextConfig::default()));
         Self {
-            inner: TextEngineMeasure::new(engine),
+            inner: TextEngineMeasure::new(OwnedTextEngine::thread()),
         }
     }
 }

@@ -98,6 +98,9 @@ pub struct PointerEvent {
     /// routing, pointer handlers receive it in the current target node's
     /// local coordinate space.
     pub position: Point,
+    /// Window-relative pointer position. Routing never rewrites this, so
+    /// context menus and other overlays can anchor in viewport space.
+    pub window_position: Point,
     /// Movement since the previous pointer event.
     pub delta: Point,
     /// Pointer device family.
@@ -152,6 +155,7 @@ impl PointerEvent {
     pub const fn new(init: PointerEventInit) -> Self {
         Self {
             position: init.position,
+            window_position: init.position,
             delta: init.delta,
             kind: init.kind,
             button: init.button,

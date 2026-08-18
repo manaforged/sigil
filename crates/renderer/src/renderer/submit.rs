@@ -263,5 +263,10 @@ pub(super) fn render_command_scene_surface(
     )?;
     queue.submit(core::iter::once(encoder.finish()));
     frame.present();
+    if let Some(pool) = ready.layer_pool.as_mut() {
+        for handle in retained {
+            pool.release(handle);
+        }
+    }
     Ok(())
 }

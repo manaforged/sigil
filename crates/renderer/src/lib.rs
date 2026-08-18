@@ -89,14 +89,15 @@ mod window_handle;
 pub use corner_radii::CornerRadii;
 pub use error::RendererError;
 pub use frame_stats::FrameStats;
-pub use layer_pool::{LayerHandle, LayerPool};
+pub use layer_pool::{LayerError, LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
 #[doc(hidden)]
 pub use raster_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer, WorldSubmission, submit_clear};
 #[doc(hidden)]
 pub use scene::shape_glyph_run;
-pub use scene::{Scene, SceneItem, SceneRect, SceneText, emit_scene};
+mod emit_cache;
+pub use scene::{emit_scene, emit_scene_clipped};
 pub use scene_builder::SceneBuilder;
 pub use scene_command::{
     CommandScene, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage,

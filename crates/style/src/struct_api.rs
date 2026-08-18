@@ -194,19 +194,20 @@ impl Style {
         self.atoms.push(atom);
     }
 
-    /// Set uniform padding in logical pixels.
+    /// Class atom. Same as `classes!("p-N")`. Not the box.
+    /// The box is widget `.padding(px)` / `LayoutStyle`.
     #[must_use]
     pub fn padding(self, px: i16) -> Self {
         self.push(StyleAtom::PaddingAll(Px(px)))
     }
 
-    /// Set horizontal padding in logical pixels.
+    /// Class atom. Same as `px-N`. Not the box.
     #[must_use]
     pub fn px(self, px: i16) -> Self {
         self.push(StyleAtom::PaddingX(Px(px)))
     }
 
-    /// Set vertical padding in logical pixels.
+    /// Class atom. Same as `py-N`. Not the box.
     #[must_use]
     pub fn py(self, px: i16) -> Self {
         self.push(StyleAtom::PaddingY(Px(px)))
@@ -342,6 +343,30 @@ impl Style {
     #[must_use]
     pub fn border_width(self, width: i16) -> Self {
         self.push(StyleAtom::BorderWidth(Px(width)))
+    }
+
+    /// Set the top-edge border width.
+    #[must_use]
+    pub fn border_top(self, width: i16) -> Self {
+        self.push(StyleAtom::BorderTop(Px(width)))
+    }
+
+    /// Set the right-edge border width.
+    #[must_use]
+    pub fn border_right(self, width: i16) -> Self {
+        self.push(StyleAtom::BorderRight(Px(width)))
+    }
+
+    /// Set the bottom-edge border width.
+    #[must_use]
+    pub fn border_bottom(self, width: i16) -> Self {
+        self.push(StyleAtom::BorderBottom(Px(width)))
+    }
+
+    /// Set the left-edge border width.
+    #[must_use]
+    pub fn border_left(self, width: i16) -> Self {
+        self.push(StyleAtom::BorderLeft(Px(width)))
     }
 
     /// Set a border stroke colour atom.
@@ -501,6 +526,33 @@ impl Style {
     #[must_use]
     pub fn line_height(self, px: i16) -> Self {
         self.push(StyleAtom::LineHeight(Px(px)))
+    }
+
+    /// Set letter-spacing in ems (`0.12` → `0.12em`).
+    #[must_use]
+    pub fn letter_spacing_em(self, em: f32) -> Self {
+        // The clamp bounds the value to ±2000, well inside i16 range.
+        #[allow(clippy::cast_possible_truncation)]
+        let thousandths = (em * 1000.0).round().clamp(-2000.0, 2000.0) as i16;
+        self.push(StyleAtom::LetterSpacing(thousandths))
+    }
+
+    /// Set CSS `text-decoration-line`.
+    #[must_use]
+    pub fn text_decoration(self, decoration: crate::TextDecoration) -> Self {
+        self.push(StyleAtom::TextDecoration(decoration))
+    }
+
+    /// `text-decoration-line: line-through`.
+    #[must_use]
+    pub fn line_through(self) -> Self {
+        self.text_decoration(crate::TextDecoration::LineThrough)
+    }
+
+    /// `text-decoration-line: underline`.
+    #[must_use]
+    pub fn underline(self) -> Self {
+        self.text_decoration(crate::TextDecoration::Underline)
     }
 
     /// Store a deferred transition preset.

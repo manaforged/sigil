@@ -176,7 +176,7 @@ fn build_text_field(cx: &mut Cx) -> NodeId {
 
 fn build_modal(cx: &mut Cx) -> NodeId {
     let show = signal(true);
-    cx.add(modal().title("Settings").show(show))
+    cx.add(modal(show).title("Settings"))
 }
 
 fn find(update: &TreeUpdate, id: NodeId) -> Option<&AkNode> {

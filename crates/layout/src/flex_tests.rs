@@ -27,8 +27,8 @@
 )]
 
 use super::*;
-use crate::flex_algorithm::{Edges as AlgoEdges, clamp_minmax, dim_to_border_box, resolve_lp};
 use crate::forest::{AvailableSpace, LayoutForest, MeasureScope};
+use crate::resolve::{Edges as AlgoEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::style_data::{
     AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap,
     JustifyContent, LengthPercentage, LengthPercentageAuto, Position, Rect, Size as StyleSize,
@@ -106,6 +106,31 @@ fn row_lays_children_along_inline_axis() {
     assert!(near(ba.y, 0.0));
     assert!(near(bb.x, 40.0), "bb.x={}", bb.x);
     assert!(near(bb.y, 0.0));
+}
+
+#[test]
+fn grow_item_is_not_start_packed() {
+    let mut f = LayoutForest::new();
+    let parent = f.insert(
+        None,
+        StyleData {
+            display: Display::Flex,
+            size: StyleSize::new(Dimension::Px(300.0), Dimension::Px(40.0)),
+            ..StyleData::default()
+        },
+    );
+    let a = add_child(&mut f, parent, fixed(40.0, 40.0));
+    let mut grown = fixed(40.0, 40.0);
+    grown.flex_grow = 1.0;
+    let b = add_child(&mut f, parent, grown);
+    let s = run(&f, parent, 400.0, 400.0);
+    let bb = s.boxed(b).unwrap();
+    assert!(
+        bb.w > 200.0,
+        "grow item must take leftover main space, w={}",
+        bb.w
+    );
+    let _ = a;
 }
 
 #[test]
@@ -951,13 +976,13 @@ fn empty_flex_container_produces_only_self_box() {
 // ---------------------------------------------------------------------
 
 #[test]
-fn clamp_minmax_min_floors_above_max() {
-    assert!(near(clamp_minmax(80.0, Some(120.0), Some(100.0)), 120.0));
+fn clamp_min_floors_above_max() {
+    assert!(near(clamp(80.0, Some(120.0), Some(100.0)), 120.0));
 }
 
 #[test]
-fn clamp_minmax_no_bounds_passes_through() {
-    assert!(near(clamp_minmax(42.0, None, None), 42.0));
+fn clamp_no_bounds_passes_through() {
+    assert!(near(clamp(42.0, None, None), 42.0));
 }
 
 #[test]

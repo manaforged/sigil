@@ -1,10 +1,12 @@
-//! Owned text engine for Sigil.
+//! Owned text engine for Sigil (DR-044).
 //!
-//! G1.1 ships the skeleton: skrifa-backed shaper stub, unicode
-//! segmentation wrappers, bidi placeholder, and the `GlyphRun`
-//! output type Slug consumes. The Parley-backed `engine`,
-//! `paragraph`, and `cache` modules stay in place until G1.4
-//! rewrites them against the owned shaper (DR-044).
+//! Shaping runs through `HarfRust` for every script by default
+//! (kerning, ligatures, marks); the skrifa-only fallback shaper covers
+//! Latin, CJK, and emoji when `HarfRust` returns nothing or the
+//! `shaping-complex` feature is off. Around that sit unicode
+//! segmentation, bidi resolution, line breaking, font fallback, and a
+//! paragraph cache. [`glyph::GlyphRun`] is the output type Slug
+//! consumes.
 //!
 //! See `docs/decisions/DR-044-g1-owned-text-pipeline.md`.
 

@@ -51,15 +51,17 @@
 #[cfg(test)]
 use criterion as _;
 
+mod current;
 mod dispatch;
 mod handle;
 mod reactive_bridge;
 mod runtime;
 mod status;
 
-use winit as _;
-
-pub use dispatch::{dispatch_to_owner, spawn_to_signal};
+pub use current::spawn;
+pub use dispatch::dispatch_to_owner;
+#[doc(hidden)]
+pub use dispatch::spawn_to_signal;
 pub use handle::OwnerHandle;
 pub use reactive_bridge::{ReactiveBridge, TokioExecutor};
 pub use runtime::{AsyncRuntime, Dispatcher, ScheduleError};

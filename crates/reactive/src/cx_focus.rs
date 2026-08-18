@@ -1,17 +1,17 @@
-//! Focus-stack methods on [`Context`].
+//! Focus-stack methods on [`EntityCx`].
 //!
 //! Extracted from `cx.rs` to keep that file under the 400-line cap.
 //! Five methods that all touch the runtime's focus stack:
-//! [`Context::focus_handle`] (mint), [`Context::focus`] /
-//! [`Context::blur`] (push/remove), [`Context::focused`] /
-//! [`Context::painting`] (read).
+//! [`EntityCx::focus_handle`] (mint), [`EntityCx::focus`] /
+//! [`EntityCx::blur`] (push/remove), [`EntityCx::focused`] /
+//! [`EntityCx::painting`] (read).
 
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::focus::FocusHandle;
 use crate::owner::on_cleanup;
 use crate::runtime::with_rt;
 
-impl<T: 'static> Context<'_, T> {
+impl<T: 'static> EntityCx<'_, T> {
     /// Mint a new [`FocusHandle`] owned by this context's entity.
     ///
     /// The handle is stable for the entity's lifetime. When the
@@ -24,7 +24,7 @@ impl<T: 'static> Context<'_, T> {
     /// [`action`](Self::action) calls.
     #[must_use]
     pub fn focus_handle(&mut self) -> FocusHandle {
-        let handle = FocusHandle::new(self.entity);
+        let handle = FocusHandle::new();
         let id = handle.id();
         // Owner-cascade cleanup: when the surrounding reactive owner
         // disposes, evict this handle from the focus stack. Idempotent
@@ -44,7 +44,7 @@ impl<T: 'static> Context<'_, T> {
     pub fn focus(&mut self, handle: &FocusHandle) {
         let id = handle.id();
         with_rt(|rt| {
-            crate::phase::assert_paint_safe(rt, "Context::focus");
+            crate::phase::assert_paint_safe(rt, "EntityCx::focus");
             rt.focus_stack.retain(|other| *other != id);
             rt.focus_stack.push(id);
         });
@@ -54,7 +54,7 @@ impl<T: 'static> Context<'_, T> {
     pub fn blur(&mut self, handle: &FocusHandle) {
         let id = handle.id();
         with_rt(|rt| {
-            crate::phase::assert_paint_safe(rt, "Context::blur");
+            crate::phase::assert_paint_safe(rt, "EntityCx::blur");
             rt.focus_stack.retain(|other| *other != id);
         });
     }

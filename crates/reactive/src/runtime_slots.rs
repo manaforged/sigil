@@ -121,24 +121,18 @@ pub(crate) struct OwnerSlot {
 }
 
 pub(crate) struct SignalSlot {
-    /// Owner this signal belongs to. Kept for consistency asserts and
-    /// currently unread outside of tests; future commits will use it
-    /// for cross-owner signal moves and a debug check in
-    /// `dispose_owner`.
+    /// Owner of this signal.
     #[expect(
         dead_code,
-        reason = "read by future cross-owner signal moves; kept to preserve the construction-site invariant"
+        reason = "construction-site owner; write path does not read it"
     )]
     pub(crate) owner: OwnerKey,
     pub(crate) value: Box<dyn Any>,
     pub(crate) subscribers: SmallVec<[EffectKey; 4]>,
-    /// `Location::caller()` at `signal()` call site. Currently only
-    /// read in test-targeted stale-handle panic paths; the field
-    /// stays so the construction-site invariant holds for every
-    /// signal.
+    /// Call site of `signal()`.
     #[expect(
         dead_code,
-        reason = "stale-handle panic messages use this in a follow-up commit"
+        reason = "construction-site location; write path does not read it"
     )]
     pub(crate) location: &'static Location<'static>,
 }

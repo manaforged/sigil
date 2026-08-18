@@ -51,6 +51,7 @@ impl From<Box<dyn StdError + Send + Sync + 'static>> for Error {
     }
 }
 
+#[cfg(feature = "desktop")]
 impl From<sigil_renderer::RendererError> for Error {
     fn from(err: sigil_renderer::RendererError) -> Self {
         Self::new(err)

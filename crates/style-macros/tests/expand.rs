@@ -61,6 +61,17 @@ fn expands_shadow_elevations() {
 }
 
 #[test]
+fn expands_grid_and_text_decoration() {
+    assert_eq!(
+        classes!("grid-cols-2 line-through"),
+        &[
+            StyleAtom::GridColumns(2),
+            StyleAtom::TextDecoration(sigil_style::TextDecoration::LineThrough),
+        ],
+    );
+}
+
+#[test]
 fn concrete_imports_still_work() {
     let color = ColorAtom::ThemeRef("accent");
     assert_eq!(color, ColorAtom::ThemeRef("accent"));

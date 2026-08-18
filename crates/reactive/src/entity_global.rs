@@ -28,7 +28,7 @@ pub(crate) fn lookup_global<G: 'static>() -> Option<EntityKey> {
 /// Ensure a global entity exists for type `G`; lazily initialise with
 /// `G::default()` if not. Returns the entity handle.
 ///
-/// Used by `Context::observe_global` to allow observers to register
+/// Used by `EntityCx::observe_global` to allow observers to register
 /// before the producer installs the value.
 #[track_caller]
 pub(crate) fn ensure_global_entity<G: 'static>() -> Entity<G> {
@@ -132,7 +132,7 @@ pub fn global_mut<G: 'static, R>(f: impl FnOnce(&mut G) -> R) -> R {
     })
 }
 
-/// Top-level observe-global outside any `Context`.
+/// Top-level observe-global outside any `EntityCx`.
 ///
 /// For consumers (effects, top-level setup) that want to observe a
 /// global without first being inside an entity update. The callback

@@ -18,6 +18,7 @@ use rayon as _;
 use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use slotmap as _;
@@ -40,6 +41,7 @@ impl TextMeasure for StubMeasure {
         let chars = match source {
             TextContent::Static(value) => value.chars().count() as f32,
             TextContent::Reactive(_) => 0.0,
+            TextContent::Compute(build) => build().chars().count() as f32,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

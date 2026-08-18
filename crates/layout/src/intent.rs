@@ -6,11 +6,19 @@ use crate::style_data::{
     StyleData,
 };
 
-/// Layout intent attached to a node through `NodeExtensions`.
+/// One box. Every node is this.
 ///
-/// This is a thin newtype over owned [`StyleData`]; keeping the wrapper
-/// at the public boundary preserves the adapter as the stable authoring
-/// surface while the layout backend evolves.
+/// Size (`width` / `height` / `min_size` / `max_size`), flex
+/// (`grow` / `shrink` / `flex_basis`), overflow (`overflow_x` /
+/// `overflow_y` / [`overflow`](Self::overflow)), position
+/// (`Relative` or `Absolute` plus [`inset_top`](Self::inset_top) /
+/// [`inset_right`](Self::inset_right) / [`inset_bottom`](Self::inset_bottom)
+/// / [`inset_left`](Self::inset_left)), padding, margin, gap.
+/// Widgets are sugar over this type. They do not own a second overflow,
+/// inset, or min-width system.
+///
+/// Thin newtype over [`StyleData`]. The wrapper is the authoring
+/// surface; the backend can change.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LayoutStyle(pub(crate) StyleData);
 
@@ -240,6 +248,34 @@ impl LayoutStyle {
         self
     }
 
+    /// Set padding on the top edge.
+    #[must_use]
+    pub fn padding_top(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        self.0.padding.top = padding.into();
+        self
+    }
+
+    /// Set padding on the right edge.
+    #[must_use]
+    pub fn padding_right(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        self.0.padding.right = padding.into();
+        self
+    }
+
+    /// Set padding on the bottom edge.
+    #[must_use]
+    pub fn padding_bottom(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        self.0.padding.bottom = padding.into();
+        self
+    }
+
+    /// Set padding on the left edge.
+    #[must_use]
+    pub fn padding_left(mut self, padding: impl Into<LengthPercentage>) -> Self {
+        self.0.padding.left = padding.into();
+        self
+    }
+
     /// Set the inline-axis (width) overflow behavior.
     #[must_use]
     pub const fn overflow_x(mut self, overflow: Overflow) -> Self {
@@ -252,6 +288,12 @@ impl LayoutStyle {
     pub const fn overflow_y(mut self, overflow: Overflow) -> Self {
         self.0.overflow.height = overflow;
         self
+    }
+
+    /// Set overflow on both axes. Same job as CSS `overflow`.
+    #[must_use]
+    pub const fn overflow(self, overflow: Overflow) -> Self {
+        self.overflow_x(overflow).overflow_y(overflow)
     }
 
     /// True when paint must clip descendants to this node's rect —
@@ -279,6 +321,27 @@ impl LayoutStyle {
         self
     }
 
+    /// Set a fixed logical-pixel right inset (for `Position::Absolute`).
+    #[must_use]
+    pub fn inset_right(mut self, right: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.inset.right = right.into();
+        self
+    }
+
+    /// Set a fixed logical-pixel bottom inset (for `Position::Absolute`).
+    #[must_use]
+    pub fn inset_bottom(mut self, bottom: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.inset.bottom = bottom.into();
+        self
+    }
+
+    /// Set the same inset on all four sides.
+    #[must_use]
+    pub fn inset(mut self, inset: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.inset = all_sides(inset.into());
+        self
+    }
+
     /// Set uniform flex/grid gap.
     #[must_use]
     pub fn gap(mut self, gap: impl Into<LengthPercentage>) -> Self {
@@ -291,9 +354,19 @@ impl LayoutStyle {
     }
 
     /// Set flex grow.
+    ///
+    /// Any `min_size` axis that is still `Auto` becomes `0`, so the item
+    /// can shrink below its content (CSS `flex: n; min-width: 0`). Call
+    /// [`Self::min_size`] after this to keep a floor.
     #[must_use]
     pub const fn grow(mut self, grow: f32) -> Self {
         self.0.flex_grow = grow;
+        if matches!(self.0.min_size.width, Dimension::Auto) {
+            self.0.min_size.width = Dimension::Px(0.0);
+        }
+        if matches!(self.0.min_size.height, Dimension::Auto) {
+            self.0.min_size.height = Dimension::Px(0.0);
+        }
         self
     }
 
@@ -377,8 +450,10 @@ impl LayoutStyle {
 
     /// Set the position mode (`Relative` or `Absolute`).
     ///
-    /// Use `Position::Absolute` with `inset` (via [`with_layout`](Self::with_layout))
-    /// to place a node at an exact offset from its containing block.
+    /// Use `Position::Absolute` with [`inset_top`](Self::inset_top) /
+    /// [`inset_right`](Self::inset_right) / [`inset_bottom`](Self::inset_bottom)
+    /// / [`inset_left`](Self::inset_left) to pin a node to its containing
+    /// block.
     #[must_use]
     pub const fn position(mut self, position: Position) -> Self {
         self.0.position = position;
@@ -417,7 +492,9 @@ const fn all_sides<T: Copy>(value: T) -> Rect<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::style_data::{Display, FlexDirection, LengthPercentage};
+    use crate::style_data::{
+        Display, FlexDirection, LengthPercentage, LengthPercentageAuto, Overflow,
+    };
 
     #[test]
     fn pane_sugar_matches_manual_chain() {
@@ -431,5 +508,36 @@ mod tests {
         assert_eq!(sugared.data().size.height, Dimension::Px(200.0));
         assert_eq!(sugared.data().gap.width, LengthPercentage::Px(4.0));
         assert_eq!(sugared.data().gap.height, LengthPercentage::Px(4.0));
+    }
+
+    #[test]
+    fn overflow_sets_both_axes() {
+        let style = LayoutStyle::block().overflow(Overflow::Hidden);
+        assert_eq!(style.data().overflow.width, Overflow::Hidden);
+        assert_eq!(style.data().overflow.height, Overflow::Hidden);
+    }
+
+    #[test]
+    fn inset_sides_write_the_box() {
+        let style = LayoutStyle::block()
+            .inset_top(4.0)
+            .inset_right(8.0)
+            .inset_bottom(12.0)
+            .inset_left(16.0);
+        assert_eq!(style.data().inset.top, LengthPercentageAuto::Px(4.0));
+        assert_eq!(style.data().inset.right, LengthPercentageAuto::Px(8.0));
+        assert_eq!(style.data().inset.bottom, LengthPercentageAuto::Px(12.0));
+        assert_eq!(style.data().inset.left, LengthPercentageAuto::Px(16.0));
+    }
+
+    #[test]
+    fn grow_pins_auto_min_size_to_zero() {
+        let grown = LayoutStyle::flex_column().grow(1.0);
+        assert_eq!(grown.data().flex_grow.to_bits(), 1.0f32.to_bits());
+        assert_eq!(grown.data().min_size.width, Dimension::Px(0.0));
+        assert_eq!(grown.data().min_size.height, Dimension::Px(0.0));
+        let kept = LayoutStyle::flex_row().min_size(80.0, 24.0).grow(1.0);
+        assert_eq!(kept.data().min_size.width, Dimension::Px(80.0));
+        assert_eq!(kept.data().min_size.height, Dimension::Px(24.0));
     }
 }

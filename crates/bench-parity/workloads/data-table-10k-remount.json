@@ -1,0 +1,40 @@
+{
+  "workload_id": "data-table-10k-remount",
+  "description": "Scroll one row on the 10k × 24-column table. Sigil keeps overlapping NodeIds and shapes the incoming row. GPUI rebuilds uniform_list for the new range. One row-height step per sample.",
+  "category": "data-table",
+  "params": {
+    "row_count": 10000,
+    "row_height_px": 24.0,
+    "viewport_width_px": 1248.0,
+    "viewport_height_px": 912.0,
+    "row_shape": "gpui-24-field",
+    "scroll_pattern": "linear-one-row-per-frame",
+    "iterations": 40,
+    "warmup": 6,
+    "surface": "layout",
+    "reuse": true,
+    "cells_per_row": 24
+  },
+  "equivalence_checks": [
+    {
+      "name": "visible_window_indices",
+      "description": "Materialised row count is the viewport page, or Sigil page plus one page of overscan each side"
+    },
+    {
+      "name": "column_count",
+      "description": "Each visible row has 24 cells"
+    },
+    {
+      "name": "layout_did_work",
+      "description": "Sigil layout_hits < samples"
+    },
+    {
+      "name": "text_did_work",
+      "description": "Sigil text.measure in [24, visible×24) — incoming row, not the band"
+    },
+    {
+      "name": "scene_did_work",
+      "description": "N/A on layout surface"
+    }
+  ]
+}

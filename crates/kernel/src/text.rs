@@ -1,20 +1,27 @@
 //! Built-in text node primitive.
 
+use std::fmt;
+use std::rc::Rc;
+
 use accesskit::Role;
 use sigil_hal::Shortcut;
-use sigil_reactive::Signal;
+use sigil_reactive::{Signal, derived};
 
 use crate::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
 
 type TextMutator = Box<dyn FnOnce(&mut crate::Node)>;
 
-/// Static or reactive text content.
-#[derive(Clone, Debug)]
+/// Static or live text content.
+#[derive(Clone)]
 pub enum TextContent {
     /// Fixed text known at build time.
     Static(String),
     /// Text driven by a reactive signal.
     Reactive(Signal<String>),
+    /// Factory-safe live text. [`TextBuilder`] converts this to
+    /// [`TextContent::Reactive`] under the node owner so a keyed
+    /// keep does not dispose the subscription.
+    Compute(Rc<dyn Fn() -> String>),
 }
 
 impl TextContent {
@@ -23,7 +30,43 @@ impl TextContent {
     pub fn as_static_str(&self) -> Option<&str> {
         match self {
             Self::Static(value) => Some(value),
-            Self::Reactive(_) => None,
+            Self::Reactive(_) | Self::Compute(_) => None,
+        }
+    }
+
+    /// Resolve the current string.
+    #[must_use]
+    pub fn resolve(&self) -> String {
+        match self {
+            Self::Static(value) => value.clone(),
+            Self::Reactive(signal) => signal.try_peek().unwrap_or_default(),
+            Self::Compute(compute) => compute(),
+        }
+    }
+
+    /// Live text from a closure. The closure is stored until
+    /// [`TextBuilder`] builds the node, then wrapped in
+    /// `sigil_reactive::derived`.
+    #[must_use]
+    pub fn compute(f: impl Fn() -> String + 'static) -> Self {
+        Self::Compute(Rc::new(f))
+    }
+
+    /// Convert factory-safe compute text into a node-owned signal.
+    fn into_live(self) -> Self {
+        match self {
+            Self::Compute(compute) => Self::Reactive(derived(move || compute())),
+            other => other,
+        }
+    }
+}
+
+impl fmt::Debug for TextContent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Static(value) => f.debug_tuple("Static").field(value).finish(),
+            Self::Reactive(_) => f.write_str("Reactive"),
+            Self::Compute(_) => f.write_str("Compute"),
         }
     }
 }
@@ -64,23 +107,30 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
             role: Role::Label,
             ..A11yProps::default()
         },
-        wrap: false,
+        wrap: true,
         ellipsis: false,
         pre_extensions: Vec::new(),
     }
 }
 
 impl TextBuilder {
-    /// Wrap the text to its containing block's width instead of hugging
-    /// its content on one line.
+    /// Wrap to the containing block's width (the default).
     ///
-    /// Off by default: a bare label hugs its content and the container
-    /// clips or scrolls any overflow. Turn it on for prose that should
-    /// reflow — descriptions, chat bodies, help text — where the height
-    /// grows with the content and the width follows the container.
+    /// A definite-width parent reflows the paragraph. An indefinite parent
+    /// still hugs max-content, so a toolbar label stays one line.
     #[must_use]
     pub const fn wrap(mut self) -> Self {
         self.wrap = true;
+        self.ellipsis = false;
+        self
+    }
+
+    /// Keep the text on one line and let a narrow parent overflow.
+    ///
+    /// Prefer [`Self::ellipsize`] when the slot has a definite width.
+    #[must_use]
+    pub const fn nowrap(mut self) -> Self {
+        self.wrap = false;
         self
     }
 
@@ -88,14 +138,13 @@ impl TextBuilder {
     /// (`…`) when it is given less width than it needs (CSS `text-overflow:
     /// ellipsis`).
     ///
-    /// Off by default (a bare label hugs its content and overflows). Turn
-    /// it on for single-line controls in a width-constrained slot — a file
-    /// name in a fixed column, a title in a card — so a long value reads as
-    /// "Some long va…" instead of overflowing or clipping mid-glyph. Takes
-    /// precedence over [`Self::wrap`]; a node should set one or the other.
+    /// Use this for a single-line slot — a file name in a column, a title
+    /// in a card — so a long value reads as "Some long va…" instead of
+    /// wrapping. Clears [`Self::wrap`].
     #[must_use]
     pub const fn ellipsize(mut self) -> Self {
         self.ellipsis = true;
+        self.wrap = false;
         self
     }
 
@@ -172,7 +221,7 @@ impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
         let id = cx.new_node(
             NodeType::Text {
-                content: self.source,
+                content: self.source.into_live(),
                 wrap: self.wrap,
                 ellipsis: self.ellipsis,
             },

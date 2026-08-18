@@ -24,8 +24,13 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+mod compare;
 pub mod runners;
 
+pub use compare::{
+    CV_CEILING, comparable, cv_ok, frame_pair, layout_void, ratio_ok, same_checks, same_host,
+    same_mode, same_verdicts, vs_frame, vs_gpui,
+};
 pub use runners::SigilRunner;
 
 /// One bench workload — a frozen description of what is measured.
@@ -77,6 +82,161 @@ pub struct WorkloadParams {
     /// Number of warmup iterations (not included in summary).
     #[serde(default)]
     pub warmup: usize,
+    /// Timed surface: `layout` (default) or `layout_paint`.
+    #[serde(default)]
+    pub surface: String,
+    /// Keep the host tree and only change scroll / inputs between samples.
+    #[serde(default)]
+    pub reuse: bool,
+    /// Cells per row for `flex-tree` and `data-table` (0 → 8).
+    #[serde(default)]
+    pub cells_per_row: usize,
+}
+
+/// Timed surface for a workload.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum Surface {
+    /// Layout only (GPUI `layout_as_root` + `prepaint`; Sigil `compute`).
+    Layout,
+    /// Layout plus CPU scene (GPUI paint when it does not panic; Sigil emit).
+    LayoutPaint,
+}
+
+impl WorkloadParams {
+    /// Resolved surface. Empty string is [`Surface::Layout`].
+    #[must_use]
+    pub fn surface(&self) -> Surface {
+        match self.surface.as_str() {
+            "layout_paint" => Surface::LayoutPaint,
+            _ => Surface::Layout,
+        }
+    }
+
+    /// Cells per row, default 8. `gpui-24-field` is locked to 24.
+    #[must_use]
+    pub fn cells(&self) -> usize {
+        if self.gpui_table() {
+            data_table::COLUMN_COUNT
+        } else if self.cells_per_row == 0 {
+            8
+        } else {
+            self.cells_per_row
+        }
+    }
+
+    /// True when this workload is the live GPUI `data_table` clone.
+    #[must_use]
+    pub fn gpui_table(&self) -> bool {
+        self.row_shape == "gpui-24-field"
+    }
+
+    /// True when samples mutate visible quotes in place (no scroll).
+    #[must_use]
+    pub fn tick(&self) -> bool {
+        self.scroll_pattern.starts_with("tick")
+    }
+
+    /// True when the window sits on the last page of the book.
+    #[must_use]
+    pub fn tail(&self) -> bool {
+        self.scroll_pattern.contains("tail")
+    }
+
+    /// Row height. The 24-column clone uses the live window constant.
+    #[must_use]
+    pub fn row_h(&self) -> f32 {
+        if self.gpui_table() {
+            data_table::ROW_HEIGHT
+        } else {
+            self.row_height_px
+        }
+    }
+
+    /// Viewport size. The 24-column clone uses the live window pane.
+    #[must_use]
+    pub fn viewport(&self) -> (f32, f32) {
+        if self.gpui_table() {
+            (data_table::TABLE_WIDTH, data_table::VIEWPORT_HEIGHT)
+        } else {
+            (self.viewport_width_px, self.viewport_height_px)
+        }
+    }
+}
+
+/// Krausest 4-cell row — same numbers and strings on both runners.
+pub const ID_CELL_W: f32 = 80.0;
+/// Label column width.
+pub const LABEL_CELL_W: f32 = 320.0;
+/// Action column width.
+pub const ACTION_CELL_W: f32 = 80.0;
+/// Trailing spacer width.
+pub const SPACER_CELL_W: f32 = 800.0;
+/// Sum of the four krausest cells.
+pub const ROW_WIDTH: f32 = ID_CELL_W + LABEL_CELL_W + ACTION_CELL_W + SPACER_CELL_W;
+/// Data-table cell width (GPUI `data_table` example uses fixed columns).
+pub const TABLE_CELL_W: f32 = 100.0;
+/// Text cells in a krausest row (id, label, remove). Spacer is empty.
+pub const KRAUSEST_TEXT_CELLS: usize = 3;
+/// Remove-column label. Same bytes on both runners.
+pub const KRAUSEST_ACTION: &str = "remove";
+
+/// Krausest id cell. Same string on both runners.
+#[must_use]
+pub fn krausest_id(index: u32) -> String {
+    index.to_string()
+}
+
+/// Krausest label cell. Same string on both runners.
+#[must_use]
+pub fn krausest_label(index: u32) -> String {
+    format!("Item #{index}")
+}
+
+/// Pass when the runner held `want` source rows, not only the window.
+#[must_use]
+pub fn book_held(got: usize, want: usize) -> EquivalenceCheck {
+    if got == want && want > 0 {
+        EquivalenceCheck::Pass
+    } else {
+        EquivalenceCheck::Fail {
+            detail: format!("book {got} != {want}"),
+        }
+    }
+}
+
+/// Pass when the visible band reaches the last source row.
+#[must_use]
+pub fn tail_window(first: usize, visible: usize, rows: usize) -> EquivalenceCheck {
+    let last = first.saturating_add(visible);
+    let min_first = rows.saturating_sub(visible.saturating_add(1));
+    if rows > 0 && visible > 0 && last >= rows && first >= min_first {
+        EquivalenceCheck::Pass
+    } else {
+        EquivalenceCheck::Fail {
+            detail: format!("first {first} visible {visible} rows {rows}"),
+        }
+    }
+}
+
+/// Inclusive visible-row band both runners accept.
+///
+/// GPUI `uniform_list` mounts `ceil(viewport / row)`. Sigil mounts that
+/// page plus one page of overscan on each side (two pages at the top or
+/// tail, three mid-list). A count in `[page, 3*page+1]` is the same check.
+#[must_use]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss
+)]
+pub fn visible_band(viewport_h: f32, row_h: f32, row_count: usize) -> (usize, usize) {
+    if row_count == 0 || row_h <= 0.0 {
+        return (0, 0);
+    }
+    let page = (viewport_h / row_h).ceil() as usize;
+    let lo = page.min(row_count);
+    let hi = page.saturating_mul(3).saturating_add(1).min(row_count);
+    (lo, hi)
 }
 
 /// Declared equivalence check the runner must answer Pass/Fail for.
@@ -119,6 +279,9 @@ pub struct RunResult {
     pub equivalence_check_results: HashMap<String, EquivalenceCheck>,
     /// Host info captured at run time.
     pub host: HostInfo,
+    /// Proof the timed loop did real work: hits, misses, measures, visible rows.
+    #[serde(default)]
+    pub verify: HashMap<String, u64>,
 }
 
 /// Aggregate statistics over the measured samples.
@@ -134,6 +297,9 @@ pub struct RunSummary {
     pub p99_us: f64,
     /// Mean in microseconds.
     pub mean_us: f64,
+    /// Coefficient of variation (`stdev / mean`). Zero when mean is 0.
+    #[serde(default)]
+    pub cv: f64,
 }
 
 impl RunSummary {
@@ -152,6 +318,7 @@ impl RunSummary {
                 p95_us: 0.0,
                 p99_us: 0.0,
                 mean_us: 0.0,
+                cv: 0.0,
             };
         }
         let mut sorted: Vec<u64> = samples_ns.to_vec();
@@ -167,13 +334,27 @@ impl RunSummary {
             sorted.get(idx).copied().unwrap_or(0) as f64 / 1_000.0
         };
         let sum: u128 = sorted.iter().map(|&v| u128::from(v)).sum();
-        let mean_us = (sum as f64) / (n as f64) / 1_000.0;
+        let mean_ns = (sum as f64) / (n as f64);
+        let var = sorted
+            .iter()
+            .map(|&v| {
+                let d = v as f64 - mean_ns;
+                d * d
+            })
+            .sum::<f64>()
+            / (n as f64);
+        let cv = if mean_ns > 0.0 {
+            var.sqrt() / mean_ns
+        } else {
+            0.0
+        };
         Self {
             iterations: n,
             median_us: pct(0.50),
             p95_us: pct(0.95),
             p99_us: pct(0.99),
-            mean_us,
+            mean_us: mean_ns / 1_000.0,
+            cv,
         }
     }
 }
@@ -191,16 +372,23 @@ pub struct HostInfo {
     pub total_memory_bytes: u64,
     /// rustc version (`rustc --version` minus newline), or `"unknown"`.
     pub rustc_version: String,
+    /// Resident set of this process after the run, in bytes. `0` on
+    /// older JSON that omitted the field.
+    #[serde(default)]
+    pub process_rss_bytes: u64,
 }
 
 impl HostInfo {
     /// Probe the running host. Uses `sysinfo` for CPU+OS+memory.
     #[must_use]
     pub fn capture() -> Self {
-        use sysinfo::System;
+        use sysinfo::{Pid, ProcessesToUpdate, System};
         let mut sys = System::new();
         sys.refresh_cpu_all();
         sys.refresh_memory();
+        let pid = Pid::from_u32(std::process::id());
+        sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+        let process_rss_bytes = sys.process(pid).map_or(0, sysinfo::Process::memory);
         let cpu = sys
             .cpus()
             .first()
@@ -221,6 +409,7 @@ impl HostInfo {
             cpu_cores,
             total_memory_bytes,
             rustc_version,
+            process_rss_bytes,
         }
     }
 }
@@ -247,4 +436,50 @@ pub trait FrameworkRunner {
     /// supported by this runner, or when an internal precondition
     /// (e.g. workload params out of range) is violated.
     fn run(&self, workload: &Workload) -> Result<RunResult, String>;
+}
+
+#[cfg(test)]
+mod book_tests {
+    use super::{EquivalenceCheck, book_held, tail_window};
+
+    #[test]
+    fn book_must_match_the_declared_count() {
+        assert!(matches!(
+            book_held(1_000_000, 1_000_000),
+            EquivalenceCheck::Pass
+        ));
+        assert!(matches!(
+            book_held(100_000, 1_000_000),
+            EquivalenceCheck::Fail { .. }
+        ));
+        assert!(matches!(book_held(0, 0), EquivalenceCheck::Fail { .. }));
+    }
+
+    #[test]
+    fn tail_reaches_the_last_row() {
+        assert!(matches!(
+            tail_window(999_960, 40, 1_000_000),
+            EquivalenceCheck::Pass
+        ));
+        assert!(matches!(
+            tail_window(999_920, 80, 1_000_000),
+            EquivalenceCheck::Pass
+        ));
+        assert!(matches!(
+            tail_window(0, 41, 1_000_000),
+            EquivalenceCheck::Fail { .. }
+        ));
+    }
+}
+
+#[cfg(test)]
+mod band_tests {
+    use super::visible_band;
+
+    #[test]
+    fn band_accepts_gpui_page_and_sigil_overscan() {
+        assert_eq!(visible_band(1_280.0, 32.0, 1_000_000), (40, 121));
+        assert_eq!(visible_band(912.0, 24.0, 10_000), (38, 115));
+        assert_eq!(visible_band(1_280.0, 32.0, 3), (3, 3));
+    }
 }

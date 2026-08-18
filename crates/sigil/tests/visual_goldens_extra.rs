@@ -26,10 +26,10 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 
 use sigil::prelude::*;
 use sigil::widgets::patterns;
@@ -134,8 +134,7 @@ fn virtual_list_items_bind() {
     let img = render_widget_to_png(
         |cx| {
             let items: Signal<Vec<String>> = signal(ten_row_list());
-            let w = virtual_list(Vec::<String>::new(), |_, s: &String| row_label(s))
-                .items_bind(items)
+            let w = virtual_list(items, |_, s: &String| row_label(s))
                 .row_height(20.0)
                 .viewport_height(200.0)
                 .viewport_width(220.0);
@@ -232,7 +231,7 @@ fn text_edit_multiline() {
     let img = render_widget_to_png(
         |cx| {
             let buffer = signal(String::from("first line\nsecond line\nthird line"));
-            cx.add(text_edit(buffer))
+            cx.add(text_edit(buffer).width(360.0).height(160.0))
         },
         InteractionMode::Default,
         [220, 88],
@@ -247,7 +246,7 @@ fn text_edit_multiline() {
 // at native size so the per-tone palette difference is visible to a
 // pixel-diff and a vision review.
 
-fn chip_in(label: &'static str, tone: ChipTone) -> NodeBuilder {
+fn chip_in(label: &'static str, tone: Tone) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row())
         .child(chip(label, tone))
@@ -256,7 +255,7 @@ fn chip_in(label: &'static str, tone: ChipTone) -> NodeBuilder {
 #[test]
 fn chip_neutral() {
     let img = render_widget_to_png(
-        |cx| cx.add(chip_in("READY", ChipTone::Neutral)),
+        |cx| cx.add(chip_in("READY", Tone::Neutral)),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -267,7 +266,7 @@ fn chip_neutral() {
 #[test]
 fn chip_info() {
     let img = render_widget_to_png(
-        |cx| cx.add(chip_in("INFO", ChipTone::Info)),
+        |cx| cx.add(chip_in("INFO", Tone::Info)),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -278,7 +277,7 @@ fn chip_info() {
 #[test]
 fn chip_success() {
     let img = render_widget_to_png(
-        |cx| cx.add(chip_in("OK", ChipTone::Success)),
+        |cx| cx.add(chip_in("OK", Tone::Success)),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -289,7 +288,7 @@ fn chip_success() {
 #[test]
 fn chip_warn() {
     let img = render_widget_to_png(
-        |cx| cx.add(chip_in("WARN", ChipTone::Warn)),
+        |cx| cx.add(chip_in("WARN", Tone::Warn)),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -300,7 +299,7 @@ fn chip_warn() {
 #[test]
 fn chip_error() {
     let img = render_widget_to_png(
-        |cx| cx.add(chip_in("ERROR", ChipTone::Error)),
+        |cx| cx.add(chip_in("ERROR", Tone::Error)),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -404,8 +403,8 @@ fn status_bar_default() {
                 .layout(LayoutStyle::flex_column().fixed_size(280.0, 48.0))
                 .class("bg-surface")
                 .child(status_bar([
-                    chip("READY", ChipTone::Success),
-                    chip("3 ITEMS", ChipTone::Neutral),
+                    chip("READY", Tone::Success),
+                    chip("3 ITEMS", Tone::Neutral),
                 ]));
             cx.add(on_black(bar, 292.0, 60.0))
         },
@@ -632,7 +631,7 @@ fn pattern_app_shell() {
                             .class("bg-surface-hover")
                             .layout(LayoutStyle::flex_column().fill().padding(8.0))
                             .child(text("Work")),
-                        status_bar([chip("READY", ChipTone::Success)]),
+                        status_bar([chip("READY", Tone::Success)]),
                         None::<NodeBuilder>,
                     )),
             )

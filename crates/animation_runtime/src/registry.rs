@@ -1,5 +1,4 @@
-//! [`AnimationRegistry`] — lookup from [`sigil_style::TransitionId`] to
-//! [`AnimationConfig`].
+//! Transition id → [`AnimationConfig`].
 //!
 //! Eight defaults ship per DR-053 §4 — five springs (`Smooth` /
 //! `Gentle` / `Snappy` / `Bouncy` / `Stiff` at IDs `0..=4`) and three
@@ -38,51 +37,40 @@ pub mod presets {
     pub const SLOW: TransitionId = TransitionId(18);
 }
 
-/// Lookup table mapping a [`TransitionId`] to its concrete config.
+/// Config for a shipped transition id.
 ///
-/// Phase 1 ships only the default table; per-app overrides come in a
-/// follow-up amendment when downstream consumers need them.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct AnimationRegistry {
-    _marker: (),
-}
-
-impl AnimationRegistry {
-    /// Look up the config registered for `id`. Returns `None` when the
-    /// caller's registry does not advertise the ID — the binding-install
-    /// hook in `sigil-style` (DR-053 §5) logs a merge warning and falls
-    /// through to instant application.
-    #[must_use]
-    pub const fn get(&self, id: TransitionId) -> Option<AnimationConfig> {
-        Some(match id.0 {
-            0 => AnimationConfig::Spring {
-                preset: SpringPreset::Smooth,
-            },
-            1 => AnimationConfig::Spring {
-                preset: SpringPreset::Gentle,
-            },
-            2 => AnimationConfig::Spring {
-                preset: SpringPreset::Snappy,
-            },
-            3 => AnimationConfig::Spring {
-                preset: SpringPreset::Bouncy,
-            },
-            4 => AnimationConfig::Spring {
-                preset: SpringPreset::Stiff,
-            },
-            16 => AnimationConfig::Tween {
-                ms: 120,
-                easing: Easing::CubicInOut,
-            },
-            17 => AnimationConfig::Tween {
-                ms: 200,
-                easing: Easing::CubicInOut,
-            },
-            18 => AnimationConfig::Tween {
-                ms: 320,
-                easing: Easing::CubicInOut,
-            },
-            _ => return None,
-        })
-    }
+/// Returns `None` when `id` is not one of the eight presets — the
+/// binding-install hook logs a merge warning and applies instantly.
+#[must_use]
+pub const fn config(id: TransitionId) -> Option<AnimationConfig> {
+    Some(match id.0 {
+        0 => AnimationConfig::Spring {
+            preset: SpringPreset::Smooth,
+        },
+        1 => AnimationConfig::Spring {
+            preset: SpringPreset::Gentle,
+        },
+        2 => AnimationConfig::Spring {
+            preset: SpringPreset::Snappy,
+        },
+        3 => AnimationConfig::Spring {
+            preset: SpringPreset::Bouncy,
+        },
+        4 => AnimationConfig::Spring {
+            preset: SpringPreset::Stiff,
+        },
+        16 => AnimationConfig::Tween {
+            ms: 120,
+            easing: Easing::CubicInOut,
+        },
+        17 => AnimationConfig::Tween {
+            ms: 200,
+            easing: Easing::CubicInOut,
+        },
+        18 => AnimationConfig::Tween {
+            ms: 320,
+            easing: Easing::CubicInOut,
+        },
+        _ => return None,
+    })
 }

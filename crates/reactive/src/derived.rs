@@ -135,7 +135,7 @@ where
                 let sig = signal_in_owner(value, parent_owner, caller);
                 holder_inside.set(Some(sig));
             }
-            Some(sig) => sig.set(value),
+            Some(sig) => sig.set_always(value),
         }
     });
 

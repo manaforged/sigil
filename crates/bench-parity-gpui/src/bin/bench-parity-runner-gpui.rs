@@ -7,6 +7,7 @@
 #![allow(clippy::print_stdout, clippy::doc_markdown)]
 
 use clap as _;
+use data_table as _;
 use gpui as _;
 use rand as _;
 use serde as _;
@@ -103,7 +104,7 @@ fn resolve_output_path(
 }
 
 fn default_results_dir() -> PathBuf {
-    PathBuf::from("crates/sigil-bench-parity/results")
+    PathBuf::from("crates/bench-parity/results")
 }
 
 fn write_result(path: &Path, result: &RunResult) -> Result<(), String> {

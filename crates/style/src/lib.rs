@@ -72,7 +72,8 @@ pub mod variant_kit;
 pub use animator_overlay::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 pub use atom::{
     AlignKind, ColorAtom, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, JustifyKind,
-    MillisU16, OverflowKind, Px, RenderStyle, Rgba8, SPACING_STEP, StyleAtom, TransitionId,
+    MillisU16, OverflowKind, Px, RenderStyle, Rgba8, SPACING_STEP, StyleAtom, TextDecoration,
+    TransitionId,
 };
 pub use binding::{ReactiveStateSlot, ReactiveStyleAtoms, StyleBinding};
 pub use builder_ext::{ClassSource, NodeStyleExt};

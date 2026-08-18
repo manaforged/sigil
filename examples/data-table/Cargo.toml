@@ -1,0 +1,28 @@
+[package]
+name = "data-table"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "1:1 Sigil window of GPUI 0.2.2 examples/data_table.rs (10k quotes, 24 columns)."
+
+[lib]
+name = "data_table"
+path = "src/lib.rs"
+
+[[bin]]
+name = "data-table"
+path = "src/main.rs"
+
+[features]
+default = ["ui"]
+ui = ["dep:sigil-ui"]
+
+[dependencies]
+sigil-ui = { workspace = true, optional = true }
+
+[lints]
+workspace = true

@@ -62,6 +62,41 @@ impl Rect {
             height,
         }
     }
+
+    /// True when the two rectangles share a positive-area overlap.
+    #[must_use]
+    pub fn intersects(self, other: Self) -> bool {
+        self.origin.x < other.origin.x + other.width
+            && other.origin.x < self.origin.x + self.width
+            && self.origin.y < other.origin.y + other.height
+            && other.origin.y < self.origin.y + self.height
+    }
+
+    /// Overlap rectangle, or `None` when they do not intersect.
+    #[must_use]
+    pub fn intersection(self, other: Self) -> Option<Self> {
+        let x = self.origin.x.max(other.origin.x);
+        let y = self.origin.y.max(other.origin.y);
+        let right = (self.origin.x + self.width).min(other.origin.x + other.width);
+        let bottom = (self.origin.y + self.height).min(other.origin.y + other.height);
+        let width = right - x;
+        let height = bottom - y;
+        if width <= 0.0 || height <= 0.0 {
+            None
+        } else {
+            Some(Self::new(Point::new(x, y), width, height))
+        }
+    }
+
+    /// Grow the rectangle by `pad` on every side.
+    #[must_use]
+    pub const fn expand(self, pad: f32) -> Self {
+        Self::new(
+            Point::new(self.origin.x - pad, self.origin.y - pad),
+            self.width + pad * 2.0,
+            self.height + pad * 2.0,
+        )
+    }
 }
 
 /// Linear-space RGBA colour, each channel in `[0.0, 1.0]`.

@@ -5,12 +5,16 @@
 
 // The lib re-uses these workspace deps; the bin pulls them in transitively
 // via `sigil-bench-parity` itself. Silence the unused-extern-crate lint.
+use data_table as _;
 use serde as _;
 use sigil as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_text as _;
 use sysinfo as _;
 
 use std::fs;
@@ -101,7 +105,7 @@ fn resolve_output_path(
 }
 
 fn default_results_dir() -> PathBuf {
-    PathBuf::from("crates/sigil-bench-parity/results")
+    PathBuf::from("crates/bench-parity/results")
 }
 
 fn write_result(path: &std::path::Path, result: &RunResult) -> Result<(), String> {

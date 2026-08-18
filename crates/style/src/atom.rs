@@ -171,8 +171,16 @@ pub struct RenderStyle {
     pub text_color: Option<Rgba8>,
     /// Border radius in logical pixels.
     pub border_radius: Option<Px>,
-    /// Border stroke width in logical pixels.
+    /// Uniform border stroke width in logical pixels.
     pub border_width: Option<Px>,
+    /// Top edge width. Overrides [`Self::border_width`] on that edge.
+    pub border_top: Option<Px>,
+    /// Right edge width. Overrides [`Self::border_width`] on that edge.
+    pub border_right: Option<Px>,
+    /// Bottom edge width. Overrides [`Self::border_width`] on that edge.
+    pub border_bottom: Option<Px>,
+    /// Left edge width. Overrides [`Self::border_width`] on that edge.
+    pub border_left: Option<Px>,
     /// Resolved border stroke colour. `None` with a set width means
     /// "currentColor": the paint layer falls back to the resolved text
     /// colour, then the theme's on-surface (the CSS border shape).
@@ -191,11 +199,27 @@ impl Default for RenderStyle {
             text_color: None,
             border_radius: None,
             border_width: None,
+            border_top: None,
+            border_right: None,
+            border_bottom: None,
+            border_left: None,
             border_color: None,
             shadow: None,
             opacity: 10_000,
         }
     }
+}
+
+/// CSS `text-decoration-line`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum TextDecoration {
+    /// No line.
+    #[default]
+    None,
+    /// Solid underline.
+    Underline,
+    /// Solid strikethrough (`line-through`).
+    LineThrough,
 }
 
 /// Atomic style operation.
@@ -263,8 +287,8 @@ pub enum StyleAtom {
     FlexShrink(u16),
     /// `grid-cols-N`: N equal `1fr` grid columns (implies `display: grid`).
     GridColumns(u16),
-    /// `grid-rows-N`: N equal auto grid rows (currently informational; row
-    /// heights are content-sized, so this only pins the implied grid mode).
+    /// `grid-rows-N`: N equal `1fr` grid rows. `Fr` rows share leftover
+    /// height when the grid box has a definite height.
     GridRows(u16),
     /// Concrete or nested theme background colour.
     BackgroundColor(ColorAtom),
@@ -301,6 +325,14 @@ pub enum StyleAtom {
     /// edge thickness; the renderer paints it as an inside-aligned
     /// stroke (DR-057 D3).
     BorderWidth(Px),
+    /// Top-edge border width (`border-t` / `border-t-N`).
+    BorderTop(Px),
+    /// Right-edge border width (`border-r` / `border-r-N`).
+    BorderRight(Px),
+    /// Bottom-edge border width (`border-b` / `border-b-N`).
+    BorderBottom(Px),
+    /// Left-edge border width (`border-l` / `border-l-N`).
+    BorderLeft(Px),
     /// Concrete border stroke colour.
     BorderColor(ColorAtom),
     /// Theme-token border stroke colour.
@@ -321,6 +353,12 @@ pub enum StyleAtom {
     FontFamily(&'static str),
     /// Line height.
     LineHeight(Px),
+    /// Letter-spacing in thousandths of an em (`120` = `0.12em`).
+    /// Tailwind `tracking-*` and CSS `letter-spacing`.
+    LetterSpacing(i16),
+    /// CSS `text-decoration-line` (`underline` / `line-through` /
+    /// `no-underline`).
+    TextDecoration(TextDecoration),
     /// Overflow clipping on the inline (width) axis.
     OverflowX(OverflowKind),
     /// Overflow clipping on the block (height) axis.
@@ -331,4 +369,58 @@ pub enum StyleAtom {
     TransitionDuration(MillisU16),
     /// Unsupported theme-style token kept for diagnostics.
     UnknownThemeRef(&'static str),
+}
+
+impl StyleAtom {
+    /// True when a change in this atom can change boxes.
+    #[must_use]
+    pub const fn affects_layout(self) -> bool {
+        matches!(
+            self,
+            Self::PaddingAll(_)
+                | Self::PaddingX(_)
+                | Self::PaddingY(_)
+                | Self::PaddingTop(_)
+                | Self::PaddingRight(_)
+                | Self::PaddingBottom(_)
+                | Self::PaddingLeft(_)
+                | Self::MarginAll(_)
+                | Self::MarginX(_)
+                | Self::MarginY(_)
+                | Self::MarginTop(_)
+                | Self::MarginRight(_)
+                | Self::MarginBottom(_)
+                | Self::MarginLeft(_)
+                | Self::Gap(_)
+                | Self::GapX(_)
+                | Self::GapY(_)
+                | Self::Width(_)
+                | Self::Height(_)
+                | Self::MinWidth(_)
+                | Self::MinHeight(_)
+                | Self::MaxWidth(_)
+                | Self::MaxHeight(_)
+                | Self::Display(_)
+                | Self::FlexDirection(_)
+                | Self::FlexWrap(_)
+                | Self::AlignItems(_)
+                | Self::JustifyContent(_)
+                | Self::FlexGrow(_)
+                | Self::FlexShrink(_)
+                | Self::GridColumns(_)
+                | Self::GridRows(_)
+                | Self::BorderWidth(_)
+                | Self::BorderTop(_)
+                | Self::BorderRight(_)
+                | Self::BorderBottom(_)
+                | Self::BorderLeft(_)
+                | Self::FontSize(_)
+                | Self::FontWeight(_)
+                | Self::FontFamily(_)
+                | Self::LineHeight(_)
+                | Self::LetterSpacing(_)
+                | Self::OverflowX(_)
+                | Self::OverflowY(_)
+        )
+    }
 }

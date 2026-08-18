@@ -19,6 +19,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 
 [[package]]
+name = "access-log"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "gpui",
+ "sigil-ui",
+]
+
+[[package]]
 name = "accesskit"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -810,12 +818,16 @@ name = "bench-parity"
 version = "0.1.0-alpha.1"
 dependencies = [
  "clap",
+ "data-table",
  "serde",
  "serde_json",
  "sigil-hal",
  "sigil-kernel",
  "sigil-layout",
+ "sigil-profile",
  "sigil-reactive",
+ "sigil-renderer",
+ "sigil-text",
  "sigil-ui",
  "sysinfo 0.32.1",
  "time",
@@ -827,6 +839,7 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "bench-parity",
  "clap",
+ "data-table",
  "gpui",
  "rand 0.9.4",
  "serde",
@@ -1751,6 +1764,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
+name = "crossterm"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
+dependencies = [
+ "bitflags 2.11.1",
+ "crossterm_winapi",
+ "mio",
+ "parking_lot",
+ "rustix 0.38.44",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
+name = "crossterm_winapi"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acdd7c62a3665c7f6830a51635d9ac9b23ed385797f70a83bb8bafe9c572ab2b"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1795,6 +1833,13 @@ name = "cursor-icon"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
+
+[[package]]
+name = "data-table"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "sigil-ui",
+]
 
 [[package]]
 name = "data-url"
@@ -3371,6 +3416,13 @@ name = "hello-tree"
 version = "0.1.0-alpha.1"
 dependencies = [
  "sigil-kernel",
+]
+
+[[package]]
+name = "hello-tui"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "sigil-ui",
 ]
 
 [[package]]
@@ -6877,6 +6929,7 @@ dependencies = [
  "sigil-hal",
  "sigil-kernel",
  "sigil-layout",
+ "sigil-profile",
  "sigil-reactive",
  "sigil-renderer",
  "sigil-shell",
@@ -6967,12 +7020,17 @@ dependencies = [
  "rayon",
  "sigil-hal",
  "sigil-kernel",
+ "sigil-profile",
  "sigil-reactive",
  "sigil-style",
  "slotmap",
  "smallvec",
  "taffy 0.10.1",
 ]
+
+[[package]]
+name = "sigil-profile"
+version = "0.1.0-alpha.1"
 
 [[package]]
 name = "sigil-reactive"
@@ -7064,7 +7122,6 @@ dependencies = [
  "sigil-hal",
  "sigil-reactive",
  "tokio",
- "winit",
 ]
 
 [[package]]
@@ -7092,6 +7149,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "sigil-tui"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "crossterm",
+ "sigil-animation-runtime",
+ "sigil-app",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-reactive",
+ "sigil-style",
+ "sigil-widgets",
+]
+
+[[package]]
 name = "sigil-ui"
 version = "0.1.0-alpha.1"
 dependencies = [
@@ -7108,13 +7180,53 @@ dependencies = [
  "sigil-hal",
  "sigil-kernel",
  "sigil-layout",
+ "sigil-profile",
  "sigil-reactive",
  "sigil-renderer",
  "sigil-style",
  "sigil-tasks",
  "sigil-text",
- "tiny-skia",
+ "sigil-tui",
+ "sigil-widgets",
  "wgpu",
+]
+
+[[package]]
+name = "sigil-widgets"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "image",
+ "sigil-animation-runtime",
+ "sigil-bidi",
+ "sigil-events",
+ "sigil-hal",
+ "sigil-kernel",
+ "sigil-layout",
+ "sigil-profile",
+ "sigil-reactive",
+ "sigil-style",
+ "tiny-skia",
+]
+
+[[package]]
+name = "signal-hook"
+version = "0.3.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d881a16cf4426aa584979d30bd82cb33429027e42122b169753d6ef1085ed6e2"
+dependencies = [
+ "libc",
+ "signal-hook-registry",
+]
+
+[[package]]
+name = "signal-hook-mio"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b75a19a7a740b25bc7944bdee6172368f988763b744e3d4dfe753f6b4ece40cc"
+dependencies = [
+ "libc",
+ "mio",
+ "signal-hook",
 ]
 
 [[package]]

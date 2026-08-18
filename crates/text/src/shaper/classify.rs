@@ -46,6 +46,7 @@ pub(crate) enum Script {
 
 impl Script {
     /// Whether this script needs `HarfRust` to shape correctly.
+    #[cfg(test)]
     pub(crate) const fn is_complex(self) -> bool {
         matches!(
             self,

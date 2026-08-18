@@ -11,6 +11,7 @@ use rfd as _;
 use sigil_a11y as _;
 use sigil_animation_runtime as _;
 use sigil_events as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_shell as _;

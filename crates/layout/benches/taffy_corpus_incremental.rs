@@ -28,6 +28,7 @@ use taffy::prelude::*;
 use ahash as _;
 use allocation_counter as _;
 use rayon as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use slotmap as _;

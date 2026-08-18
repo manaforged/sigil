@@ -5,7 +5,7 @@
 
 use core::fmt;
 
-use sigil::prelude::ChipTone;
+use sigil::prelude::Tone;
 
 /// Log severity level.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -30,13 +30,13 @@ impl Level {
     }
 
     /// Map this severity to its semantic chip tone.
-    pub(crate) const fn tone(self) -> ChipTone {
+    pub(crate) const fn tone(self) -> Tone {
         match self {
-            Self::Trace => ChipTone::Neutral,
-            Self::Debug => ChipTone::Info,
-            Self::Info => ChipTone::Success,
-            Self::Warn => ChipTone::Warn,
-            Self::Error => ChipTone::Error,
+            Self::Trace => Tone::Neutral,
+            Self::Debug => Tone::Info,
+            Self::Info => Tone::Success,
+            Self::Warn => Tone::Warn,
+            Self::Error => Tone::Error,
         }
     }
 

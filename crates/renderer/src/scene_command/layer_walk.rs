@@ -117,14 +117,11 @@ fn render_layer(
         "SceneCommand layer nesting exceeds maximum depth 8"
     );
     let content_extent = physical_extent(scope.clip, ctx.scale);
-    let Some(handle) = ctx.layer_pool.get_or_insert_with(Default::default).acquire(
-        ctx.device,
-        content_extent.0,
-        content_extent.1,
-        ctx.format,
-    ) else {
-        return Ok(());
-    };
+    let handle = ctx
+        .layer_pool
+        .get_or_insert_with(Default::default)
+        .acquire(ctx.device, content_extent.0, content_extent.1, ctx.format)
+        .map_err(RendererError::Layer)?;
     ctx.stats
         .record_offscreen(content_extent.0, content_extent.1);
     clear_view(ctx.encoder, &handle.view);
@@ -137,7 +134,7 @@ fn render_layer(
         scope,
         &handle,
         content_extent,
-    );
+    )?;
     // The composite pass that samples `handle` only runs when the owner submits
     // the encoder, so the texture must outlive this function — retain it.
     ctx.retained.push(handle);
@@ -152,10 +149,10 @@ fn apply_effect_and_composite(
     scope: LayerScope,
     handle: &crate::layer_pool::LayerHandle,
     content_extent: (u32, u32),
-) {
+) -> Result<(), RendererError> {
     let blurred = match scope.effect {
         LayerEffect::LayerBlur { sigma } if sigma > 0.0 => {
-            blurred_view(ctx, handle, sigma * ctx.scale)
+            blurred_view(ctx, handle, sigma * ctx.scale)?
         }
         LayerEffect::Identity | LayerEffect::LayerBlur { .. } => None,
     };
@@ -170,13 +167,14 @@ fn apply_effect_and_composite(
         handle_size(handle),
         content_extent,
     );
+    Ok(())
 }
 
 fn blurred_view(
     ctx: &mut WalkCtx<'_>,
     handle: &crate::layer_pool::LayerHandle,
     sigma: f32,
-) -> Option<wgpu::TextureView> {
+) -> Result<Option<wgpu::TextureView>, RendererError> {
     let mut pass = PassCtx {
         device: ctx.device,
         encoder: ctx.encoder,

@@ -79,6 +79,7 @@ where
 /// the future is dropped unpolled, and the signal stays at
 /// `Pending` forever. Callers that want to observe this should
 /// check `owner.is_alive()` before calling.
+#[doc(hidden)]
 #[track_caller]
 pub fn spawn_to_signal<T, E, F>(
     runtime: &AsyncRuntime,
@@ -90,57 +91,48 @@ where
     E: Send + 'static,
     F: Future<Output = Result<T, E>> + Send + 'static,
 {
-    // Create the signal on the main thread so it is parented to the
-    // current reactive owner as usual.
-    let sig: Signal<Status<T, E>> = signal(Status::Pending);
-    // `Signal<T>` is `!Send`; cross the thread boundary via the
-    // type-erased `SendableSignal<T>` identity wrapper exposed
-    // for exactly this purpose.
-    let sig_sendable = sig.into_sendable();
+    spawn_with(runtime.spawn_parts(), owner, future)
+}
 
-    // Stale-owner fast path: don't start the future at all. The
-    // signal is already Pending; it stays Pending. Dropping `future`
-    // here runs any captured drop impls immediately.
+/// Drive a background future onto a [`Signal`] using captured runtime parts.
+pub(crate) fn spawn_with<T, E, F>(
+    parts: crate::runtime::SpawnParts,
+    owner: OwnerHandle,
+    future: F,
+) -> Signal<Status<T, E>>
+where
+    T: Send + 'static,
+    E: Send + 'static,
+    F: Future<Output = Result<T, E>> + Send + 'static,
+{
+    let sig: Signal<Status<T, E>> = signal(Status::Pending);
+    let sig_sendable = sig.into_sendable();
     if !owner.is_alive() {
         drop(future);
         return sig;
     }
 
-    let dispatcher = runtime.dispatcher();
-    let join = runtime.tokio_handle().spawn(async move {
+    let dispatcher = parts.dispatcher;
+    let join = parts.tokio.spawn(async move {
         let result = future.await;
-        // Enqueue a main-thread closure that writes the result back
-        // into the pre-existing signal. `send` can fail only if the
-        // runtime was dropped mid-flight; in that case the closure
-        // (and its captured value) drop silently and the signal
-        // stays at `Pending`, which is what we want.
         let _ = dispatcher.send(DispatchMessage {
             owner,
             callback: Box::new(move || {
-                // Re-hydrate on the main thread — cheap identity copy.
                 let sig_local = sig_sendable.into_signal();
                 match result {
-                    Ok(v) => sig_local.set(Status::Ok(v)),
-                    Err(e) => sig_local.set(Status::Err(e)),
+                    Ok(v) => sig_local.set_always(Status::Ok(v)),
+                    Err(e) => sig_local.set_always(Status::Err(e)),
                 }
             }),
         });
     });
 
     let abort = join.abort_handle();
-
-    // Belt-and-braces: keep the drain-time sweep path wired up for
-    // race cases where `on_cleanup` registration might be missed.
-    register_abort(&runtime.owner_tasks(), owner.id(), abort.clone());
-
-    // Synchronous abort on owner disposal: register an `on_cleanup`
-    // scoped to `owner`. The moment `owner` disposes, the cleanup
-    // runs and aborts the future — no drain required.
+    register_abort(&parts.owner_tasks, owner.id(), abort.clone());
     let _ = sigil_reactive::owner_by_id(owner.id(), move || {
         sigil_reactive::on_cleanup(move || {
             abort.abort();
         });
     });
-
     sig
 }

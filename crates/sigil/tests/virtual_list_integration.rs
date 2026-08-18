@@ -14,11 +14,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use std::cell::RefCell;
@@ -53,7 +53,8 @@ fn widget_renders_only_visible_window_at_100k_items() {
                 .scroll_bind(signal(0.0_f32)),
         );
 
-        assert!(count_role(&cx, root, Role::ListItem) < 50);
+        // 15 in view + 15 overscan below. Mid-list is three pages (45).
+        assert!(count_role(&cx, root, Role::ListItem) <= 45);
     });
 }
 
@@ -72,7 +73,8 @@ fn scroll_signal_drives_window_advance() {
             .first()
             .copied()
             .expect("visible row materialised");
-        assert!((999..=1001).contains(&first), "first row was {first}");
+        // Geometric first is 1000. One page of overscan (15) sits above.
+        assert_eq!(first, 985, "first row was {first}");
     });
 }
 

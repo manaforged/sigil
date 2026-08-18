@@ -258,24 +258,22 @@ impl Walk<'_> {
         // Upload the pixels once per content id, then reuse the whole
         // sprite paint path (transform, clip, opacity, draw) via a Poly
         // sprite that samples the freshly-registered atlas full-frame.
-        let atlas = {
+        let packed = {
             let pipeline =
                 sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
             pipeline.register_image(self.ctx.device, self.ctx.queue, &draw.source)
         };
-        if atlas == u32::MAX {
+        if packed.is_none() {
             return;
         }
-        let (region, destination) = fit_image(
-            draw.fit,
-            draw.source.width() as f32,
-            draw.source.height() as f32,
-            draw.destination,
-        );
+        let (mut region, destination) =
+            fit_image(draw.fit, packed.w as f32, packed.h as f32, draw.destination);
+        region.origin.x += packed.x as f32;
+        region.origin.y += packed.y as f32;
         let sprite = DrawSprite {
             node: draw.node,
             source: SpriteSource {
-                atlas,
+                atlas: packed.atlas,
                 region,
                 phase: 0.0,
             },

@@ -251,6 +251,57 @@ fn span_wraps_when_it_would_overflow() {
 }
 
 #[test]
+fn auto_cells_stretch_to_their_row() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(
+                LayoutStyle::grid(vec![TrackSize::Fr(1.0)])
+                    .width(100.0)
+                    .height(200.0)
+                    .grid_rows(vec![TrackSize::Fr(1.0), TrackSize::Fr(1.0)]),
+            )
+            .child(container().layout(LayoutStyle::block()))
+            .child(container().layout(LayoutStyle::block())),
+    );
+    stub_engine()
+        .compute(&mut cx, root, Size::fixed(100.0, 200.0))
+        .expect("grid computes");
+    let kids = cx.get(root).unwrap().children().to_vec();
+    let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();
+    assert_eq!(r[0].3, 100.0, "auto cell fills row 0");
+    assert_eq!(r[1].1, 100.0);
+    assert_eq!(r[1].3, 100.0, "auto cell fills row 1");
+}
+
+#[test]
+fn fr_rows_share_leftover_when_height_is_definite() {
+    // 200-tall, one column, two 1fr rows. Cells measure 20; leftover 160
+    // splits evenly so each row is 100. Cells stay content-sized (no
+    // stretch) and sit at the top of their row.
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(
+                LayoutStyle::grid(vec![TrackSize::Fr(1.0)])
+                    .width(100.0)
+                    .height(200.0)
+                    .grid_rows(vec![TrackSize::Fr(1.0), TrackSize::Fr(1.0)]),
+            )
+            .child(container().layout(LayoutStyle::block().height(20.0)))
+            .child(container().layout(LayoutStyle::block().height(20.0))),
+    );
+    stub_engine()
+        .compute(&mut cx, root, Size::fixed(100.0, 200.0))
+        .expect("grid computes");
+    let kids = cx.get(root).unwrap().children().to_vec();
+    let r: Vec<_> = kids.into_iter().map(|k| rect_of(&cx, k)).collect();
+    assert_eq!(r[0].1, 0.0, "row 0 top");
+    assert_eq!(r[0].3, 20.0, "cell keeps its measured height");
+    assert_eq!(r[1].1, 100.0, "row 1 starts after the leftover split");
+}
+
+#[test]
 fn grid_cols_class_lays_out_as_a_grid() {
     // The `grid-cols-2` utility class drives the same 2-column grid as the
     // fluent API — parser → GridColumns atom → layout adapter → solver.

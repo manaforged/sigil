@@ -247,7 +247,7 @@ fn controls_panel(state: DashboardState) -> NodeBuilder {
         .child(
             checkbox(state.alerts)
                 .label("Restock alerts")
-                .tone(CheckboxTone::Primary)
+                .tone(Tone::Primary)
                 .change(move |enabled| state.set_alert_status(enabled)),
         )
         .child(

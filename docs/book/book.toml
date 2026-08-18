@@ -1,0 +1,14 @@
+[book]
+title = "The Sigil Book"
+authors = ["the author"]
+description = "How to write Sigil apps, and how the framework is built."
+language = "en"
+src = "."
+
+[build]
+build-dir = "book"
+
+[output.html]
+git-repository-url = "https://github.com/ThomGardiner/sigil"
+default-theme = "navy"
+preferred-dark-theme = "navy"

@@ -155,6 +155,46 @@ fn image_samples_its_texture_with_correct_orientation() {
 }
 
 #[test]
+fn twenty_four_distinct_images_all_paint() {
+    // One ImageSource used to consume one of 16 atlas slots. Twenty-four
+    // solid swatches must all sample after packing onto a shared page.
+    let swatches: Vec<_> = (0..24_u8)
+        .map(|i| {
+            let color = [i.saturating_mul(10), 40, 200_u8.saturating_sub(i), 255];
+            ImageSource::from_rgba8(8, 8, color.repeat(8 * 8)).expect("swatch")
+        })
+        .collect();
+    let img = capture(
+        |cx| {
+            let mut row = container().layout(LayoutStyle::flex_row().fixed_size(192.0, 8.0));
+            for source in &swatches {
+                let source = source.clone();
+                row = row.child(move |child_cx: &mut sigil_kernel::Cx| {
+                    let id = child_cx.add(image(source));
+                    if let Some(node) = child_cx.get_mut(id) {
+                        node.attach(LayoutStyle::block().fixed_size(8.0, 8.0).shrink(0.0));
+                    }
+                    id
+                });
+            }
+            cx.add(row)
+        },
+        [192, 8],
+    );
+    for i in 0..24 {
+        let x = i * 8 + 4;
+        let px = img.get_pixel(x, 4).0;
+        // `i` is bounded by the 24 swatches in this test.
+        #[allow(clippy::cast_possible_truncation)]
+        let expect = (i as u8).saturating_mul(10);
+        assert!(
+            px[0].abs_diff(expect) < 16,
+            "swatch {i} at x={x} must paint red≈{expect}, got {px:?}"
+        );
+    }
+}
+
+#[test]
 fn overflow_hidden_scissors_image_pixels() {
     let source = ImageSource::from_rgba8(32, 32, [255, 0, 0, 255].repeat(32 * 32)).unwrap();
     let img = capture(

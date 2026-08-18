@@ -1,5 +1,18 @@
 # Sigil
 
+Desktop UI in Rust. `sigil::launch` opens a window. `sigil::ui::Host`
+embeds the same tree in another engine. The widget catalog
+(`button`, `text_field`, `table`, `virtual_list`, `modal`, `sheet`,
+`toast`) lives in this crate.
+
+```bash
+mdbook serve docs/book
+# live catalog
+cargo run -p widget-playground
+```
+
+Source will be public later. Not taking pull requests yet.
+
 ## Owned-host verification
 
 GitHub Actions is not part of the test path. Run these gates directly on every supported native
@@ -21,14 +34,45 @@ interaction primitives, a designed component catalog, and the app
 patterns that make dense desktop software feel composed instead of
 assembled from parts.
 
-**Status:** `sigil::launch` landed (DR-016) and Sigil is DPI-aware
-(DR-018). The workspace has a headless
-node tree with stable AccessKit-compatible IDs, a Taffy-backed layout
-adapter, an input/focus router over shell-delivered pointer, keyboard,
-IME, scroll, and lifecycle events, the DR-006 three-layer style API
-(`classes!` macro + `Style` + `style_reactive`), and a one-call `sigil::launch`
-entry point (DR-016) with a default scene-paint pipeline (DR-017).
-`hello-events` is now 34 lines; `hello-style` 62.
+## Book
+
+The author guide and the architecture chapters live in
+[`docs/book/`](docs/book/):
+
+```bash
+mdbook serve docs/book
+```
+
+Signals, the owner tree, the frame loop, layout, the command scene,
+`spawn`, and the crate map are in the Architecture section.
+
+**Status:** alpha. The pieces below are implemented and tested; the API
+is not yet stable.
+
+Sigil retains its node tree across frames. A signal write marks the
+nodes it touched, and both layout and paint are gated on that dirty
+set, so an idle frame costs nothing and a one-node change repaints one
+node. `crates/bench-parity` measures this against GPUI on shared
+workloads and refuses to print a comparison unless both sides report
+the same mode, host, and equivalence verdicts.
+
+The layout engine is owned (DR-041) — flexbox, block, and grid, with
+content-hash cache keys; Taffy remains only as a bench corpus. Text is
+owned end to end (DR-044): HarfRust shaping, skrifa metrics, bidi, line
+breaking, font fallback, and a paragraph cache. Glyphs and SVG icons
+share one GPU pipeline through a Slug fragment rasteriser (DR-014,
+DR-032), so mixed text and icon batches need no pipeline switch.
+
+Frame phases are a typed state machine (DR-047): writes during paint
+panic in debug and defer to the next effect phase in release.
+Accessibility lives in the node type rather than beside it, and
+AccessKit, IME, drag-and-drop, and animation are wired.
+
+Only `sigil-renderer` depends on `wgpu` (the facade carries it as a
+dev-dependency for GPU tests). Everything else depends on the
+`sigil-hal` traits, which is what lets `sigil::ui::Host` embed the same
+tree in another engine's frame loop, and `sigil-tui` render it to a
+terminal.
 
 ## Design plan
 
@@ -48,10 +92,10 @@ crates/
   reactive/ (sigil-reactive)   Main-thread signal/effect owner tree.
   kernel/ (sigil-kernel)       Stable node identity, arena storage, Component,
                                Semantics, typed extensions, and builders.
-  layout/ (sigil-layout)       Owned incremental layout engine (DR-041).
+  layout/ (sigil-layout)       Owned incremental layout engine.
                                Mirrors sigil-kernel subtrees, computes layout,
-                               publishes cached results; Taffy reference corpus
-                               backs the benches.
+                               publishes cached results. Taffy corpus is
+                               benches only.
   events/ (sigil-events)       Input routing, z-order hit-testing, focus
                                traversal, pointer capture, and handler builders.
   style/ (sigil-style)         StyleAtom vocabulary, Theme, StyleEngine,
@@ -76,6 +120,8 @@ crates/
   app/ (sigil-app)             App orchestrator: sigil::launch, AppConfig,
                                TreeRoot, frame loop, DPI-aware logical sizing,
                                bulletproof defaults (DR-016, DR-018).
+  profile/ (sigil-profile)     Frame profiler: SIGIL_PROFILE, Perfetto JSON,
+                               phase table. Wired in launch; see docs/book/05-profile.md.
   sigil/ (sigil-ui)            User-facing facade with prelude — the package is
                                `sigil-ui` (the `sigil` name was taken), the
                                library is `sigil`: `use sigil::prelude::*;`
@@ -104,6 +150,8 @@ examples/
                      window, clears to a colour, cycles three colours
                      on a timer, and exits cleanly.
   widget-playground/ The widget catalog, live.
+  data-table/        1:1 of GPUI 0.2.2 `examples/data_table.rs`
+                     (10k quotes, 24 columns, `virtual_list`).
   */                 Dogfood apps (csv-viewer, chat-client, kanban-board,
                      api-explorer, file-browser, …) — each ships a
                      FRICTION.md log that drives API ergonomics work.
@@ -135,9 +183,8 @@ cargo bench -p sigil-events
 cargo bench -p sigil-style
 ```
 
-In this shared checkout, route builds through the build router (`the build router check` /
-`the build router test`, `the build router exec --tag <gate> -- <command>`) — it routes to the
-packages affected by your diff and keeps lane isolation. See
+Run the gates with plain `cargo`, scoped to the packages your diff
+touches (`cargo check -p <pkg>`, `cargo test -p <pkg>`). See
 [`RELEASING.md`](RELEASING.md) for the publish procedure (nothing publishes
 without an explicit go).
 

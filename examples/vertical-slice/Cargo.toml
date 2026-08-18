@@ -17,7 +17,7 @@ path = "src/main.rs"
 sigil-ui = { workspace = true }
 
 [dev-dependencies]
-sigil-app = { path = "../../crates/app" }
+sigil-app = { path = "../../crates/app", features = ["desktop"] }
 sigil-hal = { path = "../../crates/hal" }
 sigil-renderer = { path = "../../crates/renderer" }
 

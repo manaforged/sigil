@@ -1,0 +1,91 @@
+//! Frame-phase bench — layout + emit on a 500-row tree.
+//!
+//! Records through `sigil::profile` so the same phases a live app
+//! prints show up here. Compile-only smoke:
+//! `cargo bench -p sigil-ui --bench frame_phases -- --test`.
+
+#![allow(
+    missing_docs,
+    clippy::missing_docs_in_private_items,
+    clippy::unwrap_used,
+    clippy::cast_precision_loss
+)]
+
+use arboard as _;
+use image as _;
+use pollster as _;
+use sigil_actions as _;
+use sigil_animation as _;
+use sigil_animation_runtime as _;
+use sigil_app as _;
+use sigil_bidi as _;
+use sigil_events as _;
+use sigil_profile as _;
+use sigil_style as _;
+use sigil_tasks as _;
+use wgpu as _;
+
+use std::hint::black_box;
+
+use criterion::{Criterion, criterion_group, criterion_main};
+use sigil::prelude::*;
+use sigil::profile;
+use sigil_hal::{LogicalSize, Point, Rect, Size};
+use sigil_kernel::{Cx, NodeId, TextContent};
+use sigil_layout::{LayoutEngine, TextMeasure};
+use sigil_reactive::Runtime;
+use sigil_renderer::emit_scene_clipped;
+
+const ROWS: u32 = 500;
+
+struct StubMeasure;
+
+impl TextMeasure for StubMeasure {
+    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
+        LogicalSize::new(80.0, 16.0)
+    }
+}
+
+fn build(cx: &mut Cx) -> NodeId {
+    let mut col = container().layout(LayoutStyle::flex_column().fixed_size(1280.0, 800.0));
+    for index in 0..ROWS {
+        col = col.child(
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(1280.0, 24.0).shrink(0.0))
+                .child(text(format!("row {index}"))),
+        );
+    }
+    cx.add(col)
+}
+
+fn layout_then_emit(c: &mut Criterion) {
+    profile::enable();
+    c.bench_function("frame_phases/layout_emit_500", |b| {
+        b.iter(|| {
+            Runtime::scope("frame_phases", || {
+                let mut cx = Cx::new_root();
+                let root = build(&mut cx);
+                let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+                {
+                    let _layout = profile::span("layout");
+                    layout
+                        .compute(&mut cx, root, Size::fixed(1280.0, 800.0))
+                        .unwrap();
+                }
+                {
+                    let _emit = profile::span("emit");
+                    black_box(emit_scene_clipped(
+                        &cx,
+                        root,
+                        Some(Rect::new(Point::new(0.0, 0.0), 1280.0, 800.0)),
+                    ));
+                }
+                profile::tick_frame();
+            });
+        });
+    });
+    profile::disable();
+}
+
+criterion_group!(benches, layout_then_emit);
+criterion_main!(benches);

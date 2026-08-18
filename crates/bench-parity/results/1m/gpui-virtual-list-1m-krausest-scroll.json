@@ -1,0 +1,81 @@
+{
+  "framework": "gpui",
+  "workload_id": "virtual-list-1m-krausest-scroll",
+  "samples_ns": [
+    329959,
+    253584,
+    258667,
+    260958,
+    261458,
+    270083,
+    244375,
+    241875,
+    227292,
+    236500,
+    240500,
+    270000,
+    232500,
+    236333,
+    341500,
+    227125,
+    226542,
+    222417,
+    244917,
+    217916,
+    235292,
+    218500,
+    232792,
+    252458,
+    224750,
+    225709,
+    223500,
+    243666,
+    257417,
+    309125,
+    224500,
+    222375,
+    279875,
+    233708,
+    411208,
+    322375,
+    255042,
+    212500,
+    220750,
+    213375
+  ],
+  "summary": {
+    "iterations": 40,
+    "median_us": 240.5,
+    "p95_us": 329.959,
+    "p99_us": 411.208,
+    "mean_us": 251.58545,
+    "cv": 0.15965342964619728
+  },
+  "equivalence_check_results": {
+    "layout_did_work": {
+      "status": "not_applicable"
+    },
+    "visible_window_indices": {
+      "status": "pass"
+    },
+    "book_held": {
+      "status": "pass"
+    }
+  },
+  "host": {
+    "os": "Darwin 26.5.1",
+    "cpu": "Apple M2 Max",
+    "cpu_cores": 12,
+    "total_memory_bytes": 34359738368,
+    "rustc_version": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "process_rss_bytes": 61030400
+  },
+  "verify": {
+    "reuse": 0,
+    "tick": 0,
+    "visible_last": 40,
+    "first_visible": 46,
+    "samples": 40,
+    "book_rows": 1000000
+  }
+}

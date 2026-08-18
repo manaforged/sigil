@@ -17,6 +17,10 @@ sigil-kernel = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-layout = { workspace = true }
 sigil-reactive = { workspace = true }
+sigil-renderer = { workspace = true }
+sigil-text = { workspace = true }
+sigil-profile = { workspace = true }
+data-table = { path = "../../examples/data-table" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }

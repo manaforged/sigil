@@ -8,7 +8,7 @@
 //! [`Signal<f32>`].
 //!
 //! The hook is intentionally a *thin* layer over the existing
-//! [`AnimationRegistry`] + [`Animator`] surface — it does not touch
+//! [`crate::config`] + [`Animator`] surface — it does not touch
 //! [`sigil_style::StyleBinding`] internals, so the W5.1 wiring can land without
 //! refactoring the by-value `StyleAtom` storage in `sigil-style`. Engine
 //! integration that reads the animator-driven signal value during paint
@@ -39,7 +39,7 @@ use sigil_style::{
 use crate::binding_animate_color::{
     ThemeSnapshot, build_color_entry, find_color, read_color, retarget_color_entry,
 };
-use crate::{AnimationConfig, AnimationRegistry, Animator};
+use crate::{AnimationConfig, Animator};
 
 /// `ComponentId` namespace used by the binding-install hook when it
 /// fails to resolve a [`TransitionId`] in the registry.
@@ -212,10 +212,9 @@ impl AnimatorOverlay for AttachedAnimators {
 pub fn install_animators(
     atoms: &[StyleAtom],
     state_style: StateStyle,
-    registry: &AnimationRegistry,
     component_id: ComponentId,
 ) -> AttachedAnimators {
-    install_impl(atoms, state_style, registry, component_id, None)
+    install_impl(atoms, state_style, component_id, None)
 }
 
 /// Install themed animators ([`install_animators`] + colour support).
@@ -228,41 +227,33 @@ pub fn install_animators(
 pub fn install_animators_themed(
     atoms: &[StyleAtom],
     state_style: StateStyle,
-    registry: &AnimationRegistry,
     component_id: ComponentId,
     theme: &Theme,
 ) -> AttachedAnimators {
     install_impl(
         atoms,
         state_style,
-        registry,
         component_id,
         Some(ThemeSnapshot::from_theme(theme)),
     )
 }
 
 #[allow(
-    clippy::trivially_copy_pass_by_ref,
-    reason = "registry is a `Copy` ZST today; keep the borrow shape so phase-2 \
-              expansions to a non-ZST table (per-app overrides) don't break callers"
-)]
-#[allow(
     clippy::large_types_passed_by_value,
     reason = "`theme_snapshot` is consumed — install_impl stores it into the \
-              returned AttachedAnimators (line ~298). Passing by reference \
+              returned AttachedAnimators. Passing by reference \
               would force a clone at the assignment site."
 )]
 fn install_impl(
     atoms: &[StyleAtom],
     state_style: StateStyle,
-    registry: &AnimationRegistry,
     component_id: ComponentId,
     theme_snapshot: Option<ThemeSnapshot>,
 ) -> AttachedAnimators {
     let Some(id) = first_transition_id(atoms) else {
         return AttachedAnimators::empty();
     };
-    let Some(config) = registry.get(id) else {
+    let Some(config) = crate::registry::config(id) else {
         emit_registry_miss(component_id);
         return AttachedAnimators::empty();
     };
@@ -449,7 +440,7 @@ mod tests {
 
     use super::{ANIMATION_REGISTRY_MISS, install_animators, miss_counter};
     use crate::registry::presets;
-    use crate::{AnimationConfig, AnimationRegistry, MotionPrefs, active_count, tick};
+    use crate::{AnimationConfig, MotionPrefs, active_count, tick};
 
     const DT_60HZ: f32 = 1.0 / 60.0;
 
@@ -473,9 +464,7 @@ mod tests {
                 StyleAtom::Transition(TransitionId(0xFFFF)),
             ];
             let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(10_000)]);
-            let registry = AnimationRegistry::default();
-
-            let attached = install_animators(&atoms, state_style, &registry, component_id);
+            let attached = install_animators(&atoms, state_style, component_id);
 
             assert!(
                 attached.is_empty(),
@@ -502,9 +491,8 @@ mod tests {
                 StyleAtom::Transition(presets::DEFAULT),
             ];
             let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(10_000)]);
-            let registry = AnimationRegistry::default();
 
-            let mut attached = install_animators(&atoms, state_style, &registry, 1);
+            let mut attached = install_animators(&atoms, state_style, 1);
             assert_eq!(attached.len(), 1, "one numeric delta → one animator");
             let initial = attached.iter().next().unwrap().signal.peek();
             assert!(
@@ -541,9 +529,8 @@ mod tests {
             let state_style = StateStyle::EMPTY
                 .with_hovered(&[StyleAtom::BorderRadius(Px(12))])
                 .with_pressed(&[StyleAtom::BorderRadius(Px(2))]);
-            let registry = AnimationRegistry::default();
 
-            let mut attached = install_animators(&atoms, state_style, &registry, 2);
+            let mut attached = install_animators(&atoms, state_style, 2);
             assert_eq!(attached.len(), 1);
 
             // Default → Hovered: target rises to 12.
@@ -585,10 +572,9 @@ mod tests {
                 StyleAtom::Transition(presets::DEFAULT),
             ];
             let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(10_000)]);
-            let registry = AnimationRegistry::default();
             let baseline = active_count();
 
-            let mut attached = install_animators(&atoms, state_style, &registry, 3);
+            let mut attached = install_animators(&atoms, state_style, 3);
             assert_eq!(attached.len(), 1);
             attached.retarget_for_state(StateSlot::Hovered, &atoms);
 
@@ -619,10 +605,9 @@ mod tests {
         fresh_runtime("w5_1_no_transition_atom_is_zero_overhead", || {
             let atoms = [StyleAtom::Opacity(8_000)];
             let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(10_000)]);
-            let registry = AnimationRegistry::default();
             let baseline = active_count();
 
-            let attached = install_animators(&atoms, state_style, &registry, 4);
+            let attached = install_animators(&atoms, state_style, 4);
 
             assert!(attached.is_empty(), "no Transition atom → no animators");
             assert_eq!(active_count(), baseline);
@@ -637,14 +622,12 @@ mod tests {
                 StyleAtom::Transition(presets::SMOOTH),
             ];
             let state_style = StateStyle::EMPTY.with_hovered(&[StyleAtom::Opacity(10_000)]);
-            let registry = AnimationRegistry::default();
-
-            let attached = install_animators(&atoms, state_style, &registry, 5);
+            let attached = install_animators(&atoms, state_style, 5);
             assert_eq!(attached.len(), 1, "SMOOTH spring resolves → one animator");
 
             // The registry should have returned a Spring config; verify
-            // by looking it up via the public AnimationRegistry surface.
-            let config = registry.get(presets::SMOOTH).expect("SMOOTH preset");
+            // by looking it up via the public config surface.
+            let config = crate::config(presets::SMOOTH).expect("SMOOTH preset");
             assert!(matches!(
                 config,
                 AnimationConfig::Spring {

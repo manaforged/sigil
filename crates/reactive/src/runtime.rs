@@ -94,8 +94,8 @@ pub(crate) struct RuntimeState {
     pub(crate) pending: VecDeque<EffectKey>,
     pub(crate) pending_set: BTreeSet<EffectKey>,
     pub(crate) running: BTreeSet<EffectKey>,
-    /// Focus stack — innermost-last. `Context::focus` pushes,
-    /// `Context::blur` removes, owner-cleanup evicts on entity drop.
+    /// Focus stack — innermost-last. `EntityCx::focus` pushes,
+    /// `EntityCx::blur` removes, owner-cleanup evicts on entity drop.
     /// `dispatch_action` walks this leaf-first to resolve handlers.
     ///
     /// `Vec` (not `SmallVec`) so the field has a `const fn new()` for
@@ -104,7 +104,7 @@ pub(crate) struct RuntimeState {
     /// (focus changes); the heap-alloc penalty is irrelevant.
     pub(crate) focus_stack: Vec<FocusHandleId>,
     /// Action handler registry. Wrapped in `Option` so
-    /// `Context::dispatch_action` can move it out, dispatch without
+    /// `EntityCx::dispatch_action` can move it out, dispatch without
     /// holding a borrow on the runtime, then put it back — the
     /// re-entrant dispatch pattern (DR-046 §6).
     pub(crate) action_registry: Option<ActionRegistry>,
@@ -123,16 +123,16 @@ pub(crate) struct RuntimeState {
     /// though the drain itself happens on the main thread.
     pub(crate) pending_completions: Vec<PendingCompletion>,
     /// G5 — installed task executor (DR-048 §5). `None` until
-    /// [`Runtime::install_executor`] runs. Cloned per [`crate::Context::spawn`]
+    /// [`Runtime::install_executor`] runs. Cloned per [`crate::EntityCx::spawn`]
     /// call.
     pub(crate) executor: Option<Arc<dyn TaskExecutor>>,
     /// G5 — installed main-thread dispatcher (DR-048 §5). `None` until
-    /// [`Runtime::install_executor`] runs. Cloned per [`crate::Context::spawn`]
+    /// [`Runtime::install_executor`] runs. Cloned per [`crate::EntityCx::spawn`]
     /// call into the produced [`crate::AsyncContext`].
     pub(crate) dispatcher: Option<Arc<dyn MainThreadDispatcher>>,
     /// W4.99.B3 — installed `!Send`-future local executor. `None` until
     /// [`Runtime::install_local_executor`] runs. Cloned per
-    /// [`crate::Context::spawn_local`] call.
+    /// [`crate::EntityCx::spawn_local`] call.
     ///
     /// Held as `Arc<dyn LocalTaskExecutor>` rather than `Rc<...>` so the
     /// runtime's tear-down path stays uniform with the `executor` /
@@ -140,32 +140,15 @@ pub(crate) struct RuntimeState {
     /// `Send + Sync`, but `Arc<dyn !Send>` is still legal (the Arc just
     /// inherits the trait object's negative bounds).
     pub(crate) local_executor: Option<Arc<dyn LocalTaskExecutor>>,
-    /// W5.2 / DR-050 §G10-phase-2 — a11y tree is dirty and needs to be
-    /// republished at the next [`Runtime::end_frame`] drain.
-    ///
-    /// Flipped on by the `entity_a11y_observer` reactive effect bodies
-    /// whenever any subscribed `A11yProps` signal (`checked`, `value_now`,
-    /// `expanded`, `text_value`, `live`, …) changes. Cleared by the
-    /// drain in [`crate::runtime_drain::drain_a11y_updates`].
-    pub(crate) a11y_dirty: bool,
     /// Whether any visual-affecting reactive mutation occurred during the
     /// current frame. Reset to `false` at [`Runtime::begin_effect`]; flipped on
     /// by every mutation source that schedules observer/effect work (signal
-    /// `set`/`update`, `Context::notify`, `set_global`). The application frame
+    /// `set`/`update`, `EntityCx::notify`, `set_global`). The application frame
     /// driver reads it via [`Runtime::frame_dirty`] to skip layout + paint when
     /// a frame (e.g. a bare cursor-move) changed nothing. Errs toward dirty: an
     /// extra paint is cheap, a missed one is a visible freeze. Starts `true` so
     /// the first frame always paints.
     pub(crate) frame_dirty: bool,
-    /// W5.2 / DR-050 §G10-phase-2 — installed publisher callback that
-    /// the end-of-frame drain invokes to snapshot the current `Cx` into a
-    /// `TreeUpdate` and forward it to the installed `A11yBridge`.
-    ///
-    /// `None` until [`Runtime::install_a11y_publisher`] is called. The
-    /// publisher is a `FnMut` so it can hold a mutable handle to both the
-    /// kernel `Cx` and the bridge — both of which the application owns
-    /// outside the reactive runtime.
-    pub(crate) a11y_publisher: Option<Box<dyn FnMut()>>,
     /// Unique, non-zero identity for this thread's reactive runtime.
     ///
     /// Lazy-initialized on first call to [`runtime_id`] (zero until
@@ -204,9 +187,7 @@ impl RuntimeState {
             executor: None,
             dispatcher: None,
             local_executor: None,
-            a11y_dirty: false,
             frame_dirty: true,
-            a11y_publisher: None,
             runtime_id: 0,
         }
     }

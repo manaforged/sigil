@@ -35,6 +35,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
@@ -53,6 +54,7 @@ impl TextMeasure for ProportionalText {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
+            TextContent::Compute(build) => build().len(),
         };
         #[allow(clippy::cast_precision_loss)]
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
@@ -268,10 +270,8 @@ fn compact_text_field_contains_native_line_height() {
 /// A content-blind text stub (the widget suite's returns 40x16 for every
 /// string) cannot see this class of bug at all.
 ///
-/// Scope note: a bare `text()` node hugs its content by default and can
-/// still overflow a narrow container. Opt into reflow with `text(..).wrap()`
-/// (see `text_wrap.rs`). Single-line ellipsis for the non-wrapping case is
-/// the remaining gap.
+/// Bare `text()` wraps to a definite-width box (`text_wrap.rs`).
+/// `.ellipsize()` is the one-line slot.
 #[test]
 fn long_content_stays_inside_its_widget() {
     for width in WIDTHS {

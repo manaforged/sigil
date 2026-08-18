@@ -30,6 +30,9 @@ pub struct DefaultFonts {
     /// (e.g. codicon) whose glyphs live in the Private Use Area. `None` leaves
     /// `select("icon")` falling back to the sans face. Defaults to `None`.
     pub icon: Option<(Arc<Vec<u8>>, u32)>,
+    /// Display face selected by `font-display` / `font_family = "display"` —
+    /// wordmarks and titles (e.g. Bebas Neue). `None` falls back to sans.
+    pub display: Option<(Arc<Vec<u8>>, u32)>,
 }
 
 #[derive(Clone, Default)]

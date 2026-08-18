@@ -118,8 +118,8 @@ fn bold_glyph_metrics_differ_from_regular() {
         &Style {
             size_px: 16.0,
             weight: 700,
-            italic: false,
             features: SmallVec::new(),
+            letter_spacing_em: 0.0,
         },
     );
     assert_eq!(reg.glyphs.len(), bold.glyphs.len());
@@ -144,8 +144,8 @@ fn italic_glyph_stream_differs_from_regular() {
         &Style {
             size_px: 16.0,
             weight: 400,
-            italic: true,
             features: SmallVec::new(),
+            letter_spacing_em: 0.0,
         },
     );
     assert_eq!(reg.glyphs.len(), it.glyphs.len());

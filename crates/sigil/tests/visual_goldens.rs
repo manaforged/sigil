@@ -25,10 +25,10 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 
 use sigil::prelude::*;
 
@@ -616,9 +616,10 @@ fn modal_open() {
                 .layout(LayoutStyle::flex_column().fill())
                 .class("bg-surface")
                 .child(
-                    modal()
+                    modal(open)
                         .title("Confirm action")
-                        .show(open)
+                        .width(240.0)
+                        .height(128.0)
                         .child(button("OK")),
                 );
             cx.add(on_panel(m, 286.0, 164.0))
@@ -656,9 +657,10 @@ fn modal_dimmed_backdrop() {
                     .inset_left(0.0)
                     .fixed_size(400.0, 280.0),
             );
-            let dialog = modal()
+            let dialog = modal(open)
                 .title("Confirm action")
-                .show(open)
+                .width(240.0)
+                .height(128.0)
                 .child(button("OK"));
             let stack = container()
                 .layout(LayoutStyle::block().fixed_size(400.0, 280.0))
@@ -692,9 +694,10 @@ fn modal_focused() {
                 .layout(LayoutStyle::flex_column().fill())
                 .class("bg-surface")
                 .child(
-                    modal()
+                    modal(open)
                         .title("Confirm action")
-                        .show(open)
+                        .width(240.0)
+                        .height(128.0)
                         .child(button("OK")),
                 );
             cx.add(on_panel(m, 286.0, 164.0))
@@ -732,9 +735,10 @@ fn modal_dismissing() {
                 .layout(LayoutStyle::flex_column().fill())
                 .class("bg-surface")
                 .child(
-                    modal()
+                    modal(open)
                         .title("Confirm action")
-                        .show(open)
+                        .width(240.0)
+                        .height(128.0)
                         .child(button("OK"))
                         .opacity(0.5),
                 );
@@ -765,6 +769,7 @@ fn menu_open() {
                 .class("bg-surface")
                 .child(
                     menu(open)
+                        .width(200.0)
                         .item(MenuItem::new("New file"))
                         .item(MenuItem::new("Open\u{2026}"))
                         .item(MenuItem::new("Save")),
@@ -790,6 +795,7 @@ fn menu_hover_item2() {
                 .class("bg-surface")
                 .child(
                     menu(open)
+                        .width(200.0)
                         .item(MenuItem::new("New file"))
                         .item(MenuItem::new("Open\u{2026}"))
                         .item(MenuItem::new("Save")),
@@ -813,6 +819,7 @@ fn menu_disabled_item() {
                 .class("bg-surface")
                 .child(
                     menu(open)
+                        .width(200.0)
                         .item(MenuItem::new("New"))
                         .item(MenuItem::new("Save"))
                         .item(MenuItem::new("Save As\u{2026}").disabled(true)),
@@ -836,6 +843,7 @@ fn menu_with_separators() {
                 .class("bg-surface")
                 .child(
                     menu(open)
+                        .width(200.0)
                         .item(MenuItem::new("Cut"))
                         .item(MenuItem::new("Copy"))
                         .separator()
@@ -860,6 +868,7 @@ fn menu_submenu_open() {
                 .class("bg-surface")
                 .child(
                     menu(open)
+                        .width(200.0)
                         .item(MenuItem::new("Export"))
                         .item(MenuItem::new("Recent").submenu(true))
                         .item(MenuItem::new("Quit")),
@@ -968,11 +977,11 @@ fn table_golden_state() -> sigil::widgets::TableState<TableRow> {
         rows,
         vec![
             TableColumn::new("name", "Name")
-                .sortable(|a: &TableRow, b: &TableRow| a.name.cmp(b.name))
+                .sort_by(|row: &TableRow| row.name)
                 .width(ColWidth::Fixed(120.0))
                 .cell(move |row: &TableRow| text_cell(row.name)),
             TableColumn::new("role", "Role")
-                .sortable(|a: &TableRow, b: &TableRow| a.role.cmp(b.role))
+                .sort_by(|row: &TableRow| row.role)
                 .width(ColWidth::Fixed(96.0))
                 .cell(move |row: &TableRow| text_cell(row.role)),
             TableColumn::new("city", "City")

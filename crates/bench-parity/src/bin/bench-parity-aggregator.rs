@@ -14,13 +14,17 @@
 // transitively via `sigil-bench-parity` itself. Silence the
 // unused-extern-crate lint.
 
+use data_table as _;
 use serde as _;
 use serde_json as _;
 use sigil as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
+use sigil_renderer as _;
+use sigil_text as _;
 use sysinfo as _;
 use time as _;
 
@@ -98,21 +102,22 @@ fn render_preamble(buf: &mut String) {
     buf.push_str("# Bench-parity report\n\n");
     buf.push_str(
         "Per-framework measurements on locked workloads. \
-         Every \"X vs Y\" comparison must verify that BOTH frameworks \
-         report `pass` for every equivalence check on the same workload \
-         before any speedup claim is made.\n\n",
+         A numeric `vs gpui` cell requires matching reuse/tick, host, \
+         and verdicts. A numeric `vs frame` cell is retained compute \
+         versus reconstruct — not the same mode.\n\n",
     );
     buf.push_str(
-        "> **Methodology note.** Different runners may currently time \
-         different surfaces — e.g. the Sigil runner times pure layout \
-         (`LayoutEngine::compute`); the GPUI runner times \
-         `VisualTestContext::draw` which includes paint-attempt setup \
-         and a `catch_unwind` of the headless-paint panic. Until those \
-         boundaries are reconciled, treat the rows below as \
-         single-framework measurements on a shared workload, not as a \
-         clean side-by-side comparison. See \
-         `crates/sigil-bench-parity/README.md` § \"GPUI runner — \
-         shipped, with a methodology caveat\".\n\n",
+        "Host setup is untimed. `vs gpui` is a number only when both \
+         sides stamp the same reuse/tick mode, the same host \
+         (OS/CPU/rustc), the same verdicts (Pass vs N/A is not a pair), \
+         and both CVs stay at or under 0.25. `vs frame` is a number \
+         when both sides pass `ratio_ok`, share that host, both CVs \
+         stay at or under 0.25, and reuse is complementary (1 vs 0) \
+         with the same tick flag. Do not quote `vs frame` as 1:1 \
+         remount. Krausest rows carry id/label/remove text. Tick \
+         requires last_done_did_move. An empty check map is not a \
+         pass. VOID if construct recorded all layout hits. NOISY if \
+         either CV is above the ceiling.\n\n",
     );
 }
 
@@ -121,7 +126,7 @@ fn render_report(results: &[RunResult]) -> String {
     render_preamble(&mut buf);
 
     if let Some(first) = results.first() {
-        render_host_section(&first.host, &mut buf);
+        render_host_section(&first.host, results, &mut buf);
     }
 
     let mut by_workload: BTreeMap<&str, Vec<&RunResult>> = BTreeMap::new();
@@ -133,30 +138,54 @@ fn render_report(results: &[RunResult]) -> String {
     }
 
     for (workload_id, rows) in by_workload {
-        let _ = writeln!(buf, "## Workload — `{workload_id}`\n");
-        buf.push_str(
-            "| framework | iterations | median (µs) | p95 (µs) | p99 (µs) | equivalence |\n",
-        );
-        buf.push_str("|---|---:|---:|---:|---:|---|\n");
-        for r in rows {
-            let s = &r.summary;
-            let _ = writeln!(
-                buf,
-                "| {} | {} | {:.2} | {:.2} | {:.2} | {} |",
-                r.framework,
-                s.iterations,
-                s.median_us,
-                s.p95_us,
-                s.p99_us,
-                render_equivalence(&r.equivalence_check_results),
-            );
-        }
-        buf.push('\n');
+        render_workload_table(workload_id, &rows, &mut buf);
     }
     buf
 }
+/// One workload section: header row + one line per framework result.
+fn render_workload_table(workload_id: &str, rows: &[&RunResult], buf: &mut String) {
+    let _ = writeln!(buf, "## Workload — `{workload_id}`\n");
+    buf.push_str(
+            "| framework | iterations | median (µs) | p95 (µs) | cv | hits | misses | first | visible | book | rss (MiB) | vs gpui | vs frame | equivalence |\n",
+        );
+    buf.push_str("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n");
+    let gpui = rows.iter().find(|r| r.framework == "gpui").copied();
+    let sigil = rows.iter().find(|r| r.framework == "sigil").copied();
+    for r in rows {
+        let s = &r.summary;
+        let other = if r.framework == "gpui" { sigil } else { gpui };
+        let vs = bench_parity::vs_gpui(r, other);
+        let frame = bench_parity::vs_frame(r, other);
+        let rss = if r.host.process_rss_bytes == 0 {
+            "—".into()
+        } else {
+            format!(
+                "{:.1}",
+                (r.host.process_rss_bytes as f64) / (1024.0 * 1024.0)
+            )
+        };
+        let _ = writeln!(
+            buf,
+            "| {} | {} | {:.2} | {:.2} | {:.3} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
+            r.framework,
+            s.iterations,
+            s.median_us,
+            s.p95_us,
+            s.cv,
+            r.verify.get("layout_hits").copied().unwrap_or(0),
+            r.verify.get("layout_misses").copied().unwrap_or(0),
+            r.verify.get("first_visible").copied().unwrap_or(0),
+            r.verify.get("visible_last").copied().unwrap_or(0),
+            r.verify.get("book_rows").copied().unwrap_or(0),
+            rss,
+            vs,
+            frame,
+            render_equivalence(&r.equivalence_check_results),
+        );
+    }
+}
 
-fn render_host_section(host: &HostInfo, buf: &mut String) {
+fn render_host_section(host: &HostInfo, results: &[RunResult], buf: &mut String) {
     buf.push_str("## Hardware\n\n");
     let _ = writeln!(buf, "- OS: {}", host.os);
     let _ = writeln!(buf, "- CPU: {} ({} cores)", host.cpu, host.cpu_cores);
@@ -166,6 +195,12 @@ fn render_host_section(host: &HostInfo, buf: &mut String) {
         (host.total_memory_bytes as f64) / (1024.0 * 1024.0 * 1024.0),
     );
     let _ = writeln!(buf, "- rustc: {}", host.rustc_version);
+    let mixed = results.iter().any(|r| {
+        r.host.os != host.os || r.host.cpu != host.cpu || r.host.rustc_version != host.rustc_version
+    });
+    if mixed {
+        buf.push_str("- Host mix: results disagree on OS/CPU/rustc. No `vs gpui` cell is valid.\n");
+    }
     buf.push('\n');
 }
 

@@ -34,11 +34,11 @@ use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -76,6 +76,7 @@ fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
 fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuBuilder + 'static {
     move || {
         command_menu()
+            .width(180.0)
             .item("Attack", || {})
             .submenu("Ability", |m| {
                 m.item("Fire", || {}).item("Cure", || {}).disabled("Ultima")

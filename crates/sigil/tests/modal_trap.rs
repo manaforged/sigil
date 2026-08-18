@@ -14,11 +14,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -68,6 +68,39 @@ fn modal_dialog(cx: &Cx, root: NodeId) -> NodeId {
 }
 
 #[test]
+fn modal_width_sizes_the_dialog_not_the_overlay() {
+    sigil::reactive::Runtime::scope("sigil-modal-dialog-box", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
+                .child(modal(show).width(360.0).height(280.0).title("Compose")),
+        );
+        let layout = compute(&mut cx, root);
+        let modal_root = cx.nth_child(root, 0).expect("modal root");
+        let dialog = modal_dialog(&cx, modal_root);
+        let overlay = layout.result(modal_root).expect("overlay").rect();
+        let frame = layout.result(dialog).expect("dialog").rect();
+        assert!(
+            (overlay.width - 640.0).abs() < 0.5,
+            "overlay fills the host, got {}",
+            overlay.width
+        );
+        assert!(
+            (frame.width - 360.0).abs() < 0.5,
+            "width() sizes the dialog, got {}",
+            frame.width
+        );
+        assert!(
+            (frame.height - 280.0).abs() < 0.5,
+            "height() sizes the dialog, got {}",
+            frame.height
+        );
+    });
+}
+
+#[test]
 fn modal_open_pushes_focus_scope() {
     sigil::reactive::Runtime::scope("sigil-modal-trap-focus-scope", || {
         let mut cx = Cx::new_root();
@@ -80,7 +113,7 @@ fn modal_open_pushes_focus_scope() {
                         .focusable(true)
                         .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
                 )
-                .child(modal().show(show)),
+                .child(modal(show)),
         );
         let layout = compute(&mut cx, root);
         let modal_root = cx.nth_child(root, 1).expect("modal root");
@@ -94,6 +127,37 @@ fn modal_open_pushes_focus_scope() {
         show.set(false);
         router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
         assert!(!show.get());
+    });
+}
+
+#[test]
+fn sheet_open_pushes_the_same_focus_scope_as_modal() {
+    sigil::reactive::Runtime::scope("sigil-sheet-trap-focus-scope", || {
+        let mut cx = Cx::new_root();
+        let show = signal(true);
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
+                .child(
+                    container()
+                        .focusable(true)
+                        .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
+                )
+                .child(sheet(show).title("Filters")),
+        );
+        let layout = compute(&mut cx, root);
+        let sheet_root = cx.nth_child(root, 1).expect("sheet root");
+        let dialog = modal_dialog(&cx, sheet_root);
+        let node = cx.get(dialog).expect("dialog");
+        assert_eq!(node.a11y.role, Role::Dialog);
+        assert_eq!(
+            node.a11y.focus_scope,
+            Some(sigil_kernel::FocusScopeKind::Modal)
+        );
+
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, key_down(Key::Tab, PhysicalKey::Tab));
+        assert_eq!(router.focus(), Some(dialog));
     });
 }
 
@@ -114,7 +178,7 @@ fn dismissed_modal_releases_focus_trap() {
                         .focusable(true)
                         .layout(LayoutStyle::block().fixed_size(20.0, 20.0)),
                 )
-                .child(modal().show(show)),
+                .child(modal(show)),
         );
         let mut layout = compute(&mut cx, root);
         let outside = cx.nth_child(root, 0).expect("outside focusable");
@@ -143,7 +207,7 @@ fn escape_closes_modal_when_enabled_default() {
     sigil::reactive::Runtime::scope("sigil-modal-trap-escape", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
-        let root = cx.add(modal().show(show));
+        let root = cx.add(modal(show));
         let layout = compute(&mut cx, root);
         let dialog = modal_dialog(&cx, root);
 
@@ -161,8 +225,7 @@ fn backdrop_click_closes_when_opt_in() {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(
-            modal()
-                .show(show)
+            modal(show)
                 .dismiss_on_backdrop(true)
                 .child(container().layout(LayoutStyle::block().fixed_size(80.0, 24.0))),
         );
@@ -200,9 +263,9 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
-                .child(modal().title("First").show(first))
-                .child(modal().title("Second").show(second))
-                .child(modal().title("Third").show(third)),
+                .child(modal(first).title("First"))
+                .child(modal(second).title("Second"))
+                .child(modal(third).title("Third")),
         );
         let layout = compute(&mut cx, root);
         let top_root = cx.nth_child(root, 2).expect("third modal root");

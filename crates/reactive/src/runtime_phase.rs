@@ -17,9 +17,7 @@
 
 use crate::phase::{DrawPhase, drain_deferred_writes};
 use crate::runtime::{Runtime, with_rt};
-use crate::runtime_drain::{
-    drain_a11y_updates, drain_observers_to_fixpoint, drain_pending_completions,
-};
+use crate::runtime_drain::{drain_observers_to_fixpoint, drain_pending_completions};
 
 impl Runtime {
     /// Force the runtime back to a clean [`DrawPhase::Idle`] resting state
@@ -154,11 +152,6 @@ impl Runtime {
         // application code that drives the next frame sees a clean
         // queue.
         drain_observers_to_fixpoint();
-        // W5.2 / DR-050 §G10-phase-2 — once every signal mutation has
-        // settled, snapshot the kernel tree through the installed
-        // publisher and forward it to the bridge. Cheap no-op when no
-        // observed signal changed this frame.
-        drain_a11y_updates();
         with_rt(|rt| rt.phase = DrawPhase::Idle);
     }
 

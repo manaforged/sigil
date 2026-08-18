@@ -1,4 +1,6 @@
 **/target
+off/
+docs/book/book/
 **/*.rs.bk
 Cargo.lock.bak
 .vscode/
@@ -10,3 +12,5 @@ Cargo.lock.bak
 mutants.out/
 mutants.out.old/
 showcase/
+marketing/
+docs/reviews/

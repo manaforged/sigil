@@ -96,6 +96,10 @@ fn parse_class_literal(value: &syn::LitStr) -> syn::Result<Vec<TokenStream>> {
             atoms.extend(expanded);
             continue;
         }
+        if let Some(expanded) = border_side_tokens(token) {
+            atoms.extend(expanded);
+            continue;
+        }
         atoms.push(parse_token(value, token)?);
     }
     Ok(atoms)
@@ -183,8 +187,54 @@ fn reject_token(origin: &syn::LitStr, token: &str) -> syn::Result<()> {
 
 fn fixed_token(token: &str) -> Option<TokenStream> {
     fixed_layout_token(token)
+        .or_else(|| flex_token(token))
         .or_else(|| fixed_typo_token(token))
+        .or_else(|| tracking_token(token))
+        .or_else(|| decoration_token(token))
         .or_else(|| shadow_token(token))
+}
+
+fn flex_token(token: &str) -> Option<TokenStream> {
+    match token {
+        "grow" => Some(quote!(::sigil::__private::style::StyleAtom::FlexGrow(
+            1000u16
+        ))),
+        "grow-0" => Some(quote!(::sigil::__private::style::StyleAtom::FlexGrow(0u16))),
+        "shrink" => Some(quote!(::sigil::__private::style::StyleAtom::FlexShrink(
+            1000u16
+        ))),
+        "shrink-0" => Some(quote!(::sigil::__private::style::StyleAtom::FlexShrink(
+            0u16
+        ))),
+        _ => None,
+    }
+}
+
+fn tracking_token(token: &str) -> Option<TokenStream> {
+    let thousandths: i16 = match token {
+        "tracking-tighter" => -50,
+        "tracking-tight" => -25,
+        "tracking-normal" => 0,
+        "tracking-wide" => 25,
+        "tracking-wider" => 50,
+        "tracking-widest" => 100,
+        _ => return None,
+    };
+    Some(quote!(
+        ::sigil::__private::style::StyleAtom::LetterSpacing(#thousandths)
+    ))
+}
+
+fn decoration_token(token: &str) -> Option<TokenStream> {
+    let kind = match token {
+        "underline" => quote!(::sigil::__private::style::TextDecoration::Underline),
+        "line-through" => quote!(::sigil::__private::style::TextDecoration::LineThrough),
+        "no-underline" => quote!(::sigil::__private::style::TextDecoration::None),
+        _ => return None,
+    };
+    Some(quote!(
+        ::sigil::__private::style::StyleAtom::TextDecoration(#kind)
+    ))
 }
 
 /// Compile-time half of the runtime parser's `shadow_atom` mapping.
@@ -280,15 +330,8 @@ fn fixed_typo_token(token: &str) -> Option<TokenStream> {
         "font-icon" => Some(quote!(::sigil::__private::style::StyleAtom::FontFamily(
             "icon"
         ))),
-        "grow" => Some(quote!(::sigil::__private::style::StyleAtom::FlexGrow(
-            1000u16
-        ))),
-        "grow-0" => Some(quote!(::sigil::__private::style::StyleAtom::FlexGrow(0u16))),
-        "shrink" => Some(quote!(::sigil::__private::style::StyleAtom::FlexShrink(
-            1000u16
-        ))),
-        "shrink-0" => Some(quote!(::sigil::__private::style::StyleAtom::FlexShrink(
-            0u16
+        "font-display" => Some(quote!(::sigil::__private::style::StyleAtom::FontFamily(
+            "display"
         ))),
         "border" => Some(px_atom("BorderWidth", 1)),
         _ => None,
@@ -302,7 +345,45 @@ fn prefixed_token(token: &str) -> Option<TokenStream> {
         .or_else(|| justify_token(token))
         .or_else(|| opacity_token(token))
         .or_else(|| border_token(token))
+        .or_else(|| grid_token(token))
         .or_else(|| theme_token(token))
+}
+
+fn grid_token(token: &str) -> Option<TokenStream> {
+    if let Some(n) = token.strip_prefix("grid-cols-") {
+        let n: u16 = n.parse().ok()?;
+        return Some(quote!(::sigil::__private::style::StyleAtom::GridColumns(#n)));
+    }
+    if let Some(n) = token.strip_prefix("grid-rows-") {
+        let n: u16 = n.parse().ok()?;
+        return Some(quote!(::sigil::__private::style::StyleAtom::GridRows(#n)));
+    }
+    None
+}
+
+/// `border-t` / `border-l-4` / `border-x` — Tailwind per-side widths.
+/// Mirrors the runtime parser's `push_border_side_atoms`.
+fn border_side_tokens(token: &str) -> Option<Vec<TokenStream>> {
+    let rest = token.strip_prefix("border-")?;
+    let (side, width) = match rest.split_once('-') {
+        Some((side, raw)) => (side, raw.parse::<i16>().ok().filter(|n| *n >= 0)?),
+        None => (rest, 1),
+    };
+    let variants: &[&str] = match side {
+        "t" => &["BorderTop"],
+        "r" => &["BorderRight"],
+        "b" => &["BorderBottom"],
+        "l" => &["BorderLeft"],
+        "x" => &["BorderLeft", "BorderRight"],
+        "y" => &["BorderTop", "BorderBottom"],
+        _ => return None,
+    };
+    Some(
+        variants
+            .iter()
+            .map(|variant| px_atom(variant, width))
+            .collect(),
+    )
 }
 
 /// `border-N` is a literal pixel width (Tailwind shape); `border-<token>`

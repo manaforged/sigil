@@ -1,4 +1,4 @@
-//! Verifies the W4.99.C1 prelude trims + `Action` / `DispatchCx` /
+//! Verifies the prelude trims + `Action` / `Propagate` /
 //! `dispatch_to_owner` promotions.
 //!
 //! This is a compile-only test — if the items resolve through
@@ -19,8 +19,8 @@ fn _action_in_prelude() -> Box<dyn Action> {
     Box::new(PreludeProbeAction)
 }
 
-const fn _dispatch_cx_in_prelude(cx: &mut DispatchCx) {
-    cx.propagate();
+const fn _propagate_in_prelude(flag: &mut Propagate) {
+    flag.propagate();
 }
 
 const fn _handler_key_in_prelude() -> HandlerKey {
@@ -37,4 +37,14 @@ fn dispatch_to_owner_resolves_through_prelude() {
     // dispatcher), only prove the symbol is reachable.
     let f: fn(&_, OwnerHandle, fn()) = dispatch_to_owner::<fn()>;
     let _ = f;
+}
+
+#[test]
+fn spawn_resolves_through_prelude() {
+    type Fut = std::future::Ready<Result<u32, &'static str>>;
+    // The pin type's complexity is the subject of the test: the prelude
+    // must export `spawn` with exactly this signature.
+    #[allow(clippy::type_complexity)]
+    let _: fn(Fut) -> Signal<Status<u32, &'static str>> = spawn;
+    let _ = Status::<u32, &'static str>::Pending;
 }

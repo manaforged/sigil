@@ -175,6 +175,8 @@ fn build_text_scene() -> CommandScene {
         font_size: FONT_SIZE,
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
+        letter_spacing_em: 0.0,
+        ..Default::default()
     };
     let rect = sigil_hal::Rect::new(
         sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
@@ -464,6 +466,8 @@ fn build_text_scene_sized(size_px: f32) -> CommandScene {
         font_size: size_px,
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
+        letter_spacing_em: 0.0,
+        ..Default::default()
     };
     let rect = sigil_hal::Rect::new(
         sigil_hal::Point::new(ORIGIN.0, ORIGIN.1),
@@ -567,6 +571,8 @@ fn render_text_inner(
         font_size: FONT_SIZE,
         font_weight: 400,
         line_height: TextLineHeight::FontSizeRelative(1.2),
+        letter_spacing_em: 0.0,
+        ..Default::default()
     };
     let paragraph = engine
         .layout_paragraph_styled(content, None, &style)

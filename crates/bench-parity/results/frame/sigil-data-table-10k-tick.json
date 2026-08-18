@@ -1,0 +1,140 @@
+{
+  "framework": "sigil",
+  "workload_id": "data-table-10k-tick",
+  "samples_ns": [
+    9375,
+    8750,
+    8458,
+    8750,
+    8541,
+    8625,
+    8583,
+    8625,
+    8584,
+    8625,
+    8708,
+    8625,
+    8541,
+    8542,
+    10000,
+    10625,
+    8792,
+    8750,
+    8709,
+    8750,
+    10958,
+    11083,
+    11500,
+    11208,
+    10333,
+    9208,
+    9334,
+    10834,
+    10958,
+    9250,
+    9666,
+    9375,
+    9375,
+    9542,
+    9375,
+    9334,
+    9375,
+    9583,
+    9417,
+    9375,
+    9583,
+    9375,
+    9084,
+    9834,
+    9292,
+    9666,
+    9250,
+    9334,
+    9667,
+    9416,
+    9292,
+    9625,
+    9208,
+    9500,
+    9416,
+    9458,
+    9375,
+    9291,
+    9458,
+    9292,
+    9500,
+    9333,
+    9500,
+    9333,
+    10125,
+    9459,
+    9375,
+    9292,
+    9459,
+    9375,
+    9083,
+    9292,
+    9375,
+    9375,
+    9208,
+    9375,
+    9250,
+    9333,
+    9417,
+    9084
+  ],
+  "summary": {
+    "iterations": 80,
+    "median_us": 9.375,
+    "p95_us": 10.958,
+    "p99_us": 11.208,
+    "mean_us": 9.4,
+    "cv": 0.06696339319071506
+  },
+  "equivalence_check_results": {
+    "identity_did_hold": {
+      "status": "pass"
+    },
+    "column_count": {
+      "status": "pass"
+    },
+    "layout_did_work": {
+      "status": "pass"
+    },
+    "visible_window_indices": {
+      "status": "pass"
+    },
+    "book_held": {
+      "status": "pass"
+    },
+    "scene_did_work": {
+      "status": "not_applicable"
+    },
+    "last_done_did_move": {
+      "status": "pass"
+    },
+    "text_did_work": {
+      "status": "pass"
+    }
+  },
+  "host": {
+    "os": "Darwin 26.5.1",
+    "cpu": "Apple M2 Max",
+    "cpu_cores": 12,
+    "total_memory_bytes": 34359738368,
+    "rustc_version": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "process_rss_bytes": 27475968
+  },
+  "verify": {
+    "scene_glyphs_last": 0,
+    "text_measure_last": 0,
+    "scene_cmds_last": 0,
+    "reuse": 1,
+    "visible_last": 38,
+    "layout_misses": 0,
+    "tick": 1,
+    "samples": 80,
+    "book_rows": 10000,
+    "layout_hits": 80
+  }
+}

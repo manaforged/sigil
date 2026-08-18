@@ -1,42 +1,33 @@
 //! Offscreen texture pool for layer rendering.
 //!
-//! [`LayerPool`] tracks recently-used `(width, height, format)` dimension
-//! keys — up to [`LayerPool::MAX_ENTRIES`] — and allocates a fresh
-//! `wgpu::Texture` on every [`LayerPool::acquire`] call. The LRU key table
-//! prevents unbounded growth: when the table is full and a new distinct
-//! dimension is requested, the entry with the oldest `last_used_frame` is
-//! replaced by the incoming key.
-//!
-//! **Dimension normalisation**: both `width` and `height` are rounded up to
-//! the nearest multiple of 16 pixels before the lookup and allocation.
-//! Callers pass logical dimensions; the returned [`LayerHandle`]'s
-//! `width`/`height` fields carry the rounded values. Transparent edge bytes
-//! are harmless during layer composition.
-//!
-//! Every allocated texture has usage flags
-//! `RENDER_ATTACHMENT | COPY_SRC | COPY_DST | TEXTURE_BINDING`.
+//! [`LayerPool::acquire`] reuses a free texture of the same rounded
+//! `(width, height, format)` when one is available. [`LayerPool::release`]
+//! returns a handle to that free list after the encoder that sampled it
+//! has been submitted. Zero or oversized dimensions return
+//! [`LayerError`] — callers must not skip the layer.
 
-use wgpu::{TextureFormat, TextureUsages};
+use wgpu::TextureUsages;
 
 /// Minimum allocation granularity in pixels (both axes).
-///
-/// Must be a power of two. Rounding to 16 px multiples raises the probability
-/// that successive frames with slightly-shifted clip rects share a pool slot.
 const DIM_ALIGN: u32 = 16;
 
-/// One slot in the LRU dimension table.
-struct Slot {
-    width: u32,
-    height: u32,
-    format: TextureFormat,
-    last_used_frame: u64,
+/// Why [`LayerPool::acquire`] refused a texture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LayerError {
+    /// Width or height was zero.
+    Empty,
+    /// Rounded size exceeds `max_texture_dimension_2d`.
+    TooLarge {
+        /// Requested rounded extent.
+        requested: u32,
+        /// Device limit.
+        max: u32,
+    },
 }
 
 /// Offscreen texture handle returned by [`LayerPool::acquire`].
 ///
-/// Owns the texture. Dropping this handle frees the GPU allocation.
-/// `width` and `height` are the **rounded** values (multiples of 16 px)
-/// which may exceed the logical dimensions passed to `acquire`.
+/// Owns the texture. Return it with [`LayerPool::release`] after submit.
 pub struct LayerHandle {
     /// The underlying wgpu texture.
     pub texture: wgpu::Texture,
@@ -50,109 +41,81 @@ pub struct LayerHandle {
     pub format: wgpu::TextureFormat,
 }
 
-/// LRU dimension-key table that drives offscreen texture allocation.
-///
-/// The pool tracks which `(width, height, format)` keys have been used
-/// recently. On [`acquire`](LayerPool::acquire):
-/// - If the rounded key exists in the table, bump its `last_used_frame`.
-/// - If not, and the table has room, add the key.
-/// - If the table is full, evict the oldest key and insert the new one.
-///
-/// A fresh texture is **always** allocated — the handle owns the texture
-/// and there is no `release` path. The table only controls which dimension
-/// keys are remembered for LRU purposes.
+/// Free-list of offscreen textures keyed by rounded size + format.
 pub struct LayerPool {
-    slots: Vec<Slot>,
-    frame: u64,
+    free: Vec<LayerHandle>,
 }
 
 impl LayerPool {
-    /// Maximum number of dimension keys the table holds simultaneously.
+    /// Maximum free textures retained between frames.
     pub const MAX_ENTRIES: usize = 4;
 
     /// Create an empty pool.
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            slots: Vec::with_capacity(Self::MAX_ENTRIES),
-            frame: 0,
-        }
-    }
-
-    /// Advance the internal frame counter.
-    ///
-    /// Call once per rendered frame to keep the LRU counter meaningful.
-    pub const fn next_frame(&mut self) {
-        self.frame = self.frame.saturating_add(1);
+    pub const fn new() -> Self {
+        Self { free: Vec::new() }
     }
 
     /// Acquire a texture sized to `(width, height)` with `format`.
     ///
     /// Both dimensions are rounded up to the nearest 16-pixel multiple.
-    /// Returns `None` when either dimension is zero or the rounded size exceeds
-    /// the device's `max_texture_dimension_2d` limit.
+    ///
+    /// # Errors
+    ///
+    /// [`LayerError::Empty`] when either dimension is zero.
+    /// [`LayerError::TooLarge`] when the rounded size exceeds the device limit.
     pub fn acquire(
         &mut self,
         device: &wgpu::Device,
         width: u32,
         height: u32,
         format: wgpu::TextureFormat,
-    ) -> Option<LayerHandle> {
+    ) -> Result<LayerHandle, LayerError> {
         if width == 0 || height == 0 {
-            return None;
+            return Err(LayerError::Empty);
         }
         let w = round_up(width, DIM_ALIGN);
         let h = round_up(height, DIM_ALIGN);
         let max_dim = device.limits().max_texture_dimension_2d;
         if w > max_dim || h > max_dim {
-            return None;
+            return Err(LayerError::TooLarge {
+                requested: w.max(h),
+                max: max_dim,
+            });
         }
-
-        self.touch_slot(w, h, format);
-        Some(alloc_layer_texture(device, w, h, format))
-    }
-
-    /// Drop all cached dimension keys.
-    pub fn clear(&mut self) {
-        self.slots.clear();
-    }
-
-    /// Number of dimension keys currently tracked.
-    #[must_use]
-    pub const fn len(&self) -> usize {
-        self.slots.len()
-    }
-
-    /// Returns `true` when the pool tracks no keys.
-    #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.slots.is_empty()
-    }
-
-    /// Update the LRU table: find or insert the `(w, h, format)` slot.
-    fn touch_slot(&mut self, w: u32, h: u32, format: TextureFormat) {
-        if let Some(slot) = self
-            .slots
-            .iter_mut()
-            .find(|s| s.width == w && s.height == h && s.format == format)
+        if let Some(index) = self
+            .free
+            .iter()
+            .position(|slot| slot.width == w && slot.height == h && slot.format == format)
         {
-            slot.last_used_frame = self.frame;
+            return Ok(self.free.swap_remove(index));
+        }
+        Ok(alloc_layer_texture(device, w, h, format))
+    }
+
+    /// Return a handle to the free list after its encoder has been submitted.
+    pub fn release(&mut self, handle: LayerHandle) {
+        if self.free.len() >= Self::MAX_ENTRIES {
             return;
         }
-        let new_slot = Slot {
-            width: w,
-            height: h,
-            format,
-            last_used_frame: self.frame,
-        };
-        if self.slots.len() < Self::MAX_ENTRIES {
-            self.slots.push(new_slot);
-        } else {
-            let evict = lru_index(&self.slots);
-            if let Some(slot) = self.slots.get_mut(evict) {
-                *slot = new_slot;
-            }
-        }
+        self.free.push(handle);
+    }
+
+    /// Drop every free texture.
+    pub fn clear(&mut self) {
+        self.free.clear();
+    }
+
+    /// Number of free textures currently retained.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.free.len()
+    }
+
+    /// Returns `true` when the free list is empty.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.free.is_empty()
     }
 }
 
@@ -160,15 +123,6 @@ impl Default for LayerPool {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Return the index of the slot with the smallest `last_used_frame`.
-fn lru_index(slots: &[Slot]) -> usize {
-    slots
-        .iter()
-        .enumerate()
-        .min_by_key(|(_, s)| s.last_used_frame)
-        .map_or(0, |(i, _)| i)
 }
 
 /// Round `value` up to the nearest multiple of `align`.
@@ -235,19 +189,6 @@ mod tests {
         let pool = LayerPool::new();
         assert_eq!(pool.len(), 0);
         assert!(pool.is_empty());
-    }
-
-    #[test]
-    fn zero_dims_returns_none_without_device() {
-        // Validate that zero-dim guard fires before any device call.
-        let pool = LayerPool::new();
-        // We can't call acquire without a real device, but we can verify
-        // that the slot table is unmodified after a zero-dim call
-        // by checking the slot is not inserted.
-        // The guard is: if width == 0 || height == 0 { return None; }
-        // Test the logic path via the public len() which would increase
-        // on a successful acquire.
-        assert_eq!(pool.len(), 0);
     }
 
     #[test]

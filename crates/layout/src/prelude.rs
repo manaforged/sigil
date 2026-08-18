@@ -9,9 +9,3 @@ pub use crate::{
     TrackSize,
 };
 pub use sigil_hal::{Dim, LogicalSize, Size};
-
-/// Compatibility helper for pre-cutover code that imported a length helper.
-#[must_use]
-pub const fn length(value: f32) -> LengthPercentage {
-    LengthPercentage::Px(value)
-}

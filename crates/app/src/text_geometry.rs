@@ -1,19 +1,19 @@
 //! Default [`TextGeometry`] provider installed by `sigil::launch`.
 //!
-//! Backs caret/selection hit-testing for text widgets over an owned text
-//! engine configured identically to [`DefaultTextMeasure`](crate::DefaultTextMeasure)
-//! — same [`TextConfig::default`] + process default fonts — so the geometry a
-//! widget reads matches the glyphs the renderer paints (shaping is
-//! deterministic for a given text + style + font set).
+//! Backs caret/selection hit-testing for text widgets over the same
+//! thread [`OwnedTextEngine`](sigil_text::OwnedTextEngine) that layout
+//! measure and scene emit use, so caret x matches painted glyphs.
+
+use std::rc::Rc;
 
 use sigil_hal::{HitPosition, TextAffinity};
 use sigil_layout::{CaretGeometry, TextGeometry};
 use sigil_style::TextStyle;
-use sigil_text::{OwnedTextEngine, TextConfig};
+use sigil_text::OwnedTextEngine;
 
-/// Owned-text-engine-backed geometry provider for single-line text widgets.
+/// Thread-engine geometry provider for single-line text widgets.
 pub struct EngineGeometry {
-    engine: OwnedTextEngine,
+    engine: Rc<OwnedTextEngine>,
 }
 
 impl Default for EngineGeometry {
@@ -27,7 +27,7 @@ impl EngineGeometry {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            engine: OwnedTextEngine::new(TextConfig::default()),
+            engine: OwnedTextEngine::thread(),
         }
     }
 }

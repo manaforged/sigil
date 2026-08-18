@@ -19,7 +19,6 @@ use sigil_reactive as _;
 #[cfg(test)]
 use taffy as _;
 
-mod adapter;
 mod block;
 mod block_collapse;
 mod block_size;
@@ -31,12 +30,14 @@ mod error;
 mod flex;
 mod flex_algorithm;
 mod flex_lines;
+mod flex_pack;
 mod forest;
 mod grid;
 mod intent;
 mod measure;
 pub mod prelude;
 pub mod reactive_position;
+mod resolve;
 mod result;
 pub mod style_adapter;
 mod style_data;

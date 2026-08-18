@@ -40,7 +40,7 @@ use tokio::task::AbortHandle;
 /// runtime handle.
 ///
 /// Constructed via [`crate::AsyncRuntime::tokio_executor`].
-/// Owner-cascade abort wiring lives in `sigil_reactive::Context::spawn`
+/// Owner-cascade abort wiring lives in `sigil_reactive::EntityCx::spawn`
 /// — the executor only needs to spawn + return the abort handle.
 ///
 /// # Layout

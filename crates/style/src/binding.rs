@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::{AnimatorOverlay, RenderStyle, StateSlot, StyleAtom, StyleOverlay};
+use crate::{AnimatorOverlay, StateSlot, StyleAtom, StyleOverlay};
 
 /// Shared current-state-slot cell.
 ///
@@ -17,7 +17,7 @@ pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 /// Shared reactive style slice updated by a node-owned effect.
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 
-/// Style atoms and resolved caches attached to a node.
+/// Style atoms attached to a node.
 ///
 /// A binding carries any number of reactive channels: each
 /// `style_reactive` / `class_when` / `stateful_style` install appends one
@@ -44,10 +44,6 @@ pub struct StyleBinding {
     /// resolver reads it back to pick the matching slice from
     /// [`Self::state_overlay`].
     state_overlay_slot: Option<ReactiveStateSlot>,
-    resolved_render: RenderStyle,
-    cx_generation: u64,
-    layout_generation: u64,
-    theme_generation: u64,
 }
 
 impl core::fmt::Debug for StyleBinding {
@@ -59,10 +55,6 @@ impl core::fmt::Debug for StyleBinding {
             .field("attached_animators", &self.attached_animators.is_some())
             .field("state_overlay", &self.state_overlay.is_some())
             .field("state_overlay_slot", &self.state_overlay_slot.is_some())
-            .field("resolved_render", &self.resolved_render)
-            .field("cx_generation", &self.cx_generation)
-            .field("layout_generation", &self.layout_generation)
-            .field("theme_generation", &self.theme_generation)
             .finish()
     }
 }
@@ -76,10 +68,6 @@ impl Default for StyleBinding {
             attached_animators: None,
             state_overlay: None,
             state_overlay_slot: None,
-            resolved_render: RenderStyle::default(),
-            cx_generation: 0,
-            layout_generation: 0,
-            theme_generation: 0,
         }
     }
 }
@@ -149,28 +137,20 @@ impl StyleBinding {
         !self.reactive_channels.is_empty()
     }
 
-    /// Borrow cached render style.
+    /// True when a reactive channel currently carries a box-model atom.
     #[must_use]
-    pub const fn resolved_render(&self) -> &RenderStyle {
-        &self.resolved_render
+    pub fn has_layout_reactive(&self) -> bool {
+        self.reactive_channels()
+            .any(|slice| slice.iter().any(|atom| atom.affects_layout()))
     }
 
-    /// Return the cached context generation.
+    /// True when any atom layer sets `display: none`.
     #[must_use]
-    pub const fn cx_generation(&self) -> u64 {
-        self.cx_generation
-    }
-
-    /// Return the cached layout generation.
-    #[must_use]
-    pub const fn layout_generation(&self) -> u64 {
-        self.layout_generation
-    }
-
-    /// Return the cached theme generation.
-    #[must_use]
-    pub const fn theme_generation(&self) -> u64 {
-        self.theme_generation
+    pub fn hides(&self) -> bool {
+        let none = StyleAtom::Display(crate::DisplayKind::None);
+        self.static_slice().contains(&none)
+            || self.dynamic_slice().contains(&none)
+            || self.reactive_contains(&none)
     }
 
     /// Borrow the attached animator overlay, if any.
@@ -209,6 +189,14 @@ impl StyleBinding {
         self.state_overlay.as_deref()
     }
 
+    /// Current interaction slot the overlay resolves against.
+    #[must_use]
+    pub fn interaction_slot(&self) -> StateSlot {
+        self.state_overlay_slot
+            .as_ref()
+            .map_or(StateSlot::Rest, |cell| cell.get())
+    }
+
     /// Atoms from the user state overlay for the current slot.
     ///
     /// Returns an empty slice when no overlay is installed, the slot
@@ -235,7 +223,6 @@ impl StyleBinding {
     pub fn set_state_overlay(&mut self, overlay: StyleOverlay, slot: ReactiveStateSlot) {
         self.state_overlay = Some(Box::new(overlay));
         self.state_overlay_slot = Some(slot);
-        self.invalidate();
     }
 
     pub(crate) fn all_atoms(&self) -> SmallVec<[StyleAtom; 32]> {
@@ -248,24 +235,12 @@ impl StyleBinding {
     pub(crate) fn replace_owned(&mut self, atoms: SmallVec<[StyleAtom; 16]>) {
         self.static_atoms = &[];
         self.dynamic_atoms = atoms;
-        self.invalidate();
     }
 
     /// Append a reactive channel. Later installs resolve after earlier
     /// ones; nothing is ever replaced.
     pub(crate) fn add_reactive(&mut self, atoms: ReactiveStyleAtoms) {
         self.reactive_channels.push(atoms);
-        self.invalidate();
-    }
-
-    pub(crate) const fn invalidate_theme(&mut self) {
-        self.theme_generation = u64::MAX;
-    }
-
-    const fn invalidate(&mut self) {
-        self.cx_generation = u64::MAX;
-        self.layout_generation = u64::MAX;
-        self.theme_generation = u64::MAX;
     }
 }
 
@@ -279,10 +254,6 @@ impl PartialEq for StyleBinding {
         self.static_atoms == other.static_atoms
             && self.dynamic_atoms == other.dynamic_atoms
             && reactive_eq
-            && self.resolved_render == other.resolved_render
-            && self.cx_generation == other.cx_generation
-            && self.layout_generation == other.layout_generation
-            && self.theme_generation == other.theme_generation
     }
 }
 

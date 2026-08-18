@@ -21,12 +21,11 @@
 //! read results back through [`FlexSolver::boxed`], which delegates to
 //! `forest.boxed`.
 
-#![allow(dead_code, clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
 
 use crate::LayoutError;
 use crate::flex_algorithm::{Axis2, FlexCtx, layout_root};
 use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
-use crate::style_data::FlexDirection;
 
 /// CSS flexbox layout subset.
 ///
@@ -104,9 +103,31 @@ impl<'a> FlexSolver<'a> {
         layout_root(&ctx, subtree, origin)
     }
 
+    /// Lay out `subtree` into a definite area. Grid stretch uses this
+    /// so a flex item fills its track instead of hugging content.
+    pub(crate) fn solve_at_area(
+        &self,
+        subtree: NodeRef<'_>,
+        cb: CbSize,
+        origin: Position2,
+    ) -> Result<(), LayoutError> {
+        let style = subtree.style();
+        let axes = Axis2::for_direction(style.flex_direction);
+        let ctx = FlexCtx {
+            solver: self,
+            axes,
+            cb,
+            suppress_stretch: false,
+            assigned_w: Some(cb.w),
+            assigned_h: (cb.h > 0.0).then_some(cb.h),
+        };
+        layout_root(&ctx, subtree, origin)
+    }
+
     /// Borrow the computed box for `id`. Returns `None` when the id is
     /// stale or the solver never visited it during this pass (frame
     /// tag does not match the forest's current frame).
+    #[cfg(test)]
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
         let forest = self.scope.forest();
         if forest.frame_for(id)? != forest.current_frame() {
@@ -177,37 +198,6 @@ impl CbSize {
             (self.w, self.h)
         } else {
             (self.h, self.w)
-        }
-    }
-}
-
-/// Lookup helper: convert direction to a row/column flag pair plus
-/// the reversed flag.
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct DirFlags {
-    pub(crate) row: bool,
-    pub(crate) reversed: bool,
-}
-
-impl DirFlags {
-    pub(crate) const fn from(direction: FlexDirection) -> Self {
-        match direction {
-            FlexDirection::Row => Self {
-                row: true,
-                reversed: false,
-            },
-            FlexDirection::RowReverse => Self {
-                row: true,
-                reversed: true,
-            },
-            FlexDirection::Column => Self {
-                row: false,
-                reversed: false,
-            },
-            FlexDirection::ColumnReverse => Self {
-                row: false,
-                reversed: true,
-            },
         }
     }
 }

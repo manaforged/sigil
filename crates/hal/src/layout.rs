@@ -1,14 +1,4 @@
-//! Layout trait — see [DR-003].
-//!
-//! The `Layout` trait abstracts the box-layout engine. Production code
-//! uses the owned `sigil-layout` engine. Tests implement a fixed layout
-//! that returns predetermined rectangles.
-//!
-//! # Phase 4 shape
-//!
-//! See DR-003 in `docs/decisions/`.
-
-use core::error::Error;
+//! Layout constraint types.
 
 /// Available space in one layout axis.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -65,73 +55,4 @@ impl Size {
             height: Dim::MinContent,
         }
     }
-}
-
-/// Box-layout engine abstraction.
-pub trait Layout {
-    /// Error type returned by layout operations.
-    type Error: Error + Send + Sync + 'static;
-
-    /// Opaque identifier for a layout node.
-    ///
-    /// The engine may use its own id internally; `sigil-kernel` maps its
-    /// `NodeId`s to these through the adapter.
-    type NodeId: Copy + Eq + core::hash::Hash;
-
-    /// Engine-specific style input.
-    type Intent;
-
-    /// Engine-specific computed output.
-    type Result: Copy;
-
-    /// Insert or update one layout node.
-    ///
-    /// # Errors
-    ///
-    /// Returns the backend error when the node cannot be inserted or
-    /// updated.
-    fn upsert(
-        &mut self,
-        id: Self::NodeId,
-        intent: &Self::Intent,
-    ) -> core::result::Result<(), Self::Error>;
-
-    /// Replace a node's ordered children.
-    ///
-    /// # Errors
-    ///
-    /// Returns the backend error when `parent` or any child is unknown,
-    /// invalid, or cannot be reparented.
-    fn set_children(
-        &mut self,
-        parent: Self::NodeId,
-        children: &[Self::NodeId],
-    ) -> core::result::Result<(), Self::Error>;
-
-    /// Remove a layout node and any descendants currently attached
-    /// below it in the layout mirror.
-    ///
-    /// This updates only the layout backend. The caller still owns
-    /// the authoritative UI tree and is responsible for removing or
-    /// reparenting any corresponding core nodes there.
-    ///
-    /// # Errors
-    ///
-    /// Returns the backend error when `id` is unknown or removal fails.
-    fn remove(&mut self, id: Self::NodeId) -> core::result::Result<(), Self::Error>;
-
-    /// Compute layout for a root under the supplied available space.
-    ///
-    /// # Errors
-    ///
-    /// Returns the backend error when `root` is unknown or layout
-    /// computation fails.
-    fn compute(
-        &mut self,
-        root: Self::NodeId,
-        available: Size,
-    ) -> core::result::Result<(), Self::Error>;
-
-    /// Return the most recently computed result for a node.
-    fn result(&self, id: Self::NodeId) -> Option<Self::Result>;
 }

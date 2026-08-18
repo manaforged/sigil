@@ -20,10 +20,10 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -51,9 +51,9 @@ fn rows(count: u32) -> Vec<Row> {
 fn columns() -> Vec<TableColumn<Row>> {
     vec![
         TableColumn::new("label", "Label")
-            .sortable(|a: &Row, b: &Row| a.label.cmp(&b.label))
+            .sort_by(|row: &Row| row.label.clone())
             .filterable(|row: &Row, query: &str| row.label.contains(query)),
-        TableColumn::new("value", "Value").sortable(|a: &Row, b: &Row| a.value.cmp(&b.value)),
+        TableColumn::new("value", "Value").sort_by(|row: &Row| row.value),
     ]
 }
 

@@ -12,6 +12,7 @@
 //! [`pass_count_for`].
 
 use crate::blur_shader::BLUR_SHADER;
+use crate::error::RendererError;
 use crate::layer_pool::{LayerHandle, LayerPool};
 
 mod setup;
@@ -102,21 +103,18 @@ impl BlurPipeline {
         pool: &mut LayerPool,
         src: PassSrc<'_>,
         sigma: f32,
-    ) -> Option<wgpu::TextureView> {
+    ) -> Result<Option<wgpu::TextureView>, RendererError> {
         let passes = pass_count_for(sigma);
         if passes == 0 {
-            return None;
+            return Ok(None);
         }
-        let pyramid = self.downsample(ctx, pool, src, passes);
-        if pyramid.is_empty() {
-            return None;
-        }
+        let pyramid = self.downsample(ctx, pool, src, passes)?;
         let (result, intermediates) = self.upsample(ctx, pool, &pyramid, (src.w, src.h))?;
         let view = result.view.clone();
         ctx.retained.extend(pyramid);
         ctx.retained.extend(intermediates);
         ctx.retained.push(result);
-        Some(view)
+        Ok(Some(view))
     }
 
     /// Build the N-level downsample pyramid. Returns the allocated handles.
@@ -130,16 +128,16 @@ impl BlurPipeline {
         pool: &mut LayerPool,
         src: PassSrc<'_>,
         passes: u32,
-    ) -> Vec<LayerHandle> {
+    ) -> Result<Vec<LayerHandle>, RendererError> {
         let mut pyramid: Vec<LayerHandle> = Vec::with_capacity(passes as usize);
         let mut w = src.w;
         let mut h = src.h;
         for _i in 0..passes {
             let next_w = (w / 2).max(1);
             let next_h = (h / 2).max(1);
-            let Some(handle) = pool.acquire(ctx.device, next_w, next_h, self.format) else {
-                break;
-            };
+            let handle = pool
+                .acquire(ctx.device, next_w, next_h, self.format)
+                .map_err(RendererError::Layer)?;
             let vp = (handle.width as f32, handle.height as f32);
             // Borrow either the original src or the last pyramid level's view.
             let read_view: &wgpu::TextureView =
@@ -161,7 +159,7 @@ impl BlurPipeline {
             h = handle.height;
             pyramid.push(handle);
         }
-        pyramid
+        Ok(pyramid)
     }
 
     /// Walk the pyramid in reverse, chaining each pass onto the previous
@@ -176,10 +174,12 @@ impl BlurPipeline {
         pool: &mut LayerPool,
         pyramid: &[LayerHandle],
         src_dims: (u32, u32),
-    ) -> Option<(LayerHandle, Vec<LayerHandle>)> {
+    ) -> Result<(LayerHandle, Vec<LayerHandle>), RendererError> {
         let (src_width, src_height) = src_dims;
         let n = pyramid.len();
-        let seed = pyramid.last()?;
+        let seed = pyramid
+            .last()
+            .ok_or(RendererError::Layer(crate::layer_pool::LayerError::Empty))?;
         let mut intermediates: Vec<LayerHandle> = Vec::new();
         let mut current: Option<LayerHandle> = None;
         for up_pass in 0..n {
@@ -193,9 +193,9 @@ impl BlurPipeline {
                     .get(n - up_pass - 2)
                     .map_or((src_width, src_height), |lv| (lv.width, lv.height))
             };
-            let Some(out_handle) = pool.acquire(ctx.device, target_w, target_h, self.format) else {
-                break;
-            };
+            let out_handle = pool
+                .acquire(ctx.device, target_w, target_h, self.format)
+                .map_err(RendererError::Layer)?;
             let vp = (out_handle.width as f32, out_handle.height as f32);
             {
                 let src_handle: &LayerHandle = current.as_ref().unwrap_or(seed);
@@ -218,7 +218,9 @@ impl BlurPipeline {
             }
             current = Some(out_handle);
         }
-        current.map(|result| (result, intermediates))
+        current
+            .map(|result| (result, intermediates))
+            .ok_or(RendererError::Layer(crate::layer_pool::LayerError::Empty))
     }
 
     fn run_pass(

@@ -14,6 +14,7 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use slotmap as _;
 use smallvec as _;
@@ -56,6 +57,7 @@ fn text_of(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => value.clone(),
         TextContent::Reactive(value) => value.get(),
+        TextContent::Compute(build) => build(),
     }
 }
 

@@ -11,7 +11,7 @@ use crate::frame_stats::FrameStats;
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
 use crate::raster_paint::RasterTextPipeline;
-use crate::renderer::{WgpuRenderer, record_clear};
+use crate::renderer::{ScreenSubmission, WgpuRenderer, record_clear};
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::scene_paint::ScenePipeline;
@@ -44,6 +44,19 @@ pub struct OffscreenTarget<'a> {
     /// is exactly the blur this field exists to prevent. Logical == physical
     /// captures (the common case) pass `1.0` explicitly.
     pub scale: f32,
+}
+
+impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
+    fn from(target: &ScreenSubmission<'a>) -> Self {
+        Self {
+            device: target.device,
+            queue: target.queue,
+            view: target.view,
+            format: target.format,
+            viewport: target.viewport,
+            scale: target.scale,
+        }
+    }
 }
 
 impl WgpuRenderer {

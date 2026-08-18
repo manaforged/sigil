@@ -172,6 +172,20 @@ pub trait NodeStyleExt {
         let atoms = cached_class_string(class);
         self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })
     }
+
+    /// Show the node only while `signal` is true (`hidden` when false).
+    ///
+    /// The node stays in the tree. Prefer this over
+    /// [`NodeBuilder::children_reactive`] for page chrome that should
+    /// keep identity.
+    #[must_use]
+    fn visible_when(self, signal: Signal<bool>) -> Self
+    where
+        Self: Sized,
+    {
+        let hidden = cached_class_string("hidden");
+        self.style_reactive(move || if signal.get() { EMPTY_ATOMS } else { hidden })
+    }
 }
 
 impl NodeStyleExt for NodeBuilder {
@@ -245,20 +259,17 @@ impl NodeStyleExt for TextBuilder {
 fn install_tone(node: &mut Node, tone: Tone) {
     debug_assert_not_fragment(node, "tone");
     let _previous = node.attach(ToneContext::new(tone));
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
-        binding.invalidate_theme();
-    }
 }
 
 fn install_state_overlay(node: &mut Node, overlay: StyleOverlay, slot: ReactiveStateSlot) {
     debug_assert_not_fragment(node, "state_overlay");
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+    if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
         binding.set_state_overlay(overlay, slot);
         return;
     }
     let mut binding = StyleBinding::default();
     binding.set_state_overlay(overlay, slot);
-    let _previous = node.attach(binding);
+    let _previous = node.attach_untracked(binding);
 }
 
 fn install_class(node: &mut Node, source: ClassSource) {
@@ -284,9 +295,6 @@ fn debug_assert_not_fragment(node: &Node, op: &'static str) {
 fn install_theme(node: &mut Node, theme: Theme) {
     debug_assert_not_fragment(node, "theme");
     let _previous = node.attach(theme);
-    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
-        binding.invalidate_theme();
-    }
 }
 
 fn install_focus_ring(node: &mut Node, ring: FocusRing) {

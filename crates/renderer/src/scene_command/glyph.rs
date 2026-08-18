@@ -1,19 +1,17 @@
 //! Glyph-run command payloads.
 
 use core::fmt;
+use std::ops::Deref;
+use std::rc::Rc;
 
 use sigil_hal::{Rect, RenderedGlyph};
 use sigil_kernel::NodeId;
 use sigil_style::{Rgba8, TextStyle};
 use sigil_text::Paragraph;
 
-/// Text run payload carried by a glyph-run command.
+/// Shared glyph payload. Clone of [`GlyphRun`] is a refcount + rect.
 #[derive(Clone)]
-pub struct GlyphRun {
-    /// Source node, when emitted from a core tree.
-    pub node: Option<NodeId>,
-    /// Layout rectangle for the text run.
-    pub rect: Rect,
+pub struct SharedGlyph {
     /// Text content used by the interim text path.
     pub text: String,
     /// Resolved text colour.
@@ -24,6 +22,16 @@ pub struct GlyphRun {
     pub opacity: u16,
     positioned_glyphs: Vec<RenderedGlyph>,
     paragraph: Option<Paragraph>,
+}
+
+/// Text run payload carried by a glyph-run command.
+#[derive(Clone)]
+pub struct GlyphRun {
+    /// Source node, when emitted from a core tree.
+    pub node: Option<NodeId>,
+    /// Layout rectangle for the text run.
+    pub rect: Rect,
+    shared: Rc<SharedGlyph>,
 }
 
 impl GlyphRun {
@@ -39,36 +47,39 @@ impl GlyphRun {
         Self {
             node: None,
             rect,
-            text: text.into(),
-            color,
-            style,
-            opacity,
-            positioned_glyphs: Vec::new(),
-            paragraph: None,
+            shared: Rc::new(SharedGlyph {
+                text: text.into(),
+                color,
+                style,
+                opacity,
+                positioned_glyphs: Vec::new(),
+                paragraph: None,
+            }),
         }
     }
 
     /// Return `true` when this run carries shaped glyph positions.
     #[must_use]
-    pub const fn has_positioned_glyphs(&self) -> bool {
-        !self.positioned_glyphs.is_empty()
+    pub fn has_positioned_glyphs(&self) -> bool {
+        !self.shared.positioned_glyphs.is_empty()
     }
 
     /// Borrow shaped glyph positions.
     #[must_use]
     pub fn positioned_glyphs(&self) -> &[RenderedGlyph] {
-        &self.positioned_glyphs
+        &self.shared.positioned_glyphs
     }
 
     #[allow(dead_code)]
-    pub(crate) const fn paragraph(&self) -> Option<&Paragraph> {
-        self.paragraph.as_ref()
+    pub(crate) fn paragraph(&self) -> Option<&Paragraph> {
+        self.shared.paragraph.as_ref()
     }
 
     #[allow(dead_code)]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
-        self.positioned_glyphs = paragraph.rendered_glyphs();
-        self.paragraph = Some(paragraph);
+        let shared = Rc::make_mut(&mut self.shared);
+        shared.positioned_glyphs = paragraph.rendered_glyphs();
+        shared.paragraph = Some(paragraph);
         self
     }
 
@@ -78,17 +89,25 @@ impl GlyphRun {
     }
 }
 
+impl Deref for GlyphRun {
+    type Target = SharedGlyph;
+
+    fn deref(&self) -> &SharedGlyph {
+        &self.shared
+    }
+}
+
 impl fmt::Debug for GlyphRun {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GlyphRun")
             .field("node", &self.node)
             .field("rect", &self.rect)
-            .field("text", &self.text)
-            .field("color", &self.color)
-            .field("style", &self.style)
-            .field("opacity", &self.opacity)
-            .field("positioned_glyphs", &self.positioned_glyphs)
-            .field("has_paragraph", &self.paragraph.is_some())
+            .field("text", &self.shared.text)
+            .field("color", &self.shared.color)
+            .field("style", &self.shared.style)
+            .field("opacity", &self.shared.opacity)
+            .field("positioned_glyphs", &self.shared.positioned_glyphs)
+            .field("has_paragraph", &self.shared.paragraph.is_some())
             .finish()
     }
 }
@@ -97,12 +116,12 @@ impl PartialEq for GlyphRun {
     fn eq(&self, other: &Self) -> bool {
         self.rect == other.rect
             && self.node == other.node
-            && self.text == other.text
-            && self.color == other.color
-            && self.style == other.style
-            && self.opacity == other.opacity
-            && self.positioned_glyphs == other.positioned_glyphs
-            && self.paragraph.is_some() == other.paragraph.is_some()
+            && self.shared.text == other.shared.text
+            && self.shared.color == other.shared.color
+            && self.shared.style == other.shared.style
+            && self.shared.opacity == other.shared.opacity
+            && self.shared.positioned_glyphs == other.shared.positioned_glyphs
+            && self.shared.paragraph.is_some() == other.shared.paragraph.is_some()
     }
 }
 

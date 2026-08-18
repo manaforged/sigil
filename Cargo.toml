@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "crates/sigil",
+    "crates/widgets",
     "crates/a11y",
     "crates/actions",
     "crates/animation_runtime",
@@ -22,9 +23,12 @@ members = [
     "crates/style-macros",
     "crates/text",
     "crates/ide-core",
+    "crates/profile",
+    "crates/tui",
     "crates/bench-parity",
     "crates/bench-parity-gpui",
     "examples/hello-counter",
+    "examples/hello-tui",
     "examples/hello-events",
     "examples/hello-style",
     "examples/hello-tree",
@@ -38,6 +42,8 @@ members = [
     "examples/kanban-board",
     "examples/password-generator",
     "examples/csv-viewer",
+    "examples/data-table",
+    "examples/access-log",
     "examples/todo",
     "examples/regex-tester",
     "examples/api-explorer",
@@ -46,6 +52,7 @@ members = [
 ]
 default-members = [
     "crates/sigil",
+    "crates/widgets",
     "crates/a11y",
     "crates/actions",
     "crates/animation_runtime",
@@ -65,8 +72,10 @@ default-members = [
     "crates/style",
     "crates/style-macros",
     "crates/text",
-    "crates/ide-core",
+    "crates/profile",
+    "crates/tui",
     "examples/hello-counter",
+    "examples/hello-tui",
     "examples/hello-events",
     "examples/hello-style",
     "examples/hello-tree",
@@ -211,18 +220,21 @@ arboard = { version = "3", default-features = false }
 # consumers. Lockstep: every internal dep carries the workspace version —
 # bump them together (see RELEASING.md).
 sigil-ui = { path = "crates/sigil", version = "0.1.0-alpha.1" }
+sigil-widgets = { path = "crates/widgets", version = "0.1.0-alpha.1" }
 sigil-a11y = { path = "crates/a11y", version = "0.1.0-alpha.1" }
 sigil-actions = { path = "crates/actions", version = "0.1.0-alpha.1" }
 sigil-actions-macros = { path = "crates/actions_macros", version = "0.1.0-alpha.1" }
 sigil-animation = { path = "crates/animation", version = "0.1.0-alpha.1" }
 sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0-alpha.1" }
-sigil-app = { path = "crates/app", version = "0.1.0-alpha.1" }
+sigil-app = { path = "crates/app", version = "0.1.0-alpha.1", default-features = false }
+sigil-tui = { path = "crates/tui", version = "0.1.0-alpha.1" }
 sigil-tasks = { path = "crates/tasks", version = "0.1.0-alpha.1" }
 sigil-kernel = { path = "crates/kernel", version = "0.1.0-alpha.1" }
 sigil-bidi = { path = "crates/bidi", version = "0.1.0-alpha.1" }
 sigil-events = { path = "crates/events", version = "0.1.0-alpha.1" }
 sigil-hal = { path = "crates/hal", version = "0.1.0-alpha.1" }
 sigil-layout = { path = "crates/layout", version = "0.1.0-alpha.1" }
+sigil-profile = { path = "crates/profile", version = "0.1.0-alpha.1" }
 sigil-reactive = { path = "crates/reactive", version = "0.1.0-alpha.1" }
 sigil-renderer = { path = "crates/renderer", version = "0.1.0-alpha.1" }
 sigil-shell = { path = "crates/shell", version = "0.1.0-alpha.1" }
@@ -230,7 +242,6 @@ sigil-style = { path = "crates/style", version = "0.1.0-alpha.1" }
 sigil-style-macros = { path = "crates/style-macros", version = "0.1.0-alpha.1" }
 sigil-icons = { path = "crates/icons", version = "0.1.0-alpha.1" }
 sigil-text = { path = "crates/text", version = "0.1.0-alpha.1" }
-sigil-ide-core = { path = "crates/ide-core", version = "0.1.0-alpha.1" }
 usvg = { version = "0.47", default-features = false }
 lyon_geom = { version = "1.0" }
 

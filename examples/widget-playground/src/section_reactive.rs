@@ -1,10 +1,10 @@
-//! Reactive demos: `virtual_list` with `items_bind` (push/pop),
+//! Reactive demos: `virtual_list` on a signal (push/pop),
 //! `text_edit` that mutates a keystroke counter signal, `chip` whose
 //! tone flips on a toggle.
 
 use sigil::prelude::*;
+use sigil::widgets::chip;
 use sigil::widgets::patterns;
-use sigil::widgets::{ChipTone, chip, virtual_list};
 
 use crate::{category, column, row};
 
@@ -17,12 +17,35 @@ pub(crate) fn reactive_section() -> NodeBuilder {
     category("Reactive demos", body)
 }
 
+#[derive(Clone, PartialEq)]
+struct DemoRow {
+    id: u32,
+    label: String,
+}
+
+impl Identifiable for DemoRow {
+    type Id = u32;
+    fn id(&self) -> Self::Id {
+        self.id
+    }
+}
+
 fn virtual_list_row() -> NodeBuilder {
-    let items = signal((0..50_u32).collect::<Vec<_>>());
+    let items = signal(
+        (0..50_u32)
+            .map(|id| DemoRow {
+                id,
+                label: format!("row {id}"),
+            })
+            .collect::<Vec<_>>(),
+    );
     let push = button("Push").activate(move || {
         items.update(|v| {
-            let next = v.last().copied().map_or(0, |n| n.saturating_add(1));
-            v.push(next);
+            let id = v.last().map_or(0, |row| row.id.saturating_add(1));
+            v.push(DemoRow {
+                id,
+                label: format!("row {id}"),
+            });
         });
     });
     let pop = button("Pop").activate(move || {
@@ -30,13 +53,13 @@ fn virtual_list_row() -> NodeBuilder {
             v.pop();
         });
     });
-    let list = virtual_list(items.peek(), |idx, n: &u32| {
-        crate::wrap(text(format!("row {idx}: {n}")).class(classes!("text-sm")))
+    let list = virtual_list(items, |_, row: &DemoRow| {
+        crate::wrap(text(row.label.clone()).class(classes!("text-sm")))
     })
+    .identified()
     .row_height(22.0)
     .viewport_height(180.0)
-    .viewport_width(280.0)
-    .items_bind(items);
+    .viewport_width(280.0);
 
     let controls = container()
         .layout(LayoutStyle::flex_row().gap(8.0))
@@ -46,7 +69,7 @@ fn virtual_list_row() -> NodeBuilder {
         .layout(LayoutStyle::flex_column().gap(8.0))
         .child(controls)
         .child(list);
-    patterns::field("virtual_list (push/pop, items_bind)", stack)
+    patterns::field("virtual_list (live, identified)", stack)
 }
 
 fn keystroke_counter_row() -> NodeBuilder {
@@ -78,19 +101,19 @@ fn reactive_chip_row() -> NodeBuilder {
         });
     });
 
-    let tone = signal(ChipTone::Success);
+    let tone = signal(Tone::Success);
     effect(move || {
         tone.set(if success.get() {
-            ChipTone::Success
+            Tone::Success
         } else {
-            ChipTone::Error
+            Tone::Error
         });
     });
 
     let toggle_widget = toggle(success).label("flip tone (Success / Error)");
     // ChipBuilder::tone_signal retints in place (5/5 Wave 1 T5) — no
     // `children_reactive` remount host needed anymore.
-    let chip_widget = chip("STATUS", ChipTone::Success).tone_signal(tone);
+    let chip_widget = chip("STATUS", Tone::Success).tone_signal(tone);
     let stack = container()
         .layout(LayoutStyle::flex_column().gap(6.0))
         .child(toggle_widget)

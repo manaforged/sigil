@@ -26,6 +26,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_tasks as _;
 use wgpu as _;
@@ -196,15 +197,14 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         let root = cx.add(slider(value, 0.0..=100.0));
         let layout = compute(&mut cx, root);
         let theme = Theme::default();
-        let thumb_rim = |cx: &Cx, root: NodeId| {
-            emit_scene(cx, root)
+        let thumb_rim = |scene_cx: &Cx, scene_root: NodeId| {
+            emit_scene(scene_cx, scene_root)
                 .commands
                 .iter()
-                .filter_map(|command| match command {
+                .find_map(|command| match command {
                     SceneCommand::Rect(rect) => rect.stroke.map(|stroke| stroke.color),
                     _ => None,
                 })
-                .next()
         };
         assert_eq!(
             thumb_rim(&cx, root),

@@ -8,6 +8,7 @@
 //! in-tree caller had been migrated.
 
 use std::cell::{Cell, Ref, RefCell};
+use std::rc::Rc;
 
 use sigil_hal::{ParagraphMetrics, TextEngine};
 use sigil_style::{StyledTextEngine, TextLineHeight, TextStyle};
@@ -55,6 +56,16 @@ impl OwnedTextEngine {
             config,
             cache: RefCell::new(ParagraphCache::new()),
         }
+    }
+
+    /// Process-thread engine shared by layout measure and scene emit.
+    #[must_use]
+    pub fn thread() -> Rc<Self> {
+        thread_local! {
+            static ENGINE: Rc<OwnedTextEngine> =
+                Rc::new(OwnedTextEngine::new(TextConfig::default()));
+        }
+        ENGINE.with(Rc::clone)
     }
 
     /// Rebuild the font collection when the process-global default fonts changed
@@ -297,6 +308,7 @@ pub struct FontCollection {
     sans: FontFamily,
     mono: FontFamily,
     serif: Option<FontFamily>,
+    display: Option<FontFamily>,
     icon: Option<Font>,
     /// Bundled Noto Color Emoji subset — the last-resort fallback face so
     /// emoji codepoints no text face covers resolve to a color glyph
@@ -325,6 +337,7 @@ impl FontCollection {
                     .mono
                     .unwrap_or_else(|| FontFamily::new(load_mono_font())),
                 serif: system.serif,
+                display: None,
                 icon: None,
                 emoji: load_emoji_font(),
             };
@@ -349,6 +362,10 @@ impl FontCollection {
                     .unwrap_or_else(load_mono_font),
             ),
             serif: None,
+            display: over
+                .as_ref()
+                .and_then(|f| face(f.display.as_ref()))
+                .map(FontFamily::new),
             // No bundled icon face — `select("icon")` falls back to sans until a
             // consumer registers one (e.g. the host app's codicon) via the
             // `DefaultFonts.icon` override.
@@ -384,6 +401,8 @@ impl FontCollection {
             self.icon
                 .as_ref()
                 .unwrap_or_else(|| self.sans.select(weight))
+        } else if name.eq_ignore_ascii_case("display") {
+            self.display.as_ref().unwrap_or(&self.sans).select(weight)
         } else {
             self.sans.select(weight)
         }
@@ -428,6 +447,8 @@ impl FontCollection {
             self.serif = Some(FontFamily::new(font));
         } else if name.eq_ignore_ascii_case("icon") {
             self.icon = Some(font);
+        } else if name.eq_ignore_ascii_case("display") {
+            self.display = Some(FontFamily::new(font));
         } else {
             return Err(TextError::InvalidFont);
         }
@@ -487,8 +508,8 @@ fn to_shaper_style(style: &TextStyle) -> Style {
     Style {
         size_px: style.font_size.max(1.0),
         weight: style.font_weight,
-        italic: false,
         features: smallvec::SmallVec::new(),
+        letter_spacing_em: style.letter_spacing_em,
     }
 }
 
@@ -849,7 +870,9 @@ fn push_face_span(
     }
     let start_byte = args.start_byte + span.start;
     let end_byte = args.start_byte + span.end;
-    let (face_slot, run) = shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
+    let (face_slot, mut run) =
+        shape_validated(chain, span.face_slot, sub_fragment, args.level, style);
+    apply_letter_spacing(&mut run, style);
     let advance = run_total_advance(&run);
     out.push(ShapedSegment {
         start: u32_clamp(start_byte),
@@ -1009,6 +1032,16 @@ const fn script_name(script: Script) -> &'static str {
         Script::Thai => "Thai",
         Script::Lao => "Lao",
         Script::Other => "Other",
+    }
+}
+
+fn apply_letter_spacing(run: &mut GlyphRun, style: &Style) {
+    let extra = style.letter_spacing_em * style.size_px;
+    if extra.abs() < f32::EPSILON {
+        return;
+    }
+    for glyph in &mut run.glyphs {
+        glyph.advance += extra;
     }
 }
 

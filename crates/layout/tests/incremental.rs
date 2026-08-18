@@ -16,12 +16,13 @@ use sigil_hal::Size;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_reactive::{Runtime, signal};
-use sigil_style::{Dimension, NodeStyleExt, Px, StyleAtom};
+use sigil_style::{Dimension, DisplayKind, NodeStyleExt, Px, StyleAtom};
 use stub::stub_engine;
 
 const AVAILABLE: Size = Size::fixed(120.0, 40.0);
 static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
 static WIDE: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(96)))];
+static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
 #[test]
 fn cached_compute_returns_immediately_without_recomputing() {
@@ -51,7 +52,9 @@ fn mutation_invalidates_cache() {
         .expect("initial compute succeeds");
     let generation = engine.generation();
 
-    cx.mark_mutated();
+    cx.get_mut(root)
+        .expect("root exists")
+        .attach(LayoutStyle::flex_row().fixed_size(80.0, 24.0));
     engine
         .compute(&mut cx, root, AVAILABLE)
         .expect("mutated compute succeeds");
@@ -250,6 +253,32 @@ fn reactive_layout_style_change_invalidates_cache() {
 }
 
 #[test]
+fn reactive_display_none_then_empty_shows_box() {
+    Runtime::scope("layout_reactive_display_none_empty", || {
+        let show = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(40.0, 20.0))
+                .style_reactive(move || if show.get() { &[] } else { HIDDEN }),
+        );
+        let mut engine = stub_engine();
+
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("hidden compute succeeds");
+        assert_eq!(layout_rect(&cx, root).width.to_bits(), 0.0_f32.to_bits());
+
+        show.set(true);
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("shown compute succeeds");
+        assert_eq!(layout_rect(&cx, root).width.to_bits(), 40.0_f32.to_bits());
+        assert_eq!(layout_rect(&cx, root).height.to_bits(), 20.0_f32.to_bits());
+    });
+}
+
+#[test]
 fn incremental_compute_single_leaf_mutation_preserves_siblings() {
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -420,6 +449,7 @@ impl TextMeasure for ContentWidthMeasure {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
+            TextContent::Compute(compute) => compute().len(),
         };
         let clamped = u16::try_from(len).unwrap_or(u16::MAX);
         sigil_hal::LogicalSize::new(f32::from(clamped) * 10.0, 10.0)

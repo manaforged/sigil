@@ -70,6 +70,10 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         // Border width is box-model-affecting: the solvers consume it
         // as edge thickness (DR-057 D3). Colour halves are paint-only.
         StyleAtom::BorderWidth(width) => set_border(style, width),
+        StyleAtom::BorderTop(width) => set_border_top(style, width),
+        StyleAtom::BorderRight(width) => set_border_right(style, width),
+        StyleAtom::BorderBottom(width) => set_border_bottom(style, width),
+        StyleAtom::BorderLeft(width) => set_border_left(style, width),
         StyleAtom::BorderColor(_)
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
@@ -86,6 +90,8 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::FontWeight(_)
         | StyleAtom::FontFamily(_)
         | StyleAtom::LineHeight(_)
+        | StyleAtom::LetterSpacing(_)
+        | StyleAtom::TextDecoration(_)
         | StyleAtom::Transition(_)
         | StyleAtom::TransitionDuration(_)
         | StyleAtom::UnknownThemeRef(_)
@@ -193,6 +199,22 @@ fn set_border(layout: &mut LayoutStyle, width: Px) {
         style.border.top = length(width);
         style.border.bottom = length(width);
     });
+}
+
+fn set_border_top(layout: &mut LayoutStyle, width: Px) {
+    mutate_layout(layout, |style| style.border.top = length(width));
+}
+
+fn set_border_right(layout: &mut LayoutStyle, width: Px) {
+    mutate_layout(layout, |style| style.border.right = length(width));
+}
+
+fn set_border_bottom(layout: &mut LayoutStyle, width: Px) {
+    mutate_layout(layout, |style| style.border.bottom = length(width));
+}
+
+fn set_border_left(layout: &mut LayoutStyle, width: Px) {
+    mutate_layout(layout, |style| style.border.left = length(width));
 }
 
 fn set_display(layout: &mut LayoutStyle, display: DisplayKind) {

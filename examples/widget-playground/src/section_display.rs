@@ -4,9 +4,7 @@
 
 use sigil::prelude::*;
 use sigil::widgets::patterns;
-use sigil::widgets::{
-    ChipTone, divider_horizontal, divider_vertical, kv_row, progress, status_bar,
-};
+use sigil::widgets::{divider_horizontal, divider_vertical, kv_row, progress, status_bar};
 
 use crate::{category, column, row};
 
@@ -38,11 +36,11 @@ fn chips_row() -> NodeBuilder {
                 .gap(8.0)
                 .align_items(AlignItems::Center),
         )
-        .child(chip("NEUTRAL", ChipTone::Neutral))
-        .child(chip("INFO", ChipTone::Info))
-        .child(chip("SUCCESS", ChipTone::Success))
-        .child(chip("WARN", ChipTone::Warn))
-        .child(chip("ERROR", ChipTone::Error));
+        .child(chip("NEUTRAL", Tone::Neutral))
+        .child(chip("INFO", Tone::Info))
+        .child(chip("SUCCESS", Tone::Success))
+        .child(chip("WARN", Tone::Warn))
+        .child(chip("ERROR", Tone::Error));
     patterns::field("chip (all 5 tones)", chips)
 }
 
@@ -87,7 +85,7 @@ fn status_bar_demo() -> NodeBuilder {
         "status_bar",
         status_bar(vec![
             crate::wrap(label("Ready")),
-            crate::wrap(chip("ONLINE", ChipTone::Success)),
+            crate::wrap(chip("ONLINE", Tone::Success)),
             crate::wrap(label("23 items")),
         ]),
     )

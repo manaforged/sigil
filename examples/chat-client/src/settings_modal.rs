@@ -7,8 +7,7 @@ use crate::state::ChatState;
 
 pub(crate) fn settings_modal(state: ChatState) -> NodeBuilder {
     container().layout(LayoutStyle::block()).child(
-        modal()
-            .show(state.modal_open)
+        modal(state.modal_open)
             .title("Channel settings")
             .escape_closes(true)
             .dismiss_on_backdrop(false)

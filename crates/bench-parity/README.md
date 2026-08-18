@@ -6,8 +6,8 @@ etc.). The crate exists so every "X faster than Y" claim is grounded
 in identical measured work on the same hardware with a passing
 output-equivalence check, per the the author verification-honesty rule.
 
-This is the SCAFFOLD — only the Sigil runner ships today. GPUI and
-TanStack runners land in follow-up dispatches.
+GPUI and Sigil both ship. Timed surfaces match per workload (`layout`
+or `layout_paint`). TanStack is not in this crate.
 
 ## Why it exists separately from `cargo bench`
 
@@ -21,7 +21,10 @@ regressions inside this repo. It cannot measure other frameworks.
 - Each runner returns `RunResult` (samples + summary + equivalence
   check verdicts + host info) serialised to JSON.
 - The aggregator turns a directory of `RunResult` JSON files into a
-  markdown report with one row per framework per workload.
+  markdown report with one row per framework per workload. `vs gpui`
+  is a number only when [`comparable`](src/compare.rs) holds: same
+  reuse/tick mode, same host, same verdicts (Pass vs N/A is not a
+  pair), both CVs ≤ 0.25. Empty `equivalence_checks` is not a pass.
 
 The crate is intentionally **not in `default-members`** of the
 workspace — when GPUI and TanStack runners arrive they will drag
@@ -30,23 +33,59 @@ heavy dep trees we do not want polluting normal `cargo build` /
 
 ## Running the Sigil runner today
 
-```powershell
-$env:CARGO_TARGET_DIR='target\bench-parity'
-cargo run -p sigil-bench-parity --release --bin bench-parity-runner -- `
-  --framework sigil `
-  --workload crates/sigil-bench-parity/workloads/virtual-list-100k-krausest.json
+```text
+cargo run --locked --offline -p bench-parity --release --bin bench-parity-runner -- \
+  --framework sigil \
+  --workload crates/bench-parity/workloads/virtual-list-100k-krausest.json
+
+cargo run --locked --offline -p bench-parity-gpui --release --bin bench-parity-runner-gpui -- \
+  --framework gpui \
+  --workload crates/bench-parity/workloads/virtual-list-100k-krausest.json
+
+cargo run --locked --offline -p bench-parity --release --bin bench-parity-aggregator -- \
+  --results-dir crates/bench-parity/results \
+  --output crates/bench-parity/results/REPORT.md
 ```
 
-That writes a JSON file under
-`crates/sigil-bench-parity/results/sigil-virtual-list-100k-krausest-<utc>.json`.
+Workloads: `virtual-list-100k-krausest`, `virtual-list-1m-krausest`
+(1M book, top window), `virtual-list-1m-krausest-tail` (last page),
+`virtual-list-10m-krausest` / `-tail` (10M book),
+`data-table-10k` (construct
++ layout + shape), `data-table-10k-remount` (keyed row reuse + incoming
+row shape), `data-table-10k-paint` (reuse + CPU emit),
+`data-table-10k-tick` (in-place last-done updates),
+`data-table-10k-tick-paint` (tick + CPU emit), `flex-tree-2k`,
+`text-labels-2k`.
 
-Then render the report:
+Quote `results/data-table/REPORT.md` for the 24-field GPUI
+`data_table` clone. `results/REPORT.md` is list / flex / labels
+only. A `data-table-*` row without `column_count=pass` cannot
+print `vs gpui`. `results/stale-construct/` is the old window-only
+table JSON — do not aggregate it.
 
-```powershell
-cargo run -p sigil-bench-parity --release --bin bench-parity-aggregator -- `
-  --results-dir crates/sigil-bench-parity/results `
-  --output crates/sigil-bench-parity/results/REPORT.md
+Quote only a numeric `vs gpui` or `vs frame` cell. `vs gpui` is
+1:1 same mode. `vs frame` is Sigil retained `compute` versus GPUI
+per-sample reconstruct — a 0.2.2 app frame, not 1:1 remount.
+`VOID`, `NOISY`, `— mode`, `— checks`, and `— host` are not speedups.
+
+The 1M set is `./scripts/bench-1m.sh` → `results/1m/REPORT.md`.
+A 1M row without `book_held=pass` is a 40-row window, not a million-row
+comparison. Tail also needs `tail_window=pass` (last source row is
+on screen).
+
+The data_table set is the claim people can rerun:
+
+```text
+./scripts/bench-data-table.sh
 ```
+
+That script writes `crates/bench-parity/results/data-table/REPORT.md`.
+A `VOID` cell, or a failed `text_did_work` / `scene_did_work` check,
+means the timer did not do the named work — do not quote the ratio.
+Both runners use `data_table::{generate, FIELDS, cell_text}`. GPUI
+rows match `examples/data_table.rs` TableRow chrome (zebra, tint,
+border, nowrap). Sigil `TEXT_MEMO` is cleared on a new engine so
+construct cannot skip shaping.
 
 ## Adding a new workload
 
@@ -84,49 +123,28 @@ the aggregator surfaces per-framework rows + equivalence verdicts
 verbatim and leaves any "vs" prose to a human-curated long-form
 analysis doc citing these rows.
 
-## GPUI runner — shipped, with a methodology caveat
+## 1:1 frame (binding)
 
-The first GPUI runner ships in `crates/sigil-bench-parity-gpui/`,
-gated on GPUI 0.2.2 + `test-support` (a headless path published by
-the Zed team for their own test suite). The crate is a workspace
-member but NOT in `default-members`, so GPUI's heavy deps stay out
-of normal Sigil builds.
+Host setup is never timed (`TestAppContext`, `Cx`, text engine).
 
-**Surface caveat (important for honest reporting):** the two runners
-currently time DIFFERENT boundaries.
+Each sample clocks **construct the frame tree + layout it**:
 
-| framework | what's actually inside the `Instant::now()` window |
-|---|---|
-| sigil  | `Cx::add(virtual_list) + LayoutEngine::compute` — pure layout pass. |
-| gpui   | `TestAppContext::build + add_window + VisualTestContext::draw` — layout + initial paint attempt + headless-paint panic + `catch_unwind`. |
+| | GPUI 0.2.2 | Sigil |
+|---|---|---|
+| construct | `uniform_list` / `div` tree | `cx.add(virtual_list \| container)` |
+| layout | `layout_as_root` + `prepaint_at` | `LayoutEngine::compute` |
 
-GPUI's `VisualTestContext::draw` is the smallest published surface that
-exercises `uniform_list`'s layout from outside an event loop. It runs
-layout, then attempts to descend into paint, then panics because
-headless mode has no GPU surface. The runner catches the panic and
-counts the time up to the abort. So the GPUI number is inflated by
-test-harness setup + paint-attempt machinery + unwind cost — magnitude
-unknown but non-zero.
+`uniform_list` materialises visible rows in `prepaint`. Sigil
+materialises them in `add` + `compute` (`items_bind`). Same viewport,
+row height, cell sizes (`ID_CELL_W` / `TABLE_CELL_W`), and label
+strings. Visible-row count must land in
+`[ceil(vh/rh), ceil(vh/rh)+1]`.
 
-Until this is reconciled, the aggregator table should be read as
-"both frameworks complete the same workload in the same order of
-magnitude on this hardware" — NOT as a clean "X% faster than Y" claim.
-
-**Follow-ups to close the methodology gap:**
-
-1. Find a GPUI hook that runs layout without descending into paint.
-   If `gpui::Element::layout` is accessible from `TestAppContext`,
-   route the runner through it directly.
-2. If GPUI doesn't expose layout-only, instead **widen Sigil's
-   measurement** to match (include the equivalent paint-setup work)
-   so both runners time the same surface.
-3. Tighten equivalence: current `visible_window_indices` accepts ±1
-   row count because Sigil renders with a 1-row over-scroll buffer
-   and GPUI does not. Either configure Sigil to drop the buffer for
-   this workload, or assert exact materialised-index set on both
-   sides.
-4. Increase iterations to 500 + warmup to 50, add coefficient-of-
-   variation to the summary so tail jitter is legible.
+`vs gpui` is `sigil_median / gpui_median`. Printed only when
+`comparable` holds. A Sigil construct run with
+`layout_hits == samples` is void — that sample did not remasure.
+GPUI stamps `reuse=0` on every run (fresh element tree). A Sigil
+`reuse=1` remount or tick cannot pair with it.
 
 ## Hardware capture
 

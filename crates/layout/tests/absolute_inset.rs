@@ -78,14 +78,8 @@ fn block_absolute_bottom_inset_anchors_against_trailing_edge() {
                     LayoutStyle::default()
                         .fixed_size(CHILD_W, CHILD_H)
                         .position(Position::Absolute)
-                        .with_layout(|s| {
-                            s.inset = StyleRect {
-                                left: LengthPercentageAuto::Px(15.0),
-                                right: LengthPercentageAuto::Auto,
-                                top: LengthPercentageAuto::Auto,
-                                bottom: LengthPercentageAuto::Px(10.0),
-                            };
-                        }),
+                        .inset_left(15.0)
+                        .inset_bottom(10.0),
                 ),
             ),
     );

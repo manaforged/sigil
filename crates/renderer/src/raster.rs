@@ -12,12 +12,6 @@
 //! can place glyphs at fractional advances without re-rasterizing per
 //! position.
 
-// Hygiene exception: until Wave-3 D2 wires draw-time path selection and
-// the R8 atlas, everything here is exercised only by this module's
-// tests — the lib graph sees it as dead. Same staged-landing pattern as
-// the G1.1 shaper skeleton.
-#![allow(dead_code)]
-
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{DrawSettings, HintingInstance, HintingOptions, OutlinePen};
 use skrifa::{FontRef, GlyphId, MetadataProvider};

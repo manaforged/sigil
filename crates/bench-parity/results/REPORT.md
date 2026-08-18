@@ -2,19 +2,30 @@
 
 Per-framework measurements on locked workloads. Every "X vs Y" comparison must verify that BOTH frameworks report `pass` for every equivalence check on the same workload before any speedup claim is made.
 
-> **Methodology note.** Different runners may currently time different surfaces — e.g. the Sigil runner times pure layout (`LayoutEngine::compute`); the GPUI runner times `VisualTestContext::draw` which includes paint-attempt setup and a `catch_unwind` of the headless-paint panic. Until those boundaries are reconciled, treat the rows below as single-framework measurements on a shared workload, not as a clean side-by-side comparison. See `crates/sigil-bench-parity/README.md` § "GPUI runner — shipped, with a methodology caveat".
+Host setup is untimed. `vs gpui` is a number only when both sides stamp the same reuse/tick mode, the same host (OS/CPU/rustc), the same verdicts (Pass vs N/A is not a pair), and both CVs stay at or under 0.25. An empty check map is not a pass. VOID if construct recorded all layout hits. NOISY if either CV is above the ceiling. `— mode` means one side retained the tree and the other reconstructed.
 
 ## Hardware
 
-- OS: Windows 11 (26200)
-- CPU: AMD Ryzen 7 9800X3D 8-Core Processor            (16 cores)
-- Memory: 61.65 GiB
-- rustc: rustc 1.95.0 (59807616e 2026-04-14)
+- OS: Darwin 26.5.1
+- CPU: Apple M2 Max (12 cores)
+- Memory: 32.00 GiB
+- rustc: rustc 1.97.1 (8bab26f4f 2026-07-14)
 
+## Workload — `flex-tree-2k`
+
+| framework | iterations | median (µs) | p95 (µs) | cv | hits | misses | first | visible | book | rss (MiB) | vs gpui | equivalence |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| gpui | 20 | 22920.62 | 23540.42 | 0.025 | 0 | 0 | 0 | 0 | 0 | 566.0 | 1.00× | layout_did_work=pass |
+| sigil | 20 | 16034.79 | 17022.04 | 0.092 | 0 | 20 | 0 | 0 | 0 | 223.4 | 0.70× | layout_did_work=pass |
+## Workload — `text-labels-2k`
+
+| framework | iterations | median (µs) | p95 (µs) | cv | hits | misses | first | visible | book | rss (MiB) | vs gpui | equivalence |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| gpui | 20 | 6765.88 | 7480.46 | 0.119 | 0 | 0 | 0 | 0 | 0 | 39.1 | 1.00× | layout_did_work=pass, text_did_work=pass |
+| sigil | 20 | 979.21 | 1249.04 | 0.131 | 0 | 20 | 0 | 0 | 0 | 40.1 | 0.14× | layout_did_work=pass, text_did_work=pass |
 ## Workload — `virtual-list-100k-krausest`
 
-| framework | iterations | median (µs) | p95 (µs) | p99 (µs) | equivalence |
-|---|---:|---:|---:|---:|---|
-| gpui | 100 | 299.10 | 419.90 | 475.30 | visible_window_indices=pass |
-| sigil | 100 | 263.80 | 510.00 | 641.20 | visible_window_indices=pass |
-
+| framework | iterations | median (µs) | p95 (µs) | cv | hits | misses | first | visible | book | rss (MiB) | vs gpui | equivalence |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| gpui | 80 | 160.00 | 293.71 | 0.319 | 0 | 0 | 90 | 40 | 100000 | 13.5 | NOISY | book_held=pass, visible_window_indices=pass |
+| sigil | 80 | 120.25 | 146.96 | 0.133 | 0 | 80 | 90 | 40 | 100000 | 11.8 | NOISY | book_held=pass, visible_window_indices=pass |

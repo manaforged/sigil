@@ -24,6 +24,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
@@ -46,6 +47,7 @@ impl TextMeasure for ProportionalMeasure {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
+            TextContent::Compute(build) => build().len(),
         };
         let bounded = u16::try_from(len).unwrap_or(u16::MAX);
         sigil_hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)
@@ -133,6 +135,46 @@ fn button_honours_its_width() {
         (sized - 140.0).abs() < 0.5,
         "button.width(140) should measure 140, got {sized}",
     );
+}
+
+#[test]
+fn hug_button_keeps_width_next_to_a_grow_spacer() {
+    sigil::reactive::Runtime::scope("button-no-shrink", || {
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(160.0, 40.0))
+                .child(button("Create Task"))
+                .child(container().layout(LayoutStyle::flex_row().grow(1.0)))
+                .child(button("Start All")),
+        );
+        let children: Vec<_> = cx.get(root).expect("row").children().to_vec();
+        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        layout
+            .compute(&mut cx, root, Size::fixed(160.0, 40.0))
+            .expect("layout");
+        let create = layout
+            .result(*children.first().expect("create"))
+            .expect("create")
+            .rect();
+        let start = layout
+            .result(*children.get(2).expect("start"))
+            .expect("start")
+            .rect();
+        // "Create Task" is 11 glyphs × 7 + 20 pad + 2 edge = 99.
+        // "Start All" is 9 glyphs × 7 + 20 + 2 = 85. Sum 184 > 160, so a
+        // shrinking hug would collapse both; shrink(0) keeps the floors.
+        assert!(
+            create.width >= 98.0,
+            "Create Task must not shrink, got {}",
+            create.width
+        );
+        assert!(
+            start.width >= 84.0,
+            "Start All must not shrink, got {}",
+            start.width
+        );
+    });
 }
 
 #[test]

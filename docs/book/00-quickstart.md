@@ -5,8 +5,9 @@
 
 Sigil is a Rust-native desktop UI framework: signal-graph reactivity, an
 owned incremental layout engine, a wgpu renderer with an owned text
-pipeline, AccessKit accessibility and IME, and a utility-class style
-layer. You write plain Rust against one import:
+pipeline, AccessKit accessibility and IME, a utility-class style
+layer, and a widget catalog in the crate (buttons, fields, tables,
+lists, charts, menus). You write plain Rust against one import:
 
 ```rust,ignore
 use sigil::prelude::*;
@@ -28,7 +29,6 @@ A complete reactive counter in ~30 lines (`examples/hello-counter`):
 
 ```rust,ignore
 use sigil::prelude::*;
-use sigil::reactive::derived;
 
 fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
@@ -94,11 +94,14 @@ closures out of the box.
 
 ## Where to go next
 
-- **Reactive model** (chapter 1): effects, batching, ownership,
-  cross-thread tasks.
-- **Styling** (chapter 2): the cascade, themes, tokens, state styling,
-  the fluent APIs.
-- **Widgets** (chapter 3): the catalog — table, virtual_list, text
-  editing, overlays.
-- **Testing** (chapter 4): headless `sigil::testing`, goldens, writing
-  your own harnesses.
+- **Reactive model**: effects, batching, `spawn`.
+- **The box**: one `LayoutStyle`.
+- **Styling**: cascade, themes, tokens.
+- **Widgets**: `button`, `text_field(value)`, `modal(open)`,
+  `sheet(open)`, `virtual_list(rows, …).identified()`, table.
+- **Testing** and **Profiling**.
+- **Architecture**: why signals, the frame loop, crate map.
+
+The catalog in one window: `examples/widget-playground`.
+
+Build the book with `mdbook serve docs/book`.

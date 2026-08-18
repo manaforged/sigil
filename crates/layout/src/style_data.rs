@@ -13,8 +13,6 @@
 //! Multi-word variants survive only where the CSS spec mandates them
 //! (`JustifyContent::SpaceBetween`).
 
-#![allow(dead_code)]
-
 /// Axis-independent length expressed as logical pixels or a percentage
 /// of the containing block on the matching axis.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -179,7 +177,9 @@ pub enum Overflow {
     Visible,
     /// Content past the box is clipped at the border edge.
     Hidden,
-    /// Same as `Hidden` but reserves space for a scrollbar (renderer-coupled).
+    /// Clip to the box. A scrollport (wheel / keys / thumb) is the
+    /// same job as CSS `overflow: auto` — `scroll()` is sugar for this
+    /// on Y today.
     Scroll,
 }
 

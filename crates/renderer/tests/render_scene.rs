@@ -34,7 +34,7 @@ use zeno as _;
 
 use sigil_hal::{Color, Point, Rect};
 use sigil_renderer::{
-    CommandScene, CornerRadii, RendererError, Scene, SceneBuilder, SceneCommand, SceneRectStyle,
+    CommandScene, CornerRadii, RendererError, SceneBuilder, SceneCommand, SceneRectStyle,
     WgpuRenderer, WgpuSurface,
 };
 use sigil_style::Rgba8;
@@ -62,20 +62,6 @@ fn renderer_pre_surface_accessors_return_none() {
     let r = WgpuRenderer::new().expect("renderer");
     assert!(r.device().is_none());
     assert!(r.queue().is_none());
-}
-
-#[test]
-fn render_scene_signature_keeps_logical_viewport_tuple() {
-    type RenderScene = fn(
-        &mut WgpuRenderer,
-        &mut WgpuSurface,
-        &Scene,
-        Color,
-        (f32, f32),
-    ) -> Result<(), RendererError>;
-
-    let method: RenderScene = WgpuRenderer::render_scene;
-    let _ = method;
 }
 
 #[test]

@@ -11,8 +11,7 @@ pub(crate) fn edit_modal(state: BoardState) -> NodeBuilder {
     // can attach it under the root without exposing the modal's
     // builder-only `.show()` requirement to the caller.
     container().layout(LayoutStyle::block()).child(
-        modal()
-            .show(state.modal_open)
+        modal(state.modal_open)
             .title("Edit card")
             .escape_closes(true)
             .dismiss_on_backdrop(false)

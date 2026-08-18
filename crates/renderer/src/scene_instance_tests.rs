@@ -4,14 +4,14 @@ use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_style::{NodeStyleExt, Rgba8};
 
 use super::{
-    BlendSpace, RectInstance, collect_instances, draw_gradient_instance, draw_rect_instance,
-    draw_shadow_instance, expanded_shadow_rect,
+    BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,
+    expanded_shadow_rect,
 };
 use crate::CornerRadii;
 use crate::scene::emit_scene;
 use crate::scene_command::{
-    DrawGradient, DrawRect, GradientStop, LinearGradient, SceneGradientStyle, SceneRectStyle,
-    Stroke, StrokeAlign, StrokeStyle,
+    DrawGradient, DrawRect, GradientStop, LinearGradient, SceneCommand, SceneGradientStyle,
+    SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
 use crate::shadow_paint::{Shadow, ShadowKind};
 
@@ -48,9 +48,7 @@ fn collect_instances_drops_text_items() {
             ),
     );
     lay_out(&mut cx, root);
-    #[allow(deprecated)]
-    let scene = emit_scene(&cx, root).to_flat();
-    let instances = collect_instances(&scene);
+    let instances = collect_rect_instances(&emit_scene(&cx, root));
     assert_eq!(instances.len(), 2);
 }
 
@@ -63,9 +61,7 @@ fn rect_instance_carries_position_and_color() {
             .class("bg-accent"),
     );
     lay_out(&mut cx, root);
-    #[allow(deprecated)]
-    let scene = emit_scene(&cx, root).to_flat();
-    let instances = collect_instances(&scene);
+    let instances = collect_rect_instances(&emit_scene(&cx, root));
     assert_eq!(instances.len(), 1);
     let inst: &RectInstance = instances.first().expect("one instance");
     assert!((inst.rect[2] - 120.0).abs() < 1e-6);
@@ -281,4 +277,15 @@ const fn color() -> Rgba8 {
 
 const fn rect() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 48.0, 48.0)
+}
+
+fn collect_rect_instances(scene: &crate::CommandScene) -> Vec<RectInstance> {
+    scene
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            SceneCommand::Rect(draw) => Some(draw_rect_instance(draw, 1.0, BlendSpace::Linear)),
+            _ => None,
+        })
+        .collect()
 }

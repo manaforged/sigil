@@ -1,9 +1,9 @@
-//! `Context::spawn` and its `spawn_through` helper (DR-048 §2).
+//! `EntityCx::spawn` and its `spawn_through` helper (DR-048 §2).
 //!
 //! Extracted from `cx.rs` to keep that file under the 400-line cap.
 //! The generic `spawn_through` lives at module scope so the
 //! monomorphisation happens in one place, keeping the per-call
-//! surface on [`Context`] small.
+//! surface on [`EntityCx`] small.
 
 use core::future::Future;
 use std::sync::Arc;
@@ -11,12 +11,12 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use crate::async_cx::{AsyncContext, BoxSendFuture, MainThreadDispatcher, TaskExecutor};
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::owner::OwnerId;
 use crate::runtime::{EntityKey, OwnerKey, with_rt};
 use crate::task::Task;
 
-impl<T: 'static> Context<'_, T> {
+impl<T: 'static> EntityCx<'_, T> {
     /// Spawn a `Send + 'static` future tied to this entity's scope
     /// (DR-048 §2).
     ///
@@ -25,7 +25,7 @@ impl<T: 'static> Context<'_, T> {
     /// aborts the task synchronously through the cleanup registered
     /// here.
     ///
-    /// Per the DR-048 amendment (B3, 2026-05-18), `Context::spawn`
+    /// Per the DR-048 amendment (B3, 2026-05-18), `EntityCx::spawn`
     /// panics during [`crate::DrawPhase::Paint`] just like every other
     /// reactive write seam. The original "Paint-legal" carve-out was
     /// removed: routing a spawn through Paint hides side-effects that
@@ -56,18 +56,18 @@ impl<T: 'static> Context<'_, T> {
         let (owner_key, executor, dispatcher) = with_rt(|rt| {
             // DR-048 amendment B3 — spawn is a write seam; Paint-phase
             // spawn panics in debug (matches Signal::set, Entity::update,
-            // Context::notify, Context::emit, Context::focus, set_global).
-            crate::phase::assert_paint_safe(rt, "Context::spawn");
+            // EntityCx::notify, EntityCx::emit, EntityCx::focus, set_global).
+            crate::phase::assert_paint_safe(rt, "EntityCx::spawn");
             let owner = rt
                 .entities
                 .get(entity_key)
-                .expect("Context::spawn on a disposed entity")
+                .expect("EntityCx::spawn on a disposed entity")
                 .owner;
             let executor = rt
                 .executor
                 .as_ref()
                 .expect(
-                    "Context::spawn requires Runtime::install_executor — \
+                    "EntityCx::spawn requires Runtime::install_executor — \
                      no executor installed on this thread",
                 )
                 .clone();
@@ -75,7 +75,7 @@ impl<T: 'static> Context<'_, T> {
                 .dispatcher
                 .as_ref()
                 .expect(
-                    "Context::spawn requires Runtime::install_executor — \
+                    "EntityCx::spawn requires Runtime::install_executor — \
                      no dispatcher installed on this thread",
                 )
                 .clone();
@@ -85,7 +85,7 @@ impl<T: 'static> Context<'_, T> {
     }
 }
 
-/// Hand-off from [`Context::spawn`] to the executor. Lives at module
+/// Hand-off from [`EntityCx::spawn`] to the executor. Lives at module
 /// scope so the generic monomorphises in one place; keeps the
 /// per-call surface in `spawn` small.
 fn spawn_through<T, F, R>(

@@ -4,7 +4,7 @@
 //!
 //! - The [`Action`] trait — type-keyed dispatch identity.
 //! - [`ActionRegistry`] — per-`(TypeId, HandlerKey)` handler storage.
-//! - [`DispatchCx`] — handler-side context carrying the propagation flag.
+//! - [`Propagate`] — handler-side flag: keep walking the chain.
 //! - [`HandlerKey`] — opaque owner identity (Layer B maps this to
 //!   `EntityKey`/`FocusHandle`).
 //! - [`DispatchResult`] — `{ handled, fired_owners }`.
@@ -16,7 +16,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! use sigil_actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
+//! use sigil_actions::{Action, ActionRegistry, Propagate, HandlerKey};
 //!
 //! #[derive(sigil_actions::DeriveAction)]
 //! struct CloseTab;
@@ -107,20 +107,18 @@ impl HandlerKey {
     }
 }
 
-/// Handler-side context. Carries the propagation flag that controls
-/// whether dispatch continues up the chain after this handler returns.
-pub struct DispatchCx {
+/// Walk the next handler after this one. Default is stop after the
+/// first match.
+pub struct Propagate {
     propagate: bool,
 }
 
-impl DispatchCx {
+impl Propagate {
     const fn new() -> Self {
         Self { propagate: false }
     }
 
-    /// Signal that the dispatcher should continue walking the chain
-    /// after this handler returns. Default is "stop after first match"
-    /// per DR-046 §6.
+    /// Keep walking the handler chain after this handler returns.
     pub const fn propagate(&mut self) {
         self.propagate = true;
     }
@@ -146,14 +144,14 @@ impl DispatchResult {
 
     /// Owners whose handlers fired, in the order they fired
     /// (most-nested first; further entries only present when a handler
-    /// called [`DispatchCx::propagate`]).
+    /// called [`Propagate::propagate`]).
     #[must_use]
     pub fn fired_owners(&self) -> &[HandlerKey] {
         &self.fired_owners
     }
 }
 
-type Handler = Box<dyn FnMut(&dyn Any, &mut DispatchCx)>;
+type Handler = Box<dyn FnMut(&dyn Any, &mut Propagate)>;
 
 struct HandlerEntry {
     owner: HandlerKey,
@@ -185,7 +183,7 @@ impl ActionRegistry {
     pub fn register<A: Action>(
         &mut self,
         owner: HandlerKey,
-        mut handler: impl FnMut(&A, &mut DispatchCx) + 'static,
+        mut handler: impl FnMut(&A, &mut Propagate) + 'static,
     ) {
         let entry = HandlerEntry {
             owner,
@@ -205,7 +203,7 @@ impl ActionRegistry {
     /// to front (outermost).
     ///
     /// The first chain entry whose owner has a handler for `A` fires
-    /// that handler. If the handler called [`DispatchCx::propagate`],
+    /// that handler. If the handler called [`Propagate::propagate`],
     /// dispatch continues to the next chain entry that has a handler,
     /// and so on. Returns the set of owners whose handlers fired, in
     /// fire-order (most-nested first).
@@ -257,7 +255,7 @@ impl ActionRegistry {
             let mut any_at_owner = false;
             let mut should_continue = false;
             for entry in entries.iter_mut().filter(|e| e.owner == *owner) {
-                let mut cx = DispatchCx::new();
+                let mut cx = Propagate::new();
                 (entry.handler)(action, &mut cx);
                 any_at_owner = true;
                 if cx.should_propagate() {

@@ -144,6 +144,9 @@ pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, Pars
         if push_overflow_atoms(token, &mut atoms)? {
             continue;
         }
+        if push_border_side_atoms(token, &mut atoms) {
+            continue;
+        }
         atoms.push(parse_token(token)?);
     }
     Ok(atoms)
@@ -232,25 +235,52 @@ fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {
         "text-base" => return Ok(StyleAtom::FontSize(Px(14))),
         "text-lg" => return Ok(StyleAtom::FontSize(Px(16))),
         "text-xl" => return Ok(StyleAtom::FontSize(Px(18))),
-        "font-normal" => return Ok(StyleAtom::FontWeight(400)),
-        "font-medium" => return Ok(StyleAtom::FontWeight(500)),
-        "font-bold" => return Ok(StyleAtom::FontWeight(700)),
-        "font-sans" => return Ok(StyleAtom::FontFamily("sans")),
-        "font-mono" => return Ok(StyleAtom::FontFamily("mono")),
-        "font-serif" => return Ok(StyleAtom::FontFamily("serif")),
-        "font-icon" => return Ok(StyleAtom::FontFamily("icon")),
         "grow" => return Ok(StyleAtom::FlexGrow(1000)),
         "grow-0" => return Ok(StyleAtom::FlexGrow(0)),
         "shrink" => return Ok(StyleAtom::FlexShrink(1000)),
         "shrink-0" => return Ok(StyleAtom::FlexShrink(0)),
+        "underline" => return Ok(StyleAtom::TextDecoration(crate::TextDecoration::Underline)),
+        "line-through" => {
+            return Ok(StyleAtom::TextDecoration(
+                crate::TextDecoration::LineThrough,
+            ));
+        }
+        "no-underline" => return Ok(StyleAtom::TextDecoration(crate::TextDecoration::None)),
         "border" => return Ok(StyleAtom::BorderWidth(Px(1))),
         "shadow" => return Ok(StyleAtom::Shadow(Elevation::Base)),
         _ => {}
     }
-    if let Some(atom) = shadow_atom(token) {
-        return Ok(atom);
+    parse_font_token(token)
+        .or_else(|| parse_tracking_token(token))
+        .or_else(|| shadow_atom(token))
+        .or_else(|| parse_prefixed_token(token))
+        .ok_or_else(|| unknown(token))
+}
+
+fn parse_font_token(token: &str) -> Option<StyleAtom> {
+    match token {
+        "font-normal" => Some(StyleAtom::FontWeight(400)),
+        "font-medium" => Some(StyleAtom::FontWeight(500)),
+        "font-bold" => Some(StyleAtom::FontWeight(700)),
+        "font-sans" => Some(StyleAtom::FontFamily("sans")),
+        "font-mono" => Some(StyleAtom::FontFamily("mono")),
+        "font-serif" => Some(StyleAtom::FontFamily("serif")),
+        "font-icon" => Some(StyleAtom::FontFamily("icon")),
+        "font-display" => Some(StyleAtom::FontFamily("display")),
+        _ => None,
     }
-    parse_prefixed_token(token).ok_or_else(|| unknown(token))
+}
+
+fn parse_tracking_token(token: &str) -> Option<StyleAtom> {
+    match token {
+        "tracking-tighter" => Some(StyleAtom::LetterSpacing(-50)),
+        "tracking-tight" => Some(StyleAtom::LetterSpacing(-25)),
+        "tracking-normal" => Some(StyleAtom::LetterSpacing(0)),
+        "tracking-wide" => Some(StyleAtom::LetterSpacing(25)),
+        "tracking-wider" => Some(StyleAtom::LetterSpacing(50)),
+        "tracking-widest" => Some(StyleAtom::LetterSpacing(100)),
+        _ => None,
+    }
 }
 
 /// `overflow-*` expands to both axes, `overflow-x-*`/`overflow-y-*` to
@@ -322,6 +352,47 @@ fn shadow_atom(token: &str) -> Option<StyleAtom> {
         _ => return None,
     };
     Some(StyleAtom::Shadow(level))
+}
+
+/// `border-t` / `border-l-4` / `border-x` — Tailwind per-side widths.
+/// Returns true when the token is a side (or axis) width so the caller
+/// skips the colour / uniform-width path.
+fn push_border_side_atoms(token: &str, atoms: &mut SmallVec<[StyleAtom; 16]>) -> bool {
+    let Some(rest) = token.strip_prefix("border-") else {
+        return false;
+    };
+    let Some((sides, width)) = border_side_spec(rest) else {
+        return false;
+    };
+    for atom in sides {
+        match atom {
+            't' => atoms.push(StyleAtom::BorderTop(width)),
+            'r' => atoms.push(StyleAtom::BorderRight(width)),
+            'b' => atoms.push(StyleAtom::BorderBottom(width)),
+            'l' => atoms.push(StyleAtom::BorderLeft(width)),
+            _ => {}
+        }
+    }
+    true
+}
+
+/// `t` / `l-4` / `x` / `y-2` → sides + width. `None` for colour tokens
+/// (`accent`) and uniform widths (`2`).
+fn border_side_spec(rest: &str) -> Option<(&'static [char], Px)> {
+    let (side, width) = match rest.split_once('-') {
+        Some((side, raw)) => (side, raw.parse::<i16>().ok().filter(|n| *n >= 0)?),
+        None => (rest, 1),
+    };
+    let sides: &[char] = match side {
+        "t" => &['t'],
+        "r" => &['r'],
+        "b" => &['b'],
+        "l" => &['l'],
+        "x" => &['l', 'r'],
+        "y" => &['t', 'b'],
+        _ => return None,
+    };
+    Some((sides, Px(width)))
 }
 
 /// `border-N` is a literal pixel width (Tailwind shape: `border-2` is

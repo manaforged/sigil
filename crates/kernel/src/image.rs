@@ -131,12 +131,14 @@ pub enum ObjectFit {
     Cover,
 }
 
+type NodeExt = Box<dyn FnOnce(&mut crate::Node)>;
+
 /// Builder for a raster image node.
 pub struct ImageBuilder {
     source: ImageSource,
     fit: ObjectFit,
     a11y: A11yProps,
-    pre_extensions: Vec<Box<dyn FnOnce(&mut crate::Node)>>,
+    pre_extensions: Vec<NodeExt>,
 }
 
 /// Create a raster image node from decoded pixels.

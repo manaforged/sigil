@@ -4,6 +4,10 @@
 //! writes `use sigil::prelude::*;` and never has to name individual
 //! sub-crates. See DR-016 (app launch) and the ergonomics-pass plan.
 //!
+//! Two hosts, one tree. [`launch`] is the desktop window. [`run_tui`]
+//! (feature `tui`) is the terminal. Both take [`AppConfig`] and a
+//! [`TreeRoot`].
+//!
 //! ```rust,no_run
 //! use sigil::prelude::*;
 //!
@@ -63,23 +67,32 @@ use sigil_renderer as _;
 use wgpu as _;
 
 /// Native file dialogs (open / save / folder) — see [`sigil_app::dialog`].
+#[cfg(feature = "desktop")]
 pub use sigil_app::dialog;
 /// Native menu bar — see [`sigil_app::menu`].
+#[cfg(feature = "desktop")]
 pub use sigil_app::menu;
 /// System tray icon — see [`sigil_app::tray`].
+#[cfg(feature = "desktop")]
 pub use sigil_app::tray;
-pub use sigil_app::{Anchor, WindowOpts};
+pub use sigil_app::{Anchor, AppConfig, AppResult, Error, Host, PanicPolicy, TreeRoot, WindowOpts};
+/// Desktop window + wgpu loop.
+#[cfg(feature = "desktop")]
 pub use sigil_app::{
-    AppConfig, AppResult, DefaultFonts, Error, PanicPolicy, TextTuning, TreeRoot, launch,
-    set_default_fonts, set_text_tuning, text_tuning, use_system_fonts,
+    DefaultFonts, TextTuning, launch, set_default_fonts, set_text_tuning, text_tuning,
+    use_system_fonts,
 };
+/// Terminal loop. Same tree and config as [`launch`].
+#[cfg(feature = "tui")]
+pub use sigil_tui::run as run_tui;
+/// Frame profiler — `SIGIL_PROFILE=1` dumps a Perfetto trace + phase table.
+pub use sigil_profile as profile;
 
 pub mod clipboard;
 pub mod input_glyphs;
-pub mod interaction;
 pub mod testing;
-pub mod widget_dev;
-pub mod widgets;
+pub use sigil_widgets as widgets;
+pub use sigil_widgets::{interaction, widget_dev};
 
 /// GPU render + scene-compositing surface for embedding host engines.
 ///
@@ -91,18 +104,24 @@ pub mod render;
 #[cfg(feature = "render")]
 pub mod text;
 
-/// Host-agnostic UI driver (`UiContext`) for embedding sigil in another
-/// engine's frame loop. Off unless the `render` feature is enabled. See DR-054.
+/// Host-agnostic UI driver ([`Host`](sigil_app::Host)) for embedding
+/// sigil in another engine's frame loop. Off unless the `render`
+/// feature is enabled.
 #[cfg(feature = "render")]
 pub mod ui {
-    pub use sigil_app::UiContext;
+    pub use sigil_app::Host;
 }
 
-/// Reactive primitives re-exported unchanged.
+/// Signal graph: [`signal`], [`derived`], [`effect`], [`EventChannel`].
+///
+/// Writes go through [`Signal::set`]. Background work is
+/// [`crate::prelude::spawn`], which returns a [`Signal`].
+/// Entity, `EntityCx`, `Task`, and `AsyncContext` stay on
+/// `sigil_reactive` for tests. They are not this module.
 pub mod reactive {
     pub use sigil_reactive::{
-        AsyncContext, Entity, EventChannel, Runtime, Signal, Task, Trigger, batch, derived,
-        derived_eq, effect, effect_named, on_cleanup, signal,
+        EventChannel, Runtime, Signal, batch, derived, derived_eq, effect, effect_named,
+        on_cleanup, signal,
     };
 }
 
@@ -114,11 +133,11 @@ pub mod reactive {
 /// style layer (`NodeStyleExt::class` / `style` / `theme` /
 /// `style_reactive`). Launch + config types are at the crate root.
 pub mod prelude {
-    pub use sigil_actions::{Action, DeriveAction, DispatchCx, HandlerKey};
+    pub use sigil_actions::{Action, DeriveAction, HandlerKey, Propagate};
     pub use sigil_events::prelude::*;
     pub use sigil_kernel::prelude::*;
     pub use sigil_layout::prelude::*;
-    pub use sigil_reactive::{EventChannel, Signal, Trigger, derived, effect, signal};
+    pub use sigil_reactive::{EventChannel, Signal, derived, effect, signal};
     /// Utility-class strings accepted by `.class("...")` (and `classes!`,
     /// which validates them at compile time — the default for literals):
     /// `p-N`, `px-N`, `py-N`, `pt-N`, `pr-N`, `pb-N`, `pl-N`, `m-N`, `mx-N`,
@@ -159,7 +178,7 @@ pub mod prelude {
     // collides with `sigil_hal::Size::fixed(w, h)` re-exported through
     // `sigil_layout::prelude`. Reach for it as `sigil_style::Size` at the call
     // site (the widget builders' `.size(...)` methods accept it).
-    pub use sigil_tasks::{OwnerHandle, dispatch_to_owner};
+    pub use sigil_tasks::{OwnerHandle, Status, dispatch_to_owner, spawn};
 
     pub use crate::interaction::InteractionState;
     pub use crate::reactive::Runtime;
@@ -168,19 +187,26 @@ pub mod prelude {
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
-        ButtonBuilder, CheckboxBuilder, CheckboxTone, ChipBuilder, ChipTone, Clipboard,
-        CodeEditBuilder, ColWidth, CommandMenuBuilder, DotBuilder, DropdownBuilder, FctSpawn,
-        FloaterStyle, FloatingTextBuilder, GaugeBuilder, HintOverlayBuilder, HlSpan, IconBuilder,
-        ImageBuilder, InteractiveBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder,
-        NumericKind, Orientation, PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder,
-        RadioGroupBuilder, ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState,
-        SliderBuilder, SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder,
-        TableColumn, TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder,
-        TooltipBuilder, TurnStripBuilder, VirtualListBuilder, axis_drag, button, checkbox, chip,
-        code_edit, command_menu, divider_horizontal, divider_vertical, dot, dropdown,
-        floating_text, gauge, icon, image_rgba, interactive, kv_row, label, menu, modal,
-        number_field, panel, path, progress, radio_group, scroll, slider, splitter, status_bar,
-        table, tabs, text_edit, text_field, toggle, tooltip, turn_strip, virtual_list,
+        ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, Clipboard,
+        CodeEditBuilder, ColWidth, CommandMenuBuilder, Date, DateFieldBuilder, Density, DotBuilder,
+        DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
+        HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder, InteractiveBuilder,
+        MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
+        PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
+        ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, Side, SliderBuilder,
+        SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn,
+        TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder,
+        TurnStripBuilder, VirtualListBuilder, axis_drag, badge, button, chart, checkbox, chip,
+        code_edit, color_field, command_menu, date_field, divider_horizontal, divider_vertical,
+        dot, dropdown, field, floating_text, gauge, icon, image_rgba, interactive, kv_row, label,
+        markdown, markdown_edit, mermaid, menu, modal, number_field, panel, path, progress,
+        radio_group,
+        scroll, sheet, slider, splitter, status_bar, table, tabs, text_edit, text_field, toast,
+        toggle, tooltip, turn_strip, validated_field, virtual_list,
     };
-    pub use crate::{AppConfig, AppResult, Error, launch};
+    pub use crate::{AppConfig, AppResult, Error};
+    #[cfg(feature = "desktop")]
+    pub use crate::launch;
+    #[cfg(feature = "tui")]
+    pub use crate::run_tui;
 }

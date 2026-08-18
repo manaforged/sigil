@@ -1,8 +1,8 @@
-//! Action-dispatch methods on [`Context`] (DR-046 §4 + §6).
+//! Action-dispatch methods on [`EntityCx`] (DR-046 §4 + §6).
 //!
 //! Extracted from `cx.rs` to keep that file under the 400-line cap.
 //! Three pieces of API live here:
-//! [`Context::action`] (register), [`Context::dispatch`]
+//! [`EntityCx::action`] (register), [`EntityCx::dispatch`]
 //! (fire along the focus stack), and [`dispatch_replay_action`] (the
 //! deferred-replay seam used by the Paint-phase defer queue,
 //! DR-047 §5).
@@ -10,24 +10,24 @@
 use core::any::Any;
 use core::panic::Location;
 
-use sigil_actions::{Action, ActionRegistry, DispatchCx, HandlerKey};
+use sigil_actions::{Action, ActionRegistry, HandlerKey, Propagate};
 use smallvec::SmallVec;
 
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::focus::FocusHandle;
 use crate::runtime::with_rt;
 
-impl<T: 'static> Context<'_, T> {
+impl<T: 'static> EntityCx<'_, T> {
     /// Register an action handler keyed by `handle`.
     ///
     /// The handler fires only when `handle` is on the focus stack at
     /// the time of dispatch. Most-nested handle wins; outer handles
     /// in the stack fire only if the inner handler called
-    /// [`DispatchCx::propagate`].
+    /// [`Propagate::propagate`].
     pub fn action<A: Action>(
         &mut self,
         handle: &FocusHandle,
-        handler: impl FnMut(&A, &mut DispatchCx) + 'static,
+        handler: impl FnMut(&A, &mut Propagate) + 'static,
     ) {
         let key = HandlerKey::from(handle.id());
         with_rt(|rt| {
@@ -39,7 +39,7 @@ impl<T: 'static> Context<'_, T> {
     /// Dispatch `action` along the current focus stack.
     ///
     /// Walks leaf-first, firing the most-nested handler registered
-    /// for `A`. If that handler calls [`DispatchCx::propagate`],
+    /// for `A`. If that handler calls [`Propagate::propagate`],
     /// dispatch continues to the next outer focus chain entry that
     /// has a handler.
     ///
@@ -65,7 +65,7 @@ impl<T: 'static> Context<'_, T> {
             // Debug build: panic via the standard write-seam assert,
             // so the message + call-site routing match every other
             // illegal-write diagnostic.
-            with_rt(|rt| crate::phase::assert_paint_safe(rt, "Context::dispatch"));
+            with_rt(|rt| crate::phase::assert_paint_safe(rt, "EntityCx::dispatch"));
             // Release build (debug_assert is compiled out): boxed-clone
             // the action so an owned trait object crosses the
             // defer/replay boundary. The replay closure consumes the

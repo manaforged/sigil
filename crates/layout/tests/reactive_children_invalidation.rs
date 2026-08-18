@@ -118,25 +118,10 @@ fn reactive_children_in_sized_container_only_relayouts_subtree() {
     });
 }
 
-/// DOCUMENTS the known cost of the full-rebuild strategy chosen in
-/// design §2 — re-firing the reactive closure with a byte-identical
-/// child list DOES bump `engine.generation()` today because each
-/// rebuild calls `Cx::remove` + `Cx::add_child`, which allocates fresh
-/// `NodeId`s for the new children. Different ids → different cache key
-/// → cache miss → one extra layout pass per signal flip even when the
-/// output is identical.
-///
-/// This is the conscious cost of "no keyed reconciliation" (design
-/// sections 2 and 3). Most production rebuilds have actually-changed
-/// children anyway, so the cost is bounded. The follow-up to revisit
-/// this is `children_reactive_keyed` (design section 10) — a keyed
-/// variant that reuses `NodeId`s across rebuilds would hit the cache.
-///
-/// If a future implementer adds content-hash short-circuit to the
-/// effect closure ("if `f()` returns the same Vec as last frame, skip
-/// the rebuild entirely") this assertion flips back to `assert_eq!`.
+/// `Signal::set` skips an equal write, so an identical item list does
+/// not rebuild children or invalidate layout.
 #[test]
-fn reactive_children_identical_rebuild_does_not_hit_cache_today() {
+fn reactive_children_identical_set_is_a_cache_hit() {
     Runtime::scope("layout_reactive_children_identical_rebuild_cache", || {
         let items = signal(vec!["a", "b", "c"]);
         let mut cx = Cx::new_root();
@@ -159,21 +144,16 @@ fn reactive_children_identical_rebuild_does_not_hit_cache_today() {
 
         let gen_after_initial = engine.generation();
 
-        // Re-fire with the exact same values — but fresh NodeIds.
         items.set(vec!["a", "b", "c"]);
 
         engine
             .compute(&mut cx, root, AVAILABLE)
-            .expect("identical-rebuild compute succeeds");
+            .expect("identical set compute succeeds");
 
-        // Full-rebuild design: fresh NodeIds invalidate the cache key.
-        // See doc comment above for the design tradeoff and the path to
-        // closing this gap (`children_reactive_keyed` + NodeId reuse).
-        assert!(
-            engine.generation() > gen_after_initial,
-            "full-rebuild reactive children allocate fresh NodeIds, so identical \
-             rebuilds invalidate the cache and bump generation. Followup: \
-             children_reactive_keyed to close this gap."
+        assert_eq!(
+            engine.generation(),
+            gen_after_initial,
+            "equal Signal::set does not rebuild children or re-layout"
         );
     });
 }

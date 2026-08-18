@@ -155,6 +155,14 @@ fn noop_waker() -> Arc<dyn Fn() + Send + Sync + 'static> {
     Arc::new(|| {})
 }
 
+/// Cloneable halves of [`AsyncRuntime`] needed to spawn a future.
+#[derive(Clone)]
+pub(crate) struct SpawnParts {
+    pub(crate) dispatcher: Dispatcher,
+    pub(crate) tokio: tokio::runtime::Handle,
+    pub(crate) owner_tasks: Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>>,
+}
+
 impl AsyncRuntime {
     /// Build a new async runtime with a fresh multi-thread Tokio
     /// runtime.
@@ -282,6 +290,22 @@ impl AsyncRuntime {
     /// [`Scheduler::spawn`][sigil_hal::Scheduler::spawn] impl below.
     pub(crate) fn tokio_handle(&self) -> tokio::runtime::Handle {
         self.rt.handle().clone()
+    }
+
+    pub(crate) fn spawn_parts(&self) -> SpawnParts {
+        SpawnParts {
+            dispatcher: self.dispatcher(),
+            tokio: self.tokio_handle(),
+            owner_tasks: self.owner_tasks(),
+        }
+    }
+
+    /// Install this runtime as the thread's current spawn host.
+    ///
+    /// [`crate::spawn`] reads it. `sigil::launch` calls this once
+    /// after building the runtime.
+    pub fn install_current(&self) {
+        crate::current::install(self.spawn_parts());
     }
 
     /// Number of pending (undrained) main-thread messages.

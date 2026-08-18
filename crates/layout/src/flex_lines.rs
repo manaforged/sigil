@@ -7,13 +7,14 @@
 //! resolved main-axis gap (the container's `gap` projected onto the
 //! main axis).
 
-#![allow(dead_code, clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
 
 use crate::flex_algorithm::{
-    FlexCtx, NodeEdges, align_self_of, automatic_min_main, item_cross_basis, item_main_basis,
-    item_min_max_main, resolve_lp,
+    FlexCtx, align_self_of, automatic_min_main, item_cross_basis, item_main_basis,
+    item_min_max_main,
 };
 use crate::forest::{LocalId, NodeRef};
+use crate::resolve::{NodeEdges, resolve_lp};
 use crate::style_data::{AlignSelf, FlexWrap, StyleData};
 
 /// Resolved state for a single flex item.

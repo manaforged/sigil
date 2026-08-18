@@ -74,14 +74,18 @@ are all on `NodeEventsExt` (in the prelude).
 ## Cross-thread work
 
 ```rust,ignore
-let handle = cx.spawn(async move { fetch_rows().await });
-// completion lands on the main thread's reactive queue next frame
+let rows = spawn(async move { fetch_rows().await });
+// rows: Signal<Status<Vec<Row>, _>> — Pending, then Ok or Err
+label(derived(move || match rows.get() {
+    Status::Pending => "Loading…".into(),
+    Status::Ok(list) => format!("{} rows", list.len()),
+    Status::Err(_) => "Failed".into(),
+}));
 ```
 
-`sigil-tasks` owns the Tokio runtime; completions dispatch back to the
-owning main thread (owner-targeted cancellation — dropping the owner
-cancels the task). The wake path is wired into the winit loop, so
-streamed updates paint promptly.
+`launch` installs the runtime. Completions write the signal on the
+main thread. Disposing the owner aborts the future. No `Entity`,
+no `notify`.
 
 ## Testing reactivity
 

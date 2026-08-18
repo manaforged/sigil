@@ -24,6 +24,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_tasks as _;
 use wgpu as _;
@@ -97,12 +98,13 @@ fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
         let layout = compute(&mut cx, root);
         // Drive into hover, then press.
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(74.0, 22.0));
+        // Hug button is 62x28 at the origin; click its centre.
+        router.route(&mut cx, &layout, pointer_move_event(31.0, 14.0));
         router.route(
             &mut cx,
             &layout,
             ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-                position: Point::new(74.0, 22.0),
+                position: Point::new(31.0, 14.0),
                 delta: Point::new(0.0, 0.0),
                 kind: PointerKind::Mouse,
                 button: Some(MouseButton::Left),

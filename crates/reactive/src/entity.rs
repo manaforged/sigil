@@ -13,7 +13,7 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::entity_observer::drain_pending_observers;
 use crate::runtime::{EntityKey, EntitySlot, with_rt};
 
@@ -69,7 +69,7 @@ impl<T: 'static> Entity<T> {
 
     /// Create a new entity in the current reactive owner scope.
     ///
-    /// `build` runs once with a `Context<'_, T>` whose `T` payload is
+    /// `build` runs once with a `EntityCx<'_, T>` whose `T` payload is
     /// not yet installed — `cx.notify()` inside `build` is a no-op
     /// because no observers have registered yet. The returned value
     /// becomes the entity's payload.
@@ -81,7 +81,7 @@ impl<T: 'static> Entity<T> {
     /// [`Owner::with`](crate::Owner::with) to establish one.
     #[must_use]
     #[track_caller]
-    pub fn new(name: &'static str, build: impl FnOnce(&mut Context<'_, T>) -> T) -> Self {
+    pub fn new(name: &'static str, build: impl FnOnce(&mut EntityCx<'_, T>) -> T) -> Self {
         let location = Location::caller();
         let key = with_rt(|rt| {
             let owner = rt
@@ -112,10 +112,10 @@ impl<T: 'static> Entity<T> {
             key
         });
         let value = {
-            // The build closure receives a Context bound to this
-            // entity. notify() inside build is a no-op (no
-            // subscribers) but cx.observe()/cx.subscribe() may run.
-            let mut cx = Context::<'_, T>::new_unchecked(key);
+            // Build receives an EntityCx bound to this entity.
+            // notify() inside build is a no-op (no subscribers);
+            // cx.observe()/cx.subscribe() may run.
+            let mut cx = EntityCx::<'_, T>::new_unchecked(key);
             build(&mut cx)
         };
         with_rt(|rt| {
@@ -142,7 +142,7 @@ impl<T: 'static> Entity<T> {
 
     /// Mutate this entity through a closure.
     ///
-    /// The closure receives `&mut T` and a `Context<'_, T>` borrow.
+    /// The closure receives `&mut T` and a `EntityCx<'_, T>` borrow.
     /// `cx.notify()` inside the closure schedules every observer of
     /// this entity for the end-of-turn drain. Re-entrant `update` on
     /// the *same* entity panics with "entity already locked for
@@ -153,7 +153,7 @@ impl<T: 'static> Entity<T> {
     /// Panics if the entity has been disposed, or if this entity is
     /// already inside a live `update` on this thread.
     #[track_caller]
-    pub fn update<R>(self, f: impl FnOnce(&mut T, &mut Context<'_, T>) -> R) -> R {
+    pub fn update<R>(self, f: impl FnOnce(&mut T, &mut EntityCx<'_, T>) -> R) -> R {
         let caller = Location::caller();
         run_update::<T, R>(self.key, caller, f)
     }
@@ -161,7 +161,7 @@ impl<T: 'static> Entity<T> {
     /// Read-only access to this entity's payload.
     ///
     /// Like `Signal::peek`, this does not subscribe the current
-    /// effect — observation goes through `Context::observe`, not
+    /// effect — observation goes through `EntityCx::observe`, not
     /// through `Entity::read`.
     ///
     /// # Panics
@@ -228,13 +228,13 @@ impl Drop for ReadGuard {
 
 /// Run the update closure with the entity's locked flag set, restore
 /// the payload, and drain pending observers if this is the outermost
-/// update. Lives at module scope so `Context::new_entity` can reuse
+/// update. Lives at module scope so `EntityCx::new_entity` can reuse
 /// it.
 #[track_caller]
 pub(crate) fn run_update<T: 'static, R>(
     key: EntityKey,
     caller: &'static Location<'static>,
-    f: impl FnOnce(&mut T, &mut Context<'_, T>) -> R,
+    f: impl FnOnce(&mut T, &mut EntityCx<'_, T>) -> R,
 ) -> R {
     let (taken, prev_entity) = with_rt(|rt| {
         crate::phase::assert_paint_safe(rt, "Entity::update");
@@ -264,7 +264,7 @@ pub(crate) fn run_update<T: 'static, R>(
             .expect("populated by guard ctor")
             .downcast_mut::<T>()
             .expect("entity type mismatch");
-        let mut cx = Context::<'_, T>::new_unchecked(key);
+        let mut cx = EntityCx::<'_, T>::new_unchecked(key);
         result = f(inner, &mut cx);
     }
     let restored = guard

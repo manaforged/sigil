@@ -1,24 +1,11 @@
-//! `Context<'_, T>` — the borrow handed to entity update closures and
-//! observer callbacks.
+//! `EntityCx<'_, T>` — hidden token for entity update closures.
 //!
-//! DR-045 deviation: the spec sketches `Context<'a, T>` as carrying a
-//! `&'a mut RuntimeState`. Holding the runtime borrow across user code
-//! conflicts with the existing `with_rt` re-entrancy discipline — every
-//! reactive primitive in this crate (`Signal::set`, `effect`, `batch`,
-//! `Owner::with`) routes through `with_rt(|rt| ...)`, taking a fresh
-//! mutable borrow each time. A `Context` that holds `&mut RuntimeState`
-//! would force every user-facing op to thread that borrow through, or
-//! deadlock the thread-local `RefCell` on the first inner call. Instead
-//! we make `Context<'a, T>` a borrow-checked token: it carries the
-//! `EntityKey` of the entity it is "inside," plus the lifetime + `T`
-//! phantom that the call-site bytecode needs to enforce
-//! "single-active-context-per-update-closure." Methods on `Context`
-//! call `with_rt` themselves, which is the same pattern `Signal<T>`
-//! uses. Followup: capture this in a DR-045 amendment.
+//! Product code uses kernel `Cx` and `sigil_tasks::spawn`.
+//! This type is a borrow-checked token (entity key + lifetime), not a
+//! runtime borrow. Methods call `with_rt` themselves, same as
+//! [`Signal`](crate::Signal).
 //!
-//! See DR-045 §7 (Context shape) and `docs/specs/g2-entity-api-sketch.md`.
-//!
-//! The `impl Context` block is split across sibling modules to keep
+//! The `impl EntityCx` block is split across sibling modules to keep
 //! this file under the 400-line cap:
 //!
 //! - [`cx_actions`](crate::cx_actions) — `action`,
@@ -46,14 +33,14 @@ use crate::runtime::{EntityKey, ObserverKey, PendingObserver, with_rt};
 /// a callback — and a lifetime + `T` phantom that enforces single-use
 /// inside the closure. Methods route through `with_rt`, matching the
 /// rest of the crate.
-pub struct Context<'a, T: 'static> {
+pub struct EntityCx<'a, T: 'static> {
     pub(crate) entity: EntityKey,
     _life: PhantomData<&'a mut T>,
     // !Send + !Sync — runtime is thread-local.
     _not_send: PhantomData<*const ()>,
 }
 
-impl<T: 'static> Context<'_, T> {
+impl<T: 'static> EntityCx<'_, T> {
     /// Internal constructor — wraps an `EntityKey` as a context token.
     /// `pub(crate)` so `Entity::new`, `Entity::update`, and observer
     /// drain can mint a context for their entity.
@@ -74,7 +61,7 @@ impl<T: 'static> Context<'_, T> {
     pub fn notify(&mut self) {
         let key = self.entity;
         with_rt(|rt| {
-            crate::phase::assert_paint_safe(rt, "Context::notify");
+            crate::phase::assert_paint_safe(rt, "EntityCx::notify");
             let Some(slot) = rt.entities.get(key) else {
                 return;
             };
@@ -91,19 +78,6 @@ impl<T: 'static> Context<'_, T> {
         });
     }
 
-    /// Spawn a child entity in the current owner scope.
-    ///
-    /// Identical to top-level [`Entity::new`], reused for ergonomic
-    /// parity with the GPUI surface.
-    #[track_caller]
-    pub fn entity<U: 'static>(
-        &mut self,
-        name: &'static str,
-        build: impl FnOnce(&mut Context<'_, U>) -> U,
-    ) -> Entity<U> {
-        Entity::<U>::new(name, build)
-    }
-
     /// Observe an entity for any `notify()` it fires.
     ///
     /// Returns a `Subscription` whose drop severs the observation.
@@ -112,7 +86,7 @@ impl<T: 'static> Context<'_, T> {
     pub fn observe<U: 'static>(
         &mut self,
         observed: &Entity<U>,
-        callback: impl FnMut(&mut T, &Entity<U>, &mut Context<'_, T>) + 'static,
+        callback: impl FnMut(&mut T, &Entity<U>, &mut EntityCx<'_, T>) + 'static,
     ) -> Subscription {
         register_observe::<T, U>(self.entity, *observed, callback)
     }
@@ -120,13 +94,13 @@ impl<T: 'static> Context<'_, T> {
     /// Typed event subscription on an entity.
     ///
     /// Sub-channel of `observe` parameterized by `Ev`. The observed
-    /// entity emits events via `Context::emit::<Ev>` inside its own
+    /// entity emits events via `EntityCx::emit::<Ev>` inside its own
     /// `update`; subscribers receive the event payload.
     #[track_caller]
     pub fn subscribe<U: 'static, Ev: 'static>(
         &mut self,
         observed: &Entity<U>,
-        callback: impl FnMut(&mut T, &Entity<U>, &Ev, &mut Context<'_, T>) + 'static,
+        callback: impl FnMut(&mut T, &Entity<U>, &Ev, &mut EntityCx<'_, T>) + 'static,
     ) -> Subscription {
         register_subscribe::<T, U, Ev>(self.entity, *observed, callback)
     }
@@ -135,8 +109,7 @@ impl<T: 'static> Context<'_, T> {
     ///
     /// Schedules every `subscribe::<T, Ev>` observer for end-of-turn
     /// drain with `ev` as the payload. The payload is cloned to each
-    /// subscriber except the last, which receives the original — this
-    /// matches the GPUI / Dioxus / Bevy full-broadcast contract.
+    /// subscriber except the last, which receives the original.
     ///
     /// `Ev: Clone` is bounded so the broadcast can hand every observer
     /// its own copy without resorting to a shared `Rc`. For events
@@ -146,7 +119,7 @@ impl<T: 'static> Context<'_, T> {
         let key = self.entity;
         let ev_type = TypeId::of::<Ev>();
         let mut observers: SmallVec<[ObserverKey; 4]> = with_rt(|rt| {
-            crate::phase::assert_paint_safe(rt, "Context::emit");
+            crate::phase::assert_paint_safe(rt, "EntityCx::emit");
             rt.entities.get(key).map_or_else(SmallVec::new, |slot| {
                 slot.event_subs
                     .iter()
@@ -175,14 +148,11 @@ impl<T: 'static> Context<'_, T> {
         });
     }
 
-    /// Observe a global of type `G`.
-    ///
-    /// Equivalent to `observe(&global_entity::<G>())` but spelled to
-    /// match GPUI's `observe_global`. Returns a `Subscription`.
+    /// Observe a global of type `G`. Returns a [`Subscription`].
     #[track_caller]
     pub fn observe_global<G: 'static>(
         &mut self,
-        mut callback: impl FnMut(&mut T, &mut Context<'_, T>) + 'static,
+        mut callback: impl FnMut(&mut T, &mut EntityCx<'_, T>) + 'static,
     ) -> Subscription {
         let entity = crate::entity_global::ensure_global_entity::<G>();
         // Adapter: the underlying observer signature passes the
@@ -195,7 +165,7 @@ impl<T: 'static> Context<'_, T> {
 
     /// Mutable access to the entity this context is inside.
     ///
-    /// Deviation note: returning `&mut T` from `Context` would require
+    /// Deviation note: returning `&mut T` from `EntityCx` would require
     /// holding the arena borrow live across the `&mut T`, which the
     /// thread-local `RefCell` cannot express. We expose `mutate`
     /// instead as a closure-shaped helper that runs `f(&mut T)` with

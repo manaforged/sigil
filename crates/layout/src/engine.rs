@@ -7,7 +7,10 @@ use sigil_style::{StyleBinding, StyleEngine, TextStyle};
 use slotmap::SecondaryMap;
 use smallvec::SmallVec;
 
-use crate::cache_key::{AvailableKey, CacheDecision, LayoutCacheKey, layout_input_signature};
+use crate::cache_key::{
+    AvailableKey, CacheDecision, LayoutCacheKey, has_unversioned_layout, layout_input_signature,
+    reactive_layout_signature,
+};
 use crate::engine_drive::{LayoutDrive, NodeHandle};
 use crate::forest::{AvailableSpace, SpaceConstraint};
 use crate::style_adapter::apply_style_atoms;
@@ -50,6 +53,9 @@ pub struct LayoutEngine {
     published_result: SecondaryMap<slotmap::DefaultKey, LayoutResult>,
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
+    /// Kernel nodes whose layout input can change without a version bump.
+    reactive_layout: AHashSet<slotmap::DefaultKey>,
+    last_reactive_sig: u64,
 }
 
 impl LayoutEngine {
@@ -64,6 +70,8 @@ impl LayoutEngine {
             published_result: SecondaryMap::new(),
             generation: 0,
             cached_key: None,
+            reactive_layout: AHashSet::new(),
+            last_reactive_sig: 0,
         }
     }
 
@@ -144,9 +152,9 @@ impl LayoutEngine {
         // otherwise the engine would see a clean dirty-set, return
         // `CacheDecision::Hit`, and miss the structural change entirely.
         cx.flush_reactive_children();
-        let cache_key = match self.resolve_cache_key(cx, root, available) {
-            CacheDecision::Hit => return Ok(()),
-            CacheDecision::Miss(key) => key,
+        let Some(cache_key) = take_cache_miss(cx, self.resolve_cache_key(cx, root, available))
+        else {
+            return Ok(());
         };
         // ε-attach safety: when the Cx instance changes (caller
         // swapped in a fresh tree), the slotmap keys we cached against
@@ -160,6 +168,8 @@ impl LayoutEngine {
             self.synced_text_sig.clear();
             self.published_result.clear();
             self.core_to_handle.clear();
+            self.reactive_layout.clear();
+            self.last_reactive_sig = 0;
         }
 
         self.drive.begin_frame();
@@ -184,10 +194,13 @@ impl LayoutEngine {
                     && prev.input_signature == cache_key.input_signature
             });
         if mirror_current {
+            sigil_profile::count("layout.resize");
             self.remeasure_and_publish(cx, root, available)?;
         } else if broadcast {
+            sigil_profile::count("layout.full");
             self.full_sync_and_measure(cx, root, available)?;
         } else {
+            sigil_profile::count("layout.incr");
             self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
         }
 
@@ -203,6 +216,7 @@ impl LayoutEngine {
         // prior value; the first clean frame after the dirty burst re-hashes
         // and misses once, then hits — never a false hit.)
         self.cached_key = Some(cache_key);
+        self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
         Ok(())
     }
 
@@ -227,36 +241,7 @@ impl LayoutEngine {
         Ok(())
     }
 
-    pub(crate) fn upsert_mirror(
-        &mut self,
-        id: NodeId,
-        intent: &LayoutStyle,
-    ) -> Result<(), LayoutError> {
-        let existing = self.core_to_handle.get(id.key()).copied();
-        self.upsert_with_text(
-            id,
-            existing,
-            intent,
-            None,
-            None,
-            crate::forest::TextFlags::default(),
-        )
-    }
-
-    pub(crate) fn set_children_mirror(
-        &mut self,
-        parent: NodeId,
-        children: &[NodeId],
-    ) -> Result<(), LayoutError> {
-        let parent_handle = self.handle(parent)?;
-        let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
-        for child in children {
-            child_handles.push(self.handle(*child)?);
-        }
-        self.drive.set_children(parent_handle, &child_handles)
-    }
-
-    pub(crate) fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
+    fn remove_mirror(&mut self, id: NodeId) -> Result<(), LayoutError> {
         let handle = self
             .core_to_handle
             .get(id.key())
@@ -270,16 +255,13 @@ impl LayoutEngine {
                 let _ = self.synced_version.remove(core_id.key());
                 let _ = self.synced_text_sig.remove(core_id.key());
                 let _ = self.published_result.remove(core_id.key());
+                self.reactive_layout.remove(&core_id.key());
             }
         }
         self.drive.remove(handle)
     }
 
-    pub(crate) fn compute_mirror(
-        &mut self,
-        root: NodeId,
-        available: Size,
-    ) -> Result<(), LayoutError> {
+    fn compute_mirror(&mut self, root: NodeId, available: Size) -> Result<(), LayoutError> {
         let root_handle = self.handle(root)?;
         self.drive
             .measure_with_constraints(root_handle, to_available_space(available))?;
@@ -297,9 +279,13 @@ impl LayoutEngine {
         root: NodeId,
         available: Size,
     ) -> Result<(), LayoutError> {
-        self.compute_mirror(root, available)?;
+        {
+            let _solve = sigil_profile::span("layout.solve");
+            self.compute_mirror(root, available)?;
+        }
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(root, |id, _node| ids.push(id));
+        let _attach = sigil_profile::span("layout.attach");
         self.attach_results(cx, ids)
     }
 
@@ -311,12 +297,19 @@ impl LayoutEngine {
     ) -> Result<(), LayoutError> {
         let previous_ids: SmallVec<[NodeId; 32]> =
             self.core_to_handle.keys().map(NodeId::from_key).collect();
-        self.sync(cx, root)?;
-        self.compute_mirror(root, available)?;
+        {
+            let _sync = sigil_profile::span("layout.sync");
+            self.sync(cx, root)?;
+        }
+        {
+            let _solve = sigil_profile::span("layout.solve");
+            self.compute_mirror(root, available)?;
+        }
 
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(root, |id, _node| ids.push(id));
         self.remove_stale_extensions(cx, previous_ids);
+        let _attach = sigil_profile::span("layout.attach");
         self.attach_results(cx, ids)
     }
 
@@ -356,11 +349,15 @@ impl LayoutEngine {
         // (GLM review MAJOR-1). The tree root's origin is (0,0), a no-op shift.
         let origins: SmallVec<[(f32, f32); 4]> =
             roots.iter().map(|&r| self.published_origin(r)).collect();
-        self.remeasure_roots(&roots, available)?;
-        for (&subroot, &(dx, dy)) in roots.iter().zip(origins.iter()) {
-            let handle = self.handle(subroot)?;
-            self.drive.translate_subtree(handle, dx, dy)?;
+        {
+            let _solve = sigil_profile::span("layout.solve");
+            self.remeasure_roots(&roots, available)?;
+            for (&subroot, &(dx, dy)) in roots.iter().zip(origins.iter()) {
+                let handle = self.handle(subroot)?;
+                self.drive.translate_subtree(handle, dx, dy)?;
+            }
         }
+        let _attach = sigil_profile::span("layout.attach");
         for subroot in roots {
             self.attach_subtree_results(cx, subroot)?;
         }
@@ -383,53 +380,46 @@ impl LayoutEngine {
         let cx_instance = cx.instance_id();
         let cx_generation = cx.mutation_generation();
         let available_key = AvailableKey::from_size(available);
-        if let Some(prev) = self.cached_key
-            && cx.dirty().next().is_some()
-        {
-            // The dirty set is non-empty, so this frame is already a MISS: it
-            // WILL re-sync + re-measure regardless of the input signature. The
-            // signature exists only to catch reactive changes that bypass the
-            // dirty set on an otherwise-CLEAN frame, so computing it here is
-            // pure waste — a full O(nodes) tree hash (3-5 ms on a 100k tree),
-            // which dominated every animating/interacting frame. Carry the
-            // previous signature forward instead. It can only differ from this
-            // frame's real state (a dirty mutation bumps a version the hash
-            // folds in), so the first CLEAN frame after the dirty burst
-            // recomputes the real signature and misses once, then hits — never
-            // a false hit (which would strand a stale layout).
-            return CacheDecision::Miss(LayoutCacheKey {
-                cx_instance,
-                root,
-                available: available_key,
-                cx_generation,
-                input_signature: prev.input_signature,
-            });
-        }
-        let cheap_match = self.cached_key.is_some_and(|prev| {
-            prev.cx_instance == cx_instance
-                && prev.root == root
-                && prev.available == available_key
-                && prev.cx_generation == cx_generation
-        });
-        let signature = if cheap_match {
-            let sig = layout_input_signature(cx, root);
-            if self
-                .cached_key
-                .is_some_and(|prev| prev.input_signature == sig)
-            {
-                return CacheDecision::Hit;
-            }
-            sig
-        } else {
-            layout_input_signature(cx, root)
-        };
-        CacheDecision::Miss(LayoutCacheKey {
+        let scale_bits = cx.scale().factor().to_bits();
+        let key = |input_signature| LayoutCacheKey {
             cx_instance,
             root,
             available: available_key,
+            scale_bits,
             cx_generation,
-            input_signature: signature,
-        })
+            input_signature,
+        };
+        // Specific dirties are a miss (a version the hash folds in
+        // changed). A clean frame with a matching generation and
+        // matching unversioned-input stamp is a hit — no tree walk.
+        // `mark_mutated` (`dirty_all`) bumps generation, so it still
+        // re-hashes.
+        if let Some(prev) = self.cached_key
+            && prev.cx_instance == cx_instance
+            && prev.root == root
+            && prev.available == available_key
+            && prev.scale_bits == scale_bits
+        {
+            if cx.has_specific_dirty() {
+                return CacheDecision::Miss(key(prev.input_signature));
+            }
+            if prev.cx_generation == cx_generation
+                && reactive_layout_signature(cx, &self.reactive_layout) == self.last_reactive_sig
+            {
+                return CacheDecision::Hit;
+            }
+        }
+        let signature = layout_input_signature(cx, root);
+        if self.cached_key.is_some_and(|prev| {
+            prev.cx_instance == cx_instance
+                && prev.root == root
+                && prev.available == available_key
+                && prev.scale_bits == scale_bits
+                && prev.input_signature == signature
+        }) {
+            return CacheDecision::Hit;
+        }
+        CacheDecision::Miss(key(signature))
     }
 
     /// Sync one kernel node and return the handles the caller should
@@ -441,6 +431,7 @@ impl LayoutEngine {
         inherited: InheritedText<'_>,
     ) -> Result<SmallVec<[NodeHandle; 4]>, LayoutError> {
         let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+        self.track_reactive(id, node);
         let kernel_version = node.version();
         let children = node
             .children()
@@ -475,25 +466,11 @@ impl LayoutEngine {
         // child list is byte-identical. This single lookup also feeds
         // `upsert_with_text`'s existing-handle branch on a miss.
         let existing_handle = self.core_to_handle.get(id.key()).copied();
-        // Reactive style bindings mutate the kernel node's reactive
-        // atom slice through an `Rc<Cell>` channel that bypasses
-        // `Node::version()` — see `StyleReactiveEffect::set_slice`.
-        // The version fast-path is correct for static / dynamic /
-        // structural mutations but would let a reactive `Display::None
-        // → []` flip go undetected, stranding the affected subtree
-        // (e.g. an absolutely-positioned tooltip bubble) in the
-        // forest's stale `Display::None` state. Force a re-sync when
-        // a reactive binding is attached; the downstream
-        // `upsert_with_text` style-equality check still cheap-outs
-        // when nothing actually changed.
-        // `reactive_slice()` returns `&[]` for both "no reactive
-        // binding installed" and "reactive binding currently empty";
-        // the cell-pointer identity check disambiguates by comparing
-        // against the canonical empty-slice constant.
-        // A reactive style binding OR a reactive position both mutate
-        // through interior-mutable channels that bypass `Node::version`,
-        // so force a re-sync for either (the downstream style-equality /
-        // signature checks still cheap-out when nothing actually changed).
+        // Reactive style slices and reactive position mutate through
+        // interior-mutable channels that bypass `Node::version`.
+        // `has_reactive` stays true when the current slice is empty
+        // (`Display::None` → `[]` still re-syncs). Downstream
+        // style-equality still cheap-outs when nothing changed.
         let has_reactive = binding.is_some_and(StyleBinding::has_reactive)
             || node.get_extension::<crate::ReactivePosition>().is_some();
         // DR-056: the version fast-path additionally requires the
@@ -508,6 +485,14 @@ impl LayoutEngine {
             self.write_synced_node(id, node, inherited.style, kernel_version)?;
         }
         self.synced_text_sig.insert(id.key(), effective.sig);
+
+        if binding.is_some_and(StyleBinding::hides) {
+            let parent_handle = self.handle(id)?;
+            self.drive.set_children(parent_handle, &[])?;
+            let mut out = SmallVec::<[NodeHandle; 4]>::new();
+            out.push(parent_handle);
+            return Ok(out);
+        }
 
         let mut child_handles = SmallVec::<[NodeHandle; 8]>::new();
         for child in &children {
@@ -560,8 +545,10 @@ impl LayoutEngine {
 
         let style = intent.data().clone();
         let handle = self.drive.insert_with_kernel(id, style);
-        self.drive
-            .set_text(handle, text_content, text_style, flags)?;
+        if text_content.is_some() {
+            self.drive
+                .set_text(handle, text_content, text_style, flags)?;
+        }
         self.core_to_handle.insert(id.key(), handle);
         Ok(())
     }
@@ -585,6 +572,7 @@ impl LayoutEngine {
 
     fn sync_one_node(&mut self, cx: &Cx, id: NodeId) -> Result<(), LayoutError> {
         let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+        self.track_reactive(id, node);
         if matches!(node.kind, NodeType::Fragment) {
             return Ok(());
         }
@@ -700,6 +688,16 @@ impl LayoutEngine {
         Option<TextStyle>,
         crate::forest::TextFlags,
     ) {
+        if matches!(node.kind, NodeType::Container)
+            && node.get_extension::<StyleBinding>().is_none()
+            && node.get_extension::<crate::ReactivePosition>().is_none()
+        {
+            let intent = node
+                .get_extension::<LayoutStyle>()
+                .cloned()
+                .unwrap_or_default();
+            return (intent, None, None, crate::forest::TextFlags::default());
+        }
         let mut intent = node
             .get_extension::<LayoutStyle>()
             .cloned()
@@ -716,28 +714,8 @@ impl LayoutEngine {
         if let NodeType::Image { source, .. } = &node.kind {
             intent = apply_intrinsic_image_size(intent, source.width(), source.height());
         }
-        if let Some(binding) = node.get_extension::<StyleBinding>() {
-            apply_style_atoms(binding.static_slice(), &mut intent);
-            apply_style_atoms(binding.dynamic_slice(), &mut intent);
-            for reactive in binding.reactive_channels() {
-                apply_style_atoms(reactive, &mut intent);
-            }
-            if let Some(style) = text_style.as_mut() {
-                let engine = StyleEngine::new(theme_for(node));
-                apply_text_binding(engine, binding, style);
-            }
-        }
-        // Reactive absolute position (leak-free, Copy-cell channel) wins
-        // over any static inset: it forces `position: absolute` and binds
-        // the inset to a live signal. Applied last so a dragged node tracks
-        // the pointer (see `reactive_position`).
-        if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
-            let (x, y) = pos.get();
-            intent = intent
-                .position(crate::style_data::Position::Absolute)
-                .inset_left(x)
-                .inset_top(y);
-        }
+        apply_style_overlay(node, &mut intent, text_style.as_mut());
+        intent = apply_reactive_position(node, intent);
         let (text_content, flags) = match &node.kind {
             NodeType::Text {
                 content,
@@ -755,6 +733,14 @@ impl LayoutEngine {
             }
         };
         (intent, text_content, text_style, flags)
+    }
+
+    fn track_reactive(&mut self, id: NodeId, node: &sigil_kernel::Node) {
+        if has_unversioned_layout(node) {
+            self.reactive_layout.insert(id.key());
+        } else {
+            self.reactive_layout.remove(&id.key());
+        }
     }
 
     fn remove_mirror_if_present(&mut self, id: NodeId) -> Result<(), LayoutError> {
@@ -962,7 +948,10 @@ impl LayoutEngine {
             if still_fresh {
                 continue;
             }
-            if let Some(node) = cx.get_mut(id) {
+            if let Some(node) = cx.get_mut_untracked(id) {
+                if node.get_extension::<LayoutResult>().is_none() {
+                    continue;
+                }
                 let _ = node.remove_extension::<LayoutResult>();
             }
         }
@@ -973,6 +962,20 @@ impl LayoutEngine {
             .get(id.key())
             .copied()
             .ok_or(LayoutError::NodeMissing(id))
+    }
+}
+
+fn take_cache_miss(cx: &mut Cx, decision: CacheDecision) -> Option<LayoutCacheKey> {
+    match decision {
+        CacheDecision::Hit => {
+            sigil_profile::count("layout.hit");
+            cx.clear_dirty();
+            None
+        }
+        CacheDecision::Miss(key) => {
+            sigil_profile::count("layout.miss");
+            Some(key)
+        }
     }
 }
 
@@ -994,6 +997,45 @@ const fn to_space_constraint(dim: Dim) -> SpaceConstraint {
         Dim::Fixed(value) => SpaceConstraint::Definite(value),
         Dim::MinContent => SpaceConstraint::MinContent,
         Dim::MaxContent => SpaceConstraint::MaxContent,
+    }
+}
+
+/// Reactive absolute position wins over any static inset.
+fn apply_reactive_position(node: &sigil_kernel::Node, intent: LayoutStyle) -> LayoutStyle {
+    let Some(pos) = node.get_extension::<crate::ReactivePosition>() else {
+        return intent;
+    };
+    let (x, y) = pos.get();
+    intent
+        .position(crate::style_data::Position::Absolute)
+        .inset_left(x)
+        .inset_top(y)
+}
+
+/// Overlay class / Style atoms onto the box. Authored `LayoutStyle`
+/// padding wins when it is not the zero default.
+fn apply_style_overlay(
+    node: &sigil_kernel::Node,
+    intent: &mut LayoutStyle,
+    text_style: Option<&mut TextStyle>,
+) {
+    let Some(binding) = node.get_extension::<StyleBinding>() else {
+        return;
+    };
+    let pad = intent.data().padding;
+    let keep_pad =
+        pad != crate::style_data::Rect::splat(crate::style_data::LengthPercentage::Px(0.0));
+    apply_style_atoms(binding.static_slice(), intent);
+    apply_style_atoms(binding.dynamic_slice(), intent);
+    for reactive in binding.reactive_channels() {
+        apply_style_atoms(reactive, intent);
+    }
+    if keep_pad {
+        intent.data_mut().padding = pad;
+    }
+    if let Some(style) = text_style {
+        let engine = StyleEngine::new(theme_for(node));
+        apply_text_binding(engine, binding, style);
     }
 }
 

@@ -28,6 +28,11 @@ pub struct TextStyle {
     pub font_weight: u16,
     /// Paragraph line-height.
     pub line_height: TextLineHeight,
+    /// Extra advance per glyph, in ems (CSS `letter-spacing`).
+    /// `0.12` is `0.12em`. Negative values tighten.
+    pub letter_spacing_em: f32,
+    /// CSS `text-decoration-line`.
+    pub decoration: crate::TextDecoration,
 }
 
 impl Default for TextStyle {
@@ -37,6 +42,8 @@ impl Default for TextStyle {
             font_size: 14.0,
             font_weight: 400,
             line_height: TextLineHeight::default(),
+            letter_spacing_em: 0.0,
+            decoration: crate::TextDecoration::None,
         }
     }
 }
@@ -51,6 +58,8 @@ pub const fn is_typography_atom(atom: crate::StyleAtom) -> bool {
             | crate::StyleAtom::FontWeight(_)
             | crate::StyleAtom::FontFamily(_)
             | crate::StyleAtom::LineHeight(_)
+            | crate::StyleAtom::LetterSpacing(_)
+            | crate::StyleAtom::TextDecoration(_)
     )
 }
 

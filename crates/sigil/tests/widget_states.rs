@@ -27,10 +27,10 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -186,7 +186,7 @@ fn checkbox_checked_primary_emits_accent() {
     sigil::reactive::Runtime::scope("c4-checkbox-checked-primary", || {
         let checked = signal(true);
         let mut cx = Cx::new_root();
-        let root = cx.add(checkbox(checked).tone(CheckboxTone::Primary));
+        let root = cx.add(checkbox(checked).tone(Tone::Primary));
         compute(&mut cx, root);
         let theme = Theme::default();
         assert!(rect_colors(&cx, root).contains(&theme.accent));
@@ -335,9 +335,7 @@ fn toggle_on_emits_accent() {
         let theme = Theme::default();
         // ON track paints the accent scale at step 8 (one below the
         // step-9 solid so the white thumb reads against it).
-        assert!(
-            rect_colors(&cx, root).contains(&theme.accent_scale.step(8))
-        );
+        assert!(rect_colors(&cx, root).contains(&theme.accent_scale.step(8)));
     });
 }
 

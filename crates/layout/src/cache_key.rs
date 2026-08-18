@@ -13,12 +13,17 @@
 
 use std::hash::{Hash as _, Hasher as _};
 
-use ahash::AHasher;
+use ahash::{AHashSet, AHasher};
 use sigil_hal::{Dim, Size};
-use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
+use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_style::StyleBinding;
+use slotmap::DefaultKey;
 use smallvec::SmallVec;
 
+use crate::LayoutStyle;
+use crate::style_data::Dimension;
+
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum CacheDecision {
     Hit,
     Miss(LayoutCacheKey),
@@ -29,6 +34,7 @@ pub(crate) struct LayoutCacheKey {
     pub(crate) cx_instance: u64,
     pub(crate) root: NodeId,
     pub(crate) available: AvailableKey,
+    pub(crate) scale_bits: u32,
     pub(crate) cx_generation: u64,
     pub(crate) input_signature: u64,
 }
@@ -89,34 +95,8 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
             continue;
         };
         node.version().hash(&mut hasher);
-        // Reactive style bindings + reactive text content can mutate
-        // without going through any kernel API that bumps
-        // `Node::version` (Signal::set is a separate channel). Hash
-        // their resolved value so the signature still invalidates on
-        // signal write. Static/dynamic style atoms are baked into
-        // `Node::version` by `attach`, so the cheap fast-path covers
-        // them without paying for the AHashMap lookup here.
-        if let Some(binding) = node.get_extension::<StyleBinding>() {
-            for reactive in binding.reactive_channels() {
-                for atom in reactive {
-                    atom.hash(&mut hasher);
-                }
-            }
-        }
-        // Reactive position lives in a `Copy` cell that bypasses
-        // `Node::version` (same channel concern as reactive style atoms);
-        // fold its live `(x, y)` into the signature so a drag invalidates.
-        if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
-            let (x, y) = pos.get();
-            x.to_bits().hash(&mut hasher);
-            y.to_bits().hash(&mut hasher);
-        }
-        if let NodeType::Text {
-            content: content @ TextContent::Reactive(_),
-            ..
-        } = &node.kind
-        {
-            hash_text_content(content, &mut hasher);
+        if hash_unversioned_layout(node, &mut hasher) {
+            continue;
         }
         for child in node.children().iter().rev().copied() {
             stack.push(child);
@@ -125,11 +105,83 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
     hasher.finish()
 }
 
-fn hash_text_content(content: &TextContent, hasher: &mut AHasher) {
-    match content {
-        TextContent::Static(value) => value.hash(hasher),
-        TextContent::Reactive(signal) => signal.peek().hash(hasher),
+/// True when this node's layout input can change without bumping
+/// `Node::version` — reactive position, layout-affecting reactive
+/// style, or wrapping / indefinite non-static text.
+pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
+    if node.get_extension::<crate::ReactivePosition>().is_some() {
+        return true;
     }
+    if node
+        .get_extension::<StyleBinding>()
+        .is_some_and(StyleBinding::has_layout_reactive)
+    {
+        return true;
+    }
+    matches!(
+        &node.kind,
+        NodeType::Text {
+            content,
+            wrap,
+            ..
+        } if !matches!(content, TextContent::Static(_)) && (*wrap || !definite_width(node))
+    )
+}
+
+/// Hash the unversioned layout inputs of `ids` in key order.
+pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &AHashSet<DefaultKey>) -> u64 {
+    let mut keys: SmallVec<[DefaultKey; 8]> = ids.iter().copied().collect();
+    keys.sort_unstable();
+    let mut hasher = AHasher::default();
+    for key in keys {
+        let id = NodeId::from_key(key);
+        let Some(node) = cx.get(id) else {
+            continue;
+        };
+        key.hash(&mut hasher);
+        hash_unversioned_layout(node, &mut hasher);
+    }
+    hasher.finish()
+}
+
+/// Fold unversioned layout inputs into `hasher`. Returns `true` when
+/// the node is `display: none` and descendants must be skipped.
+pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool {
+    let hidden = node.get_extension::<StyleBinding>().is_some_and(|binding| {
+        for reactive in binding.reactive_channels() {
+            for atom in reactive {
+                if atom.affects_layout() {
+                    atom.hash(hasher);
+                }
+            }
+        }
+        binding.hides()
+    });
+    if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
+        let (x, y) = pos.get();
+        x.to_bits().hash(hasher);
+        y.to_bits().hash(hasher);
+    }
+    if let NodeType::Text { content, wrap, .. } = &node.kind
+        && !matches!(content, TextContent::Static(_))
+        && (*wrap || !definite_width(node))
+    {
+        hash_text_content(content, hasher);
+    }
+    hidden
+}
+
+fn definite_width(node: &Node) -> bool {
+    node.get_extension::<LayoutStyle>().is_some_and(|style| {
+        matches!(
+            style.data().size.width,
+            Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill
+        )
+    })
+}
+
+fn hash_text_content(content: &TextContent, hasher: &mut AHasher) {
+    content.resolve().hash(hasher);
 }
 
 // ε-cache: the per-atom hashing helpers were retired alongside the

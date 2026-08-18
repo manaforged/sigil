@@ -12,7 +12,7 @@ use crate::Paragraph;
 /// Upper bound on retained paragraphs. Caps memory for the standalone
 /// (never-frame-cleared) geometry engine while staying far above the working
 /// set of any single frame's text nodes.
-const MAX_ENTRIES: usize = 256;
+const MAX_ENTRIES: usize = 2_048;
 
 /// Shared deterministic hasher — initialised once, reused everywhere.
 fn hasher() -> &'static RandomState {
@@ -47,6 +47,7 @@ struct DiscreteTextStyle {
     font_size_bits: u32,
     font_weight: u16,
     line_height: DiscreteLineHeight,
+    letter_spacing_bits: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -165,6 +166,7 @@ impl From<&TextStyle> for DiscreteTextStyle {
             font_size_bits: style.font_size.to_bits(),
             font_weight: style.font_weight,
             line_height: DiscreteLineHeight::from(style.line_height),
+            letter_spacing_bits: style.letter_spacing_em.to_bits(),
         }
     }
 }
@@ -197,6 +199,8 @@ mod tests {
             font_size: size,
             font_weight: 400,
             line_height: TextLineHeight::FontSizeRelative(1.2),
+            letter_spacing_em: 0.0,
+            ..Default::default()
         }
     }
 

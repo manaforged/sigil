@@ -1,9 +1,8 @@
-//! Container widgets: panel, scroll (nested), splitter, modal (with a
-//! button that opens it).
+//! Container widgets: panel, scroll, splitter, modal, sheet.
 
 use sigil::prelude::*;
 use sigil::widgets::patterns;
-use sigil::widgets::{SplitterOrientation, modal, panel, scroll, splitter};
+use sigil::widgets::{SplitterOrientation, modal, panel, scroll, sheet, splitter};
 
 use crate::{category, column, row};
 
@@ -13,6 +12,7 @@ pub(crate) fn container_section() -> NodeBuilder {
         nested_scroll_row(),
         splitter_row(),
         modal_row(),
+        sheet_row(),
     ]);
     category("Container widgets", body)
 }
@@ -62,8 +62,7 @@ fn modal_row() -> NodeBuilder {
         .primary()
         .activate(move || open.set(true));
     let dismiss = button("Close").activate(move || open.set(false));
-    let dialog = modal()
-        .show(open)
+    let dialog = modal(open)
         .title("Demo dialog")
         .dismiss_on_backdrop(true)
         .child(text("This is a modal dialog body."))
@@ -78,4 +77,26 @@ fn modal_row() -> NodeBuilder {
         .child(text("(click to open the modal)").class(classes!("text-sm")))
         .child(dialog);
     patterns::field("modal (button-triggered)", row(vec![host]))
+}
+
+fn sheet_row() -> NodeBuilder {
+    let open = signal(false);
+    let trigger = button("Open sheet")
+        .primary()
+        .activate(move || open.set(true));
+    let dismiss = button("Close").activate(move || open.set(false));
+    let panel = sheet(open)
+        .title("Filters")
+        .child(text("A side panel. Same builder as modal."))
+        .child(dismiss);
+    let host = container()
+        .layout(
+            LayoutStyle::flex_row()
+                .gap(12.0)
+                .align_items(AlignItems::Center),
+        )
+        .child(trigger)
+        .child(text("(docks to the right)").class(classes!("text-sm")))
+        .child(panel);
+    patterns::field("sheet (button-triggered)", row(vec![host]))
 }

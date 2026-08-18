@@ -36,10 +36,10 @@ visual review (see `the contributor guide` → "Visual quality gates").
 
 ## Coordinated builds
 
-This repo builds through `the build router` (see `the contributor guide` → "the build router: build and
-coordination contract"): `the build router check` / `the build router test` route to the packages
-affected by your diff. Claim scopes before large sweeps
-(`the build router claim --agent <id> --task "<what>" <paths>`).
+This repo builds with plain `cargo`. Scope each command to the packages your
+diff touches (`cargo check -p <pkg>`, `cargo test -p <pkg>`). When several
+agents work the same repo, give each one its own git worktree
+(`scripts/agent-hooks/agent-worktree.sh`) rather than sharing a checkout.
 
 ## Plans and decisions
 

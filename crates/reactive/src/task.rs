@@ -1,7 +1,7 @@
 //! G5 — `Task<T>` polymorphic handle (DR-048 §6).
 //!
 //! `Task<T>` is the imperative-handle shape returned by
-//! [`crate::Context::spawn`]. It wraps a spawned future's
+//! [`crate::EntityCx::spawn`]. It wraps a spawned future's
 //! [`AbortHandle`] (for RAII cancel-on-drop) and a [`oneshot::Receiver`]
 //! that carries the future's output back from the executor worker.
 //!
@@ -110,11 +110,11 @@ pub struct Task<T> {
 
 impl<T> Task<T> {
     /// Construct from raw parts. `pub(crate)` so only
-    /// [`crate::cx::Context::spawn`] can mint a Task.
+    /// [`crate::cx::EntityCx::spawn`] can mint a Task.
     #[track_caller]
     #[allow(
         dead_code,
-        reason = "consumed by Context::spawn in the same DR-048 landing — module landing order"
+        reason = "consumed by EntityCx::spawn in the same DR-048 landing — module landing order"
     )]
     #[allow(
         clippy::missing_const_for_fn,

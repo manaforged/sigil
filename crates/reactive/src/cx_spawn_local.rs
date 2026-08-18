@@ -1,7 +1,7 @@
-//! `Context::spawn_local` — the `!Send`-future companion to
-//! [`crate::cx_spawn::Context::spawn`] (W4.99.B3 amendment to DR-048).
+//! `EntityCx::spawn_local` — the `!Send`-future companion to
+//! [`crate::cx_spawn::EntityCx::spawn`] (W4.99.B3 amendment to DR-048).
 //!
-//! The original [`Context::spawn`] forces `F: Future + Send + 'static`
+//! The original [`EntityCx::spawn`] forces `F: Future + Send + 'static`
 //! because the production executor (Tokio multi-thread) moves the
 //! boxed future across worker threads. Authors that need to hold a
 //! `!Send` value across `.await` — `Rc<RefCell<_>>`, a non-`Send`
@@ -18,7 +18,7 @@
 //! the channel does not need to ferry the value across threads even
 //! when `R: !Send`.
 //!
-//! The signature mirrors [`Context::spawn`] in every respect except
+//! The signature mirrors [`EntityCx::spawn`] in every respect except
 //! the dropped `Send` bounds.
 
 use core::future::Future;
@@ -27,13 +27,13 @@ use std::sync::Arc;
 use tokio::sync::oneshot;
 
 use crate::async_cx::AsyncContext;
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::local_executor::{BoxLocalFuture, LocalTaskExecutor};
 use crate::owner::OwnerId;
 use crate::runtime::{EntityKey, OwnerKey, with_rt};
 use crate::task_local::LocalTask;
 
-impl<T: 'static> Context<'_, T> {
+impl<T: 'static> EntityCx<'_, T> {
     /// Spawn a `!Send` future tied to this entity's scope (W4.99.B3).
     ///
     /// Use this when the future body needs to hold a value that is
@@ -46,10 +46,10 @@ impl<T: 'static> Context<'_, T> {
     ///
     /// Owner-cascade disposal of the spawning entity also aborts the
     /// task synchronously through the cleanup registered here, mirroring
-    /// the [`Context::spawn`] behaviour.
+    /// the [`EntityCx::spawn`] behaviour.
     ///
     /// Per DR-048 amendment B3, this method is a write seam — same as
-    /// [`Context::spawn`] — and panics during
+    /// [`EntityCx::spawn`] — and panics during
     /// [`crate::DrawPhase::Paint`].
     ///
     /// # Panics
@@ -69,17 +69,17 @@ impl<T: 'static> Context<'_, T> {
     {
         let entity_key = self.entity;
         let (owner_key, local_executor, dispatcher) = with_rt(|rt| {
-            crate::phase::assert_paint_safe(rt, "Context::spawn_local");
+            crate::phase::assert_paint_safe(rt, "EntityCx::spawn_local");
             let owner = rt
                 .entities
                 .get(entity_key)
-                .expect("Context::spawn_local on a disposed entity")
+                .expect("EntityCx::spawn_local on a disposed entity")
                 .owner;
             let local_executor = rt
                 .local_executor
                 .as_ref()
                 .expect(
-                    "Context::spawn_local requires \
+                    "EntityCx::spawn_local requires \
                      Runtime::install_local_executor — no local executor \
                      installed on this thread",
                 )
@@ -92,7 +92,7 @@ impl<T: 'static> Context<'_, T> {
                 .dispatcher
                 .as_ref()
                 .expect(
-                    "Context::spawn_local requires Runtime::install_executor — \
+                    "EntityCx::spawn_local requires Runtime::install_executor — \
                      no dispatcher installed on this thread",
                 )
                 .clone();
@@ -108,9 +108,9 @@ impl<T: 'static> Context<'_, T> {
     }
 }
 
-/// Hand-off from [`Context::spawn_local`] to the local executor. Lives
+/// Hand-off from [`EntityCx::spawn_local`] to the local executor. Lives
 /// at module scope so the generic monomorphises in one place; keeps
-/// the per-call surface on `Context` small (mirrors `spawn_through`).
+/// the per-call surface on `EntityCx` small (mirrors `spawn_through`).
 fn spawn_local_through<T, F, R>(
     entity_key: EntityKey,
     owner_key: OwnerKey,

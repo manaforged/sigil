@@ -9,7 +9,7 @@
 use core::any::Any;
 use core::marker::PhantomData;
 
-use crate::cx::Context;
+use crate::cx::EntityCx;
 use crate::entity::Entity;
 use crate::owner::on_cleanup;
 use crate::runtime::{
@@ -126,12 +126,12 @@ fn register_cleanup(key: ObserverKey) {
 }
 
 /// Register a plain observer — fires `callback` on any `cx.notify()`
-/// against `observed`. Called from `Context::observe`.
+/// against `observed`. Called from `EntityCx::observe`.
 #[track_caller]
 pub(crate) fn register_observe<T, U>(
     observer_entity: EntityKey,
     observed: Entity<U>,
-    mut callback: impl FnMut(&mut T, &Entity<U>, &mut Context<'_, T>) + 'static,
+    mut callback: impl FnMut(&mut T, &Entity<U>, &mut EntityCx<'_, T>) + 'static,
 ) -> Subscription
 where
     T: 'static,
@@ -157,7 +157,7 @@ where
 pub(crate) fn register_subscribe<T, U, Ev>(
     observer_entity: EntityKey,
     observed: Entity<U>,
-    mut callback: impl FnMut(&mut T, &Entity<U>, &Ev, &mut Context<'_, T>) + 'static,
+    mut callback: impl FnMut(&mut T, &Entity<U>, &Ev, &mut EntityCx<'_, T>) + 'static,
 ) -> Subscription
 where
     T: 'static,
@@ -209,9 +209,9 @@ fn current_owner() -> crate::runtime::OwnerKey {
     })
 }
 
-type ObserveCallback<T, U> = dyn FnMut(&mut T, &Entity<U>, &mut Context<'_, T>) + 'static;
+type ObserveCallback<T, U> = dyn FnMut(&mut T, &Entity<U>, &mut EntityCx<'_, T>) + 'static;
 type SubscribeCallback<T, U, Ev> =
-    dyn FnMut(&mut T, &Entity<U>, &Ev, &mut Context<'_, T>) + 'static;
+    dyn FnMut(&mut T, &Entity<U>, &Ev, &mut EntityCx<'_, T>) + 'static;
 
 /// Dispatch a plain-observe callback. Pulls the observer's payload out
 /// of its slot for the duration of the call, restoring on return.
@@ -247,7 +247,7 @@ fn dispatch_observe<T, U>(
             });
             return;
         };
-        let mut cx = Context::<'_, T>::new_unchecked(entity_key);
+        let mut cx = EntityCx::<'_, T>::new_unchecked(entity_key);
         callback(inner, &observed, &mut cx);
     }
     with_rt(|rt| {
@@ -291,7 +291,7 @@ fn dispatch_subscribe<T, U, Ev>(
             });
             return;
         };
-        let mut cx = Context::<'_, T>::new_unchecked(entity_key);
+        let mut cx = EntityCx::<'_, T>::new_unchecked(entity_key);
         callback(inner, &observed, ev, &mut cx);
     }
     with_rt(|rt| {

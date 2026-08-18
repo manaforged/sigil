@@ -30,9 +30,10 @@ use crate::LayoutError;
 use crate::flex::{CbSize, FlexSolver, Position2};
 use crate::flex_lines::{FlexItem, FlexLine, collect_lines};
 use crate::forest::{ComputedBox, NodeRef};
+use crate::resolve::{NodeEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::style_data::{
-    AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection,
-    JustifyContent, LengthPercentage, LengthPercentageAuto, Overflow, Position, Rect, StyleData,
+    AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, JustifyContent,
+    LengthPercentageAuto, Overflow, Position, StyleData,
 };
 
 /// Axis orientation flags derived from `FlexDirection` + `FlexWrap`.
@@ -96,135 +97,6 @@ pub(crate) struct FlexCtx<'s, 'a> {
     pub(crate) assigned_h: Option<f32>,
 }
 
-/// Resolved pixel edges (no `auto`).
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct Edges {
-    pub(crate) left: f32,
-    pub(crate) right: f32,
-    pub(crate) top: f32,
-    pub(crate) bottom: f32,
-}
-
-impl Edges {
-    pub(crate) const fn inline(self) -> f32 {
-        self.left + self.right
-    }
-    pub(crate) const fn block(self) -> f32 {
-        self.top + self.bottom
-    }
-}
-
-/// Resolved pixel edges with auto-aware semantics (margins).
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct AutoEdges {
-    pub(crate) left: Option<f32>,
-    pub(crate) right: Option<f32>,
-    pub(crate) top: Option<f32>,
-    pub(crate) bottom: Option<f32>,
-}
-
-impl AutoEdges {
-    pub(crate) fn or_zero(self) -> Edges {
-        Edges {
-            left: self.left.unwrap_or(0.0),
-            right: self.right.unwrap_or(0.0),
-            top: self.top.unwrap_or(0.0),
-            bottom: self.bottom.unwrap_or(0.0),
-        }
-    }
-}
-
-/// Resolved padding + border + margin for a node.
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct NodeEdges {
-    pub(crate) padding: Edges,
-    pub(crate) border: Edges,
-    pub(crate) margin: AutoEdges,
-}
-
-impl NodeEdges {
-    pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
-        Self {
-            padding: edges_lp(style.padding, cb_inline),
-            border: edges_lp(style.border, cb_inline),
-            margin: edges_lp_auto(style.margin, cb_inline),
-        }
-    }
-
-    pub(crate) const fn inline_chrome(&self) -> f32 {
-        self.padding.left + self.padding.right + self.border.left + self.border.right
-    }
-
-    pub(crate) const fn block_chrome(&self) -> f32 {
-        self.padding.top + self.padding.bottom + self.border.top + self.border.bottom
-    }
-}
-
-/// Resolve a non-auto length/percentage against a basis.
-pub(crate) fn resolve_lp(lp: LengthPercentage, cb: f32) -> f32 {
-    match lp {
-        LengthPercentage::Px(v) => v,
-        LengthPercentage::Percent(p) => p * cb,
-    }
-}
-
-/// Resolve an auto-capable length/percentage.
-pub(crate) fn resolve_lp_auto(lp: LengthPercentageAuto, cb: f32) -> Option<f32> {
-    match lp {
-        LengthPercentageAuto::Px(v) => Some(v),
-        LengthPercentageAuto::Percent(p) => Some(p * cb),
-        LengthPercentageAuto::Auto => None,
-    }
-}
-
-/// Resolve a `Dimension` against a containing-block axis.
-pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
-    match dim {
-        Dimension::Px(v) => Some(v),
-        Dimension::Percent(p) => Some(p * cb),
-        Dimension::Fill => Some(cb),
-        Dimension::Auto => None,
-    }
-}
-
-fn edges_lp(rect: Rect<LengthPercentage>, cb_inline: f32) -> Edges {
-    Edges {
-        left: resolve_lp(rect.left, cb_inline),
-        right: resolve_lp(rect.right, cb_inline),
-        top: resolve_lp(rect.top, cb_inline),
-        bottom: resolve_lp(rect.bottom, cb_inline),
-    }
-}
-
-fn edges_lp_auto(rect: Rect<LengthPercentageAuto>, cb_inline: f32) -> AutoEdges {
-    AutoEdges {
-        left: resolve_lp_auto(rect.left, cb_inline),
-        right: resolve_lp_auto(rect.right, cb_inline),
-        top: resolve_lp_auto(rect.top, cb_inline),
-        bottom: resolve_lp_auto(rect.bottom, cb_inline),
-    }
-}
-
-/// Clamp a value to an optional min/max pair; CSS rule — min wins.
-pub(crate) fn clamp_minmax(value: f32, min: Option<f32>, max: Option<f32>) -> f32 {
-    let after_max = max.map_or(value, |m| value.min(m));
-    min.map_or(after_max, |m| after_max.max(m))
-}
-
-/// Convert a `Dimension` to a border-box pixel value under `box_sizing`.
-pub(crate) fn dim_to_border_box(
-    dim: Dimension,
-    cb: f32,
-    chrome: f32,
-    sizing: BoxSizing,
-) -> Option<f32> {
-    let resolved = resolve_dim(dim, cb)?;
-    match sizing {
-        BoxSizing::ContentBox => Some(resolved + chrome),
-        BoxSizing::BorderBox => Some(resolved),
-    }
-}
-
 /// Lay out a flex container rooted at `node`. Entry point.
 pub(crate) fn layout_root(
     ctx: &FlexCtx<'_, '_>,
@@ -246,6 +118,15 @@ pub(crate) fn layout_root(
     } else {
         (container_cross, container_main)
     };
+    let area = crate::flex_pack::Area {
+        border_origin,
+        content_origin,
+        main: container_main,
+        cross: container_cross,
+    };
+    if crate::flex_pack::pack_definite(ctx, node, &edges, &area)? {
+        return Ok(());
+    }
     let padding_box = crate::style_data::Size {
         width: content_w + edges.padding.left + edges.padding.right,
         height: content_h + edges.padding.top + edges.padding.bottom,
@@ -784,7 +665,7 @@ fn freeze_violations(frozen: &mut [bool], violations: &[f32], net: f32) -> bool 
 }
 
 fn clamp_main(item: &FlexItem, value: f32) -> f32 {
-    clamp_minmax(value, item.min_main, item.max_main).max(0.0)
+    clamp(value, item.min_main, item.max_main).max(0.0)
 }
 
 /// Cross size of a line: the max of each item's outer cross size.
@@ -929,7 +810,7 @@ fn write_items(
     Ok(())
 }
 
-fn layout_item_subtree(
+pub(crate) fn layout_item_subtree(
     ctx: &FlexCtx<'_, '_>,
     id: crate::forest::LocalId,
     origin: Position2,

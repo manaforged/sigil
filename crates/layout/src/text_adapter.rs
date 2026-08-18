@@ -36,6 +36,7 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
     }
 
     fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
+        sigil_profile::count("text.measure");
         let text = resolve_text(source);
         let max_width = match space.width {
             Dim::Fixed(w) => Some(w),
@@ -54,15 +55,13 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
         LogicalSize::new(width, para.height())
     }
 
-    fn begin_frame(&self) {
-        self.engine.clear_cache();
-    }
+    fn begin_frame(&self) {}
 }
 
 /// Resolve text without allocating for the static case.
 fn resolve_text(source: &TextContent) -> Cow<'_, str> {
     match source {
         TextContent::Static(s) => Cow::Borrowed(s),
-        TextContent::Reactive(sig) => Cow::Owned(sig.peek()),
+        _ => Cow::Owned(source.resolve()),
     }
 }

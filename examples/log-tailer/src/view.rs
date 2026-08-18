@@ -4,7 +4,6 @@
 //! auto-scroll toggle), a virtualised log list, and a status bar.
 
 use sigil::prelude::*;
-use sigil::reactive::derived;
 use sigil::widgets::{SelectionMode, virtual_list};
 
 use crate::data::{Level, LogLine};

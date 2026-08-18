@@ -14,10 +14,13 @@ use crate::{A11yProps, Node, NodeId, NodeType, TextContent};
 
 /// Node arena and composition context.
 ///
-/// A `Cx` owns the UI tree and a root reactive owner. Every call to
-/// [`Cx::add`] creates a per-component owner below the current owner,
-/// runs the component build inside it, and records that owner for
-/// subtree disposal.
+/// A `Cx` owns the UI tree and a root reactive owner. This is the
+/// product context. Hidden `EntityCx` on `sigil-reactive` is an
+/// entity token, not a second app context.
+///
+/// Every call to [`Cx::add`] creates a per-component owner below the
+/// current owner, runs the component build inside it, and records
+/// that owner for subtree disposal.
 pub struct Cx {
     instance_id: u64,
     pub(crate) nodes: SlotMap<DefaultKey, Node>,
@@ -198,6 +201,23 @@ impl Cx {
         out
     }
 
+    /// Replace the parent's child list after a keyed rebuild.
+    ///
+    /// Callers keep each child's `parent` pointer; this only rewrites
+    /// order and drops ids that are no longer in `children`.
+    pub(crate) fn replace_children(&mut self, parent: NodeId, children: SmallVec<[NodeId; 4]>) {
+        let Some(node) = self.nodes.get_mut(parent.key()) else {
+            return;
+        };
+        if node.children.as_slice() == children.as_slice() {
+            return;
+        }
+        node.children = children;
+        node.bump_version();
+        self.mark_dirty(parent);
+        self.bump_generation();
+    }
+
     fn detach_from_parent(&mut self, id: NodeId) {
         let parent = self.nodes.get(id.key()).and_then(|node| node.parent);
         if let Some(parent) = parent
@@ -247,6 +267,21 @@ impl Cx {
             Box::new(std::iter::empty())
         };
         from_keys.chain(from_set)
+    }
+
+    /// True when [`Self::mark_mutated`] flipped the all-dirty flag.
+    ///
+    /// Layout treats this as "re-hash inputs", not "every node changed".
+    #[must_use]
+    pub const fn dirty_all(&self) -> bool {
+        self.dirty_all
+    }
+
+    /// True when a specific node is dirty and the tree was not
+    /// broadcast-invalidated by [`Self::mark_mutated`].
+    #[must_use]
+    pub fn has_specific_dirty(&self) -> bool {
+        !self.dirty_all && !self.dirty.is_empty()
     }
 
     /// Reset the dirty set. Called by layout engine + render pipeline
@@ -438,6 +473,7 @@ fn dump_text_content(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => format!("{value:?}"),
         TextContent::Reactive(_) => "<reactive>".to_owned(),
+        TextContent::Compute(_) => "<compute>".to_owned(),
     }
 }
 

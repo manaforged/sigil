@@ -170,6 +170,18 @@ impl SceneBuilder {
         CommandScene::new(self.commands)
     }
 
+    pub(crate) const fn command_len(&self) -> usize {
+        self.commands.len()
+    }
+
+    pub(crate) fn extend_commands(&mut self, cmds: impl IntoIterator<Item = SceneCommand>) {
+        self.commands.extend(cmds);
+    }
+
+    pub(crate) fn copy_from(&self, start: usize) -> Vec<SceneCommand> {
+        self.commands.get(start..).unwrap_or(&[]).to_vec()
+    }
+
     fn with_scope<F: FnOnce(&mut Self)>(&mut self, open: SceneCommand, kind: ScopeKind, body: F) {
         self.commands.push(open);
         let mut scope = Scope::new(self, kind);

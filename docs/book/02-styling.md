@@ -45,6 +45,9 @@ overflow `overflow-(x-|y-)visible/hidden/scroll/auto`, radius
 
 ## The cascade (deterministic, no specificity algorithm)
 
+`LayoutStyle` padding on the node is the box. Class `p-N` and
+`Style::padding` fill that slot only when the box is still zero.
+
 Later wins per property, in this order:
 
 1. Theme tokens (built-in + runtime).
@@ -66,12 +69,16 @@ Typed, no strings, one encoding per property:
 
 ```rust,ignore
 Style::new()
-    .padding(16)
     .bg("accent")
     .radius(6)
     .opacity(0.5)
-container().style(style)
+container()
+    .layout(LayoutStyle::block().padding(16.0))
+    .style(style)
 ```
+
+Padding belongs on the box (`LayoutStyle` / widget `.padding(px)`).
+`Style::padding` is the same atom as `p-N`, not a second inset API.
 
 ## Fluent surface (`Styled`)
 

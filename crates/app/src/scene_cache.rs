@@ -1,9 +1,9 @@
 //! Last-frame command scene replay for non-mutating OS redraws.
 
-use sigil_hal::Color;
+use sigil_hal::{Color, Point, Rect};
 use sigil_kernel::{Cx, NodeId};
 use sigil_reactive::Runtime;
-use sigil_renderer::{CommandScene, WgpuRenderer, WgpuSurface, emit_scene};
+use sigil_renderer::{CommandScene, SceneCommand, WgpuRenderer, WgpuSurface, emit_scene_clipped};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SceneKey {
@@ -44,13 +44,18 @@ impl SceneCache {
     ) -> &CommandScene {
         let key = SceneKey::new(cx, root, viewport);
         if !allow_replay || self.key != Some(key) {
-            self.scene = emit_scene(cx, root);
+            sigil_profile::count("scene.emit");
+            let clip = Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1);
+            self.scene = emit_scene_clipped(cx, root, Some(clip));
             self.key = Some(key);
             #[cfg(test)]
             {
                 self.emissions += 1;
             }
+        } else {
+            sigil_profile::count("scene.replay");
         }
+        note_scene(&self.scene);
         &self.scene
     }
 
@@ -66,17 +71,55 @@ impl SceneCache {
         let Some(surface) = surface.as_mut() else {
             return;
         };
-        let scene = self.scene(cx, root, viewport, allow_replay);
+        let scene = {
+            let _emit = sigil_profile::span("emit");
+            self.scene(cx, root, viewport, allow_replay)
+        };
         let clear = if renderer.is_transparent() {
             Color::rgba(0.0, 0.0, 0.0, 0.0)
         } else {
             Color::rgba(0.03, 0.04, 0.05, 1.0)
         };
+        let _gpu = sigil_profile::span("gpu");
         if let Err(err) = renderer.render_command_scene(surface, scene, clear, viewport) {
             tracing::warn!("sigil-app: render_command_scene failed: {err}");
             Runtime::mark_frame_dirty();
         }
+        note_gpu(renderer.last_frame_stats());
     }
+}
+
+fn note_scene(scene: &CommandScene) {
+    if !sigil_profile::enabled() {
+        return;
+    }
+    sigil_profile::count_add("scene.cmds", scene.commands.len() as u64);
+    let mut glyphs = 0_u64;
+    let mut rects = 0_u64;
+    let mut images = 0_u64;
+    for command in &scene.commands {
+        match command {
+            SceneCommand::GlyphRun(_) => glyphs += 1,
+            SceneCommand::Rect(_) | SceneCommand::Gradient(_) | SceneCommand::Pattern(_) => {
+                rects += 1;
+            }
+            SceneCommand::Image(_) | SceneCommand::Sprite(_) => images += 1,
+            _ => {}
+        }
+    }
+    sigil_profile::count_add("scene.glyphs", glyphs);
+    sigil_profile::count_add("scene.rects", rects);
+    sigil_profile::count_add("scene.images", images);
+}
+
+fn note_gpu(stats: sigil_renderer::FrameStats) {
+    if !sigil_profile::enabled() {
+        return;
+    }
+    sigil_profile::count_add("gpu.rects", stats.rectangle_instances as u64);
+    sigil_profile::count_add("gpu.glyphs", stats.glyph_runs as u64);
+    sigil_profile::count_add("gpu.sprites", stats.sprite_draws as u64);
+    sigil_profile::count_add("gpu.layers", stats.offscreen_layers as u64);
 }
 
 pub(super) struct PaintRequest<'a> {

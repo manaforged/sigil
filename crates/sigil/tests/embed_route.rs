@@ -1,17 +1,16 @@
 #![allow(missing_docs)]
 // Integration test; direct assertions per the hygiene framework.
 #![allow(clippy::panic, clippy::unwrap_used)]
-// `UiContext` lives behind the `render` feature (DR-054). A crate-level
+// `Host` lives behind the `render` feature. A crate-level
 // `#![cfg]` would strip the allows above with the rest of the file, so the
 // gate lives on the items; with the feature off this crate is empty and its
 // dev-deps are legitimately unused.
 #![allow(unused_crate_dependencies)]
 
-//! `UiContext::route` — the embedding-host event seam.
+//! `Host::route` — the embedding-host event seam.
 //!
-//! Proves a host-synthesized pointer click routed through `UiContext::route`
-//! reaches a widget's activate handler, using only the public embed surface
-//! (the exact chain the host engine's `crates/ui` needs; `arcane_kingdom` sigil-gaps #3).
+//! A host-synthesized pointer click routed through `Host::route`
+//! reaches a widget's activate handler.
 
 #[cfg(feature = "render")]
 use std::cell::Cell;
@@ -23,7 +22,7 @@ use sigil::prelude::*;
 #[cfg(feature = "render")]
 use sigil::reactive::Runtime;
 #[cfg(feature = "render")]
-use sigil::ui::UiContext;
+use sigil::ui::Host;
 #[cfg(feature = "render")]
 use sigil_events::EventRouter;
 #[cfg(feature = "render")]
@@ -52,7 +51,7 @@ fn routed_click_reaches_button_activate() {
         let clicked = Rc::new(Cell::new(false));
         let seen = clicked.clone();
 
-        let mut ui = UiContext::new();
+        let mut ui = Host::new();
         ui.build(|cx| {
             cx.add(
                 container()

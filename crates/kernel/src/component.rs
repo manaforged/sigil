@@ -55,6 +55,16 @@ where
     }
 }
 
+/// Type-erase a child so mixed widgets can sit in one list.
+///
+/// `children_reactive` and `children_keyed` need one item type. Wrap
+/// each child with `node(...)` when the list mixes `text`, `chip`,
+/// builders, and closures.
+#[must_use]
+pub fn node(child: impl IntoNode + 'static) -> Box<dyn IntoNode> {
+    Box::new(child)
+}
+
 /// Object-safe wrapper that lets any [`IntoNode`] be stored as `Box<dyn ErasedComponent>`.
 ///
 /// This exists because `IntoNode::build(self, …)` takes `self` by value, which is not

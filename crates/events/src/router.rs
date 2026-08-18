@@ -19,6 +19,10 @@ use crate::pointer_dispatch::{
 mod keyboard;
 
 /// Routes shell events through a composed node tree.
+///
+/// Pointer hit-test reads `layout` as it stands. The app frame
+/// loop drains events before this frame's compute, so those boxes
+/// are last frame's.
 #[derive(Debug, Default)]
 pub struct EventRouter {
     focus: FocusManager,
@@ -47,6 +51,9 @@ impl EventRouter {
     }
 
     /// Route one shell event through the tree and layout state.
+    ///
+    /// Pointer targets come from `layout`'s published boxes. The app
+    /// frame loop passes last frame's layout here.
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
         self.focus.sync_scopes(cx, Some(layout));
         match event {

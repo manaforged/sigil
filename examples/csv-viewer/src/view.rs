@@ -6,7 +6,6 @@
 //! and a status bar reading the engine's selection signal.
 
 use sigil::prelude::*;
-use sigil::reactive::derived;
 
 use crate::data::Row;
 use crate::state::AppState;

@@ -30,12 +30,12 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive::{Runtime, signal};
 use sigil_renderer as _;
 use sigil_style::scale::ScaleRole;
 use sigil_style::{Rgba8, Theme};
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 fn placeholder_color() -> Rgba8 {

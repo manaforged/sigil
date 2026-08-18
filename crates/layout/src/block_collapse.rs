@@ -18,7 +18,7 @@
 //! whose top + bottom margins also collapse with each other), floats,
 //! clearance.
 
-#![allow(dead_code, clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
 
 /// CSS-style margin collapse of two adjacent margins.
 ///
@@ -48,6 +48,7 @@ pub(crate) struct OpenMargin {
 impl OpenMargin {
     /// Zero, idle state. Use this when the parent has separation
     /// (padding/border on the top edge) — collapse cannot cross.
+    #[cfg(test)]
     pub(crate) const fn idle() -> Self {
         Self {
             value: 0.0,
@@ -67,6 +68,7 @@ impl OpenMargin {
 
     /// Carry an explicit margin into the collapse context (parent-first
     /// child case: the parent's own top margin is the seed).
+    #[cfg(test)]
     pub(crate) const fn seed(value: f32) -> Self {
         Self {
             value,

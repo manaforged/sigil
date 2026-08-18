@@ -24,6 +24,7 @@ use bytemuck::{Pod, Zeroable};
 mod atlas;
 mod builder;
 mod icon;
+mod image_pack;
 
 use crate::scene_command::{DrawSprite, SpriteKind};
 use crate::scene_instance::BlendSpace;
@@ -36,6 +37,8 @@ use self::builder::{
     uniform_buffer, uniform_layout, unit_quad,
 };
 use self::icon::is_builtin_icon_atlas;
+use self::image_pack::ImagePack;
+pub(crate) use self::image_pack::PackedImage;
 
 /// Sentinel atlas id for the built-in 600x200 showcase atlas used by
 /// `scenes::sprite()`. The pipeline auto-registers this atlas on first use.
@@ -73,16 +76,17 @@ pub(crate) struct SpritePipeline {
     uniform_layout: wgpu::BindGroupLayout,
     atlas_layout: wgpu::BindGroupLayout,
     unit_quad: wgpu::Buffer,
-    atlases: Vec<AtlasEntry>,
+    pub(super) atlases: Vec<AtlasEntry>,
     atlas_bind_groups: Vec<wgpu::BindGroup>,
     sampler: wgpu::Sampler,
     /// Resolved `atlases` index for `BUILTIN_SPRITE_ATLAS_ID`, or `None`
     /// until the first call that needs it.
     builtin_atlas_slot: Option<usize>,
     builtin_icon_slots: [Option<usize>; BUILTIN_ICON_ATLAS_COUNT],
-    /// `ImageSource::id` → registered atlas id, so a raster image uploads
-    /// its texture exactly once however many frames or nodes draw it.
-    image_slots: std::collections::HashMap<u64, u32>,
+    /// `ImageSource::id` → packed placement, so a raster image uploads
+    /// once and many small images share a page.
+    pub(super) image_slots: std::collections::HashMap<u64, PackedImage>,
+    pub(super) image_pack: ImagePack,
 }
 
 impl SpritePipeline {
@@ -112,34 +116,8 @@ impl SpritePipeline {
             builtin_atlas_slot: None,
             builtin_icon_slots: [None; BUILTIN_ICON_ATLAS_COUNT],
             image_slots: std::collections::HashMap::new(),
+            image_pack: ImagePack::default(),
         }
-    }
-
-    /// Resolve a raster image to a registered atlas id, uploading its
-    /// pixels exactly once per content id. Returns `u32::MAX` when the
-    /// registry is full or the pixels fail atlas validation (the sprite
-    /// draw then no-ops, same as any invalid atlas id).
-    pub(crate) fn register_image(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        source: &sigil_kernel::ImageSource,
-    ) -> u32 {
-        if let Some(&id) = self.image_slots.get(&source.id()) {
-            return id;
-        }
-        let id = self.register_atlas(
-            device,
-            queue,
-            &AtlasDesc {
-                bytes: source.rgba(),
-                width: source.width(),
-                height: source.height(),
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            },
-        );
-        self.image_slots.insert(source.id(), id);
-        id
     }
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {

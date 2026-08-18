@@ -2,8 +2,8 @@
 //! (DR-048 §5).
 //!
 //! `AsyncContext<T>` is the `Send + Sync + Clone + 'static` companion
-//! to [`crate::Context`] handed to the future body inside
-//! [`crate::Context::spawn`]. It cannot touch reactive state directly —
+//! to [`crate::EntityCx`] handed to the future body inside
+//! [`crate::EntityCx::spawn`]. It cannot touch reactive state directly —
 //! the reactive runtime is `!Send`. Instead, [`AsyncContext::update`]
 //! posts a closure through the installed [`MainThreadDispatcher`] that
 //! re-enters the reactive context on the main thread and signals
@@ -150,11 +150,11 @@ impl<T: 'static> core::fmt::Debug for AsyncContext<T> {
 }
 
 impl<T: 'static> AsyncContext<T> {
-    /// `pub(crate)` constructor — only [`crate::Context::spawn`]
+    /// `pub(crate)` constructor — only [`crate::EntityCx::spawn`]
     /// produces an `AsyncContext`.
     #[allow(
         dead_code,
-        reason = "consumed by Context::spawn in the same DR-048 landing — module landing order"
+        reason = "consumed by EntityCx::spawn in the same DR-048 landing — module landing order"
     )]
     pub(crate) fn new(
         entity_key: EntityKey,
@@ -182,7 +182,7 @@ impl<T: 'static> AsyncContext<T> {
     /// dispatcher's MPSC was closed (runtime tearing down).
     pub async fn update<R, F>(&self, f: F) -> Result<R, EntityGone>
     where
-        F: FnOnce(&mut T, &mut crate::Context<'_, T>) -> R + Send + 'static,
+        F: FnOnce(&mut T, &mut crate::EntityCx<'_, T>) -> R + Send + 'static,
         R: Send + 'static,
     {
         let (tx, rx) = oneshot::channel::<Result<R, EntityGone>>();
@@ -220,7 +220,7 @@ impl<T: 'static> AsyncContext<T> {
     ) -> impl core::future::Future<Output = Result<R, EntityGone>> + Send + 'static
     where
         V: 'static,
-        F: FnOnce(&mut V, &mut crate::Context<'_, V>) -> R + Send + 'static,
+        F: FnOnce(&mut V, &mut crate::EntityCx<'_, V>) -> R + Send + 'static,
         R: Send + 'static,
     {
         // Snapshot the peer entity's identity BEFORE the `async move`
@@ -247,7 +247,7 @@ impl<T: 'static> AsyncContext<T> {
     /// future.
     ///
     /// Same trampoline shape as [`AsyncContext::update`] without a
-    /// `Context` (no mutation). The closure receives `&T`.
+    /// `EntityCx` (no mutation). The closure receives `&T`.
     ///
     /// # Errors
     ///
@@ -275,10 +275,10 @@ impl<T: 'static> AsyncContext<T> {
 ///
 /// Performs the entity-alive check + downcast inside the runtime
 /// borrow, then drops the borrow before invoking `f` (which itself may
-/// call `with_rt` re-entrantly via `Context` methods).
+/// call `with_rt` re-entrantly via `EntityCx` methods).
 fn run_update_on_main<U: 'static, R>(
     key: EntityKey,
-    f: impl FnOnce(&mut U, &mut crate::Context<'_, U>) -> R + Send + 'static,
+    f: impl FnOnce(&mut U, &mut crate::EntityCx<'_, U>) -> R + Send + 'static,
 ) -> Result<R, EntityGone> {
     // Liveness check. If the slot is gone, the entity (or its owner)
     // was disposed between spawn and dispatch.

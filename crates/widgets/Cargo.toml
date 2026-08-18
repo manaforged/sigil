@@ -1,0 +1,36 @@
+[package]
+name = "sigil-widgets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "First-party Sigil widgets — host-agnostic builders (no window, no GPU)."
+readme.workspace = true
+keywords = ["gui", "widgets", "ui"]
+categories = ["gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+
+[lib]
+
+[dependencies]
+sigil-animation-runtime = { workspace = true }
+sigil-bidi = { workspace = true }
+sigil-events = { workspace = true }
+sigil-kernel = { workspace = true }
+sigil-layout = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
+sigil-profile = { workspace = true }
+tiny-skia = "0.11"
+image = { workspace = true, optional = true }
+
+[features]
+image-decode = ["dep:image"]
+
+[dev-dependencies]
+sigil-hal = { workspace = true }
+
+[lints]
+workspace = true

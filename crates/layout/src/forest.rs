@@ -19,10 +19,12 @@
 //! Bodies for block / flex / parallel solvers do **not** live here —
 //! they land in P0.2 / P0.3 / P0.4 against this surface unchanged.
 
-#![allow(dead_code, clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate)]
 
 use std::cell::Cell;
+use std::hash::{Hash as _, Hasher as _};
 
+use ahash::AHasher;
 use sigil_kernel::{NodeId, TextContent};
 use sigil_style::TextStyle;
 use smallvec::SmallVec;
@@ -41,12 +43,6 @@ pub(crate) struct LocalId {
 }
 
 impl LocalId {
-    /// Construct an id (test/seed use only — real ids come from the
-    /// forest's allocator).
-    pub(crate) const fn raw(index: u32, tag: u32) -> Self {
-        Self { index, tag }
-    }
-
     /// Slot offset into the forest's slab.
     pub(crate) const fn slot(self) -> u32 {
         self.index
@@ -91,6 +87,7 @@ impl LayoutNode {
     }
 
     /// Children in insertion order.
+    #[cfg(test)]
     pub(crate) fn children(&self) -> &[LocalId] {
         &self.children
     }
@@ -234,6 +231,7 @@ impl LayoutForest {
     }
 
     /// True when no live nodes remain.
+    #[cfg(test)]
     pub(crate) fn empty(&self) -> bool {
         self.count() == 0
     }
@@ -437,8 +435,8 @@ impl LayoutForest {
         self.node(id).map(|_| NodeRef { forest: self, id })
     }
 
-    /// Capacity of the underlying slab — exposed for cache-warming
-    /// benches. Counts both live and freed slots.
+    /// Capacity of the underlying slab. Counts both live and freed slots.
+    #[cfg(test)]
     pub(crate) const fn slab(&self) -> usize {
         self.nodes.len()
     }
@@ -579,6 +577,7 @@ static DEFAULT_STYLE: StyleData = StyleData {
 };
 
 /// Phase tag for the engine's two-pass measure-then-arrange driver.
+#[cfg(test)]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum LayoutPass {
     /// Bottom-up natural-size pass.
@@ -618,6 +617,7 @@ impl AvailableSpace {
     }
 
     /// Both axes max-content (no upper bound).
+    #[cfg(test)]
     #[must_use]
     pub(crate) const fn unbounded() -> Self {
         Self {
@@ -707,6 +707,10 @@ impl<'a> MeasureScope<'a> {
         wrap_to: Option<f32>,
     ) -> Option<crate::style_data::Size<f32>> {
         let text = node.text()?;
+        let memo_key = text_memo_key(node.id(), known, wrap_to, text);
+        if let Some(hit) = text_memo_get(memo_key) {
+            return Some(hit);
+        }
         // A wrapping node measures against its containing block's content
         // width (explicit width first, else the `wrap_to` the solver
         // supplies), so the paragraph engine breaks lines there. A hugging
@@ -740,11 +744,86 @@ impl<'a> MeasureScope<'a> {
         } else {
             measured.width
         };
-        Some(crate::style_data::Size {
+        let out = crate::style_data::Size {
             width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
-        })
+        };
+        text_memo_store(memo_key, out);
+        Some(out)
     }
+}
+
+#[derive(Clone, Copy, Eq, Hash, PartialEq)]
+struct TextMemoKey {
+    index: u32,
+    tag: u32,
+    known_w: u32,
+    known_h: u32,
+    wrap: u32,
+    content: u64,
+}
+
+fn text_memo_key(
+    id: LocalId,
+    known: crate::style_data::Size<Option<f32>>,
+    wrap_to: Option<f32>,
+    text: &LayoutText,
+) -> TextMemoKey {
+    TextMemoKey {
+        index: id.slot(),
+        tag: id.era(),
+        known_w: known.width.map_or(u32::MAX, f32::to_bits),
+        known_h: known.height.map_or(u32::MAX, f32::to_bits),
+        wrap: wrap_to.map_or(u32::MAX, f32::to_bits),
+        content: text_memo_content(text),
+    }
+}
+
+fn text_memo_content(text: &LayoutText) -> u64 {
+    let mut hasher = AHasher::default();
+    match &text.content {
+        TextContent::Static(value) => value.hash(&mut hasher),
+        other => other.resolve().hash(&mut hasher),
+    }
+    text.wrap.hash(&mut hasher);
+    text.ellipsis.hash(&mut hasher);
+    if let Some(style) = &text.style {
+        crate::text_style::text_style_signature(style).hash(&mut hasher);
+    }
+    hasher.finish()
+}
+
+fn text_memo_get(key: TextMemoKey) -> Option<crate::style_data::Size<f32>> {
+    TEXT_MEMO.with(|cell| {
+        let memo = cell.borrow();
+        memo.get(&key).copied()
+    })
+}
+
+fn text_memo_store(key: TextMemoKey, size: crate::style_data::Size<f32>) {
+    TEXT_MEMO.with(|cell| {
+        let mut memo = cell.borrow_mut();
+        if memo.len() > 8_192 {
+            memo.clear();
+        }
+        memo.insert(key, size);
+    });
+}
+
+/// Drop the intra-solve text memo.
+///
+/// The memo is thread-local and keyed by `LocalId` + constraints +
+/// content. A new forest restarts `LocalId`s, so leftover entries
+/// would look like hits and skip `TextMeasure`. Call this when a new
+/// drive is created.
+pub(crate) fn text_memo_clear() {
+    TEXT_MEMO.with(|cell| cell.borrow_mut().clear());
+}
+
+thread_local! {
+    static TEXT_MEMO: std::cell::RefCell<
+        ahash::AHashMap<TextMemoKey, crate::style_data::Size<f32>>,
+    > = std::cell::RefCell::new(ahash::AHashMap::new());
 }
 
 const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> sigil_hal::Dim {

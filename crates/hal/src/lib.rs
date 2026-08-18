@@ -12,9 +12,9 @@
 //!
 //! # Status
 //!
-//! `Layout` became load-bearing when `sigil-layout` landed.
-//! The other trait shapes are still sketches until their first real
-//! adapters harden them.
+//! `Dim` and `Size` are the layout constraint types. Production
+//! layout is `sigil_layout::LayoutEngine`. Renderer, text, and
+//! shell traits have production adapters.
 
 #![no_std]
 #![deny(missing_docs)]
@@ -38,7 +38,7 @@ pub use events::{
     Shortcut, WindowEvent,
 };
 pub use geometry::{Color, PhysicalSize, Point, Rect};
-pub use layout::{Dim, Layout, Size};
+pub use layout::{Dim, Size};
 pub use renderer::Renderer;
 pub use scheduler::Scheduler;
 pub use shell::{Anchor, Shell, WindowOpts};

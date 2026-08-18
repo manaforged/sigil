@@ -73,6 +73,8 @@ fn mixed_face_paragraph() -> Paragraph {
         font_size: 16.0,
         font_weight: 400,
         line_height: sigil_style::TextLineHeight::FontSizeRelative(1.2),
+        letter_spacing_em: 0.0,
+        ..Default::default()
     };
     engine
         .layout_paragraph_styled("Hi \u{05E9}\u{05DC}\u{05D5}\u{05DD}", None, &style)

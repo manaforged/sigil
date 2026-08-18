@@ -1,32 +1,17 @@
-//! Focus handles + focus stack (G3 layer B / DR-046 §4).
+//! Focus handles + focus stack.
 //!
-//! A [`FocusHandle`] is a stable identity for "the focusable region of
-//! entity X." Entities mint one via [`crate::cx::Context::focus_handle`] and use
-//! it to (a) register action handlers ([`Context::on_action`]) and (b)
-//! push themselves onto the focus stack ([`Context::focus`]) so
-//! `dispatch_action` resolves handlers along the chain.
+//! A [`FocusHandle`] is a stable identity for a focusable region.
+//! Entities mint one via [`crate::cx::EntityCx::focus_handle`] and use
+//! it to register action handlers and to push onto the focus stack.
 //!
-//! See DR-046 §4. The focus stack itself lives on [`RuntimeState`] —
-//! this module owns the handle type and the allocator counter.
+//! The focus stack lives on [`RuntimeState`].
 //!
 //! [`RuntimeState`]: crate::runtime::RuntimeState
-
-// Focus handle plumbing (DR-046 G3 layer B) is consumed by
-// `runtime.rs` (focus_stack field) and `cx.rs` (focus / blur /
-// on_action / dispatch_action). During incremental landing the
-// dead-code lint fires before those consumers exist — scoped allow
-// keeps the focus module reviewable as a single unit.
-#![allow(
-    dead_code,
-    reason = "consumed by runtime focus_stack + Context::focus/blur/on_action in this G3 layer B landing"
-)]
 
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use sigil_actions::HandlerKey;
-
-use crate::runtime::EntityKey;
 
 /// Process-wide monotonic counter for focus handle ids. `1`-based so
 /// `0` stays reserved as a sentinel.
@@ -55,28 +40,22 @@ impl From<FocusHandleId> for HandlerKey {
 
 /// A focus handle.
 ///
-/// Minted by [`crate::cx::Context::focus_handle`]; carries the `EntityKey` of
-/// the owning entity so the owner-cascade cleanup can evict the
-/// handle from the focus stack on entity disposal.
+/// Minted by [`crate::cx::EntityCx::focus_handle`]. Drop of the minting
+/// owner evicts the id from the focus stack.
 ///
-/// `!Send + !Sync` — the runtime state is thread-local and a handle's
-/// validity is tied to its entity owner on this thread.
+/// `!Send + !Sync` — the focus stack lives in thread-local storage.
 #[derive(Debug)]
 pub struct FocusHandle {
     pub(crate) id: FocusHandleId,
-    pub(crate) owner: EntityKey,
-    // !Send + !Sync — the focus stack and the owning entity arena
-    // both live in thread-local storage.
     _not_send: PhantomData<*const ()>,
 }
 
 impl FocusHandle {
-    /// Internal constructor — wrapped key + minted id.
-    pub(crate) fn new(owner: EntityKey) -> Self {
+    /// Mint a unique handle id.
+    pub(crate) fn new() -> Self {
         let raw = FOCUS_HANDLE_COUNTER.fetch_add(1, Ordering::Relaxed);
         Self {
             id: FocusHandleId(raw),
-            owner,
             _not_send: PhantomData,
         }
     }
@@ -85,12 +64,5 @@ impl FocusHandle {
     #[must_use]
     pub const fn id(&self) -> FocusHandleId {
         self.id
-    }
-
-    /// The entity that owns this handle. Exposed for the cleanup
-    /// integration test.
-    #[must_use]
-    pub(crate) const fn owner(&self) -> EntityKey {
-        self.owner
     }
 }

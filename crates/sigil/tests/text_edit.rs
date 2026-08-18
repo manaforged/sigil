@@ -23,11 +23,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel::{NodeId, NodeType};
 use sigil_layout::prelude::Dimension;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 #[test]
@@ -94,6 +94,35 @@ fn widget_layout_ext_overrides_reach_root_node() {
             .clone();
         assert_eq!(style.data().size.width, Dimension::Px(200.0));
         assert_eq!(style.data().size.height, Dimension::Px(150.0));
+    });
+}
+
+#[test]
+fn inner_pane_fills_the_frame() {
+    with_cx("text-edit-inner-fill", |cx| {
+        let root = cx.add(
+            text_edit(signal(String::from("notes")))
+                .width(800.0)
+                .height(132.0),
+        );
+        let inner = *cx
+            .get(root)
+            .expect("root")
+            .children()
+            .first()
+            .expect("inner pane");
+        let style = cx
+            .get(inner)
+            .expect("inner node")
+            .get_extension::<LayoutStyle>()
+            .expect("inner has LayoutStyle")
+            .clone();
+        assert_eq!(
+            style.data().size.width,
+            Dimension::Fill,
+            "inner width must follow the frame, not a leftover chrome strip",
+        );
+        assert_eq!(style.data().size.height, Dimension::Fill);
     });
 }
 

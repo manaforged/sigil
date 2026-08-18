@@ -337,10 +337,12 @@ impl Default for Theme {
 
 impl Theme {
     pub(crate) fn resolve_color(&self, token: &'static str) -> Rgba8 {
-        // Explicit theme tokens win over the built-in defaults and scale steps, so a
-        // preset (e.g. `console_dark`) can rebind `accent` / `border` to a target design
-        // system's exact values. Default/dark themes carry an empty token map, so their
-        // resolution is unchanged.
+        // Runtime tokens (theme.toml / register_token) win, then compile-time
+        // `tokens`, then built-in / scale names. A theme file can rebind
+        // `accent` / `border` / `surface` the same way `console_dark` does.
+        if let Some(ThemeValue::Color(color)) = self.runtime_tokens.get(token).copied() {
+            return color;
+        }
         if let Some(ThemeValue::Color(color)) = self.tokens.get(token).copied() {
             return color;
         }
@@ -350,27 +352,56 @@ impl Theme {
         if let Some(color) = self.scale_step_color(token) {
             return color;
         }
-        if let Some(ThemeValue::Color(color)) = self.runtime_tokens.get(token).copied() {
-            return color;
-        }
         self.missing_color(token)
     }
 
     /// Register a runtime token. Overlays a same-named compile-time
-    /// `phf` token. Returns the previously-bound value, if any.
+    /// `phf` token and any built-in of the same name. Returns the
+    /// previously-bound value, if any.
     pub fn register_token(
         &mut self,
         name: impl Into<String>,
         value: ThemeValue,
     ) -> Option<ThemeValue> {
-        self.runtime_tokens.insert(name.into(), value)
+        let name = name.into();
+        if let ThemeValue::Color(color) = value {
+            self.sync_runtime_color(&name, color);
+        }
+        self.runtime_tokens.insert(name, value)
     }
 
     /// Builder-style alternative to [`Theme::register_token`].
     #[must_use]
     pub fn with_token(mut self, name: impl Into<String>, value: ThemeValue) -> Self {
-        self.runtime_tokens.insert(name.into(), value);
+        self.register_token(name, value);
         self
+    }
+
+    /// Keep flat fields and the accent scale in lockstep with a
+    /// same-named runtime color so `Tone::Primary` and `theme.accent`
+    /// follow theme.toml.
+    fn sync_runtime_color(&mut self, name: &str, color: Rgba8) {
+        match name {
+            "accent" => {
+                self.accent = color;
+                self.accent_scale = ramp_accent(self.surface, color);
+            }
+            "accent-hover" => {
+                self.accent_hover = color;
+                self.accent_scale.steps[9] = color;
+            }
+            "on-accent" => {
+                self.on_accent = color;
+                self.accent_scale.on_solid = color;
+            }
+            "surface" => self.surface = color,
+            "surface-hover" => self.surface_hover = color,
+            "surface-pressed" => self.surface_pressed = color,
+            "surface-pressed-strong" => self.surface_pressed_strong = color,
+            "on-surface" => self.on_surface = color,
+            "border" => self.border = color,
+            _ => {}
+        }
     }
 
     fn built_in_color(&self, token: &str) -> Option<Rgba8> {
@@ -706,6 +737,47 @@ fn shift(c: Rgba8, delta: i16) -> Rgba8 {
         b: nudge(c.b),
         a: c.a,
     }
+}
+
+/// 12-step accent scale from a theme-file solid. Steps 1–8 climb from
+/// `surface` to the solid; 9 is the solid; 10–12 lift toward white.
+fn ramp_accent(surface: Rgba8, solid: Rgba8) -> crate::scale::ColorScale {
+    let mut steps = [solid; 12];
+    for (step, t) in steps.iter_mut().zip(1..=9u8).take(8) {
+        *step = alpha_mix(surface, solid, f32::from(t) / 9.0);
+    }
+    steps[8] = solid;
+    steps[9] = alpha_mix(
+        solid,
+        Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
+        0.18,
+    );
+    steps[10] = alpha_mix(
+        solid,
+        Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
+        0.36,
+    );
+    steps[11] = alpha_mix(
+        solid,
+        Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 255,
+        },
+        0.55,
+    );
+    crate::scale::ColorScale::from_steps(steps).with_on_solid(surface)
 }
 
 /// Linear-RGB lerp between `a` and `b` using `t ∈ [0, 1]` as the

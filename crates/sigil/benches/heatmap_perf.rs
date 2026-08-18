@@ -14,6 +14,7 @@ use sigil_app as _;
 use sigil_bidi as _;
 use sigil_events as _;
 use sigil_hal as _;
+use sigil_profile as _;
 use sigil_renderer as _;
 use sigil_tasks as _;
 use std::hint::black_box;
@@ -28,7 +29,6 @@ use sigil_style::Rgba8;
 // Silence unused-crate-dependencies for dev-only crates the sigil
 // facade pulls in.
 use sigil_layout as _;
-use tiny_skia as _;
 
 const fn cell_color(x: usize, y: usize) -> Rgba8 {
     Rgba8 {

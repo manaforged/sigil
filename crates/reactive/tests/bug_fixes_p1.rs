@@ -108,6 +108,11 @@ fn signal_set_with_dropping_t_does_not_deadlock_runtime() {
                 self.touch.set(self.touch.peek() + 1);
             }
         }
+        impl PartialEq for Dropper {
+            fn eq(&self, other: &Self) -> bool {
+                Rc::ptr_eq(&self.witness, &other.witness)
+            }
+        }
 
         let witness = Rc::new(Cell::new(false));
         let touch = signal(0_i32);

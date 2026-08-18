@@ -28,6 +28,7 @@ fn install_fonts() {
         sans: Some((Arc::new(sans), 0)),
         mono: None,
         icon: Some((Arc::new(hebrew), 0)),
+        display: None,
     });
 }
 
@@ -81,23 +82,25 @@ fn card(theme: sigil_style::Theme, inner: impl IntoNode + 'static) -> NodeBuilde
 #[test]
 #[ignore = "catalog capture — run explicitly"]
 fn catalog() {
+    catalog_controls();
+    catalog_inputs();
+}
+
+/// Buttons, chips, dropdown, gauge, progress, radio.
+fn catalog_controls() {
     shot("button", [400, 64], |cx, t| {
         cx.add(card(t, button("Save changes")))
     });
     shot("button_primary", [400, 64], |cx, t| {
         cx.add(card(t, button("Save changes").primary()))
     });
-    shot("checkbox", [400, 64], |cx, t| {
-        let checked = signal(true);
-        cx.add(card(t, checkbox(checked).label("Enable notifications")))
-    });
     shot("chips", [400, 64], |cx, t| {
         let row = container()
             .layout(LayoutStyle::flex_row().gap(8.0))
-            .child(chip("SYNCED", ChipTone::Success))
-            .child(chip("2 WARNINGS", ChipTone::Warn))
-            .child(chip("FAILED", ChipTone::Error))
-            .child(chip("v0.9.3", ChipTone::Neutral));
+            .child(chip("SYNCED", Tone::Success))
+            .child(chip("2 WARNINGS", Tone::Warn))
+            .child(chip("FAILED", Tone::Error))
+            .child(chip("v0.9.3", Tone::Neutral));
         cx.add(card(t, row))
     });
     shot("dropdown", [400, 68], |cx, t| {
@@ -129,6 +132,14 @@ fn catalog() {
                 .option("nightly", "Nightly"),
         ))
     });
+}
+
+/// Checkbox, slider, text field, toggle, tabs.
+fn catalog_inputs() {
+    shot("checkbox", [400, 64], |cx, t| {
+        let checked = signal(true);
+        cx.add(card(t, checkbox(checked).label("Enable notifications")))
+    });
     shot("slider", [400, 56], |cx, t| {
         let v = signal(65.0_f32);
         cx.add(card(t, slider(v, 0.0..=100.0)))
@@ -150,7 +161,11 @@ fn catalog() {
             t,
             tabs(
                 active,
-                vec!["General".to_owned(), "Appearance".to_owned(), "Keymap".to_owned()],
+                vec![
+                    "General".to_owned(),
+                    "Appearance".to_owned(),
+                    "Keymap".to_owned(),
+                ],
             ),
         ))
     });

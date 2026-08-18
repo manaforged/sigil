@@ -96,7 +96,7 @@ fn styled_text_typography_emits_in_scene() {
     let scene = emit_scene(&cx, root);
     let text = find_text(&scene, "Large").unwrap();
 
-    assert_eq!(text.run.style.font_size, 20.0);
+    assert_eq!(text.run.style.font_size, 18.0);
     assert_eq!(text.run.style.font_weight, 700);
     assert_eq!(text.run.style.line_height, TextLineHeight::Absolute(32.0));
 }
@@ -256,7 +256,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let scene = emit_scene(&cx, root);
     let run = find_text(&scene, "Doom").expect("child glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 18.0,
+        run.run.style.font_size, 16.0,
         "a bare text child must inherit the ancestor's text-lg (DR-056)"
     );
     assert_eq!(run.run.style.font_weight, 700, "font-bold must inherit");
@@ -283,7 +283,7 @@ fn own_font_class_beats_inherited_typography() {
     let scene = emit_scene(&cx, root);
     let run = find_text(&scene, "Own").expect("child glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 12.0,
+        run.run.style.font_size, 11.0,
         "a text node's own text-* size must beat the inherited one"
     );
     assert_eq!(
@@ -315,7 +315,7 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let scene = emit_scene(&cx, root);
     let run = find_text(&scene, "Deferred").expect("deferred glyph run emitted");
     assert_eq!(
-        run.run.style.font_size, 18.0,
+        run.run.style.font_size, 16.0,
         "top-layer deferral must not drop the inherited font size"
     );
     assert_eq!(run.run.style.font_weight, 700);

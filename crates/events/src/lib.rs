@@ -2,7 +2,7 @@
 //!
 //! `sigil-events` sits above shell delivery and below widgets. It
 //! receives translated [`sigil_hal::ShellEvent`] values, finds the
-//! target node from layout geometry, runs capture/target/bubble
+//! target node from last-frame layout boxes, runs capture/target/bubble
 //! handlers, and maintains keyboard focus.
 
 #![allow(clippy::redundant_pub_crate)]

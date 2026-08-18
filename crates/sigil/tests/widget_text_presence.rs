@@ -31,6 +31,7 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
@@ -45,6 +46,7 @@ impl TextMeasure for ProportionalText {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
+            TextContent::Compute(build) => build().len(),
         };
         #[allow(clippy::cast_precision_loss)]
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)

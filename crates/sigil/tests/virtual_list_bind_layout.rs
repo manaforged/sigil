@@ -19,14 +19,13 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 use sigil::prelude::*;
-use sigil::widgets::virtual_list;
 use sigil_renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
@@ -58,13 +57,10 @@ fn items_bind_shrink_still_paints_rows() {
             "zeta".to_string(),
         ]);
         let root = cx.add(
-            virtual_list(Vec::<String>::new(), |_, s: &String| {
-                container().child(text(s.clone()))
-            })
-            .items_bind(items)
-            .row_height(20.0)
-            .viewport_height(200.0)
-            .viewport_width(300.0),
+            virtual_list(items, |_, s: &String| container().child(text(s.clone())))
+                .row_height(20.0)
+                .viewport_height(200.0)
+                .viewport_width(300.0),
         );
 
         // Persistent engine across frames, like the app loop.
@@ -118,29 +114,26 @@ fn items_bind_via_effect_chain_still_paints_rows() {
         });
 
         let root = cx.add(
-            virtual_list(Vec::<String>::new(), |_, s: &String| {
-                container().child(text(s.clone()))
-            })
-            .items_bind(rows)
-            .row_height(20.0)
-            .viewport_height(200.0)
-            .viewport_width(300.0),
+            virtual_list(rows, |_, s: &String| container().child(text(s.clone())))
+                .row_height(20.0)
+                .viewport_height(200.0)
+                .viewport_width(300.0),
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
-        // Windowed (5/5 Wave 2): 200px viewport / 20px rows → 11 of the
-        // 40 unfiltered rows materialize.
+        // 10 in view + 10 overscan below of the 40 unfiltered rows.
         assert_eq!(
             glyph_runs(&cx, root),
-            11,
+            20,
             "window of unfiltered rows paints"
         );
 
         // Per-keystroke narrowing, layout between keystrokes like frames.
-        for (typed, expect) in [("t", 11_usize), ("to", 11), ("tok", 11), ("token1", 11)] {
+        // "token1" matches 11 rows (token1, token10..token19); all fit.
+        for (typed, expect) in [("t", 20_usize), ("to", 20), ("tok", 20), ("token1", 11)] {
             search.set(typed.to_string());
             layout
                 .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -178,13 +171,10 @@ fn items_bind_shrink_paints_under_frame_phases() {
         });
 
         let root = cx.add(
-            virtual_list(Vec::<String>::new(), |_, s: &String| {
-                container().child(text(s.clone()))
-            })
-            .items_bind(rows)
-            .row_height(20.0)
-            .viewport_height(200.0)
-            .viewport_width(300.0),
+            virtual_list(rows, |_, s: &String| container().child(text(s.clone())))
+                .row_height(20.0)
+                .viewport_height(200.0)
+                .viewport_width(300.0),
         );
 
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
@@ -203,9 +193,9 @@ fn items_bind_shrink_paints_under_frame_phases() {
             runs
         };
 
-        // Windowed: 11 of 40 unfiltered rows materialize per frame.
-        assert_eq!(frame(&mut cx, None), 11, "unfiltered frame paints window");
-        assert_eq!(frame(&mut cx, Some("t")), 11, "'t' frame paints window");
+        // 10 in view + 10 overscan. "token1" matches 11 rows; all fit.
+        assert_eq!(frame(&mut cx, None), 20, "unfiltered frame paints window");
+        assert_eq!(frame(&mut cx, Some("t")), 20, "'t' frame paints window");
         assert_eq!(frame(&mut cx, Some("token1")), 11, "'token1' frame paints");
         assert_eq!(frame(&mut cx, None), 11, "idle follow-up frame keeps rows");
     });
@@ -247,13 +237,12 @@ fn items_bind_app_shape_batched_keystrokes() {
         });
 
         let root = cx.add(
-            virtual_list(Vec::<String>::new(), |i, s: &String| {
+            virtual_list(rows, |i, s: &String| {
                 container()
                     .layout(LayoutStyle::flex_row().fixed_size(900.0, 22.0).gap(8.0))
                     .child(text(format!("{i}")).class("text-on-surface text-xs"))
                     .child(text(s.clone()).class("text-on-surface text-xs font-mono"))
             })
-            .items_bind(rows)
             .row_height(22.0)
             .viewport_height(330.0)
             .viewport_width(952.0)
@@ -277,8 +266,8 @@ fn items_bind_app_shape_batched_keystrokes() {
             runs
         };
 
-        // Windowed: 330px / 22px rows → 16 rows × 2 texts = 32 runs.
-        assert_eq!(frame(&mut cx, &[]), 16 * 2, "window of all rows paints");
+        // 15 in view + 15 overscan × 2 texts.
+        assert_eq!(frame(&mut cx, &[]), 30 * 2, "window of all rows paints");
         let shrunk = frame(&mut cx, &["t", "to", "tok", "toke", "token"]);
         assert_eq!(shrunk, 8 * 2, "batched shrink still paints rows");
         assert_eq!(frame(&mut cx, &[]), 8 * 2, "idle frame keeps rows");
@@ -333,13 +322,10 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             );
         }
 
-        let list = virtual_list(Vec::<String>::new(), |_, s: &String| {
-            container().child(text(s.clone()))
-        })
-        .items_bind(rows)
-        .row_height(20.0)
-        .viewport_height(300.0)
-        .viewport_width(400.0);
+        let list = virtual_list(rows, |_, s: &String| container().child(text(s.clone())))
+            .row_height(20.0)
+            .viewport_height(300.0)
+            .viewport_width(400.0);
 
         let root = cx.add(
             container()
@@ -365,11 +351,10 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         };
 
         let ballast_runs = 600;
-        // Windowed: 300px viewport / 20px rows → 16 of the 30 unfiltered
-        // rows materialize next to the ballast.
+        // 15 in view + 15 overscan covers all 30 unfiltered rows.
         assert_eq!(
             frame(&mut cx, None),
-            ballast_runs + 16,
+            ballast_runs + 30,
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));

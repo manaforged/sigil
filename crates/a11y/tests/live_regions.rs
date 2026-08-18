@@ -65,7 +65,7 @@ fn modal_open_announces_polite_in_accesskit_tree() {
     Runtime::scope("phase-1-3c::modal-polite-accesskit", || {
         let mut cx = Cx::new_root();
         let visible = signal(false);
-        let _ = cx.add(modal().title("File saved").show(visible));
+        let _ = cx.add(modal(visible).title("File saved"));
 
         // Rising edge: false → true. The modal's effect queues a polite
         // announcement carrying the dialog title; the host drain copies

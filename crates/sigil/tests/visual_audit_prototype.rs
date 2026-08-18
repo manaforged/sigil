@@ -2,7 +2,12 @@
 //! "does it look amateur" review. Renders flagship widgets across
 //! interaction states and saves PNGs to `tests/output/audit/` for
 //! pixel analysis. Not a golden. Delete after the audit lands.
-#![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used, clippy::print_stdout)]
+#![allow(
+    missing_docs,
+    unused_crate_dependencies,
+    clippy::unwrap_used,
+    clippy::print_stdout
+)]
 
 use std::fs;
 
@@ -17,11 +22,11 @@ use sigil_events as _;
 use sigil_hal as _;
 use sigil_kernel as _;
 use sigil_layout as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
-use tiny_skia as _;
 use wgpu as _;
 
 mod golden_support;
@@ -66,9 +71,9 @@ fn audit_row_defaults() {
                     .class("bg-surface")
                     .child(button("Save").primary())
                     .child(button("Cancel"))
-                    .child(chip("Success", ChipTone::Success))
-                    .child(chip("Warn", ChipTone::Warn))
-                    .child(chip("Error", ChipTone::Error))
+                    .child(chip("Success", Tone::Success))
+                    .child(chip("Warn", Tone::Warn))
+                    .child(chip("Error", Tone::Error))
                     .child(dropdown(dd, vec!["One".into(), "Two".into()])),
             )
         },
@@ -91,16 +96,12 @@ fn audit_button_states() {
     ] {
         let tag = mode.tag();
         let mode_clone = mode;
-        render(
-            &format!("button_primary_{tag}"),
-            mode_clone,
-            |cx| cx.add(button("Save").primary()),
-        );
-        render(
-            &format!("button_soft_{tag}"),
-            mode_clone,
-            |cx| cx.add(button("Cancel")),
-        );
+        render(&format!("button_primary_{tag}"), mode_clone, |cx| {
+            cx.add(button("Save").primary())
+        });
+        render(&format!("button_soft_{tag}"), mode_clone, |cx| {
+            cx.add(button("Cancel"))
+        });
     }
 }
 

@@ -12,17 +12,10 @@
 //! `Shaper` is `Send + Sync` — skrifa lookups are read-only against
 //! owned font data, so the engine can shape across rayon threads
 //! without a pool.
-//!
-//! G1.3 ships the implementation + tests but the engine layer (G1.4)
-//! still consumes the Parley path, so every type here is technically
-//! dead from the lib's point of view — see the hygiene-exception
-//! comment below.
 
-// Hygiene exception: until G1.4 rewires engine.rs through this module,
-// every public-to-crate item here is unreferenced from the lib graph.
 // `redundant_pub_crate` fires because shaper is a `pub(crate) mod`;
 // `missing_const_for_fn` fires on accessors that could be const.
-#![allow(dead_code, clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
+#![allow(clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -265,13 +258,9 @@ pub(crate) struct TextSegment<'a> {
 
 impl<'a> TextSegment<'a> {
     /// Construct an LTR segment over `text`.
+    #[cfg(test)]
     pub(crate) const fn ltr(text: &'a str) -> Self {
         Self { text, level: 0 }
-    }
-
-    /// Construct an RTL segment over `text` (bidi level 1).
-    pub(crate) const fn rtl(text: &'a str) -> Self {
-        Self { text, level: 1 }
     }
 
     /// Construct a segment at an explicit UAX #9 embedding level.
@@ -287,8 +276,8 @@ impl<'a> TextSegment<'a> {
 pub(crate) struct Style {
     pub(crate) size_px: f32,
     pub(crate) weight: u16,
-    pub(crate) italic: bool,
     pub(crate) features: SmallVec<[FeatureTag; 4]>,
+    pub(crate) letter_spacing_em: f32,
 }
 
 impl Style {
@@ -297,8 +286,8 @@ impl Style {
         Self {
             size_px,
             weight: 400,
-            italic: false,
             features: SmallVec::new(),
+            letter_spacing_em: 0.0,
         }
     }
 }
@@ -485,6 +474,7 @@ fn emit_grapheme(
 /// advance for Latin, CJK, and emoji uniformly — but it pins the
 /// detection contract so the followup atlas-routing dispatch has a
 /// stable surface.
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CodepointClass {
     /// Standard Latin / Greek / Cyrillic etc.
@@ -498,6 +488,7 @@ pub(crate) enum CodepointClass {
 }
 
 /// Classify the lead codepoint of a grapheme.
+#[cfg(test)]
 pub(crate) fn classify(ch: char) -> CodepointClass {
     let cp = ch as u32;
     if matches!(cp, 0x3000..=0x303F) {
@@ -519,6 +510,7 @@ pub(crate) fn classify(ch: char) -> CodepointClass {
 /// blocks, which is what the test corpus needs. G1.5 can swap in
 /// the full property table when the atlas-routing surface needs
 /// stricter coverage.
+#[cfg(test)]
 const fn is_emoji(cp: u32) -> bool {
     matches!(
         cp,

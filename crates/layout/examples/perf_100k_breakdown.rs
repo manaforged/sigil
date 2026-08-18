@@ -15,6 +15,7 @@ use ahash as _;
 use allocation_counter as _;
 use criterion as _;
 use rayon as _;
+use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use slotmap as _;
@@ -33,6 +34,7 @@ impl TextMeasure for StubMeasure {
         let chars = match source {
             TextContent::Static(v) => v.chars().count() as f32,
             TextContent::Reactive(_) => 0.0,
+            TextContent::Compute(build) => build().chars().count() as f32,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

@@ -1,7 +1,7 @@
 //! `LocalTaskExecutor` — sibling of [`crate::TaskExecutor`] for `!Send`
 //! futures (DR-048 §5 amendment, W4.99.B3).
 //!
-//! `Context::spawn` requires `F: Send + 'static` because the producer
+//! `EntityCx::spawn` requires `F: Send + 'static` because the producer
 //! executor (Tokio multi-thread) moves the boxed future across worker
 //! threads. Some authoring patterns — holding a `Rc<RefCell<_>>` across
 //! `.await`, or returning a `!Send` value from the future body —

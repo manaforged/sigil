@@ -347,3 +347,49 @@ fn scroll_stop_propagation_halts_bubble() {
 
     assert_eq!(&*order.borrow(), &["inner"]);
 }
+
+#[test]
+fn pointer_hits_last_frame_boxes() {
+    let old_hit = Rc::new(Cell::new(false));
+    let mut cx = Cx::new_root();
+    let child_hit = Rc::clone(&old_hit);
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(300.0, 300.0))
+            .child(
+                container()
+                    .layout(abs_rect(0.0, 0.0, 80.0, 80.0))
+                    .pointer_down(move |_| child_hit.set(true)),
+            ),
+    );
+    let child = cx.nth_child(root, 0).expect("child");
+    let mut layout = compute_layout(&mut cx, root, 300.0, 300.0);
+    let mut router = EventRouter::new();
+
+    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+    assert!(old_hit.get(), "first frame box at origin is hittable");
+    old_hit.set(false);
+
+    if let Some(style) = cx
+        .get_mut(child)
+        .and_then(|node| node.get_extension_mut::<LayoutStyle>())
+    {
+        *style = abs_rect(200.0, 200.0, 80.0, 80.0);
+    }
+    cx.mark_mutated();
+
+    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+    assert!(old_hit.get(), "pointer still hits last frame's box");
+    old_hit.set(false);
+    route_event(&mut router, &mut cx, &layout, pointer_down(210.0, 210.0));
+    assert!(!old_hit.get(), "this frame's intent is not hittable yet");
+
+    layout
+        .compute(&mut cx, root, Size::fixed(300.0, 300.0))
+        .expect("recompute");
+    route_event(&mut router, &mut cx, &layout, pointer_down(210.0, 210.0));
+    assert!(old_hit.get(), "after compute, new box is hittable");
+    old_hit.set(false);
+    route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
+    assert!(!old_hit.get(), "after compute, last frame's box is gone");
+}

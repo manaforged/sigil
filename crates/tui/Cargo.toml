@@ -1,0 +1,31 @@
+[package]
+name = "sigil-tui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Terminal host for Sigil — same Host, widgets, and events as desktop."
+readme = "README.md"
+keywords = ["tui", "terminal", "ui"]
+categories = ["command-line-interface", "gui"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+
+[lib]
+
+[dependencies]
+crossterm = "0.28"
+sigil-animation-runtime = { workspace = true }
+sigil-app = { workspace = true }
+sigil-events = { workspace = true }
+sigil-hal = { workspace = true }
+sigil-reactive = { workspace = true }
+sigil-style = { workspace = true }
+sigil-widgets = { workspace = true }
+
+[dev-dependencies]
+sigil-kernel = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,10 +1,9 @@
-//! `AnimationConfig` — the type the [`AnimationRegistry`] returns. Names
-//! a concrete spring shape or a duration tween.
+//! `AnimationConfig` — a spring shape or a duration tween.
 
 use sigil_animation::{Easing, SpringPreset};
 
 /// Either a spring preset or a duration tween. Re-targetable after
-/// construction. Returned by [`crate::AnimationRegistry::get`].
+/// construction. Returned by [`crate::config`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimationConfig {
     /// Hooke's-law spring with a named preset.

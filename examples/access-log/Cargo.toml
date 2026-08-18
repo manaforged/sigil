@@ -1,0 +1,36 @@
+[package]
+name = "access-log"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "10M-line access-log viewer. Same book in Sigil and GPUI 0.2.2."
+
+[lib]
+name = "access_log"
+path = "src/book.rs"
+
+[[bin]]
+name = "access-log-sigil"
+path = "src/bin/sigil.rs"
+required-features = ["sigil-window"]
+
+[[bin]]
+name = "access-log-gpui"
+path = "src/bin/gpui.rs"
+required-features = ["gpui-window"]
+
+[dependencies]
+sigil-ui = { workspace = true, optional = true }
+gpui = { version = "0.2.2", optional = true }
+
+[features]
+default = ["sigil-window"]
+sigil-window = ["dep:sigil-ui"]
+gpui-window = ["dep:gpui"]
+
+[lints]
+workspace = true

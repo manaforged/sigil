@@ -15,6 +15,17 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APAC
 [lib]
 
 [features]
+default = ["desktop"]
+# winit + wgpu launch, native dialogs/menu/tray, Slug text.
+desktop = [
+    "dep:sigil-renderer",
+    "dep:sigil-shell",
+    "dep:sigil-text",
+    "dep:rfd",
+    "dep:muda",
+    "dep:tray-icon",
+    "dep:raw-window-handle",
+]
 # Test seam: exposes `dialog::mock` so downstream apps can inject canned
 # file-dialog responses in their own tests without opening a native picker.
 # Sigil's own tests see the mock via `cfg(test)` without enabling this.
@@ -28,10 +39,11 @@ sigil-events = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-layout = { workspace = true }
 sigil-reactive = { workspace = true }
-sigil-renderer = { workspace = true }
-sigil-shell = { workspace = true }
+sigil-renderer = { workspace = true, optional = true }
+sigil-shell = { workspace = true, optional = true }
 sigil-style = { workspace = true }
-sigil-text = { workspace = true }
+sigil-text = { workspace = true, optional = true }
+sigil-profile = { workspace = true }
 tracing = { workspace = true }
 # W5-A11Y (DR-050 §1) — production AccessKit wiring in the frame loop.
 sigil-a11y = { workspace = true }
@@ -43,13 +55,13 @@ notify = { workspace = true }
 toml = { workspace = true }
 # Native file dialogs (open / save / folder). Uses the OS-native picker on
 # macOS + Windows (the primary targets); Linux uses GTK3 by default.
-rfd = "0.15"
+rfd = { version = "0.15", optional = true }
 # Native menu bar (muda) + system tray (tray-icon). Native on macOS/Windows.
-muda = "0.17"
-tray-icon = "0.21"
+muda = { version = "0.17", optional = true }
+tray-icon = { version = "0.21", optional = true }
 # Extract the Win32 hwnd for muda's init_for_hwnd. The enum carries all
 # variants on every OS, so the match compile-checks cross-platform.
-raw-window-handle = "0.6"
+raw-window-handle = { version = "0.6", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature

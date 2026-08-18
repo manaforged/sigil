@@ -16,11 +16,14 @@
 
 use sigil_kernel::TextContent;
 use sigil_style::TextStyle;
+use smallvec::SmallVec;
 
 use crate::block::BlockSolver;
 use crate::error::LayoutError;
 use crate::flex::FlexSolver;
-use crate::forest::{AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope};
+use crate::forest::{
+    AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope, text_memo_clear,
+};
 use crate::measure::TextMeasure;
 use crate::style_data::{Display, Overflow, Size, StyleData};
 
@@ -69,6 +72,7 @@ impl LayoutDrive {
     /// Build a driver around a text measurer.
     #[must_use]
     pub fn new(text: Box<dyn TextMeasure>) -> Self {
+        text_memo_clear();
         Self {
             forest: LayoutForest::new(),
             text,
@@ -152,7 +156,7 @@ impl LayoutDrive {
         parent: NodeHandle,
         children: &[NodeHandle],
     ) -> Result<(), LayoutError> {
-        let local = children.iter().map(|child| child.0).collect::<Vec<_>>();
+        let local: SmallVec<[_; 8]> = children.iter().map(|child| child.0).collect();
         self.forest.set_children(parent.0, &local)
     }
 
@@ -250,6 +254,18 @@ impl LayoutDrive {
             .refer(root_id)
             .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
         let display = handle.style().display;
+        if matches!(display, Display::None) {
+            MeasureScope::new(&self.forest, self.text.as_ref(), avail).write(
+                root_id,
+                ComputedBox {
+                    x: 0.0,
+                    y: 0.0,
+                    w: 0.0,
+                    h: 0.0,
+                },
+            );
+            return Ok(());
+        }
         let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
         match display {
             Display::Flex => {

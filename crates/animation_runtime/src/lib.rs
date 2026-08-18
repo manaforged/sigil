@@ -12,8 +12,8 @@
 //! - [`Animator`] — owns a [`Signal<f32>`](sigil_reactive::Signal) and
 //!   drives it via a wrapped [`Spring`](sigil_animation::Spring) or
 //!   [`Tween`](sigil_animation::Tween).
-//! - [`AnimationRegistry`] — `phf`-backed lookup from
-//!   [`sigil_style::TransitionId`] to [`AnimationConfig`].
+//! - [`config`] — lookup from [`sigil_style::TransitionId`] to
+//!   [`AnimationConfig`].
 //! - [`tick`] — per-animation-frame driver. Apps call during Effect,
 //!   before layout. Walks the moving animator set and writes new values;
 //!   settled handles stay registered so a later target can re-arm them.
@@ -45,7 +45,7 @@ pub use binding_animate::{
 pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
 pub use config::AnimationConfig;
 pub use motion::MotionPrefs;
-pub use registry::{AnimationRegistry, presets};
+pub use registry::{config, presets};
 // W5.1b: `NumericAtomKind` moved into `sigil-style` for the
 // `AnimatorOverlay` trait surface; re-export keeps the prior import
 // path stable for crates depending on this runtime.

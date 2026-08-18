@@ -152,15 +152,23 @@ fn request_adapter_and_device(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,
 ) -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
-    let Ok(adapter) = instance
+    let adapter = match instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: surface,
             force_fallback_adapter: false,
         })
         .block_on()
-    else {
-        return Err(RendererError::NoAdapter);
+    {
+        Ok(adapter) => adapter,
+        Err(_) => instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::LowPower,
+                compatible_surface: surface,
+                force_fallback_adapter: true,
+            })
+            .block_on()
+            .map_err(|_| RendererError::NoAdapter)?,
     };
 
     let (device, queue) = adapter
