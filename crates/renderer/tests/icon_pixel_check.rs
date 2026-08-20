@@ -49,7 +49,6 @@ use smallvec as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
-use zeno as _;
 
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
 

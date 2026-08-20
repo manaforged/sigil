@@ -4,7 +4,7 @@
 //! DPI scales (1.0 / 1.25 / 1.5 / 2.0) through
 //! [`render_widget_to_png_scaled`] using the REAL `sigil_app::DefaultTextMeasure`
 //! (an `OwnedTextEngine`-backed measurer, not the deterministic stub), per
-//! `docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 0.
+//! the internal text-quality / gap-closure plan, Wave 0.
 //!
 //! IMPORTANT — these goldens capture TODAY'S baseline, not a corrected
 //! pipeline. `crates/renderer/src/offscreen.rs:97,142` hardcode
@@ -17,12 +17,11 @@
 //! (real `scale` threaded through `ScreenSubmission` + both offscreen
 //! walkers) is expected to visibly change. Do not "fix" the renderer here
 //! to make these look sharp — that is Wave 1's job, and Wave 1's gate is a
-//! deliberate re-bake of this exact set with visual-review sign-off (see
-//! the plan's Wave 1 section).
+//! deliberate re-bake of this exact set with visual-review sign-off.
 //!
 //! Run with `SIGIL_REGEN_GOLDENS=1` to bake initially, then re-run to
 //! verify green. Always with `--test-threads=1` — the wgpu device-init
-//! race under parallel test threads (docs/followups.md) crashes this
+//! race under parallel test threads crashes this
 //! suite otherwise.
 
 #![allow(missing_docs)]
@@ -42,6 +41,9 @@ use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 
 use sigil::prelude::*;
 use sigil_app::DefaultTextMeasure;

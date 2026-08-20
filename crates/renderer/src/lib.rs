@@ -2,10 +2,10 @@
 //!
 //! This crate is the single chokepoint where `wgpu` types live. Every
 //! downstream crate names the [`sigil_hal::Renderer`] trait and treats the
-//! GPU as an opaque implementation detail. See
-//! [DR-001](../../../docs/decisions/DR-001-renderer-wgpu.md) for the
-//! rationale and [the trait docs][`sigil_hal::Renderer`] for the Phase 2
-//! surface area (create surface, resize, clear-and-present).
+//! GPU as an opaque implementation detail. See internal decision record
+//! DR-001 for the rationale and [the trait docs][`sigil_hal::Renderer`]
+//! for the Phase 2 surface area (create surface, resize,
+//! clear-and-present).
 //!
 //! # Usage
 //!
@@ -66,8 +66,6 @@ mod frame_upload;
 mod layer_composite;
 mod layer_pool;
 mod offscreen;
-mod raster;
-mod raster_paint;
 mod renderer;
 mod scene;
 mod scene_builder;
@@ -91,8 +89,6 @@ pub use error::RendererError;
 pub use frame_stats::FrameStats;
 pub use layer_pool::{LayerError, LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
-#[doc(hidden)]
-pub use raster_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer, WorldSubmission, submit_clear};
 #[doc(hidden)]
 pub use scene::shape_glyph_run;

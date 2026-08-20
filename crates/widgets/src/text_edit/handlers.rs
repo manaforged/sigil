@@ -95,8 +95,7 @@ impl TextEditRuntime {
 /// buffer's caret into the render/IME-anchor signal. Mirrors
 /// `text_field::handlers::commit`, minus selection/scroll — `text_edit`
 /// has no selection overlay or scroll signal to keep in sync (pre-
-/// existing gap, tracked in docs/followups.md; this dispatch only
-/// wires IME, not that).
+/// existing gap; this dispatch only wires IME, not that).
 pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
     runtime.caret_visible.set(true);
     if runtime.caret.peek() != state.caret() {
@@ -171,62 +170,30 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
 }
 
 fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let shift_left = runtime.clone();
-    let shift_right = runtime.clone();
-    let shift_up = runtime.clone();
-    let shift_down = runtime.clone();
-    let shift_home = runtime.clone();
-    let shift_end = runtime.clone();
-    let shift_page_up = runtime.clone();
-    let shift_page_down = runtime;
-    node.key(
-        Shortcut::new(Key::ArrowLeft, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_left, TextEdit::shift_left);
-        },
-    )
-    .key(
-        Shortcut::new(Key::ArrowRight, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_right, TextEdit::shift_right);
-        },
-    )
-    .key(
-        Shortcut::new(Key::ArrowUp, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_up, TextEdit::shift_up);
-        },
-    )
-    .key(
-        Shortcut::new(Key::ArrowDown, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_down, TextEdit::shift_down);
-        },
-    )
-    .key(
-        Shortcut::new(Key::Home, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_home, TextEdit::shift_home);
-        },
-    )
-    .key(
-        Shortcut::new(Key::End, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_end, TextEdit::shift_end);
-        },
-    )
-    .key(
-        Shortcut::new(Key::PageUp, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_page_up, TextEdit::shift_page_up);
-        },
-    )
-    .key(
-        Shortcut::new(Key::PageDown, ModifiersState::SHIFT),
-        move |event| {
-            move_caret(event, &shift_page_down, TextEdit::shift_page_down);
-        },
-    )
+    let node = shift_key(node, Key::ArrowLeft, runtime.clone(), TextEdit::shift_left);
+    let node = shift_key(
+        node,
+        Key::ArrowRight,
+        runtime.clone(),
+        TextEdit::shift_right,
+    );
+    let node = shift_key(node, Key::ArrowUp, runtime.clone(), TextEdit::shift_up);
+    let node = shift_key(node, Key::ArrowDown, runtime.clone(), TextEdit::shift_down);
+    let node = shift_key(node, Key::Home, runtime.clone(), TextEdit::shift_home);
+    let node = shift_key(node, Key::End, runtime.clone(), TextEdit::shift_end);
+    let node = shift_key(node, Key::PageUp, runtime.clone(), TextEdit::shift_page_up);
+    shift_key(node, Key::PageDown, runtime, TextEdit::shift_page_down)
+}
+
+fn shift_key(
+    node: NodeBuilder,
+    key: Key,
+    runtime: TextEditRuntime,
+    edit: fn(&mut TextEdit),
+) -> NodeBuilder {
+    node.key(Shortcut::new(key, ModifiersState::SHIFT), move |event| {
+        move_caret(event, &runtime, edit);
+    })
 }
 
 fn clipboard_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {

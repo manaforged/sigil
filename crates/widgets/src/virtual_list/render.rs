@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use sigil_events::prelude::NodeEventsExt;
-use sigil_kernel::{NodeBuilder, Role, container, schedule_keyed_rebuild};
+use sigil_kernel::{NodeBuilder, NodeId, Role, container, schedule_keyed_rebuild};
 use sigil_layout::LayoutReactiveExt;
 use sigil_layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use sigil_reactive::{Signal, derived, effect_named};
@@ -14,6 +14,9 @@ use super::window::{
 };
 
 pub(super) type HeightSpec<'a> = (f32, Option<&'a [f32]>);
+
+/// Live keyed rows shared with the strip effect: key → mounted node.
+type MountedRows = RefCell<Vec<(u64, NodeId)>>;
 
 #[derive(Clone, Copy)]
 pub(super) struct VisibleRenderSpec<'a> {
@@ -190,9 +193,7 @@ where
     let vh = spec.viewport_height;
     let pos = derived(move || strip_offset(scroll_y.get(), rh, vh));
     let height = strip_height(vh, rh);
-    let prev = Cell::new(Vec::<u64>::new());
-    let last_len = Cell::new(usize::MAX);
-    let first = keyed_rows(signal, scroll_y.get(), &spec, &prev);
+    let first = keyed_rows(signal, scroll_y.get(), &spec, 0, None);
     let seed: Vec<u64> = first.iter().map(|(key, _)| *key).collect();
     let mut strip = container()
         .layout(
@@ -216,19 +217,26 @@ where
             Rc::new(RefCell::new(Vec::new()))
         };
         let primed = Cell::new(true);
+        // Seeded with the build-time length so the priming run does not
+        // bump the generation out from under the seeded keys.
+        let last_len = Cell::new(spec.live_len.peek());
+        let generation = Cell::new(0_u64);
         effect_named("sigil-virtual-list::strip", move || {
             let len = spec.live_len.get();
             let y = scroll_y.get();
             if spec.row_key.is_some() {
                 let _ = signal.get();
-            } else if last_len.get() != len {
-                prev.set(Vec::new());
+            } else if last_len.replace(len) != len {
+                // Index keys name a list SLOT: when the count changes the
+                // slots hold new items, so salt the keys to force a remount.
+                // Reusing the mounted node would paint the previous
+                // occupant's content (stale rows after a filter shrink).
+                generation.set(generation.get() + 1);
             }
-            last_len.set(len);
             if primed.replace(false) {
                 return;
             }
-            let incoming = keyed_rows(signal, y, &spec, &prev);
+            let incoming = keyed_rows(signal, y, &spec, generation.get(), Some(&prior));
             schedule_keyed_rebuild(parent, Rc::clone(&prior), incoming);
         });
     })
@@ -248,7 +256,8 @@ fn keyed_rows<S, T, R>(
     signal: Signal<S>,
     scroll_y: f32,
     spec: &BoundStrip<T, R>,
-    prev: &Cell<Vec<u64>>,
+    generation: u64,
+    mounted: Option<&MountedRows>,
 ) -> Vec<(u64, NodeBuilder)>
 where
     S: Deref + Clone + 'static,
@@ -259,19 +268,26 @@ where
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
     let window = visible_window(scroll_y, slice.len(), spec.row_height, spec.viewport_height);
-    let last = prev.take();
-    let mut next_keys = Vec::with_capacity(window.len());
     let mut rows = Vec::with_capacity(window.len());
     for index in window.first..window.end {
         let Some(item) = slice.get(index) else {
             break;
         };
-        let key = spec
-            .row_key
-            .as_ref()
-            .map_or(index as u64, |key_of| key_of(index, item));
-        next_keys.push(key);
-        if last.contains(&key) {
+        let key = spec.row_key.as_ref().map_or_else(
+            // Slot keys live in a per-count generation so a length change
+            // never matches a stale mounted row.
+            || (generation << 32) | index as u64,
+            |key_of| key_of(index, item),
+        );
+        // A cheap placeholder stands in for a key that is already MOUNTED:
+        // `apply_keyed` reuses the live node and drops the builder. The
+        // decision must come from the mounted map, not from the previous
+        // window's keys: the strip effect can re-run (and re-enqueue a
+        // replacement rebuild) before the pending one is applied, and a
+        // placeholder for a key that was never mounted would mount as an
+        // empty, zero-height row — the filtered-table blank-window bug.
+        let kept = mounted.is_some_and(|mounted| mounted.borrow().iter().any(|(k, _)| *k == key));
+        if kept {
             rows.push((key, container()));
             continue;
         }
@@ -286,6 +302,5 @@ where
             ),
         ));
     }
-    prev.set(next_keys);
     rows
 }

@@ -115,7 +115,7 @@ impl FileDialog {
 /// ```
 ///
 /// Single-path pickers (`open_file` / `save_file` / `pick_folder`) draw from
-/// [`push_path`]; the multi-file `open_files` draws from [`push_paths`].
+/// [`push_path`](crate::dialog::mock::push_path); the multi-file `open_files` draws from [`push_paths`](crate::dialog::mock::push_paths).
 /// Responses are consumed in call order; an empty queue falls through to the
 /// real native dialog.
 #[cfg(any(test, feature = "test-support"))]

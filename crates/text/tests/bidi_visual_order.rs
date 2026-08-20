@@ -2,8 +2,7 @@
 //!
 //! `crates/text/src/bidi.rs` computes UAX #9 embedding levels; these
 //! tests prove the ENGINE consumes them to lay a line out in UAX #9
-//! rule L2 visual order, not source order — the gap the
-//! `docs/followups.md` "G2 visual bidi reorder" entry tracked.
+//! rule L2 visual order, not source order.
 
 #![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 

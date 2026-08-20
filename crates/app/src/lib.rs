@@ -22,6 +22,10 @@ use windows_core as _;
 use sigil_reactive as _;
 use sigil_style as _;
 
+// Facade dev-dep used by doctests and integration tests, not by unit tests.
+#[cfg(test)]
+use sigil as _;
+
 mod config;
 /// Native file dialogs (open / save / folder).
 #[cfg(feature = "desktop")]

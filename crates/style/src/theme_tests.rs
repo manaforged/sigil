@@ -128,7 +128,7 @@
     }
 
     /// `console_dark()` resolves shadcn token names to the exact sRGB captured from the
-    /// running the host app dark app (docs/specs/console-theme.md). This is the parity
+    /// running the host app dark app. This is the parity
     /// contract: a ported React `className` keeps its token words and renders identically.
     #[test]
     fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {

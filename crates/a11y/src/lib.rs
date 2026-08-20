@@ -6,9 +6,7 @@
 //! signals, and live-region annotations on the kernel side; the
 //! bridge here reads them and produces the AccessKit projection.
 //!
-//! See [DR-050] for the locked decisions.
-//!
-//! [DR-050]: ../../../docs/decisions/DR-050-g10-a11y.md
+//! See internal decision record DR-050 for the locked decisions.
 
 #![deny(missing_docs)]
 // W5.2 — `sigil-reactive` is a dev-dep used only by `tests/reactive_flow.rs`.

@@ -2,7 +2,7 @@
 
 #![allow(missing_docs)]
 // Benches may use direct panics in setup if the fixture cannot build.
-// See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 
 use accesskit as _;

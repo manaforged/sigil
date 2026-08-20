@@ -19,7 +19,7 @@
 
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 // Bench targets are allowed to bend `panic` / `indexing_slicing` per
-// the rust-hygiene framework (docs/plans/native-ui/hygiene-cleanup-framework.md).
+// the rust-hygiene framework (internal hygiene-cleanup-framework plan).
 #![allow(clippy::panic)]
 
 mod async_ops_sustained;

@@ -1,4 +1,4 @@
-//! Renderer trait — see [DR-001].
+//! Renderer trait — see DR-001.
 //!
 //! The `Renderer` trait abstracts GPU backends. In production it is
 //! implemented by `sigil-renderer` over `wgpu`. Tests implement a headless
@@ -10,8 +10,6 @@
 //! to a window, resize it, and clear it to a colour. Phase 3 adds a
 //! scene recording API (draw quads, text runs, clip stacks) once
 //! `sigil-kernel` has a scene graph to encode.
-//!
-//! [DR-001]: ../../../docs/decisions/DR-001-renderer-wgpu.md
 //!
 //! # Window handle abstraction
 //!

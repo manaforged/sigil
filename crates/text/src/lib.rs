@@ -8,7 +8,7 @@
 //! paragraph cache. [`glyph::GlyphRun`] is the output type Slug
 //! consumes.
 //!
-//! See `docs/decisions/DR-044-g1-owned-text-pipeline.md`.
+//! See internal decision record DR-044.
 
 #![deny(missing_docs)]
 #[cfg(test)]

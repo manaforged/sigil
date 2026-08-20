@@ -42,13 +42,6 @@ pub struct TextTuning {
     /// `2.5` is the empirical value from the `glyph_pixel_check` polarity pair
     /// (stroke-weight parity within ~7% at scale 1.0, ~4% at scale 2.0).
     pub gamma_dark_on_light: f32,
-    /// Wave-3 D2 (DR-055): route eligible glyph runs through the hinted CPU
-    /// raster path (`raster::rasterize_glyph` + the R8 atlas) instead of
-    /// vector Slug. Eligibility is decided per run at the draw entry point:
-    /// `font_size <= raster::RASTER_MAX_LOGICAL_PX`, untransformed, and this
-    /// flag on. Defaults `false` until the raster path beats vector on the
-    /// `glyph_pixel_check` sharpness metric at all four scales (plan gate).
-    pub raster: bool,
 }
 
 impl Default for TextTuning {
@@ -60,7 +53,6 @@ impl Default for TextTuning {
             sharpen: 2.0,
             gamma_light_on_dark: 1.5,
             gamma_dark_on_light: 2.5,
-            raster: false,
         }
     }
 }
@@ -71,7 +63,6 @@ static DILATION: AtomicU32 = AtomicU32::new(0x3F00_0000); // 0.5
 static SHARPEN: AtomicU32 = AtomicU32::new(0x4000_0000); // 2.0
 static GAMMA_LOD: AtomicU32 = AtomicU32::new(0x3FC0_0000); // 1.5
 static GAMMA_DOL: AtomicU32 = AtomicU32::new(0x4020_0000); // 2.5
-static RASTER: AtomicBool = AtomicBool::new(false);
 
 /// Read the current text-tuning snapshot. Called every frame from paint.
 #[must_use]
@@ -83,7 +74,6 @@ pub fn text_tuning() -> TextTuning {
         sharpen: f32::from_bits(SHARPEN.load(Ordering::Relaxed)),
         gamma_light_on_dark: f32::from_bits(GAMMA_LOD.load(Ordering::Relaxed)),
         gamma_dark_on_light: f32::from_bits(GAMMA_DOL.load(Ordering::Relaxed)),
-        raster: RASTER.load(Ordering::Relaxed),
     }
 }
 
@@ -95,5 +85,4 @@ pub fn set_text_tuning(tuning: TextTuning) {
     SHARPEN.store(tuning.sharpen.to_bits(), Ordering::Relaxed);
     GAMMA_LOD.store(tuning.gamma_light_on_dark.to_bits(), Ordering::Relaxed);
     GAMMA_DOL.store(tuning.gamma_dark_on_light.to_bits(), Ordering::Relaxed);
-    RASTER.store(tuning.raster, Ordering::Relaxed);
 }

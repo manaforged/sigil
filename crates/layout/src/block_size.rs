@@ -5,8 +5,7 @@
 //! pure functions: they take a containing-block axis size in pixels +
 //! a style atom, return resolved pixels (or `None` for `auto`).
 //!
-//! See [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md)
-//! §"P0.2 block layout" for the conformance scope.
+//! See DR-041 §"P0.2 block layout" for the conformance scope.
 
 #![allow(clippy::redundant_pub_crate)]
 

@@ -292,7 +292,6 @@ fn reborrow_ctx<'a>(
         fill_pipelines: &mut *ctx.fill_pipelines,
         shadow_pipelines: &mut *ctx.shadow_pipelines,
         slug_pipelines: &mut *ctx.slug_pipelines,
-        raster_pipelines: &mut *ctx.raster_pipelines,
         sprite_pipelines: &mut *ctx.sprite_pipelines,
         decoration_pipelines: &mut *ctx.decoration_pipelines,
         layer_pipelines: &mut *ctx.layer_pipelines,

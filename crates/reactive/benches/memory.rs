@@ -32,7 +32,7 @@
 // methods that delegate to `std::alloc::System` and update a single
 // atomic counter. Scoped to this bench binary only.
 #![allow(unsafe_code)]
-// Bench file: per docs/plans/native-ui/hygiene-cleanup-framework.md,
+// Bench file: per the internal hygiene-cleanup-framework plan,
 // benches may bend `panic` / `unwrap_used` / `indexing_slicing` for
 // readability — the alternative is layers of `match` noise that
 // obscures what the bench is asserting. The asserts here are also the

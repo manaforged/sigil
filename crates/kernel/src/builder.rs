@@ -272,7 +272,7 @@ impl NodeBuilder {
     /// dropped), new keys mount, missing keys dispose. Update label
     /// and style through signals on the kept node — a kept node is
     /// not rebuilt. Do not call `derived` in the factory; use
-    /// [`crate::TextContent::compute`] so the derived is created in
+    /// [`crate::text_live`] so the derived is created in
     /// [`IntoNode::build`].
     ///
     /// First key wins when the list repeats a key. Use unique domain

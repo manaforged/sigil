@@ -14,7 +14,7 @@
 
 #![allow(missing_docs)]
 // Tests are permitted to use panic! and slice indexing per rust-hygiene contract.
-// See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 #![allow(clippy::indexing_slicing)]
 

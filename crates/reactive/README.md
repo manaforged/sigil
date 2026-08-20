@@ -2,8 +2,7 @@
 
 Leptos 0.5+ style fine-grained reactive core. Signals, memoized
 derived values, effects, owner tree, `on_cleanup`, `batch`, and
-cycle detection. See [DR-005](../../docs/decisions/DR-005-reactivity-owner-tree.md)
-for the full design.
+cycle detection.
 
 ## Status — Phase 1.1 early slice
 
@@ -19,16 +18,13 @@ stable. What's in place:
 - `batch(f)` — coalesces signal writes so dependent effects run once
 - `#[track_caller]` creation locations captured on every constructor
 - Cross-thread access and wrong-thread disposal panic with owner
-  name and creation location (the debuggability addendum to DR-005)
+  name and creation location
 
 ## Not yet
 
-- `derived(f)` memoized values (Phase 1.1b)
 - `dispatch_to_owner` main-thread post from background threads
-  (Phase 1.1c — lands alongside `sigil-async`)
 - Dev-mode leak detector and `dump_owner_tree` debug API
-  (Phase 1.1d)
-- `spawn_to_signal` (Phase 1.1c with `sigil-async`)
+- `spawn_to_signal`
 
 ## Thread model
 
@@ -36,4 +32,4 @@ Everything in this crate is main-thread-only. `Signal`, `Owner`,
 and the runtime arena are `!Send`. Attempting to read or write a
 signal from a different thread panics in dev builds with an
 actionable message naming the signal, its creation location, and
-the violating thread. See DR-005 for the full contract.
+the violating thread.

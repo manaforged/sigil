@@ -38,7 +38,6 @@ use std::sync::mpsc;
 
 use pollster::FutureExt as _;
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
-use zeno as _;
 
 // Physical scale factor: texture dims = viewport × SCALE.
 // wgpu downlevel default texture-dimension cap is 2048 px.

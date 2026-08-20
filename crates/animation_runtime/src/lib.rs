@@ -7,7 +7,8 @@
 
 //! Animation orchestration over [`sigil_animation`] primitives.
 //!
-//! See [DR-053] for the locked design. Phase 1 ships:
+//! See internal decision record DR-053 for the locked design. Phase 1
+//! ships:
 //!
 //! - [`Animator`] — owns a [`Signal<f32>`](sigil_reactive::Signal) and
 //!   drives it via a wrapped [`Spring`](sigil_animation::Spring) or
@@ -20,8 +21,6 @@
 //! - Reduced-motion gate — see [`MotionPrefs`]. Phase 1 is a
 //!   thread-local override; phase 2 wires AccessKit's
 //!   `prefers_reduced_motion` from DR-050.
-//!
-//! [DR-053]: ../../../docs/decisions/DR-053-g9-animation.md
 
 // `criterion` is a dev-dep used by the `animator_ticks` bench. Mark it
 // referenced under test+bench builds so the workspace's

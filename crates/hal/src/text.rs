@@ -1,4 +1,4 @@
-//! Text engine trait — see [DR-004].
+//! Text engine trait — see DR-004.
 //!
 //! The `TextEngine` trait abstracts paragraph layout, shaping, caret
 //! modelling, and selection geometry. In production this is implemented
@@ -9,8 +9,6 @@
 //! IME integration are the responsibility of `sigil-text`, not of
 //! this trait. The trait exposes only what downstream crates need to
 //! lay out and measure text for layout, hit-testing, and painting.
-//!
-//! [DR-004]: ../../../docs/decisions/DR-004-text-parley.md
 
 extern crate alloc;
 

@@ -65,7 +65,7 @@ impl InteractionState {
     }
 
     /// Set whether this widget is in an active drag gesture.
-    pub fn set_dragging(self, next: bool) {
+    pub fn drag(self, next: bool) {
         set_if_changed(self.dragging, next);
     }
 

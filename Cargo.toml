@@ -118,7 +118,7 @@ missing_errors_doc = "allow"
 # rust-hygiene skill treat these as non-negotiable in production
 # code. Tests / benches / examples may bend `panic` or
 # `indexing_slicing` via a crate-root #![allow] with a comment
-# citing docs/plans/native-ui/hygiene-cleanup-framework.md.
+# giving the reason.
 unwrap_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
@@ -157,16 +157,13 @@ raw-window-handle = "0.6"
 bytemuck = { version = "1", features = ["derive"] }
 half = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
-skrifa = "0.40"
+skrifa = "0.42"
 # Native desktop font discovery and CSS weight matching. This is Zed's
 # cross-platform CoreText / DirectWrite / Fontconfig fork of font-kit.
 zed-font-kit = "0.14.1-zed"
-# CPU AA path rasterizer for the Wave-3 hinted small-text atlas — already
-# in-graph transitively (cosmic-text -> swash -> zeno), zero-dep crate.
-zeno = "0.3"
 smallvec = "1"
 rayon = "1.10"
-phf = { version = "0.11", features = ["macros"] }
+phf = { version = "0.13", features = ["macros"] }
 strsim = "0.11"
 slotmap = "1"
 ahash = "0.8"

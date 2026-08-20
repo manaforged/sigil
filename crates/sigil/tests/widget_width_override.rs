@@ -29,6 +29,9 @@ use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -47,7 +50,6 @@ impl TextMeasure for ProportionalMeasure {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
-            TextContent::Compute(build) => build().len(),
         };
         let bounded = u16::try_from(len).unwrap_or(u16::MAX);
         sigil_hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)

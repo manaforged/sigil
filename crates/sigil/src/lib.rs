@@ -36,7 +36,6 @@
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 #![deny(missing_docs)]
 #![doc = include_str!("../README.md")]
-extern crate self as sigil;
 
 /// Macro-expansion support — NOT public API.
 ///
@@ -60,6 +59,10 @@ use pollster as _;
 #[cfg(test)]
 use sigil_animation as _;
 #[cfg(test)]
+use sigil_animation_runtime as _;
+#[cfg(test)]
+use sigil_bidi as _;
+#[cfg(test)]
 use sigil_hal as _;
 #[cfg(test)]
 use sigil_renderer as _;
@@ -82,11 +85,11 @@ pub use sigil_app::{
     DefaultFonts, TextTuning, launch, set_default_fonts, set_text_tuning, text_tuning,
     use_system_fonts,
 };
+/// Frame profiler — `SIGIL_PROFILE=1` dumps a Perfetto trace + phase table.
+pub use sigil_profile as profile;
 /// Terminal loop. Same tree and config as [`launch`].
 #[cfg(feature = "tui")]
 pub use sigil_tui::run as run_tui;
-/// Frame profiler — `SIGIL_PROFILE=1` dumps a Perfetto trace + phase table.
-pub use sigil_profile as profile;
 
 pub mod clipboard;
 pub mod input_glyphs;
@@ -104,7 +107,7 @@ pub mod render;
 #[cfg(feature = "render")]
 pub mod text;
 
-/// Host-agnostic UI driver ([`Host`](sigil_app::Host)) for embedding
+/// Host-agnostic UI driver ([`Host`]) for embedding
 /// sigil in another engine's frame loop. Off unless the `render`
 /// feature is enabled.
 #[cfg(feature = "render")]
@@ -112,10 +115,10 @@ pub mod ui {
     pub use sigil_app::Host;
 }
 
-/// Signal graph: [`signal`], [`derived`], [`effect`], [`EventChannel`].
+/// Signal graph: [`signal`](crate::reactive::signal), [`derived`](crate::reactive::derived), [`effect`](crate::reactive::effect), [`EventChannel`](crate::reactive::EventChannel).
 ///
-/// Writes go through [`Signal::set`]. Background work is
-/// [`crate::prelude::spawn`], which returns a [`Signal`].
+/// Writes go through [`Signal::set`](crate::reactive::Signal::set). Background work is
+/// [`crate::prelude::spawn`], which returns a [`Signal`](crate::reactive::Signal).
 /// Entity, `EntityCx`, `Task`, and `AsyncContext` stay on
 /// `sigil_reactive` for tests. They are not this module.
 pub mod reactive {
@@ -181,7 +184,11 @@ pub mod prelude {
     pub use sigil_tasks::{OwnerHandle, Status, dispatch_to_owner, spawn};
 
     pub use crate::interaction::InteractionState;
+    #[cfg(feature = "desktop")]
+    pub use crate::launch;
     pub use crate::reactive::Runtime;
+    #[cfg(feature = "tui")]
+    pub use crate::run_tui;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::image_bytes;
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
@@ -199,14 +206,9 @@ pub mod prelude {
         TurnStripBuilder, VirtualListBuilder, axis_drag, badge, button, chart, checkbox, chip,
         code_edit, color_field, command_menu, date_field, divider_horizontal, divider_vertical,
         dot, dropdown, field, floating_text, gauge, icon, image_rgba, interactive, kv_row, label,
-        markdown, markdown_edit, mermaid, menu, modal, number_field, panel, path, progress,
-        radio_group,
-        scroll, sheet, slider, splitter, status_bar, table, tabs, text_edit, text_field, toast,
-        toggle, tooltip, turn_strip, validated_field, virtual_list,
+        markdown, markdown_edit, menu, mermaid, modal, number_field, panel, path, progress,
+        radio_group, scroll, sheet, slider, splitter, status_bar, table, tabs, text_edit,
+        text_field, toast, toggle, tooltip, turn_strip, validated_field, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
-    #[cfg(feature = "desktop")]
-    pub use crate::launch;
-    #[cfg(feature = "tui")]
-    pub use crate::run_tui;
 }

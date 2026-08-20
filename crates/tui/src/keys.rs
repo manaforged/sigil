@@ -26,13 +26,22 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     }
     let key = logical(event.code)?;
     let mut modifiers = ModifiersState::empty();
-    if event.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+    if event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::SHIFT)
+    {
         modifiers |= ModifiersState::SHIFT;
     }
-    if event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+    if event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::CONTROL)
+    {
         modifiers |= ModifiersState::CONTROL;
     }
-    if event.modifiers.contains(crossterm::event::KeyModifiers::ALT) {
+    if event
+        .modifiers
+        .contains(crossterm::event::KeyModifiers::ALT)
+    {
         modifiers |= ModifiersState::ALT;
     }
     Some(ShellEvent::Key(KeyEvent::new(KeyEventInit {

@@ -134,12 +134,12 @@ fn push_subtree<'t>(
             inherited.text_color,
             inherited.text_style.as_ref(),
         ) ^ crate::emit_cache::content_key(node);
-        let cx_id = walk.cx.instance_id();
-        if !crate::emit_cache::replay(walk.scene, cx_id, id, node, rect, inherit) {
+        let key = (walk.cx.instance_id(), id);
+        if !crate::emit_cache::replay(walk.scene, key, node, rect, inherit) {
             let start = walk.scene.command_len();
             push_focus_ring(walk.scene, id, node, rect, &paint);
             push_node(walk.scene, id, node, rect, &paint);
-            crate::emit_cache::store(cx_id, id, node, rect, inherit, walk.scene.copy_from(start));
+            crate::emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
         }
         // `overflow: hidden`/`scroll` → scissor descendants to this node's box.
         if result.clips() {
@@ -165,7 +165,7 @@ fn emit_clipped_children<'t>(
     let Some(inner) = tighten_clip(clip, rect) else {
         return;
     };
-    // Include the box that sits on the far edge (virtual-list overscan).
+    // 1px slack keeps far-edge overscan rows and zero-height clip boxes' contents.
     let inner = inner.expand(1.0);
     let clip_radii = corner_radii_for(style.border_radius);
     let cx = walk.cx;

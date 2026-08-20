@@ -13,7 +13,7 @@ use std::hash::Hash;
 ///
 /// Implement this on the record. [`super::TableState::identified`]
 /// remaps selection.
-/// [`virtual_list`](crate::widgets::virtual_list)
+/// [`virtual_list`](crate::virtual_list)
 /// `.identified()` remaps `NodeId`. Both read [`Self::id`].
 pub trait Identifiable {
     /// Stable id type. Cheap to clone and hash.

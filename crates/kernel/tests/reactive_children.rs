@@ -13,7 +13,7 @@ use sigil_hal as _;
 use slotmap as _;
 use smallvec as _;
 
-use sigil_kernel::{Cx, NodeId, NodeType, TextContent, container, node, text};
+use sigil_kernel::{Cx, NodeId, NodeType, TextContent, container, node, text, text_live};
 use sigil_reactive::{Runtime, signal};
 
 fn text_value(cx: &Cx, id: NodeId) -> String {
@@ -242,15 +242,15 @@ fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
 }
 
 #[test]
-fn children_keyed_compute_text_is_node_owned() {
-    Runtime::scope("sigil_kernel_children_keyed_compute", || {
+fn children_keyed_live_text_is_node_owned() {
+    Runtime::scope("sigil_kernel_children_keyed_live_text", || {
         let label = signal("alpha".to_string());
         let keys = signal(vec![0_u32]);
         let mut cx = Cx::new_root();
         let parent = cx.add(container().children_keyed(move || {
             keys.get()
                 .into_iter()
-                .map(move |key| (key, text(TextContent::compute(move || label.get()))))
+                .map(move |key| (key, text_live(move || label.get())))
                 .collect::<Vec<_>>()
         }));
         cx.flush_reactive_children();
@@ -264,7 +264,7 @@ fn children_keyed_compute_text_is_node_owned() {
                     ..
                 }
             ),
-            "compute text becomes a node-owned signal at build"
+            "live text becomes a node-owned signal at build"
         );
 
         keys.set(vec![0]);

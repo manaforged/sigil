@@ -31,6 +31,10 @@ image-decode = ["dep:image"]
 
 [dev-dependencies]
 sigil-hal = { workspace = true }
+# Doctests are user-facing docs written against the facade's consumer path
+# (`sigil::prelude::*`). Dev-dep cycles back to sigil-ui are allowed by cargo.
+# No default features: the examples use no host, so skip the winit build.
+sigil-ui = { path = "../sigil", default-features = false }
 
 [lints]
 workspace = true

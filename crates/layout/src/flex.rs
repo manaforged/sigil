@@ -1,8 +1,7 @@
 //! CSS flex layout — owned engine. Lands the P0.3 (W2.4) body.
 //!
-//! Algorithm conformance (per
-//! [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md)):
-//! main / cross axes via [`FlexDirection`], `flex-basis` with grow +
+//! Algorithm conformance (per DR-041): main / cross axes via
+//! [`FlexDirection`], `flex-basis` with grow +
 //! shrink resolution, multi-line wrap, `gap`, `padding`, `margin`,
 //! `border`, `min-size` / `max-size` clamps, `justify-content`,
 //! `align-items`, `align-self`, `align-content`, `order`. Reverse

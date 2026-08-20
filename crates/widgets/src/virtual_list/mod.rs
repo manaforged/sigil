@@ -332,7 +332,7 @@ where
 {
     /// Key rows by [`Identifiable::id`] instead of list index.
     ///
-    /// Same id [`crate::widgets::TableState::identified`] uses for selection.
+    /// Same id [`crate::TableState::identified`] uses for selection.
     #[must_use]
     pub fn identified(self) -> Self
     where

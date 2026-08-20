@@ -1,12 +1,10 @@
 //! Per-command draw handlers for the command-scene walker.
 
-use sigil_hal::{Color, RenderedGlyph};
+use sigil_hal::Color;
 
 use crate::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
-use crate::raster::RASTER_MAX_LOGICAL_PX;
-use crate::raster_paint::{RasterDrawParams, RasterTextPipeline};
 use crate::scene_command::walk::{Walk, rect_from_fields, transform_point, transform_rect};
 use crate::scene_command::{
     DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
@@ -18,7 +16,7 @@ use crate::scene_instance::{
 };
 use crate::scene_paint::{PaintCtx, ScenePipeline};
 use crate::shadow_paint::{Shadow, ShadowPipeline};
-use crate::slug::{DrawParams, SlugTextPipeline, text_tuning};
+use crate::slug::{DrawParams, SlugTextPipeline};
 use crate::sprite_paint::SpritePipeline;
 
 impl Walk<'_> {
@@ -308,15 +306,8 @@ impl Walk<'_> {
         let color = glyph_run_color(run, self.current_opacity(), space);
         let origin = (rect.origin.x, rect.origin.y);
 
-        // Wave-3 D2 (DR-055): raster-eligible runs go through the hinted
-        // atlas path first; only glyphs it couldn't place (atlas full) fall
-        // through to vector Slug below — "at most two draws per run".
-        let raster_leftover = self.raster_pass(run, paragraph, origin, color, clip);
-        let vector_glyphs: &[RenderedGlyph] = match &raster_leftover {
-            Some(leftover) => leftover,
-            None => run.positioned_glyphs(),
-        };
-        if vector_glyphs.is_empty() {
+        let glyphs = run.positioned_glyphs();
+        if glyphs.is_empty() {
             return Ok(());
         }
 
@@ -332,54 +323,13 @@ impl Walk<'_> {
                 surface_height: ctx.viewport.1,
                 scale: ctx.scale,
                 paragraph,
-                glyphs: Some(vector_glyphs),
+                glyphs: Some(glyphs),
                 origin,
                 color: Some(color),
                 clip,
             },
             Some((uploads, &mut *ctx.stats)),
         )
-    }
-
-    /// Attempt the raster path for `run` (DR-055 §3 eligibility gate).
-    /// Returns `None` when the run is not eligible — the caller draws the
-    /// full run through vector Slug unchanged. Returns `Some(leftover)` when
-    /// the raster path ran — `leftover` holds the glyphs it couldn't place
-    /// (atlas full), possibly empty.
-    #[allow(clippy::too_many_arguments)]
-    fn raster_pass(
-        &mut self,
-        run: &GlyphRun,
-        paragraph: &sigil_text::Paragraph,
-        origin: (f32, f32),
-        color: Color,
-        clip: Option<sigil_hal::Rect>,
-    ) -> Option<Vec<RenderedGlyph>> {
-        let eligible = text_tuning().raster
-            && self.is_identity_transform()
-            && run.style.font_size <= RASTER_MAX_LOGICAL_PX;
-        if !eligible {
-            return None;
-        }
-        let (uploads, ctx) = (&mut self.uploads, &mut self.ctx);
-        let raster_pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
-        Some(raster_pipeline.record_paragraph(
-            &mut *ctx.encoder,
-            &RasterDrawParams {
-                device: ctx.device,
-                queue: ctx.queue,
-                view: ctx.view,
-                surface_width: ctx.viewport.0,
-                surface_height: ctx.viewport.1,
-                scale: ctx.scale,
-                paragraph,
-                glyphs: run.positioned_glyphs(),
-                origin,
-                color,
-                clip,
-            },
-            Some((uploads, &mut *ctx.stats)),
-        ))
     }
 }
 
@@ -466,23 +416,6 @@ fn slug_pipeline_for<'a>(
     pipelines
         .get_mut(idx)
         .expect("slug pipeline index was just constructed from the vec")
-}
-
-fn raster_pipeline_for<'a>(
-    pipelines: &'a mut Vec<RasterTextPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut RasterTextPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(RasterTextPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("raster pipeline index was just constructed from the vec")
 }
 
 fn sprite_pipeline_for<'a>(

@@ -1,8 +1,8 @@
 //! System tray icon.
 //!
 //! Build a tray icon with the re-exported [`tray_icon`] types, register it
-//! with [`set_tray`] BEFORE `launch`; Sigil creates it on the first frame and
-//! forwards tray-*icon* clicks to the reactive [`events`] channel. A tray
+//! with [`set_tray`](crate::tray::set_tray) BEFORE `launch`; Sigil creates it on the first frame and
+//! forwards tray-*icon* clicks to the reactive [`events`](crate::tray::events) channel. A tray
 //! context menu is a [`muda`](crate::menu) menu, so its item clicks arrive
 //! through [`menu::events`](crate::menu::events), not here.
 //!

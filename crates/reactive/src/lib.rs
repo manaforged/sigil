@@ -1,6 +1,6 @@
 //! Reactive core — signals, effects, owner tree.
 //!
-//! See [`DR-005`] for the full design. Short version: a Leptos 0.5+
+//! See DR-005 for the full design. Short version: a Leptos 0.5+
 //! style owner tree, arena-backed signals and effects, main-thread
 //! only, with `#[track_caller]` location capture and named owners
 //! for debuggability.
@@ -26,8 +26,6 @@
 //! merged-doctests target-detection bug on Windows-msvc. The same
 //! examples are exercised end-to-end in
 //! `tests/reactive_contract.rs`.)
-//!
-//! [`DR-005`]: ../../../docs/decisions/DR-005-reactivity-owner-tree.md
 
 #![deny(missing_docs)]
 // `pub(crate)` on items inside private modules expresses design

@@ -18,9 +18,8 @@ let later = count.peek();      // read (untracked)
   reads without subscribing. The rule of thumb: `get` in derivations,
   `peek` in event handlers.
 - **`.update(|v| *v += 1)`** for in-place mutation.
-- Measured costs (from `docs/benchmarks/baseline-2026-04-14.md`):
-  `signal_get` 5.4 ns, `set` with one subscriber ~120 ns, zero-alloc
-  sustained streaming.
+- Measured costs: `signal_get` 5.4 ns, `set` with one subscriber ~120 ns,
+  zero-alloc sustained streaming.
 
 ## Derived values
 

@@ -14,14 +14,16 @@ use sigil_events as _;
 use sigil_profile as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
 use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::widgets::virtual_list_bind;
 use sigil_hal::Size;
-use sigil_kernel::{container, text, Cx, TextContent};
+use sigil_kernel::{Cx, TextContent, container, text_live};
 use sigil_layout::{LayoutEngine, TextMeasure};
-use sigil_reactive::{signal, Runtime};
+use sigil_reactive::{Runtime, signal};
 use sigil_renderer::emit_scene;
 
 struct StubMeasure;
@@ -38,9 +40,9 @@ fn items_bind_tick_updates_reactive_text() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             virtual_list_bind(items, move |index, _| {
-                container().child(text(TextContent::compute(move || {
+                container().child(text_live(move || {
                     items.get().get(index).cloned().unwrap_or_default()
-                })))
+                }))
             })
             .row_height(20.0)
             .viewport_height(80.0)
@@ -50,7 +52,7 @@ fn items_bind_tick_updates_reactive_text() {
         let avail = Size::fixed(200.0, 80.0);
         layout.compute(&mut cx, root, avail).expect("layout");
         assert!(emit_scene(&cx, root).find_text("alpha").is_some());
-        items.update(|rows| rows[0] = "omega".to_string());
+        items.update(|rows| *rows.first_mut().expect("one row") = "omega".to_string());
         layout.compute(&mut cx, root, avail).expect("tick");
         assert!(
             emit_scene(&cx, root).find_text("omega").is_some(),

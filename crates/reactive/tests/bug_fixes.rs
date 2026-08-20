@@ -9,7 +9,7 @@
 
 #![allow(missing_docs)]
 // Tests are permitted to use panic! per rust-hygiene contract.
-// See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 
 // Silence `unused_crate_dependencies` — criterion is a dev-dep for

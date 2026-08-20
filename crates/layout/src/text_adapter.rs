@@ -62,6 +62,6 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
 fn resolve_text(source: &TextContent) -> Cow<'_, str> {
     match source {
         TextContent::Static(s) => Cow::Borrowed(s),
-        _ => Cow::Owned(source.resolve()),
+        TextContent::Reactive(_) => Cow::Owned(source.resolve()),
     }
 }

@@ -69,7 +69,6 @@ pub(crate) struct FrameUploads {
     stops: UploadBuffer,
     shadows: UploadBuffer,
     decorations: UploadBuffer,
-    raster_glyphs: UploadBuffer,
     slug_glyphs: UploadBuffer,
 }
 
@@ -111,12 +110,6 @@ impl FrameUploads {
             decorations: UploadBuffer::new::<DecorationInstance>(
                 "sigil frame decoration instances",
                 capacity.decorations,
-                wgpu::BufferUsages::VERTEX,
-            ),
-            raster_glyphs: UploadBuffer::new_bytes(
-                "sigil frame raster glyph instances",
-                capacity.glyphs,
-                crate::raster_paint::RASTER_INSTANCE_BYTES,
                 wgpu::BufferUsages::VERTEX,
             ),
             slug_glyphs: UploadBuffer::new_bytes(
@@ -189,16 +182,6 @@ impl FrameUploads {
         stats: &mut FrameStats,
     ) -> Option<UploadedRange> {
         self.decorations.upload(&self.device, queue, values, stats)
-    }
-
-    pub(crate) fn upload_raster<T: Pod>(
-        &mut self,
-        queue: &wgpu::Queue,
-        values: &[T],
-        stats: &mut FrameStats,
-    ) -> Option<UploadedRange> {
-        self.raster_glyphs
-            .upload(&self.device, queue, values, stats)
     }
 
     pub(crate) fn upload_slug<T: Pod>(

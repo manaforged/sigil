@@ -4,8 +4,8 @@
 //! Spawn/cancellation and `spawn_to_signal` tests live in
 //! `scheduler_spawn.rs`.
 //!
-//! Each test exercises one invariant from [DR-007] and [DR-005
-//! addendum §3] end-to-end: enqueue-order preservation, owner-disposal
+//! Each test exercises one invariant from DR-007 and the DR-005
+//! addendum §3 end-to-end: enqueue-order preservation, owner-disposal
 //! cancellation, waker firing, and the reactive-owner scoping of
 //! `dispatch_to_owner` callbacks. We keep the surface primitive by
 //! leaning on atomic flags and short polling loops instead of
@@ -15,13 +15,10 @@
 //! Tests are self-contained — each creates its own reactive scope via
 //! `Runtime::scope` and its own `AsyncRuntime`. That keeps them
 //! independent despite the thread-local reactive arena.
-//!
-//! [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
-//! [DR-005 addendum §3]: ../../../docs/decisions/DR-005-reactivity-owner-tree.md
 
 // Integration-test file: tests assert by panicking. rust-hygiene
 // contract permits panic / indexing_slicing bends in test code via
-// crate-root #![allow]. See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// crate-root #![allow]. See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 #![allow(missing_docs)]
 

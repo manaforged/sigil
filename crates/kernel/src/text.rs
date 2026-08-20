@@ -11,17 +11,15 @@ use crate::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
 
 type TextMutator = Box<dyn FnOnce(&mut crate::Node)>;
 
-/// Static or live text content.
+/// Static or live text content. Live nodes store only these two
+/// forms; a factory closure (see [`text_live`]) becomes `Reactive`
+/// at build time.
 #[derive(Clone)]
 pub enum TextContent {
     /// Fixed text known at build time.
     Static(String),
     /// Text driven by a reactive signal.
     Reactive(Signal<String>),
-    /// Factory-safe live text. [`TextBuilder`] converts this to
-    /// [`TextContent::Reactive`] under the node owner so a keyed
-    /// keep does not dispose the subscription.
-    Compute(Rc<dyn Fn() -> String>),
 }
 
 impl TextContent {
@@ -30,7 +28,7 @@ impl TextContent {
     pub fn as_static_str(&self) -> Option<&str> {
         match self {
             Self::Static(value) => Some(value),
-            Self::Reactive(_) | Self::Compute(_) => None,
+            Self::Reactive(_) => None,
         }
     }
 
@@ -40,23 +38,6 @@ impl TextContent {
         match self {
             Self::Static(value) => value.clone(),
             Self::Reactive(signal) => signal.try_peek().unwrap_or_default(),
-            Self::Compute(compute) => compute(),
-        }
-    }
-
-    /// Live text from a closure. The closure is stored until
-    /// [`TextBuilder`] builds the node, then wrapped in
-    /// `sigil_reactive::derived`.
-    #[must_use]
-    pub fn compute(f: impl Fn() -> String + 'static) -> Self {
-        Self::Compute(Rc::new(f))
-    }
-
-    /// Convert factory-safe compute text into a node-owned signal.
-    fn into_live(self) -> Self {
-        match self {
-            Self::Compute(compute) => Self::Reactive(derived(move || compute())),
-            other => other,
         }
     }
 }
@@ -66,7 +47,6 @@ impl fmt::Debug for TextContent {
         match self {
             Self::Static(value) => f.debug_tuple("Static").field(value).finish(),
             Self::Reactive(_) => f.write_str("Reactive"),
-            Self::Compute(_) => f.write_str("Compute"),
         }
     }
 }
@@ -89,9 +69,17 @@ impl From<Signal<String>> for TextContent {
     }
 }
 
+/// What a [`TextBuilder`] builds from. A `Live` closure stays a
+/// closure until build so the `derived` is created under the node's
+/// owner, not the factory's effect-run owner.
+enum Source {
+    Content(TextContent),
+    Live(Rc<dyn Fn() -> String>),
+}
+
 /// Builder for a text node.
 pub struct TextBuilder {
-    source: TextContent,
+    source: Source,
     a11y: A11yProps,
     wrap: bool,
     ellipsis: bool,
@@ -102,7 +90,7 @@ pub struct TextBuilder {
 #[must_use]
 pub fn text(source: impl Into<TextContent>) -> TextBuilder {
     TextBuilder {
-        source: source.into(),
+        source: Source::Content(source.into()),
         a11y: A11yProps {
             role: Role::Label,
             ..A11yProps::default()
@@ -110,6 +98,20 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
         wrap: true,
         ellipsis: false,
         pre_extensions: Vec::new(),
+    }
+}
+
+/// Create a text node builder from a live closure.
+///
+/// The closure is stored on the builder and wrapped in
+/// `sigil_reactive::derived` at build time, under the node's owner,
+/// so a keyed keep does not dispose the subscription. Use this in
+/// factories that run before the node owner exists.
+#[must_use]
+pub fn text_live(f: impl Fn() -> String + 'static) -> TextBuilder {
+    TextBuilder {
+        source: Source::Live(Rc::new(f)),
+        ..text("")
     }
 }
 
@@ -219,9 +221,13 @@ impl TextBuilder {
 
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
+        let content = match self.source {
+            Source::Content(content) => content,
+            Source::Live(compute) => TextContent::Reactive(derived(move || compute())),
+        };
         let id = cx.new_node(
             NodeType::Text {
-                content: self.source.into_live(),
+                content,
                 wrap: self.wrap,
                 ellipsis: self.ellipsis,
             },

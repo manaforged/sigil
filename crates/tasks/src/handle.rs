@@ -6,9 +6,7 @@
 //! [`dispatch_to_owner`][crate::dispatch_to_owner] (or
 //! [`spawn_to_signal`][crate::spawn_to_signal], which is built on it).
 //!
-//! See [DR-005 addendum §3].
-//!
-//! [DR-005 addendum §3]: ../../../docs/decisions/DR-005-reactivity-owner-tree.md
+//! See DR-005 addendum §3.
 
 use sigil_reactive::OwnerId;
 

@@ -47,4 +47,4 @@ pub use image::{ImageBuilder, ImageSource, ObjectFit, image};
 pub use node::{Node, NodeExtensions, NodeType, TopLayer};
 pub use reactive_children::schedule_keyed_rebuild;
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind};
-pub use text::{TextBuilder, TextContent, text};
+pub use text::{TextBuilder, TextContent, text, text_live};

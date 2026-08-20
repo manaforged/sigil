@@ -1,6 +1,6 @@
 //! Headless PNG capture for renderer phase showcase scenes.
 
-#![allow(clippy::indexing_slicing)] // Examples may slice staging buffers; see docs/plans/native-ui/hygiene-cleanup-framework.md.
+#![allow(clippy::indexing_slicing)] // Examples may slice staging buffers; see the internal hygiene-cleanup-framework plan.
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
@@ -35,7 +35,6 @@ use sigil_text as _;
 use skrifa as _;
 use smallvec as _;
 use tracing as _;
-use zeno as _;
 
 const SPLIT_WIDTH: u32 = 1280;
 const SPLIT_HALF_HEIGHT: u32 = 400;

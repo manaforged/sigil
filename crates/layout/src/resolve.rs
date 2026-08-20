@@ -10,7 +10,7 @@
 //! CSS rule, and it is why the edge helpers take one `cb_inline` basis
 //! rather than a per-axis pair.
 //!
-//! See [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md).
+//! See DR-041.
 
 #![allow(clippy::redundant_pub_crate)]
 

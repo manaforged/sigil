@@ -29,6 +29,9 @@ use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -498,11 +501,24 @@ fn wheel_scroll_advances_the_window() {
             })),
         );
         let _layout = compute(&mut cx, root);
-        // 120px down = six 20px rows.
+        // 120px down = six 20px rows. The strip keeps a page of overscan
+        // above the viewport, and the emit walk's 1px clip tolerance keeps
+        // the row parked exactly against the top edge (r005 — zero visible
+        // pixels), so it heads the painted list with r006 right behind it.
+        let texts = glyph_texts(&cx, root);
+        let body = texts
+            .iter()
+            .filter(|text| text.starts_with('r'))
+            .collect::<Vec<_>>();
         assert_eq!(
-            first_body_text(&cx).as_deref(),
+            body.first().map(|s| s.as_str()),
+            Some("r005"),
+            "wheel delta advances the visible window: {texts:?}",
+        );
+        assert_eq!(
+            body.get(1).map(|s| s.as_str()),
             Some("r006"),
-            "wheel delta advances the visible window",
+            "first fully visible row is six rows down: {texts:?}",
         );
     });
 }

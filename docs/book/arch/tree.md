@@ -55,8 +55,8 @@ list.
   `TextBuilder::build`)
 
 A factory that runs before the node owner exists must not call
-`derived()` itself. Use `TextContent::compute` in that factory; build
-converts it to a node-owned `derived`. Live nodes store `Reactive`
+`derived()` itself. Use `text_live` in that factory; build converts
+the closure to a node-owned `derived`. Live nodes store `Reactive`
 only.
 
 ## Pointer

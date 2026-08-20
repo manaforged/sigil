@@ -1,7 +1,7 @@
 //! Tokio-based async runtime and main-thread dispatcher.
 //!
 //! This crate ships the concrete `Scheduler` adapter promised by
-//! [DR-007]: one `tokio::runtime::Runtime` per `App`, an MPSC payload
+//! DR-007: one `tokio::runtime::Runtime` per `App`, an MPSC payload
 //! channel drained on the main thread, owner-disposal-driven task
 //! cancellation, and the `spawn_to_signal` / `dispatch_to_owner`
 //! public entry points from the DR-005 addendum.
@@ -34,7 +34,6 @@
 //! we'll bound it once real workloads show a fan-out regression, per
 //! DR-007 invariant (5).
 //!
-//! [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
 //! [UnboundedSender]: tokio::sync::mpsc::UnboundedSender
 
 #![deny(missing_docs)]

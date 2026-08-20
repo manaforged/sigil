@@ -1,6 +1,6 @@
 # cargo-deny configuration for sigil.
 #
-# Checks run in CI via `cargo deny check` (see .github/workflows/ci.yml).
+# Run as `cargo deny check` as part of the owned-host gate (see README).
 # Schema reference: https://embarkstudios.github.io/cargo-deny/
 # Tested against cargo-deny ~0.16 (April 2026).
 
@@ -19,6 +19,11 @@ targets = [
 ]
 all-features = false
 no-default-features = false
+# The checks govern what we SHIP. publish = false crates — the bench-parity
+# harnesses (which deliberately import GPUI's whole dependency tree),
+# examples, ide-core, engine_adapter — are not shipping code, and their
+# unique transitive deps are excluded recursively.
+exclude-unpublished = true
 
 [output]
 feature-depth = 1
@@ -31,8 +36,28 @@ feature-depth = 1
 [advisories]
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
-    # Example format (uncomment + adapt when we actually need to ignore one):
-    # { id = "RUSTSEC-0000-0000", reason = "Upstream fix in flight — tracked in #NNN. Remove by <date>." },
+    # Linux tray-icon stack (tray-icon -> libappindicator -> gtk3 bindings):
+    # GTK3 bindings are unmaintained, but libappindicator remains the only
+    # freedesktop tray path. No untrusted input — renders our own menu.
+    # Re-check when tray-icon ships a GTK4/libayatana backend.
+    { id = "RUSTSEC-2024-0413", reason = "atk via tray-icon/libappindicator; no maintained tray alternative" },
+    { id = "RUSTSEC-2024-0416", reason = "atk-sys via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0412", reason = "gdk via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0418", reason = "gdk-sys via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0415", reason = "gtk via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0420", reason = "gtk-sys via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0419", reason = "gtk3-macros via tray-icon/libappindicator" },
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error via glib-macros (same tray stack)" },
+    # quick-xml is pulled by wayland-scanner, a build-time proc-macro whose
+    # only input is the wayland protocol XML bundled with the crate — the
+    # DoS surface (2026-0194/0195) is unreachable. wayland-scanner pins
+    # 0.39.4 exactly; no compatible fix release exists.
+    { id = "RUSTSEC-2026-0194", reason = "quick-xml via wayland-scanner (build-time, bundled input only)" },
+    { id = "RUSTSEC-2026-0195", reason = "quick-xml via wayland-scanner (build-time, bundled input only)" },
+    # ttf-parser via ab_glyph -> sctk-adwaita -> winit (Linux window
+    # decorations). winit's transitive tree; we render text with our own
+    # skrifa/HarfRust stack and never touch ab_glyph at runtime.
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser via sctk-adwaita/winit; not our text path" },
 ]
 
 # --- licenses ---------------------------------------------------------------
@@ -46,6 +71,9 @@ allow = [
     "Apache-2.0 WITH LLVM-exception",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    # Boost Software License — permissive, OSI-approved. Reached via
+    # arboard's Windows backend (clipboard-win, error-code). Clear to ship.
+    "BSL-1.0",
     "CC0-1.0",
     "ISC",
     # MPL-2.0 retained for any fluent-rs or future weak-copyleft deps.
@@ -68,14 +96,20 @@ registries = []
 
 # --- bans -------------------------------------------------------------------
 # Duplicate-version policy: we'd prefer one version of each crate, but the
-# wgpu / winit / criterion dependency trees bring in transitive duplicates
-# we cannot dedupe ourselves. The `skip` list below captures the exact
-# duplicates we know about (from `cargo tree --workspace --duplicates` on
-# 2026-04-14). When upstream consolidates, remove the entry — the rest of
-# the check will catch any new unexpected duplicates.
+# wgpu / winit / accesskit / tray-icon dependency trees bring in transitive
+# duplicates we cannot dedupe ourselves. The `skip` list below captures the
+# exact duplicates we know about (re-baselined against the published graph —
+# `exclude-unpublished = true` — on 2026-08-19). When upstream consolidates,
+# remove the entry — the rest of the check will catch any new unexpected
+# duplicates.
 [bans]
 multiple-versions = "deny"
-wildcards = "deny"
+# Internal dev-dependencies of published crates are deliberately version-less
+# path deps so `cargo publish` strips them (see RELEASING.md). Deny would
+# block the gate on our own release policy, so keep this at warn: visibility
+# is retained in the output, and external deps are unaffected because they
+# all carry registry versions.
+wildcards = "warn"
 highlight = "all"
 workspace-default-features = "allow"
 external-default-features = "allow"
@@ -83,18 +117,18 @@ allow = []
 deny = []
 
 # Known-duplicated transitive crates. Each entry needs a pointer to the
-# upstream cause so we can re-check periodically.
+# upstream cause so we can re-check periodically. Convention: skip every
+# duplicated version EXCEPT the newest, so any additional new version still
+# fails the gate.
 skip = [
     # wgpu 29 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
-    # wgpu-core, wgpu-hal, gpu-allocator). indexmap 2.14 additionally pulls
-    # hashbrown 0.17. All in the wgpu dep tree, no workaround available.
+    # wgpu-core, wgpu-hal, gpu-allocator). All in the wgpu dep tree, no
+    # workaround available.
     { crate = "hashbrown@0.15.5", reason = "wgpu 29 transitive (gpu-descriptor)" },
     { crate = "hashbrown@0.16.1", reason = "wgpu 29 transitive (naga/wgpu-core)" },
-    { crate = "hashbrown@0.17.0", reason = "indexmap 2.14 transitive via wgpu-core/naga" },
 
     # foldhash follows hashbrown's version split for the same reason.
     { crate = "foldhash@0.1.5",   reason = "wgpu 29 transitive via hashbrown 0.15" },
-    { crate = "foldhash@0.2.0",   reason = "wgpu 29 transitive via hashbrown 0.16" },
 
     # winit 0.30 pins windows-sys 0.52; criterion 0.5 (via is-terminal /
     # winapi-util / walkdir) pulls windows-sys 0.61. Both are dev/runtime
@@ -108,7 +142,71 @@ skip = [
     # without forking sctk-adwaita or pinning usvg to an older version.
     # Re-check when sctk-adwaita is updated to tiny-skia 0.12+.
     { crate = "tiny-skia-path@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30 (R8 introduced usvg 0.47 which needs 0.12.0)" },
-    { crate = "tiny-skia-path@0.12.0", reason = "usvg 0.47 transitive (R8 icon baker); conflicts with sctk-adwaita's 0.11.4" },
+
+    # --- winit 0.30 / accesskit_winit 0.32 chain ---------------------------
+    # winit 0.30 and accesskit_macos 0.26.1 pin the objc2 0.5 / block2 0.5 /
+    # core-graphics 0.23 generation; arboard, muda, rfd, tray-icon and
+    # zed-font-kit have moved to the 0.6 / 0.24 generation. Cannot converge
+    # until winit 0.31+ and a matching accesskit_winit land.
+    { crate = "accesskit_consumer@0.35.0", reason = "accesskit_windows 0.32.1 via accesskit_winit 0.32.2; accesskit_macos/atspi_common use 0.36" },
+    { crate = "objc2@0.5.2",              reason = "accesskit_macos 0.26.1 / block2 0.5.1 (winit 0.30 chain); rest of tree on 0.6" },
+    { crate = "objc2-app-kit@0.2.2",      reason = "accesskit_macos 0.26.1 and winit 0.30.13 pin; arboard/muda/rfd use 0.3.2" },
+    { crate = "objc2-foundation@0.2.2",   reason = "accesskit_macos 0.26.1 / objc2-app-kit 0.2.2 pin; rest of tree on 0.3.2" },
+    { crate = "block2@0.5.1",             reason = "objc2-foundation 0.2.2 (accesskit_macos/winit chain); rest of tree on 0.6.2" },
+    { crate = "core-graphics@0.23.2",     reason = "winit 0.30 pins; core-text 21 (sigil-text/zed-font-kit) uses 0.24" },
+    { crate = "core-graphics-types@0.1.3", reason = "follows core-graphics 0.23.2 (winit 0.30)" },
+    { crate = "core-foundation@0.9.4",    reason = "follows core-graphics 0.23.2 (winit 0.30); 0.10 via core-graphics 0.24" },
+    { crate = "bitflags@1.3.2",           reason = "core-graphics 0.23.2 / core-graphics-types 0.1.3 / png 0.17.16 pin v1" },
+    { crate = "smol_str@0.2.2",           reason = "winit 0.30 pins; sigil-hal uses 0.3.6" },
+    { crate = "keyboard-types@0.7.0",     reason = "muda 0.17.2 pins; sigil-hal uses 0.8.3" },
+
+    # --- Linux tray-icon stack (tray-icon -> libappindicator -> gtk3) ------
+    # Same unmaintained GTK3 chain as the RUSTSEC-2024-04xx advisory ignores.
+    # gtk3-macros/glib-macros pin an entire old proc-macro/toml ecosystem.
+    { crate = "heck@0.4.1",               reason = "glib-macros 0.18.5 (tray-icon GTK3 stack); system-deps uses 0.5" },
+    { crate = "libloading@0.7.4",         reason = "libappindicator-sys 0.9.0 (tray stack); ash/dlib/x11rb use 0.8" },
+    { crate = "syn@1.0.109",              reason = "proc-macro-error 1.0.4 via glib-macros (tray stack)" },
+    { crate = "thiserror@1.0.69",         reason = "cairo-rs/glib/gio/calloop (tray + smithay chains); wgpu/naga use 2.0" },
+    { crate = "thiserror-impl@1.0.69",    reason = "follows thiserror 1.0.69" },
+    { crate = "toml@0.8.23",              reason = "system-deps 6.2.2 (tray GTK3 stack); sigil-app on 0.9, trybuild on 1.x" },
+    { crate = "serde_spanned@0.6.9",      reason = "toml 0.8.23 / toml_edit 0.22.27 (tray stack)" },
+    { crate = "proc-macro-crate@1.3.1",   reason = "gtk3-macros 0.18.2 (tray stack)" },
+    { crate = "proc-macro-crate@2.0.0",   reason = "glib-macros 0.18.5 (tray stack); zbus uses 3.5" },
+    { crate = "toml_edit@0.19.15",        reason = "proc-macro-crate 1.3.1 (gtk3-macros, tray stack)" },
+    { crate = "toml_edit@0.20.7",         reason = "proc-macro-crate 2.0.0 (glib-macros, tray stack)" },
+    { crate = "toml_edit@0.22.27",        reason = "toml 0.8.23 (system-deps, tray stack)" },
+    { crate = "toml_datetime@0.6.11",     reason = "toml 0.8.23 + toml_edit 0.19/0.20/0.22 (tray stack)" },
+    { crate = "toml_datetime@0.7.5+spec-1.1.0", reason = "toml 0.9.12 (sigil-app); converges if workspace toml bumps to 1.x" },
+    { crate = "winnow@0.5.40",            reason = "toml_edit 0.19.15/0.20.7 (tray stack)" },
+    { crate = "winnow@0.7.15",            reason = "toml 0.9.12 (sigil-app) + toml_edit 0.22.27; converges if workspace toml bumps to 1.x" },
+
+    # phf converged 2026-08-19 (workspace req 0.13 — phf family + rand 0.8 /
+    # rand_core 0.6 skips removed). skrifa converged the same day (req 0.42,
+    # read-fonts skip removed).
+
+    # --- misc upstream splits ----------------------------------------------
+    { crate = "dirs@5.0.1",          reason = "zed-font-kit 0.14.1-zed pins; tray-icon 0.21.3 uses 6.0" },
+    { crate = "dirs-sys@0.4.1",      reason = "follows dirs 5.0.1 (zed-font-kit)" },
+    { crate = "png@0.17.16",         reason = "muda 0.17.2 + tiny-skia 0.11.4 (sctk-adwaita) pin; image 0.25 uses 0.18.1" },
+    { crate = "rustix@0.38.44",      reason = "calloop 0.13 + crossterm 0.28.1 (winit/smithay chains); zbus/wayland on 1.x" },
+    { crate = "linux-raw-sys@0.4.15", reason = "follows rustix 0.38.44" },
+    { crate = "getrandom@0.3.4",     reason = "ahash 0.8.12 + rand_core 0.9.5 pin; tempfile 3.27 uses 0.4.2" },
+
+    # --- windows-* target crates -------------------------------------------
+    # Target-specific support crates version-locked to their windows-sys
+    # parent; the splits above (dirs-sys 0.4.1, rfd/rustix 0.38 on 0.59,
+    # winit on 0.52) force multiple windows-sys generations, and these
+    # follow mechanically. They cannot converge independently.
+    { crate = "windows-sys@0.48.0",        reason = "dirs-sys 0.4.1 (dirs 5 / zed-font-kit)" },
+    { crate = "windows-sys@0.59.0",        reason = "rfd 0.15.4 + rustix 0.38.44 pin; arboard/muda/notify on 0.60" },
+    { crate = "windows-targets@0.48.5",    reason = "follows windows-sys 0.48.0" },
+    { crate = "windows-targets@0.52.6",    reason = "follows windows-sys 0.52.0/0.59.0" },
+    { crate = "windows_aarch64_msvc@0.48.5", reason = "follows windows-targets 0.48.5" },
+    { crate = "windows_aarch64_msvc@0.52.6", reason = "follows windows-targets 0.52.6" },
+    { crate = "windows_x86_64_gnu@0.48.5", reason = "follows windows-targets 0.48.5" },
+    { crate = "windows_x86_64_gnu@0.52.6", reason = "follows windows-targets 0.52.6" },
+    { crate = "windows_x86_64_msvc@0.48.5", reason = "follows windows-targets 0.48.5" },
+    { crate = "windows_x86_64_msvc@0.52.6", reason = "follows windows-targets 0.52.6" },
 ]
 skip-tree = []
 

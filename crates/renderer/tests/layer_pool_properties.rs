@@ -27,7 +27,6 @@ use windows_core as _;
 
 use pollster::FutureExt as _;
 use sigil_renderer::{LayerError, LayerPool};
-use zeno as _;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 

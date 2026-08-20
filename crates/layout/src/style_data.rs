@@ -1,8 +1,7 @@
 //! Owned style data for the P0.5 layout engine swap-out.
 //!
-//! [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md) seats
-//! every style field the block / flex solvers need on a sigil-owned
-//! struct so that solvers read only sigil-owned data.
+//! DR-041 seats every style field the block / flex solvers need on a
+//! sigil-owned struct so that solvers read only sigil-owned data.
 //!
 //! The supporting enums and value types are sigil-owned by intent: no
 //! upstream layout-engine re-exports. The [`crate::style_adapter`] module
@@ -302,7 +301,7 @@ pub enum BoxSizing {
 /// The minimal grid supports the three common track kinds: a fixed pixel
 /// width, a flexible `fr` fraction of the leftover space, and `auto`
 /// (sized to the widest cell in the track). No `minmax()`, spanning, or
-/// named lines yet — see [`crate::grid`].
+/// named lines yet — see the private `grid` module.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TrackSize {
     /// Fixed track size in logical pixels.

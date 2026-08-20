@@ -1,8 +1,8 @@
 //! Native menu bar.
 //!
 //! Build a menu with the re-exported [`muda`] types, register it with
-//! [`set_menu_bar`] BEFORE `launch`, then react to item clicks through the
-//! reactive [`events`] channel — matching the emitted [`MenuId`] against the
+//! [`set_menu_bar`](crate::menu::set_menu_bar) BEFORE `launch`, then react to item clicks through the
+//! reactive [`events`](crate::menu::events) channel — matching the emitted [`MenuId`](crate::menu::MenuId) against the
 //! ids you gave your items.
 //!
 //! ```rust,no_run

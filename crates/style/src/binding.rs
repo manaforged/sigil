@@ -137,13 +137,6 @@ impl StyleBinding {
         !self.reactive_channels.is_empty()
     }
 
-    /// True when a reactive channel currently carries a box-model atom.
-    #[must_use]
-    pub fn has_layout_reactive(&self) -> bool {
-        self.reactive_channels()
-            .any(|slice| slice.iter().any(|atom| atom.affects_layout()))
-    }
-
     /// True when any atom layer sets `display: none`.
     #[must_use]
     pub fn hides(&self) -> bool {

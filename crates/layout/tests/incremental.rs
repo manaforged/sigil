@@ -449,7 +449,6 @@ impl TextMeasure for ContentWidthMeasure {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
-            TextContent::Compute(compute) => compute().len(),
         };
         let clamped = u16::try_from(len).unwrap_or(u16::MAX);
         sigil_hal::LogicalSize::new(f32::from(clamped) * 10.0, 10.0)

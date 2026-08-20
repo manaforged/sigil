@@ -6,9 +6,6 @@
 //! consults, the deferred-write queue that captures Paint-phase
 //! `crate::cx::EntityCx::dispatch_action` calls, and the drain that
 //! replays them at the top of the next Effect phase.
-//!
-//! See DR-047 for the contract and `docs/specs/g4-drawphase-api-sketch.md`
-//! for the API sketch this module realises.
 
 // The write-seam helpers (`assert_paint_safe`, `enqueue_deferred`) are
 // wired into `signal_write.rs`, `entity.rs`, `cx.rs`, `entity_global.rs`

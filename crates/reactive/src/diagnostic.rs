@@ -1,7 +1,7 @@
 // Centralised panic helpers for documented contract violations.
 // Every panic in this crate routes through here so the lint waiver
 // is scoped to a single 30-line module instead of sprinkled across
-// 8 call sites. See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// 8 call sites. See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)] // hygiene-exception: hygiene-cleanup-framework.md
 
 use core::panic::Location;

@@ -17,7 +17,7 @@ use super::style::FloaterStyle;
 ///
 /// It owns per-widget tuning such as duration, drift, clock, and pool
 /// capacity. Build it directly as a node or continue chaining style
-/// methods from [`crate::prelude::Styled`].
+/// methods from [`sigil_style::Styled`].
 pub struct FloatingTextBuilder {
     spawn: Signal<FctSpawn>,
     settings: FctSettings,

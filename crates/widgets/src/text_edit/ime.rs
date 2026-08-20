@@ -180,7 +180,7 @@ fn install_disable_clears_preedit(runtime: &TextEditRuntime) {
 /// empirically — see the const docs in `super::render`).
 ///
 /// No scroll subtraction: `text_edit` has no scroll signal
-/// (pre-existing gap, tracked in docs/followups.md, unrelated to IME).
+/// (pre-existing gap, unrelated to IME).
 /// No line-width constraint: see the module-level ceiling note.
 fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let preedit = runtime.ime.preedit;

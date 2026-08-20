@@ -289,8 +289,8 @@ fn build_items(
     Ok(items)
 }
 
-/// Place an absolute-positioned child against the container's content
-/// box. Sizing falls back to its style preferred size, then to zero.
+/// Place an absolute-positioned child against the container's content box.
+/// Auto size fills the containing block, matching `block::size_absolute`.
 fn place_absolute(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
@@ -310,14 +310,14 @@ fn place_absolute(
         edges.inline_chrome(),
         style.box_sizing,
     )
-    .unwrap_or(0.0);
+    .unwrap_or_else(|| (cb_w - margins.left - margins.right).max(0.0));
     let h = dim_to_border_box(
         style.size.height,
         cb_h,
         edges.block_chrome(),
         style.box_sizing,
     )
-    .unwrap_or(0.0);
+    .unwrap_or(cb_h);
     let x = resolve_inset_axis(InsetAxis {
         leading: style.inset.left,
         trailing: style.inset.right,

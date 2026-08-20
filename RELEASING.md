@@ -3,20 +3,28 @@
 All `sigil-*` crates publish in lockstep from the workspace root (one version,
 one tag, one command). **Nothing on this page runs without Thomas's explicit
 go.** The everyday state of this repo is "everything staged up to the publish
-button": the CI dry-run gate keeps it that way.
+button": the owned-host gate (README → Owned-host verification) keeps it that
+way.
 
 ## Preconditions
 
 - `CHANGELOG.md`: the `Unreleased` section is renamed to the version + date.
-- CI green on `main`: fmt / clippy / test matrix, MSRV 1.90 leg, docs job,
-  `cargo deny check`, and the publish dry-run gate.
+- Owned-host gate green on `main`, run directly on every supported native
+  builder: `cargo fmt --check`,
+  `cargo clippy --workspace --all-targets -- -D warnings`,
+  `cargo check --workspace --all-targets`,
+  `cargo test --workspace --no-fail-fast`, `cargo deny check`, plus the MSRV
+  1.90 check (`--locked --all-features`), the docs build
+  (`RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
+  --all-features`), and the publish dry-run gate below.
 - crates.io name preflight re-run for **every** package in the publish set.
   Names are first-come-first-served; our one-time preflight
   (2026-07-18, all `sigil-*` free) reserves nothing.
-- Publishing credentials: **trusted publishing** (crates.io GitHub OIDC) is the
-  target setup — no long-lived `CARGO_REGISTRY_TOKEN` anywhere. Until that is
-  configured, publish from a maintainer machine with a freshly minted,
-  narrowly scoped token, and revoke it afterwards.
+- Publishing credentials: publish from a maintainer machine with a freshly
+  minted, narrowly scoped `crates.io` token, and revoke it afterwards. (The
+  original trusted-publishing plan assumed GitHub Actions OIDC; Actions is no
+  longer part of this repo's test path, so maintainer-machine tokens are the
+  mechanism.)
 
 ## Version bump (lockstep)
 
@@ -61,8 +69,9 @@ manual topological sequencing and no per-crate publish loop.
 
 ## After
 
-- `git tag v<version>` and push the tag — this creates the baseline the
-  `cargo-semver-checks` CI job compares against from then on.
+- `git tag v<version>` and push the tag — this creates the baseline
+  `cargo-semver-checks` compares against from then on (run it as part of the
+  owned-host gate once a baseline exists).
 - Verify the docs.rs build for `sigil-ui` (it builds with `all-features`,
   so the optional `render` surface appears).
 - `CHANGELOG.md`: open a new `Unreleased` section.

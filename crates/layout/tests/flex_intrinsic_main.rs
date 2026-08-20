@@ -4,9 +4,7 @@
 //! with `flex_basis: Auto` and main-axis `size: Auto`, the flex
 //! algorithm's main-axis basis function returned `0` (no content-
 //! intrinsic fallback existed). Result: every section in a flex column
-//! got `main_size = 0` and painted at the same y. See
-//! `docs/audits/2026-05-20-widget-playground-broken-render.md` section
-//! 2 for the live-render reproduction.
+//! got `main_size = 0` and painted at the same y.
 //!
 //! These tests build trees where the children of a flex container are
 //! themselves containers (no fixed height/width on the children) and

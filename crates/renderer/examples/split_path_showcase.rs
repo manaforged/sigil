@@ -26,7 +26,6 @@ use skrifa as _;
 use smallvec as _;
 use tracing as _;
 use wgpu as _;
-use zeno as _;
 
 #[path = "support/windowed.rs"]
 mod windowed;

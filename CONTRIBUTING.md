@@ -43,5 +43,6 @@ agents work the same repo, give each one its own git worktree
 
 ## Plans and decisions
 
-Non-trivial work starts as a plan in `docs/plans/` (date-prefixed) and
-architectural calls are recorded as DRs in `docs/decisions/`.
+Non-trivial work starts as a date-prefixed plan and architectural calls are
+recorded as numbered decision records. Both are internal working documents
+— they live in the maintainers' local trees, not in the published repo.

@@ -10,7 +10,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
 const MAX_HISTORY: usize = 100;
-/// Lines moved by PageUp / PageDown when the widget has no viewport.
+/// Lines moved by `PageUp` / `PageDown` when the widget has no viewport.
 const PAGE_LINES: isize = 10;
 
 #[derive(Clone, Debug, Eq, PartialEq)]

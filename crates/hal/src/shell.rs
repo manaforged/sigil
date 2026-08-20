@@ -1,4 +1,4 @@
-//! Shell trait — see [DR-002].
+//! Shell trait — see DR-002.
 //!
 //! The `Shell` trait abstracts the OS window and event loop. In
 //! production this is implemented over `winit` 0.30+ by `sigil-shell`.
@@ -28,7 +28,6 @@
 //! Routing, hit-testing, focus management, and handler dispatch live
 //! in `sigil-events`. `Shell` only owns platform delivery.
 //!
-//! [DR-002]: ../../../docs/decisions/DR-002-shell-winit.md
 //! [`Scheduler`]: crate::scheduler::Scheduler
 
 use core::error::Error;

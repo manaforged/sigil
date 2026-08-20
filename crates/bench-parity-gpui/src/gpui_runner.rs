@@ -189,47 +189,20 @@ fn one_row(i: usize, quotes: Option<&Vec<Quote>>, table: bool, row_h: f32, cols:
 fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, String> {
     let p = &workload.params;
     validate(p)?;
-    let table = workload.category == "data-table";
+    let (table, tick) = (workload.category == "data-table", p.tick());
     let book = table.then(|| Arc::new(Mutex::new(generate(p.row_count))));
-    let ids = if table {
-        None
-    } else {
-        Some(Arc::new(
-            (0..p.row_count)
-                .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
-                .collect::<Vec<u32>>(),
-        ))
-    };
-    let book_len = book
-        .as_ref()
-        .and_then(|rows| rows.lock().ok().map(|g| g.len()))
-        .or_else(|| ids.as_ref().map(|rows| rows.len()))
-        .unwrap_or(0);
-    let surface = p.surface();
-    let cols = p.cells();
+    let ids = row_ids(p, table);
+    let book_len = held_rows(book.as_ref(), ids.as_ref());
     let (vw, vh) = p.viewport();
-    let row_h = p.row_h();
+    let (row_h, cols) = (p.row_h(), p.cells());
     let handle = UniformListScrollHandle::new();
     let observed: Arc<Mutex<Vec<Range<usize>>>> = Arc::new(Mutex::new(Vec::new()));
     let mut host = new_host();
-    let (vis_lo, vis_hi) = visible_band(vh, row_h, p.row_count);
-    let vis = vis_hi;
-    let mut first = if p.tail() {
-        p.row_count.saturating_sub(vis_lo.max(1))
-    } else {
-        0
-    };
+    let (_, vis) = visible_band(vh, row_h, p.row_count);
     let paint_ok = std::cell::Cell::new(true);
-    let tick = p.tick();
-    let seed_last = book.as_ref().and_then(|rows| {
-        rows.lock()
-            .ok()
-            .and_then(|quotes| quotes.first().map(|quote| quote.last_done))
-    });
-    let reconstruct = !p.reuse && !tick;
     let mut step_n = 0_u32;
     let mut step = |ix: usize| {
-        if reconstruct {
+        if !p.reuse && !tick {
             host = new_host();
         }
         if tick {
@@ -238,23 +211,13 @@ fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, Stri
             handle.scroll_to_item_strict(ix, ScrollStrategy::Top);
         }
         let obs = observed.clone();
-        let book = book.clone();
         let ids = ids.clone();
-        let (ns, ok) = time_construct_layout(&mut host, surface, p, || {
-            let h = handle.clone();
-            uniform_list("bench-list", p.row_count, move |range, _w, _cx| {
-                if let Ok(mut g) = obs.lock() {
-                    g.push(range.clone());
-                }
-                if let Some(ids) = ids.as_ref() {
-                    let _ = ids.get(range.start);
-                }
-                let guard = book.as_ref().and_then(|book| book.lock().ok());
-                range
-                    .map(|i| one_row(i, guard.as_deref(), table, row_h, cols))
-                    .collect::<Vec<Div>>()
+        let book = book.clone();
+        let (ns, ok) = time_construct_layout(&mut host, p.surface(), p, || {
+            uniform_list("bench-list", p.row_count, move |r, _w, _cx| {
+                range_rows(r, &obs, ids.as_ref(), book.as_ref(), (table, row_h, cols))
             })
-            .track_scroll(h)
+            .track_scroll(handle.clone())
             .w(px(vw))
             .h(px(vh))
             .into_any_element()
@@ -262,23 +225,67 @@ fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, Stri
         paint_ok.set(ok);
         ns
     };
-    let samples_ns = drain_gpui(p, &mut first, &mut step);
-    let now_last = book.as_ref().and_then(|rows| {
-        rows.lock()
-            .ok()
-            .and_then(|quotes| quotes.first().map(|quote| quote.last_done))
-    });
-    let last_done_moved = tick && seed_last.zip(now_last).is_some_and(|(a, b)| a != b);
-    let result = finish_gpui_list(
+    let obs = Observed(&observed, &paint_ok);
+    Ok(finish_gpui_list(
         workload,
-        samples_ns,
-        &observed,
-        &paint_ok,
-        p,
+        &mut step,
+        book.as_ref(),
         book_len,
-        last_done_moved,
-    );
-    Ok(result)
+        obs,
+    ))
+}
+
+/// Build the rows GPUI asks for, recording the observed range.
+fn range_rows(
+    range: Range<usize>,
+    obs: &Arc<Mutex<Vec<Range<usize>>>>,
+    ids: Option<&Arc<Vec<u32>>>,
+    book: Option<&Arc<Mutex<Vec<Quote>>>>,
+    layout: (bool, f32, usize),
+) -> Vec<Div> {
+    let (table, row_h, cols) = layout;
+    if let Ok(mut g) = obs.lock() {
+        g.push(range.clone());
+    }
+    if let Some(ids) = ids {
+        let _ = ids.get(range.start);
+    }
+    let guard = book.and_then(|arc| arc.lock().ok());
+    range
+        .map(|i| one_row(i, guard.as_deref(), table, row_h, cols))
+        .collect()
+}
+
+/// Row ids for the krausest list; tables key on row content instead.
+fn row_ids(p: &bench_parity::WorkloadParams, table: bool) -> Option<Arc<Vec<u32>>> {
+    (!table).then(|| {
+        Arc::new(
+            (0..p.row_count)
+                .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
+                .collect(),
+        )
+    })
+}
+
+/// Live row count: the book when present, else the id list.
+fn held_rows(book: Option<&Arc<Mutex<Vec<Quote>>>>, ids: Option<&Arc<Vec<u32>>>) -> usize {
+    book.and_then(|rows| rows.lock().ok().map(|g| g.len()))
+        .or_else(|| ids.map(|rows| rows.len()))
+        .unwrap_or(0)
+}
+
+/// First quote's `last_done`, for the tick-change check.
+fn first_last_done(book: Option<&Arc<Mutex<Vec<Quote>>>>) -> Option<f64> {
+    book.and_then(|rows| rows.lock().ok()?.first().map(|quote| quote.last_done))
+}
+
+/// First row index for the initial scroll position (tail = last page).
+fn first_row(p: &bench_parity::WorkloadParams, vis_lo: usize) -> usize {
+    if p.tail() {
+        p.row_count.saturating_sub(vis_lo.max(1))
+    } else {
+        0
+    }
 }
 
 /// Bump the tick counter and mutate the visible rows of the data-table book.
@@ -292,56 +299,56 @@ fn tick_gpui_book(book: Option<&Arc<Mutex<Vec<Quote>>>>, step_n: &mut u32, vis: 
     }
 }
 
-/// Assemble the run result for a GPUI virtual-list workload.
+/// What the sampled steps observed: (painted ranges, paint health).
+#[derive(Clone, Copy)]
+struct Observed<'a>(&'a Arc<Mutex<Vec<Range<usize>>>>, &'a std::cell::Cell<bool>);
+
+/// Pass when `ok`, else Fail with `detail`.
+fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
+    if ok {
+        EquivalenceCheck::Pass
+    } else {
+        EquivalenceCheck::Fail {
+            detail: detail.into(),
+        }
+    }
+}
+
+/// Drain the measured samples, then verify + assemble the run result.
 fn finish_gpui_list(
     workload: &Workload,
-    samples_ns: Vec<u64>,
-    observed: &Arc<Mutex<Vec<Range<usize>>>>,
-    paint_ok: &std::cell::Cell<bool>,
-    p: &bench_parity::WorkloadParams,
-    book: usize,
-    last_done_moved: bool,
+    step: &mut impl FnMut(usize) -> u64,
+    book: Option<&Arc<Mutex<Vec<Quote>>>>,
+    book_len: usize,
+    obs: Observed<'_>,
 ) -> bench_parity::RunResult {
-    let last = last_real_range(&observed.lock().map(|g| g.clone()).unwrap_or_default());
+    let p = &workload.params;
+    let tick = p.tick();
+    let seed_last = first_last_done(book);
+    let vis_lo = visible_band(p.viewport().1, p.row_h(), p.row_count).0;
+    let mut scroll_first = first_row(p, vis_lo);
+    let samples_ns = drain_gpui(p, &mut scroll_first, step);
+    let now_last = first_last_done(book);
+    let pair = seed_last.zip(now_last);
+    // Change detection wants exact inequality, not an epsilon band.
+    let moved = tick && pair.is_some_and(|(a, b)| a.to_bits() != b.to_bits());
+    let last = last_real_range(&obs.0.lock().map(|g| g.clone()).unwrap_or_default());
     let first = last.as_ref().map_or(0, |r| r.start);
     let visible = last.as_ref().map_or(0, |r| r.end.saturating_sub(r.start));
-    let mut extra = stamp_table_checks(p, visible, paint_ok.get(), visible_check(p, last));
+    let mut extra = stamp_table_checks(p, visible, obs.1.get(), visible_check(p, last));
     extra.insert(
         "book_held".into(),
-        bench_parity::book_held(book, p.row_count),
+        bench_parity::book_held(book_len, p.row_count),
     );
     if !p.gpui_table() {
-        extra.insert(
-            "layout_did_work".into(),
-            if visible > 0 {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "uniform_list painted no rows".into(),
-                }
-            },
-        );
-        extra.insert(
-            "text_did_work".into(),
-            if visible > 0 {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "uniform_list painted no rows".into(),
-                }
-            },
-        );
+        let no_rows = "uniform_list painted no rows";
+        extra.insert("layout_did_work".into(), pass_if(visible > 0, no_rows));
+        extra.insert("text_did_work".into(), pass_if(visible > 0, no_rows));
     }
     if p.tick() {
         extra.insert(
             "last_done_did_move".into(),
-            if last_done_moved {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "book last_done did not change".into(),
-                }
-            },
+            pass_if(moved, "book last_done did not change"),
         );
     }
     if p.tail() {
@@ -351,7 +358,7 @@ fn finish_gpui_list(
         );
     }
     let mut verify = verify_visible(visible);
-    verify.insert("book_rows".into(), u64::try_from(book).unwrap_or(0));
+    verify.insert("book_rows".into(), u64::try_from(book_len).unwrap_or(0));
     verify.insert("first_visible".into(), u64::try_from(first).unwrap_or(0));
     finish(workload, samples_ns, extra, verify)
 }
@@ -393,23 +400,11 @@ fn stamp_table_checks(
     );
     checks.insert(
         "layout_did_work".into(),
-        if visible > 0 {
-            EquivalenceCheck::Pass
-        } else {
-            EquivalenceCheck::Fail {
-                detail: "uniform_list painted no rows".into(),
-            }
-        },
+        pass_if(visible > 0, "uniform_list painted no rows"),
     );
     checks.insert(
         "text_did_work".into(),
-        if visible > 0 {
-            EquivalenceCheck::Pass
-        } else {
-            EquivalenceCheck::Fail {
-                detail: "no visible rows, no text cells".into(),
-            }
-        },
+        pass_if(visible > 0, "no visible rows, no text cells"),
     );
     checks.insert(
         "scene_did_work".into(),
@@ -563,10 +558,10 @@ fn finish(
     verify.insert("reuse".into(), 0);
     verify
         .entry("tick".into())
-        .or_insert(u64::from(workload.params.tick()));
+        .or_insert_with(|| u64::from(workload.params.tick()));
     verify
         .entry("samples".into())
-        .or_insert(u64::try_from(samples_ns.len()).unwrap_or(0));
+        .or_insert_with(|| u64::try_from(samples_ns.len()).unwrap_or(0));
     let mut checks = extra;
     for spec in &workload.equivalence_checks {
         checks

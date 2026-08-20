@@ -21,103 +21,125 @@ pub(crate) enum Span {
     Link { text: String, href: String },
 }
 
+/// Block-split state: finished blocks plus the open paragraph/list/fence.
+#[derive(Default)]
+struct Blocks {
+    out: Vec<Block>,
+    para: String,
+    list: Vec<String>,
+    fence: Option<(String, String)>,
+}
+
 /// Split `source` into heading / paragraph / list / fence / table blocks.
 pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
     let lines: Vec<&str> = source.lines().map(str::trim_end).collect();
-    let mut out = Vec::new();
-    let mut para = String::new();
-    let mut list: Vec<String> = Vec::new();
-    let mut fence: Option<(String, String)> = None;
+    let mut blocks = Blocks::default();
     let mut i = 0;
-
-    let flush_para = |out: &mut Vec<Block>, para: &mut String| {
-        let trimmed = para.trim();
-        if !trimmed.is_empty() {
-            out.push(Block::Paragraph(trimmed.to_string()));
-        }
-        para.clear();
-    };
-    let flush_list = |out: &mut Vec<Block>, list: &mut Vec<String>| {
-        if !list.is_empty() {
-            out.push(Block::List(std::mem::take(list)));
-        }
-    };
-
     while i < lines.len() {
-        let line = lines[i];
-        if let Some((lang, buf)) = fence.as_mut() {
-            if line.starts_with("```") {
-                let body = std::mem::take(buf);
-                let lang = std::mem::take(lang);
-                out.push(if lang == "mermaid" {
-                    Block::Mermaid(body)
-                } else {
-                    Block::Code(body)
-                });
-                fence = None;
-            } else {
-                if !buf.is_empty() {
-                    buf.push('\n');
-                }
-                buf.push_str(line);
-            }
-            i += 1;
-            continue;
+        i += blocks.step(&lines, i);
+    }
+    blocks.finish()
+}
+
+impl Blocks {
+    /// Consume the line at `i`; returns how many lines were eaten.
+    fn step(&mut self, lines: &[&str], i: usize) -> usize {
+        let Some(&line) = lines.get(i) else {
+            return 1;
+        };
+        if self.feed_fence(line) {
+            return 1;
         }
         if line.starts_with("```") {
-            flush_para(&mut out, &mut para);
-            flush_list(&mut out, &mut list);
+            self.flush_all();
             let lang = line.trim_start_matches('`').trim().to_string();
-            fence = Some((lang, String::new()));
-            i += 1;
-            continue;
+            self.fence = Some((lang, String::new()));
+            return 1;
         }
-        if let Some((rows, eaten)) = take_table(&lines, i) {
-            flush_para(&mut out, &mut para);
-            flush_list(&mut out, &mut list);
-            out.push(Block::Table(rows));
-            i += eaten;
-            continue;
+        if let Some((rows, eaten)) = take_table(lines, i) {
+            self.flush_all();
+            self.out.push(Block::Table(rows));
+            return eaten;
         }
         if let Some(item) = list_item(line) {
-            flush_para(&mut out, &mut para);
-            list.push(item.to_string());
-            i += 1;
-            continue;
+            self.flush_para();
+            self.list.push(item.to_string());
+            return 1;
         }
         if let Some((level, heading)) = heading(line) {
-            flush_para(&mut out, &mut para);
-            flush_list(&mut out, &mut list);
-            out.push(Block::Heading {
+            self.flush_all();
+            self.out.push(Block::Heading {
                 level,
                 text: heading.to_string(),
             });
-            i += 1;
-            continue;
+            return 1;
         }
         if line.trim().is_empty() {
-            flush_para(&mut out, &mut para);
-            flush_list(&mut out, &mut list);
-            i += 1;
-            continue;
+            self.flush_all();
+            return 1;
         }
-        flush_list(&mut out, &mut list);
-        if !para.is_empty() {
-            para.push('\n');
+        self.flush_list();
+        if !self.para.is_empty() {
+            self.para.push('\n');
         }
-        para.push_str(line.trim());
-        i += 1;
+        self.para.push_str(line.trim());
+        1
     }
-    if let Some((lang, buf)) = fence {
-        out.push(if lang == "mermaid" {
-            Block::Mermaid(buf)
+
+    /// Feed `line` into the open fence. Returns false when no fence is open.
+    fn feed_fence(&mut self, line: &str) -> bool {
+        let Some((lang, buf)) = self.fence.as_mut() else {
+            return false;
+        };
+        if line.starts_with("```") {
+            let body = std::mem::take(buf);
+            let lang = std::mem::take(lang);
+            self.out.push(fence_block(&lang, body));
+            self.fence = None;
         } else {
-            Block::Code(buf)
-        });
+            if !buf.is_empty() {
+                buf.push('\n');
+            }
+            buf.push_str(line);
+        }
+        true
     }
-    flush_para(&mut out, &mut para);
-    flush_list(&mut out, &mut list);
-    out
+
+    fn flush_para(&mut self) {
+        let trimmed = self.para.trim();
+        if !trimmed.is_empty() {
+            self.out.push(Block::Paragraph(trimmed.to_string()));
+        }
+        self.para.clear();
+    }
+
+    fn flush_list(&mut self) {
+        if !self.list.is_empty() {
+            self.out.push(Block::List(std::mem::take(&mut self.list)));
+        }
+    }
+
+    fn flush_all(&mut self) {
+        self.flush_para();
+        self.flush_list();
+    }
+
+    fn finish(mut self) -> Vec<Block> {
+        if let Some((lang, buf)) = self.fence.take() {
+            self.out.push(fence_block(&lang, buf));
+        }
+        self.flush_para();
+        self.flush_list();
+        self.out
+    }
+}
+
+fn fence_block(lang: &str, body: String) -> Block {
+    if lang == "mermaid" {
+        Block::Mermaid(body)
+    } else {
+        Block::Code(body)
+    }
 }
 
 fn take_table(lines: &[&str], start: usize) -> Option<(Vec<Vec<String>>, usize)> {
@@ -129,7 +151,7 @@ fn take_table(lines: &[&str], start: usize) -> Option<(Vec<Vec<String>>, usize)>
     let mut rows = vec![header];
     let mut i = start + 2;
     while i < lines.len() {
-        let Some(row) = pipe_row(lines[i]) else {
+        let Some(row) = lines.get(i).copied().and_then(pipe_row) else {
             break;
         };
         rows.push(row);
@@ -193,24 +215,19 @@ pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
     let mut out = Vec::new();
     let mut i = 0;
     let mut text = String::new();
-    let flush = |out: &mut Vec<Span>, text: &mut String| {
-        if !text.is_empty() {
-            out.push(Span::Text(std::mem::take(text)));
-        }
-    };
     while i < bytes.len() {
-        if bytes[i] == b'`'
+        if bytes.get(i) == Some(&b'`')
             && let Some(end) = source[i + 1..].find('`')
         {
-            flush(&mut out, &mut text);
+            flush_text(&mut out, &mut text);
             out.push(Span::Code(source[i + 1..i + 1 + end].to_string()));
             i += end + 2;
             continue;
         }
-        if bytes[i] == b'['
+        if bytes.get(i) == Some(&b'[')
             && let Some((label, href, eat)) = link_at(&source[i..])
         {
-            flush(&mut out, &mut text);
+            flush_text(&mut out, &mut text);
             out.push(Span::Link { text: label, href });
             i += eat;
             continue;
@@ -218,15 +235,15 @@ pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
         if source[i..].starts_with("**")
             && let Some(end) = source[i + 2..].find("**")
         {
-            flush(&mut out, &mut text);
+            flush_text(&mut out, &mut text);
             out.push(Span::Bold(source[i + 2..i + 2 + end].to_string()));
             i += end + 4;
             continue;
         }
-        if bytes[i] == b'*'
+        if bytes.get(i) == Some(&b'*')
             && let Some(end) = source[i + 1..].find('*')
         {
-            flush(&mut out, &mut text);
+            flush_text(&mut out, &mut text);
             out.push(Span::Italic(source[i + 1..i + 1 + end].to_string()));
             i += end + 2;
             continue;
@@ -235,11 +252,17 @@ pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
         text.push(ch);
         i += ch.len_utf8();
     }
-    flush(&mut out, &mut text);
+    flush_text(&mut out, &mut text);
     if out.is_empty() {
         out.push(Span::Text(String::new()));
     }
     out
+}
+
+fn flush_text(out: &mut Vec<Span>, text: &mut String) {
+    if !text.is_empty() {
+        out.push(Span::Text(std::mem::take(text)));
+    }
 }
 
 fn link_at(source: &str) -> Option<(String, String, usize)> {

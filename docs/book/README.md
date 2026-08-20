@@ -19,8 +19,7 @@ Opens the book at `http://localhost:3000`. Build a static site with
 `mdbook build docs/book` (output is `docs/book/book/`, gitignored).
 
 Companion material: `examples/` (compile-checked apps, including
-`shell-demo`), rustdoc on `sigil-ui`, and `docs/decisions/` for locked
-design records.
+`shell-demo`) and rustdoc on `sigil-ui`.
 
 ## Guide
 

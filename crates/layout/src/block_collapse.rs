@@ -13,10 +13,9 @@
 //!   by passing the *open* top-margin context into the first child's
 //!   layout pass.
 //!
-//! See [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md)
-//! §"P0.2 block layout" for scope. Out: collapse-through (empty boxes
-//! whose top + bottom margins also collapse with each other), floats,
-//! clearance.
+//! See DR-041 §"P0.2 block layout" for scope. Out: collapse-through
+//! (empty boxes whose top + bottom margins also collapse with each
+//! other), floats, clearance.
 
 #![allow(clippy::redundant_pub_crate)]
 

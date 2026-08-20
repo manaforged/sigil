@@ -23,6 +23,9 @@ use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -76,6 +79,15 @@ fn items_bind_shrink_still_paints_rows() {
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 2, "shrunk bind still paints rows");
+        let scene = emit_scene(&cx, root);
+        assert!(
+            scene.find_text("match-1").is_some(),
+            "count change remounts index-keyed rows with new content"
+        );
+        assert!(
+            scene.find_text("alpha").is_none(),
+            "remount drops the previous slot occupant's content"
+        );
 
         // Grow back.
         items.set(vec![
@@ -124,16 +136,20 @@ fn items_bind_via_effect_chain_still_paints_rows() {
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
-        // 10 in view + 10 overscan below of the 40 unfiltered rows.
+        // Materialized window is 10 in view + 10 overscan below, but
+        // `emit_scene` culls rows outside the viewport's overflow clip
+        // (plus the 1px far-edge row): the stub-measured 16px rows
+        // intersecting [0, 201] are rows 0..=12.
         assert_eq!(
             glyph_runs(&cx, root),
-            20,
+            13,
             "window of unfiltered rows paints"
         );
 
         // Per-keystroke narrowing, layout between keystrokes like frames.
-        // "token1" matches 11 rows (token1, token10..token19); all fit.
-        for (typed, expect) in [("t", 20_usize), ("to", 20), ("tok", 20), ("token1", 11)] {
+        // "token1" matches 11 rows (token1, token10..token19); at 16px
+        // each they span 176px, so all 11 sit inside the viewport clip.
+        for (typed, expect) in [("t", 13_usize), ("to", 13), ("tok", 13), ("token1", 11)] {
             search.set(typed.to_string());
             layout
                 .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -193,9 +209,12 @@ fn items_bind_shrink_paints_under_frame_phases() {
             runs
         };
 
-        // 10 in view + 10 overscan. "token1" matches 11 rows; all fit.
-        assert_eq!(frame(&mut cx, None), 20, "unfiltered frame paints window");
-        assert_eq!(frame(&mut cx, Some("t")), 20, "'t' frame paints window");
+        // Materialized window is 10 in view + 10 overscan; emit culls
+        // rows outside the overflow viewport (+1px far edge), so the
+        // 16px stub rows intersecting [0, 201] are rows 0..=12.
+        // "token1" matches 11 rows (176px); all fit inside the clip.
+        assert_eq!(frame(&mut cx, None), 13, "unfiltered frame paints window");
+        assert_eq!(frame(&mut cx, Some("t")), 13, "'t' frame paints window");
         assert_eq!(frame(&mut cx, Some("token1")), 11, "'token1' frame paints");
         assert_eq!(frame(&mut cx, None), 11, "idle follow-up frame keeps rows");
     });
@@ -266,8 +285,10 @@ fn items_bind_app_shape_batched_keystrokes() {
             runs
         };
 
-        // 15 in view + 15 overscan × 2 texts.
-        assert_eq!(frame(&mut cx, &[]), 30 * 2, "window of all rows paints");
+        // 15 in view + 15 overscan materialized; emit culls rows outside
+        // the 330px overflow viewport (+1px far edge). Rows are 22px
+        // here, so rows 0..=15 intersect [0, 331]: 16 rows × 2 texts.
+        assert_eq!(frame(&mut cx, &[]), 16 * 2, "window of all rows paints");
         let shrunk = frame(&mut cx, &["t", "to", "tok", "toke", "token"]);
         assert_eq!(shrunk, 8 * 2, "batched shrink still paints rows");
         assert_eq!(frame(&mut cx, &[]), 8 * 2, "idle frame keeps rows");
@@ -351,10 +372,13 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         };
 
         let ballast_runs = 600;
-        // 15 in view + 15 overscan covers all 30 unfiltered rows.
+        // 15 in view + 15 overscan covers all 30 unfiltered rows, but
+        // emit culls rows outside the 300px overflow viewport (+1px far
+        // edge): the 16px stub rows intersecting [0, 301] are 0..=18,
+        // so 19 list rows paint next to the 600 ballast rows.
         assert_eq!(
             frame(&mut cx, None),
-            ballast_runs + 30,
+            ballast_runs + 19,
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));

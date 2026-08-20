@@ -36,6 +36,9 @@ use sigil_renderer as _;
 use sigil_style::scale::ScaleRole;
 use sigil_style::{Rgba8, Theme};
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 fn placeholder_color() -> Rgba8 {
@@ -175,4 +178,4 @@ fn fct_state(cx: &Cx, id: NodeId) -> Rc<FctState> {
 // exist to kill. Rise/fade/anchor/color behavior is pinned by the three
 // state-machine tests above reading `FctState::snapshot()`; the VISUAL
 // verification lives where the pixels exist — the host engine composite
-// (HD-2D Wave 2 acceptance), tracked in sigil docs/followups.md.
+// (HD-2D Wave 2 acceptance).

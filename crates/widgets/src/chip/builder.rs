@@ -13,7 +13,7 @@ use crate::interaction::InteractionState;
 use super::super::shared::{Activate, activate_key_reactive, activate_pointer_reactive};
 use super::{CHIP_PADDING_X, CHIP_PADDING_Y, chip_class};
 
-/// Builder returned by [`chip()`](crate::widgets::chip). Static tone by default;
+/// Builder returned by [`chip()`](crate::chip). Static tone by default;
 /// `.tone_signal(...)` retints reactively without a remount (the
 /// widget-playground FRICTION ask).
 pub struct ChipBuilder {

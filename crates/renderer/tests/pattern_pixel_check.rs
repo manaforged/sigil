@@ -38,7 +38,6 @@ use sigil_renderer::{
     CornerRadii, OffscreenTarget, PatternKind, SceneBuilder, ScenePatternStyle, WgpuRenderer,
 };
 use sigil_style::Rgba8;
-use zeno as _;
 
 // Physical scale factor: texture dims = viewport × SCALE.
 // wgpu's downlevel default texture-dimension limit is 2048 px on each

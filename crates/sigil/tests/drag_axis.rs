@@ -25,6 +25,9 @@ use sigil_layout as _;
 use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;

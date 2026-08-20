@@ -40,7 +40,6 @@ use wgpu as _;
 use windows_core as _;
 
 use sigil_icons as _;
-use zeno as _;
 
 use core::error::Error;
 use std::time::{Duration, Instant};

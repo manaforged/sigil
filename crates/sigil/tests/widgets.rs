@@ -25,6 +25,9 @@ use sigil_events as _;
 use sigil_kernel as _;
 use sigil_reactive as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 
 use sigil::prelude::*;
 use sigil_hal::{KeyEventInit, Point, PointerEventInit};
@@ -39,7 +42,6 @@ impl TextMeasure for StubMeasure {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
-            TextContent::Compute(build) => build().len(),
         };
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
     }
@@ -77,7 +79,6 @@ fn button_label_accepts_a_signal() {
             NodeType::Text { content, .. } => match content {
                 TextContent::Reactive(value) => assert_eq!(value.get(), "Save"),
                 TextContent::Static(value) => panic!("expected reactive label, got {value}"),
-                TextContent::Compute(_) => panic!("expected reactive label, got compute"),
             },
             other => panic!("expected text child, got {other:?}"),
         }

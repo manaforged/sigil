@@ -5,10 +5,7 @@
 //! shortcut. Tests asserting debug-panic behaviour are gated on
 //! `cfg(debug_assertions)` — in release the `debug_assert_*` family
 //! compiles out and the same call site either no-ops or defers per
-//! DR-047 §5.
-//!
-//! See `docs/decisions/DR-047-g4-drawphase.md` for the contract and
-//! `docs/specs/g4-drawphase-api-sketch.md` for the test outline.
+//! the draw-phase contract.
 
 #![allow(missing_docs)]
 #![allow(

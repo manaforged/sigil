@@ -70,7 +70,7 @@ fn construct_samples(
         profile::tick_frame();
         let missed = u64::from(engine.generation() > 0);
         last = Some((cx, root, cmds));
-        (nanos(start), missed)
+        (super::nanos(start), missed)
     };
     let (samples_ns, misses) = measure(p, &mut step);
     let visible = last
@@ -113,10 +113,7 @@ fn scroll_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) ->
     let _ = engine.compute(&mut cx, root, clock.available);
     profile::enable();
     profile::reset();
-    let mut last_scene = SceneCount {
-        draws: 0,
-        glyphs: 0,
-    };
+    let mut last_scene = SceneCount::default();
     let mut step = || {
         bump_scroll(scroll, p.row_h(), max_scroll);
         let before = engine.generation();
@@ -125,7 +122,7 @@ fn scroll_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) ->
         let _ = engine.compute(&mut cx, root, clock.available);
         last_scene = paint(&cx, root, clock.surface, clock.vw, clock.vh);
         profile::tick_frame();
-        (nanos(start), u64::from(engine.generation() > before))
+        (super::nanos(start), u64::from(engine.generation() > before))
     };
     let (samples_ns, misses) = measure(p, &mut step);
     finish_table(
@@ -157,18 +154,15 @@ fn tick_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) -> c
     let mut step_n = 0_u32;
     profile::enable();
     profile::reset();
-    let mut last_scene = SceneCount {
-        draws: 0,
-        glyphs: 0,
-    };
+    let mut last_scene = SceneCount::default();
     let mut prev = last_done_values(&cx, root);
     let mut moved = false;
     let mut step = || {
         step_n = step_n.saturating_add(1);
         profile::begin_frame();
         let start = Instant::now();
-        rows.update(|book| {
-            tick_visible(Rc::make_mut(book).as_mut_slice(), 0, visible, step_n);
+        rows.update(|data| {
+            tick_visible(Rc::make_mut(data).as_mut_slice(), 0, visible, step_n);
         });
         let before = engine.generation();
         let _ = engine.compute(&mut cx, root, clock.available);
@@ -179,7 +173,7 @@ fn tick_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) -> c
             moved = true;
         }
         prev = now;
-        (nanos(start), u64::from(engine.generation() > before))
+        (super::nanos(start), u64::from(engine.generation() > before))
     };
     let (samples_ns, misses) = measure(p, &mut step);
     let held = !keep.is_empty() && keep == visible_slots(&cx, root);
@@ -267,43 +261,42 @@ fn finish_table(
     );
     extra.insert(
         "scene_did_work".into(),
-        scene_ok(
-            workload.params.surface(),
-            proof.scene,
-            in_view_rows(
-                workload.params.viewport().1,
-                workload.params.row_h(),
-                proof.visible,
-            ),
-            tick,
-            workload.params.viewport().0,
-        ),
+        scene_check(&workload.params, &proof, tick),
     );
     if let Some(held) = identity {
         extra.insert(
             "identity_did_hold".into(),
-            if held {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "visible row NodeIds changed on tick".into(),
-                }
-            },
+            pass_if(held, "visible row NodeIds changed on tick"),
         );
     }
     if tick {
         extra.insert(
             "last_done_did_move".into(),
-            if proof.last_done_moved {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "last_done resolve did not change".into(),
-                }
-            },
+            pass_if(proof.last_done_moved, "last_done resolve did not change"),
         );
     }
     finish(workload, samples_ns, extra, verify)
+}
+
+fn scene_check(p: &crate::WorkloadParams, proof: &Proof, tick: bool) -> EquivalenceCheck {
+    scene_ok(
+        p.surface(),
+        proof.scene,
+        in_view_rows(p.viewport().1, p.row_h(), proof.visible),
+        tick,
+        p.viewport().0,
+    )
+}
+
+/// Pass when `ok`, else Fail with `detail`.
+fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
+    if ok {
+        EquivalenceCheck::Pass
+    } else {
+        EquivalenceCheck::Fail {
+            detail: detail.into(),
+        }
+    }
 }
 
 fn last_done_col() -> usize {
@@ -492,10 +485,6 @@ fn bump_scroll(scroll: Signal<f32>, step: f32, max_scroll: f32) {
 #[allow(clippy::cast_precision_loss)]
 fn max_y(rows: usize, row_h: f32, vh: f32) -> f32 {
     (rows as f32).mul_add(row_h, -vh)
-}
-
-fn nanos(start: Instant) -> u64 {
-    u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
 }
 
 #[cfg(test)]

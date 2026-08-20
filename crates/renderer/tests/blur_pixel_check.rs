@@ -62,7 +62,6 @@ use std::sync::mpsc;
 
 use pollster::FutureExt as _;
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
-use zeno as _;
 
 // Physical scale factor: texture dims = viewport × SCALE.
 // Viewport (1024, 360) × scale 1 = (1024, 360) px — under the 2048-px downlevel cap.

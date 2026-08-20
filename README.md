@@ -56,14 +56,14 @@ node. `crates/bench-parity` measures this against GPUI on shared
 workloads and refuses to print a comparison unless both sides report
 the same mode, host, and equivalence verdicts.
 
-The layout engine is owned (DR-041) — flexbox, block, and grid, with
+The layout engine is owned — flexbox, block, and grid, with
 content-hash cache keys; Taffy remains only as a bench corpus. Text is
-owned end to end (DR-044): HarfRust shaping, skrifa metrics, bidi, line
+owned end to end: HarfRust shaping, skrifa metrics, bidi, line
 breaking, font fallback, and a paragraph cache. Glyphs and SVG icons
-share one GPU pipeline through a Slug fragment rasteriser (DR-014,
-DR-032), so mixed text and icon batches need no pipeline switch.
+share one GPU pipeline through a Slug fragment rasteriser, so mixed
+text and icon batches need no pipeline switch.
 
-Frame phases are a typed state machine (DR-047): writes during paint
+Frame phases are a typed state machine: writes during paint
 panic in debug and defer to the next effect phase in release.
 Accessibility lives in the node type rather than beside it, and
 AccessKit, IME, drag-and-drop, and animation are wired.
@@ -76,10 +76,8 @@ terminal.
 
 ## Design plan
 
-The roadmap reconciliation lives in
-[`DR-013`](docs/decisions/DR-013-roadmap-reconciliation.md). Repo-local
-execution plans live in [`docs/plans/`](docs/plans/), and decision
-records live in [`docs/decisions/`](docs/decisions/).
+The architecture chapters of the book ([`docs/book/`](docs/book/)) are
+the high-level map of how the framework fits together.
 
 ## Workspace Layout
 
@@ -110,7 +108,7 @@ crates/
   text/ (sigil-text)           Owned text pipeline: shaping, measurement,
                                paragraph cache, font fallback.
   renderer/ (sigil-renderer)   wgpu-backed renderer adapter. Includes
-                               WgpuRenderer::render_scene default pipeline (DR-017).
+                               WgpuRenderer::render_scene default pipeline.
   shell/ (sigil-shell)         winit shell adapter.
   a11y/ (sigil-a11y)           AccessKit bridge over sigil-kernel semantics.
   actions/ + actions_macros/   Typed actions + #[derive(Action)].
@@ -119,7 +117,7 @@ crates/
   icons/ (sigil-icons)         SVG icon baking (usvg → sprites).
   app/ (sigil-app)             App orchestrator: sigil::launch, AppConfig,
                                TreeRoot, frame loop, DPI-aware logical sizing,
-                               bulletproof defaults (DR-016, DR-018).
+                               bulletproof defaults.
   profile/ (sigil-profile)     Frame profiler: SIGIL_PROFILE, Perfetto JSON,
                                phase table. Wired in launch; see docs/book/05-profile.md.
   sigil/ (sigil-ui)            User-facing facade with prelude — the package is
@@ -157,8 +155,7 @@ examples/
                      FRICTION.md log that drives API ergonomics work.
 
 docs/
-  decisions/         Architecture decision records (DR-000 onward, 47+).
-  plans/             Repo-local execution plans tied to accepted DRs.
+  book/                The author guide and architecture chapters (mdBook).
 ```
 
 ## Verification
@@ -210,30 +207,6 @@ pane demonstrating last-wins atom resolution — and exit on Escape.
   from the first primitive, not Phase 9.
 - **Verification honesty:** claims of "tested" or "verified" require real
   evidence. Roundtrip tests prove nothing.
-
-## CI
-
-[![CI](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml/badge.svg)](https://github.com/ThomGardiner/sigil/actions/workflows/ci.yml)
-
-Every push and PR runs:
-
-- **`{ubuntu, macos, windows} × stable`:** `cargo fmt --check`,
-  `cargo clippy --workspace --all-targets -- -D warnings`,
-  `cargo check --workspace --all-targets`, `cargo test --workspace`
-  (doctests on Linux/macOS; the Windows leg skips them pending re-verification
-  of the historical Windows-msvc merged-doctest issue), and `cargo deny check`
-  for licenses, advisories, bans, and sources.
-- **`ubuntu × 1.90` (MSRV):** `cargo check --workspace --all-targets --locked
-  --all-features` — check-only; fmt/clippy stay on stable to avoid lint
-  version-skew.
-- **docs:** `cargo doc --workspace --no-deps --all-features` with
-  `RUSTDOCFLAGS="-D warnings"` (all-features matches the docs.rs build of the
-  facade's feature-gated `render` surface).
-- **publish dry-run:** `cargo publish --workspace --dry-run --locked
-  --all-features` — verifies the publish set against a local overlay registry;
-  uploads nothing.
-- **semver-checks:** `cargo semver-checks` against the latest `v*` tag once one
-  exists (skips cleanly pre-first-publish).
 
 ## License
 

@@ -29,15 +29,14 @@ thread_local! {
 
 pub(crate) fn replay(
     scene: &mut SceneBuilder,
-    cx_id: u64,
-    id: NodeId,
+    key: (u64, NodeId),
     node: &Node,
     rect: Rect,
     inherit: u64,
 ) -> bool {
     CACHE.with(|cell| {
         let mut cache = cell.borrow_mut();
-        let Some(entry) = cache.get_mut(&(cx_id, id)) else {
+        let Some(entry) = cache.get_mut(&key) else {
             return false;
         };
         if entry.version != node.version()
@@ -62,8 +61,7 @@ pub(crate) fn replay(
 }
 
 pub(crate) fn store(
-    cx_id: u64,
-    id: NodeId,
+    key: (u64, NodeId),
     node: &Node,
     rect: Rect,
     inherit: u64,
@@ -71,11 +69,11 @@ pub(crate) fn store(
 ) {
     CACHE.with(|cell| {
         let mut cache = cell.borrow_mut();
-        if cache.len() >= CAP && !cache.contains_key(&(cx_id, id)) {
+        if cache.len() >= CAP && !cache.contains_key(&key) {
             cache.clear();
         }
         cache.insert(
-            (cx_id, id),
+            key,
             Entry {
                 version: node.version(),
                 slot: slot_tag(node),

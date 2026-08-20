@@ -1,8 +1,7 @@
 //! winit 0.30+ `ApplicationHandler`-backed Shell adapter.
 //!
-//! Implements [`sigil_hal::Shell`] over `winit` 0.30+. See
-//! [DR-002](../../../docs/decisions/DR-002-shell-winit.md) for the
-//! load-bearing invariants.
+//! Implements [`sigil_hal::Shell`] over `winit` 0.30+. See internal
+//! decision record DR-002 for the load-bearing invariants.
 //!
 //! # Lifecycle
 //!

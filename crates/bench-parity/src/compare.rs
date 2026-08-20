@@ -102,7 +102,7 @@ pub fn same_verdicts(a: &RunResult, b: &RunResult) -> bool {
     })
 }
 
-fn verdict_eq(left: &EquivalenceCheck, right: &EquivalenceCheck) -> bool {
+const fn verdict_eq(left: &EquivalenceCheck, right: &EquivalenceCheck) -> bool {
     matches!(
         (left, right),
         (EquivalenceCheck::Pass, EquivalenceCheck::Pass)

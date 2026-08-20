@@ -1,6 +1,6 @@
 //! Terminal host for Sigil.
 //!
-//! Same [`Host`](sigil_app::Host), [`TreeRoot`], and widget builders as
+//! Same [`Host`], [`TreeRoot`], and widget builders as
 //! desktop. This crate maps keys to [`sigil_hal::ShellEvent`] and paints
 //! [`sigil_app::Painted`] onto a cell grid. It is not a second widget kit.
 
@@ -23,7 +23,7 @@ pub use sigil_widgets as widgets;
 #[allow(clippy::expect_used, clippy::unwrap_used, missing_docs)]
 mod tests {
     use sigil_hal::Key;
-    use sigil_kernel::{container, text, Cx, NodeId};
+    use sigil_kernel::{Cx, NodeId, container, text};
     use sigil_reactive::{derived, signal};
     use sigil_widgets::button;
 
@@ -44,14 +44,8 @@ mod tests {
     #[test]
     fn same_tree_paints_label() {
         let grid = present(counter, 40, 12, &[]);
-        assert!(
-            grid.contains("Count: 0"),
-            "expected Count: 0 in:\n{grid}"
-        );
-        assert!(
-            grid.contains("Increment"),
-            "expected Increment in:\n{grid}"
-        );
+        assert!(grid.contains("Count: 0"), "expected Count: 0 in:\n{grid}");
+        assert!(grid.contains("Increment"), "expected Increment in:\n{grid}");
     }
 
     #[test]
@@ -82,7 +76,12 @@ mod tests {
     #[test]
     fn chart_bars_use_the_same_block_fill() {
         use sigil_widgets::chart;
-        let grid = present(|cx: &mut Cx| cx.add(chart([1.0, 3.0, 2.0]).bar()), 40, 16, &[]);
+        let grid = present(
+            |cx: &mut Cx| cx.add(chart([1.0, 3.0, 2.0]).bar()),
+            40,
+            16,
+            &[],
+        );
         assert!(grid.contains('█'), "expected chart bars in:\n{grid}");
     }
 

@@ -5,6 +5,11 @@
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 #![deny(missing_docs)]
 
+// Doctests run against the facade's consumer path (`sigil::prelude::*`);
+// reference the dev-dependency so the lib-test target does not flag it.
+#[cfg(test)]
+use sigil as _;
+
 /// Shared hover/press/focus state for focusable widgets.
 pub mod interaction;
 /// Widget-author prelude for built-in and extension widgets.
@@ -30,8 +35,8 @@ mod image;
 pub mod interactive;
 pub mod layout_ext;
 mod markdown;
-mod mermaid;
 mod menu;
+mod mermaid;
 mod modal;
 pub mod number_field;
 pub mod overlay;
@@ -79,8 +84,8 @@ pub use image::image_bytes;
 pub use image::{ImageBuilder, image_rgba};
 pub use interactive::{InteractiveBuilder, interactive};
 pub use markdown::{markdown, markdown_edit};
-pub use mermaid::{draw as mermaid_draw, mermaid};
 pub use menu::{MenuBuilder, MenuItem, menu};
+pub use mermaid::{draw as mermaid_draw, mermaid};
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;

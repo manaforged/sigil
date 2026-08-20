@@ -1,6 +1,6 @@
 ## What
 
-<!-- one paragraph: what changes and why. Link the plan (docs/plans/) or DR if one exists. -->
+<!-- one paragraph: what changes and why. -->
 
 ## Verification
 

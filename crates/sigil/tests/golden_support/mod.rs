@@ -280,8 +280,8 @@ pub fn render_widget_to_png_with(
 /// DPI-scale capture variant of [`render_widget_to_png_with`]: renders
 /// `build` into a LOGICAL viewport of `logical_size_px`, but captures into
 /// a PHYSICAL texture of `logical_size_px * scale` (rounded to the nearest
-/// pixel). Use this to exercise the DPI-scale axis from
-/// `docs/plans/2026-07-07-text-quality-and-gap-closure.md`.
+/// pixel). Use this to exercise the DPI-scale axis from the internal
+/// text-quality / gap-closure plan.
 ///
 /// As of Wave 1, the offscreen path is DPI-aware: the physical/logical ratio
 /// is threaded through as [`OffscreenTarget::scale`], so captures at

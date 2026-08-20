@@ -1,7 +1,7 @@
 # Sigil — Quickstart
 
 > Book status: written for `sigil-ui 0.1.0-alpha.1`. Every example on this
-> page compiles in `examples/` (checked in CI).
+> page compiles in `examples/` (built by the workspace check gate).
 
 Sigil is a Rust-native desktop UI framework: signal-graph reactivity, an
 owned incremental layout engine, a wgpu renderer with an owned text

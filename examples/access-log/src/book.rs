@@ -44,8 +44,9 @@ impl AccessLine {
             ts: 1_700_000_000 + i % 86_400,
             bytes: 200 + (i % 50_000),
             seq: 0,
-            status: STATUSES[index % STATUSES.len()],
-            method: (index % 4) as u8,
+            // The modulo keeps the index in range; the fallback is unreachable.
+            status: STATUSES.get(index % STATUSES.len()).copied().unwrap_or(200),
+            method: u8::try_from(index % 4).unwrap_or(0),
         }
     }
 
@@ -60,7 +61,12 @@ impl AccessLine {
             4 => self.bytes.to_string(),
             5 => self.seq.to_string(),
             6 => if self.status == 200 { "HIT" } else { "MISS" }.to_owned(),
-            _ => REGION[index % REGION.len()].to_owned(),
+            // The modulo keeps the index in range; the fallback is unreachable.
+            _ => REGION
+                .get(index % REGION.len())
+                .copied()
+                .unwrap_or("iad")
+                .to_owned(),
         }
     }
 
@@ -81,7 +87,7 @@ impl AccessLine {
 const STATUSES: [u16; 6] = [200, 200, 201, 304, 404, 500];
 const REGION: [&str; 4] = ["iad", "sfo", "lhr", "nrt"];
 
-fn method_label(tag: u8) -> &'static str {
+const fn method_label(tag: u8) -> &'static str {
     match tag {
         0 => "GET",
         1 => "POST",
@@ -158,6 +164,7 @@ pub fn row_count() -> usize {
 
 /// Cell width. Eight equal columns fill [`VIEW_W`].
 #[must_use]
+#[allow(clippy::cast_precision_loss)] // HEADERS.len() is 8 — exactly representable.
 pub fn col_w() -> f32 {
     VIEW_W / HEADERS.len() as f32
 }
@@ -169,7 +176,8 @@ pub fn hud_line(engine: &str, us: f64) -> String {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+// The tests index the small book they just allocated; bounds are fixed by construction.
+#[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
 

@@ -7,8 +7,8 @@
 //! gives a single chokepoint where each upstream's API quirks are
 //! normalised.
 //!
-//! See the workspace decision records in `docs/decisions/` for the
-//! rationale behind each trait.
+//! See the internal workspace decision records for the rationale
+//! behind each trait.
 //!
 //! # Status
 //!

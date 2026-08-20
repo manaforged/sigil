@@ -24,7 +24,7 @@
 //!
 //! The trait is intentionally named `WidgetLayoutExt` (not
 //! `LayoutBuilderExt`) to avoid a `pub use` collision in
-//! [`sigil::prelude`] with the pre-existing
+//! `sigil::prelude` with the pre-existing
 //! `sigil_layout::prelude::LayoutBuilderExt`, which adds `.layout()`
 //! to `NodeBuilder` / `TextBuilder`. The two traits target disjoint
 //! impl sets — node primitives versus widget builders — but Rust

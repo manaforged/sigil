@@ -96,9 +96,9 @@ impl Grid {
         }
     }
 
-    fn fill(&mut self, col: usize, row: usize, width: usize, height: usize, tone: Option<Tone>) {
-        for y in row..row.saturating_add(height) {
-            for x in col..col.saturating_add(width) {
+    fn fill(&mut self, region: CellRegion, tone: Option<Tone>) {
+        for y in region.row..region.row.saturating_add(region.height) {
+            for x in region.col..region.col.saturating_add(region.width) {
                 self.put(x, y, ' ', tone);
             }
         }
@@ -112,6 +112,15 @@ impl Grid {
     }
 }
 
+/// A rectangular region of the cell grid.
+#[derive(Clone, Copy)]
+struct CellRegion {
+    col: usize,
+    row: usize,
+    width: usize,
+    height: usize,
+}
+
 /// Paint laid-out nodes onto a cell grid. Later nodes overwrite earlier ones.
 ///
 /// `cell` is the px-per-cell scale used at layout (see [`sigil_app::Host::CELL`]).
@@ -120,24 +129,26 @@ pub fn raster(nodes: &[Painted], cols: u16, rows: u16, cell: f32) -> Grid {
     let mut grid = Grid::new(cols, rows);
     let cell = if cell <= 0.0 { 1.0 } else { cell };
     for node in nodes {
-        let col = floor_cell(node.rect.origin.x / cell);
-        let row = floor_cell(node.rect.origin.y / cell);
-        let width = floor_cell(node.rect.width / cell).max(1);
-        let height = floor_cell(node.rect.height / cell).max(1);
+        let region = CellRegion {
+            col: floor_cell(node.rect.origin.x / cell),
+            row: floor_cell(node.rect.origin.y / cell),
+            width: floor_cell(node.rect.width / cell).max(1),
+            height: floor_cell(node.rect.height / cell).max(1),
+        };
         if node.tone.is_some() && node.text.is_none() {
             // Progress fill and chart bars are empty toned boxes.
-            grid.fill(col, row, width, height, node.tone);
-            for y in row..row.saturating_add(height) {
-                for x in col..col.saturating_add(width) {
+            grid.fill(region, node.tone);
+            for y in region.row..region.row.saturating_add(region.height) {
+                for x in region.col..region.col.saturating_add(region.width) {
                     grid.put(x, y, '█', node.tone);
                 }
             }
         } else if node.tone.is_some() {
-            grid.fill(col, row, width, height, node.tone);
+            grid.fill(region, node.tone);
         }
         if let Some(text) = node.text.as_deref() {
             for (i, ch) in text.chars().enumerate() {
-                grid.put(col.saturating_add(i), row, ch, node.tone);
+                grid.put(region.col.saturating_add(i), region.row, ch, node.tone);
             }
         }
     }
@@ -145,7 +156,7 @@ pub fn raster(nodes: &[Painted], cols: u16, rows: u16, cell: f32) -> Grid {
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn floor_cell(value: f32) -> usize {
+const fn floor_cell(value: f32) -> usize {
     if value.is_sign_negative() {
         0
     } else {

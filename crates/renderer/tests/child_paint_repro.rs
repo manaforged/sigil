@@ -1,5 +1,5 @@
-//! Repro tests for docs/followups.md 2026-05-19 "Renderer correctness
-//! bugs discovered during VG1" items (b) and (c):
+//! Repro tests for the 2026-05-19 VG1 renderer-correctness findings,
+//! items (b) and (c):
 //!
 //!   (b) Children of `Position::Relative` parents did not paint reliably
 //!       in the offscreen path (the VG1 scroll thumb had to be hoisted
@@ -36,7 +36,6 @@ use smallvec as _;
 use tracing as _;
 #[cfg(windows)]
 use windows_core as _;
-use zeno as _;
 
 use sigil_kernel::{Cx, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};

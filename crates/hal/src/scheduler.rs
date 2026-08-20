@@ -1,4 +1,4 @@
-//! Scheduler trait — see [DR-007].
+//! Scheduler trait — see DR-007.
 //!
 //! The `Scheduler` trait abstracts the async runtime and the
 //! main-thread dispatcher used to publish signal updates and
@@ -41,8 +41,6 @@
 //! 6. **Main-thread only.** Only the main thread drains. Background
 //!    threads only enqueue. Drain is single-reader and does not need
 //!    locking beyond the MPSC itself.
-//!
-//! [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
 
 use core::error::Error;
 use core::future::Future;

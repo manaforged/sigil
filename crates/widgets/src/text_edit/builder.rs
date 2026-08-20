@@ -73,7 +73,7 @@ impl TextEditBuilder {
     /// Add utility classes or atoms after the built-in text-edit defaults.
     ///
     /// Mirrors the inherent `.class()` on
-    /// [`crate::widgets::TextFieldBuilder`] and `ButtonBuilder`. Classes
+    /// [`crate::TextFieldBuilder`] and `ButtonBuilder`. Classes
     /// install AFTER the editor's own base atoms (DR-049 §10 additive
     /// composition).
     #[must_use]

@@ -177,8 +177,8 @@ impl ButtonBuilder {
     /// The constructor-time focusable / hittable bits still derive from
     /// [`enabled`](Self::enabled) and the signal's *initial* value —
     /// the reactive update covers the visual state and the activation
-    /// guard, matching the [`crate::widgets::CheckboxBuilder::disabled`] /
-    /// [`crate::widgets::SliderBuilder::disabled`] contract.
+    /// guard, matching the [`crate::CheckboxBuilder::disabled`] /
+    /// [`crate::SliderBuilder::disabled`] contract.
     ///
     /// # Example
     ///
@@ -236,7 +236,7 @@ impl ButtonBuilder {
 
     /// Add struct-built style atoms after the built-in button defaults.
     ///
-    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
+    /// The mutable trait hook is [`sigil_style::StyleAccess::style_mut`].
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
@@ -330,7 +330,6 @@ fn accessible_label(label: &TextContent) -> AccessibleName {
     match label {
         TextContent::Static(value) => AccessibleName::Static(value.clone()),
         TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
     }
 }
 

@@ -18,7 +18,7 @@
 //! - `sigil-hal` is what every downstream crate names in its imports.
 //!
 // hello-rect example: indices are bounded by construction
-// (modulo COLORS.len()). See docs/plans/native-ui/hygiene-cleanup-framework.md.
+// (modulo COLORS.len()).
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::missing_errors_doc, clippy::missing_panics_doc)]
 #![allow(missing_docs)]

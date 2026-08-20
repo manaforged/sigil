@@ -1,8 +1,7 @@
 //! CSS block layout — owned engine. Lands the P0.2 (W2.3) body.
 //!
-//! Algorithm conformance (per
-//! [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md)):
-//! single-axis stacking, adjacent + parent-first-child margin collapse,
+//! Algorithm conformance (per DR-041): single-axis stacking, adjacent +
+//! parent-first-child margin collapse,
 //! padding + border, width/height with `Dimension::{Px, Percent, Auto}`,
 //! min/max clamping, `Position::Absolute` pinning isolated from parent
 //! flow, `box-sizing: content-box | border-box`.
@@ -166,7 +165,7 @@ const fn definite(c: crate::forest::SpaceConstraint) -> f32 {
 /// stack siblings.
 #[allow(
     clippy::too_many_lines,
-    reason = "T6 cutover landed solve_box at 66 lines; structural extraction tracked in docs/followups.md"
+    reason = "T6 cutover landed solve_box at 66 lines; structural extraction tracked internally"
 )]
 fn solve_box(
     solver: &BlockSolver<'_>,
@@ -329,7 +328,7 @@ fn width_for(style: &StyleData, intent: AxisIntent, cb_w: f32, edges: &NodeEdges
 /// (excludes absolute descendants — they don't contribute to flow).
 #[allow(
     clippy::too_many_arguments,
-    reason = "T6 cutover landed layout_children at 6 args; PaddingFrame struct bundle tracked in docs/followups.md"
+    reason = "T6 cutover landed layout_children at 6 args; PaddingFrame struct bundle tracked internally"
 )]
 fn layout_children(
     solver: &BlockSolver<'_>,

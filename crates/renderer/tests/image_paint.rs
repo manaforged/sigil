@@ -27,7 +27,6 @@ use tracing as _;
 use wgpu as _;
 #[cfg(windows)]
 use windows_core as _;
-use zeno as _;
 
 #[path = "child_paint_repro/support.rs"]
 #[allow(dead_code)]

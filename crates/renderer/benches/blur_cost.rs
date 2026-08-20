@@ -68,7 +68,6 @@ use sigil_renderer::{
 };
 use sigil_style::Rgba8;
 use wgpu::TextureFormat;
-use zeno as _;
 
 // ---------------------------------------------------------------------------
 // Constants

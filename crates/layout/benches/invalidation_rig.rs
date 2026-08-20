@@ -41,7 +41,6 @@ impl TextMeasure for StubMeasure {
         let chars = match source {
             TextContent::Static(value) => value.chars().count() as f32,
             TextContent::Reactive(_) => 0.0,
-            TextContent::Compute(build) => build().chars().count() as f32,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

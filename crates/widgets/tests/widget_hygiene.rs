@@ -1,6 +1,6 @@
 //! Phase 0.7 — hygiene enforcement over the widget public surface.
 //!
-//! Scans `crates/sigil/src/widgets/**/*.rs` and fails the build if any
+//! Scans `crates/widgets/src/**/*.rs` and fails the build if any
 //! forbidden naming pattern reappears. Documents the W4.99 + Phase 0
 //! ergonomics bar so future dispatches can't quietly regress it.
 //!
@@ -43,14 +43,14 @@ fn widget_surface_obeys_ergonomics_bar() {
 
     assert!(
         violations.is_empty(),
-        "Phase 0.7 hygiene gate failed — widget surface drifted from the ergonomics bar:\n\n{}\n\nSee crates/sigil/tests/widget_hygiene.rs for the rule list.",
+        "Phase 0.7 hygiene gate failed — widget surface drifted from the ergonomics bar:\n\n{}\n\nSee crates/widgets/tests/widget_hygiene.rs for the rule list.",
         violations.join("\n")
     );
 }
 
 fn widget_root() -> PathBuf {
     let manifest = env!("CARGO_MANIFEST_DIR");
-    Path::new(manifest).join("src").join("widgets")
+    Path::new(manifest).join("src")
 }
 
 fn collect_rs_files(dir: &Path, out: &mut Vec<PathBuf>) {

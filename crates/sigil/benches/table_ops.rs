@@ -1,10 +1,9 @@
-//! DR-057 D1 table-core budgets (DR-009 discipline).
+//! Table-core interaction budgets.
 //!
 //! Interaction-triggered operations (a sort click, a filter keystroke)
 //! answer to the ~50 ms perceptible-lag threshold, not the 16.7 ms
 //! frame budget — the derived recompute happens once per interaction,
-//! off the paint path. Record medians in docs/benchmarks when they
-//! move.
+//! off the paint path. Record medians when they move.
 
 #![allow(missing_docs)]
 
@@ -24,6 +23,9 @@ use sigil_profile as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};

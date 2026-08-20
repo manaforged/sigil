@@ -1,5 +1,4 @@
-//! Owned layout forest — landing in P0.1 (W2.2) per
-//! [DR-041](../../../docs/decisions/DR-041-owned-layout-engine.md).
+//! Owned layout forest — landing in P0.1 (W2.2) per DR-041.
 //!
 //! Two parallel slabs:
 //!   * `nodes` — `LayoutNode` records (kernel link, children, alive flag,
@@ -133,7 +132,7 @@ pub(crate) struct ComputedBox {
 /// `frame == current_frame` to distinguish "reached this measure" from
 /// "stale slab entry from a prior or never-measured node." Replaces the
 /// per-frame `AHashSet<LocalId>` that previously tracked reached nodes
-/// (vector δ in `docs/plans/2026-05-18-perf-vector-delta-...`).
+/// (the "vector δ" internal perf plan).
 #[derive(Debug, Default)]
 pub(crate) struct BoxCell {
     cb: Cell<ComputedBox>,
@@ -783,7 +782,7 @@ fn text_memo_content(text: &LayoutText) -> u64 {
     let mut hasher = AHasher::default();
     match &text.content {
         TextContent::Static(value) => value.hash(&mut hasher),
-        other => other.resolve().hash(&mut hasher),
+        reactive @ TextContent::Reactive(_) => reactive.resolve().hash(&mut hasher),
     }
     text.wrap.hash(&mut hasher);
     text.ellipsis.hash(&mut hasher);

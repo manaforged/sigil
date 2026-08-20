@@ -35,6 +35,9 @@ use sigil_profile as _;
 use sigil_reactive as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -46,7 +49,6 @@ impl TextMeasure for ProportionalText {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
-            TextContent::Compute(build) => build().len(),
         };
         #[allow(clippy::cast_precision_loss)]
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)

@@ -100,9 +100,7 @@ fn table_node(rows: Vec<Vec<String>>) -> NodeBuilder {
 
 fn rich_line(source: &str, class: &'static str) -> NodeBuilder {
     let spans = parse_inlines(source);
-    if spans.len() == 1
-        && let Span::Text(body) = &spans[0]
-    {
+    if let [Span::Text(body)] = spans.as_slice() {
         return container().child(text(body.clone()).class(class));
     }
     let mut row = container().layout(

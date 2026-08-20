@@ -106,15 +106,22 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
 }
 
 /// True when this node's layout input can change without bumping
-/// `Node::version` — reactive position, layout-affecting reactive
-/// style, or wrapping / indefinite non-static text.
+/// `Node::version` — reactive position, reactive style, or wrapping /
+/// indefinite non-static text.
+///
+/// Membership must key on channel PRESENCE (`has_reactive`), not on the
+/// channel's current content: a `style_reactive` channel that starts
+/// empty (`Display::None → []`) can later produce a layout-affecting
+/// slice, and content-keyed membership drops the node from tracking in
+/// exactly that initial state — the cache then never sees the change and
+/// returns a stale hit for a now-hidden node.
 pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
     if node.get_extension::<crate::ReactivePosition>().is_some() {
         return true;
     }
     if node
         .get_extension::<StyleBinding>()
-        .is_some_and(StyleBinding::has_layout_reactive)
+        .is_some_and(StyleBinding::has_reactive)
     {
         return true;
     }

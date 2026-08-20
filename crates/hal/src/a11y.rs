@@ -1,4 +1,4 @@
-//! Accessibility bridge trait — see [DR-008].
+//! Accessibility bridge trait — see DR-008.
 //!
 //! The `A11yBridge` trait abstracts the OS accessibility surface. In
 //! production this is implemented over `accesskit` upstream (with its
@@ -34,8 +34,6 @@
 //! `sigil-kernel` ships the stable `NodeId` and the `Semantics` struct.
 //! The intent captured here is non-negotiable; the exact method
 //! signatures are provisional.
-//!
-//! [DR-008]: ../../../docs/decisions/DR-008-a11y-accesskit.md
 
 use core::error::Error;
 use core::hash::Hash;

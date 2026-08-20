@@ -45,7 +45,7 @@ pub(super) fn pointer_down(
     if runtime.disabled() {
         return;
     }
-    interaction.set_dragging(true);
+    interaction.drag(true);
     event.capture_pointer();
     runtime.set_from_position(event);
 }
@@ -69,7 +69,7 @@ pub(super) fn pointer_up(
     on_change: &ValueChange,
 ) {
     let was_dragging = interaction.dragging();
-    interaction.set_dragging(false);
+    interaction.drag(false);
     let _released = interaction.release_pointer(event);
     if was_dragging {
         on_change(value.peek());

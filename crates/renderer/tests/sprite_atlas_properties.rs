@@ -37,7 +37,6 @@ use windows_core as _;
 
 use pollster::FutureExt as _;
 use proptest::prelude::*;
-use zeno as _;
 
 /// Maximum texture dimension enforced by typical wgpu downlevel defaults (2048).
 /// Property tests use this to stay within GPU limits while still testing boundaries.

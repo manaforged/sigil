@@ -159,7 +159,7 @@ impl CheckboxBuilder {
 
     /// Add struct-built style atoms after the built-in checkbox defaults.
     ///
-    /// The mutable trait hook is [`crate::prelude::StyleAccess::style_mut`].
+    /// The mutable trait hook is [`sigil_style::StyleAccess::style_mut`].
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));

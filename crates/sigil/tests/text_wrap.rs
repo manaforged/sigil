@@ -22,6 +22,9 @@ use sigil_reactive as _;
 use sigil_renderer as _;
 use sigil_style as _;
 use sigil_tasks as _;
+#[cfg(feature = "tui")]
+use sigil_tui as _;
+use sigil_widgets as _;
 use wgpu as _;
 
 use sigil::prelude::*;
@@ -33,7 +36,6 @@ impl TextMeasure for CharText {
         let text = match content {
             TextContent::Static(s) => s.clone(),
             TextContent::Reactive(sig) => sig.peek(),
-            TextContent::Compute(build) => build(),
         };
         let char_w = 7.0_f32;
         #[allow(clippy::cast_precision_loss)]

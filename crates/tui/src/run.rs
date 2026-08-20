@@ -31,7 +31,7 @@ where
     T: TreeRoot,
 {
     let config = config.into();
-    Runtime::scope("sigil-tui", || live(config, tree))
+    Runtime::scope("sigil-tui", || live(&config, tree))
 }
 
 /// Headless: mount, route `events`, return the painted text.
@@ -71,7 +71,7 @@ fn view(cols: u16, rows: u16) -> (f32, f32) {
     (f32::from(cols) * CELL, f32::from(rows) * CELL)
 }
 
-fn live<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
+fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
     let mut term = Term::enter().map_err(Error::new)?;
     let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::new)?;
     if config.size.0 > 0 {
@@ -118,8 +118,7 @@ fn live<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
 
 fn quit(key: &crossterm::event::KeyEvent, esc_exits: bool) -> bool {
     use crossterm::event::{KeyCode, KeyModifiers};
-    if key.modifiers.contains(KeyModifiers::CONTROL)
-        && matches!(key.code, KeyCode::Char('c') | KeyCode::Char('C'))
+    if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
     {
         return true;
     }

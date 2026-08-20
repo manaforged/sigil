@@ -14,3 +14,19 @@ mutants.out.old/
 showcase/
 marketing/
 docs/reviews/
+
+# Internal working docs — local only, never pushed. The public doc
+# surface is docs/book/ plus rustdoc; everything else under docs/ stays
+# out of the index (untracked 2026-08-19).
+docs/audits/
+docs/benchmarks/
+docs/decisions/
+docs/perf/
+docs/plans/
+docs/retros/
+docs/specs/
+docs/spikes/
+docs/visual-audits/
+docs/bugs.md
+docs/followups.md
+docs/r14-simplify-punch-list.md

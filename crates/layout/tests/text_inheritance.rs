@@ -57,7 +57,6 @@ fn text_of(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => value.clone(),
         TextContent::Reactive(value) => value.get(),
-        TextContent::Compute(build) => build(),
     }
 }
 

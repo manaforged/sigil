@@ -1,11 +1,9 @@
 //! [`Status`] — the three-state result signal carried by
 //! [`spawn_to_signal`][crate::spawn_to_signal].
 //!
-//! See [DR-007]. `Signal<Status<T, E>>` lets components observe a
+//! See DR-007. `Signal<Status<T, E>>` lets components observe a
 //! background future's lifecycle the same way they observe any other
 //! reactive value.
-//!
-//! [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
 
 use std::error::Error;
 
@@ -16,13 +14,11 @@ use std::error::Error;
 /// [`Status::Pending`]; on future completion the main-thread
 /// dispatcher writes [`Status::Ok`] or [`Status::Err`] into the
 /// signal. Components that read the signal re-run automatically on
-/// every transition. See [DR-007].
+/// every transition. See DR-007.
 ///
 /// `E` defaults to a boxed trait object so the common case
 /// (`spawn_to_signal(owner, async { ... })`) is single-generic at
 /// the call site.
-///
-/// [DR-007]: ../../../docs/decisions/DR-007-async-tokio.md
 #[derive(Debug)]
 pub enum Status<T, E = Box<dyn Error + Send + Sync>> {
     /// Future has not yet completed.

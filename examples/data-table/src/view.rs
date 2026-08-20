@@ -202,20 +202,20 @@ fn cell_source(
     index: usize,
     quote: &Quote,
     kind: FieldKind,
-) -> TextContent {
+) -> TextBuilder {
     if kind.live() {
-        TextContent::compute(move || {
+        text_live(move || {
             book.get()
                 .get(index)
                 .map_or_else(String::new, |row| cell_text(index, row, kind))
         })
     } else {
-        TextContent::Static(cell_text(index, quote, kind))
+        text(cell_text(index, quote, kind))
     }
 }
 
-fn data_cell(width: f32, value: TextContent, color: Option<Rgba8>) -> NodeBuilder {
-    let mut label = text(value)
+fn data_cell(width: f32, value: TextBuilder, color: Option<Rgba8>) -> NodeBuilder {
+    let mut label = value
         .nowrap()
         .class(classes!("text-sm"))
         .layout(LayoutStyle::block().width(width).height(ROW_H));

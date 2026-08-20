@@ -55,7 +55,7 @@ impl Style {
     ///
     /// Base tokens append to the base atoms; `hover:` / `focus:` /
     /// `active:` / `disabled:` tokens append to the matching state-slot
-    /// overlay (see [`parse_stateful_token`](crate::parse_stateful_token)).
+    /// overlay (see [`parse_stateful_token`]).
     /// A state overlay only paints once the style drives an interaction
     /// channel, so route the style through `interactive(…)` or a widget
     /// builder. Unknown tokens warn and are skipped, matching `.class()`

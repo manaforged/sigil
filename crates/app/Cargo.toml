@@ -68,5 +68,12 @@ raw-window-handle = { version = "0.6", optional = true }
 # to provide `impl std::error::Error for windows_core::Error`.
 windows-core = { version = "0.62", default-features = false, features = ["std"] }
 
+[dev-dependencies]
+# Doctests are user-facing docs written against the facade's consumer path
+# (`sigil::menu` / `sigil::dialog` / `sigil::tray`). Dev-dep cycles back to
+# sigil-ui are allowed by cargo. Default features stay on: the examples
+# need the facade's desktop-gated re-exports.
+sigil-ui = { path = "../sigil" }
+
 [lints]
 workspace = true

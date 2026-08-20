@@ -27,7 +27,6 @@ use wgpu as _;
 use windows_core as _;
 
 use sigil_icons as _;
-use zeno as _;
 
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();

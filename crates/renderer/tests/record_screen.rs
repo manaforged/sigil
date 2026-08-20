@@ -48,7 +48,6 @@ use sigil_renderer::{
     CommandScene, CornerRadii, SceneBuilder, SceneRectStyle, ScreenSubmission, WgpuRenderer,
 };
 use sigil_style::Rgba8;
-use zeno as _;
 
 const W: u32 = 64;
 const H: u32 = 64;

@@ -9,3 +9,8 @@ mod quote_table;
 mod sigil_runner;
 
 pub use sigil_runner::SigilRunner;
+
+/// Elapsed nanos since `start`, saturating at `u64::MAX`.
+fn nanos(start: std::time::Instant) -> u64 {
+    u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX)
+}

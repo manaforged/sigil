@@ -20,8 +20,19 @@ use sigil_profile::{disable, enable, frames, reset, tick_frame};
 use sigil_reactive::{Runtime, signal};
 use sigil_style::NodeStyleExt;
 
+/// Serialize tests that mutate the process-global profiler store
+/// (enable/reset/disable) — same convention as sigil-profile's own tests.
+fn profile_lock() -> std::sync::MutexGuard<'static, ()> {
+    use std::sync::{Mutex, OnceLock};
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 #[test]
 fn compute_records_layout_miss() {
+    let _gate = profile_lock();
     enable();
     reset();
     let mut cx = Cx::new_root();
@@ -45,6 +56,7 @@ fn compute_records_layout_miss() {
 
 #[test]
 fn second_compute_is_a_cache_hit() {
+    let _gate = profile_lock();
     enable();
     reset();
     let mut cx = Cx::new_root();

@@ -26,7 +26,7 @@ pub struct LayoutEngine {
     drive: LayoutDrive,
     /// `NodeId → NodeHandle` mirror map. Slotmap-keyed (not hashed) so
     /// the hot sync path is O(1) array indexing instead of an `AHashMap`
-    /// lookup per node. Vector β in `docs/benchmarks/p0-owned-layout.md`.
+    /// lookup per node.
     core_to_handle: SecondaryMap<slotmap::DefaultKey, NodeHandle>,
     /// Last kernel-side `Node::version()` we observed per node. The
     /// sync hot path peeks the kernel version *before* doing any
@@ -175,18 +175,18 @@ impl LayoutEngine {
         self.drive.begin_frame();
         let dirty = cx.dirty().collect::<Vec<_>>();
         let live_count = cx.len();
-        let broadcast = dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
+        // The incremental path resolves handles for non-dirty kept nodes;
+        // an engine that never mirrored this tree has none — full-sync.
+        let mirrored = self.core_to_handle.contains_key(root.key());
+        let broadcast = !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         let structural = self
             .cached_key
             .is_some_and(|key| key.cx_generation != cx.mutation_generation());
 
-        // Resize fast-path: the frame is a MISS with an empty dirty set and an
-        // input signature identical to the last compute, so nothing in the
-        // kernel tree changed — only `available` did (a viewport resize is the
-        // common trigger). The kernel->drive mirror is therefore already
-        // current, so skip the O(nodes) `sync` walk (the dominant cost of a
-        // full re-layout) and only re-solve the drive against the new
-        // constraints, then re-publish. Requires a prior mirror on the same Cx.
+        // Resize fast-path: on a MISS with an empty dirty set and an input
+        // signature identical to the last compute, only `available` changed
+        // (a viewport resize). The mirror is already current — skip the
+        // O(nodes) `sync` walk and only re-solve + re-publish.
         let mirror_current = dirty.is_empty()
             && self.cached_key.is_some_and(|prev| {
                 prev.cx_instance == cache_key.cx_instance

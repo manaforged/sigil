@@ -67,7 +67,7 @@ impl TextFieldBuilder {
 
     /// Add utility classes or atoms after the built-in text-field defaults.
     ///
-    /// Mirrors the inherent `.class()` on [`crate::widgets::ButtonBuilder`].
+    /// Mirrors the inherent `.class()` on [`crate::ButtonBuilder`].
     /// Classes are installed AFTER the field's own base atoms so user
     /// classes override the defaults (per DR-049 additive composition).
     #[must_use]

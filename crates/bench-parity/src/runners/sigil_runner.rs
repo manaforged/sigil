@@ -82,7 +82,7 @@ pub(super) fn new_engine(real_text: bool) -> LayoutEngine {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub(super) struct SceneCount {
     pub draws: u64,
     pub glyphs: u64,
@@ -185,9 +185,9 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
     if p.reuse {
         return run_reuse_list(workload);
     }
-    let table = workload.category == "data-table";
-    let available = Size::fixed(p.viewport_width_px, p.viewport_height_px);
-    let surface = p.surface();
+    let vw = p.viewport_width_px;
+    let vh = p.viewport_height_px;
+    let available = Size::fixed(vw, vh);
     let data = Rc::new(make_data(p.row_count));
     let book = data.len();
     #[allow(clippy::cast_precision_loss)]
@@ -199,10 +199,7 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
     let mut last_first = 0usize;
     let mut step = || {
         if !p.tail() {
-            y += p.row_height_px;
-            if y > max_scroll {
-                y = 0.0;
-            }
+            advance_scroll(&mut y, p.row_height_px, max_scroll);
         }
         // One runtime per sample so keyed-row effects die with the tree.
         Runtime::scope("sigil-bench-parity/virtual-list", || {
@@ -212,23 +209,14 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
             let mut engine = new_engine(true);
             profile::begin_frame();
             let start = Instant::now();
-            let root = add_list(&mut cx, rows, scroll, p, table);
+            let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
             let _ = engine.compute(&mut cx, root, available);
-            let _cmds = paint(
-                &cx,
-                root,
-                surface,
-                p.viewport_width_px,
-                p.viewport_height_px,
-            );
+            let _cmds = paint(&cx, root, p.surface(), vw, vh);
             profile::tick_frame();
             let miss = u64::from(engine.generation() > 0);
             last_visible = visible_row_count(&cx, root);
             last_first = first_from_scroll(y, p.row_height_px);
-            (
-                u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX),
-                miss,
-            )
+            (super::nanos(start), miss)
         })
     };
     let (samples_ns, misses) = drain_steps(p, &mut step);
@@ -236,21 +224,28 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
         workload,
         samples_ns,
         misses,
-        last_visible,
-        book,
-        last_first,
+        (last_visible, book, last_first),
     ))
+}
+
+/// Advance the scroll offset one row, wrapping at the bottom.
+fn advance_scroll(y: &mut f32, row_h: f32, max_scroll: f32) {
+    *y += row_h;
+    if *y > max_scroll {
+        *y = 0.0;
+    }
 }
 
 fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
     let p = &workload.params;
     let table = workload.category == "data-table";
-    let available = Size::fixed(p.viewport_width_px, p.viewport_height_px);
-    let surface = p.surface();
+    let vw = p.viewport_width_px;
+    let vh = p.viewport_height_px;
+    let available = Size::fixed(vw, vh);
     let data = Rc::new(make_data(p.row_count));
     let book = data.len();
     #[allow(clippy::cast_precision_loss)]
-    let max_scroll = (p.row_count as f32).mul_add(p.row_height_px, -p.viewport_height_px);
+    let max_scroll = (p.row_count as f32).mul_add(p.row_height_px, -vh);
     Runtime::scope("sigil-bench-parity/virtual-list-reuse", || {
         let rows = signal(Rc::clone(&data));
         let scroll = signal(if p.tail() { max_scroll.max(0.0) } else { 0.0 });
@@ -262,52 +257,37 @@ fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
         profile::reset();
         let mut step = || {
             if !p.tail() {
-                scroll.update(|value| {
-                    *value += p.row_height_px;
-                    if *value > max_scroll {
-                        *value = 0.0;
-                    }
-                });
+                scroll.update(|value| advance_scroll(value, p.row_height_px, max_scroll));
             }
             profile::begin_frame();
             let start = Instant::now();
             let before = engine.generation();
             let _ = engine.compute(&mut cx, root, available);
-            let _cmds = paint(
-                &cx,
-                root,
-                surface,
-                p.viewport_width_px,
-                p.viewport_height_px,
-            );
+            let _cmds = paint(&cx, root, p.surface(), vw, vh);
             profile::tick_frame();
             let miss = u64::from(engine.generation() > before);
-            (
-                u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX),
-                miss,
-            )
+            (super::nanos(start), miss)
         };
         let (samples_ns, misses) = drain_steps(p, &mut step);
+        let first = first_from_scroll(scroll.get(), p.row_height_px);
         Ok(finish_list(
             workload,
             samples_ns,
             misses,
-            visible_row_count(&cx, root),
-            book,
-            first_from_scroll(scroll.get(), p.row_height_px),
+            (visible_row_count(&cx, root), book, first),
         ))
     })
 }
 
 /// Verify + assemble the run result for a generic-list workload.
+/// `proof` is (visible rows, book rows, first visible row).
 fn finish_list(
     workload: &Workload,
     samples_ns: Vec<u64>,
     misses: u64,
-    visible: usize,
-    book: usize,
-    first: usize,
+    proof: (usize, usize, usize),
 ) -> crate::RunResult {
+    let (visible, book, first) = proof;
     let mut verify = verify_map(
         samples_ns.len(),
         misses,
@@ -474,7 +454,7 @@ fn sample_build(
             p.viewport_width_px,
             p.viewport_height_px,
         );
-        let ns = u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX);
+        let ns = super::nanos(start);
         profile::tick_frame();
         (ns, u64::from(engine.generation() > 0))
     };
@@ -568,10 +548,10 @@ pub(super) fn finish(
 ) -> crate::RunResult {
     verify
         .entry("reuse".into())
-        .or_insert(u64::from(workload.params.reuse));
+        .or_insert_with(|| u64::from(workload.params.reuse));
     verify
         .entry("tick".into())
-        .or_insert(u64::from(workload.params.tick()));
+        .or_insert_with(|| u64::from(workload.params.tick()));
     let mut checks = extra;
     for spec in &workload.equivalence_checks {
         checks

@@ -429,10 +429,10 @@ fn identified_reorder_keeps_row_nodes() {
 
         items.set(vec![Row { id: 2, name: "b" }, Row { id: 1, name: "a" }]);
         cx.flush_reactive_children();
-        let visible = bound_visible(&cx, root);
+        let reordered = bound_visible(&cx, root);
         let after = [
-            cx.nth_child(visible, 0).expect("row b"),
-            cx.nth_child(visible, 1).expect("row a"),
+            cx.nth_child(reordered, 0).expect("row b"),
+            cx.nth_child(reordered, 1).expect("row a"),
         ];
         assert_eq!(after, [before[1], before[0]]);
         assert_eq!(first_row_label(&cx, root), Some("b".to_string()));

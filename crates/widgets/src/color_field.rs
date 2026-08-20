@@ -55,9 +55,10 @@ pub fn parse_hex(input: &str) -> Option<Rgba8> {
     let hex = input.trim().strip_prefix('#')?;
     match hex.len() {
         3 => {
-            let r = nibble(hex.as_bytes()[0])?;
-            let g = nibble(hex.as_bytes()[1])?;
-            let b = nibble(hex.as_bytes()[2])?;
+            let mut nibbles = hex.bytes();
+            let r = nibble(nibbles.next()?)?;
+            let g = nibble(nibbles.next()?)?;
+            let b = nibble(nibbles.next()?)?;
             Some(Rgba8 {
                 r: r * 17,
                 g: g * 17,
@@ -81,7 +82,7 @@ pub fn to_hex(color: Rgba8) -> String {
     format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b)
 }
 
-fn nibble(b: u8) -> Option<u8> {
+const fn nibble(b: u8) -> Option<u8> {
     match b {
         b'0'..=b'9' => Some(b - b'0'),
         b'a'..=b'f' => Some(b - b'a' + 10),
@@ -101,7 +102,7 @@ mod tests {
 
     #[test]
     fn hex_roundtrip() {
-        let c = parse_hex("#0af").unwrap();
+        let c = parse_hex("#0af").expect("#0af is valid hex");
         assert_eq!(
             c,
             Rgba8 {

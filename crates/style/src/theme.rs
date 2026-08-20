@@ -232,8 +232,8 @@ impl Theme {
     /// Build the the host app parity theme: Sigil's dark scales plus the shadcn
     /// (new-york, dark) token set bound to the exact sRGB the React app renders.
     ///
-    /// Values are captured from the running app, not hand-computed — see
-    /// `docs/specs/console-theme.md` (source: `the host app/scripts/extract-tokens.mjs`).
+    /// Values are captured from the running the host app app, not
+    /// hand-computed.
     /// Because these tokens are registered explicitly, `resolve_color` lets them win over
     /// the built-in `accent` / `border`, so a ported React `className` keeps its token
     /// words verbatim: `bg-card`, `text-muted-foreground`, `bg-destructive`. `border` and
