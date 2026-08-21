@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! G5 (DR-048 §5) — production install path end-to-end.
 //!
 //! Drives the same wiring `launch::run` uses (`AsyncRuntime` →
@@ -27,30 +31,6 @@
 // every integration test's compilation unit; alias the ones this test
 // doesn't reference directly so `-D unused-crate-dependencies` stays
 // silent (same pattern as `scale_handling.rs`).
-use accesskit as _;
-use crossbeam_channel as _;
-use muda as _;
-use notify as _;
-use raw_window_handle as _;
-use rfd as _;
-use sigil as _;
-use sigil_a11y as _;
-use sigil_animation_runtime as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_renderer as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
-use toml as _;
-use tracing as _;
-use tray_icon as _;
-#[cfg(windows)]
-use windows_core as _;
-
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;

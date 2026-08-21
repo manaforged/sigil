@@ -1,16 +1,12 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Cold-walk perf bench for `WorkspaceRoot::files()`.
 //!
 //! Target: walk a 10k-file synthetic workspace in ≤ 500ms (release).
 
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
-
-use crossbeam_channel as _;
-use ignore as _;
-use notify as _;
-use proptest as _;
-use ropey as _;
-use smallvec as _;
-use toml as _;
 
 use std::fs;
 use std::path::Path;

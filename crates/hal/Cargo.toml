@@ -10,7 +10,7 @@ description = "Hardware abstraction layer — renderer, shell, layout, text, a11
 readme.workspace = true
 keywords = ["gui", "abstraction", "wgpu", "winit"]
 categories = ["gui", "no-std"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

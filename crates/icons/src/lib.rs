@@ -32,7 +32,8 @@ pub use error::BakeError;
 pub use quadratic::{QuadCurve, cubic_to_quadratics};
 
 #[cfg(test)]
-use proptest as _;
+#[path = "lib_tests.rs"]
+mod tests;
 
 /// Maximum number of quadratic segments per bake call.
 /// Exceeding this limit returns [`BakeError::TooManySegments`].

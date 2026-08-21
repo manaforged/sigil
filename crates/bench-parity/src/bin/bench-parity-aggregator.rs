@@ -102,14 +102,15 @@ fn render_preamble(buf: &mut String) {
     buf.push_str("# Bench-parity report\n\n");
     buf.push_str(
         "Per-framework measurements on locked workloads. \
-         A numeric `vs gpui` cell requires matching reuse/tick, host, \
-         and verdicts. A numeric `vs frame` cell is retained compute \
+         A numeric `vs gpui` cell requires matching source, output, \
+         reuse/tick, host, and verdicts. A numeric `vs frame` cell is retained compute \
          versus reconstruct — not the same mode.\n\n",
     );
     buf.push_str(
         "Host setup is untimed. `vs gpui` is a number only when both \
          sides stamp the same reuse/tick mode, the same host \
          (OS/CPU/rustc), the same verdicts (Pass vs N/A is not a pair), \
+         the same clean source revision, the same canonical output, \
          and both CVs stay at or under 0.25. `vs frame` is a number \
          when both sides pass `ratio_ok`, share that host, both CVs \
          stay at or under 0.25, and reuse is complementary (1 vs 0) \
@@ -117,7 +118,9 @@ fn render_preamble(buf: &mut String) {
          remount. Krausest rows carry id/label/remove text. Tick \
          requires last_done_did_move. An empty check map is not a \
          pass. VOID if construct recorded all layout hits. NOISY if \
-         either CV is above the ceiling.\n\n",
+         either CV is above the ceiling. `— source` means missing, dirty, \
+         or different source. `— output` means the canonical output is \
+         missing or different.\n\n",
     );
 }
 

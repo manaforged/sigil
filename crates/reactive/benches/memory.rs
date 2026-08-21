@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Tier 5 memory + allocation benches for `sigil-reactive`.
 //!
 //! Targets from DR-009 §2:
@@ -66,16 +71,6 @@ mod memory_benches;
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
-
-// `criterion`, `actions`, `smallvec`, and `tokio` are dev/regular
-// deps pulled into every bench compilation unit. We don't reference
-// them here so the `unused_crate_dependencies` lint complains without
-// these aliases.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 // ---------------------------------------------------------------------
 // Allocation counter

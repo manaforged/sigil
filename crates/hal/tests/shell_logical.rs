@@ -1,7 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
-
-use keyboard_types as _;
-use smol_str as _;
 
 use std::fmt;
 

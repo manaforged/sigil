@@ -1,9 +1,12 @@
 # Contributing
 
-Sigil is an internal-origin the author project in the process of opening up.
-Bug reports and well-scoped PRs are welcome; expect maintainers to be opinionated
-about the contracts below — they exist so many parallel agents (human and AI) can
-work the repo without corrupting each other.
+Sigil is MIT-licensed. Copyright stays with the author.
+
+**Issues yes. Unsolicited pull requests no.** Open a GitHub issue for
+bugs and questions. If maintainers want a patch, they will ask.
+
+The contracts below exist so parallel agents (human and AI) can work
+the repo without corrupting each other.
 
 ## Ground rules
 
@@ -21,7 +24,7 @@ work the repo without corrupting each other.
 - **Honesty:** no feature stubs, no half-landed functions, no "TODO" shims on
   `main`. Claims of "tested" require real evidence.
 
-## Verification (required on every PR)
+## Verification (required before a change lands)
 
 ```bash
 cargo fmt --check

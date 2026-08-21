@@ -1,4 +1,7 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! P0.5.2 engine-driver integration tests.
 //!
 //! Exercises the public [`LayoutDrive`] surface end-to-end: build a
@@ -15,13 +18,6 @@
 // Workspace shared dev-deps surfaced into the integration target so the
 // crate-level `unused-crate-dependencies` lint does not fire on the
 // integration test binary.
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;

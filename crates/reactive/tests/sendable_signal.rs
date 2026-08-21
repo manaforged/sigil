@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Tests for `SendableSignal` runtime-identity scoping.
 //!
 //! `SendableSignal` is the `Send + Sync` identity of a main-thread
@@ -13,14 +18,6 @@
 //! cross-runtime re-hydration panics with an actionable message.
 
 #![allow(missing_docs)]
-
-// Silence `unused_crate_dependencies` — criterion is a dev-dep for
-// benches, smallvec a regular dep; neither is referenced here.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use sigil_reactive::{Runtime, signal};
 

@@ -33,6 +33,10 @@ pub struct DefaultFonts {
     /// Display face selected by `font-display` / `font_family = "display"` —
     /// wordmarks and titles (e.g. Bebas Neue). `None` falls back to sans.
     pub display: Option<(Arc<Vec<u8>>, u32)>,
+    /// Coverage-only faces for the per-run fallback chain, in priority
+    /// order (e.g. a Hebrew or CJK face). Never selected by family name;
+    /// consulted when the styled face misses a cluster, before emoji.
+    pub fallbacks: Vec<(Arc<Vec<u8>>, u32)>,
 }
 
 #[derive(Clone, Default)]

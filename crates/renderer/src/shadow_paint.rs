@@ -285,52 +285,5 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
 };
 
 #[cfg(test)]
-mod tests {
-    use pollster::FutureExt as _;
-
-    use super::ShadowPipeline;
-    use super::shadow_shader::SHADOW_SHADER;
-
-    #[test]
-    fn shadow_pipeline_constructs_against_real_device() {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-        let Ok(adapter) = instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::LowPower,
-                compatible_surface: None,
-                force_fallback_adapter: false,
-            })
-            .block_on()
-        else {
-            eprintln!("no adapter - skipping shadow-pipeline shader-validation test");
-            return;
-        };
-        let Ok((device, _queue)) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: Some("shadow-paint-test device"),
-                required_features: wgpu::Features::empty(),
-                required_limits: wgpu::Limits::downlevel_defaults(),
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
-            })
-            .block_on()
-        else {
-            eprintln!("no device - skipping shadow-pipeline shader-validation test");
-            return;
-        };
-        let format = wgpu::TextureFormat::Rgba8UnormSrgb;
-        let pipeline = ShadowPipeline::new(&device, format);
-        assert_eq!(pipeline.format(), format);
-    }
-
-    #[test]
-    fn inner_shadow_shader_clips_and_inverts_coverage() {
-        assert!(SHADOW_SHADER.contains("if shadow_kind >= 0.5"));
-        assert!(SHADOW_SHADER.contains("if d_surface > 0.0"));
-        assert!(SHADOW_SHADER.contains("let inner_spread = -spread"));
-        assert!(SHADOW_SHADER.contains("coverage = 1.0 - shadow_coverage"));
-    }
-
-    include!("shadow_paint_glow_tests.rs");
-}
+#[path = "shadow_paint_glow_tests.rs"]
+mod tests;

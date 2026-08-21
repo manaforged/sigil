@@ -5,7 +5,10 @@
 //! `cargo test -p sigil-ui --test catalog -- --ignored --test-threads=1`
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::print_stdout)]
 
 use std::fs;
@@ -26,9 +29,8 @@ fn install_fonts() {
     let hebrew = fs::read(fixtures.join("NotoSansHebrew-Regular.ttf")).expect("noto hebrew");
     sigil::set_default_fonts(sigil::DefaultFonts {
         sans: Some((Arc::new(sans), 0)),
-        mono: None,
-        icon: Some((Arc::new(hebrew), 0)),
-        display: None,
+        fallbacks: vec![(Arc::new(hebrew), 0)],
+        ..Default::default()
     });
 }
 

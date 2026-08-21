@@ -3,7 +3,10 @@
 //! before/after the Slug dilation change. Not a golden — writes to tests/output/.
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::print_stdout)]
 
 use std::fs;
@@ -28,8 +31,7 @@ fn install_geist() -> bool {
     sigil::set_default_fonts(sigil::DefaultFonts {
         sans: Some((Arc::new(sans), 0)),
         mono: Some((Arc::new(mono), 0)),
-        icon: None,
-        display: None,
+        ..Default::default()
     });
     true
 }
@@ -410,8 +412,7 @@ fn render_font_ab() {
     sigil::set_default_fonts(sigil::DefaultFonts {
         sans: Some((Arc::new(sans), 0)),
         mono: Some((Arc::new(mono), 0)),
-        icon: None,
-        display: None,
+        ..Default::default()
     });
     render_once("font_sf");
     install_geist(); // restore for any later test on this thread

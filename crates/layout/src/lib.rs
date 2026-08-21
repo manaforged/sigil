@@ -5,19 +5,9 @@
 //! back onto the core nodes.
 
 #![deny(missing_docs)]
-// Dev-deps used only by specific benches/tests. Cargo pulls dev-deps
-// into the lib-test target, so keep them visible to the
-// unused-crate-dependencies lint.
 #[cfg(test)]
-use allocation_counter as _;
-#[cfg(test)]
-use criterion as _;
-#[cfg(test)]
-use rayon as _;
-#[cfg(test)]
-use sigil_reactive as _;
-#[cfg(test)]
-use taffy as _;
+#[path = "lib_tests.rs"]
+mod tests;
 
 mod block;
 mod block_collapse;

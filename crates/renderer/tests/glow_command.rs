@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Glow command integration coverage — walker test for R10.
 //!
 //! Mirrors `tests/shadow_command.rs`. Builds a `CommandScene` with three
@@ -6,33 +10,12 @@
 
 #![allow(missing_docs)]
 
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
 use sigil_hal::{Color, Point, Rect};
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style::Rgba8;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use wgpu as _;
-#[cfg(windows)]
-use windows_core as _;
-
-use sigil_icons as _;
-
 use sigil_renderer::{
     CommandScene, CornerRadii, RendererError, SceneBuilder, SceneCommand, SceneRectStyle, Shadow,
     ShadowKind, WgpuRenderer, WgpuSurface,
 };
+use sigil_style::Rgba8;
 
 #[test]
 fn glow_command_keeps_shadow_kind_glow() {

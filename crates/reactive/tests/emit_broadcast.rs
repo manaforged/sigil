@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W4.99.B4 — `Context::emit` broadcasts the full payload to every
 //! subscriber.
 //!
@@ -7,12 +11,6 @@
 //! corrected broadcast-all contract.
 
 #![allow(missing_docs)]
-
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;

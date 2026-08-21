@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! T0 (5/5 Wave 1): multiple reactive style sources on one node compose
 //! in install order instead of silently replacing each other.
 //!
@@ -8,16 +12,6 @@
 
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::unwrap_used)]
-
-use allocation_counter as _;
-use criterion as _;
-use phf as _;
-use sigil as _;
-use sigil_hal as _;
-use sigil_style_macros as _;
-use smallvec as _;
-use strsim as _;
-use tracing as _;
 
 use sigil_kernel::prelude::*;
 use sigil_reactive::Runtime;

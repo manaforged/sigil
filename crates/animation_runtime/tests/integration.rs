@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Phase-1 integration tests per DR-053 §6.
 //!
 //! Determinism: every test ticks at a fixed `dt = 1.0 / 60.0` so spring
@@ -9,11 +13,9 @@ use sigil_reactive::{Runtime, signal};
 
 // sigil-style is a public-api dep of sigil-animation-runtime (registry
 // consumes `TransitionId`); the integration tests do not name it.
-use sigil_style as _;
 
 // criterion is a dev-dep used by the `animator_ticks` bench; integration
 // tests do not name it.
-use criterion as _;
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 

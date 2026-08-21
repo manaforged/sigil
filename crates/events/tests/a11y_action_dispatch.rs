@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W5-A11Y (DR-050 §4) — AT-initiated `accesskit::ActionRequest` dispatch.
 //!
 //! Mirrors exactly what `crates/app/src/launch/event_wiring.rs`'s
@@ -25,15 +29,12 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use accesskit::{Action, ActionRequest, TreeId};
-use allocation_counter as _;
-use criterion as _;
 use sigil_events::prelude::*;
 use sigil_kernel::FocusScopeKind;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_reactive::{Runtime, signal};
 use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
-use smallvec as _;
 
 use routing_helpers::{compute_layout, pointer_move, route_event};
 

@@ -1,4 +1,7 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Minimal grid solver geometry.
 //!
 //! Grid was a loud `GridUnsupported` reject; it now lays out explicit
@@ -10,18 +13,8 @@
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp, clippy::unwrap_used, clippy::indexing_slicing)]
 
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
-
 mod stub;
 
-use sigil_hal as _;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_layout::{LayoutResult, TrackSize};

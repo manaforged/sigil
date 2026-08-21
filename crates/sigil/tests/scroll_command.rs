@@ -1,27 +1,9 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_hal::{Point, ScrollEventInit};
@@ -188,5 +170,29 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
             (body_y + 440.0).abs() < 1.0,
             "800px content in a measured 360px viewport must clamp at -440px, got {body_y}"
         );
+    });
+}
+
+#[test]
+fn scroll_can_follow_growth_without_overriding_manual_position() {
+    sigil::reactive::Runtime::scope("sigil-scroll-follow-bottom", || {
+        let extent = signal(800.0_f32);
+        let offset = signal(0.0_f32);
+        let mut cx = Cx::new_root();
+        let _root = cx.add(
+            scroll(container(), extent)
+                .height(240.0)
+                .scroll_bind(offset)
+                .scroll_to_end()
+                .auto_pin_to_bottom(true),
+        );
+        assert_eq!(offset.get(), 560.0);
+
+        extent.set(1_000.0);
+        assert_eq!(offset.get(), 760.0);
+
+        offset.set(300.0);
+        extent.set(1_200.0);
+        assert_eq!(offset.get(), 300.0);
     });
 }

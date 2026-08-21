@@ -1,20 +1,17 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
 mod stub;
 
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
 use sigil_kernel::TextContent;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
-use sigil_reactive as _;
 use sigil_style::NodeStyleExt;
 use sigil_style::{TextLineHeight, TextStyle};
-use smallvec as _;
 
 use stub::stub_engine;
 

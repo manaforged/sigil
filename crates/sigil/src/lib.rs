@@ -90,6 +90,10 @@ pub use sigil_profile as profile;
 /// Terminal loop. Same tree and config as [`launch`].
 #[cfg(feature = "tui")]
 pub use sigil_tui::run as run_tui;
+/// Periodic work on the terminal frame clock, slow work off it, and the
+/// buffers a host that runs its own loop keeps between frames.
+#[cfg(feature = "tui")]
+pub use sigil_tui::{Screen, every, work};
 
 pub mod clipboard;
 pub mod input_glyphs;

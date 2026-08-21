@@ -5,23 +5,33 @@
 
 use std::collections::HashMap;
 use std::ops::Range;
+use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use bench_parity::{
     ACTION_CELL_W, EquivalenceCheck, FrameworkRunner, HostInfo, ID_CELL_W, KRAUSEST_ACTION,
-    LABEL_CELL_W, ROW_WIDTH, SPACER_CELL_W, Surface, TABLE_CELL_W, Workload, krausest_id,
-    krausest_label, visible_band,
+    LABEL_CELL_W, OutputProof, ROW_WIDTH, SPACER_CELL_W, Surface, TABLE_CELL_W, Workload,
+    krausest_id, krausest_label, milli_px, visible_band,
 };
+
+#[path = "gpui_runner_build.rs"]
+mod build;
+#[path = "gpui_runner_timing.rs"]
+mod timing;
+
+use build::{finish, last_real_range, sample_build, validate, verify_visible, visible_check};
 use data_table::quote::Quote;
 use data_table::{FIELDS, cell_text, generate, tick_visible};
 use gpui::{
-    AvailableSpace, Context, Div, IntoElement, ParentElement, Render, ScrollStrategy, Styled,
-    TestAppContext, TestDispatcher, UniformListScrollHandle, VisualTestContext, Window, div, green,
-    point, px, red, rgb, size, uniform_list,
+    App, AvailableSpace, Bounds, Context, Div, Element, ElementId, GlobalElementId,
+    InspectorElementId, IntoElement, LayoutId, ParentElement, Pixels, Render, ScrollStrategy,
+    Styled, TestAppContext, TestDispatcher, UniformListScrollHandle, VisualTestContext, Window,
+    div, green, point, px, red, rgb, size, uniform_list,
 };
 use rand::SeedableRng;
 use rand::rngs::StdRng;
+use timing::{Host, new_host, time_construct_layout};
 
 /// GPUI framework runner.
 #[derive(Debug, Default, Clone, Copy)]
@@ -50,58 +60,6 @@ impl FrameworkRunner for GpuiRunner {
             )),
         }
     }
-}
-
-struct EmptyRoot;
-impl Render for EmptyRoot {
-    fn render(&mut self, _w: &mut Window, _cx: &mut Context<'_, Self>) -> impl IntoElement {
-        div()
-    }
-}
-
-struct Host {
-    vc: VisualTestContext,
-}
-
-fn new_host() -> Host {
-    let dispatcher = TestDispatcher::new(StdRng::seed_from_u64(0));
-    let mut cx = TestAppContext::build(dispatcher, Some("bench-parity-gpui"));
-    let window = cx.add_window(|_w, _cx| EmptyRoot);
-    Host {
-        vc: VisualTestContext::from_window(window.into(), &cx),
-    }
-}
-
-fn space(p: &bench_parity::WorkloadParams) -> gpui::Size<AvailableSpace> {
-    let (vw, vh) = p.viewport();
-    size(px(vw), px(vh)).map(AvailableSpace::Definite)
-}
-
-fn time_construct_layout(
-    host: &mut Host,
-    surface: Surface,
-    p: &bench_parity::WorkloadParams,
-    build: impl FnOnce() -> gpui::AnyElement,
-) -> (u64, bool) {
-    let origin = point(px(0.0), px(0.0));
-    let avail = space(p);
-    let mut painted = surface != Surface::LayoutPaint;
-    let start = Instant::now();
-    host.vc.update(|window, cx| {
-        let mut el = build();
-        el.layout_as_root(avail, window, cx);
-        el.prepaint_at(origin, window, cx);
-        if surface == Surface::LayoutPaint {
-            painted = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                el.paint(window, cx);
-            }))
-            .is_ok();
-        }
-    });
-    (
-        u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX),
-        painted,
-    )
 }
 
 fn krausest_row(index: usize, row_h: f32) -> Div {
@@ -190,16 +148,28 @@ fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, Stri
     let p = &workload.params;
     validate(p)?;
     let (table, tick) = (workload.category == "data-table", p.tick());
-    let book = table.then(|| Arc::new(Mutex::new(generate(p.row_count))));
-    let ids = row_ids(p, table);
-    let book_len = held_rows(book.as_ref(), ids.as_ref());
+    let ListData {
+        book,
+        ids,
+        len: book_len,
+    } = list_data(p, table);
     let (vw, vh) = p.viewport();
     let (row_h, cols) = (p.row_h(), p.cells());
-    let handle = UniformListScrollHandle::new();
-    let observed: Arc<Mutex<Vec<Range<usize>>>> = Arc::new(Mutex::new(Vec::new()));
+    let (handle, recorder) = (UniformListScrollHandle::new(), RangeRecorder::default());
     let mut host = new_host();
     let (_, vis) = visible_band(vh, row_h, p.row_count);
-    let paint_ok = std::cell::Cell::new(true);
+    let (paint_ok, root_size) = (std::cell::Cell::new(true), std::cell::Cell::new([0, 0]));
+    let spec = ListSpec {
+        recorder: recorder.clone(),
+        ids,
+        book: book.clone(),
+        handle: handle.clone(),
+        table,
+        row_h,
+        cols,
+        viewport: (vw, vh),
+        total: p.row_count,
+    };
     let mut step_n = 0_u32;
     let mut step = |ix: usize| {
         if !p.reuse && !tick {
@@ -210,23 +180,14 @@ fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, Stri
         } else {
             handle.scroll_to_item_strict(ix, ScrollStrategy::Top);
         }
-        let obs = observed.clone();
-        let ids = ids.clone();
-        let book = book.clone();
-        let (ns, ok) = time_construct_layout(&mut host, p.surface(), p, || {
-            uniform_list("bench-list", p.row_count, move |r, _w, _cx| {
-                range_rows(r, &obs, ids.as_ref(), book.as_ref(), (table, row_h, cols))
-            })
-            .track_scroll(handle.clone())
-            .w(px(vw))
-            .h(px(vh))
-            .into_any_element()
-        });
+        let spec = spec.clone();
+        let (ns, ok, size) = time_construct_layout(&mut host, p.surface(), p, || spec.element());
         paint_ok.set(ok);
+        root_size.set(size);
         ns
     };
-    let obs = Observed(&observed, &paint_ok);
-    Ok(finish_gpui_list(
+    let obs = Observed(&recorder, &paint_ok, &root_size);
+    Ok(list_result(
         workload,
         &mut step,
         book.as_ref(),
@@ -235,25 +196,121 @@ fn run_virtual_list(workload: &Workload) -> Result<bench_parity::RunResult, Stri
     ))
 }
 
+#[derive(Clone)]
+struct ListSpec {
+    recorder: RangeRecorder,
+    ids: Option<Arc<Vec<u32>>>,
+    book: Option<Arc<Mutex<Vec<Quote>>>>,
+    handle: UniformListScrollHandle,
+    table: bool,
+    row_h: f32,
+    cols: usize,
+    viewport: (f32, f32),
+    total: usize,
+}
+
+impl ListSpec {
+    fn element(self) -> gpui::AnyElement {
+        let callback = self.clone();
+        uniform_list("bench-list", self.total, move |range, _window, _cx| {
+            range_rows(
+                range,
+                &callback.recorder,
+                callback.ids.as_ref(),
+                callback.book.as_ref(),
+                (callback.table, callback.row_h, callback.cols),
+            )
+        })
+        .track_scroll(self.handle)
+        .w(px(self.viewport.0))
+        .h(px(self.viewport.1))
+        .into_any_element()
+    }
+}
+
+struct ListData {
+    book: Option<Arc<Mutex<Vec<Quote>>>>,
+    ids: Option<Arc<Vec<u32>>>,
+    len: usize,
+}
+
+fn list_data(p: &bench_parity::WorkloadParams, table: bool) -> ListData {
+    let book = table.then(|| Arc::new(Mutex::new(generate(p.row_count))));
+    let ids = row_ids(p, table);
+    let len = held_rows(book.as_ref(), ids.as_ref());
+    ListData { book, ids, len }
+}
+
+fn list_result(
+    workload: &Workload,
+    step: &mut impl FnMut(usize) -> u64,
+    book: Option<&Arc<Mutex<Vec<Quote>>>>,
+    book_len: usize,
+    obs: Observed<'_>,
+) -> bench_parity::RunResult {
+    finish_gpui_list(workload, step, book, book_len, obs)
+}
+
 /// Build the rows GPUI asks for, recording the observed range.
 fn range_rows(
     range: Range<usize>,
-    obs: &Arc<Mutex<Vec<Range<usize>>>>,
+    recorder: &RangeRecorder,
     ids: Option<&Arc<Vec<u32>>>,
     book: Option<&Arc<Mutex<Vec<Quote>>>>,
     layout: (bool, f32, usize),
 ) -> Vec<Div> {
     let (table, row_h, cols) = layout;
-    if let Ok(mut g) = obs.lock() {
+    if let Ok(mut g) = recorder.ranges.lock() {
         g.push(range.clone());
     }
     if let Some(ids) = ids {
         let _ = ids.get(range.start);
     }
     let guard = book.and_then(|arc| arc.lock().ok());
+    let text_rows = range
+        .clone()
+        .map(|i| semantic_row(i, guard.as_deref(), table, cols))
+        .collect();
+    if let Ok(mut out) = recorder.output.lock() {
+        *out = Some(RangeOutput {
+            range: range.clone(),
+            text_rows,
+        });
+    }
     range
         .map(|i| one_row(i, guard.as_deref(), table, row_h, cols))
         .collect()
+}
+
+#[derive(Clone)]
+struct RangeOutput {
+    range: Range<usize>,
+    text_rows: Vec<Vec<String>>,
+}
+
+#[derive(Clone, Default)]
+struct RangeRecorder {
+    ranges: Arc<Mutex<Vec<Range<usize>>>>,
+    output: Arc<Mutex<Option<RangeOutput>>>,
+}
+
+fn semantic_row(
+    index: usize,
+    quotes: Option<&Vec<Quote>>,
+    table: bool,
+    cols: usize,
+) -> Vec<String> {
+    if let Some(quote) = quotes.and_then(|rows| rows.get(index)) {
+        return FIELDS
+            .iter()
+            .map(|field| cell_text(index, quote, field.kind))
+            .collect();
+    }
+    if table {
+        return (0..cols).map(|col| format!("{index}:{col}")).collect();
+    }
+    let id = u32::try_from(index).unwrap_or(u32::MAX);
+    vec![krausest_id(id), krausest_label(id), KRAUSEST_ACTION.into()]
 }
 
 /// Row ids for the krausest list; tables key on row content instead.
@@ -301,7 +358,11 @@ fn tick_gpui_book(book: Option<&Arc<Mutex<Vec<Quote>>>>, step_n: &mut u32, vis: 
 
 /// What the sampled steps observed: (painted ranges, paint health).
 #[derive(Clone, Copy)]
-struct Observed<'a>(&'a Arc<Mutex<Vec<Range<usize>>>>, &'a std::cell::Cell<bool>);
+struct Observed<'a>(
+    &'a RangeRecorder,
+    &'a std::cell::Cell<bool>,
+    &'a std::cell::Cell<[i64; 2]>,
+);
 
 /// Pass when `ok`, else Fail with `detail`.
 fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
@@ -332,7 +393,8 @@ fn finish_gpui_list(
     let pair = seed_last.zip(now_last);
     // Change detection wants exact inequality, not an epsilon band.
     let moved = tick && pair.is_some_and(|(a, b)| a.to_bits() != b.to_bits());
-    let last = last_real_range(&obs.0.lock().map(|g| g.clone()).unwrap_or_default());
+    let ranges = obs.0.ranges.lock().map(|g| g.clone()).unwrap_or_default();
+    let last = last_real_range(&ranges);
     let first = last.as_ref().map_or(0, |r| r.start);
     let visible = last.as_ref().map_or(0, |r| r.end.saturating_sub(r.start));
     let mut extra = stamp_table_checks(p, visible, obs.1.get(), visible_check(p, last));
@@ -360,7 +422,33 @@ fn finish_gpui_list(
     let mut verify = verify_visible(visible);
     verify.insert("book_rows".into(), u64::try_from(book_len).unwrap_or(0));
     verify.insert("first_visible".into(), u64::try_from(first).unwrap_or(0));
-    finish(workload, samples_ns, extra, verify)
+    let output = observed_output(obs);
+    finish(workload, samples_ns, extra, verify, output)
+}
+
+fn observed_output(obs: Observed<'_>) -> Option<OutputProof> {
+    obs.0
+        .output
+        .lock()
+        .ok()
+        .and_then(|rows| rows.clone())
+        .map(|rows| {
+            let mut values = std::collections::BTreeMap::new();
+            values.insert(
+                "first_row".into(),
+                u64::try_from(rows.range.start).unwrap_or(0),
+            );
+            values.insert(
+                "visible_rows".into(),
+                u64::try_from(rows.range.len()).unwrap_or(0),
+            );
+            OutputProof {
+                schema: "visible-rows-v1".into(),
+                root_size_milli_px: obs.2.get(),
+                values,
+                text_rows: rows.text_rows,
+            }
+        })
 }
 
 fn drain_gpui(
@@ -460,137 +548,4 @@ fn run_text_labels(workload: &Workload) -> Result<bench_parity::RunResult, Strin
         }
         col.into_any_element()
     })
-}
-
-#[allow(
-    clippy::unnecessary_wraps,
-    clippy::redundant_closure,
-    reason = "callers stay Result for the runner trait"
-)]
-fn sample_build(
-    workload: &Workload,
-    host: &mut Host,
-    mut build: impl FnMut() -> gpui::AnyElement,
-) -> Result<bench_parity::RunResult, String> {
-    let p = &workload.params;
-    let surface = p.surface();
-    let mut step = || {
-        *host = new_host();
-        time_construct_layout(host, surface, p, || build()).0
-    };
-    for _ in 0..p.warmup {
-        let _ = step();
-    }
-    let mut samples_ns = Vec::with_capacity(p.iterations);
-    for _ in 0..p.iterations {
-        samples_ns.push(step());
-    }
-    let mut extra = HashMap::new();
-    extra.insert(
-        "layout_did_work".into(),
-        if samples_ns.is_empty() {
-            EquivalenceCheck::Fail {
-                detail: "no samples".into(),
-            }
-        } else {
-            EquivalenceCheck::Pass
-        },
-    );
-    if workload.category == "text-labels" {
-        extra.insert(
-            "text_did_work".into(),
-            if samples_ns.is_empty() {
-                EquivalenceCheck::Fail {
-                    detail: "no samples".into(),
-                }
-            } else {
-                EquivalenceCheck::Pass
-            },
-        );
-    }
-    Ok(finish(workload, samples_ns, extra, HashMap::new()))
-}
-
-fn last_real_range(ranges: &[Range<usize>]) -> Option<Range<usize>> {
-    ranges.iter().rev().find(|r| r.end > r.start + 1).cloned()
-}
-
-fn visible_check(
-    p: &bench_parity::WorkloadParams,
-    last: Option<Range<usize>>,
-) -> HashMap<String, EquivalenceCheck> {
-    let (_, vh) = p.viewport();
-    let (lo, hi) = visible_band(vh, p.row_h(), p.row_count);
-    let mut out = HashMap::new();
-    let verdict = last.map_or_else(
-        || EquivalenceCheck::Fail {
-            detail: "uniform_list never reported a visible range".into(),
-        },
-        |range| {
-            let actual = range.end - range.start;
-            if actual >= lo && actual <= hi {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: format!("visible rows {actual} not in {lo}..={hi}"),
-                }
-            }
-        },
-    );
-    out.insert("visible_window_indices".into(), verdict);
-    out
-}
-
-fn verify_visible(visible: usize) -> HashMap<String, u64> {
-    let mut out = HashMap::new();
-    out.insert("visible_last".into(), u64::try_from(visible).unwrap_or(0));
-    out
-}
-
-fn finish(
-    workload: &Workload,
-    samples_ns: Vec<u64>,
-    extra: HashMap<String, EquivalenceCheck>,
-    mut verify: HashMap<String, u64>,
-) -> bench_parity::RunResult {
-    // GPUI builds a fresh element tree every sample. reuse=0 is the
-    // work that ran, not the workload's reuse flag.
-    verify.insert("reuse".into(), 0);
-    verify
-        .entry("tick".into())
-        .or_insert_with(|| u64::from(workload.params.tick()));
-    verify
-        .entry("samples".into())
-        .or_insert_with(|| u64::try_from(samples_ns.len()).unwrap_or(0));
-    let mut checks = extra;
-    for spec in &workload.equivalence_checks {
-        checks
-            .entry(spec.name.clone())
-            .or_insert(EquivalenceCheck::NotApplicable);
-    }
-    eprintln!(
-        "VERIFY gpui {} median_us={:.2} visible={}",
-        workload.workload_id,
-        bench_parity::RunSummary::from_samples(&samples_ns).median_us,
-        verify.get("visible_last").copied().unwrap_or(0),
-    );
-    bench_parity::RunResult {
-        framework: "gpui".into(),
-        workload_id: workload.workload_id.clone(),
-        summary: bench_parity::RunSummary::from_samples(&samples_ns),
-        samples_ns,
-        equivalence_check_results: checks,
-        host: HostInfo::capture(),
-        verify,
-    }
-}
-
-fn validate(p: &bench_parity::WorkloadParams) -> Result<(), String> {
-    if p.row_count == 0 {
-        return Err("row_count must be > 0".into());
-    }
-    if p.iterations == 0 {
-        return Err("iterations must be > 0".into());
-    }
-    Ok(())
 }

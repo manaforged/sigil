@@ -10,7 +10,7 @@ description = "AccessKit bridge for Sigil — projects the kernel node tree into
 readme.workspace = true
 keywords = ["accessibility", "accesskit", "a11y", "gui"]
 categories = ["gui", "accessibility"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

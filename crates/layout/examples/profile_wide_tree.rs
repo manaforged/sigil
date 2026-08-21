@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Profiling harness for the `wide_tree` F1 corpus.
 //!
 //! Runs `LayoutEngine::compute` 500 times against the published
@@ -14,19 +19,6 @@
     clippy::unwrap_used,
     clippy::cast_precision_loss
 )]
-
-// Keep dev-dep extern crates visible to `unused_crate_dependencies` —
-// aliases silence the lint without a real import (repo convention).
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};

@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W3.1b-B — integration tests for FocusHandle + Context::on_action,
 //! dispatch_action, propagate. See DR-046 §4 + §6.
 //!
@@ -20,10 +24,6 @@
     clippy::similar_names,
     clippy::shadow_unrelated
 )]
-
-use criterion as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

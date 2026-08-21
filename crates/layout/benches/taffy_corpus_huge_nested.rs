@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Owned-engine vs Taffy comparison - `huge_nested` scene from Taffy's
 //! published bench corpus.
 //!
@@ -19,14 +23,6 @@ use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
 // allow unused dev-dep extern crates per repo convention
-use ahash as _;
-use allocation_counter as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;

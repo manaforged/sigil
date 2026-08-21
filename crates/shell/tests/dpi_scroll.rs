@@ -1,12 +1,10 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Scroll DPI regression coverage.
 
 #![allow(missing_docs)]
-
-use accesskit as _;
-use accesskit_winit as _;
-use crossbeam_channel as _;
-use sigil_shell as _;
-use smol_str as _;
 
 #[allow(dead_code)]
 #[path = "../src/event_map.rs"]

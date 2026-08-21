@@ -1,23 +1,31 @@
 //! Live and headless pumps over [`sigil_app::Host`].
 
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::time::Duration;
 
-use crossterm::event::{self, Event};
+use crossterm::event::{
+    self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+    Event,
+};
+use crossterm::style::Print;
 use crossterm::terminal::{
-    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
+    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use crossterm::{cursor, execute, queue};
 use sigil_animation_runtime::tick as tick_animations;
-use sigil_app::{AppConfig, AppResult, Error, Host, TreeRoot};
+use sigil_app::{AppConfig, AppResult, Error, Host, LayoutError, Painted, TreeRoot};
 use sigil_events::EventRouter;
 use sigil_hal::ShellEvent;
 use sigil_reactive::Runtime;
 
 use crate::keys::map_key;
-use crate::paint::{Grid, raster};
+use crate::mouse::map_mouse;
+use crate::paint::{Grid, raster, raster_into};
 
 const TICK: Duration = Duration::from_millis(33);
+/// Frame buffer for terminal writes. A full redraw of a wide terminal is
+/// tens of kilobytes; anything smaller splits one frame across syscalls.
+const BUFFER: usize = 64 * 1024;
 const CELL: f32 = sigil_app::Host::CELL;
 
 /// Run a Sigil tree on the terminal. Same config and tree as `sigil::launch`.
@@ -35,36 +43,159 @@ where
 }
 
 /// Headless: mount, route `events`, return the painted text.
-#[must_use]
-pub fn present(tree: impl TreeRoot, cols: u16, rows: u16, events: &[ShellEvent]) -> String {
+///
+/// # Errors
+///
+/// Returns the layout engine error instead of painting stale geometry.
+pub fn present(
+    tree: impl TreeRoot,
+    cols: u16,
+    rows: u16,
+    events: &[ShellEvent],
+) -> Result<String, LayoutError> {
     Runtime::scope("sigil-tui-present", || {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         host.mount(tree);
-        prime(&mut host, &mut router, cols, rows);
-        step(&mut host, &mut router, events.iter().cloned(), cols, rows).text()
+        prime(&mut host, &mut router, cols, rows)?;
+        Ok(step(&mut host, &mut router, events.iter().cloned(), cols, rows)?.text())
     })
 }
 
+/// Frame buffers for a terminal host.
+///
+/// A host that keeps one between frames reuses the paint scratch and both
+/// cell buffers, so a steady frame allocates nothing. [`step`] is the
+/// allocating equivalent for tests and one-shot renders.
+pub struct Screen {
+    nodes: Vec<Painted>,
+    grid: Grid,
+    prev: Grid,
+    fresh: bool,
+    /// The last frame differs from the one on screen.
+    dirty: bool,
+}
+
+impl Screen {
+    /// Buffers for a `cols` by `rows` terminal.
+    #[must_use]
+    pub fn new(cols: u16, rows: u16) -> Self {
+        Self {
+            nodes: Vec::new(),
+            grid: Grid::new(cols, rows),
+            prev: Grid::new(cols, rows),
+            fresh: true,
+            dirty: true,
+        }
+    }
+
+    /// Route `events`, tick, lay out, and paint one frame.
+    ///
+    /// # Errors
+    ///
+    /// Returns the layout engine error instead of painting stale geometry.
+    pub fn frame(
+        &mut self,
+        host: &mut Host,
+        router: &mut EventRouter,
+        events: impl IntoIterator<Item = ShellEvent>,
+        size: (u16, u16),
+    ) -> Result<&Grid, LayoutError> {
+        let (cols, rows) = size;
+        for event in events {
+            host.route(router, event);
+        }
+        tick_animations(TICK.as_secs_f32());
+        crate::timer::advance(TICK.as_secs_f32());
+        crate::work::collect_work();
+        host.layout(view(cols, rows))?;
+        host.repair_focus(router);
+        let resized = self.grid.cols() != cols as usize || self.grid.rows() != rows as usize;
+        // An idle app paints the same tree 30 times a second. When no record
+        // moved and the terminal is the same size, the cells are the ones
+        // already on screen: nothing to rasterize and nothing to send.
+        let moved = host.repaint(&mut self.nodes);
+        self.dirty = moved || resized || self.fresh;
+        if self.dirty {
+            self.grid.resize(cols, rows);
+            raster_into(&mut self.grid, &self.nodes, CELL);
+            return Ok(&self.grid);
+        }
+        // `flush` swaps the buffers, so after one the frame on screen is
+        // `prev` and `grid` is the retired one. A skipped frame changed
+        // nothing, so what is on screen is this frame.
+        Ok(&self.prev)
+    }
+
+    /// Write what changed since the previous frame, then keep it as the new
+    /// comparison point.
+    ///
+    /// # Errors
+    ///
+    /// Returns any write error from `out`.
+    pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
+        if !self.dirty {
+            return Ok(());
+        }
+        self.dirty = false;
+        if self.fresh
+            || self.prev.cols() != self.grid.cols()
+            || self.prev.rows() != self.grid.rows()
+        {
+            self.fresh = false;
+            self.prev.mirror(&self.grid);
+            crate::write::all(out, &self.grid)?;
+        } else {
+            crate::write::dirty(out, &self.prev, &self.grid)?;
+        }
+        core::mem::swap(&mut self.prev, &mut self.grid);
+        Ok(())
+    }
+
+    /// Repaint every cell on the next flush.
+    pub const fn invalidate(&mut self) {
+        self.fresh = true;
+    }
+
+    /// Whether the current frame has terminal bytes to flush.
+    #[must_use]
+    pub const fn needs_flush(&self) -> bool {
+        self.dirty
+    }
+}
+
 /// One frame: route events, tick, lay out, rasterize.
+///
+/// # Errors
+///
+/// Returns the layout engine error instead of rasterizing stale geometry.
 pub fn step(
     host: &mut Host,
     router: &mut EventRouter,
     events: impl IntoIterator<Item = ShellEvent>,
     cols: u16,
     rows: u16,
-) -> Grid {
+) -> Result<Grid, LayoutError> {
     for event in events {
         host.route(router, event);
     }
     tick_animations(TICK.as_secs_f32());
-    let _ = host.layout(view(cols, rows));
-    raster(&host.painted(), cols, rows, CELL)
+    crate::timer::advance(TICK.as_secs_f32());
+    crate::work::collect_work();
+    host.layout(view(cols, rows))?;
+    host.repair_focus(router);
+    Ok(raster(&host.painted(), cols, rows, CELL))
 }
 
-fn prime(host: &mut Host, router: &mut EventRouter, cols: u16, rows: u16) {
-    let _ = host.layout(view(cols, rows));
-    router.focus_next(host.cx());
+fn prime(
+    host: &mut Host,
+    router: &mut EventRouter,
+    cols: u16,
+    rows: u16,
+) -> Result<(), LayoutError> {
+    host.layout(view(cols, rows))?;
+    host.repair_focus(router);
+    Ok(())
 }
 
 fn view(cols: u16, rows: u16) -> (f32, f32) {
@@ -72,19 +203,16 @@ fn view(cols: u16, rows: u16) -> (f32, f32) {
 }
 
 fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
+    guard();
     let mut term = Term::enter().map_err(Error::new)?;
     let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::new)?;
-    if config.size.0 > 0 {
-        cols = cols.min(u16::try_from(config.size.0).unwrap_or(cols));
-    }
-    if config.size.1 > 0 {
-        rows = rows.min(u16::try_from(config.size.1).unwrap_or(rows));
-    }
+    limit(config, &mut cols, &mut rows);
     let mut host = Host::cells();
     let mut router = EventRouter::new();
     host.mount(tree);
-    prime(&mut host, &mut router, cols, rows);
-    let mut prev = Grid::new(cols, rows);
+    prime(&mut host, &mut router, cols, rows).map_err(Error::new)?;
+    let mut screen = Screen::new(cols, rows);
+    let mut pointer = sigil_hal::Point::new(0.0, 0.0);
     let mut first = true;
     loop {
         let mut incoming = Vec::new();
@@ -103,17 +231,33 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
                 Event::Resize(next_cols, next_rows) => {
                     cols = next_cols;
                     rows = next_rows;
-                    prev = Grid::new(cols, rows);
+                    screen.invalidate();
                     term.redraw = true;
                 }
-                Event::FocusGained | Event::FocusLost | Event::Mouse(_) | Event::Paste(_) => {}
+                Event::Mouse(mouse) => {
+                    if let Some(mapped) = map_mouse(&mouse, CELL, &mut pointer) {
+                        incoming.push(mapped);
+                    }
+                }
+                Event::Paste(pasted) => incoming.push(crate::keys::paste(&pasted)),
+                Event::FocusGained | Event::FocusLost => {}
             }
         }
-        let grid = step(&mut host, &mut router, incoming, cols, rows);
-        term.paint(&prev, &grid).map_err(Error::new)?;
-        prev = grid;
+        screen
+            .frame(&mut host, &mut router, incoming, (cols, rows))
+            .map_err(Error::new)?;
+        term.paint(&mut screen).map_err(Error::new)?;
     }
     Ok(())
+}
+
+fn limit(config: &AppConfig, cols: &mut u16, rows: &mut u16) {
+    if config.size.0 > 0 {
+        *cols = (*cols).min(u16::try_from(config.size.0).unwrap_or(*cols));
+    }
+    if config.size.1 > 0 {
+        *rows = (*rows).min(u16::try_from(config.size.1).unwrap_or(*rows));
+    }
 }
 
 fn quit(key: &crossterm::event::KeyEvent, esc_exits: bool) -> bool {
@@ -127,72 +271,89 @@ fn quit(key: &crossterm::event::KeyEvent, esc_exits: bool) -> bool {
 
 struct Term {
     redraw: bool,
+    /// One buffer for a whole frame.
+    ///
+    /// A frame is thousands of short writes — a cursor move and a run of
+    /// glyphs per row. `io::stdout` is line-buffered behind a lock, so each
+    /// of those would be a syscall's worth of work and a lock acquire.
+    out: BufWriter<io::Stdout>,
 }
 
 impl Term {
     fn enter() -> io::Result<Self> {
         enable_raw_mode()?;
-        execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
-        Ok(Self { redraw: true })
+        // Mouse reporting: without it the terminal sends no pointer events at
+        // all, and every hover, click, and wheel in the widget set is dead.
+        execute!(
+            io::stdout(),
+            EnterAlternateScreen,
+            EnableMouseCapture,
+            EnableBracketedPaste,
+            cursor::Hide
+        )?;
+        Ok(Self {
+            redraw: true,
+            out: BufWriter::with_capacity(BUFFER, io::stdout()),
+        })
     }
 
-    fn paint(&mut self, prev: &Grid, next: &Grid) -> io::Result<()> {
-        let mut out = io::stdout();
-        queue!(out, crossterm::style::Print("\x1b[?2026h"))?;
-        if self.redraw || prev.cols() != next.cols() || prev.rows() != next.rows() {
-            queue!(
-                out,
-                crossterm::terminal::Clear(crossterm::terminal::ClearType::All)
-            )?;
-            self.redraw = false;
-            write_all(&mut out, next)?;
-        } else {
-            write_dirty(&mut out, prev, next)?;
-        }
-        queue!(out, crossterm::style::Print("\x1b[?2026l"))?;
-        out.flush()
+    fn paint(&mut self, screen: &mut Screen) -> io::Result<()> {
+        let redraw = core::mem::take(&mut self.redraw);
+        paint_frame(&mut self.out, screen, redraw)
     }
+}
+
+fn paint_frame(out: &mut impl Write, screen: &mut Screen, redraw: bool) -> io::Result<()> {
+    if !redraw && !screen.needs_flush() {
+        return Ok(());
+    }
+    // Synchronised update: the terminal shows the whole frame at once
+    // rather than tearing partway through the diff.
+    queue!(out, Print("\x1b[?2026h"))?;
+    if redraw {
+        queue!(out, Clear(ClearType::All))?;
+        screen.invalidate();
+    }
+    screen.flush(out)?;
+    queue!(out, Print("\x1b[?2026l"))?;
+    out.flush()
 }
 
 impl Drop for Term {
     fn drop(&mut self) {
-        let _ = execute!(io::stdout(), cursor::Show, LeaveAlternateScreen);
-        let _ = disable_raw_mode();
+        restore();
     }
 }
 
-fn write_all(out: &mut impl Write, grid: &Grid) -> io::Result<()> {
-    for row in 0..grid.rows() {
-        write_row(out, grid, row)?;
-    }
-    Ok(())
+/// Put the terminal back the way it was found. Safe to call twice.
+fn restore() {
+    let _ = execute!(
+        io::stdout(),
+        DisableBracketedPaste,
+        DisableMouseCapture,
+        cursor::Show,
+        LeaveAlternateScreen
+    );
+    let _ = disable_raw_mode();
 }
 
-fn write_dirty(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
-    for row in 0..next.rows() {
-        if row_changed(prev, next, row) {
-            write_row(out, next, row)?;
-        }
-    }
-    Ok(())
+/// Restore the terminal before a panic prints.
+///
+/// The default hook writes to a screen that is still in raw mode and still
+/// showing the alternate buffer, so the message scrolls into a buffer that is
+/// about to be discarded: the app vanishes and takes the reason with it.
+/// Restoring first puts the panic where the user can read it.
+fn guard() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            restore();
+            previous(info);
+        }));
+    });
 }
 
-fn row_changed(prev: &Grid, next: &Grid, row: usize) -> bool {
-    for col in 0..next.cols() {
-        if prev.get(col, row) != next.get(col, row) {
-            return true;
-        }
-    }
-    false
-}
-
-fn write_row(out: &mut impl Write, grid: &Grid, row: usize) -> io::Result<()> {
-    let y = u16::try_from(row.saturating_add(1)).unwrap_or(1);
-    queue!(out, cursor::MoveTo(0, y.saturating_sub(1)))?;
-    let mut line = String::new();
-    for col in 0..grid.cols() {
-        let ch = grid.get(col, row).map_or(' ', |cell| cell.ch);
-        line.push(ch);
-    }
-    queue!(out, crossterm::style::Print(line))
-}
+#[cfg(test)]
+#[path = "run_tests.rs"]
+mod tests;

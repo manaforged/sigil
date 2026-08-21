@@ -10,7 +10,7 @@ description = "Utility-class, theme, and reactive style layer for Sigil."
 readme.workspace = true
 keywords = ["styling", "theme", "gui", "design-tokens", "utility-classes"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 bench = false

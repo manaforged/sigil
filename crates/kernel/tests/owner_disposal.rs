@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 // Integration tests keep assertions direct; unwraps name the expected
 // topology and failed assertions are the test output.
@@ -5,13 +9,6 @@
 
 use std::cell::Cell;
 use std::rc::Rc;
-
-use accesskit as _;
-use ahash as _;
-use criterion as _;
-use sigil_hal as _;
-use slotmap as _;
-use smallvec as _;
 
 use sigil_kernel::{A11yProps, Cx, IntoNode, NodeId, NodeType, container};
 use sigil_reactive::{Runtime, debug, effect, on_cleanup, signal};

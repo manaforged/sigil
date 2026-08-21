@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Integration tests for `ActionRegistry` dispatch semantics.
 //!
 //! Every test asserts observable behaviour — handler side-effects on a
@@ -10,11 +14,6 @@
     clippy::indexing_slicing,
     clippy::similar_names
 )]
-
-use criterion as _;
-use sigil as _;
-use sigil_actions_macros as _;
-use smallvec as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

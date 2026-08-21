@@ -391,6 +391,5 @@ pub(crate) fn srgb_channel_to_linear(channel: u8) -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
-    include!("scene_instance_tests.rs");
-}
+#[path = "scene_instance_tests.rs"]
+mod tests;

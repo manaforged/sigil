@@ -14,11 +14,77 @@
 
 use smallvec::SmallVec;
 
-use super::{
-    CodepointClass, FeatureTag, Font, Script, Shaper, Style, TextSegment, classify,
-    classify_segment_script,
-};
+use super::{FeatureTag, Font, Script, Shaper, Style, TextSegment, classify_segment_script};
 use crate::glyph::GlyphId;
+
+impl<'a> TextSegment<'a> {
+    /// Construct an LTR segment over text.
+    pub(crate) const fn ltr(text: &'a str) -> Self {
+        Self { text, level: 0 }
+    }
+}
+
+/// Codepoint classification kept for downstream (G1.5 atlas routing).
+///
+/// G1.3 does not act on the result. Skrifa returns the correct
+/// advance for Latin, CJK, and emoji uniformly, but this pins the
+/// detection contract so the followup atlas-routing dispatch has a
+/// stable surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CodepointClass {
+    /// Standard Latin / Greek / Cyrillic etc.
+    Regular,
+    /// CJK Symbols and Punctuation (U+3000..U+303F).
+    CjkPunctuation,
+    /// Half/Full-width Forms (U+FF00..U+FFEF).
+    HalfFullWidth,
+    /// Emoji codepoint (BMP + supplementary blocks).
+    Emoji,
+}
+
+/// Classify the lead codepoint of a grapheme.
+pub(crate) fn classify(ch: char) -> CodepointClass {
+    let cp = ch as u32;
+    if matches!(cp, 0x3000..=0x303F) {
+        CodepointClass::CjkPunctuation
+    } else if matches!(cp, 0xFF00..=0xFFEF) {
+        CodepointClass::HalfFullWidth
+    } else if is_emoji(cp) {
+        CodepointClass::Emoji
+    } else {
+        CodepointClass::Regular
+    }
+}
+
+/// Cheap emoji-block check covering the high-frequency ranges.
+///
+/// Per DR-044, pulling unicode-properties for the well-typed
+/// `EMOJI_PRESENTATION` query is overkill for G1.3. The codepoint
+/// ranges below cover Misc Symbols + Dingbats and the SMP emoji
+/// blocks, which is what the test corpus needs. G1.5 can swap in
+/// the full property table when the atlas-routing surface needs
+/// stricter coverage.
+const fn is_emoji(cp: u32) -> bool {
+    matches!(
+        cp,
+        0x2600..=0x27BF      // Misc Symbols + Dingbats
+        | 0x1F300..=0x1F5FF  // Misc Symbols and Pictographs
+        | 0x1F600..=0x1F64F  // Emoticons
+        | 0x1F680..=0x1F6FF  // Transport and Map
+        | 0x1F700..=0x1F77F  // Alchemical
+        | 0x1F900..=0x1F9FF, // Supplemental Symbols and Pictographs
+    )
+}
+
+impl Script {
+    /// Whether this script needs `HarfRust` to shape correctly.
+    pub(crate) const fn is_complex(self) -> bool {
+        matches!(
+            self,
+            Self::Arabic | Self::Hebrew | Self::Devanagari | Self::Khmer | Self::Thai | Self::Lao,
+        )
+    }
+}
 
 const FIRA_REGULAR: &[u8] = include_bytes!("../../assets/fonts/FiraSans-Regular.ttf");
 const FIRA_BOLD: &[u8] = include_bytes!("../../tests/fixtures/FiraSans-Bold.ttf");

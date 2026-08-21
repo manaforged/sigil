@@ -1,15 +1,11 @@
 //! Layout engine records profiler counters on compute.
 
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
-
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_hal as _;
-use smallvec as _;
 
 mod stub;
 use stub::stub_engine;
@@ -20,19 +16,21 @@ use sigil_profile::{disable, enable, frames, reset, tick_frame};
 use sigil_reactive::{Runtime, signal};
 use sigil_style::NodeStyleExt;
 
-/// Serialize tests that mutate the process-global profiler store
-/// (enable/reset/disable) — same convention as sigil-profile's own tests.
-fn profile_lock() -> std::sync::MutexGuard<'static, ()> {
-    use std::sync::{Mutex, OnceLock};
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
+/// The profiler is one global recorder. Two tests enabling, resetting, and
+/// reading it at once read each other's frames, so the ones that touch it
+/// take this in turn.
+static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// Hold the recorder for the rest of the test, panic or not.
+fn alone() -> std::sync::MutexGuard<'static, ()> {
+    RECORDER
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[test]
 fn compute_records_layout_miss() {
-    let _gate = profile_lock();
+    let _recorder = alone();
     enable();
     reset();
     let mut cx = Cx::new_root();
@@ -56,7 +54,7 @@ fn compute_records_layout_miss() {
 
 #[test]
 fn second_compute_is_a_cache_hit() {
-    let _gate = profile_lock();
+    let _recorder = alone();
     enable();
     reset();
     let mut cx = Cx::new_root();

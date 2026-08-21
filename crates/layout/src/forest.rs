@@ -84,12 +84,6 @@ impl LayoutNode {
     pub(crate) const fn text(&self) -> Option<&LayoutText> {
         self.text.as_ref()
     }
-
-    /// Children in insertion order.
-    #[cfg(test)]
-    pub(crate) fn children(&self) -> &[LocalId] {
-        &self.children
-    }
 }
 
 /// Per-node text payload consumed by layout measurement.
@@ -227,12 +221,6 @@ impl LayoutForest {
     /// Live node count (alive slots only).
     pub(crate) fn count(&self) -> usize {
         self.nodes.iter().filter(|n| n.alive).count()
-    }
-
-    /// True when no live nodes remain.
-    #[cfg(test)]
-    pub(crate) fn empty(&self) -> bool {
-        self.count() == 0
     }
 
     /// Insert a node with the given kernel link and owned style; return
@@ -434,12 +422,6 @@ impl LayoutForest {
         self.node(id).map(|_| NodeRef { forest: self, id })
     }
 
-    /// Capacity of the underlying slab. Counts both live and freed slots.
-    #[cfg(test)]
-    pub(crate) const fn slab(&self) -> usize {
-        self.nodes.len()
-    }
-
     /// Translate a live id to its slab index. Returns
     /// [`LayoutError::NodeMissing`] when the id is stale, and the
     /// caller must convert to its own error type when no kernel id is
@@ -575,16 +557,6 @@ static DEFAULT_STYLE: StyleData = StyleData {
     grid_auto_flow_dense: false,
 };
 
-/// Phase tag for the engine's two-pass measure-then-arrange driver.
-#[cfg(test)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum LayoutPass {
-    /// Bottom-up natural-size pass.
-    Measure,
-    /// Top-down placement pass.
-    Arrange,
-}
-
 /// Per-axis constraint passed to a measure pass.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum SpaceConstraint {
@@ -612,16 +584,6 @@ impl AvailableSpace {
         Self {
             w: SpaceConstraint::Definite(w),
             h: SpaceConstraint::Definite(h),
-        }
-    }
-
-    /// Both axes max-content (no upper bound).
-    #[cfg(test)]
-    #[must_use]
-    pub(crate) const fn unbounded() -> Self {
-        Self {
-            w: SpaceConstraint::MaxContent,
-            h: SpaceConstraint::MaxContent,
         }
     }
 }
@@ -782,7 +744,7 @@ fn text_memo_content(text: &LayoutText) -> u64 {
     let mut hasher = AHasher::default();
     match &text.content {
         TextContent::Static(value) => value.hash(&mut hasher),
-        reactive @ TextContent::Reactive(_) => reactive.resolve().hash(&mut hasher),
+        live => live.resolve().hash(&mut hasher),
     }
     text.wrap.hash(&mut hasher);
     text.ellipsis.hash(&mut hasher);
@@ -835,307 +797,5 @@ const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> sigil_hal::Dim {
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn empty_forest_has_no_nodes() {
-        let f = LayoutForest::new();
-        assert!(f.empty());
-        assert_eq!(f.count(), 0);
-        assert_eq!(f.slab(), 0);
-    }
-
-    #[test]
-    fn insert_returns_indexable_id() {
-        let mut f = LayoutForest::new();
-        let id = f.insert(None, StyleData::default());
-        assert_eq!(id.slot(), 0);
-        assert_eq!(id.era(), 0);
-        assert_eq!(f.count(), 1);
-        assert!(f.node(id).is_some());
-        assert_eq!(f.node(id).unwrap().children(), &[]);
-    }
-
-    #[test]
-    fn attach_records_children_in_insert_order() {
-        let mut f = LayoutForest::new();
-        let parent = f.insert(None, StyleData::default());
-        let a = f.insert(None, StyleData::default());
-        let b = f.insert(None, StyleData::default());
-        let c = f.insert(None, StyleData::default());
-        f.attach(parent, a).unwrap();
-        f.attach(parent, b).unwrap();
-        f.attach(parent, c).unwrap();
-        let kids = f.node(parent).unwrap().children();
-        assert_eq!(kids, &[a, b, c]);
-    }
-
-    #[test]
-    fn freed_slot_bumps_generation_and_invalidates_stale_id() {
-        let mut f = LayoutForest::new();
-        let first = f.insert(None, StyleData::default());
-        assert_eq!(first.era(), 0);
-        f.free(first).unwrap();
-        // Stale id no longer resolves.
-        assert!(f.node(first).is_none());
-        // Reused slot mints a fresh id with bumped tag.
-        let reused = f.insert(None, StyleData::default());
-        assert_eq!(reused.slot(), first.slot());
-        assert_eq!(reused.era(), 1);
-        assert!(f.node(reused).is_some());
-        assert!(f.node(first).is_none());
-    }
-
-    #[test]
-    fn free_then_reinsert_does_not_grow_slab() {
-        let mut f = LayoutForest::new();
-        let a = f.insert(None, StyleData::default());
-        let b = f.insert(None, StyleData::default());
-        assert_eq!(f.slab(), 2);
-        f.free(a).unwrap();
-        let _c = f.insert(None, StyleData::default());
-        assert_eq!(f.slab(), 2);
-        let _ = b;
-    }
-
-    #[test]
-    fn computed_box_slab_is_independently_indexable() {
-        let mut f = LayoutForest::new();
-        let a = f.insert(None, StyleData::default());
-        let b = f.insert(None, StyleData::default());
-        let box_a = ComputedBox {
-            x: 1.0,
-            y: 2.0,
-            w: 3.0,
-            h: 4.0,
-        };
-        let box_b = ComputedBox {
-            x: 5.0,
-            y: 6.0,
-            w: 7.0,
-            h: 8.0,
-        };
-        f.write(a, box_a).unwrap();
-        f.write(b, box_b).unwrap();
-        assert_eq!(f.boxed(a), Some(box_a));
-        assert_eq!(f.boxed(b), Some(box_b));
-        // Writing one box does not perturb the other slab entry.
-        let updated = ComputedBox {
-            x: 9.0,
-            ..ComputedBox::default()
-        };
-        f.write(a, updated).unwrap();
-        assert_eq!(f.boxed(a), Some(updated));
-        assert_eq!(f.boxed(b), Some(box_b));
-    }
-
-    #[test]
-    fn write_to_stale_id_errors() {
-        let mut f = LayoutForest::new();
-        let id = f.insert(None, StyleData::default());
-        f.free(id).unwrap();
-        let err = f.write(id, ComputedBox::default()).unwrap_err();
-        assert!(matches!(err, LayoutError::LayoutInvalid(_)));
-    }
-
-    #[test]
-    fn node_ref_exposes_children_and_kernel_link() {
-        let mut f = LayoutForest::new();
-        let parent = f.insert(None, StyleData::default());
-        let child = f.insert(None, StyleData::default());
-        f.attach(parent, child).unwrap();
-        let n = f.refer(parent).unwrap();
-        assert_eq!(n.id(), parent);
-        assert_eq!(n.children(), &[child]);
-        assert!(n.kernel().is_none());
-    }
-
-    #[test]
-    fn measure_scope_borrows_forest_and_constraints() {
-        struct NullText;
-        impl TextMeasure for NullText {
-            fn measure(
-                &self,
-                _: &sigil_kernel::TextContent,
-                _: sigil_hal::Size,
-            ) -> sigil_hal::LogicalSize {
-                sigil_hal::LogicalSize::default()
-            }
-        }
-        let f = LayoutForest::new();
-        let t = NullText;
-        let avail = AvailableSpace::definite(100.0, 50.0);
-        let scope = MeasureScope::new(&f, &t, avail);
-        assert_eq!(scope.available(), avail);
-        assert!(scope.forest().empty());
-        // Smoke: trait-object access compiles.
-        let _ = scope.text();
-    }
-
-    #[test]
-    fn available_space_helpers_round_trip() {
-        let a = AvailableSpace::definite(10.0, 20.0);
-        match (a.w, a.h) {
-            (SpaceConstraint::Definite(w), SpaceConstraint::Definite(h)) => {
-                assert!((w - 10.0).abs() < f32::EPSILON);
-                assert!((h - 20.0).abs() < f32::EPSILON);
-            }
-            _ => panic!("expected definite axes"),
-        }
-        let u = AvailableSpace::unbounded();
-        assert!(matches!(u.w, SpaceConstraint::MaxContent));
-        assert!(matches!(u.h, SpaceConstraint::MaxContent));
-    }
-
-    #[test]
-    fn layout_pass_variants_are_distinct() {
-        assert_ne!(LayoutPass::Measure, LayoutPass::Arrange);
-    }
-
-    #[test]
-    fn node_ref_style_returns_style_passed_at_insert() {
-        let mut f = LayoutForest::new();
-        let style = StyleData {
-            flex_grow: 2.5,
-            display: crate::style_data::Display::Flex,
-            ..StyleData::default()
-        };
-        let id = f.insert(None, style.clone());
-        let n = f.refer(id).unwrap();
-        assert_eq!(n.style(), &style);
-        assert!((n.style().flex_grow - 2.5).abs() < f32::EPSILON);
-        assert_eq!(n.style().display, crate::style_data::Display::Flex);
-    }
-
-    #[test]
-    fn freed_slot_resets_style_to_default() {
-        let mut f = LayoutForest::new();
-        let style = StyleData {
-            flex_grow: 7.0,
-            ..StyleData::default()
-        };
-        let id = f.insert(None, style);
-        f.free(id).unwrap();
-        // Reused slot inherits the StyleData provided on re-insert, not
-        // the freed style.
-        let reused = f.insert(None, StyleData::default());
-        let n = f.refer(reused).unwrap();
-        assert!((n.style().flex_grow - 0.0).abs() < f32::EPSILON);
-    }
-
-    /// Null text measurer reused across the scatter-write tests below.
-    struct NullText;
-    impl TextMeasure for NullText {
-        fn measure(
-            &self,
-            _: &sigil_kernel::TextContent,
-            _: sigil_hal::Size,
-        ) -> sigil_hal::LogicalSize {
-            sigil_hal::LogicalSize::default()
-        }
-    }
-
-    #[test]
-    fn measure_scope_can_scatter_write_without_mut() {
-        let mut f = LayoutForest::new();
-        let id = f.insert(None, StyleData::default());
-        let t = NullText;
-        // `scope` only holds `&f` — no &mut anywhere on this path.
-        let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
-        let value = ComputedBox {
-            x: 1.0,
-            y: 2.0,
-            w: 3.0,
-            h: 4.0,
-        };
-        scope.write(id, value);
-        assert_eq!(f.boxed(id), Some(value));
-    }
-
-    #[test]
-    fn scatter_writes_to_distinct_ids_are_independent() {
-        let mut forest = LayoutForest::new();
-        let a = forest.insert(None, StyleData::default());
-        let b = forest.insert(None, StyleData::default());
-        let c = forest.insert(None, StyleData::default());
-        let text = NullText;
-        let scope = MeasureScope::new(&forest, &text, AvailableSpace::unbounded());
-        let ba = ComputedBox {
-            x: 1.0,
-            y: 1.0,
-            w: 1.0,
-            h: 1.0,
-        };
-        let bb = ComputedBox {
-            x: 2.0,
-            y: 2.0,
-            w: 2.0,
-            h: 2.0,
-        };
-        let bc = ComputedBox {
-            x: 3.0,
-            y: 3.0,
-            w: 3.0,
-            h: 3.0,
-        };
-        // Three writes through the same `&LayoutForest` borrow — the
-        // parallel measure pass will do exactly this from rayon workers.
-        scope.write(a, ba);
-        scope.write(b, bb);
-        scope.write(c, bc);
-        assert_eq!(forest.boxed(a), Some(ba));
-        assert_eq!(forest.boxed(b), Some(bb));
-        assert_eq!(forest.boxed(c), Some(bc));
-    }
-
-    #[test]
-    fn write_to_stale_id_is_silent_no_op() {
-        let mut f = LayoutForest::new();
-        let id = f.insert(None, StyleData::default());
-        // Seed a known box so we can detect any clobber.
-        let seeded = ComputedBox {
-            x: 42.0,
-            ..ComputedBox::default()
-        };
-        f.write(id, seeded).unwrap();
-        f.free(id).unwrap();
-        // Re-insert into the same slot — the slot bumps generation, so
-        // `id` is now stale and `reused` is fresh.
-        let reused = f.insert(None, StyleData::default());
-        assert_eq!(reused.slot(), id.slot());
-        assert_ne!(reused.era(), id.era());
-        let t = NullText;
-        let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
-        // Writing through a stale id must not panic, must not clobber
-        // the live slot — it should be a no-op.
-        scope.write(
-            id,
-            ComputedBox {
-                x: -1.0,
-                ..ComputedBox::default()
-            },
-        );
-        assert_eq!(f.boxed(reused), Some(ComputedBox::default()));
-        assert!(f.boxed(id).is_none());
-    }
-
-    #[test]
-    fn node_ref_style_on_stale_id_falls_back_to_default() {
-        let mut f = LayoutForest::new();
-        let id = f.insert(None, StyleData::default());
-        // Build a fresh NodeRef before freeing — borrows the forest
-        // immutably so we cannot free while it lives. Instead, write a
-        // stale id manually and refer through a freshly-rebuilt
-        // forest after free.
-        f.free(id).unwrap();
-        // The id is stale — refer() returns None, so we cannot exercise
-        // the fallback through NodeRef without an alive node. Insert a
-        // second node, then check that the fallback compiles via the
-        // accessor on a live node. The fallback path is exercised by
-        // the static initialization itself; this asserts the shape.
-        let live = f.insert(None, StyleData::default());
-        let n = f.refer(live).unwrap();
-        assert_eq!(n.style().display, crate::style_data::Display::Block);
-    }
-}
+#[path = "forest_tests.rs"]
+mod tests;

@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! DPI-scale golden axis — Wave 0 truth harness.
 //!
 //! Captures ONE text-bearing widget (a button with a real label) at four
@@ -29,21 +33,6 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
-
-use arboard as _;
-use criterion as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
 
 use sigil::prelude::*;
 use sigil_app::DefaultTextMeasure;

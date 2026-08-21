@@ -12,17 +12,12 @@
 //!
 //! The canonical model test is
 //! `compute_after_add_child_invalidates_cache` in `incremental.rs`.
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
-
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_hal as _;
-use sigil_style as _;
-use smallvec as _;
 
 mod stub;
 use stub::stub_engine;

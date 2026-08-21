@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Shrink-only ratchet for the 400-line production file cap.
 
-Fails when a production file (`crates/**/src/**/*.rs`) exceeds 400 lines
-without being grandfathered, or when a grandfathered file grows past its
-recorded count. The over-cap population can only shrink.
+Fails when a production file (`crates/**/src/**/*.rs`, excluding dedicated test
+files) exceeds 400 lines without being grandfathered, or when a grandfathered
+file grows past its recorded count. The over-cap population can only shrink.
 """
 
 from __future__ import annotations
@@ -27,7 +27,13 @@ def parse_args() -> argparse.Namespace:
 
 
 def production_files(root: Path) -> list[Path]:
-    return sorted(root.glob("crates/*/src/**/*.rs"))
+    files = root.glob("crates/*/src/**/*.rs")
+    return sorted(
+        path
+        for path in files
+        if path.name not in {"test.rs", "tests.rs"}
+        and not path.name.endswith(("_test.rs", "_tests.rs"))
+    )
 
 
 def line_counts(files: list[Path]) -> dict[str, int]:

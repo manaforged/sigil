@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 // Performance contract tests keep fixture setup direct. See the
 // hygiene framework for the test-only panic/indexing carve-out.
@@ -5,12 +9,6 @@
 
 use std::cell::Cell;
 use std::rc::Rc;
-
-use accesskit as _;
-use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_events::prelude::*;
 use sigil_hal::{

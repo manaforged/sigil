@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Tier 2 fan-out benches for `sigil-reactive`.
 //!
 //! These cover the "one write notifies N dependents" shape that
@@ -21,14 +26,6 @@
 use std::cell::Cell;
 use std::hint::black_box;
 use std::rc::Rc;
-
-// `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
-// into every bench compilation unit. We don't reference them directly
-// here, so silence `unused_crate_dependencies` with marker aliases.
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil_reactive::{Runtime, derived, effect, signal};

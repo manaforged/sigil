@@ -53,11 +53,13 @@ pub mod binding;
 pub mod builder_ext;
 pub mod engine;
 pub mod focus_ring;
+mod grid;
 pub mod merge;
 pub mod overlay;
 pub mod palette;
 pub mod parser;
 pub mod reactive;
+pub mod resolve;
 pub mod scale;
 pub mod size;
 pub mod state;
@@ -79,6 +81,7 @@ pub use binding::{ReactiveStateSlot, ReactiveStyleAtoms, StyleBinding};
 pub use builder_ext::{ClassSource, NodeStyleExt};
 pub use engine::StyleEngine;
 pub use focus_ring::FocusRing;
+pub use grid::grid;
 pub use merge::{
     ComponentId, bump_unknown_class_count, merge_classes, merge_warning_count,
     merge_warning_count_for_component, unknown_class_warning_count,
@@ -86,6 +89,7 @@ pub use merge::{
 pub use overlay::StyleOverlay;
 pub use parser::{ParseError, StatefulToken, parse_class_string, parse_stateful_token};
 pub use reactive::StyleReactiveEffect;
+pub use resolve::{render_style_for, text_style_for, unsupported_style_warning_count_for};
 pub use sigil_style_macros::classes;
 pub use size::{LengthPercentage, Size};
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};

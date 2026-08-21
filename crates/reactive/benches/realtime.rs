@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Tier 3 real-time benches for `sigil-reactive`.
 //!
 //! Sustained / burst write throughput shapes that mirror live-data
@@ -32,14 +37,6 @@
 use std::cell::Cell;
 use std::hint::black_box;
 use std::rc::Rc;
-
-// `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
-// into every bench compilation unit. We don't reference them directly
-// here, so silence `unused_crate_dependencies` with marker aliases.
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_reactive::{Runtime, batch, effect, signal};

@@ -49,6 +49,7 @@ members = [
     "examples/api-explorer",
     "examples/chat-client",
     "examples/widget-playground",
+    "examples/strays",
 ]
 default-members = [
     "crates/sigil",
@@ -83,13 +84,14 @@ default-members = [
     "examples/internals/hello-rect",
     "examples/vertical-slice",
     "examples/widget-playground",
+    "examples/strays",
 ]
 
 [workspace.package]
 version = "0.1.0-alpha.1"
 edition = "2024"
 rust-version = "1.90"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/ThomGardiner/sigil"
 readme = "README.md"
 authors = ["the author"]
@@ -225,6 +227,7 @@ sigil-animation = { path = "crates/animation", version = "0.1.0-alpha.1" }
 sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0-alpha.1" }
 sigil-app = { path = "crates/app", version = "0.1.0-alpha.1", default-features = false }
 sigil-tui = { path = "crates/tui", version = "0.1.0-alpha.1" }
+unicode-width = "0.2"
 sigil-tasks = { path = "crates/tasks", version = "0.1.0-alpha.1" }
 sigil-kernel = { path = "crates/kernel", version = "0.1.0-alpha.1" }
 sigil-bidi = { path = "crates/bidi", version = "0.1.0-alpha.1" }

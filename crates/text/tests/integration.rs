@@ -1,10 +1,10 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Text engine integration suite in one crate so dependency-hygiene lints are meaningful.
 
 #![allow(missing_docs)]
-
-#[cfg(target_os = "macos")]
-use core_text as _;
-use zed_font_kit as _;
 
 #[path = "bidi_visual_order.rs"]
 mod bidi_visual_order;

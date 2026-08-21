@@ -18,11 +18,10 @@ use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::LayoutBuilderExt;
 use sigil_reactive::{Signal, derived_eq, effect, signal};
 
-use std::cell::Cell;
 use std::ops::Deref;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::scroll::wheel;
+use super::scroll::{pin_to_bottom as follow_bottom, wheel};
 use super::table::Identifiable;
 use keyboard::{KeyboardRuntime, KeyboardRuntimeInit, attach_key_handlers};
 use render::{
@@ -158,20 +157,8 @@ fn pin_to_bottom(
     row_height: f32,
     viewport_height: f32,
 ) {
-    let prev_max = Cell::new(0.0_f32);
-    let primed = Cell::new(false);
-    effect(move || {
-        let max = max_scroll(live_rows.get(), row_height, viewport_height);
-        if !primed.replace(true) {
-            prev_max.set(max);
-            return;
-        }
-        let was_pinned = scroll_y.peek() + 1.0 >= prev_max.get();
-        prev_max.set(max);
-        if was_pinned {
-            scroll_y.set(max);
-        }
-    });
+    let max = derived_eq(move || max_scroll(live_rows.get(), row_height, viewport_height));
+    follow_bottom(scroll_y, max);
 }
 
 /// Attach the wheel-scroll handler to the viewport root. `max_scroll`

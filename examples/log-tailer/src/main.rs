@@ -24,18 +24,5 @@ fn build_root(cx: &mut Cx) -> NodeId {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-    use sigil::testing::with_cx;
-
-    #[test]
-    fn tree_builds_without_panic() {
-        with_cx("log-tailer-smoke", |cx| {
-            let state = AppState::new();
-            let root = cx.add(app_tree(state));
-            // NodeId is non-null by construction; assert via child count.
-            assert!(cx.child_count(root) > 0, "root must have children");
-        });
-    }
-}
+#[path = "main_tests.rs"]
+mod tests;

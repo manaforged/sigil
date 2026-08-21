@@ -37,6 +37,7 @@
 
 mod buffer;
 #[cfg(test)]
+#[path = "text_edit/buffer_tests.rs"]
 mod buffer_tests;
 mod builder;
 mod handlers;

@@ -11,7 +11,7 @@ description = "Tokio-based async runtime and main-thread dispatcher for Sigil."
 readme.workspace = true
 keywords = ["tokio", "async", "gui", "tasks"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 # Workaround for the Rust 1.94 merged-doctests + Windows-msvc target

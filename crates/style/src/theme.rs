@@ -225,7 +225,7 @@ impl Theme {
             border: gray.step(7),
             missing_token_fallback: rgba(255, 0, 255),
             tokens: phf::Map::new(),
-            runtime_tokens: HashMap::new(),
+            runtime_tokens: crate::grid::tokens(),
         }
     }
 
@@ -330,7 +330,7 @@ impl Default for Theme {
             border: gray.step(7),
             missing_token_fallback: rgba(255, 0, 255), // Debug magenta for misses.
             tokens: phf::Map::new(),
-            runtime_tokens: HashMap::new(),
+            runtime_tokens: crate::grid::tokens(),
         }
     }
 }
@@ -554,7 +554,7 @@ impl Theme {
             border: alpha_mix(palette.text, palette.background, 0.35),
             missing_token_fallback: rgba(255, 0, 255),
             tokens: phf::Map::new(),
-            runtime_tokens: HashMap::new(),
+            runtime_tokens: crate::grid::tokens(),
         }
     }
 
@@ -898,6 +898,5 @@ mod diagnostic {
 }
 
 #[cfg(test)]
-mod baseline_tests {
-    include!("theme_tests.rs");
-}
+#[path = "theme_tests.rs"]
+mod tests;

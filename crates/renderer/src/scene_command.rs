@@ -17,7 +17,8 @@ pub use effects::{DecorationKind, LayerEffect, LayerScope, SpriteKind, SpriteSou
 pub use fills::{
     Fill, GradientStop, LinearGradient, PatternKind, Stroke, StrokeAlign, StrokeStyle,
 };
-pub use glyph::{DrawGlyphRun, GlyphRun};
+pub(crate) use glyph::shape_glyph_run_with;
+pub use glyph::{DrawGlyphRun, GlyphRun, shape_glyph_run};
 pub use payloads::{
     DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
     SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle, SceneSpriteStyle,

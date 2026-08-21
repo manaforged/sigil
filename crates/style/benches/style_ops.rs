@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Style operation benchmarks.
 
 #![allow(missing_docs, clippy::panic)]
@@ -5,10 +9,7 @@
 use std::hint::black_box;
 use std::time::Duration;
 
-use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
-use phf as _;
-use sigil_hal as _;
 use sigil_kernel::{Cx, NodeId, container};
 use sigil_reactive::{Runtime, signal};
 use sigil_style::{
@@ -16,10 +17,6 @@ use sigil_style::{
     RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
     TransitionId, classes, merge_classes,
 };
-use sigil_style_macros as _;
-use smallvec as _;
-use strsim as _;
-use tracing as _;
 
 static CLASS_50: &[StyleAtom] = classes!(
     "p-4 px-4 py-4 pt-4 pr-4 pb-4 pl-4 m-4 mx-4 my-4 mt-4 mr-4 mb-4 ml-4 gap-4 w-4 h-4 w-full h-full w-auto h-auto flex block hidden flex-row flex-col flex-row-reverse flex-col-reverse items-start items-center items-end items-stretch justify-start justify-center justify-end justify-between justify-around rounded rounded-sm rounded-md rounded-lg rounded-full bg-accent bg-border bg-surface text-xs text-sm text-base text-lg text-xl"

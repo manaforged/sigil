@@ -10,7 +10,7 @@ description = "wgpu-backed Renderer adapter for Sigil."
 readme.workspace = true
 keywords = ["wgpu", "rendering", "gui", "graphics"]
 categories = ["gui", "rendering"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 # Rust 1.94 merged-doctests + Windows-msvc target misdetection
@@ -21,6 +21,10 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APAC
 # Enables direct access to pipeline internals for criterion benches.
 # Not a default feature; activated by bench targets via `cargo bench`.
 bench = []
+# Enables PNG output for the headless capture example.
+capture = ["dep:image"]
+# Enables the winit shell used by the windowed showcase examples.
+windowed = ["dep:sigil-shell"]
 
 [dependencies]
 ahash = { workspace = true }
@@ -28,6 +32,7 @@ sigil-kernel = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-icons = { workspace = true }
 sigil-layout = { workspace = true }
+sigil-shell = { workspace = true, optional = true }
 sigil-style = { workspace = true }
 sigil-text = { workspace = true }
 tracing = { workspace = true }
@@ -38,6 +43,7 @@ bytemuck = { workspace = true }
 skrifa = { workspace = true }
 smallvec = { workspace = true }
 half = { workspace = true }
+image = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
@@ -48,8 +54,63 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 image = { workspace = true }
-sigil-shell = { path = "../shell" }
 proptest = { workspace = true }
+
+[[example]]
+name = "blur_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "capture_phases"
+required-features = ["capture"]
+
+[[example]]
+name = "corner_radius_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "decoration_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "glow_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "gradient_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "icon_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "inner_shadow_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "layer_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "pattern_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "shadow_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "split_path_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "sprite_showcase"
+required-features = ["windowed"]
+
+[[example]]
+name = "stroke_showcase"
+required-features = ["windowed"]
 
 [[bench]]
 name = "text_paint_cost"

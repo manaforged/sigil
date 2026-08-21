@@ -16,3 +16,4 @@ headless / internals reference comes last.
 | [`internals/hello-rect`](internals/hello-rect/) | 163 | Direct kernel + scene-command surface; pre-dates `sigil::launch`. | Advanced — read only when working below the launch facade. |
 | [`data-table`](data-table/) | — | 1:1 of GPUI 0.2.2 `examples/data_table.rs`: 10k rows, 24 columns, `virtual_list`. | Side-by-side with `cargo run --example data_table -p gpui`. Profiler page: [`showcase/compare/data-table.html`](../showcase/compare/data-table.html). |
 | [`access-log`](access-log/) | — | 1M HTTP lines, 60×8 live tape, same book in Sigil and GPUI. Visible band ticks at 16 ms. | `cargo run --release -p access-log --bin access-log-sigil`. GPUI: `--bin access-log-gpui --features gpui-window`. |
+| [`strays`](strays/) | 782 | `table()` over live system data, `Identifiable` rows, chip cells, `run_tui`. | TUI dogfood — a keyboard-first app on the terminal host. Findings in [`FRICTION.md`](strays/FRICTION.md). |

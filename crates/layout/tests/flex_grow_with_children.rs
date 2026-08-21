@@ -12,7 +12,10 @@
 //! essentially every real composed layout.
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used)]
 
 use sigil_hal::Size;

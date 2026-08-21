@@ -10,7 +10,7 @@ description = "Proc macros for Sigil utility classes."
 readme.workspace = true
 keywords = ["styling", "macros", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "build.rs", "grammar/**"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "build.rs", "grammar/**"]
 
 [lib]
 proc-macro = true

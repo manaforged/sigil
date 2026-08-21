@@ -10,7 +10,7 @@ description = "Node arena, component composition, semantics, and builder ergonom
 readme.workspace = true
 keywords = ["gui", "tree", "semantics", "widgets"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 # Keep the Windows-msvc merged-doctests workaround consistent with

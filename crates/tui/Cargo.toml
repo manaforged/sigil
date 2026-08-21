@@ -10,7 +10,7 @@ description = "Terminal host for Sigil — same Host, widgets, and events as des
 readme = "README.md"
 keywords = ["tui", "terminal", "ui"]
 categories = ["command-line-interface", "gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 
@@ -22,10 +22,20 @@ sigil-events = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
+sigil-tasks = { workspace = true }
 sigil-widgets = { workspace = true }
+smol_str = { workspace = true }
+unicode-width = { workspace = true }
 
 [dev-dependencies]
+sigil-layout = { workspace = true }
+allocation-counter = "0.8.1"
+criterion = { version = "0.5", features = ["html_reports"] }
 sigil-kernel = { workspace = true }
+
+[[bench]]
+name = "frame"
+harness = false
 
 [lints]
 workspace = true

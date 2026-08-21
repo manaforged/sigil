@@ -278,6 +278,10 @@ pub(super) fn transform_rect(transform: Transform, rect: Rect) -> Rect {
     bounding_rect([p0, p1, p2, p3])
 }
 
+#[allow(
+    clippy::missing_const_for_fn,
+    reason = "const f32::mul_add requires Rust 1.94; Sigil supports 1.90"
+)]
 pub(super) fn transform_point(transform: Transform, point: Point) -> Point {
     Point::new(
         transform[0][0].mul_add(point.x, transform[0][1].mul_add(point.y, transform[0][2])),

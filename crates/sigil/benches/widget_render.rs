@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Widget-render baseline bench — W5.0b infrastructure for W5.1.
 //!
 //! Measures cost of rendering each catalog widget in `Default` and
@@ -29,29 +33,10 @@
     clippy::too_many_arguments
 )]
 
-// Workspace deps inherited by the bench target but not directly named.
-use arboard as _;
-use image as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use pollster::FutureExt as _;
+use pollster::FutureExt;
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
 use sigil_hal::{

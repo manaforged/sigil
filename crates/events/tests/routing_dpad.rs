@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Directional (dpad / stick-shaped) focus navigation — spatial
 //! resolution against laid-out rects, independent of Tab order.
 
@@ -10,13 +14,6 @@
 mod mock_shell;
 #[path = "support/routing_helpers.rs"]
 mod routing_helpers;
-
-use accesskit as _;
-use allocation_counter as _;
-use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_events::prelude::*;
 use sigil_kernel::prelude::*;

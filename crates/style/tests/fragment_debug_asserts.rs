@@ -1,18 +1,11 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! DR-015 footgun guards on style APIs for fragments.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
-
-use allocation_counter as _;
-use criterion as _;
-use phf as _;
-use sigil as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
-use smallvec as _;
-use strsim as _;
-use tracing as _;
 
 use sigil_kernel::{Cx, container, fragment};
 use sigil_style::{NodeStyleExt, StyleAtom, Theme};

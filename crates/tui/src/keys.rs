@@ -3,6 +3,7 @@
 use sigil_hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
+use smol_str::SmolStr;
 
 /// Build a key-down event for tests and the live host.
 #[must_use]
@@ -26,6 +27,17 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     }
     let key = logical(event.code)?;
     let mut modifiers = ModifiersState::empty();
+    let text = match event.code {
+        // A control or alt chord is a command, not typed text.
+        crossterm::event::KeyCode::Char(ch)
+            if !event.modifiers.intersects(
+                crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::ALT,
+            ) =>
+        {
+            Some(SmolStr::from(ch.to_string()))
+        }
+        _ => None,
+    };
     if event
         .modifiers
         .contains(crossterm::event::KeyModifiers::SHIFT)
@@ -50,8 +62,21 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
         modifiers,
         repeat: false,
         phase: KeyPhase::Down,
-        text: None,
+        text,
     })))
+}
+
+/// Wrap pasted text in a key event, the same channel typed text arrives on.
+#[must_use]
+pub fn paste(text: &str) -> ShellEvent {
+    ShellEvent::Key(KeyEvent::new(KeyEventInit {
+        key: LogicalKey::character(text.to_string()),
+        physical: PhysicalKey::Unidentified,
+        modifiers: ModifiersState::empty(),
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: Some(SmolStr::from(text)),
+    }))
 }
 
 fn logical(code: crossterm::event::KeyCode) -> Option<LogicalKey> {

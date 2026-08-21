@@ -6,6 +6,7 @@
 
 use sigil_app::Host;
 use sigil_kernel::{container, text};
+use sigil_layout::LayoutError;
 use sigil_style::{Tone, ToneContext};
 
 #[test]
@@ -18,7 +19,7 @@ fn host_layout_reads_text_and_tone_without_a_window() {
                 .child(text("hello")),
         )
     });
-    assert!(host.layout((80.0, 24.0)).is_some());
+    assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let painted = host.painted();
     assert!(
         painted
@@ -35,5 +36,23 @@ fn host_layout_reads_text_and_tone_without_a_window() {
             .iter()
             .any(|node| node.rect.width > 0.0 && node.rect.height > 0.0),
         "expected a laid-out rect in {painted:?}"
+    );
+}
+
+#[test]
+fn host_layout_returns_missing_root_error() {
+    let mut host = Host::new();
+    let mut root = None;
+    host.build(|cx| {
+        let id = cx.add(text("gone"));
+        root = Some(id);
+        id
+    });
+    let root = root.unwrap();
+    assert!(host.cx().remove(root));
+
+    assert_eq!(
+        host.layout((80.0, 24.0)),
+        Err(LayoutError::NodeMissing(root))
     );
 }

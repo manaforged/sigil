@@ -37,6 +37,7 @@ mod launch;
 /// Native menu bar.
 #[cfg(feature = "desktop")]
 pub mod menu;
+mod paint;
 #[cfg(feature = "desktop")]
 mod text_geometry;
 #[cfg(feature = "desktop")]
@@ -54,6 +55,7 @@ pub use error::{AppResult, Error};
 #[cfg(feature = "desktop")]
 pub use launch::launch;
 pub use sigil_hal::{Anchor, WindowOpts};
+pub use sigil_layout::LayoutError;
 pub use sigil_profile as profile;
 #[cfg(feature = "desktop")]
 pub use sigil_renderer::{TextTuning, set_text_tuning, text_tuning};

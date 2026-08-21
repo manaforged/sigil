@@ -88,9 +88,12 @@ pub(super) fn header_row<Row: 'static>(
 }
 
 fn header_layout(height: f32) -> LayoutStyle {
+    // The header keeps its height. A filled viewport grows the body, and a
+    // shrinkable header would give that space up and slide under row one.
     LayoutStyle::flex_row()
         .fill_width()
         .height(height)
+        .shrink(0.0)
         .align_items(AlignItems::Center)
 }
 

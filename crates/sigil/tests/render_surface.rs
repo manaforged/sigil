@@ -6,7 +6,10 @@
 // A crate-level `#![cfg]` would strip this allow along with the rest of the
 // file, so the feature gate lives on the items instead — with the feature
 // off this crate is empty and every dev-dep is legitimately unused.
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 
 #[cfg(feature = "render")]
 use sigil::render::{

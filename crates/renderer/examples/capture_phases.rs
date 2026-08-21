@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Headless PNG capture for renderer phase showcase scenes.
 
 #![allow(clippy::indexing_slicing)] // Examples may slice staging buffers; see the internal hygiene-cleanup-framework plan.
@@ -9,43 +13,31 @@
 #![allow(clippy::print_stdout)]
 #![allow(missing_docs)]
 
-#[cfg(windows)]
-use windows_core as _;
+#[cfg(feature = "capture")]
+use std::{error::Error, io, path::Path};
 
-use std::error::Error;
-use std::io;
-use std::path::Path;
-
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
+#[cfg(feature = "capture")]
 use image::{ColorType, ImageFormat};
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_hal as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
+#[cfg(feature = "capture")]
 use sigil_renderer::{CommandScene, ScreenSubmission, WgpuRenderer, scenes};
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
 
+#[cfg(feature = "capture")]
 const SPLIT_WIDTH: u32 = 1280;
+#[cfg(feature = "capture")]
 const SPLIT_HALF_HEIGHT: u32 = 400;
+#[cfg(feature = "capture")]
 const SPLIT_HEIGHT: u32 = SPLIT_HALF_HEIGHT * 2;
+#[cfg(feature = "capture")]
 const SPLIT_VIEWPORT: (f32, f32) = (SPLIT_WIDTH as f32, SPLIT_HALF_HEIGHT as f32);
 
+#[cfg(feature = "capture")]
 #[path = "support/capture.rs"]
 mod capture;
 
+#[cfg(feature = "capture")]
 use capture::{CaptureExtent, FORMAT, capture_texture, clear_texture, read_texture};
 
+#[cfg(feature = "capture")]
 fn main() -> Result<(), Box<dyn Error>> {
     let (device, queue) = request_device()?;
     let mut renderer = WgpuRenderer::new()?;
@@ -83,23 +75,32 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(not(feature = "capture"))]
+fn main() {}
+
+#[cfg(feature = "capture")]
 struct Phase {
     number: u8,
     name: &'static str,
     capture: PhaseCapture,
 }
 
+#[cfg(feature = "capture")]
 type SceneBundle = (CommandScene, (f32, f32), sigil_hal::Color);
+#[cfg(feature = "capture")]
 type SceneFactory = fn() -> SceneBundle;
+#[cfg(feature = "capture")]
 type SplitFactory = fn() -> [SceneBundle; 2];
 
 #[derive(Clone, Copy)]
+#[cfg(feature = "capture")]
 enum PhaseCapture {
     Single(SceneFactory),
     Split(SplitFactory),
 }
 
 #[allow(clippy::too_many_lines)] // pure data table — one entry per phase, no logic
+#[cfg(feature = "capture")]
 fn phases() -> [Phase; 13] {
     [
         Phase {
@@ -170,6 +171,7 @@ fn phases() -> [Phase; 13] {
     ]
 }
 
+#[cfg(feature = "capture")]
 fn request_device() -> Result<(wgpu::Device, wgpu::Queue), Box<dyn Error>> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -193,6 +195,7 @@ fn request_device() -> Result<(wgpu::Device, wgpu::Queue), Box<dyn Error>> {
 }
 
 #[derive(Clone, Copy)]
+#[cfg(feature = "capture")]
 struct RenderRequest<'a> {
     device: &'a wgpu::Device,
     queue: &'a wgpu::Queue,
@@ -203,6 +206,7 @@ struct RenderRequest<'a> {
     path: &'a Path,
 }
 
+#[cfg(feature = "capture")]
 fn capture_phase(
     renderer: &mut WgpuRenderer,
     request: RenderRequest<'_>,
@@ -239,6 +243,7 @@ fn capture_phase(
     Ok(())
 }
 
+#[cfg(feature = "capture")]
 fn capture_split_phase(
     renderer: &mut WgpuRenderer,
     device: &wgpu::Device,
@@ -267,6 +272,7 @@ fn capture_split_phase(
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg(feature = "capture")]
 fn render_split_scene(
     renderer: &mut WgpuRenderer,
     device: &wgpu::Device,

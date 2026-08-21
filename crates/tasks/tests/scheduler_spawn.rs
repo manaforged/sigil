@@ -2,8 +2,6 @@
 
 #![allow(clippy::panic, missing_docs, unused_crate_dependencies)]
 
-use criterion as _;
-
 use std::time::Duration;
 
 use sigil_hal::Scheduler;

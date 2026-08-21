@@ -263,6 +263,5 @@ impl Spring {
 }
 
 #[cfg(test)]
-mod tests {
-    include!("spring_tests.rs");
-}
+#[path = "spring_tests.rs"]
+mod tests;

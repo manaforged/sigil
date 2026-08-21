@@ -10,7 +10,7 @@ description = "Animation orchestration layer over sigil-animation primitives —
 readme.workspace = true
 keywords = ["animation", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

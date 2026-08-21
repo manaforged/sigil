@@ -16,6 +16,7 @@ mod sidebar;
 mod state;
 
 #[cfg(test)]
+#[path = "main_tests.rs"]
 mod tests;
 
 use sigil::prelude::*;

@@ -150,16 +150,5 @@ fn tape_row(index: usize, line: &AccessLine, book: Signal<Rc<Vec<AccessLine>>>) 
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    use super::*;
-    use sigil::testing::with_cx;
-
-    #[test]
-    fn tree_builds_without_panic() {
-        with_cx("access-log-sigil", |cx| {
-            let root = build(cx, 200);
-            assert!(cx.child_count(root) > 0);
-        });
-    }
-}
+#[path = "../sigil_tests.rs"]
+mod tests;

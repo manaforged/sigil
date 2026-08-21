@@ -149,6 +149,23 @@ impl EventRouter {
         self.focus.focus_prev(cx, None);
     }
 
+    /// Keep focus on a live, laid-out target inside the active scope.
+    ///
+    /// Hosts call this after layout so reactive subtree replacement and
+    /// newly-opened modal scopes cannot leave focus on stale or hidden nodes.
+    pub fn focus_if_needed(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+        self.focus.sync_scopes(cx, Some(layout));
+        if self
+            .focus
+            .focus()
+            .is_some_and(|id| self.focus.is_focusable_target(cx, layout, id))
+        {
+            return;
+        }
+        crate::note_focus_source(true);
+        self.focus.focus_next(cx, Some(layout));
+    }
+
     /// Move focus directionally (dpad / analog-stick shaped navigation),
     /// independent of Tab order. Resolves the nearest focusable node in
     /// `intent`'s direction from laid-out rect centers, falling back to

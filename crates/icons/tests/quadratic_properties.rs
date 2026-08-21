@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Property-based tests for cubic→quadratic Bezier conversion.
 //!
 //! Tests the `cubic_to_quadratics` function from `sigil_icons::quadratic` module.
@@ -27,10 +31,7 @@
 #![allow(clippy::print_stdout)]
 #![allow(clippy::suboptimal_flops)]
 
-use lyon_geom as _;
 use proptest::prelude::*;
-use smallvec as _;
-use usvg as _;
 
 // Import from public API
 use sigil_icons::{QuadCurve, cubic_to_quadratics};

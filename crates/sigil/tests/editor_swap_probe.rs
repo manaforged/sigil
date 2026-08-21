@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
@@ -10,26 +14,6 @@
 //! (a `scroll` wrapping a wide single-text-node column) via
 //! `children_reactive`, against a PERSISTENT engine — exactly the shell
 //! path. Goal: catch whatever "breaks the whole thing" on the second file.
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
 
 use sigil::prelude::*;
 use sigil_hal::{

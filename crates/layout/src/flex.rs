@@ -123,18 +123,6 @@ impl<'a> FlexSolver<'a> {
         layout_root(&ctx, subtree, origin)
     }
 
-    /// Borrow the computed box for `id`. Returns `None` when the id is
-    /// stale or the solver never visited it during this pass (frame
-    /// tag does not match the forest's current frame).
-    #[cfg(test)]
-    pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
-        let forest = self.scope.forest();
-        if forest.frame_for(id)? != forest.current_frame() {
-            return None;
-        }
-        forest.boxed(id)
-    }
-
     /// Record a computed box keyed by node id. Writes scatter-directly
     /// into the forest's box slab via the shared `MeasureScope` borrow.
     pub(crate) fn write(&self, id: LocalId, cb: ComputedBox) {

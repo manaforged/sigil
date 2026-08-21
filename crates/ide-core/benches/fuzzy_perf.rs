@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Perf baseline for the I-T5 fuzzy matcher.
 //!
 //! Targets (W4.5):
@@ -16,14 +20,6 @@ use sigil_ide_core::search::fuzzy;
 // `smallvec` and `proptest` are listed as deps (smallvec via the
 // runtime crate, proptest dev-only). The bench binary inherits the
 // dep edges so silence the unused-crate lint.
-use crossbeam_channel as _;
-use ignore as _;
-use notify as _;
-use proptest as _;
-use ropey as _;
-use smallvec as _;
-use tempfile as _;
-use toml as _;
 
 fn make_haystack(n: usize) -> Vec<String> {
     // Deterministic synthetic file-path corpus mimicking a large

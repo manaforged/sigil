@@ -1,25 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Scene command builder contract tests.
-
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use wgpu as _;
-#[cfg(windows)]
-use windows_core as _;
-
-use sigil_icons as _;
 
 use sigil_hal::{Point, Rect};
 use sigil_renderer::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};

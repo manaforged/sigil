@@ -182,3 +182,25 @@ fn shape_validated_bounded_for_word_joiner() {
 fn shape_validated_bounded_for_supplementary_variation_selector() {
     assert_ignorable_control_stays_bounded('\u{E0100}'); // VS17
 }
+
+/// A face registered in `DefaultFonts::fallbacks` joins the per-run
+/// chain: Hebrew shapes through it without smuggling the face into a
+/// named family slot.
+#[test]
+fn registered_fallback_face_joins_the_chain() {
+    let mut collection = super::FontCollection::with_default();
+    let hebrew = noto_hebrew();
+    collection.fallbacks = vec![hebrew.clone()];
+    let primary = collection.primary().clone();
+    let chain = collection.fallback_chain(&primary, 400);
+    assert!(
+        chain.iter().any(|f| f.id() == hebrew.id()),
+        "fallback face must appear in the chain",
+    );
+    let emoji_last = chain.last().expect("chain is never empty");
+    assert_ne!(
+        emoji_last.id(),
+        hebrew.id(),
+        "emoji stays the last resort, after registered fallbacks",
+    );
+}

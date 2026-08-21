@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W3.3-impl — integration tests for G5 `Task<T>` + `AsyncContext` +
 //! the executor-install seam (DR-048).
 //!
@@ -24,11 +28,6 @@
     clippy::missing_const_for_fn,
     clippy::redundant_clone
 )]
-
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicUsize, Ordering};

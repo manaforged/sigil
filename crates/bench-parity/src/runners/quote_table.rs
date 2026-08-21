@@ -12,8 +12,8 @@ use sigil_profile as profile;
 use sigil_reactive::{Signal, signal};
 
 use super::sigil_runner::{
-    SceneCount, check_visible, finish, last_measure_count, new_engine, paint, validate, verify_map,
-    visible_row_count,
+    SceneCount, check_visible, finish, first_from_scroll, last_measure_count, list_output,
+    new_engine, paint, validate, verify_map, visible_row_count,
 };
 
 use crate::{EquivalenceCheck, Surface, Workload, layout_void};
@@ -58,46 +58,29 @@ fn construct_samples(
     profile::enable();
     profile::reset();
     let mut last: Option<(Cx, NodeId, SceneCount)> = None;
-    let mut step = || {
-        bump_scroll(scroll, p.row_h(), max_scroll);
-        let mut cx = Cx::new_root();
-        let mut engine = new_engine(true);
-        profile::begin_frame();
-        let start = Instant::now();
-        let root = cx.add(quote_list(rows, scroll));
-        let _ = engine.compute(&mut cx, root, clock.available);
-        let cmds = paint(&cx, root, clock.surface, clock.vw, clock.vh);
-        profile::tick_frame();
-        let missed = u64::from(engine.generation() > 0);
-        last = Some((cx, root, cmds));
-        (super::nanos(start), missed)
+    let (samples_ns, misses) = {
+        let mut step = || {
+            bump_scroll(scroll, p.row_h(), max_scroll);
+            let mut cx = Cx::new_root();
+            let mut engine = new_engine(true);
+            profile::begin_frame();
+            let start = Instant::now();
+            let root = cx.add(quote_list(rows, scroll));
+            let _ = engine.compute(&mut cx, root, clock.available);
+            let cmds = paint(&cx, root, clock.surface, clock.vw, clock.vh);
+            profile::tick_frame();
+            let missed = u64::from(engine.generation() > 0);
+            last = Some((cx, root, cmds));
+            (super::nanos(start), missed)
+        };
+        measure(p, &mut step)
     };
-    let (samples_ns, misses) = measure(p, &mut step);
-    let visible = last
-        .as_ref()
-        .map_or(0, |(cx, root, _)| visible_row_count(cx, *root));
-    let cells = last
-        .as_ref()
-        .map_or(0, |(cx, root, _)| visible_cell_count(cx, *root));
-    let scene = last.map_or(
-        SceneCount {
-            draws: 0,
-            glyphs: 0,
-        },
-        |(_, _, s)| s,
-    );
+    let first = first_from_scroll(scroll.get(), p.row_h());
     finish_table(
         workload,
         samples_ns,
         misses,
-        Proof {
-            visible,
-            cells,
-            scene,
-            book,
-            last_done_moved: false,
-        },
-        None,
+        construct_evidence(last, book, first),
     )
 }
 
@@ -114,29 +97,30 @@ fn scroll_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) ->
     profile::enable();
     profile::reset();
     let mut last_scene = SceneCount::default();
-    let mut step = || {
-        bump_scroll(scroll, p.row_h(), max_scroll);
-        let before = engine.generation();
-        profile::begin_frame();
-        let start = Instant::now();
-        let _ = engine.compute(&mut cx, root, clock.available);
-        last_scene = paint(&cx, root, clock.surface, clock.vw, clock.vh);
-        profile::tick_frame();
-        (super::nanos(start), u64::from(engine.generation() > before))
+    let (samples_ns, misses) = {
+        let mut step = || {
+            bump_scroll(scroll, p.row_h(), max_scroll);
+            let before = engine.generation();
+            profile::begin_frame();
+            let start = Instant::now();
+            let _ = engine.compute(&mut cx, root, clock.available);
+            last_scene = paint(&cx, root, clock.surface, clock.vw, clock.vh);
+            profile::tick_frame();
+            (super::nanos(start), u64::from(engine.generation() > before))
+        };
+        measure(p, &mut step)
     };
-    let (samples_ns, misses) = measure(p, &mut step);
+    let first = first_from_scroll(scroll.get(), p.row_h());
+    let output = list_output(&cx, root, first);
     finish_table(
         workload,
         samples_ns,
         misses,
-        Proof {
-            visible: visible_row_count(&cx, root),
-            cells: visible_cell_count(&cx, root),
-            scene: last_scene,
-            book,
-            last_done_moved: false,
+        TableEvidence {
+            proof: Proof::from_tree(&cx, root, last_scene, book, false),
+            identity: None,
+            output: Some(output),
         },
-        None,
     )
 }
 
@@ -157,38 +141,38 @@ fn tick_samples(workload: &Workload, quotes: Rc<Vec<Quote>>, clock: &Clock) -> c
     let mut last_scene = SceneCount::default();
     let mut prev = last_done_values(&cx, root);
     let mut moved = false;
-    let mut step = || {
-        step_n = step_n.saturating_add(1);
-        profile::begin_frame();
-        let start = Instant::now();
-        rows.update(|data| {
-            tick_visible(Rc::make_mut(data).as_mut_slice(), 0, visible, step_n);
-        });
-        let before = engine.generation();
-        let _ = engine.compute(&mut cx, root, clock.available);
-        let now = last_done_values(&cx, root);
-        last_scene = paint(&cx, root, clock.surface, clock.vw, clock.vh);
-        profile::tick_frame();
-        if !now.is_empty() && now != prev {
-            moved = true;
-        }
-        prev = now;
-        (super::nanos(start), u64::from(engine.generation() > before))
+    let (samples_ns, misses) = {
+        let mut step = || {
+            step_n = step_n.saturating_add(1);
+            profile::begin_frame();
+            let start = Instant::now();
+            rows.update(|data| {
+                tick_visible(Rc::make_mut(data).as_mut_slice(), 0, visible, step_n);
+            });
+            let before = engine.generation();
+            let _ = engine.compute(&mut cx, root, clock.available);
+            let now = last_done_values(&cx, root);
+            last_scene = paint(&cx, root, clock.surface, clock.vw, clock.vh);
+            profile::tick_frame();
+            if !now.is_empty() && now != prev {
+                moved = true;
+            }
+            prev = now;
+            (super::nanos(start), u64::from(engine.generation() > before))
+        };
+        measure(p, &mut step)
     };
-    let (samples_ns, misses) = measure(p, &mut step);
     let held = !keep.is_empty() && keep == visible_slots(&cx, root);
+    let output = list_output(&cx, root, 0);
     finish_table(
         workload,
         samples_ns,
         misses,
-        Proof {
-            visible: visible_row_count(&cx, root),
-            cells: visible_cell_count(&cx, root),
-            scene: last_scene,
-            book,
-            last_done_moved: moved,
+        TableEvidence {
+            proof: Proof::from_tree(&cx, root, last_scene, book, moved),
+            identity: Some(held),
+            output: Some(output),
         },
-        Some(held),
     )
 }
 
@@ -225,13 +209,60 @@ struct Proof {
     last_done_moved: bool,
 }
 
+impl Proof {
+    fn from_tree(cx: &Cx, root: NodeId, scene: SceneCount, book: usize, moved: bool) -> Self {
+        Self {
+            visible: visible_row_count(cx, root),
+            cells: visible_cell_count(cx, root),
+            scene,
+            book,
+            last_done_moved: moved,
+        }
+    }
+}
+
+struct TableEvidence {
+    proof: Proof,
+    identity: Option<bool>,
+    output: Option<crate::OutputProof>,
+}
+
+fn construct_evidence(
+    last: Option<(Cx, NodeId, SceneCount)>,
+    book: usize,
+    first: usize,
+) -> TableEvidence {
+    let Some((cx, root, scene)) = last else {
+        return TableEvidence {
+            proof: Proof {
+                visible: 0,
+                cells: 0,
+                scene: SceneCount::default(),
+                book,
+                last_done_moved: false,
+            },
+            identity: None,
+            output: None,
+        };
+    };
+    TableEvidence {
+        proof: Proof::from_tree(&cx, root, scene, book, false),
+        identity: None,
+        output: Some(list_output(&cx, root, first)),
+    }
+}
+
 fn finish_table(
     workload: &Workload,
     samples_ns: Vec<u64>,
     misses: u64,
-    proof: Proof,
-    identity: Option<bool>,
+    evidence: TableEvidence,
 ) -> crate::RunResult {
+    let TableEvidence {
+        proof,
+        identity,
+        output,
+    } = evidence;
     let tick = workload.params.tick();
     let mut verify = verify_map(
         samples_ns.len(),
@@ -275,7 +306,7 @@ fn finish_table(
             pass_if(proof.last_done_moved, "last_done resolve did not change"),
         );
     }
-    finish(workload, samples_ns, extra, verify)
+    finish(workload, samples_ns, extra, verify, output)
 }
 
 fn scene_check(p: &crate::WorkloadParams, proof: &Proof, tick: bool) -> EquivalenceCheck {
@@ -488,157 +519,5 @@ fn max_y(rows: usize, row_h: f32, vh: f32) -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{
-        EquivalenceCheck, EquivalenceCheckSpec, FrameworkRunner, SigilRunner, Workload,
-        WorkloadParams, layout_void,
-    };
-
-    fn tiny(reuse: bool) -> Workload {
-        Workload {
-            workload_id: "data-table-smoke".into(),
-            description: "anti-void smoke".into(),
-            category: "data-table".into(),
-            params: WorkloadParams {
-                row_count: 200,
-                row_height_px: 24.0,
-                viewport_width_px: 1248.0,
-                viewport_height_px: 912.0,
-                row_shape: "gpui-24-field".into(),
-                scroll_pattern: "linear".into(),
-                iterations: 4,
-                warmup: 1,
-                surface: "layout".into(),
-                reuse,
-                cells_per_row: 24,
-            },
-            equivalence_checks: vec![
-                spec("visible_window_indices"),
-                spec("column_count"),
-                spec("layout_did_work"),
-                spec("text_did_work"),
-            ],
-        }
-    }
-
-    fn spec(name: &str) -> EquivalenceCheckSpec {
-        EquivalenceCheckSpec {
-            name: name.into(),
-            description: String::new(),
-        }
-    }
-
-    fn assert_real(reuse: bool) {
-        let result = SigilRunner::new().run(&tiny(reuse)).expect("runner");
-        assert!(
-            !layout_void(&result.verify),
-            "void run reuse={reuse} verify={:?}",
-            result.verify
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("layout_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "layout_did_work {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result
-                    .equivalence_check_results
-                    .get("visible_window_indices"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "visible {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("column_count"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "column_count {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("text_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "text_did_work {:?}",
-            result.equivalence_check_results
-        );
-    }
-
-    #[test]
-    fn construct_is_not_a_cache_hit() {
-        assert_real(false);
-    }
-
-    #[test]
-    fn scroll_reuse_is_not_a_cache_hit() {
-        assert_real(true);
-    }
-
-    #[test]
-    fn tick_keeps_identity_and_skips_band_measure() {
-        let mut workload = tiny(true);
-        workload.params.scroll_pattern = String::from("tick-visible");
-        workload.params.surface = String::from("layout_paint");
-        workload.equivalence_checks.push(spec("identity_did_hold"));
-        let result = SigilRunner::new().run(&workload).expect("runner");
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("identity_did_hold"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "identity {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("text_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "text_did_work {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("scene_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "scene_did_work {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("last_done_did_move"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "last_done {:?}",
-            result.equivalence_check_results
-        );
-    }
-
-    #[test]
-    fn remount_paint_emits_row_draws() {
-        let mut workload = tiny(true);
-        workload.params.surface = String::from("layout_paint");
-        let result = SigilRunner::new().run(&workload).expect("runner");
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("scene_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "scene_did_work {:?}",
-            result.equivalence_check_results
-        );
-        assert!(
-            result.verify.get("scene_cmds_last").copied().unwrap_or(0) >= 6,
-            "verify={:?}",
-            result.verify
-        );
-    }
-}
+#[path = "quote_table_tests.rs"]
+mod tests;

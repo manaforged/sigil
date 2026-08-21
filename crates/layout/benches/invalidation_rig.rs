@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Phase 10 layout invalidation benchmarks.
 //!
 //! Run with `cargo bench -p sigil-layout --bench invalidation_rig`.
@@ -11,19 +15,10 @@
 use std::hint::black_box;
 use std::time::{Duration, Instant};
 
-use ahash as _;
-use allocation_counter as _;
 use criterion::{Criterion, criterion_group, criterion_main};
-use rayon as _;
 use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 720.0;
@@ -40,7 +35,7 @@ impl TextMeasure for StubMeasure {
     fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(value) => value.chars().count() as f32,
-            TextContent::Reactive(_) => 0.0,
+            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Owned-engine vs Taffy comparison — the real-world shape: a
 //! ~100k-node tree where ONE leaf style changes between frames.
 //!
@@ -24,15 +28,6 @@ use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
-
-use ahash as _;
-use allocation_counter as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
 
 const ROOT_WIDTH: f32 = 12_800.0;
 const ROOT_HEIGHT: f32 = 100.0;

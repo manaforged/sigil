@@ -33,6 +33,13 @@
 //! `hello-rect` (once ported) is the executable reference instead.
 
 #![deny(missing_docs)]
+#![cfg_attr(
+    feature = "windowed",
+    allow(
+        unused_crate_dependencies,
+        reason = "the feature supplies dependencies to windowed examples"
+    )
+)]
 // wgpu-hal 29.0.1 (GLES / WGL backend) expects
 // `impl std::error::Error for windows_core::Error`, which is gated
 // behind `windows-core`'s `std` feature. Features are additive across a
@@ -41,18 +48,6 @@
 #[cfg(windows)]
 use windows_core as _;
 
-#[cfg(test)]
-use criterion as _;
-#[cfg(test)]
-use half as _;
-#[cfg(test)]
-use image as _;
-#[cfg(test)]
-use proptest as _;
-#[cfg(test)]
-use sigil_shell as _;
-#[cfg(test)]
-use smallvec as _;
 mod blur_paint;
 mod blur_shader;
 mod color_glyph_paint;
@@ -82,6 +77,9 @@ pub mod style;
 mod style_adapter;
 mod surface;
 mod test_state;
+#[cfg(test)]
+#[path = "lib_tests.rs"]
+mod tests;
 mod window_handle;
 
 pub use corner_radii::CornerRadii;
@@ -91,7 +89,7 @@ pub use layer_pool::{LayerError, LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
 pub use renderer::{ScreenSubmission, WgpuRenderer, WorldSubmission, submit_clear};
 #[doc(hidden)]
-pub use scene::shape_glyph_run;
+pub use scene_command::shape_glyph_run;
 mod emit_cache;
 pub use scene::{emit_scene, emit_scene_clipped};
 pub use scene_builder::SceneBuilder;

@@ -37,6 +37,19 @@ use crate::style_data::{
 use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;
 
+impl FlexSolver<'_> {
+    /// Borrow the computed box for `id`. Returns `None` when the id is
+    /// stale or the solver never visited it during this pass (frame
+    /// tag does not match the forest's current frame).
+    pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
+        let forest = self.scope.forest();
+        if forest.frame_for(id)? != forest.current_frame() {
+            return None;
+        }
+        forest.boxed(id)
+    }
+}
+
 const TOL: f32 = 0.01;
 
 struct NullText;

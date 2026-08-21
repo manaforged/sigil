@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! IME composition tests for the multi-line `text_edit` widget.
 //!
 //! Mirrors `text_field_ime.rs` — same event-routing shape, same
@@ -14,27 +18,6 @@
     clippy::cast_sign_loss,
     clippy::cast_precision_loss
 )]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::prelude::*;
 use sigil::widgets::text_edit;

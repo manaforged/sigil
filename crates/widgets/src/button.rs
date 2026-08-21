@@ -330,6 +330,7 @@ fn accessible_label(label: &TextContent) -> AccessibleName {
     match label {
         TextContent::Static(value) => AccessibleName::Static(value.clone()),
         TextContent::Reactive(value) => AccessibleName::Derived(*value),
+        TextContent::Compute(_) => AccessibleName::Static(label.resolve()),
     }
 }
 

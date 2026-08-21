@@ -10,13 +10,13 @@ description = "SVG-to-alpha-mask icon baker for Sigil (CPU rasterizer, 4×4 SSAA
 readme.workspace = true
 keywords = ["icons", "svg", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE", "assets/**"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**"]
 
 [lib]
 
 [dependencies]
 # usvg 0.47+ is Apache-2.0 OR MIT (relicensed from MPL-2.0 at 0.45.0).
-# This crate is MIT OR Apache-2.0 (see workspace.package.license).
+# This crate is MIT (see workspace.package.license).
 # No MPL-2.0 source files are modified or redistributed; usvg is used
 # as an unmodified library. Downstream proprietary consumers (the host engine) are
 # not affected: MPL-2.0 §3.3 only contaminates files you modify, not

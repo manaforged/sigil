@@ -61,9 +61,10 @@ ignore = [
 ]
 
 # --- licenses ---------------------------------------------------------------
-# Allow list is the SPDX intersection of what the author legal has cleared for
-# shipping in dual-licensed (MIT OR Apache-2.0) product code. Anything not
-# on this list fails the build and requires a conscious decision to add.
+# Allow list is the SPDX intersection of what the author has cleared for
+# shipping. Sigil itself is MIT; third-party crates may still be Apache-2.0
+# (or the other permissive licenses below). Anything not on this list fails
+# the build and requires a conscious decision to add.
 [licenses]
 allow = [
     "MIT",

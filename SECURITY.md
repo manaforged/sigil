@@ -18,8 +18,8 @@ timeline with the reporter once a fix is available.
 - Sigil is pre-1.0 (`0.1.0-alpha.*`). APIs and security-relevant behavior may
   still change between lockstep releases; pin exact versions downstream.
 - The workspace denies `unsafe_code` and runs `cargo deny check` in CI
-  (licenses, RustSec advisories, banned crates, registry sources) on every push
-  and PR.
+  (licenses, RustSec advisories, banned crates, registry sources) on every
+  change that lands.
 - Rendering is GPU-backed (wgpu); untrusted input surfaces of note are the
   style-class parser, text shaping of arbitrary strings, and SVG icon baking
   (usvg). If you find a panic, OOB, or unsoundness reachable from those, it is

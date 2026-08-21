@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Virtual list — GPUI `uniform_list` parity bench.
 //!
 //! This bench drives the real `virtual_list(items, render)` widget API.
@@ -14,25 +18,6 @@
     clippy::cast_precision_loss,
     clippy::trivially_copy_pass_by_ref
 )]
-
-use arboard as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use std::hint::black_box;
 use std::time::Duration;

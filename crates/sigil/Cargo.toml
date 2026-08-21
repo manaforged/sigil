@@ -14,7 +14,7 @@ categories = ["gui"]
 # docs.rs front page via `#![doc = include_str!("../README.md")]` in src/lib.rs.
 # benches/** is intentionally absent: Cargo strips the four [[bench]] targets
 # from the packaged manifest, and the benches are dev-only anyway.
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 autobenches = false
 
 [lib]
@@ -71,6 +71,10 @@ sigil-renderer = { path = "../renderer" }
 image = { workspace = true }
 pollster = { workspace = true }
 wgpu = { workspace = true }
+
+[[example]]
+name = "profile_frame"
+required-features = ["render"]
 
 [[bench]]
 name = "heatmap_perf"

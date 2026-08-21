@@ -5,10 +5,9 @@
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 #![deny(missing_docs)]
 
-// Doctests run against the facade's consumer path (`sigil::prelude::*`);
-// reference the dev-dependency so the lib-test target does not flag it.
 #[cfg(test)]
-use sigil as _;
+#[path = "lib_tests.rs"]
+mod tests;
 
 /// Shared hover/press/focus state for focusable widgets.
 pub mod interaction;

@@ -5,7 +5,10 @@
 // `#![cfg]` would strip the allows above with the rest of the file, so the
 // gate lives on the items; with the feature off this crate is empty and its
 // dev-deps are legitimately unused.
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 
 //! `Host::route` — the embedding-host event seam.
 //!
@@ -60,7 +63,7 @@ fn routed_click_reaches_button_activate() {
             )
         });
         // Populate the private LayoutEngine the router needs.
-        let _scene = ui.scene((200.0, 100.0));
+        let _scene = ui.scene((200.0, 100.0)).expect("layout");
 
         let mut router = EventRouter::new();
         ui.route(

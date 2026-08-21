@@ -26,10 +26,13 @@
 //! statement that this run's GPU coverage is void.
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::print_stdout)]
 
-use pollster::FutureExt as _;
+use pollster::FutureExt;
 
 /// Number of `no adapter — skipping` sites at the time of writing. Purely
 /// informational in the failure message; it is not asserted, so it does not

@@ -25,12 +25,14 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 mod compare;
+mod proof;
 pub mod runners;
 
 pub use compare::{
     CV_CEILING, comparable, cv_ok, frame_pair, layout_void, ratio_ok, same_checks, same_host,
-    same_mode, same_verdicts, vs_frame, vs_gpui,
+    same_mode, same_output, same_source, same_verdicts, vs_frame, vs_gpui,
 };
+pub use proof::{OutputProof, SourceInfo, milli_px};
 pub use runners::SigilRunner;
 
 /// One bench workload — a frozen description of what is measured.
@@ -282,6 +284,13 @@ pub struct RunResult {
     /// Proof the timed loop did real work: hits, misses, measures, visible rows.
     #[serde(default)]
     pub verify: HashMap<String, u64>,
+    /// Canonical output from an untimed verification frame. Ratios require an
+    /// exact match, so older results without this field fail closed.
+    #[serde(default)]
+    pub output: Option<OutputProof>,
+    /// Source revision used for the run. Ratios require the same clean tree.
+    #[serde(default)]
+    pub source: Option<SourceInfo>,
 }
 
 /// Aggregate statistics over the measured samples.
@@ -415,12 +424,7 @@ impl HostInfo {
 }
 
 fn rustc_version_string() -> String {
-    std::process::Command::new("rustc")
-        .arg("--version")
-        .output()
-        .ok()
-        .and_then(|o| String::from_utf8(o.stdout).ok())
-        .map_or_else(|| "unknown".to_string(), |s| s.trim().to_string())
+    proof::command_line("rustc", &["--version"])
 }
 
 /// Trait implemented per framework. Runner is stateless; all
@@ -439,47 +443,8 @@ pub trait FrameworkRunner {
 }
 
 #[cfg(test)]
-mod book_tests {
-    use super::{EquivalenceCheck, book_held, tail_window};
-
-    #[test]
-    fn book_must_match_the_declared_count() {
-        assert!(matches!(
-            book_held(1_000_000, 1_000_000),
-            EquivalenceCheck::Pass
-        ));
-        assert!(matches!(
-            book_held(100_000, 1_000_000),
-            EquivalenceCheck::Fail { .. }
-        ));
-        assert!(matches!(book_held(0, 0), EquivalenceCheck::Fail { .. }));
-    }
-
-    #[test]
-    fn tail_reaches_the_last_row() {
-        assert!(matches!(
-            tail_window(999_960, 40, 1_000_000),
-            EquivalenceCheck::Pass
-        ));
-        assert!(matches!(
-            tail_window(999_920, 80, 1_000_000),
-            EquivalenceCheck::Pass
-        ));
-        assert!(matches!(
-            tail_window(0, 41, 1_000_000),
-            EquivalenceCheck::Fail { .. }
-        ));
-    }
-}
-
+#[path = "lib_band_tests.rs"]
+mod band_tests;
 #[cfg(test)]
-mod band_tests {
-    use super::visible_band;
-
-    #[test]
-    fn band_accepts_gpui_page_and_sigil_overscan() {
-        assert_eq!(visible_band(1_280.0, 32.0, 1_000_000), (40, 121));
-        assert_eq!(visible_band(912.0, 24.0, 10_000), (38, 115));
-        assert_eq!(visible_band(1_280.0, 32.0, 3), (3, 3));
-    }
-}
+#[path = "lib_book_tests.rs"]
+mod book_tests;

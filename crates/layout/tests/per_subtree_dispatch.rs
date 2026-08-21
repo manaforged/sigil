@@ -28,7 +28,10 @@
 //!      block-display child reports its real block-stacked height back
 //!      to the flex parent. Without patch 1 the parent under-measures.
 
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
@@ -36,15 +39,6 @@
     clippy::panic,
     clippy::similar_names
 )]
-
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;
@@ -63,7 +57,7 @@ impl TextMeasure for StubText {
     fn measure(&self, source: &TextContent, _space: HalSize) -> LogicalSize {
         let chars = match source {
             TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) => 0.0,
+            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

@@ -10,7 +10,7 @@ description = "First-party Sigil widgets — host-agnostic builders (no window, 
 readme.workspace = true
 keywords = ["gui", "widgets", "ui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

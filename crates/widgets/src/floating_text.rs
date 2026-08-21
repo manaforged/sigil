@@ -47,4 +47,5 @@ pub use state::{FCT_POOL_CAPACITY, FctState};
 pub use style::FloaterStyle;
 
 #[cfg(test)]
+#[path = "floating_text_tests.rs"]
 mod tests;

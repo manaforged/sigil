@@ -4,12 +4,13 @@
 //! expected concrete color through the live `Theme` resolution path.
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 // Integration tests intentionally keep assertions direct and use
 // indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
-
-use sigil_reactive as _;
 
 use sigil_style::scale::{
     amber_light, blue_dark, blue_light, cyan_light, green_light, ruby_light, slate_dark,

@@ -127,7 +127,7 @@ impl ChartBuilder {
         let root = container()
             .role(Role::GenericContainer)
             .label("Chart")
-            .class("rounded-md border border-line bg-surface")
+            .class("rounded-md border border-gray-6 bg-surface")
             .layout(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
@@ -201,46 +201,5 @@ pub(crate) fn nice_max(max: f32) -> f32 {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::float_cmp)]
-mod tests {
-    use super::*;
-    use sigil_kernel::IntoNode;
-    use sigil_reactive::Runtime;
-
-    #[test]
-    fn nice_max_steps_are_1_2_5() {
-        assert_eq!(nice_max(3.0), 5.0);
-        assert_eq!(nice_max(12.0), 20.0);
-        assert_eq!(nice_max(0.0), 1.0);
-    }
-
-    #[test]
-    fn empty_chart_builds() {
-        Runtime::scope("chart-empty", || {
-            let mut cx = Cx::new_root();
-            let id = chart([]).build(&mut cx);
-            assert!(cx.get(id).is_some());
-        });
-    }
-
-    #[test]
-    fn bar_chart_builds() {
-        Runtime::scope("chart-bar", || {
-            let mut cx = Cx::new_root();
-            let id = chart([4.0, 8.0, 3.0, 10.0])
-                .labels(["Mon", "Tue", "Wed", "Thu"])
-                .build(&mut cx);
-            assert!(cx.get(id).is_some());
-            assert!(!cx.get(id).unwrap().children().is_empty());
-        });
-    }
-
-    #[test]
-    fn line_chart_builds() {
-        Runtime::scope("chart-line", || {
-            let mut cx = Cx::new_root();
-            let id = chart([1.0, 4.0, 2.0, 8.0]).line().build(&mut cx);
-            assert!(cx.get(id).is_some());
-        });
-    }
-}
+#[path = "chart_tests.rs"]
+mod tests;

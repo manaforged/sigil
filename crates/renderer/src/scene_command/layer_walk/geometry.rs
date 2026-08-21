@@ -21,12 +21,5 @@ pub(super) fn physical_extent(rect: Rect, scale: f32) -> (u32, u32) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn physical_extent_scales_fractional_logical_bounds_outward() {
-        let rect = Rect::new(Point::new(10.0, 20.0), 10.25, 5.25);
-        assert_eq!(physical_extent(rect, 2.0), (21, 11));
-    }
-}
+#[path = "geometry_tests.rs"]
+mod tests;

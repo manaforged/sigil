@@ -1,32 +1,19 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Text paint cost before and after carrying positioned glyphs in commands.
 
 #![allow(missing_docs)]
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
-use ahash as _;
-use bytemuck as _;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
 use sigil_hal::Size;
 use sigil_kernel::{TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_shell as _;
-use sigil_style as _;
 use sigil_text::{OwnedTextEngine, TextConfig};
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use wgpu as _;
-#[cfg(windows)]
-use windows_core as _;
-
-use sigil_icons as _;
 
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();

@@ -434,4 +434,5 @@ where
 }
 
 #[cfg(test)]
+#[path = "main_tests.rs"]
 mod tests;

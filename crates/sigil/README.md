@@ -48,4 +48,4 @@ resolve).
   scene-compositing surface for embedding a host engine's frame loop
   (DR-054).
 
-License: MIT OR Apache-2.0.
+License: MIT.

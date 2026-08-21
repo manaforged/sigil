@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! DR-050 phase-1 tests — projection correctness for the four most
 //! common authoring patterns.
 //!
@@ -8,21 +13,6 @@
 use accesskit::Role;
 use sigil_a11y::{snapshot, tree};
 use sigil_kernel::{Cx, container, fragment};
-
-// hal is needed by sigil-a11y's public bridge trait but not
-// named directly in this test file.
-use sigil_hal as _;
-// sigil-reactive (Wave 5.2 reactive_flow.rs dev-dep) + sigil
-// (Phase 1.3.C live_regions.rs dev-dep) + crossbeam-channel (W5-A11Y
-// AccessKitBridge's action-request channel, unused by this file's
-// bounds-free `tree(&cx, None, &|_| None)` calls) — every integration
-// test pulls all dev-deps, so we alias to silence
-// `unused_crate_dependencies`. `layout` (RC-focus finding 1's
-// `bounds_projection.rs` dev-dep) is unused here too.
-use crossbeam_channel as _;
-use sigil as _;
-use sigil_layout as _;
-use sigil_reactive as _;
 
 #[test]
 fn button_role_and_name() {

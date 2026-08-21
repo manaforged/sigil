@@ -1,20 +1,13 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Behavioral tests for the G6 `Styled` fluent trait. See DR-049.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
-
-use allocation_counter as _;
-use criterion as _;
-use phf as _;
-use sigil as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
-use smallvec as _;
-use strsim as _;
-use tracing as _;
 
 use sigil_kernel::container;
 use sigil_style::{

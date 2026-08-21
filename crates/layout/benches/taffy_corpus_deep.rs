@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Owned-engine vs Taffy comparison — the canonical "deep" tree shapes
 //! from Taffy's published bench corpus
 //! (`benches/benches/flexbox.rs`).
@@ -36,15 +40,6 @@ use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
-
-use ahash as _;
-use allocation_counter as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
 
 // Taffy's published deep shape: 2^17 = 131_072 leaves on a binary tree.
 // We use the same depth so the work-per-frame matches.

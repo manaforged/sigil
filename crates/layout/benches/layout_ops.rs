@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Tier 1/2/4 layout operation benchmarks for `sigil-layout`.
 //!
 //! Run with `cargo bench -p sigil-layout`.
@@ -8,25 +12,16 @@
     clippy::unwrap_used
 )]
 
-use allocation_counter as _;
-
 use std::hint::black_box;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
-use ahash as _;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use sigil_hal::{LogicalSize, Scale, Size};
 use sigil_kernel::TextContent;
 use sigil_kernel::{Cx, NodeBuilder, NodeId, container, text};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 1000.0;
@@ -47,7 +42,7 @@ impl TextMeasure for StubMeasure {
     fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) => 0.0,
+            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

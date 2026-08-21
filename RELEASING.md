@@ -53,7 +53,7 @@ cargo package --list -p <crate>   # per publish-set crate
 ```
 
 Every `.crate` must contain `src/**`, `Cargo.toml`, `README.md`,
-`LICENSE-MIT`, `LICENSE-APACHE` — and **no** `tests/` fixtures (the OFL font
+`LICENSE-MIT` — and **no** `tests/` fixtures (the OFL font
 files), golden PNGs, or bench corpora. Check compressed sizes; crates.io
 enforces a 10 MB cap server-side, so a green dry-run does not prove the cap.
 

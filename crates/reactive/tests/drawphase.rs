@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W3.2-impl — integration tests for G4 `DrawPhase` (DR-047).
 //!
 //! Covers the phase state machine, the write-during-Paint debug-assert
@@ -14,10 +18,6 @@
     clippy::panic,
     clippy::ignored_unit_patterns
 )]
-
-use criterion as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

@@ -1,15 +1,13 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Event routing benchmarks.
 
 #![allow(missing_docs)]
 // Benches may use direct panics in setup if the fixture cannot build.
 // See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
-
-use accesskit as _;
-use allocation_counter as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

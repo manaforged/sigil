@@ -1,23 +1,9 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Virtual-list paint tests that need `emit_scene` (GPU crate).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, missing_docs)]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_profile as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::widgets::virtual_list_bind;
 use sigil_hal::Size;

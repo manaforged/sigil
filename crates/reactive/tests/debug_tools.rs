@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Integration tests for the debug introspection module.
 //!
 //! Verifies the human-readable owner-tree renderer exposed by
@@ -23,13 +27,8 @@
 // and the library, but neither is referenced by this integration
 // test. The same shim is used in other integration tests once they
 // are tightened against `-D warnings`.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
 use sigil_reactive::debug::{dump_owner_tree, dump_subtree};
 use sigil_reactive::{Owner, Runtime, effect, on_cleanup, signal};
-use smallvec as _;
-use tokio as _;
 
 #[test]
 fn dump_owner_tree_renders_single_root() {

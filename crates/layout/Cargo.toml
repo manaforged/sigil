@@ -10,7 +10,7 @@ description = "Owned layout adapter for Sigil."
 readme.workspace = true
 keywords = ["layout", "flexbox", "gui", "ui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

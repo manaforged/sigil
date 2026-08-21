@@ -10,7 +10,7 @@ description = "winit 0.30+ ApplicationHandler-backed Shell adapter."
 readme.workspace = true
 keywords = ["winit", "windowing", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

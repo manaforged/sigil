@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W5.1b — engine reads animator-driven signals at style apply.
 //!
 //! Verification gate for the binding-install → `AttachedAnimators` →
@@ -13,25 +17,6 @@
     clippy::too_many_lines,
     clippy::items_after_statements
 )]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil_animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
 use sigil_hal::Size;

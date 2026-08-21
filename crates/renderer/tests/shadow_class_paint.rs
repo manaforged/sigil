@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Shadow style wiring — `shadow-*` classes drive the drop-shadow pass.
 //!
 //! The renderer shipped a full Evan Wallace rounded-rect shadow pipeline,
@@ -9,24 +13,6 @@
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
-
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_icons as _;
-use sigil_shell as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use wgpu as _;
-#[cfg(windows)]
-use windows_core as _;
 
 #[path = "child_paint_repro/support.rs"]
 #[allow(dead_code)]

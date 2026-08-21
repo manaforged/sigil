@@ -1,4 +1,7 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W1.5 — `inset` placement for `Position::Absolute` children.
 //!
 //! Verifies that the block + flex solvers read `style.inset` when
@@ -11,19 +14,9 @@
 
 mod stub;
 
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_kernel as _;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_layout::{LengthPercentageAuto, Rect as StyleRect};
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 use stub::stub_engine;
 

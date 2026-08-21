@@ -10,7 +10,7 @@ description = "Spring physics, easing, and tween primitives for sigil widgets."
 readme.workspace = true
 keywords = ["animation", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

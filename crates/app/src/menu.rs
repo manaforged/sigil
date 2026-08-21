@@ -121,31 +121,5 @@ fn install_native(_menu: &Menu, _hwnd: Option<isize>) {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::cell::Cell;
-    use std::rc::Rc;
-
-    use sigil_reactive::Runtime;
-
-    use super::*;
-
-    #[test]
-    fn events_channel_delivers_activations_to_subscribers() {
-        // The reactive surface apps use: subscribe to menu activations and
-        // receive the emitted id. (The native menu-bar install needs a real
-        // desktop and is exercised on device, not here.)
-        Runtime::scope("menu-events", || {
-            let hits: Rc<Cell<u32>> = Rc::new(Cell::new(0));
-            let subscription = events().subscribe({
-                let hits = Rc::clone(&hits);
-                move |id| {
-                    assert_eq!(id, "open");
-                    hits.set(hits.get() + 1);
-                }
-            });
-            simulate(MenuId::new("open"));
-            assert_eq!(hits.get(), 1, "subscriber must fire on a simulated click");
-            drop(subscription);
-        });
-    }
-}
+#[path = "menu_tests.rs"]
+mod tests;

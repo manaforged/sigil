@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Criterion micro-bench for `ActionRegistry::dispatch`.
 //!
 //! Three measurement points target the latency cost of walking a focus
@@ -12,10 +16,6 @@
 //!   chain length).
 
 #![allow(missing_docs)]
-
-use sigil as _;
-use sigil_actions_macros as _;
-use smallvec as _;
 
 use std::cell::Cell;
 use std::hint::black_box;

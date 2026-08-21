@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Frame-phase bench — layout + emit on a 500-row tree.
 //!
 //! Records through `sigil::profile` so the same phases a live app
@@ -10,23 +14,6 @@
     clippy::unwrap_used,
     clippy::cast_precision_loss
 )]
-
-use arboard as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_profile as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use std::hint::black_box;
 

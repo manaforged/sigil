@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! DR-056 D3 grammar/atom parity gate.
 //!
 //! `style-macros/grammar/structural.toml` is the single source of truth
@@ -8,18 +12,6 @@
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
-
-use allocation_counter as _;
-use criterion as _;
-use phf as _;
-use sigil as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style_macros as _;
-use smallvec as _;
-use strsim as _;
-use tracing as _;
 
 use std::fs;
 use std::path::PathBuf;

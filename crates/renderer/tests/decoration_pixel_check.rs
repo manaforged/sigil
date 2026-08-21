@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Pixel-verification test for Phase R9 text decorations.
 //!
 //! Renders the R9 decoration showcase via the offscreen capture path and asserts
@@ -11,29 +15,9 @@
 #![allow(clippy::doc_markdown, clippy::missing_const_for_fn)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_hal as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
-
 use std::sync::mpsc;
 
-use pollster::FutureExt as _;
+use pollster::FutureExt;
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
 
 // Physical scale factor: texture dims = viewport × SCALE.

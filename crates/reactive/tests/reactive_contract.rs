@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Integration tests for `sigil-reactive`.
 //!
 //! These are behaviour tests, not unit tests. Each test exercises
@@ -9,16 +14,6 @@
 //! runtime is thread-local. Each test gets a fresh `Runtime::scope`.
 
 #![allow(missing_docs)]
-
-// `criterion` is a dev-dep (for benches). `smallvec` is a regular
-// dep (subscriber storage). Neither is used in this test file; the
-// aliases satisfy `unused_crate_dependencies` which flows into every
-// integration-test binary.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

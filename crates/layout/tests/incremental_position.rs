@@ -22,17 +22,12 @@
 //! branch. Toggling the body must leave the region exactly where its unchanged
 //! parent placed it.
 
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
-
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_hal as _;
-use sigil_style as _;
-use smallvec as _;
 
 mod stub;
 

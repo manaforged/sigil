@@ -44,17 +44,6 @@ pub(crate) enum Script {
     Other,
 }
 
-impl Script {
-    /// Whether this script needs `HarfRust` to shape correctly.
-    #[cfg(test)]
-    pub(crate) const fn is_complex(self) -> bool {
-        matches!(
-            self,
-            Self::Arabic | Self::Hebrew | Self::Devanagari | Self::Khmer | Self::Thai | Self::Lao,
-        )
-    }
-}
-
 /// Classify the dominant script of a [`TextSegment`] by inspecting
 /// its first non-Common / non-Inherited codepoint, falling back to
 /// `Common` if none is found. Segments are already script-runs

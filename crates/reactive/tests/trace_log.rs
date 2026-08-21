@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Integration tests for the `SIGIL_TRACE_EFFECTS` effect trace
 //! log (DR-005 addendum item 6).
 //!
@@ -14,14 +19,6 @@
 //! and stays silent when capture is off.
 
 #![allow(missing_docs)]
-
-// `smallvec` and `criterion` are dev-deps; this test references
-// neither. Silence `unused_crate_dependencies`.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

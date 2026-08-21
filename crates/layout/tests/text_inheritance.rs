@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! DR-056 typography inheritance — measurement side.
 //!
 //! Paint-side inheritance is pinned in
@@ -9,16 +13,6 @@
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
-
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -57,6 +51,7 @@ fn text_of(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => value.clone(),
         TextContent::Reactive(value) => value.get(),
+        TextContent::Compute(_) => content.resolve(),
     }
 }
 

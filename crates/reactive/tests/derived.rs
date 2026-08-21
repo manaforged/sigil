@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Integration tests for `derived` / `derived_eq`.
 //!
 //! These pin the contract laid out in DR-005 and the derived module
@@ -8,15 +13,6 @@
 //! and disposes with it.
 
 #![allow(missing_docs)]
-
-// Silence `unused_crate_dependencies` — criterion is a dev-dep for
-// benches, smallvec a regular dep for subscriber storage; neither is
-// referenced in this test file.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

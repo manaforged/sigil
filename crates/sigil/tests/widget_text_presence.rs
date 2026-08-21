@@ -15,30 +15,11 @@
 //! half (a widget that silently stops emitting its content at some width).
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used, clippy::panic)]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_renderer::{SceneCommand, emit_scene};
@@ -49,6 +30,7 @@ impl TextMeasure for ProportionalText {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
+            TextContent::Compute(_) => content.resolve().len(),
         };
         #[allow(clippy::cast_precision_loss)]
         sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)

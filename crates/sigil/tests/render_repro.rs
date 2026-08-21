@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W4.99.RC2 — repros for the two rendering failures the VG1 dispatch
 //! had to work around but never root-caused:
 //!
@@ -14,24 +18,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::cast_lossless)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::print_stdout, clippy::doc_markdown, clippy::too_many_lines)]
-
-use arboard as _;
-use criterion as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
 
 use sigil::prelude::*;
 

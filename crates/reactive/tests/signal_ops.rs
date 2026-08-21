@@ -1,18 +1,14 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Integration tests for the `Signal<T>` operator overloads and
 //! `Display` impl introduced in the ergonomics polish.
 //!
 //! See `crates/sigil/reactive/src/signal_ops.rs`.
 
 #![allow(missing_docs)]
-
-// `criterion` is a dev-dep used only by benches; alias to silence the
-// `unused_crate_dependencies` lint for this integration-test binary.
-// `smallvec` is a regular dep but unused here — same treatment.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

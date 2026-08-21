@@ -66,7 +66,10 @@ fn build_row<Row: 'static>(
         .class_when(is_selected, SELECTED_CLASS)
         .children_reactive(move || {
             let layout = state_cells.column_layout().get();
-            let live_rows = state_cells.rows().peek();
+            // `get`, not `peek`: this closure has to re-run when the row data
+            // changes, or a list that refreshes itself paints its first frame
+            // forever.
+            let live_rows = state_cells.rows().get();
             let Some(live_row) = live_rows.get(row_index as usize) else {
                 return Vec::new();
             };

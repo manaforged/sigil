@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
@@ -5,13 +9,6 @@
 mod mock_shell;
 #[path = "support/routing_helpers.rs"]
 mod routing_helpers;
-
-use accesskit as _;
-use allocation_counter as _;
-use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_events::prelude::*;
 use sigil_kernel::FocusScopeKind;
@@ -102,4 +99,42 @@ fn three_modal_stack_traps_then_restores_on_pop() {
     assert!(cx.remove(modal_a));
     route_event(&mut router, &mut cx, &layout, tab(false));
     assert_eq!(assert_live_focus(&cx, &router), background);
+}
+
+#[test]
+fn focus_repair_handles_replacement_and_new_modal_scope() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
+            .child(focusable_in(10.0)),
+    );
+    let old = cx.nth_child(root, 0).unwrap();
+    let mut layout = compute_layout(&mut cx, root, 200.0, 200.0);
+    let mut router = EventRouter::new();
+    router.set_focus(&mut cx, Some(old));
+    router.focus_if_needed(&mut cx, &layout);
+    assert_eq!(router.focus(), Some(old));
+
+    assert!(cx.remove(old));
+    let replacement = cx.add_child(root, focusable_in(10.0));
+    layout
+        .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+        .unwrap();
+    router.focus_if_needed(&mut cx, &layout);
+    assert_eq!(router.focus(), Some(replacement));
+
+    let modal = cx.add_child(
+        root,
+        container()
+            .mutate(scope_marker(FocusScopeKind::Modal))
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .child(focusable_in(10.0)),
+    );
+    let inside = cx.nth_child(modal, 0).unwrap();
+    layout
+        .compute(&mut cx, root, Size::fixed(200.0, 200.0))
+        .unwrap();
+    router.focus_if_needed(&mut cx, &layout);
+    assert_eq!(router.focus(), Some(inside));
 }

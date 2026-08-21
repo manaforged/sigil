@@ -8,17 +8,19 @@ use sigil_events::EventRouter;
 #[cfg(feature = "desktop")]
 use sigil_hal::Point;
 use sigil_hal::{LogicalSize, Rect, ShellEvent, Size};
-use sigil_kernel::{Cx, NodeId, NodeType, TextContent};
-use sigil_layout::LayoutEngine;
-use sigil_layout::LayoutResult;
-use sigil_layout::TextMeasure;
-use sigil_style::{Tone, ToneContext};
+use std::rc::Rc;
+
+use sigil_kernel::{Cx, NodeId, TextContent};
+use sigil_layout::{LayoutEngine, LayoutError, TextMeasure};
+use sigil_style::{Rgba8, TextStyle, Theme, Tone, grid};
+use unicode_width::UnicodeWidthStr;
 
 #[cfg(feature = "desktop")]
 use sigil_renderer::{CommandScene, emit_scene_clipped};
 
 #[cfg(feature = "desktop")]
 use crate::DefaultTextMeasure;
+use crate::paint::{Cascade, Resolved, Walk, fill_painted};
 
 /// A laid-out node after [`Host::layout`]. No GPU types.
 #[derive(Debug, Clone, PartialEq)]
@@ -31,6 +33,23 @@ pub struct Painted {
     pub text: Option<String>,
     /// Tone attached to this node, if any.
     pub tone: Option<Tone>,
+    /// Resolved background colour, when this node paints a surface.
+    pub fill: Option<Rgba8>,
+    /// Resolved text colour, when this node paints glyphs.
+    pub ink: Option<Rgba8>,
+    /// Font weight of this node's text. 700 and over reads as bold.
+    pub weight: u16,
+    /// Nothing paints inside this box.
+    ///
+    /// A progress fill and a chart bar are toned boxes with no content; a
+    /// button surface or a panel holds a child that paints. A terminal
+    /// draws the first as solid block glyphs and only tints the second.
+    pub bare: bool,
+    /// Box this node paints inside, from the nearest clipping ancestor.
+    ///
+    /// `None` when no ancestor sets `overflow: hidden`/`scroll`. A host
+    /// that ignores this paints an over-long cell over its neighbour.
+    pub clip: Option<Rect>,
 }
 
 /// A retained widget tree + layout engine an embedding host pumps each frame.
@@ -42,6 +61,19 @@ pub struct Host {
     cx: Cx,
     layout: LayoutEngine,
     root: Option<NodeId>,
+    /// Theme every node resolves against unless it carries its own.
+    ///
+    /// Built once: a theme reads the terminal cell grid at construction, so
+    /// set the grid before building a host.
+    theme: Theme,
+    /// Last frame's resolved style, one entry per paint slot.
+    resolved: Vec<Resolved>,
+    /// Typography every node starts from.
+    ///
+    /// Held rather than built per frame: the cascade compares it by pointer,
+    /// and a fresh one each frame would miss the cache at the root and take
+    /// every node below it along.
+    root_text: Rc<TextStyle>,
 }
 
 impl Default for Host {
@@ -64,6 +96,9 @@ impl Host {
             cx: Cx::new_root(),
             layout: LayoutEngine::with_text_measure(Box::new(host_measure())),
             root: None,
+            theme: Theme::default(),
+            resolved: Vec::new(),
+            root_text: Rc::new(TextStyle::default()),
         }
     }
 
@@ -75,10 +110,16 @@ impl Host {
     /// Empty host whose text measure matches [`Self::CELL`].
     #[must_use]
     pub fn cells() -> Self {
+        // Chrome is measured in cells from here on. Set before the theme
+        // below captures its metrics.
+        grid(Self::CELL);
         Self {
             cx: Cx::new_root(),
             layout: LayoutEngine::with_text_measure(Box::new(CellMeasure { px: Self::CELL })),
             root: None,
+            theme: Theme::default(),
+            resolved: Vec::new(),
+            root_text: Rc::new(TextStyle::default()),
         }
     }
 
@@ -108,63 +149,104 @@ impl Host {
         }
     }
 
+    /// Restore focus after layout if the focused node was replaced or a
+    /// newly-active scope excludes it.
+    pub fn repair_focus(&mut self, router: &mut EventRouter) {
+        if self.root.is_some() {
+            router.focus_if_needed(&mut self.cx, &self.layout);
+        }
+    }
+
     /// Lay the tree out at `viewport`. Returns the root when a tree is built.
-    pub fn layout(&mut self, viewport: (f32, f32)) -> Option<NodeId> {
-        let root = self.root?;
-        let _ = self
-            .layout
-            .compute(&mut self.cx, root, Size::fixed(viewport.0, viewport.1));
-        Some(root)
+    ///
+    /// # Errors
+    ///
+    /// Returns the layout engine error instead of exposing stale results.
+    pub fn layout(&mut self, viewport: (f32, f32)) -> Result<Option<NodeId>, LayoutError> {
+        let Some(root) = self.root else {
+            return Ok(None);
+        };
+        self.layout
+            .compute(&mut self.cx, root, Size::fixed(viewport.0, viewport.1))?;
+        Ok(Some(root))
     }
 
     /// Walk the last layout: rects, text, and tone. Empty until
     /// [`Host::layout`] has run.
     #[must_use]
-    pub fn painted(&self) -> Vec<Painted> {
-        let Some(root) = self.root else {
-            return Vec::new();
-        };
+    pub fn painted(&mut self) -> Vec<Painted> {
         let mut out = Vec::new();
-        push_painted(&self.cx, root, &mut out);
+        self.paint_into(&mut out);
         out
+    }
+
+    /// Emit the paint scene into `out`, reusing its allocation.
+    ///
+    /// [`Self::painted`] allocates a fresh vector each call. A host painting
+    /// every frame keeps one buffer and calls this instead.
+    pub fn paint_into(&mut self, out: &mut Vec<Painted>) {
+        let _moved = self.repaint(out);
+    }
+
+    /// Emit the paint scene into `out`, reporting whether anything moved.
+    ///
+    /// `false` means every record matches the frame before, so a host that
+    /// already drew that frame has nothing to draw or send.
+    pub fn repaint(&mut self, out: &mut Vec<Painted>) -> bool {
+        let Self {
+            cx,
+            root,
+            theme,
+            resolved,
+            root_text,
+            ..
+        } = self;
+        let Some(root) = *root else {
+            let had = !out.is_empty();
+            out.clear();
+            return had;
+        };
+        let mut next = 0;
+        let mut moved = false;
+        let mut walk = Walk {
+            cx,
+            cache: resolved,
+            out,
+            next: &mut next,
+            moved: &mut moved,
+        };
+        fill_painted(&mut walk, root, &Cascade::root(theme, root_text));
+        // A record dropping off the end is a change too.
+        let shrank = out.len() > next;
+        out.truncate(next);
+        resolved.truncate(next);
+        moved || shrank
     }
 
     /// Lay the tree out at `viewport` (logical pixels) and emit the paint
     /// scene. Returns an empty scene until [`Host::build`] has run.
+    ///
+    /// # Errors
+    ///
+    /// Returns the layout engine error instead of emitting stale geometry.
     #[cfg(feature = "desktop")]
-    pub fn scene(&mut self, viewport: (f32, f32)) -> CommandScene {
-        let Some(root) = self.layout(viewport) else {
-            return CommandScene::default();
+    pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {
+        let Some(root) = self.layout(viewport)? else {
+            return Ok(CommandScene::default());
         };
-        emit_scene_clipped(
+        Ok(emit_scene_clipped(
             &self.cx,
             root,
             Some(Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)),
-        )
+        ))
     }
 }
 
-fn push_painted(cx: &Cx, id: NodeId, out: &mut Vec<Painted>) {
-    let Some(node) = cx.get(id) else {
-        return;
-    };
-    if let Some(result) = node.get_extension::<LayoutResult>() {
-        let text = match &node.kind {
-            NodeType::Text { content, .. } => Some(content.resolve()),
-            NodeType::Container | NodeType::Image { .. } | NodeType::Fragment => None,
-        };
-        out.push(Painted {
-            id,
-            rect: result.rect(),
-            text,
-            tone: node.get_extension::<ToneContext>().map(|ctx| ctx.tone),
-        });
-    }
-    for child in node.children() {
-        push_painted(cx, *child, out);
-    }
-}
-
+/// Walk the tree, writing each node into the next slot of `out`.
+///
+/// Slots are overwritten rather than cleared so a node's text buffer survives
+/// between frames. The tree shape is stable frame to frame, so slot `n` is
+/// almost always the same node it held last time.
 struct CellMeasure {
     px: f32,
 }
@@ -172,8 +254,10 @@ struct CellMeasure {
 impl TextMeasure for CellMeasure {
     #[allow(clippy::cast_precision_loss)]
     fn measure(&self, content: &TextContent, _space: Size) -> LogicalSize {
-        let n = content.resolve().chars().count() as f32;
-        LogicalSize::new(n * self.px, self.px)
+        // Display width, not char count: a CJK glyph occupies two cells, so
+        // measuring by char would under-size the box that holds it.
+        let cells = UnicodeWidthStr::width(content.resolve().as_str()) as f32;
+        LogicalSize::new(cells * self.px, self.px)
     }
 }
 

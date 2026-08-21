@@ -257,12 +257,6 @@ pub(crate) struct TextSegment<'a> {
 }
 
 impl<'a> TextSegment<'a> {
-    /// Construct an LTR segment over `text`.
-    #[cfg(test)]
-    pub(crate) const fn ltr(text: &'a str) -> Self {
-        Self { text, level: 0 }
-    }
-
     /// Construct a segment at an explicit UAX #9 embedding level.
     pub(crate) const fn at_level(text: &'a str, level: u8) -> Self {
         Self { text, level }
@@ -466,61 +460,6 @@ fn emit_grapheme(
             cluster,
         });
     }
-}
-
-/// Codepoint classification kept for downstream (G1.5 atlas routing).
-///
-/// G1.3 doesn't act on the result — skrifa returns the correct
-/// advance for Latin, CJK, and emoji uniformly — but it pins the
-/// detection contract so the followup atlas-routing dispatch has a
-/// stable surface.
-#[cfg(test)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CodepointClass {
-    /// Standard Latin / Greek / Cyrillic etc.
-    Regular,
-    /// CJK Symbols and Punctuation (`U+3000..U+303F`).
-    CjkPunctuation,
-    /// Half/Full-width Forms (`U+FF00..U+FFEF`).
-    HalfFullWidth,
-    /// Emoji codepoint (BMP + supplementary blocks).
-    Emoji,
-}
-
-/// Classify the lead codepoint of a grapheme.
-#[cfg(test)]
-pub(crate) fn classify(ch: char) -> CodepointClass {
-    let cp = ch as u32;
-    if matches!(cp, 0x3000..=0x303F) {
-        CodepointClass::CjkPunctuation
-    } else if matches!(cp, 0xFF00..=0xFFEF) {
-        CodepointClass::HalfFullWidth
-    } else if is_emoji(cp) {
-        CodepointClass::Emoji
-    } else {
-        CodepointClass::Regular
-    }
-}
-
-/// Cheap emoji-block check covering the high-frequency ranges.
-///
-/// Per DR-044: pulling `unicode-properties` for the well-typed
-/// `EMOJI_PRESENTATION` query is overkill for G1.3 — the codepoint
-/// ranges below cover Misc Symbols + Dingbats + the SMP emoji
-/// blocks, which is what the test corpus needs. G1.5 can swap in
-/// the full property table when the atlas-routing surface needs
-/// stricter coverage.
-#[cfg(test)]
-const fn is_emoji(cp: u32) -> bool {
-    matches!(
-        cp,
-        0x2600..=0x27BF      // Misc Symbols + Dingbats
-        | 0x1F300..=0x1F5FF  // Misc Symbols and Pictographs
-        | 0x1F600..=0x1F64F  // Emoticons
-        | 0x1F680..=0x1F6FF  // Transport and Map
-        | 0x1F700..=0x1F77F  // Alchemical
-        | 0x1F900..=0x1F9FF, // Supplemental Symbols and Pictographs
-    )
 }
 
 #[cfg(test)]

@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Integration tests for `#[derive(Action)]`.
 //!
 //! Two real action types: a unit struct and a payload-bearing struct.
@@ -10,11 +14,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use proc_macro2 as _;
-use quote as _;
 use sigil_actions::{Action, ActionRegistry, HandlerKey};
 use sigil_actions_macros::Action;
-use syn as _;
 
 #[derive(Clone, Action)]
 struct CloseTab;

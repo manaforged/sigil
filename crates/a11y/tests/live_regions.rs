@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Phase 1.3 acceptance gate — live-region announcement reaches the
 //! AccessKit projection.
 //!
@@ -18,16 +22,6 @@
 
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::unwrap_used)]
-
-// Workspace-shape integration-test dev-deps that aren't named here.
-// `sigil-reactive` is exercised through the modal's effect machinery
-// and through `Runtime::scope`, but we don't name it directly.
-// `crossbeam-channel` backs W5-A11Y's `AccessKitBridge`, unused by this
-// file's bounds-free `tree(&cx, None, &|_| None)` calls.
-use crossbeam_channel as _;
-use sigil_hal as _;
-use sigil_layout as _;
-use sigil_reactive as _;
 
 use accesskit::{Live, Node as AkNode, NodeId as AkNodeId, TreeUpdate};
 use sigil_a11y::tree;

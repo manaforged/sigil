@@ -13,8 +13,8 @@ use sigil_style::{
 use crate::corner_radii::CornerRadii;
 use crate::scene_builder::SceneBuilder;
 use crate::scene_command::{
-    CommandScene, DecorationKind, GlyphRun, LayerEffect, LayerScope, SceneDecorationStyle,
-    SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
+    CommandScene, DecorationKind, LayerEffect, LayerScope, SceneDecorationStyle, SceneRectStyle,
+    Stroke, StrokeAlign, StrokeStyle, shape_glyph_run_with,
 };
 use crate::shadow_paint::Shadow;
 use crate::style_adapter::{corner_radii_for, focus_ring_for, render_style_for, text_style_for};
@@ -404,51 +404,6 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         }
         NodeType::Fragment => {}
     }
-}
-
-#[doc(hidden)]
-/// Shape a text run for command-scene emission.
-#[must_use]
-pub fn shape_glyph_run(
-    rect: Rect,
-    text: String,
-    color: Rgba8,
-    style: TextStyle,
-    opacity: u16,
-) -> GlyphRun {
-    shape_glyph_run_with(rect, text, color, style, opacity, false)
-}
-
-/// Shape a text run, optionally single-line ellipsis-truncated to `rect`.
-///
-/// `ellipsize` selects [`OwnedTextEngine::layout_paragraph_ellipsized`]
-/// (one line, `…` when it overflows `rect.width`) over the default
-/// wrap-to-width paragraph. The paint pass sets it from the text node's
-/// `ellipsis` flag; other callers use [`shape_glyph_run`].
-// The five glyph-run fields are all intrinsic to `GlyphRun::new`; the flag
-// is one more. Splitting them into a struct here would only obscure them.
-#[allow(clippy::too_many_arguments)]
-#[must_use]
-fn shape_glyph_run_with(
-    rect: Rect,
-    text: String,
-    color: Rgba8,
-    style: TextStyle,
-    opacity: u16,
-    ellipsize: bool,
-) -> GlyphRun {
-    let max_width = rect.width.max(1.0);
-    // The shared engine bootstraps with bundled FiraSans (G1.4 owned
-    // engine). Layout failure is unreachable unless a future caller
-    // hot-swaps in a malformed user font via FontCollection::register.
-    let engine = sigil_text::OwnedTextEngine::thread();
-    let paragraph = if ellipsize {
-        engine.layout_paragraph_ellipsized(&text, max_width, &style)
-    } else {
-        engine.layout_paragraph_styled(&text, Some(max_width), &style)
-    }
-    .unwrap_or_else(|_| unreachable!("text engine layout failed unexpectedly"));
-    GlyphRun::new(rect, text, color, style, opacity).with_paragraph(paragraph)
 }
 
 /// Resolve a node's border into a paint stroke (DR-057 D3). Width with

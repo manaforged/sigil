@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Micro-benchmarks for the sigil-reactive hot paths.
 //!
 //! These establish a perf baseline for the six operations that
@@ -13,14 +18,6 @@
 use std::cell::Cell;
 use std::hint::black_box;
 use std::rc::Rc;
-
-// `actions`, `smallvec`, and `tokio` are regular/dev deps pulled
-// into every bench compilation unit. We don't reference them directly;
-// these aliases silence `unused_crate_dependencies`.
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_reactive::{Owner, Runtime, batch, effect, signal};

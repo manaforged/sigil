@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Repro tests for the 2026-05-19 VG1 renderer-correctness findings,
 //! items (b) and (c):
 //!
@@ -20,22 +24,6 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::print_stdout, clippy::doc_markdown)]
 #![allow(clippy::cast_precision_loss)]
-
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use pollster as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_icons as _;
-use sigil_shell as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
 
 use sigil_kernel::{Cx, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};

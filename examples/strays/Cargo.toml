@@ -1,0 +1,28 @@
+[package]
+name = "strays"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Terminal inventory of forgotten localhost servers, on the Sigil TUI host."
+
+[[bin]]
+name = "strays"
+path = "src/main.rs"
+
+[dependencies]
+# Path dep so this binary can disable desktop. Workspace inherit cannot
+# override default-features on sigil-ui.
+sigil-ui = { path = "../../crates/sigil", default-features = false, features = ["tui"] }
+
+netstat2 = "0.11"
+sysinfo = "0.39"
+
+[dev-dependencies]
+sigil-tui = { path = "../../crates/tui" }
+
+[lints]
+workspace = true

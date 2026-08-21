@@ -1,24 +1,14 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Criterion benchmark for the `heatmap()` overlay widget.
 //!
 //! Target: build a `100x100` grid (`10_000` cells) in <= 500us.
 
 #![allow(missing_docs, clippy::panic)]
 
-use arboard as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_profile as _;
-use sigil_renderer as _;
-use sigil_tasks as _;
 use std::hint::black_box;
-use wgpu as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::widgets::overlay::heatmap;
@@ -28,10 +18,6 @@ use sigil_style::Rgba8;
 
 // Silence unused-crate-dependencies for dev-only crates the sigil
 // facade pulls in.
-use sigil_layout as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
 
 const fn cell_color(x: usize, y: usize) -> Rgba8 {
     Rgba8 {

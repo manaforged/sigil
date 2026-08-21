@@ -1,11 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
-
-use accesskit as _;
-use ahash as _;
-use criterion as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
 
 use sigil_hal::Scale;
 use sigil_kernel::Cx;

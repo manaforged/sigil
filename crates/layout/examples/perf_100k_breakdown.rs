@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! One-shot perf breakdown for the 100k-node flex tree compute path.
 //!
 //! Phase-level timing for `LayoutEngine::compute` on the same shape the
@@ -8,19 +13,6 @@
 //! Run with: `cargo run --release -p sigil-layout --example perf_100k_breakdown`.
 
 #![allow(clippy::cast_precision_loss)]
-
-// Keep dev-dep extern crates visible to `unused_crate_dependencies` —
-// aliases silence the lint without a real import (repo convention).
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 use std::time::Instant;
 
@@ -33,7 +25,7 @@ impl TextMeasure for StubMeasure {
     fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) => 0.0,
+            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
         };
         LogicalSize::new(chars * 8.0, 16.0)
     }

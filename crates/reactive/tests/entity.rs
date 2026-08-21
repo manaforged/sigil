@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W2.1b — integration tests for the G2 entity model.
 //!
 //! Six scenarios covering DR-045's locked decisions:
@@ -13,12 +17,6 @@
 //! - Entity arena slot survives across interleaved read + update.
 
 #![allow(missing_docs)]
-
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

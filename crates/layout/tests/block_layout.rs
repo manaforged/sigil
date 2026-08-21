@@ -1,4 +1,7 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Integration smoke test for the P0.2 block layout body.
 //!
 //! The substantive block-layout tests (18 cases covering explicit
@@ -14,15 +17,6 @@
 #![allow(missing_docs)]
 
 // Workspace shared dev-deps surfaced into the integration target.
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleData, StyleDisplay, StyleFlexDirection,

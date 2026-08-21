@@ -212,11 +212,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     {
         return;
     }
-    let Some(text) = event
-        .text
-        .as_deref()
-        .filter(|text| is_single_line_scalar(text))
-    else {
+    let Some(text) = event.text.as_deref().filter(|text| insertable(text)) else {
         return;
     };
     let mut edit = runtime.edit.borrow_mut();
@@ -398,10 +394,9 @@ pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
     }
 }
 
-pub(super) fn is_single_line_scalar(text: &str) -> bool {
-    let mut chars = text.chars();
-    let Some(ch) = chars.next() else {
-        return false;
-    };
-    chars.next().is_none() && ch != '\n' && ch != '\r'
+/// Insertable into a single-line field: non-empty, no line breaks or
+/// control characters. A terminal paste arrives as one multi-scalar
+/// event, so length is not the bar — line structure is.
+pub(super) fn insertable(text: &str) -> bool {
+    !text.is_empty() && !text.chars().any(char::is_control)
 }

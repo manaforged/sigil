@@ -75,7 +75,11 @@ fn rect_instance_carries_position_and_color() {
 #[test]
 fn draw_rect_instance_packs_solid_centered_stroke() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Gamma);
+    let inst = draw_rect_instance(
+        &DrawRect::new(rect(), rect_style(stroke)),
+        1.0,
+        BlendSpace::Gamma,
+    );
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [2.0, 0.0, 0.0, 0.0]);
@@ -84,7 +88,11 @@ fn draw_rect_instance_packs_solid_centered_stroke() {
 #[test]
 fn draw_rect_instance_packs_dashed_inside_stroke() {
     let stroke = stroke(StrokeStyle::Dashed(6.0), StrokeAlign::Inside, 3.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Gamma);
+    let inst = draw_rect_instance(
+        &DrawRect::new(rect(), rect_style(stroke)),
+        1.0,
+        BlendSpace::Gamma,
+    );
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
     assert_array_close(inst.stroke_meta, [3.0, 1.0, 1.0, 6.0]);
@@ -107,7 +115,11 @@ fn draw_gradient_instance_packs_outside_stroke() {
 #[test]
 fn stroke_color_uses_fill_blend_space_conversion() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);
-    let inst = draw_rect_instance(&DrawRect::new(rect(), rect_style(stroke)), 1.0, BlendSpace::Linear);
+    let inst = draw_rect_instance(
+        &DrawRect::new(rect(), rect_style(stroke)),
+        1.0,
+        BlendSpace::Linear,
+    );
 
     let expected = BlendSpace::Linear.rgba(stroke.color);
     assert_array_close(inst.stroke_params, expected);
@@ -136,7 +148,13 @@ fn draw_rect_instance_packs_uniform_corner_radii() {
 #[test]
 fn draw_gradient_instance_packs_corner_radii() {
     let style = SceneGradientStyle::new(gradient(), CornerRadii::ZERO, 10_000);
-    let inst = draw_gradient_instance(&DrawGradient::new(rect(), style), 1.0, 0, 2, BlendSpace::Linear);
+    let inst = draw_gradient_instance(
+        &DrawGradient::new(rect(), style),
+        1.0,
+        0,
+        2,
+        BlendSpace::Linear,
+    );
 
     assert_array_close(inst.corner_radii, [0.0, 0.0, 0.0, 0.0]);
 }
@@ -160,8 +178,8 @@ fn shadow_instance_expands_by_three_blurs_plus_abs_spread_then_offsets() {
 
 #[test]
 fn inner_shadow_expansion_stays_on_surface_rect() {
-    let shadow = Shadow::new([6.0, -2.0], 8.0, 3.0, [0.0, 0.0, 0.0, 0.35])
-        .with_kind(ShadowKind::Inner);
+    let shadow =
+        Shadow::new([6.0, -2.0], 8.0, 3.0, [0.0, 0.0, 0.0, 0.35]).with_kind(ShadowKind::Inner);
     let expanded = expanded_shadow_rect(rect(), shadow);
 
     assert_eq!(expanded, rect());
@@ -182,8 +200,8 @@ fn draw_shadow_instance_carries_surface_and_expanded_rects() {
 
 #[test]
 fn draw_inner_shadow_instance_encodes_kind_and_surface_quad() {
-    let shadow = Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4])
-        .with_kind(ShadowKind::Inner);
+    let shadow =
+        Shadow::new([2.0, 3.0], 4.0, 1.0, [0.1, 0.2, 0.3, 0.4]).with_kind(ShadowKind::Inner);
     let inst = draw_shadow_instance(rect(), CornerRadii::top(5.0), shadow, 0.5);
 
     assert_array_close(inst.rect, [0.0, 0.0, 48.0, 48.0]);

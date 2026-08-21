@@ -12,11 +12,8 @@
 
 #![deny(missing_docs)]
 #[cfg(test)]
-use criterion as _;
-#[cfg(test)]
-use sigil_kernel as _;
-#[cfg(test)]
-use sigil_layout as _;
+#[path = "lib_tests.rs"]
+mod tests;
 use sigil_reactive as _;
 // `tracing` is only used by the complex-script fallback warning path
 // (active when the `shaping-complex` feature is OFF). When ON, the

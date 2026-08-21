@@ -4,21 +4,6 @@
 
 use std::rc::Rc;
 
-use ahash as _;
-use criterion as _;
-#[cfg(feature = "shaping-complex")]
-use harfrust as _;
-use image as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use unicode_bidi as _;
-use unicode_linebreak as _;
-use unicode_script as _;
-use unicode_segmentation as _;
-
 use sigil_hal::{Dim, LogicalSize, Size};
 use sigil_kernel::TextContent;
 use sigil_layout::TextEngineMeasure;

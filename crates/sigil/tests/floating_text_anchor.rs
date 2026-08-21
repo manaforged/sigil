@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! `floating_text` — damage-floater extension tests (HD-2D Task 11).
 //!
 //! World-anchored tracking (`.at(pos)`) and semantic color mapping
@@ -15,31 +19,12 @@
 
 use std::rc::Rc;
 
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
 use sigil::prelude::*;
 use sigil::widgets::{FCT_POOL_CAPACITY, FctNode, FctState};
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
 use sigil_kernel::{Cx, NodeId};
-use sigil_layout as _;
-use sigil_profile as _;
 use sigil_reactive::{Runtime, signal};
-use sigil_renderer as _;
 use sigil_style::scale::ScaleRole;
 use sigil_style::{Rgba8, Theme};
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 fn placeholder_color() -> Rgba8 {
     Rgba8 {

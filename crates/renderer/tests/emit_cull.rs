@@ -16,7 +16,7 @@ impl TextMeasure for StubMeasure {
         #[allow(clippy::cast_precision_loss)]
         let n = match source {
             TextContent::Static(s) => s.len() as f32,
-            TextContent::Reactive(_) => 8.0,
+            TextContent::Reactive(_) | TextContent::Compute(_) => 8.0,
         };
         sigil_hal::LogicalSize::new(n * 8.0, 20.0)
     }

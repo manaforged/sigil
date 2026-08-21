@@ -10,7 +10,7 @@ description = "Proc macros for Sigil typed actions (#[derive(Action)])."
 readme.workspace = true
 keywords = ["actions", "macros", "gui"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 proc-macro = true

@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Glyph pixel-sharpness check — Wave 0/1 (internal text-quality /
 //! gap-closure plan).
 //! Rasterizes real glyphs, reads back raw RGBA8 pixels, and measures the AA
@@ -17,26 +21,9 @@
 #![allow(clippy::doc_markdown, clippy::missing_const_for_fn)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
-
 use std::sync::mpsc;
 
-use pollster::FutureExt as _;
+use pollster::FutureExt;
 use sigil_renderer::{
     CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, WgpuRenderer,
     shape_glyph_run,

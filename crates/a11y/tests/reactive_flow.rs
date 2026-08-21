@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Production a11y snapshot: `tree()` peeks live signals.
 //!
 //! Launch remaps the AccessKit tree on paint. There is no second
@@ -10,11 +14,6 @@
     clippy::panic,
     clippy::ignored_unit_patterns
 )]
-
-use crossbeam_channel as _;
-use sigil as _;
-use sigil_hal as _;
-use sigil_layout as _;
 
 use accesskit::Role;
 use sigil_a11y::{snapshot, tree};

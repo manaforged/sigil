@@ -58,13 +58,6 @@ impl ScratchpadState {
         }
     }
 
-    /// Compare peeks of `current` and `saved` to derive dirty state
-    /// without subscribing to a signal (test-only helper).
-    #[cfg(test)]
-    fn dirty(self) -> bool {
-        self.current.peek() != self.saved.peek()
-    }
-
     fn save(self) {
         let value = self.current.peek();
         self.saved.set(value);
@@ -85,7 +78,7 @@ fn scratchpad_root(state: ScratchpadState) -> NodeBuilder {
         .role(Role::Main)
         .label("Sigil scratchpad")
         .layout(LayoutStyle::flex_column().gap(12.0).padding(24.0).grow(1.0))
-        .class(classes!("w-full h-full bg-surface"))
+        .class("w-full h-full bg-surface")
         .child(header_row(state))
         .child(editor_row(state))
         .child(footer_row(state))
@@ -100,7 +93,7 @@ fn header_row(state: ScratchpadState) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween),
         )
         .child(label("Scratchpad"))
-        .child(label(state.status_label).class(classes!("text-on-surface")))
+        .child(label(state.status_label).class("text-on-surface"))
 }
 
 fn editor_row(state: ScratchpadState) -> NodeBuilder {
@@ -111,7 +104,7 @@ fn editor_row(state: ScratchpadState) -> NodeBuilder {
                 .placeholder("Type something…")
                 .submit(move |_| state.save()),
         )
-        .child(label(state.char_label).class(classes!("text-on-surface")))
+        .child(label(state.char_label).class("text-on-surface"))
 }
 
 fn footer_row(state: ScratchpadState) -> NodeBuilder {
@@ -127,58 +120,5 @@ fn footer_row(state: ScratchpadState) -> NodeBuilder {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use sigil::reactive::Runtime;
-
-    #[test]
-    fn tree_builds_without_panic() {
-        Runtime::scope("scratchpad-smoke", || {
-            let mut cx = Cx::new_root();
-            let root = app_tree(&mut cx);
-            // `NodeId` doesn't expose a public `is_null()`/`is_some()`
-            // helper, but a built node has a debug repr distinct from
-            // a freshly-constructed default. Sanity: re-building does
-            // not panic and we can produce a second tree under the
-            // same runtime scope without state collision.
-            let _ = format!("{root:?}");
-        });
-    }
-
-    #[test]
-    fn save_marks_clean_and_revert_restores_buffer() {
-        Runtime::scope("scratchpad-state", || {
-            let state = ScratchpadState::new();
-            state.current.set(String::from("hello"));
-            assert!(state.dirty(), "edit should leave buffer dirty");
-
-            state.save();
-            assert!(!state.dirty(), "save should clear dirty flag");
-            assert_eq!(state.saved.peek(), "hello");
-
-            state.current.set(String::from("hello world"));
-            assert!(state.dirty(), "second edit should re-dirty");
-
-            state.revert();
-            assert_eq!(state.current.peek(), "hello");
-            assert!(!state.dirty(), "revert should clear dirty flag");
-        });
-    }
-
-    #[test]
-    fn clear_empties_buffer_and_marks_dirty_when_saved_nonempty() {
-        Runtime::scope("scratchpad-clear", || {
-            let state = ScratchpadState::new();
-            state.current.set(String::from("notes"));
-            state.save();
-            assert!(!state.dirty());
-
-            state.clear();
-            assert_eq!(state.current.peek(), "");
-            assert!(
-                state.dirty(),
-                "clearing a non-empty saved buffer should re-dirty"
-            );
-        });
-    }
-}
+#[path = "main_tests.rs"]
+mod tests;

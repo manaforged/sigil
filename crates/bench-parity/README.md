@@ -18,13 +18,14 @@ regressions inside this repo. It cannot measure other frameworks.
 `sigil-bench-parity` is the substrate that does cross-framework runs:
 
 - One JSON workload spec, multiple framework runners.
-- Each runner returns `RunResult` (samples + summary + equivalence
-  check verdicts + host info) serialised to JSON.
+- Each runner returns `RunResult` (samples, summary, canonical output,
+  source revision, check verdicts, and host info) serialised to JSON.
 - The aggregator turns a directory of `RunResult` JSON files into a
   markdown report with one row per framework per workload. `vs gpui`
   is a number only when [`comparable`](src/compare.rs) holds: same
-  reuse/tick mode, same host, same verdicts (Pass vs N/A is not a
-  pair), both CVs ≤ 0.25. Empty `equivalence_checks` is not a pass.
+  clean source revision, canonical output, reuse/tick mode, host, and
+  verdicts (Pass vs N/A is not a pair), with both CVs ≤ 0.25. Empty
+  `equivalence_checks` is not a pass.
 
 The crate is intentionally **not in `default-members`** of the
 workspace — when GPUI and TanStack runners arrive they will drag
@@ -66,7 +67,8 @@ table JSON — do not aggregate it.
 Quote only a numeric `vs gpui` or `vs frame` cell. `vs gpui` is
 1:1 same mode. `vs frame` is Sigil retained `compute` versus GPUI
 per-sample reconstruct — a 0.2.2 app frame, not 1:1 remount.
-`VOID`, `NOISY`, `— mode`, `— checks`, and `— host` are not speedups.
+`VOID`, `NOISY`, `— source`, `— output`, `— mode`, `— checks`, and
+`— host` are not speedups.
 
 The 1M set is `./scripts/bench-1m.sh` → `results/1m/REPORT.md`.
 A 1M row without `book_held=pass` is a 40-row window, not a million-row
@@ -116,12 +118,10 @@ construct cannot skip shaping.
 ## Output-equivalence rule
 
 Per global the contributor guide verification honesty: **every "X faster than Y"
-claim REQUIRES a matching equivalence_check pass on the same
-RunResult.** The aggregator refuses to emit comparative prose
-across frameworks whose equivalence checks did not all pass. Today
-the aggregator surfaces per-framework rows + equivalence verdicts
-verbatim and leaves any "vs" prose to a human-curated long-form
-analysis doc citing these rows.
+claim requires matching canonical output and passing checks.** The
+canonical output records root geometry, workload-specific counts,
+and visible text from an untimed verification frame. Old result JSON
+without output or source provenance cannot produce a ratio.
 
 ## 1:1 frame (binding)
 
@@ -132,13 +132,18 @@ Each sample clocks **construct the frame tree + layout it**:
 | | GPUI 0.2.2 | Sigil |
 |---|---|---|
 | construct | `uniform_list` / `div` tree | `cx.add(virtual_list \| container)` |
-| layout | `layout_as_root` + `prepaint_at` | `LayoutEngine::compute` |
+| layout | `VisualTestContext::draw` through prepaint | `LayoutEngine::compute` |
+
+The GPUI runner uses a timing element inside the supported draw path.
+It starts the clock before element construction and stops after
+prepaint. It does not call GPUI layout methods outside a draw phase.
 
 `uniform_list` materialises visible rows in `prepaint`. Sigil
 materialises them in `add` + `compute` (`items_bind`). Same viewport,
 row height, cell sizes (`ID_CELL_W` / `TABLE_CELL_W`), and label
 strings. Visible-row count must land in
-`[ceil(vh/rh), ceil(vh/rh)+1]`.
+the declared compatibility band. A ratio also requires the exact same
+viewport rows and text after Sigil's overscan is clipped out.
 
 `vs gpui` is `sigil_median / gpui_median`. Printed only when
 `comparable` holds. A Sigil construct run with

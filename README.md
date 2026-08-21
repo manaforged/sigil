@@ -11,7 +11,7 @@ mdbook serve docs/book
 cargo run -p widget-playground
 ```
 
-Source will be public later. Not taking pull requests yet.
+Licensed under MIT. Issues welcome. Unsolicited pull requests are not accepted.
 
 ## Owned-host verification
 
@@ -20,6 +20,7 @@ builder before promotion:
 
 ```bash
 cargo fmt --check
+python3 scripts/check-inline-tests.py
 cargo clippy --workspace --all-targets -- -D warnings
 cargo check --workspace --all-targets
 cargo test --workspace --no-fail-fast
@@ -50,11 +51,15 @@ Signals, the owner tree, the frame loop, layout, the command scene,
 is not yet stable.
 
 Sigil retains its node tree across frames. A signal write marks the
-nodes it touched, and both layout and paint are gated on that dirty
-set, so an idle frame costs nothing and a one-node change repaints one
-node. `crates/bench-parity` measures this against GPUI on shared
-workloads and refuses to print a comparison unless both sides report
-the same mode, host, and equivalence verdicts.
+nodes it touched. A clean frame skips layout and scene construction.
+On a dirty frame, layout results and per-node paint commands can be
+reused, but the renderer still walks the visible tree and assembles a
+scene. `crates/bench-parity` measures selected CPU workloads against
+GPUI. It prints a ratio only when host and reuse mode match, result
+checks pass, canonical output matches, both runs use the same clean
+source revision, and variance stays within its configured limit. The
+current output proof covers root geometry and workload semantics. It
+does not yet compare rendered pixels.
 
 The layout engine is owned — flexbox, block, and grid, with
 content-hash cache keys; Taffy remains only as a bench corpus. Text is
@@ -73,6 +78,15 @@ dev-dependency for GPU tests). Everything else depends on the
 `sigil-hal` traits, which is what lets `sigil::ui::Host` embed the same
 tree in another engine's frame loop, and `sigil-tui` render it to a
 terminal.
+
+## Influences
+
+Inspired by [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui),
+[Taffy](https://github.com/DioxusLabs/taffy),
+[SolidJS](https://www.solidjs.com/), [Leptos](https://github.com/leptos-rs/leptos),
+Eric Lengyel's [Slug](https://jcgt.org/published/0006/02/02/), and the W3C
+[Flexbox](https://www.w3.org/TR/css-flexbox-1/) and
+[Grid](https://www.w3.org/TR/css-grid-2/) specifications.
 
 ## Design plan
 
@@ -210,4 +224,4 @@ pane demonstrating last-wins atom resolution — and exit on Escape.
 
 ## License
 
-Dual-licensed under MIT or Apache-2.0, at your option.
+[MIT](LICENSE-MIT). Copyright remains with the author. The Sigil name is a trademark; the license does not grant it.

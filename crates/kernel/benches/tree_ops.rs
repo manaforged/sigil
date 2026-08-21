@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Tier 4 tree operation benchmarks for `sigil-kernel`.
 //!
 //! Run with `cargo bench -p sigil-kernel`.
@@ -6,13 +10,6 @@
 
 use std::hint::black_box;
 use std::time::{Duration, Instant};
-
-use accesskit as _;
-use ahash as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_kernel::{Cx, NodeBuilder, container, text};

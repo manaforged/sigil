@@ -1,15 +1,11 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! DR-015 footgun guards on `NodeBuilder::focusable(true)` for fragments.
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
-
-use accesskit as _;
-use ahash as _;
-use criterion as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
 
 use sigil_kernel::{container, fragment};
 

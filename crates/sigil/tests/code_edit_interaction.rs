@@ -1,4 +1,8 @@
 #![allow(missing_docs)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 //! Interaction tests for `code_edit` — the layer screenshots can't reach.
 //!
@@ -7,28 +11,6 @@
 //!   1. a long line must NOT grow the widget's box past its pane (the overflow that
 //!      stole clicks from neighbouring panes — "can't interact with anything");
 //!   2. a click must focus the surface and keys must then reach `on_key`.
-
-// Dev-deps referenced so `unused_crate_dependencies` stays quiet.
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

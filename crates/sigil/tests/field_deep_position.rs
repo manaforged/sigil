@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Diagnostic — a real `text_field` placed deep in a tree (pushed far down,
 //! like the chat composer at the bottom of the window) must render its glyphs
 //! at the field, not escape to the window's top-left.
@@ -27,27 +31,6 @@
     clippy::cast_sign_loss,
     clippy::cast_possible_truncation
 )]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::prelude::*;
 use sigil_hal::KeyEventInit;

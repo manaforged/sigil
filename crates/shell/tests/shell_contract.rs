@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Contract tests for the winit [`Shell`] adapter.
 //!
 //! A real winit event loop is hostile to `cargo test`:
@@ -35,11 +39,6 @@
 
 // `winit` is a regular dep of `sigil-shell`; integration tests inherit
 // its dep graph even though they don't reference winit directly.
-use accesskit as _;
-use accesskit_winit as _;
-use crossbeam_channel as _;
-use smol_str as _;
-use winit as _;
 
 use sigil_shell::{ShellError, WinitShell, WinitWaker};
 

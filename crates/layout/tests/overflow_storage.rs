@@ -1,4 +1,7 @@
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! W1.4 — verify the round-trip from `StyleAtom::OverflowX` / `OverflowY`
 //! through the style adapter into `StyleData::overflow`.
 //!
@@ -14,16 +17,6 @@
 
 // Workspace dev-deps that other layout tests reach for; keep the unused
 // list quiet under -D warnings.
-use ahash as _;
-use allocation_counter as _;
-use criterion as _;
-use rayon as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
-use taffy as _;
 
 use sigil_layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
 use sigil_style::{OverflowKind, StyleAtom};

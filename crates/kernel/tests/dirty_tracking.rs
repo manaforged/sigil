@@ -1,12 +1,9 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
-
-use accesskit as _;
-use criterion as _;
-use sigil_hal as _;
-use sigil_reactive as _;
-use slotmap as _;
-use smallvec as _;
 
 use ahash::AHashSet;
 use sigil_kernel::{Cx, NodeId, container, text};

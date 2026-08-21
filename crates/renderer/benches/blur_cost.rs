@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Phase R12 backdrop-blur cost benchmark.
 //!
 //! Measures the CPU + GPU submission cost of `LayerEffect::LayerBlur`
@@ -41,26 +45,8 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_truncation)]
 
-use ahash as _;
-use bytemuck as _;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use half as _;
-use image as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
-
-use pollster::FutureExt as _;
+use pollster::FutureExt;
 use sigil_hal::Color;
 use sigil_renderer::{
     CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient,

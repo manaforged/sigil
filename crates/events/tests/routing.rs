@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 // Integration tests intentionally keep assertions direct and use
 // indexing for fixed test topology. See the hygiene framework.
@@ -10,13 +14,6 @@ mod routing_helpers;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-
-use accesskit as _;
-use allocation_counter as _;
-use criterion as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use smallvec as _;
 
 use sigil_events::prelude::*;
 use sigil_kernel::prelude::*;

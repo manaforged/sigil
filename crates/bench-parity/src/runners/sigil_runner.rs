@@ -20,9 +20,15 @@ use sigil_text::OwnedTextEngine;
 
 use crate::{
     ACTION_CELL_W, EquivalenceCheck, FrameworkRunner, HostInfo, ID_CELL_W, KRAUSEST_ACTION,
-    KRAUSEST_TEXT_CELLS, LABEL_CELL_W, ROW_WIDTH, SPACER_CELL_W, Surface, TABLE_CELL_W, Workload,
-    krausest_id, krausest_label, visible_band,
+    KRAUSEST_TEXT_CELLS, LABEL_CELL_W, OutputProof, ROW_WIDTH, SPACER_CELL_W, Surface,
+    TABLE_CELL_W, Workload, krausest_id, krausest_label, visible_band,
 };
+
+#[path = "sigil_output.rs"]
+mod output;
+
+pub(super) use output::list_output;
+use output::{build_checks, probe_build};
 
 /// Sigil framework runner.
 #[derive(Debug, Default, Clone, Copy)]
@@ -197,35 +203,56 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
     profile::reset();
     let mut last_visible = 0usize;
     let mut last_first = 0usize;
-    let mut step = || {
-        if !p.tail() {
-            advance_scroll(&mut y, p.row_height_px, max_scroll);
-        }
-        // One runtime per sample so keyed-row effects die with the tree.
-        Runtime::scope("sigil-bench-parity/virtual-list", || {
-            let rows = signal(Rc::clone(&data));
-            let scroll = signal(y);
-            let mut cx = Cx::new_root();
-            let mut engine = new_engine(true);
-            profile::begin_frame();
-            let start = Instant::now();
-            let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
-            let _ = engine.compute(&mut cx, root, available);
-            let _cmds = paint(&cx, root, p.surface(), vw, vh);
-            profile::tick_frame();
-            let miss = u64::from(engine.generation() > 0);
-            last_visible = visible_row_count(&cx, root);
-            last_first = first_from_scroll(y, p.row_height_px);
-            (super::nanos(start), miss)
-        })
+    let (samples_ns, misses) = {
+        let mut step = || {
+            if !p.tail() {
+                advance_scroll(&mut y, p.row_height_px, max_scroll);
+            }
+            // One runtime per sample so keyed-row effects die with the tree.
+            Runtime::scope("sigil-bench-parity/virtual-list", || {
+                let rows = signal(Rc::clone(&data));
+                let scroll = signal(y);
+                let mut cx = Cx::new_root();
+                let mut engine = new_engine(true);
+                profile::begin_frame();
+                let start = Instant::now();
+                let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
+                let _ = engine.compute(&mut cx, root, available);
+                let _cmds = paint(&cx, root, p.surface(), vw, vh);
+                profile::tick_frame();
+                let miss = u64::from(engine.generation() > 0);
+                last_visible = visible_row_count(&cx, root);
+                last_first = first_from_scroll(y, p.row_height_px);
+                (super::nanos(start), miss)
+            })
+        };
+        drain_steps(p, &mut step)
     };
-    let (samples_ns, misses) = drain_steps(p, &mut step);
+    let output = probe_generic_list(workload, &data, y);
     Ok(finish_list(
         workload,
         samples_ns,
         misses,
         (last_visible, book, last_first),
+        Some(output),
     ))
+}
+
+fn probe_generic_list(workload: &Workload, data: &Rc<Vec<RowData>>, y: f32) -> OutputProof {
+    Runtime::scope("sigil-bench-parity/virtual-list-proof", || {
+        let p = &workload.params;
+        let rows = signal(Rc::clone(data));
+        let scroll = signal(y);
+        let mut cx = Cx::new_root();
+        let mut engine = new_engine(true);
+        let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
+        let _ = engine.compute(
+            &mut cx,
+            root,
+            Size::fixed(p.viewport_width_px, p.viewport_height_px),
+        );
+        list_output(&cx, root, first_from_scroll(y, p.row_height_px))
+    })
 }
 
 /// Advance the scroll offset one row, wrapping at the bottom.
@@ -255,26 +282,30 @@ fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
         let _ = engine.compute(&mut cx, root, available);
         profile::enable();
         profile::reset();
-        let mut step = || {
-            if !p.tail() {
-                scroll.update(|value| advance_scroll(value, p.row_height_px, max_scroll));
-            }
-            profile::begin_frame();
-            let start = Instant::now();
-            let before = engine.generation();
-            let _ = engine.compute(&mut cx, root, available);
-            let _cmds = paint(&cx, root, p.surface(), vw, vh);
-            profile::tick_frame();
-            let miss = u64::from(engine.generation() > before);
-            (super::nanos(start), miss)
+        let (samples_ns, misses) = {
+            let mut step = || {
+                if !p.tail() {
+                    scroll.update(|value| advance_scroll(value, p.row_height_px, max_scroll));
+                }
+                profile::begin_frame();
+                let start = Instant::now();
+                let before = engine.generation();
+                let _ = engine.compute(&mut cx, root, available);
+                let _cmds = paint(&cx, root, p.surface(), vw, vh);
+                profile::tick_frame();
+                let miss = u64::from(engine.generation() > before);
+                (super::nanos(start), miss)
+            };
+            drain_steps(p, &mut step)
         };
-        let (samples_ns, misses) = drain_steps(p, &mut step);
         let first = first_from_scroll(scroll.get(), p.row_height_px);
+        let output = list_output(&cx, root, first);
         Ok(finish_list(
             workload,
             samples_ns,
             misses,
             (visible_row_count(&cx, root), book, first),
+            Some(output),
         ))
     })
 }
@@ -286,6 +317,7 @@ fn finish_list(
     samples_ns: Vec<u64>,
     misses: u64,
     proof: (usize, usize, usize),
+    output: Option<OutputProof>,
 ) -> crate::RunResult {
     let (visible, book, first) = proof;
     let mut verify = verify_map(
@@ -321,7 +353,7 @@ fn finish_list(
             crate::tail_window(first, visible, workload.params.row_count),
         );
     }
-    finish(workload, samples_ns, extra, verify)
+    finish(workload, samples_ns, extra, verify, output)
 }
 
 fn krausest_text_ok(
@@ -362,7 +394,7 @@ fn krausest_text_ok(
     clippy::cast_sign_loss,
     clippy::cast_precision_loss
 )]
-fn first_from_scroll(scroll: f32, row_h: f32) -> usize {
+pub(super) fn first_from_scroll(scroll: f32, row_h: f32) -> usize {
     if row_h <= 0.0 {
         0
     } else {
@@ -440,71 +472,51 @@ fn sample_build(
     let surface = p.surface();
     profile::enable();
     profile::reset();
-    let mut step = || {
-        let mut cx = Cx::new_root();
-        let mut engine = new_engine(real_text);
-        profile::begin_frame();
-        let start = Instant::now();
-        let root = cx.add(build());
-        let _ = engine.compute(&mut cx, root, available);
-        paint(
-            &cx,
-            root,
-            surface,
-            p.viewport_width_px,
-            p.viewport_height_px,
-        );
-        let ns = super::nanos(start);
-        profile::tick_frame();
-        (ns, u64::from(engine.generation() > 0))
+    let (samples_ns, misses, measures) = {
+        let mut step = || {
+            let mut cx = Cx::new_root();
+            let mut engine = new_engine(real_text);
+            profile::begin_frame();
+            let start = Instant::now();
+            let root = cx.add(build());
+            let _ = engine.compute(&mut cx, root, available);
+            paint(
+                &cx,
+                root,
+                surface,
+                p.viewport_width_px,
+                p.viewport_height_px,
+            );
+            let ns = super::nanos(start);
+            profile::tick_frame();
+            (ns, u64::from(engine.generation() > 0))
+        };
+        sample_steps(p, &mut step)
     };
+    let verify = verify_map(samples_ns.len(), misses, 0, measures);
+    let extra = build_checks(&verify, real_text, measures);
+    let output = probe_build(workload, real_text, &mut build);
+    finish(workload, samples_ns, extra, verify, Some(output))
+}
+
+fn sample_steps(
+    p: &crate::WorkloadParams,
+    step: &mut impl FnMut() -> (u64, u64),
+) -> (Vec<u64>, u64, u64) {
     for _ in 0..p.warmup {
         let _ = step();
     }
     profile::reset();
-    let mut samples_ns = Vec::with_capacity(p.iterations);
+    let mut samples = Vec::with_capacity(p.iterations);
     let mut misses = 0_u64;
     let mut measures = 0_u64;
     for _ in 0..p.iterations {
         let (ns, miss) = step();
-        samples_ns.push(ns);
+        samples.push(ns);
         misses += miss;
         measures = measures.max(last_measure_count());
     }
-    let verify = verify_map(samples_ns.len(), misses, 0, measures);
-    let extra = build_checks(&verify, real_text, measures);
-    finish(workload, samples_ns, extra, verify)
-}
-
-fn build_checks(
-    verify: &HashMap<String, u64>,
-    real_text: bool,
-    measures: u64,
-) -> HashMap<String, EquivalenceCheck> {
-    let mut extra = HashMap::new();
-    extra.insert(
-        "layout_did_work".into(),
-        if crate::layout_void(verify) {
-            EquivalenceCheck::Fail {
-                detail: "layout_hits == samples".into(),
-            }
-        } else {
-            EquivalenceCheck::Pass
-        },
-    );
-    if real_text {
-        extra.insert(
-            "text_did_work".into(),
-            if measures > 0 {
-                EquivalenceCheck::Pass
-            } else {
-                EquivalenceCheck::Fail {
-                    detail: "text.measure == 0 on every sample".into(),
-                }
-            },
-        );
-    }
-    extra
+    (samples, misses, measures)
 }
 
 pub(super) fn validate(rows: usize, iterations: usize) -> Result<(), String> {
@@ -545,6 +557,7 @@ pub(super) fn finish(
     samples_ns: Vec<u64>,
     extra: HashMap<String, EquivalenceCheck>,
     mut verify: HashMap<String, u64>,
+    output: Option<OutputProof>,
 ) -> crate::RunResult {
     verify
         .entry("reuse".into())
@@ -575,6 +588,8 @@ pub(super) fn finish(
         equivalence_check_results: checks,
         host: HostInfo::capture(),
         verify,
+        output,
+        source: Some(crate::SourceInfo::capture()),
     }
 }
 
@@ -612,54 +627,5 @@ pub(super) fn visible_row_count(cx: &Cx, root: NodeId) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::SigilRunner;
-    use crate::{
-        EquivalenceCheck, EquivalenceCheckSpec, FrameworkRunner, KRAUSEST_TEXT_CELLS, Workload,
-        WorkloadParams,
-    };
-
-    fn krausest_scroll() -> Workload {
-        Workload {
-            workload_id: "virtual-list-krausest-smoke-scroll".into(),
-            description: String::new(),
-            category: "virtual-list".into(),
-            params: WorkloadParams {
-                row_count: 200,
-                row_height_px: 32.0,
-                viewport_width_px: 1280.0,
-                viewport_height_px: 1280.0,
-                row_shape: "krausest-4-cell".into(),
-                scroll_pattern: "linear-one-row-per-frame".into(),
-                iterations: 4,
-                warmup: 1,
-                surface: "layout".into(),
-                reuse: true,
-                cells_per_row: 4,
-            },
-            equivalence_checks: vec![EquivalenceCheckSpec {
-                name: "text_did_work".into(),
-                description: String::new(),
-            }],
-        }
-    }
-
-    #[test]
-    fn scroll_measures_new_row_text() {
-        let result = SigilRunner::new().run(&krausest_scroll()).expect("runner");
-        let got = result.verify.get("text_measure_last").copied().unwrap_or(0);
-        assert!(
-            got >= u64::try_from(KRAUSEST_TEXT_CELLS).unwrap_or(0),
-            "verify={:?}",
-            result.verify
-        );
-        assert!(
-            matches!(
-                result.equivalence_check_results.get("text_did_work"),
-                Some(EquivalenceCheck::Pass)
-            ),
-            "text_did_work {:?}",
-            result.equivalence_check_results
-        );
-    }
-}
+#[path = "sigil_runner_tests.rs"]
+mod tests;

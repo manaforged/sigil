@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Integration tests for the `sigil-async` scheduler adapter — enqueue/drain
 //! and owner-scoping invariants.
 //!
@@ -21,12 +26,6 @@
 // crate-root #![allow]. See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 #![allow(missing_docs)]
-
-// `criterion` is a dev-dep used only by `benches/async_ops.rs`. Cargo
-// pulls every dev-dep into every test binary, which trips
-// `unused_crate_dependencies` here. Alias silences the lint without a
-// real import.
-use criterion as _;
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

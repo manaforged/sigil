@@ -1,5 +1,8 @@
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::expect_used)]
 
 use std::rc::Rc;

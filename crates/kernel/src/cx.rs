@@ -473,6 +473,7 @@ fn dump_text_content(content: &TextContent) -> String {
     match content {
         TextContent::Static(value) => format!("{value:?}"),
         TextContent::Reactive(_) => "<reactive>".to_owned(),
+        TextContent::Compute(_) => "<compute>".to_owned(),
     }
 }
 

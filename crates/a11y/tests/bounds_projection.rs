@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! W5-A11Y (DR-050 §2 mapping table, §5 focus) — `TreeUpdate` projection
 //! over a small real widget tree (button + text field + modal), verified
 //! against an injected per-node bounds lookup.
@@ -17,10 +22,6 @@ use sigil_hal::{Point, Rect};
 use sigil_kernel::{Cx, NodeId, TextContent, container};
 use sigil_layout::prelude::*;
 use sigil_reactive::{Runtime, signal};
-
-// `AccessKitBridge`'s backing dep — every integration test in this crate
-// pulls all dev-deps, so alias to silence `unused_crate_dependencies`.
-use crossbeam_channel as _;
 
 struct ZeroTextMeasure;
 

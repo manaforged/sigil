@@ -23,8 +23,7 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
-use pollster::FutureExt as _;
-
+use pollster::FutureExt;
 use sigil::prelude::*;
 use sigil_hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,

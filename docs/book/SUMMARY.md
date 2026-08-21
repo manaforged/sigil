@@ -11,6 +11,7 @@
 - [Widgets](03-widgets.md)
 - [Testing](04-testing.md)
 - [Profiling](05-profile.md)
+- [The terminal host](06-terminal.md)
 
 # Architecture
 

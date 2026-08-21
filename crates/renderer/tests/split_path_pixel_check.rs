@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Pixel-verification test for Phase R13: DR-029 split-path render API.
 //!
 //! Exercises `submit_screen` (new public API) and `submit_world` (stub),
@@ -15,26 +19,6 @@
 #![allow(clippy::doc_markdown, clippy::missing_const_for_fn)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
-
-use ahash as _;
-use bytemuck as _;
-use criterion as _;
-use half as _;
-use image as _;
-use proptest as _;
-use raw_window_handle as _;
-use sigil_hal as _;
-use sigil_icons as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_shell as _;
-use sigil_style as _;
-use sigil_text as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-#[cfg(windows)]
-use windows_core as _;
 
 use sigil_hal::Color;
 use sigil_renderer::{

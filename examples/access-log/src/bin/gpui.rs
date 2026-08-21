@@ -1,21 +1,30 @@
 //! GPUI 0.2.2 live tape: same book, same tick. Rebuilds the window every tick.
 
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 
+#[cfg(feature = "gpui-window")]
 use std::ops::Range;
+#[cfg(feature = "gpui-window")]
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "gpui-window")]
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "gpui-window")]
 use access_log::{
     AccessLine, HEADERS, ROW_H, TICK_MS, VIEW_H, VIEW_W, col_w, generate, row_count, tick_visible,
     visible_rows,
 };
+#[cfg(feature = "gpui-window")]
 use gpui::{
     App, Application, Bounds, Context, ScrollStrategy, SharedString, Timer,
     UniformListScrollHandle, Window, WindowBounds, WindowOptions, div, prelude::*, px, rgb, size,
     uniform_list,
 };
 
+#[cfg(feature = "gpui-window")]
 struct AccessLog {
     book: Arc<Mutex<Vec<AccessLine>>>,
     scroll: UniformListScrollHandle,
@@ -23,6 +32,7 @@ struct AccessLog {
     last_rebuild: Duration,
 }
 
+#[cfg(feature = "gpui-window")]
 impl AccessLog {
     fn tick(&mut self, cx: &mut Context<'_, Self>) {
         let vis = visible_rows();
@@ -33,6 +43,7 @@ impl AccessLog {
     }
 }
 
+#[cfg(feature = "gpui-window")]
 impl Render for AccessLog {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<'_, Self>) -> impl IntoElement {
         let start = Instant::now();
@@ -115,6 +126,7 @@ impl Render for AccessLog {
     }
 }
 
+#[cfg(feature = "gpui-window")]
 fn header_row(w: f32) -> impl IntoElement {
     let mut row = div().flex().flex_row().h(px(20.0)).w(px(VIEW_W));
     for header in HEADERS {
@@ -128,6 +140,7 @@ fn header_row(w: f32) -> impl IntoElement {
     row
 }
 
+#[cfg(feature = "gpui-window")]
 fn tape_row(index: usize, line: AccessLine, w: f32) -> impl IntoElement {
     let mut row = div().flex().flex_row().h(px(ROW_H)).w(px(VIEW_W));
     for col in 0..HEADERS.len() {
@@ -141,6 +154,7 @@ fn tape_row(index: usize, line: AccessLine, w: f32) -> impl IntoElement {
     row
 }
 
+#[cfg(feature = "gpui-window")]
 fn main() {
     let n = row_count();
     eprintln!("gpui live tape: allocating {n} lines");
@@ -175,3 +189,6 @@ fn main() {
         .unwrap();
     });
 }
+
+#[cfg(not(feature = "gpui-window"))]
+fn main() {}

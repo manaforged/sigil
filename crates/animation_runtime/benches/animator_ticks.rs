@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Animator-tick micro-benchmark — W5.0b baseline for W5.1.
 //!
 //! Establishes the per-frame cost of [`tick(dt)`](sigil_animation_runtime::tick)
@@ -15,9 +19,6 @@
     clippy::unwrap_used,
     clippy::panic
 )]
-
-// Workspace deps inherited by the bench target but not directly named.
-use sigil_style as _;
 
 use std::hint::black_box;
 

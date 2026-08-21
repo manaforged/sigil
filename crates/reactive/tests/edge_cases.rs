@@ -1,3 +1,8 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 //! Edge-case behaviour tests beyond the DR-005 happy paths.
 //!
 //! Each test asserts a specific contract that is easy to break by
@@ -8,15 +13,6 @@
 //! `Signal::update` closure.
 
 #![allow(missing_docs)]
-
-// Silence `unused_crate_dependencies` — criterion is a dev-dep for
-// benches, smallvec a regular dep for subscriber storage; neither is
-// referenced in this test file.
-use criterion as _;
-use sigil as _;
-use sigil_actions as _;
-use smallvec as _;
-use tokio as _;
 
 use std::cell::Cell;
 use std::rc::Rc;

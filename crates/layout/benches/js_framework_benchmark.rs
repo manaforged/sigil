@@ -1,3 +1,7 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 //! Sigil-layout vs Taffy on the **krausest js-framework-benchmark**
 //! workload (<https://github.com/krausest/js-framework-benchmark>).
 //!
@@ -51,15 +55,6 @@ use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
-
-use ahash as _;
-use allocation_counter as _;
-use rayon as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_style as _;
-use slotmap as _;
-use smallvec as _;
 
 const VIEWPORT_WIDTH: f32 = 1_280.0;
 const VIEWPORT_HEIGHT: f32 = 720.0;

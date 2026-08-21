@@ -2,22 +2,6 @@
 
 #![allow(missing_docs, clippy::unwrap_used)]
 
-use ahash as _;
-use criterion as _;
-#[cfg(feature = "shaping-complex")]
-use harfrust as _;
-use image as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_reactive as _;
-use skrifa as _;
-use smallvec as _;
-use tracing as _;
-use unicode_bidi as _;
-use unicode_linebreak as _;
-use unicode_script as _;
-use unicode_segmentation as _;
-
 use sigil_hal::ParagraphMetrics;
 use sigil_style::TextStyle;
 use sigil_text::{OwnedTextEngine, TextConfig};

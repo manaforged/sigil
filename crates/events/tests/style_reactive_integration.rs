@@ -1,12 +1,12 @@
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use std::cell::Cell;
 use std::rc::Rc;
-
-use accesskit as _;
-use criterion as _;
-use smallvec as _;
 
 use sigil_events::prelude::*;
 use sigil_hal::{ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind};

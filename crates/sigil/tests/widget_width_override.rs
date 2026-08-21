@@ -8,31 +8,11 @@
 //! Surfaced by the Kimi production-readiness review (2026-07-20).
 
 #![allow(missing_docs)]
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 #![allow(clippy::unwrap_used)]
-
-use arboard as _;
-use criterion as _;
-use image as _;
-use pollster as _;
-use sigil_actions as _;
-use sigil_animation as _;
-use sigil_animation_runtime as _;
-use sigil_app as _;
-use sigil_bidi as _;
-use sigil_events as _;
-use sigil_hal as _;
-use sigil_kernel as _;
-use sigil_layout as _;
-use sigil_profile as _;
-use sigil_reactive as _;
-use sigil_renderer as _;
-use sigil_style as _;
-use sigil_tasks as _;
-#[cfg(feature = "tui")]
-use sigil_tui as _;
-use sigil_widgets as _;
-use wgpu as _;
 
 use sigil::prelude::*;
 
@@ -50,6 +30,7 @@ impl TextMeasure for ProportionalMeasure {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
+            TextContent::Compute(_) => content.resolve().len(),
         };
         let bounded = u16::try_from(len).unwrap_or(u16::MAX);
         sigil_hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)

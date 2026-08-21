@@ -10,7 +10,7 @@ description = "Sigil application shell — sigil::launch, opinionated frame loop
 readme.workspace = true
 keywords = ["gui", "framework", "app"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 
@@ -53,6 +53,7 @@ crossbeam-channel = { workspace = true }
 # reload on fs change events.
 notify = { workspace = true }
 toml = { workspace = true }
+unicode-width = { workspace = true }
 # Native file dialogs (open / save / folder). Uses the OS-native picker on
 # macOS + Windows (the primary targets); Linux uses GTK3 by default.
 rfd = { version = "0.15", optional = true }

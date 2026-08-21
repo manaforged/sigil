@@ -6,7 +6,10 @@
 //! `recover_from_panic` so the NEXT frame runs. Before this, a panic in a
 //! widget handler took the process down, contradicting the config.
 
-#![allow(unused_crate_dependencies)]
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
 
 use std::cell::Cell;
 use std::panic::{AssertUnwindSafe, catch_unwind};

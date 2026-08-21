@@ -10,7 +10,7 @@ description = "Headless event routing, hit-testing, focus, and builder handlers 
 readme.workspace = true
 keywords = ["events", "input", "gui", "keyboard"]
 categories = ["gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "/LICENSE-APACHE"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
 

@@ -139,3 +139,52 @@ impl DrawGlyphRun {
         Self { run }
     }
 }
+
+#[doc(hidden)]
+/// Shape a text run for command-scene emission.
+#[must_use]
+pub fn shape_glyph_run(
+    rect: Rect,
+    text: String,
+    color: Rgba8,
+    style: TextStyle,
+    opacity: u16,
+) -> GlyphRun {
+    shape_glyph_run_with(rect, text, color, style, opacity, false)
+}
+
+/// Shape a text run, optionally single-line ellipsis-truncated to `rect`.
+///
+/// `ellipsize` selects [`OwnedTextEngine::layout_paragraph_ellipsized`]
+/// (one line, `…` when it overflows `rect.width`) over the default
+/// wrap-to-width paragraph. The paint pass sets it from the text node's
+/// `ellipsis` flag; other callers use [`shape_glyph_run`].
+// The five glyph-run fields are all intrinsic to `GlyphRun::new`; the flag
+// is one more. Splitting them into a struct here would only obscure them.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub(crate) fn shape_glyph_run_with(
+    rect: Rect,
+    text: String,
+    color: Rgba8,
+    style: TextStyle,
+    opacity: u16,
+    ellipsize: bool,
+) -> GlyphRun {
+    let max_width = rect.width.max(1.0);
+    let engine = sigil_text::OwnedTextEngine::thread();
+    let paragraph = if ellipsize {
+        engine.layout_paragraph_ellipsized(&text, max_width, &style)
+    } else {
+        engine.layout_paragraph_styled(&text, Some(max_width), &style)
+    };
+    let run = GlyphRun::new(rect, text, color, style, opacity);
+    // A malformed user font can fail layout; a glyphless run beats an abort.
+    match paragraph {
+        Ok(paragraph) => run.with_paragraph(paragraph),
+        Err(err) => {
+            tracing::warn!("text layout failed, run paints no glyphs: {err}");
+            run
+        }
+    }
+}
