@@ -16,6 +16,7 @@ use crate::layer_composite::{CompositeRequest, LayerCompositePipeline};
 use crate::scene_command::walk::{Walk, WalkCtx, translation};
 use crate::scene_command::{CommandScene, LayerEffect, LayerScope, SceneCommand};
 use crate::scene_paint::PaintCtx;
+use crate::split_encoder::SplitEncoder;
 
 #[path = "layer_walk/geometry.rs"]
 mod geometry;
@@ -335,7 +336,7 @@ fn blur_pipeline_for<'a>(
         .expect("blur pipeline index was just constructed from the vec")
 }
 
-fn clear_view(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView) {
+fn clear_view(encoder: &mut SplitEncoder, view: &wgpu::TextureView) {
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer layer clear pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {

@@ -71,6 +71,7 @@ pub mod scenes;
 mod scissor;
 mod shadow_paint;
 mod slug;
+mod split_encoder;
 mod sprite_atlas;
 mod sprite_paint;
 pub mod style;

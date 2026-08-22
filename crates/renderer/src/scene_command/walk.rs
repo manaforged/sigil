@@ -15,6 +15,7 @@ use crate::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance}
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
 use crate::slug::SlugTextPipeline;
+use crate::split_encoder::SplitEncoder;
 use crate::sprite_paint::SpritePipeline;
 
 const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
@@ -22,11 +23,14 @@ const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
-    /// Shared command encoder. Every draw handler records its pass into this
-    /// instead of creating + submitting its own — the wrapper that built the
-    /// `WalkCtx` owns the single `queue.submit`, so a host can compose the
-    /// whole scene into its frame graph in one submission (DR-054).
-    pub(crate) encoder: &'a mut wgpu::CommandEncoder,
+    /// Shared command encoder, wrapped in the pass-counting
+    /// [`SplitEncoder`](SplitEncoder). Every draw
+    /// handler records its pass into this instead of creating + submitting
+    /// its own — the wrapper that built the `WalkCtx` owns the final
+    /// `queue.submit`, so a host composes the whole scene into its frame
+    /// graph in one submission (DR-054). Past the pass budget the wrapper
+    /// submits intermediate chunks itself; ordering is unchanged.
+    pub(crate) encoder: &'a mut SplitEncoder,
     /// Sink for transient offscreen layer textures. The layer walker pushes
     /// each `LayerHandle` here instead of dropping it at the end of the layer,
     /// so the texture outlives the recorded composite pass — which only runs

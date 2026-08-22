@@ -674,16 +674,16 @@ impl<'a> MeasureScope<'a> {
         }
         // A wrapping node measures against its containing block's content
         // width (explicit width first, else the `wrap_to` the solver
-        // supplies), so the paragraph engine breaks lines there. A hugging
-        // node keeps the historic behaviour: measure against the pass's
-        // available space and take the natural single-line extent.
+        // supplies), so the paragraph engine breaks lines there. A
+        // non-wrapping node measures unconstrained (max-content) — it must
+        // never break at the pass's definite available (viewport) width.
         let width = if text.wrap {
             known.width.or(wrap_to).map_or_else(
                 || space_constraint_to_hal_dim(self.available.w),
                 sigil_hal::Dim::Fixed,
             )
         } else {
-            space_constraint_to_hal_dim(self.available.w)
+            sigil_hal::Dim::MaxContent
         };
         let space = sigil_hal::Size {
             width,

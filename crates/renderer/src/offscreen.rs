@@ -16,6 +16,7 @@ use crate::scene_command::walk::{WalkCtx, walk_command_scene};
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
 use crate::slug::SlugTextPipeline;
+use crate::split_encoder::SplitEncoder;
 use crate::sprite_paint::SpritePipeline;
 
 /// Wgpu render target for command-scene offscreen capture.
@@ -87,6 +88,7 @@ impl WgpuRenderer {
         // Transient layer textures must outlive the recorded passes; they live
         // here until after the submit below.
         let mut retained = Vec::new();
+        let mut encoder = SplitEncoder::new(target.device, target.queue, encoder);
         let result = if ready.device == *target.device {
             walk_with_ready(
                 ready,
@@ -105,7 +107,9 @@ impl WgpuRenderer {
                 last_frame_stats,
             )
         };
-        target.queue.submit(core::iter::once(encoder.finish()));
+        target
+            .queue
+            .submit(core::iter::once(encoder.into_inner().finish()));
         result
     }
 }
@@ -113,7 +117,7 @@ impl WgpuRenderer {
 #[allow(clippy::too_many_arguments)]
 fn walk_with_ready(
     ready: &mut ReadyState,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut SplitEncoder,
     retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,
@@ -164,7 +168,7 @@ fn walk_with_ready(
     reason = "`offscreen` is a private module; pub(crate) reads cleaner than pub-and-then-re-export"
 )]
 pub(crate) fn walk_with_temporary_pipelines(
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut SplitEncoder,
     retained: &mut Vec<LayerHandle>,
     target: OffscreenTarget<'_>,
     scene: &CommandScene,

@@ -14,6 +14,7 @@
 use crate::blur_shader::BLUR_SHADER;
 use crate::error::RendererError;
 use crate::layer_pool::{LayerHandle, LayerPool};
+use crate::split_encoder::SplitEncoder;
 
 mod setup;
 
@@ -280,9 +281,10 @@ impl BlurPipeline {
 pub(crate) struct PassCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
     /// Shared encoder the blur passes record into. The layer walker owns the
-    /// single submission, so blur output is sequenced with the surrounding
-    /// clear / composite passes in one encoder (DR-054).
-    pub(crate) encoder: &'a mut wgpu::CommandEncoder,
+    /// final submission, so blur output is sequenced with the surrounding
+    /// clear / composite passes in one encoder (DR-054); the wrapper splits
+    /// the submission only past the pass budget.
+    pub(crate) encoder: &'a mut SplitEncoder,
     /// Sink for the intermediate pyramid + upsample textures, kept alive until
     /// the owner submits `encoder` (the recorded passes reference them).
     pub(crate) retained: &'a mut Vec<LayerHandle>,

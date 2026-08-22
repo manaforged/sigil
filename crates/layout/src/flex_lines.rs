@@ -67,8 +67,12 @@ impl FlexItem {
         // pushing siblings off-screen — matching the existing engine
         // behaviour the golden corpus was baked against.
         let min_main = min_main.or_else(|| {
-            node.children()
-                .is_empty()
+            // An ellipsizing leaf truncates to whatever main size it is
+            // given, so its automatic minimum is zero — flooring it at
+            // its content width would crush its fixed-width siblings in
+            // an over-full line instead.
+            let ellipsizes = node.text().is_some_and(|text| text.ellipsis);
+            (node.children().is_empty() && !ellipsizes)
                 .then(|| automatic_min_main(style, ctx.axes, basis))
                 .flatten()
         });

@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use sigil_hal::{Point, Rect};
+use sigil_hal::{ParagraphMetrics, Point, Rect};
 use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use sigil_layout::LayoutResult;
 use sigil_style::{
@@ -365,34 +365,7 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     let style = paint.style;
     match &node.kind {
         NodeType::Container => push_container(scene, id, rect, paint),
-        NodeType::Text {
-            content, ellipsis, ..
-        } => {
-            if let Some(color) = style.text_color {
-                let text_style = text_style_for(node, paint.theme, paint.text_base);
-                let run = shape_glyph_run_with(
-                    rect,
-                    text_content(content),
-                    color,
-                    text_style.clone(),
-                    style.opacity,
-                    *ellipsis,
-                );
-                // Color-bitmap glyphs (emoji) have no outline for the Slug
-                // pass; emit them as RGBA images alongside the mono run.
-                if let Some(paragraph) = run.paragraph() {
-                    crate::color_glyph_paint::emit_color_glyphs(
-                        scene,
-                        id,
-                        rect,
-                        paragraph,
-                        style.opacity,
-                    );
-                }
-                scene.draw_glyph_run_for_node(id, run);
-                push_text_decoration(scene, rect, color, style.opacity, &text_style);
-            }
-        }
+        NodeType::Text { .. } => push_text(scene, id, node, rect, paint),
         NodeType::Image { source, fit } => {
             scene.draw_image(crate::scene_command::DrawImage {
                 node: Some(id),
@@ -404,6 +377,52 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
         }
         NodeType::Fragment => {}
     }
+}
+
+/// Emit a text leaf's glyph run. `ellipsize()` implies clip-to-box: when
+/// the shaped run still exceeds the layout box (a bare `…` that itself
+/// does not fit, or a box shorter than one line), it paints clipped to
+/// the box. Non-ellipsized text keeps the historic overflow-visible
+/// behaviour — clipping there is the container's `overflow` — so scenes
+/// without ellipsis emit no clip and are untouched.
+fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
+    let style = paint.style;
+    let NodeType::Text {
+        content, ellipsis, ..
+    } = &node.kind
+    else {
+        return;
+    };
+    let Some(color) = style.text_color else {
+        return;
+    };
+    let text_style = text_style_for(node, paint.theme, paint.text_base);
+    let run = shape_glyph_run_with(
+        rect,
+        text_content(content),
+        color,
+        text_style.clone(),
+        style.opacity,
+        *ellipsis,
+    );
+    let overflows = *ellipsis
+        && run.paragraph().is_some_and(|paragraph| {
+            paragraph.width() > rect.width + 0.5 || paragraph.height() > rect.height + 0.5
+        });
+    let emit = |target: &mut SceneBuilder| {
+        // Color-bitmap glyphs (emoji) have no outline for the Slug pass;
+        // emit them as RGBA images alongside the mono run.
+        if let Some(paragraph) = run.paragraph() {
+            crate::color_glyph_paint::emit_color_glyphs(target, id, rect, paragraph, style.opacity);
+        }
+        target.draw_glyph_run_for_node(id, run);
+    };
+    if overflows {
+        scene.with_clip(rect, emit);
+    } else {
+        emit(scene);
+    }
+    push_text_decoration(scene, rect, color, style.opacity, &text_style);
 }
 
 /// Resolve a node's border into a paint stroke (DR-057 D3). Width with

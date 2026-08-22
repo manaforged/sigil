@@ -19,6 +19,7 @@ mod rect_shader;
 
 use crate::frame_upload::UploadedRange;
 use crate::scene_instance::RectInstance;
+use crate::split_encoder::SplitEncoder;
 use rect_shader::RECT_SHADER;
 
 /// Arguments to [`ScenePipeline::paint`]. Bundled to keep the argument
@@ -26,7 +27,7 @@ use rect_shader::RECT_SHADER;
 pub(crate) struct PaintCtx<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
-    pub encoder: &'a mut wgpu::CommandEncoder,
+    pub encoder: &'a mut SplitEncoder,
     pub view: &'a wgpu::TextureView,
     pub viewport: (f32, f32),
     pub clip: Option<sigil_hal::Rect>,

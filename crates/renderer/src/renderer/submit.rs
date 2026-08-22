@@ -8,6 +8,7 @@ use crate::frame_stats::FrameStats;
 use crate::layer_pool::LayerHandle;
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
+use crate::split_encoder::SplitEncoder;
 use crate::surface::WgpuSurface;
 
 /// Screen-space submission target. Orthographic, no depth, alpha-over.
@@ -147,7 +148,7 @@ pub(super) fn walk_screen(
     ready: &mut ReadyState,
     device: &wgpu::Device,
     queue: &wgpu::Queue,
-    encoder: &mut wgpu::CommandEncoder,
+    encoder: &mut SplitEncoder,
     retained: &mut Vec<LayerHandle>,
     view: &wgpu::TextureView,
     viewport: (f32, f32),
@@ -246,6 +247,7 @@ pub(super) fn render_command_scene_surface(
     let mut retained = Vec::new();
     let scale = surface_text_scale(surface, viewport);
     let format = surface.config.format;
+    let mut encoder = SplitEncoder::new(&device, &queue, encoder);
     walk_screen(
         ready,
         &device,
@@ -259,7 +261,7 @@ pub(super) fn render_command_scene_surface(
         scene,
         stats,
     )?;
-    queue.submit(core::iter::once(encoder.finish()));
+    queue.submit(core::iter::once(encoder.into_inner().finish()));
     frame.present();
     if let Some(pool) = ready.layer_pool.as_mut() {
         for handle in retained {

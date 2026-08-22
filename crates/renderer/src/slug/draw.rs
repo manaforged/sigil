@@ -18,6 +18,7 @@ use crate::slug::{
     cache::{GlyphCache, GlyphKey},
     pipeline::{create_bind_group_layout, create_pipeline},
 };
+use crate::split_encoder::SplitEncoder;
 
 /// Parameters for one [`SlugTextPipeline::draw_paragraph`] call.
 pub struct DrawParams<'a> {
@@ -144,13 +145,16 @@ impl SlugTextPipeline {
     /// Panics if the paragraph contains more than `u32::MAX` glyphs, which
     /// cannot occur in practice.
     pub fn draw_paragraph(&mut self, params: &DrawParams<'_>) -> Result<(), RendererError> {
-        let mut encoder = params
+        let encoder = params
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("slug-encoder"),
             });
-        self.record_paragraph(&mut encoder, params)?;
-        params.queue.submit(core::iter::once(encoder.finish()));
+        let mut encoder = SplitEncoder::new(params.device, params.queue, encoder);
+        self.record_paragraph_in_frame(&mut encoder, params, None)?;
+        params
+            .queue
+            .submit(core::iter::once(encoder.into_inner().finish()));
         Ok(())
     }
 
@@ -171,13 +175,26 @@ impl SlugTextPipeline {
         encoder: &mut wgpu::CommandEncoder,
         params: &DrawParams<'_>,
     ) -> Result<(), RendererError> {
-        self.record_paragraph_in_frame(encoder, params, None)
+        // SplitEncoder owns the encoder it chunks; swap the caller's out for
+        // a placeholder and put the live one back before returning.
+        let real = std::mem::replace(
+            encoder,
+            params
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("slug-encoder placeholder"),
+                }),
+        );
+        let mut split = SplitEncoder::new(params.device, params.queue, real);
+        let result = self.record_paragraph_in_frame(&mut split, params, None);
+        *encoder = split.into_inner();
+        result
     }
 
     #[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
     pub(crate) fn record_paragraph_in_frame(
         &mut self,
-        encoder: &mut wgpu::CommandEncoder,
+        encoder: &mut SplitEncoder,
         params: &DrawParams<'_>,
         frame: Option<(&mut FrameUploads, &mut FrameStats)>,
     ) -> Result<(), RendererError> {

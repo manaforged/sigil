@@ -17,6 +17,7 @@ use crate::device_state::DeviceState;
 use crate::error::RendererError;
 use crate::frame_stats::FrameStats;
 use crate::scene_command::CommandScene;
+use crate::split_encoder::SplitEncoder;
 use crate::surface::WgpuSurface;
 use crate::window_handle::WindowHandle;
 
@@ -205,12 +206,23 @@ impl WgpuRenderer {
         // caches with handles created on the wrong device. Foreign-device
         // callers get a fresh per-call pipeline set via
         // `walk_with_temporary_pipelines` (no cache mutation).
-        if ready.device == *target.device {
+        // SplitEncoder owns the encoder it chunks; swap the caller's out for
+        // a placeholder and put the live one back before returning.
+        let real = std::mem::replace(
+            encoder,
+            target
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("sigil-renderer record_screen placeholder"),
+                }),
+        );
+        let mut split = SplitEncoder::new(target.device, target.queue, real);
+        let result = if ready.device == *target.device {
             walk_screen(
                 ready,
                 target.device,
                 target.queue,
-                encoder,
+                &mut split,
                 &mut self.frame_transients,
                 target.view,
                 target.viewport,
@@ -221,13 +233,15 @@ impl WgpuRenderer {
             )
         } else {
             crate::offscreen::walk_with_temporary_pipelines(
-                encoder,
+                &mut split,
                 &mut self.frame_transients,
                 crate::offscreen::OffscreenTarget::from(target),
                 scene,
                 &mut self.last_frame_stats,
             )
-        }
+        };
+        *encoder = split.into_inner();
+        result
     }
 
     /// Drop the previous call's transient layer textures (their submission
