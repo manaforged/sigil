@@ -20,6 +20,7 @@ use super::super::interactive::interactive;
 use super::super::shared::label;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{TableColumn, flex_cell};
+use super::hscroll::HScroll;
 use super::state::{SortDir, TableState};
 
 const RESIZE_HANDLE: f32 = 8.0;
@@ -53,18 +54,19 @@ fn resize_handle<Row: 'static>(
 }
 
 /// Build the header row. Cells rebuild when the column layout changes.
+/// The cell track slides horizontally inside the stationary header
+/// (which keeps the full-width background and bottom border), in
+/// lockstep with the body rows via the shared `hscroll` offset.
 pub(super) fn header_row<Row: 'static>(
     state: &TableState<Row>,
     height: f32,
     chrome: &TableChrome<Row>,
+    hscroll: HScroll,
 ) -> NodeBuilder {
     let state = state.clone();
     let chrome = chrome.clone();
-    container()
-        .role(Role::Row)
-        .row_index(1)
-        .layout(header_layout(height))
-        .class("bg-surface border-b border-gray-6")
+    let track = container()
+        .layout(track_layout(height))
         .children_reactive(move || {
             let _ = state.column_layout().get();
             state
@@ -84,7 +86,13 @@ pub(super) fn header_row<Row: 'static>(
                     )
                 })
                 .collect::<Vec<_>>()
-        })
+        });
+    container()
+        .role(Role::Row)
+        .row_index(1)
+        .layout(header_layout(height))
+        .class("bg-surface border-b border-gray-6")
+        .child(hscroll.shifted(track))
 }
 
 fn header_layout(height: f32) -> LayoutStyle {
@@ -94,6 +102,17 @@ fn header_layout(height: f32) -> LayoutStyle {
         .fill_width()
         .height(height)
         .shrink(0.0)
+        .align_items(AlignItems::Center)
+}
+
+fn track_layout(height: f32) -> LayoutStyle {
+    // Flex item of the header: grow fills the viewport when content
+    // fits; the reactive MinWidth atom floors it at the column extent
+    // when overflowing, so the shifted track box always spans its
+    // cells (the emit walk culls subtrees whose box misses the clip).
+    LayoutStyle::flex_row()
+        .grow(1.0)
+        .height(height)
         .align_items(AlignItems::Center)
 }
 

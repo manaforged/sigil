@@ -44,16 +44,64 @@ fn jump(event: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
 }
 
 pub(crate) fn wheel(event: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, max: f32) {
-    let dy = match event.delta {
-        ScrollDelta::Pixels(point) => point.y,
-        ScrollDelta::Lines(lines) => (lines.y * SCROLL_LINE).clamp(-height, height),
-    };
-    let current = scroll_y.peek();
-    let next = (current - dy).clamp(0.0, max);
-    if (next - current).abs() > f32::EPSILON {
-        scroll_y.set(next);
+    let (_, dy) = deltas(event, height, height);
+    if apply(scroll_y, dy, max) {
         event.stop_propagation();
     }
+}
+
+/// Horizontal wheel position bound into a two-axis [`wheel2`] handler:
+/// `(scroll_x, max_scroll_x, viewport_width)`, all live signals so column
+/// resizes re-clamp per event.
+pub(crate) type WheelX = (Signal<f32>, Signal<f32>, Signal<f32>);
+
+/// Two-axis wheel: consume the y delta against `scroll_y` and the x delta
+/// against the [`WheelX`] binding, stopping propagation when either moved.
+/// macOS trackpads emit both axes in one event; splitting them across
+/// handlers would drop the horizontal half of a diagonal gesture.
+pub(crate) fn wheel2(
+    event: &mut ScrollEvent,
+    scroll_y: Signal<f32>,
+    height: f32,
+    max_y: f32,
+    x: WheelX,
+) {
+    let (dx, dy) = deltas(event, height, x.2.peek());
+    let moved = apply(scroll_y, dy, max_y) | apply(x.0, dx, x.1.peek());
+    if moved {
+        event.stop_propagation();
+    }
+}
+
+/// Horizontal-only wheel handler for surfaces without vertical scrolling
+/// (e.g. the table's header band and root).
+pub(crate) fn wheel_x(event: &mut ScrollEvent, scroll_x: Signal<f32>, width: f32, max: f32) {
+    let (dx, _) = deltas(event, width, width);
+    if apply(scroll_x, dx, max) {
+        event.stop_propagation();
+    }
+}
+
+fn deltas(event: &ScrollEvent, height: f32, width: f32) -> (f32, f32) {
+    match event.delta {
+        ScrollDelta::Pixels(point) => (point.x, point.y),
+        ScrollDelta::Lines(lines) => (
+            (lines.x * SCROLL_LINE).clamp(-width, width),
+            (lines.y * SCROLL_LINE).clamp(-height, height),
+        ),
+    }
+}
+
+/// Scroll by `-delta` (natural scrolling: content follows the finger),
+/// clamped to `[0, max]`. Returns whether the position moved.
+fn apply(scroll: Signal<f32>, delta: f32, max: f32) -> bool {
+    let current = scroll.peek();
+    let next = (current - delta).clamp(0.0, max);
+    if (next - current).abs() > f32::EPSILON {
+        scroll.set(next);
+        return true;
+    }
+    false
 }
 
 pub(crate) fn pin_to_bottom(scroll_y: Signal<f32>, max_scroll: Signal<f32>) {

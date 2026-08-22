@@ -21,7 +21,7 @@ use sigil_reactive::{Signal, derived_eq, effect, signal};
 use std::ops::Deref;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::scroll::{pin_to_bottom as follow_bottom, wheel};
+use super::scroll::{WheelX, pin_to_bottom as follow_bottom, wheel, wheel2};
 use super::table::Identifiable;
 use keyboard::{KeyboardRuntime, KeyboardRuntimeInit, attach_key_handlers};
 use render::{
@@ -90,6 +90,7 @@ struct BuildAxes {
     viewport_height: f32,
     width: render::WidthSpec,
     scroll_y: Signal<f32>,
+    scroll_x: Option<WheelX>,
     focused_row: Signal<usize>,
     selection_state: Signal<SelectionState>,
 }
@@ -172,8 +173,10 @@ fn attach_wheel(
 ) -> NodeBuilder {
     let scroll_y = axes.scroll_y;
     let viewport_height = axes.viewport_height;
-    root.on_scroll(move |ev| {
-        wheel(ev, scroll_y, viewport_height, max_scroll());
+    let scroll_x = axes.scroll_x;
+    root.on_scroll(move |ev| match scroll_x {
+        Some(x) => wheel2(ev, scroll_y, viewport_height, max_scroll(), x),
+        None => wheel(ev, scroll_y, viewport_height, max_scroll()),
     })
 }
 
@@ -192,6 +195,7 @@ where
     viewport_width: Option<f32>,
     viewport_fill: bool,
     scroll_y: Option<Signal<f32>>,
+    scroll_x: Option<WheelX>,
     focused_row: Option<Signal<usize>>,
     selection_state: Option<Signal<SelectionState>>,
     selection_mode: SelectionMode,
@@ -288,6 +292,7 @@ where
         viewport_width: None,
         viewport_fill: false,
         scroll_y: None,
+        scroll_x: None,
         focused_row: None,
         selection_state: None,
         selection_mode: SelectionMode::None,
@@ -401,6 +406,25 @@ where
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
+        self
+    }
+
+    /// Bind horizontal scrolling into the list's wheel handler.
+    ///
+    /// `scroll_x` is the live offset, `max` the clamp
+    /// (`content_width - viewport_width`), `width` the viewport width for
+    /// line-delta clamping. Trackpads emit both axes in one event; with a
+    /// binding the handler consumes x and y together instead of dropping
+    /// the horizontal half of a diagonal gesture. The list itself does
+    /// not shift content — the host (e.g. `table()`) owns the offset.
+    #[must_use]
+    pub const fn scroll_x_bind(
+        mut self,
+        scroll_x: Signal<f32>,
+        max: Signal<f32>,
+        width: Signal<f32>,
+    ) -> Self {
+        self.scroll_x = Some((scroll_x, max, width));
         self
     }
 
@@ -638,6 +662,7 @@ where
         let viewport_height = window::positive_px(self.viewport_height, DEFAULT_VIEWPORT_HEIGHT);
         let width = width_spec(self.viewport_width);
         let scroll_y = self.scroll_y.take().unwrap_or_else(|| signal(0.0));
+        let scroll_x = self.scroll_x;
         let focused_row = self.focused_row.take().unwrap_or_else(|| signal(0));
         let selection_state = self.ensure_selection_state();
 
@@ -647,6 +672,7 @@ where
                 viewport_height,
                 width,
                 scroll_y,
+                scroll_x,
                 focused_row,
                 selection_state,
             });
@@ -656,6 +682,7 @@ where
             viewport_height,
             width,
             scroll_y,
+            scroll_x,
             focused_row,
             selection_state,
         })

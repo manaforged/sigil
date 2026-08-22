@@ -199,20 +199,21 @@ pub mod prelude {
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
         ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, Clipboard,
-        CodeEditBuilder, ColWidth, CommandMenuBuilder, Date, DateFieldBuilder, Density, DotBuilder,
-        DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
+        CodeEditBuilder, ColWidth, Combobox, CommandMenuBuilder, Date, DateFieldBuilder, Density,
+        DotBuilder, DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
         HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder, InteractiveBuilder,
         MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
         PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
         ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, Side, SliderBuilder,
         SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn,
-        TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToggleBuilder, TooltipBuilder,
-        TurnStripBuilder, VirtualListBuilder, axis_drag, badge, button, chart, checkbox, chip,
-        code_edit, color_field, command_menu, date_field, divider_horizontal, divider_vertical,
-        dot, dropdown, field, floating_text, gauge, icon, image_rgba, interactive, kv_row, label,
-        markdown, markdown_edit, menu, mermaid, modal, number_field, panel, path, progress,
-        radio_group, scroll, sheet, slider, splitter, status_bar, table, tabs, text_edit,
-        text_field, toast, toggle, tooltip, turn_strip, validated_field, virtual_list,
+        TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToastEntry, ToastLevel,
+        ToastQueue, ToggleBuilder, TooltipBuilder, TurnStripBuilder, VirtualListBuilder, axis_drag,
+        badge, button, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
+        date_field, divider_horizontal, divider_vertical, dot, dropdown, field, floating_text,
+        gauge, icon, image_rgba, interactive, kv_row, label, markdown, markdown_edit, menu,
+        mermaid, modal, number_field, panel, path, progress, radio_group, scroll, sheet, slider,
+        splitter, status_bar, table, tabs, text_edit, text_field, toast, toast_queue, toggle,
+        tooltip, turn_strip, validated_field, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

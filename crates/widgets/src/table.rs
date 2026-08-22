@@ -10,6 +10,7 @@ mod chrome;
 mod columns;
 mod derive;
 mod header;
+mod hscroll;
 mod identity;
 mod row;
 mod state;

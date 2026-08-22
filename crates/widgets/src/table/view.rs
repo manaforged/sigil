@@ -8,7 +8,10 @@
 //!
 //! Columns fill the table with flex: `Fixed` keeps its pixels,
 //! `Fraction` takes the leftover. Users resize, reorder, hide, and
-//! right-click through the header and row chrome.
+//! right-click through the header and row chrome. When the resolved
+//! columns are wider than the viewport, the table scrolls horizontally:
+//! trackpad/wheel x deltas shift the header and body in lockstep, and a
+//! thin scrollbar appears along the bottom.
 //!
 //! ```rust,no_run
 //! use sigil::prelude::*;
@@ -33,6 +36,7 @@
 
 use std::rc::Rc;
 
+use sigil_events::prelude::NodeEventsExt;
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::{LayoutBuilderExt, Overflow};
@@ -41,9 +45,11 @@ use sigil_style::NodeStyleExt;
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::menu::{MenuItem, menu};
+use super::super::scroll::wheel_x;
 use super::super::virtual_list::virtual_list;
 use super::chrome::{ContextKind, RowMenu, TableChrome};
 use super::header::header_row;
+use super::hscroll;
 use super::row::body_row;
 use super::state::{SortDir, TableState};
 
@@ -198,28 +204,25 @@ impl<Row: 'static> TableBuilder<Row> {
         let menu_chrome = chrome.clone();
         let menu_state = state.clone();
         let empty_state = state.clone();
-        let body = virtual_list(
-            state.visible(),
-            body_row(state.clone(), row_height, chrome.clone()),
-        )
-        .key_by(|_, id| u64::from(*id))
-        .row_height(row_height);
-        let body = if viewport_fill {
-            body.viewport_fill()
-        } else {
-            let body = body.viewport_height(viewport_height);
-            match viewport_width {
-                Some(width) => body.viewport_width(width),
-                None => body,
-            }
-        };
-        container()
+        let hscroll = hscroll::bind(&state, viewport_width);
+        let body = body_view(
+            state.clone(),
+            chrome.clone(),
+            BodySpec {
+                row_height,
+                viewport_height,
+                viewport_width,
+                viewport_fill,
+            },
+            hscroll,
+        );
+        let root = container()
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len())
             .class("border border-gray-6 rounded-md")
             .layout(self.layout_overrides.apply(root_layout))
-            .child(header_row(&state, self.header_height, &chrome))
+            .child(header_row(&state, self.header_height, &chrome, hscroll))
             .child(body)
             .child(container().children_reactive(move || {
                 if empty_state.visible().get().is_empty() {
@@ -228,8 +231,56 @@ impl<Row: 'static> TableBuilder<Row> {
                     Vec::new()
                 }
             }))
-            .child(context_overlay(menu_state, menu_chrome))
+            .child(hscroll.scrollbar())
+            .child(context_overlay(menu_state, menu_chrome));
+        wire_hscroll(root, hscroll)
     }
+}
+
+/// Body viewport sizing resolved from the builder.
+#[derive(Clone, Copy)]
+struct BodySpec {
+    row_height: f32,
+    viewport_height: f32,
+    viewport_width: Option<f32>,
+    viewport_fill: bool,
+}
+
+/// The windowed body list, wired into the table's horizontal scroll.
+fn body_view<Row: 'static>(
+    state: TableState<Row>,
+    chrome: TableChrome<Row>,
+    spec: BodySpec,
+    hs: hscroll::HScroll,
+) -> impl IntoNode {
+    let body = virtual_list(
+        state.visible(),
+        body_row(state, spec.row_height, chrome, hs),
+    )
+    .key_by(|_, id| u64::from(*id))
+    .row_height(spec.row_height)
+    .scroll_x_bind(hs.scroll_x, hs.max, hs.viewport);
+    if spec.viewport_fill {
+        body.viewport_fill()
+    } else {
+        let body = body.viewport_height(spec.viewport_height);
+        match spec.viewport_width {
+            Some(width) => body.viewport_width(width),
+            None => body,
+        }
+    }
+}
+
+/// Attach the width probe (when the viewport is measured, not explicit)
+/// and the horizontal wheel handler for the header band and root.
+fn wire_hscroll(root: NodeBuilder, hs: hscroll::HScroll) -> NodeBuilder {
+    let root = match hs.probe {
+        Some(probe) => root.child(hscroll::probe(probe)),
+        None => root,
+    };
+    root.on_scroll(move |ev| {
+        wheel_x(ev, hs.scroll_x, hs.viewport.peek(), hs.max.peek());
+    })
 }
 
 fn empty_slot(empty: Option<&Rc<dyn Fn() -> NodeBuilder>>) -> NodeBuilder {

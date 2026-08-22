@@ -552,7 +552,20 @@ fn grid_a11y_channels_attach() {
         let header = cx.get(header).expect("header node");
         assert_eq!(header.a11y.role, Role::Row);
         assert_eq!(header.a11y.row_index, Some(1));
-        let header_cell = header.children().first().copied().expect("header cell");
+        // The header's first child is the horizontally scrolled cell
+        // track; the cells live under it.
+        let track = header
+            .children()
+            .first()
+            .copied()
+            .expect("header cell track");
+        let header_cell = cx
+            .get(track)
+            .expect("track node")
+            .children()
+            .first()
+            .copied()
+            .expect("header cell");
         let header_cell = cx.get(header_cell).expect("header cell node");
         assert_eq!(header_cell.a11y.role, Role::ColumnHeader);
         assert_eq!(header_cell.a11y.column_index, Some(1));
@@ -700,9 +713,15 @@ fn fraction_column_honours_min_width() {
             .children()
             .first()
             .expect("header");
-        let count_cell = cx
+        let track = *cx
             .get(header)
             .expect("header row")
+            .children()
+            .first()
+            .expect("header cell track");
+        let count_cell = cx
+            .get(track)
+            .expect("track")
             .children()
             .get(1)
             .copied()
@@ -711,6 +730,342 @@ fn fraction_column_honours_min_width() {
         assert!(
             width >= 192.0,
             "Fraction min_width(192) must hold in a 400px table beside Fixed(300), got {width}"
+        );
+    });
+}
+
+// --- Horizontal scrolling (over-wide fixed column sets) ---
+
+/// 3 × Fixed(150) = 450 px of columns in a 200 px viewport → max
+/// horizontal scroll 250.
+fn wide_state() -> TableState<Item> {
+    TableState::new(
+        demo_rows(),
+        vec![
+            TableColumn::new("name", "Name")
+                .width(ColWidth::Fixed(150.0))
+                .cell(|row: &Item| container().child(text(row.name.clone()))),
+            TableColumn::new("count", "Count")
+                .width(ColWidth::Fixed(150.0))
+                .cell(|row: &Item| container().child(text(row.count.to_string()))),
+            TableColumn::new("tag", "Tag")
+                .width(ColWidth::Fixed(150.0))
+                .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
+        ],
+    )
+}
+
+fn wide_table(state: TableState<Item>) -> impl IntoNode {
+    table(state)
+        .row_height(ROW_H)
+        .header_height(HEADER_H)
+        .viewport_width(WIDTH)
+        .viewport_height(VIEW_H)
+}
+
+const fn wheel_x_at(x: f32, y: f32, dx: f32) -> ShellEvent {
+    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
+        position: Point::new(x, y),
+        delta: ScrollDelta::Pixels(Point::new(dx, 0.0)),
+        modifiers: ModifiersState::empty(),
+        phase: ScrollPhase::Moved,
+    }))
+}
+
+fn text_x(cx: &Cx, root: NodeId, expected: &str) -> Option<f32> {
+    emit_scene(cx, root)
+        .find_text(expected)
+        .map(|draw| draw.run.rect.origin.x)
+}
+
+/// The scrollbar host is the grid's fourth child (header, body, empty
+/// slot, then the host); it stays empty while the content fits.
+fn scrollbar_track_count(cx: &Cx, root: NodeId) -> usize {
+    let host = cx
+        .get(root)
+        .and_then(|node| node.children().get(3).copied())
+        .expect("grid root has a scrollbar host child");
+    cx.get(host).map_or(0, |node| node.children().len())
+}
+
+/// Layout x of the header cell at `index` (0-based over visible
+/// columns). Header cells are layout nodes, so unlike glyph runs they
+/// read fine even while clipped out of the scene. The header's first
+/// child is the horizontally scrolled cell track.
+fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f32 {
+    let header = cx
+        .get(grid)
+        .and_then(|node| node.children().first().copied())
+        .expect("grid root has a header row");
+    let track = cx
+        .get(header)
+        .and_then(|node| node.children().first().copied())
+        .expect("header row has a cell track");
+    let cell = cx
+        .get(track)
+        .and_then(|node| node.children().get(index).copied())
+        .expect("header cell");
+    layout
+        .result(cell)
+        .expect("header cell rect")
+        .rect()
+        .origin
+        .x
+}
+
+/// x of the horizontal thumb: the only `surface-pressed-strong` rect at
+/// track height (8 px) and at least the minimum thumb width — the same
+/// token paints 1 px row borders, so filter on geometry too.
+fn thumb_x(cx: &Cx, root: NodeId) -> Option<f32> {
+    let thumb = Theme::default().surface_pressed_strong;
+    emit_scene(cx, root).commands.iter().find_map(|c| match c {
+        SceneCommand::Rect(r)
+            if r.color == thumb && (r.rect.height - 8.0).abs() < 0.01 && r.rect.width >= 24.0 =>
+        {
+            Some(r.rect.origin.x)
+        }
+        _ => None,
+    })
+}
+
+#[test]
+fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
+    sigil::reactive::Runtime::scope("table-view-hscroll", || {
+        let state = wide_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(wide_table(state));
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+
+        // Header cell boxes and body cell text share one shift; body
+        // text sits padding inside the cell, so measure the header/body
+        // gap at rest (column 2) and require it to survive scrolling.
+        let header_rest = header_cell_x(&cx, &layout, root, 1);
+        let gap = text_x(&cx, root, "30").expect("gamma count cell at rest") - header_rest;
+        let tag_rest = header_cell_x(&cx, &layout, root, 2);
+
+        // Wheel over the HEADER band: the table root claims x deltas
+        // outside the virtual-list body.
+        router.route(&mut cx, &layout, wheel_x_at(50.0, 14.0, -100.0));
+        let layout = compute(&mut cx, root);
+        let header_x = header_cell_x(&cx, &layout, root, 1);
+        assert!(
+            (header_x - (header_rest - 100.0)).abs() < 0.01,
+            "header cell shifted by the wheel delta: {header_rest} -> {header_x}",
+        );
+        let body_x = text_x(&cx, root, "30").expect("count cell after header scroll");
+        assert!(
+            (body_x - header_x - gap).abs() < 0.01,
+            "body tracks the header: rest gap {gap}, now {}",
+            body_x - header_x,
+        );
+
+        // Wheel over the BODY: the virtual-list handler consumes x and y
+        // together; the offset clamps at extent - viewport = 250.
+        router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
+        let layout = compute(&mut cx, root);
+        let tag_x = header_cell_x(&cx, &layout, root, 2);
+        assert!(
+            (tag_x - (tag_rest - 250.0)).abs() < 0.01,
+            "clamped at extent - viewport (250), not 100 + 1000: {tag_rest} -> {tag_x}",
+        );
+        let tag_cell = text_x(&cx, root, "tag-gamma").expect("tag cell revealed at the clamp");
+        assert!(
+            (tag_cell - tag_x - gap).abs() < 0.01,
+            "body and header locked at the clamp: {tag_cell} vs {tag_x} + {gap}",
+        );
+
+        // Already at the clamp: another max-strength gesture moves nothing.
+        router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
+        let layout = compute(&mut cx, root);
+        assert!(
+            (header_cell_x(&cx, &layout, root, 2) - tag_x).abs() < 0.01,
+            "no movement past the clamp",
+        );
+    });
+}
+
+#[test]
+fn fitting_table_has_no_scrollbar_and_no_offset() {
+    sigil::reactive::Runtime::scope("table-view-hscroll-fits", || {
+        // demo_state: 2 × Fixed(100) in a 200 px viewport — exact fit.
+        let state = demo_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(wide_table(state));
+        let _layout = compute(&mut cx, root);
+        assert_eq!(
+            scrollbar_track_count(&cx, root),
+            0,
+            "content fits: no track rendered",
+        );
+        assert_eq!(thumb_x(&cx, root), None, "content fits: no thumb");
+    });
+}
+
+#[test]
+fn over_wide_columns_reveal_a_sliding_thumb() {
+    sigil::reactive::Runtime::scope("table-view-hscroll-thumb", || {
+        let state = wide_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(wide_table(state));
+        let layout = compute(&mut cx, root);
+        assert_eq!(scrollbar_track_count(&cx, root), 1, "overflow: track");
+        let parked = thumb_x(&cx, root).expect("overflow: thumb");
+
+        // Thumb travel is viewport - thumb_w = 200 - 200*(200/450) ≈ 111.1.
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
+        let _layout = compute(&mut cx, root);
+        let slid = thumb_x(&cx, root).expect("thumb after scroll");
+        assert!(
+            (slid - parked - 111.1).abs() < 0.5,
+            "thumb slides to the right end at max scroll: {parked} -> {slid}",
+        );
+    });
+}
+
+/// Layout x of the body cell at `index` in the first materialized row
+/// (grid child 1 is the body; rows hold a cell track as first child).
+fn body_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f32 {
+    fn find_row(cx: &Cx, id: NodeId) -> Option<NodeId> {
+        let node = cx.get(id)?;
+        if node.a11y.role == Role::Row && node.a11y.row_index == Some(2) {
+            return Some(id);
+        }
+        node.children().iter().find_map(|kid| find_row(cx, *kid))
+    }
+    let body = cx
+        .get(grid)
+        .and_then(|node| node.children().get(1).copied())
+        .expect("grid root has a body child");
+    let row = find_row(cx, body).expect("a materialized row");
+    let track = cx
+        .get(row)
+        .and_then(|node| node.children().first().copied())
+        .expect("row has a cell track");
+    let cell = cx
+        .get(track)
+        .and_then(|node| node.children().get(index).copied())
+        .expect("body cell");
+    layout.result(cell).expect("body cell rect").rect().origin.x
+}
+
+#[test]
+fn fraction_columns_stretch_in_a_measured_viewport() {
+    sigil::reactive::Runtime::scope("table-view-fraction-stretch", || {
+        // The proxies-table shape: fractions plus fixed columns, no
+        // explicit width, viewport_fill in a wide pane. The fractions
+        // must split the leftover by their grow ratio, not collapse to
+        // their 48 px floors (the hscroll width-atom regression).
+        let state = TableState::new(
+            demo_rows(),
+            vec![
+                TableColumn::new("name", "Name")
+                    .width(ColWidth::Fraction(1.4))
+                    .cell(|row: &Item| container().child(text(row.name.clone()))),
+                TableColumn::new("count", "Count")
+                    .width(ColWidth::Fraction(0.8))
+                    .cell(|row: &Item| container().child(text(row.count.to_string()))),
+                TableColumn::new("tag", "Tag")
+                    .width(ColWidth::Fixed(96.0))
+                    .cell(|row: &Item| container().child(text(format!("tag-{}", row.name)))),
+            ],
+        );
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fixed_size(800.0, 400.0)
+                        .padding(10.0),
+                )
+                .child(
+                    table(state)
+                        .row_height(ROW_H)
+                        .header_height(HEADER_H)
+                        .viewport_fill(),
+                ),
+        );
+        let mut layout = compute(&mut cx, root);
+        for _ in 0..3 {
+            sigil_app::__drive_test_frame(
+                || {
+                    layout
+                        .compute(&mut cx, root, Size::fixed(800.0, 400.0))
+                        .expect("layout");
+                },
+                || {},
+            );
+        }
+        let grid = cx
+            .get(root)
+            .and_then(|node| node.children().first().copied())
+            .expect("wrapper holds the grid");
+        // Content box: 800 - 2*10 padding - 2*1 border = 778. Body cells
+        // carry 2*8 padding (base 56 with the 40px stub measure), so the
+        // name column is 56 + 1.4/2.2 * (778 - 96 - 112) ≈ 418.7. The
+        // floor-collapse regression rendered it at 48.
+        let name_w = body_cell_x(&cx, &layout, grid, 1) - body_cell_x(&cx, &layout, grid, 0);
+        assert!(
+            (name_w - 418.7).abs() < 1.0,
+            "Fraction(1.4) must stretch into the leftover by grow ratio, not sit at its 48px floor: {name_w}",
+        );
+        assert_eq!(
+            scrollbar_track_count(&cx, grid),
+            0,
+            "fits: no horizontal scrollbar",
+        );
+    });
+}
+
+#[test]
+fn unset_viewport_width_measures_the_table() {
+    sigil::reactive::Runtime::scope("table-view-hscroll-measured", || {
+        let state = wide_state();
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(WIDTH, 300.0))
+                .child(
+                    table(state)
+                        .row_height(ROW_H)
+                        .header_height(HEADER_H)
+                        .viewport_height(VIEW_H),
+                ),
+        );
+        let mut layout = compute(&mut cx, root);
+        // Drive frames so the width probe publishes during attach and the
+        // reactive extents settle at the measured content-box width.
+        for _ in 0..3 {
+            sigil_app::__drive_test_frame(
+                || {
+                    layout
+                        .compute(&mut cx, root, Size::fixed(640.0, 480.0))
+                        .expect("layout");
+                },
+                || {},
+            );
+        }
+        let grid = cx
+            .get(root)
+            .and_then(|node| node.children().first().copied())
+            .expect("wrapper holds the grid");
+        assert_eq!(
+            scrollbar_track_count(&cx, grid),
+            1,
+            "450 px of columns overflow the measured ~198 px content box",
+        );
+
+        let gap = text_x(&cx, root, "30").expect("gamma count cell at rest")
+            - header_cell_x(&cx, &layout, grid, 1);
+        let mut router = EventRouter::new();
+        router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
+        let layout = compute(&mut cx, root);
+        let tag_x = header_cell_x(&cx, &layout, grid, 2);
+        let tag_cell = text_x(&cx, root, "tag-gamma").expect("tag cell revealed");
+        assert!(
+            (tag_cell - tag_x - gap).abs() < 0.01,
+            "lockstep on the measured path: {tag_cell} vs {tag_x} + {gap}",
         );
     });
 }

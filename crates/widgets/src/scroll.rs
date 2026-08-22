@@ -12,14 +12,14 @@ use sigil_layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Ov
 use sigil_reactive::{Signal, derived_eq, signal};
 use sigil_style::{ClassSource, NodeStyleExt, Style, StyleAccess, StyleAtom};
 
-mod geometry;
+pub(crate) mod geometry;
 mod input;
 
-pub(crate) use input::{pin_to_bottom, wheel};
+pub(crate) use input::{WheelX, pin_to_bottom, wheel, wheel_x, wheel2};
 
 const VIEWPORT_HEIGHT: f32 = 240.0;
-const SCROLLBAR_WIDTH: f32 = 8.0;
-const THUMB_MIN_HEIGHT: f32 = 24.0;
+pub(crate) const SCROLLBAR_WIDTH: f32 = 8.0;
+pub(crate) const THUMB_MIN_HEIGHT: f32 = 24.0;
 const SCROLL_LINE: f32 = 40.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 // Thumb paints `surface-pressed-strong` — visibly darker than the
@@ -27,7 +27,10 @@ static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")
 // `border` token, leaving the gutter readable as a single uniform
 // strip with no visible thumb affordance. The strong-pressed step
 // clears the same-hue JND against `border` at 8 px gutter scale.
-static THUMB_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
+pub(crate) static THUMB_ATOMS: &[StyleAtom] =
+    &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
+/// Track background shared by the vertical and horizontal scrollbars.
+pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 
 /// Builder returned by [`scroll`].
 pub struct ScrollBuilder {
@@ -336,7 +339,7 @@ fn scrollbar_thumb(
         })
 }
 
-fn to_i16(px: f32) -> i16 {
+pub(crate) fn to_i16(px: f32) -> i16 {
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     {
         px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16
