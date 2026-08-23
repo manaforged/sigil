@@ -21,6 +21,7 @@ use super::super::shared::label;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{TableColumn, flex_cell};
 use super::hscroll::HScroll;
+use super::select;
 use super::state::{SortDir, TableState};
 
 const RESIZE_HANDLE: f32 = 8.0;
@@ -62,6 +63,7 @@ pub(super) fn header_row<Row: 'static>(
     height: f32,
     chrome: &TableChrome<Row>,
     hscroll: HScroll,
+    select: bool,
 ) -> NodeBuilder {
     let state = state.clone();
     let chrome = chrome.clone();
@@ -69,23 +71,21 @@ pub(super) fn header_row<Row: 'static>(
         .layout(track_layout(height))
         .children_reactive(move || {
             let _ = state.column_layout().get();
-            state
-                .visible_columns()
-                .into_iter()
-                .enumerate()
-                .map(|(visual, (def_index, column))| {
-                    header_cell(
-                        &HeaderCtx {
-                            state: &state,
-                            chrome: &chrome,
-                        },
-                        column,
-                        height,
-                        visual,
-                        def_index,
-                    )
-                })
-                .collect::<Vec<_>>()
+            let ctx = HeaderCtx {
+                state: &state,
+                chrome: &chrome,
+                select,
+            };
+            let mut cells = Vec::new();
+            if select {
+                cells.push(select::header_cell(ctx.state, height));
+            }
+            cells.extend(state.visible_columns().into_iter().enumerate().map(
+                |(visual, (def_index, column))| {
+                    header_cell(&ctx, column, height, visual, def_index)
+                },
+            ));
+            cells
         });
     container()
         .role(Role::Row)
@@ -98,11 +98,13 @@ pub(super) fn header_row<Row: 'static>(
 fn header_layout(height: f32) -> LayoutStyle {
     // The header keeps its height. A filled viewport grows the body, and a
     // shrinkable header would give that space up and slide under row one.
+    // px-3 matches the body rows (and the reference DataTable's header).
     LayoutStyle::flex_row()
         .fill_width()
         .height(height)
         .shrink(0.0)
         .align_items(AlignItems::Center)
+        .padding_x(12.0)
 }
 
 fn track_layout(height: f32) -> LayoutStyle {
@@ -120,6 +122,9 @@ fn track_layout(height: f32) -> LayoutStyle {
 struct HeaderCtx<'a, Row: 'static> {
     state: &'a TableState<Row>,
     chrome: &'a TableChrome<Row>,
+    /// The checkbox selection column is prepended: data columns shift
+    /// one a11y column index to the right.
+    select: bool,
 }
 
 fn header_cell<Row: 'static>(
@@ -135,7 +140,7 @@ fn header_cell<Row: 'static>(
     let cell = container()
         .role(Role::ColumnHeader)
         .label(column.title().to_owned())
-        .column_index(def_index + 1)
+        .column_index(def_index + 1 + usize::from(ctx.select))
         .hittable(true)
         .layout(flex_cell(
             column.col_width(),

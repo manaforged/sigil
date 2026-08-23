@@ -30,6 +30,16 @@ const TABS_COMPONENT_ID: u64 = 0x7AB5_0000;
 pub(super) const TAB_HEIGHT: f32 = 30.0;
 const TAB_PADDING_X: f32 = 12.0;
 const CLOSE_AFFORDANCE_WIDTH: f32 = 16.0;
+/// Underline / pill tray height (Tailwind `h-9`).
+const STRIP_HEIGHT: f32 = 36.0;
+
+#[derive(Clone, Copy, Default)]
+enum StripChrome {
+    #[default]
+    Bare,
+    Line,
+    Pill,
+}
 
 // ---- atoms ---------------------------------------------------------------
 
@@ -106,6 +116,7 @@ pub struct TabsBuilder {
     closeable: bool,
     close_handler: Option<CloseHandler>,
     list_justify: JustifyContent,
+    chrome: StripChrome,
     layout_overrides: LayoutOverrides,
 }
 
@@ -140,8 +151,23 @@ impl TabsBuilder {
             closeable: false,
             close_handler: None,
             list_justify: JustifyContent::Start,
+            chrome: StripChrome::Bare,
             layout_overrides: LayoutOverrides::new(),
         }
+    }
+
+    /// Full-width underline bar, chips centered.
+    #[must_use]
+    pub const fn line(mut self) -> Self {
+        self.chrome = StripChrome::Line;
+        self
+    }
+
+    /// Centered pill tray around the chips.
+    #[must_use]
+    pub const fn pill(mut self) -> Self {
+        self.chrome = StripChrome::Pill;
+        self
     }
 
     /// Pack the tab chips along the strip (`Start` default, `Center`
@@ -279,13 +305,12 @@ impl TabsBuilder {
         } else {
             None
         };
-
         // Drain user-supplied state-slot overlays before the base
         // accumulator attaches — each tab clones the overlay and
         // resolves it against its own interaction slot, so
         // `.hover(|s| s.bg(...))` paints the tab under the pointer.
         let user_overlay = self.style_accumulator.take_state_overlay();
-        let tab_list = {
+        let tab_list = apply_chrome(self.chrome, {
             let list = build_tab_list(
                 self.active,
                 self.labels,
@@ -308,8 +333,7 @@ impl TabsBuilder {
                     )
                     .child(list)
             }
-        };
-
+        });
         let mut root = if has_content {
             wrap_with_content(tab_list, self.active, self.contents, count)
         } else {
@@ -373,6 +397,51 @@ fn tab_list_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .height(TAB_HEIGHT)
         .align_items(AlignItems::Center)
+}
+
+fn apply_chrome(chrome: StripChrome, strip: NodeBuilder) -> NodeBuilder {
+    match chrome {
+        StripChrome::Bare => strip,
+        StripChrome::Line => wrap_line(strip),
+        StripChrome::Pill => wrap_pill(strip),
+    }
+}
+
+fn wrap_line(strip: NodeBuilder) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(STRIP_HEIGHT)
+                .shrink(0.0)
+                .padding_x(16.0)
+                .justify_content(JustifyContent::Center)
+                .align_items(AlignItems::Center),
+        )
+        .class("border-b bg-surface-0")
+        .child(strip)
+}
+
+fn wrap_pill(strip: NodeBuilder) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .shrink(0.0)
+                .padding_y(24.0)
+                .justify_content(JustifyContent::Center),
+        )
+        .child(
+            container()
+                .layout(
+                    LayoutStyle::flex_row()
+                        .height(STRIP_HEIGHT)
+                        .padding(4.0)
+                        .align_items(AlignItems::Center),
+                )
+                .class("rounded-md bg-surface-2")
+                .child(strip),
+        )
 }
 
 #[allow(clippy::too_many_arguments, clippy::needless_pass_by_value)]
@@ -667,3 +736,7 @@ const fn tab_active_state_style() -> StateStyle {
         TAB_DISABLED,
     )
 }
+
+#[cfg(test)]
+#[path = "builder_tests.rs"]
+mod tests;

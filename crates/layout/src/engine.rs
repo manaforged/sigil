@@ -903,11 +903,11 @@ impl LayoutEngine {
             if self.published_result.get(id.key()).copied() == Some(result) {
                 continue;
             }
-            // Take the size binding (if any) and DROP the `cx` borrow before publishing:
-            // `Signal::set` runs dependent effects synchronously, and a `size_reactive`
-            // consumer's `children_reactive` rebuild must be free to read `cx` without
-            // colliding with this mutable borrow.
-            let size_binding = {
+            // Take the size/bounds bindings (if any) and DROP the `cx` borrow before
+            // publishing: `Signal::set` runs dependent effects synchronously, and a
+            // reactive consumer's `children_reactive` rebuild must be free to read
+            // `cx` without colliding with this mutable borrow.
+            let bindings = {
                 // Layout OUTPUT: attach untracked so writing the resolved box
                 // back onto the node neither re-dirties it nor bumps the input
                 // version — otherwise every laid-out node would invalidate the
@@ -917,17 +917,27 @@ impl LayoutEngine {
                     .get_mut_untracked(id)
                     .ok_or(LayoutError::NodeMissing(id))?;
                 let _ = node.attach_untracked(result);
-                node.get_extension::<crate::SizeReactive>().copied()
+                let size = node.get_extension::<crate::SizeReactive>().copied();
+                let bounds = node.get_extension::<crate::BoundsReactive>().copied();
+                (size, bounds)
             };
-            // Publish the new size to the binding. Only reached when the box changed (the
-            // dedup above), and `publish` dedups the size itself (so position-only changes
-            // are a no-op), so this is free on steady frames. The write is legal in the
-            // Layout phase (only Paint forbids writes). The dependent effect runs inline
-            // here, but its tree mutation is enqueued and flushed by the next `compute`;
-            // `frame_dirty` is set so that next frame applies the new size.
-            if let Some(sr) = size_binding {
+            // Publish to the bindings. Only reached when the box changed (the
+            // dedup above), and each `publish` dedups its own value (so a
+            // position-only change is a no-op for the size binding), so this
+            // is free on steady frames. The write is legal in the Layout
+            // phase (only Paint forbids writes). The dependent effect runs
+            // inline here, but its tree mutation is enqueued and flushed by
+            // the next `compute`; `frame_dirty` is set so that next frame
+            // applies the new box.
+            let (size_binding, bounds_binding) = bindings;
+            if size_binding.is_some() || bounds_binding.is_some() {
                 let rect = result.rect();
-                sr.publish((rect.width, rect.height));
+                if let Some(sr) = size_binding {
+                    sr.publish((rect.width, rect.height));
+                }
+                if let Some(br) = bounds_binding {
+                    br.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+                }
             }
             self.published_result.insert(id.key(), result);
         }

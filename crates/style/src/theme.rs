@@ -11,7 +11,7 @@ use crate::variant::{FontFamilyHint, Variant};
 use crate::{Dimension, LengthPercentage, Px, Rgba8, Size};
 
 #[cfg(debug_assertions)]
-const BUILT_IN_COLOR_TOKENS: [&str; 12] = [
+const BUILT_IN_COLOR_TOKENS: [&str; 17] = [
     "accent",
     "accent-hover",
     "on-accent",
@@ -24,6 +24,11 @@ const BUILT_IN_COLOR_TOKENS: [&str; 12] = [
     "border",
     "border-strong",
     "scrim",
+    "surface-0",
+    "surface-1",
+    "surface-2",
+    "surface-3",
+    "line",
 ];
 
 /// A value stored in the user-extensible theme token map.
@@ -410,12 +415,12 @@ impl Theme {
             "accent" => Some(self.accent),
             "accent-hover" => Some(self.accent_hover),
             "on-accent" => Some(self.on_accent),
-            "surface" => Some(self.surface),
+            "surface" | "surface-1" => Some(self.surface),
             "surface-hover" => Some(self.surface_hover),
-            "surface-pressed" => Some(self.surface_pressed),
-            "surface-pressed-strong" => Some(self.surface_pressed_strong),
+            "surface-pressed" | "surface-2" => Some(self.surface_pressed),
+            "surface-pressed-strong" | "surface-3" => Some(self.surface_pressed_strong),
             "on-surface" => Some(self.on_surface),
-            "border" => Some(self.border),
+            "border" | "line" => Some(self.border),
             // Step 8 — quiet-but-measurable track/boundary color for
             // linear meters (slider rest, gauge, progress).
             "border-strong" => Some(self.border_strong()),
@@ -424,11 +429,9 @@ impl Theme {
             // `bg-surface-subtle` / `text-on-surface-muted` route here
             // by their stripped suffix.
             "surface-subtle" => Some(self.surface_subtle()),
-            // Inset well for text fields / dropdowns: step 1 reads darker
-            // than the card in dark themes and lighter (white) in light
-            // themes — the Zed/ShadCN input idiom, where the fill (not a
-            // heavy border) carries the control boundary.
-            "surface-inset" => Some(self.gray.step(1)),
+            // Inset well / page canvas (surface-0). Step 1 reads darker
+            // than the card in dark themes and lighter in light themes.
+            "surface-inset" | "surface-0" => Some(self.gray.step(1)),
             "on-surface-muted" => Some(self.text_muted()),
             "on-solid" => Some(self.on_solid),
             // Modal-style overlay scrim — 60 % opacity black

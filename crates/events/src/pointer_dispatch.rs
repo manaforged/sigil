@@ -31,24 +31,36 @@ pub(crate) struct PointerTarget {
     pub(crate) size: LogicalSize,
 }
 
+/// Dispatch along the hit path (capture pass root→leaf, then bubble
+/// leaf→root). Returns the first node whose handler requested pointer
+/// capture, so the router can capture the REQUESTER rather than the hit
+/// leaf: a drag source wrapping child content (table row over text
+/// cells) must keep receiving move/up itself.
 pub(crate) fn dispatch_pointer_path(
     cx: &Cx,
     targets: &[PointerTarget],
     event: &mut PointerEvent,
     global_position: Point,
-) {
+) -> Option<NodeId> {
+    let mut capture_requester = None;
     for target in targets.iter().copied() {
-        invoke_pointer(cx, target, event, true, global_position);
+        if invoke_pointer(cx, target, event, true, global_position) && capture_requester.is_none() {
+            capture_requester = Some(target.id);
+        }
         if event.propagation_stopped() {
-            return;
+            return capture_requester;
         }
     }
     for target in targets.iter().rev().copied() {
-        invoke_pointer(cx, target, event, false, global_position);
+        if invoke_pointer(cx, target, event, false, global_position) && capture_requester.is_none()
+        {
+            capture_requester = Some(target.id);
+        }
         if event.propagation_stopped() {
-            return;
+            return capture_requester;
         }
     }
+    capture_requester
 }
 
 pub(crate) fn dispatch_pointer_target(
@@ -144,18 +156,20 @@ pub(crate) fn pointer_target_for_node(
         })
 }
 
+/// Invoke the target's handlers for this phase. Returns true when the
+/// target's handlers newly requested pointer capture during this invoke.
 fn invoke_pointer(
     cx: &Cx,
     target: PointerTarget,
     event: &mut PointerEvent,
     capture: bool,
     global_position: Point,
-) {
+) -> bool {
     let Some(handlers) = cx
         .get(target.id)
         .and_then(|node| node.get_extension::<EventHandlers>())
     else {
-        return;
+        return false;
     };
     let previous_position = event.position;
     let previous_size = event.target_size;
@@ -164,9 +178,12 @@ fn invoke_pointer(
         global_position.y - target.origin.y,
     );
     event.target_size = target.size;
+    let already_requested = event.capture_requested();
     handlers.invoke_pointer(event.phase, capture, event);
+    let newly_requested = !already_requested && event.capture_requested();
     event.position = previous_position;
     event.target_size = previous_size;
+    newly_requested
 }
 
 fn path_to_node(cx: &Cx, target: NodeId) -> NodePath {

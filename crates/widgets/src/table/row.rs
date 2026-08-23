@@ -20,7 +20,17 @@ use super::super::interactive::interactive;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::flex_cell;
 use super::hscroll::HScroll;
+use super::select;
 use super::state::TableState;
+
+/// Per-table row render settings shared by every materialized row.
+#[derive(Clone, Copy)]
+pub(super) struct RowSpec {
+    /// Body row height in logical pixels.
+    pub row_height: f32,
+    /// Prepend the checkbox selection column.
+    pub select: bool,
+}
 
 /// Selected-row class — the accent tint (Radix step 5) so cell text
 /// keeps its `on-surface` colour against the highlight. Step 3 read as
@@ -34,29 +44,24 @@ const SELECTED_CLASS: &str = "bg-accent-5";
 /// full-width background behave exactly as before.
 pub(super) fn body_row<Row: 'static>(
     state: TableState<Row>,
-    row_height: f32,
+    spec: RowSpec,
     chrome: TableChrome<Row>,
     hscroll: HScroll,
 ) -> impl Fn(usize, &u32) -> NodeBuilder {
     move |visible_pos: usize, row_index: &u32| {
-        build_row(
-            &state,
-            row_height,
-            &chrome,
-            hscroll,
-            (visible_pos, *row_index),
-        )
+        build_row(&state, spec, &chrome, hscroll, (visible_pos, *row_index))
     }
 }
 
 fn build_row<Row: 'static>(
     state: &TableState<Row>,
-    row_height: f32,
+    spec: RowSpec,
     chrome: &TableChrome<Row>,
     hscroll: HScroll,
     slot: (usize, u32),
 ) -> NodeBuilder {
     let (visible_pos, row_index) = slot;
+    let row_height = spec.row_height;
     let rows = state.rows().peek();
     let Some(row) = rows.get(row_index as usize) else {
         // Stale index mid-mutation (rows replaced while the window
@@ -72,34 +77,7 @@ fn build_row<Row: 'static>(
     // full-width background, while cells travel under the clip.
     let track = container()
         .layout(track_layout(row_height))
-        .children_reactive(move || {
-            let layout = state_cells.column_layout().get();
-            // `get`, not `peek`: this closure has to re-run when the row data
-            // changes, or a list that refreshes itself paints its first frame
-            // forever.
-            let live_rows = state_cells.rows().get();
-            let Some(live_row) = live_rows.get(row_index as usize) else {
-                return Vec::new();
-            };
-            state_cells
-                .visible_columns()
-                .into_iter()
-                .map(|(def_index, column)| {
-                    let override_px = layout.widths.get(column.id()).copied();
-                    body_cell(
-                        column.cell_render().map(|render| render(live_row)),
-                        def_index,
-                        flex_cell(
-                            column.col_width(),
-                            override_px,
-                            row_height,
-                            true,
-                            column.min_px(),
-                        ),
-                    )
-                })
-                .collect::<Vec<_>>()
-        });
+        .children_reactive(move || row_cells(&state_cells, spec, row_index));
     let cells = container()
         .role(Role::Row)
         .label(format!("row {}", visible_pos + 1))
@@ -116,6 +94,48 @@ fn build_row<Row: 'static>(
         .pointer_down(select_pointer(state.clone(), chrome.clone(), row_index))
 }
 
+/// The track's cells: the opt-in checkbox cell, then one body cell
+/// per visible column (a11y column indices shifted past the checkbox).
+fn row_cells<Row: 'static>(
+    state: &TableState<Row>,
+    spec: RowSpec,
+    row_index: u32,
+) -> Vec<NodeBuilder> {
+    let layout = state.column_layout().get();
+    // `get`, not `peek`: this closure has to re-run when the row data
+    // changes, or a list that refreshes itself paints its first frame
+    // forever.
+    let live_rows = state.rows().get();
+    let Some(live_row) = live_rows.get(row_index as usize) else {
+        return Vec::new();
+    };
+    let offset = usize::from(spec.select);
+    let mut cells = Vec::new();
+    if spec.select {
+        cells.push(select::row_cell(state, row_index, spec.row_height));
+    }
+    cells.extend(
+        state
+            .visible_columns()
+            .into_iter()
+            .map(|(def_index, column)| {
+                let override_px = layout.widths.get(column.id()).copied();
+                body_cell(
+                    column.cell_render().map(|render| render(live_row)),
+                    def_index + offset,
+                    flex_cell(
+                        column.col_width(),
+                        override_px,
+                        spec.row_height,
+                        true,
+                        column.min_px(),
+                    ),
+                )
+            }),
+    );
+    cells
+}
+
 fn row_layout(height: f32) -> LayoutStyle {
     // Identical to the pre-hscroll row: stationary, viewport-wide,
     // x-clipped. The clip's right edge IS the viewport edge, and the
@@ -126,6 +146,9 @@ fn row_layout(height: f32) -> LayoutStyle {
         .fill_width()
         .height(height)
         .align_items(AlignItems::Center)
+        // px-3 like the reference DataTable rows; the border and the
+        // hover/selection fills still span the full row (border box).
+        .padding_x(12.0)
         .overflow_x(Overflow::Hidden)
 }
 

@@ -186,7 +186,7 @@ fn toast_node(entry: ToastEntry) -> NodeBuilder {
                 .gap(8.0)
                 .padding(12.0),
         )
-        .class("rounded-md shadow-md bg-surface")
+        .class("rounded-md shadow-md bg-surface-hover")
         .child(dot(entry.level.tone()))
         .child(text(entry.message))
 }

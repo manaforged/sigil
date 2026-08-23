@@ -98,7 +98,33 @@ impl SizeReactive {
     }
 }
 
-/// Adds `.position_reactive()` / `.size_reactive()` to [`NodeBuilder`].
+/// Node extension that PUBLISHES the node's computed absolute border-box
+/// rect `(x, y, w, h)` into a signal.
+///
+/// [`SizeReactive`]'s sibling for consumers that need the origin, not just
+/// the extent — e.g. a drop target hit-testing the pointer against its own
+/// laid-out rect during a widget-to-widget drag. Same publish discipline:
+/// the engine writes from `attach_results` only when the node's box
+/// changes, and [`Self::publish`] dedups against the signal's current
+/// value, so a steady frame does no work. The same caveats apply: bind ONE
+/// node per signal; the signal must outlive the node.
+#[derive(Clone, Copy)]
+pub struct BoundsReactive {
+    bounds: Signal<(f32, f32, f32, f32)>,
+}
+
+impl BoundsReactive {
+    /// Write `(x, y, w, h)` into the bound signal iff it changed. Called by
+    /// the layout engine during the Layout phase (writes are legal there).
+    pub fn publish(&self, bounds: (f32, f32, f32, f32)) {
+        if self.bounds.peek() != bounds {
+            self.bounds.set(bounds);
+        }
+    }
+}
+
+/// Adds `.position_reactive()` / `.size_reactive()` / `.bounds_reactive()`
+/// to [`NodeBuilder`].
 pub trait LayoutReactiveExt {
     /// Bind this node's absolute inset (`inset_left`, `inset_top`) to
     /// `pos`, forcing `position: absolute`. The node keeps a stable
@@ -113,6 +139,13 @@ pub trait LayoutReactiveExt {
     /// e.g. virtualize against the real viewport height instead of a fixed guess.
     #[must_use]
     fn size_reactive(self, size: Signal<(f32, f32)>) -> Self;
+
+    /// Publish this node's computed absolute border-box rect `(x, y, w, h)`
+    /// into `bounds` after every layout pass that changes it. Lets an event
+    /// handler hit-test the pointer against the node's real laid-out rect —
+    /// e.g. a drop target under a dragged payload.
+    #[must_use]
+    fn bounds_reactive(self, bounds: Signal<(f32, f32, f32, f32)>) -> Self;
 }
 
 impl LayoutReactiveExt for NodeBuilder {
@@ -125,6 +158,12 @@ impl LayoutReactiveExt for NodeBuilder {
     fn size_reactive(self, size: Signal<(f32, f32)>) -> Self {
         self.mutate(move |node| {
             let _ = node.attach(SizeReactive { size });
+        })
+    }
+
+    fn bounds_reactive(self, bounds: Signal<(f32, f32, f32, f32)>) -> Self {
+        self.mutate(move |node| {
+            let _ = node.attach(BoundsReactive { bounds });
         })
     }
 }

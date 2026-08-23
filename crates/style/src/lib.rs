@@ -102,7 +102,7 @@ pub use styled::{
 pub use text_style::{StyledTextEngine, TextLineHeight, TextStyle, is_typography_atom};
 pub use theme::{Theme, ThemeBuilder, ThemeValue};
 pub use tone::{Tone, ToneContext};
-pub use variant_kit::{SOFT_VARIANT, SOLID_VARIANT};
+pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
 /// Common imports for applications using Sigil styling.
 pub mod prelude {

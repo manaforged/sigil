@@ -71,3 +71,30 @@ const SOFT_STATES: StateStyle = StateStyle::new(
 /// Tinted background with readable on-tinted text. The "secondary
 /// action" or "informational chip" look.
 pub const SOFT_VARIANT: StyleVariant = StyleVariant::new(SOFT_BASE, SOFT_STATES);
+
+// === Ghost variant ============================================================
+//
+// No fill at rest — text only. Hover/focus raise a step-4 tint, pressed
+// step 5 (one below soft, since ghost sits directly on the surface).
+// The ShadCN `ghost` / Radix `ghost` idiom for row-level actions
+// (Edit / Delete in table rows) where a filled chip per row is noise.
+
+static GHOST_BASE: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
+static GHOST_REST: &[StyleAtom] = &[];
+static GHOST_FOCUS: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
+static GHOST_HOVER: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
+static GHOST_PRESSED: &[StyleAtom] = &[StyleAtom::BgToneStep(5)];
+static GHOST_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
+
+const GHOST_STATES: StateStyle = StateStyle::new(
+    GHOST_REST,
+    GHOST_FOCUS,
+    GHOST_HOVER,
+    GHOST_PRESSED,
+    GHOST_DISABLED,
+);
+
+/// Text-only button with a tinted hover — the row-action look (Edit,
+/// Test OTP, Delete inside table rows). Pair with `Tone::Error` for
+/// destructive row actions.
+pub const GHOST_VARIANT: StyleVariant = StyleVariant::new(GHOST_BASE, GHOST_STATES);

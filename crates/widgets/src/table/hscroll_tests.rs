@@ -20,7 +20,7 @@ fn fixed_columns_sum_to_extent() {
             ("b", ColWidth::Fixed(150.0)),
             ("c", ColWidth::Fixed(150.0)),
         ]);
-        let hs = bind(&state, Some(200.0));
+        let hs = bind(&state, Some(200.0), 0.0);
         assert_eq!(hs.extent.get(), 450.0);
         assert_eq!(hs.max.get(), 250.0, "extent minus viewport");
     });
@@ -40,7 +40,7 @@ fn fraction_columns_count_their_floor() {
                     .min_width(192.0),
             ],
         );
-        let hs = bind(&state, Some(400.0));
+        let hs = bind(&state, Some(400.0), 0.0);
         assert_eq!(hs.extent.get(), 492.0);
         assert_eq!(hs.max.get(), 92.0);
     });
@@ -50,7 +50,7 @@ fn fraction_columns_count_their_floor() {
 fn fitting_content_has_zero_max() {
     Runtime::scope("hscroll-fits", || {
         let state = state_with(&[("a", ColWidth::Fixed(100.0)), ("b", ColWidth::Fixed(100.0))]);
-        let hs = bind(&state, Some(200.0));
+        let hs = bind(&state, Some(200.0), 0.0);
         assert_eq!(hs.extent.get(), 200.0);
         assert_eq!(hs.max.get(), 0.0, "no overflow, no scroll range");
     });
@@ -60,7 +60,7 @@ fn fitting_content_has_zero_max() {
 fn resize_override_widens_extent_reactively() {
     Runtime::scope("hscroll-resize", || {
         let state = state_with(&[("a", ColWidth::Fixed(100.0)), ("b", ColWidth::Fixed(100.0))]);
-        let hs = bind(&state, Some(200.0));
+        let hs = bind(&state, Some(200.0), 0.0);
         assert_eq!(hs.max.get(), 0.0);
         state.pin_column_width("a", 500.0);
         assert_eq!(hs.extent.get(), 600.0);
@@ -76,7 +76,7 @@ fn hidden_column_shrinks_extent_reactively() {
             ("b", ColWidth::Fixed(150.0)),
             ("c", ColWidth::Fixed(150.0)),
         ]);
-        let hs = bind(&state, Some(200.0));
+        let hs = bind(&state, Some(200.0), 0.0);
         assert_eq!(hs.max.get(), 250.0);
         state.hide_column("c");
         assert_eq!(hs.extent.get(), 300.0);
@@ -92,7 +92,7 @@ fn measured_viewport_follows_the_probe() {
             ("b", ColWidth::Fixed(150.0)),
             ("c", ColWidth::Fixed(150.0)),
         ]);
-        let hs = bind(&state, None);
+        let hs = bind(&state, None, 0.0);
         let probe = hs.probe.expect("no explicit width installs a probe");
         assert_eq!(hs.viewport.get(), 0.0, "unmeasured until layout publishes");
         probe.set((200.0, 480.0));
@@ -102,10 +102,23 @@ fn measured_viewport_follows_the_probe() {
 }
 
 #[test]
+fn select_column_prefix_counts_as_fixed_pixels() {
+    Runtime::scope("hscroll-select-prefix", || {
+        // The opt-in checkbox column prepends its fixed width to the
+        // extent: 2 × Fixed(100) + 36 px prefix overflows a 200 px
+        // viewport by exactly the prefix.
+        let state = state_with(&[("a", ColWidth::Fixed(100.0)), ("b", ColWidth::Fixed(100.0))]);
+        let hs = bind(&state, Some(200.0), 36.0);
+        assert_eq!(hs.extent.get(), 236.0);
+        assert_eq!(hs.max.get(), 36.0);
+    });
+}
+
+#[test]
 fn explicit_viewport_installs_no_probe() {
     Runtime::scope("hscroll-explicit", || {
         let state = state_with(&[("a", ColWidth::Fixed(100.0))]);
-        let hs = bind(&state, Some(200.0));
+        let hs = bind(&state, Some(200.0), 0.0);
         assert!(hs.probe.is_none());
         assert_eq!(hs.viewport.get(), 200.0);
     });

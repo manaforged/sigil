@@ -23,7 +23,7 @@ pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
                 .justify_content(JustifyContent::Center)
                 .padding(12.0),
         )
-        .class("rounded-md shadow-md bg-surface")
+        .class("rounded-md shadow-md bg-surface-hover")
         .style_reactive(move || {
             if message.get().is_some() {
                 &[]

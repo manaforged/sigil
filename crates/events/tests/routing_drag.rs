@@ -16,7 +16,7 @@
 //! bound via `position_reactive`, and the layout engine repositions the
 //! node on the next `compute`. It exercises every link the unit tests
 //! cover only in isolation:
-//!   * capture binds to the hit-path leaf (`router.rs` capture rule),
+//!   * capture binds to the requesting node (`router.rs` capture rule),
 //!   * captured pointer-moves carry a real `delta` and `is_captured()`,
 //!   * `pos.set` invalidates layout through the signature cache
 //!     (`cache_key.rs`) with no dirty mark / generation bump,

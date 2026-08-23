@@ -41,7 +41,7 @@ pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use error::LayoutError;
 pub use intent::LayoutStyle;
 pub use measure::TextMeasure;
-pub use reactive_position::{LayoutReactiveExt, ReactivePosition, SizeReactive};
+pub use reactive_position::{BoundsReactive, LayoutReactiveExt, ReactivePosition, SizeReactive};
 pub use result::LayoutResult;
 pub use style_data::{
     AlignContent, AlignItems as StyleAlignItems, AlignSelf as StyleAlignSelf, BoxSizing, Dimension,

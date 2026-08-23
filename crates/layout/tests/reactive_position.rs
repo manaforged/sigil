@@ -75,3 +75,34 @@ fn position_reactive_tracks_signal_with_stable_identity() {
         );
     });
 }
+
+#[test]
+fn bounds_reactive_publishes_the_absolute_rect() {
+    Runtime::scope("layout_bounds_reactive", || {
+        let bounds = signal((0.0_f32, 0.0_f32, 0.0_f32, 0.0_f32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fixed_size(800.0, 600.0)
+                        .padding(10.0),
+                )
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(100.0, 40.0))
+                        .bounds_reactive(bounds),
+                ),
+        );
+
+        let mut engine = stub_engine();
+        engine
+            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .expect("initial compute");
+        assert_eq!(
+            bounds.peek(),
+            (10.0, 10.0, 100.0, 40.0),
+            "the bound signal carries the absolute border box after compute",
+        );
+    });
+}

@@ -9,7 +9,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use sigil_animation_runtime::presets;
 use sigil_events::prelude::{Key, NodeEventsExt};
 use sigil_kernel::{
-    Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, container, queue_announcement, text,
+    AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, container,
+    queue_announcement, text,
 };
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use sigil_reactive::{Signal, effect_named, on_cleanup, signal};
@@ -60,7 +61,7 @@ pub enum Side {
 /// Builder returned by [`modal`] and [`sheet`].
 pub struct ModalBuilder {
     show: Signal<bool>,
-    title: Option<String>,
+    title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
@@ -115,8 +116,13 @@ impl ModalBuilder {
     }
 
     /// Set the dialog title (rendered in the dialog's title bar).
+    ///
+    /// Takes the same `impl Into<TextContent>` as `checkbox`/`gauge`
+    /// `.label()`: a `&'static str` / `String` stays fixed, a
+    /// `Signal<String>` updates the title bar and the dialog's
+    /// accessible name reactively.
     #[must_use]
-    pub fn title(mut self, title: impl Into<String>) -> Self {
+    pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
         self
     }
@@ -170,9 +176,9 @@ impl ModalBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let show = self.show;
-        let title_for_label = self.title.clone().unwrap_or_else(|| String::from("Dialog"));
+        let root_name = accessible_name(self.title.as_ref());
 
-        install_open_announcement(show, &title_for_label);
+        install_open_announcement(show, self.title.clone());
         if self.escape_closes {
             register_escape_modal(show);
         }
@@ -190,7 +196,7 @@ impl ModalBuilder {
 
         let mut root = container()
             .role(Role::GenericContainer)
-            .label(title_for_label)
+            .label(root_name)
             .layout(root_layout(self.side))
             .style_reactive(move || show_display(show))
             .child(backdrop)
@@ -226,12 +232,14 @@ impl WidgetLayoutExt for ModalBuilder {
 /// mounts with the dialog already visible. Re-opens (`false → true`
 /// after a `true → false`) do re-announce.
 ///
+/// The title resolves at fire time, so a signal-driven title announces
+/// its current text.
+///
 /// The effect does not need `&mut Cx`. It queues the announcement via
 /// [`queue_announcement`]; the host drains it through
 /// [`sigil_kernel::Cx::flush_announcements`] on the next frame tick.
-fn install_open_announcement(show: Signal<bool>, title: &str) {
+fn install_open_announcement(show: Signal<bool>, title: Option<TextContent>) {
     let prev = Rc::new(Cell::new(true));
-    let title = title.to_owned();
     effect_named("sigil::modal::open_announce", move || {
         let open_now = show.get();
         let was_open = prev.replace(open_now);
@@ -240,7 +248,10 @@ fn install_open_announcement(show: Signal<bool>, title: &str) {
         // initial read (prev seeded to true), suppressing the mount-time
         // announce.
         if open_now && !was_open {
-            queue_announcement(title.clone(), Live::Polite);
+            let name = title
+                .as_ref()
+                .map_or_else(|| String::from("Dialog"), TextContent::resolve);
+            queue_announcement(name, Live::Polite);
         }
     });
 }
@@ -337,7 +348,7 @@ fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder 
 /// Dialog frame inputs, moved out of [`ModalBuilder`].
 struct DialogSpec {
     show: Signal<bool>,
-    title: Option<String>,
+    title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
     trap: bool,
@@ -355,7 +366,7 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         side,
         layout_overrides,
     } = spec;
-    let title_label = title.clone().unwrap_or_else(|| String::from("Dialog"));
+    let title_label = accessible_name(title.as_ref());
     // Focus-visible ring on the dialog frame itself — the modal's own
     // focusable primary action (WAI-ARIA dialog pattern: the dialog is
     // the tab-ring entry point). Mirrors `InteractionState`'s
@@ -412,10 +423,26 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     }
 }
 
-fn dialog_title(title: String) -> impl IntoNode {
+fn dialog_title(title: TextContent) -> impl IntoNode {
     text(title)
         .layout(LayoutStyle::block().height(TITLE_HEIGHT))
         .class("text-on-surface")
+}
+
+/// Accessible name for the modal root and dialog frame. A signal-driven
+/// title maps to [`AccessibleName::Derived`], so the name tracks the
+/// title reactively.
+fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
+    let Some(title) = title else {
+        return AccessibleName::Static(String::from("Dialog"));
+    };
+    match title {
+        TextContent::Static(value) => AccessibleName::Static(value.clone()),
+        TextContent::Reactive(value) => AccessibleName::Derived(*value),
+        // ponytail: compute-sourced names freeze to the build-time value;
+        // upgrade when TextContent exposes a node-owned live conversion.
+        TextContent::Compute(_) => AccessibleName::Static(title.resolve()),
+    }
 }
 
 // ---- show / closed visibility --------------------------------------------

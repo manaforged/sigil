@@ -50,8 +50,14 @@ pub(super) struct HScroll {
     pub probe: Option<Signal<(f32, f32)>>,
 }
 
-/// Build the horizontal-scroll signals for one table.
-pub(super) fn bind<Row: 'static>(state: &TableState<Row>, explicit: Option<f32>) -> HScroll {
+/// Build the horizontal-scroll signals for one table. `prefix` is the
+/// pixel width of any fixed leading column (the opt-in checkbox
+/// selection column); it counts into the extent in full.
+pub(super) fn bind<Row: 'static>(
+    state: &TableState<Row>,
+    explicit: Option<f32>,
+    prefix: f32,
+) -> HScroll {
     let (viewport, probe) = explicit.map_or_else(
         || {
             let probe = signal((0.0_f32, 0.0_f32));
@@ -60,7 +66,7 @@ pub(super) fn bind<Row: 'static>(state: &TableState<Row>, explicit: Option<f32>)
         |px| (signal(px), None),
     );
     let extent_state = state.clone();
-    let extent = derived_eq(move || content_extent(&extent_state));
+    let extent = derived_eq(move || prefix + content_extent(&extent_state));
     let max = derived_eq(move || (extent.get() - viewport.get()).max(0.0));
     HScroll {
         scroll_x: signal(0.0),

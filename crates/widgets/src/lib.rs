@@ -27,6 +27,7 @@ mod date_field;
 mod divider;
 mod dot;
 mod drag;
+mod drag_drop;
 mod dropdown;
 mod floating_text;
 mod gauge;
@@ -74,6 +75,7 @@ pub use date_field::{Date, DateFieldBuilder, date_field};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
 pub use dot::{DotBuilder, dot};
 pub use drag::{Axis, axis_drag};
+pub use drag_drop::{DRAG_THRESHOLD_PX, DROP_TARGET_CLASS, DragDropExt, DragState, drag_ghost};
 pub use dropdown::{DropdownBuilder, dropdown};
 pub use floating_text::{
     FCT_POOL_CAPACITY, FctNode, FctSpawn, FctState, FloaterStyle, FloatingTextBuilder, Particle,

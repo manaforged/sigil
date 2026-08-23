@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::widget_dev::*;
 use sigil_kernel::{AccessibleName, TextContent};
 use sigil_reactive::Signal;
-use sigil_style::{Px, SOFT_VARIANT, SOLID_VARIANT, Tone};
+use sigil_style::{GHOST_VARIANT, Px, SOFT_VARIANT, SOLID_VARIANT, Tone};
 
 use crate::interaction::InteractionState;
 
@@ -51,6 +51,9 @@ pub struct ButtonBuilder {
     /// `variant` because the label is a separate text node — the
     /// variant's text-color atom sits on the container, not the label.
     label_atoms: &'static [StyleAtom],
+    /// Whether the 1px tonal frame (BUTTON_FRAME) is painted. Ghost
+    /// buttons drop it — a border at rest defeats the text-only look.
+    frame: bool,
     width: ButtonWidth,
     height: f32,
     padding_x: f32,
@@ -84,6 +87,7 @@ impl ButtonBuilder {
             tone: Tone::Neutral,
             variant: SOFT_VARIANT,
             label_atoms: LABEL_TEXT_SOFT,
+            frame: true,
             width: ButtonWidth::Hug,
             height: theme.control_height(Size::Default).px_or_zero(),
             padding_x: theme.padding(Size::Default).px_or_zero(),
@@ -126,6 +130,19 @@ impl ButtonBuilder {
         self.tone = Tone::Error;
         self.variant = SOLID_VARIANT;
         self.label_atoms = LABEL_TEXT_SOLID;
+        self
+    }
+
+    /// Sugar for [`tone(Tone::Neutral)`](Self::tone) + the ghost
+    /// variant — text-only at rest, tinted hover. The row-action look
+    /// (Edit / Delete inside table rows). Pair with
+    /// [`tone(Tone::Error)`](Self::tone) for destructive row actions.
+    #[must_use]
+    pub const fn ghost(mut self) -> Self {
+        self.tone = Tone::Neutral;
+        self.variant = GHOST_VARIANT;
+        self.label_atoms = LABEL_TEXT_SOFT;
+        self.frame = false;
         self
     }
 
@@ -290,8 +307,13 @@ impl ButtonBuilder {
             .role(Role::Button)
             .label(accessible_label(&self.label))
             .layout(button_layout(self.width, self.height, self.padding_x))
-            .class("rounded-md")
-            .class(BUTTON_FRAME)
+            .class("rounded-md");
+        let node = if self.frame {
+            node.class(BUTTON_FRAME)
+        } else {
+            node
+        };
+        let node = node
             .class(variant.base())
             .class(BUTTON_TRANSITION_ATOMS)
             .tone(self.tone)

@@ -189,3 +189,24 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     assert_eq!(t.accent_scale.on_solid, navy);
     assert_ne!(t.resolve_color("accent"), Theme::dark().accent);
 }
+
+#[test]
+fn numbered_surfaces_and_line_resolve_on_default() {
+    let theme = Theme::default();
+    assert_eq!(theme.resolve_color("surface-0"), theme.gray.step(1));
+    assert_eq!(theme.resolve_color("surface-1"), theme.surface);
+    assert_eq!(theme.resolve_color("surface-2"), theme.surface_pressed);
+    assert_eq!(
+        theme.resolve_color("surface-3"),
+        theme.surface_pressed_strong
+    );
+    assert_eq!(theme.resolve_color("line"), theme.border);
+    let navy = Rgba8 {
+        r: 0x0D,
+        g: 0x12,
+        b: 0x20,
+        a: 255,
+    };
+    let themed = Theme::default().with_token("surface-1", ThemeValue::Color(navy));
+    assert_eq!(themed.resolve_color("surface-1"), navy);
+}

@@ -41,17 +41,19 @@ use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::{LayoutBuilderExt, Overflow};
 use sigil_reactive::derived;
-use sigil_style::NodeStyleExt;
+use sigil_style::{ClassSource, NodeStyleExt};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::menu::{MenuItem, menu};
+use super::super::menu::MenuItem;
 use super::super::scroll::wheel_x;
+use super::super::shared::BuilderMutator;
 use super::super::virtual_list::virtual_list;
-use super::chrome::{ContextKind, RowMenu, TableChrome};
+use super::chrome::{RowMenu, TableChrome, context_overlay};
 use super::header::header_row;
 use super::hscroll;
-use super::row::body_row;
-use super::state::{SortDir, TableState};
+use super::row::{RowSpec, body_row};
+use super::select;
+use super::state::TableState;
 
 /// Default body row height in logical pixels.
 const DEFAULT_ROW_HEIGHT: f32 = 36.0;
@@ -96,6 +98,8 @@ pub struct TableBuilder<Row: 'static> {
     viewport_fill: bool,
     row_menu: Option<RowMenu<Row>>,
     empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
+    select: bool,
+    mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
 }
 
@@ -108,7 +112,7 @@ pub struct TableBuilder<Row: 'static> {
 /// scrolling, column resize / reorder / hide, and right-click menus
 /// all flow through the shared `TableState`.
 #[must_use]
-pub const fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
+pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
         state,
         row_height: DEFAULT_ROW_HEIGHT,
@@ -118,6 +122,8 @@ pub const fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         viewport_fill: false,
         row_menu: None,
         empty: None,
+        select: false,
+        mutators: Vec::new(),
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -184,45 +190,65 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
+    /// Prepend a fixed-width checkbox column wired to [`TableState`]
+    /// selection. A row checkbox toggles that row; the header checkbox
+    /// selects every visible row (or deselects them when all are
+    /// selected) and shows a dash while the selection is partial.
+    #[must_use]
+    pub const fn selectable_checkboxes(mut self) -> Self {
+        self.select = true;
+        self
+    }
+
+    /// Add utility classes after the table root defaults (`border`,
+    /// `rounded-md`, `bg-surface`).
+    #[must_use]
+    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
+        let source = source.into();
+        self.mutators.push(Box::new(move |node| node.class(source)));
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let state = self.state;
         let chrome = TableChrome::new(self.row_menu);
-        let row_height = self.row_height;
         let viewport_fill = self.viewport_fill;
-        let viewport_height = self.viewport_height;
         let viewport_width = self.viewport_width;
         let empty = self.empty;
         let root_state = state.clone();
-        let mut root_layout = LayoutStyle::flex_column()
-            .fill_width()
-            .overflow_x(Overflow::Hidden);
-        if viewport_fill {
-            root_layout = root_layout.grow(1.0).fill_height();
-        } else if let Some(width) = viewport_width {
-            root_layout = root_layout.width(width);
-        }
         let menu_chrome = chrome.clone();
         let menu_state = state.clone();
         let empty_state = state.clone();
-        let hscroll = hscroll::bind(&state, viewport_width);
+        let prefix = if self.select { select::WIDTH } else { 0.0 };
+        let hscroll = hscroll::bind(&state, viewport_width, prefix);
         let body = body_view(
             state.clone(),
             chrome.clone(),
             BodySpec {
-                row_height,
-                viewport_height,
+                row_height: self.row_height,
+                viewport_height: self.viewport_height,
                 viewport_width,
                 viewport_fill,
+                select: self.select,
             },
             hscroll,
         );
         let root = container()
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
-            .column_count(state.columns().len())
-            .class("border border-gray-6 rounded-md")
-            .layout(self.layout_overrides.apply(root_layout))
-            .child(header_row(&state, self.header_height, &chrome, hscroll))
+            .column_count(state.columns().len() + usize::from(self.select))
+            .class("border border-gray-6 rounded-md bg-surface")
+            .layout(
+                self.layout_overrides
+                    .apply(root_layout(viewport_fill, viewport_width)),
+            )
+            .child(header_row(
+                &state,
+                self.header_height,
+                &chrome,
+                hscroll,
+                self.select,
+            ))
             .child(body)
             .child(container().children_reactive(move || {
                 if empty_state.visible().get().is_empty() {
@@ -233,8 +259,22 @@ impl<Row: 'static> TableBuilder<Row> {
             }))
             .child(hscroll.scrollbar())
             .child(context_overlay(menu_state, menu_chrome));
-        wire_hscroll(root, hscroll)
+        wire_hscroll(apply_mutators(root, self.mutators), hscroll)
     }
+}
+
+/// The grid root layout: fill the host pane, or size to the explicit
+/// viewport width.
+fn root_layout(viewport_fill: bool, viewport_width: Option<f32>) -> LayoutStyle {
+    let mut layout = LayoutStyle::flex_column()
+        .fill_width()
+        .overflow_x(Overflow::Hidden);
+    if viewport_fill {
+        layout = layout.grow(1.0).fill_height();
+    } else if let Some(width) = viewport_width {
+        layout = layout.width(width);
+    }
+    layout
 }
 
 /// Body viewport sizing resolved from the builder.
@@ -244,6 +284,7 @@ struct BodySpec {
     viewport_height: f32,
     viewport_width: Option<f32>,
     viewport_fill: bool,
+    select: bool,
 }
 
 /// The windowed body list, wired into the table's horizontal scroll.
@@ -255,7 +296,15 @@ fn body_view<Row: 'static>(
 ) -> impl IntoNode {
     let body = virtual_list(
         state.visible(),
-        body_row(state, spec.row_height, chrome, hs),
+        body_row(
+            state,
+            RowSpec {
+                row_height: spec.row_height,
+                select: spec.select,
+            },
+            chrome,
+            hs,
+        ),
     )
     .key_by(|_, id| u64::from(*id))
     .row_height(spec.row_height)
@@ -269,6 +318,13 @@ fn body_view<Row: 'static>(
             None => body,
         }
     }
+}
+
+fn apply_mutators(mut root: NodeBuilder, mutators: Vec<BuilderMutator>) -> NodeBuilder {
+    for mutate in mutators {
+        root = mutate(root);
+    }
+    root
 }
 
 /// Attach the width probe (when the viewport is measured, not explicit)
@@ -312,86 +368,4 @@ impl<Row: 'static> WidgetLayoutExt for TableBuilder<Row> {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides
     }
-}
-
-fn context_overlay<Row: 'static>(state: TableState<Row>, chrome: TableChrome<Row>) -> NodeBuilder {
-    container().children_reactive(move || {
-        if !chrome.open.get() {
-            return Vec::new();
-        }
-        let (x, y) = chrome.pos.get();
-        let Some(kind) = chrome.kind.get() else {
-            return Vec::new();
-        };
-        let items = match kind {
-            ContextKind::Header(id) => header_menu(&state, id),
-            ContextKind::Row(index) => row_menu_items(&state, &chrome, index),
-        };
-        if items.is_empty() {
-            return Vec::new();
-        }
-        let mut panel = menu(chrome.open).label("Table menu").anchor(x, y);
-        for item in items {
-            panel = panel.item(item);
-        }
-        vec![panel.into_node_builder()]
-    })
-}
-
-/// Header menu: sort, hide, autosize, move, show all.
-fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<MenuItem> {
-    let sortable = state
-        .columns()
-        .iter()
-        .any(|col| col.id() == id && col.is_sortable());
-    let order = state.column_layout().peek().order.clone();
-    let visual = state
-        .visible_columns()
-        .into_iter()
-        .position(|(_, col)| col.id() == id);
-    let mut items = Vec::new();
-    if sortable {
-        let asc = state.clone();
-        let desc = state.clone();
-        items.push(MenuItem::new("Sort ascending").select(move || {
-            asc.sort(id, SortDir::Ascending);
-        }));
-        items.push(MenuItem::new("Sort descending").select(move || {
-            desc.sort(id, SortDir::Descending);
-        }));
-    }
-    let hide = state.clone();
-    items.push(MenuItem::new("Hide column").select(move || hide.hide_column(id)));
-    let autosize = state.clone();
-    items.push(MenuItem::new("Autosize").select(move || autosize.clear_column_width(id)));
-    if let Some(from) = visual {
-        if from > 0 {
-            let left = state.clone();
-            items.push(MenuItem::new("Move left").select(move || left.move_column(from, from - 1)));
-        }
-        if from + 1 < order.len() {
-            let right = state.clone();
-            items.push(
-                MenuItem::new("Move right").select(move || right.move_column(from, from + 1)),
-            );
-        }
-    }
-    let show = state.clone();
-    items.push(MenuItem::new("Show all columns").select(move || show.show_all_columns()));
-    items
-}
-
-fn row_menu_items<Row: 'static>(
-    state: &TableState<Row>,
-    chrome: &TableChrome<Row>,
-    index: u32,
-) -> Vec<MenuItem> {
-    let Some(build) = &chrome.row_menu else {
-        return Vec::new();
-    };
-    let rows = state.rows().peek();
-    let Some(row) = rows.get(index as usize) else {
-        return Vec::new();
-    };
-    build(row)
 }

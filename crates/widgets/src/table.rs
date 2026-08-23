@@ -13,6 +13,7 @@ mod header;
 mod hscroll;
 mod identity;
 mod row;
+mod select;
 mod state;
 mod view;
 
