@@ -1,9 +1,12 @@
 //! Native menu bar.
 //!
 //! Build a menu with the re-exported [`muda`] types, register it with
-//! [`set_menu_bar`](crate::menu::set_menu_bar) BEFORE `launch`, then react to item clicks through the
-//! reactive [`events`](crate::menu::events) channel — matching the emitted [`MenuId`](crate::menu::MenuId) against the
-//! ids you gave your items.
+//! [`set_menu_bar`]. Call before [`launch`](crate::launch) or any time
+//! after; the next frame installs it. React to clicks on
+//! [`events`].
+//!
+//! Native bar: macOS and Windows. Opt-in OS chrome. The bar you style
+//! is `sigil::menu_bar`. Linux has no native bar on this host.
 //!
 //! ```rust,no_run
 //! use sigil::menu::{self, Menu, MenuItem, PredefinedMenuItem, Submenu};
@@ -20,10 +23,9 @@
 //! });
 //! ```
 //!
-//! Sigil installs the menu on the first frame (once the window exists),
-//! forwards `muda`'s global events onto the reactive channel, and wakes the
-//! event loop so a click repaints promptly. Uses the native menu bar on
-//! macOS (`init_for_nsapp`) and Windows (`init_for_hwnd`).
+//! Sigil installs a pending bar once the window exists, then again
+//! whenever [`set_menu_bar`] queues a replacement. Clicks wake the
+//! loop and emit on [`events`].
 
 use std::cell::RefCell;
 
@@ -46,8 +48,8 @@ thread_local! {
     static BRIDGE: (Sender<MenuId>, Receiver<MenuId>) = unbounded();
 }
 
-/// Register the native menu bar. Call BEFORE [`launch`](crate::launch);
-/// Sigil installs it on the first frame and routes item clicks to [`events`].
+/// Register the native menu bar. Call before [`launch`](crate::launch)
+/// or any time after. The next frame installs or replaces the bar.
 pub fn set_menu_bar(menu: Menu) {
     PENDING.with(|slot| *slot.borrow_mut() = Some(menu));
 }
@@ -110,14 +112,23 @@ fn install_native(menu: &Menu, hwnd: Option<isize>) {
     if let Some(hwnd) = hwnd {
         // SAFETY: `hwnd` is the live main-window handle from the shell.
         unsafe {
-            let _ = menu.init_for_hwnd(hwnd);
+            if let Err(err) = menu.init_for_hwnd(hwnd) {
+                tracing::warn!(
+                    target: "sigil::menu",
+                    error = %err,
+                    "native menu bar did not attach to the window"
+                );
+            }
         }
     }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn install_native(_menu: &Menu, _hwnd: Option<isize>) {
-    // Linux menu-bar init is GTK-specific; not wired yet.
+    tracing::warn!(
+        target: "sigil::menu",
+        "native menu bar is macOS and Windows; use sigil::widgets::menu on this host"
+    );
 }
 
 #[cfg(test)]

@@ -1,0 +1,18 @@
+[package]
+name = "hello-host"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Headless Host: the hello-counter tree with no window."
+
+[dependencies]
+# Path dep so this binary can disable desktop. Workspace inherit cannot
+# override default-features on sigil-ui.
+sigil-ui = { path = "../../crates/sigil", default-features = false }
+
+[lints]
+workspace = true

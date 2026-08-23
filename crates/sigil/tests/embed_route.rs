@@ -1,40 +1,14 @@
-#![allow(missing_docs)]
-// Integration test; direct assertions per the hygiene framework.
-#![allow(clippy::panic, clippy::unwrap_used)]
-// `Host` lives behind the `render` feature. A crate-level
-// `#![cfg]` would strip the allows above with the rest of the file, so the
-// gate lives on the items; with the feature off this crate is empty and its
-// dev-deps are legitimately unused.
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
+#![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
-//! `Host::route` — the embedding-host event seam.
-//!
-//! A host-synthesized pointer click routed through `Host::route`
-//! reaches a widget's activate handler.
+//! `Host::route` and `Host::painted` through the public facade.
+//! Layout, not `scene`: this path does not need feature `render`.
 
-#[cfg(feature = "render")]
 use std::cell::Cell;
-#[cfg(feature = "render")]
 use std::rc::Rc;
 
-#[cfg(feature = "render")]
 use sigil::prelude::*;
-#[cfg(feature = "render")]
-use sigil::reactive::Runtime;
-#[cfg(feature = "render")]
-use sigil::ui::Host;
-#[cfg(feature = "render")]
-use sigil_events::EventRouter;
-#[cfg(feature = "render")]
-use sigil_hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
+use sigil_hal::{Point, PointerEventInit};
 
-#[cfg(feature = "render")]
 const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
@@ -47,7 +21,6 @@ const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton
     }))
 }
 
-#[cfg(feature = "render")]
 #[test]
 fn routed_click_reaches_button_activate() {
     Runtime::scope("embed_route", || {
@@ -62,8 +35,7 @@ fn routed_click_reaches_button_activate() {
                     .child(button("hit me").activate(move || seen.set(true))),
             )
         });
-        // Populate the private LayoutEngine the router needs.
-        let _scene = ui.scene((200.0, 100.0)).expect("layout");
+        ui.layout((200.0, 100.0)).expect("layout");
 
         let mut router = EventRouter::new();
         ui.route(
@@ -79,5 +51,32 @@ fn routed_click_reaches_button_activate() {
             clicked.get(),
             "routed click must reach the button's activate handler"
         );
+    });
+}
+
+#[test]
+fn painted_and_surfaces_use_prelude_types() {
+    Runtime::scope("embed_painted", || {
+        let mut host = Host::new();
+        host.build(|cx| {
+            cx.add(
+                container()
+                    .layout(LayoutStyle::flex_column().fixed_size(80.0, 24.0))
+                    .child(text("hello"))
+                    .child(surface(7)),
+            )
+        });
+        host.layout((80.0, 24.0)).expect("layout");
+        let painted: Vec<Painted> = host.painted();
+        assert!(
+            painted
+                .iter()
+                .any(|node| node.text.as_deref() == Some("hello")),
+            "expected hello in {painted:?}"
+        );
+        let holes = host.surfaces();
+        assert_eq!(holes.len(), 1);
+        assert_eq!(holes[0].0, 7);
+        assert!(holes[0].1.width > 0.0);
     });
 }

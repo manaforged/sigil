@@ -7,7 +7,7 @@
 use std::rc::Rc;
 
 use sigil_hal::Rect;
-use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
+use sigil_kernel::{Cx, Node, NodeId, NodeType, Surface, TextContent};
 use sigil_layout::LayoutResult;
 use sigil_style::{
     Rgba8, StateSlot, StyleAtom, StyleBinding, TextStyle, Theme, Tone, ToneContext,
@@ -117,6 +117,9 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
     let Some(node) = walk.cx.get(id) else {
         return;
     };
+    if node.get_extension::<Surface>().is_some() {
+        return;
+    }
     // Each lookup scans the node's extension list, so read every one this
     // walk needs exactly once and hand them on.
     let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);

@@ -206,6 +206,19 @@ fn layout_for_scale_keeps_logical_rects_stable() {
 }
 
 #[test]
+fn host_layout_matches_layout_for_scale() {
+    Runtime::scope("host-layout", || {
+        let mut host = crate::Host::new();
+        host.build(|cx| cx.add(container().layout(LayoutStyle::block().fixed_size(720.0, 480.0))));
+        let root = host.layout((720.0, 480.0)).unwrap().unwrap();
+        let (_, engine, _) = host.tree().unwrap();
+        let rect = engine.result(root).unwrap().rect();
+        assert_eq!(rect.width.to_bits(), 720.0_f32.to_bits());
+        assert_eq!(rect.height.to_bits(), 480.0_f32.to_bits());
+    });
+}
+
+#[test]
 fn layout_gate_skips_clean_input_and_runs_only_for_dirty_frames() {
     Runtime::scope("layout_gate", || {
         let mut passes = 0;

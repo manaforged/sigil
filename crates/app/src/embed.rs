@@ -1,24 +1,28 @@
 //! [`Host`] — embed Sigil in another engine's frame loop.
 //!
-//! Desktop apps call `sigil::launch`. Other engines (a game loop, a
-//! custom window, a terminal) own the surface and pump a [`Host`]:
-//! build, route events, lay out. Desktop paint is [`Host::scene`].
+//! Desktop apps call `sigil::launch`, which pumps a [`Host`]. Other
+//! engines own the window and pump the same type: build, route, layout.
+//! GPU paint is [`Host::scene`]
+//! (this crate's `scene` feature, on with `desktop`; on `sigil-ui` that
+//! is `desktop` or `render`). Cell paint is [`Host::painted`]. After
+//! layout, [`Host::surfaces`] lists holes the host fills. Sigil does
+//! not create OS child windows.
 
 use sigil_events::EventRouter;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 use sigil_hal::Point;
 use sigil_hal::{LogicalSize, Rect, ShellEvent, Size};
 use std::rc::Rc;
 
-use sigil_kernel::{Cx, NodeId, TextContent};
-use sigil_layout::{LayoutEngine, LayoutError, TextMeasure};
+use sigil_kernel::{Cx, NodeId, Surface, TextContent};
+use sigil_layout::{LayoutEngine, LayoutError, LayoutResult, TextMeasure};
 use sigil_style::{Rgba8, TextStyle, Theme, Tone, grid};
 use unicode_width::UnicodeWidthStr;
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 use sigil_renderer::{CommandScene, emit_scene_clipped};
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 use crate::DefaultTextMeasure;
 use crate::paint::{Cascade, Resolved, Walk, fill_painted};
 
@@ -54,9 +58,34 @@ pub struct Painted {
 
 /// A retained widget tree + layout engine an embedding host pumps each frame.
 ///
-/// Owns no window, surface, or event loop — the host supplies the viewport
-/// and paints. Desktop callers use [`Host::scene`]; TUI and tests use
-/// [`Host::layout`] + [`Host::painted`].
+/// Owns no window, surface, or event loop. The caller supplies the
+/// viewport and paints.
+///
+/// `signal` / `derived` / `effect` panic outside
+/// `sigil::prelude::Runtime::scope`. `launch` and `run_tui` open that
+/// scope and pump this type. A host that uses signals must open it.
+/// A static tree does not.
+///
+/// # Frame phases
+///
+/// `launch` runs Effect → Layout → Paint. A host that writes during
+/// a paint fence should do the same: `Runtime::begin_effect`,
+/// [`Host::route`], `Runtime::begin_layout`, [`Host::layout`], then
+/// [`Host::painted`] or [`Host::scene`]. Tests that write in Idle
+/// can skip this: `Signal::set` runs effects immediately.
+///
+/// ```ignore
+/// use sigil::prelude::*;
+///
+/// let mut host = Host::new();
+/// host.mount(text("hello"));
+/// assert!(host.layout((80.0, 24.0)).expect("layout").is_some());
+/// assert!(
+///     host.painted()
+///         .iter()
+///         .any(|node| node.text.as_deref() == Some("hello"))
+/// );
+/// ```
 pub struct Host {
     cx: Cx,
     layout: LayoutEngine,
@@ -76,6 +105,21 @@ pub struct Host {
     root_text: Rc<TextStyle>,
 }
 
+/// `surface(key)` boxes that have a layout rect. GPU paint skips these.
+pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
+    let mut out = Vec::new();
+    cx.visit_preorder(root, |_, node| {
+        let Some(hole) = node.get_extension::<Surface>() else {
+            return;
+        };
+        let Some(layout) = node.get_extension::<LayoutResult>() else {
+            return;
+        };
+        out.push((hole.key, layout.rect()));
+    });
+    out
+}
+
 impl Default for Host {
     fn default() -> Self {
         Self::new()
@@ -84,12 +128,14 @@ impl Default for Host {
 
 impl Host {
     /// Create an empty host. Call [`Host::build`] before [`Host::layout`].
+    ///
+    /// With this crate's `scene` feature (on with `desktop`; on
+    /// `sigil-ui` that is `desktop` or `render`), text uses the
+    /// production engine. Without it, text uses [`Host::CELL`].
     #[must_use]
     pub fn new() -> Self {
-        #[cfg(feature = "desktop")]
+        #[cfg(feature = "scene")]
         {
-            // Install pointer→glyph geometry alongside the measurer so embedded
-            // text widgets get caret/selection hit-testing (see `text_geometry`).
             sigil_layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
         }
         Self {
@@ -123,14 +169,16 @@ impl Host {
         }
     }
 
-    /// Build (or rebuild) the widget tree. The closure receives this
-    /// host's `Cx` and returns the root node.
+    /// Build (or rebuild) the widget tree from a closure.
+    ///
+    /// `cx` is inferred. Same install as [`Host::mount`].
     pub fn build(&mut self, tree: impl FnOnce(&mut Cx) -> NodeId) {
-        self.root = Some(tree(&mut self.cx));
+        self.mount(tree);
     }
 
     /// Install a [`crate::TreeRoot`] — the same tree `launch` and
-    /// `run_tui` accept.
+    /// `run_tui` accept. Closures, `text`, `image`, `container`, or
+    /// [`crate::root`] wrapping a widget.
     pub fn mount(&mut self, tree: impl crate::TreeRoot) {
         self.root = Some(tree.install(&mut self.cx));
     }
@@ -138,6 +186,20 @@ impl Host {
     /// Borrow the underlying `Cx` (for event routing / reactive updates).
     pub const fn cx(&mut self) -> &mut Cx {
         &mut self.cx
+    }
+
+    /// Root after [`Host::build`] or [`Host::mount`].
+    #[must_use]
+    pub const fn root(&self) -> Option<NodeId> {
+        self.root
+    }
+
+    /// `Cx`, layout engine, and root together. `launch` uses this so it
+    /// does not own a second tree.
+    #[cfg(feature = "desktop")]
+    pub(crate) fn tree(&mut self) -> Option<(&mut Cx, &LayoutEngine, NodeId)> {
+        let root = self.root?;
+        Some((&mut self.cx, &self.layout, root))
     }
 
     /// Route a shell event into the built tree. The caller owns the
@@ -169,6 +231,19 @@ impl Host {
         self.layout
             .compute(&mut self.cx, root, Size::fixed(viewport.0, viewport.1))?;
         Ok(Some(root))
+    }
+
+    /// Native-view holes after the last [`Host::layout`].
+    ///
+    /// Each pair is the `surface(key)` key and its root-space rect.
+    /// The GPU and TUI skip that box. The caller places a native view
+    /// or ignores the list. Empty until layout.
+    #[must_use]
+    pub fn surfaces(&self) -> Vec<(u64, Rect)> {
+        let Some(root) = self.root else {
+            return Vec::new();
+        };
+        surface_holes(&self.cx, root)
     }
 
     /// Walk the last layout: rects, text, and tone. Empty until
@@ -223,23 +298,31 @@ impl Host {
         moved || shrank
     }
 
-    /// Lay the tree out at `viewport` (logical pixels) and emit the paint
-    /// scene. Returns an empty scene until [`Host::build`] has run.
+    /// Lay the tree out at `viewport` (logical pixels) and emit the GPU
+    /// command scene. Returns an empty scene until [`Host::build`] has
+    /// run. On `sigil-ui`, enable `desktop` or `render`.
     ///
     /// # Errors
     ///
     /// Returns the layout engine error instead of emitting stale geometry.
-    #[cfg(feature = "desktop")]
+    #[cfg(feature = "scene")]
     pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {
         let Some(root) = self.layout(viewport)? else {
             return Ok(CommandScene::default());
         };
-        Ok(emit_scene_clipped(
-            &self.cx,
-            root,
-            Some(Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)),
-        ))
+        Ok(emit_viewport_scene(&self.cx, root, viewport))
     }
+}
+
+/// GPU command scene for a laid-out tree. Launch replay and
+/// [`Host::scene`] share this emit.
+#[cfg(feature = "scene")]
+pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -> CommandScene {
+    emit_scene_clipped(
+        cx,
+        root,
+        Some(Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1)),
+    )
 }
 
 /// Walk the tree, writing each node into the next slot of `out`.
@@ -261,12 +344,12 @@ impl TextMeasure for CellMeasure {
     }
 }
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 fn host_measure() -> impl TextMeasure {
     DefaultTextMeasure::new()
 }
 
-#[cfg(not(feature = "desktop"))]
+#[cfg(not(feature = "scene"))]
 fn host_measure() -> impl TextMeasure {
-    CellMeasure { px: 1.0 }
+    CellMeasure { px: Host::CELL }
 }

@@ -32,6 +32,7 @@ mod a11y;
 mod attrs;
 mod commands;
 mod events;
+mod overlay;
 
 /// Pending window specification recorded before the event loop is
 /// alive, or between frames.

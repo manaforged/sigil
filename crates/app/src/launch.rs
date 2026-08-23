@@ -1,7 +1,7 @@
 //! `sigil::launch` — the one-call entry point.
 //!
 //! Owns the full frame pipeline: reactive scope → shell/window → renderer
-//! → lazy surface → cx/layout/router → event drain → scene emit → paint.
+//! → lazy surface → [`Host`](crate::Host) → event drain → scene emit → paint.
 //! Every failure mode listed in `phase-08a-ergonomics-pass.md`'s
 //! bulletproof table becomes unreachable at this layer.
 
@@ -12,7 +12,9 @@ use sigil_animation_runtime::{active_count as active_animation_count, tick as ti
 use sigil_events::EventRouter;
 use sigil_hal::{LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
 use sigil_kernel::Cx;
+#[cfg(test)]
 use sigil_layout::LayoutEngine;
+#[cfg(test)]
 use sigil_layout::prelude::Size;
 use sigil_reactive::{
     MainThreadDispatcher, Runtime, TaskExecutor, next_interval_deadline, tick_intervals,
@@ -22,8 +24,8 @@ use sigil_shell::{WinitShell, WinitWindowHandle};
 use sigil_tasks::AsyncRuntime;
 
 use crate::config::{AppConfig, PanicPolicy};
+use crate::embed::Host;
 use crate::error::{AppResult, Error};
-use crate::text_measure::DefaultTextMeasure;
 use crate::tree_root::TreeRoot;
 
 mod event_wiring;
@@ -36,7 +38,8 @@ use scene_cache::{PaintRequest, SceneCache};
 /// Launch a sigil app.
 ///
 /// `config` accepts `()`, `&str`, `(title, w, h)`, or `AppConfig`.
-/// `tree` accepts either `FnOnce(&mut Cx) -> NodeId` or a `NodeBuilder`.
+/// `tree` is a closure, `text(...)`, `image(...)`, a `container()`,
+/// or [`crate::root`] wrapping a widget.
 ///
 /// Returns when the user closes the window or (by default) presses Esc.
 ///
@@ -59,7 +62,11 @@ where
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // A non-positive zoom is a caller bug, not a layout death sentence.
     let config = AppConfig {
-        user_zoom: if config.user_zoom > 0.0 { config.user_zoom } else { 1.0 },
+        user_zoom: if config.user_zoom > 0.0 {
+            config.user_zoom
+        } else {
+            1.0
+        },
         ..config
     };
     // Live desktop apps use the platform UI families by default. A consumer
@@ -77,15 +84,11 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
 
     let mut async_rt = install_async_runtime(&shell)?;
 
-    let mut cx = Cx::new_root();
-    let root = tree.install(&mut cx);
+    let mut host = Host::new();
+    host.mount(tree);
+    let root = host.root().expect("TreeRoot::install returns a node");
+    let theme_watch = start_theme_watch(&config, host.cx(), root);
 
-    let theme_watch = start_theme_watch(&config, &mut cx, root);
-
-    let mut layout = LayoutEngine::with_text_measure(Box::new(DefaultTextMeasure::new()));
-    // Install pointer→glyph geometry so text widgets can hit-test clicks and
-    // draw caret/selection overlays (mirrors the measurer install above).
-    sigil_layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
     // The viewport is sigil-logical: the window keeps `logical_size` in
     // winit terms, but content lays out zoom-times smaller so the composed
     // scale paints it back to the same physical size (webview-zoom rules).
@@ -93,14 +96,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
         logical_size.width / config.user_zoom,
         logical_size.height / config.user_zoom,
     );
-    layout_for_scale(
-        &mut cx,
-        root,
-        &mut layout,
-        Scale::ONE,
-        logical_size_from_viewport(viewport),
-    )
-    .map_err(Error::new)?;
+    host.layout(viewport).map_err(Error::new)?;
 
     let mut router = EventRouter::new();
     // W5-A11Y (DR-050 §1) — clone the inbound `ActionRequest` receiver
@@ -128,9 +124,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                     config: &config,
                     shell,
                     window_handle,
-                    cx: &mut cx,
-                    root,
-                    layout: &mut layout,
+                    host: &mut host,
                     router: &mut router,
                     renderer: &mut renderer,
                     surface: &mut surface,
@@ -228,9 +222,7 @@ struct FrameCtx<'a> {
     config: &'a AppConfig,
     shell: &'a mut WinitShell,
     window_handle: WinitWindowHandle,
-    cx: &'a mut Cx,
-    root: sigil_kernel::NodeId,
-    layout: &'a mut LayoutEngine,
+    host: &'a mut Host,
     router: &'a mut EventRouter,
     renderer: &'a mut WgpuRenderer,
     surface: &'a mut Option<WgpuSurface>,
@@ -346,9 +338,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
         config,
         shell,
         window_handle,
-        cx,
-        root,
-        layout,
+        host,
         router,
         renderer,
         surface,
@@ -364,7 +354,8 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // before the Effect phase so the re-attached theme is visible in
     // THIS frame's layout + paint.
     if let Some(watch) = theme_watch
-        && crate::theme_file::drain(cx, root, watch)
+        && let Some(root) = host.root()
+        && crate::theme_file::drain(host.cx(), root, watch)
     {
         Runtime::mark_frame_dirty();
     }
@@ -376,7 +367,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // `acx.update(...)` visible to the next frame's Effect phase.
     let _moved = async_rt.pump_completions_into_reactive();
 
-    // First live frame: install the registered native menu bar (macOS
+    // Install or replace a pending native menu bar (macOS
     // `init_for_nsapp` / Windows `init_for_hwnd`). muda's item events wake
     // the loop and bridge onto `menu::events()`, drained in `menu::pump`.
     if crate::menu::has_pending() {
@@ -385,7 +376,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
             let _ = waker.wake();
         });
     }
-    // Same for the system tray icon: build it on the first frame; its clicks
+    // Same for the system tray icon: build or replace when pending; clicks
     // wake the loop and bridge onto `tray::events()`.
     if crate::tray::has_pending() {
         let waker = shell.waker();
@@ -416,7 +407,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
     ensure_surface(EnsureSurfaceCtx {
         shell,
         window_handle,
-        cx,
+        cx: host.cx(),
         renderer,
         surface,
         viewport,
@@ -435,18 +426,20 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // so subscriber effects (`menu::events().subscribe(...)`) run this frame.
     crate::menu::pump();
     crate::tray::pump();
-    drain_events(DrainCtx {
-        shell,
-        window_handle,
-        cx,
-        layout,
-        router,
-        surface,
-        renderer,
-        viewport,
-        config,
-        exit_requested,
-    });
+    if let Some((cx, layout, _)) = host.tree() {
+        drain_events(DrainCtx {
+            shell,
+            window_handle,
+            cx,
+            layout,
+            router,
+            surface,
+            renderer,
+            viewport,
+            config,
+            exit_requested,
+        });
+    }
     // Advance motion while writes are legal, before layout reads animated
     // geometry. The frame callback requests a successor redraw only while the
     // runtime still has moving animators, so idle windows consume no frame loop.
@@ -465,8 +458,9 @@ fn frame_once(ctx: FrameCtx<'_>) {
     {
         let _layout = sigil_profile::span("layout");
         run_layout_if_dirty(layout_dirty, || {
-            let logical = logical_size_from_viewport(*viewport);
-            recompute_layout(cx, root, layout, cx.scale(), logical);
+            if let Err(err) = host.layout(*viewport) {
+                tracing::warn!("sigil-app: layout recompute failed: {err}");
+            }
         });
     }
     // AT action validation needs THIS frame's fresh layout/scopes, not
@@ -474,10 +468,12 @@ fn frame_once(ctx: FrameCtx<'_>) {
     // `event_wiring::drain_a11y_actions`'s own doc comment. Drain before
     // publish so a Focus action's effect (a plain field write) is
     // visible in this frame's tree too.
-    event_wiring::drain_a11y_actions(a11y_action_rx, cx, router, layout);
-    // IME sync reads focus state — after the action drain, so an
-    // AT-initiated focus move updates set_ime_allowed the same frame.
-    sync_ime(shell, window_handle, cx, layout, router);
+    if let Some((cx, layout, _)) = host.tree() {
+        event_wiring::drain_a11y_actions(a11y_action_rx, cx, router, layout);
+        // IME sync reads focus state — after the action drain, so an
+        // AT-initiated focus move updates set_ime_allowed the same frame.
+        sync_ime(shell, window_handle, cx, layout, router);
+    }
     Runtime::begin_paint();
     // Change-gate + a11y publish share this dirty read (RC-focus finding 1).
     let paint_dirty = Runtime::frame_dirty();
@@ -489,19 +485,23 @@ fn frame_once(ctx: FrameCtx<'_>) {
     {
         let _paint = sigil_profile::span("paint");
         let _ = paint_needed.then(|| {
-            frame_state.scene_cache.paint(PaintRequest {
-                cx,
-                root,
-                renderer,
-                surface,
-                viewport: *viewport,
-                allow_replay: allow_scene_replay,
-            });
+            if let Some((cx, _, root)) = host.tree() {
+                frame_state.scene_cache.paint(PaintRequest {
+                    cx,
+                    root,
+                    renderer,
+                    surface,
+                    viewport: *viewport,
+                    allow_replay: allow_scene_replay,
+                });
+            }
         });
     }
     {
         let _a11y = sigil_profile::span("a11y");
-        event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
+        if let Some((cx, layout, _)) = host.tree() {
+            event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
+        }
     }
     // end_frame transitions Paint → Effect (replay deferred writes) →
     // Idle so the next iteration enters begin_effect from a clean
@@ -555,18 +555,7 @@ fn resize_surface(
     }
 }
 
-fn recompute_layout(
-    cx: &mut Cx,
-    root: sigil_kernel::NodeId,
-    layout: &mut LayoutEngine,
-    scale: Scale,
-    logical: LogicalSize,
-) {
-    if let Err(err) = layout_for_scale(cx, root, layout, scale, logical) {
-        tracing::warn!("sigil-app: layout recompute failed: {err}");
-    }
-}
-
+#[cfg(test)]
 fn layout_for_scale(
     cx: &mut Cx,
     root: sigil_kernel::NodeId,

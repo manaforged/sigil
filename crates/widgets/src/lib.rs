@@ -1,6 +1,9 @@
 //! First-party Sigil widgets. Host-agnostic: no window, no GPU.
 //!
 //! Built from kernel, layout, style, events, and reactive state.
+//! Desktop apps import through `sigil::prelude::*` (`button`,
+//! `icon_button`, `text_field`, `text_edit`, `table`, `virtual_list`,
+//! `card`, `avatar`, `sidebar`, and the rest).
 
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 #![deny(missing_docs)]
@@ -18,6 +21,7 @@ mod button;
 mod chart;
 mod checkbox;
 mod chip;
+mod clipboard;
 mod code_edit;
 mod color_field;
 mod combobox;
@@ -31,6 +35,7 @@ mod drag_drop;
 mod dropdown;
 mod floating_text;
 mod gauge;
+mod html;
 mod icon;
 mod image;
 pub mod interactive;
@@ -49,8 +54,10 @@ mod scroll;
 mod shared;
 mod slider;
 mod splitter;
+mod surface;
 mod table;
 mod tabs;
+mod terminal;
 mod text_edit;
 mod text_field;
 mod toast;
@@ -58,14 +65,16 @@ mod toast_queue;
 mod toggle;
 mod tooltip;
 pub mod transition_seam;
+mod transport;
 mod turn_strip;
 mod vector;
 mod virtual_list;
 
-pub use button::{ButtonBuilder, button};
+pub use button::{ButtonBuilder, button, icon_button};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, badge, chip};
+pub use clipboard::{ClipError, Clipboard, NoopClipboard, clipboard, set_clipboard};
 pub use code_edit::{ChangeKind, CodeEditBuilder, DiagSeverity, DiagSpan, HlSpan, code_edit};
 pub use color_field::{color_field, parse_hex, to_hex};
 pub use combobox::{Combobox, combobox};
@@ -82,36 +91,42 @@ pub use floating_text::{
     floating_text,
 };
 pub use gauge::{GaugeBuilder, gauge};
+pub use html::html;
 pub use icon::{IconBuilder, icon};
 #[cfg(feature = "image-decode")]
 pub use image::image_bytes;
 pub use image::{ImageBuilder, image_rgba};
 pub use interactive::{InteractiveBuilder, interactive};
 pub use markdown::{markdown, markdown_edit};
-pub use menu::{MenuBuilder, MenuItem, menu};
+pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, menu, menu_bar};
 pub use mermaid::{draw as mermaid_draw, mermaid};
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
-pub use patterns::{HintOverlayBuilder, field, validated_field};
+pub use patterns::{
+    HintOverlayBuilder, avatar, card, field, sidebar, sidebar_width, validated_field,
+};
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
+pub use surface::surface;
 pub use table::{
     ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey, TableBuilder,
     TableColumn, TableState, table,
 };
 pub use tabs::{TabsBuilder, tabs};
+pub use terminal::terminal;
 pub use text_edit::{TextEditBuilder, text_edit};
-pub use text_field::{Clipboard, TextFieldBuilder, text_field};
+pub use text_field::{TextFieldBuilder, text_field};
 pub use toast::toast;
 pub use toast_queue::{MAX_VISIBLE, TOAST_TTL, ToastEntry, ToastLevel, ToastQueue, toast_queue};
 pub use toggle::{ToggleBuilder, toggle};
 pub use tooltip::{TooltipBuilder, tooltip};
+pub use transport::{TransportBuilder, transport};
 pub use turn_strip::{TurnStripBuilder, turn_strip};
 pub use vector::{PathCmd, PathFill, PathNode, path};
 pub use virtual_list::{

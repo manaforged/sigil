@@ -3,7 +3,7 @@
 use std::rc::Rc;
 
 use sigil_hal::{ParagraphMetrics, Point, Rect};
-use sigil_kernel::{Cx, Node, NodeId, NodeType, TextContent};
+use sigil_kernel::{Cx, Node, NodeId, NodeType, Surface, TextContent};
 use sigil_layout::LayoutResult;
 use sigil_style::{
     DisplayKind, Elevation, RenderStyle, Rgba8, StyleAtom, StyleBinding, TextDecoration, TextStyle,
@@ -96,6 +96,11 @@ fn push_subtree<'t>(
         return;
     };
     if is_display_none(node) {
+        return;
+    }
+    if node.get_extension::<Surface>().is_some() {
+        // Layout hole: no fill, no glyphs, no descendants. Occupant is a
+        // host connector, not this scene.
         return;
     }
     if outside_clip(node, clip) {

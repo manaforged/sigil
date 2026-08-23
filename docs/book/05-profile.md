@@ -156,5 +156,30 @@ cargo bench -p sigil-ui --bench frame_phases -- --test
 cargo bench -p sigil-ui --bench frame_phases
 ```
 
-Frame budget is `sigil::profile::FRAME_BUDGET_NS` (16.67 ms).
-Interaction budget is `INTERACT_BUDGET_NS` (200 ms, Chrome INP).
+Frame budget is `sigil::profile::FRAME_BUDGET_NS` (16.67 ms). That is
+the native click/type bar. `INTERACT_BUDGET_NS` (200 ms) is Chrome INP
+only — the report names it as such. Do not treat 200 ms as good for a
+wgpu click.
+
+Headless Increment of wrapping `text(derived)` on a 40-row column is
+`layout.incr`, not `layout.full`. Prove with:
+
+```text
+cargo nextest run -p sigil-layout --release --test profile derived_text_increment
+```
+
+That is layout only, not a presented wgpu frame. Native click bar stays
+`FRAME_BUDGET_NS` (16.67 ms).
+
+Headless click-to-present (Increment on the hello-counter tree:
+`signal.set` + layout + scene emit, not a presented wgpu frame):
+
+```text
+cargo test -p sigil-ui --release --test click_present -- --nocapture
+```
+
+The test prints `median=` / `mean=` / `cv=`. Label that number
+**interaction**, not construct. It must stay under `FRAME_BUDGET_NS`.
+
+Quoted (Apple M2 Max, rustc 1.98.0, `--release`, n=64): median 43 µs,
+mean 45 µs, cv 0.109. Not a presented wgpu frame.

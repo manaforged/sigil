@@ -1,9 +1,10 @@
 # Sigil
 
-Desktop UI in Rust. `sigil::launch` opens a window. `sigil::ui::Host`
-embeds the same tree in another engine. The widget catalog
-(`button`, `text_field`, `table`, `virtual_list`, `modal`, `sheet`,
-`toast`) lives in this crate.
+Desktop UI in Rust. `sigil::launch` opens a window. `sigil::Host`
+embeds the same tree in another engine's loop. The widget catalog
+(`button`, `icon_button`, `text_field`, `text_edit`, `table`,
+`virtual_list`, `modal`, `sheet`, `toast`, `card`, `avatar`,
+`sidebar`) lives in this crate.
 
 ```bash
 mdbook serve docs/book
@@ -28,7 +29,11 @@ cargo deny check
 ```
 
 Sigil is a Rust-native desktop UI system for building serious,
-data-heavy applications without retreating to a webview. It owns the
+data-heavy applications without retreating to a webview. `run_tui`
+paints that same tree on a character grid. A PTY pane is
+`terminal()` plus a prelude `Session` inside the tree — the opposite
+job. Native views sit in `surface()` holes (`Host::surfaces`). HTML
+ingest is `html()`, not a browser. It owns the
 experience layer above the hard foundations: reactive state, typed node
 identity, layout, rendering, accessibility, IME-ready text, headless
 interaction primitives, a designed component catalog, and the app
@@ -74,10 +79,9 @@ Accessibility lives in the node type rather than beside it, and
 AccessKit, IME, drag-and-drop, and animation are wired.
 
 Only `sigil-renderer` depends on `wgpu` (the facade carries it as a
-dev-dependency for GPU tests). Everything else depends on the
-`sigil-hal` traits, which is what lets `sigil::ui::Host` embed the same
-tree in another engine's frame loop, and `sigil-tui` render it to a
-terminal.
+dev-dependency for GPU tests). `sigil::Host` embeds the same tree in
+another engine's frame loop. `sigil-tui` paints it on a character
+grid. Feature `render` gives `Host::scene` without winit.
 
 ## Influences
 
@@ -131,7 +135,10 @@ crates/
   icons/ (sigil-icons)         SVG icon baking (usvg → sprites).
   app/ (sigil-app)             App orchestrator: sigil::launch, AppConfig,
                                TreeRoot, frame loop, DPI-aware logical sizing,
-                               bulletproof defaults.
+                               native dialogs and menu/tray.
+  widgets/ (sigil-widgets)     Widget catalog. No window, no GPU.
+  tui/ (sigil-tui)             Terminal host. Same tree, character grid.
+                               Not a PTY or terminal-emulator pane.
   profile/ (sigil-profile)     Frame profiler: SIGIL_PROFILE, Perfetto JSON,
                                phase table. Wired in launch; see docs/book/05-profile.md.
   sigil/ (sigil-ui)            User-facing facade with prelude — the package is
@@ -146,6 +153,8 @@ examples/
   hello-counter/     Minimum viable reactive UI on `sigil::launch`:
                      a signal-backed counter with a primary button
                      and a derived label. ~20 lines of user code.
+  hello-host/        Same tree on `sigil::Host`. No window. Prints
+                     painted text and `surface` holes.
   hello-events/      Window proof app using `sigil::launch`: click
                      toggles the surface tint, Tab cycles focus, Esc
                      quits. 34 lines of user code.
@@ -161,12 +170,14 @@ examples/
                      `sigil::launch`. Advanced reference — opens a
                      window, clears to a colour, cycles three colours
                      on a timer, and exits cleanly.
-  widget-playground/ The widget catalog, live.
+  widget-playground/ The widget catalog, live (including pending
+                     buttons, card, avatar, sidebar).
   data-table/        1:1 of GPUI 0.2.2 `examples/data_table.rs`
                      (10k quotes, 24 columns, `virtual_list`).
   */                 Dogfood apps (csv-viewer, chat-client, kanban-board,
-                     api-explorer, file-browser, …) — each ships a
-                     FRICTION.md log that drives API ergonomics work.
+                     api-explorer, file-browser, todo, scratchpad, …).
+                     Older FRICTION.md logs stay as history; a Current
+                     tree stamp at the top names what has since landed.
 
 docs/
   book/                The author guide and architecture chapters (mdBook).
@@ -183,6 +194,7 @@ cargo deny check
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 cargo publish --workspace --dry-run --locked --all-features   # packaging gate
 cargo run -p hello-counter
+cargo run -p hello-host
 cargo run -p hello-events
 cargo run -p hello-style
 cargo run -p hello-tree

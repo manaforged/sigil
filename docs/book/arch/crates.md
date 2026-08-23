@@ -22,9 +22,11 @@ not on `wgpu` or `winit` directly.
 | `sigil-tasks` | Tokio runtime, `spawn`, `dispatch_to_owner`, `Status`. |
 | `sigil-actions` | Typed actions + `#[derive(Action)]`. |
 | `sigil-animation` / `animation_runtime` | Transitions; `config(id)` for presets. |
-| `sigil-app` | `launch`, frame loop, menu, tray, DPI. |
+| `sigil-app` | `launch`, `Host`, frame loop, menu, tray, dialogs, clipboard, `audio`, `pty`. |
+| `sigil-widgets` | Widget catalog. No window, no GPU. `terminal` / `transport` / `surface` compile without those services. |
+| `sigil-tui` | Terminal host. Same tree, character grid. Not a PTY. |
 | `sigil-profile` | `SIGIL_PROFILE`, Perfetto, phase table. |
-| `sigil` (`sigil-ui`) | Facade + widget catalog + prelude. |
+| `sigil` (`sigil-ui`) | Facade + prelude. Re-exports the widget catalog. |
 
 Not default members (still in the workspace): `ide-core`,
 `engine_adapter`, bench-parity crates.
@@ -33,9 +35,14 @@ Not default members (still in the workspace): `ide-core`,
 
 ```text
 sigil-ui
-  → app, widgets (in-tree), kernel, layout, style, events, reactive, tasks
+  → app, widgets, kernel, layout, style, events, reactive, tasks
+  → tui (feature tui)
 app
   → kernel, layout, renderer, shell, a11y, reactive, tasks, profile
+widgets
+  → kernel, layout, style, events, reactive (no wgpu, no winit)
+tui
+  → kernel, layout, style, events, reactive, widgets (no wgpu)
 layout
   → kernel, style, hal, reactive
 renderer
@@ -49,3 +56,18 @@ hal
 `sigil-reactive` does not depend on the tree. The tree depends on
 signals. That is why `Signal` is `Copy` and lives in TLS: the
 layout engine can read a style signal without owning widgets.
+
+## Three consume modes
+
+| Mode | Entry | Swap |
+|---|---|---|
+| Desktop app | `sigil::launch` | Pumps `Host`. Default HAL + OS services |
+| Embed (game / engine) | `sigil::Host` | Your loop and GPU. `Host::scene` needs feature `render`. |
+| TUI | `sigil::run_tui` | Cell raster only |
+
+HAL traits (`Shell`, `Renderer`, `TextEngine`, `A11yBridge`,
+`Scheduler`) are the frame-loop connectors. Clipboard, audio, and PTY
+are installable services, not HAL traits. `surface(key)` is a layout
+hole. GPU and TUI skip it. `Host::surfaces` returns `(key, rect)`.
+The caller places a native view. `launch` does not create a child
+window. See [The application host](../07-application.md).

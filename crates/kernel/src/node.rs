@@ -18,6 +18,17 @@ use crate::{A11yProps, NodeId, TextContent};
 #[derive(Debug, Clone, Copy)]
 pub struct TopLayer;
 
+/// Layout hole for a platform view (`NSView`, HWND, GTK).
+///
+/// The GPU leaves this node's rect empty. Attach with
+/// `NodeBuilder::with(Surface { key })`. After layout the host reports
+/// `(key, rect)` so the shell can place the native view.
+#[derive(Debug, Clone, Copy)]
+pub struct Surface {
+    /// App-chosen key. Distinct holes need distinct keys.
+    pub key: u64,
+}
+
 /// One arena node in the composed UI tree.
 #[derive(Debug)]
 pub struct Node {

@@ -1,5 +1,4 @@
-//! Sigil application shell — one-call `launch` that hides the winit /
-//! wgpu / layout / router plumbing every app otherwise rewrites by hand.
+//! Sigil application shell — one-call `launch` that pumps [`Host`].
 //!
 //! ```text
 //! fn main() -> sigil_app::AppResult<()> {
@@ -26,8 +25,10 @@ use sigil_style as _;
 #[cfg(test)]
 use sigil as _;
 
+/// Audio playback. Feature `audio` opens a device.
+pub mod audio;
 mod config;
-/// Native file dialogs (open / save / folder).
+/// Native file dialogs and message alerts (`message` / `confirm`).
 #[cfg(feature = "desktop")]
 pub mod dialog;
 mod embed;
@@ -37,10 +38,15 @@ mod launch;
 /// Native menu bar.
 #[cfg(feature = "desktop")]
 pub mod menu;
+/// Open a URL or path with the OS handler.
+#[cfg(feature = "desktop")]
+pub mod open;
 mod paint;
-#[cfg(feature = "desktop")]
+/// PTY sessions. Feature `pty` opens a host terminal.
+pub mod pty;
+#[cfg(feature = "scene")]
 mod text_geometry;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 mod text_measure;
 #[cfg(feature = "desktop")]
 mod theme_file;
@@ -49,23 +55,27 @@ mod theme_file;
 pub mod tray;
 mod tree_root;
 
+pub use audio::Player;
 pub use config::{AppConfig, PanicPolicy};
 pub use embed::{Host, Painted};
 pub use error::{AppResult, Error};
 #[cfg(feature = "desktop")]
 pub use launch::launch;
+#[cfg(feature = "desktop")]
+pub use open::open;
+pub use pty::Session;
 pub use sigil_hal::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
 pub use sigil_layout::LayoutError;
 pub use sigil_profile as profile;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 pub use sigil_renderer::{TextTuning, set_text_tuning, text_tuning};
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 pub use sigil_text::{DefaultFonts, set_default_fonts, use_system_fonts};
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 pub use text_geometry::EngineGeometry;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "scene")]
 pub use text_measure::DefaultTextMeasure;
-pub use tree_root::TreeRoot;
+pub use tree_root::{TreeRoot, root};
 
 /// G5 (DR-048 §5) — install the production `TaskExecutor` +
 /// `MainThreadDispatcher` pair against an `AsyncRuntime`.

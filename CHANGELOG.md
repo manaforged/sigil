@@ -22,12 +22,23 @@ already taken on crates.io); its library is still named `sigil`, so
 - Three-layer style system: `classes!` compile-time-checked utility classes,
   a `Style` struct API, and `style_reactive` signal binding; 12-step design
   tokens; tone × variant theming with WCAG-aware foregrounds.
-- Widget catalog: button, checkbox, chip, code_edit, command_menu, divider,
-  dot, dropdown, floating_text, gauge, icon, menu, modal, number_field, panel,
-  progress, radio_group, scroll, slider, splitter, table (headless state),
-  tabs, text_edit, text_field, toggle, tooltip, turn_strip, virtual_list.
+- Widget catalog: avatar, badge, button, card, chart, checkbox, chip,
+  code_edit, color_field, combobox, command_menu (FFT nested actions, not
+  Cmd-K), date_field, divider, dot, dropdown, field, floating_text, gauge,
+  icon, icon_button, image_rgba, interactive, markdown, markdown_edit, menu,
+  mermaid, modal, number_field, panel, path, progress, radio_group, scroll,
+  sheet, sidebar, slider, splitter, table (headless state), tabs, text_edit,
+  text_field, toast, toast_queue, toggle, tooltip, turn_strip,
+  validated_field, virtual_list. `button.pending(Signal<bool>)` paints
+  disabled while a job is in flight. Native alerts are
+  `sigil::dialog::message` / `confirm` (rfd; GTK on Linux).
 - End-to-end AccessKit accessibility and IME.
 - `sigil::launch` one-call app entry with DPI-aware logical sizing.
+  Installs the OS clipboard so text fields share `sigil::clipboard`.
+- Application host: `html()` document ingest (same nodes as `markdown`),
+  `transport` + `sigil::audio::Player` (feature `audio`), `terminal` +
+  `sigil::pty::Session` (feature `pty`), `surface(key)` layout holes
+  with `Host::surfaces` for native views. Not a webview.
 - Headless testing (`sigil::testing`) and a golden-image visual harness.
 - Terminal host (`sigil::run_tui`, crate `sigil-tui`): the same tree, widgets,
   and events as the desktop window, painted onto a character grid.

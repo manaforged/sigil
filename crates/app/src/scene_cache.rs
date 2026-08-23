@@ -1,9 +1,11 @@
 //! Last-frame command scene replay for non-mutating OS redraws.
 
-use sigil_hal::{Color, Point, Rect};
+use sigil_hal::Color;
 use sigil_kernel::{Cx, NodeId};
 use sigil_reactive::Runtime;
-use sigil_renderer::{CommandScene, SceneCommand, WgpuRenderer, WgpuSurface, emit_scene_clipped};
+use sigil_renderer::{CommandScene, SceneCommand, WgpuRenderer, WgpuSurface};
+
+use crate::embed::emit_viewport_scene;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct SceneKey {
@@ -45,8 +47,7 @@ impl SceneCache {
         let key = SceneKey::new(cx, root, viewport);
         if !allow_replay || self.key != Some(key) {
             sigil_profile::count("scene.emit");
-            let clip = Rect::new(Point::new(0.0, 0.0), viewport.0, viewport.1);
-            self.scene = emit_scene_clipped(cx, root, Some(clip));
+            self.scene = emit_viewport_scene(cx, root, viewport);
             self.key = Some(key);
             #[cfg(test)]
             {

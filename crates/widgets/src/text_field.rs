@@ -4,4 +4,4 @@ mod ime;
 mod render;
 mod selection;
 
-pub use builder::{Clipboard, TextFieldBuilder, text_field};
+pub use builder::{TextFieldBuilder, text_field};

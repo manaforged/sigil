@@ -24,3 +24,16 @@ fn events_channel_delivers_activations_to_subscribers() {
         drop(subscription);
     });
 }
+
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn set_menu_bar_after_install_queues_again() {
+    set_menu_bar(Menu::new());
+    assert!(has_pending());
+    PENDING.with(|slot| *slot.borrow_mut() = None);
+    INSTALLED.with(|slot| *slot.borrow_mut() = Some(Menu::new()));
+    set_menu_bar(Menu::new());
+    assert!(has_pending());
+    PENDING.with(|slot| *slot.borrow_mut() = None);
+    INSTALLED.with(|slot| *slot.borrow_mut() = None);
+}

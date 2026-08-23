@@ -7,10 +7,10 @@ use sigil_style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
+use super::super::clipboard::{Clipboard, clipboard};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
-use super::super::text_field::Clipboard;
-use super::handlers::{NoopClipboard, TextEditRuntime, attach_key_handlers, noop_change};
+use super::handlers::{TextEditRuntime, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, edit_layout};
 
@@ -134,7 +134,7 @@ impl TextEditBuilder {
         let layout_overrides = self.layout_overrides;
         let change = self.change.unwrap_or_else(noop_change);
         let submit = self.submit.unwrap_or_else(noop_change);
-        let clipboard = self.clipboard.unwrap_or_else(|| Rc::new(NoopClipboard));
+        let clipboard = self.clipboard.unwrap_or_else(clipboard);
 
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);

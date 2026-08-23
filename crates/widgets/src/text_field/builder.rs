@@ -2,26 +2,19 @@ use std::rc::Rc;
 
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use sigil_layout::prelude::LayoutBuilderExt;
-use sigil_reactive::{Signal, signal};
+use sigil_reactive::{Signal, derived, signal};
 use sigil_style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::interaction::InteractionState;
 
+use super::super::clipboard::{Clipboard, clipboard};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
-use super::handlers::{NoopClipboard, TextFieldRuntime, attach_key_handlers, noop_change};
+use super::handlers::{TextFieldRuntime, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{FieldInputs, build_base_node, field_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
-
-/// Platform clipboard abstraction. A no-op stub is used in tests.
-pub trait Clipboard {
-    /// Write `text` to the clipboard.
-    fn set(&self, text: &str);
-    /// Read the current clipboard contents.
-    fn get(&self) -> Option<String>;
-}
 
 /// Builder returned by [`text_field`].
 pub struct TextFieldBuilder {
@@ -139,6 +132,9 @@ impl TextFieldBuilder {
     }
 
     /// Run a callback after user editing changes the value.
+    ///
+    /// The bound `Signal<String>` is already two-way. Use this for
+    /// side effects, not to copy `v` back into the signal.
     #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
@@ -186,7 +182,7 @@ impl TextFieldBuilder {
         let layout_overrides = self.layout_overrides;
         let change = self.change.unwrap_or_else(noop_change);
         let submit = self.submit.unwrap_or_else(noop_change);
-        let clipboard = self.clipboard.unwrap_or_else(|| Rc::new(NoopClipboard));
+        let clipboard = self.clipboard.unwrap_or_else(clipboard);
 
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);
@@ -209,6 +205,10 @@ impl TextFieldBuilder {
             scroll,
             column,
         );
+        let clip_fail = runtime.clip_fail;
+        let invalid = Some(derived(move || {
+            invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
+        }));
 
         // Drain user-supplied state-slot overlays before the base
         // accumulator attaches — the field frame resolves them against

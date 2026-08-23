@@ -23,7 +23,7 @@ pub(super) struct DrainCtx<'a> {
     pub(super) shell: &'a mut WinitShell,
     pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
-    pub(super) layout: &'a mut LayoutEngine,
+    pub(super) layout: &'a LayoutEngine,
     pub(super) router: &'a mut EventRouter,
     pub(super) surface: &'a mut Option<WgpuSurface>,
     pub(super) renderer: &'a mut WgpuRenderer,

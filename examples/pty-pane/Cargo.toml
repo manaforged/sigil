@@ -1,0 +1,20 @@
+[package]
+name = "pty-pane"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Splitter: PTY pane plus ordinary widgets."
+
+[[bin]]
+name = "pty-pane"
+path = "src/main.rs"
+
+[dependencies]
+sigil-ui = { workspace = true, features = ["pty"] }
+
+[lints]
+workspace = true

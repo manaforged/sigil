@@ -1,5 +1,5 @@
 use sigil_hal::{LogicalSize, Point, Rect, Size};
-use sigil_kernel::{Cx, NodeId, TextContent, prelude::*};
+use sigil_kernel::{Cx, NodeId, Surface, TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_style::{NodeStyleExt, Rgba8};
 
@@ -50,6 +50,34 @@ fn collect_instances_drops_text_items() {
     lay_out(&mut cx, root);
     let instances = collect_rect_instances(&emit_scene(&cx, root));
     assert_eq!(instances.len(), 2);
+}
+
+#[test]
+fn emit_scene_skips_surface_hole_and_its_children() {
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        container()
+            .layout(LayoutStyle::flex_row().fixed_size(120.0, 48.0))
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
+                    .class("bg-accent"),
+            )
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(60.0, 48.0))
+                    .with(Surface { key: 1 })
+                    .class("bg-accent")
+                    .child(
+                        container()
+                            .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
+                            .class("bg-accent"),
+                    ),
+            ),
+    );
+    lay_out(&mut cx, root);
+    let instances = collect_rect_instances(&emit_scene(&cx, root));
+    assert_eq!(instances.len(), 1, "hole and its children must not paint");
 }
 
 #[test]

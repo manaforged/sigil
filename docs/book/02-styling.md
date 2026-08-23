@@ -18,8 +18,13 @@ container().class(classes!("p-4 bg-accent rounded-md text-on-surface"))
 - Dynamic strings still work at runtime (`.class(dynamic)`) and warn on
   unknown tokens instead of failing the build; `try_class` is the
   fallible dynamic path.
-- Pseudo-classes are deliberately NOT strings: `.class("hover:bg-x")`
-  rejects. Interaction styling is first-class Rust — see below.
+- A plain `container().class(...)` rejects state prefixes (`hover:`,
+  `focus:`, `active:`, `disabled:`). The container has no interaction
+  channel. Use `interactive(container()).class("bg-surface hover:bg-accent-9")`
+  for a class-string hover, or a widget `.hover(|s| …)` closure. See
+  `interactive()` below.
+- `sm:` / `md:` / `lg:` prefixes are **rejected loudly** — never
+  silently ignored.
 
 **Scale conventions** (one rule per property, named at every entry
 point):
@@ -29,8 +34,7 @@ point):
   logical px** instead (`.padding(16)`, `.w(64.0)`).
 - `opacity-N` is a **percent** (`opacity-50`); `.opacity(0.5)` is the
   CSS-canonical **fraction** everywhere in typed APIs.
-- `shadow-*` and `sm:`/`md:`/`lg:` prefixes are **rejected loudly** —
-  never silently ignored.
+- `shadow-*` tokens paint elevation. They are not rejected.
 
 The token vocabulary (all also in the `sigil::prelude` docstring):
 spacing `p/m/gap-N` (+per-side, `gap-x-N`, `gap-y-N`), sizing
@@ -112,6 +116,16 @@ interactive(container().class(classes!("p-4 rounded-md bg-surface")))
     .disabled_signal(disabled)
 ```
 
+Class-string hover is the same channel:
+
+```rust,ignore
+interactive(container())
+    .class("p-4 rounded-md bg-surface hover:bg-accent-9")
+```
+
+A Linear-style issue row is that sentence with flex and padding, and
+no `LayoutStyle` on the row. Run `cargo run -p linear-row`.
+
 Hover does **not** stop propagation — ancestor hover survives nesting.
 
 ## Themes, tokens, and tone × variant
@@ -136,7 +150,7 @@ Hover does **not** stop propagation — ancestor hover survives nesting.
 | Typed per-property | `Style` struct or fluent `.px(16)` |
 | Value-driven class | `.class_when(signal, "bg-accent")` |
 | Arbitrary reactive atoms | `.style_reactive(...)` |
-| Hover/focus/pressed/disabled | widget closures or `interactive()` |
+| Hover/focus/pressed/disabled | widget closures, `interactive()`, or `interactive().class("hover:bg-…")` |
 
 ## Hot reload (dev loop)
 

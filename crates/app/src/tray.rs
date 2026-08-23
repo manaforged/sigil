@@ -1,10 +1,10 @@
 //! System tray icon.
 //!
-//! Build a tray icon with the re-exported [`tray_icon`] types, register it
-//! with [`set_tray`](crate::tray::set_tray) BEFORE `launch`; Sigil creates it on the first frame and
-//! forwards tray-*icon* clicks to the reactive [`events`](crate::tray::events) channel. A tray
-//! context menu is a [`muda`](crate::menu) menu, so its item clicks arrive
-//! through [`menu::events`](crate::menu::events), not here.
+//! Build a tray icon with the re-exported [`tray_icon`] types, register
+//! it with [`set_tray`]. Call before [`launch`](crate::launch) or any
+//! time after; the next frame builds or replaces it. Icon clicks go to
+//! [`events`]. A tray context menu is a [`muda`](crate::menu) menu, so
+//! its item clicks arrive through [`menu::events`](crate::menu::events).
 //!
 //! ```rust,no_run
 //! use sigil::tray::{self, Icon, TrayIconBuilder};
@@ -38,8 +38,8 @@ thread_local! {
     static BRIDGE: (Sender<TrayIconEvent>, Receiver<TrayIconEvent>) = unbounded();
 }
 
-/// Register the system tray icon. Call BEFORE [`launch`](crate::launch);
-/// Sigil creates it on the first frame and routes icon clicks to [`events`].
+/// Register the system tray icon. Call before [`launch`](crate::launch)
+/// or any time after. The next frame builds or replaces the icon.
 pub fn set_tray(builder: TrayIconBuilder) {
     PENDING.with(|slot| *slot.borrow_mut() = Some(builder));
 }

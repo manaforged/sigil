@@ -7,19 +7,11 @@ use sigil_layout::with_text_geometry;
 use sigil_reactive::{Signal, batch, signal};
 use sigil_style::TextStyle;
 
+use super::super::clipboard::Clipboard;
 use super::super::shared::disabled_now;
 use super::super::text_edit::TextEdit;
-use super::builder::{Clipboard, TextChange};
+use super::builder::TextChange;
 use super::ime::ImeState;
-
-pub(super) struct NoopClipboard;
-
-impl Clipboard for NoopClipboard {
-    fn set(&self, _text: &str) {}
-    fn get(&self) -> Option<String> {
-        None
-    }
-}
 
 #[derive(Clone)]
 pub(super) struct TextFieldRuntime {
@@ -49,6 +41,8 @@ pub(super) struct TextFieldRuntime {
     /// Widget-local IME composition state (preedit text + caret anchor).
     /// See `super::ime` — DR-051's "widget-local signal" default.
     pub(super) ime: ImeState,
+    /// True after a clipboard write fails. Paints the invalid slot.
+    pub(super) clip_fail: Signal<bool>,
 }
 
 impl TextFieldRuntime {
@@ -81,6 +75,7 @@ impl TextFieldRuntime {
             selection,
             text_style,
             ime: ImeState::new(),
+            clip_fail: signal(false),
         }
     }
 
@@ -255,7 +250,9 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     }
     let state = runtime.edit.borrow();
     if let Some(text) = state.selected_text() {
-        runtime.clipboard.set(text);
+        runtime
+            .clip_fail
+            .set(crate::clipboard::write(&*runtime.clipboard, text).is_err());
     }
 }
 
@@ -266,10 +263,14 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     }
     let selected = runtime.edit.borrow().selected_text().map(ToOwned::to_owned);
     if let Some(text) = selected {
-        runtime.clipboard.set(&text);
-        let mut state = runtime.edit.borrow_mut();
-        state.backspace();
-        publish(runtime, &state);
+        if crate::clipboard::write(&*runtime.clipboard, &text).is_ok() {
+            runtime.clip_fail.set(false);
+            let mut state = runtime.edit.borrow_mut();
+            state.backspace();
+            publish(runtime, &state);
+        } else {
+            runtime.clip_fail.set(true);
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 //! Read-only markdown view. Headings, paragraphs, lists, fences, tables.
 
-mod parse;
+pub(crate) mod parse;
 
 use sigil_kernel::{NodeBuilder, Role, container, text};
 use sigil_layout::FlexWrap;
@@ -14,10 +14,14 @@ use parse::{Block, Span, parse_blocks, parse_inlines};
 ///
 /// Headings (`#`–`###`), paragraphs, `-`/`*` lists, fenced code, and
 /// pipe tables. Inline `**bold**`, `` `code` ``, and `[label](url)`.
-/// Not an in-place editor and not HTML.
+/// Not an in-place editor.
 #[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {
     let blocks = derived_eq(move || parse_blocks(&source.get()));
+    document(blocks)
+}
+
+pub(crate) fn document(blocks: Signal<Vec<Block>>) -> NodeBuilder {
     container()
         .role(Role::Document)
         .layout(LayoutStyle::flex_column().fill_width().gap(8.0))

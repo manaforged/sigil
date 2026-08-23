@@ -17,10 +17,14 @@ OS event (winit)
     → handler writes a Signal
     → Effect phase runs derived / effect
     → LayoutEngine::compute (if the frame is dirty)
-    → emit_scene → CommandScene
+    → emit_scene → CommandScene (skips Surface holes)
     → wgpu present
+    → Host::surfaces lists holes (caller places a view)
     → AccessKit tree from the same kernel nodes
 ```
+
+A game loop skips `launch` and pumps `Host` with its own GPU. TUI
+skips wgpu and rasters `painted()` onto cells. The tree is the same.
 
 `launch` also pumps `spawn` completions onto the main thread before
 Effect, so a finished future writes its `Signal<Status<…>>` in the

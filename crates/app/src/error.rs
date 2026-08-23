@@ -3,11 +3,7 @@
 use core::fmt;
 use std::error::Error as StdError;
 
-/// Short-hand for `Result<T, sigil::Error>`.
-///
-/// Renamed from the previous single-arg `Result<T>` to avoid shadowing
-/// `std::result::Result<T, E>` — `fn scan(...) -> Result<Vec<T>, String>`
-/// used to trip `E0107` before the rename. See dogfood v2 post-mortem.
+/// `Result<T, Error>` from `launch`, clipboard, audio, and PTY.
 pub type AppResult<T> = core::result::Result<T, Error>;
 
 /// The one error type returned by [`crate::launch`] and anything user code

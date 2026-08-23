@@ -1,19 +1,34 @@
 # sigil-ui
 
-`sigil-ui` is the facade crate for **sigil**, a Rust-native desktop UI
-framework: signal-graph reactivity, an owned incremental layout engine, a
-wgpu renderer with an owned text pipeline, AccessKit accessibility and IME,
-and a utility-class style layer with design tokens.
+GPU UI in Rust. One widget tree. Open it with `sigil::launch`, pump
+it with `sigil::Host`, or paint it on a terminal with `sigil::run_tui`.
 
-> The package is named `sigil-ui` because the bare `sigil` name was already
-> taken on crates.io. The library is still `sigil`, so every import reads
-> `sigil::…` as usual.
+The package is `sigil-ui` because `sigil` was taken on crates.io. The
+library name is `sigil`, so imports read `sigil::…`.
 
-## Example
+Write `use sigil::prelude::*;`. That brings in `launch`, `Host`,
+`Painted`, `Player`, `Session`, `root`, `run_tui`, widgets,
+`copy`, `paste`, and `set_clipboard`. Widget helpers are `IntoNode`;
+type a helper as `impl IntoNode`. Pass other widgets to `launch`
+with `root(button("Go"))`. `launch` and `run_tui` pump `Host`.
+
+## Requirements
+
+Rust 1.90. A GPU for `launch`. A terminal for `run_tui`.
+
+## Install
+
+```toml
+[dependencies]
+sigil-ui = "0.1.0-alpha.1"
+```
+
+## Usage
+
+Desktop window (`examples/hello-counter`):
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::reactive::derived;
 
 fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
@@ -34,18 +49,66 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
+Embed host. You own the window and the GPU (`examples/hello-host`):
+
+```rust
+use sigil::prelude::*;
+
+Runtime::scope("embed", || {
+    let mut host = Host::new();
+    host.mount(text("hello"));
+    assert!(host.layout((80.0, 24.0)).expect("layout").is_some());
+    assert!(
+        host.painted()
+            .iter()
+            .any(|node| node.text.as_deref() == Some("hello"))
+    );
+    let _holes = host.surfaces();
+});
+```
+
+`Host::scene` needs feature `desktop` or `render`. Without it, use
+`Host::painted`. After layout, `Host::surfaces` lists `surface(key)`
+holes. You place a native view. Sigil does not create an OS window
+for the hole.
+
+Clipboard: `copy("text")` after `launch` / `run_tui`,
+or after `set_clipboard` on an embed host.
+
+Open a URL or path with the OS handler: `open("https://example.com")`.
+
+## Limits
+
+- `signal` / `derived` / `effect` panic outside `Runtime::scope`.
+  `launch` and `run_tui` open that scope. An embed host that uses
+  signals must call `Runtime::scope`.
+- `Host::scene` needs `desktop` or `render`. `render` does not pull
+  winit.
+- `launch` does not parent a native view into a `surface(key)` hole.
+- `html()` parses a document subset. No CSS, no JavaScript, no browser.
+- The crate is `0.1.0-alpha.1`. Names can still move.
+
+## Features
+
+| Feature | Adds |
+|---|---|
+| `desktop` (default) | `launch`, OS chrome, `Host::scene` |
+| `tui` | `run_tui` |
+| `render` | `Host::scene`, `sigil::render`, `sigil::text`. No winit |
+| `audio` | `Player::play_path` (holds the stream; `tick` writes progress; `seek` jumps) |
+| `pty` | `pty::Session::spawn` |
+| `image-decode` | `image_bytes` |
+| `test-support` | `dialog::mock` |
+
+## Docs
+
+- Book: `mdbook serve docs/book`
+- Examples: `cargo run -p hello-counter`, `cargo run -p hello-host`,
+  `cargo run -p hello-tui`
+
 ## Macro note
 
-`classes!` and `#[derive(Action)]` expand to paths under
-`sigil::__private::…`. They therefore require depending on this facade
-crate — not on the `sigil-*` leaf crates directly — and the dependency
-must keep the name `sigil-ui` (the library name `sigil` is what expansions
-resolve).
-
-## Feature flags
-
-- `render` — expose `sigil::{render, text, ui}`: the Slug text pipeline and
-  scene-compositing surface for embedding a host engine's frame loop
-  (DR-054).
+`classes!` and `#[derive(Action)]` expand to `sigil::__private::…`.
+Depend on this facade crate. Keep the package name `sigil-ui`.
 
 License: MIT.

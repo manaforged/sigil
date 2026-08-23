@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "The sigil UI framework — one-stop facade crate with prelude."
+description = "GPU UI in Rust. One widget tree: launch, Host, or run_tui."
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui"]
@@ -32,7 +32,7 @@ sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
 sigil-profile = { workspace = true }
 sigil-widgets = { workspace = true }
-arboard = { workspace = true }
+arboard = { workspace = true, optional = true }
 
 # Optional GPU text + render surface for external host engines (e.g. a game engine).
 # Off by default; enabled via the `render` feature. Pure-widget/desktop
@@ -47,19 +47,21 @@ sigil-hal = { workspace = true, optional = true }
 [features]
 default = ["desktop"]
 # winit + wgpu `launch`. Default so existing desktop binaries stay unchanged.
-desktop = ["sigil-app/desktop"]
+desktop = ["sigil-app/desktop", "dep:arboard"]
 # Terminal host. Does not enable wgpu. Combine with `default-features = false`
 # for a TUI-only binary.
-tui = ["dep:sigil-tui"]
-# Exposes `sigil::{render, text}` — the Slug text pipeline + scene
-# compositing an embedding host drives. See DR-054.
-render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal"]
+tui = ["dep:sigil-tui", "dep:arboard"]
+# Exposes `sigil::{render, text}` and `Host::scene` without winit.
+# See DR-054.
+render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal", "sigil-app/scene"]
 # Exposes `image_bytes(&[u8])` — decode an encoded image (PNG) to a
 # widget. `image_rgba` (raw pixels) is always available without this.
 image-decode = ["sigil-widgets/image-decode"]
 # Exposes `dialog::mock` — inject canned file-dialog responses in your app's
 # tests without opening a native picker. Enable in dev-dependencies.
 test-support = ["sigil-app/test-support"]
+audio = ["sigil-app/audio"]
+pty = ["sigil-app/pty"]
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

@@ -5,20 +5,11 @@ use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEvent
 use sigil_kernel::NodeBuilder;
 use sigil_reactive::{Signal, batch, signal};
 
+use super::super::clipboard::Clipboard;
 use super::super::shared::disabled_now;
-use super::super::text_field::Clipboard;
 use super::TextEdit;
 use super::builder::TextChange;
 use super::ime::ImeState;
-
-pub(super) struct NoopClipboard;
-
-impl Clipboard for NoopClipboard {
-    fn set(&self, _text: &str) {}
-    fn get(&self) -> Option<String> {
-        None
-    }
-}
 
 #[derive(Clone)]
 pub(super) struct TextEditRuntime {
@@ -301,7 +292,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let state = runtime.edit.borrow();
     if let Some(text) = state.selected_text() {
-        runtime.clipboard.set(text);
+        drop(crate::clipboard::write(&*runtime.clipboard, text));
     }
 }
 
@@ -312,7 +303,9 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     }
     let selected = runtime.edit.borrow().selected_text().map(ToOwned::to_owned);
     if let Some(text) = selected {
-        runtime.clipboard.set(&text);
+        if crate::clipboard::write(&*runtime.clipboard, &text).is_err() {
+            return;
+        }
         let mut state = runtime.edit_mut();
         state.backspace();
         sync_value(runtime, &state);

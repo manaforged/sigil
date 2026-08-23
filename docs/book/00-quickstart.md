@@ -7,7 +7,9 @@ Sigil is a Rust-native desktop UI framework: signal-graph reactivity, an
 owned incremental layout engine, a wgpu renderer with an owned text
 pipeline, AccessKit accessibility and IME, a utility-class style
 layer, and a widget catalog in the crate (buttons, fields, tables,
-lists, charts, menus). You write plain Rust against one import:
+lists, charts, menus). You write plain Rust against one import. Widget helpers are
+`IntoNode`; type a layout helper as `impl IntoNode`. `launch` and
+`run_tui` take a closure, `text`, `container`, or `root(button("Go"))`.
 
 ```rust,ignore
 use sigil::prelude::*;
@@ -62,6 +64,23 @@ The four moving parts:
   that writes signals. `count.peek()` reads without subscribing the
   enclosing effect; `count.get()` reads with subscription.
 
+## Three hosts
+
+The tree is the same. The entry point changes.
+
+| You want | You call |
+|---|---|
+| A desktop window | `sigil::launch` (`examples/hello-counter`) |
+| Your own loop | `Host` inside `Runtime::scope` (`examples/hello-host`) |
+| A character grid | `sigil::run_tui` (`examples/hello-tui`, feature `tui`) |
+
+`signal` panics outside `Runtime::scope`. `launch` and `run_tui` open
+that scope. An embed host that uses signals must call it.
+
+`Host::scene` needs feature `desktop` or `render`. Without it, use
+`Host::painted`. After layout, `Host::surfaces` lists `surface(key)`
+holes. You place a native view. See [The application host](07-application.md).
+
 ## Styling in one breath
 
 `classes!("p-8 bg-surface rounded-md")` is the default styling path:
@@ -97,8 +116,9 @@ closures out of the box.
 - **Reactive model**: effects, batching, `spawn`.
 - **The box**: one `LayoutStyle`.
 - **Styling**: cascade, themes, tokens.
-- **Widgets**: `button`, `text_field(value)`, `modal(open)`,
-  `sheet(open)`, `virtual_list(rows, …).identified()`, table.
+- **Widgets**: `button`, `icon_button`, `text_field`, `text_edit`,
+  `modal` / `sheet`, `virtual_list`, `table`, `card`, `avatar`,
+  `sidebar`. Native alert is `sigil::dialog::message` / `confirm`.
 - **Testing** and **Profiling**.
 - **Architecture**: why signals, the frame loop, crate map.
 

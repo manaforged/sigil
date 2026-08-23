@@ -1,11 +1,12 @@
 # The Sigil Book
 
 How to write native Rust UIs with Sigil, and how the framework is built.
-The widget catalog (buttons, fields, tables, lists, charts, menus)
-lives in the crate. You do not add a second component package.
+The widget catalog (buttons, fields, tables, lists, charts, menus,
+cards, overlays) lives in the crate. You do not add a second
+component package.
 
 The **Guide** is the author path: first window, the box, signals, style,
-widgets, tests, profiling.
+widgets, tests, profiling, the terminal host, the application host.
 
 **Architecture** is the system path: crate map, why state is a signal
 graph, the owner tree, the frame loop, layout, the command scene, async,
@@ -23,13 +24,15 @@ Companion material: `examples/` (compile-checked apps, including
 
 ## Guide
 
-- [Quickstart](00-quickstart.md) — install, first app, four moving parts
+- [Quickstart](00-quickstart.md) — install, first app, three hosts
 - [The box](01-layout.md) — one `LayoutStyle`
 - [The reactive model](01-reactive-model.md) — signals, derived, spawn
 - [Styling](02-styling.md) — classes, cascade, theme
 - [Widgets](03-widgets.md) — catalog
 - [Testing](04-testing.md) — headless harnesses
 - [Profiling](05-profile.md) — `SIGIL_PROFILE`, Perfetto
+- [The terminal host](06-terminal.md) — `run_tui`, not a PTY pane
+- [The application host](07-application.md) — clipboard, documents, audio, PTY, surface holes
 
 ## Architecture
 

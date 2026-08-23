@@ -54,7 +54,7 @@ mod reactive_bridge;
 mod runtime;
 mod status;
 
-pub use current::spawn;
+pub use current::{dispatcher, post, spawn};
 pub use dispatch::dispatch_to_owner;
 #[doc(hidden)]
 pub use dispatch::spawn_to_signal;
