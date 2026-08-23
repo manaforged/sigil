@@ -11,19 +11,15 @@
 //!
 //! 1. A status label — "3 matches" / "Invalid regex: …" — bound to a
 //!    derived `Signal<String>`.
-//! 2. A formatted match list — rendered as a single derived text body
-//!    (one line per match: byte range + matched substring) because
-//!    `virtual_list` takes `Vec<T>` by value at build time and is
-//!    therefore non-reactive to list growth (see `FRICTION.md` §
-//!    "`virtual_list` is not reactive to items").
+//! 2. A formatted match list — one derived text body (byte range plus
+//!    substring per line). A live list can also be
+//!    `virtual_list(signal_of_vec, …)`.
 //! 3. A "Clear" button that resets both fields to empty.
 //!
-//! See `FRICTION.md` for the friction log on the API surface this
-//! exercised.
-//!
-//! The sample text uses single-line `text_field` rather than the
-//! multi-line `text_edit` widget — see FRICTION § "`text_edit` line
-//! children freeze at build" for the limitation that pushed me here.
+//! Pattern and sample stay single-line `text_field`s. Multi-line
+//! buffers use `text_edit` (in the prelude; line children rebuild
+//! through `children_reactive`). See `FRICTION.md` for the historical
+//! dogfood log.
 
 use regex::Regex;
 use sigil::prelude::*;

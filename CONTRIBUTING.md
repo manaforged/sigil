@@ -13,7 +13,7 @@ the repo without corrupting each other.
 - **Branch conventions:** `main` is trunk. `swarm-*` / `wip/*` / `agent-*`
   branches activate the repo's swarm hooks (auto-commit, fast-check, stop-guard).
 - **File caps:** ≤ 400 LoC per `.rs` file, ≤ 50 lines per function, ≤ 5 args per
-  function; ≤ 250 LoC per widget file under `crates/sigil/src/widgets/`.
+  function; ≤ 250 LoC per widget file under `crates/widgets/src/`.
   CI-enforced via clippy thresholds in `clippy.toml`.
 - **Hygiene contract:** no `unwrap`/`panic`/indexing in library code, typed
   error enums (no thiserror/anyhow in the workspace), `unsafe` denied

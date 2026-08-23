@@ -20,16 +20,7 @@ fn build(cx: &mut Cx) -> NodeId {
             .role(Role::Main)
             .layout(LayoutStyle::flex_column().gap(16.0).padding(32.0))
             .class(classes!("w-full h-full bg-surface"))
-            .child(
-                text_field(name)
-                    .placeholder("Enter your name")
-                    .change(move |v| {
-                        name.update(|s| {
-                            s.clear();
-                            s.push_str(v);
-                        });
-                    }),
-            )
+            .child(text_field(name).placeholder("Enter your name"))
             .child(text_field(url).submit(|v| println!("submit: {v}"))),
     )
 }

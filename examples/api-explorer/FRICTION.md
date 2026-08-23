@@ -1,5 +1,12 @@
 # api-explorer — friction log
 
+## Current tree (do not re-open)
+
+`splitter`, `tabs`, `virtual_list`, `SelectionMode`,
+`SplitterOrientation`, and `derived` are in `sigil::prelude::*`.
+`.select(f)` is the virtual_list shortcut. `.content_for(idx, node)`
+routes tab bodies. Widget sources live in `crates/widgets/src/`.
+
 Dogfood pass v2, tier 4 (splitter + virtual_list + tabs).
 Built 2026-05-20. ~450 LoC across 4 files.
 

@@ -1,5 +1,8 @@
 # csv-viewer — friction log
 
+Widget sources now live in `crates/widgets/src/`. Paths below that
+say `crates/sigil/src/widgets/` are from the pre-extract tree.
+
 ## 2026-07-19 — migrated to `table(state)`
 
 The hand-rolled header + `virtual_list` body is gone; the view is now

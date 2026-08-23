@@ -14,7 +14,10 @@ type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
 /// One-shot hook run against the tree once the node has an id.
 type AddedHook = Box<dyn FnOnce(&mut Cx, NodeId)>;
 
-/// Builder for structural nodes.
+/// Builder for structural nodes (`container`, `fragment`).
+///
+/// Widget helpers implement [`IntoNode`]. Pass them to [`Self::child`].
+/// Type a helper as `impl IntoNode`, not this type.
 pub struct NodeBuilder {
     a11y: A11yProps,
     children: SmallVec<[Box<dyn ErasedComponent>; 4]>,

@@ -6,11 +6,9 @@
 //! state syncing. "Save" copies current → saved; "Revert" copies the
 //! other way; "Clear" empties the buffer.
 //!
-//! There is NO multi-line `text_edit` widget in the prelude
-//! (`text_edit` exists at `crates/sigil/src/widgets/text_edit.rs` but
-//! is `pub(crate)`), so the buffer is single-line via `text_field`.
-//! See `FRICTION.md` for the friction log on that and everything else
-//! discovered while building this.
+//! The buffer is a single-line `text_field` so Enter can fire Save
+//! via `.submit`. Multi-line notes use `text_edit` (in the prelude).
+//! See `FRICTION.md` for the historical dogfood log.
 
 use sigil::prelude::*;
 

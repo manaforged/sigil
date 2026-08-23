@@ -28,7 +28,8 @@ const TICK: Duration = Duration::from_millis(33);
 const BUFFER: usize = 64 * 1024;
 const CELL: f32 = sigil_app::Host::CELL;
 
-/// Run a Sigil tree on the terminal. Same config and tree as `sigil::launch`.
+/// Run a Sigil tree on the terminal. Same config and tree as
+/// `sigil::launch`.
 ///
 /// # Errors
 ///

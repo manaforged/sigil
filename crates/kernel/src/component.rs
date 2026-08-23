@@ -4,6 +4,12 @@ use crate::{Cx, NodeId};
 
 /// Anything that can produce a node in the tree when built.
 ///
+/// This is the child type. Widget helpers (`button`, `splitter`, `text`)
+/// implement it. Type a layout helper as `impl IntoNode`, not
+/// [`crate::NodeBuilder`]. Pass the value to [`crate::Cx::add`] or
+/// [`crate::NodeBuilder::child`]. Convert with `.into()` only when a
+/// builder documents [`From`] into [`crate::NodeBuilder`].
+///
 /// Implement this to write a custom component. The simplest form is a
 /// plain closure — `|cx: &mut Cx| { ... }` — but you can also implement
 /// the trait on a struct to bundle configuration:

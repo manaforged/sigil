@@ -1,4 +1,10 @@
-# Friction Log — timer-stopwatch dogfood
+# timer-stopwatch — friction log
+
+## Current tree (do not re-open)
+
+`derived` is in `sigil::prelude::*`. `text()` accepts `Signal<String>`
+and `derived(...)` directly. `font-mono` is a utility class.
+`sigil::every` is the frame-clock helper.
 
 App: a press-to-record stopwatch (start / stop / lap / reset) with a
 monospaced elapsed-time display and a lap list. Built on `sigil::launch`.

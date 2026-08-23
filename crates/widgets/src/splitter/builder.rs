@@ -54,7 +54,10 @@ pub struct SplitterBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a splitter widget.
+/// Create a splitter widget (`IntoNode`).
+///
+/// Pass the builder to `cx.add` or `.child(...)`. Type a helper as
+/// `impl IntoNode`. Call `.into()` when you need a [`NodeBuilder`].
 ///
 /// Call `.child(node, initial_size)` to add each pane, then optionally
 /// `.min_size(idx, px)` / `.max_size(idx, px)` for constraints.
@@ -71,6 +74,18 @@ pub const fn splitter(orientation: SplitterOrientation) -> SplitterBuilder {
 }
 
 impl SplitterBuilder {
+    /// Append a pane with initial, min, and max sizes in one call.
+    #[must_use]
+    pub fn child_constrained(
+        self,
+        node: impl IntoNode + 'static,
+        initial: f32,
+        min: f32,
+        max: f32,
+    ) -> Self {
+        self.pane(node).initial(initial).min(min).max(max).commit()
+    }
+
     /// Append a pane with an initial size in logical pixels.
     #[must_use]
     pub fn child(mut self, node: impl IntoNode + 'static, initial_size: f32) -> Self {
@@ -214,6 +229,12 @@ impl IntoNode for SplitterBuilder {
     }
 }
 
+impl From<SplitterBuilder> for NodeBuilder {
+    fn from(builder: SplitterBuilder) -> Self {
+        builder.into_node_builder()
+    }
+}
+
 /// Per-pane builder returned by [`SplitterBuilder::pane`].
 ///
 /// Chain `.initial(px)` / `.min(px)` / `.max(px)` / `.grow(factor)` to
@@ -277,6 +298,12 @@ impl PaneBuilder {
 impl IntoNode for PaneBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
         self.commit().build(cx)
+    }
+}
+
+impl From<PaneBuilder> for NodeBuilder {
+    fn from(builder: PaneBuilder) -> Self {
+        builder.commit().into()
     }
 }
 
@@ -427,3 +454,7 @@ fn to_i16(px: f32) -> i16 {
     let clamped = px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16;
     clamped
 }
+
+#[cfg(test)]
+#[path = "builder_tests.rs"]
+mod tests;

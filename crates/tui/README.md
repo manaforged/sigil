@@ -2,7 +2,7 @@
 
 Terminal host for Sigil. Same `Host`, widget builders, and `ShellEvent`
 vocabulary as desktop. This crate paints cells; it does not add a second
-widget kit.
+widget catalog.
 
 ```rust,no_run
 use sigil::prelude::*;
