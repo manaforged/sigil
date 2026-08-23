@@ -54,7 +54,7 @@ pub use embed::{Host, Painted};
 pub use error::{AppResult, Error};
 #[cfg(feature = "desktop")]
 pub use launch::launch;
-pub use sigil_hal::{Anchor, WindowOpts};
+pub use sigil_hal::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
 pub use sigil_layout::LayoutError;
 pub use sigil_profile as profile;
 #[cfg(feature = "desktop")]

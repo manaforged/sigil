@@ -87,7 +87,9 @@ fn default_create_window_with_ignores_opts_and_delegates() {
             LogicalSize::new(200.0, 48.0),
             sigil_hal::WindowOpts {
                 overlay: true,
+                frameless: false,
                 anchor: Some(sigil_hal::Anchor::BottomCenter { margin: 64.0 }),
+                user_zoom: None,
             },
         )
         .expect("default opts create should delegate");

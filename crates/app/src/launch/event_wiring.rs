@@ -21,6 +21,7 @@ use super::{
 
 pub(super) struct DrainCtx<'a> {
     pub(super) shell: &'a mut WinitShell,
+    pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
     pub(super) layout: &'a mut LayoutEngine,
     pub(super) router: &'a mut EventRouter,
@@ -38,6 +39,8 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) renderer: &'a mut WgpuRenderer,
     pub(super) surface: &'a mut Option<WgpuSurface>,
     pub(super) viewport: &'a (f32, f32),
+    /// User zoom composed with the monitor scale (AppConfig::user_zoom).
+    pub(super) user_zoom: f32,
 }
 
 pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
@@ -48,6 +51,7 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
         renderer,
         surface,
         viewport,
+        user_zoom,
     } = ctx;
     if surface.is_some() {
         return;
@@ -56,7 +60,7 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
         return;
     };
 
-    let scale = scale_from_f64(window.scale_factor());
+    let scale = scale_from_f64(window.scale_factor() * f64::from(user_zoom));
     cx.set_scale(scale);
     let logical = logical_size_from_viewport(*viewport);
 
@@ -92,6 +96,7 @@ pub(super) fn sync_ime(
 pub(super) fn drain_events(ctx: DrainCtx<'_>) {
     let DrainCtx {
         shell,
+        window_handle,
         cx,
         layout,
         router,
@@ -124,6 +129,13 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
             _ => {}
         }
         router.route(cx, layout, event);
+    }
+    // Custom-chrome window commands queued by widget pointer handlers
+    // during the routes above (frameless titlebar buttons, drag regions,
+    // resize grips). Applied to the same window the events targeted;
+    // the shell drops commands when it has not materialised yet.
+    for command in sigil_events::take_window_commands() {
+        let _ = shell.window_command(&window_handle, command);
     }
     if *exit_requested {
         shell.request_exit();

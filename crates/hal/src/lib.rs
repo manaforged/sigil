@@ -41,6 +41,6 @@ pub use geometry::{Color, PhysicalSize, Point, Rect};
 pub use layout::{Dim, Size};
 pub use renderer::Renderer;
 pub use scheduler::Scheduler;
-pub use shell::{Anchor, Shell, WindowOpts};
+pub use shell::{Anchor, ResizeDirection, Shell, WindowCommand, WindowOpts};
 pub use size::{LogicalSize, Scale};
 pub use text::{HitPosition, ParagraphMetrics, RenderedGlyph, TextAffinity, TextEngine};

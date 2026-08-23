@@ -20,8 +20,8 @@ fn caret_uses_the_fields_resolved_typography() {
         let scene = focused_field_scene();
         let text = scene.find_text(VALUE).expect("field text is painted");
         assert!(
-            (text.run.style.font_size - 13.0).abs() <= f32::EPSILON,
-            "text-sm must paint at 13px",
+            (text.run.style.font_size - 14.0).abs() <= f32::EPSILON,
+            "text-sm must paint at 14px (Tailwind scale)",
         );
 
         let expected = sigil_app::EngineGeometry::new().caret(VALUE, &text.run.style, VALUE.len());

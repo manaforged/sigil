@@ -32,8 +32,8 @@ use crate::flex_lines::{FlexItem, FlexLine, collect_lines};
 use crate::forest::{ComputedBox, NodeRef};
 use crate::resolve::{NodeEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::style_data::{
-    AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, JustifyContent,
-    LengthPercentageAuto, Overflow, Position, StyleData,
+    AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, FlexWrap,
+    JustifyContent, LengthPercentageAuto, Overflow, Position, StyleData,
 };
 
 /// Axis orientation flags derived from `FlexDirection` + `FlexWrap`.
@@ -290,7 +290,11 @@ fn build_items(
 }
 
 /// Place an absolute-positioned child against the container's content box.
-/// Auto size fills the containing block, matching `block::size_absolute`.
+/// An auto axis anchored by its LEADING inset (or unpinned) fills the
+/// containing block, matching `block::size_absolute`. An auto axis
+/// anchored by its TRAILING inset shrink-wraps to content: resolving
+/// `origin + cb - box - inset` against a containing-block-sized box lands
+/// the leading edge at `-inset`, fully offscreen.
 fn place_absolute(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
@@ -304,20 +308,7 @@ fn place_absolute(
     let cb_h = if ctx.axes.row { cb_cross } else { cb_main };
     let edges = NodeEdges::build(style, cb_w);
     let margins = edges.margin.or_zero();
-    let w = dim_to_border_box(
-        style.size.width,
-        cb_w,
-        edges.inline_chrome(),
-        style.box_sizing,
-    )
-    .unwrap_or_else(|| (cb_w - margins.left - margins.right).max(0.0));
-    let h = dim_to_border_box(
-        style.size.height,
-        cb_h,
-        edges.block_chrome(),
-        style.box_sizing,
-    )
-    .unwrap_or(cb_h);
+    let (w, h) = absolute_size(ctx, child, style, cb_w, cb_h);
     let x = resolve_inset_axis(InsetAxis {
         leading: style.inset.left,
         trailing: style.inset.right,
@@ -347,6 +338,117 @@ fn place_absolute(
     // case. Mirrors the in-flow flex item path at `layout_item_subtree`.
     layout_item_subtree(ctx, child.id(), Position2::new(x, y), w, h)?;
     Ok(())
+}
+
+/// Resolved border-box size of an absolute child: an explicit size wins;
+/// a trailing-anchored auto axis shrink-wraps to the probed content
+/// extent; any other auto axis fills the containing block.
+fn absolute_size(
+    ctx: &FlexCtx<'_, '_>,
+    child: NodeRef<'_>,
+    style: &StyleData,
+    cb_w: f32,
+    cb_h: f32,
+) -> (f32, f32) {
+    let edges = NodeEdges::build(style, cb_w);
+    let margins = edges.margin.or_zero();
+    let explicit_w = dim_to_border_box(
+        style.size.width,
+        cb_w,
+        edges.inline_chrome(),
+        style.box_sizing,
+    );
+    let explicit_h = dim_to_border_box(
+        style.size.height,
+        cb_h,
+        edges.block_chrome(),
+        style.box_sizing,
+    );
+    // The probe re-lays-out the subtree, so only pay for it when an
+    // auto axis is trailing-anchored and actually needs the content size.
+    let probing = (explicit_w.is_none() && trailing_anchored(style.inset.left, style.inset.right))
+        || (explicit_h.is_none() && trailing_anchored(style.inset.top, style.inset.bottom));
+    let fit = if probing {
+        shrink_fit(ctx, child, style, cb_w, cb_h)
+    } else {
+        None
+    };
+    let w = axis_size(
+        explicit_w,
+        style.inset.left,
+        style.inset.right,
+        (cb_w - margins.left - margins.right).max(0.0),
+        fit.map(|f| f.0),
+    );
+    let h = axis_size(
+        explicit_h,
+        style.inset.top,
+        style.inset.bottom,
+        cb_h,
+        fit.map(|f| f.1),
+    );
+    (w, h)
+}
+
+/// True when an axis is anchored by its trailing inset alone (leading
+/// `Auto`, trailing fixed).
+fn trailing_anchored(leading: LengthPercentageAuto, trailing: LengthPercentageAuto) -> bool {
+    matches!(leading, LengthPercentageAuto::Auto) && !matches!(trailing, LengthPercentageAuto::Auto)
+}
+
+/// Resolve one axis of an absolute child's size: explicit size wins;
+/// a trailing-anchored auto axis shrink-wraps to the probed content
+/// extent; anything else fills the containing block (pre-existing rule).
+fn axis_size(
+    explicit: Option<f32>,
+    leading: LengthPercentageAuto,
+    trailing: LengthPercentageAuto,
+    fill: f32,
+    fit: Option<f32>,
+) -> f32 {
+    if let Some(v) = explicit {
+        return v;
+    }
+    if trailing_anchored(leading, trailing) {
+        fit.unwrap_or(fill)
+    } else {
+        fill
+    }
+}
+
+/// Shrink-to-fit content size of an absolute child: probe-lay out the
+/// subtree at the origin with stretch suppressed and read the laid-out
+/// content far edges, mirroring the `container_intrinsic_*` probes.
+/// `None` when the probe fails — the caller falls back to the fill.
+fn shrink_fit(
+    ctx: &FlexCtx<'_, '_>,
+    child: NodeRef<'_>,
+    style: &StyleData,
+    cb_w: f32,
+    cb_h: f32,
+) -> Option<(f32, f32)> {
+    let edges = NodeEdges::build(style, cb_w);
+    if child.children().is_empty() {
+        let measured = text_intrinsic(ctx, child, style, ctx.axes);
+        return Some((
+            measured.map_or(0.0, |m| m.width) + edges.inline_chrome(),
+            measured.map_or(0.0, |m| m.height) + edges.block_chrome(),
+        ));
+    }
+    let probe = FlexCtx {
+        solver: ctx.solver,
+        axes: ctx.axes,
+        cb: ctx.cb,
+        suppress_stretch: true,
+        // Measurement probe: shrink-to-fit is the wanted behaviour.
+        assigned_w: None,
+        assigned_h: None,
+    };
+    layout_item_subtree(&probe, child.id(), Position2::new(0.0, 0.0), cb_w, cb_h).ok()?;
+    Some((
+        probed_content_extent(ctx, child, ctx.axes.row, ctx.axes),
+        probed_content_extent(ctx, child, !ctx.axes.row, ctx.axes),
+    ))
 }
 
 /// Inputs to one axis of `inset` resolution. Mirrors `block::InsetAxis`
@@ -827,8 +929,19 @@ pub(crate) fn layout_item_subtree(
     let style = node.style();
     // What the parent's flexible-length pass resolved for THIS child,
     // along the parent's main axis. Shared by both dispatch branches.
-    let assigned_w = (style.flex_grow > 0.0 && ctx.axes.row).then_some(w);
-    let assigned_h = (style.flex_grow > 0.0 && !ctx.axes.row).then_some(h);
+    //
+    // Suppressed during a hypothetical probe (`suppress_stretch`): the
+    // intrinsic-basis pass feeds the item the CONTAINER's full extent as
+    // available space, so re-deriving an assignment from this item's own
+    // `flex_grow` would fake a flex result that never happened — the item
+    // fills the probe width, its own grow children fill it in turn, and
+    // the probe reads back the full containing block as the item's
+    // "natural" basis. Every grow item then probes to the same inflated
+    // basis and the line resolves equally (or into the shrink pass)
+    // instead of at the items' own grow ratio.
+    let probing = ctx.suppress_stretch;
+    let assigned_w = (style.flex_grow > 0.0 && ctx.axes.row && !probing).then_some(w);
+    let assigned_h = (style.flex_grow > 0.0 && !ctx.axes.row && !probing).then_some(h);
     // Q1 tertiary — per-subtree solver dispatch. The child's own
     // `display` decides which formatting context owns its children,
     // regardless of the parent's display. CSS interleaves block-in-flex
@@ -1048,6 +1161,12 @@ fn container_intrinsic_cross(
     cb_cross: f32,
     axes: Axis2,
 ) -> Option<f32> {
+    if let Some(extent) = ctx
+        .solver
+        .intrinsic_get(node.id(), cb_main, cb_cross, false)
+    {
+        return Some(extent);
+    }
     // Same hypothetical-stretch concern as `container_intrinsic_main`
     // — feed children their natural cross extent, not the stretched one.
     let probe = FlexCtx {
@@ -1071,7 +1190,10 @@ fn container_intrinsic_cross(
     // inflated to the available main — reading the box directly returned the
     // parent's full extent (a column card inside a row reported height 750
     // instead of its 80 px of content).
-    Some(probed_content_extent(ctx, node, false, axes))
+    let extent = probed_content_extent(ctx, node, false, axes);
+    ctx.solver
+        .intrinsic_put(node.id(), cb_main, cb_cross, false, extent);
+    Some(extent)
 }
 
 pub(crate) fn item_main_basis(
@@ -1129,17 +1251,13 @@ pub(crate) fn item_main_basis(
         .max(0.0)
 }
 
-/// Mirror of `container_intrinsic_cross` for the main axis. Run a
-/// hypothetical layout pass under the container's containing block at
-/// origin (0, 0), then read back the natural main extent by taking the
-/// max far-edge of the laid-out children plus the container's own
-/// main-axis chrome. The container's own box stores the CB-bound main
-/// size (because `write_container` always writes `inner_main + chrome`
-/// on the main axis), so we cannot read it back from the box directly
-/// the way `container_intrinsic_cross` does — child boxes hold the real
-/// content extent. Recursion bottoms out at leaves (where
-/// `layout_item_subtree` returns early) and at children with definite
-/// main sizes.
+/// Natural main extent of an auto-main flex item with children.
+///
+/// NoWrap flex whose main axis matches `axes` sums child outer bases,
+/// gaps, and this node's main-axis chrome — the same formula
+/// `content_main_size` uses after the real item pass. Wrap, a
+/// perpendicular flex-direction, grid, and block still probe-layout
+/// and read [`probed_content_extent`].
 fn container_intrinsic_main(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -1147,27 +1265,84 @@ fn container_intrinsic_main(
     cb_cross: f32,
     axes: Axis2,
 ) -> Option<f32> {
-    let (w, h) = if axes.row {
-        (cb_main, cb_cross)
+    if let Some(extent) = ctx.solver.intrinsic_get(node.id(), cb_main, cb_cross, true) {
+        return Some(extent);
+    }
+    let style = node.style();
+    let node_axes = Axis2::for_direction(style.flex_direction);
+    let cheap = matches!(style.display, Display::Flex)
+        && matches!(style.flex_wrap, FlexWrap::NoWrap)
+        && node_axes.row == axes.row;
+    let extent = if cheap {
+        content_main_from_children(ctx, node, style, axes, cb_main, cb_cross)?
     } else {
-        (cb_cross, cb_main)
+        let (w, h) = if axes.row {
+            (cb_main, cb_cross)
+        } else {
+            (cb_cross, cb_main)
+        };
+        // Hypothetical pass: suppress `align-items: stretch` so children's
+        // boxes report their natural cross extent. With stretch on, an
+        // empty container child inflates to fill its parent's cross axis;
+        // the OUTER read then sees that as the OUTER's "natural" main
+        // extent and over-reports its basis by the full parent dimension.
+        let probe_ctx = FlexCtx {
+            solver: ctx.solver,
+            axes: ctx.axes,
+            cb: ctx.cb,
+            suppress_stretch: true,
+            // Measurement probe: shrink-to-fit is the wanted behaviour.
+            assigned_w: None,
+            assigned_h: None,
+        };
+        layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
+        probed_content_extent(ctx, node, true, axes)
     };
-    // Hypothetical pass: suppress `align-items: stretch` so children's
-    // boxes report their natural cross extent. With stretch on, an
-    // empty container child inflates to fill its parent's cross axis;
-    // the OUTER read then sees that as the OUTER's "natural" main
-    // extent and over-reports its basis by the full parent dimension.
-    let probe_ctx = FlexCtx {
-        solver: ctx.solver,
-        axes: ctx.axes,
-        cb: ctx.cb,
-        suppress_stretch: true,
-        // Measurement probe: shrink-to-fit is the wanted behaviour.
-        assigned_w: None,
-        assigned_h: None,
+    ctx.solver
+        .intrinsic_put(node.id(), cb_main, cb_cross, true, extent);
+    Some(extent)
+}
+
+/// Sum of in-flow child outer main bases + gaps + this node's main chrome.
+fn content_main_from_children(
+    ctx: &FlexCtx<'_, '_>,
+    node: NodeRef<'_>,
+    style: &StyleData,
+    axes: Axis2,
+    cb_main: f32,
+    cb_cross: f32,
+) -> Option<f32> {
+    let edges = NodeEdges::build(style, ctx.cb.w);
+    let chrome_main = if axes.row {
+        edges.inline_chrome()
+    } else {
+        edges.block_chrome()
     };
-    layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
-    Some(probed_content_extent(ctx, node, true, axes))
+    let forest = ctx.solver.scope().forest();
+    let cb_inline = if axes.row { cb_main } else { cb_cross };
+    let mut count = 0usize;
+    let mut bases = 0.0_f32;
+    for child_id in node.children() {
+        let child = forest.refer(*child_id)?;
+        let child_style = child.style();
+        if matches!(child_style.display, Display::None)
+            || matches!(child_style.position, Position::Absolute)
+        {
+            continue;
+        }
+        let child_edges = NodeEdges::build(child_style, cb_inline);
+        let inner = item_main_basis(ctx, child, child_style, axes, cb_main, &child_edges);
+        let m = child_edges.margin.or_zero();
+        let margin_main = if axes.row {
+            m.left + m.right
+        } else {
+            m.top + m.bottom
+        };
+        bases += inner + margin_main;
+        count += 1;
+    }
+    let gap = main_gap(ctx, style, count);
+    Some(bases + gap * (count.saturating_sub(1) as f32) + chrome_main)
 }
 
 /// Read the natural extent of `node`'s already-probed subtree along one

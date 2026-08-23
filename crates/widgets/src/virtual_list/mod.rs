@@ -2,7 +2,8 @@
 //!
 //! The widget owns a scroll signal unless one is supplied by the host. On
 //! build it reads the current scroll offset, derives the visible row range,
-//! and materializes that range plus one viewport of overscan on each side.
+//! and materializes that range plus [`VirtualListBuilder::overscan`]
+//! viewports of rows on each side (default one).
 
 #![allow(clippy::missing_const_for_fn, clippy::mod_module_files)]
 
@@ -42,6 +43,8 @@ pub const DEFAULT_ROW_HEIGHT: f32 = 32.0;
 /// Default viewport height in logical pixels.
 #[allow(unreachable_pub)]
 pub const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
+/// Extra viewports of rows mounted above and below the geometric page.
+const DEFAULT_OVERSCAN: usize = 1;
 
 type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
 pub(super) type RowKey<T> = std::rc::Rc<dyn Fn(usize, &T) -> u64>;
@@ -58,6 +61,7 @@ struct BoundCtx<T, R> {
     selection: SelectionRuntime,
     scroll_y: Signal<f32>,
     viewport_height: f32,
+    overscan: usize,
     row_key: Option<RowKey<T>>,
 }
 
@@ -194,6 +198,7 @@ where
     viewport_height: f32,
     viewport_width: Option<f32>,
     viewport_fill: bool,
+    overscan: usize,
     scroll_y: Option<Signal<f32>>,
     scroll_x: Option<WheelX>,
     focused_row: Option<Signal<usize>>,
@@ -263,8 +268,9 @@ where
 /// Build a virtual list.
 ///
 /// `items` is a `Vec` (snapshot) or a `Signal` (live). Each item
-/// produces one row via `render`. The viewport plus one page of
-/// overscan on each side become nodes. If `T: Identifiable`, call
+/// produces one row via `render`. The viewport plus
+/// [`VirtualListBuilder::overscan`] pages on each side become nodes.
+/// If `T: Identifiable`, call
 /// [`.identified()`](VirtualListBuilder::identified) so reorder
 /// keeps `NodeId`.
 #[must_use]
@@ -291,6 +297,7 @@ where
         viewport_height: DEFAULT_VIEWPORT_HEIGHT,
         viewport_width: None,
         viewport_fill: false,
+        overscan: DEFAULT_OVERSCAN,
         scroll_y: None,
         scroll_x: None,
         focused_row: None,
@@ -371,6 +378,15 @@ where
     #[must_use]
     pub const fn viewport_height(mut self, px: f32) -> Self {
         self.viewport_height = px;
+        self
+    }
+
+    /// Extra viewports of rows mounted above and below the geometric page.
+    ///
+    /// Default 1. Zero mounts the geometric page only.
+    #[must_use]
+    pub const fn overscan(mut self, pages: usize) -> Self {
+        self.overscan = pages;
         self
     }
 
@@ -543,6 +559,7 @@ where
                 selection,
                 scroll_y,
                 viewport_height,
+                overscan,
                 row_key,
             } = ctx;
             let render = std::rc::Rc::new(render);
@@ -552,21 +569,21 @@ where
             container()
                 .layout(width_apply(width, LayoutStyle::block()))
                 .child(
-                    content_container(strip_height(viewport_height, row_height), width).child(
-                        bound_strip(
+                    content_container(strip_height(viewport_height, row_height, overscan), width)
+                        .child(bound_strip(
                             signal,
                             scroll_y,
                             BoundStrip {
                                 render: std::rc::Rc::clone(&render),
                                 row_height,
                                 viewport_height,
+                                overscan,
                                 width,
                                 selection,
                                 live_len,
                                 row_key: row_key.clone(),
                             },
-                        ),
-                    ),
+                        )),
                 )
         });
         self.bound = Some(BoundItems {
@@ -703,6 +720,7 @@ where
             selection,
             scroll_y: axes.scroll_y,
             viewport_height: axes.viewport_height,
+            overscan: self.overscan,
             row_key: self.row_key,
         });
         let initial_rows = bound.initial_rows;
@@ -791,9 +809,9 @@ where
         variable: bool,
     ) -> VisibleWindow {
         if variable {
-            visible_window_variable(scroll_y, &self.row_tops, vh)
+            visible_window_variable(scroll_y, &self.row_tops, vh, self.overscan)
         } else {
-            visible_window(scroll_y, self.items.len(), row_height, vh)
+            visible_window(scroll_y, self.items.len(), row_height, vh, self.overscan)
         }
     }
 

@@ -22,9 +22,21 @@
 
 #![allow(clippy::redundant_pub_crate)]
 
+use std::cell::{Cell, RefCell};
+
+use ahash::AHashMap;
+
 use crate::LayoutError;
 use crate::flex_algorithm::{Axis2, FlexCtx, layout_root};
 use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct IntrinsicKey {
+    id: LocalId,
+    main: u32,
+    cross: u32,
+    along_main: bool,
+}
 
 /// CSS flexbox layout subset.
 ///
@@ -33,12 +45,20 @@ use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
 /// align-self / align-content. Reverse directions handled.
 pub(crate) struct FlexSolver<'a> {
     scope: MeasureScope<'a>,
+    /// Memo for `container_intrinsic_*`. Auto-main nested flex otherwise
+    /// re-lays out the subtree at every ancestor (`2^depth` probes).
+    intrinsic: RefCell<AHashMap<IntrinsicKey, f32>>,
+    intrinsic_stores: Cell<u32>,
 }
 
 impl<'a> FlexSolver<'a> {
     /// Wrap a measure scope for a flex-layout pass.
-    pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
-        Self { scope }
+    pub(crate) fn new(scope: MeasureScope<'a>) -> Self {
+        Self {
+            scope,
+            intrinsic: RefCell::new(AHashMap::new()),
+            intrinsic_stores: Cell::new(0),
+        }
     }
 
     /// Run the flex layout algorithm rooted at `subtree`.
@@ -132,6 +152,49 @@ impl<'a> FlexSolver<'a> {
     /// Borrow the measure scope (used by helpers in sibling modules).
     pub(crate) const fn scope(&self) -> &MeasureScope<'_> {
         &self.scope
+    }
+
+    /// Cached natural main/cross extent for an auto-sized flex item.
+    pub(crate) fn intrinsic_get(
+        &self,
+        id: LocalId,
+        cb_main: f32,
+        cb_cross: f32,
+        along_main: bool,
+    ) -> Option<f32> {
+        let key = IntrinsicKey {
+            id,
+            main: cb_main.to_bits(),
+            cross: cb_cross.to_bits(),
+            along_main,
+        };
+        self.intrinsic.borrow().get(&key).copied()
+    }
+
+    /// Store a probed intrinsic extent for this solve.
+    pub(crate) fn intrinsic_put(
+        &self,
+        id: LocalId,
+        cb_main: f32,
+        cb_cross: f32,
+        along_main: bool,
+        extent: f32,
+    ) {
+        let key = IntrinsicKey {
+            id,
+            main: cb_main.to_bits(),
+            cross: cb_cross.to_bits(),
+            along_main,
+        };
+        self.intrinsic.borrow_mut().insert(key, extent);
+        self.intrinsic_stores
+            .set(self.intrinsic_stores.get().saturating_add(1));
+    }
+
+    /// Number of intrinsic probes that wrote the memo this solve.
+    #[cfg(test)]
+    pub(crate) fn intrinsic_stores(&self) -> u32 {
+        self.intrinsic_stores.get()
     }
 }
 

@@ -27,6 +27,35 @@ fn build_materialises_only_visible_window() {
 }
 
 #[test]
+fn overscan_zero_mounts_the_geometric_page() {
+    Runtime::scope("sigil-virtual-list-overscan-zero", || {
+        let mut cx = Cx::new_root();
+        let items: Vec<usize> = (0..1000).collect();
+        let root = cx.add(virtual_list(items, |_, _| container()).overscan(0));
+        let content = cx.first_child(root).expect("content container");
+        let visible = cx.first_child(content).expect("visible window");
+
+        assert_eq!(cx.child_count(visible), 15);
+    });
+}
+
+#[test]
+fn overscan_zero_bind_mounts_the_geometric_page() {
+    Runtime::scope("sigil-virtual-list-overscan-zero-bind", || {
+        let items = signal((0..1000).collect::<Vec<usize>>());
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            virtual_list_bind(items, |_, _| container())
+                .overscan(0)
+                .row_height(32.0)
+                .viewport_height(480.0),
+        );
+        cx.flush_reactive_children();
+        assert_eq!(cx.child_count(bound_visible(&cx, root)), 15);
+    });
+}
+
+#[test]
 fn scroll_to_end_seeds_signal_at_bottom() {
     Runtime::scope("sigil-virtual-list-scroll-to-end", || {
         // 100 rows × 30 px = 3000 px content; viewport 200 px → max scroll = 2800

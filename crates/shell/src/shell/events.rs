@@ -15,12 +15,14 @@ use smol_str::SmolStr;
 use winit::{
     event::{
         ElementState, Ime as WinitIme, KeyEvent as WinitKeyEvent, MouseButton as WinitMouseButton,
-        MouseScrollDelta as WinitMouseScrollDelta, TouchPhase,
+        MouseScrollDelta as WinitMouseScrollDelta, TouchPhase, WindowEvent as WinitWindowEvent,
     },
     window::WindowId,
 };
 
-use crate::dpi::{logical_point_from_f64, scale_from_f64, set_scale_for_window_id};
+use crate::dpi::{
+    logical_point_from_f64, scale_for_window_id, scale_from_f64, set_scale_for_window_id,
+};
 use crate::event_map::{
     map_modifiers, map_mouse_button, map_scroll_delta, map_scroll_phase, map_touch_pointer_phase,
     mouse_button_bit,
@@ -30,6 +32,54 @@ use crate::key_map::{map_logical_key, map_physical_key};
 use super::WinitShell;
 
 impl WinitShell {
+    pub(crate) fn buffer_window_event(
+        &mut self,
+        window_id: WindowId,
+        event: WinitWindowEvent,
+    ) -> bool {
+        let scale = scale_for_window_id(&self.windows, &self.window_scales, window_id);
+        match event {
+            WinitWindowEvent::Resized(size) => self.push_window_resized(size),
+            WinitWindowEvent::Destroyed => self.push_window(SigilWindowEvent::Destroyed),
+            WinitWindowEvent::Focused(focused) => self.push_focus(focused),
+            WinitWindowEvent::KeyboardInput { event, .. } => self.push_key(event),
+            WinitWindowEvent::ModifiersChanged(modifiers) => self.update_modifiers(modifiers),
+            WinitWindowEvent::Ime(event) => self.push_ime(event),
+            WinitWindowEvent::CursorMoved { position, .. } => {
+                self.push_cursor_move(position, scale)
+            }
+            WinitWindowEvent::CursorEntered { .. } => self.push_pointer_phase(PointerPhase::Enter),
+            WinitWindowEvent::CursorLeft { .. } => self.push_pointer_phase(PointerPhase::Leave),
+            WinitWindowEvent::MouseWheel { delta, phase, .. } => {
+                self.push_scroll(delta, phase, scale)
+            }
+            WinitWindowEvent::MouseInput { state, button, .. } => {
+                self.push_mouse_input(state, button);
+                true
+            }
+            WinitWindowEvent::Touch(touch) => {
+                self.push_touch(touch.phase, touch.location.x, touch.location.y, scale);
+                true
+            }
+            WinitWindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                self.push_scale_factor_changed(window_id, scale_factor)
+            }
+            WinitWindowEvent::Occluded(occluded) => {
+                self.push_window(SigilWindowEvent::Occluded(occluded))
+            }
+            WinitWindowEvent::HoveredFile(path) => {
+                self.push_file_drop(Some(path), FileDropPhase::Hovered)
+            }
+            WinitWindowEvent::DroppedFile(path) => {
+                self.push_file_drop(Some(path), FileDropPhase::Dropped)
+            }
+            WinitWindowEvent::HoveredFileCancelled => {
+                self.push_file_drop(None, FileDropPhase::Cancelled)
+            }
+            _ => false,
+        }
+    }
+
     pub(super) fn push_window_resized(&mut self, size: winit::dpi::PhysicalSize<u32>) -> bool {
         self.push_window(SigilWindowEvent::Resized(PhysicalSize::new(
             size.width,
@@ -56,7 +106,18 @@ impl WinitShell {
         window_id: WindowId,
         scale_factor: f64,
     ) -> bool {
-        let scale = scale_from_f64(scale_factor);
+        let zoom = self
+            .window_zooms
+            .iter()
+            .find_map(|(stored, zoom)| {
+                (self
+                    .windows
+                    .iter()
+                    .any(|(handle, window)| *handle == *stored && window.id() == window_id))
+                .then_some(*zoom)
+            })
+            .unwrap_or(1.0);
+        let scale = scale_from_f64(scale_factor * f64::from(zoom));
         set_scale_for_window_id(&self.windows, &mut self.window_scales, window_id, scale);
         self.push_window(SigilWindowEvent::ScaleFactorChanged(scale))
     }

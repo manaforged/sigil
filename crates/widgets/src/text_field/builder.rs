@@ -34,6 +34,7 @@ pub struct TextFieldBuilder {
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
+    focus_trigger: Option<Signal<u64>>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -59,6 +60,7 @@ impl TextFieldBuilder {
             clipboard: None,
             caret_visible: None,
             scroll_offset: None,
+            focus_trigger: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -157,6 +159,23 @@ impl TextFieldBuilder {
         self
     }
 
+    /// Focus this field whenever `trigger` changes.
+    ///
+    /// Signal-first focus API: key/shortcut handlers receive only
+    /// `&mut KeyEvent` (no `Cx`), so the app bumps a generation counter
+    /// (`trigger.set(trigger.peek() + 1)`) from the handler and the
+    /// field requests focus itself. The mount-time read is treated as
+    /// steady — the initial value never steals focus. Requests go
+    /// through [`sigil_events::request_focus`] and are validated by the
+    /// router against the Tab-navigation contract (focusable, laid out,
+    /// inside the active focus scope), landing before the next routed
+    /// event.
+    #[must_use]
+    pub const fn focus_when(mut self, trigger: Signal<u64>) -> Self {
+        self.focus_trigger = Some(trigger);
+        self
+    }
+
     pub(super) fn into_node_builder(self) -> (NodeBuilder, TextFieldRuntime) {
         let value = self.value;
         let disabled = self.disabled;
@@ -241,7 +260,30 @@ impl WidgetLayoutExt for TextFieldBuilder {
 
 impl IntoNode for TextFieldBuilder {
     fn build(self, cx: &mut Cx) -> sigil_kernel::NodeId {
+        let focus_trigger = self.focus_trigger;
         let (node, _runtime) = self.into_node_builder();
-        node.build(cx)
+        let id = node.build(cx);
+        if let Some(trigger) = focus_trigger {
+            install_focus_trigger(id, trigger);
+        }
+        id
     }
+}
+
+/// Focus-request effect behind [`TextFieldBuilder::focus_when`].
+///
+/// Mirrors the modal open-announcement idiom (`modal/builder.rs`): the
+/// effect observes the trigger, treats the initial read as steady, and
+/// pushes through the deferred [`sigil_events::request_focus`] queue on
+/// each later change — effects cannot hold `&mut Cx` or reach the
+/// router directly. Created inside `build`, so it lives and dies with
+/// the node's owner scope.
+fn install_focus_trigger(id: sigil_kernel::NodeId, trigger: Signal<u64>) {
+    let last = std::cell::Cell::new(trigger.peek());
+    sigil_reactive::effect_named("sigil::text_field::focus_when", move || {
+        let generation = trigger.get();
+        if generation != last.replace(generation) {
+            sigil_events::request_focus(id);
+        }
+    });
 }

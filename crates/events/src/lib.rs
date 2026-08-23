@@ -26,11 +26,13 @@ mod ime_handlers;
 mod pointer_dispatch;
 pub mod prelude;
 mod router;
+mod window_command;
 
 pub use builder_ext::NodeEventsExt;
-pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source};
+pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source, request_focus};
 pub use handlers::EventHandlers;
 pub use router::EventRouter;
+pub use window_command::{request_window_command, take_window_commands};
 
 /// Synthesize a click on `target` by node id.
 ///

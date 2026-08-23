@@ -65,8 +65,63 @@ pub struct WindowOpts {
     /// on purpose: the pieces are useless separately and the bundle is
     /// the smallest complete surface for status-pill overlays.
     pub overlay: bool,
+    /// Frameless window: undecorated (no OS titlebar or traffic lights —
+    /// the app draws its own chrome) but otherwise a normal window —
+    /// normal level, normal activation, resizable, and (on macOS)
+    /// transparent with the standard shadow. Ignored when `overlay` is
+    /// set; the overlay bundle wins.
+    pub frameless: bool,
     /// Optional placement, resolved against the primary monitor.
     pub anchor: Option<Anchor>,
+    /// User zoom — a multiplier composed with the monitor's HiDPI scale
+    /// factor, the webview-zoom equivalent: the layout viewport shrinks
+    /// by 1/zoom and every logical pixel paints `zoom` times larger
+    /// (text re-rasterizes at the composed scale, so it stays crisp).
+    /// `None` (the Default) is 1.0. The window's own size is unaffected;
+    /// only the content scale changes.
+    pub user_zoom: Option<f32>,
+}
+
+/// Edge or corner a window-resize drag starts from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ResizeDirection {
+    /// Right edge.
+    East,
+    /// Top edge.
+    North,
+    /// Top-right corner.
+    NorthEast,
+    /// Top-left corner.
+    NorthWest,
+    /// Bottom edge.
+    South,
+    /// Bottom-right corner.
+    SouthEast,
+    /// Bottom-left corner.
+    SouthWest,
+    /// Left edge.
+    West,
+}
+
+/// Command a running app sends to its OS window — the frameless-window
+/// chrome controls (close/min/max, drag move, drag resize) a custom
+/// titlebar drives from pointer handlers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum WindowCommand {
+    /// Close the window, following the same path as the OS close button.
+    Close,
+    /// Minimize the window to the taskbar/Dock.
+    Minimize,
+    /// Maximize the window, or restore it when already maximized.
+    ToggleMaximize,
+    /// Start a system move drag (`winit::Window::drag_window`). Only
+    /// honoured while the primary pointer button is held.
+    Drag,
+    /// Start a system resize drag from an edge or corner
+    /// (`winit::Window::drag_resize_window`). Only honoured while the
+    /// primary pointer button is held; unsupported on some platforms
+    /// (macOS), where it is a no-op.
+    DragResize(ResizeDirection),
 }
 
 /// OS window and event loop abstraction.
@@ -227,6 +282,26 @@ pub trait Shell: Sized {
         rect: Rect,
     ) -> Result<(), Self::Error> {
         let _ = (window, rect);
+        Ok(())
+    }
+
+    /// Apply a [`WindowCommand`] to a live window. Called by the host
+    /// frame loop draining the `sigil-events` window-command queue that
+    /// custom-chrome widgets push into from pointer handlers.
+    ///
+    /// A command naming a window that has not materialised yet is
+    /// dropped. Default is a no-op so headless/test shells don't need
+    /// an impl.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the platform rejects the command.
+    fn window_command(
+        &mut self,
+        window: &Self::Window,
+        command: WindowCommand,
+    ) -> Result<(), Self::Error> {
+        let _ = (window, command);
         Ok(())
     }
 }

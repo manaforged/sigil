@@ -13,28 +13,24 @@ use std::sync::{
 use std::time::Instant;
 
 use sigil_hal::{
-    Anchor, FileDropPhase, LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point,
-    PointerPhase, Rect, Scale, Shell, ShellEvent, WindowEvent as SigilWindowEvent, WindowOpts,
+    LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, Rect, Scale, Shell, ShellEvent,
+    WindowCommand, WindowOpts,
 };
 use winit::{
-    dpi::{
-        LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize,
-        PhysicalPosition as WinitPhysicalPosition, PhysicalSize as WinitPhysicalSize,
-        Size as WinitSize,
-    },
-    event::WindowEvent as WinitWindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    window::{Window, WindowAttributes, WindowId, WindowLevel},
+    dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize},
+    event_loop::{EventLoop, EventLoopProxy},
+    window::Window,
 };
 
 use crate::{
     ShellError, WinitWindowHandle,
     app::WinitApp,
-    dpi::{scale_for_window_id, scale_from_f64},
     waker::{WakeEvent, WinitWaker},
 };
 
 mod a11y;
+mod attrs;
+mod commands;
 mod events;
 
 /// Pending window specification recorded before the event loop is
@@ -83,6 +79,9 @@ pub struct WinitShell {
     pending: Vec<PendingWindow>,
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
+    /// Per-window user zoom (WindowOpts::user_zoom), composed with the
+    /// monitor scale everywhere a raw winit scale factor arrives.
+    window_zooms: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<ShellEvent>,
     pointer_position: Point,
@@ -160,6 +159,7 @@ impl WinitShell {
             pending: Vec::new(),
             windows: Vec::new(),
             window_scales: Vec::new(),
+            window_zooms: Vec::new(),
             failed: Vec::new(),
             events: Vec::new(),
             pointer_position: Point::new(0.0, 0.0),
@@ -272,144 +272,6 @@ impl WinitShell {
         self.next_handle = self.next_handle.wrapping_add(1);
         WinitWindowHandle::from_raw(id)
     }
-
-    /// Convert a logical size to physical pixels with the monitor's
-    /// scale factor, matching winit's own `WinitSize::Logical` handling.
-    fn logical_to_physical_px(size: LogicalSize, scale: f64) -> (u32, u32) {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        (
-            (f64::from(size.width) * scale).round() as u32,
-            (f64::from(size.height) * scale).round() as u32,
-        )
-    }
-
-    /// Build the winit attributes for a pending spec. The overlay opt
-    /// bundles undecorated + transparent + always-on-top + inactive
-    /// (+ shadowless on macOS); an anchor resolves against the primary
-    /// monitor when one is discoverable, otherwise the OS default
-    /// position stands. Windows start hidden until the AccessKit
-    /// adapter is attached — `accesskit_winit::Adapter` panics if
-    /// constructed against an already-visible window.
-    fn window_attrs(spec: &PendingWindow, active: &ActiveEventLoop) -> WindowAttributes {
-        let size = match spec.size {
-            PendingWindowSize::Physical(size) => {
-                WinitSize::Physical(WinitPhysicalSize::new(size.width, size.height))
-            }
-            PendingWindowSize::Logical(size) => WinitSize::Logical(WinitLogicalSize::new(
-                f64::from(size.width),
-                f64::from(size.height),
-            )),
-        };
-        let mut attrs = WindowAttributes::default()
-            .with_title(spec.title.clone())
-            .with_inner_size(size)
-            .with_visible(false);
-        if spec.opts.overlay {
-            attrs = attrs
-                .with_decorations(false)
-                .with_transparent(true)
-                .with_window_level(WindowLevel::AlwaysOnTop)
-                .with_active(false);
-            #[cfg(target_os = "macos")]
-            {
-                use winit::platform::macos::WindowAttributesExtMacOS;
-                attrs = attrs.with_has_shadow(false);
-            }
-        }
-        if let Some(anchor) = spec.opts.anchor
-            && let Some(monitor) = active.primary_monitor()
-        {
-            let scale = monitor.scale_factor();
-            let win = match spec.size {
-                PendingWindowSize::Physical(s) => (s.width, s.height),
-                PendingWindowSize::Logical(s) => Self::logical_to_physical_px(s, scale),
-            };
-            let pos = monitor.position();
-            let msize = monitor.size();
-            let (x, y) = anchor_origin(
-                anchor,
-                (pos.x, pos.y),
-                (msize.width, msize.height),
-                win,
-                scale,
-            );
-            attrs = attrs.with_position(WinitPhysicalPosition::new(x, y));
-        }
-        attrs
-    }
-
-    pub(crate) fn materialise_pending(&mut self, active: &ActiveEventLoop) {
-        if self.pending.is_empty() {
-            return;
-        }
-        let pending = std::mem::take(&mut self.pending);
-        for spec in pending {
-            let attrs = Self::window_attrs(&spec, active);
-            match active.create_window(attrs) {
-                Ok(window) => {
-                    if spec.opts.overlay {
-                        // Click-through; failures are cosmetic, not fatal.
-                        let _ = window.set_cursor_hittest(false);
-                    }
-                    self.install_a11y_adapter(active, spec.handle, &window);
-                    self.window_scales
-                        .push((spec.handle, scale_from_f64(window.scale_factor())));
-                    self.windows.push((spec.handle, Arc::new(window)));
-                }
-                // Recorded for `take_failed_windows`; callers surface
-                // the error out-of-band since the shell cannot panic.
-                Err(err) => self.failed.push((spec.handle, err.to_string())),
-            }
-        }
-    }
-
-    pub(crate) fn buffer_window_event(
-        &mut self,
-        window_id: WindowId,
-        event: WinitWindowEvent,
-    ) -> bool {
-        let scale = scale_for_window_id(&self.windows, &self.window_scales, window_id);
-        match event {
-            WinitWindowEvent::Resized(size) => self.push_window_resized(size),
-            WinitWindowEvent::Destroyed => self.push_window(SigilWindowEvent::Destroyed),
-            WinitWindowEvent::Focused(focused) => self.push_focus(focused),
-            WinitWindowEvent::KeyboardInput { event, .. } => self.push_key(event),
-            WinitWindowEvent::ModifiersChanged(modifiers) => self.update_modifiers(modifiers),
-            WinitWindowEvent::Ime(event) => self.push_ime(event),
-            WinitWindowEvent::CursorMoved { position, .. } => {
-                self.push_cursor_move(position, scale)
-            }
-            WinitWindowEvent::CursorEntered { .. } => self.push_pointer_phase(PointerPhase::Enter),
-            WinitWindowEvent::CursorLeft { .. } => self.push_pointer_phase(PointerPhase::Leave),
-            WinitWindowEvent::MouseWheel { delta, phase, .. } => {
-                self.push_scroll(delta, phase, scale)
-            }
-            WinitWindowEvent::MouseInput { state, button, .. } => {
-                self.push_mouse_input(state, button);
-                true
-            }
-            WinitWindowEvent::Touch(touch) => {
-                self.push_touch(touch.phase, touch.location.x, touch.location.y, scale);
-                true
-            }
-            WinitWindowEvent::ScaleFactorChanged { scale_factor, .. } => {
-                self.push_scale_factor_changed(window_id, scale_factor)
-            }
-            WinitWindowEvent::Occluded(occluded) => {
-                self.push_window(SigilWindowEvent::Occluded(occluded))
-            }
-            WinitWindowEvent::HoveredFile(path) => {
-                self.push_file_drop(Some(path), FileDropPhase::Hovered)
-            }
-            WinitWindowEvent::DroppedFile(path) => {
-                self.push_file_drop(Some(path), FileDropPhase::Dropped)
-            }
-            WinitWindowEvent::HoveredFileCancelled => {
-                self.push_file_drop(None, FileDropPhase::Cancelled)
-            }
-            _ => false,
-        }
-    }
 }
 
 impl Shell for WinitShell {
@@ -500,6 +362,15 @@ impl Shell for WinitShell {
         Ok(())
     }
 
+    fn window_command(
+        &mut self,
+        window: &Self::Window,
+        command: WindowCommand,
+    ) -> Result<(), Self::Error> {
+        self.run_window_command(*window, command);
+        Ok(())
+    }
+
     fn run<F>(mut self, frame: F) -> Result<(), Self::Error>
     where
         F: FnMut(&mut Self) + 'static,
@@ -514,32 +385,3 @@ impl Shell for WinitShell {
         Ok(())
     }
 }
-
-/// Resolve an [`Anchor`] to a window origin in physical pixels.
-///
-/// `monitor_pos`/`monitor_size` and `window_size` are physical pixels;
-/// the anchor's margin is logical and scaled by the monitor's factor.
-/// Pure so it is testable without a live monitor.
-fn anchor_origin(
-    anchor: Anchor,
-    monitor_pos: (i32, i32),
-    monitor_size: (u32, u32),
-    window_size: (u32, u32),
-    scale: f64,
-) -> (i32, i32) {
-    match anchor {
-        Anchor::BottomCenter { margin } => {
-            #[allow(clippy::cast_possible_truncation)]
-            let margin_px = (f64::from(margin) * scale).round() as i32;
-            #[allow(clippy::cast_possible_wrap)]
-            let x = monitor_pos.0 + (monitor_size.0 as i32 - window_size.0 as i32) / 2;
-            #[allow(clippy::cast_possible_wrap)]
-            let y = monitor_pos.1 + monitor_size.1 as i32 - window_size.1 as i32 - margin_px;
-            (x, y)
-        }
-    }
-}
-
-#[cfg(test)]
-#[path = "shell_tests.rs"]
-mod tests;

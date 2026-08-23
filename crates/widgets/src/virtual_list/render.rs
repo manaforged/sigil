@@ -171,6 +171,7 @@ pub(super) struct BoundStrip<T, R> {
     pub render: Rc<R>,
     pub row_height: f32,
     pub viewport_height: f32,
+    pub overscan: usize,
     pub width: WidthSpec,
     pub selection: SelectionRuntime,
     pub live_len: Signal<usize>,
@@ -191,8 +192,9 @@ where
 {
     let rh = spec.row_height;
     let vh = spec.viewport_height;
-    let pos = derived(move || strip_offset(scroll_y.get(), rh, vh));
-    let height = strip_height(vh, rh);
+    let overscan = spec.overscan;
+    let pos = derived(move || strip_offset(scroll_y.get(), rh, vh, overscan));
+    let height = strip_height(vh, rh, overscan);
     let first = keyed_rows(signal, scroll_y.get(), &spec, 0, None);
     let seed: Vec<u64> = first.iter().map(|(key, _)| *key).collect();
     let mut strip = container()
@@ -242,11 +244,16 @@ where
     })
 }
 
-fn strip_offset(scroll_y: f32, row_height: f32, viewport_height: f32) -> (f32, f32) {
+fn strip_offset(
+    scroll_y: f32,
+    row_height: f32,
+    viewport_height: f32,
+    overscan: usize,
+) -> (f32, f32) {
     if row_height <= 0.0 {
         return (0.0, 0.0);
     }
-    let first = visible_window(scroll_y, usize::MAX, row_height, viewport_height).first;
+    let first = visible_window(scroll_y, usize::MAX, row_height, viewport_height, overscan).first;
     #[allow(clippy::cast_precision_loss)]
     let first_top = first as f32 * row_height;
     (0.0, first_top - scroll_y)
@@ -267,7 +274,13 @@ where
 {
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
-    let window = visible_window(scroll_y, slice.len(), spec.row_height, spec.viewport_height);
+    let window = visible_window(
+        scroll_y,
+        slice.len(),
+        spec.row_height,
+        spec.viewport_height,
+        spec.overscan,
+    );
     let mut rows = Vec::with_capacity(window.len());
     for index in window.first..window.end {
         let Some(item) = slice.get(index) else {

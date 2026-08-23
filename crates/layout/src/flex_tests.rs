@@ -1052,3 +1052,41 @@ fn percent_dimension_resolves_against_container() {
     let s = run(&f, parent, 400.0, 400.0);
     assert!(near(s.boxed(a).unwrap().w, 100.0));
 }
+
+#[test]
+fn nested_auto_height_columns_probe_once_per_node() {
+    // Auto-main nested flex used to re-lay out the subtree at every
+    // ancestor (`2^depth` intrinsic probes). One store per wrapper.
+    let mut f = LayoutForest::new();
+    let root = f.insert(
+        None,
+        StyleData {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            size: StyleSize::new(Dimension::Px(200.0), Dimension::Px(400.0)),
+            ..StyleData::default()
+        },
+    );
+    let mut parent = root;
+    for _ in 0..8 {
+        parent = add_child(
+            &mut f,
+            parent,
+            StyleData {
+                display: Display::Flex,
+                flex_direction: FlexDirection::Column,
+                size: StyleSize::new(Dimension::Px(200.0), Dimension::Auto),
+                ..StyleData::default()
+            },
+        );
+    }
+    let leaf = add_child(&mut f, parent, fixed(20.0, 16.0));
+    let s = run(&f, root, 200.0, 400.0);
+    assert!(
+        s.intrinsic_stores() <= 16,
+        "intrinsic stores {} (want linear in depth, not 2^depth)",
+        s.intrinsic_stores()
+    );
+    let box_ = s.boxed(leaf).unwrap();
+    assert!(near(box_.h, 16.0), "leaf h={}", box_.h);
+}

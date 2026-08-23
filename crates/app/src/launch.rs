@@ -57,6 +57,11 @@ where
 
 #[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
+    // A non-positive zoom is a caller bug, not a layout death sentence.
+    let config = AppConfig {
+        user_zoom: if config.user_zoom > 0.0 { config.user_zoom } else { 1.0 },
+        ..config
+    };
     // Live desktop apps use the platform UI families by default. A consumer
     // that installed bundled/custom faces before launch keeps that choice.
     sigil_text::prefer_system_fonts();
@@ -81,7 +86,21 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // Install pointer→glyph geometry so text widgets can hit-test clicks and
     // draw caret/selection overlays (mirrors the measurer install above).
     sigil_layout::set_text_geometry(std::rc::Rc::new(crate::EngineGeometry::new()));
-    layout_for_scale(&mut cx, root, &mut layout, Scale::ONE, logical_size).map_err(Error::new)?;
+    // The viewport is sigil-logical: the window keeps `logical_size` in
+    // winit terms, but content lays out zoom-times smaller so the composed
+    // scale paints it back to the same physical size (webview-zoom rules).
+    let mut viewport = (
+        logical_size.width / config.user_zoom,
+        logical_size.height / config.user_zoom,
+    );
+    layout_for_scale(
+        &mut cx,
+        root,
+        &mut layout,
+        Scale::ONE,
+        logical_size_from_viewport(viewport),
+    )
+    .map_err(Error::new)?;
 
     let mut router = EventRouter::new();
     // W5-A11Y (DR-050 §1) — clone the inbound `ActionRequest` receiver
@@ -89,9 +108,8 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     // drains it every frame via `drain_a11y_actions`.
     let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = WgpuRenderer::new()?;
-    renderer.set_transparent(config.overlay);
+    renderer.set_transparent(config.overlay || config.frameless);
     let mut surface: Option<WgpuSurface> = None;
-    let mut viewport = (logical_size.width, logical_size.height);
     let mut exit_requested = false;
     let mut frame_state = FrameState::default();
 
@@ -198,7 +216,9 @@ where
             logical_size,
             sigil_hal::WindowOpts {
                 overlay: config.overlay,
+                frameless: config.frameless,
                 anchor: config.anchor,
+                user_zoom: (config.user_zoom != 1.0).then_some(config.user_zoom),
             },
         )
         .map_err(Error::new)
@@ -400,6 +420,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
         renderer,
         surface,
         viewport,
+        user_zoom: config.user_zoom,
     });
     // Drain input events during the EFFECT phase — symmetric with the
     // `pump_completions_into_reactive` hoist above. Router handlers fire
@@ -416,6 +437,7 @@ fn frame_once(ctx: FrameCtx<'_>) {
     crate::tray::pump();
     drain_events(DrainCtx {
         shell,
+        window_handle,
         cx,
         layout,
         router,

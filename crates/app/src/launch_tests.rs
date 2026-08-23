@@ -133,7 +133,53 @@ fn initial_window_threads_overlay_opts() {
             logical,
             sigil_hal::WindowOpts {
                 overlay: true,
+                frameless: false,
                 anchor: Some(anchor),
+                user_zoom: None,
+            }
+        )]
+    );
+}
+
+#[test]
+fn initial_window_threads_user_zoom() {
+    let mut shell = MockShell::default();
+    let config = AppConfig::new("zoom").user_zoom(1.1);
+    let logical = LogicalSize::new(720.0, 480.0);
+
+    create_initial_window(&mut shell, &config, logical).unwrap();
+
+    assert_eq!(
+        shell.calls,
+        vec![CreateCall::With(
+            "zoom".to_owned(),
+            logical,
+            sigil_hal::WindowOpts {
+                user_zoom: Some(1.1),
+                ..sigil_hal::WindowOpts::default()
+            }
+        )]
+    );
+}
+
+#[test]
+fn initial_window_threads_frameless_opts() {
+    let mut shell = MockShell::default();
+    let config = AppConfig::new("frameless").size(1280, 720).frameless(true);
+    let logical = LogicalSize::new(1280.0, 720.0);
+
+    create_initial_window(&mut shell, &config, logical).unwrap();
+
+    assert_eq!(
+        shell.calls,
+        vec![CreateCall::With(
+            "frameless".to_owned(),
+            logical,
+            sigil_hal::WindowOpts {
+                overlay: false,
+                frameless: true,
+                anchor: None,
+                user_zoom: None,
             }
         )]
     );

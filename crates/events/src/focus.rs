@@ -13,6 +13,11 @@ use crate::EventHandlers;
 mod scope;
 mod targets;
 
+mod request;
+
+pub use request::request_focus;
+pub(crate) use request::take_focus_requests;
+
 /// Directional focus-navigation intent (dpad / analog-stick shaped).
 ///
 /// Distinct from Tab order: Sigil stays device-agnostic and never reads

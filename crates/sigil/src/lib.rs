@@ -78,7 +78,10 @@ pub use sigil_app::menu;
 /// System tray icon — see [`sigil_app::tray`].
 #[cfg(feature = "desktop")]
 pub use sigil_app::tray;
-pub use sigil_app::{Anchor, AppConfig, AppResult, Error, Host, PanicPolicy, TreeRoot, WindowOpts};
+pub use sigil_app::{
+    Anchor, AppConfig, AppResult, Error, Host, PanicPolicy, ResizeDirection, TreeRoot,
+    WindowCommand, WindowOpts,
+};
 /// Desktop window + wgpu loop.
 #[cfg(feature = "desktop")]
 pub use sigil_app::{
@@ -199,8 +202,9 @@ pub mod prelude {
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
         ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, Clipboard,
-        CodeEditBuilder, ColWidth, Combobox, CommandMenuBuilder, Date, DateFieldBuilder, Density,
-        DotBuilder, DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
+        CodeEditBuilder, ColWidth, Combobox, CommandMenuBuilder, DRAG_THRESHOLD_PX,
+        DROP_TARGET_CLASS, Date, DateFieldBuilder, Density, DotBuilder, DragDropExt, DragState,
+        DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
         HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder, InteractiveBuilder,
         MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
         PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
@@ -209,11 +213,11 @@ pub mod prelude {
         TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToastEntry, ToastLevel,
         ToastQueue, ToggleBuilder, TooltipBuilder, TurnStripBuilder, VirtualListBuilder, axis_drag,
         badge, button, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
-        date_field, divider_horizontal, divider_vertical, dot, dropdown, field, floating_text,
-        gauge, icon, image_rgba, interactive, kv_row, label, markdown, markdown_edit, menu,
-        mermaid, modal, number_field, panel, path, progress, radio_group, scroll, sheet, slider,
-        splitter, status_bar, table, tabs, text_edit, text_field, toast, toast_queue, toggle,
-        tooltip, turn_strip, validated_field, virtual_list,
+        date_field, divider_horizontal, divider_vertical, dot, drag_ghost, dropdown, field,
+        floating_text, gauge, icon, image_rgba, interactive, kv_row, label, markdown,
+        markdown_edit, menu, mermaid, modal, number_field, panel, path, progress, radio_group,
+        scroll, sheet, slider, splitter, status_bar, table, tabs, text_edit, text_field, toast,
+        toast_queue, toggle, tooltip, turn_strip, validated_field, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error};
 }

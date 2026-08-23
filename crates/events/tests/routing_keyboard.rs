@@ -118,3 +118,150 @@ fn text_key_event(text: &str, physical: PhysicalKey) -> sigil_hal::ShellEvent {
         text: Some(text.into()),
     }))
 }
+
+/// A page-level `/` shortcut plus a text-input node, mirroring the
+/// web-app pattern of page-scoped hotkeys that must yield while typing.
+struct SlashFixture {
+    cx: Cx,
+    layout: LayoutEngine,
+    page: NodeId,
+    text: NodeId,
+    fires: Rc<Cell<u32>>,
+    typed: Rc<Cell<u32>>,
+}
+
+fn slash_fixture() -> SlashFixture {
+    let fires = Rc::new(Cell::new(0_u32));
+    let typed = Rc::new(Cell::new(0_u32));
+    let slash = Shortcut::plain(LogicalKey::character("/"));
+    let mut cx = Cx::new_root();
+    let page = cx.add(
+        container()
+            .focusable(true)
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .keyboard_shortcut(slash.clone())
+            .key(slash, {
+                let fires = Rc::clone(&fires);
+                move |_| fires.set(fires.get() + 1)
+            }),
+    );
+    let text = cx.add(
+        container()
+            .role(sigil_kernel::Role::TextInput)
+            .focusable(true)
+            .layout(LayoutStyle::block().fixed_size(100.0, 20.0))
+            .key_any({
+                let typed = Rc::clone(&typed);
+                move |event| {
+                    if event.text.is_some() {
+                        typed.set(typed.get() + 1);
+                    }
+                }
+            }),
+    );
+    let layout = compute_layout(&mut cx, page, 100.0, 100.0);
+    SlashFixture {
+        cx,
+        layout,
+        page,
+        text,
+        fires,
+        typed,
+    }
+}
+
+#[test]
+fn plain_char_shortcut_yields_to_focused_text_input() {
+    let mut f = slash_fixture();
+    let mut router = EventRouter::new();
+    router.set_focus(&mut f.cx, Some(f.text));
+
+    route_event(
+        &mut router,
+        &mut f.cx,
+        &f.layout,
+        text_key_event("/", PhysicalKey::Slash),
+    );
+
+    assert_eq!(
+        f.fires.get(),
+        0,
+        "global '/' must not fire while a text input is focused"
+    );
+    assert_eq!(
+        f.typed.get(),
+        1,
+        "the character falls through to the focused text input"
+    );
+}
+
+#[test]
+fn plain_char_shortcut_fires_when_non_text_node_focused() {
+    let mut f = slash_fixture();
+    let mut router = EventRouter::new();
+    router.set_focus(&mut f.cx, Some(f.page));
+
+    route_event(
+        &mut router,
+        &mut f.cx,
+        &f.layout,
+        text_key_event("/", PhysicalKey::Slash),
+    );
+
+    assert_eq!(f.fires.get(), 1, "'/' fires when no text input is focused");
+    assert_eq!(f.typed.get(), 0);
+}
+
+#[test]
+fn modifier_chord_still_fires_while_text_input_focused() {
+    let fires = Rc::new(Cell::new(0_u32));
+    let typed = Rc::new(Cell::new(0_u32));
+    let chord = Shortcut::ctrl(LogicalKey::character("k"));
+    let mut cx = Cx::new_root();
+    let page = cx.add(
+        container()
+            .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
+            .keyboard_shortcut(chord.clone())
+            .key(chord, {
+                let fires = Rc::clone(&fires);
+                move |_| fires.set(fires.get() + 1)
+            }),
+    );
+    let text = cx.add(
+        container()
+            .role(sigil_kernel::Role::TextInput)
+            .focusable(true)
+            .layout(LayoutStyle::block().fixed_size(100.0, 20.0))
+            .key_any({
+                let typed = Rc::clone(&typed);
+                move |event| {
+                    if event.text.is_some() {
+                        typed.set(typed.get() + 1);
+                    }
+                }
+            }),
+    );
+    let layout = compute_layout(&mut cx, page, 100.0, 100.0);
+    let mut router = EventRouter::new();
+    router.set_focus(&mut cx, Some(text));
+
+    route_event(&mut router, &mut cx, &layout, ctrl_k());
+
+    assert_eq!(
+        fires.get(),
+        1,
+        "Ctrl+K still fires globally while a text input is focused"
+    );
+    assert_eq!(typed.get(), 0);
+}
+
+fn ctrl_k() -> sigil_hal::ShellEvent {
+    sigil_hal::ShellEvent::Key(sigil_hal::KeyEvent::new(sigil_hal::KeyEventInit {
+        key: LogicalKey::character("k"),
+        physical: PhysicalKey::KeyK,
+        modifiers: ModifiersState::CONTROL,
+        repeat: false,
+        phase: KeyPhase::Down,
+        text: None,
+    }))
+}

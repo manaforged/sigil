@@ -56,6 +56,7 @@ impl EventRouter {
     /// frame loop passes last frame's layout here.
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
         self.focus.sync_scopes(cx, Some(layout));
+        self.flush_focus_requests(cx, layout);
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, layout, event),
@@ -132,6 +133,29 @@ impl EventRouter {
     pub fn set_focus(&mut self, cx: &mut Cx, target: Option<NodeId>) {
         crate::note_focus_source(true);
         self.focus.set_focus(cx, target);
+    }
+
+    /// Apply every queued [`crate::request_focus`] request, last one wins.
+    ///
+    /// Called at the top of [`Self::route`] so a request queued by a
+    /// signal effect (which cannot reach the router) lands before the
+    /// next event dispatches — typically the very next key-up after the
+    /// shortcut whose handler bumped the trigger. Frame drivers and tests
+    /// may call it directly. Each target is validated against the same
+    /// contract Tab navigation enforces (focusable, laid out, inside the
+    /// active focus scope); stale or out-of-scope targets are dropped.
+    pub fn flush_focus_requests(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+        let pending = crate::focus::take_focus_requests();
+        if pending.is_empty() {
+            return;
+        }
+        // Programmatic focus is focus-visible (ring shown), like `set_focus`.
+        crate::note_focus_source(true);
+        for id in pending {
+            if self.focus.is_focusable_target(cx, layout, id) {
+                self.focus.set_focus(cx, Some(id));
+            }
+        }
     }
 
     /// Advance focus through the tab ring (keyboard → focus-visible).
@@ -230,9 +254,12 @@ impl EventRouter {
         let next_targets = pointer_targets(layout, &path);
         self.update_hover(cx, &next_targets, &event);
         self.focus_pointer_target(cx, &path, event.phase);
-        dispatch_pointer_path(cx, &next_targets, &mut event, global_position);
+        let capture_requester =
+            dispatch_pointer_path(cx, &next_targets, &mut event, global_position);
         if event.capture_requested() {
-            self.pointer_capture = path.last().copied();
+            // Capture the node whose handler asked for it (it owns the
+            // drag's move/up logic), falling back to the hit leaf.
+            self.pointer_capture = capture_requester.or_else(|| path.last().copied());
         }
         self.release_capture_on_terminal_phase(event.phase);
     }

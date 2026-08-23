@@ -290,8 +290,11 @@ fn parse_grammar_branches() {
     assert!(parsed.contains(&StyleAtom::BorderRadius(Px(2))));
     assert!(parsed.contains(&StyleAtom::BorderRadius(Px(8))));
     assert!(parsed.contains(&StyleAtom::BorderRadius(Px(9_999))));
-    assert!(parsed.contains(&StyleAtom::FontSize(Px(11))));
+    assert!(parsed.contains(&StyleAtom::FontSize(Px(12))));
+    assert!(parsed.contains(&StyleAtom::FontSize(Px(14))));
+    assert!(parsed.contains(&StyleAtom::FontSize(Px(16))));
     assert!(parsed.contains(&StyleAtom::FontSize(Px(18))));
+    assert!(parsed.contains(&StyleAtom::FontSize(Px(20))));
     assert!(parsed.contains(&StyleAtom::TextThemeRef("on-surface")));
     assert!(parsed.contains(&StyleAtom::FontWeight(400)));
     assert!(parsed.contains(&StyleAtom::FontWeight(500)));

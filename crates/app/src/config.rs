@@ -49,6 +49,14 @@ pub struct AppConfig {
     /// transparent, so whatever the tree does not paint shows the
     /// desktop behind it. Meant for status pills. Default: `false`.
     pub overlay: bool,
+    /// Frameless window: no OS titlebar or traffic lights — the app
+    /// draws its own chrome and drives it through
+    /// [`sigil_events::request_window_command`] — but otherwise a normal
+    /// window: normal level, normal activation, resizable, and (on
+    /// macOS) transparent with the standard shadow. The frame clear is
+    /// transparent, as with `overlay`. Ignored when `overlay` is set.
+    /// Default: `false`.
+    pub frameless: bool,
     /// Optional placement resolved against the primary monitor when the
     /// window materialises. `None` accepts the OS default position.
     pub anchor: Option<sigil_hal::Anchor>,
@@ -56,6 +64,11 @@ pub struct AppConfig {
     /// file and repaint live on save — no rebuild. See
     /// `crates/app/src/theme_file.rs` for the format. Default: `None`.
     pub theme_file: Option<std::path::PathBuf>,
+    /// User zoom, composed with the monitor scale factor — the
+    /// webview-zoom equivalent (see [`sigil_hal::WindowOpts::user_zoom`]).
+    /// Applied at window creation; the window keeps its configured size,
+    /// the content scales. Default: `1.0`.
+    pub user_zoom: f32,
 }
 
 impl AppConfig {
@@ -68,8 +81,10 @@ impl AppConfig {
             esc_exits: true,
             panic_policy: PanicPolicy::default(),
             overlay: false,
+            frameless: false,
             anchor: None,
             theme_file: None,
+            user_zoom: 1.0,
         }
     }
 
@@ -101,6 +116,13 @@ impl AppConfig {
         self
     }
 
+    /// Chainable frameless setter (see [`Self::frameless`] field docs).
+    #[must_use]
+    pub const fn frameless(mut self, yes: bool) -> Self {
+        self.frameless = yes;
+        self
+    }
+
     /// Chainable placement setter (see [`Self::anchor`] field docs).
     #[must_use]
     pub const fn anchor(mut self, anchor: sigil_hal::Anchor) -> Self {
@@ -112,6 +134,13 @@ impl AppConfig {
     #[must_use]
     pub fn theme_file(mut self, path: impl Into<std::path::PathBuf>) -> Self {
         self.theme_file = Some(path.into());
+        self
+    }
+
+    /// Chainable user-zoom setter (see [`Self::user_zoom`] field docs).
+    #[must_use]
+    pub const fn user_zoom(mut self, zoom: f32) -> Self {
+        self.user_zoom = zoom;
         self
     }
 }

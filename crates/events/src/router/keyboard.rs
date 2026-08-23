@@ -7,8 +7,8 @@
 //! its own child module, matching the `focus/scope.rs` and
 //! `focus/targets.rs` precedent already in this crate.
 
-use sigil_hal::{Key, KeyEvent, KeyPhase, LogicalKey, Shortcut};
-use sigil_kernel::{Cx, NodeId};
+use sigil_hal::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use sigil_kernel::{Cx, NodeId, Role};
 use sigil_layout::LayoutEngine;
 use smallvec::SmallVec;
 
@@ -22,7 +22,11 @@ impl EventRouter {
             return;
         }
         self.shortcuts.refresh(cx);
-        if self.shortcuts.dispatch(cx, &mut event) || event.propagation_stopped() {
+        if self
+            .shortcuts
+            .dispatch(cx, &mut event, self.focused_accepts_text(cx))
+            || event.propagation_stopped()
+        {
             return;
         }
         // Tab moves focus via the keyboard → focus-visible (ring shown).
@@ -40,6 +44,16 @@ impl EventRouter {
         };
         let path = path_to_node(cx, focused);
         dispatch_key_path(cx, &path, event);
+    }
+
+    /// Whether the focused node is a text-editing surface. Text widgets
+    /// (`text_field` / `text_edit` / `code_edit`) all present as
+    /// `Role::TextInput`, so the role is the single marker to check.
+    fn focused_accepts_text(&self, cx: &Cx) -> bool {
+        self.focus
+            .focus()
+            .and_then(|id| cx.get(id))
+            .is_some_and(|node| node.a11y.role == Role::TextInput)
     }
 }
 
@@ -86,14 +100,40 @@ impl ShortcutIndex {
         self.generation = generation;
     }
 
-    fn dispatch(&self, cx: &Cx, event: &mut KeyEvent) -> bool {
+    /// Scan the index for a matching shortcut and invoke its node's key
+    /// handlers. While a text-editing node holds focus (`text_focused`),
+    /// bare printable-character shortcuts are skipped — the character is
+    /// text input first (the web's INPUT/contentEditable guard). Modifier
+    /// chords (Ctrl+K &c.) still dispatch globally.
+    fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, text_focused: bool) -> bool {
         for (shortcut, id) in &self.entries {
+            if text_focused && is_plain_char(shortcut) {
+                continue;
+            }
             if shortcut.matches(event) && invoke_key(cx, *id, event, false) {
                 return true;
             }
         }
         false
     }
+}
+
+/// A bare printable-character shortcut: `LogicalKey::Character` with no
+/// routing-relevant modifiers (the same SHIFT|CONTROL|ALT|META mask
+/// `Shortcut::matches` normalizes against). Any `Character` key counts,
+/// not just length-1 — multi-scalar input (dead-key compose, IME-ish
+/// text) is still text a field must receive.
+const fn is_plain_char(shortcut: &Shortcut) -> bool {
+    matches!(shortcut.key, LogicalKey::Character(_))
+        && shortcut
+            .modifiers
+            .intersection(
+                ModifiersState::SHIFT
+                    .union(ModifiersState::CONTROL)
+                    .union(ModifiersState::ALT)
+                    .union(ModifiersState::META),
+            )
+            .is_empty()
 }
 
 fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, NodeId); 8]>) {

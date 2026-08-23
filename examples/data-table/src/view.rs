@@ -8,7 +8,7 @@ use std::ops::Range;
 use std::rc::Rc;
 
 use sigil::prelude::*;
-use sigil::widgets::Axis;
+use sigil::widgets::{Axis, VirtualListBuilder};
 
 use crate::fields::{
     FIELDS, Field, FieldKind, TABLE_WIDTH, VIEWPORT_HEIGHT, cell_text, header_label,
@@ -161,8 +161,13 @@ fn body(items: Signal<Rc<Vec<Quote>>>, scroll_y: Signal<f32>) -> NodeBuilder {
 }
 
 /// Windowed body used by the live window and the Sigil bench runner.
+///
+/// Default overscan is one page. 1:1 construct benches chain `.overscan(0)`.
 #[must_use]
-pub fn quote_list(items: Signal<Rc<Vec<Quote>>>, scroll_y: Signal<f32>) -> impl IntoNode {
+pub fn quote_list(
+    items: Signal<Rc<Vec<Quote>>>,
+    scroll_y: Signal<f32>,
+) -> VirtualListBuilder<Quote, impl Fn(usize, &Quote) -> NodeBuilder + 'static> {
     virtual_list(items, move |index, quote| table_row(index, quote, items))
         .row_height(ROW_H)
         .viewport_height(VIEWPORT_H)

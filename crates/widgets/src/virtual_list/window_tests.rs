@@ -11,12 +11,25 @@ use super::*;
 fn visible_window_at_scroll_zero_returns_first_window() {
     // 15 in view + 15 overscan below. Nothing above.
     assert_eq!(
-        visible_window(0.0, 100, 32.0, 480.0),
+        visible_window(0.0, 100, 32.0, 480.0, 1),
         VisibleWindow { first: 0, end: 30 }
     );
     assert_eq!(
-        visible_window(1.0, 100, 32.0, 480.0),
+        visible_window(1.0, 100, 32.0, 480.0, 1),
         VisibleWindow { first: 0, end: 31 }
+    );
+}
+
+#[test]
+fn visible_window_overscan_zero_is_geometric_page() {
+    assert_eq!(
+        visible_window(0.0, 100, 32.0, 480.0, 0),
+        VisibleWindow { first: 0, end: 15 }
+    );
+    // Geometric page is 50..65.
+    assert_eq!(
+        visible_window(1_600.0, 100, 32.0, 480.0, 0),
+        VisibleWindow { first: 50, end: 65 }
     );
 }
 
@@ -24,15 +37,15 @@ fn visible_window_at_scroll_zero_returns_first_window() {
 fn visible_window_mid_list_pads_one_page_each_side() {
     // Geometric page is 50..65. Pad 15 → 35..80.
     assert_eq!(
-        visible_window(1_600.0, 100, 32.0, 480.0),
+        visible_window(1_600.0, 100, 32.0, 480.0, 1),
         VisibleWindow { first: 35, end: 80 }
     );
 }
 
 #[test]
 fn one_page_jump_stays_inside_the_mounted_window() {
-    let here = visible_window(0.0, 1_000, 32.0, 480.0);
-    let next = visible_window(480.0, 1_000, 32.0, 480.0);
+    let here = visible_window(0.0, 1_000, 32.0, 480.0, 1);
+    let next = visible_window(480.0, 1_000, 32.0, 480.0, 1);
     assert!(next.first < here.end);
     assert!(here.first < next.end);
 }
@@ -40,7 +53,7 @@ fn one_page_jump_stays_inside_the_mounted_window() {
 #[test]
 fn visible_window_clamps_to_data_length() {
     assert_eq!(
-        visible_window(99_999.0, 100, 32.0, 480.0),
+        visible_window(99_999.0, 100, 32.0, 480.0, 1),
         VisibleWindow {
             first: 85,
             end: 100
@@ -51,7 +64,7 @@ fn visible_window_clamps_to_data_length() {
 #[test]
 fn empty_items_produces_empty_window() {
     assert_eq!(
-        visible_window(0.0, 0, 32.0, 480.0),
+        visible_window(0.0, 0, 32.0, 480.0, 1),
         VisibleWindow { first: 0, end: 0 }
     );
 }
@@ -80,7 +93,7 @@ fn variable_height_visible_window() {
     let row_tops = variable_row_tops();
 
     assert_eq!(
-        visible_window_variable(85.0, &row_tops, 100.0),
+        visible_window_variable(85.0, &row_tops, 100.0, 1),
         VisibleWindow { first: 0, end: 5 }
     );
 }
@@ -94,8 +107,21 @@ fn variable_height_mid_list_pads_one_viewport() {
         *top = i as f32 * 20.0;
     }
     assert_eq!(
-        visible_window_variable(80.0, &tops, 40.0),
+        visible_window_variable(80.0, &tops, 40.0, 1),
         VisibleWindow { first: 2, end: 8 }
+    );
+}
+
+#[test]
+#[allow(clippy::cast_precision_loss)]
+fn variable_height_overscan_zero_is_geometric_page() {
+    let mut tops = [0.0; 21];
+    for (i, top) in tops.iter_mut().enumerate() {
+        *top = i as f32 * 20.0;
+    }
+    assert_eq!(
+        visible_window_variable(80.0, &tops, 40.0, 0),
+        VisibleWindow { first: 4, end: 6 }
     );
 }
 
