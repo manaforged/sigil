@@ -102,6 +102,10 @@ pub struct CommandMenuBuilder {
 /// Create a command menu: a keyboard-driven, cancellable nested action
 /// menu (the FFT-style Attack / Ability > sub-list / Item / Wait shape).
 ///
+/// This is not a searchable command palette (Linear Cmd-K). Filter a
+/// [`virtual_list`](crate::virtual_list) with a [`text_field`](crate::text_field)
+/// inside a [`modal`](crate::modal) for that shape.
+///
 /// Up/Down move within a level, skipping disabled rows. Enter or Right
 /// descends into a submenu or fires a leaf. Esc or Left ascends one
 /// level, or fires [`CommandMenuBuilder::cancel`] at the root level.

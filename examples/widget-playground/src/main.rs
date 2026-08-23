@@ -24,7 +24,7 @@ use crate::section_reactive::reactive_section;
 
 const SECTION_GAP: f32 = 24.0;
 const PAGE_PADDING: f32 = 16.0;
-const CONTENT_HEIGHT: f32 = 2400.0;
+const CONTENT_HEIGHT: f32 = 3400.0;
 const VIEWPORT_WIDTH: f32 = 1080.0;
 const VIEWPORT_HEIGHT: f32 = 760.0;
 

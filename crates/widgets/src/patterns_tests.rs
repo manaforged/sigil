@@ -5,6 +5,36 @@ use sigil_kernel::container as kernel_container;
 use sigil_reactive::Runtime;
 
 #[test]
+fn card_wraps_one_child() {
+    Runtime::scope("card-one-child", || {
+        let mut cx = Cx::new_root();
+        let id = card(kernel_container()).build(&mut cx);
+        let node = cx.get(id).expect("card");
+        assert_eq!(node.children().len(), 1);
+    });
+}
+
+#[test]
+fn avatar_is_an_image_role() {
+    Runtime::scope("avatar-role", || {
+        let mut cx = Cx::new_root();
+        let id = avatar("TG").build(&mut cx);
+        let node = cx.get(id).expect("avatar");
+        assert_eq!(node.a11y.role, Role::Image);
+    });
+}
+
+#[test]
+fn sidebar_is_navigation() {
+    Runtime::scope("sidebar-role", || {
+        let mut cx = Cx::new_root();
+        let id = sidebar(kernel_container()).build(&mut cx);
+        let node = cx.get(id).expect("sidebar");
+        assert_eq!(node.a11y.role, Role::Navigation);
+    });
+}
+
+#[test]
 fn app_shell_without_modal_has_three_children() {
     Runtime::scope("app-shell-no-modal", || {
         let mut cx = Cx::new_root();

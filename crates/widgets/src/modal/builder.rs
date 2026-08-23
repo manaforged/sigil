@@ -1,5 +1,9 @@
 //! Modal widget — full-viewport dimmed backdrop with a centered
-//! dialog frame whose visibility is gated by a reactive `show` signal.
+//! GPU-drawn dialog frame whose visibility is gated by a reactive
+//! `show` signal.
+//!
+//! This is not NSAlert. Native alerts are `sigil::dialog::message` /
+//! `sigil::dialog::confirm`.
 
 use std::cell::Cell;
 use std::cell::RefCell;

@@ -1,5 +1,9 @@
 # The terminal host
 
+This host paints the same widget tree onto a character grid. Swap
+`launch` for `run_tui`. It is not a terminal emulator pane, not a
+PTY, and not libghostty.
+
 The same tree that runs in a window runs in a terminal. Swap the
 entrypoint and keep everything else:
 

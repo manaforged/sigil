@@ -10,7 +10,7 @@ use crate::interaction::InteractionState;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, disabled_now,
-    noop_activate, reactive_style_state,
+    noop_activate, or_disabled, reactive_style_state,
 };
 use super::transition_seam::install_transition_animators;
 
@@ -63,12 +63,23 @@ pub struct ButtonBuilder {
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
+    accessible: Option<AccessibleName>,
+    pending: Option<Signal<bool>>,
 }
 
 /// Create a button widget.
 #[must_use]
 pub fn button(label: impl Into<TextContent>) -> ButtonBuilder {
     ButtonBuilder::new(label)
+}
+
+/// Ghost button whose visible label is a Unicode glyph.
+///
+/// Chain [`ButtonBuilder::accessible`] when the glyph is not a
+/// readable word (`icon_button("▶", play).accessible("Play")`).
+#[must_use]
+pub fn icon_button(glyph: impl Into<TextContent>, activate: impl Fn() + 'static) -> ButtonBuilder {
+    button(glyph).ghost().activate(activate)
 }
 
 impl ButtonBuilder {
@@ -97,7 +108,24 @@ impl ButtonBuilder {
             mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
+            accessible: None,
+            pending: None,
         }
+    }
+
+    /// Accessible name when the visible label is a glyph.
+    #[must_use]
+    pub fn accessible(mut self, name: impl Into<String>) -> Self {
+        self.accessible = Some(AccessibleName::Static(name.into()));
+        self
+    }
+
+    /// While true, the button paints disabled and ignores activate.
+    /// Use for in-flight saves and network calls.
+    #[must_use]
+    pub const fn pending(mut self, pending: Signal<bool>) -> Self {
+        self.pending = Some(pending);
+        self
     }
 
     /// Sugar for [`tone(Tone::Primary)`](Self::tone) +
@@ -268,6 +296,7 @@ impl ButtonBuilder {
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
+        self.disabled = or_disabled(self.disabled, self.pending);
         let enabled = self.enabled && !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let activate = self.activate.as_ref().map_or_else(noop_activate, Rc::clone);
@@ -303,9 +332,13 @@ impl ButtonBuilder {
         let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
         let key_activate = activate;
+        let name = self
+            .accessible
+            .clone()
+            .unwrap_or_else(|| accessible_label(&self.label));
         let node = container()
             .role(Role::Button)
-            .label(accessible_label(&self.label))
+            .label(name)
             .layout(button_layout(self.width, self.height, self.padding_x))
             .class("rounded-md");
         let node = if self.frame {
@@ -390,3 +423,7 @@ fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> LayoutStyle
         ButtonWidth::Fill => layout.fill_width(),
     }
 }
+
+#[cfg(test)]
+#[path = "button_tests.rs"]
+mod tests;

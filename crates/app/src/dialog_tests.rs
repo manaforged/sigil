@@ -28,3 +28,13 @@ fn mock_responses_bypass_the_native_picker() {
     );
     mock::reset();
 }
+
+#[test]
+fn mocked_confirm_does_not_open_a_native_alert() {
+    mock::reset();
+    mock::push_alert(true);
+    assert!(confirm("Clear?", "Remove completed tasks."));
+    mock::push_alert(false);
+    assert!(!message("Saved", "All tasks written."));
+    mock::reset();
+}

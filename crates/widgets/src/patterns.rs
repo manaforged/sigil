@@ -10,6 +10,9 @@
 //! * [`tooltip`] — hover/focus-driven hint over any target node. Thin
 //!   re-export of [`super::tooltip`], the existing widget.
 //! * [`hint_overlay`] — translucent keybinding cheat-sheet.
+//! * [`card`] — padded surface for a header + body.
+//! * [`avatar`] — initials disc.
+//! * [`sidebar`] — fixed-width column.
 
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
@@ -344,6 +347,62 @@ fn hint_row(chord: &str, description: &str) -> NodeBuilder {
 #[must_use]
 pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
+}
+
+const AVATAR_PX: f32 = 28.0;
+const SIDEBAR_DEFAULT: f32 = 220.0;
+
+/// Padded surface for a header or body. Compose children yourself.
+#[must_use]
+pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {
+    container()
+        .role(Role::GenericContainer)
+        .layout(
+            LayoutStyle::flex_column()
+                .padding(12.0)
+                .gap(8.0)
+                .fill_width(),
+        )
+        .class("rounded-md bg-surface")
+        .child(child)
+}
+
+/// Initials disc. Pass one or two characters.
+#[must_use]
+pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
+    let content: TextContent = initials.into();
+    let name = match &content {
+        TextContent::Static(value) => value.clone(),
+        _ => String::from("avatar"),
+    };
+    container()
+        .role(Role::Image)
+        .label(name)
+        .layout(
+            LayoutStyle::flex_row()
+                .fixed_size(AVATAR_PX, AVATAR_PX)
+                .align_items(AlignItems::Center)
+                .justify_content(JustifyContent::Center)
+                .shrink(0.0),
+        )
+        .class("rounded-full bg-accent-9")
+        .child(text(content).class("text-xs font-medium").hittable(false))
+}
+
+/// Fixed-width column for a nav list.
+#[must_use]
+pub fn sidebar(child: impl IntoNode + 'static) -> NodeBuilder {
+    sidebar_width(SIDEBAR_DEFAULT, child)
+}
+
+/// [`sidebar`] with an explicit width in logical px.
+#[must_use]
+pub fn sidebar_width(width: f32, child: impl IntoNode + 'static) -> NodeBuilder {
+    container()
+        .role(Role::Navigation)
+        .layout(LayoutStyle::flex_column().width(width).fill())
+        .class("bg-surface-hover")
+        .child(child)
 }
 
 #[cfg(test)]

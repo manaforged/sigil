@@ -1,4 +1,8 @@
-//! Native file dialogs.
+//! Native file dialogs and message alerts.
+//!
+//! File pickers and [`message`] / [`confirm`] wrap [`rfd`]. They are
+//! OS dialogs (NSAlert / Win32), not the GPU `sigil::widgets::modal`.
+//! Linux message alerts need GTK; the XDG portal has no message API.
 //!
 //! Thin, blocking wrappers over [`rfd`] that open the OS-native open / save /
 //! folder pickers. The dialog is modal: the call blocks until the user picks
@@ -128,6 +132,7 @@ pub mod mock {
         static PATHS: RefCell<VecDeque<Option<PathBuf>>> = const { RefCell::new(VecDeque::new()) };
         static PATH_LISTS: RefCell<VecDeque<Option<Vec<PathBuf>>>> =
             const { RefCell::new(VecDeque::new()) };
+        static ALERTS: RefCell<VecDeque<bool>> = const { RefCell::new(VecDeque::new()) };
     }
 
     /// Queue the next single-path result (`open_file` / `save_file` /
@@ -141,10 +146,20 @@ pub mod mock {
         PATH_LISTS.with(|queue| queue.borrow_mut().push_back(response));
     }
 
+    /// Queue the next [`message`] / [`confirm`] result (`true` = Ok/Yes).
+    pub fn push_alert(ok: bool) {
+        ALERTS.with(|queue| queue.borrow_mut().push_back(ok));
+    }
+
     /// Clear all queued responses.
     pub fn reset() {
         PATHS.with(|queue| queue.borrow_mut().clear());
         PATH_LISTS.with(|queue| queue.borrow_mut().clear());
+        ALERTS.with(|queue| queue.borrow_mut().clear());
+    }
+
+    pub(super) fn take_alert() -> Option<bool> {
+        ALERTS.with(|queue| queue.borrow_mut().pop_front())
     }
 
     // The nesting is meaningful: outer = "was a response queued?", inner =
@@ -176,6 +191,44 @@ pub fn save_file() -> Option<PathBuf> {
 #[must_use]
 pub fn pick_folder() -> Option<PathBuf> {
     FileDialog::new().pick_folder()
+}
+
+/// Native information alert (Ok). Linux needs GTK.
+///
+/// Returns `true` when the user presses Ok.
+#[must_use]
+pub fn message(title: impl Into<String>, body: impl Into<String>) -> bool {
+    #[cfg(any(test, feature = "test-support"))]
+    if let Some(ok) = mock::take_alert() {
+        return ok;
+    }
+    matches!(
+        rfd::MessageDialog::new()
+            .set_title(title)
+            .set_description(body)
+            .set_buttons(rfd::MessageButtons::Ok)
+            .show(),
+        rfd::MessageDialogResult::Ok
+    )
+}
+
+/// Native confirm alert (Ok / Cancel). Linux needs GTK.
+///
+/// Returns `true` when the user presses Ok or Yes.
+#[must_use]
+pub fn confirm(title: impl Into<String>, body: impl Into<String>) -> bool {
+    #[cfg(any(test, feature = "test-support"))]
+    if let Some(ok) = mock::take_alert() {
+        return ok;
+    }
+    matches!(
+        rfd::MessageDialog::new()
+            .set_title(title)
+            .set_description(body)
+            .set_buttons(rfd::MessageButtons::OkCancel)
+            .show(),
+        rfd::MessageDialogResult::Ok | rfd::MessageDialogResult::Yes
+    )
 }
 
 #[cfg(test)]

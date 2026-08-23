@@ -1253,7 +1253,7 @@ pub(crate) fn item_main_basis(
 
 /// Natural main extent of an auto-main flex item with children.
 ///
-/// NoWrap flex whose main axis matches `axes` sums child outer bases,
+/// `NoWrap` flex whose main axis matches `axes` sums child outer bases,
 /// gaps, and this node's main-axis chrome — the same formula
 /// `content_main_size` uses after the real item pass. Wrap, a
 /// perpendicular flex-direction, grid, and block still probe-layout

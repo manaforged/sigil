@@ -28,6 +28,19 @@ fn open_via_mocked_dialog_loads_tasks() {
         }
 
         assert_eq!(state.todos.peek().len(), 2, "both tasks loaded");
-        let _ = std::fs::remove_file(&path);
+        drop(std::fs::remove_file(&path));
+    });
+}
+
+#[test]
+fn on_menu_new_clears_the_list() {
+    with_cx("todo-menu-new", |_| {
+        let state = TodoState::seed();
+        assert!(!state.todos.peek().is_empty());
+        on_menu(state, "new");
+        assert!(
+            state.todos.peek().is_empty(),
+            "File → New List must empty the tasks"
+        );
     });
 }

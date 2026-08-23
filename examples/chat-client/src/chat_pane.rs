@@ -73,18 +73,30 @@ fn messages_tab(state: ChatState) -> NodeBuilder {
 fn message_row(_idx: usize, msg: &Message) -> NodeBuilder {
     let author = msg.author.clone();
     let body = msg.body.clone();
+    let initials = author
+        .chars()
+        .filter(|ch| ch.is_alphabetic())
+        .take(2)
+        .collect::<String>()
+        .to_uppercase();
     container()
         .role(Role::ListItem)
         .label(format!("{author}: {body}"))
         .layout(
-            LayoutStyle::flex_column()
+            LayoutStyle::flex_row()
                 .height(MSG_ROW_HEIGHT)
-                .gap(2.0)
-                .padding(6.0),
+                .gap(8.0)
+                .padding(6.0)
+                .align_items(AlignItems::Center),
         )
         .class(classes!("w-full rounded-sm bg-surface"))
-        .child(label(author))
-        .child(label(body))
+        .child(avatar(initials))
+        .child(
+            container()
+                .layout(LayoutStyle::flex_column().gap(2.0).grow(1.0))
+                .child(label(author))
+                .child(label(body)),
+        )
 }
 
 fn members_tab(state: ChatState) -> NodeBuilder {

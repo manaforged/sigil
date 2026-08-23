@@ -17,7 +17,8 @@ const WARN_CAP: u8 = 8;
 
 /// 60 Hz frame budget in nanoseconds.
 pub const FRAME_BUDGET_NS: u64 = 16_670_000;
-/// Chrome INP "good" threshold.
+/// Chrome INP threshold (200 ms). Not the native click bar.
+/// Native interaction uses [`FRAME_BUDGET_NS`].
 pub const INTERACT_BUDGET_NS: u64 = 200_000_000;
 
 static FORCED: AtomicBool = AtomicBool::new(false);

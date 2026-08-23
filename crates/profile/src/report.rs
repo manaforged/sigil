@@ -156,7 +156,10 @@ fn write_bottlenecks(out: &mut String, frames: &[Frame]) {
         .filter(|frame| frame.cause != "idle" && frame.total_ns() > INTERACT_BUDGET_NS)
         .count();
     if inp > 0 {
-        let _ = writeln!(out, "  {inp} interactions over 200ms (INP)");
+        let _ = writeln!(
+            out,
+            "  {inp} interactions over 200ms (Chrome INP; native bar is 16.67ms)"
+        );
     }
 }
 

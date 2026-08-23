@@ -145,6 +145,25 @@ impl BoardState {
         self.status.set(String::from("Edit cancelled."));
     }
 
+    /// Move the card at `(from, idx)` onto column `to`.
+    pub(crate) fn move_card(self, from: usize, idx: usize, to: usize) {
+        if from == to {
+            return;
+        }
+        self.columns.update(|cols| {
+            let card = cols
+                .get_mut(from)
+                .and_then(|column| (idx < column.len()).then(|| column.remove(idx)));
+            if let Some(card) = card
+                && let Some(dest) = cols.get_mut(to)
+            {
+                dest.push(card);
+            }
+        });
+        self.status
+            .set(format!("Moved card to {}", column_title(to)));
+    }
+
     pub(crate) fn select_project(self, idx: usize) {
         self.selected_project.set(idx);
         let name = self

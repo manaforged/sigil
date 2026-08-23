@@ -1,24 +1,19 @@
-//! `todo` — a to-do app that dogfoods Sigil's native-OS integrations.
+//! `todo` — a to-do app that dogfoods Sigil chrome.
 //!
-//! Beyond the reactive UI (add / toggle / delete / filter tasks), this is
-//! the on-device smoke test for `sigil::menu`, `sigil::dialog`, and
-//! `sigil::tray`:
-//!
-//! - **Menu bar:** File (New / Open… / Save… / Quit), Edit (Clear Completed).
+//! - **GPU menu bar:** File and Edit, styled with `.class`. Native
+//!   `set_menu_bar` is opt-in OS chrome; this example does not use it.
 //! - **File dialogs:** Open… and Save… persist the list as a text file.
 //! - **System tray:** an icon with a tooltip and a Quit menu.
 //!
-//! Run it on macOS or Windows: the menu bar and tray should appear, Open…
-//! and Save… should open native pickers, and menu clicks should drive the
-//! list. Those native behaviours are what can only be checked here, on a
-//! real desktop — the pure logic is unit-tested (see the tests below and
-//! the `dialog::mock` seam).
+//! File → Documentation… calls `sigil::open`. Pure logic is unit-tested
+//! (see the tests below and the `dialog::mock` seam).
 
 mod state;
 mod view;
 
-use sigil::dialog::FileDialog;
-use sigil::menu::{self, Menu, MenuItem, PredefinedMenuItem, Submenu};
+use sigil::WindowCommand;
+use sigil::dialog::{self, FileDialog};
+use sigil::menu::{Menu, PredefinedMenuItem};
 use sigil::prelude::*;
 use sigil::tray::{self, Icon, TrayIconBuilder};
 
@@ -26,11 +21,6 @@ use crate::state::TodoState;
 use crate::view::app_tree;
 
 fn main() -> sigil::AppResult<()> {
-    // Register the native menu bar + tray BEFORE launch; Sigil installs them
-    // on the first frame.
-    if let Some(bar) = build_menu_bar() {
-        menu::set_menu_bar(bar);
-    }
     if let Some(builder) = build_tray() {
         tray::set_tray(builder);
     }
@@ -39,38 +29,19 @@ fn main() -> sigil::AppResult<()> {
 
 fn build_root(cx: &mut Cx) -> NodeId {
     let state = TodoState::seed();
-    wire_menu(state);
     cx.add(app_tree(&state))
 }
 
-/// File + Edit menus. Item ids are matched in [`wire_menu`].
-fn build_menu_bar() -> Option<Menu> {
-    let new = MenuItem::with_id("new", "New List", true, None);
-    let open = MenuItem::with_id("open", "Open\u{2026}", true, None);
-    let save = MenuItem::with_id("save", "Save\u{2026}", true, None);
-    let separator = PredefinedMenuItem::separator();
-    let quit = PredefinedMenuItem::quit(None);
-    let file = Submenu::with_items("File", true, &[&new, &open, &save, &separator, &quit]).ok()?;
-
-    let clear = MenuItem::with_id("clear", "Clear Completed", true, None);
-    let edit = Submenu::with_items("Edit", true, &[&clear]).ok()?;
-
-    let bar = Menu::new();
-    bar.append(&file).ok()?;
-    bar.append(&edit).ok()?;
-    Some(bar)
-}
-
-/// Route menu-item clicks to state actions. Open/Save open native pickers.
-fn wire_menu(state: TodoState) {
-    let subscription = menu::events().subscribe(move |id| {
-        if id == "new" {
-            state.new_list();
-        } else if id == "open" {
+/// File / Edit actions from the GPU menu bar.
+pub(crate) fn on_menu(state: TodoState, id: &str) {
+    match id {
+        "new" => state.new_list(),
+        "open" => {
             if let Some(path) = FileDialog::new().filter("Text", &["txt"]).open_file() {
                 state.load_from(&path);
             }
-        } else if id == "save" {
+        }
+        "save" => {
             if let Some(path) = FileDialog::new()
                 .filter("Text", &["txt"])
                 .file_name("todos.txt")
@@ -78,12 +49,20 @@ fn wire_menu(state: TodoState) {
             {
                 state.save_to(&path);
             }
-        } else if id == "clear" {
-            state.clear_completed();
         }
-    });
-    // App-lifetime subscription: keep it registered for the whole run.
-    std::mem::forget(subscription);
+        "clear" => {
+            if dialog::confirm("Clear completed?", "Remove every completed task.") {
+                state.clear_completed();
+            }
+        }
+        "docs" => {
+            if let Err(err) = sigil::open("https://github.com/ThomGardiner/sigil") {
+                state.status.set(format!("Open failed: {err}"));
+            }
+        }
+        "quit" => request_window_command(WindowCommand::Close),
+        _ => {}
+    }
 }
 
 /// A tray icon with a tooltip and a Quit context menu.

@@ -173,12 +173,11 @@ impl LayoutEngine {
         }
 
         self.drive.begin_frame();
-        let dirty = cx.dirty().collect::<Vec<_>>();
+        let mut dirty = cx.dirty().collect::<Vec<_>>();
         let live_count = cx.len();
         // The incremental path resolves handles for non-dirty kept nodes;
         // an engine that never mirrored this tree has none — full-sync.
         let mirrored = self.core_to_handle.contains_key(root.key());
-        let broadcast = !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         let structural = self
             .cached_key
             .is_some_and(|key| key.cx_generation != cx.mutation_generation());
@@ -193,6 +192,8 @@ impl LayoutEngine {
                     && prev.root == cache_key.root
                     && prev.input_signature == cache_key.input_signature
             });
+        self.seed_reactive_dirty(&mut dirty, mirrored, mirror_current);
+        let broadcast = !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         if mirror_current {
             sigil_profile::count("layout.resize");
             self.remeasure_and_publish(cx, root, available)?;
@@ -733,6 +734,15 @@ impl LayoutEngine {
             }
         };
         (intent, text_content, text_style, flags)
+    }
+
+    /// Wrapping `text(derived)` does not fill `Cx::dirty`. The miss is
+    /// `reactive_layout_signature`. Seed those nodes so incr remasures
+    /// them instead of `layout.full`.
+    fn seed_reactive_dirty(&self, dirty: &mut Vec<NodeId>, mirrored: bool, mirror_current: bool) {
+        if mirrored && dirty.is_empty() && !mirror_current {
+            dirty.extend(self.reactive_layout.iter().copied().map(NodeId::from_key));
+        }
     }
 
     fn track_reactive(&mut self, id: NodeId, node: &sigil_kernel::Node) {

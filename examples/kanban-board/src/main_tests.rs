@@ -48,3 +48,17 @@ fn modal_open_rebuilds_cleanly() {
         );
     });
 }
+
+#[test]
+fn move_card_changes_column_counts() {
+    with_cx("kanban-move-card", |_cx| {
+        let state = BoardState::seed();
+        let before = state.columns.peek();
+        let todo = before[0].len();
+        let doing = before[1].len();
+        state.move_card(0, 0, 1);
+        let after = state.columns.peek();
+        assert_eq!(after[0].len(), todo - 1);
+        assert_eq!(after[1].len(), doing + 1);
+    });
+}

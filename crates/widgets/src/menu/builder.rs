@@ -1,5 +1,8 @@
-//! Menu widget — vertical stack of menu items in a floating panel
+//! Menu widget — vertical stack of menu items in a floating GPU panel
 //! whose visibility is bound to a reactive `open` signal.
+//!
+//! This is a popup, not the app bar. Use [`crate::menu_bar`] for a
+//! styled strip. Native OS chrome is `set_menu_bar` on the desktop host.
 
 use std::rc::Rc;
 
@@ -36,7 +39,7 @@ const ANCHORED_WRAPPER_SIZE: f32 = 4_096.0;
 // of the JND; per-text opacity would require an Opacity atom on the
 // glyph layer, which the kernel currently applies only to backgrounds.
 
-static MENU_BASE: &[StyleAtom] = &[
+pub(super) static MENU_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface"),
     StyleAtom::Transition(MENU_TRANSITION),
 ];
@@ -124,7 +127,8 @@ impl MenuItem {
 
 /// Internal row representation — items and separators share the same
 /// vertical-stack slot.
-enum Row {
+#[derive(Clone)]
+pub(super) enum Row {
     Item(MenuItem),
     Separator,
 }
@@ -239,9 +243,10 @@ impl MenuBuilder {
             .class(MENU_BASE)
             .style_reactive(move || open_display(open));
 
+        let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         for row in self.rows {
             panel = match row {
-                Row::Item(item) => panel.child(build_item(item, open)),
+                Row::Item(item) => panel.child(build_item(item, Rc::clone(&close))),
                 Row::Separator => panel.child(build_separator()),
             };
         }
@@ -296,7 +301,7 @@ impl IntoNode for MenuBuilder {
 
 // ---- structural helpers --------------------------------------------------
 
-fn panel_height(rows: &[Row]) -> f32 {
+pub(super) fn panel_height(rows: &[Row]) -> f32 {
     let theme = Theme::default();
     let item_height = theme.control_height(Size::Default).px_or_zero();
     rows.iter()
@@ -323,13 +328,13 @@ fn panel_layout(top: f32, left: f32, height: f32) -> LayoutStyle {
 fn wire_activate(
     node: NodeBuilder,
     select: Option<Rc<dyn Fn()>>,
-    open: Signal<bool>,
+    close: Rc<dyn Fn()>,
 ) -> NodeBuilder {
     let activate = Rc::new(move || {
         if let Some(select) = &select {
             select();
         }
-        open.set(false);
+        close();
     });
     let pointer_activate = Rc::clone(&activate);
     node.pointer_up(move |event| {
@@ -342,7 +347,7 @@ fn wire_activate(
     })
 }
 
-fn build_item(item: MenuItem, open: Signal<bool>) -> NodeBuilder {
+pub(super) fn build_item(item: MenuItem, close: Rc<dyn Fn()>) -> NodeBuilder {
     let MenuItem {
         label,
         shortcut,
@@ -369,7 +374,7 @@ fn build_item(item: MenuItem, open: Signal<bool>) -> NodeBuilder {
             hover.set(false);
         });
     if !disabled {
-        node = wire_activate(node, select, open);
+        node = wire_activate(node, select, close);
     }
 
     node = node.child(
@@ -425,7 +430,7 @@ fn submenu_swatch() -> impl IntoNode {
         .class("text-on-surface")
 }
 
-fn build_separator() -> NodeBuilder {
+pub(super) fn build_separator() -> NodeBuilder {
     container()
         .role(Role::Splitter)
         .layout(LayoutStyle::block().height(SEPARATOR_HEIGHT).padding(0.0))

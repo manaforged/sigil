@@ -1,6 +1,6 @@
 //! To-do app view. Header + add row, filter tabs, the reactive task list,
-//! and a status footer. The native menu bar, file dialogs, and tray live in
-//! `main.rs`.
+//! and a status footer. File dialogs and tray live in `main.rs`. The
+//! styled GPU `menu_bar` is in this tree.
 
 use sigil::prelude::*;
 
@@ -10,13 +10,39 @@ use crate::state::{Filter, Todo, TodoState};
 pub(crate) fn app_tree(state: &TodoState) -> NodeBuilder {
     let state = *state;
     container()
-        .layout(LayoutStyle::flex_column().fill().gap(10.0).padding(16.0))
+        .layout(LayoutStyle::flex_column().fill())
         .class(classes!("bg-surface"))
-        .child(header())
-        .child(add_row(state))
-        .child(filter_row(state))
-        .child(task_list(state))
-        .child(footer(state))
+        .child(app_menu(state))
+        .child(
+            container()
+                .layout(LayoutStyle::flex_column().fill().gap(10.0).padding(16.0))
+                .child(header())
+                .child(add_row(state))
+                .child(filter_row(state))
+                .child(task_list(state))
+                .child(footer(state)),
+        )
+}
+
+/// GPU menu bar. Style with `.class`. Native OS bar is opt-in.
+pub(crate) fn app_menu(state: TodoState) -> MenuBarBuilder {
+    menu_bar()
+        .class("bg-surface-hover px-3")
+        .menu(
+            "File",
+            [
+                MenuItem::new("New List").select(move || crate::on_menu(state, "new")),
+                MenuItem::new("Open\u{2026}").select(move || crate::on_menu(state, "open")),
+                MenuItem::new("Save\u{2026}").select(move || crate::on_menu(state, "save")),
+                MenuItem::new("Documentation\u{2026}")
+                    .select(move || crate::on_menu(state, "docs")),
+                MenuItem::new("Quit").select(move || crate::on_menu(state, "quit")),
+            ],
+        )
+        .menu(
+            "Edit",
+            [MenuItem::new("Clear Completed").select(move || crate::on_menu(state, "clear"))],
+        )
 }
 
 fn header() -> NodeBuilder {
@@ -98,3 +124,7 @@ fn footer(state: TodoState) -> NodeBuilder {
         )
         .child(button("Clear completed").activate(move || state.clear_completed()))
 }
+
+#[cfg(test)]
+#[path = "view_tests.rs"]
+mod tests;

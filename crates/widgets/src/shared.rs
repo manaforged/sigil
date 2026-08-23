@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use sigil_events::prelude::{KeyEvent, PointerEvent};
 use sigil_kernel::{NodeBuilder, TextBuilder, TextContent, text};
-use sigil_reactive::Signal;
+use sigil_reactive::{Signal, derived};
 use sigil_style::NodeStyleExt;
 use sigil_style::StyleState;
 
@@ -129,6 +129,18 @@ pub(crate) fn reactive_style_state(
 /// Peek a reactive disabled signal — `false` when absent.
 pub(crate) fn disabled_now(disabled: Option<Signal<bool>>) -> bool {
     disabled.is_some_and(Signal::peek)
+}
+
+/// Combine two disable signals. Either true disables the control.
+pub(crate) fn or_disabled(
+    a: Option<Signal<bool>>,
+    b: Option<Signal<bool>>,
+) -> Option<Signal<bool>> {
+    match (a, b) {
+        (Some(left), Some(right)) => Some(derived(move || left.get() || right.get())),
+        (left, None) => left,
+        (None, right) => right,
+    }
 }
 
 pub(super) fn noop_bool_change() -> BoolChange {

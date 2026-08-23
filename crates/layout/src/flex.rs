@@ -172,6 +172,7 @@ impl<'a> FlexSolver<'a> {
     }
 
     /// Store a probed intrinsic extent for this solve.
+    #[allow(clippy::too_many_arguments, reason = "memo key is five fields")]
     pub(crate) fn intrinsic_put(
         &self,
         id: LocalId,

@@ -26,6 +26,11 @@ fn buttons_row() -> NodeBuilder {
         patterns::field("Button (neutral)", button("Save")),
         patterns::field("Button (primary)", button("Save").primary()),
         patterns::field("Button (disabled)", button("Save").disabled(disabled)),
+        patterns::field(
+            "icon_button",
+            icon_button("\u{25B6}", || {}).accessible("Play"),
+        ),
+        patterns::field("Button (pending)", button("Save").pending(signal(true))),
     ])
 }
 

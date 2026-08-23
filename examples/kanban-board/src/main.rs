@@ -1,11 +1,7 @@
 //! Tier-5 kitchen-sink kanban app.
 //!
-//! Exercises all five tier-5 widgets together: a left sidebar
-//! [`virtual_list`] of projects, a vertical [`splitter`] separating
-//! sidebar from board pane, a horizontal [`tabs`] strip routing the
-//! board pane to Todo / Doing / Done columns (each its own
-//! [`virtual_list`] of cards), and a [`modal`] for new/edit-card with
-//! two [`text_field`]s for title and description.
+//! Left sidebar of projects, a splitter, three kanban columns with
+//! drag between them, and a modal for new/edit-card.
 
 #![allow(clippy::similar_names, clippy::assigning_clones)]
 

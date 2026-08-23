@@ -13,6 +13,9 @@ pub(crate) fn container_section() -> NodeBuilder {
         splitter_row(),
         modal_row(),
         sheet_row(),
+        card_row(),
+        avatar_row(),
+        sidebar_row(),
     ]);
     category("Container widgets", body)
 }
@@ -99,4 +102,22 @@ fn sheet_row() -> NodeBuilder {
         .child(text("(docks to the right)").class(classes!("text-sm")))
         .child(panel);
     patterns::field("sheet (button-triggered)", row(vec![host]))
+}
+
+fn card_row() -> NodeBuilder {
+    patterns::field(
+        "card",
+        card(text("Header + body live in this surface.").class(classes!("text-sm"))),
+    )
+}
+
+fn avatar_row() -> NodeBuilder {
+    patterns::field("avatar", avatar("TG"))
+}
+
+fn sidebar_row() -> NodeBuilder {
+    patterns::field(
+        "sidebar",
+        sidebar(text("Nav column").class(classes!("text-sm"))),
+    )
 }

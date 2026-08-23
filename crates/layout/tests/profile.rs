@@ -13,7 +13,7 @@ use stub::stub_engine;
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_profile::{disable, enable, frames, reset, tick_frame};
-use sigil_reactive::{Runtime, signal};
+use sigil_reactive::{Runtime, derived, signal};
 use sigil_style::NodeStyleExt;
 
 /// The profiler is one global recorder. Two tests enabling, resetting, and
@@ -255,6 +255,50 @@ fn nowrap_fixed_reactive_text_is_layout_hit() {
             before,
             "nowrap fixed-width reactive text must not remasure"
         );
+    });
+}
+
+#[test]
+fn derived_text_increment_records_layout_path() {
+    let _recorder = alone();
+    Runtime::scope("hello-counter-increment", || {
+        enable();
+        reset();
+        let count = signal(0_i32);
+        let label = derived(move || format!("Count: {}", count.get()));
+        let mut cx = Cx::new_root();
+        let mut col = container()
+            .layout(LayoutStyle::flex_column().fixed_size(480.0, 800.0).gap(4.0))
+            .child(text(label))
+            .child(text("Increment"));
+        for i in 0..40 {
+            col = col.child(text(format!("row {i}")));
+        }
+        let root = cx.add(col);
+        let mut engine = stub_engine();
+        let avail = Size::fixed(480.0, 800.0);
+        engine.compute(&mut cx, root, avail).expect("first");
+        tick_frame();
+        reset();
+        let started = std::time::Instant::now();
+        count.set(1);
+        engine.compute(&mut cx, root, avail).expect("increment");
+        let elapsed_us = started.elapsed().as_micros();
+        tick_frame();
+        let recorded = frames();
+        let last = recorded.last().expect("frame");
+        let full = last.counter("layout.full");
+        let incr = last.counter("layout.incr");
+        let resize = last.counter("layout.resize");
+        assert!(
+            full + incr + resize >= 1,
+            "increment must layout; full={full} incr={incr} resize={resize} {elapsed_us}us"
+        );
+        assert_eq!(
+            full, 0,
+            "hello-counter Increment must not layout.full; incr={incr} resize={resize} {elapsed_us}us"
+        );
+        disable();
     });
 }
 
