@@ -1,73 +1,95 @@
-//! System clipboard primitive — `sigil::clipboard::copy(text)` and
-//! `sigil::clipboard::paste()`.
+//! Clipboard: `copy` / `paste`, and [`set_clipboard`] for embed hosts.
 //!
-//! Wraps [`arboard::Clipboard`] behind a thread-local cache so callers do
-//! not pay handle construction (Win32 `OpenClipboard`, X11 selection
-//! negotiation, etc.) on every call. The handle stays open for the
-//! lifetime of the thread.
-//!
-//! ```no_run
-//! use sigil::clipboard;
-//!
-//! # fn demo() -> sigil::AppResult<()> {
-//! clipboard::copy("Hello world")?;
-//! let text = clipboard::paste()?;
-//! assert_eq!(text, "Hello world");
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! Both calls map `arboard` errors into [`sigil::Error`](crate::Error)
-//! via [`sigil::Error::new`](crate::Error::new), so they fit the same
-//! `?`-chain everything else in sigil uses.
-
-use std::cell::RefCell;
-
-use arboard::Clipboard;
+//! Text fields and these functions share one handle. `launch` and
+//! `run_tui` install the OS pasteboard. A game calls [`set_clipboard`]
+//! with its own [`Clipboard`].
 
 use crate::{AppResult, Error};
 
-thread_local! {
-    /// Lazily-constructed per-thread clipboard handle.
-    ///
-    /// Stored as `RefCell<Option<_>>` rather than `OnceCell` so a failed
-    /// platform-init can be retried on a later call (e.g. an X11 server
-    /// that was not yet reachable on first use). After a successful
-    /// init the handle is reused for the lifetime of the thread.
-    static HANDLE: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
+pub use sigil_widgets::{Clipboard, set_clipboard};
+
+#[cfg(any(feature = "desktop", feature = "tui"))]
+struct OsClipboard;
+
+#[cfg(any(feature = "desktop", feature = "tui"))]
+impl Clipboard for OsClipboard {
+    fn set(&self, text: &str) -> Result<(), sigil_widgets::ClipError> {
+        os_copy(text).map_err(sigil_widgets::ClipError::new)
+    }
+
+    fn get(&self) -> Option<String> {
+        os_paste().ok()
+    }
 }
 
-/// Write `text` to the system clipboard.
+/// Point text fields at the OS clipboard. Called from [`crate::launch`].
+#[cfg(any(feature = "desktop", feature = "tui"))]
+pub(crate) fn install() {
+    set_clipboard(OsClipboard);
+}
+
+/// Write `text` to the installed clipboard.
 ///
-/// Returns the platform error wrapped in [`sigil::Error`](crate::Error)
-/// if the clipboard handle cannot be opened or written.
+/// # Errors
+///
+/// Returns when the handle cannot store the text. `launch` and
+/// `run_tui` install the OS pasteboard. An embed host must call
+/// [`set_clipboard`] first.
 pub fn copy(text: &str) -> AppResult<()> {
+    sigil_widgets::clipboard().set(text).map_err(Error::new)
+}
+
+/// Read the installed clipboard as a string.
+///
+/// # Errors
+///
+/// Returns when the pasteboard is empty, holds a non-text payload, or
+/// no handle is installed.
+pub fn paste() -> AppResult<String> {
+    sigil_widgets::clipboard()
+        .get()
+        .ok_or_else(|| Error::new(Empty))
+}
+
+#[cfg(any(feature = "desktop", feature = "tui"))]
+fn os_copy(text: &str) -> AppResult<()> {
     with_handle(|clip| clip.set_text(text.to_owned()).map_err(Error::new))
 }
 
-/// Read the current clipboard contents as a string.
-///
-/// Returns the platform error wrapped in [`sigil::Error`](crate::Error)
-/// when the clipboard is empty, holds a non-text payload, or the
-/// handle cannot be opened.
-pub fn paste() -> AppResult<String> {
+#[cfg(any(feature = "desktop", feature = "tui"))]
+fn os_paste() -> AppResult<String> {
     with_handle(|clip| clip.get_text().map_err(Error::new))
 }
 
-fn with_handle<R>(f: impl FnOnce(&mut Clipboard) -> AppResult<R>) -> AppResult<R> {
+#[cfg(any(feature = "desktop", feature = "tui"))]
+fn with_handle<R>(f: impl FnOnce(&mut arboard::Clipboard) -> AppResult<R>) -> AppResult<R> {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static HANDLE: RefCell<Option<arboard::Clipboard>> = const { RefCell::new(None) };
+    }
     HANDLE.with(|cell| {
         let mut slot = cell.borrow_mut();
         if slot.is_none() {
-            *slot = Some(Clipboard::new().map_err(Error::new)?);
+            *slot = Some(arboard::Clipboard::new().map_err(Error::new)?);
         }
-        // Safe: branch above guarantees `Some`. `expect` for the
-        // hygiene-required reason string instead of `unwrap`.
         let handle = slot
             .as_mut()
             .expect("clipboard handle was just initialised above");
         f(handle)
     })
 }
+
+#[derive(Debug)]
+struct Empty;
+
+impl std::fmt::Display for Empty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("clipboard is empty")
+    }
+}
+
+impl std::error::Error for Empty {}
 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
