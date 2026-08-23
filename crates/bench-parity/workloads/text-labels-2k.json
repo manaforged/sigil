@@ -1,6 +1,6 @@
 {
   "workload_id": "text-labels-2k",
-  "description": "2000 text labels in a column. GPUI div.child(string) vs Sigil text(). Real text measure on both sides.",
+  "description": "2000 text labels in a column. GPUI String child vs Sigil text(). Real text measure on both sides.",
   "category": "text-labels",
   "params": {
     "row_count": 2000,

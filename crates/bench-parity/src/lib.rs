@@ -25,12 +25,18 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 mod compare;
+mod construct;
 mod proof;
 pub mod runners;
 
 pub use compare::{
-    CV_CEILING, comparable, cv_ok, frame_pair, layout_void, ratio_ok, same_checks, same_host,
-    same_mode, same_output, same_source, same_verdicts, vs_frame, vs_gpui,
+    CV_CEILING, comparable, cv_ok, frame_pair, is_construct, layout_void, one_to_one, ratio_ok,
+    same_checks, same_host, same_mode, same_output, same_source, same_verdicts, same_visible,
+    vs_frame, vs_gpui,
+};
+pub use construct::{
+    NESTED_LEAF, construct_proof, expected_texts, form_key, form_value, overlay_label,
+    text_construct, text_construct_id, wrap_paragraph,
 };
 pub use proof::{OutputProof, SourceInfo, milli_px};
 pub use runners::SigilRunner;
@@ -220,25 +226,47 @@ pub fn tail_window(first: usize, visible: usize, rows: usize) -> EquivalenceChec
     }
 }
 
-/// Inclusive visible-row band both runners accept.
-///
-/// GPUI `uniform_list` mounts `ceil(viewport / row)`. Sigil mounts that
-/// page plus one page of overscan on each side (two pages at the top or
-/// tail, three mid-list). A count in `[page, 3*page+1]` is the same check.
+/// Geometric page: `ceil(viewport / row)`, clamped to the book.
 #[must_use]
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     clippy::cast_precision_loss
 )]
-pub fn visible_band(viewport_h: f32, row_h: f32, row_count: usize) -> (usize, usize) {
+pub fn visible_page(viewport_h: f32, row_h: f32, row_count: usize) -> usize {
     if row_count == 0 || row_h <= 0.0 {
-        return (0, 0);
+        return 0;
     }
-    let page = (viewport_h / row_h).ceil() as usize;
-    let lo = page.min(row_count);
+    ((viewport_h / row_h).ceil() as usize).max(1).min(row_count)
+}
+
+/// Inclusive visible-row band for a **retained** list (product overscan).
+///
+/// GPUI `uniform_list` mounts [`visible_page`]. Sigil product lists add
+/// one page of overscan on each side. A retain count in
+/// `[page, 3*page+1]` is the same check. Construct 1:1 uses
+/// [`visible_span`], not this band.
+#[must_use]
+pub fn visible_band(viewport_h: f32, row_h: f32, row_count: usize) -> (usize, usize) {
+    let page = visible_page(viewport_h, row_h, row_count);
     let hi = page.saturating_mul(3).saturating_add(1).min(row_count);
-    (lo, hi)
+    (page, hi)
+}
+
+/// Band the runner accepts for this workload mode.
+///
+/// Construct (no reuse, no tick): the geometric page, plus one extra
+/// row when a partial last line exists. Retain/tick: [`visible_band`].
+#[must_use]
+pub fn visible_span(params: &WorkloadParams) -> (usize, usize) {
+    let (_, vh) = params.viewport();
+    if !params.reuse && !params.tick() {
+        let page = visible_page(vh, params.row_h(), params.row_count);
+        let hi = page.saturating_add(1).min(params.row_count.max(page));
+        (page, hi.max(page))
+    } else {
+        visible_band(vh, params.row_h(), params.row_count)
+    }
 }
 
 /// Declared equivalence check the runner must answer Pass/Fail for.

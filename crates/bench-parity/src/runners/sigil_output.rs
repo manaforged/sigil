@@ -22,28 +22,12 @@ pub(super) fn probe_build(
         root,
         Size::fixed(p.viewport_width_px, p.viewport_height_px),
     );
-    let mut values = std::collections::BTreeMap::new();
-    values.insert("rows".into(), u64::try_from(p.row_count).unwrap_or(0));
-    if !real_text {
-        values.insert(
-            "cells_per_row".into(),
-            u64::try_from(p.cells()).unwrap_or(0),
-        );
-    }
-    OutputProof {
-        schema: if real_text {
-            "text-stack-v1".into()
-        } else {
-            "flex-shape-v1".into()
-        },
-        root_size_milli_px: root_size(&cx, root),
-        values,
-        text_rows: if real_text {
-            vec![text_values(&cx, root)]
-        } else {
-            Vec::new()
-        },
-    }
+    let texts = if real_text {
+        text_values(&cx, root)
+    } else {
+        Vec::new()
+    };
+    crate::construct_proof(workload, root_size(&cx, root), texts)
 }
 
 pub(in crate::runners) fn list_output(cx: &Cx, root: NodeId, first: usize) -> OutputProof {

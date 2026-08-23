@@ -5,6 +5,7 @@
 //! this directory, re-export the type here, and register it in the
 //! `bench-parity-runner` CLI dispatch.
 
+mod construct;
 mod quote_table;
 mod sigil_runner;
 

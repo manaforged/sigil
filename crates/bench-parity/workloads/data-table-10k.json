@@ -18,7 +18,7 @@
   "equivalence_checks": [
     {
       "name": "visible_window_indices",
-      "description": "Materialised row count is the viewport page, or Sigil page plus one page of overscan each side"
+      "description": "Materialised row count is the geometric page (construct 1:1; product overscan is a retain band)"
     },
     {
       "name": "column_count",

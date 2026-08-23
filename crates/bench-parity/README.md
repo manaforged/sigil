@@ -56,7 +56,8 @@ Workloads: `virtual-list-100k-krausest`, `virtual-list-1m-krausest`
 row shape), `data-table-10k-paint` (reuse + CPU emit),
 `data-table-10k-tick` (in-place last-done updates),
 `data-table-10k-tick-paint` (tick + CPU emit), `flex-tree-2k`,
-`text-labels-2k`.
+`text-labels-2k`, `wrap-text-200`, `kv-form-500`, `nested-flex-64`,
+`overlay-stack-100`.
 
 Quote `results/data-table/REPORT.md` for the 24-field GPUI
 `data_table` clone. `results/REPORT.md` is list / flex / labels
@@ -123,6 +124,23 @@ canonical output records root geometry, workload-specific counts,
 and visible text from an untimed verification frame. Old result JSON
 without output or source provenance cannot produce a ratio.
 
+## Defendable 1:1 (quote this)
+
+GPUI 0.2.2 reconstructs the element tree every sample. The only 1:1
+pair is **both sides construct**: Sigil `new` engine + `add` +
+`compute` per sample, GPUI `uniform_list` / `div` + `layout_as_root` +
+`prepaint` per sample. Retain and tick are not 1:1 with GPUI 0.2.2.
+
+```text
+./scripts/bench-1to1.sh
+```
+
+Writes `crates/bench-parity/results/one-to-one/REPORT.md`. The
+worktree must be clean. The aggregator `--one-to-one` flag drops
+retain/tick rows, omits `vs frame`, and exits 1 unless every pair
+prints a numeric `vs gpui`. Quote only that file. Name crates.io
+GPUI 0.2.2, CPU layout, and `.overscan(0)` in the same sentence.
+
 ## 1:1 frame (binding)
 
 Host setup is never timed (`TestAppContext`, `Cx`, text engine).
@@ -141,9 +159,12 @@ prepaint. It does not call GPUI layout methods outside a draw phase.
 `uniform_list` materialises visible rows in `prepaint`. Sigil
 materialises them in `add` + `compute` (`items_bind`). Same viewport,
 row height, cell sizes (`ID_CELL_W` / `TABLE_CELL_W`), and label
-strings. Visible-row count must land in
-the declared compatibility band. A ratio also requires the exact same
-viewport rows and text after Sigil's overscan is clipped out.
+strings. 1:1 construct benches call `.overscan(0)` so Sigil mounts
+the geometric page only — the same window as `uniform_list`. Product
+lists keep the default of one page of overscan each side. Construct
+pairs require equal `visible_last`. A 76-vs-38 pair prints `— visible`.
+Retain still uses the overscan band. A ratio also requires the exact
+same viewport rows and text.
 
 `vs gpui` is `sigil_median / gpui_median`. Printed only when
 `comparable` holds. A Sigil construct run with

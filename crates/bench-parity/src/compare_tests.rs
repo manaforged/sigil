@@ -108,9 +108,21 @@ fn million_with_book_held_is_a_ratio() {
     checks.insert("visible_window_indices".into(), EquivalenceCheck::Pass);
     checks.insert("book_held".into(), EquivalenceCheck::Pass);
     checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+    checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
     let mut result = dummy(checks);
     result.workload_id = "virtual-list-1m-krausest".into();
     assert!(ratio_ok(&result));
+}
+
+#[test]
+fn krausest_without_layout_work_is_not_a_ratio() {
+    let mut checks = HashMap::new();
+    checks.insert("visible_window_indices".into(), EquivalenceCheck::Pass);
+    checks.insert("book_held".into(), EquivalenceCheck::Pass);
+    checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+    let mut result = dummy(checks);
+    result.workload_id = "virtual-list-100k-krausest".into();
+    assert!(!ratio_ok(&result));
 }
 
 #[test]
@@ -384,6 +396,7 @@ fn scroll_prints_a_frame_ratio_not_vs_gpui() {
     checks.insert("visible_window_indices".into(), EquivalenceCheck::Pass);
     checks.insert("book_held".into(), EquivalenceCheck::Pass);
     checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+    checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
     let sigil = dummy_named(
         "virtual-list-1m-krausest-scroll",
         "sigil",
@@ -395,6 +408,83 @@ fn scroll_prints_a_frame_ratio_not_vs_gpui() {
     assert_eq!(vs_gpui(&sigil, Some(&gpui)), "— mode");
     assert_eq!(vs_frame(&sigil, Some(&gpui)), "0.70×");
     assert_eq!(vs_frame(&gpui, Some(&sigil)), "1.00×");
+}
+
+#[test]
+fn wrap_text_without_text_work_is_not_a_ratio() {
+    let mut checks = HashMap::new();
+    checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
+    let mut result = dummy(checks);
+    result.workload_id = "wrap-text-200".into();
+    assert!(!ratio_ok(&result));
+    result
+        .equivalence_check_results
+        .insert("text_did_work".into(), EquivalenceCheck::Pass);
+    assert!(ratio_ok(&result));
+}
+
+#[test]
+fn extra_overscan_rows_are_not_one_to_one() {
+    let mut sigil = dummy_named(
+        "virtual-list-100k-krausest",
+        "sigil",
+        {
+            let mut checks = HashMap::new();
+            checks.insert("visible_window_indices".into(), EquivalenceCheck::Pass);
+            checks.insert("book_held".into(), EquivalenceCheck::Pass);
+            checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+            checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
+            checks
+        },
+        0.05,
+    );
+    let mut gpui = dummy_named(
+        "virtual-list-100k-krausest",
+        "gpui",
+        {
+            let mut checks = HashMap::new();
+            checks.insert("visible_window_indices".into(), EquivalenceCheck::Pass);
+            checks.insert("book_held".into(), EquivalenceCheck::Pass);
+            checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+            checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
+            checks
+        },
+        0.05,
+    );
+    sigil.verify.insert("visible_last".into(), 120);
+    gpui.verify.insert("visible_last".into(), 40);
+    assert!(!same_visible(&sigil, &gpui));
+    assert!(!one_to_one(&sigil, &gpui));
+    assert_eq!(vs_gpui(&sigil, Some(&gpui)), "— visible");
+}
+
+#[test]
+fn missing_and_zero_visible_are_the_same_no_window() {
+    let mut sigil = dummy_named(
+        "text-labels-2k",
+        "sigil",
+        {
+            let mut checks = HashMap::new();
+            checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
+            checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+            checks
+        },
+        0.05,
+    );
+    let gpui = dummy_named(
+        "text-labels-2k",
+        "gpui",
+        {
+            let mut checks = HashMap::new();
+            checks.insert("layout_did_work".into(), EquivalenceCheck::Pass);
+            checks.insert("text_did_work".into(), EquivalenceCheck::Pass);
+            checks
+        },
+        0.05,
+    );
+    sigil.verify.insert("visible_last".into(), 0);
+    assert!(same_visible(&sigil, &gpui));
+    assert!(one_to_one(&sigil, &gpui));
 }
 
 #[test]
@@ -413,6 +503,28 @@ fn construct_has_no_frame_ratio() {
     );
     assert_eq!(vs_gpui(&sigil, Some(&gpui)), "0.70×");
     assert_eq!(vs_frame(&sigil, Some(&gpui)), "—");
+    assert!(one_to_one(&sigil, &gpui));
+    assert!(is_construct(&sigil));
+    assert!(is_construct(&gpui));
+}
+
+#[test]
+fn retain_is_not_one_to_one() {
+    let sigil = dummy_named(
+        "data-table-10k-remount",
+        "sigil",
+        table_checks(EquivalenceCheck::Pass),
+        0.05,
+    );
+    let mut gpui = dummy_named(
+        "data-table-10k-remount",
+        "gpui",
+        table_checks(EquivalenceCheck::Pass),
+        0.05,
+    );
+    gpui.verify.insert("reuse".into(), 0);
+    assert!(!one_to_one(&sigil, &gpui));
+    assert!(!is_construct(&sigil));
 }
 
 #[test]

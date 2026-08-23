@@ -55,7 +55,11 @@ pub fn ratio_ok(result: &RunResult) -> bool {
     if result.workload_id.contains("krausest") {
         return passed(result, "book_held")
             && passed(result, "visible_window_indices")
-            && passed(result, "text_did_work");
+            && passed(result, "text_did_work")
+            && passed(result, "layout_did_work");
+    }
+    if crate::text_construct_id(&result.workload_id) {
+        return passed(result, "layout_did_work") && passed(result, "text_did_work");
     }
     true
 }
@@ -151,6 +155,28 @@ pub fn same_output(a: &RunResult, b: &RunResult) -> bool {
     matches!((&a.output, &b.output), (Some(left), Some(right)) if left == right)
 }
 
+/// True when both sides mounted the same number of rows.
+///
+/// Missing and zero are the same "no window" (flex / labels). A
+/// window on one side only, or 76 vs 38, is not 1:1. Canonical output
+/// clips overscan, so this check is the one that refuses extra pages.
+#[must_use]
+pub fn same_visible(a: &RunResult, b: &RunResult) -> bool {
+    match (window_rows(a), window_rows(b)) {
+        (None, None) => true,
+        (Some(left), Some(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn window_rows(result: &RunResult) -> Option<u64> {
+    result
+        .verify
+        .get("visible_last")
+        .copied()
+        .filter(|rows| *rows > 0)
+}
+
 fn mode(result: &RunResult) -> Option<(u64, u64)> {
     let reuse = result.verify.get("reuse").copied()?;
     let tick = result.verify.get("tick").copied().unwrap_or(0);
@@ -172,9 +198,26 @@ pub fn comparable(a: &RunResult, b: &RunResult) -> bool {
         && same_host(a, b)
         && same_mode(a, b)
         && same_source(a, b)
+        && same_visible(a, b)
         && same_output(a, b)
         && cv_ok(a)
         && cv_ok(b)
+}
+
+/// True when this run reconstructed the tree every sample (not retain, not tick).
+#[must_use]
+pub fn is_construct(result: &RunResult) -> bool {
+    result.verify.get("reuse").copied() == Some(0)
+        && result.verify.get("tick").copied().unwrap_or(0) == 0
+}
+
+/// Defendable 1:1: [`comparable`] and both sides constructed.
+///
+/// GPUI 0.2.2 always reconstructs. A Sigil retain/tick run cannot be 1:1
+/// with it. Quote [`vs_gpui`] only when this is true.
+#[must_use]
+pub fn one_to_one(a: &RunResult, b: &RunResult) -> bool {
+    comparable(a, b) && is_construct(a) && is_construct(b)
 }
 
 /// Pair cell for `row` against `other` (the other framework on this workload).
@@ -200,6 +243,9 @@ pub fn vs_gpui(row: &RunResult, other: Option<&RunResult>) -> String {
     }
     if !same_source(row, other) {
         return "— source".into();
+    }
+    if !same_visible(row, other) {
+        return "— visible".into();
     }
     if !same_output(row, other) {
         return "— output".into();

@@ -54,18 +54,16 @@ fn construct_samples(
     let book = quotes.len();
     let rows = signal(quotes);
     let scroll = signal(0.0_f32);
-    let max_scroll = max_y(p.row_count, p.row_h(), clock.vh);
     profile::enable();
     profile::reset();
     let mut last: Option<(Cx, NodeId, SceneCount)> = None;
     let (samples_ns, misses) = {
         let mut step = || {
-            bump_scroll(scroll, p.row_h(), max_scroll);
             let mut cx = Cx::new_root();
             let mut engine = new_engine(true);
             profile::begin_frame();
             let start = Instant::now();
-            let root = cx.add(quote_list(rows, scroll));
+            let root = cx.add(quote_list(rows, scroll).overscan(0));
             let _ = engine.compute(&mut cx, root, clock.available);
             let cmds = paint(&cx, root, clock.surface, clock.vw, clock.vh);
             profile::tick_frame();

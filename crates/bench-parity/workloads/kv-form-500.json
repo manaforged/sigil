@@ -1,0 +1,28 @@
+{
+  "workload_id": "kv-form-500",
+  "description": "500 settings rows (label + value). Flex form, not virtual_list.",
+  "category": "kv-form",
+  "params": {
+    "row_count": 500,
+    "row_height_px": 28.0,
+    "viewport_width_px": 800.0,
+    "viewport_height_px": 800.0,
+    "row_shape": "key-value",
+    "scroll_pattern": "none",
+    "iterations": 16,
+    "warmup": 4,
+    "surface": "layout",
+    "reuse": false,
+    "cells_per_row": 2
+  },
+  "equivalence_checks": [
+    {
+      "name": "layout_did_work",
+      "description": "At least one layout miss — the timer remasured"
+    },
+    {
+      "name": "text_did_work",
+      "description": "Last sample shaped key and value cells"
+    }
+  ]
+}

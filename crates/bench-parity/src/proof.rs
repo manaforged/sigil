@@ -38,7 +38,7 @@ impl SourceInfo {
     pub fn capture() -> Self {
         Self {
             revision: command_line("git", &["rev-parse", "HEAD"]),
-            dirty: !command_line("git", &["status", "--porcelain"]).is_empty(),
+            dirty: worktree_dirty(),
             harness_version: env!("CARGO_PKG_VERSION").into(),
         }
     }
@@ -49,6 +49,22 @@ impl SourceInfo {
 #[allow(clippy::cast_possible_truncation)]
 pub fn milli_px(value: f32) -> i64 {
     f64::from(value).mul_add(1_000.0, 0.0).round() as i64
+}
+
+/// Result JSON is the harness output. Writing it must not mark the
+/// run dirty or every pair after the first file becomes `— source`.
+fn worktree_dirty() -> bool {
+    !command_line(
+        "git",
+        &[
+            "status",
+            "--porcelain",
+            "--",
+            ".",
+            ":!crates/bench-parity/results",
+        ],
+    )
+    .is_empty()
 }
 
 pub(crate) fn command_line(program: &str, args: &[&str]) -> String {

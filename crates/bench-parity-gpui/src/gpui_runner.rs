@@ -12,11 +12,13 @@ use std::time::Instant;
 use bench_parity::{
     ACTION_CELL_W, EquivalenceCheck, FrameworkRunner, HostInfo, ID_CELL_W, KRAUSEST_ACTION,
     LABEL_CELL_W, OutputProof, ROW_WIDTH, SPACER_CELL_W, Surface, TABLE_CELL_W, Workload,
-    krausest_id, krausest_label, milli_px, visible_band,
+    krausest_id, krausest_label, milli_px, visible_band, visible_span,
 };
 
 #[path = "gpui_runner_build.rs"]
 mod build;
+#[path = "gpui_runner_construct.rs"]
+mod construct;
 #[path = "gpui_runner_timing.rs"]
 mod timing;
 
@@ -55,6 +57,7 @@ impl FrameworkRunner for GpuiRunner {
             "virtual-list" | "data-table" => run_virtual_list(workload),
             "flex-tree" => run_flex_tree(workload),
             "text-labels" => run_text_labels(workload),
+            "wrap-text" | "kv-form" | "nested-flex" | "overlay-stack" => construct::run(workload),
             other => Err(format!(
                 "GpuiRunner does not implement workload category {other:?}"
             )),
@@ -460,6 +463,12 @@ fn drain_gpui(
         if p.tail() {
             return *ix;
         }
+        // Construct 1:1 is the same window every sample. GPUI 0.2.2
+        // still rebuilds the element tree.
+        if !p.reuse && !p.tick() && p.gpui_table() {
+            *ix = 0;
+            return 0;
+        }
         *ix = (*ix + 1) % p.row_count.max(1);
         *ix
     };
@@ -544,7 +553,7 @@ fn run_text_labels(workload: &Workload) -> Result<bench_parity::RunResult, Strin
             .w(px(p.viewport_width_px))
             .h(px(p.viewport_height_px));
         for i in 0..p.row_count {
-            col = col.child(div().child(format!("row {i} label payload")));
+            col = col.child(format!("row {i} label payload"));
         }
         col.into_any_element()
     })

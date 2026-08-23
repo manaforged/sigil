@@ -1,6 +1,6 @@
 use super::{
     EquivalenceCheck, HashMap, Host, HostInfo, OutputProof, Range, Workload, new_host, pass_if,
-    time_construct_layout, visible_band,
+    time_construct_layout, visible_span,
 };
 
 #[allow(
@@ -50,40 +50,14 @@ fn build_verdicts(workload: &Workload, empty: bool) -> HashMap<String, Equivalen
     let mut extra = HashMap::new();
     let verdict = || pass_if(!empty, "no samples");
     extra.insert("layout_did_work".into(), verdict());
-    if workload.category == "text-labels" {
+    if bench_parity::text_construct(&workload.category) {
         extra.insert("text_did_work".into(), verdict());
     }
     extra
 }
 
 fn build_output(workload: &Workload, root_size: [i64; 2]) -> OutputProof {
-    let p = &workload.params;
-    let mut values = std::collections::BTreeMap::new();
-    values.insert("rows".into(), u64::try_from(p.row_count).unwrap_or(0));
-    let real_text = workload.category == "text-labels";
-    if !real_text {
-        values.insert(
-            "cells_per_row".into(),
-            u64::try_from(p.cells()).unwrap_or(0),
-        );
-    }
-    let text_rows = real_text.then(|| {
-        vec![
-            (0..p.row_count)
-                .map(|index| format!("row {index} label payload"))
-                .collect(),
-        ]
-    });
-    OutputProof {
-        schema: if real_text {
-            "text-stack-v1".into()
-        } else {
-            "flex-shape-v1".into()
-        },
-        root_size_milli_px: root_size,
-        values,
-        text_rows: text_rows.unwrap_or_default(),
-    }
+    bench_parity::construct_proof(workload, root_size, bench_parity::expected_texts(workload))
 }
 
 pub(super) fn last_real_range(ranges: &[Range<usize>]) -> Option<Range<usize>> {
@@ -94,8 +68,7 @@ pub(super) fn visible_check(
     p: &bench_parity::WorkloadParams,
     last: Option<Range<usize>>,
 ) -> HashMap<String, EquivalenceCheck> {
-    let (_, vh) = p.viewport();
-    let (lo, hi) = visible_band(vh, p.row_h(), p.row_count);
+    let (lo, hi) = visible_span(p);
     let mut out = HashMap::new();
     let verdict = last.map_or_else(
         || EquivalenceCheck::Fail {

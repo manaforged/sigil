@@ -21,7 +21,7 @@ use sigil_text::OwnedTextEngine;
 use crate::{
     ACTION_CELL_W, EquivalenceCheck, FrameworkRunner, HostInfo, ID_CELL_W, KRAUSEST_ACTION,
     KRAUSEST_TEXT_CELLS, LABEL_CELL_W, OutputProof, ROW_WIDTH, SPACER_CELL_W, Surface,
-    TABLE_CELL_W, Workload, krausest_id, krausest_label, visible_band,
+    TABLE_CELL_W, Workload, krausest_id, krausest_label, visible_span,
 };
 
 #[path = "sigil_output.rs"]
@@ -52,6 +52,9 @@ impl FrameworkRunner for SigilRunner {
             "virtual-list" | "data-table" => run_virtual_list(workload),
             "flex-tree" => run_flex_tree(workload),
             "text-labels" => run_text_labels(workload),
+            "wrap-text" | "kv-form" | "nested-flex" | "overlay-stack" => {
+                super::construct::run(workload)
+            }
             other => Err(format!(
                 "SigilRunner does not implement workload category {other:?}"
             )),
@@ -152,6 +155,7 @@ fn add_list(
     scroll: Signal<f32>,
     p: &crate::WorkloadParams,
     table: bool,
+    overscan: usize,
 ) -> NodeId {
     let row_h = p.row_height_px;
     let cols = p.cells();
@@ -161,6 +165,7 @@ fn add_list(
                 .row_height(row_h)
                 .viewport_height(p.viewport_height_px)
                 .viewport_width(p.viewport_width_px)
+                .overscan(overscan)
                 .scroll_bind(scroll)
                 .keyboard(false),
         )
@@ -170,6 +175,7 @@ fn add_list(
                 .row_height(row_h)
                 .viewport_height(p.viewport_height_px)
                 .viewport_width(p.viewport_width_px)
+                .overscan(overscan)
                 .scroll_bind(scroll)
                 .keyboard(false),
         )
@@ -216,7 +222,14 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
                 let mut engine = new_engine(true);
                 profile::begin_frame();
                 let start = Instant::now();
-                let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
+                let root = add_list(
+                    &mut cx,
+                    rows,
+                    scroll,
+                    p,
+                    workload.category == "data-table",
+                    0,
+                );
                 let _ = engine.compute(&mut cx, root, available);
                 let _cmds = paint(&cx, root, p.surface(), vw, vh);
                 profile::tick_frame();
@@ -245,7 +258,14 @@ fn probe_generic_list(workload: &Workload, data: &Rc<Vec<RowData>>, y: f32) -> O
         let scroll = signal(y);
         let mut cx = Cx::new_root();
         let mut engine = new_engine(true);
-        let root = add_list(&mut cx, rows, scroll, p, workload.category == "data-table");
+        let root = add_list(
+            &mut cx,
+            rows,
+            scroll,
+            p,
+            workload.category == "data-table",
+            0,
+        );
         let _ = engine.compute(
             &mut cx,
             root,
@@ -278,7 +298,7 @@ fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
         let scroll = signal(if p.tail() { max_scroll.max(0.0) } else { 0.0 });
         let mut cx = Cx::new_root();
         let mut engine = new_engine(true);
-        let root = add_list(&mut cx, rows, scroll, p, table);
+        let root = add_list(&mut cx, rows, scroll, p, table, 1);
         let _ = engine.compute(&mut cx, root, available);
         profile::enable();
         profile::reset();
@@ -462,7 +482,7 @@ fn run_text_labels(workload: &Workload) -> Result<crate::RunResult, String> {
     }))
 }
 
-fn sample_build(
+pub(super) fn sample_build(
     workload: &Workload,
     real_text: bool,
     mut build: impl FnMut() -> NodeBuilder,
@@ -597,8 +617,7 @@ pub(super) fn check_visible(
     actual: usize,
     p: &crate::WorkloadParams,
 ) -> HashMap<String, EquivalenceCheck> {
-    let (_, vh) = p.viewport();
-    let (lo, hi) = visible_band(vh, p.row_h(), p.row_count);
+    let (lo, hi) = visible_span(p);
     let mut out = HashMap::new();
     out.insert(
         "visible_window_indices".into(),
