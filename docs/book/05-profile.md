@@ -13,7 +13,7 @@ load.
 ## Record a live app
 
 ```text
-SIGIL_PROFILE=1 cargo run --profile profiling -p shell-demo
+SIGIL_PROFILE=1 cargo run --profile profiling -p workbench
 ```
 
 Use the app: click, type, hover, scroll. Quit. The process writes

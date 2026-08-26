@@ -40,7 +40,7 @@ class strings live on `interactive(...)`, not on a plain container.
 | [`api-explorer`](api-explorer/) | Same shell, mock HTTP catalog. | Tabs routing. |
 | [`kanban-board`](kanban-board/) | Three columns, `DragState<(usize, usize)>`, `icon_button`, `modal`. | Drag between columns. |
 | [`chat-client`](chat-client/) | `sidebar` + `avatar` + `text_edit` compose + `virtual_list`. | Kitchen-sink chat. |
-| [`shell-demo`](shell-demo/) | App chrome: rail, thread, compose, diffs. | Dense desktop layout. |
+| [`workbench`](workbench/) | Desktop workspace: rail, work log, compose, diffs. | Dense desktop layout. |
 | [`strays`](strays/) | `table()` over live system data on `run_tui`. | Keyboard-first terminal app. |
 
 FRICTION.md files in those folders are historical dogfood logs. A

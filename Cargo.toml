@@ -52,6 +52,7 @@ members = [
     "examples/regex-tester",
     "examples/api-explorer",
     "examples/chat-client",
+    "examples/workbench",
     "examples/widget-playground",
     "examples/strays",
 ]
@@ -124,9 +125,8 @@ pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
-# the author rust-hygiene restriction set. Agents loading the
-# rust-hygiene skill treat these as non-negotiable in production
-# code. Tests / benches / examples may bend `panic` or
+# the author Rust hygiene restrictions for production code.
+# Tests / benches / examples may bend `panic` or
 # `indexing_slicing` via a crate-root #![allow] with a comment
 # giving the reason.
 unwrap_used = "deny"

@@ -9,7 +9,7 @@
 //!   and the frames that blew the 16.67 ms budget
 //!
 //! ```text
-//! SIGIL_PROFILE=1 cargo run --profile profiling -p shell-demo
+//! SIGIL_PROFILE=1 cargo run --profile profiling -p workbench
 //! # writes ./sigil-profile.json — open in https://ui.perfetto.dev
 //! ```
 //!
