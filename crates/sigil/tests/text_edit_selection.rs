@@ -3,7 +3,7 @@
 //! Before this, `text_edit` had no selection overlay (the runtime comment
 //! said "no selection overlay or scroll signal"). A selection spanning
 //! lines paints one highlight rect per covered line — partial on the first
-//! and last, full between. Verified against the reviewer's review.
+//! and last, full between.
 //!
 //! Driven here by keyboard shift-select, which flows through the buffer's
 //! `shift_*` + `commit` (no pointer capture). Drag-select reuses the same

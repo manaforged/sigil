@@ -246,7 +246,7 @@ fn route_ime_focus_change_cancels_owner_and_drops_commit() {
 
 #[test]
 fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
-    // the reviewer final-gate HIGH: after a focus change cancels the session,
+    // final review HIGH: after a focus change cancels the session,
     // the SAME composition's follow-up Preedit/Commit must NOT adopt the
     // newly focused node as a fresh owner — only an OS lifecycle
     // boundary (Disabled then Enabled) may open a new session.

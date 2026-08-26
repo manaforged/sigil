@@ -437,7 +437,7 @@ the rows travel, the reader stays.
 
 ## What the app is for
 
-An agent starts a dev server and the conversation ends. The port stays
+A development session starts a server and ends. The port stays
 held. This machine had two duplicate Vite servers in one repo and a
 ten-hour pair in another when the example was written.
 

@@ -1,4 +1,4 @@
-//! Empty-line byte-position tests (the reviewer adversarial re-gate, finding
+//! Empty-line byte-position tests (adversarial review follow-up, finding
 //! B). Consecutive hard breaks produce empty [`LayoutLine`]s; before
 //! this fix they all shared a `u32::MAX..0` sentinel byte range, so
 //! hit-testing any of them placed the caret at the document start

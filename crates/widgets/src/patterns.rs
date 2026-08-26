@@ -156,7 +156,7 @@ pub fn validated_field(
     let visible: Signal<bool> = derived(move || error.get().is_some());
     // Wire the error state into the control's invalid border so the
     // field itself enters an error state, not just the helper text.
-    // Without this the reviewer (2026-05-21) flagged validated_field as
+    // Without this, a review flagged validated_field as
     // "carrying the error in the helper text only" — a semantic-drift
     // a11y failure (the field doesn't signal invalidity to assistive
     // tech or sighted users glancing at the control).

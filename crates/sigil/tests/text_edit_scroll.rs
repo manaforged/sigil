@@ -5,7 +5,7 @@
 //! outside the box (or was clipped away). The editor now carries a vertical
 //! scroll offset driven by an effect that keeps the caret line inside the
 //! visible band, so an end-of-buffer caret in a tall document paints inside
-//! the box. Verified against the "not a production editor" review.
+//! the box.
 
 #![allow(missing_docs)]
 #![allow(

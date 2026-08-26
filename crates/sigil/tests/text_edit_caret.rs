@@ -4,7 +4,7 @@
 //! Before this, `text_edit` had no caret overlay at all (the runtime comment
 //! said so). The caret geometry is multi-line: the byte offset maps to a
 //! (line, column), the column gives x via the text engine and the line
-//! gives y. Verified against the "not a production editor" review.
+//! gives y.
 
 #![allow(missing_docs)]
 #![allow(

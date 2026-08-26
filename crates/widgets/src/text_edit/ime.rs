@@ -17,7 +17,7 @@
 //! yields the right line's `y` offset — no extra line-counting needed
 //! here. It also composes against the *preedit* cursor (not just the
 //! base caret) and adds the widget's content padding, so the anchor
-//! tracks where the glyphs actually paint mid-composition (the reviewer
+//! tracks where the glyphs actually paint mid-composition (adversarial
 //! adversarial finding [W5-IME-TE] MEDIUM-3).
 //!
 //! Ceiling: `TextGeometry::caret` has no wrap-width parameter
@@ -124,7 +124,7 @@ fn on_ime_event(event: &ImeEvent, runtime: &TextEditRuntime) {
 /// `runtime.edit_mut()` resyncs the internal buffer against the bound
 /// `value` signal first, so an app that wrote `value.set(...)` directly
 /// while this widget existed is not silently clobbered by a stale
-/// internal buffer (the reviewer adversarial finding [W5-IME-TE] HIGH-2). The
+/// internal buffer (adversarial review finding [W5-IME-TE] HIGH-2). The
 /// whole mutation is one `batch` so every dependent effect (the
 /// preedit-splice `derived_eq`, the caret-anchor sync below) always
 /// observes the post-commit `(value, caret)` pair together, never a

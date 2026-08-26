@@ -63,8 +63,8 @@ impl LayoutLine {
     /// starts with. Hit-testing and caret placement on an empty line
     /// depend on this: without it every empty line looks identical
     /// (byte 0), so a click on the SECOND blank line of `"a\n\nb"`
-    /// would incorrectly move the caret to the document start (the reviewer
-    /// adversarial review, re-gate finding B).
+    /// would incorrectly move the caret to the document start
+    /// (adversarial review, follow-up finding B).
     pub(crate) const fn set_empty_byte_position(&mut self, byte: u32) {
         self.byte_start = byte;
         self.byte_end = byte;
@@ -490,7 +490,7 @@ fn pick_line(lines: &[LayoutLine], y: f32) -> &LayoutLine {
 
 /// Find the line whose byte range covers `byte_index`, for caret
 /// placement. Empty lines now carry a real, distinct byte position
-/// (`LayoutLine::set_empty_byte_position`, the reviewer re-gate finding B)
+/// (`LayoutLine::set_empty_byte_position`, review follow-up finding B)
 /// instead of a shared sentinel, so a byte that lands exactly on an
 /// empty line (consecutive hard breaks) correctly matches THAT line —
 /// no `!l.glyphs.is_empty()` guard needed to dodge sentinel collisions

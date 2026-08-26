@@ -2,7 +2,7 @@
 //! at `crates/sigil/tests/output/playground.png`.
 //!
 //! Not a byte-equivalence golden — the playground is iterating. This
-//! exists so a developer / agent session can inspect what the live
+//! exists so a developer can inspect what the live
 //! composition actually paints after every layout-engine change.
 
 #![allow(missing_docs)]

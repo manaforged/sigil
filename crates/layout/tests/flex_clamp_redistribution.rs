@@ -10,8 +10,8 @@
 //! fires when a *flexible* item hits a min/max bound, which is exactly
 //! what a layout full of `max-w-*` cards does.
 //!
-//! Cases below were surfaced independently by the the reviewer and Kimi
-//! production-readiness reviews (2026-07-20).
+//! Cases below were surfaced independently by two production-readiness
+//! reviews (2026-07-20).
 
 #![allow(missing_docs)]
 #![allow(

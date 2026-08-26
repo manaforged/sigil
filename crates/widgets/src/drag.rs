@@ -1,6 +1,6 @@
 //! `axis_drag` — the reusable capture-on-handle drag primitive.
 //!
-//! Extracted from `splitter/drag.rs` (5/5 Wave 2, the reviewer gate #6) so any
+//! Extracted from `splitter/drag.rs` (5/5 Wave 2, review gate #6) so any
 //! widget with draggable affordances — splitter handles, table column
 //! resize, gauge scrubbing — gets the same proven flow instead of a
 //! bespoke copy:

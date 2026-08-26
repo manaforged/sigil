@@ -376,7 +376,7 @@ fn submit_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
 /// mid-codepoint. `batch` coalesces both writes into a single drain
 /// after this closure returns, so every dependent effect always sees
 /// the post-mutation `(value, caret)` pair together, never the
-/// half-updated one (the reviewer adversarial finding [W5-IME-TE] HIGH-1).
+/// half-updated one (adversarial review finding [W5-IME-TE] HIGH-1).
 fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
     batch(|| {
         write_value(runtime.value, state.as_str());

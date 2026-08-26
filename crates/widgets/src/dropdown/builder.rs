@@ -285,7 +285,7 @@ fn build_trigger(
             });
             // Reactive guard: a `disabled` flip between down and up
             // must veto activation on release, matching the Enter
-            // handler below (the reviewer re-gate 2026-07-13).
+            // handler below (review follow-up 2026-07-13).
             activate_pointer_reactive(ev, interaction, disabled, &cb);
         })
         .key(Key::Enter, move |ev| {

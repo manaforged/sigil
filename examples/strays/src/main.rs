@@ -1,7 +1,7 @@
 //! `strays` — every localhost server on this machine, and which ones nobody
 //! is watching any more.
 //!
-//! An agent starts a dev server, the conversation ends, and the port stays
+//! A development session starts a server, ends, and leaves the port
 //! held for hours. This lists every listening process, attributes it to the
 //! source tree it runs in, and kills the ones that are past their limit.
 //!

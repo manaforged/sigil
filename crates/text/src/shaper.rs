@@ -162,7 +162,7 @@ impl Font {
     /// falling back to `.notdef` tofu. A single cmap lookup per
     /// codepoint — cheap relative to a full shape.
     ///
-    /// the reviewer adversarial review, finding 2: default-ignorable shaping
+    /// Adversarial review finding 2: default-ignorable shaping
     /// controls (ZWJ, ZWNJ, VS15/VS16) commonly have no standalone cmap
     /// glyph — they're consumed during shaping (joining, variation
     /// selection), not drawn — so requiring one rejected faces that

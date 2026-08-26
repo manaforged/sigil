@@ -29,7 +29,7 @@ const TRACK_THICKNESS: f32 = 4.0;
 // Rest-of-track uses `border-strong` (gray-8): quiet but still
 // measurable against both step-1 and step-2 surfaces (the gauge/
 // progress tracks at `surface-hover` measured ~1.3:1 — near-invisible,
-// the reviewer/Fable visual review 2026-08-15).
+// visual review 2026-08-15).
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border-strong")];
 static TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-8")];
 static ROOT_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];

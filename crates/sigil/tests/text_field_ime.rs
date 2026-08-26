@@ -290,7 +290,7 @@ fn backspace() -> ShellEvent {
     }))
 }
 
-/// Mirror of `text_edit`'s HIGH-1 (the reviewer gate, 2026-07-13): `text_field`'s
+/// Mirror of `text_edit`'s HIGH-1 (review gate, 2026-07-13): `text_field`'s
 /// handlers publish value and caret through separate signal writes, so a
 /// raw Backspace during an active preedit can splice mid-codepoint on the
 /// transient state. Red before the batch fix, green after.

@@ -39,7 +39,7 @@ pub struct Node {
     /// Parent node, if this node is attached below another node.
     ///
     /// Crate-private: structural pointers are mutated only by [`Cx`]
-    /// (B3 — the reviewer review 2026-05-17). External readers use
+    /// (B3 — review 2026-05-17). External readers use
     /// [`Node::parent`] / [`Node::children`].
     pub(crate) parent: Option<NodeId>,
     /// Ordered child nodes.

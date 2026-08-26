@@ -70,7 +70,7 @@ pub(crate) struct CaretAnchorExt(pub(crate) std::rc::Rc<std::cell::Cell<Option<C
 /// placement.
 const CARET_ANCHOR_W: f32 = 2.0;
 
-/// IME composition-session state (W5-IME HIGH-1 + the reviewer final-gate HIGH).
+/// IME composition-session state (W5-IME HIGH-1 + final review HIGH).
 ///
 /// `Cancelled` is deliberately distinct from `Idle`: a session cancelled
 /// by a focus/scope change has an OS composition still streaming events;
@@ -105,7 +105,7 @@ impl EventRouter {
             dispatch_to_owner(cx, owner, &ImeEvent::Disabled);
             // NOT Idle: the OS composition that owned this session is
             // still streaming. Collapsing to Idle would let this very
-            // event re-adopt the new focus as owner (the reviewer final-gate
+            // event re-adopt the new focus as owner (final review
             // HIGH) — quarantine instead until the OS closes the old
             // session (Disabled) and opens a new one (Enabled).
             self.ime_session = ImeSession::Cancelled;

@@ -8,7 +8,7 @@
 //! the border must toggle the popup just like an interior click, and
 //! an interior click must toggle exactly once (`release_pointer`
 //! consumes the press, so the frame's mirrored handler cannot
-//! double-fire). the reviewer gate finding, 2026-07-13.
+//! double-fire).
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -179,7 +179,7 @@ fn border_click_toggles_popup_open_and_closed() {
 
 /// A `disabled` flip between pointer-down and pointer-up must veto
 /// activation on release — for the frame path AND the interior path
-/// (the reviewer re-gate finding, 2026-07-13).
+/// (review follow-up, 2026-07-13).
 fn mid_gesture_disable_vetoes_release(scope: &'static str, x: f32, y: f32) {
     sigil::reactive::Runtime::scope(scope, || {
         let disabled = signal(false);
@@ -210,7 +210,7 @@ fn mid_gesture_disable_vetoes_border_release() {
 
 /// The keyboard open path must honor a reactive disable too: focus
 /// while enabled, flip `disabled`, `ArrowDown` must not open the popup
-/// (the reviewer re-gate round 3, 2026-07-13).
+/// (review follow-up, 2026-07-13).
 #[test]
 fn reactive_disable_vetoes_arrow_down_open() {
     sigil::reactive::Runtime::scope("dd-disable-arrow", || {
@@ -366,15 +366,15 @@ fn compact_dropdown_keeps_its_label_and_popup_anchor() {
         let root = cx.add(
             dropdown(
                 signal(0_usize),
-                vec!["the reviewer".to_owned(), "the reviewer".to_owned()],
+                vec!["Local".to_owned(), "Remote".to_owned()],
             )
-            .label("Agent")
+            .label("Backend")
             .width(132.0)
             .height(28.0),
         );
         let mut layout = compute(&mut cx, root);
         assert!(
-            matches!(&cx.get(root).expect("root").a11y.name, AccessibleName::Static(name) if name == "Agent")
+            matches!(&cx.get(root).expect("root").a11y.name, AccessibleName::Static(name) if name == "Backend")
         );
         assert_single_bordered_trigger(&cx, root, &layout);
 

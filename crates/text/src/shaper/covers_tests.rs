@@ -1,5 +1,5 @@
-//! Unit tests for `Font::covers`'s default-ignorable handling (the reviewer
-//! adversarial review, W4 fixes 2 + A) — split out of `shaper/tests.rs`
+//! Unit tests for `Font::covers`'s default-ignorable handling (adversarial
+//! review, W4 fixes 2 + A) — split out of `shaper/tests.rs`
 //! to keep that file under the 400-line cap.
 
 #![allow(clippy::unwrap_used)]

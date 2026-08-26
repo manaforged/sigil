@@ -1,6 +1,6 @@
 //! White-box unit tests for the per-run font fallback chain
 //! (`select_face` / `push_run` / `coalesce_face_spans` /
-//! `shape_validated`) — adversarial review findings 1 + 2.
+//! `shape_validated`) — adversarial review findings 1 and 2.
 //!
 //! These call `push_run`/`shape_validated` directly with a hand-built
 //! fragment rather than going through the public `layout_paragraph`
@@ -132,7 +132,7 @@ fn shape_validated_keeps_the_initial_pick_when_it_already_shapes_cleanly() {
     assert!(run.glyphs.iter().all(|g| g.id != GlyphId(0)));
 }
 
-/// the reviewer re-gate finding A: assert a default-ignorable control embedded
+/// Review follow-up A: assert a default-ignorable control embedded
 /// in otherwise-primary-covered text neither surfaces a visible
 /// `.notdef` from `shape_validated`'s own check, nor pushes it past
 /// the primary face. NOTE (verified via a direct glyph-buffer probe):

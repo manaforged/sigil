@@ -148,7 +148,7 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
 /// A dismissed modal must release its focus scope: after `show` flips
 /// false (`Display::None`) and layout recomputes, Tab must reach the
 /// focusable OUTSIDE the dialog — not stay trapped in an invisible
-/// scope (the reviewer adversarial finding, 2026-07-12).
+/// scope (adversarial review finding, 2026-07-12).
 #[test]
 fn dismissed_modal_releases_focus_trap() {
     sigil::reactive::Runtime::scope("sigil-modal-trap-release", || {

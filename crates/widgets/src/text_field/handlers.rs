@@ -348,7 +348,7 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
 /// Atomically publish a mutation: value, change callback, and caret/
 /// selection mirrors coalesce into one signal drain so no effect (the
 /// preedit splice above all) observes a new value with a stale caret —
-/// the `text_edit` HIGH-1 shape, mirrored here (the reviewer gate, 2026-07-13).
+/// the `text_edit` HIGH-1 shape, mirrored here (review gate, 2026-07-13).
 pub(super) fn publish(runtime: &TextFieldRuntime, state: &TextEdit) {
     batch(|| {
         write_value(runtime.value, state.as_str());

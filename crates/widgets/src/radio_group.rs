@@ -233,7 +233,7 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
         .class("bg-surface")
         .child(mark_inner);
     // Outer ring — NEUTRAL border. `gray-9` is the sanctioned rest-
-    // border step (text_field frame, the reviewer visual 2026-05-21): the
+    // border step (text_field frame, visual review 2026-05-21): the
     // previous flat `gray-7` fill measured 1.49:1 against the gray-2
     // surface, failing the 3:1 non-text floor this comment used to
     // claim it met (Fable visual adversarial 2026-07-13); gray-9

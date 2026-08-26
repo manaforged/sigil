@@ -53,7 +53,7 @@ const BORDER_PX: f32 = 1.0;
 /// Horizontal padding between the outer (IME-anchor-carrying) node's
 /// origin and the text content's left edge. `super::ime`'s caret-anchor
 /// sync adds this to the raw text-engine geometry so the published
-/// anchor matches where the glyphs actually paint (the reviewer adversarial
+/// anchor matches where the glyphs actually paint (adversarial
 /// finding [W5-IME-TE] MEDIUM-3) — verified empirically: a laid-out
 /// text child sits at `(12.0, 8.0)` relative to the outer node's
 /// `(0, 0)` origin for this widget's fixed layout.
@@ -524,7 +524,7 @@ fn displayed_text(
 /// *previous* `value` but not the current one (e.g. a multibyte
 /// backspace shrinks `value` out from under a stale `caret` before
 /// `commit` catches up). `batch`ing both writes at the call site
-/// closes that window (the reviewer adversarial finding [W5-IME-TE] HIGH-1),
+/// closes that window (adversarial review finding [W5-IME-TE] HIGH-1),
 /// but this defensively clamps to the nearest real boundary too, so a
 /// caller that ever reads a genuinely inconsistent pair degrades to a
 /// slightly-off splice point instead of panicking.

@@ -118,8 +118,8 @@ construct cannot skip shaping.
 
 ## Output-equivalence rule
 
-Per global the contributor guide verification honesty: **every "X faster than Y"
-claim requires matching canonical output and passing checks.** The
+**Every "X faster than Y" claim requires matching canonical output and
+passing checks.** The
 canonical output records root geometry, workload-specific counts,
 and visible text from an untimed verification frame. Old result JSON
 without output or source provenance cannot produce a ratio.

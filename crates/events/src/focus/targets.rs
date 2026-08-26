@@ -71,7 +71,7 @@ impl FocusManager {
         };
         // A zero-area rect passes the open-interval intersection below but
         // no real pointer can hit it — collapsed nodes must reject synthetic
-        // clicks too (the reviewer final-gate finding).
+        // clicks too (final review finding).
         if rect.width <= 0.0 || rect.height <= 0.0 {
             return false;
         }

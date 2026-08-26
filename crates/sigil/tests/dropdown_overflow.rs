@@ -4,7 +4,7 @@
 //! Before this, the popup box was capped at `POPUP_MAX_VISIBLE` rows but all
 //! options were appended as plain children with no clip and no scroll, so
 //! options 7+ painted below the popup and were unreachable by keyboard
-//! (the cursor clamps to n-1). Verified against the reviewer's review.
+//! (the cursor clamps to n-1).
 
 #![allow(missing_docs)]
 #![allow(

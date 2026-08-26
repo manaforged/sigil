@@ -68,7 +68,7 @@ fn tone_class_strings_are_distinct() {
 
 /// The tone pairings must HOLD WCAG AA 4.5:1, not just match token
 /// strings — a palette change can silently reintroduce the failure
-/// the 2026-07-12 ui-review gate caught (the reviewer adversarial finding).
+/// the 2026-07-12 ui-review gate caught (adversarial review finding).
 #[test]
 fn every_tone_clears_wcag_aa_contrast() {
     use sigil_style::Rgba8;

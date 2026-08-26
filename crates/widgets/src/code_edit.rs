@@ -65,7 +65,7 @@ type GutterMarks = Signal<Vec<Option<ChangeKind>>>;
 
 /// How a line differs from its baseline (e.g. git HEAD), shown as a colored gutter bar.
 ///
-/// Renderer-neutral: the consumer decides what "changed" means (git, agent edit, …); the
+/// Renderer-neutral: the consumer decides what "changed" means (git, external edit, …); the
 /// widget only paints the bar. `Deleted` marks the line *below* which one or more baseline
 /// lines were removed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

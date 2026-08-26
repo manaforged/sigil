@@ -91,7 +91,7 @@ static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-p
 // disabled comparison. W5.3 owns the richer faded semantic.
 static CHECKBOX_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 // The mark is a stroked vector check (the square-fill mark read as a
-// radio dot / indeterminate dash — Fable + the reviewer 2026-08-15). White in
+// radio dot / indeterminate dash — visual review 2026-08-15). White in
 // both built-in themes: on_accent is white in each. ponytail: a scoped
 // theme with a dark on_accent gets a white check anyway — the path
 // primitive paints concrete colors; upgrade when paths take theme refs.
