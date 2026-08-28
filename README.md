@@ -1,239 +1,92 @@
 # Sigil
 
-Desktop UI in Rust. `sigil::launch` opens a window. `sigil::Host`
-embeds the same tree in another engine's loop. The widget catalog
-(`button`, `icon_button`, `text_field`, `text_edit`, `table`,
-`virtual_list`, `modal`, `sheet`, `toast`, `card`, `avatar`,
-`sidebar`) lives in this crate.
+Desktop UI in Rust. One widget tree, three hosts: `launch` opens a
+window, `Host` embeds the tree in another engine's loop, and `run_tui`
+paints it on a character grid. The widget catalog (button, table,
+text_field, virtual_list, modal, dropdown, tabs, chart, …) lives in
+`sigil::widgets`.
+
+**Status:** alpha (`0.1.0-alpha.1`). The API is not stable; pin exact
+versions.
+
+## Requirements
+
+- Rust 1.90 (pinned in `rust-toolchain.toml`)
+- A wgpu-capable GPU for the windowed hosts; the TUI host needs none
+
+## Run
 
 ```bash
-mdbook serve docs/book
-# live catalog
-cargo run -p widget-playground
+cargo run -p hello-counter        # smallest runnable app
+cargo run -p widget-playground    # live widget catalog
+mdbook serve docs/book            # author guide and architecture
 ```
 
-Licensed under MIT. Issues welcome. Unsolicited pull requests are not accepted.
+## Usage
 
-## Owned-host verification
+```rust
+use sigil::prelude::*;
 
-GitHub Actions is not part of the test path. Run these gates directly on every supported native
-builder before promotion:
-
-```bash
-cargo fmt --check
-python3 scripts/check-inline-tests.py
-cargo clippy --workspace --all-targets -- -D warnings
-cargo check --workspace --all-targets
-cargo test --workspace --no-fail-fast
-cargo deny check
+fn app(cx: &mut Cx) -> NodeId {
+    let count = signal(0_i32);
+    cx.add(
+        container()
+            .layout(LayoutStyle::flex_column().gap(8.0))
+            .child(text(derived(move || count.get().to_string())))
+            .child(button("+").activate(move || count.set(count.peek() + 1))),
+    )
+}
 ```
 
-Sigil is a Rust-native desktop UI system for building serious,
-data-heavy applications without retreating to a webview. `run_tui`
-paints that same tree on a character grid. A PTY pane is
-`terminal()` plus a prelude `Session` inside the tree — the opposite
-job. Native views sit in `surface()` holes (`Host::surfaces`). HTML
-ingest is `html()`, not a browser. It owns the
-experience layer above the hard foundations: reactive state, typed node
-identity, layout, rendering, accessibility, IME-ready text, headless
-interaction primitives, a designed component catalog, and the app
-patterns that make dense desktop software feel composed instead of
-assembled from parts.
+## How it works
 
-## Book
+No virtual DOM and no per-frame rebuild. A signal write marks the
+nodes it touched, and a clean frame skips layout and scene assembly.
+Frames run a typed phase machine (Effect, Layout, Paint); a write
+during paint panics in debug builds and defers in release.
 
-The author guide and the architecture chapters live in
-[`docs/book/`](docs/book/):
+- **Layout, text, and rendering are owned.** Flexbox, block, and grid
+  layout (Taffy stays a bench corpus); HarfRust shaping, skrifa
+  metrics, bidi, and font fallback; wgpu rendering with glyphs and SVG
+  icons in one GPU pipeline.
+- **Accessibility is a node property.** AccessKit, IME, drag-and-drop,
+  and animation wire from the same tree.
 
-```bash
-mdbook serve docs/book
-```
+The architecture chapters are in [`docs/book/arch/`](docs/book/arch/);
+the crate-by-crate map is
+[crates.md](docs/book/arch/crates.md).
 
-Signals, the owner tree, the frame loop, layout, the command scene,
-`spawn`, and the crate map are in the Architecture section.
+## Limits
 
-**Status:** alpha. The pieces below are implemented and tested; the API
-is not yet stable.
+- Alpha: the API changes between releases. Pin exact versions.
+- Headless machines can run the TUI host and the test suite, but not
+  the windowed hosts: rendering needs an adapter.
+- Fuzz targets do not exist yet. Do not feed untrusted documents to
+  the markdown, HTML, or SVG parsers (see Security).
 
-Sigil retains its node tree across frames. A signal write marks the
-nodes it touched. A clean frame skips layout and scene construction.
-On a dirty frame, layout results and per-node paint commands can be
-reused, but the renderer still walks the visible tree and assembles a
-scene. `crates/bench-parity` measures selected CPU workloads against
-GPUI. It prints a ratio only when host and reuse mode match, result
-checks pass, canonical output matches, both runs use the same clean
-source revision, and variance stays within its configured limit. The
-current output proof covers root geometry and workload semantics. It
-does not yet compare rendered pixels.
+## Security
 
-The layout engine is owned — flexbox, block, and grid, with
-content-hash cache keys; Taffy remains only as a bench corpus. Text is
-owned end to end: HarfRust shaping, skrifa metrics, bidi, line
-breaking, font fallback, and a paragraph cache. Glyphs and SVG icons
-share one GPU pipeline through a Slug fragment rasteriser, so mixed
-text and icon batches need no pipeline switch.
+Report vulnerabilities through GitHub's private vulnerability
+reporting (Security tab), never as public issues. The workspace denies
+`unsafe`, and `cargo deny check` gates dependency advisories. The
+untrusted-input surfaces are the style-class parser, the markdown and
+HTML ingest, text shaping, and SVG baking.
 
-Frame phases are a typed state machine: writes during paint
-panic in debug and defer to the next effect phase in release.
-Accessibility lives in the node type rather than beside it, and
-AccessKit, IME, drag-and-drop, and animation are wired.
+## Contributing
 
-Only `sigil-renderer` depends on `wgpu` (the facade carries it as a
-dev-dependency for GPU tests). `sigil::Host` embeds the same tree in
-another engine's frame loop. `sigil-tui` paints it on a character
-grid. Feature `render` gives `Host::scene` without winit.
+Issues are welcome. Unsolicited pull requests are not accepted; if a
+patch is wanted, it will be asked for.
 
 ## Influences
 
-Inspired by [GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui),
+[GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui),
 [Taffy](https://github.com/DioxusLabs/taffy),
-[SolidJS](https://www.solidjs.com/), [Leptos](https://github.com/leptos-rs/leptos),
-Eric Lengyel's [Slug](https://jcgt.org/published/0006/02/02/), and the W3C
+[SolidJS](https://www.solidjs.com/),
+[Leptos](https://github.com/leptos-rs/leptos), Eric Lengyel's
+[Slug](https://jcgt.org/published/0006/02/02/), and the W3C
 [Flexbox](https://www.w3.org/TR/css-flexbox-1/) and
 [Grid](https://www.w3.org/TR/css-grid-2/) specifications.
 
-## Design plan
-
-The architecture chapters of the book ([`docs/book/`](docs/book/)) are
-the high-level map of how the framework fits together.
-
-## Workspace Layout
-
-```text
-crates/
-  hal/ (sigil-hal)              Hardware abstraction layer: traits for Renderer,
-                               Shell, Layout, TextEngine, A11yBridge, Scheduler.
-                               Every downstream crate depends on these traits,
-                               never on upstream crates directly. no_std.
-  reactive/ (sigil-reactive)   Main-thread signal/effect owner tree.
-  kernel/ (sigil-kernel)       Stable node identity, arena storage, Component,
-                               Semantics, typed extensions, and builders.
-  layout/ (sigil-layout)       Owned incremental layout engine.
-                               Mirrors sigil-kernel subtrees, computes layout,
-                               publishes cached results. Taffy corpus is
-                               benches only.
-  events/ (sigil-events)       Input routing, z-order hit-testing, focus
-                               traversal, pointer capture, and handler builders.
-  style/ (sigil-style)         StyleAtom vocabulary, Theme, StyleEngine,
-                               classes! resolver, Style struct API, and
-                               style_reactive signal binding.
-  style-macros/ (sigil-style-macros)
-                               Proc-macro crate backing classes!; a phf
-                               structural-token table is generated at build time
-                               from grammar/structural.toml.
-  tasks/ (sigil-tasks)         Tokio runtime and owner-targeted main-thread
-                               dispatch. (Was sigil-async; `async` is reserved.)
-  text/ (sigil-text)           Owned text pipeline: shaping, measurement,
-                               paragraph cache, font fallback.
-  renderer/ (sigil-renderer)   wgpu-backed renderer adapter. Includes
-                               WgpuRenderer::render_scene default pipeline.
-  shell/ (sigil-shell)         winit shell adapter.
-  a11y/ (sigil-a11y)           AccessKit bridge over sigil-kernel semantics.
-  actions/ + actions_macros/   Typed actions + #[derive(Action)].
-  animation/ + animation_runtime/
-                               Animation primitives + runtime.
-  icons/ (sigil-icons)         SVG icon baking (usvg → sprites).
-  app/ (sigil-app)             App orchestrator: sigil::launch, AppConfig,
-                               TreeRoot, frame loop, DPI-aware logical sizing,
-                               native dialogs and menu/tray.
-  widgets/ (sigil-widgets)     Widget catalog. No window, no GPU.
-  tui/ (sigil-tui)             Terminal host. Same tree, character grid.
-                               Not a PTY or terminal-emulator pane.
-  profile/ (sigil-profile)     Frame profiler: SIGIL_PROFILE, Perfetto JSON,
-                               phase table. Wired in launch; see docs/book/05-profile.md.
-  sigil/ (sigil-ui)            User-facing facade with prelude — the package is
-                               `sigil-ui` (the `sigil` name was taken), the
-                               library is `sigil`: `use sigil::prelude::*;`
-                               is the one import line user apps need.
-  ide-core/                    IDE primitives (publish = false).
-  engine_adapter/               the host engine-engine host trait (publish = false).
-  bench-parity*/               Benchmark harnesses (publish = false).
-
-examples/
-  hello-counter/     Minimum viable reactive UI on `sigil::launch`:
-                     a signal-backed counter with a primary button
-                     and a derived label. ~20 lines of user code.
-  hello-host/        Same tree on `sigil::Host`. No window. Prints
-                     painted text and `surface` holes.
-  hello-events/      Window proof app using `sigil::launch`: click
-                     toggles the surface tint, Tab cycles focus, Esc
-                     quits. 34 lines of user code.
-  hello-style/       Window proof app using `sigil::launch`: two
-                     static panes + a hover-reactive pane driven by
-                     style_reactive. 62 lines.
-  hello-tree/        Headless proof app: builds a `sigil-kernel` node tree
-                     and prints its shape.
-  hello-layout/      Headless proof app: computes rectangles for a
-                     `sigil-kernel` tree and prints them.
-  internals/
-    hello-rect/      Direct kernel + scene-command surface; predates
-                     `sigil::launch`. Advanced reference — opens a
-                     window, clears to a colour, cycles three colours
-                     on a timer, and exits cleanly.
-  widget-playground/ The widget catalog, live (including pending
-                     buttons, card, avatar, sidebar).
-  data-table/        1:1 of GPUI 0.2.2 `examples/data_table.rs`
-                     (10k quotes, 24 columns, `virtual_list`).
-  */                 Dogfood apps (csv-viewer, chat-client, kanban-board,
-                     api-explorer, file-browser, todo, scratchpad, …).
-                     Older FRICTION.md logs stay as history; a Current
-                     tree stamp at the top names what has since landed.
-
-docs/
-  book/                The author guide and architecture chapters (mdBook).
-```
-
-## Verification
-
-```bash
-cargo fmt --check
-cargo check --workspace --all-targets
-cargo clippy --workspace --all-targets -- -D warnings -W clippy::pedantic -W clippy::nursery
-cargo test --workspace            # unit + integration + doctests
-cargo deny check
-RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-cargo publish --workspace --dry-run --locked --all-features   # packaging gate
-cargo run -p hello-counter
-cargo run -p hello-host
-cargo run -p hello-events
-cargo run -p hello-style
-cargo run -p hello-tree
-cargo run -p hello-layout
-cargo run -p hello-rect
-cargo bench -p sigil-kernel
-cargo bench -p sigil-layout
-cargo bench -p sigil-events
-cargo bench -p sigil-style
-```
-
-Run the gates with plain `cargo`, scoped to the packages your diff
-touches (`cargo check -p <pkg>`, `cargo test -p <pkg>`). See
-[`RELEASING.md`](RELEASING.md) for the publish procedure (nothing publishes
-without an explicit go).
-
-All user-facing sizes and positions are logical pixels; the shell and
-launch layers convert to physical pixels at the winit/wgpu boundary.
-`cargo run -p hello-rect` should open a window, clear the surface to a
-colour, cycle colours on a timer, and close cleanly when the window is
-closed. `cargo run -p hello-tree` should print a deterministic headless
-tree outline. `cargo run -p hello-layout` should print deterministic
-computed rectangles. `cargo run -p hello-events` should open a window,
-toggle colour on click, move a visible focus ring with Tab, and exit on
-Escape. `cargo run -p hello-style` should open a window with three panes
-— a static-styled pane, a hover-reactive pane, and a merge-override
-pane demonstrating last-wins atom resolution — and exit on Escape.
-
-## Principles
-
-- **Lean:** small files, one concern per module, no god objects, no
-  speculative abstractions. Soft cap around 400 LoC per file.
-- **Honest:** no feature stubs, no half-baked functions, no "TODO" shims
-  landed on main. If it is not done, it does not merge.
-- **Accessible from day one:** semantic identity lives on the node model
-  from the first primitive, not Phase 9.
-- **Verification honesty:** claims of "tested" or "verified" require real
-  evidence. Roundtrip tests prove nothing.
-
 ## License
 
-[MIT](LICENSE-MIT). Copyright remains with the author. The Sigil name is a trademark; the license does not grant it.
+[MIT](LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.

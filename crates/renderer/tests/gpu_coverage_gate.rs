@@ -20,7 +20,7 @@
 //! operator says so explicitly.
 //!
 //! Default is STRICT, deliberately. Sigil verifies on owned native builders
-//! with real GPUs (see README, "Owned-host verification"), so the common
+//! with real GPUs (see docs/plans/engineering-rules.md, local only), so the common
 //! case must not be the unchecked one. A genuinely GPU-less environment
 //! opts out with `SIGIL_ALLOW_NO_GPU=1`, which is a visible, greppable
 //! statement that this run's GPU coverage is void.
@@ -52,6 +52,7 @@ fn adapter_available() -> bool {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn gpu_backed_tests_actually_ran() {
     if adapter_available() {
         return;

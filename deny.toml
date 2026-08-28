@@ -21,7 +21,7 @@ all-features = false
 no-default-features = false
 # The checks govern what we SHIP. publish = false crates — the bench-parity
 # harnesses (which deliberately import GPUI's whole dependency tree),
-# examples, ide-core, engine_adapter — are not shipping code, and their
+# examples, deleted crates (ide-core, engine_adapter — removed from the workspace) — are not shipping code, and their
 # unique transitive deps are excluded recursively.
 exclude-unpublished = true
 
@@ -58,10 +58,14 @@ ignore = [
     # decorations). winit's transitive tree; we render text with our own
     # skrifa/HarfRust stack and never touch ab_glyph at runtime.
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser via sctk-adwaita/winit; not our text path" },
+    # serial (unmaintained) via portable-pty 0.8: unmaintained notice, not a
+    # vulnerability, and the serial code path is not exercised by any sigil
+    # host. Collapse when portable-pty ships 0.9 and the dep can move.
+    { id = "RUSTSEC-2017-0008", reason = "serial via portable-pty 0.8; unmaintained, no vulnerability, path unused" },
 ]
 
 # --- licenses ---------------------------------------------------------------
-# Allow list is the SPDX intersection of what the author has cleared for
+# Allow list is the SPDX intersection of what has been cleared for
 # shipping. Sigil itself is MIT; third-party crates may still be Apache-2.0
 # (or the other permissive licenses below). Anything not on this list fails
 # the build and requires a conscious decision to add.
@@ -80,7 +84,7 @@ allow = [
     # MPL-2.0 retained for any fluent-rs or future weak-copyleft deps.
     # Note: usvg 0.45+ relicensed to Apache-2.0 OR MIT, so current R8 deps
     # do not exercise this entry. It is kept as an explicit opt-in for
-    # any future MPL-2.0 dep that passes the author legal review (unmodified
+    # any future MPL-2.0 dep that passes legal review (unmodified
     # library use only; the host engine's proprietary code is not contaminated by
     # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
@@ -106,7 +110,8 @@ registries = []
 [bans]
 multiple-versions = "deny"
 # Internal dev-dependencies of published crates are deliberately version-less
-# path deps so `cargo publish` strips them (see RELEASING.md). Deny would
+# path deps so `cargo publish` strips them (lockstep policy — see
+# docs/plans/releasing.md, local only). Deny would
 # block the gate on our own release policy, so keep this at warn: visibility
 # is retained in the output, and external deps are unaffected because they
 # all carry registry versions.
@@ -208,6 +213,22 @@ skip = [
     { crate = "windows_x86_64_gnu@0.52.6", reason = "follows windows-targets 0.52.6" },
     { crate = "windows_x86_64_msvc@0.48.5", reason = "follows windows-targets 0.48.5" },
     { crate = "windows_x86_64_msvc@0.52.6", reason = "follows windows-targets 0.52.6" },
+
+    # --- portable-pty 0.8 chain (sigil-app PTY hosting) ---------------------
+    # portable-pty 0.8.1 pins nix 0.25 (memoffset 0.6) and pulls serial
+    # (unmaintained, see the advisory ignore). Collapses when portable-pty
+    # ships a 0.9 the workspace can move to.
+    { crate = "memoffset@0.6.5",    reason = "nix 0.25.1 via portable-pty 0.8.1; nix 0.27+ users are on 0.9" },
+    { crate = "rustc-hash@1.1.0",   reason = "transitive via portable-pty 0.8.1 chain; rest of tree on 2.x" },
+    { crate = "unicode-width@0.1.14", reason = "crossterm 0.28 via portable-pty 0.8.1 chain; sigil-text uses 0.2" },
+
+    # --- cpal/rodio 0.15 chain (sigil-app audio playback) -------------------
+    # rodio 0.20 -> cpal 0.15 pins the windows 0.54 generation; the rest of
+    # the tree (winit/arboard/muda chains) is on 0.62. Converges when cpal
+    # ships a release on windows 0.62+.
+    { crate = "windows@0.54.0",        reason = "cpal 0.15.3 via rodio 0.20; rest of tree on 0.62" },
+    { crate = "windows-core@0.54.0",   reason = "follows windows 0.54.0 (cpal 0.15.3)" },
+    { crate = "windows-result@0.1.2",  reason = "follows windows-core 0.54.0 (cpal 0.15.3)" },
 ]
 skip-tree = []
 
