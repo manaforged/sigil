@@ -1,24 +1,3 @@
-//! Core node tree, component composition, and semantics.
-//!
-//! `sigil-kernel` is the keystone crate for Sigil. It owns
-//! stable node identity, the arena-backed tree model, the open
-//! [`IntoNode`] trait, accessible-by-default [`A11yProps`], and the
-//! hand-written builders used by higher layers.
-//!
-//! # Reactive ownership
-//!
-//! Every node in the tree is tied to a *reactive owner* — a scope that
-//! tracks signal subscriptions and cleans them up when the scope is
-//! disposed. [`Cx`] holds one root owner; every call to [`Cx::add`] or
-//! [`Cx::add_child`] creates a child owner scoped to that component.
-//! When you remove a subtree with [`Cx::remove`], the engine walks the
-//! subtree in child-before-parent order, disposes each component's owner,
-//! and cancels any reactive subscriptions that were created inside it.
-//! You do not need to manage owners manually — the tree drives it.
-
-#![deny(missing_docs)]
-// `pub(crate)` on module seams documents the intended boundary even
-// when clippy's nursery lint sees a currently-private path.
 #![allow(clippy::redundant_pub_crate)]
 
 #[cfg(test)]

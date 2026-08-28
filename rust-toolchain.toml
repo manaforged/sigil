@@ -1,4 +1,6 @@
-# MSRV is 1.90 (enforced in CI). Developers use stable.
+# MSRV is 1.90; verify before release with:
+#   cargo +1.90.0 check --locked --all-features --workspace
+# Developers use stable. There is no CI runner (see README owned-host gate).
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]

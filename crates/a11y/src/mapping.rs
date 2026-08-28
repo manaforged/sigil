@@ -1,31 +1,9 @@
-//! Kernel-node → `accesskit::Node` projection (DR-050 §2).
-//!
-//! `node` reads one [`sigil_kernel::Node`]'s [`A11yProps`] and
-//! returns the AccessKit projection. `tree` walks the kernel
-//! arena depth-first from every root, skipping fragments, and produces
-//! the full `TreeUpdate`.
-
 use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, Tree, TreeId, TreeUpdate};
 use sigil_hal::Rect;
 use sigil_kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
-/// Node-bounds lookup injected by the caller (DR-050 §2, mapping table
-/// row `LayoutResult bounds → Node::set_bounds`).
-///
-/// A plain function-pointer-shaped closure rather than `&LayoutEngine`
-/// directly: `sigil-a11y` deliberately does not depend on `sigil-layout`
-/// (DR-050 §1 lists `kernel` + `reactive` + `hal` as its only
-/// dependencies), and every caller already has a natural way to answer
-/// "what's this node's rect" — production via
-/// `LayoutEngine::result(id).map(|r| r.rect())`, tests via `|_| None`.
 pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
 
-/// Build the AccessKit tree for the current [`Cx`] state.
-///
-/// One entry per non-fragment node, in depth-first document order. The
-/// `focus` field defaults to the first root when no explicit focus is
-/// provided — AccessKit requires a non-zero focus node and uses the
-/// root as the sentinel.
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
     let mut nodes = Vec::with_capacity(cx.len());
@@ -35,9 +13,6 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
         walk_subtree(cx, root, bounds, &mut nodes, &mut first_root_ak);
     }
     let root_ak = first_root_ak.unwrap_or(AkNodeId(0));
-    // Reactive subtree replacement can remove the focused kernel node before
-    // the event router observes another focus change. AccessKit requires the
-    // focus id to name a node in this exact update.
     let focus_ak = focus
         .map(NodeId::to_accesskit)
         .filter(|candidate| nodes.iter().any(|(id, _)| id == candidate))
@@ -77,11 +52,6 @@ fn walk_subtree(
     }
 }
 
-/// Project one kernel node into an [`AkNode`].
-///
-/// Signal reads use `sigil_reactive::Signal::peek` (untracked) — the
-/// observer registered on attach is the subscription path; projecting
-/// must not register duplicate subscriptions every frame.
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     let Some(kernel_node) = cx.get(id) else {
@@ -177,8 +147,6 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     }
 }
 
-/// Grid semantics: row/column counts on the grid root, per-node
-/// row/column indices, and the column-header sort direction.
 fn apply_grid(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.row_count {
         ak.set_row_count(sig.peek());

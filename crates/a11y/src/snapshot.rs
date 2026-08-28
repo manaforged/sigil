@@ -1,17 +1,8 @@
-//! Indented-text snapshot format for AccessKit trees (DR-050 §7).
-//!
-//! Tests format an [`accesskit::TreeUpdate`] into stable text and
-//! compare against a small golden file. The format prints
-//! `role[Role=…, Name="…", Toggled=…, Value="…", Placeholder="…",
-//! Expanded=…, Live=…, Focused=…]` per node, two-space indent per
-//! depth, in depth-first order from the root.
-
 use std::collections::HashMap;
 use std::fmt::Write as _;
 
 use accesskit::{Node as AkNode, NodeId as AkNodeId, TreeUpdate};
 
-/// Format an AccessKit tree update as indented text for snapshotting.
 #[must_use]
 pub fn snapshot(update: &TreeUpdate) -> String {
     let lookup: HashMap<AkNodeId, &AkNode> =

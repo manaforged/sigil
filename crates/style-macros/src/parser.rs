@@ -1,5 +1,3 @@
-//! Parser for `classes!` macro inputs.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use proc_macro2::TokenStream;
@@ -8,33 +6,22 @@ use syn::parse::Parser;
 use syn::punctuated::Punctuated;
 use syn::{Expr, ExprLit, ExprMatch, Lit, Token};
 
-/// Parsed macro segment.
 pub(crate) enum Segment {
-    /// Static atoms from a string literal.
     Static(Vec<TokenStream>),
-    /// Runtime match whose arms each contribute atoms.
     Match(MatchSegment),
 }
 
-/// Parsed match segment.
 pub(crate) struct MatchSegment {
-    /// Match scrutinee.
     pub(crate) expr: Box<Expr>,
-    /// Parsed arms.
     pub(crate) arms: Vec<MatchArm>,
 }
 
-/// Parsed match arm.
 pub(crate) struct MatchArm {
-    /// Arm pattern.
     pub(crate) pat: syn::Pat,
-    /// Optional guard.
     pub(crate) guard: Option<(Token![if], Box<Expr>)>,
-    /// Atoms contributed by the arm body.
     pub(crate) atoms: Vec<TokenStream>,
 }
 
-/// Parse the full macro input.
 pub(crate) fn parse_segments(input: TokenStream) -> syn::Result<Vec<Segment>> {
     let parser = Punctuated::<Expr, Token![,]>::parse_terminated;
     let exprs = parser.parse2(input)?;
@@ -105,8 +92,6 @@ fn parse_class_literal(value: &syn::LitStr) -> syn::Result<Vec<TokenStream>> {
     Ok(atoms)
 }
 
-/// `overflow-*` expands to both axes, `overflow-x-*`/`overflow-y-*` to
-/// one. Mirrors the runtime parser's `push_overflow_atoms`.
 fn overflow_tokens(origin: &syn::LitStr, token: &str) -> syn::Result<Option<Vec<TokenStream>>> {
     let Some(rest) = token.strip_prefix("overflow-") else {
         return Ok(None);
@@ -237,7 +222,6 @@ fn decoration_token(token: &str) -> Option<TokenStream> {
     ))
 }
 
-/// Compile-time half of the runtime parser's `shadow_atom` mapping.
 fn shadow_token(token: &str) -> Option<TokenStream> {
     let elevation = match token {
         "shadow-sm" => quote!(::sigil::__private::style::Elevation::Sm),
@@ -361,8 +345,6 @@ fn grid_token(token: &str) -> Option<TokenStream> {
     None
 }
 
-/// `border-t` / `border-l-4` / `border-x` — Tailwind per-side widths.
-/// Mirrors the runtime parser's `push_border_side_atoms`.
 fn border_side_tokens(token: &str) -> Option<Vec<TokenStream>> {
     let rest = token.strip_prefix("border-")?;
     let (side, width) = match rest.split_once('-') {
@@ -386,8 +368,6 @@ fn border_side_tokens(token: &str) -> Option<Vec<TokenStream>> {
     )
 }
 
-/// `border-N` is a literal pixel width (Tailwind shape); `border-<token>`
-/// is a theme colour reference. Mirrors the runtime parser's `border_atom`.
 fn border_token(token: &str) -> Option<TokenStream> {
     let value = token.strip_prefix("border-")?;
     if let Ok(width) = value.parse::<i16>() {

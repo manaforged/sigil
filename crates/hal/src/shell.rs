@@ -1,35 +1,3 @@
-//! Shell trait — see DR-002.
-//!
-//! The `Shell` trait abstracts the OS window and event loop. In
-//! production this is implemented over `winit` 0.30+ by `sigil-shell`.
-//! Tests implement a headless shell that feeds synthetic events.
-//!
-//! The shell is the only part of the library that knows about the OS
-//! event loop. Signal reads and writes happen on the shell's main
-//! thread; background work funnels through the [`Scheduler`] into the
-//! main-thread dispatcher and wakes the shell via [`Shell::wake`].
-//!
-//! # Event delivery shape
-//!
-//! This trait is deliberately narrow. It encodes only:
-//!
-//! 1. **Window lifecycle** — `create_window` queues a window spec; the
-//!    adapter materialises it when the OS event loop is ready
-//!    (`ApplicationHandler::resumed` in the winit implementation).
-//! 2. **Cross-thread wake** — a `Waker` handle is `Clone + Send + Sync`
-//!    and drives the coalescing wake documented in DR-002/DR-007.
-//! 3. **Event drain** — platform adapters translate OS input and
-//!    lifecycle notifications into [`ShellEvent`] values, then expose
-//!    them through [`Shell::drain_events`] during the frame callback.
-//! 4. **Event-loop entry point** — `run` consumes the shell, drives
-//!    the OS event loop, and invokes the user's `frame` callback at
-//!    redraw time with a mutable handle to the shell.
-//!
-//! Routing, hit-testing, focus management, and handler dispatch live
-//! in `sigil-events`. `Shell` only owns platform delivery.
-//!
-//! [`Scheduler`]: crate::scheduler::Scheduler
-
 use core::error::Error;
 
 use alloc::vec::IntoIter;
@@ -40,162 +8,57 @@ use crate::{
     size::{LogicalSize, Scale},
 };
 
-/// Placement of a window on the primary monitor at creation time.
-///
-/// Resolved by the shell adapter when the OS window materialises; a
-/// platform without a discoverable primary monitor skips positioning
-/// and accepts the OS default.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Anchor {
-    /// Horizontally centred, `margin` logical pixels above the
-    /// monitor's bottom edge.
-    BottomCenter {
-        /// Gap between the window's bottom edge and the monitor's, in
-        /// logical pixels (scaled by the monitor's factor).
-        margin: f32,
-    },
+    BottomCenter { margin: f32 },
 }
 
-/// Extra window-creation options. `Default` is a normal window.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct WindowOpts {
-    /// Overlay bundle: undecorated, transparent, always-on-top,
-    /// shadowless, created inactive, click-through, and (on macOS)
-    /// accessory activation — no Dock icon or Cmd-Tab entry. One flag
-    /// on purpose: the pieces are useless separately and the bundle is
-    /// the smallest complete surface for status-pill overlays.
     pub overlay: bool,
-    /// Frameless window: undecorated (no OS titlebar or traffic lights —
-    /// the app draws its own chrome) but otherwise a normal window —
-    /// normal level, normal activation, resizable, and (on macOS)
-    /// transparent with the standard shadow. Ignored when `overlay` is
-    /// set; the overlay bundle wins.
     pub frameless: bool,
-    /// Optional placement, resolved against the primary monitor.
     pub anchor: Option<Anchor>,
-    /// User zoom — a multiplier composed with the monitor's HiDPI scale
-    /// factor, the webview-zoom equivalent: the layout viewport shrinks
-    /// by 1/zoom and every logical pixel paints `zoom` times larger
-    /// (text re-rasterizes at the composed scale, so it stays crisp).
-    /// `None` (the Default) is 1.0. The window's own size is unaffected;
-    /// only the content scale changes.
     pub user_zoom: Option<f32>,
 }
 
-/// Edge or corner a window-resize drag starts from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ResizeDirection {
-    /// Right edge.
     East,
-    /// Top edge.
     North,
-    /// Top-right corner.
     NorthEast,
-    /// Top-left corner.
     NorthWest,
-    /// Bottom edge.
     South,
-    /// Bottom-right corner.
     SouthEast,
-    /// Bottom-left corner.
     SouthWest,
-    /// Left edge.
     West,
 }
 
-/// Command a running app sends to its OS window — the frameless-window
-/// chrome controls (close/min/max, drag move, drag resize) a custom
-/// titlebar drives from pointer handlers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum WindowCommand {
-    /// Close the window, following the same path as the OS close button.
     Close,
-    /// Minimize the window to the taskbar/Dock.
     Minimize,
-    /// Maximize the window, or restore it when already maximized.
     ToggleMaximize,
-    /// Start a system move drag (`winit::Window::drag_window`). Only
-    /// honoured while the primary pointer button is held.
     Drag,
-    /// Start a system resize drag from an edge or corner
-    /// (`winit::Window::drag_resize_window`). Only honoured while the
-    /// primary pointer button is held; unsupported on some platforms
-    /// (macOS), where it is a no-op.
     DragResize(ResizeDirection),
 }
 
-/// OS window and event loop abstraction.
-///
-/// See the module-level documentation for the scope and lifecycle
-/// guarantees this trait is responsible for.
 pub trait Shell: Sized {
-    /// Error type returned by shell operations.
     type Error: Error + Send + Sync + 'static;
 
-    /// Handle used to wake the event loop from another thread.
-    ///
-    /// Implementations must coalesce wakes — multiple calls before the
-    /// next event-loop iteration collapse to one delivered wake.
-    /// Payload travels through the [`Scheduler`]'s MPSC channel, not
-    /// through the wake handle.
-    ///
-    /// [`Scheduler`]: crate::scheduler::Scheduler
     type Waker: Clone + Send + Sync + 'static;
 
-    /// Opaque handle representing a window that has been requested.
-    ///
-    /// The handle is returned immediately by [`Self::create_window`],
-    /// but the underlying OS window may not exist yet — winit forbids
-    /// window construction outside the `resumed` callback. Consumers
-    /// use the handle only as an identity token; concrete accessors
-    /// live on the adapter type, not on the trait.
     type Window;
 
-    /// Return a wake handle that can be cloned to background threads.
     fn waker(&self) -> Self::Waker;
 
-    /// Wake the event loop.
-    ///
-    /// Conceptually equivalent to `winit::EventLoopProxy::wake_up()`
-    /// (in winit 0.30 this is surfaced as `send_event`). Provided as a
-    /// free function on the waker so that tests — and `sigil-async` — can
-    /// hold a `Waker` without a live `Shell` reference.
-    /// # Errors
-    ///
-    /// Returns an error when the platform event loop can no longer be
-    /// woken through this handle.
     fn wake(waker: &Self::Waker) -> Result<(), Self::Error>;
 
-    /// Request creation of a new window.
-    ///
-    /// The spec is queued; the OS window is created when the event
-    /// loop is ready. In the winit adapter that means inside
-    /// `ApplicationHandler::resumed`. Callers receive a handle
-    /// immediately so they can wire up dependent state (renderer,
-    /// waker, etc.) without waiting for the event loop to start.
-    /// # Errors
-    ///
-    /// Returns an error when the shell cannot queue or create the
-    /// requested window.
     fn create_window(
         &mut self,
         title: &str,
         initial_size: PhysicalSize,
     ) -> Result<Self::Window, Self::Error>;
 
-    /// Create a window sized in logical pixels.
-    ///
-    /// The shell adapter is responsible for converting to the
-    /// destination monitor's physical pixels using its current scale
-    /// factor, so the resulting OS window matches the user's requested
-    /// logical dimensions on high-density displays.
-    ///
-    /// The default implementation preserves compatibility for adapters
-    /// that only understand physical pixels.
-    /// # Errors
-    ///
-    /// Returns an error when the shell cannot queue or create the
-    /// requested window.
     fn create_window_logical(
         &mut self,
         title: &str,
@@ -204,16 +67,6 @@ pub trait Shell: Sized {
         self.create_window(title, Scale::ONE.to_physical(initial))
     }
 
-    /// Create a window with extra options ([`WindowOpts`]).
-    ///
-    /// The default implementation ignores the options and delegates to
-    /// [`Self::create_window_logical`], so adapters that cannot express
-    /// overlays (headless/test shells) keep compiling and behave like a
-    /// normal window.
-    /// # Errors
-    ///
-    /// Returns an error when the shell cannot queue or create the
-    /// requested window.
     fn create_window_with(
         &mut self,
         title: &str,
@@ -224,58 +77,17 @@ pub trait Shell: Sized {
         self.create_window_logical(title, initial)
     }
 
-    /// Drain input and lifecycle events buffered since the last frame.
-    ///
-    /// The returned iterator owns the drained buffer, mirroring
-    /// `sigil-async`'s main-thread drain shape.
     fn drain_events(&mut self) -> IntoIter<ShellEvent>;
 
-    /// Run the event loop until exit.
-    ///
-    /// Consumes the shell. At each redraw opportunity the
-    /// `frame` callback is invoked with a mutable handle to the shell
-    /// so it can access its windows, request new ones, or trigger
-    /// further redraws. Returns when the event loop exits (e.g. the
-    /// last window closes).
-    ///
-    /// Event loop orchestration is a trait method rather than a
-    /// concrete method on the adapter so that headless test shells
-    /// can stand in for the real winit shell behind the same surface.
-    /// # Errors
-    ///
-    /// Returns an error when the platform event loop exits with a
-    /// backend failure instead of a normal application shutdown.
     fn run<F>(self, frame: F) -> Result<(), Self::Error>
     where
         F: FnMut(&mut Self) + 'static;
 
-    /// Toggle whether the OS IME is allowed for `window`. Drives
-    /// focus-change-based enable/disable — the application calls this
-    /// when focus enters/leaves an IME-targeting widget so IME
-    /// candidate UI only appears over a composition-aware field. See
-    /// DR-051 §4.8.
-    ///
-    /// Default is a no-op so headless/test shells don't need an impl.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the platform reports an IME toggle
-    /// failure (rare; most adapters can't fail this call).
     fn set_ime_allowed(&mut self, window: &Self::Window, allowed: bool) -> Result<(), Self::Error> {
         let _ = (window, allowed);
         Ok(())
     }
 
-    /// Forward the candidate-window anchor rect to the OS IME. `rect`
-    /// is window-relative logical pixels; the shell adapter converts
-    /// to whatever coordinate space its backend needs. See DR-051
-    /// §4.8 / §Decision-4.
-    ///
-    /// Default is a no-op so headless/test shells don't need an impl.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the platform rejects the rect.
     fn set_ime_cursor_area(
         &mut self,
         window: &Self::Window,
@@ -285,17 +97,6 @@ pub trait Shell: Sized {
         Ok(())
     }
 
-    /// Apply a [`WindowCommand`] to a live window. Called by the host
-    /// frame loop draining the `sigil-events` window-command queue that
-    /// custom-chrome widgets push into from pointer handlers.
-    ///
-    /// A command naming a window that has not materialised yet is
-    /// dropped. Default is a no-op so headless/test shells don't need
-    /// an impl.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when the platform rejects the command.
     fn window_command(
         &mut self,
         window: &Self::Window,

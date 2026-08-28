@@ -4,10 +4,8 @@ use super::*;
 
 #[test]
 fn rejects_mismatched_buffer_length() {
-    // 2x2 needs 16 bytes; 15 must be refused at the trust boundary.
     assert!(ImageSource::from_rgba8(2, 2, vec![0; 15]).is_none());
     assert!(ImageSource::from_rgba8(2, 2, vec![0; 16]).is_some());
-    // Zero-area images carry no pixels and cannot upload.
     assert!(ImageSource::from_rgba8(0, 4, Vec::new()).is_none());
 }
 

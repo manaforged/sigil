@@ -1,10 +1,7 @@
-//! RAII span.
-
 use std::time::Instant;
 
 use crate::store;
 
-/// Open interval. Drop records the duration.
 pub struct Span {
     name: &'static str,
     cat: &'static str,

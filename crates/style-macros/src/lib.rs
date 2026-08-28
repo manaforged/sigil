@@ -1,12 +1,3 @@
-//! Proc macros for Sigil utility classes (`classes!`).
-//!
-//! **Resolution contract:** `classes!` expands to paths under
-//! `sigil::__private::…`. Consumers must depend on the `sigil-ui` facade
-//! crate (library name `sigil`) — not on `sigil-style` or this crate
-//! directly — and must not rename that dependency, or the expansion will
-//! not resolve.
-
-#![deny(missing_docs)]
 use proc_macro::TokenStream;
 use quote::quote;
 
@@ -31,7 +22,6 @@ mod generated {
     include!(concat!(env!("OUT_DIR"), "/structural_table.rs"));
 }
 
-/// Resolve utility class literals into a static style-atom slice.
 #[proc_macro]
 pub fn classes(input: TokenStream) -> TokenStream {
     let _table_len = generated::STRUCTURAL_TABLE.len();

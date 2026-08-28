@@ -1,7 +1,5 @@
 use super::*;
 
-// Hebrew "אבג" — 3 letters, 2 bytes each; logical offsets 0,2,4,6.
-// Displayed right-to-left, so the visual-right edge is logical 0.
 const HE: &str = "אבג";
 
 fn to(step: Step) -> Option<usize> {
@@ -22,11 +20,8 @@ fn pure_ltr_moves_logically() {
 
 #[test]
 fn pure_rtl_reverses() {
-    // Caret at logical start (0) is the visual-RIGHT edge: Left moves
-    // logically forward (visually left); Right has nowhere to go.
     assert_eq!(to(visual_step(HE, 0, false)), Some(2), "RTL Left = forward");
     assert_eq!(to(visual_step(HE, 0, true)), None, "RTL visual-right edge");
-    // Logical end (6) is the visual-LEFT edge.
     assert_eq!(
         to(visual_step(HE, 6, true)),
         Some(4),
@@ -37,7 +32,5 @@ fn pure_rtl_reverses() {
 
 #[test]
 fn mixed_line_defers_to_logical() {
-    // "aאבc" has an LTR run, an RTL run, and an LTR run — visual
-    // navigation there needs affinity, so we defer to logical.
     assert_eq!(visual_step("aאבc", 1, true), Step::Logical);
 }

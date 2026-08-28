@@ -1,13 +1,3 @@
-//! Reactive children primitive — `NodeBuilder::children_reactive`
-//! and `NodeBuilder::children_keyed`.
-//!
-//! Installs a single `effect_named` parented to the parent component's
-//! reactive owner. On every signal change the effect enqueues a
-//! deferred rebuild; `Cx::flush_reactive_children` drains the queue.
-//!
-//! Positional rebuilds dispose every prior child and mount the new
-//! list. Keyed rebuilds keep a live [`NodeId`] when the key stays.
-
 use std::cell::RefCell;
 use std::hash::Hash;
 use std::rc::Rc;
@@ -21,26 +11,15 @@ use crate::{Cx, NodeId};
 type RebuildFn = Box<dyn FnMut(&mut Cx)>;
 type KeyedMount<K> = (Vec<(K, NodeId)>, SmallVec<[NodeId; 4]>);
 
-/// One pending children-list rebuild for a parent.
-///
-/// `apply` runs with `&mut Cx` during `Cx::flush_reactive_children`.
 pub(crate) struct DeferredRebuild {
     pub(crate) parent: NodeId,
     pub(crate) apply: RebuildFn,
 }
 
 thread_local! {
-    /// Pending rebuilds queued from inside reactive effects. Drained by
-    /// `Cx::flush_reactive_children`. Single-threaded because the entire
-    /// reactive runtime is main-thread only (see DR-005).
     static PENDING: RefCell<Vec<DeferredRebuild>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Push a rebuild onto the thread-local queue.
-///
-/// Multiple signal writes can re-run the same effect before the next
-/// layout flush. One parent has one reactive child installer; a later
-/// enqueue for that parent replaces the earlier one.
 fn enqueue(rebuild: DeferredRebuild) {
     PENDING.with(|cell| {
         let mut pending = cell.borrow_mut();
@@ -56,14 +35,10 @@ fn enqueue(rebuild: DeferredRebuild) {
     });
 }
 
-/// Drain the queue into the caller's vector. Used by
-/// `Cx::flush_reactive_children` so the kernel never observes the
-/// thread-local directly outside this module.
 pub(crate) fn drain_pending() -> Vec<DeferredRebuild> {
     PENDING.with(|cell| std::mem::take(&mut *cell.borrow_mut()))
 }
 
-/// Install the positional reactive-children effect on `parent`.
 pub(crate) fn install<F, I, N>(parent: NodeId, mut f: F)
 where
     F: FnMut() -> I + 'static,
@@ -87,7 +62,6 @@ where
     });
 }
 
-/// Install the keyed reactive-children effect on `parent`.
 pub(crate) fn install_keyed<F, I, K, N>(parent: NodeId, mut f: F)
 where
     F: FnMut() -> I + 'static,
@@ -132,7 +106,6 @@ fn apply_positional(
     *prior.borrow_mut() = new_ids;
 }
 
-/// Queue a keyed rebuild for `parent` using an existing id map.
 pub fn schedule_keyed_rebuild<K, N>(
     parent: NodeId,
     prior: Rc<RefCell<Vec<(K, NodeId)>>>,
@@ -253,11 +226,6 @@ fn keyed_children(prefix: &[NodeId], order: &[NodeId]) -> SmallVec<[NodeId; 4]> 
 }
 
 impl Cx {
-    /// Drain any pending reactive-children rebuilds.
-    ///
-    /// For each queued rebuild, run the apply thunk. Idempotent when
-    /// the queue is empty. A rebuild's `IntoNode::build` may install
-    /// more reactive children; drain to fixpoint.
     pub fn flush_reactive_children(&mut self) {
         loop {
             let pending = drain_pending();

@@ -1,5 +1,3 @@
-//! Text summary of recorded frames.
-
 use std::fmt::Write as _;
 
 use crate::store::{self, FRAME_BUDGET_NS, Frame, INTERACT_BUDGET_NS};

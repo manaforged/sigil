@@ -1,22 +1,11 @@
-//! DPI scale and logical-size primitives.
-
 use crate::{PhysicalSize, Point};
 
-/// Per-window scale factor. `physical_px = logical_px * scale`.
-///
-/// Always strictly positive. Typical values are 1.0, 1.25, 1.5, 2.0, 3.0.
-/// Constructed via [`Scale::new`] or [`Scale::ONE`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Scale(f32);
 
 impl Scale {
-    /// Identity scale (1.0, one logical pixel = one physical pixel).
     pub const ONE: Self = Self(1.0);
 
-    /// Construct from a positive `f32`. Non-positive or non-finite
-    /// values clamp to `ONE` (defensive, winit can in theory report
-    /// a `0.0` scale on a transient surface state we don't want to
-    /// crash on).
     #[must_use]
     pub fn new(scale: f32) -> Self {
         if scale.is_finite() && scale > 0.0 {
@@ -26,15 +15,11 @@ impl Scale {
         }
     }
 
-    /// Borrow the raw factor.
     #[must_use]
     pub const fn factor(self) -> f32 {
         self.0
     }
 
-    /// Convert a logical-pixel size into the matching physical-pixel size.
-    /// Rounds half-to-even, then clamps each axis to `>= 1` so wgpu's
-    /// swap-chain configuration never receives zero.
     #[must_use]
     pub fn to_physical(self, logical: LogicalSize) -> PhysicalSize {
         PhysicalSize::new(
@@ -43,7 +28,6 @@ impl Scale {
         )
     }
 
-    /// Convert a physical-pixel size into the matching logical-pixel size.
     #[must_use]
     pub fn to_logical(self, physical: PhysicalSize) -> LogicalSize {
         LogicalSize::new(
@@ -52,26 +36,19 @@ impl Scale {
         )
     }
 
-    /// Convert a physical position into a logical [`Point`], used by the
-    /// shell adapter when translating winit pointer events.
     #[must_use]
     pub fn point_to_logical(self, physical: Point) -> Point {
         Point::new(physical.x / self.0, physical.y / self.0)
     }
 }
 
-/// A size in **logical pixels**. The unit users specify everywhere
-/// except at the HAL boundary.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct LogicalSize {
-    /// Width in logical pixels.
     pub width: f32,
-    /// Height in logical pixels.
     pub height: f32,
 }
 
 impl LogicalSize {
-    /// Construct a logical size.
     #[must_use]
     pub const fn new(width: f32, height: f32) -> Self {
         Self { width, height }
@@ -81,7 +58,8 @@ impl LogicalSize {
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 fn logical_axis_to_physical(logical: f32, scale: f32) -> u32 {
     let physical = round_ties_even(logical * scale);
@@ -94,7 +72,10 @@ fn logical_axis_to_physical(logical: f32, scale: f32) -> u32 {
     }
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn physical_axis_to_logical(physical: u32, scale: f32) -> f32 {
     physical as f32 / scale
 }
@@ -102,7 +83,8 @@ fn physical_axis_to_logical(physical: u32, scale: f32) -> f32 {
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 fn round_ties_even(value: f32) -> f32 {
     if !value.is_finite() {

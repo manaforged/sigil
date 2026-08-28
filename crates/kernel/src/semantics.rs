@@ -1,36 +1,20 @@
-//! Accessibility semantics carried by every node.
-
 use sigil_hal::Shortcut;
 use sigil_reactive::Signal;
 use smallvec::SmallVec;
 
 use crate::NodeId;
 
-/// Scope kind for focus-trap regions (DR-050 §6).
-///
-/// Hosted by the kernel so widgets can advertise modal / popup
-/// containment; the focus engine reads this when routing keyboard
-/// navigation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FocusScopeKind {
-    /// A modal dialog — focus traps inside the subtree.
     Modal,
-    /// A popup/menu — focus traps inside the subtree but Escape
-    /// dismisses to the trigger.
     Popup,
-    /// Inert subtree — descendants are excluded from focus
-    /// navigation but remain visible.
     Inert,
 }
 
-/// Source for a node's accessible name or description.
 #[derive(Clone, Debug)]
 pub enum AccessibleName {
-    /// No explicit source has been provided.
     None,
-    /// A fixed string supplied by the component author.
     Static(String),
-    /// A reactive string owned by the component's reactive owner.
     Derived(Signal<String>),
 }
 
@@ -52,71 +36,34 @@ impl From<Signal<String>> for AccessibleName {
     }
 }
 
-/// Accessibility metadata present on every node.
 #[derive(Clone, Debug)]
 pub struct A11yProps {
-    /// AccessKit role for this node.
     pub role: accesskit::Role,
-    /// Accessible name source.
     pub name: AccessibleName,
-    /// Optional accessible description source.
     pub description: Option<AccessibleName>,
-    /// Supported platform actions.
     pub actions: SmallVec<[accesskit::Action; 4]>,
-    /// Whether this node participates in focus navigation.
     pub focusable: bool,
-    /// When focused, this node receives a plain `Tab` key instead of the router
-    /// moving focus (code editors / grids that indent with Tab). `Shift+Tab` still
-    /// moves focus, so the node is never a keyboard trap (WCAG 2.1.2).
     pub traps_tab: bool,
-    /// Optional explicit tab order index.
     pub tab_index: Option<i32>,
-    /// Optional keyboard shortcut advertised by the node.
     pub keyboard_shortcut: Option<Shortcut>,
-    /// Whether this node participates in pointer hit-testing.
     pub hittable: bool,
-    /// Reactive checked state for checkbox-like controls.
     pub checked: Option<Signal<bool>>,
-    /// Reactive selected state for selectable rows and options.
     pub selected: Option<Signal<bool>>,
-    /// Reactive numeric value for range-like controls.
     pub value_now: Option<Signal<f32>>,
-    /// Minimum numeric value for range-like controls.
     pub value_min: Option<f32>,
-    /// Maximum numeric value for range-like controls.
     pub value_max: Option<f32>,
-    /// Increment unit for range-like controls — the amount one
-    /// AT-initiated Increment/Decrement action moves `value_now`
-    /// (5/5 Wave 3 T10). `None` means AT increments default to 1.0.
     pub step: Option<f32>,
-    /// Reactive text value for text-input-like controls.
     pub text_value: Option<Signal<String>>,
-    /// Placeholder text for text-input-like controls.
     pub placeholder: Option<String>,
-    /// Nodes owned by this node in the accessibility tree.
     pub owns: SmallVec<[NodeId; 2]>,
-    /// Node that labels this node.
     pub labelled_by: Option<NodeId>,
-    /// Live-region politeness for assistive-tech announcements.
     pub live: Option<accesskit::Live>,
-    /// Reactive expanded state for disclosure-like controls.
     pub expanded: Option<Signal<bool>>,
-    /// Reactive sort direction for grid column headers
-    /// ([`accesskit::Role::ColumnHeader`]). `None` while the column is
-    /// not the active sort.
     pub sort_direction: Option<Signal<Option<accesskit::SortDirection>>>,
-    /// Reactive total row count for grids ([`accesskit::Role::Grid`]),
-    /// including header rows. Reactive because quick-filters change the
-    /// count without rebuilding the tree.
     pub row_count: Option<Signal<usize>>,
-    /// Total column count for grids ([`accesskit::Role::Grid`]).
     pub column_count: Option<usize>,
-    /// 1-based row index within the grid (ARIA `rowindex` semantics).
     pub row_index: Option<usize>,
-    /// 1-based column index of a cell within its row (ARIA `colindex`
-    /// semantics).
     pub column_index: Option<usize>,
-    /// Focus-scope kind for trap regions (modal / popup / inert).
     pub focus_scope: Option<FocusScopeKind>,
 }
 

@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-//! W5-A11Y (DR-050 §2 mapping table, §5 focus) — `TreeUpdate` projection
+//! A11Y (DR-050 §2 mapping table, §5 focus) — `TreeUpdate` projection
 //! over a small real widget tree (button + text field + modal), verified
 //! against an injected per-node bounds lookup.
 //!
@@ -31,7 +31,7 @@ impl TextMeasure for ZeroTextMeasure {
     }
 }
 
-/// RC-focus adversarial finding 1: `publish_a11y` must run AFTER
+/// Ordering requirement: `publish_a11y` must run AFTER
 /// `recompute_layout`, not before — otherwise a signal-driven move/resize
 /// publishes stale bounds and the correction never lands on a later
 /// clean frame (the dirty gate suppresses it). This proves the contract

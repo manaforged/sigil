@@ -1,5 +1,3 @@
-//! Thread-local event log.
-
 use std::cell::RefCell;
 use std::env;
 use std::path::PathBuf;
@@ -15,10 +13,7 @@ const ENV_OFF: u8 = 1;
 const ENV_ON: u8 = 2;
 const WARN_CAP: u8 = 8;
 
-/// 60 Hz frame budget in nanoseconds.
 pub const FRAME_BUDGET_NS: u64 = 16_670_000;
-/// Chrome INP threshold (200 ms). Not the native click bar.
-/// Native interaction uses [`FRAME_BUDGET_NS`].
 pub const INTERACT_BUDGET_NS: u64 = 200_000_000;
 
 static FORCED: AtomicBool = AtomicBool::new(false);
@@ -30,21 +25,14 @@ thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::new());
 }
 
-/// One named duration or counter on a frame.
 pub type Phase = (&'static str, u64);
 
-/// One closed frame.
 #[derive(Clone, Debug)]
 pub struct Frame {
-    /// 0-based index.
     pub index: u32,
-    /// Input or scheduler that caused this frame.
     pub cause: &'static str,
-    /// Wall-clock nanoseconds from [`begin_frame`](super::begin_frame) to tick.
     pub wall_ns: u64,
-    /// Phase name + nanoseconds (nested phases included).
     pub phases: Vec<Phase>,
-    /// Counters for this frame.
     pub counts: Vec<Phase>,
 }
 
@@ -61,7 +49,6 @@ impl Default for Frame {
 }
 
 impl Frame {
-    /// Counter value, or 0.
     #[must_use]
     pub fn counter(&self, name: &str) -> u64 {
         self.counts
@@ -70,7 +57,6 @@ impl Frame {
             .map_or(0, |(_, v)| *v)
     }
 
-    /// Wall-clock frame time, or the sum of top-level phases if unset.
     #[must_use]
     pub fn total_ns(&self) -> u64 {
         if self.wall_ns > 0 {
@@ -83,7 +69,6 @@ impl Frame {
             .sum()
     }
 
-    /// Phase with the largest duration.
     #[must_use]
     pub fn hottest(&self) -> Option<Phase> {
         self.phases.iter().copied().max_by_key(|(_, ns)| *ns)
