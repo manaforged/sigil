@@ -14,6 +14,7 @@ use sigil_style::Rgba8;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn ordered_batches_share_one_rect_upload_buffer() {
     let mut renderer = WgpuRenderer::new().expect("renderer");
     if let Err(error) = renderer.ensure_headless_for_tests() {

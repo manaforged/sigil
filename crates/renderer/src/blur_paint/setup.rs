@@ -1,6 +1,3 @@
-//! wgpu setup helpers for [`super::BlurPipeline`] — bind-group layouts,
-//! buffers, vertex layouts, and pipeline-state objects.
-
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 

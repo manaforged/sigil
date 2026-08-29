@@ -1,5 +1,3 @@
-//! Offscreen command-scene rendering support.
-
 use sigil_hal::Color;
 
 use crate::blur_paint::BlurPipeline;
@@ -19,30 +17,13 @@ use crate::slug::SlugTextPipeline;
 use crate::split_encoder::SplitEncoder;
 use crate::sprite_paint::SpritePipeline;
 
-/// Wgpu render target for command-scene offscreen capture.
 #[derive(Clone, Copy)]
 pub struct OffscreenTarget<'a> {
-    /// Device that owns `view`.
     pub device: &'a wgpu::Device,
-    /// Queue paired with `device`.
     pub queue: &'a wgpu::Queue,
-    /// Texture view to clear and draw into.
     pub view: &'a wgpu::TextureView,
-    /// Texture format used to build render pipelines.
     pub format: wgpu::TextureFormat,
-    /// Logical viewport used by scene-to-NDC conversion.
     pub viewport: (f32, f32),
-    /// Physical pixels per logical pixel of `view` — the target's DPI scale
-    /// factor. `1.0` means logical == physical (`view` is exactly `viewport`
-    /// pixels); `2.0` means `view` is a `2×` high-DPI capture (`2 * viewport`
-    /// pixels). Text draws multiply their glyph-coverage AA ramp by this so the
-    /// ramp stays one *physical* pixel wide — sharp on high-DPI captures instead
-    /// of blurry. Mirrors [`ScreenSubmission::scale`][crate::ScreenSubmission].
-    ///
-    /// **Required, no default.** Callers must state their capture's DPI: a
-    /// silent `1.0` renders text at logical scale into a physical texture, which
-    /// is exactly the blur this field exists to prevent. Logical == physical
-    /// captures (the common case) pass `1.0` explicitly.
     pub scale: f32,
 }
 
@@ -60,12 +41,6 @@ impl<'a> From<&ScreenSubmission<'a>> for OffscreenTarget<'a> {
 }
 
 impl WgpuRenderer {
-    /// Clear `target.view`, then draw every command from `scene` into it.
-    ///
-    /// Unlike [`Self::render_command_scene`], this path does not acquire or
-    /// present a window surface. It also promotes an uninitialized renderer to
-    /// a headless device state, so callers do not need to create a surface
-    /// before capturing into their own texture.
     pub fn render_command_scene_offscreen(
         &mut self,
         target: OffscreenTarget<'_>,
@@ -85,8 +60,6 @@ impl WgpuRenderer {
                 label: Some("sigil-renderer offscreen encoder"),
             });
         record_clear(&mut encoder, target.view, clear_color);
-        // Transient layer textures must outlive the recorded passes; they live
-        // here until after the submit below.
         let mut retained = Vec::new();
         let mut encoder = SplitEncoder::new(target.device, target.queue, encoder);
         let result = if ready.device == *target.device {
@@ -114,7 +87,10 @@ impl WgpuRenderer {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the argument list mirrors the upstream API contract"
+)]
 fn walk_with_ready(
     ready: &mut ReadyState,
     encoder: &mut SplitEncoder,
@@ -143,9 +119,6 @@ fn walk_with_ready(
             retained,
             view: target.view,
             viewport: target.viewport,
-            // Physical-per-logical ratio of the capture texture: 1.0 for
-            // logical == physical captures, > 1.0 for HiDPI goldens, so the
-            // text AA ramp stays one physical pixel wide.
             scale: target.scale,
             format: target.format,
             scene_pipelines,
@@ -191,9 +164,6 @@ pub(crate) fn walk_with_temporary_pipelines(
             retained,
             view: target.view,
             viewport: target.viewport,
-            // Physical-per-logical ratio of the capture texture: 1.0 for
-            // logical == physical captures, > 1.0 for HiDPI goldens, so the
-            // text AA ramp stays one physical pixel wide.
             scale: target.scale,
             format: target.format,
             scene_pipelines: &mut scene_pipelines,

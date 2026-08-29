@@ -1,11 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Lazy wgpu device/adapter/queue state owned by [`WgpuRenderer`].
-//!
-//! Split out of [`crate::renderer`] to keep each file under the 400-line
-//! hygiene cap and give scene-pipeline caching a home. See
-//! [`crate::renderer`] for the public surface.
-//!
-//! [`WgpuRenderer`]: crate::WgpuRenderer
 
 use crate::blur_paint::BlurPipeline;
 use crate::decoration_paint::DecorationPipeline;
@@ -19,19 +12,8 @@ use crate::slug::SlugTextPipeline;
 use crate::sprite_paint::SpritePipeline;
 use pollster::FutureExt as _;
 
-/// Lazily-initialised GPU state.
-///
-/// `WgpuRenderer::new` only builds the `wgpu::Instance` — picking an
-/// adapter before we have a presentable surface would let wgpu hand us
-/// a GPU that later cannot be configured onto the user's window (hybrid
-/// iGPU/dGPU laptops, remote-display protocols, WebGL-compat-only
-/// fallbacks, …). The first call to `create_surface` promotes this to
-/// `Ready` by picking an adapter that is known-compatible with that
-/// concrete surface.
 pub(crate) enum DeviceState {
-    /// Instance-only state. No adapter/device has been requested yet.
     Uninitialized(wgpu::Instance),
-    /// Adapter + device chosen against the first surface we created.
     Ready(Box<ReadyState>),
 }
 
@@ -84,7 +66,6 @@ impl DeviceState {
         }
     }
 
-    /// Promote `Uninitialized` → `Ready`. Idempotent after the first call.
     pub(crate) fn ensure_ready(
         &mut self,
         surface: &wgpu::Surface<'_>,
@@ -96,7 +77,6 @@ impl DeviceState {
         }
     }
 
-    /// Promote `Uninitialized` -> `Ready` without requiring a surface.
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, RendererError> {
         self.ensure_ready_for(None)?;
         match self {
@@ -144,7 +124,6 @@ impl DeviceState {
     }
 }
 
-/// Request an adapter compatible with `surface`, then a device from that adapter.
 fn request_adapter_and_device(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,

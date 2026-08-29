@@ -21,6 +21,7 @@ use sigil_renderer::{
 use sigil_style::Rgba8;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_construction_does_not_panic() {
     // Cheap construction — only allocates the wgpu Instance.
     // Catches API-shape regressions in WgpuRenderer::new without
@@ -29,6 +30,7 @@ fn renderer_construction_does_not_panic() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_new_repeatable() {
     // Two construction sites must not contend on global wgpu state.
     let _a = WgpuRenderer::new().expect("first renderer");
@@ -36,6 +38,7 @@ fn renderer_new_repeatable() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_pre_surface_accessors_return_none() {
     // Bulletproof contract: device/queue accessors must not panic
     // before create_surface (which is when launch first calls them
@@ -46,6 +49,7 @@ fn renderer_pre_surface_accessors_return_none() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn render_command_scene_paints_nested_clip() {
     let scene = nested_clip_scene();
 
@@ -64,6 +68,7 @@ fn render_command_scene_paints_nested_clip() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn render_command_scene_paints_save_layer_with_opacity() {
     let mut builder = SceneBuilder::new();
     builder.with_layer(0.5, |scene| {
@@ -84,6 +89,7 @@ fn render_command_scene_paints_save_layer_with_opacity() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn render_command_scene_transform_affects_descendants() {
     let transform = [[1.0, 0.0, 8.0], [0.0, 1.0, 12.0]];
     let mut builder = SceneBuilder::new();

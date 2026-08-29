@@ -61,6 +61,7 @@ const BLEND_TOL: u8 = 20;
 /// Render the R11 layer-pool scene and assert all four pixel-level contracts.
 /// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn layer_pixel_check() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping layer_pixel_check");

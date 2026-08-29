@@ -1,21 +1,11 @@
-//! Pack small raster images into shared atlas pages.
-//!
-//! One `ImageSource` used to consume one of [`MAX_ATLASES`] slots. Nav
-//! path icons fill that registry and later images no-op. Pages hold many
-//! small images; oversized images still take a dedicated slot.
-
 use super::SpritePipeline;
 use super::atlas::{AtlasDesc, MAX_ATLASES};
 
-/// Side of one packed page, in texels.
 pub(super) const PAGE: u32 = 1024;
-/// Gap between packed images so linear sampling does not bleed.
 const PAD: u32 = 1;
 
-/// Placement of one image inside a registered atlas.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PackedImage {
-    /// Atlas id from [`super::SpritePipeline::register_atlas`].
     pub atlas: u32,
     pub x: u32,
     pub y: u32,
@@ -37,7 +27,6 @@ impl PackedImage {
     }
 }
 
-/// Shelf cursor for the current packed page.
 struct Page {
     atlas: u32,
     x: u32,
@@ -45,14 +34,12 @@ struct Page {
     shelf_h: u32,
 }
 
-/// Shelf packer across one or more `PAGE`×`PAGE` atlases.
 #[derive(Default)]
 pub(crate) struct ImagePack {
     pages: Vec<Page>,
 }
 
 impl ImagePack {
-    /// Place `w`×`h` on an existing page, or `None` if a new page is needed.
     pub(super) fn try_place(&mut self, w: u32, h: u32) -> Option<PackedImage> {
         let need_w = w.saturating_add(PAD);
         let need_h = h.saturating_add(PAD);
@@ -69,7 +56,6 @@ impl ImagePack {
         })
     }
 
-    /// Start a new page on `atlas` and place the first image.
     pub(super) fn push_page(&mut self, atlas: u32, w: u32, h: u32) -> Option<PackedImage> {
         if self.pages.len() >= MAX_ATLASES {
             return None;
@@ -93,10 +79,6 @@ impl ImagePack {
 }
 
 impl SpritePipeline {
-    /// Resolve a raster image to an atlas placement, uploading pixels
-    /// once per content id. Small images share a page. Returns
-    /// [`PackedImage::NONE`] when the registry is full or the buffer is
-    /// invalid (the sprite draw then no-ops).
     pub(crate) fn register_image(
         &mut self,
         device: &wgpu::Device,
@@ -247,6 +229,9 @@ impl Page {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(
+    clippy::unwrap_used,
+    reason = "test/instrumentation context; the invariant is proven by the caller"
+)]
 #[path = "image_pack_tests.rs"]
 mod tests;

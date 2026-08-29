@@ -141,8 +141,8 @@ fn image_samples_its_texture_with_correct_orientation() {
 
 #[test]
 fn twenty_four_distinct_images_all_paint() {
-    // One ImageSource used to consume one of 16 atlas slots. Twenty-four
-    // solid swatches must all sample after packing onto a shared page.
+    // Twenty-four solid swatches must all sample distinct cells after
+    // packing onto a shared atlas page.
     let swatches: Vec<_> = (0..24_u8)
         .map(|i| {
             let color = [i.saturating_mul(10), 40, 200_u8.saturating_sub(i), 255];

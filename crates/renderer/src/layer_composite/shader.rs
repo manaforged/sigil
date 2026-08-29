@@ -62,8 +62,6 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let distance = rounded_rect_sdf(in.local, in.half_size, in.clip_radii);
     let aa = max(fwidth(distance) * 0.5, 0.0001);
     let coverage = 1.0 - smoothstep(-aa, aa, distance);
-    // The offscreen layer texture is already premultiplied (output of prior
-    // ALPHA_BLENDING passes), so attenuate every channel by the same mask.
     let amount = in.opacity * coverage;
     let texel = textureSample(layer_tex, layer_sampler, in.uv);
     return texel * amount;

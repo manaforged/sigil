@@ -97,9 +97,10 @@ const RECT_CENTRE_Y: u32 = 180; // 60 + 240/2
 /// adapter is a ghost-pass — the test reports green while certifying
 /// nothing. Headless CI must run this `--ignored`, never pass it vacuously.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_pixel_check() {
     let (device, queue) = try_request_device().expect(
-        "no wgpu adapter — blur_pixel_check needs a real GPU (run --ignored on headless CI)",
+        "no wgpu adapter — blur_pixel_check needs a real GPU (run the GPU tier with --ignored)",
     );
 
     let pixels = render_backdrop_blur_scene(&device, &queue);

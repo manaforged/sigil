@@ -21,6 +21,7 @@ const VIEWPORT_WIDTH: u32 = 360;
 const VIEWPORT_HEIGHT: u32 = 80;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn icon_commands_walk_and_populate_sprite_pipeline_cache() {
     let scene = icon_scene();
     assert_icon_command_shape(&scene);

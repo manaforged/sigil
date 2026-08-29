@@ -1,11 +1,3 @@
-//! Color-glyph (emoji) emission for the paint pass.
-//!
-//! The `Slug` outline pipeline skips glyphs with no outline — exactly the
-//! `CBDT`/`sbix` color-bitmap emoji case, so emoji would otherwise vanish.
-//! This module rasterizes those glyphs (via [`sigil_text::color_glyph`])
-//! and emits them as `DrawImage` commands, reusing the renderer's existing
-//! RGBA image path, so emoji paint in full color.
-
 use std::collections::HashMap;
 
 use sigil_hal::{Point, Rect, RenderedGlyph};
@@ -16,23 +8,14 @@ use skrifa::{FontRef, GlyphId};
 use crate::scene_builder::SceneBuilder;
 use crate::scene_command::DrawImage;
 
-/// Fraction of the em the emoji box rises above the baseline. Noto Color
-/// Emoji art sits roughly cap-height to a shallow descent; 0.85 up leaves
-/// 0.15 below so the glyph centres on the text without visible clipping.
 const EMOJI_ASCENT_FRAC: f32 = 0.85;
 
-/// Node-paint context shared by every color glyph in one text node.
 struct GlyphTarget {
     id: NodeId,
     rect: Rect,
     opacity: u16,
 }
 
-/// Emit a `DrawImage` for every color-bitmap glyph in `para`, positioned
-/// against the node's `rect`.
-///
-/// Mono glyphs are untouched: they render through the `Slug` path, which
-/// already skips these outline-less glyphs, so there is no double paint.
 pub(crate) fn emit_color_glyphs(
     scene: &mut SceneBuilder,
     id: NodeId,
@@ -50,8 +33,6 @@ pub(crate) fn emit_color_glyphs(
     }
 }
 
-/// Map each color-bitmap font id in the paragraph to owned bytes, so a
-/// glyph can be rasterized after the `for_each_font` borrow ends.
 fn collect_color_fonts(para: &Paragraph) -> HashMap<u64, (Vec<u8>, u32)> {
     let mut color_fonts: HashMap<u64, (Vec<u8>, u32)> = HashMap::new();
     para.for_each_font(|font_id, bytes, index| {
@@ -64,7 +45,6 @@ fn collect_color_fonts(para: &Paragraph) -> HashMap<u64, (Vec<u8>, u32)> {
     color_fonts
 }
 
-/// Rasterize one glyph and, if it has a color bitmap, push its `DrawImage`.
 fn emit_one(
     scene: &mut SceneBuilder,
     target: &GlyphTarget,

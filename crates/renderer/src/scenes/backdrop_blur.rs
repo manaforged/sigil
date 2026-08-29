@@ -3,16 +3,12 @@ use sigil_hal::{Color, Rect};
 use super::helpers::{rect, rgba};
 use crate::{CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneRectStyle};
 
-/// Build the R12 backdrop-blur showcase scene.
 #[must_use]
 pub fn backdrop_blur() -> (CommandScene, (f32, f32), Color) {
     let viewport = (1024.0, 360.0);
     let clear = Color::rgba(0.05, 0.06, 0.09, 1.0);
     let mut scene = SceneBuilder::new();
 
-    // Full-viewport bar pattern acts as the backdrop. Layers without bars
-    // would composite transparent atop this, layers with bars produce a
-    // doubly-opaque pattern that the blur attenuates.
     draw_bar_pattern(&mut scene, rect(0.0, 0.0, viewport.0, viewport.1));
 
     push_blur_surface(&mut scene, rect(100.0, 60.0, 240.0, 240.0), 0.0);

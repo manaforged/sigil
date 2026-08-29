@@ -32,18 +32,13 @@ fn slots_are_dense_stable_and_survive_reinsert() {
     cache.insert(key(20), band());
     cache.insert(key(30), band());
 
-    // Fresh keys take dense, insertion-ordered slots.
     assert_eq!(cache.get(&key(10)).unwrap().slot, 0);
     assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
     assert_eq!(cache.get(&key(30)).unwrap().slot, 2);
 
-    // Re-inserting an existing key MUST keep its slot — the atlas derives a
-    // glyph's byte offset from its slot, and a mid-frame offset move is the
-    // cold-cache scramble this addressing scheme exists to prevent.
     cache.insert(key(20), band());
     assert_eq!(cache.get(&key(20)).unwrap().slot, 1);
 
-    // A brand-new glyph after the churn still appends densely.
     cache.insert(key(40), band());
     assert_eq!(cache.get(&key(40)).unwrap().slot, 3);
 }

@@ -1,5 +1,3 @@
-//! Per-walk GPU upload storage for ordered primitive batches.
-
 use std::ops::Range;
 
 use bytemuck::Pod;
@@ -11,7 +9,6 @@ use crate::scene_instance::{
     FillInstance, GpuStop, MAX_GRADIENT_STOPS, RectInstance, SceneUniforms, ShadowInstance,
 };
 
-/// Maximum primitive payloads a command slice can produce.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(crate) struct UploadCapacities {
     rects: usize,
@@ -53,14 +50,12 @@ impl UploadCapacities {
     }
 }
 
-/// One uploaded section of a frame-owned GPU buffer.
 pub(crate) struct UploadedRange {
     pub(crate) buffer: wgpu::Buffer,
     pub(crate) bytes: Range<u64>,
     pub(crate) count: u32,
 }
 
-/// Buffers shared by every ordered primitive batch in one command walk.
 pub(crate) struct FrameUploads {
     device: wgpu::Device,
     uniform: Option<wgpu::Buffer>,
@@ -73,7 +68,10 @@ pub(crate) struct FrameUploads {
 }
 
 impl FrameUploads {
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one sequential pass; splitting would scatter the ordering it documents"
+    )]
     pub(crate) fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,

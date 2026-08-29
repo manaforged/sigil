@@ -1,5 +1,3 @@
-//! WGSL shader source for drop-shadow paint.
-
 pub(super) const SHADOW_SHADER: &str = r"
 const TAU: f32 = 6.283185307179586;
 
@@ -118,14 +116,10 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     var coverage = 0.0;
 
     if shadow_kind >= 1.5 {
-        // Glow path (kind == 2.0): same outer-shadow coverage math.
-        // The caller supplies a bright color; the halo effect comes from
-        // that bright RGB rather than any special blend mode.
         let p = in.pos_px - center - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));
         coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread);
     } else if shadow_kind >= 0.5 {
-        // Inner path (kind == 1.0): coverage inside the surface, inverted.
         let p_surface = in.pos_px - center;
         let d_surface = rounded_rect_sdf(p_surface, surface_half_size, in.corner_radii, 0.0);
         if d_surface > 0.0 {
@@ -137,18 +131,12 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
             coverage = 1.0 - shadow_coverage(p_shadow, sigma, in.corner_radii, half_size, inner_spread);
         }
     } else {
-        // Outer path (kind == 0.0): coverage outside the surface, dark cast.
         let p = in.pos_px - center - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));
         coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread);
     }
 
     let alpha = in.color.a * coverage;
-    // Straight-alpha output for every branch. The pipeline blend state is
-    // ALPHA_BLENDING (src factor = SrcAlpha), so the GPU multiplies RGB by
-    // alpha during composition. Pre-multiplying in the shader would square
-    // alpha for the colour term and tint coloured shadows toward black —
-    // wrong for any non-black shadow tint (glow, coloured drop shadow).
     return vec4<f32>(in.color.rgb, alpha);
 }
 ";

@@ -1,9 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Text-decoration paint pipeline — underline / strikethrough / wavy underline.
-//!
-//! One pipeline per surface `TextureFormat`, cached in `ReadyState`.
-//! The WGSL shader branches on a `kind` discriminant (0/1/2) packed into
-//! the per-instance `params.w` slot.
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
@@ -13,35 +8,17 @@ use crate::scene_command::{DecorationKind, DrawDecoration};
 use crate::scene_instance::BlendSpace;
 use crate::scene_paint::PaintCtx;
 
-// ── WGSL source ──────────────────────────────────────────────────────────────
-
 const SHADER_SRC: &str = include_str!("decoration_paint.wgsl");
 
-// ── GPU instance record ───────────────────────────────────────────────────────
-
-/// Per-instance data uploaded for one decoration draw call.
-///
-/// Layout (largest → smallest, explicit pad to 16-byte boundary):
-/// ```text
-/// band:   [f32; 4]  — 16 bytes  (x, y, w, h)
-/// color:  [f32; 4]  — 16 bytes  (linear RGBA)
-/// params: [f32; 4]  — 16 bytes  (opacity, period, line_width, kind_f32)
-/// ```
-/// Total: 48 bytes.  All fields are vec4-aligned; no implicit padding needed.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct DecorationInstance {
-    /// Band rect `[x, y, w, h]` in logical pixels.
     pub(crate) band: [f32; 4],
-    /// Linear RGBA in `[0, 1]`.
     pub(crate) color: [f32; 4],
-    /// `[opacity_01, period, line_width, kind_f32]`.
     pub(crate) params: [f32; 4],
 }
 
 const _: () = assert!(core::mem::size_of::<DecorationInstance>() == 48);
-
-// ── Vertex buffer layouts ─────────────────────────────────────────────────────
 
 const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: (core::mem::size_of::<f32>() as u64) * 2,
@@ -68,12 +45,6 @@ const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
     [0.0, 1.0],
 ];
 
-// ── Pipeline ──────────────────────────────────────────────────────────────────
-
-/// Wgpu resources for painting text decorations. One per surface format.
-///
-/// Instance + uniform buffers are allocated fresh per call (not persistent
-/// `queue.write_buffer` targets) — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct DecorationPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
@@ -99,7 +70,6 @@ impl DecorationPipeline {
         self.format
     }
 
-    /// Upload one ordered instance batch and draw it in a single pass.
     pub(crate) fn paint_uploaded(
         &self,
         ctx: PaintCtx<'_>,
@@ -143,8 +113,6 @@ impl DecorationPipeline {
         pass.draw(0..6, 0..instances.count);
     }
 }
-
-// ── Pipeline construction helpers ────────────────────────────────────────────
 
 fn make_shader(device: &wgpu::Device) -> wgpu::ShaderModule {
     device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -230,9 +198,6 @@ fn make_unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-// ── Instance builder ──────────────────────────────────────────────────────────
-
-/// Convert a [`DrawDecoration`] command into a GPU instance record.
 pub(crate) fn decoration_instance(
     draw: &DrawDecoration,
     opacity_scale: f32,
@@ -255,8 +220,6 @@ pub(crate) fn decoration_instance(
         params: [opacity, draw.period, draw.line_width, kind_f32],
     }
 }
-
-// ── Unit tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 #[path = "decoration_paint_tests.rs"]

@@ -1,6 +1,3 @@
-//! wgpu setup helpers for [`super::FillPipeline`] — pipeline construction,
-//! bind-group layouts, buffer allocators, and vertex layouts.
-
 use wgpu::util::DeviceExt as _;
 
 pub(super) const FILL_SHADER: &str = include_str!("../fill_paint.wgsl");

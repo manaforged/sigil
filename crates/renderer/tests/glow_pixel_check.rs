@@ -64,8 +64,9 @@ const SURF2: (f32, f32, f32, f32) = (660.0, 80.0, 200.0, 200.0);
 // ---- entry point ------------------------------------------------------------
 
 /// Render the R10 glow scene and assert all four pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
+/// Ignored by default — headless machines skip it instead of failing it.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn glow_pixel_check() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping glow_pixel_check");

@@ -1,5 +1,3 @@
-//! R10 / R11 showcase scenes (glow and offscreen layer pool).
-
 use sigil_hal::{Color, Point};
 
 use super::helpers::{rect, rgba};
@@ -8,12 +6,6 @@ use crate::{
     CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneGradientStyle,
     SceneRectStyle,
 };
-/// Build the R10 soft-glow showcase scene.
-///
-/// Three surfaces against a dark background:
-/// - Surface 0: no glow (control).
-/// - Surface 1: subtle cyan glow.
-/// - Surface 2: strong magenta glow.
 #[must_use]
 pub fn glow() -> (CommandScene, (f32, f32), Color) {
     use crate::shadow_paint::Shadow;
@@ -22,13 +14,11 @@ pub fn glow() -> (CommandScene, (f32, f32), Color) {
     let radii = CornerRadii::uniform(24.0);
     let mut scene = SceneBuilder::new();
 
-    // Surface 0 — no glow, control.
     scene.draw_rect(
         rect(100.0, 80.0, 200.0, 200.0),
         SceneRectStyle::new(fill, radii, 10_000),
     );
 
-    // Surface 1 — subtle cyan glow.
     scene.draw_shadow(
         rect(380.0, 80.0, 200.0, 200.0),
         radii,
@@ -39,7 +29,6 @@ pub fn glow() -> (CommandScene, (f32, f32), Color) {
         SceneRectStyle::new(fill, radii, 10_000),
     );
 
-    // Surface 2 — strong magenta glow.
     scene.draw_shadow(
         rect(660.0, 80.0, 200.0, 200.0),
         radii,
@@ -57,7 +46,6 @@ pub fn glow() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R11 offscreen layer-pool showcase scene.
 #[must_use]
 pub fn layer_pool() -> (CommandScene, (f32, f32), Color) {
     let viewport = (960.0, 320.0);

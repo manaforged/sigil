@@ -11,7 +11,7 @@
 //!   (c) Narrow text glyphs in flex/block children did not rasterise —
 //!       `text("v")` at a ~14px block width inside a 16x16 wrapper
 //!       produced zero glyph pixels. Same family as the Tooltip
-//!       W5.3a followup (bubble renders, inner text invisible in a
+//! tooltip-shape repro (bubble renders, inner text invisible in a
 //!       nested absolute-positioned container).
 //!
 //! Built directly against `kernel` + `layout` + `style` + `renderer`
@@ -223,7 +223,7 @@ fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     cx.add(root)
 }
 
-/// (c continued) — the Tooltip W5.3a shape: text nested inside a
+/// (c continued) — The tooltip bubble shape: text nested inside a
 /// `Position::Absolute` bubble that is itself a child of a
 /// `Position::Relative` wrapper (not the wrapper's flow child — the
 /// bubble is pulled out of flow like the real tooltip). Glyph ink must
@@ -258,7 +258,7 @@ fn nested_absolute_text_tooltip_shape_renders_ink() {
     );
 }
 
-/// Tooltip W5.3a shape: a `Position::Absolute` bubble (holding a text
+/// Tooltip bubble shape: a `Position::Absolute` bubble (holding a text
 /// child) as a sibling of the hovered target, both children of a
 /// `Position::Relative` wrapper — the bubble is pulled out of flow
 /// like the real tooltip widget.

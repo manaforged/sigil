@@ -12,7 +12,8 @@
 //!   `ScreenSubmission`/`submit_screen`). Wave 1 added `ScreenSubmission.scale`;
 //!   these prove it is load-bearing: a matching `scale` into a 6× physical
 //!   texture is sharp, `scale: 1.0` into the same texture is soft (the shipped
-//!   blur). No `#[ignore]` — both must pass now.
+//!   blur). The suite is ignored by default; run the GPU tier with
+//!   `--ignored` on real hardware.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -50,18 +51,22 @@ const RAMP_THRESHOLD_PX: f32 = 1.75;
 // ---- active tests: direct DrawParams path (scale field respected) ----------
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn glyph_edges_sharp_at_scale_1_0() {
     assert_direct_path_is_sharp(1.0);
 }
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn glyph_edges_sharp_at_scale_1_25() {
     assert_direct_path_is_sharp(1.25);
 }
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn glyph_edges_sharp_at_scale_1_5() {
     assert_direct_path_is_sharp(1.5);
 }
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn glyph_edges_sharp_at_scale_2_0() {
     assert_direct_path_is_sharp(2.0);
 }
@@ -91,6 +96,7 @@ const EMBED_TEXTURE_SCALE: f32 = 6.0;
 /// `ScreenSubmission.scale` set to the target's true DPI ratio, the AA ramp
 /// must stay sharp — this is the Wave 1 fix.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn embed_path_glyph_edges_are_sharp_with_matching_scale() {
     let (pixels, w, h) = render_embed_text(EMBED_TEXTURE_SCALE);
     assert_sharp(
@@ -107,6 +113,7 @@ fn embed_path_glyph_edges_are_sharp_with_matching_scale() {
 /// load-bearing, not just present. Must stay soft; if this regresses to
 /// sharp, `scale` stopped reaching the Slug draw.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn embed_path_glyph_edges_are_soft_with_mismatched_scale() {
     let (pixels, w, h) = render_embed_text(1.0);
     assert_soft(
@@ -256,10 +263,12 @@ const POLARITY_TOLERANCE: f32 = 0.15;
 const POLARITY_TEXT: &str = "sample";
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn polarity_stroke_weight_parity_scale_1_0() {
     assert_polarity_parity(1.0);
 }
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn polarity_stroke_weight_parity_scale_2_0() {
     assert_polarity_parity(2.0);
 }

@@ -54,8 +54,9 @@ const COL_P1: u32 = COL_P0 + PERIOD_PX; // 112, one full period
 const WAVE_LINE_WIDTH: f32 = 2.5;
 
 /// Render the R9 decoration scene and assert all four pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
+/// Ignored by default — headless machines skip it instead of failing it.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn decoration_pixels_match_underline_strikethrough_and_wave_contracts() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping decoration_pixel_check");

@@ -18,6 +18,20 @@ use sigil::prelude::*;
 use sigil_hal::{KeyEventInit, Point, PointerEventInit};
 use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil_renderer::{SceneCommand, emit_scene};
+
+// Cut routes through the clipboard: install a memory handle so the
+// write succeeds and the selection clears.
+struct CutMemory(RefCell<Option<String>>);
+
+impl sigil::clipboard::Clipboard for CutMemory {
+    fn set(&self, text: &str) -> Result<(), sigil::widgets::ClipError> {
+        *self.0.borrow_mut() = Some(text.to_owned());
+        Ok(())
+    }
+    fn get(&self) -> Option<String> {
+        self.0.borrow().clone()
+    }
+}
 use sigil_style::TextStyle;
 
 struct StubMeasure;
@@ -289,6 +303,7 @@ fn text_field_enter_fires_submit_with_current_value() {
 #[test]
 fn text_field_shift_arrow_selects_and_cut_clears_value() {
     sigil::reactive::Runtime::scope("sigil-widget-text-field-selection", || {
+        sigil::clipboard::install(CutMemory(RefCell::new(None)));
         let value = signal(String::from("hello"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
@@ -590,8 +605,8 @@ fn toggle_scene_emits_on_and_off_variants() {
             .expect("layout recomputes");
         let on_colors = scene_rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
-        // ON track paints the accent scale at step 8.
-        assert!(on_colors.contains(&theme.accent_scale.step(8)));
+        // ON track paints the solid accent.
+        assert!(on_colors.contains(&theme.accent));
         assert!(on_thumb_x > off_thumb_x);
     });
 }

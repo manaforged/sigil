@@ -69,8 +69,8 @@ fn progress_track_emits_border_strong_color() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.border_strong()),
-            "track should emit the border-strong (gray-8) color"
+            colors.contains(&theme.gray.step(4)),
+            "track should emit the muted gray-4 color"
         );
     });
 }
@@ -89,8 +89,8 @@ fn progress_fill_emits_accent_color() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent_scale.step(8)),
-            "fill should emit the muted accent-8 color"
+            colors.contains(&theme.accent),
+            "fill should emit the solid accent color"
         );
     });
 }
@@ -109,8 +109,8 @@ fn progress_indeterminate_emits_accent_fill() {
         let theme = Theme::default();
         let colors = scene_rect_colors(&cx, root);
         assert!(
-            colors.contains(&theme.accent_scale.step(8)),
-            "indeterminate fill should emit the muted accent-8 color"
+            colors.contains(&theme.accent),
+            "indeterminate fill should emit the solid accent color"
         );
     });
 }

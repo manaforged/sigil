@@ -45,6 +45,7 @@ const CY: f32 = 80.0;
 /// Renders the R6 pattern scene and asserts pixel-level contracts.
 /// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pattern_pixels_match_slash_and_checker_contracts() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping pattern_pixel_check");

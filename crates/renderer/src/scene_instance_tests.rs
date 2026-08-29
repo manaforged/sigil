@@ -136,10 +136,6 @@ fn draw_gradient_instance_packs_outside_stroke() {
     assert_array_close(inst.stroke_meta, [4.0, 0.0, 2.0, 0.0]);
 }
 
-/// DR-057 D3 groundwork: stroke colours resolve through the SAME
-/// blend-space conversion as fills, so a theme-token border matches a
-/// theme-token fill on every render-target format. Pre-refactor the
-/// raw floats bypassed conversion and strokes were format-dependent.
 #[test]
 fn stroke_color_uses_fill_blend_space_conversion() {
     let stroke = stroke(StrokeStyle::Solid, StrokeAlign::Centered, 2.0);

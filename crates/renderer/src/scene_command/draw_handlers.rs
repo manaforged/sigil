@@ -1,5 +1,3 @@
-//! Per-command draw handlers for the command-scene walker.
-
 use sigil_hal::Color;
 
 use crate::decoration_paint::{DecorationPipeline, decoration_instance};
@@ -251,11 +249,11 @@ impl Walk<'_> {
         self.ctx.stats.sprite_draws += 1;
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     pub(super) fn draw_image(&mut self, draw: &DrawImage) {
-        // Upload the pixels once per content id, then reuse the whole
-        // sprite paint path (transform, clip, opacity, draw) via a Poly
-        // sprite that samples the freshly-registered atlas full-frame.
         let packed = {
             let pipeline =
                 sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
@@ -277,7 +275,6 @@ impl Walk<'_> {
             },
             kind: SpriteKind::Poly,
             destination,
-            // Ignored for `Poly`; the atlas texel colour is used directly.
             color: sigil_style::Rgba8 {
                 r: 255,
                 g: 255,
@@ -295,8 +292,6 @@ impl Walk<'_> {
         if self.clip_rect(rect).is_none() {
             return Ok(());
         }
-        // The active clip becomes a GPU scissor so a run larger than its box (a
-        // scrolled editor paragraph) is cut at the edge per-pixel, not painted whole.
         let clip = self.current_clip();
         let Some(paragraph) = run.paragraph() else {
             return Ok(());
@@ -441,11 +436,6 @@ fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Col
     Color::rgba(r, g, b, a * opacity.clamp(0.0, 1.0))
 }
 
-/// Map an `iw`×`ih` image into `dest` per `fit`, returning the
-/// (source-atlas region, destination rect) the sprite draw uses. `Fill`
-/// stretches (full source → full dest); `Contain` letterboxes (full
-/// source → a centred sub-rect); `Cover` crops (a centred source region →
-/// full dest). Degenerate sizes fall back to `Fill`.
 fn fit_image(
     fit: sigil_kernel::ObjectFit,
     iw: f32,
@@ -477,6 +467,9 @@ fn fit_image(
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "exact comparison is the contract (regression pin)"
+)]
 #[path = "draw_handlers_tests.rs"]
 mod tests;

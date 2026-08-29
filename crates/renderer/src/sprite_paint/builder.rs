@@ -1,5 +1,3 @@
-//! GPU resource builders for the sprite paint pipeline.
-
 use wgpu::util::DeviceExt as _;
 
 use super::{SPRITE_SHADER, SpriteInstance, SpriteUniforms};

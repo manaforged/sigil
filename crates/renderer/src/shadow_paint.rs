@@ -1,5 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Drop-shadow paint pipeline using Evan Wallace's rounded-rect shadow form.
 
 use wgpu::util::DeviceExt as _;
 
@@ -11,21 +10,11 @@ use crate::scene_instance::{ShadowInstance, srgb_channel_to_linear};
 use crate::scene_paint::PaintCtx;
 use shadow_shader::SHADOW_SHADER;
 
-/// Selects whether a shadow is painted outside or inside its casting surface.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ShadowKind {
-    /// Paint a regular drop shadow outside the surface.
     #[default]
     Outer,
-    /// Paint an inset shadow clipped to the surface.
     Inner,
-    /// Paint a radial outer glow using a bright caller-supplied color.
-    ///
-    /// Structurally identical to [`ShadowKind::Outer`] but the caller supplies
-    /// a bright tint (e.g. an accent color). The same Evan Wallace erf
-    /// integration is used; the "halo" effect comes from the bright RGB values
-    /// rather than any special blend math. Offset is always `[0, 0]` for a
-    /// pure radial halo — use [`Shadow::glow`] to construct.
     Glow,
 }
 
@@ -39,23 +28,16 @@ impl ShadowKind {
     }
 }
 
-/// Shadow styling carried by `SceneCommand::DrawShadow`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shadow {
-    /// Straight RGBA channels in `[0, 1]`.
     pub color: [f32; 4],
-    /// Shadow offset in logical pixels.
     pub offset: [f32; 2],
-    /// Gaussian sigma in logical pixels.
     pub blur: f32,
-    /// Signed spread in logical pixels.
     pub spread: f32,
-    /// Whether this shadow is outside or inside the casting surface.
     pub kind: ShadowKind,
 }
 
 impl Shadow {
-    /// Create a regular outer drop shadow.
     #[must_use]
     pub const fn new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4]) -> Self {
         Self {
@@ -67,12 +49,6 @@ impl Shadow {
         }
     }
 
-    /// Create a radial glow halo from an sRGB color.
-    ///
-    /// The offset is fixed at `[0, 0]` so the glow radiates equally in all
-    /// directions. Supply a bright `color` (e.g. an accent tint) — the shader
-    /// applies the same Evan Wallace coverage math as [`ShadowKind::Outer`] and
-    /// multiplies by the caller-supplied color to produce the halo.
     #[must_use]
     pub fn glow(color: sigil_style::Rgba8, spread: f32, blur: f32) -> Self {
         let c = [
@@ -84,7 +60,6 @@ impl Shadow {
         Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)
     }
 
-    /// Return this shadow with the given paint kind.
     #[must_use]
     pub const fn with_kind(mut self, kind: ShadowKind) -> Self {
         self.kind = kind;
@@ -92,11 +67,6 @@ impl Shadow {
     }
 }
 
-/// Wgpu resources for painting rounded-rectangle drop shadows.
-///
-/// Instance + uniform buffers are allocated fresh per call (not persistent
-/// `queue.write_buffer` targets) so draws batched into one submission stay
-/// independent — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct ShadowPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,

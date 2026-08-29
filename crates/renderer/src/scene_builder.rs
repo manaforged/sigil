@@ -1,5 +1,3 @@
-//! Ergonomic facade for building command-buffer scenes.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::Rect;
@@ -14,14 +12,12 @@ use crate::scene_command::{
 };
 use crate::shadow_paint::Shadow;
 
-/// Builder for a command-buffer scene.
 #[derive(Debug)]
 pub struct SceneBuilder {
     commands: Vec<SceneCommand>,
 }
 
 impl SceneBuilder {
-    /// Create an empty scene builder.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -29,32 +25,21 @@ impl SceneBuilder {
         }
     }
 
-    /// Emit a rectangle draw command.
     pub fn draw_rect(&mut self, rect: Rect, style: SceneRectStyle) {
         self.commands
             .push(SceneCommand::Rect(DrawRect::new(rect, style)));
     }
 
-    /// Emit a linear-gradient rectangle draw command.
     pub fn draw_gradient(&mut self, rect: Rect, style: SceneGradientStyle) {
         self.commands
             .push(SceneCommand::Gradient(DrawGradient::new(rect, style)));
     }
 
-    /// Emit a pattern-filled rectangle draw command.
     pub fn draw_pattern(&mut self, rect: Rect, style: ScenePatternStyle) {
         self.commands
             .push(SceneCommand::Pattern(DrawPattern::new(rect, style)));
     }
 
-    /// Emit a text-decoration draw command.
-    ///
-    /// For `DecorationKind::WavyUnderline` the `period` field is clamped
-    /// to `>= 1.0` logical px to avoid a divide-by-zero NaN in the
-    /// fragment shader. The shader has a matching `max(period, 1.0)`
-    /// guard for callers that construct `DrawDecoration` directly. The
-    /// Underline / Strikethrough kinds ignore `period`, so it passes
-    /// through unchanged.
     pub fn draw_decoration(&mut self, style: SceneDecorationStyle) {
         let period = if matches!(
             style.kind,
@@ -75,7 +60,6 @@ impl SceneBuilder {
         }));
     }
 
-    /// Emit a drop-shadow command.
     pub fn draw_shadow(&mut self, rect: Rect, radii: CornerRadii, shadow: Shadow) {
         self.commands.push(SceneCommand::DrawShadow {
             rect: rect_fields(rect),
@@ -84,8 +68,6 @@ impl SceneBuilder {
         });
     }
 
-    /// Emit a raster-image draw command carrying the decoded pixels to
-    /// paint time (where they upload to a texture once per content id).
     pub fn draw_image(&mut self, draw: crate::scene_command::DrawImage) {
         self.commands.push(SceneCommand::Image(draw));
     }
@@ -97,7 +79,6 @@ impl SceneBuilder {
         ));
     }
 
-    /// Emit a sprite draw command.
     pub fn draw_sprite(
         &mut self,
         source: SpriteSource,
@@ -117,7 +98,6 @@ impl SceneBuilder {
         self
     }
 
-    /// Emit a glyph-run draw command.
     pub fn draw_glyph_run(&mut self, run: GlyphRun) {
         self.commands
             .push(SceneCommand::GlyphRun(DrawGlyphRun::new(run)));
@@ -130,12 +110,10 @@ impl SceneBuilder {
         )));
     }
 
-    /// Run `body` with `rect` installed as the current clip scope.
     pub fn with_clip<F: FnOnce(&mut Self)>(&mut self, rect: Rect, body: F) {
         self.with_scope(SceneCommand::PushClip(rect), ScopeKind::Clip, body);
     }
 
-    /// Run `body` with `transform` installed as the current transform scope.
     pub fn with_transform<F: FnOnce(&mut Self)>(&mut self, transform: Transform, body: F) {
         self.with_scope(
             SceneCommand::PushTransform(transform),
@@ -144,27 +122,22 @@ impl SceneBuilder {
         );
     }
 
-    /// Run `body` inside an opacity layer.
     pub fn with_layer<F: FnOnce(&mut Self)>(&mut self, opacity: f32, body: F) {
         self.with_scope(SceneCommand::SaveLayer { opacity }, ScopeKind::Layer, body);
     }
 
-    /// Run `body` inside an offscreen compositing layer.
     pub fn with_composite_layer<F: FnOnce(&mut Self)>(&mut self, scope: LayerScope, body: F) {
         self.with_scope(SceneCommand::PushLayer(scope), ScopeKind::Offscreen, body);
     }
 
-    /// Begin an offscreen layer scope.
     pub fn push_layer(&mut self, scope: LayerScope) {
         self.commands.push(SceneCommand::PushLayer(scope));
     }
 
-    /// End the most-recently-opened offscreen layer scope.
     pub fn pop_layer(&mut self) {
         self.commands.push(SceneCommand::PopLayer);
     }
 
-    /// Finish building and return the command scene.
     #[must_use]
     pub fn finish(self) -> CommandScene {
         CommandScene::new(self.commands)

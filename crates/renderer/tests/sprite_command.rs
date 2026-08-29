@@ -20,6 +20,7 @@ const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 80;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn sprite_commands_walk_and_populate_sprite_pipeline_cache() {
     let scene = sprite_scene();
     assert_sprite_command_shape(&scene);

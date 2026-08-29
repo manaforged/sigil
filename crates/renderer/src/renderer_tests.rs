@@ -16,10 +16,8 @@ fn surface_extent_never_returns_zero() {
 
 #[test]
 fn transparent_prefers_post_multiplied() {
-    // Typical Metal offering.
     let metal_modes = [Mode::Opaque, Mode::PostMultiplied];
     assert_eq!(select_alpha_mode(&metal_modes, true), Mode::PostMultiplied);
-    // Vulkan-style premultiplied-only offering.
     let vulkan_modes = [Mode::Opaque, Mode::PreMultiplied];
     assert_eq!(select_alpha_mode(&vulkan_modes, true), Mode::PreMultiplied);
 }

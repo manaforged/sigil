@@ -2,11 +2,8 @@ use pollster::FutureExt as _;
 
 use super::ScenePipeline;
 
-/// Constructs the scene pipeline against a real GPU adapter so the
-/// shader is parsed + validated. Catches WGSL keyword collisions
-/// (the kind of bug that crashed `hello-style` on launch with
-/// `name 'meta' is a reserved keyword`).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn scene_pipeline_constructs_against_real_device() {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let Ok(adapter) = instance

@@ -54,6 +54,7 @@ fn ordering_scene() -> CommandScene {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn record_screen_orders_draws_and_matches_submit_screen() {
     let Some((device, queue)) = try_device() else {
         println!("no adapter — skipping record_screen test");
@@ -110,6 +111,27 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
             );
         }
     }
+}
+
+#[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
+fn caller_owned_device_does_not_initialize_a_second_device() {
+    let Some((device, queue)) = try_device() else {
+        println!("no adapter — skipping caller-owned-device test");
+        return;
+    };
+    let texture = capture_texture(&device);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let mut renderer = WgpuRenderer::new().expect("renderer");
+
+    renderer
+        .submit_screen(&submission(&device, &queue, &view), &ordering_scene())
+        .expect("submit_screen");
+
+    assert!(
+        renderer.device().is_none(),
+        "a caller-owned device must not initialize a redundant renderer device"
+    );
 }
 
 // ---- helpers ----------------------------------------------------------------

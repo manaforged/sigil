@@ -1,5 +1,3 @@
-//! Glyph-run command payloads.
-
 use core::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -9,33 +7,24 @@ use sigil_kernel::NodeId;
 use sigil_style::{Rgba8, TextStyle};
 use sigil_text::Paragraph;
 
-/// Shared glyph payload. Clone of [`GlyphRun`] is a refcount + rect.
 #[derive(Clone)]
 pub struct SharedGlyph {
-    /// Text content used by the interim text path.
     pub text: String,
-    /// Resolved text colour.
     pub color: Rgba8,
-    /// Resolved typography.
     pub style: TextStyle,
-    /// Opacity encoded as `value * 10000`.
     pub opacity: u16,
     positioned_glyphs: Vec<RenderedGlyph>,
     paragraph: Option<Paragraph>,
 }
 
-/// Text run payload carried by a glyph-run command.
 #[derive(Clone)]
 pub struct GlyphRun {
-    /// Source node, when emitted from a core tree.
     pub node: Option<NodeId>,
-    /// Layout rectangle for the text run.
     pub rect: Rect,
     shared: Rc<SharedGlyph>,
 }
 
 impl GlyphRun {
-    /// Create a glyph-run payload.
     #[must_use]
     pub fn new(
         rect: Rect,
@@ -58,24 +47,22 @@ impl GlyphRun {
         }
     }
 
-    /// Return `true` when this run carries shaped glyph positions.
     #[must_use]
     pub fn has_positioned_glyphs(&self) -> bool {
         !self.shared.positioned_glyphs.is_empty()
     }
 
-    /// Borrow shaped glyph positions.
     #[must_use]
     pub fn positioned_glyphs(&self) -> &[RenderedGlyph] {
         &self.shared.positioned_glyphs
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(crate) fn paragraph(&self) -> Option<&Paragraph> {
         self.shared.paragraph.as_ref()
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
         let shared = Rc::make_mut(&mut self.shared);
         shared.positioned_glyphs = paragraph.rendered_glyphs();
@@ -125,15 +112,12 @@ impl PartialEq for GlyphRun {
     }
 }
 
-/// Glyph-run draw payload.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DrawGlyphRun {
-    /// Glyph-run payload.
     pub run: GlyphRun,
 }
 
 impl DrawGlyphRun {
-    /// Create a glyph-run draw payload.
     #[must_use]
     pub const fn new(run: GlyphRun) -> Self {
         Self { run }
@@ -141,7 +125,6 @@ impl DrawGlyphRun {
 }
 
 #[doc(hidden)]
-/// Shape a text run for command-scene emission.
 #[must_use]
 pub fn shape_glyph_run(
     rect: Rect,
@@ -153,15 +136,10 @@ pub fn shape_glyph_run(
     shape_glyph_run_with(rect, text, color, style, opacity, false)
 }
 
-/// Shape a text run, optionally single-line ellipsis-truncated to `rect`.
-///
-/// `ellipsize` selects [`OwnedTextEngine::layout_paragraph_ellipsized`]
-/// (one line, `…` when it overflows `rect.width`) over the default
-/// wrap-to-width paragraph. The paint pass sets it from the text node's
-/// `ellipsis` flag; other callers use [`shape_glyph_run`].
-// The five glyph-run fields are all intrinsic to `GlyphRun::new`; the flag
-// is one more. Splitting them into a struct here would only obscure them.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the argument list mirrors the upstream API contract"
+)]
 #[must_use]
 pub(crate) fn shape_glyph_run_with(
     rect: Rect,
@@ -179,7 +157,6 @@ pub(crate) fn shape_glyph_run_with(
         engine.layout_paragraph_styled(&text, Some(max_width), &style)
     };
     let run = GlyphRun::new(rect, text, color, style, opacity);
-    // A malformed user font can fail layout; a glyphless run beats an abort.
     match paragraph {
         Ok(paragraph) => run.with_paragraph(paragraph),
         Err(err) => {

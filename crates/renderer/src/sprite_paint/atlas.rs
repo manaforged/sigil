@@ -1,36 +1,29 @@
-//! Atlas registry types and upload validation for sprite painting.
-
 use wgpu::util::DeviceExt as _;
 
 use super::builder::atlas_bind_group;
 
-/// Maximum number of caller-registered atlas textures per pipeline instance.
 pub(super) const MAX_ATLASES: usize = 16;
 
-/// Parameters for registering an atlas texture.
 pub(crate) struct AtlasDesc<'a> {
-    /// Raw pixel bytes (layout must match `format`).
     pub(crate) bytes: &'a [u8],
-    /// Width in texels.
     pub(crate) width: u32,
-    /// Height in texels.
     pub(crate) height: u32,
-    /// Wgpu pixel format.
     pub(crate) format: wgpu::TextureFormat,
 }
 
 pub(crate) struct AtlasEntry {
-    /// Kept alive so the GPU texture object is not dropped while referenced.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(super) texture: wgpu::Texture,
-    /// Kept alive; actual sampling happens through the bind group.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(super) view: wgpu::TextureView,
     pub(super) width: u32,
     pub(super) height: u32,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the argument list mirrors the upstream API contract"
+)]
 pub(super) fn push_atlas(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

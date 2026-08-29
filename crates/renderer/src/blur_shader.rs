@@ -1,21 +1,6 @@
 #![allow(unreachable_pub, clippy::redundant_pub_crate)]
-//! WGSL source for the dual-Kawase blur pipeline.
-//!
-//! Two fragment-shader entry points share the same vertex shader and bind-group
-//! layout:
-//!
-//! - `fs_down`: 5-tap downsample (4 corners + centre). Halves resolution per pass.
-//! - `fs_up`:   9-tap upsample  (4 cardinals × 2/12 + 4 corners × 1/12). Doubles resolution.
-//!
-//! Both read from `@group(1) @binding(0)` (`src` texture) with a `Linear /
-//! ClampToEdge` sampler (`@group(1) @binding(1) samp`). The viewport uniform
-//! is in `@group(0) @binding(0)`.
-//!
-//! Bind-group layout mirrors `LayerCompositePipeline` so intermediate pyramid
-//! textures can be composited with the same sampler.
 
-/// Full WGSL source for the dual-Kawase blur pipeline.
-#[allow(unreachable_pub)]
+#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
 pub(crate) const BLUR_SHADER: &str = r"
 struct Uniforms {
     viewport: vec2<f32>,
@@ -54,9 +39,6 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     return out;
 }
 
-// ---------------------------------------------------------------------------
-// Downsample — 5-tap Kawase: centre (weight 4/8) + 4 corners (weight 1/8 each)
-// ---------------------------------------------------------------------------
 @fragment
 fn fs_down(in: VertexOut) -> @location(0) vec4<f32> {
     let tex_size = vec2<f32>(textureDimensions(src, 0));
@@ -70,9 +52,6 @@ fn fs_down(in: VertexOut) -> @location(0) vec4<f32> {
     return (center + corners) / 8.0;
 }
 
-// ---------------------------------------------------------------------------
-// Upsample — 8-tap: cardinals at 2× half-pixel offset (2/12) + corners (1/12)
-// ---------------------------------------------------------------------------
 @fragment
 fn fs_up(in: VertexOut) -> @location(0) vec4<f32> {
     let tex_size = vec2<f32>(textureDimensions(src, 0));

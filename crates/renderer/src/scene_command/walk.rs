@@ -1,5 +1,3 @@
-//! Command-scene interpreter for `WgpuRenderer`.
-
 use sigil_hal::{Point, Rect};
 
 use crate::blur_paint::BlurPipeline;
@@ -23,26 +21,10 @@ const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
-    /// Shared command encoder, wrapped in the pass-counting
-    /// [`SplitEncoder`](SplitEncoder). Every draw
-    /// handler records its pass into this instead of creating + submitting
-    /// its own — the wrapper that built the `WalkCtx` owns the final
-    /// `queue.submit`, so a host composes the whole scene into its frame
-    /// graph in one submission (DR-054). Past the pass budget the wrapper
-    /// submits intermediate chunks itself; ordering is unchanged.
     pub(crate) encoder: &'a mut SplitEncoder,
-    /// Sink for transient offscreen layer textures. The layer walker pushes
-    /// each `LayerHandle` here instead of dropping it at the end of the layer,
-    /// so the texture outlives the recorded composite pass — which only runs
-    /// when the owner submits `encoder`. The owner clears this after submit.
     pub(crate) retained: &'a mut Vec<LayerHandle>,
     pub(crate) view: &'a wgpu::TextureView,
     pub(crate) viewport: (f32, f32),
-    /// Device pixel ratio (physical surface pixels per logical pixel). 1.0 for the
-    /// offscreen/record paths, which render at the viewport's own pixel size. The Slug
-    /// text shader multiplies its glyph-coverage AA ramp by this so the ramp is one
-    /// *physical* pixel (sharp on high-DPI displays) rather than one logical pixel
-    /// (blurry at 2×).
     pub(crate) scale: f32,
     pub(crate) format: wgpu::TextureFormat,
     pub(crate) scene_pipelines: &'a mut Vec<ScenePipeline>,
@@ -228,9 +210,6 @@ impl<'a> Walk<'a> {
         self.clips.iter().copied().try_fold(rect, intersect_rect)
     }
 
-    /// The active clip region (intersection of the clip stack), or `None` when no
-    /// clip is pushed. Draw handlers pass it down as a GPU scissor so partially
-    /// visible runs are cut at the box edge per-pixel, not just culled whole.
     pub(super) fn current_clip(&self) -> Option<Rect> {
         let mut clips = self.clips.iter().copied();
         let first = clips.next()?;

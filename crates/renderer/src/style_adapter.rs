@@ -1,9 +1,3 @@
-//! Renderer-side style resolution.
-//!
-//! The portable half lives in [`sigil_style::resolve`]; both hosts share it
-//! so a terminal frame and a window frame agree on what a node looks like.
-//! What stays here is what only a GPU scene needs.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_kernel::Node;

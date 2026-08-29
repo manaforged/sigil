@@ -1,16 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Scene paint — internal wgpu pipeline that paints `SceneItem::Rect`.
-//!
-//! This is the default renderer consumed by `WgpuRenderer::render_scene`.
-//! It walks a [`Scene`] and instance-renders filled (optionally rounded)
-//! rectangles. `SceneItem::Text` is painted separately by
-//! [`crate::renderer::WgpuRenderer`] through the Slug text pipeline.
-//!
-//! Pipelines are cached per `wgpu::TextureFormat` inside the renderer's
-//! `ReadyState` so one `WgpuRenderer` can serve surfaces with different
-//! formats without rebuilding the pipeline per frame.
-//!
-//! See DR-017 (scene paint) and the `phase-08a-ergonomics-pass.md` plan.
 
 use wgpu::util::DeviceExt as _;
 
@@ -22,8 +10,6 @@ use crate::scene_instance::RectInstance;
 use crate::split_encoder::SplitEncoder;
 use rect_shader::RECT_SHADER;
 
-/// Arguments to [`ScenePipeline::paint`]. Bundled to keep the argument
-/// list under the clippy `too_many_arguments` threshold.
 pub(crate) struct PaintCtx<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
@@ -34,13 +20,6 @@ pub(crate) struct PaintCtx<'a> {
     pub scale: f32,
 }
 
-/// Wgpu resources for painting `SceneItem::Rect`. One per surface format.
-///
-/// Instance + uniform buffers are allocated fresh per `paint_instances` call
-/// (not persistent `queue.write_buffer` targets): `write_buffer` is ordered
-/// per submit, so a persistent buffer reused across draws batched into one
-/// submission would have every recorded pass read the last write. Fresh
-/// per-call buffers keep each recorded draw independent (DR-054).
 pub(crate) struct ScenePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
@@ -49,7 +28,10 @@ pub(crate) struct ScenePipeline {
 }
 
 impl ScenePipeline {
-    #[allow(clippy::too_many_lines)]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one sequential pass; splitting would scatter the ordering it documents"
+    )]
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sigil-renderer scene paint shader"),
@@ -181,7 +163,6 @@ impl ScenePipeline {
 
 const UNIT_QUAD_VERTEX_COUNT: u32 = 6;
 
-/// Two triangles covering `[0, 0]`..`[1, 1]`.
 const UNIT_QUAD_VERTICES: [[f32; 2]; 6] = [
     [0.0, 0.0],
     [1.0, 0.0],
@@ -210,8 +191,6 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     ],
 };
 
-/// Emit a one-per-frame log if the scene contains `SceneItem::Text`.
-/// Text paint is Phase 14 (text-in-scene + IME).
 #[cfg(test)]
 #[path = "scene_paint_tests.rs"]
 mod tests;

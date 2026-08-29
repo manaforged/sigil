@@ -23,6 +23,7 @@ const VIEWPORT_HEIGHT: u32 = 64;
 
 /// sigma=0 must not crash and must produce zero blur passes (identity path).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_zero_is_identity() {
     let scene = blur_scene(0.0);
     assert_blur_command_shape(&scene, 0.0);
@@ -40,6 +41,7 @@ fn blur_sigma_zero_is_identity() {
 
 /// sigma>0 exercises the blur pipeline initialisation and upsample path.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_nonzero_renders_without_panic() {
     let scene = blur_scene(6.0);
     assert_blur_command_shape(&scene, 6.0);
@@ -57,6 +59,7 @@ fn blur_sigma_nonzero_renders_without_panic() {
 
 /// sigma=18 (>16) hits the 3-pass branch in `pass_count_for`.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_strong_renders_without_panic() {
     let scene = blur_scene(18.0);
 

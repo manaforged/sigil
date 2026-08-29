@@ -1,9 +1,5 @@
-//! Logical clip rectangles converted to physical GPU scissors.
-
 use sigil_hal::Rect;
 
-/// Apply `clip` to `pass`. Returns `false` when a requested clip has no
-/// physical pixels, allowing the caller to skip the draw.
 pub(crate) fn apply(
     pass: &mut wgpu::RenderPass<'_>,
     clip: Option<Rect>,
@@ -23,7 +19,8 @@ pub(crate) fn apply(
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 fn physical_rect(clip: Rect, scale: f32, viewport: (f32, f32)) -> Option<[u32; 4]> {
     let values = [

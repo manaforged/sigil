@@ -20,6 +20,7 @@ const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 120;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn decoration_commands_walk_and_populate_decoration_pipeline_cache() {
     let scene = decoration_scene();
     assert_decoration_command_shape(&scene);

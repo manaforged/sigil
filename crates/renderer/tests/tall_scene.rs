@@ -36,6 +36,7 @@ const VIEWPORT: (f32, f32) = (256.0, 256.0);
 const DRAWS: u32 = 2_100;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pass_heavy_scene_keeps_device_alive() {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     if let Err(err) = renderer.ensure_headless_for_tests() {
@@ -168,7 +169,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
     slice.get_mapped_range().to_vec()
 }
 
-fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
+const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
     let offset = ((y * VIEWPORT.0 as u32 + x) * 4) as usize;
     [
         pixels[offset],

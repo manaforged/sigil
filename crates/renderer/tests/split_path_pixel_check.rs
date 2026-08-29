@@ -61,6 +61,7 @@ const fn identity_4x4() -> [[f32; 4]; 4] {
 /// `submit_screen` clears to black and paints a red rect at known coords.
 /// Clear region (top-left corner) must be dark; rect centre must be red.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_screen_renders_into_offscreen() {
     let Some((device, queue)) = try_request_device("split-path-screen") else {
         println!("no adapter — skipping split_path_pixel_check");
@@ -102,6 +103,7 @@ fn assert_submit_screen_renders_into_offscreen() {
 /// Same `WgpuRenderer` drives two different offscreen targets in sequence.
 /// The two targets must be independently correct with no state bleed.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_renderer_reusable_across_targets() {
     let Some((device, queue)) = try_request_device("split-path-reuse") else {
         println!("no adapter — skipping split_path_pixel_check");
@@ -160,6 +162,7 @@ fn assert_renderer_reusable_across_targets() {
 /// `render_command_scene_offscreen` (deprecated) forwards to `submit_screen`.
 /// Identical args → pixel outputs that differ by at most ±2 per channel.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_deprecated_offscreen_forwards() {
     let Some((device, queue)) = try_request_device("split-path-compat") else {
         println!("no adapter — skipping split_path_pixel_check");
@@ -216,6 +219,7 @@ fn assert_deprecated_offscreen_forwards() {
 /// `submit_world` stub returns `Ok(())` and does not paint the target.
 /// 16 pixel samples must match the pre-submit clear colour (within ±20 sRGB).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_world_stub_returns_ok() {
     let Some((device, queue)) = try_request_device("split-path-world") else {
         println!("no adapter — skipping split_path_pixel_check");

@@ -1,5 +1,3 @@
-//! Headless scene emission for renderer integration tests.
-
 use std::rc::Rc;
 
 use sigil_hal::{ParagraphMetrics, Point, Rect};
@@ -19,21 +17,13 @@ use crate::scene_command::{
 use crate::shadow_paint::Shadow;
 use crate::style_adapter::{corner_radii_for, focus_ring_for, render_style_for, text_style_for};
 
-/// Extra logical pixels around the viewport clip so a scroll step does
-/// not pop a newly-visible row in unshaped.
 const VIEW_OVERSCAN: f32 = 64.0;
 
-/// Emit a command-buffer scene for a laid-out core subtree.
 #[must_use]
 pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
     emit_scene_clipped(cx, root, None)
 }
 
-/// Emit a scene, skipping nodes whose layout box is fully outside `clip`.
-///
-/// `clip` is the window (or host) viewport in the same logical space as
-/// [`LayoutResult::rect`]. Overflow `hidden`/`scroll` ancestors tighten
-/// the clip further so a long scrolled list only shapes visible rows.
 #[must_use]
 pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
@@ -43,10 +33,6 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
         text_color: None,
         text_style: Rc::new(TextStyle::default()),
     };
-    // `TopLayer` subtrees are deferred here and emitted after the main
-    // walk, so floating UI (dropdown popups) paints above every later
-    // sibling. Index loop: emitting a deferred subtree may discover
-    // nested top-layer descendants and grow the queue.
     let mut deferred: Vec<(NodeId, Inherited<'_>, Option<Rect>)> = Vec::new();
     let mut walk = EmitWalk {
         scene: &mut scene,
@@ -68,21 +54,10 @@ struct EmitWalk<'a, 't> {
     deferred: &'a mut Vec<(NodeId, Inherited<'t>, Option<Rect>)>,
 }
 
-/// Style context cascading down the scene walk: the effective theme,
-/// the nearest ancestor's resolved text color, and the effective
-/// inherited typography (DR-056). The color and typography halves are
-/// the CSS-style inheritance cascade — a container's `text-*` /
-/// `font-*` / `leading-*` classes style every descendant text node
-/// that doesn't set its own. Typography resolution mirrors the layout
-/// engine's measurement seed so text paints at the size it measured.
 #[derive(Clone)]
 struct Inherited<'t> {
     theme: &'t Theme,
     text_color: Option<Rgba8>,
-    // `Rc`, not a borrow: the top-layer deferral queue stores a
-    // subtree's inherited context past the stack frame that layered
-    // it, so the effective typography must own its data. Containers
-    // without typography atoms just bump the refcount.
     text_style: Rc<TextStyle>,
 }
 
@@ -99,26 +74,13 @@ fn push_subtree<'t>(
         return;
     }
     if node.get_extension::<Surface>().is_some() {
-        // Layout hole: no fill, no glyphs, no descendants. Occupant is a
-        // host connector, not this scene.
         return;
     }
     if outside_clip(node, clip) {
         return;
     }
-    // Theme inheritance: if this node attached its own `Theme`, that
-    // becomes the effective theme for itself AND its descendants;
-    // otherwise we keep the inherited one. Without this every
-    // descendant ignored an ancestor's `.theme(Theme::dark())` and
-    // resolved colors against the default light theme.
     let theme = node.get_extension::<Theme>().unwrap_or(inherited.theme);
-    // Resolve once, whether or not this node paints: even a layout-less
-    // container contributes its `text-*` classes to the color cascade.
     let style = render_style_for(id, node, theme, inherited.text_color);
-    // DR-056 typography inheritance: layer this node's typography atoms
-    // over the inherited style. `None` (no typography atoms — the
-    // common container case) passes the inherited value through by
-    // reference without cloning.
     let layered_text = node
         .get_extension::<StyleBinding>()
         .and_then(|binding| TextStyle::layered_over_binding(&inherited.text_style, binding));
@@ -146,7 +108,6 @@ fn push_subtree<'t>(
             push_node(walk.scene, id, node, rect, &paint);
             crate::emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
         }
-        // `overflow: hidden`/`scroll` → scissor descendants to this node's box.
         if result.clips() {
             emit_clipped_children(walk, node, &child_inherited, clip, rect, &style);
             return;
@@ -170,7 +131,6 @@ fn emit_clipped_children<'t>(
     let Some(inner) = tighten_clip(clip, rect) else {
         return;
     };
-    // 1px slack keeps far-edge overscan rows and zero-height clip boxes' contents.
     let inner = inner.expand(1.0);
     let clip_radii = corner_radii_for(style.border_radius);
     let cx = walk.cx;
@@ -225,10 +185,6 @@ fn push_children<'t>(
     clip: Option<Rect>,
 ) {
     for child in node.children().iter().copied() {
-        // Deferral happens at the parent's iteration, so emitting a
-        // deferred subtree root directly (from `emit_scene`'s queue
-        // drain) never re-defers it, while nested `TopLayer` descendants
-        // still queue behind it.
         let is_top_layer = walk
             .cx
             .get(child)
@@ -247,7 +203,6 @@ fn default_inherited_theme<'theme>() -> &'theme Theme {
     DEFAULT.get_or_init(Theme::default)
 }
 
-/// Return  if any atom slice on the node sets .
 fn is_display_none(node: &Node) -> bool {
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return false;
@@ -297,10 +252,6 @@ fn push_focus_ring(
     );
 }
 
-/// The resolved paint inputs for one node: its render style, the
-/// effective theme (still needed for glyph-run text styling), and the
-/// typography inherited from ancestors (DR-056) that the node's own
-/// atoms layer over.
 struct NodePaint<'a> {
     style: &'a RenderStyle,
     theme: &'a Theme,
@@ -338,7 +289,6 @@ fn push_text_decoration(
 
 fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
-    // Shadow first so it sits behind the surface it lifts.
     if let Some(elevation) = style.shadow {
         scene.draw_shadow(
             rect,
@@ -348,8 +298,6 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
     }
     let stroke = border_stroke(style, paint.theme);
     if style.background_color.is_some() || stroke.is_some() {
-        // A border with no background paints a transparent interior; the
-        // SDF fill contributes zero coverage and only the stroke shows.
         let fill = style.background_color.unwrap_or(Rgba8 {
             r: 0,
             g: 0,
@@ -384,12 +332,6 @@ fn push_node(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     }
 }
 
-/// Emit a text leaf's glyph run. `ellipsize()` implies clip-to-box: when
-/// the shaped run still exceeds the layout box (a bare `…` that itself
-/// does not fit, or a box shorter than one line), it paints clipped to
-/// the box. Non-ellipsized text keeps the historic overflow-visible
-/// behaviour — clipping there is the container's `overflow` — so scenes
-/// without ellipsis emit no clip and are untouched.
 fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, paint: &NodePaint<'_>) {
     let style = paint.style;
     let NodeType::Text {
@@ -415,8 +357,6 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
             paragraph.width() > rect.width + 0.5 || paragraph.height() > rect.height + 0.5
         });
     let emit = |target: &mut SceneBuilder| {
-        // Color-bitmap glyphs (emoji) have no outline for the Slug pass;
-        // emit them as RGBA images alongside the mono run.
         if let Some(paragraph) = run.paragraph() {
             crate::color_glyph_paint::emit_color_glyphs(target, id, rect, paragraph, style.opacity);
         }
@@ -430,17 +370,6 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     push_text_decoration(scene, rect, color, style.opacity, &text_style);
 }
 
-/// Resolve a node's border into a paint stroke (DR-057 D3). Width with
-/// no explicit colour follows the CSS `currentColor` shape: the
-/// resolved text colour, then the theme's on-surface. Inside alignment
-/// matches the box model — the layout solvers already reserved the
-/// border edge inside the rect.
-/// Map a semantic [`Elevation`] level to drop-shadow geometry. A
-/// single black layer whose vertical offset, blur, and alpha grow with
-/// the level (a single-layer approximation of the Tailwind `shadow-*`
-/// scale). Black is `[0,0,0]` in both sRGB and linear space, so the
-/// linear colour the shadow shader wants is `[0,0,0,alpha]` directly;
-/// alpha is not gamma-encoded.
 const fn elevation_shadow(elevation: Elevation) -> Shadow {
     let (offset_y, blur, spread, alpha) = match elevation {
         Elevation::Sm => (1.0, 2.0, 0.0, 0.10),
@@ -469,8 +398,6 @@ fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
         .unwrap_or(theme.on_surface)
 }
 
-/// All four border edges hold the same width. Edges derive from the
-/// same `Px` values, so bit equality is exact.
 const fn borders_uniform([top, right, bottom, left]: [f32; 4]) -> bool {
     top.to_bits() == right.to_bits()
         && right.to_bits() == bottom.to_bits()

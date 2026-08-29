@@ -5,7 +5,6 @@
     clippy::missing_const_for_fn,
     clippy::too_many_arguments
 )]
-//! Layer-aware command-scene walker.
 
 use sigil_hal::{Point, Rect};
 
@@ -70,10 +69,6 @@ fn render_nodes(
     view: &wgpu::TextureView,
     viewport: (f32, f32),
 ) -> Result<(), RendererError> {
-    // Single Walk for the whole sibling list so PushTransform / PushClip /
-    // SaveLayer state mutations persist across consecutive commands in the
-    // same layer scope. Nested layers allocate their own Walk against the
-    // child layer's offscreen view via `render_layer`.
     let mut batch: Vec<&SceneCommand> = Vec::new();
     for node in nodes {
         match node {
@@ -136,8 +131,6 @@ fn render_layer(
         &handle,
         content_extent,
     )?;
-    // The composite pass that samples `handle` only runs when the owner submits
-    // the encoder, so the texture must outlive this function — retain it.
     ctx.retained.push(handle);
     Ok(())
 }
@@ -197,9 +190,6 @@ fn render_layer_children(
     clip: Rect,
     view: &wgpu::TextureView,
 ) -> Result<(), RendererError> {
-    // Mirror render_nodes: batch sibling commands so a single Walk carries
-    // state mutations across them. The layer's clip + translation are pushed
-    // once per batch; commands inside the batch see the same stack.
     let mut batch: Vec<&SceneCommand> = Vec::new();
     for node in children {
         match node {

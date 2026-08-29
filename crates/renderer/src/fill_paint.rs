@@ -1,10 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Pattern + gradient fill rounded-rectangle paint pipeline.
-//!
-//! This module owns the `FillPipeline` which handles all three fill kinds:
-//! `FILL_KIND_GRADIENT` (0), `FILL_KIND_SLASH` (1), and `FILL_KIND_CHECKER`
-//! (2). The WGSL fragment shader branches on the `fill_kind` discriminator
-//! packed into `stop_range.z`.
 
 use crate::frame_upload::UploadedRange;
 use crate::scene_paint::PaintCtx;
@@ -16,11 +10,6 @@ use setup::{
     uniform_layout, unit_quad,
 };
 
-/// Wgpu resources for painting fill rounded rectangles (gradient + patterns).
-///
-/// Instance / stops / uniform buffers are allocated fresh per call (not
-/// persistent `queue.write_buffer` targets) so draws batched into one
-/// submission stay independent — see [`crate::scene_paint::ScenePipeline`].
 pub(crate) struct FillPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,

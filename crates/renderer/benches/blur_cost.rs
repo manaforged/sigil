@@ -111,7 +111,7 @@ fn blur_sigma_sweep(c: &mut Criterion) {
                     )
                     .expect("render_command_scene_offscreen");
                 queue.submit([]);
-                device.poll(wgpu::PollType::Poll).ok();
+                drop(device.poll(wgpu::PollType::Poll));
             });
         });
     }
@@ -160,7 +160,7 @@ fn blur_count_sweep(c: &mut Criterion) {
                     )
                     .expect("render_command_scene_offscreen");
                 queue.submit([]);
-                device.poll(wgpu::PollType::Poll).ok();
+                drop(device.poll(wgpu::PollType::Poll));
             });
         });
     }
@@ -210,7 +210,7 @@ fn blur_size_sweep(c: &mut Criterion) {
                     )
                     .expect("render_command_scene_offscreen");
                 queue.submit([]);
-                device.poll(wgpu::PollType::Poll).ok();
+                drop(device.poll(wgpu::PollType::Poll));
             });
         });
     }
@@ -283,7 +283,7 @@ fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
 /// Currently falls back to `LayerEffect::Identity` for baseline measurement.
 /// Replace `blur_effect(sigma)` with `LayerEffect::LayerBlur { sigma }` to
 /// measure the real blur cost.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, reason = "bench harness; deliberate")]
 fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, sigma: f32) {
     use sigil_hal::{Point, Rect};
     let clip = Rect::new(Point::new(x, y), w, h);
@@ -310,7 +310,7 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
 ///     LayerEffect::LayerBlur { sigma }
 /// }
 /// ```
-#[allow(clippy::missing_const_for_fn)]
+#[allow(clippy::missing_const_for_fn, reason = "bench harness; deliberate")]
 fn blur_effect(_sigma: f32) -> LayerEffect {
     LayerEffect::Identity
 }

@@ -1,5 +1,4 @@
 #![allow(clippy::cast_precision_loss, clippy::redundant_pub_crate)]
-//! Texture compositing pipeline for offscreen layers.
 
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;

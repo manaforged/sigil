@@ -44,6 +44,7 @@ const SPRITE_SIDE: f32 = 200.0;
 /// Render the R7 sprite scene and assert pixel-level contracts for all three
 /// sprite variants. Skips cleanly when no GPU adapter is available.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn sprite_pixels_match_mono_subpixel_poly_contracts() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping sprite_pixel_check");

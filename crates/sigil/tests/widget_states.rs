@@ -226,9 +226,9 @@ fn slider_rest_emits_track_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // Track rest paints `border-strong` (gray-8): quiet but
-        // measurable against both step-1 and step-2 surfaces.
-        assert!(rect_colors(&cx, root).contains(&theme.border_strong()));
+        // Track rest paints muted gray-4: quiet but measurable
+        // against both step-1 and step-2 surfaces.
+        assert!(rect_colors(&cx, root).contains(&theme.gray.step(4)));
     });
 }
 
@@ -240,9 +240,9 @@ fn slider_thumb_emits_accent_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // The accent FILL bar (muted accent-8 state-fill register) —
-        // the thumb itself is `on-accent` white with a gray rim.
-        assert!(rect_colors(&cx, root).contains(&theme.accent_scale.step(8)));
+        // The accent FILL bar (solid accent) — the thumb itself is
+        // `on-accent` white with an accent rim.
+        assert!(rect_colors(&cx, root).contains(&theme.accent));
     });
 }
 
@@ -318,9 +318,9 @@ fn toggle_on_emits_accent() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // ON track paints the accent scale at step 8 (one below the
-        // step-9 solid so the white thumb reads against it).
-        assert!(rect_colors(&cx, root).contains(&theme.accent_scale.step(8)));
+        // ON track paints the solid accent; the white thumb reads
+        // against it with the on-accent fill.
+        assert!(rect_colors(&cx, root).contains(&theme.accent));
     });
 }
 
@@ -373,7 +373,7 @@ fn text_field_rest_emits_border_color() {
         let root = cx.add(text_field(value));
         compute(&mut cx, root);
         let theme = Theme::default();
-        let border = theme.scale(ScaleRole::Gray).step(9);
+        let border = theme.scale(ScaleRole::Gray).step(7);
         let scene = emit_scene(&cx, root);
         let rects = scene
             .commands

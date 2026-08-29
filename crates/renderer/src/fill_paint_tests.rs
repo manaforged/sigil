@@ -3,6 +3,7 @@ use pollster::FutureExt as _;
 use super::FillPipeline;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn fill_pipeline_constructs_against_real_device() {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let Ok(adapter) = instance

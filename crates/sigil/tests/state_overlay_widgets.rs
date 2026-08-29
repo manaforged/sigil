@@ -1,4 +1,4 @@
-//! T1 — user state-overlay wiring on the remaining interactive widgets.
+//! user state-overlay wiring on the remaining interactive widgets.
 //!
 //! Extends the `state_overlay_button.rs` input→pixel pattern to the six
 //! builders whose `.hover()` / `.focus()` / `.pressed()` / `.disabled()`
@@ -172,7 +172,7 @@ fn text_edit_user_hover_overlay_paints_frame() {
 fn slider_thumb_hover_variant_intact_without_overlay() {
     // Regression: with no user overlay installed the widget's own
     // variant machinery must keep resolving — hovering the slider lifts
-    // the thumb's rim from gray-7 (THUMB_REST) to gray-8 (THUMB_HOVER),
+    // the thumb's rim from accent (THUMB_REST) to accent-hover (THUMB_HOVER),
     // layered by the same reactive channel the T1 wiring publishes the
     // overlay slot from. The thumb is the only stroked rect in the
     // slider scene, so the stroke color identifies it.
@@ -193,8 +193,8 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         };
         assert_eq!(
             thumb_rim(&cx, root),
-            Some(theme.border),
-            "thumb rim must rest at gray-7"
+            Some(theme.accent),
+            "thumb rim must rest at accent"
         );
         let mut router = EventRouter::new();
         // (320, 12) is the horizontal centre of the value-50 thumb in
@@ -202,8 +202,8 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         router.route(&mut cx, &layout, pointer_move_event(320.0, 12.0));
         assert_eq!(
             thumb_rim(&cx, root),
-            Some(theme.border_strong()),
-            "thumb rim must lift to gray-8 on hover with no user overlay"
+            Some(theme.accent_hover),
+            "thumb rim must lift to accent-hover with no user overlay"
         );
     });
 }

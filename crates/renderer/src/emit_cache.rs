@@ -1,5 +1,3 @@
-//! Per-node paint command cache for unchanged nodes.
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -87,9 +85,7 @@ pub(crate) fn store(
 
 pub(crate) fn content_key(node: &Node) -> u64 {
     let mut hasher = AHasher::default();
-    // Set independently by each of the three hash sources below; the
-    // lint's single-if rewrite would drop the later sources.
-    #[allow(clippy::useless_let_if_seq)]
+    #[allow(clippy::useless_let_if_seq, reason = "intentional, reviewed trade-off")]
     let mut wrote = false;
     if let NodeType::Text { content, .. } = &node.kind
         && !matches!(content, TextContent::Static(_))

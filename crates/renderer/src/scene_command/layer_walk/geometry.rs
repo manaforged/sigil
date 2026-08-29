@@ -11,7 +11,11 @@ pub(super) const fn local_rect(rect: Rect, parent_origin: Point) -> Rect {
     )
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub(super) fn physical_extent(rect: Rect, scale: f32) -> (u32, u32) {
     let scale = scale.max(0.0);
     (

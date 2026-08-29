@@ -1,8 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-//! Per-instance data + collection helpers for [`crate::scene_paint`].
-//!
-//! Split out of `scene_paint.rs` to respect the 400-line hygiene cap
-//! and to colocate instance-data tests with the helpers they cover.
 
 use bytemuck::{Pod, Zeroable};
 use half::f16;
@@ -20,39 +16,13 @@ use helpers::{
     stroke_outset,
 };
 
-/// Color space in which translucent fills are alpha-composited.
-///
-/// CSS/web blends `rgba()` over its backdrop in gamma (sRGB-encoded) space;
-/// physically-correct renderers blend in linear-light. The two diverge only for
-/// *translucent* pixels — opaque fills round-trip identically — but for a
-/// near-white border at ~10% alpha the linear blend lands ~2.5x brighter,
-/// turning a faint hairline into a visible rule.
-///
-/// The space is implied by the render target's format: an sRGB target makes the
-/// GPU decode→blend→encode in linear ([`Self::Linear`]); a plain `Unorm` target
-/// stores and blends the bytes as authored, matching CSS ([`Self::Gamma`]). The
-/// theme tokens are authored for the CSS model, so picking the format is the
-/// single lever that selects which compositing math the whole scene uses.
-///
-/// Coverage: the rect-fill, glyph, gradient, pattern, sprite, and decoration
-/// paths all honor this (each converts its colour where the target format is
-/// known). The one exception is **shadow** colour, which bakes the sRGB→linear
-/// curve at construction (`Shadow::glow`), before any format exists — so a
-/// `Gamma` target tints shadows in linear. Shadow colours are near-black drop
-/// shadows where the curve barely moves, so this is left as a known caveat
-/// rather than reshaping the public `Shadow` API.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum BlendSpace {
-    /// Physically-correct linear-light compositing (sRGB render target).
     Linear,
-    /// CSS-faithful gamma-space compositing (`Unorm` render target).
     Gamma,
 }
 
 impl BlendSpace {
-    /// The compositing space implied by a render target `format`. sRGB formats
-    /// blend in linear (hardware decodes/encodes around the blend); everything
-    /// else stores the authored bytes and blends them directly, as CSS does.
     pub(crate) fn from_format(format: wgpu::TextureFormat) -> Self {
         if format.is_srgb() {
             Self::Linear
@@ -61,10 +31,6 @@ impl BlendSpace {
         }
     }
 
-    /// Map one sRGB-encoded `0..=255` channel to the float the fragment shader
-    /// should emit for this blend space. `Linear` decodes the sRGB transfer
-    /// curve (the GPU re-encodes on store); `Gamma` passes the encoded value
-    /// straight through so the hardware blend operates on gamma values like CSS.
     fn channel(self, channel: u8) -> f32 {
         match self {
             Self::Linear => srgb_channel_to_linear(channel),
@@ -72,7 +38,6 @@ impl BlendSpace {
         }
     }
 
-    /// Convert a straight-alpha `Rgba8` to the `[r, g, b, a]` the shader emits.
     pub(crate) fn rgba(self, color: Rgba8) -> [f32; 4] {
         [
             self.channel(color.r),
@@ -82,9 +47,6 @@ impl BlendSpace {
         ]
     }
 
-    /// Convert an `Rgba8` to the *premultiplied* `f16` `[r, g, b, a]` gradient
-    /// stops are packed as — the same space choice as [`Self::rgba`], for the
-    /// fill pipeline's interpolation.
     pub(crate) fn rgba16f(self, color: Rgba8) -> [f16; 4] {
         let alpha = f32::from(color.a) / 255.0;
         [
@@ -96,7 +58,6 @@ impl BlendSpace {
     }
 }
 
-/// `fill_kind` discriminator stored in `FillInstance::stop_range.z`.
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
@@ -104,71 +65,42 @@ pub(crate) const FILL_KIND_CHECKER: u32 = 2;
 pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
 pub(crate) const MAX_GRADIENT_STOPS_U32: u32 = 8;
 
-/// Per-instance GPU record for one rectangle.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct RectInstance {
-    /// `[x, y, w, h]` in logical pixels.
     pub(crate) rect: [f32; 4],
-    /// Linear RGBA in `[0, 1]`.
     pub(crate) color: [f32; 4],
-    /// `[top_left, top_right, bottom_right, bottom_left]` radii.
     pub(crate) corner_radii: [f32; 4],
-    /// `[opacity_01, outset, 0, 0]`.
     pub(crate) params: [f32; 4],
-    /// `[r, g, b, a]` stroke colour.
     pub(crate) stroke_params: [f32; 4],
-    /// `[width, style_f32, align_f32, dash_gap]`.
     pub(crate) stroke_meta: [f32; 4],
 }
 
-/// Per-instance GPU record for gradient + pattern filled rectangles.
-///
-/// `stop_range.z` carries the `fill_kind` discriminator:
-/// `0 = gradient`, `1 = slash`, `2 = checker`.
-/// `pattern_a` and `pattern_b` are zero for gradient fills.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct FillInstance {
-    /// `[x, y, w, h]` in logical pixels (inflated by stroke outset).
     pub(crate) rect: [f32; 4],
-    /// `[start_x, start_y, end_x, end_y]` gradient axis in logical pixels.
     pub(crate) line: [f32; 4],
-    /// `[top_left, top_right, bottom_right, bottom_left]` radii.
     pub(crate) corner_radii: [f32; 4],
-    /// `[opacity_01, outset, 0, 0]`.
     pub(crate) params: [f32; 4],
-    /// `[stop_offset, stop_count, fill_kind, 0]`.
     pub(crate) stop_range: [u32; 4],
-    /// `[r, g, b, a]` stroke colour.
     pub(crate) stroke_params: [f32; 4],
-    /// `[width, style_f32, align_f32, dash_gap]`.
     pub(crate) stroke_meta: [f32; 4],
-    /// Pattern parameter slot A (meaning is fill_kind-dependent).
     pub(crate) pattern_a: [f32; 4],
-    /// Pattern parameter slot B (meaning is fill_kind-dependent).
     pub(crate) pattern_b: [f32; 4],
 }
 
-/// Per-instance GPU record for one drop shadow.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct ShadowInstance {
-    /// Expanded draw quad `[x, y, w, h]` in logical pixels.
     pub(crate) rect: [f32; 4],
-    /// Original casting surface `[x, y, w, h]` in logical pixels.
     pub(crate) surface_rect: [f32; 4],
-    /// `[top_left, top_right, bottom_right, bottom_left]` radii.
     pub(crate) corner_radii: [f32; 4],
-    /// Straight RGBA in `[0, 1]`, with alpha scaled by layer opacity.
     pub(crate) color: [f32; 4],
-    /// `[offset_x, offset_y, blur_sigma, spread]`.
     pub(crate) shadow_params: [f32; 4],
-    /// `[kind_f32, 0, 0, 0]` where `0 = outer` and `1 = inner`.
     pub(crate) shadow_meta: [f32; 4],
 }
 
-/// Packed gradient stop storage. Colour channels are IEEE-754 f16 bits.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct GpuStop {
@@ -178,7 +110,6 @@ pub(crate) struct GpuStop {
     pub(crate) _pad: u32,
 }
 
-/// Per-frame uniform carrying the viewport size in logical pixels.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct SceneUniforms {
@@ -248,7 +179,6 @@ pub(crate) fn draw_gradient_instance(
     }
 }
 
-/// Build a `FillInstance` for a pattern fill.
 pub(crate) fn draw_pattern_instance(
     draw: &DrawPattern,
     opacity_scale: f32,
@@ -279,12 +209,6 @@ pub(crate) fn draw_pattern_instance(
     }
 }
 
-/// Encode pattern parameters into the two `[f32; 4]` GPU slots.
-///
-/// Slash:   `pattern_a = [r, g, b, a]` (linear 0..1),
-///          `pattern_b = [period, line_width, 0, 0]`.
-/// Checker: `pattern_a = [r_a, g_a, b_a, a_a]` (linear 0..1),
-///          `pattern_b = [r_b, g_b, b_b, cell]`.
 fn pack_pattern(kind: PatternKind, space: BlendSpace) -> (u32, [f32; 4], [f32; 4]) {
     match kind {
         PatternKind::Slash {

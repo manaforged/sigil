@@ -1,7 +1,6 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::missing_const_for_fn)]
 #![allow(clippy::suboptimal_flops)]
-//! Shared showcase scene constructors for renderer phases R1-R7.
 
 use std::sync::OnceLock;
 
@@ -29,12 +28,10 @@ use crate::{
     SpriteSource, StrokeAlign, StrokeStyle,
 };
 
-/// First reserved atlas id for the five built-in icon showcase atlases.
 pub const BUILTIN_ICON_ATLAS_BASE_ID: u32 = BUILTIN_SPRITE_ATLAS_ID - 5;
 
 static BUILTIN_ICONS: OnceLock<Vec<sigil_icons::BakedIcon>> = OnceLock::new();
 
-/// Build the R1 linear-gradient showcase scene.
 #[must_use]
 pub fn gradient() -> (CommandScene, (f32, f32), Color) {
     let viewport = (760.0, 320.0);
@@ -62,7 +59,6 @@ pub fn gradient() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R2 stroke showcase scene.
 #[must_use]
 pub fn stroke() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -75,7 +71,6 @@ pub fn stroke() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R3 per-corner-radius showcase scene.
 #[must_use]
 pub fn corner_radius() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -103,7 +98,6 @@ pub fn corner_radius() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R4 drop-shadow showcase scene.
 #[must_use]
 pub fn shadow() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -123,7 +117,6 @@ pub fn shadow() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R5 inner-shadow showcase scene.
 #[must_use]
 pub fn inner_shadow() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -140,7 +133,6 @@ pub fn inner_shadow() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R6 pattern-fill showcase scene.
 #[must_use]
 pub fn pattern() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -171,13 +163,11 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R13 split-path showcase scenes.
 #[must_use]
 pub fn screen_split() -> [(CommandScene, (f32, f32), Color); 2] {
     [gradient(), pattern()]
 }
 
-/// Build the R7 sprite split showcase scene.
 #[must_use]
 pub fn sprite() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();
@@ -210,7 +200,6 @@ pub fn sprite() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R8 built-in icon showcase scene.
 #[must_use]
 pub fn icon() -> (CommandScene, (f32, f32), Color) {
     let _ = BUILTIN_ICONS.get_or_init(bake_builtin_icons);
@@ -225,7 +214,6 @@ pub fn icon() -> (CommandScene, (f32, f32), Color) {
     )
 }
 
-/// Build the R9 text-decoration showcase scene.
 #[must_use]
 pub fn decoration() -> (CommandScene, (f32, f32), Color) {
     let mut scene = SceneBuilder::new();

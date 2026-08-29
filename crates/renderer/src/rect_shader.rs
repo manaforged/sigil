@@ -1,10 +1,3 @@
-//! WGSL shader source for solid rectangle paint.
-
-/// Scene paint rectangle shader.
-///
-/// Takes per-vertex unit-quad positions and per-instance rectangle data.
-/// Converts logical pixels to NDC using the viewport uniform. The fragment
-/// shader applies a rounded-rect SDF for anti-aliasing and stroke overlay.
 pub(super) const RECT_SHADER: &str = "\
 const STROKE_STYLE_SOLID: f32 = 0.0;
 const STROKE_STYLE_DASHED: f32 = 1.0;
@@ -53,11 +46,6 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     );
     out.clip = vec4<f32>(ndc, 0.0, 1.0);
     out.color = inst.color;
-    // The CPU inflated the draw quad by `outset` (params.y) so the
-    // stroke's outside half has fragments to paint into. We recover the
-    // original surface half-size so the SDF measures distance from the
-    // surface edge, not the expanded quad edge. `local` is in
-    // surface-centred coordinates because inflation was symmetric.
     let expanded_half = inst.rect.zw * 0.5;
     let outset = inst.params.y;
     let surface_half = max(expanded_half - vec2<f32>(outset, outset), vec2<f32>(0.0, 0.0));

@@ -5,19 +5,6 @@
     clippy::cast_precision_loss,
     clippy::imprecise_flops
 )]
-//! Atlas sprite paint pipeline — Mono / Subpixel / Poly three-way split.
-//!
-//! `SpritePipeline` owns a fixed-size atlas registry keyed by `u32` id.
-//! Callers register atlas textures via [`SpritePipeline::register_atlas`]
-//! and reference them from [`crate::DrawSprite`] commands via the returned id.
-//!
-//! # Built-in showcase atlas
-//!
-//! [`BUILTIN_SPRITE_ATLAS_ID`] is a sentinel id used by `scenes::sprite()`.
-//! When `paint_sprite` encounters this sentinel and no atlas has been uploaded
-//! yet, it calls an internal helper to generate and upload the 600x200 RGBA8
-//! showcase texture (Mono disk | Subpixel RGB bars | Poly red-to-green
-//! gradient). The resolved slot is cached in `builtin_atlas_slot`.
 
 use bytemuck::{Pod, Zeroable};
 
@@ -40,36 +27,25 @@ use self::icon::is_builtin_icon_atlas;
 use self::image_pack::ImagePack;
 pub(crate) use self::image_pack::PackedImage;
 
-/// Sentinel atlas id for the built-in 600x200 showcase atlas used by
-/// `scenes::sprite()`. The pipeline auto-registers this atlas on first use.
 pub const BUILTIN_SPRITE_ATLAS_ID: u32 = u32::MAX - 1;
 const BUILTIN_ICON_ATLAS_COUNT: usize = 5;
 
-/// Per-instance GPU record for one sprite draw.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(crate) struct SpriteInstance {
-    /// `[x, y, w, h]` destination in logical pixels.
     dest: [f32; 4],
-    /// `[u0, v0, u1, v1]` atlas UV rect in normalised [0, 1] space.
     uv_rect: [f32; 4],
-    /// `[r, g, b, a]` linear tint in [0, 1].
     color: [f32; 4],
-    /// `[opacity_01, sprite_kind_f32, phase, 0]`.
     params: [f32; 4],
 }
 
-/// Extended uniforms that include atlas size for subpixel dx computation.
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
 struct SpriteUniforms {
-    /// Logical viewport in pixels.
     viewport: [f32; 2],
-    /// Atlas texture dimensions in texels.
     atlas_size: [f32; 2],
 }
 
-/// Wgpu resources for rendering atlas sprites across three sprite kinds.
 pub(crate) struct SpritePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
@@ -79,12 +55,8 @@ pub(crate) struct SpritePipeline {
     pub(super) atlases: Vec<AtlasEntry>,
     atlas_bind_groups: Vec<wgpu::BindGroup>,
     sampler: wgpu::Sampler,
-    /// Resolved `atlases` index for `BUILTIN_SPRITE_ATLAS_ID`, or `None`
-    /// until the first call that needs it.
     builtin_atlas_slot: Option<usize>,
     builtin_icon_slots: [Option<usize>; BUILTIN_ICON_ATLAS_COUNT],
-    /// `ImageSource::id` → packed placement, so a raster image uploads
-    /// once and many small images share a page.
     pub(super) image_slots: std::collections::HashMap<u64, PackedImage>,
     pub(super) image_pack: ImagePack,
 }
@@ -124,10 +96,6 @@ impl SpritePipeline {
         self.format
     }
 
-    /// Register an atlas texture and return its id.
-    ///
-    /// Returns `u32::MAX` if the registry is full (`MAX_ATLASES` entries) or
-    /// if the descriptor fails atlas validation.
     pub(crate) fn register_atlas(
         &mut self,
         device: &wgpu::Device,
@@ -160,10 +128,6 @@ impl SpritePipeline {
         id
     }
 
-    /// Draw a single sprite command.
-    ///
-    /// If `draw.source.atlas == BUILTIN_SPRITE_ATLAS_ID`, the built-in
-    /// 600x200 showcase atlas is uploaded on first call and cached.
     pub(crate) fn paint_sprite(
         &mut self,
         ctx: &mut PaintCtx<'_>,
@@ -189,8 +153,6 @@ impl SpritePipeline {
         self.encode_pass(ctx, &uniform_bg, &instance_buf, &bind_group);
     }
 
-    /// Translate a raw sentinel id to a concrete `atlases` index, uploading
-    /// the built-in atlas on demand when the sentinel is seen for the first time.
     fn resolve_atlas(
         &mut self,
         device: &wgpu::Device,
@@ -254,7 +216,10 @@ impl SpritePipeline {
 
     fn atlas_dims(&self, atlas_id: usize) -> Option<(f32, f32)> {
         let entry = self.atlases.get(atlas_id)?;
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        )]
         Some((entry.width as f32, entry.height as f32))
     }
 
@@ -293,8 +258,6 @@ impl SpritePipeline {
     }
 }
 
-// ---- GPU helpers ------------------------------------------------------------
-
 const fn sprite_uniforms(viewport: (f32, f32), atlas_w: f32, atlas_h: f32) -> SpriteUniforms {
     SpriteUniforms {
         viewport: [viewport.0.max(1.0), viewport.1.max(1.0)],
@@ -310,27 +273,17 @@ const fn sprite_kind_f32(kind: SpriteKind) -> f32 {
     }
 }
 
-// Verify GPU struct sizes match what bytemuck will produce.
 const _: () = assert!(core::mem::size_of::<SpriteInstance>() == 64);
 const _: () = assert!(core::mem::size_of::<SpriteUniforms>() == 16);
 
 const SPRITE_SHADER: &str = include_str!("sprite_paint.wgsl");
 
-// ---- bench / test helpers ---------------------------------------------------
-
-/// Construct a fresh [`SpritePipeline`] against `device` using the sRGB format.
-///
-/// Exposed for `benches/` and integration tests that need direct pipeline access.
-/// Production callers go through [`WgpuRenderer`][crate::renderer::WgpuRenderer].
 #[doc(hidden)]
 #[cfg(any(test, feature = "bench"))]
 pub(crate) fn sprite_pipeline_new(device: &wgpu::Device) -> SpritePipeline {
     SpritePipeline::new(device, wgpu::TextureFormat::Rgba8UnormSrgb)
 }
 
-/// Return the maximum number of atlases the registry can hold.
-///
-/// Used by property tests to drive boundary coverage.
 #[doc(hidden)]
 #[cfg(any(test, feature = "bench"))]
 pub(crate) const fn max_atlases_for_test() -> usize {
@@ -339,11 +292,10 @@ pub(crate) const fn max_atlases_for_test() -> usize {
 
 #[cfg(any(test, feature = "bench"))]
 impl SpritePipeline {
-    /// Register a raw RGBA8 atlas for tests / benches.
-    ///
-    /// Behaves identically to the crate-internal [`Self::register_atlas`]
-    /// but is pub so integration test crates can call it directly.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the argument list mirrors the upstream API contract"
+    )]
     pub(crate) fn register_atlas_for_test(
         &mut self,
         device: &wgpu::Device,

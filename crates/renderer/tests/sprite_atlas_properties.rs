@@ -31,6 +31,7 @@ const MAX_ATLASES: usize = 16;
 /// Tests that empty bytes and zero dimensions are consistently rejected
 /// with u32::MAX sentinel, never panicking.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_atlas_validation_rejects_invalid_inputs() {
     let Some((device, queue)) = try_request_device() else {
         println!(
@@ -58,6 +59,7 @@ fn prop_atlas_validation_rejects_invalid_inputs() {
 ///
 /// Non-zero dimensions and non-empty bytes must return non-sentinel (0).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_valid_params_pass_validation() {
     let Some((device, queue)) = try_request_device() else {
         println!(
@@ -83,6 +85,7 @@ fn prop_valid_params_pass_validation() {
 ///
 /// Width or height = 0 should return u32::MAX sentinel, not panic.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_zero_dimensions_rejected() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_zero_dimensions_rejected");
@@ -111,6 +114,7 @@ fn prop_zero_dimensions_rejected() {
 ///
 /// Registering with empty bytes should return u32::MAX sentinel, not panic.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_empty_bytes_rejected() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_empty_bytes_rejected");

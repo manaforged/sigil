@@ -79,6 +79,7 @@ const CENTER_ALPHA_MIN: u8 = 200;
 /// Render the R8 icon scene and assert the four pixel-level contracts.
 /// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn icon_pixels_match_tint_shape_sharpness_and_uniqueness_contracts() {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping icon_pixel_check");

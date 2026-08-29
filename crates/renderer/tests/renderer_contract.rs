@@ -5,7 +5,7 @@
 
 //! Contract tests for [`sigil_renderer::WgpuRenderer`].
 //!
-//! A real-GPU test suite is not practical in CI — we don't know what
+//! A real-GPU test suite is not practical for every machine — we don't know what
 //! hardware runners have. We split the tests into two tiers:
 //!
 //! 1. **Unconditional** tests that exercise pure types (error formatting,

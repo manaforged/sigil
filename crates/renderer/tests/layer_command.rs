@@ -23,6 +23,7 @@ const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 120;
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn layer_commands_walk_and_initialize_layer_pool() {
     let scene = layer_scene();
     assert_layer_command_shape(&scene);
@@ -45,6 +46,7 @@ fn layer_commands_walk_and_initialize_layer_pool() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn rounded_layer_clip_masks_every_descendant_pipeline() {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     if let Err(err) = renderer.ensure_headless_for_tests() {
@@ -64,6 +66,7 @@ fn rounded_layer_clip_masks_every_descendant_pipeline() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn nested_layer_composites_in_parent_local_coordinates() {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     if let Err(err) = renderer.ensure_headless_for_tests() {
@@ -85,6 +88,7 @@ fn nested_layer_composites_in_parent_local_coordinates() {
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn retina_layer_allocates_physical_not_logical_pixels() {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     if let Err(err) = renderer.ensure_headless_for_tests() {
@@ -331,7 +335,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
     pixels
 }
 
-fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
+const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
     let offset = ((y * VIEWPORT_WIDTH + x) * 4) as usize;
     [
         pixels[offset],
