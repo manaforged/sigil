@@ -28,8 +28,7 @@ not on `wgpu` or `winit` directly.
 | `sigil-profile` | `SIGIL_PROFILE`, Perfetto, phase table. |
 | `sigil` (`sigil-ui`) | Facade + prelude. Re-exports the widget catalog. |
 
-Not default members (still in the workspace): `ide-core`,
-`engine_adapter`, bench-parity crates.
+Not default members (still in the workspace): the bench-parity crates.
 
 ## Dependency direction
 

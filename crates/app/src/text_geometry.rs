@@ -1,9 +1,3 @@
-//! Default [`TextGeometry`] provider installed by `sigil::launch`.
-//!
-//! Backs caret/selection hit-testing for text widgets over the same
-//! thread [`OwnedTextEngine`](sigil_text::OwnedTextEngine) that layout
-//! measure and scene emit use, so caret x matches painted glyphs.
-
 use std::rc::Rc;
 
 use sigil_hal::{HitPosition, TextAffinity};
@@ -11,7 +5,6 @@ use sigil_layout::{CaretGeometry, TextGeometry};
 use sigil_style::TextStyle;
 use sigil_text::OwnedTextEngine;
 
-/// Thread-engine geometry provider for single-line text widgets.
 pub struct EngineGeometry {
     engine: Rc<OwnedTextEngine>,
 }
@@ -23,7 +16,6 @@ impl Default for EngineGeometry {
 }
 
 impl EngineGeometry {
-    /// Create the default geometry provider.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -34,7 +26,6 @@ impl EngineGeometry {
 
 impl TextGeometry for EngineGeometry {
     fn hit(&self, text: &str, style: &TextStyle, x: f32) -> usize {
-        // `None` width = single line, no wrap — matches a text field's track.
         self.engine
             .layout_paragraph_styled(text, None, style)
             .map_or(0, |para| para.hit_test(x, 0.0).byte_index)
@@ -62,7 +53,6 @@ impl TextGeometry for EngineGeometry {
     }
 }
 
-/// Clamp `byte` to the nearest UTF-8 boundary at or below `text.len()`.
 fn clamp_to_boundary(text: &str, byte: usize) -> usize {
     let mut byte = byte.min(text.len());
     while byte > 0 && !text.is_char_boundary(byte) {

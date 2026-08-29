@@ -1,54 +1,9 @@
-//! Debug introspection for the reactive runtime.
-//!
-//! Exposes dev-time tools promised by the DR-005 addendum:
-//!
-//! - [`dump_owner_tree`] — human-readable tree of every root owner,
-//!   with per-owner signal, effect, cleanup, and child-owner counts.
-//! - [`dump_subtree`] — the same renderer scoped to a single owner.
-//!
-//! These readers walk the thread-local runtime arena. They are
-//! purely observational — no reactive state is created, disposed,
-//! or mutated. The tools are always available (not gated on
-//! `debug_assertions`) because the cost is paid only when a caller
-//! actually asks for a dump.
-//!
-//! Non-goals (explicit for this commit):
-//!
-//! - No signal-subscriber / effect-dep graph walk (separate tool).
-//! - No structured / JSON output (`dump_owner_tree_json` is a later
-//!   addition).
-//! - No end-of-session leak detector (see the module-level note on
-//!   `run_effect_leak_check` below).
-
 use core::fmt::Write as _;
 
 use crate::entity::{Entity, EntityId};
 use crate::owner::OwnerId;
 use crate::runtime::{OwnerKey, OwnerSlot, with_rt};
 
-/// Render the current owner tree as a human-readable string.
-///
-/// Walks every root owner (no parent) in the thread-local runtime
-/// and emits each descendant on its own line. Indentation is two
-/// spaces per owner-tree level. Every line shows the owner's debug
-/// name and the `file:line` where it was constructed, followed
-/// optionally by a bracketed count summary.
-///
-/// Returns the empty string when the runtime has no live owners.
-///
-/// # Example output
-///
-/// ```text
-/// App::root  at src/main.rs:14
-///   Window(main)  at src/window.rs:42
-///     Button(submit)  at src/buttons.rs:10  [signals: 2, effects: 1]
-///     For<Account>  at src/list.rs:88  [owners: 3]
-///       Row(0)  at src/list.rs:92  [signals: 1, effects: 1]
-///       Row(1)  at src/list.rs:92  [signals: 1, effects: 1]
-///       Row(2)  at src/list.rs:92  [signals: 1, effects: 1]
-/// ```
-///
-/// See DR-005 addendum item 5.
 #[must_use]
 pub fn dump_owner_tree() -> String {
     let roots = with_rt(|rt| {
@@ -64,39 +19,18 @@ pub fn dump_owner_tree() -> String {
     out
 }
 
-/// Return `true` if `entity` names a live entity slot on this thread.
-///
-/// Test seam — public-but-`#[doc(hidden)]` — for asserting the
-/// DR-045 §A1 eviction contract. Production code does not need this
-/// check: stale handles surface via the
-/// [`crate::diagnostic::disposed_entity`] panic
-/// (`Entity::update` / `Entity::read`) or `Err(EntityGone)` from
-/// `AsyncContext::update`.
-///
-/// Marked `#[doc(hidden)]` to keep the surface explicit-opt-in.
 #[doc(hidden)]
 #[must_use]
 pub fn entity_is_live<T: 'static>(entity: Entity<T>) -> bool {
     with_rt(|rt| rt.entities.contains(entity.key))
 }
 
-/// Same as [`entity_is_live`] but for the type-erased
-/// [`EntityId`].
-///
-/// Test seam — public-but-`#[doc(hidden)]`.
 #[doc(hidden)]
 #[must_use]
 pub fn entity_id_is_live(id: EntityId) -> bool {
     with_rt(|rt| rt.entities.contains(id.0))
 }
 
-/// Render the subtree rooted at `owner` as a human-readable string.
-///
-/// The given owner is rendered at depth zero (no indentation); its
-/// descendants follow with the same format as [`dump_owner_tree`].
-///
-/// Returns the empty string if `owner` is not a live owner
-/// (already disposed, or from a different runtime).
 #[must_use]
 pub fn dump_subtree(owner: OwnerId) -> String {
     let mut out = String::new();
@@ -107,14 +41,6 @@ pub fn dump_subtree(owner: OwnerId) -> String {
     out
 }
 
-/// Format a single owner slot into its dump line and recurse into
-/// children at `depth + 1`.
-///
-/// Walks the whole subtree under `key`. The runtime borrow is taken
-/// once per line to snapshot the slot's fields plus its children
-/// list; recursion into children then re-borrows for each child.
-/// This pattern matches the rest of the crate — we never hold a
-/// runtime borrow across a user-observable boundary.
 fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
     let Some(rendered) = with_rt(|rt| rt.owners.get(key).map(|slot| render_line(slot, depth)))
     else {
@@ -122,8 +48,6 @@ fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
     };
     out.push_str(&rendered);
 
-    // Snapshot children *after* writing this line so we don't hold
-    // the borrow across the recursive call.
     let children = with_rt(|rt| {
         rt.owners
             .get(key)
@@ -135,19 +59,12 @@ fn write_subtree(out: &mut String, key: OwnerKey, depth: usize) {
     }
 }
 
-/// Format one owner slot into the line the dump emits for it.
-///
-/// Format: `"<indent><name>  at <file>:<line>[  [<counts>]]\n"`.
-/// Counts are joined with `", "` inside a single `[...]` block, and
-/// only non-zero counts appear. See the module-level example.
 fn render_line(slot: &OwnerSlot, depth: usize) -> String {
     let indent = "  ".repeat(depth);
     let name = slot.name;
     let file = slot.location.file();
     let line = slot.location.line();
 
-    // Build the bracketed count summary. Order is fixed so output
-    // is stable across runs: signals, effects, cleanups, owners.
     let mut parts: Vec<String> = Vec::new();
     let signals = slot.signals.len();
     let effects = slot.effects.len();
@@ -167,8 +84,6 @@ fn render_line(slot: &OwnerSlot, depth: usize) -> String {
     }
 
     let mut buf = String::new();
-    // Infallible writes into a String cannot fail; the expect
-    // documents that intent without degrading to `unwrap`.
     write!(buf, "{indent}{name}  at {file}:{line}").expect("writing to String is infallible");
     if !parts.is_empty() {
         write!(buf, "  [{}]", parts.join(", ")).expect("writing to String is infallible");
@@ -177,24 +92,6 @@ fn render_line(slot: &OwnerSlot, depth: usize) -> String {
     buf
 }
 
-/// Narrow, correctness-guardrail leak detector for the effect
-/// run-owner model.
-///
-/// Called from [`crate::effect::run_effect`] in `debug_assertions`
-/// builds *after* the previous run's effect-owner is disposed.
-/// DR-005 §7 of the addendum describes a full end-of-session leak
-/// detector; that needs more design (session boundary, Copy-handle
-/// drop semantics) and is deferred to a later commit.
-///
-/// This narrower check verifies the invariant that matters right
-/// now: when `run_effect` asks `dispose_owner` to tear down the
-/// previous run-owner, the owner slot is actually gone afterwards.
-/// A stuck slot means some cleanup path is silently holding a
-/// reference, which would accumulate as a slow leak across re-runs
-/// of a long-lived effect. We catch it at the next run with an
-/// actionable stderr warning rather than shipping a silent leak.
-///
-/// The check is `debug_assertions`-only; release builds pay nothing.
 #[cfg(debug_assertions)]
 pub(crate) fn run_effect_leak_check(
     prev_run_owner: OwnerKey,
@@ -203,9 +100,6 @@ pub(crate) fn run_effect_leak_check(
 ) {
     let still_present = with_rt(|rt| rt.owners.contains(prev_run_owner));
     if still_present {
-        // Use the `eprintln!` macro rather than `log`/`tracing` so
-        // the detector works in tests and release-with-debug builds
-        // without any logging infrastructure attached.
         eprintln!(
             "sigil-reactive leak: effect run-owner for `{effect_name}` (at {effect_location}) was not disposed before the next run. This is a bug in the effect-owner teardown path."
         );

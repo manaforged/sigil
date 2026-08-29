@@ -1,27 +1,3 @@
-//! G6 `Styled` trait — unified fluent surface across `NodeBuilder` and
-//! every widget builder. See DR-049 for the locked design.
-//!
-//! The trait is split into per-category super-traits, each in its own
-//! file, all anchored on a single [`StyleAccess`] base:
-//!
-//! - `access` — [`StyleAccess`], the single `fn style_mut(&mut self)` hook
-//!   every implementor provides.
-//! - `spacing` — [`Spacing`]: padding, margin, gap.
-//! - `sizing` — [`Sizing`]: width, height, min/max.
-//! - `flex` — [`Flex`]: display, flex direction, alignment, grow/shrink.
-//! - `fill` — [`Fill`]: background and text colour.
-//! - `typography` — [`Typography`]: font size, weight, family, line height.
-//! - `geometry` — [`Geometry`]: border radius.
-//! - `visual` — [`Visual`]: opacity, overflow.
-//! - `transitions` — [`Transitions`]: transition preset + duration.
-//! - `state_variants` — [`StateVariants`]: hover/focus/pressed/disabled
-//!   (gated on [`StateHost`]).
-//! - `umbrella` — [`Styled`], the all-of-the-above bound for downstream
-//!   "anything styleable" call sites.
-//! - `color` — [`ColorOrToken`] polymorphic colour input.
-//! - `state` — [`StateStyleBuilder`] + [`StateHost`] marker.
-//! - `node` — [`NodeStyledBuilder`] + [`Styleable`] adapter.
-
 pub(crate) mod access;
 pub(crate) mod color;
 pub(crate) mod fill;

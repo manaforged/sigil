@@ -43,7 +43,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil_hal::Rect>, sigil_hal::Rect) {
         let mut hit = None;
         for command in &scene.commands {
             match command {
-                SceneCommand::PushClip(rect) => clip = Some(*rect),
+                SceneCommand::PushClip(push) => clip = Some(*push),
                 SceneCommand::PopClip => clip = None,
                 SceneCommand::GlyphRun(draw) if draw.run.node == Some(text_id) => hit = clip,
                 _ => {}

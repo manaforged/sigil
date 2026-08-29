@@ -1,5 +1,3 @@
-//! Handler storage attached to `sigil_kernel::Node` extensions.
-
 use sigil_hal::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 
 type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
@@ -13,7 +11,6 @@ struct KeyBinding {
     handler: KeyHandler,
 }
 
-/// Event handlers attached to a node through the extension bag.
 #[derive(Default)]
 pub struct EventHandlers {
     pointer_down_capture: Vec<PointerHandler>,

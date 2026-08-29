@@ -1,10 +1,3 @@
-//! Turn a cell grid into terminal bytes.
-//!
-//! One SGR pair covers a run of like cells, and a row is written only to its
-//! last painted column: the rest is one clear. Colour goes out as 24-bit when
-//! the style resolved one and falls back to the terminal's own palette when
-//! it did not.
-
 use std::io::{self, Write};
 use std::sync::OnceLock;
 
@@ -18,14 +11,6 @@ use sigil_style::Tone;
 use crate::paint::{CONTINUES, Grid, Ink};
 use sigil_style::Rgba8;
 
-/// Write the cells that differ between `prev` and `next` to `out`.
-///
-/// The live host calls this each frame. A host running its own terminal loop
-/// over [`step`] uses it to put a frame on screen.
-///
-/// # Errors
-///
-/// Returns any write error from `out`.
 pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
     if prev.cols() == next.cols() && prev.rows() == next.rows() {
         dirty(out, prev, next)
@@ -55,8 +40,6 @@ pub(crate) fn dirty(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Resul
 fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -> io::Result<()> {
     let y = u16::try_from(row).unwrap_or(u16::MAX);
     queue!(out, cursor::MoveTo(0, y))?;
-    // One SGR pair per run, not per cell: a row of one colour costs two
-    // escape sequences however wide the terminal is.
     let mut style: Option<(Ink, Ink, bool)> = None;
     let end = grid.painted_width(row);
     for col in 0..end {
@@ -90,16 +73,9 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
     if style.is_some() {
         queue!(out, SetAttribute(Attribute::Reset), ResetColor)?;
     }
-    // The row was painted only up to `end`; clear whatever the last frame
-    // left to the right of it rather than writing a run of blanks.
     queue!(out, Clear(ClearType::UntilNewLine))
 }
 
-/// Whether this terminal accepts 24-bit colour.
-///
-/// Read once. A terminal without it renders a truecolor escape as garbage or
-/// ignores it, so a resolved colour has to come down to the 256-colour cube
-/// instead. `COLORTERM` is what terminals actually advertise it through.
 fn truecolor() -> bool {
     static ANSWER: OnceLock<bool> = OnceLock::new();
     *ANSWER.get_or_init(|| {
@@ -114,18 +90,12 @@ fn supports_truecolor(program: Option<&str>, color: Option<&str>) -> bool {
         && color.is_some_and(|value| value.contains("truecolor") || value.contains("24bit"))
 }
 
-/// Nearest colour in the 6x6x6 cube, for terminals without 24-bit colour.
 fn cube(colour: Rgba8) -> u8 {
     let step = |channel: u8| u16::from(channel) * 5 / 255;
     let index = 16 + 36 * step(colour.r) + 6 * step(colour.g) + step(colour.b);
     u8::try_from(index).unwrap_or(u8::MAX)
 }
 
-/// Terminal colour for one ink.
-///
-/// A resolved colour goes out as 24-bit where the terminal takes it, so a
-/// badge is the theme's own swatch. A bare tone falls back to the terminal's
-/// palette, which is what an unthemed widget and a user's own scheme want.
 fn paint(ink: Ink) -> Color {
     paint_for(ink, truecolor())
 }
@@ -148,6 +118,10 @@ fn paint_for(ink: Ink, truecolor: bool) -> Color {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test/instrumentation context; the invariant is proven by the caller"
+)]
 #[path = "write_tests.rs"]
 mod tests;

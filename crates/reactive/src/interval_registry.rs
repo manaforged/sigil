@@ -1,10 +1,3 @@
-//! Internal plumbing for the interval primitive.
-//!
-//! Holds the thread-local slot registry, the test-clock seam, and the
-//! panic-safe invocation helper. Public API lives in
-//! [`super`](crate::interval); this module is the implementation side
-//! and exposes only what `interval.rs` needs via `pub(super)`.
-
 use core::time::Duration;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -55,30 +48,6 @@ thread_local! {
     pub(super) static REGISTRY: RefCell<Registry> = const { RefCell::new(Registry::new()) };
 }
 
-/// Invoke the stored callback for `id` inside `owner`'s scope.
-///
-/// Returns `true` when the callback ran. The callback is swapped out
-/// of the registry while it runs so callbacks can re-enter
-/// [`register_interval`](super::register_interval) /
-/// [`cancel_interval`](super::cancel_interval) without `RefCell` panics.
-///
-/// # Panic safety
-///
-/// User callbacks run inside [`std::panic::catch_unwind`]. If a
-/// callback panics:
-///
-/// * the panic is captured and a one-line diagnostic is written to
-///   `stderr` with the slot id, so the issue is surfaced without
-///   crashing the shell;
-/// * the original callback is restored to its slot, so the next tick
-///   will try it again (slots are NOT zombified with the no-op stub);
-/// * the tick returns `true` for the panicked slot — the callback ran,
-///   even though it exited abnormally — so per-tick fire-count
-///   reporting stays meaningful.
-///
-/// Repeatedly-panicking callbacks will repeatedly log; cancel them
-/// explicitly via [`cancel_interval`](super::cancel_interval) when that
-/// is undesirable.
 pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
     let cb = REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
@@ -116,14 +85,10 @@ pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
     ran
 }
 
-/// Test-only: pin the registry's view of "now" to `clock`.
 pub(super) fn test_set_clock(clock: Instant) {
     REGISTRY.with(|r| r.borrow_mut().test_clock = Some(clock));
 }
 
-/// Test-only: advance the pinned test clock by `delta`.
-///
-/// Initialises the pinned clock to `Instant::now()` if none was set.
 pub(super) fn test_advance_clock(delta: Duration) {
     REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
@@ -132,7 +97,6 @@ pub(super) fn test_advance_clock(delta: Duration) {
     });
 }
 
-/// Test-only: clear the pinned test clock.
 pub(super) fn test_clear_clock() {
     REGISTRY.with(|r| r.borrow_mut().test_clock = None);
 }

@@ -1,5 +1,3 @@
-//! Live and headless pumps over [`sigil_app::Host`].
-
 use std::io::{self, BufWriter, Write};
 use std::time::Duration;
 
@@ -23,17 +21,9 @@ use crate::mouse::map_mouse;
 use crate::paint::{Grid, raster, raster_into};
 
 const TICK: Duration = Duration::from_millis(33);
-/// Frame buffer for terminal writes. A full redraw of a wide terminal is
-/// tens of kilobytes; anything smaller splits one frame across syscalls.
 const BUFFER: usize = 64 * 1024;
 const CELL: f32 = sigil_app::Host::CELL;
 
-/// Run a Sigil tree on the terminal. Same config and tree as
-/// `sigil::launch`.
-///
-/// # Errors
-///
-/// Returns when the terminal cannot enter raw mode, or when a write fails.
 pub fn run<C, T>(config: C, tree: T) -> AppResult<()>
 where
     C: Into<AppConfig>,
@@ -43,11 +33,6 @@ where
     Runtime::scope("sigil-tui", || live(&config, tree))
 }
 
-/// Headless: mount, route `events`, return the painted text.
-///
-/// # Errors
-///
-/// Returns the layout engine error instead of painting stale geometry.
 pub fn present(
     tree: impl TreeRoot,
     cols: u16,
@@ -63,22 +48,15 @@ pub fn present(
     })
 }
 
-/// Frame buffers for a terminal host.
-///
-/// A host that keeps one between frames reuses the paint scratch and both
-/// cell buffers, so a steady frame allocates nothing. [`step`] is the
-/// allocating equivalent for tests and one-shot renders.
 pub struct Screen {
     nodes: Vec<Painted>,
     grid: Grid,
     prev: Grid,
     fresh: bool,
-    /// The last frame differs from the one on screen.
     dirty: bool,
 }
 
 impl Screen {
-    /// Buffers for a `cols` by `rows` terminal.
     #[must_use]
     pub fn new(cols: u16, rows: u16) -> Self {
         Self {
@@ -90,11 +68,6 @@ impl Screen {
         }
     }
 
-    /// Route `events`, tick, lay out, and paint one frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns the layout engine error instead of painting stale geometry.
     pub fn frame(
         &mut self,
         host: &mut Host,
@@ -112,9 +85,6 @@ impl Screen {
         host.layout(view(cols, rows))?;
         host.repair_focus(router);
         let resized = self.grid.cols() != cols as usize || self.grid.rows() != rows as usize;
-        // An idle app paints the same tree 30 times a second. When no record
-        // moved and the terminal is the same size, the cells are the ones
-        // already on screen: nothing to rasterize and nothing to send.
         let moved = host.repaint(&mut self.nodes);
         self.dirty = moved || resized || self.fresh;
         if self.dirty {
@@ -122,18 +92,9 @@ impl Screen {
             raster_into(&mut self.grid, &self.nodes, CELL);
             return Ok(&self.grid);
         }
-        // `flush` swaps the buffers, so after one the frame on screen is
-        // `prev` and `grid` is the retired one. A skipped frame changed
-        // nothing, so what is on screen is this frame.
         Ok(&self.prev)
     }
 
-    /// Write what changed since the previous frame, then keep it as the new
-    /// comparison point.
-    ///
-    /// # Errors
-    ///
-    /// Returns any write error from `out`.
     pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
         if !self.dirty {
             return Ok(());
@@ -153,23 +114,16 @@ impl Screen {
         Ok(())
     }
 
-    /// Repaint every cell on the next flush.
     pub const fn invalidate(&mut self) {
         self.fresh = true;
     }
 
-    /// Whether the current frame has terminal bytes to flush.
     #[must_use]
     pub const fn needs_flush(&self) -> bool {
         self.dirty
     }
 }
 
-/// One frame: route events, tick, lay out, rasterize.
-///
-/// # Errors
-///
-/// Returns the layout engine error instead of rasterizing stale geometry.
 pub fn step(
     host: &mut Host,
     router: &mut EventRouter,
@@ -272,19 +226,12 @@ fn quit(key: &crossterm::event::KeyEvent, esc_exits: bool) -> bool {
 
 struct Term {
     redraw: bool,
-    /// One buffer for a whole frame.
-    ///
-    /// A frame is thousands of short writes — a cursor move and a run of
-    /// glyphs per row. `io::stdout` is line-buffered behind a lock, so each
-    /// of those would be a syscall's worth of work and a lock acquire.
     out: BufWriter<io::Stdout>,
 }
 
 impl Term {
     fn enter() -> io::Result<Self> {
         enable_raw_mode()?;
-        // Mouse reporting: without it the terminal sends no pointer events at
-        // all, and every hover, click, and wheel in the widget set is dead.
         execute!(
             io::stdout(),
             EnterAlternateScreen,
@@ -308,8 +255,6 @@ fn paint_frame(out: &mut impl Write, screen: &mut Screen, redraw: bool) -> io::R
     if !redraw && !screen.needs_flush() {
         return Ok(());
     }
-    // Synchronised update: the terminal shows the whole frame at once
-    // rather than tearing partway through the diff.
     queue!(out, Print("\x1b[?2026h"))?;
     if redraw {
         queue!(out, Clear(ClearType::All))?;
@@ -326,7 +271,6 @@ impl Drop for Term {
     }
 }
 
-/// Put the terminal back the way it was found. Safe to call twice.
 fn restore() {
     let _ = execute!(
         io::stdout(),
@@ -338,12 +282,6 @@ fn restore() {
     let _ = disable_raw_mode();
 }
 
-/// Restore the terminal before a panic prints.
-///
-/// The default hook writes to a screen that is still in raw mode and still
-/// showing the alternate buffer, so the message scrolls into a buffer that is
-/// about to be discarded: the app vanishes and takes the reason with it.
-/// Restoring first puts the panic where the user can read it.
 fn guard() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {

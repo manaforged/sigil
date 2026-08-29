@@ -64,7 +64,6 @@ fn increment_rejects_non_focus_target() {
     Runtime::scope("a11y-increment-gated", || {
         let value = signal(0.5_f32);
         let mut cx = Cx::new_root();
-        // No `.focusable(true)` — the gate must reject the action.
         let root = cx.add(container().value(value, 0.0, 1.0).value_step(0.25));
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();

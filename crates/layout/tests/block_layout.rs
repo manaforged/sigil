@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration smoke test for the P0.2 block layout body.
+//! Integration smoke test for the block layout body.
 //!
 //! The substantive block-layout tests (18 cases covering explicit
 //! sizing, auto width, padding/border/margin, margin collapse,
@@ -65,7 +65,7 @@ fn public_style_data_carries_min_max_clamps() {
 fn public_re_exports_cover_align_and_justify() {
     // align-items and justify-content survive on the public surface
     // (Block doesn't read them, but the same StyleData is shared with
-    // Flex; this guards their visibility for P0.3 consumers).
+    // Flex; this guards their visibility for flex consumers).
     let style = StyleData {
         align_items: Some(StyleAlignItems::Center),
         justify_content: Some(StyleJustifyContent::SpaceBetween),

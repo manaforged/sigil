@@ -121,7 +121,7 @@ fn placeholder_accepts_string_literal() {
     });
 }
 
-/// B4 — line children rebuild reactively when the bound signal mutates.
+/// line children rebuild reactively when the bound signal mutates.
 ///
 /// Was previously a "pins the broken behaviour" regression test
 /// (`text_edit_line_children_freeze_at_build`). After B1

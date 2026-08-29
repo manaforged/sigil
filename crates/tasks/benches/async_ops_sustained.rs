@@ -67,6 +67,11 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
         }
         let now = Instant::now();
         if now < next_frame_at {
+            // Bench pacing: this loop models wall-clock frame cadence.
+            #[allow(
+                clippy::disallowed_methods,
+                reason = "bench paces to real wall-clock frame times by design"
+            )]
             std::thread::sleep(next_frame_at - now);
         }
     }

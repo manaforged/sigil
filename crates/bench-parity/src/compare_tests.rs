@@ -296,7 +296,6 @@ fn remount_does_not_pair_with_reconstruct() {
         table_checks(EquivalenceCheck::Pass),
         0.05,
     );
-    // GPUI reconstructs every sample — reuse stays 0.
     let mut gpui = gpui;
     gpui.verify.insert("reuse".into(), 0);
     assert!(!same_mode(&sigil, &gpui));

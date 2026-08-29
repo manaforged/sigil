@@ -204,8 +204,10 @@ fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
             .compute(&mut cx, root, Size::fixed(200.0, 28.0))
             .expect("layout");
         let row = cx.get(root).unwrap().children().to_vec();
-        let fixed_w = layout.result(row[0]).unwrap().rect().width;
-        let flex_rect = layout.result(row[1]).unwrap().rect();
+        let fixed_id = row.first().copied().expect("fixed sibling present");
+        let flex_id = row.get(1).copied().expect("flex sibling present");
+        let fixed_w = layout.result(fixed_id).unwrap().rect().width;
+        let flex_rect = layout.result(flex_id).unwrap().rect();
         assert!(
             fixed_w > 60.0,
             "fixed sibling must keep most of its 96px, got {fixed_w}",

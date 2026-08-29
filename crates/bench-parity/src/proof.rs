@@ -2,38 +2,24 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-/// Framework-neutral output from an untimed verification frame.
-///
-/// `values` contains workload-specific counts such as rows and cells.
-/// `text_rows` contains the actual visible strings in row order. Geometry is
-/// quantized to one thousandth of a logical pixel before serialization.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct OutputProof {
-    /// Versioned probe shape, for example `visible-rows-v1`.
     pub schema: String,
-    /// Root width and height in thousandths of a logical pixel.
     pub root_size_milli_px: [i64; 2],
-    /// Workload-specific structural counts.
     #[serde(default)]
     pub values: BTreeMap<String, u64>,
-    /// Visible text grouped by row in document order.
     #[serde(default)]
     pub text_rows: Vec<Vec<String>>,
 }
 
-/// Source identity captured when a runner executes.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourceInfo {
-    /// Git commit, or `unknown` outside a Git checkout.
     pub revision: String,
-    /// True when tracked or untracked files differ from the commit.
     pub dirty: bool,
-    /// Harness crate version.
     pub harness_version: String,
 }
 
 impl SourceInfo {
-    /// Capture the current repository revision and worktree status.
     #[must_use]
     pub fn capture() -> Self {
         Self {
@@ -44,15 +30,15 @@ impl SourceInfo {
     }
 }
 
-/// Quantize a logical-pixel value for stable cross-framework comparison.
 #[must_use]
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub fn milli_px(value: f32) -> i64 {
     f64::from(value).mul_add(1_000.0, 0.0).round() as i64
 }
 
-/// Result JSON is the harness output. Writing it must not mark the
-/// run dirty or every pair after the first file becomes `— source`.
 fn worktree_dirty() -> bool {
     !command_line(
         "git",

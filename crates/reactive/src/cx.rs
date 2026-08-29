@@ -1,20 +1,3 @@
-//! `EntityCx<'_, T>` — hidden token for entity update closures.
-//!
-//! Product code uses kernel `Cx` and `sigil_tasks::spawn`.
-//! This type is a borrow-checked token (entity key + lifetime), not a
-//! runtime borrow. Methods call `with_rt` themselves, same as
-//! [`Signal`](crate::Signal).
-//!
-//! The `impl EntityCx` block is split across sibling modules to keep
-//! this file under the 400-line cap:
-//!
-//! - [`cx_actions`](crate::cx_actions) — `action`,
-//!   `dispatch`, plus the deferred-replay seam.
-//! - [`cx_focus`](crate::cx_focus) — focus-stack methods
-//!   (`focus_handle`, `focus`, `blur`, `focused`, `painting`).
-//! - [`cx_spawn`](crate::cx_spawn) — `spawn` and the `spawn_through`
-//!   monomorphisation seam.
-
 use core::any::{Any, TypeId};
 use core::marker::PhantomData;
 use core::panic::Location;
@@ -26,24 +9,13 @@ use crate::entity_observer::{Subscription, register_observe, register_subscribe}
 use crate::owner::on_cleanup;
 use crate::runtime::{EntityKey, ObserverKey, PendingObserver, with_rt};
 
-/// The borrow handed to entity update closures and observer callbacks.
-///
-/// Carries the identity of the "self" entity — the entity whose
-/// `update` is currently active, or the observer's own entity inside
-/// a callback — and a lifetime + `T` phantom that enforces single-use
-/// inside the closure. Methods route through `with_rt`, matching the
-/// rest of the crate.
 pub struct EntityCx<'a, T: 'static> {
     pub(crate) entity: EntityKey,
     _life: PhantomData<&'a mut T>,
-    // !Send + !Sync — runtime is thread-local.
     _not_send: PhantomData<*const ()>,
 }
 
 impl<T: 'static> EntityCx<'_, T> {
-    /// Internal constructor — wraps an `EntityKey` as a context token.
-    /// `pub(crate)` so `Entity::new`, `Entity::update`, and observer
-    /// drain can mint a context for their entity.
     pub(crate) const fn new_unchecked(entity: EntityKey) -> Self {
         Self {
             entity,
@@ -52,12 +24,6 @@ impl<T: 'static> EntityCx<'_, T> {
         }
     }
 
-    /// Notify observers of `self`.
-    ///
-    /// Schedules every observer of the current entity for the
-    /// end-of-turn drain. Safe to call multiple times in one closure —
-    /// per-observer dedup happens at drain time via the `pending_set`
-    /// equivalent on the entity-observer queue.
     pub fn notify(&mut self) {
         let key = self.entity;
         with_rt(|rt| {
@@ -78,10 +44,6 @@ impl<T: 'static> EntityCx<'_, T> {
         });
     }
 
-    /// Observe an entity for any `notify()` it fires.
-    ///
-    /// Returns a `Subscription` whose drop severs the observation.
-    /// Callbacks run on the main thread, batched at end-of-turn.
     #[track_caller]
     pub fn observe<U: 'static>(
         &mut self,
@@ -91,11 +53,6 @@ impl<T: 'static> EntityCx<'_, T> {
         register_observe::<T, U>(self.entity, *observed, callback)
     }
 
-    /// Typed event subscription on an entity.
-    ///
-    /// Sub-channel of `observe` parameterized by `Ev`. The observed
-    /// entity emits events via `EntityCx::emit::<Ev>` inside its own
-    /// `update`; subscribers receive the event payload.
     #[track_caller]
     pub fn subscribe<U: 'static, Ev: 'static>(
         &mut self,
@@ -105,16 +62,6 @@ impl<T: 'static> EntityCx<'_, T> {
         register_subscribe::<T, U, Ev>(self.entity, *observed, callback)
     }
 
-    /// Emit a typed event from inside `self`'s `update`.
-    ///
-    /// Schedules every `subscribe::<T, Ev>` observer for end-of-turn
-    /// drain with `ev` as the payload. The payload is cloned to each
-    /// subscriber except the last, which receives the original.
-    ///
-    /// `Ev: Clone` is bounded so the broadcast can hand every observer
-    /// its own copy without resorting to a shared `Rc`. For events
-    /// that are expensive to clone, wrap them in `Rc` / `Arc` at the
-    /// call site.
     pub fn emit<Ev: Clone + 'static>(&mut self, ev: Ev) {
         let key = self.entity;
         let ev_type = TypeId::of::<Ev>();
@@ -130,10 +77,6 @@ impl<T: 'static> EntityCx<'_, T> {
         let Some(last) = observers.pop() else {
             return;
         };
-        // Broadcast: clone the payload to every subscriber except the
-        // last, which receives the original `ev`. This preserves the
-        // full-payload guarantee for N subscribers while avoiding a
-        // clone in the common single-subscriber case.
         with_rt(|rt| {
             for observer in observers {
                 rt.pending_observers.push_back(PendingObserver {
@@ -148,32 +91,17 @@ impl<T: 'static> EntityCx<'_, T> {
         });
     }
 
-    /// Observe a global of type `G`. Returns a [`Subscription`].
     #[track_caller]
     pub fn observe_global<G: 'static>(
         &mut self,
         mut callback: impl FnMut(&mut T, &mut EntityCx<'_, T>) + 'static,
     ) -> Subscription {
         let entity = crate::entity_global::ensure_global_entity::<G>();
-        // Adapter: the underlying observer signature passes the
-        // observed handle; globals are keyed by TypeId, not handle, so
-        // the user-facing callback drops that arg.
         register_observe::<T, G>(self.entity, entity, move |this, _g, cx| {
             callback(this, cx);
         })
     }
 
-    /// Mutable access to the entity this context is inside.
-    ///
-    /// Deviation note: returning `&mut T` from `EntityCx` would require
-    /// holding the arena borrow live across the `&mut T`, which the
-    /// thread-local `RefCell` cannot express. We expose `mutate`
-    /// instead as a closure-shaped helper that runs `f(&mut T)` with
-    /// the payload locked. See followups.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the entity has been disposed.
     #[track_caller]
     pub fn mutate<R>(&mut self, f: impl FnOnce(&mut T) -> R) -> R {
         let caller = Location::caller();
@@ -204,17 +132,11 @@ impl<T: 'static> EntityCx<'_, T> {
         result
     }
 
-    /// Cleanup hook tied to this context's owner.
-    ///
-    /// Routes to the top-level `on_cleanup`; the current owner is the
-    /// active owner when the closure runs, which during `Entity::new`
-    /// or `Entity::update` is the entity's owner.
     pub fn on_cleanup(&mut self, f: impl FnOnce() + 'static) {
         on_cleanup(f);
     }
 }
 
-/// Mutable-reborrow guard — restores payload on unwind.
 struct EntityMutGuard {
     key: EntityKey,
     value: Option<Box<dyn Any>>,

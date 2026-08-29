@@ -1,20 +1,9 @@
-//! Polymorphic colour input + atom helpers for the `Styled` surface.
-
 use crate::{ColorAtom, Rgba8, StyleAtom};
 
-/// Polymorphic colour argument accepted by [`crate::Fill::bg`] and
-/// [`crate::Fill::text_color`].
-///
-/// Construct via the `Into` impls — pass an [`Rgba8`], a `&'static str`
-/// theme token, or a [`ColorAtom`] and the implementations route to the
-/// right atom variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorOrToken {
-    /// Concrete sRGB value.
     Rgba(Rgba8),
-    /// Theme-token reference resolved at paint time.
     Token(&'static str),
-    /// A pre-built colour atom.
     Atom(ColorAtom),
 }
 

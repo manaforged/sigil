@@ -1,5 +1,3 @@
-//! Runtime utility-class parser.
-
 use core::fmt;
 
 use smallvec::SmallVec;
@@ -89,24 +87,16 @@ const STRUCTURAL_TOKENS: [&str; 77] = [
     "opacity-100",
 ];
 
-/// Runtime parser error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ParseError {
-    /// Token was not recognised by the structural grammar.
     Unknown {
-        /// The original token.
         token: String,
-        /// Three nearest known structural tokens.
         suggestions: [String; 3],
     },
-    /// Responsive prefixes are not implemented in this phase.
     ResponsiveNotSupported {
-        /// Prefix that was rejected.
         prefix: String,
     },
-    /// Pseudo-state prefixes are not implemented in this phase.
     PseudoNotSupported {
-        /// Prefix that was rejected.
         prefix: String,
     },
 }
@@ -131,12 +121,6 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// Parse a utility-class string into style atoms.
-///
-/// # Errors
-///
-/// Returns a [`ParseError`] when the string contains unsupported prefixes
-/// or an unknown structural utility.
 pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, ParseError> {
     let mut atoms = SmallVec::new();
     for token in input.split(' ').filter(|token| !token.is_empty()) {
@@ -152,31 +136,11 @@ pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, Pars
     Ok(atoms)
 }
 
-/// A parsed class token: the overlay slot it targets (`None` for an
-/// unprefixed base token) and the atoms it expands to.
 pub struct StatefulToken {
-    /// Overlay slot the atoms belong to, or `None` for base atoms.
     pub slot: Option<StateSlot>,
-    /// Atoms the token body expands to.
     pub atoms: SmallVec<[StyleAtom; 2]>,
 }
 
-/// Parse a single class token that may carry a state prefix.
-///
-/// `hover:` / `focus:` / `active:` (or `pressed:`) / `disabled:` route into
-/// their [`StateSlot`]; an unprefixed token yields base atoms; any other
-/// prefix errors exactly as [`parse_class_string`] would.
-///
-/// This is the stateful counterpart of [`parse_class_string`]: it is what
-/// lets `interactive(...).class("bg-surface hover:bg-accent-9")` express a
-/// hover overlay through a class string instead of a `.hover(|s| …)`
-/// closure. A plain `container().class(...)` still rejects state prefixes,
-/// because a bare container has no interaction channel to drive them.
-///
-/// # Errors
-///
-/// Returns a [`ParseError`] for a responsive prefix, an unknown pseudo
-/// prefix, or an unknown utility in the token body.
 pub fn parse_stateful_token(token: &str) -> Result<StatefulToken, ParseError> {
     let Some((prefix, rest)) = token.split_once(':') else {
         return Ok(StatefulToken {
@@ -283,8 +247,6 @@ fn parse_tracking_token(token: &str) -> Option<StyleAtom> {
     }
 }
 
-/// `overflow-*` expands to both axes, `overflow-x-*`/`overflow-y-*` to
-/// one; returns `Ok(true)` when the token was consumed.
 fn push_overflow_atoms(
     token: &str,
     atoms: &mut SmallVec<[StyleAtom; 16]>,
@@ -329,8 +291,6 @@ fn parse_prefixed_token(token: &str) -> Option<StyleAtom> {
         .or_else(|| theme_atom(token))
 }
 
-/// `grid-cols-N` / `grid-rows-N` map to N equal grid tracks (and imply
-/// `display: grid` at the layout adapter).
 fn grid_atom(token: &str) -> Option<StyleAtom> {
     if let Some(n) = token.strip_prefix("grid-cols-") {
         return n.parse::<u16>().ok().map(StyleAtom::GridColumns);
@@ -341,8 +301,6 @@ fn grid_atom(token: &str) -> Option<StyleAtom> {
     None
 }
 
-/// `shadow-<level>` maps to a drop-shadow elevation preset. Bare
-/// `shadow` (the Tailwind default) is handled in `parse_token`.
 fn shadow_atom(token: &str) -> Option<StyleAtom> {
     let level = match token {
         "shadow-sm" => Elevation::Sm,
@@ -354,9 +312,6 @@ fn shadow_atom(token: &str) -> Option<StyleAtom> {
     Some(StyleAtom::Shadow(level))
 }
 
-/// `border-t` / `border-l-4` / `border-x` — Tailwind per-side widths.
-/// Returns true when the token is a side (or axis) width so the caller
-/// skips the colour / uniform-width path.
 fn push_border_side_atoms(token: &str, atoms: &mut SmallVec<[StyleAtom; 16]>) -> bool {
     let Some(rest) = token.strip_prefix("border-") else {
         return false;
@@ -376,8 +331,6 @@ fn push_border_side_atoms(token: &str, atoms: &mut SmallVec<[StyleAtom; 16]>) ->
     true
 }
 
-/// `t` / `l-4` / `x` / `y-2` → sides + width. `None` for colour tokens
-/// (`accent`) and uniform widths (`2`).
 fn border_side_spec(rest: &str) -> Option<(&'static [char], Px)> {
     let (side, width) = match rest.split_once('-') {
         Some((side, raw)) => (side, raw.parse::<i16>().ok().filter(|n| *n >= 0)?),
@@ -395,9 +348,6 @@ fn border_side_spec(rest: &str) -> Option<(&'static [char], Px)> {
     Some((sides, Px(width)))
 }
 
-/// `border-N` is a literal pixel width (Tailwind shape: `border-2` is
-/// 2px, not on the 4px spacing scale); `border-<token>` is a theme
-/// colour reference.
 fn border_atom(token: &str) -> Option<StyleAtom> {
     let value = token.strip_prefix("border-")?;
     if let Ok(width) = value.parse::<i16>() {

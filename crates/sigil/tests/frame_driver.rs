@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-//! W3.2b — integration tests for the application frame driver.
+//! integration tests for the application frame driver.
 //!
 //! The runtime defaults to [`DrawPhase::Idle`]. Real apps walk through
 //! `Idle → Effect → Layout → Paint → Idle` once per frame via the

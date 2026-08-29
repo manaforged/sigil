@@ -1,19 +1,3 @@
-//! Flex algorithm — CSS Flexible Box Layout §9 implementation.
-//!
-//! Step order follows the spec:
-//!   1. Determine container main-size + cross-size from style.
-//!   2. Resolve each item's flex base size + hypothetical main size.
-//!   3. Collect items into flex lines (single line when `NoWrap`).
-//!   4. Resolve flexible lengths per line (grow / shrink).
-//!   5. Determine each line's cross size (max outer cross of items).
-//!   6. Apply `align-content` to distribute lines on cross axis.
-//!   7. Apply `align-items` / `align-self` to place each item in its line.
-//!   8. Apply `justify-content` to place items along the main axis.
-//!
-//! Out of scope (defaults to `start`): baseline alignment, intrinsic
-//! min-content resolution beyond `flex-basis: 0`. Subgrid + container
-//! queries are explicitly not addressed.
-
 #![allow(
     dead_code,
     clippy::redundant_pub_crate,
@@ -32,16 +16,18 @@ use crate::flex_lines::{FlexItem, FlexLine, collect_lines};
 use crate::forest::{ComputedBox, NodeRef};
 use crate::resolve::{NodeEdges, clamp, dim_to_border_box, resolve_lp};
 use crate::style_data::{
-    AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, FlexWrap,
-    JustifyContent, LengthPercentageAuto, Overflow, Position, StyleData,
+    AlignContent, AlignItems, AlignSelf, Dimension, Display, FlexDirection, JustifyContent,
+    LengthPercentageAuto, Overflow, Position, StyleData,
+};
+mod intrinsic;
+
+use intrinsic::{
+    container_intrinsic_cross, container_intrinsic_main, probed_content_extent, text_intrinsic,
 };
 
-/// Axis orientation flags derived from `FlexDirection` + `FlexWrap`.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Axis2 {
-    /// True when the main axis runs along the inline (width) axis.
     pub(crate) row: bool,
-    /// True when main-axis order is reversed.
     pub(crate) reversed_main: bool,
 }
 
@@ -68,36 +54,15 @@ impl Axis2 {
     }
 }
 
-/// Per-pass context handed to the algorithm helpers.
 pub(crate) struct FlexCtx<'s, 'a> {
     pub(crate) solver: &'s FlexSolver<'a>,
     pub(crate) axes: Axis2,
     pub(crate) cb: CbSize,
-    /// True when this layout pass is the hypothetical inside
-    /// `container_intrinsic_*` — `cross_size_for` then skips the
-    /// `align-items: stretch` inflation so basis reads back the
-    /// children's natural extent instead of a stretched value.
     pub(crate) suppress_stretch: bool,
-    /// Extent the parent's *flexible-length* pass resolved for this node,
-    /// along the parent's main axis. Exactly one of these is set.
-    ///
-    /// Without them `write_container` re-derives the box from this node's
-    /// own style and content, discarding what the parent just resolved:
-    /// a `grow(1)` item collapses to its content (or to a `width(0)`
-    /// flex-basis) the moment it has children, since childless items
-    /// return early from `layout_item_subtree` and never reach the
-    /// overwrite.
-    ///
-    /// Set only for a growing item, and only on the axis the parent
-    /// actually flexed. Deliberately *not* set for `align-items: stretch`:
-    /// a stretched item may legitimately be smaller than the line, and
-    /// forcing it to fill overflows its parent's border.
     pub(crate) assigned_w: Option<f32>,
-    /// See [`Self::assigned_w`].
     pub(crate) assigned_h: Option<f32>,
 }
 
-/// Lay out a flex container rooted at `node`. Entry point.
 pub(crate) fn layout_root(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -107,7 +72,6 @@ pub(crate) fn layout_root(
     let edges = NodeEdges::build(style, ctx.cb.w);
     let m = edges.margin.or_zero();
     let (container_main, container_cross) = container_inner_size(ctx, style, &edges);
-    // Border-box origin = origin + margin offset.
     let border_origin = Position2::new(origin.x + m.left, origin.y + m.top);
     let content_origin = Position2::new(
         border_origin.x + edges.border.left + edges.padding.left,
@@ -139,16 +103,6 @@ pub(crate) fn layout_root(
         padding_box,
         border_origin,
     )?;
-    // Auto-main sizing: a container whose main size is not DEFINITE (no
-    // explicit main length, and no extent the parent's flex pass assigned)
-    // sizes to its CONTENT on the main axis, not to the containing block.
-    // Without this, an auto-height column inside a shorter parent (a scroll
-    // viewport especially) fills the parent's main extent and then §9.7
-    // shrinks its items to fit — crushing stacked rows. Sizing to content
-    // makes `free == 0`, so nothing grows or shrinks and the container
-    // overflows its parent (and scrolls, under a clipping ancestor) instead.
-    // Items that fill are unaffected: `grow` distributes from a definite
-    // container, and an explicit/assigned size keeps `main_definite`.
     let container_main = if main_is_definite(ctx, style)
         || !matches!(style.flex_wrap, crate::style_data::FlexWrap::NoWrap)
     {
@@ -163,9 +117,6 @@ pub(crate) fn layout_root(
     Ok(())
 }
 
-/// `true` when the container's MAIN size is definite: an explicit main-axis
-/// length (or `Fill`), or an extent the parent's flex pass assigned. When
-/// false the main size is `auto` and shrinks to content.
 fn main_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
     let (size_main, _) = main_cross_size(style, ctx.axes);
     let assigned_main = if ctx.axes.row {
@@ -176,8 +127,6 @@ fn main_is_definite(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> bool {
     assigned_main.is_some() || !matches!(size_main, Dimension::Auto)
 }
 
-/// Content-based main size of the container: the sum of the items' outer
-/// main bases plus the gaps between them (single-line `NoWrap` shape).
 fn content_main_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, items: &[FlexItem]) -> f32 {
     let count = items.len();
     let gap = main_gap(ctx, style, count);
@@ -185,7 +134,6 @@ fn content_main_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, items: &[FlexItem
     bases + gap * (count.saturating_sub(1) as f32)
 }
 
-/// Resolved inner content area of the container (main, cross) in px.
 fn container_inner_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, edges: &NodeEdges) -> (f32, f32) {
     let (cb_main, cb_cross) = ctx.cb.along(ctx.axes);
     let (size_main, size_cross) = main_cross_size(style, ctx.axes);
@@ -196,11 +144,6 @@ fn container_inner_size(ctx: &FlexCtx<'_, '_>, style: &StyleData, edges: &NodeEd
     } else {
         (chrome_block, chrome_inline)
     };
-    // A parent-flexed extent is authoritative for the WHOLE pass, not just
-    // the box written at the end: this node's children are laid out against
-    // these values, so patching only the final write would size the box
-    // correctly while its contents had already resolved against the
-    // pre-flex (often zero) extent.
     let (assigned_main, assigned_cross) = if ctx.axes.row {
         (ctx.assigned_w, ctx.assigned_h)
     } else {
@@ -243,7 +186,6 @@ fn main_cross_size(style: &StyleData, axes: Axis2) -> (Dimension, Dimension) {
     }
 }
 
-/// Build the [`FlexItem`] vector for the in-flow children.
 fn build_items(
     ctx: &FlexCtx<'_, '_>,
     parent: NodeRef<'_>,
@@ -264,8 +206,6 @@ fn build_items(
             continue;
         }
         if matches!(style.position, Position::Absolute) {
-            // Absolutes don't participate in flex flow; place against
-            // the container's padding box.
             place_absolute(
                 ctx,
                 child,
@@ -278,23 +218,12 @@ fn build_items(
         }
         items.push(FlexItem::build(ctx, child, container_main, container_cross));
     }
-    // Skip the order sort when every item has the default order (0) —
-    // that's the overwhelming common case and sorting a 100k flat tree
-    // by a key that is the same value across the board is pure
-    // overhead. `order` is `i32`; we only have to sort when at least
-    // one item declared a non-zero order.
     if items.iter().any(|i| i.order != 0) {
         items.sort_by_key(|i| i.order);
     }
     Ok(items)
 }
 
-/// Place an absolute-positioned child against the container's content box.
-/// An auto axis anchored by its LEADING inset (or unpinned) fills the
-/// containing block, matching `block::size_absolute`. An auto axis
-/// anchored by its TRAILING inset shrink-wraps to content: resolving
-/// `origin + cb - box - inset` against a containing-block-sized box lands
-/// the leading edge at `-inset`, fully offscreen.
 fn place_absolute(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
@@ -328,21 +257,10 @@ fn place_absolute(
         margin_trailing: margins.bottom,
     });
     ctx.solver.write(child.id(), ComputedBox { x, y, w, h });
-    // RC3: recurse into the absolute child's subtree so descendants
-    // (esp. text leaves) get LayoutResults. Before this call, an
-    // absolutely-positioned flex child wrote only its own box and left
-    // descendants without rects — the renderer's scene-walk then
-    // dropped any text descendant on the floor because it had no
-    // LayoutResult to read. `block::place_absolute` already recurses
-    // via `size_absolute → layout_children`; flex was the asymmetric
-    // case. Mirrors the in-flow flex item path at `layout_item_subtree`.
     layout_item_subtree(ctx, child.id(), Position2::new(x, y), w, h)?;
     Ok(())
 }
 
-/// Resolved border-box size of an absolute child: an explicit size wins;
-/// a trailing-anchored auto axis shrink-wraps to the probed content
-/// extent; any other auto axis fills the containing block.
 fn absolute_size(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
@@ -364,8 +282,6 @@ fn absolute_size(
         edges.block_chrome(),
         style.box_sizing,
     );
-    // The probe re-lays-out the subtree, so only pay for it when an
-    // auto axis is trailing-anchored and actually needs the content size.
     let probing = (explicit_w.is_none() && trailing_anchored(style.inset.left, style.inset.right))
         || (explicit_h.is_none() && trailing_anchored(style.inset.top, style.inset.bottom));
     let fit = if probing {
@@ -390,15 +306,10 @@ fn absolute_size(
     (w, h)
 }
 
-/// True when an axis is anchored by its trailing inset alone (leading
-/// `Auto`, trailing fixed).
 fn trailing_anchored(leading: LengthPercentageAuto, trailing: LengthPercentageAuto) -> bool {
     matches!(leading, LengthPercentageAuto::Auto) && !matches!(trailing, LengthPercentageAuto::Auto)
 }
 
-/// Resolve one axis of an absolute child's size: explicit size wins;
-/// a trailing-anchored auto axis shrink-wraps to the probed content
-/// extent; anything else fills the containing block (pre-existing rule).
 fn axis_size(
     explicit: Option<f32>,
     leading: LengthPercentageAuto,
@@ -416,10 +327,6 @@ fn axis_size(
     }
 }
 
-/// Shrink-to-fit content size of an absolute child: probe-lay out the
-/// subtree at the origin with stretch suppressed and read the laid-out
-/// content far edges, mirroring the `container_intrinsic_*` probes.
-/// `None` when the probe fails — the caller falls back to the fill.
 fn shrink_fit(
     ctx: &FlexCtx<'_, '_>,
     child: NodeRef<'_>,
@@ -440,7 +347,6 @@ fn shrink_fit(
         axes: ctx.axes,
         cb: ctx.cb,
         suppress_stretch: true,
-        // Measurement probe: shrink-to-fit is the wanted behaviour.
         assigned_w: None,
         assigned_h: None,
     };
@@ -451,9 +357,6 @@ fn shrink_fit(
     ))
 }
 
-/// Inputs to one axis of `inset` resolution. Mirrors `block::InsetAxis`
-/// — kept in this module so the two solvers don't grow a cross-module
-/// dependency.
 #[derive(Clone, Copy)]
 struct InsetAxis {
     leading: LengthPercentageAuto,
@@ -483,7 +386,6 @@ fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
     }
 }
 
-/// Place each line's items in (main, cross) pixel coordinates.
 fn place_lines(
     ctx: &FlexCtx<'_, '_>,
     mut lines: Vec<FlexLine>,
@@ -492,13 +394,6 @@ fn place_lines(
     container_cross: f32,
 ) -> Vec<PlacedItem> {
     let line_count = lines.len();
-    // A single line only stretches to the container's cross size when that
-    // size is DEFINITE (explicit `height`/`width` on the cross axis, or an
-    // extent the parent's flex pass assigned). When the cross size is auto,
-    // the container shrinks to fit its content, so the line keeps its own
-    // cross extent — otherwise the auto fallback to the containing block's
-    // cross (in `container_inner_size`) makes `align-items: center` place the
-    // item halfway down an oversized band and inflate the shrink-wrapped box.
     let (_, size_cross) = main_cross_size(style, ctx.axes);
     let assigned_cross = if ctx.axes.row {
         ctx.assigned_h
@@ -518,21 +413,12 @@ fn place_lines(
     let item_total: usize = lines.iter().map(|l| l.items.len()).sum();
     let mut placed = Vec::with_capacity(item_total);
     let mut cursor_cross = lines_origin;
-    // Walk lines forward or reversed without allocating a `Vec<&mut FlexLine>`
-    // intermediate. The common case is `cross_dir = false` (no
-    // wrap-reverse); the index trick saves an allocation per layout_root
-    // call and folds both directions into one loop.
     let line_total = lines.len();
     for i in 0..line_total {
         let idx = if cross_dir { line_total - 1 - i } else { i };
         let Some(line) = lines.get_mut(idx) else {
             continue;
         };
-        // CSS rule: when there's exactly one flex line, the line takes
-        // the container's full cross size — single-line containers
-        // always stretch their cross axis. Multi-line: `align-content`
-        // explicit `Stretch` distributes the free cross space across
-        // lines; otherwise lines keep their natural cross size.
         let line_cross = if line_count == 1 {
             if cross_definite {
                 container_cross.max(line.cross)
@@ -558,7 +444,6 @@ fn place_lines(
     placed
 }
 
-/// Resolved item with main/cross pixel position + outer box.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct PlacedItem {
     pub(crate) id: crate::forest::LocalId,
@@ -587,10 +472,6 @@ fn place_line_items(
     let (main_origin, main_gap_extra) =
         distribute_main(style.justify_content, free, item_count, container_main);
     let mut cursor = main_origin;
-    // Walk items forward or reversed without allocating a `Vec<&FlexItem>`
-    // intermediate. For wide_tree (1000-item flex line + 100k 100-item
-    // sub-lines), this collect was the single largest remaining per-frame
-    // allocation in place_line_items.
     let reversed = ctx.axes.reversed_main;
     for i in 0..item_count {
         let idx = if reversed { item_count - 1 - i } else { i };
@@ -612,7 +493,7 @@ fn place_line_items(
     }
 }
 
-fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData, count: usize) -> f32 {
+pub(crate) fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData, count: usize) -> f32 {
     if count <= 1 {
         return 0.0;
     }
@@ -624,9 +505,6 @@ fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData, count: usize) -> f32 {
     }
 }
 
-/// CSS §9.7 — resolve flexible lengths within a line by distributing
-/// the free space across grow / shrink factors. Single pass — handles
-/// the common shape; min/max clamps applied on the resolved size.
 fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
     let used_basis: f32 = line.items.iter().map(FlexItem::outer_main_basis).sum();
     let gap_total = line.gap * (line.items.len().saturating_sub(1) as f32);
@@ -637,10 +515,6 @@ fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
         }
         return;
     }
-    // §9.7.4 is a LOOP, not a single pass. Distributing once and then
-    // clamping strands the space a min/max-violating item refused: two
-    // `grow:1` items sharing 300px where one caps at 110 must give the
-    // other 190, not leave 40px unused.
     let growing = free > 0.0;
     let mut frozen = freeze_inflexible(&mut line.items, growing);
     while frozen.contains(&false) {
@@ -651,8 +525,6 @@ fn resolve_flexible(line: &mut FlexLine, container_main: f32) {
     }
 }
 
-/// This item's flex factor for the direction being resolved. Shrink is
-/// weighted by the base size ("scaled flex shrink factor", §9.7.4).
 fn flex_factor(item: &FlexItem, growing: bool) -> f32 {
     if growing {
         item.flex_grow.max(0.0)
@@ -661,8 +533,6 @@ fn flex_factor(item: &FlexItem, growing: bool) -> f32 {
     }
 }
 
-/// §9.7.2 — freeze every item that cannot flex in this direction, at its
-/// clamped base size. Returns the frozen mask.
 fn freeze_inflexible(items: &mut [FlexItem], growing: bool) -> Vec<bool> {
     items
         .iter_mut()
@@ -678,8 +548,6 @@ fn freeze_inflexible(items: &mut [FlexItem], growing: bool) -> Vec<bool> {
         .collect()
 }
 
-/// §9.7.4.b — space left once frozen items keep their resolved size and
-/// unfrozen items are counted at their flex base size.
 fn remaining_free(items: &[FlexItem], frozen: &[bool], container_main: f32, gap_total: f32) -> f32 {
     let used: f32 = items
         .iter()
@@ -696,12 +564,6 @@ fn remaining_free(items: &[FlexItem], frozen: &[bool], container_main: f32, gap_
     container_main - used - gap_total
 }
 
-/// One §9.7.4 pass: distribute `remaining` across the unfrozen items,
-/// clamp each to its min/max, then freeze the items whose clamp fought
-/// the distribution in the same direction as the net violation. Their
-/// surrendered space is what the next pass hands to the survivors.
-///
-/// Returns false when no further progress is possible.
 fn flex_round(items: &mut [FlexItem], frozen: &mut [bool], remaining: f32, growing: bool) -> bool {
     let total: f32 = items
         .iter()
@@ -736,8 +598,6 @@ fn flex_round(items: &mut [FlexItem], frozen: &mut [bool], remaining: f32, growi
     freeze_violations(frozen, &violations, net)
 }
 
-/// §9.7.4.e — no net violation freezes everything; a positive net freezes
-/// the min-clamped items, a negative net the max-clamped ones.
 fn freeze_violations(frozen: &mut [bool], violations: &[f32], net: f32) -> bool {
     let mut progressed = false;
     for (is_frozen, &violation) in frozen.iter_mut().zip(violations) {
@@ -756,8 +616,6 @@ fn freeze_violations(frozen: &mut [bool], violations: &[f32], net: f32) -> bool 
             progressed = true;
         }
     }
-    // Guard against a pathological round that freezes nothing: without
-    // this the loop could spin forever on NaN-ish factors.
     if !progressed {
         for f in frozen.iter_mut() {
             *f = true;
@@ -770,7 +628,6 @@ fn clamp_main(item: &FlexItem, value: f32) -> f32 {
     clamp(value, item.min_main, item.max_main).max(0.0)
 }
 
-/// Cross size of a line: the max of each item's outer cross size.
 fn line_cross_size(line: &FlexLine) -> f32 {
     line.items
         .iter()
@@ -778,7 +635,6 @@ fn line_cross_size(line: &FlexLine) -> f32 {
         .fold(0.0_f32, f32::max)
 }
 
-/// Distribute free space along the cross axis between lines.
 fn distribute_cross(
     align: Option<AlignContent>,
     free: f32,
@@ -819,7 +675,6 @@ fn distribute_cross(
     })
 }
 
-/// Distribute free space along the main axis between items.
 fn distribute_main(
     align: Option<JustifyContent>,
     free: f32,
@@ -884,7 +739,6 @@ fn cross_size_for(
     }
 }
 
-/// Write resolved boxes into the solver's results map.
 fn write_items(
     ctx: &FlexCtx<'_, '_>,
     placed: &[PlacedItem],
@@ -927,25 +781,9 @@ pub(crate) fn layout_item_subtree(
         return Ok(());
     }
     let style = node.style();
-    // What the parent's flexible-length pass resolved for THIS child,
-    // along the parent's main axis. Shared by both dispatch branches.
-    //
-    // Suppressed during a hypothetical probe (`suppress_stretch`): the
-    // intrinsic-basis pass feeds the item the CONTAINER's full extent as
-    // available space, so re-deriving an assignment from this item's own
-    // `flex_grow` would fake a flex result that never happened — the item
-    // fills the probe width, its own grow children fill it in turn, and
-    // the probe reads back the full containing block as the item's
-    // "natural" basis. Every grow item then probes to the same inflated
-    // basis and the line resolves equally (or into the shrink pass)
-    // instead of at the items' own grow ratio.
     let probing = ctx.suppress_stretch;
     let assigned_w = (style.flex_grow > 0.0 && ctx.axes.row && !probing).then_some(w);
     let assigned_h = (style.flex_grow > 0.0 && !ctx.axes.row && !probing).then_some(h);
-    // Q1 tertiary — per-subtree solver dispatch. The child's own
-    // `display` decides which formatting context owns its children,
-    // regardless of the parent's display. CSS interleaves block-in-flex
-    // and flex-in-block freely.
     match style.display {
         Display::Flex => {
             let axes = Axis2::for_direction(style.flex_direction);
@@ -954,27 +792,14 @@ pub(crate) fn layout_item_subtree(
                 axes,
                 cb: CbSize { w, h },
                 suppress_stretch: ctx.suppress_stretch,
-                // Carried on the axis the parent flexed so the nested
-                // `write_container` cannot shrink-wrap it away. Applies
-                // whether the child's own direction matches the parent's
-                // (row-in-row: the parent flexed the child's main axis) or
-                // is perpendicular (column-in-row: its cross axis).
                 assigned_w,
                 assigned_h,
             };
-            // The flex placement pass already baked this node's margins into `origin`,
-            // but `layout_root` re-applies them (it expects a PRE-margin origin). Feed the
-            // pre-margin position so the margin lands exactly once — the same correction
-            // `dispatch_block_subtree` makes for a block child. Without it a nested flex
-            // container's margin is applied twice.
             let edges = NodeEdges::build(style, w);
             let m = edges.margin.or_zero();
             let pre = Position2::new(origin.x - m.left, origin.y - m.top);
             layout_root(&nested, node, pre)
         }
-        // A grid child of a flex container runs its own grid solver at the
-        // flex-resolved width; the flex placement pass already baked this
-        // node's margin into `origin`, so feed the pre-margin position.
         Display::Grid => {
             let scope = ctx.solver.scope();
             let nested =
@@ -987,18 +812,12 @@ pub(crate) fn layout_item_subtree(
             };
             crate::grid::GridSolver::new(nested).solve_at(node, w, pre)
         }
-        // `Display::None` skipped upstream in `build_items`.
         Display::Block | Display::None => {
             dispatch_block_subtree(ctx, node, style, origin, w, h, assigned_w)
         }
     }
 }
 
-/// Dispatch a `Display::Block` (or Grid fallback) child of a flex
-/// container to a sibling [`crate::block::BlockSolver`] sharing the
-/// same scope. `solve_at` does NOT re-apply this node's margins — the
-/// flex placement pass already baked them into `origin`, so we feed
-/// the pre-margin position back.
 fn dispatch_block_subtree(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -1021,13 +840,9 @@ fn dispatch_block_subtree(
         x: origin.x - m.left,
         y: origin.y - m.top,
     };
-    // Carry the flex-resolved width so a block-display item with
-    // `grow(1).width(0)` is not re-derived back to zero.
     solver.solve_at_assigned(node, cb, pre, assigned_w)
 }
 
-/// Write the container's own resolved box. Main size = container's
-/// inner-main; cross size = sum of placed cross extents (auto height).
 fn write_container(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -1057,13 +872,6 @@ fn write_container(
         .map(|p| p.cross_pos + p.cross_size)
         .fold(0.0_f32, f32::max)
         + chrome_cross;
-    // With no explicit cross size, prefer the extent the parent's
-    // flexible-length pass already resolved for this item over
-    // shrink-wrapping to content. Without this, an item with `grow(1)`
-    // collapses back to its content extent the moment it has children,
-    // since childless items return early from `layout_item_subtree` and
-    // never reach this overwrite.
-    //
     let cross_size = cross_explicit.unwrap_or(auto_cross);
     let main_size = container_main + chrome_main;
     let (w, h) = if ctx.axes.row {
@@ -1071,11 +879,6 @@ fn write_container(
     } else {
         (cross_size, main_size)
     };
-    // Precedence: the flexed extent wins over both the specified size and
-    // the shrink-wrapped content. CSS Flexbox §9.7 — a flex item's *used*
-    // main size is the result of resolving flexible lengths, overriding
-    // its own `width`/`height`. `flex: 1 1 0` is authored
-    // `grow(1).width(0)`, so honouring the literal 0 collapses the item.
     let w = ctx.assigned_w.unwrap_or(w);
     let h = ctx.assigned_h.unwrap_or(h);
     ctx.solver.write(
@@ -1089,7 +892,6 @@ fn write_container(
     );
 }
 
-/// Trivial pipe helper to keep `distribute_cross` flow readable.
 trait Pipe<T> {
     fn pipe<R>(self, f: impl FnOnce(T) -> R) -> R;
 }
@@ -1100,7 +902,6 @@ impl<T> Pipe<T> for T {
     }
 }
 
-// Re-exported helpers used by flex_lines.
 pub(crate) fn item_cross_basis(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -1121,13 +922,6 @@ pub(crate) fn item_cross_basis(
         style.size.width
     };
     let was_auto = matches!(dim, Dimension::Auto);
-    // Child's cross dimension always resolves against the parent's
-    // cross-axis containing block — cb_cross under both row and column
-    // directions (see `FlexItem::build`: cb_main/cb_cross track main/cross
-    // axes, not horizontal/vertical). The prior column-direction branch
-    // used cb_main, which silently substituted the parent's height for
-    // its width, collapsing `fill_width()` on a column child to the
-    // column's height and overlapping its children at x=0.
     let resolved = dim_to_border_box(dim, cb_cross, chrome_cross, style.box_sizing);
     let resolved = resolved.or_else(|| {
         if node.children().is_empty() {
@@ -1138,62 +932,10 @@ pub(crate) fn item_cross_basis(
                 measured.width + chrome_cross
             })
         } else {
-            // Container with children + auto cross: run a hypothetical
-            // layout pass to learn the natural cross size. CSS flexbox
-            // §9.2 step 3 — the item's hypothetical main / cross size
-            // depends on its content; for an auto-cross item this is
-            // the post-layout cross extent of its subtree.
             container_intrinsic_cross(ctx, node, cb_main, cb_cross, axes)
         }
     });
     (resolved, was_auto)
-}
-
-/// Compute the natural cross size of a flex-or-block item with
-/// children by laying out its subtree at origin (0, 0) under the
-/// container's containing block, then reading the resulting box's
-/// cross dimension out of the forest. The box is overwritten later
-/// during the real placement pass in `write_items`.
-fn container_intrinsic_cross(
-    ctx: &FlexCtx<'_, '_>,
-    node: NodeRef<'_>,
-    cb_main: f32,
-    cb_cross: f32,
-    axes: Axis2,
-) -> Option<f32> {
-    if let Some(extent) = ctx
-        .solver
-        .intrinsic_get(node.id(), cb_main, cb_cross, false)
-    {
-        return Some(extent);
-    }
-    // Same hypothetical-stretch concern as `container_intrinsic_main`
-    // — feed children their natural cross extent, not the stretched one.
-    let probe = FlexCtx {
-        solver: ctx.solver,
-        axes: ctx.axes,
-        cb: ctx.cb,
-        suppress_stretch: true,
-        // Measurement probe: shrink-to-fit is the wanted behaviour.
-        assigned_w: None,
-        assigned_h: None,
-    };
-    let (w, h) = if axes.row {
-        (cb_main, cb_cross)
-    } else {
-        (cb_cross, cb_main)
-    };
-    layout_item_subtree(&probe, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
-    // Read the content far-edge along the cross axis, NOT the node's own
-    // box. For a child whose flex-direction differs from the parent's, the
-    // cross dimension is the child's MAIN axis, which `container_inner_size`
-    // inflated to the available main — reading the box directly returned the
-    // parent's full extent (a column card inside a row reported height 750
-    // instead of its 80 px of content).
-    let extent = probed_content_extent(ctx, node, false, axes);
-    ctx.solver
-        .intrinsic_put(node.id(), cb_main, cb_cross, false, extent);
-    Some(extent)
 }
 
 pub(crate) fn item_main_basis(
@@ -1231,191 +973,10 @@ pub(crate) fn item_main_basis(
             })
             .max(0.0);
     }
-    // Container with children + auto main + no flex-basis: mirror the
-    // cross-axis fallback. CSS flexbox §9.2 step 3 — the item's
-    // hypothetical main size is its content's natural main extent.
-    //
-    // `ctx.cb.along(axes)` rather than raw `(ctx.cb.w, ctx.cb.h)`:
-    // `container_intrinsic_main` interprets its first two arguments as
-    // `(cb_main, cb_cross)` — axis-relative — but `ctx.cb.{w,h}` is
-    // axis-absolute (horizontal, vertical). For a row parent the two
-    // happen to coincide; for a column parent they're swapped, so
-    // the hypothetical subtree got laid out at (parent_height,
-    // parent_width) instead of (parent_width, parent_height), and
-    // the basis came back as the parent's width — collapsing every
-    // text leaf in a `patterns::field` flex_column down to its
-    // shrink-clamped remainder.
     let (cb_main_axis, cb_cross_axis) = ctx.cb.along(axes);
     container_intrinsic_main(ctx, node, cb_main_axis, cb_cross_axis, axes)
         .unwrap_or(0.0)
         .max(0.0)
-}
-
-/// Natural main extent of an auto-main flex item with children.
-///
-/// `NoWrap` flex whose main axis matches `axes` sums child outer bases,
-/// gaps, and this node's main-axis chrome — the same formula
-/// `content_main_size` uses after the real item pass. Wrap, a
-/// perpendicular flex-direction, grid, and block still probe-layout
-/// and read [`probed_content_extent`].
-fn container_intrinsic_main(
-    ctx: &FlexCtx<'_, '_>,
-    node: NodeRef<'_>,
-    cb_main: f32,
-    cb_cross: f32,
-    axes: Axis2,
-) -> Option<f32> {
-    if let Some(extent) = ctx.solver.intrinsic_get(node.id(), cb_main, cb_cross, true) {
-        return Some(extent);
-    }
-    let style = node.style();
-    let node_axes = Axis2::for_direction(style.flex_direction);
-    let cheap = matches!(style.display, Display::Flex)
-        && matches!(style.flex_wrap, FlexWrap::NoWrap)
-        && node_axes.row == axes.row;
-    let extent = if cheap {
-        content_main_from_children(ctx, node, style, axes, cb_main, cb_cross)?
-    } else {
-        let (w, h) = if axes.row {
-            (cb_main, cb_cross)
-        } else {
-            (cb_cross, cb_main)
-        };
-        // Hypothetical pass: suppress `align-items: stretch` so children's
-        // boxes report their natural cross extent. With stretch on, an
-        // empty container child inflates to fill its parent's cross axis;
-        // the OUTER read then sees that as the OUTER's "natural" main
-        // extent and over-reports its basis by the full parent dimension.
-        let probe_ctx = FlexCtx {
-            solver: ctx.solver,
-            axes: ctx.axes,
-            cb: ctx.cb,
-            suppress_stretch: true,
-            // Measurement probe: shrink-to-fit is the wanted behaviour.
-            assigned_w: None,
-            assigned_h: None,
-        };
-        layout_item_subtree(&probe_ctx, node.id(), Position2::new(0.0, 0.0), w, h).ok()?;
-        probed_content_extent(ctx, node, true, axes)
-    };
-    ctx.solver
-        .intrinsic_put(node.id(), cb_main, cb_cross, true, extent);
-    Some(extent)
-}
-
-/// Sum of in-flow child outer main bases + gaps + this node's main chrome.
-fn content_main_from_children(
-    ctx: &FlexCtx<'_, '_>,
-    node: NodeRef<'_>,
-    style: &StyleData,
-    axes: Axis2,
-    cb_main: f32,
-    cb_cross: f32,
-) -> Option<f32> {
-    let edges = NodeEdges::build(style, ctx.cb.w);
-    let chrome_main = if axes.row {
-        edges.inline_chrome()
-    } else {
-        edges.block_chrome()
-    };
-    let forest = ctx.solver.scope().forest();
-    let cb_inline = if axes.row { cb_main } else { cb_cross };
-    let mut count = 0usize;
-    let mut bases = 0.0_f32;
-    for child_id in node.children() {
-        let child = forest.refer(*child_id)?;
-        let child_style = child.style();
-        if matches!(child_style.display, Display::None)
-            || matches!(child_style.position, Position::Absolute)
-        {
-            continue;
-        }
-        let child_edges = NodeEdges::build(child_style, cb_inline);
-        let inner = item_main_basis(ctx, child, child_style, axes, cb_main, &child_edges);
-        let m = child_edges.margin.or_zero();
-        let margin_main = if axes.row {
-            m.left + m.right
-        } else {
-            m.top + m.bottom
-        };
-        bases += inner + margin_main;
-        count += 1;
-    }
-    let gap = main_gap(ctx, style, count);
-    Some(bases + gap * (count.saturating_sub(1) as f32) + chrome_main)
-}
-
-/// Read the natural extent of `node`'s already-probed subtree along one
-/// axis: the far edge of its child boxes minus the leading padding/border,
-/// plus this node's own chrome on that axis.
-///
-/// `along_main` selects the outer-axis dimension to read (`true` = the
-/// parent's main axis, `false` = its cross). Both intrinsic probes share
-/// this so they read CONTENT extent rather than the child box's own size —
-/// which, for an auto-main flex container, was inflated to the available
-/// main (`container_inner_size`). Reading the box directly therefore
-/// over-reported a column child's height inside a row as the parent's full
-/// height; the content far-edge is direction-agnostic and correct.
-///
-/// The hypothetical pass placed `node` at origin (0, 0), so its child
-/// boxes sit at content-origin = padding-start + border-start in
-/// viewport-absolute coordinates. We subtract that leading offset before
-/// re-adding it as chrome — otherwise the leading padding double-counts.
-fn probed_content_extent(
-    ctx: &FlexCtx<'_, '_>,
-    node: NodeRef<'_>,
-    along_main: bool,
-    axes: Axis2,
-) -> f32 {
-    let style = node.style();
-    let edges = NodeEdges::build(style, ctx.cb.w);
-    // The requested axis is horizontal exactly when reading the parent's
-    // main on a row, or the parent's cross on a column.
-    let horizontal = axes.row == along_main;
-    let (chrome, lead) = if horizontal {
-        (
-            edges.inline_chrome(),
-            edges.padding.left + edges.border.left,
-        )
-    } else {
-        (edges.block_chrome(), edges.padding.top + edges.border.top)
-    };
-    let forest = ctx.solver.scope().forest();
-    let far_edge = node
-        .children()
-        .iter()
-        .filter_map(|child_id| forest.boxed(*child_id))
-        .map(|cb| if horizontal { cb.x + cb.w } else { cb.y + cb.h })
-        .fold(0.0_f32, f32::max);
-    (far_edge - lead).max(0.0) + chrome
-}
-
-fn text_intrinsic(
-    ctx: &FlexCtx<'_, '_>,
-    node: NodeRef<'_>,
-    style: &StyleData,
-    axes: Axis2,
-) -> Option<crate::style_data::Size<f32>> {
-    if !node.children().is_empty() {
-        return None;
-    }
-    let known = crate::style_data::Size {
-        width: dim_to_border_box(
-            style.size.width,
-            if axes.row { ctx.cb.w } else { ctx.cb.h },
-            0.0,
-            style.box_sizing,
-        ),
-        height: dim_to_border_box(
-            style.size.height,
-            if axes.row { ctx.cb.h } else { ctx.cb.w },
-            0.0,
-            style.box_sizing,
-        ),
-    };
-    // Text wraps to its containing block's horizontal extent (cb.w is
-    // physical width regardless of flex direction).
-    ctx.solver.scope().measure_text(node, known, Some(ctx.cb.w))
 }
 
 pub(crate) fn item_min_max_main(
@@ -1440,19 +1001,6 @@ pub(crate) fn item_min_max_main(
     )
 }
 
-/// CSS Flexbox §4.5 automatic minimum size.
-///
-/// A flex item whose main-axis minimum is `auto` (no explicit `min-*`),
-/// whose basis is content-derived (no explicit `flex-basis` or main size),
-/// and whose main-axis overflow is `visible` must not shrink below its
-/// content size. `content_basis` is that content main size — the resolved
-/// flex base size, which for these items equals the measured content.
-///
-/// Without this floor the shrink pass can crush a content-sized item (a
-/// text node especially) toward zero when its flex container is shorter
-/// than the content, collapsing stacked text on top of itself. Items with
-/// clipping/scrolling overflow, an explicit size, or an explicit basis are
-/// intentionally excluded — they are free to shrink.
 pub(crate) fn automatic_min_main(
     style: &StyleData,
     axes: Axis2,

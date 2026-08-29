@@ -18,7 +18,6 @@ fn stale_key_after_reuse_returns_none() {
     let a = arena.insert("first");
     arena.remove(a);
     let b = arena.insert("second");
-    // Same slot index, different generation.
     assert_eq!(arena.get(a), None);
     assert_eq!(arena.get(b), Some(&"second"));
 }

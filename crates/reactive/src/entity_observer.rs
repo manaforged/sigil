@@ -1,11 +1,3 @@
-//! Observer machinery for entities — `Subscription`, `observe`,
-//! `subscribe`, and the end-of-turn drain.
-//!
-//! See DR-045 §4 (Subscription RAII + owner-cascade safety net) and §5
-//! (batched notify drain). All callbacks run *outside* the originating
-//! `update` closure (after its runtime borrow has released) which makes
-//! "observe-then-mutate-another" structurally safe.
-
 use core::any::Any;
 use core::marker::PhantomData;
 
@@ -17,12 +9,6 @@ use crate::runtime::{
     SubscribeFn, with_rt,
 };
 
-/// RAII handle to an active observation. Dropping it unsubscribes.
-///
-/// Marked `#[must_use]` — `cx.observe(&e, |...|)` without binding the
-/// return is a usage bug. Binding to `_sub` or `let _ = ...` is
-/// supported: the owner-cleanup safety net also unsubscribes when the
-/// enclosing reactive owner disposes (see DR-045 §4).
 #[must_use = "subscriptions unsubscribe on drop; bind the handle to keep observation alive"]
 pub struct Subscription {
     pub(crate) kind: SubscriptionKind,
@@ -72,8 +58,6 @@ impl Subscription {
     }
 }
 
-/// Remove an observer from the runtime — idempotent, called from both
-/// `Subscription::drop` and the owner-cascade cleanup.
 pub(crate) fn unsubscribe(key: ObserverKey) {
     with_rt(|rt| {
         let Some(slot) = rt.observers.remove(key) else {
@@ -87,9 +71,6 @@ pub(crate) fn unsubscribe(key: ObserverKey) {
                 observed.event_subs.swap_remove(pos);
             }
         }
-        // Drop any still-pending queue entries that reference this
-        // observer. Cheap linear scan; the queue is bounded by the
-        // number of writes per turn.
         rt.pending_observers.retain(|p| p.observer != key);
     });
 }
@@ -116,17 +97,12 @@ fn install_observer(
     })
 }
 
-/// Register an owner-cascade `on_cleanup` that removes `key` if it is
-/// still installed when the owner disposes. Idempotent with the
-/// explicit `Subscription::drop` path.
 fn register_cleanup(key: ObserverKey) {
     on_cleanup(move || {
         unsubscribe(key);
     });
 }
 
-/// Register a plain observer — fires `callback` on any `cx.notify()`
-/// against `observed`. Called from `EntityCx::observe`.
 #[track_caller]
 pub(crate) fn register_observe<T, U>(
     observer_entity: EntityKey,
@@ -152,7 +128,6 @@ where
     Subscription::observer(key)
 }
 
-/// Register a typed-event subscriber — fires only on `cx.emit::<Ev>`.
 #[track_caller]
 pub(crate) fn register_subscribe<T, U, Ev>(
     observer_entity: EntityKey,
@@ -182,8 +157,6 @@ where
     Subscription::observer(key)
 }
 
-/// Register a top-level `observe_global` — bare `FnMut()` with no
-/// observer entity. Used by [`crate::entity_global::observe_global`].
 #[track_caller]
 pub(crate) fn register_observe_global(
     observed: EntityKey,
@@ -213,8 +186,6 @@ type ObserveCallback<T, U> = dyn FnMut(&mut T, &Entity<U>, &mut EntityCx<'_, T>)
 type SubscribeCallback<T, U, Ev> =
     dyn FnMut(&mut T, &Entity<U>, &Ev, &mut EntityCx<'_, T>) + 'static;
 
-/// Dispatch a plain-observe callback. Pulls the observer's payload out
-/// of its slot for the duration of the call, restoring on return.
 fn dispatch_observe<T, U>(
     observer_key: ObserverKey,
     observed: Entity<U>,
@@ -239,7 +210,6 @@ fn dispatch_observe<T, U>(
     let Some(mut value) = taken else { return };
     {
         let Some(inner) = value.downcast_mut::<T>() else {
-            // Type mismatch — restore and abandon.
             with_rt(|rt| {
                 if let Some(slot) = rt.entities.get_mut(entity_key) {
                     slot.value = value;
@@ -257,7 +227,6 @@ fn dispatch_observe<T, U>(
     });
 }
 
-/// Dispatch a `subscribe::<U, Ev>` callback with the typed event.
 fn dispatch_subscribe<T, U, Ev>(
     observer_key: ObserverKey,
     observed: Entity<U>,
@@ -301,13 +270,6 @@ fn dispatch_subscribe<T, U, Ev>(
     });
 }
 
-/// Drain the pending-observers queue. Called from `Entity::new` (at
-/// top-level scope) and from `entity::run_update` when the outermost
-/// `update` exits (depth returns to 0).
-///
-/// Re-entrant: a callback can itself call `Entity::update` which
-/// enqueues more observers; those are picked up by this same drain
-/// loop since we keep popping until the queue is empty.
 pub(crate) fn drain_pending_observers() {
     loop {
         let next = with_rt(|rt| rt.pending_observers.pop_front());
@@ -319,10 +281,6 @@ pub(crate) fn drain_pending_observers() {
 }
 
 fn dispatch_one(observer: ObserverKey, event: Option<Box<dyn Any>>) {
-    // Take the observer kind out of the slot so we can mutate the
-    // closure without holding the runtime borrow. A sentinel
-    // (ObserveBare with a no-op closure) sits in the slot until we
-    // restore the real kind.
     enum Taken {
         Observe(ObserveFn),
         Bare(ObserveBareFn),
@@ -368,7 +326,5 @@ fn restore_kind(observer: ObserverKey, kind: ObserverKind) {
         if let Some(slot) = rt.observers.get_mut(observer) {
             slot.kind = kind;
         }
-        // If the observer was removed mid-callback (e.g. its
-        // Subscription dropped during dispatch), the kind drops here.
     });
 }

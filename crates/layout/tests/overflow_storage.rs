@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W1.4 — verify the round-trip from `StyleAtom::OverflowX` / `OverflowY`
+//! verify the round-trip from `StyleAtom::OverflowX` / `OverflowY`
 //! through the style adapter into `StyleData::overflow`.
 //!
 //! Renderer-side clipping behavior is out of scope here — this test

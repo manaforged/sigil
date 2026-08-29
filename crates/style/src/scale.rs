@@ -1,75 +1,33 @@
-//! 12-step color scales — the foundation of the DS1 token system.
-//!
-//! Each named hue (gray, accent, success, warn, error, info) is a
-//! 12-step scale following the Radix Colors convention:
-//!
-//! | Step  | Role                                         |
-//! |-------|----------------------------------------------|
-//! |  1    | App background (lightest in light themes)    |
-//! |  2    | Subtle background (cards, panels)            |
-//! |  3    | UI element rest (button face, input rest)    |
-//! |  4    | UI element hover                             |
-//! |  5    | UI element pressed / active                  |
-//! |  6    | Subtle border                                |
-//! |  7    | Border (default)                             |
-//! |  8    | Border hover / focused                       |
-//! |  9    | Solid (the saturated brand color)            |
-//! | 10    | Solid hover                                  |
-//! | 11    | Low-contrast text (muted)                    |
-//! | 12    | High-contrast text (default body)            |
-//!
-//! Widgets reference scales by *role* (`Gray`, `Accent`, ...) plus a
-//! step number. Themes can swap any scale to recolor everything that
-//! references that role, or override individual steps for a custom
-//! brand look.
-
 use crate::Rgba8;
 
 const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
     Rgba8 { r, g, b, a: 255 }
 }
 
-/// A 12-step color scale.
-///
-/// Indexed 1..=12 (Radix Colors convention). The accessor `step`
-/// clamps out-of-range inputs to the nearest valid step.
-///
-/// `on_solid` is the WCAG-AA-passing text color when painting on
-/// `step(9)` (the saturated solid). Most scales use white; bright
-/// warm scales (amber, yellow) use a dark color because white on
-/// yellow fails contrast. The default for a scale built from
-/// `from_steps` alone is a heuristic — explicit `.with_on_solid(...)`
-/// is the right call for built-in or brand scales where the contrast
-/// color is known.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ColorScale {
-    /// The twelve steps, indexed from 1 (step at `[0]`) to 12 (step at `[11]`).
     pub steps: [Rgba8; 12],
-    /// The text color that reads correctly on `step(9)`.
     pub on_solid: Rgba8,
 }
 
 impl ColorScale {
-    /// Build a scale from explicit step values. The `on_solid` color
-    /// defaults to a luminance-based heuristic — call
-    /// [`with_on_solid`](Self::with_on_solid) to set it explicitly
-    /// when the right contrast color is known.
     #[must_use]
     pub const fn from_steps(steps: [Rgba8; 12]) -> Self {
         let on_solid = heuristic_on_solid(steps[8]);
         Self { steps, on_solid }
     }
 
-    /// Override the `on_solid` contrast color.
     #[must_use]
     pub const fn with_on_solid(mut self, on_solid: Rgba8) -> Self {
         self.on_solid = on_solid;
         self
     }
 
-    /// Read step `n` (1..=12, clamped).
     #[must_use]
-    #[allow(clippy::indexing_slicing)] // clamped to 0..=11 above; .get() not available in const fn
+    #[allow(
+        clippy::indexing_slicing,
+        reason = "indices are computed from the same lengths that sized the buffer"
+    )] // clamped to 0..=11 above; .get() not available in const fn
     pub const fn step(&self, n: u8) -> Rgba8 {
         let idx = if n == 0 { 0 } else { (n - 1) as usize };
         let clamped = if idx > 11 { 11 } else { idx };
@@ -77,9 +35,6 @@ impl ColorScale {
     }
 }
 
-/// Heuristic on-solid picker — sums step-9 channels and picks
-/// black/white based on a perceived-brightness threshold. Used as the
-/// default when a scale doesn't call [`ColorScale::with_on_solid`].
 const fn heuristic_on_solid(step9: Rgba8) -> Rgba8 {
     let sum = step9.r as u16 + step9.g as u16 + step9.b as u16;
     if sum > 420 {
@@ -89,9 +44,6 @@ const fn heuristic_on_solid(step9: Rgba8) -> Rgba8 {
     }
 }
 
-/// Slate (cool neutral gray) — light theme.
-///
-/// Radix Colors-inspired. The default `Theme::gray` scale.
 #[must_use]
 pub const fn slate_light() -> ColorScale {
     ColorScale::from_steps([
@@ -111,10 +63,6 @@ pub const fn slate_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Iris (cool blue-purple) — light theme accent option.
-///
-/// Was the default accent until the steel-blue `blue_*` scales took
-/// over (2026 professional restyle); kept for palette variety.
 #[must_use]
 pub const fn iris_light() -> ColorScale {
     ColorScale::from_steps([
@@ -134,7 +82,6 @@ pub const fn iris_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Green (success) — light theme.
 #[must_use]
 pub const fn green_light() -> ColorScale {
     ColorScale::from_steps([
@@ -154,7 +101,6 @@ pub const fn green_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Amber (warn) — light theme.
 #[must_use]
 pub const fn amber_light() -> ColorScale {
     ColorScale::from_steps([
@@ -174,7 +120,6 @@ pub const fn amber_light() -> ColorScale {
     .with_on_solid(rgb(0x4F, 0x34, 0x22))
 }
 
-/// Ruby (error / destructive) — light theme.
 #[must_use]
 pub const fn ruby_light() -> ColorScale {
     ColorScale::from_steps([
@@ -194,7 +139,6 @@ pub const fn ruby_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Cyan (info) — light theme.
 #[must_use]
 pub const fn cyan_light() -> ColorScale {
     ColorScale::from_steps([
@@ -214,11 +158,6 @@ pub const fn cyan_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Slate (cool neutral gray) — dark theme.
-///
-/// Step 1 is the darkest (app background), step 12 the lightest
-/// (default text). All twelve steps stay on the cool-gray hue so a
-/// dark theme keeps the same compositional contract as light.
 #[must_use]
 pub const fn slate_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -238,10 +177,6 @@ pub const fn slate_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Iris (cool blue-purple) — dark theme accent option.
-///
-/// Was the default accent until the steel-blue `blue_*` scales took
-/// over (2026 professional restyle); kept for palette variety.
 #[must_use]
 pub const fn iris_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -261,12 +196,6 @@ pub const fn iris_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Steel blue — light theme accent default.
-///
-/// Muted, desaturated professional accent (Zed/ShadCN register) on the
-/// same luminance curve as `iris_light`, so state deltas and contrast
-/// relationships carry over. Step 9 (#3D6BB3) holds white text at
-/// ~5.3:1 (WCAG AA).
 #[must_use]
 pub const fn blue_light() -> ColorScale {
     ColorScale::from_steps([
@@ -286,10 +215,6 @@ pub const fn blue_light() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Steel blue — dark theme accent default.
-///
-/// Same luminance curve as `iris_dark`, hue shifted to a desaturated
-/// steel blue. Step 11 on step 3 (soft variant) holds ~7:1.
 #[must_use]
 pub const fn blue_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -309,7 +234,6 @@ pub const fn blue_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Green (success) — dark theme.
 #[must_use]
 pub const fn green_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -329,7 +253,6 @@ pub const fn green_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Amber (warn) — dark theme.
 #[must_use]
 pub const fn amber_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -349,7 +272,6 @@ pub const fn amber_dark() -> ColorScale {
     .with_on_solid(rgb(0x4F, 0x34, 0x22))
 }
 
-/// Ruby (error / destructive) — dark theme.
 #[must_use]
 pub const fn ruby_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -369,7 +291,6 @@ pub const fn ruby_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Cyan (info) — dark theme.
 #[must_use]
 pub const fn cyan_dark() -> ColorScale {
     ColorScale::from_steps([
@@ -389,29 +310,17 @@ pub const fn cyan_dark() -> ColorScale {
     .with_on_solid(rgb(0xFF, 0xFF, 0xFF))
 }
 
-/// Named color scale roles. Themes carry one scale per role; widgets
-/// reference roles by name (`Accent`, `Success`, …) rather than
-/// hard-coding a specific hue.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ScaleRole {
-    /// Neutral grays — surfaces, borders, default text.
     Gray,
-    /// Brand / accent — primary actions, focus rings.
     Accent,
-    /// Success / positive — confirmation chips, valid borders.
     Success,
-    /// Warn / cautionary — non-blocking warnings.
     Warn,
-    /// Error / destructive — invalid inputs, delete actions.
     Error,
-    /// Info / neutral notice — hint banners.
     Info,
 }
 
 impl ScaleRole {
-    /// Parse a scale role from its lowercase utility-class form
-    /// (`"gray"`, `"accent"`, `"success"`, `"warn"`, `"error"`,
-    /// `"info"`). Returns `None` for any other input.
     #[must_use]
     pub fn from_token(name: &str) -> Option<Self> {
         match name {

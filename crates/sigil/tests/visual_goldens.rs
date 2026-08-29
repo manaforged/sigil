@@ -70,6 +70,19 @@ fn button_default() {
 }
 
 #[test]
+fn button_solid_default() {
+    // The redesigned solid path (shadow frame, no border) had no golden
+    // until the 2026-08 pass — the soft default covered every prior pin.
+    let img = render_widget_to_png(
+        |cx| cx.add(button("Save").primary()),
+        InteractionMode::Default,
+        [160, 56],
+        (24.0, 16.0),
+    );
+    check("button_solid_default", img);
+}
+
+#[test]
 fn button_hover() {
     let img = render_widget_to_png(
         |cx| cx.add(button("Save")),
@@ -114,6 +127,22 @@ fn button_disabled() {
 }
 
 // ---- CHECKBOX ----------------------------------------------------------------
+
+#[test]
+fn checkbox_checked() {
+    // Default tone renders the ACCENT checked fill since the
+    // Neutral→Primary default flip; this pins that reading.
+    let img = render_widget_to_png(
+        |cx| {
+            let checked = signal(true);
+            cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+        },
+        InteractionMode::Default,
+        [36, 36],
+        (16.0, 16.0),
+    );
+    check("checkbox_checked", img);
+}
 
 #[test]
 fn checkbox_default() {

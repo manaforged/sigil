@@ -1,9 +1,3 @@
-//! `bench-parity-runner-gpui` — execute the GPUI framework runner
-//! against one workload and write the result JSON. Sibling to
-//! `bench-parity-runner` in the `sigil-bench-parity` crate; lives here
-//! so GPUI's heavy dependency tree does NOT enter the default harness
-//! build.
-
 #![allow(clippy::print_stdout, clippy::doc_markdown)]
 
 use clap as _;
@@ -36,15 +30,10 @@ const TIMESTAMP_FMT: u128 = Config::DEFAULT
     about = "Run the GPUI framework runner against one workload, write a RunResult JSON."
 )]
 struct Args {
-    /// Framework name. Only `gpui` is accepted; the flag is required
-    /// for symmetry with `bench-parity-runner`.
     #[arg(long)]
     framework: String,
-    /// Path to the workload JSON file.
     #[arg(long)]
     workload: PathBuf,
-    /// Output path for the RunResult JSON. Defaults to
-    /// `crates/sigil-bench-parity/results/<framework>-<workload_id>-<timestamp>.json`.
     #[arg(long)]
     output: Option<PathBuf>,
 }

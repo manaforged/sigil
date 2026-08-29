@@ -49,7 +49,7 @@ fn users_endpoints() -> Vec<MockEndpoint> {
             latency_ms: 38,
             summary: "List all users in the workspace.",
             request_body: "(no body — query params: ?page=1&limit=25)",
-            response_body: "{\n  \"users\": [\n    { \"id\": 1, \"name\": \"thomas\" },\n    { \"id\": 2, \"name\": \"reviewer\" }\n  ],\n  \"page\": 1,\n  \"total\": 2\n}\n",
+            response_body: "{\n  \"users\": [\n    { \"id\": 1, \"name\": \"ada\" },\n    { \"id\": 2, \"name\": \"grace\" }\n  ],\n  \"page\": 1,\n  \"total\": 2\n}\n",
         },
         MockEndpoint {
             method: Method("POST"),
@@ -57,8 +57,8 @@ fn users_endpoints() -> Vec<MockEndpoint> {
             status: 201,
             latency_ms: 84,
             summary: "Create a new user.",
-            request_body: "{\n  \"name\": \"new-user\",\n  \"email\": \"new@the author.dev\"\n}\n",
-            response_body: "{\n  \"id\": 3,\n  \"name\": \"new-user\",\n  \"email\": \"new@the author.dev\",\n  \"created_at\": \"2026-05-20T11:42:00Z\"\n}\n",
+            request_body: "{\n  \"name\": \"new-user\",\n  \"email\": \"new@example.dev\"\n}\n",
+            response_body: "{\n  \"id\": 3,\n  \"name\": \"new-user\",\n  \"email\": \"new@example.dev\",\n  \"created_at\": \"2026-05-20T11:42:00Z\"\n}\n",
         },
         MockEndpoint {
             method: Method("GET"),
@@ -67,7 +67,7 @@ fn users_endpoints() -> Vec<MockEndpoint> {
             latency_ms: 22,
             summary: "Fetch one user by id.",
             request_body: "(no body)",
-            response_body: "{\n  \"id\": 1,\n  \"name\": \"thomas\",\n  \"email\": \"thomgardiner@gmail.com\",\n  \"role\": \"owner\"\n}\n",
+            response_body: "{\n  \"id\": 1,\n  \"name\": \"ada\",\n  \"email\": \"ada@example.dev\",\n  \"role\": \"owner\"\n}\n",
         },
         MockEndpoint {
             method: Method("DELETE"),
@@ -130,7 +130,7 @@ fn billing_endpoints() -> Vec<MockEndpoint> {
             status: 200,
             latency_ms: 144,
             summary: "Create a Stripe customer-portal session.",
-            request_body: "{\n  \"return_url\": \"https://app.the author.dev/settings/billing\"\n}\n",
+            request_body: "{\n  \"return_url\": \"https://app.example.dev/settings/billing\"\n}\n",
             response_body: "{\n  \"url\": \"https://billing.stripe.com/p/session/test_abc123\"\n}\n",
         },
         MockEndpoint {
@@ -172,7 +172,7 @@ pub fn header_block(endpoint: &MockEndpoint) -> String {
     let _ = writeln!(out, "x-request-id: req-{:08x}", path_seed(endpoint.path));
     let _ = writeln!(out, "x-response-time-ms: {}", endpoint.latency_ms);
     out.push_str("cache-control: no-store\n");
-    out.push_str("x-served-by: the author-edge-iad\n");
+    out.push_str("x-served-by: edge-iad\n");
     out
 }
 

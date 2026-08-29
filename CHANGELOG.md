@@ -18,7 +18,8 @@ already taken on crates.io); its library is still named `sigil`, so
   measured, budgeted write path.
 - Owned incremental layout engine, benchmarked against a Taffy reference corpus.
 - Slug vector text pipeline plus hinted raster glyph atlas; IME-ready text
-  editing; font fallback with CJK/emoji routing.
+  editing; font fallback with CJK/emoji routing (end-to-end shaping fixtures
+  for complex scripts still pending — see the ignored text-shaper tests).
 - Three-layer style system: `classes!` compile-time-checked utility classes,
   a `Style` struct API, and `style_reactive` signal binding; 12-step design
   tokens; tone × variant theming with WCAG-aware foregrounds.

@@ -1,46 +1,3 @@
-//! Tokio-based async runtime and main-thread dispatcher.
-//!
-//! This crate ships the concrete `Scheduler` adapter promised by
-//! DR-007: one `tokio::runtime::Runtime` per `App`, an MPSC payload
-//! channel drained on the main thread, owner-disposal-driven task
-//! cancellation, and the `spawn_to_signal` / `dispatch_to_owner`
-//! public entry points from the DR-005 addendum.
-//!
-//! # Architecture
-//!
-//! [`AsyncRuntime`] owns the Tokio runtime. Background tasks spawned
-//! through it push closures into an [unbounded MPSC][UnboundedSender].
-//! Each closure is tagged with an [`OwnerHandle`]; at [drain][sigil_hal::Scheduler::drain]
-//! time the dispatcher asks `sigil-reactive` whether the owner is still
-//! alive and either runs the closure or drops it silently. A
-//! caller-injected `waker` closure wires the enqueue side to
-//! `winit::event_loop::EventLoopProxy::wake_up()` in the real app;
-//! tests swap it for a counter or a no-op.
-//!
-//! Task cancellation is owner-disposal-driven. Every
-//! [`Scheduler::spawn`][sigil_hal::Scheduler::spawn] call records its
-//! `AbortHandle` in a small per-owner registry; on each `drain`, any
-//! handles whose owner is no longer live are aborted and dropped.
-//! Disposal + next drain therefore cancels the task; no separate
-//! cleanup dance is required in user code. See
-//! [`spawn_to_signal`] for the high-level wrapper that uses all of
-//! this to drive a reactive `Signal<Status<T, E>>`.
-//!
-//! # What Phase 2 does NOT ship
-//!
-//! The queue is unbounded in this adapter. Bounded-queue behaviour
-//! with `Err(ScheduleError::Full)` surfaced to callers is reserved in
-//! the trait surface (`Scheduler::Error`) but not enforced here —
-//! we'll bound it once real workloads show a fan-out regression, per
-//! DR-007 invariant (5).
-//!
-//! [UnboundedSender]: tokio::sync::mpsc::UnboundedSender
-
-#![deny(missing_docs)]
-// `pub(crate)` on items inside private modules expresses design
-// intent ("do not leak this even if the module ever becomes pub")
-// that clippy's `redundant_pub_crate` nursery lint treats as noise.
-// Mirrors the same allow in `sigil-reactive`.
 #![allow(clippy::redundant_pub_crate)]
 
 #[cfg(test)]
@@ -52,6 +9,7 @@ mod dispatch;
 mod handle;
 mod reactive_bridge;
 mod runtime;
+mod schedule_error;
 mod status;
 
 pub use current::{dispatcher, post, spawn};
@@ -60,5 +18,6 @@ pub use dispatch::dispatch_to_owner;
 pub use dispatch::spawn_to_signal;
 pub use handle::OwnerHandle;
 pub use reactive_bridge::{ReactiveBridge, TokioExecutor};
-pub use runtime::{AsyncRuntime, Dispatcher, ScheduleError};
+pub use runtime::{AsyncRuntime, Dispatcher};
+pub use schedule_error::ScheduleError;
 pub use status::Status;

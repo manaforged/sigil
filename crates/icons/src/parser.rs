@@ -1,23 +1,11 @@
-//! SVG parsing via `usvg` — returns flattened path segments.
-//!
-//! Stroke handling: Lucide-style SVGs declare `fill="none"` plus a positive
-//! `stroke-width`. The on-screen content is the stroked outline of the path,
-//! not its interior winding. The icon baker's rasterizer is a winding-fill
-//! engine, so this module expands every `Some(stroke)` path into its filled
-//! outline via `tiny_skia_path::PathStroker` before handing it to the
-//! quadratic-conversion stage. Fill-only paths (e.g. Heroicons-solid)
-//! pass through unchanged.
-
 use usvg::tiny_skia_path::PathSegment;
 
 use crate::BakeError;
 
-/// A parsed, transform-flattened contour from the SVG tree.
 pub(crate) struct SvgPath {
     pub(crate) segments: Vec<PathSegment>,
 }
 
-/// `ViewBox` extracted from the SVG root element.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ViewBox {
     pub(crate) x: f32,
@@ -26,10 +14,6 @@ pub(crate) struct ViewBox {
     pub(crate) height: f32,
 }
 
-/// Parse `svg_source` and return flattened paths plus the root viewBox.
-///
-/// `usvg` applies all transforms during tree construction, so leaf path
-/// nodes carry pre-flattened coordinates in the viewBox coordinate space.
 pub(crate) fn parse(svg_source: &str) -> Result<(Vec<SvgPath>, ViewBox), BakeError> {
     let opts = usvg::Options::default();
     let tree = usvg::Tree::from_str(svg_source, &opts)
@@ -64,11 +48,6 @@ fn collect_paths(parent: &usvg::Group, out: &mut Vec<SvgPath>) {
     }
 }
 
-/// Emit one `SvgPath` per renderable contribution from `path`.
-///
-/// usvg paths can carry both a fill and a stroke. The rasterizer is a
-/// winding-fill engine, so the stroked outline is materialised as its
-/// own filled contour via `tiny_skia_path::PathStroker::stroke`.
 fn push_fill_and_stroke(path: &usvg::Path, out: &mut Vec<SvgPath>) {
     if path.fill().is_some()
         && let Some(segs) = path_segments(path.data())

@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W2.1b — integration tests for the G2 entity model.
+//! integration tests for the G2 entity model.
 //!
 //! Six scenarios covering DR-045's locked decisions:
 //! - Entity creation + read/update via `Entity::new` + `Entity::read`

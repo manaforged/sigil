@@ -1,6 +1,6 @@
 [book]
 title = "The Sigil Book"
-authors = ["the author"]
+authors = ["Thomas Gardiner"]
 description = "How to write Sigil apps, and how the framework is built."
 language = "en"
 src = "."

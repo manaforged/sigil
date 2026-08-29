@@ -405,7 +405,7 @@ fn theme_swap_invalidates_binding() {
     assert!(node.get_extension::<StyleBinding>().is_some());
 }
 
-/// T12 (5/5 Wave 3): flex-wrap, per-axis gap, justify-evenly, and
+/// flex-wrap, per-axis gap, justify-evenly, and
 /// overflow-auto round trip through the runtime parser.
 #[test]
 fn t12_vocabulary_tokens_parse() {

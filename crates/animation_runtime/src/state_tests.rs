@@ -48,16 +48,13 @@ fn reduced_motion_skips_animator_registration() {
                 preset: SpringPreset::Smooth,
             },
         );
-        // No registration → no entries.
         assert_eq!(active_count(), baseline);
         assert!(animator.settled());
 
-        // Targeting jumps the signal instantly; no ticks needed.
         animator.target(1.0);
         assert!((value.peek() - 1.0).abs() < f32::EPSILON);
         assert_eq!(active_count(), baseline);
 
-        // Restore for sibling tests.
         MotionPrefs::set(false);
     });
 }
@@ -78,8 +75,6 @@ fn settled_animator_becomes_idle_and_can_retarget() {
 
         assert_eq!(active_count(), baseline + 1);
 
-        // Tick until the spring reports settled. Stiff preset is fast;
-        // 60 frames is more than enough.
         for _ in 0..60 {
             tick(DT_60HZ);
             if animator.settled() {

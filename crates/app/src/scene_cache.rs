@@ -1,5 +1,3 @@
-//! Last-frame command scene replay for non-mutating OS redraws.
-
 use sigil_hal::Color;
 use sigil_kernel::{Cx, NodeId};
 use sigil_reactive::Runtime;
@@ -26,8 +24,6 @@ impl SceneKey {
     }
 }
 
-/// Retains the previous command scene so an expose/unocclude redraw can replay
-/// it without re-resolving every style and reshaping every paragraph.
 #[derive(Default)]
 pub(super) struct SceneCache {
     key: Option<SceneKey>,

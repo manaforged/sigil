@@ -1,4 +1,4 @@
-//! Visual bidi reorder integration tests (Wave 4, W4.3).
+//! Visual bidi reorder integration tests.
 //!
 //! `crates/text/src/bidi.rs` computes UAX #9 embedding levels; these
 //! tests prove the ENGINE consumes them to lay a line out in UAX #9

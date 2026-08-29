@@ -1,5 +1,3 @@
-//! Non-list 1:1 construct trees: wrap, nested flex, kv form, overlay.
-
 use sigil_kernel::{NodeBuilder, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use sigil_reactive::Runtime;
@@ -96,7 +94,10 @@ fn overlay_stack(workload: &Workload) -> NodeBuilder {
             .position(Position::Relative),
     );
     for index in 0..p.row_count {
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        )]
         let inset = index as f32 * 4.0;
         host = host.child(
             container()

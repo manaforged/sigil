@@ -1,10 +1,3 @@
-//! Per-thread active-animator set + the [`tick`] entry point.
-//!
-//! Animators store only an ID and a [`Signal<f32>`] handle; the heavy
-//! state (the wrapped spring or tween) lives here in a thread-local
-//! `Vec` so iteration during [`tick`] needs no double-indirection. IDs
-//! are allocated monotonically per-thread.
-
 use core::cell::{Cell, RefCell};
 
 use sigil_animation::{Easing, SpringPreset};
@@ -12,8 +5,6 @@ use sigil_reactive::Signal;
 
 use crate::animator::{Motion, SpringMotion, TweenMotion};
 
-/// Opaque per-thread handle. Animators carry one; the runtime uses it
-/// to locate the entry on retarget / settle queries / deregistration.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct AnimatorId(u32);
 
@@ -82,8 +73,6 @@ pub(crate) fn is_settled(id: AnimatorId) -> bool {
     })
 }
 
-/// Snapshot the current driven value for the given animator. Returns
-/// `None` when no entry matches (reduced-motion / already dropped).
 pub(crate) fn peek_value(id: AnimatorId) -> Option<f32> {
     ENTRIES.with(|cell| {
         cell.borrow()
@@ -93,22 +82,10 @@ pub(crate) fn peek_value(id: AnimatorId) -> Option<f32> {
     })
 }
 
-/// Advance every active animator by `dt` seconds.
-///
-/// Writes new values into the bound signals. Settled entries stay registered
-/// until their [`Animator`](crate::Animator) handle is dropped so a later
-/// [`Animator::target`](crate::Animator::target) can re-arm the same motion;
-/// [`active_count`] excludes those idle entries. Idempotent on empty: zero
-/// cost when nothing is in flight.
-///
-/// Apps drive this once per animation frame during the Effect phase, before
-/// layout, so geometry and paint observe the same value in that frame.
 pub fn tick(dt: f32) {
     if !dt.is_finite() || dt <= 0.0 {
         return;
     }
-    // Drain into a local Vec so signal writes can re-enter the runtime
-    // without holding the borrow on ENTRIES.
     let drained: Vec<Entry> = ENTRIES.with(|cell| core::mem::take(&mut *cell.borrow_mut()));
     let mut kept: Vec<Entry> = Vec::with_capacity(drained.len());
     for mut entry in drained {
@@ -123,19 +100,11 @@ pub fn tick(dt: f32) {
         if entries.is_empty() {
             *entries = kept;
         } else {
-            // Animators registered mid-tick (e.g. by an effect that
-            // fired on a signal write inside this tick pass) appended
-            // to ENTRIES while we were draining; preserve them.
             entries.splice(0..0, kept);
         }
     });
 }
 
-/// Number of currently moving animators on this thread.
-///
-/// Public test seam used by the visual-golden harness and by this
-/// crate's unit tests. Production frame loops also use it to stop requesting
-/// animation frames once every registered handle is idle.
 #[must_use]
 pub fn active_count() -> usize {
     ENTRIES.with(|cell| {

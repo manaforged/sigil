@@ -1,24 +1,3 @@
-//! Layout-backed node hit-testing with a flat cached scene.
-//!
-//! Contract: hit-test reads published `LayoutResult` boxes. The
-//! frame loop routes events in Effect, then computes layout. Pointer
-//! targets are therefore last frame's boxes — the layout the user
-//! saw. A node with no published result is not hittable.
-//!
-//! The cache flattens the tree into `(NodeId, absolute_rect, flags)`
-//! in document preorder, rebuilt only when either
-//! [`Cx::mutation_generation`] or [`LayoutEngine::generation`]
-//! advances. Hit-testing is a reverse scan over that vec.
-//!
-//! Reverse preorder matches the recursive "rightmost child first"
-//! traversal: a deeper later-drawn node still claims a shared hit before
-//! its ancestors.
-//!
-//! We deliberately keep `HitItem` at 32 bytes (no parent-index cache):
-//! widening the struct hurts cache density in the reverse scan more
-//! than `cx.parent()` slotmap lookups cost in the follow-up path walk.
-//! Measured on depth-64 routing — the slimmer layout wins.
-
 use sigil_hal::{Point, Rect};
 use sigil_kernel::{Cx, NodeId};
 use sigil_layout::LayoutEngine;
@@ -26,9 +5,6 @@ use smallvec::SmallVec;
 
 pub(crate) type NodePath = SmallVec<[NodeId; 64]>;
 
-/// Inline capacity chosen so depth-64 trees and similarly shallow
-/// scenes stay allocation-free; larger scenes spill to the heap once
-/// per rebuild.
 type HitItems = SmallVec<[HitItem; 64]>;
 
 #[derive(Debug)]
@@ -113,12 +89,6 @@ fn emit(ctx: &EmitCtx<'_>, id: NodeId, items: &mut HitItems) {
     let Some(node) = ctx.cx.get(id) else {
         return;
     };
-    // `LayoutResult::rect()` is already in root coordinates — the
-    // layout solvers accumulate every ancestor's border + padding
-    // offsets into the `ComputedBox` they scatter-write. Hit testing
-    // therefore reads the rect directly; re-accumulating a
-    // `parent_origin` would double-count and shift the hit region by
-    // the sum of every ancestor's offset.
     let rect = ctx.layout.result(id).map(|result| result.rect());
 
     items.push(HitItem {

@@ -78,7 +78,7 @@ fn incremental_structural_remeasure_keeps_fixed_region_at_its_position() {
             // A `display: none` child inside the region's subtree: the solver
             // skips it, so it carries a stale box + old frame tag. The subtree
             // translate MUST leave it unreached (frame-checked read), not
-            // resurrect it at a shifted position (GLM review probe).
+            // resurrect it at a shifted position.
             .child(container().layout(LayoutStyle::block().display(Display::None)));
         let tree = container()
             .layout(LayoutStyle::flex_column().fixed_size(200.0, 1000.0))
@@ -129,7 +129,7 @@ fn incremental_structural_remeasure_keeps_fixed_region_at_its_position() {
         // Hit-test path: `engine.result()` reads the live drive box, which
         // hit_test.rs + pointer_dispatch.rs consume. It MUST match paint, or
         // the region paints in place but clicks resolve at the top-left
-        // (GLM review MAJOR-1).
+        //.
         assert_eq!(
             engine
                 .result(region)

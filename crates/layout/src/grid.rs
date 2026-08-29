@@ -1,29 +1,3 @@
-//! Minimal CSS grid solver — owned engine.
-//!
-//! Scope: explicit column + row tracks (`grid-template-columns` /
-//! `-rows`) sized as `Px` / `Fr` / `Auto` / `minmax(px, fr)`, sparse
-//! row-major auto-flow with column AND row item spans (`grid_column_span`
-//! / `grid_row_span`, so later items flow around a spanning one), row
-//! heights sized to the tallest cell, and column + row gaps. Each cell is
-//! laid out at its (spanned) column width and positioned at the top-left
-//! of its grid area; its own `display` picks the formatting context for
-//! its children (block / flex / nested grid), like a flex item.
-//!
-//! Out of scope, and documented rather than silently wrong: explicit line
-//! placement, named lines, dense packing, implicit/auto *columns*. A
-//! row-spanning item's height is spread evenly over the rows it covers
-//! (not the full CSS distribution).
-//! `Auto` **columns** are treated as `Fr(1.0)` (there is no content-based
-//! column measurement pass yet). A grid with no column tracks lays its
-//! children out in a single full-width column.
-//! `Fr` rows share leftover height when the grid box has a definite
-//! height (`Px`, `Fill`, `Percent`) or a definite available height
-//! (a flex item that grew). Grid items stretch to their track area
-//! when their own height is `Auto`.
-
-// Track/row indices are derived from the very lengths being indexed
-// (`col < ncols`, `row < nrows`), so the slice accesses cannot go out of
-// bounds; the casts are on small track/row counts.
 #![allow(clippy::indexing_slicing, clippy::cast_precision_loss)]
 
 use ahash::AHashSet;
@@ -35,13 +9,10 @@ use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef, SpaceConstraint
 use crate::resolve::NodeEdges;
 use crate::style_data::{Dimension, Display, LengthPercentage, Size, StyleData, TrackSize};
 
-/// Minimal two-dimensional grid layout.
 pub(crate) struct GridSolver<'a> {
     scope: MeasureScope<'a>,
 }
 
-/// Resolved column geometry: each track's width and left edge, plus the
-/// column count. Bundled so the placement passes take one argument.
 struct Cols {
     widths: Vec<f32>,
     x: Vec<f32>,
@@ -58,8 +29,6 @@ impl Cols {
     }
 }
 
-/// Resolved row geometry: each track's height and top edge, plus the
-/// inter-track gap. Bundled so the placement passes take one argument.
 struct RowTracks<'a> {
     y: &'a [f32],
     h: &'a [f32],
@@ -72,9 +41,6 @@ impl<'a> RowTracks<'a> {
     }
 }
 
-/// Derived geometry for one grid solve: the node's edges, the row gap,
-/// column tracks, and border/content origins. Bundled so the solve
-/// passes take one argument.
 struct GridFrame<'a> {
     style: &'a StyleData,
     edges: NodeEdges,
@@ -84,8 +50,6 @@ struct GridFrame<'a> {
     content: Position2,
 }
 
-/// One auto-flow-placed grid item: its node, grid area top-left (`row`,
-/// `col`), and its column/row `span`.
 struct Placement {
     cid: LocalId,
     row: usize,
@@ -94,8 +58,6 @@ struct Placement {
     row_span: usize,
 }
 
-/// A child's placement spec: its column/row span and, when explicitly
-/// placed, its `(row, col)` grid area top-left.
 struct Spec {
     cid: LocalId,
     span: usize,
@@ -103,7 +65,6 @@ struct Spec {
     at: Option<(usize, usize)>,
 }
 
-/// Mark the `cspan × rspan` block at `(r, c)` occupied.
 fn reserve(
     occupied: &mut AHashSet<(usize, usize)>,
     r: usize,
@@ -118,9 +79,6 @@ fn reserve(
     }
 }
 
-/// First free cell for a sparse auto-flow: scan row-major from `start` for
-/// the first `(r, c)` where the `cspan × rspan` block fits inside `ncols`
-/// and no cell is already occupied.
 fn free_cell(
     occupied: &AHashSet<(usize, usize)>,
     start: (usize, usize),
@@ -143,24 +101,16 @@ fn free_cell(
     }
 }
 
-/// Border-box width of an item spanning `span` columns from `col`,
-/// including the internal column gaps (the `x` offsets already carry
-/// them): right edge of the last spanned track minus the first's left.
 fn spanned_width(cols: &Cols, col: usize, span: usize) -> f32 {
     let last = col + span - 1;
     cols.x[last] + cols.widths[last] - cols.x[col]
 }
 
 impl<'a> GridSolver<'a> {
-    /// Wrap a measure scope for a grid-layout pass.
     pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
         Self { scope }
     }
 
-    /// Lay out `subtree` as a grid root, sizing to the available space.
-    ///
-    /// # Errors
-    /// Returns [`LayoutError::LayoutInvalid`] on a stale forest id.
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
         let avail = self.scope.available();
         let border_w = match subtree.style().size.width {
@@ -170,11 +120,6 @@ impl<'a> GridSolver<'a> {
         self.solve_at(subtree, border_w, Position2 { x: 0.0, y: 0.0 })
     }
 
-    /// Lay out `subtree` as a grid whose border box is `border_w` wide and
-    /// whose pre-margin top-left is `origin`. Height is content-sized.
-    ///
-    /// # Errors
-    /// Returns [`LayoutError::LayoutInvalid`] on a stale forest id.
     pub(crate) fn solve_at(
         &self,
         subtree: NodeRef<'_>,
@@ -225,9 +170,6 @@ impl<'a> GridSolver<'a> {
         Ok(())
     }
 
-    /// Resolve the final row tracks (measure → template → `fr`
-    /// distribution), then re-lay each cell into its grid area.
-    /// Returns the final row heights.
     fn layout_rows(
         &self,
         places: &[Placement],
@@ -261,14 +203,6 @@ impl<'a> GridSolver<'a> {
         Ok(row_h)
     }
 
-    /// Placement: explicitly-placed items reserve their block first, then
-    /// the rest auto-flow around them (CSS placement order).
-    ///
-    /// Sparse (default): the cursor only moves forward, so a later auto
-    /// item flows around an earlier row-spanning or explicitly-placed one
-    /// but never backfills a gap behind the cursor. Dense
-    /// (`grid-auto-flow: dense`): each auto item restarts its search from
-    /// the origin, backfilling any earlier gap it fits into.
     fn flow_children(&self, children: &[LocalId], ncols: usize, dense: bool) -> Vec<Placement> {
         let specs: Vec<Spec> = children
             .iter()
@@ -303,7 +237,6 @@ impl<'a> GridSolver<'a> {
         out
     }
 
-    /// Read a child's span + explicit-placement spec from its style.
     fn child_spec(&self, cid: LocalId, ncols: usize) -> Spec {
         let (span, row_span, cstart, rstart) =
             self.scope.forest().refer(cid).map_or((1, 1, 0, 0), |n| {
@@ -315,7 +248,6 @@ impl<'a> GridSolver<'a> {
                     s.grid_row_start as usize,
                 )
             });
-        // Both 1-based lines set → explicit; clamp the column into range.
         let at = (cstart > 0 && rstart > 0)
             .then(|| ((rstart - 1), (cstart - 1).min(ncols.saturating_sub(span))));
         Spec {
@@ -326,8 +258,6 @@ impl<'a> GridSolver<'a> {
         }
     }
 
-    /// Pass 1: lay each cell out at its spanned width (temporary origin) and
-    /// collect per-row heights as the tallest cell in each row.
     fn measure_row_heights(
         &self,
         places: &[Placement],
@@ -343,8 +273,6 @@ impl<'a> GridSolver<'a> {
                 Position2 { x: 0.0, y: 0.0 },
             )?;
             let h = self.scope.forest().boxed(p.cid).map_or(0.0, |b| b.h);
-            // A row-spanning item's height is spread evenly over the rows it
-            // covers, so those rows together reserve at least its height.
             let per_row = h / p.row_span as f32;
             for dr in 0..p.row_span {
                 row_h[p.row + dr] = row_h[p.row + dr].max(per_row);
@@ -353,8 +281,6 @@ impl<'a> GridSolver<'a> {
         Ok(row_h)
     }
 
-    /// Pass 2: re-lay each cell at its final grid-area top-left,
-    /// stretched to the spanned track size.
     fn place_cells(
         &self,
         places: &[Placement],
@@ -373,7 +299,6 @@ impl<'a> GridSolver<'a> {
         Ok(())
     }
 
-    /// Lay out one cell subtree into its grid area at `origin`.
     fn layout_cell(
         &self,
         cid: LocalId,
@@ -413,7 +338,6 @@ impl<'a> GridSolver<'a> {
         Ok(())
     }
 
-    /// Stretch an Auto-height item to the track so the cell fills the area.
     fn stretch_box(&self, cid: LocalId, track_h: f32) {
         let Some(current) = self.scope.forest().boxed(cid) else {
             return;
@@ -436,7 +360,6 @@ impl<'a> GridSolver<'a> {
     }
 }
 
-/// Outer box height of a grid node for its `size.height` dimension.
 fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
     match style.size.height {
         Dimension::Px(px) => px,
@@ -459,8 +382,6 @@ fn spanned_height(row_h: &[f32], row: usize, span: usize, gap: f32) -> f32 {
     )
 }
 
-/// Cumulative left/top offset of each track: `start`, then each previous
-/// size plus one gap. Shared by column-x and row-y placement.
 fn offsets(start: f32, sizes: &[f32], gap: f32) -> Vec<f32> {
     let mut out = Vec::with_capacity(sizes.len());
     let mut pos = start;
@@ -471,20 +392,11 @@ fn offsets(start: f32, sizes: &[f32], gap: f32) -> Vec<f32> {
     out
 }
 
-/// Resolve column track widths against the container's inner width.
-///
-/// Fixed `Px` tracks take their pixels; the remaining space (after fixed
-/// tracks + inter-column gaps) is split across `Fr` weights. `Auto`
-/// columns are treated as `Fr(1.0)`. An empty template yields one track
-/// spanning the whole inner width.
 fn resolve_columns(tracks: &[TrackSize], inner_w: f32, gap_x: f32) -> Vec<f32> {
     if tracks.is_empty() {
         return vec![inner_w.max(0.0)];
     }
     let total_gap = gap_x * (tracks.len().saturating_sub(1) as f32);
-    // `Px` tracks are fixed from the start; the rest flex by weight and are
-    // resolved by a freeze loop so a `minmax` floor that a track can't meet
-    // reserves its min and redistributes the remaining space (CSS §11.5).
     let mut sizes: Vec<Option<f32>> = tracks
         .iter()
         .map(|t| match t {
@@ -506,8 +418,6 @@ fn resolve_columns(tracks: &[TrackSize], inner_w: f32, gap_x: f32) -> Vec<f32> {
         } else {
             0.0
         };
-        // Freeze the first still-flexing minmax whose fr-share can't reach
-        // its floor, then recompute; otherwise assign every flexing track.
         let mut froze = false;
         for (t, s) in tracks.iter().zip(sizes.iter_mut()) {
             if s.is_none()
@@ -532,7 +442,6 @@ fn resolve_columns(tracks: &[TrackSize], inner_w: f32, gap_x: f32) -> Vec<f32> {
     sizes.into_iter().map(|s| s.unwrap_or(0.0)).collect()
 }
 
-/// Flex weight of a track for `fr` distribution (`Px` is fixed → 0).
 const fn flex_weight(track: &TrackSize) -> f32 {
     match track {
         TrackSize::Fr(fr) | TrackSize::MinMax(_, fr) => fr.max(0.0),
@@ -541,9 +450,6 @@ const fn flex_weight(track: &TrackSize) -> f32 {
     }
 }
 
-/// Share leftover inner height across `Fr` / `MinMax` / `Auto` row
-/// tracks, on top of each row's measured minimum. No-op when the grid
-/// has no definite height or no flexible tracks.
 fn distribute_fr_rows(row_h: &mut [f32], tracks: &[TrackSize], inner_h: f32, gap: f32) {
     if row_h.is_empty() {
         return;
@@ -568,9 +474,6 @@ fn distribute_fr_rows(row_h: &mut [f32], tracks: &[TrackSize], inner_h: f32, gap
     }
 }
 
-/// Override measured row heights with any explicit `Px` row track. `Auto`
-/// and `Fr` tracks, plus implicit rows past the template length, keep
-/// their measured (tallest-cell) height until [`distribute_fr_rows`].
 fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
     for (row, h) in row_h.iter_mut().enumerate() {
         if let Some(TrackSize::Px(px)) = tracks.get(row) {
@@ -579,7 +482,6 @@ fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
     }
 }
 
-/// Resolve a gap length-percentage against the inner width.
 fn resolve_gap(gap: LengthPercentage, inner_w: f32) -> f32 {
     match gap {
         LengthPercentage::Px(px) => px.max(0.0),
@@ -587,8 +489,6 @@ fn resolve_gap(gap: LengthPercentage, inner_w: f32) -> f32 {
     }
 }
 
-/// Concrete size from a space constraint; intrinsic constraints resolve
-/// to zero (a grid needs a definite width to distribute `fr` tracks).
 const fn definite(c: SpaceConstraint) -> f32 {
     match c {
         SpaceConstraint::Definite(v) => v,

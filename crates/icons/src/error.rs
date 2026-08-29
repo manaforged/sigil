@@ -1,16 +1,8 @@
-//! Structured error type for icon baking failures.
-
-/// All ways an [`crate::IconBaker::bake`] call can fail.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BakeError {
-    /// The SVG source string could not be parsed.
     SvgParseError(String),
-    /// A path segment coordinates overflow the viewBox bounds.
     PathOverflow,
-    /// The total number of quadratic segments after cubic→quadratic
-    /// conversion exceeded [`crate::MAX_PATH_SEGMENTS`].
     TooManySegments(u32),
-    /// The SVG root has no `viewBox` attribute; baking requires one.
     ViewBoxMissing,
 }
 

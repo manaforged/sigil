@@ -21,7 +21,7 @@
 //! assert against fixed budgets. Criterion's statistical-comparison
 //! flow doesn't fit "did the heap grow by N bytes" questions, and a
 //! plain `fn main` keeps the output a flat table that is trivial to
-//! eyeball during local runs and easy to grep in CI logs.
+//! eyeball during local runs and easy to grep in gate logs.
 //!
 //! Run with `cargo bench -p sigil-reactive --bench memory`. The bench
 //! binary installs a custom global allocator (`CountingAllocator`)
@@ -42,7 +42,7 @@
 // readability — the alternative is layers of `match` noise that
 // obscures what the bench is asserting. The asserts here are also the
 // failure signal: a budget overshoot SHOULD panic the bench binary so
-// CI catches it.
+// The owned-host gate catches it.
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 // Benches print their own formatted output tables — stdout is the
@@ -182,28 +182,28 @@ pub(crate) mod slot_shadow {
     use core::panic::Location;
     use smallvec::SmallVec;
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct OwnerKey {
         index: u32,
         generation: u32,
         _ty: core::marker::PhantomData<fn() -> ()>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct SignalKey {
         index: u32,
         generation: u32,
         _ty: core::marker::PhantomData<fn() -> ()>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct EffectKey {
         index: u32,
         generation: u32,
         _ty: core::marker::PhantomData<fn() -> ()>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct OwnerSlot {
         pub parent: Option<OwnerKey>,
         pub index_in_parent: Option<usize>,
@@ -215,7 +215,7 @@ pub(crate) mod slot_shadow {
         pub location: &'static Location<'static>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct SignalSlot {
         pub owner: OwnerKey,
         pub value: Box<dyn Any>,
@@ -223,7 +223,7 @@ pub(crate) mod slot_shadow {
         pub location: &'static Location<'static>,
     }
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "bench harness; deliberate")]
     pub struct EffectSlot {
         pub owner: OwnerKey,
         pub run_owner: Option<OwnerKey>,

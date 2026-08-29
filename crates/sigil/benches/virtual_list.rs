@@ -91,7 +91,9 @@ fn bench_first_render(c: &mut Criterion) {
                 },
                 |(data, scroll_y, mut cx, mut engine)| {
                     let root = build_widget(&mut cx, data, scroll_y);
-                    engine.compute(&mut cx, root, AVAILABLE).unwrap();
+                    engine
+                        .compute(&mut cx, root, AVAILABLE)
+                        .expect("bench harness invariant");
                     black_box(engine.result(root));
                 },
                 BatchSize::SmallInput,
@@ -121,7 +123,9 @@ fn bench_scroll_step(c: &mut Criterion) {
                         }
                     });
                     let root = build_widget(&mut cx, data, scroll_y);
-                    engine.compute(&mut cx, root, AVAILABLE).unwrap();
+                    engine
+                        .compute(&mut cx, root, AVAILABLE)
+                        .expect("bench harness invariant");
                     black_box(engine.result(root));
                 },
                 BatchSize::SmallInput,

@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W3.1b-B — integration tests for FocusHandle + Context::on_action,
+//! B — integration tests for FocusHandle + Context::on_action,
 //! dispatch_action, propagate. See DR-046 §4 + §6.
 //!
 //! Eight scenarios covering real focus + dispatch behaviour:

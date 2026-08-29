@@ -1,22 +1,3 @@
-//! Flex-layout integration tests. Lives in-crate (not under `tests/`)
-//! because `FlexSolver` + forest types are `pub(crate)` per DR-041 —
-//! integration tests outside the crate can't reach them without
-//! elevating a frozen API surface.
-//!
-//! Coverage matches the P0.3 (W2.4) brief:
-//! * direction (Row, Column, RowReverse, ColumnReverse)
-//! * flex-basis with explicit px / percent / auto
-//! * flex-grow / flex-shrink distribution
-//! * flex-wrap (NoWrap, Wrap, WrapReverse)
-//! * justify-content (Start, End, Center, SpaceBetween, SpaceAround, SpaceEvenly)
-//! * align-items / align-self (Start, End, Center, Stretch)
-//! * align-content for multi-line
-//! * gap (main + cross)
-//! * padding + margin offset placement
-//! * min/max main clamping
-//! * order rearrangement
-//! * Display::None skipped, Position::Absolute isolated
-
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -38,9 +19,6 @@ use sigil_hal::{LogicalSize, Size as HalSize};
 use sigil_kernel::TextContent;
 
 impl FlexSolver<'_> {
-    /// Borrow the computed box for `id`. Returns `None` when the id is
-    /// stale or the solver never visited it during this pass (frame
-    /// tag does not match the forest's current frame).
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
         let forest = self.scope.forest();
         if forest.frame_for(id)? != forest.current_frame() {
@@ -94,10 +72,6 @@ fn add_child(
     f.attach(parent, id).unwrap();
     id
 }
-
-// ---------------------------------------------------------------------
-// Row direction — placement + basic grow
-// ---------------------------------------------------------------------
 
 #[test]
 fn row_lays_children_along_inline_axis() {
@@ -184,7 +158,6 @@ fn row_reverse_reverses_main_order() {
     let s = run(&f, parent, 400.0, 400.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // Reverse: b laid first at x=0, then a after b.
     assert!(near(bb.x, 0.0), "bb.x={}", bb.x);
     assert!(near(ba.x, 60.0), "ba.x={}", ba.x);
 }
@@ -209,10 +182,6 @@ fn column_reverse_reverses_block_order() {
     assert!(near(bb.y, 0.0));
     assert!(near(ba.y, 50.0), "ba.y={}", ba.y);
 }
-
-// ---------------------------------------------------------------------
-// flex-basis / grow / shrink
-// ---------------------------------------------------------------------
 
 #[test]
 fn flex_basis_overrides_size_for_main_axis() {
@@ -264,7 +233,6 @@ fn flex_grow_distributes_free_space_proportionally() {
     let s = run(&f, parent, 400.0, 400.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // a: 1/3 of 300 = 100, b: 2/3 = 200.
     assert!(near(ba.w, 100.0), "ba.w={}", ba.w);
     assert!(near(bb.w, 200.0), "bb.w={}", bb.w);
 }
@@ -280,8 +248,6 @@ fn flex_shrink_distributes_deficit_proportionally() {
             ..StyleData::default()
         },
     );
-    // Two items basis 80 each, total 160, overflow 60.
-    // Equal shrink -> remove 30 each -> 50 each.
     let a_style = StyleData {
         flex_basis: Dimension::Px(80.0),
         flex_shrink: 1.0,
@@ -320,10 +286,6 @@ fn no_grow_no_shrink_keeps_basis() {
     let ba = s.boxed(a).unwrap();
     assert!(near(ba.w, 60.0));
 }
-
-// ---------------------------------------------------------------------
-// justify-content (main axis)
-// ---------------------------------------------------------------------
 
 #[test]
 fn justify_start_keeps_items_packed_at_main_start() {
@@ -415,7 +377,6 @@ fn justify_space_around_pads_edges_half() {
     let s = run(&f, parent, 400.0, 400.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // Free=200, /2 items = 100, /2 outer = 50.
     assert!(near(ba.x, 50.0), "ba.x={}", ba.x);
     assert!(near(bb.x, 200.0), "bb.x={}", bb.x);
 }
@@ -435,14 +396,9 @@ fn justify_space_evenly_pads_all_gaps_equally() {
     let a = add_child(&mut f, parent, fixed(50.0, 20.0));
     let b = add_child(&mut f, parent, fixed(50.0, 20.0));
     let s = run(&f, parent, 400.0, 400.0);
-    // free=210, slots=3 -> 70 each.
     assert!(near(s.boxed(a).unwrap().x, 70.0));
     assert!(near(s.boxed(b).unwrap().x, 190.0));
 }
-
-// ---------------------------------------------------------------------
-// align-items / align-self (cross axis)
-// ---------------------------------------------------------------------
 
 #[test]
 fn align_items_start_keeps_items_at_cross_start() {
@@ -539,10 +495,6 @@ fn align_self_overrides_container_align_items() {
     assert!(near(s.boxed(a).unwrap().y, 70.0));
 }
 
-// ---------------------------------------------------------------------
-// wrap + multi-line cross distribution
-// ---------------------------------------------------------------------
-
 #[test]
 fn nowrap_keeps_overflowing_items_on_single_line() {
     let mut f = LayoutForest::new();
@@ -555,7 +507,6 @@ fn nowrap_keeps_overflowing_items_on_single_line() {
             ..StyleData::default()
         },
     );
-    // Three 80-px items in a 150-px line.
     let a_style = StyleData {
         size: StyleSize::new(Dimension::Px(80.0), Dimension::Px(20.0)),
         flex_shrink: 0.0,
@@ -565,7 +516,6 @@ fn nowrap_keeps_overflowing_items_on_single_line() {
     let b = add_child(&mut f, parent, a_style.clone());
     let c = add_child(&mut f, parent, a_style);
     let s = run(&f, parent, 400.0, 400.0);
-    // All three on the same cross-axis row (y=0).
     assert!(near(s.boxed(a).unwrap().y, 0.0));
     assert!(near(s.boxed(b).unwrap().y, 0.0));
     assert!(near(s.boxed(c).unwrap().y, 0.0));
@@ -593,8 +543,6 @@ fn wrap_breaks_overflowing_items_onto_next_line() {
     let b = add_child(&mut f, parent, a_style.clone());
     let c = add_child(&mut f, parent, a_style);
     let s = run(&f, parent, 400.0, 400.0);
-    // a + b on line 0 would overflow — actually a alone takes 80 of 150, b
-    // would push to 160 > 150 so b wraps to line 1. c also wraps.
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
     let bc = s.boxed(c).unwrap();
@@ -625,7 +573,6 @@ fn wrap_reverse_orders_lines_from_cross_end() {
     let a = add_child(&mut f, parent, a_style.clone());
     let b = add_child(&mut f, parent, a_style);
     let s = run(&f, parent, 400.0, 400.0);
-    // Lines reversed: b's line first.
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
     assert!(near(bb.y, 0.0), "bb.y={}", bb.y);
@@ -654,7 +601,6 @@ fn align_content_center_centers_lines_cross_axis() {
     let a = add_child(&mut f, parent, a_style.clone());
     let b = add_child(&mut f, parent, a_style);
     let s = run(&f, parent, 400.0, 400.0);
-    // Two lines, each 30 tall = 60. Container 200 -> free 140 -> center origin 70.
     assert!(near(s.boxed(a).unwrap().y, 70.0));
     assert!(near(s.boxed(b).unwrap().y, 100.0));
 }
@@ -684,10 +630,6 @@ fn align_content_end_packs_lines_at_cross_end() {
     assert!(near(s.boxed(a).unwrap().y, 140.0));
     assert!(near(s.boxed(b).unwrap().y, 170.0));
 }
-
-// ---------------------------------------------------------------------
-// gap, padding, margin
-// ---------------------------------------------------------------------
 
 #[test]
 fn gap_inserts_main_axis_gutter_between_items() {
@@ -759,11 +701,6 @@ fn margin_on_item_offsets_main_position() {
 
 #[test]
 fn margin_on_a_nested_flex_container_applies_once_not_twice() {
-    // Regression: a flex CONTAINER that is itself a flex ITEM had its own top margin
-    // applied twice — the parent's placement baked it into the child's origin, then the
-    // child's `layout_root` re-added it (the block-child dispatch already subtracts it;
-    // the flex-child dispatch didn't). A leaf item never tripped this (it returns before
-    // the recursive dispatch), so it needs a child to reproduce.
     let mut f = LayoutForest::new();
     let parent = f.insert(
         None,
@@ -787,7 +724,6 @@ fn margin_on_a_nested_flex_container_applies_once_not_twice() {
         ..StyleData::default()
     };
     let child = add_child(&mut f, parent, child_style);
-    // A grandchild makes `child` a real flex container (drives the recursive dispatch).
     let grandchild_style = StyleData {
         size: StyleSize::new(Dimension::Px(10.0), Dimension::Px(10.0)),
         ..StyleData::default()
@@ -801,10 +737,6 @@ fn margin_on_a_nested_flex_container_applies_once_not_twice() {
         "nested flex container top margin must apply once (expected 20, got {y})"
     );
 }
-
-// ---------------------------------------------------------------------
-// min/max clamping
-// ---------------------------------------------------------------------
 
 #[test]
 fn min_size_floors_main_axis_shrink() {
@@ -829,7 +761,6 @@ fn min_size_floors_main_axis_shrink() {
     let s = run(&f, parent, 400.0, 400.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // Floor 70 each; without floor would be 50.
     assert!(ba.w >= 70.0 - TOL);
     assert!(bb.w >= 70.0 - TOL);
 }
@@ -858,10 +789,6 @@ fn max_size_caps_main_axis_grow() {
     assert!(ba.w <= 80.0 + TOL, "ba.w={}", ba.w);
 }
 
-// ---------------------------------------------------------------------
-// order, Display::None, Position::Absolute
-// ---------------------------------------------------------------------
-
 #[test]
 fn order_reorders_items_by_ascending_order_field() {
     let mut f = LayoutForest::new();
@@ -886,7 +813,6 @@ fn order_reorders_items_by_ascending_order_field() {
     let a = add_child(&mut f, parent, a_style);
     let b = add_child(&mut f, parent, b_style);
     let s = run(&f, parent, 400.0, 400.0);
-    // b has lower order, lays first.
     assert!(near(s.boxed(b).unwrap().x, 0.0));
     assert!(near(s.boxed(a).unwrap().x, 40.0));
 }
@@ -910,7 +836,6 @@ fn display_none_items_are_skipped() {
     let _hidden = add_child(&mut f, parent, hidden_style);
     let visible = add_child(&mut f, parent, fixed(60.0, 20.0));
     let s = run(&f, parent, 400.0, 400.0);
-    // Visible lays at 0 (hidden does not contribute).
     assert!(near(s.boxed(visible).unwrap().x, 0.0));
 }
 
@@ -933,13 +858,8 @@ fn absolute_items_are_isolated_from_flex_flow() {
     let _abs = add_child(&mut f, parent, abs_style);
     let flow = add_child(&mut f, parent, fixed(60.0, 20.0));
     let s = run(&f, parent, 400.0, 400.0);
-    // Flow item lays at 0 (absolute does not advance main cursor).
     assert!(near(s.boxed(flow).unwrap().x, 0.0));
 }
-
-// ---------------------------------------------------------------------
-// container output box
-// ---------------------------------------------------------------------
 
 #[test]
 fn container_box_picks_up_explicit_size() {
@@ -983,10 +903,6 @@ fn empty_flex_container_produces_only_self_box() {
     let s = run(&f, parent, 200.0, 100.0);
     assert!(s.boxed(parent).is_some());
 }
-
-// ---------------------------------------------------------------------
-// helper unit tests
-// ---------------------------------------------------------------------
 
 #[test]
 fn clamp_min_floors_above_max() {
@@ -1055,8 +971,6 @@ fn percent_dimension_resolves_against_container() {
 
 #[test]
 fn nested_auto_height_columns_probe_once_per_node() {
-    // Auto-main nested flex used to re-lay out the subtree at every
-    // ancestor (`2^depth` intrinsic probes). One store per wrapper.
     let mut f = LayoutForest::new();
     let root = f.insert(
         None,

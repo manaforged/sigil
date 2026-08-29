@@ -1,37 +1,36 @@
-//! Arcane brand palettes — six-colour role vocabulary applied to any
-//! [`StyleVariant`](crate::StyleVariant) to produce a [`Theme`](crate::Theme).
-//!
-//! Each palette is a fixed set of six role colours:
-//! `background`, `text`, `primary`, `success`, `warning`, `danger`.
-//! All other surface and hover colours derive from these via simple
-//! shading; future work will swap the shading function for an
-//! Oklch-based one that handles light/dark variants cleanly.
-//!
-//! Palette names follow the author Technologies' arcane theme. The
-//! aesthetic inspirations behind each one are documented in the plan
-//! file, not in identifier names — no community theme brand is
-//! lifted.
-
 mod hsv;
 
 use crate::Rgba8;
 use hsv::{perceived_brightness, tint_toward_hue};
 
-/// Six-colour role palette. Combine with a
-/// [`StyleVariant`](crate::StyleVariant) to assemble a full theme.
+pub(crate) const fn is_dark(c: Rgba8) -> bool {
+    let r = c.r as u32;
+    let g = c.g as u32;
+    let b = c.b as u32;
+    (r * 30 + g * 59 + b * 11) < 12_800
+}
+
+pub(crate) const fn pick_higher_contrast(against: Rgba8, a: Rgba8, b: Rgba8) -> Rgba8 {
+    let target = perceived_brightness_u32(against);
+    let da = perceived_brightness_u32(a).abs_diff(target);
+    let db = perceived_brightness_u32(b).abs_diff(target);
+    if da >= db { a } else { b }
+}
+
+pub(crate) const fn perceived_brightness_u32(c: Rgba8) -> u32 {
+    let r = c.r as u32;
+    let g = c.g as u32;
+    let b = c.b as u32;
+    r * 30 + g * 59 + b * 11
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Palette {
-    /// Page / window background.
     pub background: Rgba8,
-    /// Default readable text on `background`.
     pub text: Rgba8,
-    /// Primary action / accent colour.
     pub primary: Rgba8,
-    /// Positive / confirmation colour.
     pub success: Rgba8,
-    /// Cautionary / non-blocking warning colour.
     pub warning: Rgba8,
-    /// Destructive / error colour.
     pub danger: Rgba8,
 }
 
@@ -40,8 +39,6 @@ const fn rgb(r: u8, g: u8, b: u8) -> Rgba8 {
 }
 
 impl Palette {
-    /// Clean ethereal light. Bright neutral surfaces with cool-blue
-    /// primaries — the "Aetherlight" palette.
     #[must_use]
     pub const fn aetherlight() -> Self {
         Self {
@@ -54,9 +51,6 @@ impl Palette {
         }
     }
 
-    /// Neutral volcanic-glass dark — the default Sigil look.
-    /// `Theme::normal()` resolves to this palette under the Normal
-    /// variant.
     #[must_use]
     pub const fn obsidian() -> Self {
         Self {
@@ -69,9 +63,6 @@ impl Palette {
         }
     }
 
-    /// Saturated green-on-near-black, runes-carved-in-stone.
-    /// `Theme::terminal()` resolves to this palette under the Terminal
-    /// variant — the second locked regression baseline.
     #[must_use]
     pub const fn terminal() -> Self {
         Self {
@@ -84,7 +75,6 @@ impl Palette {
         }
     }
 
-    /// Arcane neon-on-near-black with electric-rune accents.
     #[must_use]
     pub const fn voltglyph() -> Self {
         Self {
@@ -97,7 +87,6 @@ impl Palette {
         }
     }
 
-    /// Silvery-purple dark, enchanted-metal sheen.
     #[must_use]
     pub const fn mythril() -> Self {
         Self {
@@ -110,7 +99,6 @@ impl Palette {
         }
     }
 
-    /// Cool blue-grey, icy-fortress muted.
     #[must_use]
     pub const fn frostkeep() -> Self {
         Self {
@@ -123,7 +111,6 @@ impl Palette {
         }
     }
 
-    /// Warm beige parchment light.
     #[must_use]
     pub const fn vellum() -> Self {
         Self {
@@ -136,7 +123,6 @@ impl Palette {
         }
     }
 
-    /// Warm dark with amber fire-lit accents.
     #[must_use]
     pub const fn embergrove() -> Self {
         Self {
@@ -149,7 +135,6 @@ impl Palette {
         }
     }
 
-    /// Oxidised teal-green saturated, ancient-bronze patina.
     #[must_use]
     pub const fn verdigris() -> Self {
         Self {
@@ -162,7 +147,6 @@ impl Palette {
         }
     }
 
-    /// Soft pastel dark with rose-and-violet bloom.
     #[must_use]
     pub const fn faewine() -> Self {
         Self {
@@ -175,7 +159,6 @@ impl Palette {
         }
     }
 
-    /// Vibrant dark with crystal-like neon highlights.
     #[must_use]
     pub const fn crystalline() -> Self {
         Self {
@@ -188,17 +171,6 @@ impl Palette {
         }
     }
 
-    /// the host engine a full palette from a single accent colour — Spellforge.
-    ///
-    /// All six role colours are derived from the accent:
-    /// - `primary` is the accent itself.
-    /// - `background` / `text` are chosen for legible contrast (dark
-    ///   surface for a bright accent, light surface for a dark one).
-    /// - `success` / `warning` / `danger` retain the accent's
-    ///   saturation and value but rotate their hue toward the
-    ///   canonical role hues (green ≈ 130°, amber ≈ 45°, red ≈ 5°)
-    ///   so they stay recognisable as success/warning/danger while
-    ///   feeling like part of the same palette family.
     #[must_use]
     pub fn spellforge(accent: Rgba8) -> Self {
         let accent_is_bright = perceived_brightness(accent) > 128;

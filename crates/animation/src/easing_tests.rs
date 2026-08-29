@@ -7,9 +7,6 @@
 
 use super::*;
 
-/// Every named curve hits the two endpoints exactly. Any drift means
-/// either the math is wrong or a clamp got introduced where one
-/// shouldn't be.
 #[test]
 fn endpoints_are_exact() {
     for curve in [
@@ -42,7 +39,6 @@ fn endpoints_are_exact() {
     }
 }
 
-/// Out-of-range inputs are clamped, not extrapolated.
 #[test]
 fn out_of_range_inputs_clamp() {
     for curve in [Easing::Linear, Easing::CubicInOut, Easing::BounceOut] {
@@ -51,7 +47,6 @@ fn out_of_range_inputs_clamp() {
     }
 }
 
-/// Linear is the identity.
 #[test]
 fn linear_is_identity() {
     for i in 0..=10_u8 {
@@ -60,7 +55,6 @@ fn linear_is_identity() {
     }
 }
 
-/// Strictly-monotonic curves should not move backwards.
 #[test]
 fn monotonic_curves_increase() {
     for curve in [

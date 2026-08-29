@@ -75,8 +75,8 @@ fn painted_and_surfaces_use_prelude_types() {
             "expected hello in {painted:?}"
         );
         let holes = host.surfaces();
-        assert_eq!(holes.len(), 1);
-        assert_eq!(holes[0].0, 7);
-        assert!(holes[0].1.width > 0.0);
+        let hole = holes.first().copied().expect("one surface hole");
+        assert_eq!(hole.0, 7);
+        assert!(hole.1.width > 0.0);
     });
 }

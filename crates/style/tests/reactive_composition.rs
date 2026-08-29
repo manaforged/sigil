@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! T0 (5/5 Wave 1): multiple reactive style sources on one node compose
+//! multiple reactive style sources on one node compose
 //! in install order instead of silently replacing each other.
 //!
 //! Before T0, a second `style_reactive` / `class_when` install on the

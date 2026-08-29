@@ -1,5 +1,3 @@
-//! DPI conversion helpers for winit event translation.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use std::sync::Arc;
@@ -14,7 +12,10 @@ pub(crate) fn logical_point_from_f64(x: f64, y: f64, scale: Scale) -> Point {
     scale.point_to_logical(point_from_f64(x, y))
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub(crate) fn scale_from_f64(scale: f64) -> Scale {
     Scale::new(scale as f32)
 }

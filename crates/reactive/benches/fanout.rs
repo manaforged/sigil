@@ -19,7 +19,7 @@
 //!
 //! Run with `cargo bench -p sigil-reactive --bench fanout`. Use
 //! `-- --warm-up-time 1 --measurement-time 3 --sample-size 30` for
-//! the dev-loop numbers; CI smoke uses shorter windows.
+//! the dev-loop numbers; pre-release gate runs use shorter windows.
 
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 

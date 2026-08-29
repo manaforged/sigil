@@ -1,5 +1,3 @@
-//! Non-list 1:1 construct trees: wrap, nested flex, kv form, overlay.
-
 use bench_parity::{NESTED_LEAF, Workload, form_key, form_value, overlay_label, wrap_paragraph};
 use gpui::{AnyElement, IntoElement, ParentElement, Styled, div, px};
 
@@ -111,7 +109,10 @@ fn overlay_stack(workload: &Workload) -> AnyElement {
         .w(px(p.viewport_width_px))
         .h(px(p.viewport_height_px));
     for index in 0..p.row_count {
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        )]
         let inset = px(index as f32 * 4.0);
         host = host.child(
             div()

@@ -1,9 +1,3 @@
-//! Conversion helpers from winit events to Sigil HAL events.
-//!
-//! Key mapping lives in [`crate::key_map`]. Everything else — modifier
-//! state, mouse buttons, scroll, touch, and coordinate conversion —
-//! lives here.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::{
@@ -74,7 +68,10 @@ pub(crate) fn map_scroll_delta(delta: WinitMouseScrollDelta, scale: Scale) -> Sc
     }
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub(crate) const fn point_from_f64(x: f64, y: f64) -> Point {
     Point::new(x as f32, y as f32)
 }

@@ -1,9 +1,3 @@
-//! `WinitShell` — the winit-backed [`sigil_hal::Shell`] implementation.
-//! See DR-002 for the lifecycle contract: windows are queued until the
-//! event loop is alive, and the event loop is built eagerly so the
-//! [`Shell::waker`] handle can be handed to `sigil-async` before
-//! [`Shell::run`] is called.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use std::sync::{
@@ -34,8 +28,6 @@ mod commands;
 mod events;
 mod overlay;
 
-/// Pending window specification recorded before the event loop is
-/// alive, or between frames.
 pub(crate) struct PendingWindow {
     handle: WinitWindowHandle,
     title: String,
@@ -48,30 +40,16 @@ pub(crate) enum PendingWindowSize {
     Logical(LogicalSize),
 }
 
-/// Closure invoked inside `ApplicationHandler::user_event`, used by
-/// `sigil-async` to drain its MPSC.
 pub(crate) type WakeHook = Arc<dyn Fn() + Send + Sync + 'static>;
 
-/// Closure consulted between event-loop iterations to discover when
-/// the soonest piece of pending work is due.
-///
-/// Returning `Some(deadline)` causes the adapter to set
-/// `ControlFlow::WaitUntil(deadline)`, letting the OS wake the loop at
-/// the requested time without a busy spin. Returning `None` falls back
-/// to the default `Wait` behaviour. Wired by the application layer
-/// (see [`WinitShell::on_idle_deadline`]) to surface
-/// `sigil_reactive::next_interval_deadline()` to the event loop.
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
-/// One window's AccessKit adapter plus its latest-published-tree cache
-/// (RC-focus adversarial finding 2 — see `shell/a11y.rs`).
 type A11yAdapterEntry = (
     WinitWindowHandle,
     accesskit_winit::Adapter,
     Arc<Mutex<Option<accesskit::TreeUpdate>>>,
 );
 
-/// winit-backed [`Shell`] implementation.
 pub struct WinitShell {
     event_loop: Option<EventLoop<WakeEvent>>,
     proxy: Arc<Mutex<EventLoopProxy<WakeEvent>>>,
@@ -80,8 +58,6 @@ pub struct WinitShell {
     pending: Vec<PendingWindow>,
     windows: Vec<(WinitWindowHandle, Arc<Window>)>,
     window_scales: Vec<(WinitWindowHandle, Scale)>,
-    /// Per-window user zoom (WindowOpts::user_zoom), composed with the
-    /// monitor scale everywhere a raw winit scale factor arrives.
     window_zooms: Vec<(WinitWindowHandle, f32)>,
     failed: Vec<(WinitWindowHandle, String)>,
     events: Vec<ShellEvent>,
@@ -92,52 +68,24 @@ pub struct WinitShell {
     wake_hook: Option<WakeHook>,
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
-    /// Set when a `RedrawRequested` is OS-driven (window first-show, un-occlude,
-    /// resize) rather than one we scheduled to coalesce input. The frame loop's
-    /// change-gate MUST paint such a frame even when no signal changed — the
-    /// drawable needs pixels or it shows an unpainted (gray) buffer. Consumed
-    /// once per frame via [`Self::take_force_paint`].
     force_paint: bool,
-    /// One AccessKit adapter (+ its latest-published-tree cache, RC-focus
-    /// finding 2) per materialised window (DR-050 §1). See `shell/a11y.rs`.
     a11y_adapters: Vec<A11yAdapterEntry>,
-    /// Send half of the AT-initiated action-request channel, cloned into
-    /// every adapter's `ActionHandler` at construction time.
     a11y_action_tx: crossbeam_channel::Sender<accesskit::ActionRequest>,
-    /// Receive half; the app's frame loop clones this once via
-    /// [`Self::a11y_action_receiver`] and drains it every frame.
     a11y_action_rx: crossbeam_channel::Receiver<accesskit::ActionRequest>,
 }
 
 impl Drop for WinitShell {
     fn drop(&mut self) {
-        // Flip liveness before the event loop drops so racing wakers
-        // surface `EventLoopClosed` instead of coalescing against a
-        // stale pending bit.
         self.alive.store(false, Ordering::Release);
     }
 }
 
 impl WinitShell {
-    /// Construct a new shell, building the winit event loop eagerly
-    /// so [`Self::waker`] can be called before [`Shell::run`].
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when winit cannot construct the platform event loop.
     pub fn new() -> Result<Self, ShellError> {
         let event_loop = EventLoop::<WakeEvent>::with_user_event().build()?;
         Ok(Self::from_event_loop(event_loop))
     }
 
-    /// Construct a shell whose process runs as an accessory: on macOS
-    /// the app gets no Dock icon or Cmd-Tab entry and never activates.
-    /// Meant for overlay-only apps (status pills); identical to
-    /// [`Self::new`] elsewhere.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error when winit cannot construct the platform event loop.
     pub fn new_accessory() -> Result<Self, ShellError> {
         let mut builder = EventLoop::<WakeEvent>::with_user_event();
         #[cfg(target_os = "macos")]
@@ -177,22 +125,10 @@ impl WinitShell {
         }
     }
 
-    /// Register a closure invoked once per delivered `WakeEvent`
-    /// inside `ApplicationHandler::user_event`.
     pub fn on_wake<F: Fn() + Send + Sync + 'static>(&mut self, hook: F) {
         self.wake_hook = Some(Arc::new(hook));
     }
 
-    /// Register a closure consulted between event-loop iterations to
-    /// discover the soonest pending deadline (e.g. the next
-    /// [`sigil_reactive::interval`](https://docs.rs/sigil-reactive) fire).
-    ///
-    /// When the hook returns `Some(deadline)`, the adapter sets winit's
-    /// `ControlFlow::WaitUntil(deadline)` so the OS wakes the loop at
-    /// the requested time without busy-spinning. Returning `None` falls
-    /// back to the default `Wait` behaviour. Apps wire this to
-    /// `sigil_reactive::next_interval_deadline` from inside their
-    /// frame-driver setup.
     pub fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
         &mut self,
         hook: F,
@@ -200,19 +136,15 @@ impl WinitShell {
         self.deadline_hook = Some(Arc::new(hook));
     }
 
-    /// Request that the event loop exit after the current callback.
     pub const fn request_exit(&mut self) {
         self.exit_requested = true;
     }
 
-    /// Return whether exit has been requested.
     #[must_use]
     pub const fn exit_requested(&self) -> bool {
         self.exit_requested
     }
 
-    /// Return the live window for a handle, if it has been
-    /// materialised yet.
     #[must_use]
     pub fn window_for(&self, handle: WinitWindowHandle) -> Option<&Arc<Window>> {
         self.windows
@@ -220,14 +152,11 @@ impl WinitShell {
             .find_map(|(h, w)| (*h == handle).then_some(w))
     }
 
-    /// Return every live window.
     #[must_use]
     pub fn windows(&self) -> &[(WinitWindowHandle, Arc<Window>)] {
         &self.windows
     }
 
-    /// Drain the list of window specifications that failed to
-    /// materialise, together with the stringified `winit` error.
     #[must_use]
     pub fn take_failed_windows(&mut self) -> Vec<(WinitWindowHandle, String)> {
         std::mem::take(&mut self.failed)
@@ -255,15 +184,10 @@ impl WinitShell {
         }
     }
 
-    /// Flag the next frame as one the change-gate must paint regardless of the
-    /// dirty state — used for OS-driven redraws (first-show, un-occlude, resize)
-    /// where the drawable needs pixels even though no signal changed.
     pub(crate) const fn set_force_paint(&mut self) {
         self.force_paint = true;
     }
 
-    /// Take (and clear) the force-paint flag. Read once at the gate in the frame
-    /// loop; returns `true` when this frame must paint irrespective of dirtiness.
     pub fn take_force_paint(&mut self) -> bool {
         std::mem::take(&mut self.force_paint)
     }

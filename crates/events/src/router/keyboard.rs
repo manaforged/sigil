@@ -1,12 +1,3 @@
-//! Keyboard event routing: semantic shortcut dispatch, Tab-order
-//! navigation, and focused-node key bubbling/capturing.
-//!
-//! Split out of `router.rs` — that file grew back over the 400-line
-//! hygiene cap; this is the keyboard-routing concern (distinct from the
-//! pointer/scroll dispatch that stays in the parent module) split into
-//! its own child module, matching the `focus/scope.rs` and
-//! `focus/targets.rs` precedent already in this crate.
-
 use sigil_hal::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
 use sigil_kernel::{Cx, NodeId, Role};
 use sigil_layout::LayoutEngine;
@@ -29,7 +20,6 @@ impl EventRouter {
         {
             return;
         }
-        // Tab moves focus via the keyboard → focus-visible (ring shown).
         crate::note_focus_source(true);
         if route_tab_key(&mut self.focus, cx, layout, &event) {
             return;
@@ -46,9 +36,6 @@ impl EventRouter {
         dispatch_key_path(cx, &path, event);
     }
 
-    /// Whether the focused node is a text-editing surface. Text widgets
-    /// (`text_field` / `text_edit` / `code_edit`) all present as
-    /// `Role::TextInput`, so the role is the single marker to check.
     fn focused_accepts_text(&self, cx: &Cx) -> bool {
         self.focus
             .focus()
@@ -100,11 +87,6 @@ impl ShortcutIndex {
         self.generation = generation;
     }
 
-    /// Scan the index for a matching shortcut and invoke its node's key
-    /// handlers. While a text-editing node holds focus (`text_focused`),
-    /// bare printable-character shortcuts are skipped — the character is
-    /// text input first (the web's INPUT/contentEditable guard). Modifier
-    /// chords (Ctrl+K &c.) still dispatch globally.
     fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, text_focused: bool) -> bool {
         for (shortcut, id) in &self.entries {
             if text_focused && is_plain_char(shortcut) {
@@ -118,11 +100,6 @@ impl ShortcutIndex {
     }
 }
 
-/// A bare printable-character shortcut: `LogicalKey::Character` with no
-/// routing-relevant modifiers (the same SHIFT|CONTROL|ALT|META mask
-/// `Shortcut::matches` normalizes against). Any `Character` key counts,
-/// not just length-1 — multi-scalar input (dead-key compose, IME-ish
-/// text) is still text a field must receive.
 const fn is_plain_char(shortcut: &Shortcut) -> bool {
     matches!(shortcut.key, LogicalKey::Character(_))
         && shortcut
@@ -160,9 +137,6 @@ fn route_tab_key(
     if event.modifiers.shift() {
         focus.focus_prev(cx, Some(layout));
     } else if traps_tab(focus, cx) {
-        // The focused node wants the raw Tab (code editor indent). Let the key fall
-        // through to the focused-key dispatch instead of moving focus. Shift+Tab is
-        // unaffected above, so there is always a keyboard way out.
         return false;
     } else {
         focus.focus_next(cx, Some(layout));
@@ -170,7 +144,6 @@ fn route_tab_key(
     true
 }
 
-/// Whether the currently focused node opts to receive a plain `Tab` itself.
 fn traps_tab(focus: &FocusManager, cx: &Cx) -> bool {
     focus
         .focus()

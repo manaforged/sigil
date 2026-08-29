@@ -178,6 +178,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn clicking_second_file_swaps_editor_without_breaking() {
     sigil::reactive::Runtime::scope("editor-swap-probe", || {
         let files = [
@@ -310,6 +311,7 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
 }
 
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn routed_clicks_through_explorer_dont_break() {
     sigil::reactive::Runtime::scope("editor-swap-routed", || {
         let files = vec![
@@ -362,6 +364,7 @@ const fn pointer_up(x: f32, y: f32) -> ShellEvent {
 /// thumb, scroll's `pointer_move` handler peeks a disposed signal and PANICS.
 /// This test asserts that sequence does NOT crash.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn captured_scroll_thumb_survives_editor_rebuild() {
     sigil::reactive::Runtime::scope("editor-swap-capture", || {
         let files = vec![
@@ -426,6 +429,7 @@ fn captured_scroll_thumb_survives_editor_rebuild() {
 /// was remeasured as an isolated root anchored at (0,0), clobbering the
 /// content's real in-tree position. Asserts the tall content stays placed.
 #[test]
+#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 // Upstream test walks one toggle-remeasure scenario (53 lines);
 // splitting it would obscure the regression it pins.
 #[allow(clippy::too_many_lines)]

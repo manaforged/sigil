@@ -1,15 +1,10 @@
-//! Layout adapter errors.
-
 use std::fmt::{Display, Formatter};
 
 use sigil_kernel::NodeId;
 
-/// Error returned by layout sync and compute operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LayoutError {
-    /// The owned layout engine rejected an operation.
     LayoutInvalid(String),
-    /// A `sigil-kernel` node was missing from either `Cx` or the layout mirror.
     NodeMissing(NodeId),
 }
 

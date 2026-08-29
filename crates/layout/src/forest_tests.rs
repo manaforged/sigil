@@ -1,35 +1,28 @@
 use super::*;
 
 impl LayoutNode {
-    /// Children in insertion order.
     pub(crate) fn children(&self) -> &[LocalId] {
         &self.children
     }
 }
 
 impl LayoutForest {
-    /// True when no live nodes remain.
     pub(crate) fn empty(&self) -> bool {
         self.count() == 0
     }
 
-    /// Capacity of the underlying slab. Counts both live and freed slots.
     pub(crate) const fn slab(&self) -> usize {
         self.nodes.len()
     }
 }
 
-/// Phase tag for the engine's two-pass measure-then-arrange driver.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum LayoutPass {
-    /// Bottom-up natural-size pass.
     Measure,
-    /// Top-down placement pass.
     Arrange,
 }
 
 impl AvailableSpace {
-    /// Both axes max-content (no upper bound).
     #[must_use]
     pub(crate) const fn unbounded() -> Self {
         Self {
@@ -78,9 +71,7 @@ fn freed_slot_bumps_generation_and_invalidates_stale_id() {
     let first = f.insert(None, StyleData::default());
     assert_eq!(first.era(), 0);
     f.free(first).unwrap();
-    // Stale id no longer resolves.
     assert!(f.node(first).is_none());
-    // Reused slot mints a fresh id with bumped tag.
     let reused = f.insert(None, StyleData::default());
     assert_eq!(reused.slot(), first.slot());
     assert_eq!(reused.era(), 1);
@@ -121,7 +112,6 @@ fn computed_box_slab_is_independently_indexable() {
     f.write(b, box_b).unwrap();
     assert_eq!(f.boxed(a), Some(box_a));
     assert_eq!(f.boxed(b), Some(box_b));
-    // Writing one box does not perturb the other slab entry.
     let updated = ComputedBox {
         x: 9.0,
         ..ComputedBox::default()
@@ -170,7 +160,6 @@ fn measure_scope_borrows_forest_and_constraints() {
     let scope = MeasureScope::new(&f, &t, avail);
     assert_eq!(scope.available(), avail);
     assert!(scope.forest().empty());
-    // Smoke: trait-object access compiles.
     let _ = scope.text();
 }
 
@@ -218,14 +207,11 @@ fn freed_slot_resets_style_to_default() {
     };
     let id = f.insert(None, style);
     f.free(id).unwrap();
-    // Reused slot inherits the StyleData provided on re-insert, not
-    // the freed style.
     let reused = f.insert(None, StyleData::default());
     let n = f.refer(reused).unwrap();
     assert!((n.style().flex_grow - 0.0).abs() < f32::EPSILON);
 }
 
-/// Null text measurer reused across the scatter-write tests below.
 struct NullText;
 impl TextMeasure for NullText {
     fn measure(&self, _: &sigil_kernel::TextContent, _: sigil_hal::Size) -> sigil_hal::LogicalSize {
@@ -238,7 +224,6 @@ fn measure_scope_can_scatter_write_without_mut() {
     let mut f = LayoutForest::new();
     let id = f.insert(None, StyleData::default());
     let t = NullText;
-    // `scope` only holds `&f` — no &mut anywhere on this path.
     let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
     let value = ComputedBox {
         x: 1.0,
@@ -276,8 +261,6 @@ fn scatter_writes_to_distinct_ids_are_independent() {
         w: 3.0,
         h: 3.0,
     };
-    // Three writes through the same `&LayoutForest` borrow — the
-    // parallel measure pass will do exactly this from rayon workers.
     scope.write(a, ba);
     scope.write(b, bb);
     scope.write(c, bc);
@@ -290,22 +273,17 @@ fn scatter_writes_to_distinct_ids_are_independent() {
 fn write_to_stale_id_is_silent_no_op() {
     let mut f = LayoutForest::new();
     let id = f.insert(None, StyleData::default());
-    // Seed a known box so we can detect any clobber.
     let seeded = ComputedBox {
         x: 42.0,
         ..ComputedBox::default()
     };
     f.write(id, seeded).unwrap();
     f.free(id).unwrap();
-    // Re-insert into the same slot — the slot bumps generation, so
-    // `id` is now stale and `reused` is fresh.
     let reused = f.insert(None, StyleData::default());
     assert_eq!(reused.slot(), id.slot());
     assert_ne!(reused.era(), id.era());
     let t = NullText;
     let scope = MeasureScope::new(&f, &t, AvailableSpace::unbounded());
-    // Writing through a stale id must not panic, must not clobber
-    // the live slot — it should be a no-op.
     scope.write(
         id,
         ComputedBox {
@@ -321,16 +299,7 @@ fn write_to_stale_id_is_silent_no_op() {
 fn node_ref_style_on_stale_id_falls_back_to_default() {
     let mut f = LayoutForest::new();
     let id = f.insert(None, StyleData::default());
-    // Build a fresh NodeRef before freeing — borrows the forest
-    // immutably so we cannot free while it lives. Instead, write a
-    // stale id manually and refer through a freshly-rebuilt
-    // forest after free.
     f.free(id).unwrap();
-    // The id is stale — refer() returns None, so we cannot exercise
-    // the fallback through NodeRef without an alive node. Insert a
-    // second node, then check that the fallback compiles via the
-    // accessor on a live node. The fallback path is exercised by
-    // the static initialization itself; this asserts the shape.
     let live = f.insert(None, StyleData::default());
     let n = f.refer(live).unwrap();
     assert_eq!(n.style().display, crate::style_data::Display::Block);

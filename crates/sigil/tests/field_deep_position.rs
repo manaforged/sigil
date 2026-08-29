@@ -129,7 +129,7 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
         );
         // Hit-test path (engine.result → the live drive box, read by
         // hit_test.rs + pointer_dispatch.rs). MUST agree with paint, or clicks
-        // miss the field and land on whatever sits at the top-left (GLM MAJOR-1).
+        // miss the field and land on whatever sits at the top-left.
         let hit = layout
             .result(field_text2)
             .expect("field text has a drive result")

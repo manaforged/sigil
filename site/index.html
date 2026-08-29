@@ -3,308 +3,98 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="description" content="Twenty-eight runnable examples built with Sigil, a native desktop UI framework for Rust.">
-  <title>Sigil — native desktop UI in Rust</title>
+  <meta name="description" content="Components, patterns, and runnable examples for Sigil, a native desktop UI framework for Rust.">
+  <title>Sigil UI · native components for Rust</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="site.css">
-  <script src="site.js" defer></script>
+  <script type="module" src="site.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#examples">Skip to examples</a>
+  <a class="skip-link" href="#content">Skip to content</a>
 
-  <header class="nav">
-    <div class="nav__inner">
-      <a class="wordmark" href="#top" aria-label="Sigil home">
-        <span class="wordmark__mark" aria-hidden="true">S</span>
-        <span>sigil</span>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="wordmark" href="#/docs" aria-label="Sigil UI documentation">
+        <svg class="wordmark__mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M6 8.5 16 3l10 5.5v15L16 29 6 23.5z"></path>
+          <path d="m11 11 5-3 5 3-5 3-5-3Zm0 0v7l5 3 5-3v-7m-5 3v7"></path>
+        </svg>
+        <span>sigil</span><small>ui</small>
       </a>
 
       <button class="search-pill" type="button" data-open-search aria-haspopup="dialog">
-        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
-        <span class="search-pill__label">Find an example</span>
-        <kbd>⌘K</kbd>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        <span>Search documentation</span>
+        <kbd><span class="command-key">⌘</span>K</kbd>
       </button>
 
-      <nav class="nav__links" aria-label="Primary">
-        <a href="#gallery">Gallery</a>
-        <a href="#examples">Examples</a>
-        <a class="nav__source" href="https://github.com/ThomGardiner/sigil">Source ↗</a>
+      <nav class="topnav" aria-label="Primary">
+        <a href="#/docs" data-nav="docs">Docs</a>
+        <a href="#/components" data-nav="components">Components</a>
+        <a href="#/patterns" data-nav="patterns">Patterns</a>
+        <a href="#/apps" data-nav="apps">Apps</a>
+        <a href="#/performance" data-nav="performance">Performance</a>
       </nav>
+
+      <a class="source-link" href="https://github.com/ThomGardiner/sigil" aria-label="Sigil source on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8a9.2 9.2 0 0 0-2.9 17.9c.5.1.6-.2.6-.4v-1.8c-2.7.6-3.3-1.1-3.3-1.1-.4-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 0 1.6 1 1.6 1 .9 1.6 2.3 1.1 2.8.8.1-.7.4-1.1.6-1.3-2.2-.2-4.5-1.1-4.5-4.6 0-1 .4-1.9 1-2.5-.1-.2-.4-1.2.1-2.5 0 0 .8-.3 2.6 1a9 9 0 0 1 4.7 0c1.8-1.2 2.6-1 2.6-1 .5 1.3.2 2.3.1 2.5.6.6 1 1.5 1 2.5 0 3.5-2.3 4.3-4.5 4.6.4.3.7.9.7 1.8v2.7c0 .3.2.6.7.4A9.2 9.2 0 0 0 12 2.8Z"></path></svg>
+      </a>
+
+      <button class="mobile-menu-button" type="button" data-open-catalog aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+        <span class="visually-hidden">Open component navigation</span>
+      </button>
     </div>
   </header>
 
-  <main id="top">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero__copy">
-        <p class="inventory-line">28 runnable examples · August 2026</p>
-        <h1 id="hero-title">Desktop UI without a webview.</h1>
-        <p class="hero__lede">Sigil owns its layout, text, reactivity, accessibility, and wgpu rendering. These are the programs already in the repository—from a twenty-line counter to a million-row live tape.</p>
-        <div class="hero__actions">
-          <a class="button button--primary" href="#examples">Browse examples</a>
-          <a class="button button--quiet" href="https://github.com/ThomGardiner/sigil/blob/main/README.md">Read the architecture</a>
-        </div>
-      </div>
-      <figure class="hero__capture">
-        <img src="assets/text-specimen-dark.png" width="1120" height="660" alt="Sigil text specimen rendered in a native dark window" fetchpriority="high">
-        <figcaption>Owned shaping, fallback, line breaking, and GPU glyph rendering.</figcaption>
-      </figure>
-    </section>
-
-    <section class="facts" aria-label="Framework facts">
-      <p><strong>Native</strong><span>winit + wgpu</span></p>
-      <p><strong>Retained</strong><span>dirty work only</span></p>
-      <p><strong>Three hosts</strong><span>window · embed · TUI</span></p>
-      <p><strong>One import</strong><span><code>sigil::prelude::*</code></span></p>
-    </section>
-
-    <section class="gallery" id="gallery" aria-labelledby="gallery-title">
-      <header class="section-head">
-        <h2 id="gallery-title">The renderer, caught in the act.</h2>
-        <p>These are native captures from the repository’s existing visual suite. No browser recreation.</p>
-      </header>
-      <div class="gallery__grid">
-        <figure class="capture capture--tall">
-          <img src="assets/settings-light.png" width="920" height="1000" alt="Sigil settings panel in the light theme" loading="lazy">
-          <figcaption>Settings panel · light</figcaption>
-        </figure>
-        <figure class="capture capture--tall">
-          <img src="assets/settings-dark.png" width="920" height="1000" alt="Sigil settings panel in the dark theme" loading="lazy">
-          <figcaption>Settings panel · dark</figcaption>
-        </figure>
-        <figure class="capture capture--wide">
-          <img src="assets/game-hud-dark.png" width="600" height="400" alt="Sigil game HUD controls rendered on a dark surface" loading="lazy">
-          <figcaption>Game HUD · gauge, progress, and controls</figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <section class="run-strip" aria-labelledby="run-title">
-      <div>
-        <h2 id="run-title">Start with the whole widget catalogue.</h2>
-        <p>One window, every public widget, live hover, focus, disabled, and reactive states.</p>
-      </div>
-      <div class="command-line">
-        <code>cargo run -p widget-playground</code>
-        <button class="copy-button" type="button" data-copy="cargo run -p widget-playground">
-          <span data-copy-label>Copy command</span>
-        </button>
-      </div>
-    </section>
-
-    <section class="catalogue" id="examples" aria-labelledby="examples-title">
-      <header class="catalogue__head">
-        <div>
-          <h2 id="examples-title">Everything currently in <code>examples/</code>.</h2>
-          <p>Mock data is labelled. Native I/O is labelled. The old low-level proofs are still here because v0.0.1 is an inventory, not a victory lap.</p>
-        </div>
-        <p class="catalogue__count" aria-live="polite"><span data-visible-count>28</span> shown</p>
-      </header>
-
-      <div class="filters" role="group" aria-label="Filter examples">
-        <button type="button" data-filter="all" aria-pressed="true">All <span>28</span></button>
-        <button type="button" data-filter="performance" aria-pressed="false">Performance <span>4</span></button>
-        <button type="button" data-filter="app" aria-pressed="false">Apps <span>15</span></button>
-        <button type="button" data-filter="foundation" aria-pressed="false">Foundations <span>9</span></button>
-      </div>
-
-      <div class="example-grid" data-example-grid>
-        <article class="example" id="access-log" data-category="performance" data-search="access log live tape million rows gpui virtual list performance">
-          <div class="example__specimen"><span>1M</span><small>live rows</small></div>
-          <div class="example__body"><p class="example__kind">Performance · live data</p><h3>Access log</h3><p>The same million-line book in Sigil and GPUI, with 60 × 8 visible cells ticking every 16 ms.</p></div>
-          <footer><code>cargo run --release -p access-log --bin access-log-sigil</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/access-log">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="data-table" data-category="performance" data-search="data table gpui ten thousand quotes 24 columns benchmark virtual list">
-          <div class="example__specimen"><span>10K</span><small>quotes · 24 cols</small></div>
-          <div class="example__body"><p class="example__kind">Performance · parity</p><h3>Data table</h3><p>A 1:1 build of GPUI 0.2.2’s data-table example, including the same data and window geometry.</p></div>
-          <footer><code>cargo run --release -p data-table</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/data-table">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="widget-playground" data-category="performance" data-search="widget playground catalog every public widget manual states">
-          <div class="example__specimen"><span>UI</span><small>full catalogue</small></div>
-          <div class="example__body"><p class="example__kind">Performance · catalogue</p><h3>Widget playground</h3><p>Every public widget in five sections for fast manual checks of interaction and reactive state.</p></div>
-          <footer><code>cargo run -p widget-playground</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/widget-playground">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="vertical-slice" data-category="performance" data-search="vertical slice dashboard full render loop interaction widgets">
-          <div class="example__specimen"><span>↕</span><small>full stack</small></div>
-          <div class="example__body"><p class="example__kind">Performance · full path</p><h3>Vertical slice</h3><p>Tree, layout, reactive updates, events, focus, scene emission, and the default render loop in one dashboard.</p></div>
-          <footer><code>cargo run -p vertical-slice</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/vertical-slice">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="todo" data-category="app" data-search="todo native file dialog system tray menu bar persistence app">
-          <div class="example__specimen"><span>✓</span><small>native I/O</small></div>
-          <div class="example__body"><p class="example__kind">App · native I/O</p><h3>Todo</h3><p>A working desktop app with GPU menu chrome, native file dialogs, persistence, system tray, and external links.</p></div>
-          <footer><code>cargo run -p todo</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/todo">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="player" data-category="app" data-search="player audio native file seek transport music">
-          <div class="example__specimen"><span>▶</span><small>native audio</small></div>
-          <div class="example__body"><p class="example__kind">App · native audio</p><h3>Player</h3><p>Audio playback, transport controls, reactive progress, and seeking against a real local track.</p></div>
-          <footer><code>cargo run -p player -- /path/to/track</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/player">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="pty-pane" data-category="app" data-search="pty pane terminal shell splitter native process">
-          <div class="example__specimen"><span>&gt;_</span><small>native PTY</small></div>
-          <div class="example__body"><p class="example__kind">App · native PTY</p><h3>PTY pane</h3><p>A live terminal session in one splitter pane with ordinary Sigil widgets in the other.</p></div>
-          <footer><code>cargo run -p pty-pane</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/pty-pane">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="strays" data-category="app" data-search="strays tui localhost servers process ports system live inventory">
-          <div class="example__specimen"><span>:80</span><small>live system</small></div>
-          <div class="example__body"><p class="example__kind">App · TUI system data</p><h3>Strays</h3><p>A terminal inventory of forgotten local servers, their source trees, owners, ports, and ages.</p></div>
-          <footer><code>cargo run -p strays</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/strays">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="api-explorer" data-category="app" data-search="api explorer rest mock splitter tabs virtual list">
-          <div class="example__specimen"><span>GET</span><small>mock data</small></div>
-          <div class="example__body"><p class="example__kind">App · deterministic mock</p><h3>API explorer</h3><p>A multi-pane REST client shape with endpoint selection and routed request, response, and header tabs.</p></div>
-          <footer><code>cargo run -p api-explorer</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/api-explorer">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="file-browser" data-category="app" data-search="file browser mock splitter tabs preview metadata hex">
-          <div class="example__specimen"><span>/</span><small>mock data</small></div>
-          <div class="example__body"><p class="example__kind">App · deterministic mock</p><h3>File browser</h3><p>A multi-pane browser shape with virtualized paths and routed preview, metadata, and hex panels.</p></div>
-          <footer><code>cargo run -p file-browser</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/file-browser">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="chat-client" data-category="app" data-search="chat client mock kitchen sink messages members modal tabs text edit">
-          <div class="example__specimen"><span>##</span><small>mock data</small></div>
-          <div class="example__body"><p class="example__kind">App · kitchen sink</p><h3>Chat client</h3><p>Channels, messages, members, pinned items, composition, split panes, tabs, and settings modal.</p></div>
-          <footer><code>cargo run -p chat-client</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/chat-client">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="kanban-board" data-category="app" data-search="kanban board drag modal tabs splitter projects mock">
-          <div class="example__specimen"><span>▥</span><small>seeded data</small></div>
-          <div class="example__body"><p class="example__kind">App · interaction</p><h3>Kanban board</h3><p>Three columns, drag-and-drop cards, project navigation, split panes, and an edit modal.</p></div>
-          <footer><code>cargo run -p kanban-board</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/kanban-board">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="workbench" data-category="app" data-search="workbench desktop dense layout work log diffs mock">
-          <div class="example__specimen"><span>⌘</span><small>seeded work log</small></div>
-          <div class="example__body"><p class="example__kind">App · desktop workbench</p><h3>Workbench</h3><p>A dense desktop workspace with navigation rail, work log, composition area, and diffs. Seeded local data only.</p></div>
-          <footer><code>cargo run -p workbench</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/workbench">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="csv-viewer" data-category="app" data-search="csv viewer generated data virtual table five thousand rows">
-          <div class="example__specimen"><span>5K</span><small>generated rows</small></div>
-          <div class="example__body"><p class="example__kind">App · generated data</p><h3>CSV viewer</h3><p>A six-column, virtualized trade-ticket table with fixed headers and row selection.</p></div>
-          <footer><code>cargo run -p csv-viewer</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/csv-viewer">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="log-tailer" data-category="app" data-search="log tailer generated ten thousand lines filter levels auto scroll">
-          <div class="example__specimen"><span>10K</span><small>generated lines</small></div>
-          <div class="example__body"><p class="example__kind">App · generated data</p><h3>Log tailer</h3><p>A virtualized log viewer with text and level filters, selection, and bottom-pinned scrolling.</p></div>
-          <footer><code>cargo run -p log-tailer</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/log-tailer">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="regex-tester" data-category="app" data-search="regex tester derived signals editor validation matches">
-          <div class="example__specimen"><span>.*</span><small>live derived</small></div>
-          <div class="example__body"><p class="example__kind">App · interactive utility</p><h3>Regex tester</h3><p>Pattern and sample fields drive compiled matches or an inline parse error without manual state syncing.</p></div>
-          <footer><code>cargo run -p regex-tester</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/regex-tester">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="scratchpad" data-category="app" data-search="scratchpad editor save dirty revert clear">
-          <div class="example__specimen"><span>TXT</span><small>in memory</small></div>
-          <div class="example__body"><p class="example__kind">App · editor state</p><h3>Scratchpad</h3><p>An editable buffer with derived dirty state and direct save, revert, clear, and submit paths.</p></div>
-          <footer><code>cargo run -p scratchpad</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/scratchpad">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="password-generator" data-category="app" data-search="password generator slider checkbox derived deterministic utility">
-          <div class="example__specimen"><span>••••</span><small>reactive utility</small></div>
-          <div class="example__body"><p class="example__kind">App · interactive utility</p><h3>Password generator</h3><p>Slider, character-class checkboxes, derived output, and explicit regeneration in a compact utility.</p></div>
-          <footer><code>cargo run -p password-generator</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/password-generator">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="timer-stopwatch" data-category="app" data-search="timer stopwatch intervals laps buttons reactive time">
-          <div class="example__specimen"><span>00:00</span><small>interval clock</small></div>
-          <div class="example__body"><p class="example__kind">App · timed state</p><h3>Timer stopwatch</h3><p>Start, stop, lap, reset, and an interval-driven lap list exercise time-based reactive state.</p></div>
-          <footer><code>cargo run -p timer-stopwatch</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/timer-stopwatch">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-counter" data-category="foundation" data-search="hello counter reactive signal derived button beginner">
-          <div class="example__specimen"><span>+1</span><small>window host</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · start here</p><h3>Hello counter</h3><p>The minimum reactive window: one signal, one derived label, and one button handler.</p></div>
-          <footer><code>cargo run -p hello-counter</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-counter">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-events" data-category="foundation" data-search="hello events pointer focus keyboard window routing">
-          <div class="example__specimen"><span>↹</span><small>window host</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · events</p><h3>Hello events</h3><p>Pointer hits toggle two panes while Tab moves a visible keyboard focus ring between them.</p></div>
-          <footer><code>cargo run -p hello-events</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-events">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-style" data-category="foundation" data-search="hello style classes hover interactive static reactive">
-          <div class="example__specimen"><span>{ }</span><small>window host</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · styling</p><h3>Hello style</h3><p>Static, hover-reactive, and last-wins style composition through the fluent class surface.</p></div>
-          <footer><code>cargo run -p hello-style</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-style">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="linear-row" data-category="foundation" data-search="linear row class string hover issue styling">
-          <div class="example__specimen"><span>ISS-42</span><small>one row</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · styling</p><h3>Linear row</h3><p>One issue row built from a class string, including layout, padding, and hover state.</p></div>
-          <footer><code>cargo run -p linear-row</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/linear-row">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-host" data-category="foundation" data-search="hello host headless embed surface layout painted">
-          <div class="example__specimen"><span>□</span><small>headless host</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · embedding</p><h3>Hello host</h3><p>The counter tree without a window. Pump layout, inspect painted output, and read native surface holes.</p></div>
-          <footer><code>cargo run -p hello-host</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-host">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-tui" data-category="foundation" data-search="hello tui terminal host counter cells">
-          <div class="example__specimen"><span>▓</span><small>TUI host</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · terminal</p><h3>Hello TUI</h3><p>The same counter tree painted onto terminal cells instead of a wgpu window.</p></div>
-          <footer><code>cargo run -p hello-tui</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-tui">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-tree" data-category="foundation" data-search="hello tree kernel headless node outline">
-          <div class="example__specimen"><span>├─</span><small>headless proof</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · kernel</p><h3>Hello tree</h3><p>Build a kernel node tree and print its deterministic shape without layout or rendering.</p></div>
-          <footer><code>cargo run -p hello-tree</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-tree">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-layout" data-category="foundation" data-search="hello layout headless rectangles geometry engine">
-          <div class="example__specimen"><span>▦</span><small>headless proof</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · layout</p><h3>Hello layout</h3><p>Compute deterministic rectangles through the owned layout engine without opening a window.</p></div>
-          <footer><code>cargo run -p hello-layout</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/hello-layout">Source ↗</a></footer>
-        </article>
-
-        <article class="example" id="hello-rect" data-category="foundation" data-search="hello rect renderer shell internals kernel low level colour">
-          <div class="example__specimen"><span>RGB</span><small>internals</small></div>
-          <div class="example__body"><p class="example__kind">Foundation · low level</p><h3>Hello rect</h3><p>The pre-launch internals path: kernel, tasks, shell, renderer, and HAL driving a cycling surface.</p></div>
-          <footer><code>cargo run -p hello-rect</code><a href="https://github.com/ThomGardiner/sigil/tree/main/examples/internals/hello-rect">Source ↗</a></footer>
-        </article>
-      </div>
-
-      <p class="empty-results" data-empty-results hidden>No examples match that filter. Try another term.</p>
-    </section>
-  </main>
+  <div class="docs-shell">
+    <aside class="catalog-nav" aria-label="Component catalogue">
+      <div class="catalog-nav__inner" data-catalog-nav></div>
+    </aside>
+    <main id="content" class="route-view" tabindex="-1" data-route-view></main>
+  </div>
 
   <footer class="footer">
-    <p class="footer__statement">The framework should disappear. The software shouldn’t.</p>
-    <div class="footer__meta">
-      <span class="wordmark">sigil</span>
-      <span>MIT · Rust · wgpu</span>
-      <a href="https://github.com/ThomGardiner/sigil">github.com/ThomGardiner/sigil ↗</a>
-    </div>
+    <a class="wordmark wordmark--footer" href="#/docs">
+      <svg class="wordmark__mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M6 8.5 16 3l10 5.5v15L16 29 6 23.5z"></path><path d="m11 11 5-3 5 3-5 3-5-3Zm0 0v7l5 3 5-3v-7m-5 3v7"></path></svg>
+      <span>sigil</span><small>ui</small>
+    </a>
+    <p>Native desktop UI for Rust. Alpha software; APIs can change.</p>
+    <nav aria-label="Footer">
+      <a href="https://github.com/ThomGardiner/sigil">Source</a>
+      <a href="https://github.com/ThomGardiner/sigil/blob/main/README.md">README</a>
+      <a href="#/components">Components</a>
+    </nav>
   </footer>
 
   <dialog class="command-dialog" data-command-dialog aria-labelledby="command-title">
-    <div class="command-dialog__panel">
-      <label class="command-search" for="command-input">
-        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
-        <span class="visually-hidden" id="command-title">Find an example</span>
-        <input id="command-input" type="search" autocomplete="off" placeholder="Type an example name…" data-command-input>
-        <kbd>esc</kbd>
+    <div class="command-dialog__surface">
+      <h2 class="visually-hidden" id="command-title">Search documentation</h2>
+      <label class="command-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+        <input type="search" placeholder="Search components and pages…" autocomplete="off" data-command-input aria-controls="command-results">
+        <kbd>Esc</kbd>
       </label>
-      <div class="command-results" role="listbox" aria-label="Example results" data-command-results></div>
-      <p class="command-dialog__hint"><span><kbd>↑</kbd><kbd>↓</kbd> navigate</span><span><kbd>↵</kbd> open</span></p>
+      <div class="command-results" id="command-results" role="listbox" data-command-results></div>
+      <p class="command-dialog__hint"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> open</span></p>
     </div>
   </dialog>
+
+  <dialog class="mobile-catalog" data-catalog-dialog aria-labelledby="catalog-title">
+    <div class="mobile-catalog__bar">
+      <h2 id="catalog-title">Components</h2>
+      <button type="button" data-close-catalog>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+        <span class="visually-hidden">Close component navigation</span>
+      </button>
+    </div>
+    <nav data-mobile-catalog aria-label="Mobile component catalogue"></nav>
+  </dialog>
+
+  <div class="copy-notice" role="status" aria-live="polite" data-copy-notice></div>
 </body>
 </html>

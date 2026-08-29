@@ -1,29 +1,13 @@
-//! Layout intent attached to `sigil-kernel` nodes.
-
 use crate::style_data::{
     AlignContent, AlignItems, AlignSelf, BoxSizing, Dimension, Display, FlexDirection, FlexWrap,
     JustifyContent, LengthPercentage, LengthPercentageAuto, Overflow, Position, Rect, Size,
     StyleData,
 };
 
-/// One box. Every node is this.
-///
-/// Size (`width` / `height` / `min_size` / `max_size`), flex
-/// (`grow` / `shrink` / `flex_basis`), overflow (`overflow_x` /
-/// `overflow_y` / [`overflow`](Self::overflow)), position
-/// (`Relative` or `Absolute` plus [`inset_top`](Self::inset_top) /
-/// [`inset_right`](Self::inset_right) / [`inset_bottom`](Self::inset_bottom)
-/// / [`inset_left`](Self::inset_left)), padding, margin, gap.
-/// Widgets are sugar over this type. They do not own a second overflow,
-/// inset, or min-width system.
-///
-/// Thin newtype over [`StyleData`]. The wrapper is the authoring
-/// surface; the backend can change.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LayoutStyle(pub(crate) StyleData);
 
 impl LayoutStyle {
-    /// Build a block layout intent.
     #[must_use]
     pub fn block() -> Self {
         let mut style = StyleData {
@@ -35,7 +19,6 @@ impl LayoutStyle {
         Self(style)
     }
 
-    /// Build a row-oriented flex layout intent.
     #[must_use]
     pub fn flex_row() -> Self {
         Self(StyleData {
@@ -46,7 +29,6 @@ impl LayoutStyle {
         })
     }
 
-    /// Build a column-oriented flex layout intent.
     #[must_use]
     pub fn flex_column() -> Self {
         Self(StyleData {
@@ -57,9 +39,6 @@ impl LayoutStyle {
         })
     }
 
-    /// Build a grid layout intent with the given column tracks. Children
-    /// flow row-major into the columns; rows are added as needed and
-    /// sized to their tallest cell.
     #[must_use]
     pub fn grid(columns: Vec<crate::TrackSize>) -> Self {
         Self(StyleData {
@@ -70,42 +49,30 @@ impl LayoutStyle {
         })
     }
 
-    /// Set the grid column tracks (see [`Self::grid`]).
     #[must_use]
     pub fn grid_columns(mut self, columns: Vec<crate::TrackSize>) -> Self {
         self.0.grid_template_columns = columns;
         self
     }
 
-    /// Set explicit grid row tracks. A `Px` track pins that row's height;
-    /// `Auto`/`Fr` and any implicit rows past the template fall back to the
-    /// measured (tallest-cell) height.
     #[must_use]
     pub fn grid_rows(mut self, rows: Vec<crate::TrackSize>) -> Self {
         self.0.grid_template_rows = rows;
         self
     }
 
-    /// Set how many columns this node spans as a grid item (min 1). The
-    /// parent grid's auto-flow places it across that many tracks and wraps
-    /// to the next row when it would overflow the remaining columns.
     #[must_use]
     pub const fn grid_column_span(mut self, span: u16) -> Self {
         self.0.grid_column_span = if span > 0 { span } else { 1 };
         self
     }
 
-    /// Set how many rows this node spans as a grid item (min 1). The
-    /// auto-flow reserves a `column_span × row_span` block and later items
-    /// flow around it.
     #[must_use]
     pub const fn grid_row_span(mut self, span: u16) -> Self {
         self.0.grid_row_span = if span > 0 { span } else { 1 };
         self
     }
 
-    /// Explicitly place this grid item at 1-based grid lines `(col, row)`
-    /// instead of auto-flowing it. Auto items flow around the placed block.
     #[must_use]
     pub const fn grid_area(mut self, col: u16, row: u16) -> Self {
         self.0.grid_column_start = col;
@@ -113,51 +80,42 @@ impl LayoutStyle {
         self
     }
 
-    /// Enable `grid-auto-flow: dense` on this grid CONTAINER. Auto-placed
-    /// items then backfill gaps left by spanning or explicitly-placed
-    /// items, instead of only advancing the placement cursor forward.
     #[must_use]
     pub const fn grid_dense(mut self) -> Self {
         self.0.grid_auto_flow_dense = true;
         self
     }
 
-    /// Set the layout algorithm selector.
     #[must_use]
     pub const fn display(mut self, display: Display) -> Self {
         self.0.display = display;
         self
     }
 
-    /// Set the flex main-axis direction.
     #[must_use]
     pub const fn flex_direction(mut self, flex_direction: FlexDirection) -> Self {
         self.0.flex_direction = flex_direction;
         self
     }
 
-    /// Set the flex line-wrap mode.
     #[must_use]
     pub const fn flex_wrap(mut self, flex_wrap: FlexWrap) -> Self {
         self.0.flex_wrap = flex_wrap;
         self
     }
 
-    /// Set the preferred width.
     #[must_use]
     pub fn width(mut self, width: impl Into<Dimension>) -> Self {
         self.0.size.width = width.into();
         self
     }
 
-    /// Set the preferred height.
     #[must_use]
     pub fn height(mut self, height: impl Into<Dimension>) -> Self {
         self.0.size.height = height.into();
         self
     }
 
-    /// Set a fixed logical-pixel width and height.
     #[must_use]
     pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
         self.0.size.width = Dimension::Px(width);
@@ -165,57 +123,23 @@ impl LayoutStyle {
         self
     }
 
-    /// Build a column flex pane of fixed width and height with a 4 px gap.
-    ///
-    /// Sugar for the most common pane shape in dogfood UIs — a fixed-size
-    /// column with a small inter-child gap. Equivalent to:
-    ///
-    /// ```ignore
-    /// use sigil_layout::prelude::*;
-    ///
-    /// LayoutStyle::flex_column().fixed_size(width, height).gap(4.0);
-    /// ```
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use sigil_layout::prelude::*;
-    ///
-    /// let style = LayoutStyle::pane(320.0, 200.0);
-    /// ```
     #[must_use]
     pub fn pane(width: f32, height: f32) -> Self {
         Self::flex_column().fixed_size(width, height).gap(4.0)
     }
 
-    /// Inherit the parent's resolved content-box on the inline axis.
-    ///
-    /// Equivalent to setting [`Dimension::Fill`] as `size.width`. The
-    /// child's border-box width resolves to the parent's content-box
-    /// width during the layout pass, so a parent of width 800 with
-    /// `padding(20)` produces a child of width 760.
     #[must_use]
     pub const fn fill_width(mut self) -> Self {
         self.0.size.width = Dimension::Fill;
         self
     }
 
-    /// Inherit the parent's resolved content-box on the block axis.
-    ///
-    /// Equivalent to setting [`Dimension::Fill`] as `size.height`. The
-    /// child's border-box height resolves to the parent's content-box
-    /// height during the layout pass.
     #[must_use]
     pub const fn fill_height(mut self) -> Self {
         self.0.size.height = Dimension::Fill;
         self
     }
 
-    /// Inherit the parent's resolved content-box on both axes.
-    ///
-    /// Shorthand for [`Self::fill_width`] followed by [`Self::fill_height`].
-    /// A child of a parent sized 800×600 with `padding(20)` resolves to
-    /// 760×560.
     #[must_use]
     pub const fn fill(mut self) -> Self {
         self.0.size.width = Dimension::Fill;
@@ -223,14 +147,12 @@ impl LayoutStyle {
         self
     }
 
-    /// Set uniform padding.
     #[must_use]
     pub fn padding(mut self, padding: impl Into<LengthPercentage>) -> Self {
         self.0.padding = all_sides(padding.into());
         self
     }
 
-    /// Set fixed logical-pixel padding on the inline (left + right) axis.
     #[must_use]
     pub fn padding_x(mut self, padding: impl Into<LengthPercentage>) -> Self {
         let padding = padding.into();
@@ -239,7 +161,6 @@ impl LayoutStyle {
         self
     }
 
-    /// Set fixed logical-pixel padding on the block (top + bottom) axis.
     #[must_use]
     pub fn padding_y(mut self, padding: impl Into<LengthPercentage>) -> Self {
         let padding = padding.into();
@@ -248,101 +169,83 @@ impl LayoutStyle {
         self
     }
 
-    /// Set padding on the top edge.
     #[must_use]
     pub fn padding_top(mut self, padding: impl Into<LengthPercentage>) -> Self {
         self.0.padding.top = padding.into();
         self
     }
 
-    /// Set padding on the right edge.
     #[must_use]
     pub fn padding_right(mut self, padding: impl Into<LengthPercentage>) -> Self {
         self.0.padding.right = padding.into();
         self
     }
 
-    /// Set padding on the bottom edge.
     #[must_use]
     pub fn padding_bottom(mut self, padding: impl Into<LengthPercentage>) -> Self {
         self.0.padding.bottom = padding.into();
         self
     }
 
-    /// Set padding on the left edge.
     #[must_use]
     pub fn padding_left(mut self, padding: impl Into<LengthPercentage>) -> Self {
         self.0.padding.left = padding.into();
         self
     }
 
-    /// Set the inline-axis (width) overflow behavior.
     #[must_use]
     pub const fn overflow_x(mut self, overflow: Overflow) -> Self {
         self.0.overflow.width = overflow;
         self
     }
 
-    /// Set the block-axis (height) overflow behavior.
     #[must_use]
     pub const fn overflow_y(mut self, overflow: Overflow) -> Self {
         self.0.overflow.height = overflow;
         self
     }
 
-    /// Set overflow on both axes. Same job as CSS `overflow`.
     #[must_use]
     pub const fn overflow(self, overflow: Overflow) -> Self {
         self.overflow_x(overflow).overflow_y(overflow)
     }
 
-    /// True when paint must clip descendants to this node's rect —
-    /// either axis is `Hidden` or `Scroll`. Scene emission consults this
-    /// so `overflow_y(Overflow::Hidden)` actually clips at render time
-    /// (`virtual_list` / scroll viewports previously painted overscan rows
-    /// past their viewport edge).
     #[must_use]
     pub const fn clips_paint(&self) -> bool {
         !matches!(self.0.overflow.height, Overflow::Visible)
             || !matches!(self.0.overflow.width, Overflow::Visible)
     }
 
-    /// Set a fixed logical-pixel top inset (for `Position::Absolute`).
     #[must_use]
     pub fn inset_top(mut self, top: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset.top = top.into();
         self
     }
 
-    /// Set a fixed logical-pixel left inset (for `Position::Absolute`).
     #[must_use]
     pub fn inset_left(mut self, left: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset.left = left.into();
         self
     }
 
-    /// Set a fixed logical-pixel right inset (for `Position::Absolute`).
     #[must_use]
     pub fn inset_right(mut self, right: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset.right = right.into();
         self
     }
 
-    /// Set a fixed logical-pixel bottom inset (for `Position::Absolute`).
     #[must_use]
     pub fn inset_bottom(mut self, bottom: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset.bottom = bottom.into();
         self
     }
 
-    /// Set the same inset on all four sides.
     #[must_use]
     pub fn inset(mut self, inset: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset = all_sides(inset.into());
         self
     }
 
-    /// Set uniform flex/grid gap.
     #[must_use]
     pub fn gap(mut self, gap: impl Into<LengthPercentage>) -> Self {
         let gap = gap.into();
@@ -353,11 +256,6 @@ impl LayoutStyle {
         self
     }
 
-    /// Set flex grow.
-    ///
-    /// Any `min_size` axis that is still `Auto` becomes `0`, so the item
-    /// can shrink below its content (CSS `flex: n; min-width: 0`). Call
-    /// [`Self::min_size`] after this to keep a floor.
     #[must_use]
     pub const fn grow(mut self, grow: f32) -> Self {
         self.0.flex_grow = grow;
@@ -370,42 +268,36 @@ impl LayoutStyle {
         self
     }
 
-    /// Set flex shrink.
     #[must_use]
     pub const fn shrink(mut self, shrink: f32) -> Self {
         self.0.flex_shrink = shrink;
         self
     }
 
-    /// Set cross-axis child alignment for flex/grid containers.
     #[must_use]
     pub const fn align_items(mut self, align_items: AlignItems) -> Self {
         self.0.align_items = Some(align_items);
         self
     }
 
-    /// Set per-line cross-axis distribution for flex/grid containers.
     #[must_use]
     pub const fn align_content(mut self, align_content: AlignContent) -> Self {
         self.0.align_content = Some(align_content);
         self
     }
 
-    /// Set main-axis content distribution for flex/grid containers.
     #[must_use]
     pub const fn justify_content(mut self, justify_content: JustifyContent) -> Self {
         self.0.justify_content = Some(justify_content);
         self
     }
 
-    /// Set uniform margin on all four sides.
     #[must_use]
     pub fn margin(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
         self.0.margin = all_sides(margin.into());
         self
     }
 
-    /// Set the minimum width and height.
     #[must_use]
     pub fn min_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
         self.0.min_size = Size {
@@ -415,7 +307,6 @@ impl LayoutStyle {
         self
     }
 
-    /// Set the maximum width and height.
     #[must_use]
     pub fn max_size(mut self, width: impl Into<Dimension>, height: impl Into<Dimension>) -> Self {
         self.0.max_size = Size {
@@ -425,56 +316,36 @@ impl LayoutStyle {
         self
     }
 
-    /// Override the cross-axis alignment for this item specifically.
-    ///
-    /// Overrides the parent container's `align_items` for this child only.
     #[must_use]
     pub const fn align_self(mut self, align_self: AlignSelf) -> Self {
         self.0.align_self = Some(align_self);
         self
     }
 
-    /// Set the initial flex item size before `grow`/`shrink` are applied.
     #[must_use]
     pub const fn flex_basis(mut self, basis: Dimension) -> Self {
         self.0.flex_basis = basis;
         self
     }
 
-    /// Set whether `size` includes padding and border.
     #[must_use]
     pub const fn box_sizing(mut self, box_sizing: BoxSizing) -> Self {
         self.0.box_sizing = box_sizing;
         self
     }
 
-    /// Set the position mode (`Relative` or `Absolute`).
-    ///
-    /// Use `Position::Absolute` with [`inset_top`](Self::inset_top) /
-    /// [`inset_right`](Self::inset_right) / [`inset_bottom`](Self::inset_bottom)
-    /// / [`inset_left`](Self::inset_left) to pin a node to its containing
-    /// block.
     #[must_use]
     pub const fn position(mut self, position: Position) -> Self {
         self.0.position = position;
         self
     }
 
-    /// Escape hatch for direct [`StyleData`] mutation.
-    ///
-    /// Use named methods when possible. Reach for this only when you need
-    /// a layout field that has no dedicated builder method yet.
     #[must_use]
     pub fn with_layout(mut self, mutate: impl FnOnce(&mut StyleData)) -> Self {
         mutate(&mut self.0);
         self
     }
 
-    /// Borrow the underlying resolved [`StyleData`].
-    ///
-    /// Public so tests and other crates can verify what a builder chain
-    /// (or a slice of [`sigil_style::StyleAtom`]s via
-    /// [`crate::style_adapter::apply_style_atoms`]) resolved to.
     #[must_use]
     pub const fn data(&self) -> &StyleData {
         &self.0

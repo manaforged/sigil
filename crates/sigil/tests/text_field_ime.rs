@@ -148,7 +148,7 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
         assert_eq!(displayed_text(&cx, root), "か");
 
         // No further ImeEvent at all — disabling the field itself must
-        // clear the stale preedit immediately (W5-IME HIGH-2).
+        // clear the stale preedit immediately .
         disabled.set(true);
 
         assert_eq!(
@@ -208,7 +208,7 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
             .expect("anchor published while composing");
 
         // The anchor-sync effect reacts to `scroll` directly — no new
-        // ImeEvent needed (W5-IME MEDIUM-3).
+        // ImeEvent needed .
         scroll.set(150.0);
         let scrolled = router
             .ime_caret_rect(&cx, &layout)
@@ -290,7 +290,7 @@ fn backspace() -> ShellEvent {
     }))
 }
 
-/// Mirror of `text_edit`'s HIGH-1 (review gate, 2026-07-13): `text_field`'s
+/// Mirror of a `text_edit` regression: `text_field`'s
 /// handlers publish value and caret through separate signal writes, so a
 /// raw Backspace during an active preedit can splice mid-codepoint on the
 /// transient state. Red before the batch fix, green after.

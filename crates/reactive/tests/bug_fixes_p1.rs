@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-//! Regression tests for P1 adversarial-review findings.
+//! Regression tests for past review findings.
 //!
 //! - P1 #1: stale owner / parent ids panic before arena mutation.
 //! - P1 #2: `Signal::set` drops the old value outside the runtime

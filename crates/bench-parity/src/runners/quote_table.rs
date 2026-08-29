@@ -1,5 +1,3 @@
-//! 24-column quote table — same `data_table::view::quote_list` as the window.
-
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -317,7 +315,6 @@ fn scene_check(p: &crate::WorkloadParams, proof: &Proof, tick: bool) -> Equivale
     )
 }
 
-/// Pass when `ok`, else Fail with `detail`.
 fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
     if ok {
         EquivalenceCheck::Pass
@@ -409,7 +406,6 @@ fn scene_ok(
     tick: bool,
     viewport_w: f32,
 ) -> EquivalenceCheck {
-    // `painted` is the in-view page. Overscan is mounted; clip hides it.
     let rows = u64::try_from(painted).unwrap_or(0);
     let cols = u64::try_from(columns_intersecting(viewport_w)).unwrap_or(0);
     let min_glyphs = if tick {
@@ -436,7 +432,8 @@ fn scene_ok(
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 fn in_view_rows(viewport_h: f32, row_h: f32, visible: usize) -> usize {
     if row_h <= 0.0 {
@@ -465,7 +462,6 @@ fn visible_cell_count(cx: &Cx, root: NodeId) -> usize {
         let Some(slot) = cx.nth_child(window, i) else {
             continue;
         };
-        // virtual_list wraps each render() row in a slot.
         let row = row_of(cx, slot);
         cells += cx.child_count(row);
     }
@@ -511,7 +507,10 @@ fn bump_scroll(scroll: Signal<f32>, step: f32, max_scroll: f32) {
     });
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn max_y(rows: usize, row_h: f32, vh: f32) -> f32 {
     (rows as f32).mul_add(row_h, -vh)
 }

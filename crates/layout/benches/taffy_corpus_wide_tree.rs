@@ -93,12 +93,16 @@ fn bench_owned_wide_tree(c: &mut Criterion) {
         let mut cx = Cx::new_root();
         let root = build_owned_wide_tree(&mut cx);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("bench harness invariant");
         cx.clear_dirty();
 
         b.iter(|| {
             cx.mark_mutated();
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine
+                .compute(&mut cx, root, AVAILABLE)
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });
@@ -121,7 +125,7 @@ fn build_taffy_wide_tree(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
         ),
         &children,
     )
-    .unwrap()
+    .expect("bench harness invariant")
 }
 
 fn build_taffy_wide_tree_child(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
@@ -133,7 +137,10 @@ fn build_taffy_wide_tree_child(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId
     );
     let mut grandchildren = Vec::with_capacity(GRANDCHILDREN_PER_CHILD);
     for _ in 0..GRANDCHILDREN_PER_CHILD {
-        grandchildren.push(tree.new_leaf(leaf_style.clone()).unwrap());
+        grandchildren.push(
+            tree.new_leaf(leaf_style.clone())
+                .expect("bench harness invariant"),
+        );
     }
 
     tree.new_with_children(
@@ -145,7 +152,7 @@ fn build_taffy_wide_tree_child(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId
         ),
         &grandchildren,
     )
-    .unwrap()
+    .expect("bench harness invariant")
 }
 
 fn bench_taffy_wide_tree(c: &mut Criterion) {
@@ -153,13 +160,13 @@ fn bench_taffy_wide_tree(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let root = build_taffy_wide_tree(&mut tree);
         tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-            .unwrap();
+            .expect("bench harness invariant");
 
         b.iter(|| {
-            tree.mark_dirty(root).unwrap();
+            tree.mark_dirty(root).expect("bench harness invariant");
             tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench harness invariant");
+            black_box(tree.layout(root).expect("bench harness invariant"));
         });
     });
 }

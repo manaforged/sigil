@@ -1,34 +1,3 @@
-//! Binding-install hook — DR-053 §5 / W5.1.
-//!
-//! When a node has a [`sigil_style::StyleBinding`] whose
-//! atom set carries [`StyleAtom::Transition(id)`](sigil_style::StyleAtom::Transition),
-//! this module scans the binding's base atoms + state-slot overlays and
-//! produces an [`AttachedAnimators`] handle: one [`Animator`] per
-//! numeric atom whose value differs across slots, each driving a
-//! [`Signal<f32>`].
-//!
-//! The hook is intentionally a *thin* layer over the existing
-//! [`crate::config`] + [`Animator`] surface — it does not touch
-//! [`sigil_style::StyleBinding`] internals, so the W5.1 wiring can land without
-//! refactoring the by-value `StyleAtom` storage in `sigil-style`. Engine
-//! integration that reads the animator-driven signal value during paint
-//! is a follow-up; the W5.1 contract this module satisfies is the
-//! *handle protocol*.
-//!
-//! The handle protocol: a known [`TransitionId`] resolves to running
-//! animators; an unknown [`TransitionId`] logs a merge warning + degrades
-//! to no-op; state-slot transitions retarget animators (don't snap); and
-//! settled animators drop out of the active set.
-//!
-//! **Crate-location note.** DR-053 §5's pseudo-code locates this hook in
-//! `sigil-style`, but `sigil-animation-runtime` is the only crate in the
-//! workspace that depends on both `sigil-animation` (for `Animator`) and
-//! `sigil-style` (for `TransitionId` / `StyleAtom`). Putting the hook
-//! in `sigil-style` would introduce a `sigil-style` → `sigil-animation`
-//! cycle. The hook lives here; `sigil-style` exposes the read-only
-//! seams (`TransitionId`, `StyleAtom`, `merge_warning_count_for_component`)
-//! the hook consumes.
-
 use sigil_reactive::{Signal, signal};
 use sigil_style::{
     AnimatorOverlay, ColorAtomKind, ComponentId, MillisU16, NumericAtomKind, Rgba8, StateSlot,
@@ -41,66 +10,26 @@ use crate::binding_animate_color::{
 };
 use crate::{AnimationConfig, Animator};
 
-/// `ComponentId` namespace used by the binding-install hook when it
-/// fails to resolve a [`TransitionId`] in the registry.
-///
-/// Logged via `sigil_style::merge_warning_count_for_component`. The
-/// numeric value is arbitrary — chosen large enough that real
-/// per-widget component IDs never collide.
 pub const ANIMATION_REGISTRY_MISS: ComponentId = 0xA111_0000_0000_0001;
 
-/// One attached animator: the [`Animator`] handle plus enough metadata
-/// for the engine to look up which atom / slot it drives. Stored inside
-/// [`AttachedAnimators`].
 pub struct AttachedAnimator {
-    /// Numeric atom kind the animator drives.
     pub kind: NumericAtomKind,
-    /// Reactive signal the animator writes into. The engine reads this
-    /// signal during paint to obtain the current interpolated value.
     pub signal: Signal<f32>,
-    /// Owning animator handle. Drop = de-register from the active set.
     pub animator: Animator,
-    /// Last target the hook drove the animator toward. Used by
-    /// [`AttachedAnimators::retarget_for_state`] to skip no-op writes.
     last_target: f32,
 }
 
-/// One attached colour animator.
-///
-/// Holds four channel animators: RGB interpolated in linear-light,
-/// alpha interpolated linearly. The signals are driven by per-channel
-/// f32 animators; reads compose them back into an [`Rgba8`] via the
-/// inverse sRGB encode.
 pub struct AttachedColorAnimator {
-    /// Colour atom kind the animator drives.
     pub kind: ColorAtomKind,
-    /// Per-channel signals (R, G, B, A) — values written by the
-    /// per-channel animators each tick. R/G/B are linear-light f32 in
-    /// `[0.0, 1.0]`; A is the literal u8 alpha cast to f32 in `[0, 255]`.
     pub channels: [Signal<f32>; 4],
-    /// Per-channel animators. Drop = de-register from the active set.
     pub animators: [Animator; 4],
-    /// Last colour the hook drove this animator toward — used to skip
-    /// no-op retargets.
     pub(crate) last_target: Rgba8,
 }
 
-/// Animators attached to a single [`sigil_style::StyleBinding`].
-///
-/// Returned by [`install_animators`] / [`install_animators_themed`].
-/// Owning the struct keeps each [`Animator`] alive (and therefore
-/// registered with the per-thread tick set); drop = de-register every
-/// animator at once.
 pub struct AttachedAnimators {
     entries: Vec<AttachedAnimator>,
     color_entries: Vec<AttachedColorAnimator>,
-    /// State-slot overlays the install hook saw at construction time.
-    /// Stored here so `retarget_to_slot` can re-resolve the per-slot
-    /// target atoms without the caller threading `state_style` through.
     state_style: StateStyle,
-    /// Snapshot theme used to resolve `*ThemeRef` colour atoms when
-    /// retargeting. `None` when the binding was built via the non-themed
-    /// `install_animators` path (numeric-only).
     theme_snapshot: Option<ThemeSnapshot>,
 }
 
@@ -126,33 +55,25 @@ impl Default for AttachedAnimators {
 }
 
 impl AttachedAnimators {
-    /// Empty handle. The no-animation no-op path returns this.
     #[must_use]
     pub fn empty() -> Self {
         Self::default()
     }
 
-    /// True when no animators are attached.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
-    /// Number of attached animators.
     #[must_use]
     pub const fn len(&self) -> usize {
         self.entries.len()
     }
 
-    /// Iterate animator entries (read-only access for the engine /
-    /// tests).
     pub fn iter(&self) -> impl Iterator<Item = &AttachedAnimator> {
         self.entries.iter()
     }
 
-    /// Retarget every animator at the state-slot's value, using the
-    /// state-style stored at install time and `base` as the fallback
-    /// for atoms not present in the slot overlay.
     pub fn retarget_for_state(&mut self, slot: StateSlot, base: &[StyleAtom]) {
         let slot_atoms = slot_atoms(self.state_style, slot);
         for entry in &mut self.entries {
@@ -195,19 +116,6 @@ impl AnimatorOverlay for AttachedAnimators {
     }
 }
 
-/// Walk `atoms` + `state_style` and build the animator set for the
-/// hover slot. `component_id` is reported as the warning namespace when
-/// the binding's `Transition(id)` does not resolve in `registry`.
-///
-/// Returns [`AttachedAnimators::empty()`] when:
-/// - The binding contains no `Transition` atom (zero-overhead path).
-/// - The `Transition`'s `id` does not resolve in `registry` (after
-///   logging via `sigil_style::merge_warning_count_for_component`).
-/// - No numeric atom value differs between base and the hover slot
-///   (no work to animate).
-///
-/// Initial position of each animator is the base value. Caller drives
-/// hover / press transitions via [`AttachedAnimators::retarget_for_state`].
 #[must_use]
 pub fn install_animators(
     atoms: &[StyleAtom],
@@ -217,12 +125,6 @@ pub fn install_animators(
     install_impl(atoms, state_style, component_id, None)
 }
 
-/// Install themed animators ([`install_animators`] + colour support).
-///
-/// Use this when the binding's base atoms include a background or
-/// text colour and the hover slot overrides it — the animator
-/// interpolates colour endpoints in linear-light space, matching the
-/// renderer's sRGB swapchain contract.
 #[must_use]
 pub fn install_animators_themed(
     atoms: &[StyleAtom],
@@ -337,9 +239,6 @@ fn apply_duration_override(config: AnimationConfig, atoms: &[StyleAtom]) -> Anim
     };
     match config {
         AnimationConfig::Tween { easing, .. } => AnimationConfig::Tween { ms: ms.0, easing },
-        // Spring configs ignore explicit ms — per DR-053 §4 spring
-        // tension/damping drive the duration implicitly. Documented
-        // behaviour; flagged for dogfood-newdev in DR-053 open questions.
         AnimationConfig::Spring { .. } => config,
     }
 }
@@ -374,27 +273,14 @@ fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {
 }
 
 fn emit_registry_miss(component_id: ComponentId) {
-    // The `merge_warning_count_for_component` function in sigil-style
-    // is *read-only* — it returns the count, it does not increment it.
-    // Increments happen inside `merge_classes` via the private
-    // `diagnostic::warn_conflict` path. The W5.1 hook surfaces the miss
-    // through the same `eprintln!` channel so operators see the
-    // diagnostic in stderr, and the test seam below uses the
-    // crate-local registry-miss counter to verify the path was hit
-    // without depending on the private sigil-style diagnostic state.
     miss_counter::bump(component_id);
     eprintln!(
         "sigil-animation-runtime: unknown TransitionId at binding install \
          for component {component_id:#x}; falling back to instant application",
     );
-    // Touch the public surface to confirm the symbol stays linked even
-    // when the counter is consulted lazily by tests.
     let _ = _emit_warning_counter_check(component_id);
 }
 
-/// Test-only counter of registry-miss events. Public so unit tests in
-/// this crate (and the visual-golden harness in `crates/sigil/`) can
-/// assert the warning path was taken.
 pub mod miss_counter {
     use core::sync::atomic::{AtomicUsize, Ordering};
     use std::collections::HashMap;
@@ -405,13 +291,11 @@ pub mod miss_counter {
     static TOTAL: AtomicUsize = AtomicUsize::new(0);
     static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
 
-    /// Total registry-miss events seen since process start.
     #[must_use]
     pub fn total() -> usize {
         TOTAL.load(Ordering::Relaxed)
     }
 
-    /// Per-component registry-miss count.
     #[must_use]
     pub fn for_component(component_id: ComponentId) -> usize {
         let map = PER_COMPONENT.get_or_init(|| Mutex::new(HashMap::new()));

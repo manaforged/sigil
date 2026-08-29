@@ -1,7 +1,5 @@
 use super::*;
 
-/// A spring with a non-zero displacement and reasonable damping
-/// must settle on its target in a bounded number of frames.
 #[test]
 fn smooth_spring_settles_within_two_seconds() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Smooth);
@@ -19,8 +17,6 @@ fn smooth_spring_settles_within_two_seconds() {
     assert!((spring.value() - 1.0).abs() < Spring::DEFAULT_VALUE_EPSILON);
 }
 
-/// A bouncy spring should overshoot at least once before settling
-/// — that's the whole point.
 #[test]
 fn bouncy_spring_overshoots() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Bouncy);
@@ -35,8 +31,6 @@ fn bouncy_spring_overshoots() {
     assert!(max > 1.0, "Bouncy spring did not overshoot 1.0 (max={max})");
 }
 
-/// A stiff spring with a small delta should settle almost
-/// immediately.
 #[test]
 fn stiff_spring_settles_fast() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Stiff);
@@ -49,16 +43,10 @@ fn stiff_spring_settles_fast() {
     assert!(frames < 30, "Stiff spring took {frames} frames (>0.5 s)");
 }
 
-/// A long `dt` (frame hitch, debugger break) must NOT diverge a
-/// stiff spring — the substep clamp keeps it inside the stable
-/// region of semi-implicit Euler. Without the clamp, a 200 ms step
-/// against `Stiff` (k=500) sends `value` to ±1e9 within a few
-/// calls.
 #[test]
 fn stiff_spring_does_not_diverge_on_long_dt() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Stiff);
     spring.set_target(1.0);
-    // Simulate ten 200 ms hitches in a row.
     for _ in 0..10 {
         spring.step(0.2);
         assert!(
@@ -70,8 +58,6 @@ fn stiff_spring_does_not_diverge_on_long_dt() {
     }
 }
 
-/// Non-finite `dt` (`NaN`, `±inf`) or non-positive `dt` is a no-op,
-/// not a panic.
 #[test]
 fn step_rejects_non_finite_or_non_positive_dt() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Smooth);
@@ -87,7 +73,6 @@ fn step_rejects_non_finite_or_non_positive_dt() {
     assert_eq!((spring.value(), spring.velocity()), before);
 }
 
-/// Reset wipes everything — value, velocity, target.
 #[test]
 fn reset_clears_motion() {
     let mut spring = Spring::from_preset(0.0, SpringPreset::Smooth);
@@ -103,8 +88,6 @@ fn reset_clears_motion() {
     assert!(spring.is_settled());
 }
 
-/// `step` is deterministic — same inputs, same outputs, every time.
-/// This is load-bearing for replay determinism and golden frames.
 #[test]
 fn step_is_deterministic() {
     let run = || {
@@ -125,18 +108,12 @@ fn step_is_deterministic() {
     }
 }
 
-/// Zero mass would divide-by-zero inside step; the constructor
-/// must reject it.
 #[test]
 #[should_panic(expected = "Spring mass must be positive")]
 fn zero_mass_panics() {
     let _ = Spring::new(0.0, 100.0, 10.0, 0.0);
 }
 
-/// Pixel-space animations want looser epsilons than the
-/// progress-signal defaults. A spring with 0.5 epsilons settles
-/// sooner than one with default 0.001 epsilons under the same
-/// physics, proving the threshold is wired into `is_settled`.
 #[test]
 fn with_epsilons_changes_settle_time() {
     let tight = {
@@ -168,8 +145,6 @@ fn with_epsilons_changes_settle_time() {
     );
 }
 
-/// A non-positive epsilon would prevent settling forever; the
-/// builder must reject it.
 #[test]
 #[should_panic(expected = "Spring epsilons must be positive")]
 fn zero_epsilon_panics() {

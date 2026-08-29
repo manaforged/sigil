@@ -1,10 +1,7 @@
-//! Default text measure used by `sigil::launch`.
-
 use sigil_layout::{TextEngineMeasure, TextMeasure};
 use sigil_style::TextStyle;
 use sigil_text::OwnedTextEngine;
 
-/// Owned-text-engine-backed measurer used by the launch pipeline.
 pub struct DefaultTextMeasure {
     inner: TextEngineMeasure<OwnedTextEngine>,
 }
@@ -16,7 +13,6 @@ impl Default for DefaultTextMeasure {
 }
 
 impl DefaultTextMeasure {
-    /// Create the default text measurer.
     #[must_use]
     pub fn new() -> Self {
         Self {

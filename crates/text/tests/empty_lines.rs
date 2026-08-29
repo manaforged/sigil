@@ -1,5 +1,4 @@
-//! Empty-line byte-position tests (adversarial review follow-up, finding
-//! B). Consecutive hard breaks produce empty [`LayoutLine`]s; before
+//! Empty-line byte-position tests (review follow-up): B). Consecutive hard breaks produce empty [`LayoutLine`]s; before
 //! this fix they all shared a `u32::MAX..0` sentinel byte range, so
 //! hit-testing any of them placed the caret at the document start
 //! (byte 0) instead of at the break that created that specific line.

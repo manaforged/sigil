@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W4.99.B4 — `Context::emit` broadcasts the full payload to every
+//! `Context::emit` broadcasts the full payload to every
 //! subscriber.
 //!
 //! Pre-fix, the implementation handed the boxed payload to the FIRST

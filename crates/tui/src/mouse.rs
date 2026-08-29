@@ -1,10 +1,3 @@
-//! Terminal mouse reporting, mapped onto the shared pointer vocabulary.
-//!
-//! A terminal reports the cell a pointer is over. Widgets hit-test in logical
-//! pixels, so a cell becomes the point at its centre — not its corner. A
-//! corner sits exactly on a boundary, and any sub-cell offset in the layout
-//! (a one-pixel border is enough) puts it in the box above or to the left.
-
 use crossterm::event::{KeyModifiers, MouseButton as TermButton, MouseEvent, MouseEventKind};
 use sigil_hal::PointerEvent;
 use sigil_hal::{
@@ -12,13 +5,8 @@ use sigil_hal::{
     ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
 };
 
-/// Lines a wheel notch scrolls. Terminals report notches, not pixels.
 const NOTCH: f32 = 3.0;
 
-/// Translate a terminal mouse report into a shell event.
-///
-/// `cell` is the px-per-cell scale layout ran at. `last` carries the previous
-/// position so a move reports how far it moved.
 #[must_use]
 pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<ShellEvent> {
     let at = Point::new(
@@ -41,7 +29,6 @@ pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<Shel
     };
 
     let button = button.map(press);
-    // A drag holds its button down; a release no longer does.
     let held = match phase {
         PointerPhase::Up => MouseButtons::empty(),
         _ => button.map_or_else(MouseButtons::empty, bit),
@@ -81,7 +68,6 @@ const fn bit(button: MouseButton) -> MouseButtons {
         MouseButton::Middle => MouseButtons::MIDDLE,
         MouseButton::Back => MouseButtons::BACK,
         MouseButton::Forward => MouseButtons::FORWARD,
-        // A terminal reports three buttons; anything else cannot arrive here.
         MouseButton::Other(_) => MouseButtons::EMPTY,
     }
 }

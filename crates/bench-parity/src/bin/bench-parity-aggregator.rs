@@ -1,18 +1,8 @@
-//! `bench-parity-aggregator` — read every `RunResult` JSON in a results
-//! directory, group by `workload_id`, render a markdown report.
-//!
-//! Comparative "X vs Y" prose is intentionally NOT emitted. The harness
-//! is a measurement substrate; comparative claims belong in long-form
-//! analysis docs that cite the per-framework rows below.
-
 #![allow(
     clippy::print_stdout,
     clippy::doc_markdown,
     clippy::cast_precision_loss
 )]
-// The lib re-uses these workspace deps; the bin pulls them in
-// transitively via `sigil-bench-parity` itself. Silence the
-// unused-extern-crate lint.
 
 use data_table as _;
 use serde as _;
@@ -43,14 +33,10 @@ use clap::Parser;
     about = "Aggregate RunResult JSON files into a markdown report."
 )]
 struct Args {
-    /// Directory containing `*.json` RunResult files.
     #[arg(long)]
     results_dir: PathBuf,
-    /// Output markdown path.
     #[arg(long)]
     output: PathBuf,
-    /// Quote set: construct-only, no vs-frame column. Exit 1 if any
-    /// pair has no numeric vs gpui.
     #[arg(long)]
     one_to_one: bool,
 }
@@ -125,7 +111,16 @@ fn render_preamble(buf: &mut String, one_to_one: bool) {
          versus reconstruct — not the same mode.\n\n",
         );
     }
-    if !one_to_one {
+    if one_to_one {
+        buf.push_str(
+            "Host setup is untimed. A cell prints only when `one_to_one` \
+             holds: construct on both sides, same host, same clean \
+             revision, same mounted row count, same canonical output, \
+             both CVs at or under 0.25, layout and text actually ran. \
+             VOID / NOISY / — source / — visible / — output / — checks \
+             fail this report.\n\n",
+        );
+    } else {
         buf.push_str(
             "Host setup is untimed. `vs gpui` is a number only when both \
          sides stamp the same reuse/tick mode, the same host \
@@ -141,15 +136,6 @@ fn render_preamble(buf: &mut String, one_to_one: bool) {
          either CV is above the ceiling. `— source` means missing, dirty, \
          or different source. `— output` means the canonical output is \
          missing or different.\n\n",
-        );
-    } else {
-        buf.push_str(
-            "Host setup is untimed. A cell prints only when `one_to_one` \
-             holds: construct on both sides, same host, same clean \
-             revision, same mounted row count, same canonical output, \
-             both CVs at or under 0.25, layout and text actually ran. \
-             VOID / NOISY / — source / — visible / — output / — checks \
-             fail this report.\n\n",
         );
     }
 }
@@ -210,7 +196,6 @@ fn reject_unpaired(results: &[RunResult]) -> Result<(), String> {
     }
 }
 
-/// One workload section: header row + one line per framework result.
 fn render_workload_table(
     workload_id: &str,
     rows: &[&RunResult],
@@ -229,6 +214,10 @@ fn render_workload_table(
         );
         buf.push_str("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|\n");
     }
+    render_result_rows(buf, rows, one_to_one);
+}
+
+fn render_result_rows(buf: &mut String, rows: &[&RunResult], one_to_one: bool) {
     let gpui = rows.iter().find(|r| r.framework == "gpui").copied();
     let sigil = rows.iter().find(|r| r.framework == "sigil").copied();
     for r in rows {
@@ -249,44 +238,26 @@ fn render_workload_table(
         let first = r.verify.get("first_visible").copied().unwrap_or(0);
         let visible = r.verify.get("visible_last").copied().unwrap_or(0);
         let book = r.verify.get("book_rows").copied().unwrap_or(0);
+        let cells = format!(
+            "| {} | {} | {:.2} | {:.2} | {:.3} | {} | {} | {} | {} | {} | {} | {} |",
+            r.framework,
+            s.iterations,
+            s.median_us,
+            s.p95_us,
+            s.cv,
+            hits,
+            misses,
+            first,
+            visible,
+            book,
+            rss,
+            vs,
+        );
         if one_to_one {
-            let _ = writeln!(
-                buf,
-                "| {} | {} | {:.2} | {:.2} | {:.3} | {} | {} | {} | {} | {} | {} | {} | {} |",
-                r.framework,
-                s.iterations,
-                s.median_us,
-                s.p95_us,
-                s.cv,
-                hits,
-                misses,
-                first,
-                visible,
-                book,
-                rss,
-                vs,
-                eq,
-            );
+            let _ = writeln!(buf, "{cells} {eq} |");
         } else {
             let frame = bench_parity::vs_frame(r, other);
-            let _ = writeln!(
-                buf,
-                "| {} | {} | {:.2} | {:.2} | {:.3} | {} | {} | {} | {} | {} | {} | {} | {} | {} |",
-                r.framework,
-                s.iterations,
-                s.median_us,
-                s.p95_us,
-                s.cv,
-                hits,
-                misses,
-                first,
-                visible,
-                book,
-                rss,
-                vs,
-                frame,
-                eq,
-            );
+            let _ = writeln!(buf, "{cells} {frame} | {eq} |");
         }
     }
 }

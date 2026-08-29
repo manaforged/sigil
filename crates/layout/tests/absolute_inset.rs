@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W1.5 — `inset` placement for `Position::Absolute` children.
+//! `inset` placement for `Position::Absolute` children.
 //!
 //! Verifies that the block + flex solvers read `style.inset` when
 //! placing an absolutely positioned child and pick the trailing edge
@@ -193,7 +193,7 @@ fn flex_absolute_bottom_right_inset_anchors_against_trailing_edges() {
 fn block_absolute_all_auto_inset_keeps_padding_origin_fallback() {
     // Regression: default-Auto inset must keep the historical pin-to-
     // padding-origin behavior so widgets that never set `inset` are
-    // unchanged by the W1.5 cutover.
+    // unchanged by the inset cutover.
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()

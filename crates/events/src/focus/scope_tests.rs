@@ -52,7 +52,6 @@ fn collect_scope_roots_handles_nested_scopes() {
     let mut found = Vec::new();
     collect_scope_roots(&cx, root, &mut found);
 
-    // Document order: outer first, then inner.
     assert_eq!(found, vec![outer, inner]);
 }
 
@@ -104,7 +103,6 @@ fn sync_scopes_pops_scope_when_node_removed_and_restores_focus() {
     );
     let outside = cx.nth_child(root, 0).expect("outside child should exist");
 
-    // Add a modal subtree dynamically.
     let modal = cx.add_child(
         root,
         container()
@@ -117,10 +115,8 @@ fn sync_scopes_pops_scope_when_node_removed_and_restores_focus() {
     focus.sync_scopes(&mut cx, None);
     assert_eq!(focus.scope_depth(), 1);
 
-    // Set focus inside the modal subtree (simulate modal focus).
     focus.set_focus(&mut cx, Some(modal));
 
-    // Remove the modal subtree.
     cx.remove(modal);
     focus.sync_scopes(&mut cx, None);
 
@@ -134,7 +130,6 @@ fn tab_ring_is_confined_to_topmost_scope() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-            // Two focusables outside any scope.
             .child(
                 container()
                     .focusable(true)
@@ -145,7 +140,6 @@ fn tab_ring_is_confined_to_topmost_scope() {
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
             )
-            // Modal with two focusables inside.
             .child(
                 container()
                     .mutate(scope_marker(FocusScopeKind::Modal))
@@ -175,7 +169,6 @@ fn tab_ring_is_confined_to_topmost_scope() {
     focus.focus_next(&mut cx, None);
     assert_eq!(focus.focus(), Some(inside_b));
     focus.focus_next(&mut cx, None);
-    // Wrap inside the scope, not escape to outsiders.
     assert_eq!(focus.focus(), Some(inside_a));
 }
 
@@ -202,7 +195,6 @@ fn stale_restore_target_falls_back_to_document_order() {
     let mut focus = FocusManager::default();
     focus.set_focus(&mut cx, Some(a));
 
-    // Add a modal, sync pushes scope with restore_to = a.
     let modal = cx.add_child(
         root,
         container()
@@ -212,12 +204,10 @@ fn stale_restore_target_falls_back_to_document_order() {
     focus.sync_scopes(&mut cx, None);
     assert_eq!(focus.scope_depth(), 1);
 
-    // Remove both the modal and the original focus target.
     cx.remove(a);
     cx.remove(modal);
     focus.sync_scopes(&mut cx, None);
 
     assert_eq!(focus.scope_depth(), 0);
-    // Fallback: focus the first remaining document-order focusable.
     assert_eq!(focus.focus(), Some(b));
 }

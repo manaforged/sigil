@@ -1,8 +1,3 @@
-//! Signal write path — `set`, `update`, fan-out helpers, and guard.
-//!
-//! Separated from struct definitions and the read path to keep each
-//! file under the 400-line cap. Not re-exported.
-
 use core::panic::Location;
 
 use smallvec::SmallVec;
@@ -11,10 +6,6 @@ use crate::effect::schedule_effects;
 use crate::runtime::{EffectKey, EffectSlot, SignalKey, with_rt};
 use crate::signal::Signal;
 
-/// Sentinel placed in a signal's slot while a `Signal::update`
-/// closure is running. Lets `get`/`peek`/`set`/`update` detect
-/// re-entry on the same signal and produce an actionable panic
-/// rather than a confusing "type mismatch" downcast failure.
 pub(crate) struct UpdateInProgress;
 
 fn is_stale_running_subscription(
@@ -29,8 +20,6 @@ fn is_stale_running_subscription(
             .is_some_and(|slot| slot.prev_deps.contains(&signal) && !slot.deps.contains(&signal))
 }
 
-/// Runtime fields needed for fanning out a signal write.
-/// Groups 5 borrows so `fan_out_signal` stays within the 5-arg limit.
 struct SignalFanOut<'a> {
     batch_depth: u32,
     effects: &'a crate::arena::Arena<EffectSlot>,
@@ -39,11 +28,6 @@ struct SignalFanOut<'a> {
     pending_set: &'a mut std::collections::BTreeSet<EffectKey>,
 }
 
-/// Fan out a signal write to subscribed effects.
-///
-/// Batch path: enqueues directly into the pending queue and returns
-/// `None`. Non-batch path: returns the live set so the caller can
-/// run effects synchronously after releasing the runtime borrow.
 fn fan_out_signal(
     ctx: SignalFanOut<'_>,
     subscribers: &SmallVec<[EffectKey; 4]>,
@@ -86,10 +70,6 @@ fn fan_out_signal(
     }
 }
 
-/// Replace a signal slot with the `UpdateInProgress` sentinel and
-/// return the original payload, asserting paint-safety + non-disposed +
-/// non-reentrant access. Lifted out of [`Signal::update`] to keep that
-/// method within the 50-line cap.
 #[track_caller]
 fn take_for_update(key: SignalKey, caller: &'static Location<'static>) -> Box<dyn core::any::Any> {
     with_rt(|rt| {
@@ -106,17 +86,6 @@ fn take_for_update(key: SignalKey, caller: &'static Location<'static>) -> Box<dy
 }
 
 impl<T: PartialEq + 'static> Signal<T> {
-    /// Replace the signal's value and schedule dependent effects.
-    ///
-    /// Equal to the current value: no notify, no frame dirty. Authors
-    /// do not have to remember a second `set_if_changed`.
-    ///
-    /// The old `T` is dropped *outside* the runtime borrow so a
-    /// `Drop` impl that touches the runtime cannot deadlock.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the signal has been disposed.
     #[inline]
     #[track_caller]
     pub fn set(self, value: T) {
@@ -141,8 +110,6 @@ impl<T: PartialEq + 'static> Signal<T> {
             if slot.subscribers.is_empty() {
                 return (Some(old), None);
             }
-            // A write with live subscribers can change the visual tree; mark the
-            // frame dirty so the driver paints (see `Runtime::frame_dirty`).
             rt.frame_dirty = true;
             let subs = fan_out_signal(
                 SignalFanOut {
@@ -165,14 +132,6 @@ impl<T: PartialEq + 'static> Signal<T> {
 }
 
 impl<T: 'static> Signal<T> {
-    /// Replace the value and always notify, even when it compares equal.
-    ///
-    /// Prefer [`Signal::set`] when `T: PartialEq`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the signal has been disposed, or if this signal's
-    /// update closure is still running.
     #[inline]
     #[track_caller]
     pub fn set_always(self, value: T) {
@@ -214,19 +173,6 @@ impl<T: 'static> Signal<T> {
         }
     }
 
-    /// Mutate the signal's value in place and schedule dependent effects.
-    ///
-    /// `f` runs *outside* the runtime borrow, so it may freely call
-    /// `get`/`set`/`update` on *other* signals. Re-entering the same
-    /// signal panics — the slot is locked while `f` runs.
-    ///
-    /// If `f` panics the signal's value is restored via an RAII guard
-    /// and the `UpdateInProgress` sentinel is cleared.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the signal has been disposed, or if `f` calls back
-    /// into this same signal.
     #[track_caller]
     pub fn update(self, f: impl FnOnce(&mut T)) {
         let caller = Location::caller();
@@ -274,12 +220,6 @@ impl<T: 'static> Signal<T> {
     }
 }
 
-/// RAII guard that restores a signal's slot value on drop — used by
-/// `Signal::update` so a panic inside the user closure still clears
-/// the `UpdateInProgress` sentinel and leaves the signal readable.
-///
-/// Normal-return code path `take()`s the value out before the guard
-/// drops, so `Drop` only runs the restore on an unwind.
 struct UpdateGuard {
     key: SignalKey,
     value: Option<Box<dyn core::any::Any>>,
@@ -292,7 +232,6 @@ impl Drop for UpdateGuard {
                 if let Some(slot) = rt.signals.get_mut(self.key) {
                     slot.value = value;
                 }
-                // If the slot is gone the value drops here.
             });
         }
     }

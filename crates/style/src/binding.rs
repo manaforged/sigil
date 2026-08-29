@@ -1,5 +1,3 @@
-//! Node style binding storage.
-
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -7,42 +5,16 @@ use smallvec::SmallVec;
 
 use crate::{AnimatorOverlay, StateSlot, StyleAtom, StyleOverlay};
 
-/// Shared current-state-slot cell.
-///
-/// A widget's reactive style effect captures a clone and writes the
-/// slot it just resolved; the resolver reads through the binding to
-/// pick the matching per-instance [`StyleOverlay`] slice.
 pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
-/// Shared reactive style slice updated by a node-owned effect.
 pub type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>;
 
-/// Style atoms attached to a node.
-///
-/// A binding carries any number of reactive channels: each
-/// `style_reactive` / `class_when` / `stateful_style` install appends one
-/// instead of replacing the previous (T0, 5/5 Wave 1). At resolve time
-/// the channels apply in install order, so a later install wins per
-/// property — composition instead of the old silent clobber.
 pub struct StyleBinding {
     static_atoms: &'static [StyleAtom],
     dynamic_atoms: SmallVec<[StyleAtom; 16]>,
     reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
-    /// W5.1b: attached animator overlay produced by the binding-install
-    /// hook in `sigil-animation-runtime`. `None` for bindings without
-    /// a `Transition` atom (zero-overhead path); `Some` when one or
-    /// more numeric atoms differ between base and a state-slot overlay.
     attached_animators: Option<Box<dyn AnimatorOverlay>>,
-    /// DS2 Phase 2: per-instance user state overlay attached via
-    /// `.hover()` / `.focus()` / `.pressed()` / `.disabled()` on a
-    /// widget builder. The resolver applies these atoms AFTER the
-    /// widget's reactive slot atoms, so render-pass last-wins
-    /// resolution gives the user override priority per property.
     state_overlay: Option<Box<StyleOverlay>>,
-    /// Cell shared with the widget's reactive style effect. Each
-    /// reactive evaluation publishes the slot it just resolved; the
-    /// resolver reads it back to pick the matching slice from
-    /// [`Self::state_overlay`].
     state_overlay_slot: Option<ReactiveStateSlot>,
 }
 
@@ -73,7 +45,6 @@ impl Default for StyleBinding {
 }
 
 impl StyleBinding {
-    /// Build a binding from static atoms.
     #[must_use]
     pub fn static_atoms(static_atoms: &'static [StyleAtom]) -> Self {
         Self {
@@ -82,7 +53,6 @@ impl StyleBinding {
         }
     }
 
-    /// Build a binding from owned atoms.
     #[must_use]
     pub fn owned_atoms(dynamic_atoms: SmallVec<[StyleAtom; 16]>) -> Self {
         Self {
@@ -91,7 +61,6 @@ impl StyleBinding {
         }
     }
 
-    /// Build a binding from a reactive atom source.
     #[must_use]
     pub fn reactive_atoms(reactive_atoms: ReactiveStyleAtoms) -> Self {
         let mut binding = Self::default();
@@ -99,45 +68,30 @@ impl StyleBinding {
         binding
     }
 
-    /// Borrow static atoms.
     #[must_use]
     pub const fn static_slice(&self) -> &'static [StyleAtom] {
         self.static_atoms
     }
 
-    /// Borrow dynamic atoms.
     #[must_use]
     pub fn dynamic_slice(&self) -> &[StyleAtom] {
         &self.dynamic_atoms
     }
 
-    /// Iterate the current atom slice of every reactive channel, in
-    /// install order (later installs resolve later — last wins per
-    /// property).
     pub fn reactive_channels(&self) -> impl Iterator<Item = &'static [StyleAtom]> + '_ {
         self.reactive_channels.iter().map(|atoms| atoms.get())
     }
 
-    /// True when `target` appears in any reactive channel's current slice.
     #[must_use]
     pub fn reactive_contains(&self, target: &StyleAtom) -> bool {
         self.reactive_channels().any(|slice| slice.contains(target))
     }
 
-    /// True when at least one reactive channel is installed on this
-    /// binding.
-    ///
-    /// Reactive channels mutate through `Rc<Cell>`s that bypass the
-    /// owning node's `version()` stamp, so consumers that cache by
-    /// version (notably the layout engine's per-node sync fast-path)
-    /// need to force a re-sync for reactive nodes even when every
-    /// reactive slice is currently empty.
     #[must_use]
     pub fn has_reactive(&self) -> bool {
         !self.reactive_channels.is_empty()
     }
 
-    /// True when any atom layer sets `display: none`.
     #[must_use]
     pub fn hides(&self) -> bool {
         let none = StyleAtom::Display(crate::DisplayKind::None);
@@ -146,43 +100,26 @@ impl StyleBinding {
             || self.reactive_contains(&none)
     }
 
-    /// Borrow the attached animator overlay, if any.
-    ///
-    /// W5.1b — the style engine consults this overlay at apply time;
-    /// when a numeric atom (opacity / radius / padding / gap / font /
-    /// line-height) has a driven value, the engine uses the driven
-    /// value instead of the literal atom value.
     #[must_use]
     pub fn animator_overlay(&self) -> Option<&dyn crate::AnimatorOverlay> {
         self.attached_animators.as_deref()
     }
 
-    /// Install a fresh animator overlay, replacing any prior overlay.
-    ///
-    /// Built by the binding-install hook in `sigil-animation-runtime`.
-    /// Passing `None` clears any existing overlay.
     pub fn set_animator_overlay(&mut self, overlay: Option<Box<dyn crate::AnimatorOverlay>>) {
         self.attached_animators = overlay;
     }
 
-    /// Re-aim every attached animator at `slot`'s value, using `base`
-    /// as the source of fallback atoms.
-    ///
-    /// No-op when no animators are attached. Called by the reactive
-    /// effect that observes state-slot transitions on this binding.
     pub fn retarget_animators(&mut self, slot: crate::StateSlot, base: &[StyleAtom]) {
         if let Some(overlay) = self.attached_animators.as_deref_mut() {
             overlay.retarget_to_slot(slot, base);
         }
     }
 
-    /// Borrow the per-instance user state overlay, if any.
     #[must_use]
     pub fn state_overlay(&self) -> Option<&StyleOverlay> {
         self.state_overlay.as_deref()
     }
 
-    /// Current interaction slot the overlay resolves against.
     #[must_use]
     pub fn interaction_slot(&self) -> StateSlot {
         self.state_overlay_slot
@@ -190,10 +127,6 @@ impl StyleBinding {
             .map_or(StateSlot::Rest, |cell| cell.get())
     }
 
-    /// Atoms from the user state overlay for the current slot.
-    ///
-    /// Returns an empty slice when no overlay is installed, the slot
-    /// cell is missing, or the current slot has no user atoms.
     #[must_use]
     pub fn state_overlay_atoms(&self) -> &[StyleAtom] {
         let Some(overlay) = self.state_overlay.as_deref() else {
@@ -206,13 +139,6 @@ impl StyleBinding {
         overlay.atoms_for(slot)
     }
 
-    /// Install a per-instance user state overlay plus the slot cell
-    /// the widget's reactive style effect uses to publish the current
-    /// interaction state.
-    ///
-    /// Passing `overlay.is_empty()` and the matching empty slot cell
-    /// is harmless — the resolver skips the overlay pass when the
-    /// returned slice is empty.
     pub fn set_state_overlay(&mut self, overlay: StyleOverlay, slot: ReactiveStateSlot) {
         self.state_overlay = Some(Box::new(overlay));
         self.state_overlay_slot = Some(slot);
@@ -230,8 +156,6 @@ impl StyleBinding {
         self.dynamic_atoms = atoms;
     }
 
-    /// Append a reactive channel. Later installs resolve after earlier
-    /// ones; nothing is ever replaced.
     pub(crate) fn add_reactive(&mut self, atoms: ReactiveStyleAtoms) {
         self.reactive_channels.push(atoms);
     }

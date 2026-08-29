@@ -1,12 +1,6 @@
-//! Clipboard: `copy` / `paste`, and [`set_clipboard`] for embed hosts.
-//!
-//! Text fields and these functions share one handle. `launch` and
-//! `run_tui` install the OS pasteboard. A game calls [`set_clipboard`]
-//! with its own [`Clipboard`].
-
 use crate::{AppResult, Error};
 
-pub use sigil_widgets::{Clipboard, set_clipboard};
+pub use sigil_widgets::{Clipboard, install};
 
 #[cfg(any(feature = "desktop", feature = "tui"))]
 struct OsClipboard;
@@ -22,29 +16,15 @@ impl Clipboard for OsClipboard {
     }
 }
 
-/// Point text fields at the OS clipboard. Called from [`crate::launch`].
 #[cfg(any(feature = "desktop", feature = "tui"))]
-pub(crate) fn install() {
-    set_clipboard(OsClipboard);
+pub(crate) fn install_os() {
+    install(OsClipboard);
 }
 
-/// Write `text` to the installed clipboard.
-///
-/// # Errors
-///
-/// Returns when the handle cannot store the text. `launch` and
-/// `run_tui` install the OS pasteboard. An embed host must call
-/// [`set_clipboard`] first.
 pub fn copy(text: &str) -> AppResult<()> {
     sigil_widgets::clipboard().set(text).map_err(Error::new)
 }
 
-/// Read the installed clipboard as a string.
-///
-/// # Errors
-///
-/// Returns when the pasteboard is empty, holds a non-text payload, or
-/// no handle is installed.
 pub fn paste() -> AppResult<String> {
     sigil_widgets::clipboard()
         .get()
@@ -92,6 +72,10 @@ impl std::fmt::Display for Empty {
 impl std::error::Error for Empty {}
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "test/instrumentation context; the invariant is proven by the caller"
+)]
 #[path = "clipboard_tests.rs"]
 mod tests;

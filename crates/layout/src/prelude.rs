@@ -1,5 +1,3 @@
-//! Convenient single-import surface for layout users.
-
 pub use crate::{
     BoundsReactive, Dimension, LayoutBuilderExt, LayoutEngine, LayoutError, LayoutReactiveExt,
     LayoutResult, LayoutStyle, Overflow, ReactivePosition, StyleAlignItems as AlignItems,

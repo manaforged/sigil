@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W5-A11Y (DR-050 §4) — AT-initiated `accesskit::ActionRequest` dispatch.
+//! A11Y (DR-050 §4) — AT-initiated `accesskit::ActionRequest` dispatch.
 //!
 //! Mirrors exactly what `crates/app/src/launch/event_wiring.rs`'s
 //! `drain_a11y_actions` does (a validated match on `request.action`),
@@ -13,9 +13,8 @@
 //! (focus moves, a button's click-activation handler fires through the
 //! SAME hover+press gate a real pointer click uses), AND that AT
 //! requests are held to the same interactivity contract real
-//! pointer/keyboard input already enforces (RC-focus adversarial
-//! finding 3: a platform request must not focus behind a modal or
-//! activate a hidden/non-focusable control).
+//! pointer/keyboard input already enforces (a platform request must
+//! not focus behind a modal or activate a hidden/non-focusable control).
 
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -183,7 +182,7 @@ fn unmapped_action_variants_are_a_documented_no_op() {
     );
 }
 
-// ---- RC-focus adversarial finding 3: AT actions must obey the same
+// ---- AT actions must obey the same
 // interactivity gates real pointer/keyboard input does. ------------------
 
 #[test]
@@ -316,7 +315,7 @@ fn click_outside_the_active_modal_scope_is_a_no_op() {
     );
 }
 
-// ---- RC-focus adversarial finding (round 2, HIGH): validation must use
+// ---- Validation must use
 // THIS frame's fresh layout, not a stale pre-recompute snapshot. --------
 
 fn hidden_atoms(show: sigil_reactive::Signal<bool>) -> &'static [StyleAtom] {
@@ -416,7 +415,7 @@ fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target()
     });
 }
 
-// ---- RC-focus adversarial finding (round 2, MEDIUM): a node scrolled
+// ---- A node scrolled
 // outside the viewport must not be a valid AT click target. -------------
 
 #[test]

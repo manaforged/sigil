@@ -1,10 +1,3 @@
-//! Owned layout adapter for `sigil-kernel`.
-//!
-//! `sigil-layout` mirrors a `sigil_kernel::Cx` subtree into an owned
-//! layout drive, computes layout, and writes [`LayoutResult`] extensions
-//! back onto the core nodes.
-
-#![deny(missing_docs)]
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;

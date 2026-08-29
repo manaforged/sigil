@@ -102,8 +102,6 @@ pub(super) fn finish(
     mut verify: HashMap<String, u64>,
     output: Option<OutputProof>,
 ) -> bench_parity::RunResult {
-    // GPUI builds a fresh element tree every sample. reuse=0 is the
-    // work that ran, not the workload's reuse flag.
     verify.insert("reuse".into(), 0);
     verify
         .entry("tick".into())

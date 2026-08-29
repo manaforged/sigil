@@ -33,7 +33,6 @@ fn step_past_duration_clamps() {
     assert!((tween.value() - 1.0).abs() < f32::EPSILON);
     assert!((tween.progress() - 1.0).abs() < f32::EPSILON);
 
-    // Subsequent steps are no-ops, not negative-time slides.
     tween.step(10.0);
     assert!((tween.value() - 1.0).abs() < f32::EPSILON);
 }

@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-//! Regression tests for P0 adversarial-review findings.
+//! Regression tests for past review findings.
 //!
 //! - P0 #1: `effect()` implements the parent-effect owner model
 //!   (Leptos 0.5+ style).

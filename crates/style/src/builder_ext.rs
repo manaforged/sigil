@@ -1,5 +1,3 @@
-//! Builder extension trait for installing styles.
-
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
@@ -18,13 +16,9 @@ use crate::{
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
 
-/// Source accepted by [`NodeStyleExt::class`].
 pub enum ClassSource {
-    /// Already-static atoms, usually from `classes!`.
     Static(&'static [StyleAtom]),
-    /// Owned atoms, usually from [`Style`].
     Owned(Box<SmallVec<[StyleAtom; 16]>>),
-    /// Raw utility-class literal parsed through the runtime parser.
     RawString(&'static str),
 }
 
@@ -52,74 +46,30 @@ impl From<Style> for ClassSource {
     }
 }
 
-/// Adds style methods to [`NodeBuilder`].
 pub trait NodeStyleExt {
-    /// Attach utility classes or atoms to this node.
     #[must_use]
     fn class(self, source: impl Into<ClassSource>) -> Self;
 
-    /// Attach a struct-built style to this node.
     #[must_use]
     fn style(self, style: Style) -> Self;
 
-    /// Attach a theme to this node.
     #[must_use]
     fn theme(self, theme: Theme) -> Self;
 
-    /// Attach a per-node [`ToneContext`] — selects which scale on the
-    /// theme the [`StyleAtom::BgToneStep`] /
-    /// [`StyleAtom::FgToneStep`] / [`StyleAtom::FgOnSolid`] /
-    /// [`StyleAtom::BorderToneStep`] atoms on this node resolve
-    /// through.
-    ///
-    /// DS2.5 — collapses the
-    /// `.mutate(|node| { let _ = node.attach(ToneContext::new(tone)); })`
-    /// pattern that the early DS2.5 widgets had to write by hand.
     #[must_use]
     fn tone(self, tone: Tone) -> Self;
 
-    /// Attach focus-ring semantics to this node.
     #[must_use]
     fn focus_ring(self, ring: FocusRing) -> Self;
 
-    /// Attach a signal-driven static atom slice to this node.
     #[must_use]
     fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static;
 
-    /// Attach a per-instance user state overlay plus the slot cell the
-    /// widget's reactive style effect uses to publish the current
-    /// interaction state.
-    ///
-    /// Most widget authors should reach for
-    /// [`stateful_style`](Self::stateful_style) instead — this method
-    /// is the low-level escape hatch when a widget needs to construct
-    /// the slot cell itself.
-    ///
-    /// DS2 Phase 2 — the overlay's atoms apply AFTER the widget's
-    /// reactive slot atoms, so last-atom-wins resolution gives user
-    /// `.hover()` / `.focus()` / `.pressed()` / `.disabled()` atoms
-    /// priority per property.
     #[must_use]
     fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self;
 
-    /// Install a reactive style variant plus per-instance user overlay
-    /// in one call. Handles the slot-cell wiring internally so widget
-    /// authors don't see `ReactiveStateSlot`.
-    ///
-    /// `state_fn` is invoked inside the reactive style effect every
-    /// time a tracked signal flips; it must return the current
-    /// [`StyleState`]. The helper writes the resulting slot into the
-    /// cell so the resolver can pick the matching overlay slice, then
-    /// returns the variant's atoms for the same state through the
-    /// reactive channel.
-    ///
-    /// DS2.5 — collapses the four-step ritual (`Rc::new(Cell::...)`,
-    /// `Rc::clone`, `style_reactive` + cell write, `state_overlay`)
-    /// into one call. Widget authors that forget to wire the cell
-    /// today silently lose hover / focus / pressed overlays; this
-    /// helper makes that impossible.
     #[must_use]
     fn stateful_style<F>(self, variant: StyleVariant, overlay: StyleOverlay, state_fn: F) -> Self
     where
@@ -136,34 +86,6 @@ pub trait NodeStyleExt {
         .state_overlay(overlay, slot_cell)
     }
 
-    /// Conditionally attach a utility-class literal when `signal` is `true`.
-    ///
-    /// The class string is parsed once on first install and cached for
-    /// the lifetime of the program. Whenever `signal` flips, the node's
-    /// reactive style slice is rewritten to either the parsed atoms
-    /// (signal `true`) or an empty slice (signal `false`).
-    ///
-    /// This is a thin wrapper over [`style_reactive`](Self::style_reactive)
-    /// that gives callers a one-line reactive opt-in to a class without
-    /// writing the `if signal.get()` boilerplate.
-    ///
-    /// Multiple reactive installs on the same node compose (T0): each
-    /// `class_when` / `style_reactive` appends a channel, and channels
-    /// resolve in install order, so later installs win per property.
-    /// Use multiple atoms in one class string when multiple toggles
-    /// must compose inside a single source.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use sigil_kernel::container;
-    /// use sigil_reactive::signal;
-    /// use sigil_style::NodeStyleExt;
-    ///
-    /// let highlighted = signal(false);
-    /// let node = container().class_when(highlighted, "bg-accent");
-    /// // `node` carries `bg-accent` only while `highlighted` is true.
-    /// ```
     #[must_use]
     fn class_when(self, signal: Signal<bool>, class: &'static str) -> Self
     where
@@ -173,11 +95,6 @@ pub trait NodeStyleExt {
         self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })
     }
 
-    /// Show the node only while `signal` is true (`hidden` when false).
-    ///
-    /// The node stays in the tree. Prefer this over
-    /// [`NodeBuilder::children_reactive`] for page chrome that should
-    /// keep identity.
     #[must_use]
     fn visible_when(self, signal: Signal<bool>) -> Self
     where

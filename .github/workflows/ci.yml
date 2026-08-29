@@ -1,0 +1,160 @@
+# Sigil CI
+#
+# Jobs run only when a matching path changed; a re-run after a docs edit
+# will not rebuild the workspace. Concurrency cancels superseded runs on
+# the same branch. The path gate is a cost optimization, not a security
+# boundary: enforcement lives in branch protection on main (require PR,
+# required checks gate + msrv, no force pushes).
+#
+# The GPU and main-thread tier (cargo test -- --ignored) still runs on
+# owned native builders before a release; hosted runners have no
+# adapters and renderer tests are #[ignore]d by default.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  # Debug info dwarfs hosted-runner disks (local deps dir alone: 48 GB).
+  # Backtraces in CI crashes lose line numbers; local builds keep them.
+  CARGO_PROFILE_DEV_DEBUG: "0"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      site: ${{ steps.filter.outputs.site }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: list changed paths
+        id: filter
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            base="origin/$BASE_REF"
+          else
+            base="$BEFORE"
+            if [[ -z "$base" || "$base" == *000000* ]]; then base="HEAD~1"; fi
+          fi
+          if ! changed=$(git diff --name-only "$base"...HEAD 2>/dev/null); then
+            changed="Cargo.toml"   # undecidable diff: run the gate
+          fi
+          is_rust=$(grep -qE '^(crates/|examples/|Cargo\.(toml|lock)|clippy\.toml|deny\.toml|rust-toolchain\.toml|\.github/workflows/ci\.yml)' <<<"$changed" && echo true || echo false)
+          is_site=$(grep -qE '^(site/|scripts/check-site-catalog\.mjs)' <<<"$changed" && echo true || echo false)
+          is_docs=$(grep -qE '^docs/' <<<"$changed" && echo true || echo false)
+          {
+            echo "rust=$is_rust"
+            echo "site=$is_site"
+            echo "docs=$is_docs"
+          } >> "$GITHUB_OUTPUT"
+
+  gate:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: free runner disk (preinstalled SDKs are dead weight here)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/lib/jvm \
+            /usr/local/share/boost /usr/local/share/powershell
+          df -h / | tail -1
+      - name: linux system libs (tray GTK3 stack, udev, alsa, xkbcommon, xdo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable
+        with:
+          components: clippy, rustfmt
+      - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
+      - uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2
+        with:
+          tool: cargo-deny
+
+      - name: fmt
+        run: cargo fmt --check
+      - name: inline tests
+        run: python3 scripts/check-inline-tests.py
+      - name: file caps
+        run: python3 scripts/check-file-caps.py
+      - name: clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: test
+        run: cargo test --workspace --no-fail-fast
+      - name: deny
+        run: cargo deny check
+
+  msrv:
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: free runner disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/lib/jvm
+      - name: linux system libs (tray GTK3 stack, udev, alsa, xkbcommon, xdo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
+      - uses: dtolnay/rust-toolchain@06e5a564a0556e338780f5aecf2e7dcc9b267f07 # 1.90.0
+      - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
+      - name: check (MSRV, locked, all features)
+        run: cargo check --workspace --all-targets --locked --all-features
+
+  site:
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: catalog matches committed captures
+        run: node scripts/check-site-catalog.mjs
+
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: peaceiris/actions-mdbook@062dc9e3eab0bad35531417c6bb6c6a7a184764f # v2
+        with:
+          mdbook-version: "0.4.40"
+      - name: book builds
+        run: mdbook build docs/book

@@ -1,15 +1,3 @@
-//! `LocalTask<R>` — the `!Send` sibling of [`crate::Task`] (DR-048 §6
-//! amendment, W4.99.B3).
-//!
-//! Identical RAII-cancel shape and `Future` impl to [`crate::Task`],
-//! but the wrapped future is `!Send` (it ran on a
-//! [`crate::LocalTaskExecutor`], typically a tokio `LocalSet`).
-//! The `R` output also does not need to be `Send` — the result is
-//! delivered through a `tokio::sync::oneshot` whose sender lives in the
-//! future body on the same thread as the receiver in the handle.
-//!
-//! See [`crate::EntityCx::spawn_local`] for the producer side.
-
 use core::fmt;
 use core::future::Future;
 use core::marker::PhantomData;
@@ -22,33 +10,15 @@ use tokio::task::AbortHandle;
 
 use crate::task::TaskAwaitError;
 
-/// RAII-cancelling handle to a `!Send` spawned future (DR-048 §6
-/// amendment).
-///
-/// `LocalTask<R>: Future<Output = R>` — `.await`ing the handle drives
-/// the oneshot completion path. Dropping the handle aborts the future
-/// unless [`LocalTask::detach`] was called first.
-///
-/// `LocalTask<R>` is `!Send + !Sync` by construction: it holds a
-/// `oneshot::Receiver<R>` whose `R` may be `!Send`, and it lives on the
-/// main thread alongside the reactive runtime that produced it. The
-/// `_not_send` phantom marker makes the negative bound robust to future
-/// field changes.
 #[must_use = "tasks are cancelled when dropped; call .detach() to keep running"]
 pub struct LocalTask<R> {
     abort: Option<AbortHandle>,
     result_rx: Option<oneshot::Receiver<R>>,
-    /// `cx.spawn_local(...)` call site, captured by `#[track_caller]`
-    /// at spawn time. Surfaced in the `Future::poll` cancellation panic
-    /// path so the message points at the user's spawn site.
     caller: &'static Location<'static>,
-    /// `!Send + !Sync` — lives on the main thread.
     _not_send: PhantomData<*const ()>,
 }
 
 impl<R> LocalTask<R> {
-    /// Construct from raw parts. `pub(crate)` so only
-    /// [`crate::cx::EntityCx::spawn_local`] can mint a `LocalTask`.
     #[track_caller]
     #[allow(
         clippy::missing_const_for_fn,
@@ -67,48 +37,21 @@ impl<R> LocalTask<R> {
         }
     }
 
-    /// Consume the handle without aborting. The task continues until
-    /// completion or until the owner-cascade safety net aborts it.
     pub fn detach(mut self) {
         self.abort = None;
     }
 
-    /// Synchronous cancellation request. Subsequent `.await` resolves
-    /// with [`TaskAwaitError::Cancelled`] via
-    /// [`LocalTask::await_or_cancel`], or yields the panic message from
-    /// the [`Future`] impl.
     pub fn cancel(&mut self) {
         if let Some(h) = self.abort.take() {
             h.abort();
         }
     }
 
-    /// True if the task has finished (completed or aborted) AND the
-    /// result has been consumed via [`LocalTask::await_or_cancel`] or
-    /// [`Future::poll`]. Returns `false` when the task is still
-    /// running OR when it completed but the result has not yet been
-    /// awaited.
-    ///
-    /// Note: the stricter "completed-but-not-yet-awaited" detection
-    /// requires `tokio::sync::oneshot::Receiver::is_terminated`, which
-    /// landed in tokio 1.42. The workspace currently targets tokio 1.40,
-    /// so this implementation conservatively returns `true` only after
-    /// the receiver slot has been consumed.
     #[must_use]
     pub const fn is_finished(&self) -> bool {
         self.result_rx.is_none()
     }
 
-    /// Await the task and surface framework-level cancellation / panic.
-    ///
-    /// Returns `Ok(R)` on normal completion, `Err(Cancelled)` if the
-    /// task was aborted before sending its result.
-    ///
-    /// # Errors
-    ///
-    /// See variants of [`TaskAwaitError`]. As with [`crate::Task`], we
-    /// cannot distinguish abort from worker-panic at this layer; the
-    /// majority of real cases are cancellation, so we tag accordingly.
     #[allow(
         clippy::future_not_send,
         reason = "LocalTask<R> is !Send by design (W4.99.B3 — drives !Send futures); the returned future inherits"
@@ -142,18 +85,8 @@ impl<R> fmt::Debug for LocalTask<R> {
     }
 }
 
-// `LocalTask<R>` is Unpin — all fields (Option<AbortHandle>,
-// Option<oneshot::Receiver<R>>, &'static Location, PhantomData) are
-// Unpin. The explicit impl lets the `Future` impl below project via
-// the safe `Pin::get_mut` path without `unsafe`.
 impl<R> Unpin for LocalTask<R> {}
 
-/// `LocalTask<R>: Future<Output = R>` — same shape as [`crate::Task`].
-///
-/// Polling drives the wrapped oneshot. If the task was cancelled the
-/// future panics with a diagnostic message pointing at the spawn site;
-/// authors who want graceful cancellation use
-/// [`LocalTask::await_or_cancel`] instead.
 impl<R> Future for LocalTask<R> {
     type Output = R;
 
@@ -179,8 +112,6 @@ impl<R> Future for LocalTask<R> {
     }
 }
 
-/// Panic helper for the `Future` impl's cancellation branch — matches
-/// [`crate::task`]'s helper of the same name.
 #[allow(
     clippy::panic,
     reason = "DR-048 §6 documents Future<Output = R> panicking on cancel; graceful path is await_or_cancel"

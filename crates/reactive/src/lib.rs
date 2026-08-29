@@ -1,43 +1,5 @@
-//! Reactive core — signals, effects, owner tree.
-//!
-//! See DR-005 for the full design. Short version: a Leptos 0.5+
-//! style owner tree, arena-backed signals and effects, main-thread
-//! only, with `#[track_caller]` location capture and named owners
-//! for debuggability.
-//!
-//! # Example
-//!
-//! ```rust,ignore
-//! use sigil_reactive::{effect, signal, Runtime};
-//!
-//! Runtime::scope("test::counter", || {
-//!     let count = signal(0_i32);
-//!     let seen = std::cell::Cell::new(0);
-//!     effect(move || {
-//!         seen.set(count.get());
-//!     });
-//!     assert_eq!(seen.get(), 0);
-//!     count.set(7);
-//!     assert_eq!(seen.get(), 7);
-//! });
-//! ```
-//!
-//! (Doctests are marked `ignore` while we work around a Rust 1.94
-//! merged-doctests target-detection bug on Windows-msvc. The same
-//! examples are exercised end-to-end in
-//! `tests/reactive_contract.rs`.)
-
-#![deny(missing_docs)]
-// `pub(crate)` on items inside private modules expresses design
-// intent ("do not leak this even if the module ever becomes pub")
-// that clippy's `redundant_pub_crate` nursery lint treats as noise.
-// We keep the explicit restriction.
 #![allow(clippy::redundant_pub_crate)]
 
-// `criterion` is a dev-dep used only by the `reactive_ops` bench.
-// Cargo's lib-test target pulls all dev-deps into the compilation
-// unit, which trips `unused_crate_dependencies` here. Alias silences
-// the lint without adding a real import.
 #[cfg(test)]
 use criterion as _;
 #[cfg(test)]
@@ -114,8 +76,5 @@ pub use task::{EntityGone, Task, TaskAwaitError};
 #[doc(hidden)]
 pub use task_local::LocalTask;
 
-// Re-exported for integration tests only. The `test_hook` submodule
-// is `#[doc(hidden)]` and carries no stability promise. See the
-// module docs for the effect trace log format.
 #[doc(hidden)]
 pub use trace::test_hook as __trace_test_hook;

@@ -60,7 +60,7 @@ fn layout_then_emit(c: &mut Criterion) {
                     let _layout = profile::span("layout");
                     layout
                         .compute(&mut cx, root, Size::fixed(1280.0, 800.0))
-                        .unwrap();
+                        .expect("bench harness invariant");
                 }
                 {
                     let _emit = profile::span("emit");

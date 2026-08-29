@@ -21,7 +21,8 @@ fn build(cx: &mut Cx) -> NodeId {
             .layout(LayoutStyle::flex_column().gap(16.0).padding(32.0))
             .class(classes!("w-full h-full bg-surface"))
             .child(checkbox(checked).change(move |v| checked.set(v)))
-            .child(checkbox(signal(true)).tone(Tone::Primary))
+            // Contrast shot: neutral stays gray while the default is accent.
+            .child(checkbox(signal(true)).tone(Tone::Neutral))
             .child(checkbox(signal(false)).disabled(disabled)),
     )
 }

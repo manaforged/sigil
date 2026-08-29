@@ -62,7 +62,6 @@ fn block_root_with_block_child_writes_both_boxes() {
     assert_eq!(rb.h, 200.0);
     assert_eq!(cb.w, 50.0);
     assert_eq!(cb.h, 40.0);
-    // Child placed at parent border-box origin (no padding).
     assert_eq!(cb.x, 0.0);
     assert_eq!(cb.y, 0.0);
 }
@@ -81,8 +80,6 @@ fn flex_root_dispatches_through_flex_solver() {
     assert_eq!(rb.h, 100.0);
     let ab = d.computed_box(a).unwrap();
     let bb = d.computed_box(b).unwrap();
-    // Flex Row direction: items lay out horizontally. First item
-    // at x=0, second item at x = 50.
     assert_eq!(ab.x, 0.0);
     assert_eq!(bb.x, 50.0);
     assert_eq!(ab.w, 50.0);
@@ -96,7 +93,6 @@ fn computed_box_for_unreached_handle_returns_none() {
     let orphan = d.insert(fixed(10.0, 10.0));
     d.measure(root, StyleSize::new(100.0, 100.0)).unwrap();
     assert!(d.computed_box(root).is_some());
-    // Orphan not attached anywhere — never reached by the walk.
     assert!(d.computed_box(orphan).is_none());
 }
 
@@ -118,12 +114,9 @@ fn measure_is_idempotent_under_same_inputs() {
 #[test]
 fn stale_root_handle_errors() {
     let drive_a = drive();
-    // Synthesize a handle the driver did not mint by reusing one
-    // from an empty drive — its inner LocalId resolves to no node.
     let mut drive_b = LayoutDrive::new(Box::new(NullText));
     let id = drive_b.insert(StyleData::default());
     drop(drive_a);
-    // Different LayoutDrive than the one that minted the id.
     let mut other = LayoutDrive::new(Box::new(NullText));
     let err = other.measure(id, StyleSize::new(10.0, 10.0));
     assert!(err.is_err());

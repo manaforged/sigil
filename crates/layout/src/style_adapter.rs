@@ -1,5 +1,3 @@
-//! Structural style atom adapter for `LayoutStyle`.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_style::{
@@ -15,12 +13,6 @@ use crate::{
     },
 };
 
-/// Apply a slice of [`StyleAtom`] values onto a [`LayoutStyle`].
-///
-/// Used internally by the layout engine when resolving a node's
-/// `StyleBinding`; exposed at the crate root so tests can verify the
-/// round-trip from atoms to the resolved [`StyleData`] without going
-/// through the full engine compute path.
 pub fn apply_style_atoms(atoms: &[StyleAtom], style: &mut LayoutStyle) {
     for atom in atoms {
         apply_style_atom(*atom, style);
@@ -67,8 +59,6 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         StyleAtom::FlexShrink(shrink) => set_flex_shrink(style, shrink),
         StyleAtom::OverflowX(kind) => set_overflow_x(style, kind),
         StyleAtom::OverflowY(kind) => set_overflow_y(style, kind),
-        // Border width is box-model-affecting: the solvers consume it
-        // as edge thickness (DR-057 D3). Colour halves are paint-only.
         StyleAtom::BorderWidth(width) => set_border(style, width),
         StyleAtom::BorderTop(width) => set_border_top(style, width),
         StyleAtom::BorderRight(width) => set_border_right(style, width),
@@ -84,8 +74,6 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::BorderRadius(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Opacity(_)
-        // Typography is resolved in `text_style.rs::apply_text_binding`;
-        // keep cache-key coverage in sync with that function.
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
         | StyleAtom::FontFamily(_)
@@ -284,7 +272,6 @@ const fn overflow(kind: OverflowKind) -> Overflow {
     match kind {
         OverflowKind::Visible => Overflow::Visible,
         OverflowKind::Hidden => Overflow::Hidden,
-        // CSS `auto` currently aliases Scroll (documented on the atom).
         OverflowKind::Scroll | OverflowKind::Auto => Overflow::Scroll,
     }
 }

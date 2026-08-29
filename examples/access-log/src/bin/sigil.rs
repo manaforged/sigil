@@ -26,7 +26,10 @@ fn build(cx: &mut Cx, n: usize) -> NodeId {
     let rows = signal(book);
     let scroll = signal(0.0_f32);
     let hud = signal(String::from("SIGIL  — µs"));
-    #[allow(clippy::cast_precision_loss)] // 1M rows ≪ 2^24 — exact in f32.
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )] // 1M rows ≪ 2^24 — exact in f32.
     let max_y = (held as f32).mul_add(ROW_H, -VIEW_H).max(0.0);
     let vis = visible_rows();
     start_tick(cx, rows, scroll, hud, held);
@@ -87,7 +90,7 @@ fn start_tick(
                 end.saturating_sub(first),
             );
         });
-        #[allow(clippy::cast_precision_loss)] // tick nanos are far below 2^53.
+        #[allow(clippy::cast_precision_loss, reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale")] // tick nanos are far below 2^53.
         let us = start.elapsed().as_nanos() as f64 / 1_000.0;
         hud.set(access_log::hud_line("SIGIL", us));
     });

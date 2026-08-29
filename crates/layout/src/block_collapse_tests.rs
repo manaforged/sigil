@@ -1,8 +1,6 @@
 use super::*;
 
 impl OpenMargin {
-    /// Zero, idle state. Use this when the parent has separation
-    /// (padding/border on the top edge) — collapse cannot cross.
     pub(crate) const fn idle() -> Self {
         Self {
             value: 0.0,
@@ -10,8 +8,6 @@ impl OpenMargin {
         }
     }
 
-    /// Carry an explicit margin into the collapse context (parent-first
-    /// child case: the parent's own top margin is the seed).
     pub(crate) const fn seed(value: f32) -> Self {
         Self {
             value,

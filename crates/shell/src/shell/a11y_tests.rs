@@ -18,11 +18,6 @@ fn returns_none_before_any_publish() {
     assert_eq!(handler.request_initial_tree(), None);
 }
 
-/// RC-focus adversarial finding 2's exact scenario: a publish lands
-/// while nothing is active (simulated by writing straight into the
-/// cache — real `publish_a11y_update` does the same write), then a
-/// late-activating AT calls `request_initial_tree` with NO further UI
-/// mutation in between. It must see the real tree, not `None`.
 #[test]
 fn late_activation_after_a_publish_returns_the_real_tree_not_none() {
     let latest: LatestTree = Arc::new(Mutex::new(None));

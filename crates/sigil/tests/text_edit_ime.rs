@@ -130,7 +130,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
     });
 }
 
-/// W5-IME-TE MEDIUM-3: the anchor must track the OS-reported *compose*
+/// TE MEDIUM-3: the anchor must track the OS-reported *compose*
 /// cursor within the preedit (`range.1`), not always assume the cursor
 /// sits at the end of the preedit text.
 #[test]
@@ -183,7 +183,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
     });
 }
 
-/// W5-IME-TE HIGH-1: a regular (non-IME) multibyte-deleting keystroke
+/// a regular (non-IME) multibyte-deleting keystroke
 /// while a preedit is active must not panic — the buffer shrinks under
 /// a caret that was valid for the *old* value but may not be for the
 /// new one, and `value`+`caret` publish through separate signals.
@@ -218,7 +218,7 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
     });
 }
 
-/// W5-IME-TE HIGH-1: a raw (non-IME) keystroke that replaces an active
+/// a raw (non-IME) keystroke that replaces an active
 /// multi-byte selection while a preedit is composing must not panic —
 /// the same value/caret atomicity requirement as the backspace case,
 /// but through the selection-delete path (`TextEdit::insert_str`'s
@@ -261,7 +261,7 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
     });
 }
 
-/// W5-IME-TE HIGH-2: an app that writes `value.set(...)` directly after
+/// Regression: an app that writes `value.set(...)` directly after
 /// build (already supported per `crates/sigil/tests/text_edit.rs`) must
 /// not have that external update silently reverted by a subsequent IME
 /// commit operating on a stale internal buffer.
@@ -290,7 +290,7 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         // Exact insert position depends on the caret-clamp policy
         // (`TextEdit::sync_external`, which preserves the pre-external
         // caret's numeric offset, clamped) — not the load-bearing claim
-        // here. What HIGH-2 requires is that the external replacement's
+        // here. What the regression requires is that the external replacement's
         // characters all survive the commit, in order, and the stale
         // pre-build buffer never resurfaces. Pre-fix, this would have
         // produced "initial!" (the commit clobbering the app's write

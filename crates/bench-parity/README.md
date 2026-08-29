@@ -4,7 +4,7 @@ Cross-framework bench-parity harness for Sigil and the frameworks we
 want to compare against (GPUI's `uniform_list`, TanStack-Virtual,
 etc.). The crate exists so every "X faster than Y" claim is grounded
 in identical measured work on the same hardware with a passing
-output-equivalence check, per the the author verification-honesty rule.
+output-equivalence check, per the verification-honesty rule.
 
 GPUI and Sigil both ship. Timed surfaces match per workload (`layout`
 or `layout_paint`). TanStack is not in this crate.

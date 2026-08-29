@@ -1,20 +1,11 @@
-//! 4×4 SSAA CPU rasterizer: band buffer → single-channel alpha mask.
-//!
-//! Strategy: render at 4× resolution using winding-number coverage per
-//! super-sample row, then box-filter 4×4 blocks down to the target size.
-
 use smallvec::SmallVec;
 
 use crate::bands::{BandBuffer, NUM_BANDS};
 use crate::parser::ViewBox;
 use crate::quadratic::QuadCurve;
 
-/// Super-sample factor per axis.
 const SS: u32 = 4;
 
-/// Rasterize `band_buf` into a `width × height` single-channel alpha mask.
-///
-/// Returns a `Vec<u8>` with `width * height` bytes, row-major, `0..=255`.
 pub(super) fn rasterize(
     band_buf: &BandBuffer,
     view_box: ViewBox,
@@ -46,13 +37,19 @@ pub(super) fn rasterize(
 }
 
 fn ss_to_vb_x(px: u32, ss_w: u32, vb: ViewBox) -> f32 {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let norm = (px as f32 + 0.5) / ss_w as f32;
     vb.x + norm * vb.width
 }
 
 fn ss_to_vb_y(py: u32, ss_h: u32, vb: ViewBox) -> f32 {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let norm = (py as f32 + 0.5) / ss_h as f32;
     vb.y + norm * vb.height
 }
@@ -62,7 +59,11 @@ fn y_to_band(vy: f32, buf: &BandBuffer, view_box: ViewBox) -> usize {
         return 0;
     }
     let offset = (vy - view_box.y).max(0.0);
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     let idx = (offset / buf.band_height) as usize;
     idx.min(NUM_BANDS - 1)
 }
@@ -84,9 +85,6 @@ fn winding_number(vx: f32, vy: f32, band: &[QuadCurve]) -> i32 {
     winding
 }
 
-/// Find parameter values in `[0, 1]` where `curve`'s y equals `vy`.
-///
-/// Solves `coeff_a·t² + coeff_b·t + coeff_c = 0` analytically.
 fn quad_y_roots(vy: f32, curve: &QuadCurve) -> SmallVec<[f32; 2]> {
     let (y0, y1, y2) = (curve.start.1, curve.control.1, curve.end.1);
     let coeff_a = 2.0_f32.mul_add(-y1, y0) + y2;

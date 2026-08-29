@@ -1,9 +1,3 @@
-//! Pack a flex container whose items already have definite boxes.
-//!
-//! When nothing grows, wraps, or shrinks, the flex algorithm's result
-//! is start-packed items. Krausest rows and the virtual-list strip
-//! hit this path.
-
 use crate::LayoutError;
 use crate::flex::Position2;
 use crate::flex_algorithm::{FlexCtx, layout_item_subtree};
@@ -14,8 +8,6 @@ use crate::style_data::{
     LengthPercentage, LengthPercentageAuto, Position, StyleData,
 };
 
-/// Where a container sits and how much room its content area has.
-/// `main` and `cross` are in the container's own axis terms.
 pub(crate) struct Area {
     pub(crate) border_origin: Position2,
     pub(crate) content_origin: Position2,
@@ -23,7 +15,6 @@ pub(crate) struct Area {
     pub(crate) cross: f32,
 }
 
-/// Place in-flow children and the container. `true` when this path ran.
 pub(crate) fn pack_definite(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
@@ -143,8 +134,6 @@ fn item_box(style: &StyleData) -> Option<(f32, f32)> {
     let Dimension::Px(height) = style.size.height else {
         return None;
     };
-    // `clamped` returns its input unchanged or a bound, so exact equality is
-    // the intended test: it asks whether a bound applied at all.
     #[expect(clippy::float_cmp, reason = "clamped returns the input or a bound")]
     if clamped(width, style.min_size.width, style.max_size.width) != width {
         return None;

@@ -1,8 +1,3 @@
-//! GPU scene types for an embed host (feature `render`).
-//!
-//! Submit [`Host::scene`](crate::Host::scene) into a caller-owned
-//! `wgpu::TextureView` through this module. Do not name `sigil-renderer`.
-
 pub use sigil_hal::{Color, PhysicalSize, RenderedGlyph};
 pub use sigil_renderer::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,

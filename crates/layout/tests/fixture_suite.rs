@@ -126,46 +126,6 @@ fn block_auto_width_fills_available_space() {
 }
 
 #[test]
-#[ignore = "Grid solver lands post-G2; owned StyleData has no grid_template_columns/_rows fields"]
-fn grid_2x2_places_items_in_fixed_tracks() {
-    let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .child(text("one"))
-            .child(text("two"))
-            .child(text("three"))
-            .child(text("four")),
-    );
-    let children = cx.get(root).expect("root exists").children().to_vec();
-
-    cx.get_mut(root)
-        .expect("root exists")
-        .attach(LayoutStyle::default().with_layout(|style| {
-            style.display = Display::Grid;
-            style.size.width = Dimension::Px(200.0);
-            style.size.height = Dimension::Px(100.0);
-            // grid_template_columns/_rows are intentionally absent from owned
-            // StyleData until the post-G2 Grid solver lands.
-        }));
-
-    let mut engine = stub_engine();
-    engine
-        .compute(&mut cx, root, Size::fixed(200.0, 100.0))
-        .expect("compute succeeds");
-
-    let first = result_for(&cx, children.first().copied().expect("first child exists"));
-    let second = result_for(&cx, children.get(1).copied().expect("second child exists"));
-    let third = result_for(&cx, children.get(2).copied().expect("third child exists"));
-
-    assert_close(first.rect().origin.x, 0.0);
-    assert_close(first.rect().origin.y, 0.0);
-    assert_close(second.rect().origin.x, 80.0);
-    assert_close(second.rect().origin.y, 0.0);
-    assert_close(third.rect().origin.x, 0.0);
-    assert_close(third.rect().origin.y, 40.0);
-}
-
-#[test]
 fn nested_absolute_uses_positioned_parent_origin() {
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(container().child(text("abs"))));

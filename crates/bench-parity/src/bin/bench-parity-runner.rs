@@ -1,10 +1,5 @@
-//! `bench-parity-runner` — execute one framework against one workload
-//! and write the result JSON.
-
 #![allow(clippy::print_stdout, clippy::doc_markdown)]
 
-// The lib re-uses these workspace deps; the bin pulls them in transitively
-// via `sigil-bench-parity` itself. Silence the unused-extern-crate lint.
 use data_table as _;
 use serde as _;
 use sigil as _;
@@ -38,14 +33,10 @@ const TIMESTAMP_FMT: u128 = Config::DEFAULT
     about = "Run one framework against one workload, write a RunResult JSON."
 )]
 struct Args {
-    /// Framework name. Currently supported: `sigil`.
     #[arg(long)]
     framework: String,
-    /// Path to the workload JSON file.
     #[arg(long)]
     workload: PathBuf,
-    /// Output path for the RunResult JSON. Defaults to
-    /// `crates/sigil-bench-parity/results/<framework>-<workload_id>-<timestamp>.json`.
     #[arg(long)]
     output: Option<PathBuf>,
 }

@@ -12,6 +12,10 @@ keywords = ["winit", "windowing", "gui"]
 categories = ["gui"]
 include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
+[[test]]
+name = "display_gate"
+harness = false
+
 [lib]
 
 [dependencies]

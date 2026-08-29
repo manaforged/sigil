@@ -1,11 +1,8 @@
-//! Map terminal keys onto [`sigil_hal::ShellEvent`].
-
 use sigil_hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
 use smol_str::SmolStr;
 
-/// Build a key-down event for tests and the live host.
 #[must_use]
 pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
     let key = key.into();
@@ -19,7 +16,6 @@ pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
     }))
 }
 
-/// Translate a crossterm key press into a Sigil shell event.
 #[must_use]
 pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     if event.kind != crossterm::event::KeyEventKind::Press {
@@ -28,7 +24,6 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     let key = logical(event.code)?;
     let mut modifiers = ModifiersState::empty();
     let text = match event.code {
-        // A control or alt chord is a command, not typed text.
         crossterm::event::KeyCode::Char(ch)
             if !event.modifiers.intersects(
                 crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::ALT,
@@ -66,7 +61,6 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     })))
 }
 
-/// Wrap pasted text in a key event, the same channel typed text arrives on.
 #[must_use]
 pub fn paste(text: &str) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {

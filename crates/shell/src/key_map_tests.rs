@@ -26,8 +26,6 @@ fn maps_named_logical_keys() {
 
 #[test]
 fn maps_space_named_key_to_character_literal() {
-    // keyboard-types has no NamedKey::Space; it belongs on the
-    // character stream per the W3C spec.
     assert_eq!(
         map_logical_key(WinitKey::Named(WinitNamedKey::Space)),
         LogicalKey::character(" ")

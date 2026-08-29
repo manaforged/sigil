@@ -57,7 +57,10 @@ const COLORS: [Color; 3] = [
 // Example entry point — the setup + reactive scope + event-loop form one
 // coherent narrative that cannot be split without losing the walkthrough
 // value. 7 lines over the soft cap; allowed per the hygiene framework.
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one sequential pass; splitting would scatter the ordering it documents"
+)]
 fn main() {
     // ----- construct the three runtimes on the main thread -----
 

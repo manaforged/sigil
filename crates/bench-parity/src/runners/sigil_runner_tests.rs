@@ -89,8 +89,7 @@ fn assert_text_construct(category: &str, id: &str, n: usize, cells: usize, want_
     let texts = result
         .output
         .as_ref()
-        .map(|output| output.text_rows.first().map_or(0, Vec::len))
-        .unwrap_or(0);
+        .map_or(0, |output| output.text_rows.first().map_or(0, Vec::len));
     assert_eq!(texts, want_texts, "scraped {:?}", result.output);
 }
 

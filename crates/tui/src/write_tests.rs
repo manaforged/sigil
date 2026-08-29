@@ -6,7 +6,6 @@ use sigil_app::{Host, Painted};
 use sigil_kernel::{Cx, text as text_node};
 use sigil_style::{Rgba8, Tone};
 
-/// A `Painted` needs a real `NodeId`, so borrow one from a mounted tree.
 fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
     let mut host = Host::cells();
     host.mount(|cx: &mut Cx| cx.add(text_node("seed")));
@@ -25,11 +24,9 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
     }
 }
 
-/// The cube is the nearest 256-colour slot, for terminals without 24-bit.
 #[test]
 fn a_colour_without_truecolor_lands_in_the_cube() {
     use super::cube;
-    // Pure red and pure blue are corners of the cube, and distinct.
     assert_eq!(
         cube(Rgba8 {
             r: 255,
@@ -89,10 +86,8 @@ fn apple_terminal_uses_the_256_colour_cube() {
     );
 }
 
-/// A resolved colour goes out as 24-bit, not the nearest of eight.
 #[test]
 fn a_resolved_colour_goes_out_as_truecolor() {
-    // The fallback is environment-driven; this asserts the 24-bit path.
     if !super::truecolor() {
         return;
     }
@@ -123,7 +118,6 @@ fn a_resolved_colour_goes_out_as_truecolor() {
     );
 }
 
-/// Weight reaches the terminal as an attribute, not a colour.
 #[test]
 fn bold_text_sets_the_bold_attribute() {
     let mut node = painted("HEAVY", None, false);
@@ -162,8 +156,6 @@ fn an_untoned_row_sets_no_colour() {
     let grid = raster(&[painted("plain", None, false)], 20, 3, 8.0);
     let out = bytes(&grid, 0);
     assert!(out.contains("plain"), "expected the text in {out:?}");
-    // Every way of setting a colour, not one of three: 256-colour,
-    // truecolor, and either background form.
     for escape in ["38;5;", "38;2;", "48;5;", "48;2;"] {
         assert!(
             !out.contains(escape),
@@ -172,8 +164,6 @@ fn an_untoned_row_sets_no_colour() {
     }
 }
 
-/// Ink on its own colour is invisible. A toned text node sets the
-/// glyph's colour and leaves the surface behind it alone.
 #[test]
 fn toned_text_does_not_paint_its_own_background() {
     let grid = raster(&[painted("STRAY", Some(Tone::Warn), false)], 20, 3, 8.0);
@@ -191,8 +181,6 @@ fn a_blank_tail_is_cleared_rather_than_spaced() {
         !out.contains("          "),
         "trailing blanks must not be a run of spaces: {out:?}"
     );
-    // The row is short, so the rest of the line must be cleared — without
-    // it, last frame's glyphs stay to the right of the new text.
     assert!(
         out.contains("\u{1b}[K"),
         "the tail must be cleared, not just left unwritten: {out:?}"

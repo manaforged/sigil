@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W3.3-impl — integration tests for G5 `Task<T>` + `AsyncContext` +
+//! impl — integration tests for G5 `Task<T>` + `AsyncContext` +
 //! the executor-install seam (DR-048).
 //!
 //! Covers `Context::spawn` end-to-end: a TestExecutor backed by a
@@ -345,7 +345,7 @@ fn owner_cascade_cancels_owned_tasks() {
 // NOTE: the "entity literally removed from arena → EntityGone" path
 // exists in `run_update_on_main` but cannot be exercised end-to-end
 // today because `dispose_owner` does not yet evict the owner's
-// entities from `rt.entities` (DR-045 followup, separate from W3.3).
+// entities from `rt.entities` (DR-045 followup, separate follow-up).
 // Until that wiring lands, the dispatcher-closed surface is the
 // only externally-observable EntityGone path.
 #[test]

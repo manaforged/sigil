@@ -1,5 +1,3 @@
-//! Event-drain and window-event helpers for the launch loop.
-
 use sigil_events::EventRouter;
 use sigil_hal::{
     Key, KeyPhase, PhysicalSize, PointerPhase, Scale, Shell as _, ShellEvent, WindowEvent,
@@ -39,7 +37,6 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) renderer: &'a mut WgpuRenderer,
     pub(super) surface: &'a mut Option<WgpuSurface>,
     pub(super) viewport: &'a (f32, f32),
-    /// User zoom composed with the monitor scale (AppConfig::user_zoom).
     pub(super) user_zoom: f32,
 }
 
@@ -68,18 +65,12 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
     match renderer.create_surface(handle, scale.to_physical(logical)) {
         Ok(new_surface) => {
             *surface = Some(new_surface);
-            // First surface (or a re-created one) must paint — it writes no signal.
             Runtime::mark_frame_dirty();
         }
         Err(err) => tracing::warn!("sigil-app: create_surface failed: {err}"),
     }
 }
 
-/// End-of-Layout IME sync (DR-051 §Decision-4): push the focused node's
-/// IME-allowed state and, when it published a caret anchor this frame,
-/// forward the resolved rect to the OS candidate window. Called after
-/// layout recomputes so the anchor's absolute origin is current — see
-/// DR-051's "why end-of-Layout, not Effect" reasoning.
 pub(super) fn sync_ime(
     shell: &mut WinitShell,
     window_handle: WinitWindowHandle,
@@ -130,10 +121,6 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         }
         router.route(cx, layout, event);
     }
-    // Custom-chrome window commands queued by widget pointer handlers
-    // during the routes above (frameless titlebar buttons, drag regions,
-    // resize grips). Applied to the same window the events targeted;
-    // the shell drops commands when it has not materialised yet.
     for command in sigil_events::take_window_commands() {
         let _ = shell.window_command(&window_handle, command);
     }
@@ -162,34 +149,6 @@ fn note_input(event: &ShellEvent) {
     }
 }
 
-/// W5-A11Y (DR-050 §1, §8) — project the kernel a11y tree and publish it
-/// through a fresh [`sigil_a11y::AccessKitBridge`] over every live window's
-/// adapter (`shell.publish_a11y_update` broadcasts).
-///
-/// `dirty` is the SAME whole-frame dirty decision the paint gate uses
-/// (`shell.take_force_paint() || Runtime::frame_dirty()`), computed once
-/// by the caller — RC-focus adversarial finding 1: this must run AFTER
-/// `Runtime::begin_layout()`'s `recompute_layout`, not before, or the
-/// published bounds are one frame stale (the moved/resized node's OLD
-/// rect) and the corrective republish never happens on a subsequent
-/// clean frame (the dirty gate suppresses it). Folding `take_force_paint`
-/// into the gate matters on its own: a resize changes bounds without
-/// any reactive write, so the a11y tree needs republishing on exactly
-/// the same frames the paint gate repaints on.
-///
-/// Callers run `drain_a11y_actions` first, then this — RC-focus finding
-/// (round 2): draining actions BEFORE the publish means `set_focus`'s
-/// effect is visible in THIS frame's tree (focus is a plain field read,
-/// no layout dependency), while `invoke_node`'s downstream widget-state
-/// changes settle on the NEXT frame's Effect→Layout cycle (one-frame
-/// action latency — standard, not a bug: the same latency a real click
-/// has between input and the next paint).
-///
-/// The bridge's `action_rx` half is unused here (inbound actions are
-/// already drained earlier this frame by `drain_a11y_actions`) —
-/// cloning the receiver is a cheap `Arc` bump, not a channel
-/// allocation, so constructing a second bridge purely for its `publish`
-/// half costs nothing meaningful.
 pub(super) fn publish_a11y(
     shell: &mut WinitShell,
     cx: &Cx,
@@ -210,39 +169,6 @@ pub(super) fn publish_a11y(
     let _ = sigil_hal::A11yBridge::publish(&mut bridge, update);
 }
 
-/// W5-A11Y (DR-050 §4) — route AT-initiated actions through the same
-/// `EventRouter` surface pointer/keyboard input use, validated through
-/// the exact same interactivity gates that surface applies to real
-/// input (RC-focus adversarial finding 3): `Focus` requires
-/// `EventRouter::is_focus_target` (focusable, laid out, and inside the
-/// active focus scope — reuses the a4972ca tab-ring semantics); `Click`
-/// requires `EventRouter::is_click_target` (laid out, hit-test-enabled,
-/// and inside the active focus scope). A platform request naming a
-/// hidden, non-focusable, or behind-a-modal-scope node is silently
-/// rejected — `invoke_node`'s direct dispatch bypasses hit-testing
-/// entirely, so nothing else would otherwise stop it reaching a node a
-/// real click could never touch. Every other `accesskit::Action`
-/// variant (Increment/Decrement/SetValue/...) is intentionally a no-op
-/// here — the Wave-5 design brief (item 7) names the per-widget
-/// state-signal wiring those actions need as separate, wider
-/// Wave-5-widget-catalogue work, not part of this slice.
-///
-/// Called AFTER `recompute_layout` (RC-focus finding, round 2) — the
-/// caller used to run this from inside `drain_events`, in the Effect
-/// phase, BEFORE layout recomputed. An Effect-phase mutation that hides
-/// the queued action's target this frame (e.g. a modal-dismiss handler
-/// firing earlier in the same `ShellEvent` batch) would validate against
-/// the PREVIOUS frame's stale layout/scope state, where the target still
-/// looked laid out — the action would fire on a now-blocked control.
-/// `is_focus_target`/`is_click_target` both read `layout.result(...)`
-/// directly, so the fix is purely about WHEN this runs, not the
-/// validators themselves.
-///
-/// Drains through a throwaway [`sigil_a11y::AccessKitBridge`] (no-op publish
-/// sink — nothing is published from this call) rather than the raw
-/// channel directly, so the `accesskit::NodeId → sigil_kernel::NodeId`
-/// reverse mapping lives in exactly one place
-/// (`AccessKitBridge::take_action`).
 pub(super) fn drain_a11y_actions(
     action_rx: &crossbeam_channel::Receiver<accesskit::ActionRequest>,
     cx: &mut Cx,
@@ -271,11 +197,6 @@ pub(super) fn drain_a11y_actions(
     }
 }
 
-/// AT-initiated Increment/Decrement (5/5 Wave 3 T10): adjust the
-/// target's `value_now` signal by its `step` unit (default 1.0),
-/// clamped to `[value_min, value_max]`. No-ops for nodes without the
-/// full numeric triple. `SetValue` / `ScrollTo` / focus-navigation actions
-/// stay deliberately no-op — their per-widget wiring is Wave-5 work.
 fn adjust_value(cx: &Cx, target: sigil_kernel::NodeId, increase: bool) {
     let Some(node) = cx.get(target) else {
         return;
@@ -320,8 +241,6 @@ fn handle_resized(ctx: &mut WindowEventCtx<'_>, physical: PhysicalSize) {
     let scale = ctx.cx.scale();
     let logical = scale.to_logical(clamp_physical_size(physical));
     set_viewport(ctx.viewport, logical);
-    // The Layout phase computes once at the new viewport after every queued
-    // event has drained. Computing here as well doubled resize work.
     Runtime::mark_frame_dirty();
 }
 
@@ -332,11 +251,15 @@ fn handle_scale_changed(ctx: &mut WindowEventCtx<'_>, scale: Scale) {
         ctx.surface,
         scale.to_physical(super::logical_size_from_viewport(*ctx.viewport)),
     );
-    // DPI change repaints (text re-rasterizes at the new scale) — no signal.
     Runtime::mark_frame_dirty();
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::float_cmp,
+    reason = "test/instrumentation context; the invariant is proven by the caller"
+)]
 #[path = "event_wiring_tests.rs"]
 mod tests;

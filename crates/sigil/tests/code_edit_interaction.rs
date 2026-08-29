@@ -511,7 +511,7 @@ fn render_budget_tracks_the_published_viewport_height() {
     });
 }
 
-/// Regression (adversarial review M1): a document that FITS the pane must not scroll into
+/// Regression: a document that FITS the pane must not scroll into
 /// blank space. `max_scroll` is now `(content - viewport).max(0)` using the real height
 /// from `size_reactive`, so a wheel on a short doc is a no-op (was `(lines-1)*row_h`, which
 /// let a 5-line doc scroll 4 rows up, revealing blank below).

@@ -1,14 +1,3 @@
-//! Explicit winit ↔ keyboard-types key mapping.
-//!
-//! Neither `winit::keyboard::NamedKey` Debug output nor
-//! `winit::keyboard::KeyCode` Debug output is a stable contract.
-//! Routing keyboard input through `format!` + `FromStr` would also
-//! heap-allocate once per keystroke. Both mappers below use explicit
-//! match arms that are validated at compile time: any future variant
-//! divergence between winit and keyboard-types surfaces as a missing
-//! arm the compiler rejects, not as silent `Key::Unidentified` at
-//! runtime.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::{Key, LogicalKey, PhysicalKey};
@@ -17,11 +6,6 @@ use winit::keyboard::{
     PhysicalKey as WinitPhysicalKey,
 };
 
-/// Identity-style match generator for enums that share variant names.
-///
-/// Emits `Winit::V => Dst::V` for every listed variant and falls through
-/// to `$default` on anything else. The `@raw` form is for when either
-/// side uses a path rather than a single identifier for the enum type.
 macro_rules! same_name_match {
     ($input:expr, $src:path => $dst:path, default: $default:expr, [$($v:ident),* $(,)?]) => {
         match $input {
@@ -33,12 +17,7 @@ macro_rules! same_name_match {
 
 pub(crate) fn map_logical_key(key: WinitKey) -> LogicalKey {
     match key {
-        // keyboard-types has no `Space` NamedKey; the W3C spec models
-        // it as the printable character " " on the Character stream.
         WinitKey::Named(WinitNamedKey::Space) => LogicalKey::character(" "),
-        // keyboard-types deprecated `Hyper` and `Super` in favour of
-        // `Meta`. Winit still delivers both variants on Linux, so we
-        // collapse them onto `Meta` rather than dropping them.
         WinitKey::Named(WinitNamedKey::Hyper | WinitNamedKey::Super) => {
             LogicalKey::Named(Key::Meta)
         }
@@ -54,8 +33,6 @@ pub(crate) fn map_logical_key(key: WinitKey) -> LogicalKey {
 
 pub(crate) const fn map_physical_key(key: WinitPhysicalKey) -> PhysicalKey {
     match key {
-        // winit keeps the "Super" spelling for the left/right Windows
-        // / Command keys; keyboard-types normalises both to "Meta".
         WinitPhysicalKey::Code(WinitKeyCode::SuperLeft) => PhysicalKey::MetaLeft,
         WinitPhysicalKey::Code(WinitKeyCode::SuperRight) => PhysicalKey::MetaRight,
         WinitPhysicalKey::Code(code) => map_key_code(code),
@@ -63,7 +40,10 @@ pub(crate) const fn map_physical_key(key: WinitPhysicalKey) -> PhysicalKey {
     }
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one sequential pass; splitting would scatter the ordering it documents"
+)]
 const fn map_named_key(key: WinitNamedKey) -> Key {
     same_name_match!(key, WinitNamedKey => Key, default: Key::Unidentified, [
         Alt, AltGraph, CapsLock, Control, Fn, FnLock,

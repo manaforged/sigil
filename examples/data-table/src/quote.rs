@@ -148,7 +148,10 @@ fn ticker(rng: &mut Rng) -> String {
 }
 
 fn letter(rng: &mut Rng) -> char {
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "values are bounded to the target range before the cast"
+    )]
     char::from(b'A' + rng.u32_range(0, 26) as u8)
 }
 

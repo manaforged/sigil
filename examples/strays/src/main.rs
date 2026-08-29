@@ -45,26 +45,56 @@ fn main() -> sigil::AppResult<()> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_alignment_tests.rs"]
 mod alignment;
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_cost_tests.rs"]
 mod cost;
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_keys_tests.rs"]
 mod keys;
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_offload_tests.rs"]
 mod offload;
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_paint_tests.rs"]
 mod paint;
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::print_stdout, clippy::panic)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::print_stdout,
+    clippy::panic,
+    reason = "demo harness; the invariant is proven by construction"
+)]
 #[path = "main_tests.rs"]
 mod tests;

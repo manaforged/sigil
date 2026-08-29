@@ -1,7 +1,6 @@
 use super::hsv::rgb_to_hsv;
 use super::*;
 
-/// Smoke: every palette returns six distinct role colours.
 #[test]
 fn every_palette_distinguishes_text_and_background() {
     for palette in [
@@ -24,10 +23,6 @@ fn every_palette_distinguishes_text_and_background() {
     }
 }
 
-/// The Terminal palette is the locked saturated baseline. Every
-/// channel value here is referenced from the plan file. All six
-/// role colours are checked — primary/success/text deliberately
-/// alias to the same saturated green per the terminal aesthetic.
 #[test]
 fn terminal_palette_matches_baseline_spec() {
     let palette = Palette::terminal();
@@ -39,8 +34,6 @@ fn terminal_palette_matches_baseline_spec() {
     assert_eq!(palette.danger, rgb(0xFF, 0x33, 0x33));
 }
 
-/// A *dark* accent stands out best on a *light* surface.
-/// Spellforge therefore pairs it with a light bg and dark text.
 #[test]
 fn spellforge_picks_light_surface_for_dark_accent() {
     let dark_accent = rgb(0x20, 0x10, 0x40);
@@ -55,8 +48,6 @@ fn spellforge_picks_light_surface_for_dark_accent() {
     assert_eq!(palette.primary, dark_accent);
 }
 
-/// A *bright* accent stands out best on a *dark* surface.
-/// Spellforge therefore pairs it with a dark bg and light text.
 #[test]
 fn spellforge_picks_dark_surface_for_bright_accent() {
     let bright_accent = rgb(0xFF, 0xC8, 0x60);
@@ -71,10 +62,6 @@ fn spellforge_picks_dark_surface_for_bright_accent() {
     assert_eq!(palette.primary, bright_accent);
 }
 
-/// Spellforge derives role colours from the accent's saturation
-/// and value — a saturated accent yields saturated role colours,
-/// a desaturated accent yields desaturated ones. Validates that
-/// `success`/`warning`/`danger` are no longer fixed defaults.
 #[test]
 fn spellforge_role_colours_inherit_accent_saturation() {
     let saturated = rgb(0x33, 0x70, 0xFF); // saturated blue
@@ -82,13 +69,10 @@ fn spellforge_role_colours_inherit_accent_saturation() {
     let (_, s_success, _) = rgb_to_hsv(palette.success);
     let (_, s_warning, _) = rgb_to_hsv(palette.warning);
     let (_, s_danger, _) = rgb_to_hsv(palette.danger);
-    // All three role colours should be visibly saturated (≥ 0.5)
-    // when the accent is.
     assert!(s_success > 0.5, "success too desaturated: {s_success}");
     assert!(s_warning > 0.5, "warning too desaturated: {s_warning}");
     assert!(s_danger > 0.5, "danger too desaturated: {s_danger}");
 
-    // Greyscale accent → greyscale role colours.
     let grey = rgb(0x80, 0x80, 0x80);
     let grey_palette = Palette::spellforge(grey);
     let (_, s_grey_success, _) = rgb_to_hsv(grey_palette.success);
@@ -98,19 +82,8 @@ fn spellforge_role_colours_inherit_accent_saturation() {
     );
 }
 
-/// Spellforge's role colours hit the canonical role hues — green
-/// for success, amber for warning, red for danger — within a
-/// 15° tolerance. Without this property the palette would feel
-/// random rather than semantic.
 #[test]
 fn spellforge_role_colours_hit_canonical_hues() {
-    // Sweep the input accent across the hue wheel + edge cases.
-    // The algorithm's contract is "preserve sat/val of the accent,
-    // rewrite hue to the canonical role hue". If we ever regress
-    // to "blend toward target hue" or "ignore accent entirely",
-    // one of these inputs will fail. The prior single-input test
-    // could pass even with a broken algorithm that always emitted
-    // a fixed colour.
     let accents = [
         rgb(0xFF, 0x33, 0x33), // red-ish
         rgb(0xFF, 0xC0, 0x33), // amber
@@ -132,8 +105,6 @@ fn spellforge_role_colours_hit_canonical_hues() {
             ("danger", palette.danger, 5.0_f32),
         ] {
             let (h, s, v) = rgb_to_hsv(role_colour);
-            // Hue must lock to the canonical role hue (with
-            // wraparound tolerance for red near 0°/360°).
             let wrapped_dist = (h - target_hue).abs().min((h - target_hue + 360.0).abs());
             let dist = wrapped_dist.min((h - target_hue - 360.0).abs());
             assert!(
@@ -141,15 +112,11 @@ fn spellforge_role_colours_hit_canonical_hues() {
                 "{role_name} hue {h}° too far from canonical {target_hue}° \
                  for accent {accent:?}"
             );
-            // Saturation must follow the accent (the algorithm
-            // explicitly preserves saturation). Tolerance accounts
-            // for hsv→rgb→hsv quantisation through u8 channels.
             assert!(
                 (s - s_accent).abs() < 0.06,
                 "{role_name} saturation {s} drifted from accent saturation \
                  {s_accent} for accent {accent:?}"
             );
-            // Value (brightness) likewise.
             assert!(
                 (v - v_accent).abs() < 0.06,
                 "{role_name} value {v} drifted from accent value {v_accent} \

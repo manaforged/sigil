@@ -1,9 +1,3 @@
-//! Script classification + complex-shaping warning helpers.
-//!
-//! Pulled out of `shaper.rs` in G1.7 to keep the file under the 400-line
-//! cap. The items here are re-exported via `pub(crate) use` from the
-//! parent module, so the crate-internal API surface is unchanged.
-
 #![allow(clippy::redundant_pub_crate)]
 
 #[cfg(not(feature = "shaping-complex"))]
@@ -13,42 +7,20 @@ use unicode_script::{Script as UScript, UnicodeScript};
 
 use crate::shaper::TextSegment;
 
-/// Coarse script classification for routing between the owned
-/// shaper and the optional `HarfRust` path (G1.6).
-///
-/// Latin / CJK / Common / Emoji shape correctly with the owned
-/// skrifa shaper. The variants marked `is_complex` need OpenType
-/// `GSUB`/`GPOS` shaping plans that only `HarfBuzz` / ``HarfRust``
-/// implement at production quality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Script {
-    /// Latin / Greek / Cyrillic / etc. — owned shaper handles.
     Latin,
-    /// CJK Han / Hiragana / Katakana / Hangul / Bopomofo.
     Cjk,
-    /// Inherited / Common / Unknown — owned shaper handles.
     Common,
-    /// Arabic — joining behaviour + RTL.
     Arabic,
-    /// Hebrew — RTL + niqqud positioning.
     Hebrew,
-    /// Devanagari — reordering + ligatures.
     Devanagari,
-    /// Khmer — complex reordering.
     Khmer,
-    /// Thai — line-break + tone-mark positioning.
     Thai,
-    /// Lao — similar to Thai.
     Lao,
-    /// Anything else not explicitly enumerated; owned shaper.
     Other,
 }
 
-/// Classify the dominant script of a [`TextSegment`] by inspecting
-/// its first non-Common / non-Inherited codepoint, falling back to
-/// `Common` if none is found. Segments are already script-runs
-/// upstream (UAX #24), so the first decisive codepoint is the run's
-/// script.
 pub(crate) fn classify_segment_script(segment: &TextSegment<'_>) -> Script {
     for ch in segment.text.chars() {
         match ch.script() {
@@ -77,14 +49,6 @@ const fn map_u_script(s: UScript) -> Script {
     }
 }
 
-/// One-shot warning per script when a complex-script segment hits
-/// the shaper without the `shaping-complex` feature enabled.
-///
-/// `Once` per script keeps the log clean: the warning fires once
-/// per process per script even if the application paints thousands
-/// of Arabic glyphs. Rendering will be visibly buggy (no joining,
-/// no LAM-ALEF ligature, no bidi reorder) — the warning is the
-/// developer-facing signal to enable the feature.
 #[cfg(not(feature = "shaping-complex"))]
 pub(crate) fn warn_complex_without_feature(script: Script) {
     static ARABIC: Once = Once::new();

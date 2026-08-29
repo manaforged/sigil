@@ -217,7 +217,10 @@ fn wide_child(index: usize, focusable: bool) -> NodeBuilder {
     }
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
+)]
 fn child_style(index: usize) -> LayoutStyle {
     let x = ((index % 100) * 2) as f32;
     let y = ((index / 100) * 2) as f32;

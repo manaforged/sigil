@@ -30,7 +30,7 @@ fn bench_resize(c: &mut Criterion) {
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
         engine
             .compute(&mut cx, root, Size::fixed(12800.0, 100.0))
-            .unwrap();
+            .expect("bench harness invariant");
         cx.clear_dirty();
         let mut w = 12800.0_f32;
         b.iter(|| {
@@ -38,7 +38,7 @@ fn bench_resize(c: &mut Criterion) {
             // No tree change — only the available (viewport) size differs.
             engine
                 .compute(&mut cx, root, Size::fixed(w, 100.0))
-                .unwrap();
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });

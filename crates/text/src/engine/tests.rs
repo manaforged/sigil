@@ -1,18 +1,6 @@
-//! White-box unit tests for the per-run font fallback chain
-//! (`select_face` / `push_run` / `coalesce_face_spans` /
-//! `shape_validated`) — adversarial review findings 1 and 2.
-//!
-//! These call `push_run`/`shape_validated` directly with a hand-built
-//! fragment rather than going through the public `layout_paragraph`
-//! path, because a genuinely mixed-script fragment (e.g. Latin +
-//! Hebrew) is already split into separate segments upstream by
-//! [`same_run`]'s script-boundary check before it would ever reach
-//! `push_run` in the real pipeline — this exercises the fallback
-//! mechanism itself in isolation, the same way `shaper/tests.rs` and
-//! `shaping_complex/tests.rs` test their layer in isolation.
-
 #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::panic)]
 
+use super::collection::FontCollection;
 use super::{
     Font, PushRunArgs, Script, Style, push_run, run_has_disallowed_notdef, shape_validated,
 };
@@ -41,10 +29,6 @@ fn args(fragment: &str) -> PushRunArgs<'_> {
 
 #[test]
 fn split_coverage_segment_renders_fully_via_two_faces() {
-    // "aא" — Latin 'a' immediately followed by Hebrew Alef, as ONE
-    // fragment (finding 1: a segment whose coverage is divided between
-    // faces must still render every cluster, not tofu the whole run
-    // because no single face covers it end to end).
     let chain = vec![fira_regular(), noto_hebrew()];
     let fragment = "a\u{05D0}";
     let mut out = Vec::new();
@@ -74,10 +58,6 @@ fn split_coverage_segment_renders_fully_via_two_faces() {
 
 #[test]
 fn primary_preference_never_swaps_when_primary_covers() {
-    // Both faces cover plain Latin "abc" (Noto Sans Hebrew ships full
-    // Latin coverage) — the primary (slot 0) must always win when it
-    // covers, proving `select_face`'s chain-order preference isn't
-    // just "whichever face happens to be the only option."
     let noto = noto_hebrew();
     assert!(
         noto.covers("abc"),
@@ -97,11 +77,6 @@ fn primary_preference_never_swaps_when_primary_covers() {
 
 #[test]
 fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
-    // Finding 2: cmap presence alone doesn't prove shaping success.
-    // Simulate a wrong initial pick (slot 0 = FiraSans, which has no
-    // Hebrew coverage) shaping Hebrew text — `shape_validated` must
-    // detect the resulting `.notdef` and retry the rest of the chain,
-    // landing on the face that actually shapes it (slot 1).
     let chain = vec![fira_regular(), noto_hebrew()];
     let (slot, run) = shape_validated(
         &chain,
@@ -124,33 +99,12 @@ fn shape_validated_falls_through_when_the_initial_pick_shapes_to_notdef() {
 
 #[test]
 fn shape_validated_keeps_the_initial_pick_when_it_already_shapes_cleanly() {
-    // The common case: no fallthrough needed, no wasted extra shapes
-    // beyond the one validation pass.
     let chain = vec![fira_regular(), noto_hebrew()];
     let (slot, run) = shape_validated(&chain, 0, "abc", 0, &Style::regular(16.0));
     assert_eq!(slot, 0);
     assert!(run.glyphs.iter().all(|g| g.id != GlyphId(0)));
 }
 
-/// Review follow-up A: assert a default-ignorable control embedded
-/// in otherwise-primary-covered text neither surfaces a visible
-/// `.notdef` from `shape_validated`'s own check, nor pushes it past
-/// the primary face. NOTE (verified via a direct glyph-buffer probe):
-/// `HarfRust` substitutes a real, non-`.notdef` placeholder glyph for
-/// CGJ/WJ/VS17 rather than emitting `.notdef` for them at all in this
-/// fixture pairing, so this specific assertion pair holds under BOTH
-/// the pre-fix 4-char hardcoded classifier and the new range-table one
-/// — it is not, by itself, a discriminating regression test for this
-/// particular fixture/shaper combination. The discriminating tests for
-/// finding A are the `covers_treats_*_as_transparent` tests in
-/// `shaper/covers_tests.rs`, verified via a raw charmap probe showing
-/// `FiraSans`'s cmap genuinely lacks CGJ/WJ/VS17 entries — `covers()`
-/// returning `false` for them under the old classifier is confirmed,
-/// not assumed. This test is kept because it is still a real,
-/// non-trivial assertion about current `shape_validated` behavior for
-/// these inputs (it would fail if a future change broke the
-/// no-extra-attempts contract), just not proof of the classifier fix
-/// specifically.
 fn assert_ignorable_control_stays_bounded(control: char) {
     let fragment = format!("a{control}b");
     let chain = vec![fira_regular(), noto_hebrew()];
@@ -183,9 +137,6 @@ fn shape_validated_bounded_for_supplementary_variation_selector() {
     assert_ignorable_control_stays_bounded('\u{E0100}'); // VS17
 }
 
-/// A face registered in `DefaultFonts::fallbacks` joins the per-run
-/// chain: Hebrew shapes through it without smuggling the face into a
-/// named family slot.
 #[test]
 fn registered_fallback_face_joins_the_chain() {
     let mut collection = super::FontCollection::with_default();
@@ -202,5 +153,17 @@ fn registered_fallback_face_joins_the_chain() {
         emoji_last.id(),
         hebrew.id(),
         "emoji stays the last resort, after registered fallbacks",
+    );
+}
+
+#[test]
+fn bundled_default_family_resolves_weight_500_to_medium() {
+    let collection = FontCollection::with_default();
+    let regular = collection.select_weight("sans", 400);
+    let medium = collection.select_weight("sans", 500);
+    assert_ne!(
+        regular.id(),
+        medium.id(),
+        "bundled sans family must contain a distinct Medium face"
     );
 }

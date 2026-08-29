@@ -1,17 +1,5 @@
-//! Generational slot arena.
-//!
-//! A small stand-in for `slotmap` with no dependencies. Each `Key`
-//! carries its slot index plus the slot's generation at insertion
-//! time. `remove` bumps the slot's generation so stale keys return
-//! `None` on subsequent lookups.
-
 use core::marker::PhantomData;
 
-/// A generational key into an [`Arena<T>`].
-///
-/// Two keys with the same index but different generations never
-/// resolve to the same value. Keys are `Copy` and carry no runtime
-/// pointer; they are safe to hold across arena mutations.
 pub(crate) struct Key<T> {
     index: u32,
     generation: u32,
@@ -57,25 +45,14 @@ impl<T> core::fmt::Debug for Key<T> {
 }
 
 impl<T> Key<T> {
-    /// Extract the raw index component for cross-thread identity use.
-    ///
-    /// Paired with [`Key::generation_for_sendable`] and
-    /// [`Key::from_sendable`] to let a specific typed wrapper (today:
-    /// `SendableSignal<T>` in `signal.rs`) carry an arena identity
-    /// across a thread boundary without exposing the full `Key`.
     pub(crate) const fn index_for_sendable(self) -> u32 {
         self.index
     }
 
-    /// Extract the raw generation component. See
-    /// [`Key::index_for_sendable`].
     pub(crate) const fn generation_for_sendable(self) -> u32 {
         self.generation
     }
 
-    /// Re-construct a key from the raw `(index, generation)` produced
-    /// by [`Key::index_for_sendable`] and
-    /// [`Key::generation_for_sendable`]. See [`Key::index_for_sendable`].
     pub(crate) const fn from_sendable(index: u32, generation: u32) -> Self {
         Self {
             index,
@@ -90,7 +67,6 @@ struct Slot<T> {
     value: Option<T>,
 }
 
-/// A generational slot storage.
 pub(crate) struct Arena<T> {
     slots: Vec<Slot<T>>,
     free: Vec<u32>,
@@ -160,8 +136,6 @@ impl<T> Arena<T> {
         self.get(key).is_some()
     }
 
-    /// Iterate over every live key in the arena, in insertion-slot
-    /// order. Used by the debug tree dump to locate root owners.
     pub(crate) fn keys(&self) -> impl Iterator<Item = Key<T>> + '_ {
         self.slots.iter().enumerate().filter_map(|(index, slot)| {
             if slot.value.is_some() {

@@ -1,11 +1,8 @@
-//! Style atom resolver.
-
 use crate::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
     TextLineHeight, TextStyle, Theme, Tone,
 };
 
-/// Resolves style atoms against a theme + per-node tone.
 #[derive(Debug, Clone, Copy)]
 pub struct StyleEngine<'theme> {
     theme: &'theme Theme,
@@ -13,39 +10,22 @@ pub struct StyleEngine<'theme> {
 }
 
 impl<'theme> StyleEngine<'theme> {
-    /// Create a resolver over a theme snapshot, defaulting to the
-    /// neutral tone.
     #[must_use]
     pub const fn new(theme: &'theme Theme) -> Self {
         Self::with_tone(theme, Tone::Neutral)
     }
 
-    /// Create a resolver over a theme snapshot bound to `tone`.
-    ///
-    /// The tone selects which scale on the theme
-    /// [`BgToneStep`](StyleAtom::BgToneStep) /
-    /// [`FgToneStep`](StyleAtom::FgToneStep) /
-    /// [`BorderToneStep`](StyleAtom::BorderToneStep) atoms resolve
-    /// against.
     #[must_use]
     pub const fn with_tone(theme: &'theme Theme, tone: Tone) -> Self {
         Self { theme, tone }
     }
 
-    /// Apply theme-backed visual atoms into the render sink.
     pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
         for atom in atoms {
             (*self).apply_atom(*atom, render);
         }
     }
 
-    /// Apply theme-backed visual atoms, consulting `overlay` for
-    /// animator-driven numeric values.
-    ///
-    /// W5.1b — when `overlay.value_for(kind)` returns `Some(v)`, the
-    /// resolved render style uses `v` instead of the literal atom
-    /// value. Used by the renderer when a binding has attached
-    /// animators (DR-053 §5).
     pub fn apply_with_overlay(
         &self,
         atoms: &[StyleAtom],
@@ -57,19 +37,16 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
-    /// Apply typography atoms into the text style sink.
-    #[allow(clippy::unused_self)]
+    #[allow(clippy::unused_self, reason = "intentional, reviewed trade-off")]
     pub fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
         apply_text_atoms(atoms, text);
     }
 
-    /// Resolve a tone-step atom through this engine's theme + tone.
     #[must_use]
     const fn tone_step(&self, step: u8) -> Rgba8 {
         self.theme.scale(self.tone.scale_role()).step(step)
     }
 
-    /// Resolve a colour atom through this engine's theme.
     #[must_use]
     pub fn resolve_color(&self, color: ColorAtom) -> Rgba8 {
         match color {
@@ -164,10 +141,6 @@ impl<'theme> StyleEngine<'theme> {
         overlay: &dyn AnimatorOverlay,
         render: &mut RenderStyle,
     ) {
-        // Only the *render-visible* numeric atoms get overlaid here.
-        // Layout-flowing atoms (padding, gap, font size, line height)
-        // are owned by the layout engine; the overlay reaches those via
-        // the layout-side seam landing in a follow-up phase.
         match atom {
             StyleAtom::Opacity(literal) => {
                 let resolved = overlay
@@ -210,9 +183,6 @@ impl<'theme> StyleEngine<'theme> {
     }
 }
 
-/// Encode an animator-driven `f32` back into the `u16` representation
-/// used by [`StyleAtom::Opacity`] / [`RenderStyle::opacity`]
-/// (`value * 10_000` clamped to `0..=u16::MAX`).
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -222,9 +192,6 @@ fn encode_opacity(value: f32) -> u16 {
     value.clamp(0.0, f32::from(u16::MAX)).round() as u16
 }
 
-/// Encode an animator-driven `f32` back into the `i16`-px representation
-/// used by [`StyleAtom::BorderRadius`] / [`Px`] (rounded, clamped to
-/// `0..=i16::MAX` — negative radii are not meaningful).
 #[allow(
     clippy::cast_possible_truncation,
     reason = "value is clamped to 0..=i16::MAX before the cast — fits losslessly in i16"
@@ -234,10 +201,6 @@ fn encode_px(value: f32) -> Px {
     Px(clamped as i16)
 }
 
-/// Apply typography atoms into the text style sink. Typography atoms
-/// carry their values directly (no theme resolution), so this is a free
-/// function shared by [`StyleEngine::apply_text`] and
-/// [`TextStyle::layered_over_binding`](crate::TextStyle::layered_over_binding).
 pub(crate) fn apply_text_atoms(atoms: &[StyleAtom], text: &mut TextStyle) {
     for atom in atoms {
         apply_text_atom(*atom, text);

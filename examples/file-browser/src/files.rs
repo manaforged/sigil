@@ -68,7 +68,7 @@ fn home_entries() -> Vec<MockFile> {
             preview: "(binary preview unavailable — switch to the Hex tab)",
         },
         MockFile {
-            path: "/home/user/music/the author-theme.flac",
+            path: "/home/demo/music/theme.flac",
             size: 28_104_293,
             kind: "audio/flac",
             modified: "2026-05-18 14:00",
@@ -171,7 +171,10 @@ const fn synth_byte(seed: usize, index: usize) -> u8 {
     let mixed = seed
         .wrapping_mul(2_654_435_761)
         .wrapping_add(index.wrapping_mul(40_503));
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "values are bounded to the target range before the cast"
+    )]
     let truncated = (mixed >> 16) as u8;
     truncated
 }

@@ -1,4 +1,4 @@
-//! Per-run font fallback chain integration tests (Wave 4, W4.2).
+//! Per-run font fallback chain integration tests.
 //!
 //! `FiraSans` (the bundled sans primary) has no Hebrew coverage; these
 //! tests prove a mixed Latin+Hebrew paragraph resolves the Hebrew run

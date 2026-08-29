@@ -1,10 +1,3 @@
-//! Resolve a node's style into paint values.
-//!
-//! Both hosts land here: the GPU renderer turns the result into draw
-//! commands, the cell host turns it into colours and attributes. Resolving
-//! in one place is what makes a terminal frame and a window frame agree on
-//! what a node looks like.
-
 use sigil_kernel::{Node, NodeId, NodeType};
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
@@ -18,7 +11,6 @@ enum UnsupportedSlot {
     UnknownThemeRef(&'static str),
 }
 
-/// Return whether a given unsupported style warning has fired.
 #[must_use]
 pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> usize {
     let Some(warned) = WARNED_UNSUPPORTED.get() else {
@@ -30,7 +22,6 @@ pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> u
     usize::from(warned.contains(&(UnsupportedSlot::UnknownThemeRef(token), id)))
 }
 
-/// Resolve `node`'s paint values against its theme and inherited text colour.
 #[must_use]
 pub fn render_style_for(
     id: NodeId,
@@ -41,12 +32,6 @@ pub fn render_style_for(
     let mut render = RenderStyle::default();
     let theme = node.get_extension::<Theme>().unwrap_or(inherited);
     if matches!(node.kind, NodeType::Text { .. }) {
-        // CSS-style color cascade: a bare text node paints the nearest
-        // ancestor's resolved text color (a container's `text-*` class,
-        // including reactive `class_when` atoms), falling back to the
-        // theme's on-surface at the root. Before this, container text
-        // classes never reached child glyphs — chip tones only looked
-        // right because on-surface == gray-12 in the light theme.
         render.text_color = Some(inherited_text.unwrap_or(theme.on_surface));
     }
     let Some(binding) = node.get_extension::<StyleBinding>() else {
@@ -64,16 +49,8 @@ pub fn render_style_for(
     for reactive in binding.reactive_channels() {
         apply_atoms(engine, reactive, &mut render, id, node);
     }
-    // DS2 Phase 2: per-instance user state overlay applies last so
-    // last-atom-wins gives user `.hover()` / `.pressed()` / `.focus()`
-    // / `.disabled()` atoms priority over widget-baked atoms.
     apply_atoms(engine, binding.state_overlay_atoms(), &mut render, id, node);
 
-    // W5.1b: replay the same atom set through the animator overlay so
-    // any driven numeric value wins over the literal atom value. The
-    // unknown-theme-ref warning has already been emitted by the
-    // literal pass above; this pass only updates the resolved render
-    // values.
     if let Some(overlay) = binding.animator_overlay() {
         engine.apply_with_overlay(binding.static_slice(), overlay, &mut render);
         engine.apply_with_overlay(binding.dynamic_slice(), overlay, &mut render);
@@ -85,12 +62,8 @@ pub fn render_style_for(
     render
 }
 
-/// Resolve `node`'s typography, layered over the inherited `base`.
 #[must_use]
 pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle {
-    // DR-056: seed from the inherited typography carried down the scene
-    // walk, mirroring the layout engine's measurement resolution, then
-    // layer this node's own atoms (own-wins).
     let mut style = base.clone();
     let Some(binding) = node.get_extension::<StyleBinding>() else {
         return style;
@@ -121,9 +94,6 @@ fn apply_atoms(
     node: &Node,
 ) {
     engine.apply(atoms, render);
-    // Second pass over the same slice, for a development diagnostic. Resolve
-    // runs for every node of every frame, so a release build does not pay for
-    // it — an unknown token is an authoring mistake, caught while authoring.
     if cfg!(debug_assertions) {
         for atom in atoms {
             if let StyleAtom::UnknownThemeRef(token) = atom {

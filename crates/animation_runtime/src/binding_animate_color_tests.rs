@@ -20,11 +20,6 @@ fn srgb_roundtrip_at_extremes() {
 
 #[test]
 fn theme_snapshot_resolves_scale_step_tokens() {
-    // Regression for adversarial review 2026-05-21:
-    // animated transitions of `bg-accent-9`, `bg-success-3`, etc.
-    // previously fell through to `missing_token_fallback`. They
-    // must now resolve to the same colour the static
-    // `Theme::resolve_color` path picks.
     let theme = Theme::default();
     let snap = ThemeSnapshot::from_theme(&theme);
     let cases = [
@@ -77,18 +72,12 @@ fn lerp_endpoint_t1_equals_b() {
 
 #[test]
 fn lerp_midpoint_between_endpoints() {
-    // Midpoint of (64, 128, 200) and (200, 64, 32) is between the
-    // endpoints per-channel — linear-light interpolation tolerates
-    // a ~2 LSB drift after the sRGB roundtrip.
     let a = rgba(64, 128, 200, 255);
     let b = rgba(200, 64, 32, 128);
     let mid = lerp_rgba8(a, b, 0.5);
-    // Each channel sits strictly between the endpoint values (or
-    // exactly equal when endpoints coincide).
     assert!(mid.r >= a.r.min(b.r) && mid.r <= a.r.max(b.r));
     assert!(mid.g >= a.g.min(b.g) && mid.g <= a.g.max(b.g));
     assert!(mid.b >= a.b.min(b.b) && mid.b <= a.b.max(b.b));
-    // Alpha midpoint of 255 and 128 = 192 ± 1.
     assert!(mid.a.abs_diff(192) <= 1, "alpha midpoint drift: {}", mid.a);
 }
 
@@ -102,10 +91,6 @@ fn lerp_t_clamps_outside_unit_interval() {
 
 #[test]
 fn lerp_linear_space_is_brighter_than_srgb_at_midpoint() {
-    // Linear-light midpoint of black and white (which is sRGB
-    // 188) is visibly brighter than the naive sRGB midpoint (128).
-    // This is the contract the renderer relies on — verifying it
-    // catches accidental sRGB-space lerp regressions.
     let mid = lerp_rgba8(rgba(0, 0, 0, 255), rgba(255, 255, 255, 255), 0.5);
     assert!(
         mid.r >= 180 && mid.r <= 195,

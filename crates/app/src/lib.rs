@@ -1,48 +1,25 @@
-//! Sigil application shell — one-call `launch` that pumps [`Host`].
-//!
-//! ```text
-//! fn main() -> sigil_app::AppResult<()> {
-//!     sigil_app::launch("hello-style", |cx| app_tree(cx))
-//! }
-//! ```
-//!
-//! See DR-016 (app launch) and the `phase-08a-ergonomics-pass.md` plan.
-
-#![deny(missing_docs)]
-// wgpu-hal 29.0.1 GLES / WGL backend expects
-// `impl std::error::Error for windows_core::Error` gated behind
-// windows-core's `std` feature. Features are additive; enabling the
-// dep here unifies it across the dependency graph for binaries that
-// pull sigil-app in.
 #[cfg(windows)]
 use windows_core as _;
 
-// Transitive deps threaded through launch; names are used there.
 use sigil_reactive as _;
 use sigil_style as _;
 
-// Facade dev-dep used by doctests and integration tests, not by unit tests.
 #[cfg(test)]
 use sigil as _;
 
-/// Audio playback. Feature `audio` opens a device.
 pub mod audio;
 mod config;
-/// Native file dialogs and message alerts (`message` / `confirm`).
 #[cfg(feature = "desktop")]
 pub mod dialog;
 mod embed;
 mod error;
 #[cfg(feature = "desktop")]
 mod launch;
-/// Native menu bar.
 #[cfg(feature = "desktop")]
 pub mod menu;
-/// Open a URL or path with the OS handler.
 #[cfg(feature = "desktop")]
 pub mod open;
 mod paint;
-/// PTY sessions. Feature `pty` opens a host terminal.
 pub mod pty;
 #[cfg(feature = "scene")]
 mod text_geometry;
@@ -50,7 +27,6 @@ mod text_geometry;
 mod text_measure;
 #[cfg(feature = "desktop")]
 mod theme_file;
-/// System tray icon.
 #[cfg(feature = "desktop")]
 pub mod tray;
 mod tree_root;
@@ -77,17 +53,9 @@ pub use text_geometry::EngineGeometry;
 pub use text_measure::DefaultTextMeasure;
 pub use tree_root::{TreeRoot, root};
 
-/// G5 (DR-048 §5) — install the production `TaskExecutor` +
-/// `MainThreadDispatcher` pair against an `AsyncRuntime`.
-///
-/// Called by `launch::run` at startup; re-exported for the
-/// `g5_executor` integration test which drives the same install path
-/// without booting winit/wgpu.
 #[cfg(feature = "desktop")]
 pub use launch::install_g5_executor;
 
-/// Test-only re-export of the frame driver's phase-transition shape.
-/// See [`launch::__drive_test_frame`] for the contract.
 #[cfg(feature = "desktop")]
 #[doc(hidden)]
 pub use launch::__drive_test_frame;

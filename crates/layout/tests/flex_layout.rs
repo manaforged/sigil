@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration smoke test for the P0.3 flex layout body.
+//! Integration smoke test for the flex layout body.
 //!
 //! The substantive flex tests (43 cases covering direction, basis,
 //! grow/shrink, wrap, justify-content, align-items, align-self,

@@ -1,14 +1,3 @@
-//! Cache-key for [`LayoutEngine::compute`].
-//!
-//! Two invalidation channels feed the key:
-//!   * `cx_instance` + `cx_generation` catch tree mutations routed
-//!     through `Cx` (mirrors the Phase 10 / DR-023 design).
-//!   * `input_signature` walks the subtree and hashes layout-affecting
-//!     inputs (node kind, text content, layout-affecting style atoms).
-//!     Reactive signal writes do not bump `Cx::mutation_generation`, so
-//!     the content-hash is the only mechanism that catches text/style
-//!     changes coming straight from `Signal::set`.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use std::hash::{Hash as _, Hasher as _};
@@ -72,21 +61,6 @@ impl DimKey {
 }
 
 pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
-    // ε-cache: fold each node's `Node::version()` into the tree
-    // signature instead of re-hashing the full style binding atoms.
-    // The kernel bumps `version` on every mutation that could
-    // possibly change layout output, so the version alone is a sound
-    // proxy for "the deep style state at this node". For 101k-node
-    // corpora this drops the signature pass from ~5 ms (AHashMap
-    // probes + atom hashing per node) to ~600 µs (slotmap read +
-    // version hash per node).
-    //
-    // Reactive text content can mutate without going through any
-    // kernel mutation path — `Signal::set` does not bump
-    // `Node::version` — so we still hash the materialised text
-    // payload for `NodeType::Text { content: Reactive(_) }` nodes.
-    // Static text is captured in `Node::version` at the time it
-    // was attached.
     let mut hasher = AHasher::default();
     let mut stack = SmallVec::<[NodeId; 64]>::new();
     stack.push(root);
@@ -105,16 +79,6 @@ pub(crate) fn layout_input_signature(cx: &Cx, root: NodeId) -> u64 {
     hasher.finish()
 }
 
-/// True when this node's layout input can change without bumping
-/// `Node::version` — reactive position, reactive style, or wrapping /
-/// indefinite non-static text.
-///
-/// Membership must key on channel PRESENCE (`has_reactive`), not on the
-/// channel's current content: a `style_reactive` channel that starts
-/// empty (`Display::None → []`) can later produce a layout-affecting
-/// slice, and content-keyed membership drops the node from tracking in
-/// exactly that initial state — the cache then never sees the change and
-/// returns a stale hit for a now-hidden node.
 pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
     if node.get_extension::<crate::ReactivePosition>().is_some() {
         return true;
@@ -135,7 +99,6 @@ pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
     )
 }
 
-/// Hash the unversioned layout inputs of `ids` in key order.
 pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &AHashSet<DefaultKey>) -> u64 {
     let mut keys: SmallVec<[DefaultKey; 8]> = ids.iter().copied().collect();
     keys.sort_unstable();
@@ -151,8 +114,6 @@ pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &AHashSet<DefaultKey>) -> 
     hasher.finish()
 }
 
-/// Fold unversioned layout inputs into `hasher`. Returns `true` when
-/// the node is `display: none` and descendants must be skipped.
 pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool {
     let hidden = node.get_extension::<StyleBinding>().is_some_and(|binding| {
         for reactive in binding.reactive_channels() {
@@ -190,8 +151,3 @@ fn definite_width(node: &Node) -> bool {
 fn hash_text_content(content: &TextContent, hasher: &mut AHasher) {
     content.resolve().hash(hasher);
 }
-
-// ε-cache: the per-atom hashing helpers were retired alongside the
-// switch to version-based signatures (atoms feed into `Node::version`
-// indirectly via the style binding's `attach`, so re-hashing them per
-// frame is redundant).

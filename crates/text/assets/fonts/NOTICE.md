@@ -7,6 +7,7 @@ Sigil's own license to them; each remains under the OFL.
 | File | Family | Copyright | Reserved Font Name |
 |------|--------|-----------|--------------------|
 | `FiraSans-Regular.ttf` | Fira Sans | Copyright © 2014, The Mozilla Foundation and Telefonica S.A. | "Fira" |
+| `FiraSans-Medium.ttf` | Fira Sans Medium | Copyright © 2012-2015, The Mozilla Foundation and Telefonica S.A. | "Fira" |
 | `CascadiaMono-Regular.ttf` | Cascadia Mono | Copyright © Microsoft Corporation | "Cascadia" |
 | `NotoColorEmoji-subset.ttf` | Noto Color Emoji | Copyright © Google LLC | "Noto" |
 

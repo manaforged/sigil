@@ -177,7 +177,11 @@ impl BoardState {
 }
 
 /// Stable column titles for tab labels and the status line.
-#[allow(unreachable_pub, clippy::redundant_pub_crate)]
+#[allow(
+    unreachable_pub,
+    clippy::redundant_pub_crate,
+    reason = "demo harness; deliberate"
+)]
 pub(crate) const fn column_title(index: usize) -> &'static str {
     match index {
         COL_TODO => "Todo",

@@ -20,8 +20,6 @@ fn fresh_runtime<F: FnOnce()>(name: &'static str, body: F) {
 #[test]
 fn unknown_transition_id_logs_warning() {
     fresh_runtime("w5_1_unknown_transition_id_logs_warning", || {
-        // ComponentId namespace specific to this test so a parallel
-        // test running the same scenario doesn't inflate our count.
         let component_id = 0xA111_BEEF_DEAD_0001_u64;
         let before = miss_counter::for_component(component_id);
 
@@ -41,8 +39,6 @@ fn unknown_transition_id_logs_warning() {
             before + 1,
             "registry miss must bump the per-component counter",
         );
-        // The crate-wide warning constant is documented public —
-        // touch it so the symbol stays linked.
         assert_ne!(ANIMATION_REGISTRY_MISS, 0);
     });
 }
@@ -50,8 +46,6 @@ fn unknown_transition_id_logs_warning() {
 #[test]
 fn attached_animator_drives_signal() {
     fresh_runtime("w5_1_attached_animator_drives_signal", || {
-        // Use a tween so the value progression is deterministic
-        // across runs at fixed dt.
         let atoms = [
             StyleAtom::Opacity(5_000),
             StyleAtom::Transition(presets::DEFAULT),
@@ -68,8 +62,6 @@ fn attached_animator_drives_signal() {
 
         attached.retarget_for_state(StateSlot::Hovered, &atoms);
 
-        // Tick a few frames; expect the bound signal to move from
-        // 5_000 toward 10_000.
         for _ in 0..6 {
             tick(DT_60HZ);
         }
@@ -99,10 +91,7 @@ fn state_slot_transition_retargets_animator() {
         let mut attached = install_animators(&atoms, state_style, 2);
         assert_eq!(attached.len(), 1);
 
-        // Default → Hovered: target rises to 12.
         attached.retarget_for_state(StateSlot::Hovered, &atoms);
-        // Run a few ticks but don't drive to settled — proves the
-        // animator is moving without snapping.
         for _ in 0..4 {
             tick(DT_60HZ);
         }
@@ -113,15 +102,11 @@ fn state_slot_transition_retargets_animator() {
              (got {after_hover})",
         );
 
-        // Hovered → Pressed: target retargets to 2 *without* snapping.
         attached.retarget_for_state(StateSlot::Pressed, &atoms);
         for _ in 0..4 {
             tick(DT_60HZ);
         }
         let after_press = attached.iter().next().unwrap().signal.peek();
-        // The signal MAY temporarily overshoot upward as the tween
-        // re-arms; what matters is the *direction* of travel is
-        // toward the new (lower) target.
         assert!(
             after_press < after_hover,
             "after pressed-target the signal must move *toward* the \
@@ -144,8 +129,6 @@ fn settled_binding_no_longer_ticks() {
         assert_eq!(attached.len(), 1);
         attached.retarget_for_state(StateSlot::Hovered, &atoms);
 
-        // Tween default = 200 ms. At 60 Hz that's ~12 ticks. Run
-        // generously, then assert eviction.
         let mut settled = false;
         for _ in 0..120 {
             tick(DT_60HZ);
@@ -156,7 +139,6 @@ fn settled_binding_no_longer_ticks() {
         }
         assert!(settled, "tween default must settle within 2 s of ticks");
 
-        // One more tick after settled removes from active set.
         tick(DT_60HZ);
         assert_eq!(
             active_count(),
@@ -191,8 +173,6 @@ fn spring_preset_drives_animator_when_id_resolves() {
         let attached = install_animators(&atoms, state_style, 5);
         assert_eq!(attached.len(), 1, "SMOOTH spring resolves → one animator");
 
-        // The registry should have returned a Spring config; verify
-        // by looking it up via the public config surface.
         let config = crate::config(presets::SMOOTH).expect("SMOOTH preset");
         assert!(matches!(
             config,

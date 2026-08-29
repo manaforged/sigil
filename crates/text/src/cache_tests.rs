@@ -38,7 +38,6 @@ fn different_style_misses_even_when_text_matches() {
     let p = make_paragraph("Hello", &style_a);
     cache.insert("Hello", None, &style_a, p);
 
-    // Same text, different style → must be a miss (different size).
     let hit = cache.get("Hello", None, &style_b);
     assert!(
         hit.is_none(),
@@ -48,32 +47,16 @@ fn different_style_misses_even_when_text_matches() {
 
 #[test]
 fn collision_on_same_hashed_key_returns_miss_not_stale_layout() {
-    // Force a collision by inserting a value under a key we then
-    // probe with a *different* text whose hash deliberately matches.
-    // We cannot easily produce a natural ahash collision, so we
-    // shortcut: insert under text A and probe with text B after
-    // overwriting the cache map's key with the same hash slot.
     let mut cache = ParagraphCache::new();
     let style = style_at(16.0);
     let p_a = make_paragraph("text-A", &style);
     cache.insert("text-A", None, &style, p_a);
 
-    // Construct the *same key value* but for a different text by
-    // hand: take the existing key + entry, re-insert under a tuple
-    // whose hashed key matches but whose stored `text` is "text-B"
-    // — except `text` on the entry stays "text-A". Probing with
-    // "text-B" must miss (verification rejects the stored entry).
-    // We achieve this by directly swapping the entry's stored text
-    // to simulate the post-collision state.
     let key = ParagraphCache::key("text-A", None, &style);
     if let Some(entry) = cache.map.get_mut(&key) {
-        // Simulate a collision: same slot, different original text.
         entry.text = String::from("text-B");
     }
 
-    // Probe with the original text — verification must reject the
-    // collided entry rather than return text-B's paragraph for a
-    // "text-A" lookup.
     let hit_a = cache.get("text-A", None, &style);
     assert!(
         hit_a.is_none(),

@@ -1,8 +1,3 @@
-//! Unit tests for the skrifa-backed shaper (G1.3).
-//!
-//! Fixture fonts live in `crates/text/tests/fixtures/` and are
-//! `include_bytes!`-loaded so the unit tests run from any cwd.
-
 #![allow(
     clippy::unwrap_used,
     clippy::indexing_slicing,
@@ -18,31 +13,19 @@ use super::{FeatureTag, Font, Script, Shaper, Style, TextSegment, classify_segme
 use crate::glyph::GlyphId;
 
 impl<'a> TextSegment<'a> {
-    /// Construct an LTR segment over text.
     pub(crate) const fn ltr(text: &'a str) -> Self {
         Self { text, level: 0 }
     }
 }
 
-/// Codepoint classification kept for downstream (G1.5 atlas routing).
-///
-/// G1.3 does not act on the result. Skrifa returns the correct
-/// advance for Latin, CJK, and emoji uniformly, but this pins the
-/// detection contract so the followup atlas-routing dispatch has a
-/// stable surface.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CodepointClass {
-    /// Standard Latin / Greek / Cyrillic etc.
     Regular,
-    /// CJK Symbols and Punctuation (U+3000..U+303F).
     CjkPunctuation,
-    /// Half/Full-width Forms (U+FF00..U+FFEF).
     HalfFullWidth,
-    /// Emoji codepoint (BMP + supplementary blocks).
     Emoji,
 }
 
-/// Classify the lead codepoint of a grapheme.
 pub(crate) fn classify(ch: char) -> CodepointClass {
     let cp = ch as u32;
     if matches!(cp, 0x3000..=0x303F) {
@@ -56,14 +39,6 @@ pub(crate) fn classify(ch: char) -> CodepointClass {
     }
 }
 
-/// Cheap emoji-block check covering the high-frequency ranges.
-///
-/// Per DR-044, pulling unicode-properties for the well-typed
-/// `EMOJI_PRESENTATION` query is overkill for G1.3. The codepoint
-/// ranges below cover Misc Symbols + Dingbats and the SMP emoji
-/// blocks, which is what the test corpus needs. G1.5 can swap in
-/// the full property table when the atlas-routing surface needs
-/// stricter coverage.
 const fn is_emoji(cp: u32) -> bool {
     matches!(
         cp,
@@ -77,7 +52,6 @@ const fn is_emoji(cp: u32) -> bool {
 }
 
 impl Script {
-    /// Whether this script needs `HarfRust` to shape correctly.
     pub(crate) const fn is_complex(self) -> bool {
         matches!(
             self,
@@ -143,9 +117,6 @@ fn hello_word_is_five_glyphs_monotonic() {
         assert_ne!(g.id, GlyphId(0));
         assert!(g.advance > 0.0);
     }
-    // bbox width must equal the pen's total travel — Σadvance — which
-    // holds whether or not kerning shifted individual advances, since
-    // bbox is derived from the same per-glyph advances.
     let total: f32 = run.glyphs.iter().map(|g| g.advance).sum();
     assert!(
         (run.bbox.w - total).abs() < 0.01,
@@ -172,10 +143,6 @@ fn size_doubles_advances_scale_proportional() {
 
 #[test]
 fn bold_glyph_metrics_differ_from_regular() {
-    // Same codepoint, different fonts — bold typically resolves to the
-    // same glyph index *within* its own font, but the advance and the
-    // per-font glyph id stream differ. The robust check is that bold
-    // advance is ≥ regular advance for at least one letter in a word.
     let reg_font = fira_regular();
     let bold_font = fira_bold();
     let reg = Shaper::new(&reg_font).shape(&TextSegment::ltr("Hello"), &Style::regular(16.0));
@@ -215,10 +182,6 @@ fn italic_glyph_stream_differs_from_regular() {
         },
     );
     assert_eq!(reg.glyphs.len(), it.glyphs.len());
-    // At least one glyph id must differ — italic 'a' is a stylistic
-    // variant in FiraSans-Italic so the cmap maps to a different gid
-    // than FiraSans-Regular for some letters (or, at minimum, the
-    // advances differ as a quick robustness check).
     let any_diff = reg
         .glyphs
         .iter()
@@ -229,8 +192,6 @@ fn italic_glyph_stream_differs_from_regular() {
 
 #[test]
 fn notdef_for_unknown_codepoint_in_fira() {
-    // FiraSans does not cover U+5B57 (漢-related ideograph), so the
-    // shaper must return .notdef glyph id 0 and advance 0.
     let font = fira_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{5B57}"), &Style::regular(16.0));
     assert_eq!(run.glyphs.len(), 1);
@@ -240,7 +201,6 @@ fn notdef_for_unknown_codepoint_in_fira() {
 #[test]
 #[ignore = "G1.3 followup: needs NotoSansCJK fixture font (current NotoSans-Regular is Latin/extended-Latin only). Logic + classify() path are covered by classify_emoji_block_check; unignore after adding crates/text/tests/fixtures/NotoSansCJKjp-Regular.otf."]
 fn cjk_punctuation_classifies_and_routes_through_noto() {
-    // U+3001 IDEOGRAPHIC COMMA — NotoSansCJK covers it.
     assert_eq!(classify('\u{3001}'), CodepointClass::CjkPunctuation);
     let font = noto_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{3001}"), &Style::regular(16.0));
@@ -264,10 +224,6 @@ fn classify_emoji_block_check() {
 
 #[test]
 fn emoji_passthrough_produces_glyph_with_correct_cluster() {
-    // The fixture fonts don't include emoji glyphs, so the shaper
-    // routes 🎉 (4 UTF-8 bytes, one grapheme cluster) to .notdef but
-    // still emits a single glyph with cluster=0 — the R7 atlas (G1.5)
-    // routes off this gid.
     let font = fira_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("\u{1F389}"), &Style::regular(16.0));
     assert_eq!(
@@ -283,7 +239,6 @@ fn emoji_passthrough_produces_glyph_with_correct_cluster() {
 fn mixed_latin_and_cjk_punctuation_cluster_order() {
     let font = noto_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("a\u{3002}b"), &Style::regular(16.0));
-    // 3 grapheme clusters: 'a' at 0, '。' (3 UTF-8 bytes) at 1, 'b' at 4.
     assert_eq!(run.glyphs.len(), 3);
     assert_eq!(run.glyphs[0].cluster, 0);
     assert_eq!(run.glyphs[1].cluster, 1);
@@ -296,15 +251,6 @@ fn mixed_latin_and_cjk_punctuation_cluster_order() {
 #[test]
 #[cfg(feature = "shaping-complex")]
 fn combining_mark_composes_into_single_glyph_via_harfrust() {
-    // 'e' + COMBINING ACUTE ACCENT (U+0301) is one grapheme cluster.
-    // Wave 4: `Shaper::shape` routes Latin through `HarfRust` by
-    // default, and `HarfRust`'s Unicode normalization step canonically
-    // composes this into precomposed 'é' (U+00E9) before shaping —
-    // FiraSans covers 'é' directly, so the mark is folded into the
-    // base glyph's outline rather than emitted as a separate
-    // zero-advance position (the behaviour the owned-only shaper
-    // below has when the feature is off). This is the intentional
-    // upgrade this test pins.
     let font = fira_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
     assert_eq!(
@@ -324,11 +270,6 @@ fn combining_mark_composes_into_single_glyph_via_harfrust() {
 #[test]
 #[cfg(not(feature = "shaping-complex"))]
 fn combining_mark_clusters_with_base_glyph_owned_shaper() {
-    // Feature-off fallback: the owned skrifa shaper doesn't normalize
-    // or apply GPOS mark attachment, so 'e' + COMBINING ACUTE ACCENT
-    // stays 2 glyph positions sharing cluster=0, with the mark at
-    // zero advance. See `combining_mark_composes_into_single_glyph_via_harfrust`
-    // for the feature-on (default) behaviour.
     let font = fira_regular();
     let run = Shaper::new(&font).shape(&TextSegment::ltr("e\u{0301}"), &Style::regular(16.0));
     assert_eq!(run.glyphs.len(), 2, "base + combining = 2 glyph positions");
@@ -356,7 +297,6 @@ fn ltr_segment_clusters_are_byte_indices_monotonic() {
 
 #[test]
 fn shaper_is_send_sync() {
-    // Static assertion — fails to compile if Shaper loses Send + Sync.
     const fn assert_send_sync<T: Send + Sync>() {}
     assert_send_sync::<Shaper<'_>>();
     assert_send_sync::<Font>();
@@ -364,7 +304,6 @@ fn shaper_is_send_sync() {
 
 #[test]
 fn feature_tag_round_trips_bytes() {
-    // Style carries OT feature tags so G1.4 engine can request liga/kern.
     let tag = FeatureTag(*b"liga");
     assert_eq!(tag.0, *b"liga");
 }
@@ -378,52 +317,42 @@ fn invalid_font_data_is_rejected() {
 
 #[test]
 fn classify_segment_script_covers_g16_routing_cases() {
-    // ASCII Latin
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("abc")),
         Script::Latin,
     );
-    // CJK ideograph U+6F22 (漢)
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{6F22}")),
         Script::Cjk,
     );
-    // Arabic ALEF U+0627
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{0627}")),
         Script::Arabic,
     );
-    // Hebrew ALEF U+05D0
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{05D0}")),
         Script::Hebrew,
     );
-    // Devanagari KA U+0915
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{0915}")),
         Script::Devanagari,
     );
-    // Thai SARA A U+0E32
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{0E32}")),
         Script::Thai,
     );
-    // Khmer KA U+1780
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{1780}")),
         Script::Khmer,
     );
-    // Lao KO U+0E81
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("\u{0E81}")),
         Script::Lao,
     );
-    // Empty segment classifies as Common (default)
     assert_eq!(
         classify_segment_script(&TextSegment::ltr("")),
         Script::Common,
     );
-    // Leading whitespace (Common) skipped, decisive char is Arabic
     assert_eq!(
         classify_segment_script(&TextSegment::ltr(" \u{0627}")),
         Script::Arabic,

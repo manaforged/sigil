@@ -1,10 +1,3 @@
-//! Sigil side of the 1:1 frame: construct the tree, then `compute`.
-//!
-//! Host setup (`Cx`, measurer) is outside the clock. The timed window
-//! is `add` + `compute` (+ clipped emit when `layout_paint`). That is
-//! the same work GPUI times as `uniform_list` / `div` build +
-//! `layout_as_root` + `prepaint`.
-
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
@@ -30,12 +23,10 @@ mod output;
 pub(super) use output::list_output;
 use output::{build_checks, probe_build};
 
-/// Sigil framework runner.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SigilRunner;
 
 impl SigilRunner {
-    /// Construct a fresh runner.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -71,7 +62,7 @@ impl TextMeasure for StubMeasure {
 
 #[derive(Clone, Copy)]
 struct RowData {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     id: u32,
 }
 
@@ -135,7 +126,10 @@ fn krausest_row(row_h: f32) -> impl Fn(usize, &RowData) -> NodeBuilder {
 
 fn table_row(row_h: f32, cols: usize) -> impl Fn(usize, &RowData) -> NodeBuilder {
     move |index, _data| {
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        )]
         let width = TABLE_CELL_W * cols as f32;
         let mut row = container().layout(LayoutStyle::flex_row().fixed_size(width, row_h));
         for col in 0..cols {
@@ -149,6 +143,10 @@ fn table_row(row_h: f32, cols: usize) -> impl Fn(usize, &RowData) -> NodeBuilder
     }
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the argument list mirrors the upstream API contract"
+)]
 fn add_list(
     cx: &mut Cx,
     rows: Signal<Rc<Vec<RowData>>>,
@@ -202,7 +200,10 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
     let available = Size::fixed(vw, vh);
     let data = Rc::new(make_data(p.row_count));
     let book = data.len();
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let max_scroll = (p.row_count as f32).mul_add(p.row_height_px, -p.viewport_height_px);
     let mut y = if p.tail() { max_scroll.max(0.0) } else { 0.0 };
     profile::enable();
@@ -214,30 +215,11 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
             if !p.tail() {
                 advance_scroll(&mut y, p.row_height_px, max_scroll);
             }
-            // One runtime per sample so keyed-row effects die with the tree.
-            Runtime::scope("sigil-bench-parity/virtual-list", || {
-                let rows = signal(Rc::clone(&data));
-                let scroll = signal(y);
-                let mut cx = Cx::new_root();
-                let mut engine = new_engine(true);
-                profile::begin_frame();
-                let start = Instant::now();
-                let root = add_list(
-                    &mut cx,
-                    rows,
-                    scroll,
-                    p,
-                    workload.category == "data-table",
-                    0,
-                );
-                let _ = engine.compute(&mut cx, root, available);
-                let _cmds = paint(&cx, root, p.surface(), vw, vh);
-                profile::tick_frame();
-                let miss = u64::from(engine.generation() > 0);
-                last_visible = visible_row_count(&cx, root);
-                last_first = first_from_scroll(y, p.row_height_px);
-                (super::nanos(start), miss)
-            })
+            let (ns, miss, visible, first) =
+                measure_sample(&data, y, p, available, workload.category == "data-table");
+            last_visible = visible;
+            last_first = first;
+            (ns, miss)
         };
         drain_steps(p, &mut step)
     };
@@ -249,6 +231,37 @@ fn run_generic_list(workload: &Workload) -> Result<crate::RunResult, String> {
         (last_visible, book, last_first),
         Some(output),
     ))
+}
+
+fn measure_sample(
+    data: &Rc<Vec<RowData>>,
+    y: f32,
+    p: &crate::WorkloadParams,
+    available: Size,
+    table: bool,
+) -> (u64, u64, usize, usize) {
+    Runtime::scope("sigil-bench-parity/virtual-list", || {
+        let rows = signal(Rc::clone(data));
+        let scroll = signal(y);
+        let mut cx = Cx::new_root();
+        let mut engine = new_engine(true);
+        profile::begin_frame();
+        let start = Instant::now();
+        let root = add_list(&mut cx, rows, scroll, p, table, 0);
+        let _ = engine.compute(&mut cx, root, available);
+        let _cmds = paint(
+            &cx,
+            root,
+            p.surface(),
+            p.viewport_width_px,
+            p.viewport_height_px,
+        );
+        profile::tick_frame();
+        let miss = u64::from(engine.generation() > 0);
+        let last_visible = visible_row_count(&cx, root);
+        let last_first = first_from_scroll(y, p.row_height_px);
+        (super::nanos(start), miss, last_visible, last_first)
+    })
 }
 
 fn probe_generic_list(workload: &Workload, data: &Rc<Vec<RowData>>, y: f32) -> OutputProof {
@@ -275,7 +288,6 @@ fn probe_generic_list(workload: &Workload, data: &Rc<Vec<RowData>>, y: f32) -> O
     })
 }
 
-/// Advance the scroll offset one row, wrapping at the bottom.
 fn advance_scroll(y: &mut f32, row_h: f32, max_scroll: f32) {
     *y += row_h;
     if *y > max_scroll {
@@ -291,7 +303,10 @@ fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
     let available = Size::fixed(vw, vh);
     let data = Rc::new(make_data(p.row_count));
     let book = data.len();
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let max_scroll = (p.row_count as f32).mul_add(p.row_height_px, -vh);
     Runtime::scope("sigil-bench-parity/virtual-list-reuse", || {
         let rows = signal(Rc::clone(&data));
@@ -330,8 +345,6 @@ fn run_reuse_list(workload: &Workload) -> Result<crate::RunResult, String> {
     })
 }
 
-/// Verify + assemble the run result for a generic-list workload.
-/// `proof` is (visible rows, book rows, first visible row).
 fn finish_list(
     workload: &Workload,
     samples_ns: Vec<u64>,
@@ -412,7 +425,8 @@ fn krausest_text_ok(
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::cast_precision_loss
+    clippy::cast_precision_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 pub(super) fn first_from_scroll(scroll: f32, row_h: f32) -> usize {
     if row_h <= 0.0 {

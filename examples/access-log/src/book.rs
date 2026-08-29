@@ -106,7 +106,11 @@ fn clock(ts: u32) -> String {
 
 /// Visible row count for this viewport.
 #[must_use]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub fn visible_rows() -> usize {
     (VIEW_H / ROW_H).ceil() as usize
 }
@@ -119,7 +123,11 @@ pub fn overscan_rows() -> usize {
 
 /// First geometric (in-view) index at `scroll_y`.
 #[must_use]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
 pub fn first_at(scroll_y: f32) -> usize {
     (scroll_y / ROW_H).floor().max(0.0) as usize
 }
@@ -164,7 +172,10 @@ pub fn row_count() -> usize {
 
 /// Cell width. Eight equal columns fill [`VIEW_W`].
 #[must_use]
-#[allow(clippy::cast_precision_loss)] // HEADERS.len() is 8 — exactly representable.
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)] // HEADERS.len() is 8 — exactly representable.
 pub fn col_w() -> f32 {
     VIEW_W / HEADERS.len() as f32
 }

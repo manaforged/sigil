@@ -11,7 +11,7 @@
 //! End-to-end drag → relayout for a `position_reactive` node.
 //!
 //! This is the exact chain the Workflows node-graph relies on
-//! (`the host app::workflows_graph`): pointer-down captures the node,
+//! (the workflows-graph pattern): pointer-down captures the node,
 //! each pointer-move accumulates `ev.delta` into a `Signal<(f32, f32)>`
 //! bound via `position_reactive`, and the layout engine repositions the
 //! node on the next `compute`. It exercises every link the unit tests

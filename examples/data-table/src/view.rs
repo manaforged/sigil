@@ -77,15 +77,21 @@ pub fn visible_range(scroll_y: f32, total: usize) -> Range<usize> {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_precision_loss,
-        clippy::cast_sign_loss
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
     )]
     let page = ((VIEWPORT_H / row_h).ceil() as usize).max(1);
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     let vis_first = (scroll_y / row_h).floor().max(0.0) as usize;
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_precision_loss,
-        clippy::cast_sign_loss
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
     )]
     let vis_end = ((scroll_y + VIEWPORT_H) / row_h).ceil() as usize;
     let first = vis_first.saturating_sub(page).min(total);

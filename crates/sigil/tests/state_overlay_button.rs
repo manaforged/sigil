@@ -1,4 +1,4 @@
-//! DS2 Phase 2 — user state-overlay merging on widgets.
+//! user state-overlay merging on widgets.
 //!
 //! Driving `.hover(|s| s.bg(error_9))` on a button should override the
 //! widget's default hover bg with `error_9` at runtime. The button's
@@ -59,7 +59,7 @@ const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-// NOTE: live hover/pressed render-comparison is tracked as DS2 Phase 2.5
+// NOTE: live hover/pressed render-comparison is tracked separately
 // — the transition animator currently intercepts bg color resolution
 // and interpolates from its baked source/target. After this commit's
 // `variant.merge_overlay(user)` change the animator IS aware of the
@@ -149,7 +149,7 @@ fn button_destructive_sugar_matches_solid_error_tone() {
 fn button_solid_error_tone_paints_error_scale_step_9() {
     sigil::reactive::Runtime::scope("ds2-5-button-tone-error", || {
         let mut cx = Cx::new_root();
-        // The DS2.5 destructive-button canonical pattern — solid
+        // The the overlay slot destructive-button canonical pattern — solid
         // variant + Tone::Error resolves through the theme's error
         // scale at step 9 (Radix solid).
         let root = cx.add(button("Delete").solid().tone(Tone::Error));

@@ -5,7 +5,7 @@
 //! Phase-1 integration tests per DR-053 §6.
 //!
 //! Determinism: every test ticks at a fixed `dt = 1.0 / 60.0` so spring
-//! physics matches CI-runs across machines.
+//! physics matches gate runs across machines.
 
 use sigil_animation::{Easing, SpringPreset};
 use sigil_animation_runtime::{AnimationConfig, Animator, MotionPrefs, tick};

@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W3.2-impl — integration tests for G4 `DrawPhase` (DR-047).
+//! impl — integration tests for G4 `DrawPhase` .
 //!
 //! Covers the phase state machine, the write-during-Paint debug-assert
 //! seam, the deferred-write queue, and the `is_painting` ergonomic

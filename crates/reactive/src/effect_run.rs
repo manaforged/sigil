@@ -1,26 +1,8 @@
-//! Effect execution machinery — run loop, RAII guard, and setup.
-//!
-//! Separated from the public `effect` registration API to keep each
-//! file under the 400-line cap. Nothing here is re-exported; items
-//! are `pub(crate)` or private.
-
 use core::panic::Location;
 
 use crate::owner_dispose::dispose_owner;
 use crate::runtime::{EffectKey, OwnerKey, OwnerSlot, RuntimeState, with_rt};
 
-/// RAII guard that restores runtime state at the end of an effect
-/// run regardless of whether the user closure returned normally or
-/// unwound.
-///
-/// On drop we:
-/// - Restore `current_owner` and `current_effect` to their prior
-///   values.
-/// - Remove `key` from the `running` set so a subsequent schedule
-///   for the same effect is not mis-detected as a cycle.
-/// - Put the closure back into the slot (if it still exists). If
-///   the effect was disposed mid-run (e.g. panic-driven cleanup
-///   cascade) the boxed `FnMut` drops with its captured state.
 struct RunGuard {
     key: EffectKey,
     prev_owner: Option<OwnerKey>,
@@ -45,7 +27,6 @@ impl Drop for RunGuard {
             {
                 slot.f = Some(f);
             }
-            // If the slot is gone the closure drops here.
         });
     }
 }
@@ -75,18 +56,9 @@ fn reconcile_deps(rt: &mut RuntimeState, key: EffectKey) {
     }
 }
 
-/// Outcome of the fused `run_effect` setup pass.
-///
-/// Returned from the first `with_rt` borrow so the caller can drive
-/// the out-of-borrow work (dispose previous run-owner, run closure)
-/// without re-entering the runtime for each step.
 enum RunSetup {
-    /// Effect slot is gone or running was already set; skip this run.
     Skip,
-    /// Parent owner or effect slot vanished between checkpoints;
-    /// running was set and must be cleared by the caller.
     AbortClearRunning,
-    /// Setup succeeded.
     Go {
         f: Box<dyn FnMut()>,
         prev_owner: Option<OwnerKey>,
@@ -95,12 +67,6 @@ enum RunSetup {
     },
 }
 
-/// Create a fresh run-owner for an effect execution, wire it to the
-/// parent, and record it on the effect slot.
-///
-/// Returns `None` if the effect slot was removed between the parent
-/// lookup and the owner insertion (defensive; should not happen
-/// while we hold the runtime borrow).
 fn make_effect_run_owner(
     rt: &mut RuntimeState,
     key: EffectKey,
@@ -130,17 +96,11 @@ fn make_effect_run_owner(
         slot.run_owner = Some(run_owner);
         Some(run_owner)
     } else {
-        // Effect vanished while we held the borrow — clean up the
-        // orphan owner we just created.
         rt.owners.remove(run_owner);
         None
     }
 }
 
-/// Fused setup pass for `run_effect` — batches all pre-run work into
-/// a single `with_rt` borrow so that the out-of-borrow work
-/// (previous run-owner disposal, user closure execution) does not
-/// need to re-enter the runtime.
 #[inline]
 fn run_setup(key: EffectKey) -> RunSetup {
     with_rt(|rt| {
@@ -157,7 +117,6 @@ fn run_setup(key: EffectKey) -> RunSetup {
         }
         rt.running.insert(key);
 
-        // Rotate deps: move current → prev so RunGuard can reconcile.
         if let Some(effect) = rt.effects.get_mut(key) {
             debug_assert!(effect.prev_deps.is_empty());
             effect.prev_deps = core::mem::take(&mut effect.deps);
@@ -218,8 +177,6 @@ pub(crate) fn run_effect(key: EffectKey) {
         } => (f, prev_owner, prev_effect, prev_run_owner),
     };
 
-    // Dispose the previous run-owner outside the borrow — this
-    // recurses through `with_rt`, so it cannot be fused into setup.
     if let Some(prev) = prev_run_owner {
         dispose_owner(prev);
         #[cfg(debug_assertions)]

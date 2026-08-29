@@ -12,7 +12,7 @@
 //! merge into the kernel node is covered by `visual_goldens` (the
 //! existing 30 PNG cases) — these tests cover the trait-level wiring.
 //!
-//! Note on method-name disambiguation: per W4.99.B2 the inherent
+//! Note on method-name disambiguation: the inherent
 //! consuming-self method `.style(Style) -> Self` was renamed to
 //! `.style(Style) -> Self` on `ButtonBuilder` / `CheckboxBuilder`
 //! / `ToggleBuilder` / `SliderBuilder` so that the `style()` name is
@@ -169,7 +169,7 @@ fn panel_accepts_styled_surface() {
         // method-resolution collision (DR-049 §11 — inherent wins on
         // a concrete receiver). End-user code mixing inherent +
         // trait stays unambiguous because the surface words differ.
-        // DS2.5 — `impl StateHost for PanelBuilder` was removed because
+        // the overlay slot — `impl StateHost for PanelBuilder` was removed because
         // panel doesn't expose a stateful slot for user `.hover()` /
         // `.pressed()` atoms to merge into. The trait-level base
         // accumulator (bg / px) still works.
@@ -307,7 +307,7 @@ fn floating_text_accepts_styled_surface() {
 
 // ----- scroll -----
 
-// ----- W4.99.B2 trap 3 regression -----
+// ----- Trap-3 regression -----
 
 /// Trap 3: the consuming inherent `.style(Style)` on `ButtonBuilder` /
 /// `CheckboxBuilder` / `ToggleBuilder` / `SliderBuilder` was renamed

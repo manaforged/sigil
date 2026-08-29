@@ -1,8 +1,5 @@
-//! CSS-weight-aware face selection within one font family.
-
 use crate::shaper::Font;
 
-/// One normal-style font family, possibly backed by static weight faces.
 #[derive(Clone)]
 pub(crate) struct FontFamily {
     faces: Vec<WeightedFace>,

@@ -52,7 +52,7 @@ fn bench_spawn_500(c: &mut Criterion) {
             b.iter(|| {
                 let state = make_state(2.0);
                 for i in 0..500_u32 {
-                    #[allow(clippy::cast_precision_loss)]
+                    #[allow(clippy::cast_precision_loss, reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant")]
                     let f = i as f32;
                     let payload = FctSpawn {
                         at: [f, f],
@@ -73,7 +73,10 @@ fn bench_tick_500(c: &mut Criterion) {
         Runtime::scope("fct-bench-tick", || {
             let state = make_state(10.0);
             for i in 0..500_u32 {
-                #[allow(clippy::cast_precision_loss)]
+                #[allow(
+                    clippy::cast_precision_loss,
+                    reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
+                )]
                 let f = i as f32;
                 let payload = FctSpawn {
                     at: [f, f],
@@ -100,7 +103,10 @@ fn bench_frame_500(c: &mut Criterion) {
         Runtime::scope("fct-bench-frame", || {
             let state = make_state(10.0);
             for i in 0..500_u32 {
-                #[allow(clippy::cast_precision_loss)]
+                #[allow(
+                    clippy::cast_precision_loss,
+                    reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
+                )]
                 let f = i as f32;
                 let payload = FctSpawn {
                     at: [f, f],
@@ -138,7 +144,10 @@ fn bench_tick_pool_full(c: &mut Criterion) {
         Runtime::scope("fct-bench-pool-full", || {
             let state = make_state(10.0);
             for i in 0..FCT_POOL_CAPACITY {
-                #[allow(clippy::cast_precision_loss)]
+                #[allow(
+                    clippy::cast_precision_loss,
+                    reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
+                )]
                 let f = i as f32;
                 let payload = FctSpawn {
                     at: [f, f],

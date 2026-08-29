@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W5.1b — engine reads animator-driven signals at style apply.
+//! engine reads animator-driven signals at style apply.
 //!
 //! Verification gate for the binding-install → `AttachedAnimators` →
 //! `StyleEngine` path. Drives the same `emit_scene` call the renderer
@@ -98,7 +98,7 @@ fn engine_reads_animator_signal_over_ticks() {
             "frame 0 (no overlay yet) reads literal Opacity atom",
         );
 
-        // Build the W5.1a hook output.
+        // Build the binding-install hook output.
         let atoms = [
             StyleAtom::Opacity(OPACITY_BASE),
             StyleAtom::Transition(presets::DEFAULT),

@@ -7,8 +7,7 @@
 //!
 //! Driven here by keyboard shift-select, which flows through the buffer's
 //! `shift_*` + `commit` (no pointer capture). Drag-select reuses the same
-//! selection signal + overlay and is a follow-up (it needs the pointer
-//! handlers on a hit-target node, as `text_field` does).
+//! selection signal + overlay — pointer-gated.
 
 #![allow(missing_docs)]
 #![allow(

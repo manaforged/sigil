@@ -145,9 +145,6 @@ impl Element for TimedElement {
         _cx: &mut App,
     ) {
         if self.state.surface == Surface::LayoutPaint {
-            // The headless test window has no current view, which GPUI's
-            // interactive list paint requires. Fail the paint proof without
-            // calling into a path that corrupts the test window on unwind.
             self.state.painted.set(false);
             self.state.stop();
         }

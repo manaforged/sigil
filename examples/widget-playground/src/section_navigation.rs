@@ -119,6 +119,7 @@ fn tree_row() -> NodeBuilder {
         (0, "Design"),
     ];
     let list = virtual_list(rows, |_, (depth, label)| {
+        #[allow(clippy::cast_precision_loss, reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale")]
         let pad = *depth as f32 * 16.0;
         crate::wrap(
             container()

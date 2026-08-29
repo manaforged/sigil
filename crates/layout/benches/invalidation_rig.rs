@@ -31,7 +31,10 @@ const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
+    )]
     fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
         let chars = match source {
             TextContent::Static(value) => value.chars().count() as f32,

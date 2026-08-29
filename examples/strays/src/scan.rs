@@ -192,6 +192,9 @@ impl Scanner {
         else {
             return;
         };
+        // `ps` output decoding: lossy is the contract — process tables can
+        // contain non-UTF-8 bytes and dropping the whole listing for one
+        // would be worse.
         for line in String::from_utf8_lossy(&out.stdout).lines() {
             let mut fields = line.split_whitespace();
             let Some(pid) = fields.next().and_then(|v| v.parse().ok()) else {

@@ -2,10 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Animator-tick micro-benchmark — W5.0b baseline for W5.1.
+//! Animator-tick micro-benchmark — baseline.
 //!
 //! Establishes the per-frame cost of [`tick(dt)`](sigil_animation_runtime::tick)
-//! at varying active-animator counts (1, 10, 100, 1000). The W5.1
+//! at varying active-animator counts (1, 10, 100, 1000). The
 //! binding-install hook routes every widget's state transitions through
 //! `Animator::tick`, so this curve is the regression baseline.
 //!

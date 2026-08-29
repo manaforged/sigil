@@ -120,7 +120,7 @@ fn taffy_row(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
             },
             ..Default::default()
         })
-        .unwrap()
+        .expect("bench")
     };
     let children = [
         cell(ID_CELL_W),
@@ -142,7 +142,7 @@ fn taffy_row(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
         },
         &children,
     )
-    .unwrap()
+    .expect("bench")
 }
 
 fn build_taffy_table(
@@ -165,7 +165,7 @@ fn build_taffy_table(
             },
             &row_ids,
         )
-        .unwrap();
+        .expect("bench");
     (root, row_ids)
 }
 
@@ -178,7 +178,7 @@ fn bench_create_1k(c: &mut Criterion) {
             |mut cx| {
                 let (root, _) = build_owned_table(&mut cx, 1_000);
                 let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-                engine.compute(&mut cx, root, AVAILABLE).unwrap();
+                engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 black_box(engine.result(root));
             },
             BatchSize::SmallInput,
@@ -190,8 +190,8 @@ fn bench_create_1k(c: &mut Criterion) {
             |mut tree| {
                 let (root, _) = build_taffy_table(&mut tree, 1_000);
                 tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                    .unwrap();
-                black_box(tree.layout(root).unwrap());
+                    .expect("bench");
+                black_box(tree.layout(root).expect("bench"));
             },
             BatchSize::SmallInput,
         );
@@ -207,7 +207,7 @@ fn bench_create_10k(c: &mut Criterion) {
             |mut cx| {
                 let (root, _) = build_owned_table(&mut cx, 10_000);
                 let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-                engine.compute(&mut cx, root, AVAILABLE).unwrap();
+                engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 black_box(engine.result(root));
             },
             BatchSize::LargeInput,
@@ -219,8 +219,8 @@ fn bench_create_10k(c: &mut Criterion) {
             |mut tree| {
                 let (root, _) = build_taffy_table(&mut tree, 10_000);
                 tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                    .unwrap();
-                black_box(tree.layout(root).unwrap());
+                    .expect("bench");
+                black_box(tree.layout(root).expect("bench"));
             },
             BatchSize::LargeInput,
         );
@@ -229,12 +229,16 @@ fn bench_create_10k(c: &mut Criterion) {
 
 // === op: partial_update_10k (touch every 10th row's style) ===
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one bench scenario kept linear for readability"
+)]
 fn bench_partial_update_10k(c: &mut Criterion) {
     c.bench_function("partial_update_10k/owned", |b| {
         let mut cx = Cx::new_root();
         let (root, rows) = build_owned_table(&mut cx, 10_000);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine.compute(&mut cx, root, AVAILABLE).expect("bench");
         cx.clear_dirty();
         let mut toggle = 0_f32;
         b.iter(|| {
@@ -247,7 +251,7 @@ fn bench_partial_update_10k(c: &mut Criterion) {
                         ROW_HEIGHT,
                     ));
             }
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine.compute(&mut cx, root, AVAILABLE).expect("bench");
             black_box(engine.result(root));
         });
     });
@@ -255,7 +259,7 @@ fn bench_partial_update_10k(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let (root, rows) = build_taffy_table(&mut tree, 10_000);
         tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-            .unwrap();
+            .expect("bench");
         let mut toggle = 0_f32;
         b.iter(|| {
             toggle = if toggle > 4.0 { 0.0 } else { toggle + 1.0 };
@@ -271,23 +275,27 @@ fn bench_partial_update_10k(c: &mut Criterion) {
                 ..Default::default()
             };
             for row in rows.iter().step_by(10) {
-                tree.set_style(*row, style.clone()).unwrap();
+                tree.set_style(*row, style.clone()).expect("bench");
             }
             tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench");
+            black_box(tree.layout(root).expect("bench"));
         });
     });
 }
 
 // === op: select_row (single-row style mutation, the canonical sparse-update) ===
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one bench scenario kept linear for readability"
+)]
 fn bench_select_row(c: &mut Criterion) {
     c.bench_function("select_row/owned", |b| {
         let mut cx = Cx::new_root();
         let (root, rows) = build_owned_table(&mut cx, 1_000);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine.compute(&mut cx, root, AVAILABLE).expect("bench");
         cx.clear_dirty();
         let mut i = 0usize;
         b.iter(|| {
@@ -299,7 +307,7 @@ fn bench_select_row(c: &mut Criterion) {
                     ID_CELL_W + LABEL_CELL_W + ACTION_CELL_W + SPACER_CELL_W + bump,
                     ROW_HEIGHT,
                 ));
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine.compute(&mut cx, root, AVAILABLE).expect("bench");
             black_box(engine.result(root));
         });
     });
@@ -307,7 +315,7 @@ fn bench_select_row(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let (root, rows) = build_taffy_table(&mut tree, 1_000);
         tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-            .unwrap();
+            .expect("bench");
         let mut i = 0usize;
         b.iter(|| {
             i = (i + 1) % rows.len();
@@ -326,10 +334,10 @@ fn bench_select_row(c: &mut Criterion) {
                     ..Default::default()
                 },
             )
-            .unwrap();
+            .expect("bench");
             tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench");
+            black_box(tree.layout(root).expect("bench"));
         });
     });
 }
@@ -343,13 +351,13 @@ fn bench_replace_1k(c: &mut Criterion) {
                 let mut cx = Cx::new_root();
                 let (root, _) = build_owned_table(&mut cx, 1_000);
                 let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-                engine.compute(&mut cx, root, AVAILABLE).unwrap();
+                engine.compute(&mut cx, root, AVAILABLE).expect("bench");
                 (cx, root, engine)
             },
             |(mut cx, root, mut engine)| {
                 cx.remove(root);
                 let (new_root, _) = build_owned_table(&mut cx, 1_000);
-                engine.compute(&mut cx, new_root, AVAILABLE).unwrap();
+                engine.compute(&mut cx, new_root, AVAILABLE).expect("bench");
                 black_box(engine.result(new_root));
             },
             BatchSize::SmallInput,
@@ -361,15 +369,15 @@ fn bench_replace_1k(c: &mut Criterion) {
                 let mut tree = taffy::TaffyTree::<()>::new();
                 let (root, _) = build_taffy_table(&mut tree, 1_000);
                 tree.compute_layout(root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                    .unwrap();
+                    .expect("bench");
                 (tree, root)
             },
             |(mut tree, root)| {
-                tree.remove(root).unwrap();
+                tree.remove(root).expect("bench");
                 let (new_root, _) = build_taffy_table(&mut tree, 1_000);
                 tree.compute_layout(new_root, fixed_available(VIEWPORT_WIDTH, VIEWPORT_HEIGHT))
-                    .unwrap();
-                black_box(tree.layout(new_root).unwrap());
+                    .expect("bench");
+                black_box(tree.layout(new_root).expect("bench"));
             },
             BatchSize::SmallInput,
         );

@@ -1,10 +1,7 @@
-//! Native desktop font discovery through CoreText, DirectWrite, or Fontconfig.
-
 use std::sync::OnceLock;
 
 use crate::font_family::FontFamily;
 
-/// System families resolved for Sigil's generic CSS family names.
 #[derive(Clone)]
 pub(crate) struct SystemFonts {
     pub(crate) sans: Option<FontFamily>,
@@ -153,7 +150,11 @@ mod native {
         }
     }
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     fn platform_weight(font: &PlatformFont) -> u16 {
         font.properties().weight.0.clamp(1.0, 1000.0).round() as u16
     }

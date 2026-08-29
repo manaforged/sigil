@@ -22,17 +22,13 @@ fn interval_fires_after_period_elapses() {
             writer.set(writer.get() + 1);
         });
 
-        // No time has passed — no fire.
         assert_eq!(tick_intervals(), 0);
         assert_eq!(count.get(), 0);
 
-        // Advance 100 ms — one fire.
         __test_advance_clock(Duration::from_millis(100));
         assert_eq!(tick_intervals(), 1);
         assert_eq!(count.get(), 1);
 
-        // Advance 300 ms — only one fire because tick rebases
-        // next_fire to now + period on each tick.
         __test_advance_clock(Duration::from_millis(300));
         assert_eq!(tick_intervals(), 1);
         assert_eq!(count.get(), 2);
@@ -52,7 +48,6 @@ fn interval_is_cancelled_when_owner_disposed() {
             writer.set(writer.get() + 1);
         });
     });
-    // Owner disposed — slot evicted. No fires after advance.
     __test_advance_clock(Duration::from_millis(500));
     assert_eq!(tick_intervals(), 0);
     assert_eq!(count.get(), 0);
@@ -69,8 +64,6 @@ fn next_interval_deadline_reports_soonest_slot() {
         let deadline =
             next_interval_deadline().expect("two intervals registered, deadline must exist");
         let now = Instant::now();
-        // Deadline is ~50 ms from the test clock (which we set to
-        // a real `Instant::now()` snapshot); within tolerance.
         assert!(deadline >= now.checked_sub(Duration::from_millis(5)).unwrap());
         __test_clear_clock();
     });
@@ -78,10 +71,6 @@ fn next_interval_deadline_reports_soonest_slot() {
 
 #[test]
 fn panic_in_callback_does_not_zombify_slot() {
-    // A panicking user callback must be caught — the slot must
-    // be restored with its original callback so a subsequent tick
-    // re-runs the same logic instead of silently calling the
-    // no-op placeholder.
     Runtime::scope("interval::panic_recovery", || {
         __test_set_clock(Instant::now());
         let hits = Rc::new(Cell::new(0_u32));
@@ -94,8 +83,6 @@ fn panic_in_callback_does_not_zombify_slot() {
             }
         });
 
-        // First tick — callback panics, but invoke_by_id catches
-        // it and returns true. The slot's callback is restored.
         __test_advance_clock(Duration::from_millis(50));
         let fired = tick_intervals();
         assert_eq!(
@@ -108,10 +95,6 @@ fn panic_in_callback_does_not_zombify_slot() {
             "callback observed the panic-causing first tick"
         );
 
-        // Second tick — the original callback (still installed in
-        // the slot, NOT the no-op stub) must run again. This is
-        // the regression: previously the slot was zombified with
-        // the stub and this assertion would fail at 1.
         __test_advance_clock(Duration::from_millis(50));
         let fired = tick_intervals();
         assert_eq!(fired, 1, "slot must still be live after the prior panic");

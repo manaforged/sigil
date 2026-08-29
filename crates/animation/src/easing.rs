@@ -1,62 +1,28 @@
-//! Easing curves — bend a normalised `t ∈ [0, 1]` into an output
-//! progress used by [`crate::Tween`] and any time-based animator.
-//!
-//! Curve catalogue follows Robert Penner's classic naming. Every curve
-//! satisfies `apply(0.0) == 0.0` and `apply(1.0) == 1.0`. Inputs outside
-//! `[0, 1]` are clamped to the endpoints — animations that overshoot do
-//! so via [`Easing::BackOut`] / [`Easing::BackInOut`], not by feeding
-//! out-of-range `t`.
-
-// The Penner curves read more clearly in their textbook algebraic form
-// than rewritten through `mul_add`/`exp2`. The numerical-precision win
-// nursery cites is negligible at f32 with `t ∈ [0, 1]`, and FMA-style
-// rewrites would obscure which constants come from which paper. Allow
-// only here; fmas are still required in spring/tween hot paths.
 #![allow(clippy::suboptimal_flops)]
 
 use core::f32::consts::{FRAC_PI_2, PI};
 
-/// Named easing curve.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Easing {
-    /// `t` — straight line.
     #[default]
     Linear,
-    /// Slow start, fast finish — quadratic.
     QuadIn,
-    /// Fast start, slow finish — quadratic.
     QuadOut,
-    /// Slow start, fast middle, slow finish — quadratic.
     QuadInOut,
-    /// Cubic accelerate.
     CubicIn,
-    /// Cubic decelerate.
     CubicOut,
-    /// Cubic ease-in then -out.
     CubicInOut,
-    /// Sinusoidal accelerate.
     SineIn,
-    /// Sinusoidal decelerate.
     SineOut,
-    /// Sinusoidal ease-in then -out.
     SineInOut,
-    /// Exponential accelerate.
     ExpoIn,
-    /// Exponential decelerate.
     ExpoOut,
-    /// Slight pull-back before springing forward — overshoots above 1.0
-    /// mid-curve, settles at 1.0.
     BackOut,
-    /// Back-style in and out — overshoots both endpoints mid-curve.
     BackInOut,
-    /// Bouncing-ball decelerate.
     BounceOut,
 }
 
 impl Easing {
-    /// Apply this curve to a normalised progress value. Inputs outside
-    /// `[0, 1]` are clamped first so animations never read garbage past
-    /// their endpoints.
     #[must_use]
     pub fn apply(self, t: f32) -> f32 {
         let t = t.clamp(0.0, 1.0);

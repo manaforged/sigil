@@ -1,23 +1,16 @@
-//! PTY host service. Bind `session.lines` to `terminal()`.
-
 use std::sync::mpsc::{self, Sender};
 
 use sigil_reactive::{Signal, signal};
 
 use crate::{AppResult, Error};
 
-/// Live shell session. Paint is [`Self::lines`]. Bytes to a child
-/// need [`Self::spawn`].
 #[derive(Clone)]
 pub struct Session {
-    /// Screen rows, top to bottom.
     pub lines: Signal<Vec<String>>,
     tx: Sender<Vec<u8>>,
 }
 
 impl Session {
-    /// Empty session. Tests write `lines` directly. [`Self::write`]
-    /// errors until [`Self::spawn`].
     #[must_use]
     pub fn new() -> Self {
         let (tx, _rx) = mpsc::channel();
@@ -27,36 +20,21 @@ impl Session {
         }
     }
 
-    /// Send bytes to the PTY child.
-    ///
-    /// [`Session::new`] has no child. Paint is [`Self::lines`]. Open a
-    /// program with [`Self::spawn`].
-    ///
-    /// # Errors
-    ///
-    /// Returns when no PTY child is attached.
     pub fn write(&self, bytes: &[u8]) -> AppResult<()> {
         self.tx
             .send(bytes.to_vec())
             .map_err(|_| Error::new(NoChild))
     }
 
-    /// Spawn `program` in a PTY. Requires feature `pty`.
-    ///
-    /// # Errors
-    ///
-    /// Returns when the PTY cannot open or the program cannot start.
-    /// Without feature `pty`, always errors.
     pub fn spawn(program: &str) -> AppResult<Self> {
         #[cfg(feature = "pty")]
-        {
-            return spawn_pty(program);
-        }
+        let result = spawn_pty(program);
         #[cfg(not(feature = "pty"))]
-        {
+        let result = {
             let _ = program;
             Err(Error::new(Disabled))
-        }
+        };
+        result
     }
 }
 
@@ -167,6 +145,10 @@ fn pty_err(err: impl std::fmt::Display) -> Error {
     Error::new(std::io::Error::other(err.to_string()))
 }
 
+#[allow(
+    clippy::needless_pass_by_value,
+    reason = "the API takes ownership by contract at this boundary"
+)]
 #[cfg(feature = "pty")]
 fn read_rows(
     mut reader: Box<dyn std::io::Read + Send>,

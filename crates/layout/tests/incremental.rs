@@ -19,6 +19,63 @@ static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
 static WIDE: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(96)))];
 static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
+// Regression (tabs content reveal, 2026-08): a container hidden on the
+// FIRST compute has its descendants pruned from the drive. Revealing it
+// marks only the container dirty — the descendants were never dirty on
+// their own terms — and the incremental child-list sync must materialize
+// their mirrors instead of raising `NodeMissing`. The nested grandchild
+// pins the recursion (the whole hidden subtree arrives at once).
+#[test]
+fn hidden_reveal_materializes_never_synced_subtree() {
+    Runtime::scope("hidden-reveal", || {
+        let mut cx = Cx::new_root();
+        let hidden_flag = signal(false);
+        let wrapper = container()
+            .layout(LayoutStyle::flex_column())
+            .style_reactive(move || if hidden_flag.get() { &[][..] } else { HIDDEN })
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(40.0, 20.0))
+                    .child(text("reveal me")),
+            );
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column())
+                .child(wrapper),
+        );
+        let node_wrapper = cx.get(root).unwrap().children().first().copied().unwrap();
+        let panel = cx
+            .get(node_wrapper)
+            .unwrap()
+            .children()
+            .first()
+            .copied()
+            .unwrap();
+        let grandchild = cx.get(panel).unwrap().children().first().copied().unwrap();
+
+        let mut engine = stub_engine();
+        // First compute: wrapper is HIDDEN — its subtree prunes to itself.
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("initial compute with hidden wrapper succeeds");
+
+        // Reveal: only the wrapper is dirty; panel + grandchild have no mirrors.
+        hidden_flag.set(true);
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("reveal compute must materialize the hidden subtree");
+        assert!(layout_result_exists(&cx, panel), "panel mirrored on reveal");
+        assert!(
+            layout_result_exists(&cx, grandchild),
+            "grandchild mirrored on reveal"
+        );
+        assert!(
+            layout_rect(&cx, panel).width > 0.0,
+            "revealed panel laid out"
+        );
+    });
+}
+
 #[test]
 fn cached_compute_returns_immediately_without_recomputing() {
     let (mut cx, root, _child) = build_tree();

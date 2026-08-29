@@ -1,21 +1,3 @@
-//! CSS block layout — owned engine. Lands the P0.2 (W2.3) body.
-//!
-//! Algorithm conformance (per DR-041): single-axis stacking, adjacent +
-//! parent-first-child margin collapse,
-//! padding + border, width/height with `Dimension::{Px, Percent, Auto}`,
-//! min/max clamping, `Position::Absolute` pinning isolated from parent
-//! flow, `box-sizing: content-box | border-box`.
-//!
-//! Out of scope: floats, clearance, collapse-through, writing-modes,
-//! grid, multi-column.
-//!
-//! The solver does not mutate the [`LayoutForest`] — `MeasureScope`
-//! borrows it immutably so multiple solvers can run concurrently in
-//! P0.4. Computed boxes scatter-write directly into the forest's
-//! `boxes` slab via [`MeasureScope::write`], with the forest's
-//! `current_frame` tag stamped into each slot. Tests read results back
-//! through [`BlockSolver::boxed`], which delegates to `forest.boxed`.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use crate::LayoutError;
@@ -25,54 +7,26 @@ use crate::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
 use crate::resolve::NodeEdges;
 use crate::style_data::{Display, LengthPercentageAuto, Position, Size, StyleData};
 
-/// CSS block layout subset.
-///
-/// Owns margin collapse (adjacent sibling + parent-first-child),
-/// padding, border, width/height resolution with `auto`, min/max
-/// clamping, absolute-position pinning, and content-box vs border-box
-/// sizing.
 pub(crate) struct BlockSolver<'a> {
     scope: MeasureScope<'a>,
 }
 
 impl<'a> BlockSolver<'a> {
-    /// Wrap a measure scope for a block-layout pass.
     pub(crate) const fn new(scope: MeasureScope<'a>) -> Self {
         Self { scope }
     }
 
-    /// Run the block layout algorithm rooted at `subtree`.
-    ///
-    /// The pass writes one [`ComputedBox`] per visited in-flow node
-    /// (and one per absolute descendant) directly into the forest's
-    /// `boxes` slab through [`MeasureScope::write`]. The pass is
-    /// single-threaded and recurses top-down; sizes resolve against
-    /// the parent's content box.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`LayoutError::LayoutInvalid`] when the subtree references
-    /// a stale `NodeId`. Stale forest ids are the only failure mode at
-    /// this layer.
     pub(crate) fn solve(&self, subtree: NodeRef<'_>) -> Result<(), LayoutError> {
         let avail = self.scope.available();
         let cb = root_containing_block(avail);
         let style = subtree.style();
         let edges = NodeEdges::build(style, cb.width);
-        // Root border-box origin = root's own margin offset against
-        // the viewport's (0,0) origin.
         let border_origin = Position2::new(edges.margin.left.unwrap_or(0.0), edges.margin_top());
         let me = solve_box(self, subtree, cb, border_origin)?;
         let _ = me;
         Ok(())
     }
 
-    /// As [`Self::solve_at`], but with the border-box width a flex parent
-    /// already resolved for this node.
-    ///
-    /// A block-display flex item still gets its used width from the flex
-    /// algorithm; without this it re-derives the width from its own style
-    /// and a `grow(1).width(0)` item collapses to zero.
     pub(crate) fn solve_at_assigned(
         &self,
         subtree: NodeRef<'_>,
@@ -89,14 +43,10 @@ impl<'a> BlockSolver<'a> {
         solve_box_assigned(self, subtree, cb, border_origin, assigned_w).map(|_| ())
     }
 
-    /// Borrow the measure scope (used by per-subtree dispatch helpers
-    /// to reconstruct a sibling solver mid-traversal).
     pub(crate) const fn scope(&self) -> &MeasureScope<'_> {
         &self.scope
     }
 
-    /// Borrow the computed box for `id`. Returns `None` when the id is
-    /// stale or the solver never visited it during this pass.
     pub(crate) fn boxed(&self, id: LocalId) -> Option<ComputedBox> {
         let forest = self.scope.forest();
         if forest.frame_for(id)? != forest.current_frame() {
@@ -105,16 +55,11 @@ impl<'a> BlockSolver<'a> {
         forest.boxed(id)
     }
 
-    /// Record a computed box keyed by node id. Writes scatter-directly
-    /// into the forest's box slab via the shared `MeasureScope` borrow.
     fn write(&self, id: LocalId, cb: ComputedBox) {
         self.scope.write(id, cb);
     }
 }
 
-/// Pinned origin handed to a child's solve pass — the top-left corner
-/// of the child's *containing block* (parent's content box) in the
-/// root coordinate space.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Position2 {
     pub(crate) x: f32,
@@ -127,17 +72,12 @@ impl Position2 {
     }
 }
 
-/// Resolved geometry of a single layout pass on one node.
 #[derive(Clone, Copy, Debug)]
 struct Resolved {
     box_h: f32,
     edges: NodeEdges,
 }
 
-/// Root-level containing block — derived from the measure scope's
-/// available-space pair. `MinContent` / `MaxContent` collapse to zero
-/// at this layer (block roots size against a definite outer constraint
-/// in the engine driver; the unbounded paths are flex-only).
 const fn root_containing_block(avail: crate::forest::AvailableSpace) -> Size<f32> {
     Size {
         width: definite(avail.w),
@@ -154,15 +94,6 @@ const fn definite(c: crate::forest::SpaceConstraint) -> f32 {
     }
 }
 
-/// Recursive single-node block-layout step.
-///
-/// `cb` is the containing-block size on each axis in pixels.
-/// `border_origin` is the node's own *border-box* top-left in root
-/// coordinates — the caller is responsible for having advanced past
-/// any in-flow margin (margin collapse happens at the parent layer,
-/// not here). The function writes a [`ComputedBox`] into the solver's
-/// results map and returns the resolved geometry so the caller can
-/// stack siblings.
 #[allow(
     clippy::too_many_lines,
     reason = "T6 cutover landed solve_box at 66 lines; structural extraction tracked internally"
@@ -176,8 +107,6 @@ fn solve_box(
     solve_box_assigned(solver, node, cb, border_origin, None)
 }
 
-/// Content-derived border-box width, plus the text measurement it came
-/// from (the caller reuses that for the content height).
 fn natural_width(
     solver: &BlockSolver<'_>,
     node: NodeRef<'_>,
@@ -192,8 +121,6 @@ fn natural_width(
                 width: intent.w.preferred,
                 height: intent.h.preferred,
             },
-            // Wrapping text breaks to this node's content box within its
-            // containing block.
             Some((cb_width - edges.inline_chrome()).max(0.0)),
         )
     } else {
@@ -225,9 +152,6 @@ fn write_none(
     Resolved { box_h: 0.0, edges }
 }
 
-/// `assigned_w` is a width the flex parent already resolved for this node;
-/// it wins over both the style width and the content measurement, with
-/// min/max still clamping.
 fn solve_box_assigned(
     solver: &BlockSolver<'_>,
     node: NodeRef<'_>,
@@ -283,8 +207,6 @@ fn solve_box_assigned(
     Ok(Resolved { box_h, edges })
 }
 
-/// Height of this node's content: the measured text extent for a leaf,
-/// otherwise the extent its laid-out children occupy.
 fn content_height_of(
     solver: &BlockSolver<'_>,
     node: NodeRef<'_>,
@@ -306,26 +228,16 @@ fn content_height_of(
     )
 }
 
-/// Inline-axis sizing for one node. `Auto` widths fill the containing
-/// block on this axis (the CSS rule for in-flow block elements).
 fn width_for(style: &StyleData, intent: AxisIntent, cb_w: f32, edges: &NodeEdges) -> f32 {
     if let Some(preferred) = intent.preferred {
         return preferred;
     }
-    // Auto width — fill containing block, less inline margin.
     let lateral = edges.margin.left.unwrap_or(0.0) + edges.margin.right.unwrap_or(0.0);
     let fill = cb_w - lateral;
-    // box-sizing has already folded chrome into intent.preferred via
-    // resolve; auto path here is content-box style: width *is* the
-    // border-box.
     let _ = (style.box_sizing, edges);
     fill.max(0.0)
 }
 
-/// Walk the in-flow children, stack vertically with margin collapse,
-/// and recurse absolute children against the parent's padding box.
-/// Returns the content-area height consumed by in-flow children
-/// (excludes absolute descendants — they don't contribute to flow).
 #[allow(
     clippy::too_many_arguments,
     reason = "T6 cutover landed layout_children at 6 args; PaddingFrame struct bundle tracked internally"
@@ -360,10 +272,6 @@ fn layout_children(
             content_origin.x + edges_preview.margin.left.unwrap_or(0.0),
             content_origin.y + cursor_y,
         );
-        // Q1 tertiary — per-subtree solver dispatch. When a block parent
-        // contains a `display: flex` child, the flex algorithm owns that
-        // child's content layout; we still keep this node in the block
-        // stacking pass for vertical advance + margin collapse.
         let resolved = match style.display {
             Display::Flex => solve_flex_child(solver, child, inner_cb, child_border_origin)?,
             Display::Grid => solve_grid_child(solver, child, inner_cb, child_border_origin)?,
@@ -377,15 +285,6 @@ fn layout_children(
     Ok(cursor_y)
 }
 
-/// Q1 tertiary helper — lay out a `Display::Flex` child of a block
-/// parent through the `FlexSolver`, then read back the child's resolved
-/// box so the block stacking pass can advance the cursor + collapse the
-/// child's bottom margin into the next sibling.
-///
-/// The flex solver writes its own box (border-box at
-/// `child_border_origin + margin`) and resolves the subtree; we then
-/// re-read it through the scope's forest to produce a `Resolved` that
-/// mirrors `solve_box`'s contract.
 fn solve_flex_child(
     solver: &BlockSolver<'_>,
     child: NodeRef<'_>,
@@ -397,10 +296,6 @@ fn solve_flex_child(
     let scope = solver.scope();
     let nested = crate::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
     let flex = crate::flex::FlexSolver::new(nested);
-    // FlexSolver's `solve_at` expects the BORDER box origin BEFORE this
-    // node's own margin is applied — same shape as BlockSolver::solve_at
-    // — so we feed the pre-margin position (block's `child_border_origin`
-    // is already post-margin, so subtract).
     let cb = crate::flex::CbSize {
         w: inner_cb.width,
         h: inner_cb.height,
@@ -422,9 +317,6 @@ fn solve_flex_child(
     })
 }
 
-/// Lay out a `display: grid` child of a block parent through the
-/// [`crate::grid::GridSolver`], mirroring [`solve_flex_child`]: the grid
-/// writes its own box, then we re-read it for the stacking pass.
 fn solve_grid_child(
     solver: &BlockSolver<'_>,
     child: NodeRef<'_>,
@@ -457,10 +349,6 @@ fn solve_grid_child(
     })
 }
 
-/// Place a `Position::Absolute` child against the parent's padding box.
-/// Absolute children are isolated from in-flow stacking: they do not
-/// advance the flow cursor or participate in margin collapse, and
-/// they size against the parent's inner content box.
 fn place_absolute(
     solver: &BlockSolver<'_>,
     child: NodeRef<'_>,
@@ -564,7 +452,6 @@ fn resolve_absolute_xy(
     (x, y)
 }
 
-/// Inputs to one axis of `inset` resolution.
 #[derive(Clone, Copy)]
 struct InsetAxis {
     leading: LengthPercentageAuto,
@@ -576,13 +463,6 @@ struct InsetAxis {
     margin_trailing: f32,
 }
 
-/// Resolve a single inset axis against the parent's padding box.
-///
-/// * Leading edge fixed (`Px` / `Percent`) → place against leading edge.
-/// * Leading edge `Auto`, trailing edge fixed → place against trailing
-///   edge: `origin + cb - box - trailing - margin_trailing`.
-/// * Both `Auto` → falls back to the parent's content edge (existing
-///   behavior).
 fn resolve_inset_axis(a: InsetAxis) -> f32 {
     match (a.leading, a.trailing) {
         (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
@@ -601,10 +481,6 @@ fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
     }
 }
 
-/// Translate a descendant subtree by `(dx, dy)`. Called when an
-/// `Absolute` parent's final placement differs from the provisional
-/// origin used while recursing into its children — keeps descendant
-/// boxes consistent with the parent's actual position.
 fn shift_subtree(solver: &BlockSolver<'_>, node: NodeRef<'_>, dx: f32, dy: f32) {
     let forest = solver.scope.forest();
     for child_id in node.children() {

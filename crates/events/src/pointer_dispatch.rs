@@ -1,11 +1,3 @@
-//! Pointer-event dispatch helpers.
-//!
-//! Split out of [`crate::router`] so that file stays under the 400-line
-//! hygiene cap and so that hover-path maintenance can cache absolute
-//! origins as it walks — rebuilding them from `Cx` per node was an
-//! O(depth²) hot spot on every hover transition (see
-//! `route_hover_transition_depth_20` bench).
-
 #![allow(clippy::redundant_pub_crate)]
 
 use sigil_hal::{
@@ -25,17 +17,9 @@ pub(crate) type PointerTargets = SmallVec<[PointerTarget; 64]>;
 pub(crate) struct PointerTarget {
     pub(crate) id: NodeId,
     pub(crate) origin: Point,
-    /// Border-box extent, handed to handlers as `PointerEvent::target_size`
-    /// so position->ratio math divides by the real width instead of a
-    /// compile-time default.
     pub(crate) size: LogicalSize,
 }
 
-/// Dispatch along the hit path (capture pass root→leaf, then bubble
-/// leaf→root). Returns the first node whose handler requested pointer
-/// capture, so the router can capture the REQUESTER rather than the hit
-/// leaf: a drag source wrapping child content (table row over text
-/// cells) must keep receiving move/up itself.
 pub(crate) fn dispatch_pointer_path(
     cx: &Cx,
     targets: &[PointerTarget],
@@ -108,16 +92,6 @@ pub(crate) fn pointer_targets(layout: &LayoutEngine, path: &NodePath) -> Pointer
     targets
 }
 
-/// Synthesize a click on `target`, dispatched directly to that node
-/// rather than via hit-testing a screen position (DR-050 §4,
-/// `EventRouter::invoke_node`).
-///
-/// AT-initiated `accesskit::Action::Click` requests name a node id, not
-/// a pointer coordinate. The Enter → Down → Up → Leave sequence mirrors
-/// what a real mouse click produces so `InteractionState::release_pointer`'s
-/// hover+press gate (every button/checkbox/etc. widget's activation
-/// guard) sees the same state a physical click would — a bare Down+Up
-/// leaves `hovered` false and silently no-ops the activation.
 pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
     let target = pointer_target_for_node(cx, layout, target);
     for phase in [
@@ -156,8 +130,6 @@ pub(crate) fn pointer_target_for_node(
         })
 }
 
-/// Invoke the target's handlers for this phase. Returns true when the
-/// target's handlers newly requested pointer capture during this invoke.
 fn invoke_pointer(
     cx: &Cx,
     target: PointerTarget,

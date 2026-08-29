@@ -1,20 +1,3 @@
-//! `HarfRust`-backed shaping (G1.6; default shaper since Wave 4).
-//!
-//! Gated behind the `shaping-complex` cargo feature, which is on by
-//! default. Shapes every script `Shaper::shape` dispatches to it —
-//! Latin/Greek/Cyrillic get kerning, ligatures, and mark positioning
-//! in addition to the Arabic/Hebrew/Devanagari/Khmer/Thai/Lao joining
-//! and reordering it always handled. The owned skrifa shaper in
-//! `shaper.rs` is the fallback for when this returns `None`.
-//!
-//! `HarfRust` shapes in font design units (`units_per_em`-relative);
-//! we scale `x_advance` / `x_offset` to user pixels using the
-//! standard `size_px / upem` factor before populating `GlyphRun`.
-//!
-//! The entry point [`shape`] returns `None` if the font fails to
-//! parse with `HarfRust` or the shaped buffer comes back empty —
-//! callers fall through to the owned shaper in that case.
-
 #![allow(clippy::redundant_pub_crate)]
 
 use harfrust::{
@@ -29,11 +12,6 @@ use smallvec::SmallVec;
 use crate::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
 use crate::shaper::{Font, Script, Style, TextSegment, classify_segment_script};
 
-/// Shape `segment` via `HarfRust` under `style`.
-///
-/// Returns `None` when `HarfRust` cannot bind to `font` (malformed
-/// face) or produces an empty glyph buffer; callers fall back to
-/// the owned shaper.
 pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Option<GlyphRun> {
     if segment.text.is_empty() {
         return Some(GlyphRun::empty());
@@ -67,9 +45,6 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
         return None;
     }
 
-    // `HarfRust` returns metrics in font units; we need a per-pixel
-    // scale factor and we also need the face metrics for baseline +
-    // bbox, both of which we still source from skrifa.
     let skrifa_font = FontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
     let size = Size::new(style.size_px.max(1.0));
     let location = font.location(style.weight, style.size_px);
@@ -95,19 +70,9 @@ fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> Shap
     )
 }
 
-/// Map our internal `Script` to `HarfRust`'s iso15924 `Script`.
-///
-/// Since Wave 4 this feeds every segment (not just the scripts that
-/// strictly need GSUB/GPOS to render) — Latin and Cjk need their own
-/// tags so `HarfRust` selects the font's per-script `kern`/`liga`
-/// lookups (many fonts key those under `latn`/`hani`, not `DFLT`).
 const fn map_script(script: Script) -> HrScript {
     match script {
         Script::Latin => hr_script::LATIN,
-        // ponytail: Han tag for all CJK; Hiragana/Katakana/Hangul get
-        // their own iso15924 tags too, but the owned Script enum
-        // doesn't split them out yet — split when vertical/CJK-
-        // specific GSUB features need it.
         Script::Cjk => hr_script::HAN,
         Script::Arabic => hr_script::ARABIC,
         Script::Hebrew => hr_script::HEBREW,
@@ -115,13 +80,10 @@ const fn map_script(script: Script) -> HrScript {
         Script::Khmer => hr_script::KHMER,
         Script::Thai => hr_script::THAI,
         Script::Lao => hr_script::LAO,
-        // Common/Other: let `HarfRust` inspect text-derived properties.
         Script::Common | Script::Other => hr_script::COMMON,
     }
 }
 
-/// Convert `style.features` (4-byte OT tags) to `HarfRust` globally-
-/// applied feature settings (value=1, range=..) per `HarfBuzz` norm.
 fn build_features(style: &Style) -> SmallVec<[harfrust::Feature; 4]> {
     style
         .features
@@ -130,13 +92,10 @@ fn build_features(style: &Style) -> SmallVec<[harfrust::Feature; 4]> {
         .collect()
 }
 
-/// Translate the `HarfRust` glyph buffer into our `GlyphRun`.
-///
-/// Allow `cast_precision_loss`: `HarfRust` emits glyph metrics as
-/// `i32` font-design units. In practice these fit in a 16-bit range
-/// for any conforming OpenType font (`units_per_em` is `u16`), so
-/// the conversion to `f32` is lossless for valid input.
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn build_glyph_run(
     glyphs: &GlyphBuffer,
     scale: f32,

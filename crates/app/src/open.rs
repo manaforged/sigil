@@ -1,18 +1,8 @@
-//! Open a URL or path with the OS handler.
-
 use std::ffi::OsStr;
 use std::process::Command;
 
 use crate::{AppResult, Error};
 
-/// Open `target` (URL or filesystem path) with the OS default handler.
-///
-/// macOS: `open`. Linux: `xdg-open`. Windows: `cmd /C start`.
-/// Starts the helper and returns. Does not wait for the handler to exit.
-///
-/// # Errors
-///
-/// Returns when the helper cannot start.
 pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
     let mut child = command(target.as_ref()).spawn().map_err(Error::new)?;
     std::thread::spawn(move || drop(child.wait()));

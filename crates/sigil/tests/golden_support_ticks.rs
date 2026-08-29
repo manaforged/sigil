@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 //! Unit tests for the animated-golden harness's `*AfterFrames`
-//! interaction modes (W5.0a).
+//! interaction modes.
 //!
 //! These tests do NOT render — they exercise the tick-driving logic in
 //! [`golden_support::drive_state`] directly by reading the

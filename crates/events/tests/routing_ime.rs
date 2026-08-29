@@ -91,7 +91,7 @@ fn route_ime_delivers_commit_to_focused_target() {
 
     // A session must open (Enabled/Preedit) before Commit is a valid
     // continuation — a bare Commit with no owner is dropped by design
-    // (W5-IME HIGH-1: never adopt a fresh owner from Commit/Disabled).
+    // never adopt a fresh owner from Commit/Disabled.
     route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Enabled));
     route_event(
         &mut router,
@@ -208,7 +208,7 @@ fn two_logging_ime_fields(cx: &mut Cx) -> (NodeId, NodeId, ImeLog, ImeLog) {
 
 #[test]
 fn route_ime_focus_change_cancels_owner_and_drops_commit() {
-    // W5-IME HIGH-1 repro: Preedit(A) -> focus moves to B -> Commit must
+    // Regression: Preedit(A) -> focus moves to B -> Commit must
     // be a no-op on B, and A must see its session cancelled instead of
     // being left with a stale preedit.
     let mut cx = Cx::new_root();
@@ -308,7 +308,7 @@ fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
 #[test]
 fn route_ime_scope_change_cancels_owner_without_focus_move() {
     // A composing field stays literally focused, but a modal scope opens
-    // ABOVE it without moving focus into the modal — W5-IME HIGH-1's
+    // ABOVE it without moving focus into the modal — the
     // "inert modal opening over a composing field" case. The owner falls
     // outside the new active scope, so the session must still cancel.
     let field_log = Rc::new(RefCell::new(Vec::new()));

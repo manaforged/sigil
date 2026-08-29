@@ -1,12 +1,3 @@
-//! Owned text engine implementation (DR-044, G1.4).
-//!
-//! Pipeline: segment graphemes/words → bidi level resolution → skrifa
-//! shaping per segment → word-boundary line breaking → line stacking.
-//!
-//! [`OwnedTextEngine`] is the public type. The G1.4–G1.6 source-compat
-//! alias for the prior backend type was retired in G1.7 once every
-//! in-tree caller had been migrated.
-
 use std::cell::{Cell, Ref, RefCell};
 use std::rc::Rc;
 
@@ -22,30 +13,14 @@ use crate::glyph::GlyphRun;
 use crate::paragraph::{LayoutLine, Paragraph, SegmentAppend, TextMetrics};
 use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
 
-/// Owned text engine — skrifa + unicode-segmentation backed.
-///
-/// Holds the active font collection, a per-frame paragraph cache, and a
-/// resolved default [`TextConfig`]. All interior mutability is via
-/// [`RefCell`]; single-threaded by design (matches the existing engine
-/// surface). `Send + Sync` is **not** required of the engine itself —
-/// the underlying `Shaper` is, so future rayon use sites can be added
-/// without revisiting this type.
 pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
-    /// Generation of the process-global default fonts this engine last shaped with.
-    /// When it falls behind, [`Self::refresh_fonts`] rebuilds `fonts`.
     font_gen: Cell<u64>,
     config: TextConfig,
     cache: RefCell<ParagraphCache>,
 }
 
 impl OwnedTextEngine {
-    /// Construct an engine with `config` as the default style fallback.
-    ///
-    /// The font collection is bootstrapped with the bundled `FiraSans`
-    /// Regular face — the same fixture the test suite uses. Production
-    /// callers can replace it via [`FontCollection::register`] once the
-    /// font-discovery surface lands (DR-044 open question 2).
     #[must_use]
     pub fn new(config: TextConfig) -> Self {
         Self {
@@ -56,7 +31,6 @@ impl OwnedTextEngine {
         }
     }
 
-    /// Process-thread engine shared by layout measure and scene emit.
     #[must_use]
     pub fn thread() -> Rc<Self> {
         thread_local! {
@@ -66,9 +40,6 @@ impl OwnedTextEngine {
         ENGINE.with(Rc::clone)
     }
 
-    /// Rebuild the font collection when the process-global default fonts changed
-    /// since this engine last shaped, and clear the paragraph cache so stale-face
-    /// entries don't survive the swap. A cheap atomic load on the common path.
     fn refresh_fonts(&self) {
         let generation = crate::fonts::default_fonts_generation();
         if generation != self.font_gen.get() {
@@ -78,25 +49,16 @@ impl OwnedTextEngine {
         }
     }
 
-    /// Clear the paragraph cache. Call once per frame before layout.
     pub fn clear_cache(&self) {
         self.cache.borrow_mut().clear();
     }
 
-    /// Lay out a paragraph with explicit resolved typography.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TextError`] if paragraph layout fails. The current
-    /// owned path is infallible — kept for forward compatibility with
-    /// a future fallible font-discovery path.
     pub fn layout_paragraph_styled(
         &self,
         text: &str,
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Result<Paragraph, TextError> {
-        // Pick up a runtime font swap (e.g. the debug panel A/B) before shaping.
         self.refresh_fonts();
         if let Some(cached) = self.cache.borrow().get(text, max_width, style) {
             return Ok(cached.clone());
@@ -108,20 +70,6 @@ impl OwnedTextEngine {
         Ok(para)
     }
 
-    /// Lay out `text` as a single line truncated to fit `max_width`, with a
-    /// trailing ellipsis (`…`) when it does not fit (CSS `text-overflow:
-    /// ellipsis`). If the text already fits, the untruncated single-line
-    /// paragraph is returned unchanged; if not even the ellipsis fits, the
-    /// bare ellipsis is returned (the caller's clip handles the rest).
-    ///
-    /// The fitting prefix is found by binary search over character
-    /// boundaries — `O(log n)` shaping passes, each served by the paragraph
-    /// cache — so a long string costs a handful of measures, not one per
-    /// character.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TextError`] if paragraph layout fails.
     pub fn layout_paragraph_ellipsized(
         &self,
         text: &str,
@@ -139,13 +87,11 @@ impl OwnedTextEngine {
         }
         let budget = max_width - ellipsis.width();
 
-        // Character-boundary byte offsets, plus the end, as search points.
         let bounds: Vec<usize> = text
             .char_indices()
             .map(|(i, _)| i)
             .chain(std::iter::once(text.len()))
             .collect();
-        // Largest `k` such that the prefix ending at `bounds[k]` fits `budget`.
         let bound_at = |k: usize| bounds.get(k).copied().unwrap_or(text.len());
         let (mut lo, mut hi) = (0usize, bounds.len() - 1);
         while lo < hi {
@@ -160,7 +106,6 @@ impl OwnedTextEngine {
                 hi = mid - 1;
             }
         }
-        // Trim trailing spaces before the ellipsis so it reads as "word…".
         let kept = text.get(..bound_at(lo)).unwrap_or("").trim_end();
         let mut out = String::with_capacity(kept.len() + ELLIPSIS.len());
         out.push_str(kept);
@@ -168,13 +113,11 @@ impl OwnedTextEngine {
         self.layout_paragraph_styled(&out, None, style)
     }
 
-    /// Borrow the font collection (for tests + font-registration).
     #[must_use]
     pub fn fonts(&self) -> Ref<'_, FontCollection> {
         self.fonts.borrow()
     }
 
-    /// Debug-only segment snapshot for the integration test suite.
     #[doc(hidden)]
     #[cfg(any(test, debug_assertions))]
     #[must_use]
@@ -190,42 +133,12 @@ impl OwnedTextEngine {
             .collect()
     }
 
-    /// Register a user-supplied font face, replacing the bundled
-    /// fallback.
-    ///
-    /// `bytes` must be a valid TTF/OTF face; `face_index` selects the
-    /// face inside a TTC (pass `0` for single-face files). On success
-    /// subsequent calls to [`Self::layout_paragraph`] and
-    /// [`Self::layout_paragraph_styled`] resolve glyphs against the
-    /// newly-registered face.
-    ///
-    /// Registering also clears the paragraph cache — entries from the
-    /// previous face would otherwise survive into the next frame.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TextError::InvalidFont`] when the bytes do not parse
-    /// as a valid OpenType/TrueType face.
     pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
         self.fonts.borrow_mut().register(bytes, face_index)?;
         self.cache.borrow_mut().clear();
         Ok(())
     }
 
-    /// Register a user-supplied font face for a named family, replacing
-    /// the bundled default for that family (see
-    /// [`FontCollection::register_family`] for recognised names).
-    ///
-    /// Unlike [`Self::register_font`] (which always replaces the sans
-    /// primary), this targets one family slot so a caller can add e.g.
-    /// a Hebrew face as `serif` for the per-run fallback chain
-    /// (`FontCollection::fallback_chain`) to discover when the
-    /// active style's family lacks coverage for a run.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`TextError::InvalidFont`] when the bytes are
-    /// unparseable or the family name is unknown.
     pub fn register_font_family(
         &mut self,
         family: &str,
@@ -246,9 +159,6 @@ impl OwnedTextEngine {
         let shaper = Shaper::new(primary);
         let shaper_style = to_shaper_style(style);
         let strut = LineStrut::from_shaper(&shaper, &shaper_style, resolve_line_height(style));
-        // Analysed once and reused for run segmentation (paragraph-wide
-        // levels) and visual line reordering (line-aware L1 + L2) — see
-        // `bidi::ParagraphBidi`.
         let paragraph_bidi = bidi::ParagraphBidi::new(text);
         let runs = shape_segments(&chain, text, &shaper_style, &paragraph_bidi);
         let min_content_hint = runs
@@ -259,8 +169,6 @@ impl OwnedTextEngine {
         let lines = break_lines(&runs, max_width, strut, &paragraph_bidi);
         Paragraph::new(
             lines,
-            // font_size is the em-scale for ink; line_height is only row leading.
-            // Use the shaper's size_px so ink matches the advances it produced.
             TextMetrics {
                 font_size: shaper_style.size_px,
                 line_height: strut.line_height,
@@ -297,7 +205,6 @@ impl StyledTextEngine for OwnedTextEngine {
     }
 }
 
-/// Translate the resolved style into shaper-native parameters.
 fn to_shaper_style(style: &TextStyle) -> Style {
     Style {
         size_px: style.font_size.max(1.0),
@@ -307,7 +214,6 @@ fn to_shaper_style(style: &TextStyle) -> Style {
     }
 }
 
-/// Resolve the effective line height in logical pixels.
 fn resolve_line_height(style: &TextStyle) -> f32 {
     match style.line_height {
         TextLineHeight::FontSizeRelative(factor) => (style.font_size * factor.max(0.1)).max(1.0),
@@ -315,10 +221,6 @@ fn resolve_line_height(style: &TextStyle) -> f32 {
     }
 }
 
-/// Baseline geometry shared by every line in a paragraph — the strut
-/// (ascent + descent, both positive px) the CSS half-leading model
-/// centers each line box against. Bundled so the line-assembly
-/// functions below stay under the 5-argument hygiene cap.
 #[derive(Clone, Copy)]
 struct LineStrut {
     line_height: f32,
@@ -337,62 +239,20 @@ impl LineStrut {
     }
 }
 
-/// One shaped segment between two break opportunities.
 struct ShapedSegment {
-    /// Byte range in the source string `[start, end)`.
     start: u32,
     end: u32,
-    /// Glyph run produced by the shaper.
     run: GlyphRun,
-    /// Total horizontal advance of the segment.
     advance: f32,
-    /// `true` if the trailing whitespace can be elided at a line break.
     is_break_opportunity: bool,
-    /// `true` if a UAX #14 line break is permitted immediately BEFORE
-    /// this segment's start byte. Computed once per paragraph by
-    /// [`mark_break_opportunities`]; the greedy breaker may only wrap at
-    /// segments where this holds, so glue (NBSP) and prohibited breaks
-    /// (before closing punctuation) keep their neighbours together.
     breakable_before: bool,
-    /// `true` if this segment is a hard line terminator (`\n`, `\r\n`,
-    /// `\r`, U+2028, U+2029). Hard breaks are never shaped and always
-    /// force a new line — set at segmentation time so the line breaker
-    /// never has to guess from glyph metrics.
     is_hard_break: bool,
-    /// UAX #9 bidi embedding level — even = LTR, odd = RTL. Travels
-    /// through to the shaper so `HarfRust` sees the right direction,
-    /// and drives the L2 visual reorder at line assembly
-    /// ([`bidi::visual_order`]) since Wave 4.
     level: u8,
-    /// Dominant script of this run (drives complex-shaper dispatch).
-    /// Read only by the engine tests in G1.7 — kept on the segment
-    /// because the next phase's logging path consumes it.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     script: Script,
-    /// Index into the paragraph's per-run font fallback chain — which
-    /// face this segment was shaped with (Wave 4 per-glyph fallback).
     face_slot: u16,
 }
 
-/// Shape `text` honouring word boundaries, bidi runs, and script runs.
-///
-/// Each emitted [`ShapedSegment`] is uniform in:
-/// - UAX #29 word boundary (no segment crosses a word-bound index)
-/// - UAX #9 bidi embedding level (LTR vs RTL run)
-/// - UAX #24 script (Latin / Arabic / Hebrew / CJK / …)
-///
-/// Whitespace-only segments mark explicit break opportunities so the
-/// line breaker can elide them at wrap points. The bidi level travels
-/// through to the shaper so the `HarfRust` dispatch + skrifa shaper
-/// see the correct direction.
-///
-/// `chain` is the paragraph's per-run font fallback chain
-/// (`FontCollection::fallback_chain`) — `chain[0]` is the primary
-/// face selected for the active style; each run independently picks
-/// the first face in `chain` with full cmap coverage (Wave 4).
-/// `paragraph_bidi` is the paragraph's precomputed bidi analysis
-/// (shared with [`break_lines`] so `unicode_bidi`'s class-detection
-/// pass runs once per paragraph, not once per line).
 fn shape_segments(
     chain: &[Font],
     text: &str,
@@ -411,9 +271,6 @@ fn shape_segments(
             continue;
         }
         if is_line_terminator(fragment) {
-            // Hard line break: never shape, never measure, never
-            // render. The line breaker will start a fresh line when
-            // it sees one of these segments.
             out.push(ShapedSegment {
                 start: u32_clamp(word_start),
                 end: u32_clamp(word_start + fragment.len()),
@@ -441,21 +298,6 @@ fn shape_segments(
     out
 }
 
-/// Fill each segment's `breakable_before` from UAX #14 line-break
-/// analysis of the whole paragraph.
-///
-/// `unicode_linebreak::linebreaks` yields the byte index immediately
-/// AFTER each opportunity, i.e. the index a break may fall BEFORE. We
-/// record only `Allowed` (soft) opportunities in a byte-indexed table;
-/// `Mandatory` breaks already travel as `is_hard_break` segments, so
-/// folding them in here would double-count. A segment is breakable-
-/// before when its start byte is such an allowed index — which is why
-/// glue (NBSP), infix punctuation, and closing marks keep their
-/// neighbours together even though they sit on word boundaries.
-///
-/// Face-fallback sub-splits land mid-run, never on a UAX #14 boundary,
-/// so they correctly read `false` and never introduce a wrap inside a
-/// word.
 fn mark_break_opportunities(text: &str, segments: &mut [ShapedSegment]) {
     let mut allowed = vec![false; text.len().saturating_add(1)];
     for (index, opportunity) in unicode_linebreak::linebreaks(text) {
@@ -470,16 +312,10 @@ fn mark_break_opportunities(text: &str, segments: &mut [ShapedSegment]) {
     }
 }
 
-/// Recognise the UAX #14 mandatory line-break fragments that UAX #29
-/// surfaces as their own word-boundary slices: `\n`, `\r\n`, `\r`,
-/// U+2028 LINE SEPARATOR, U+2029 PARAGRAPH SEPARATOR. Form feed and
-/// next-line are deliberately omitted — they are rare in editor text
-/// and would expand the test matrix for no observed corpus.
 fn is_line_terminator(fragment: &str) -> bool {
     matches!(fragment, "\n" | "\r\n" | "\r" | "\u{2028}" | "\u{2029}")
 }
 
-/// Shaping context held by the segmenter while it walks a word.
 struct WordCtx<'a> {
     word: &'a str,
     word_start: usize,
@@ -488,9 +324,6 @@ struct WordCtx<'a> {
     style: &'a Style,
 }
 
-/// Sub-segment `ctx.word` into maximal runs uniform in (bidi-level,
-/// script). Each run is shaped and pushed onto `out` with the correct
-/// level + script tag.
 fn split_word_into_uniform_runs(ctx: &WordCtx<'_>, levels: &[u8], out: &mut Vec<ShapedSegment>) {
     let mut acc = RunAccumulator::new();
 
@@ -508,7 +341,6 @@ fn split_word_into_uniform_runs(ctx: &WordCtx<'_>, levels: &[u8], out: &mut Vec<
     acc.flush_to(ctx, ctx.word.len(), out);
 }
 
-/// Rolling state for the bidi/script segmenter inside one word.
 struct RunAccumulator {
     start: usize,
     level: Option<u8>,
@@ -544,7 +376,6 @@ impl RunAccumulator {
             self.start(offset, level, script);
             return;
         }
-        // Promote Common/Other to the first decisive script we see.
         if let Some(cur) = self.script
             && matches!(cur, Script::Common | Script::Other)
             && !matches!(script, Script::Common | Script::Other)
@@ -568,10 +399,6 @@ impl RunAccumulator {
     }
 }
 
-/// Two adjacent codepoints belong to the same uniform run iff they
-/// share a bidi level AND share a script — with `Common` / `Other`
-/// scripts (spaces, punctuation, digits) absorbed into the surrounding
-/// script run rather than splitting it.
 fn same_run(cur_level: u8, cur_script: Script, new_level: u8, new_script: Script) -> bool {
     if cur_level != new_level {
         return false;
@@ -590,20 +417,6 @@ struct PushRunArgs<'a> {
     is_break_opportunity: bool,
 }
 
-/// Shape `args.fragment`, splitting it further at grapheme-cluster
-/// boundaries by which chain face covers each cluster. A single
-/// uniform bidi/script run can still mix coverage across faces — e.g.
-/// a base-text cluster the primary covers next to a symbol/emoji
-/// cluster only a fallback face covers, both absorbed into one run
-/// because their script classifies as `Common`/`Other` — so requiring
-/// one face to cover the WHOLE run swallows it entirely to `.notdef`
-/// even when the fallback chain collectively covers every cluster.
-///
-/// Adjacent clusters that pick the same face are coalesced into one
-/// sub-run before shaping (grapheme-granularity, never finer — a
-/// cluster's codepoints must always stay on the same face, since
-/// splitting *inside* a grapheme cluster across two fonts is
-/// shaping-nonsensical).
 fn push_run(args: &PushRunArgs<'_>, chain: &[Font], style: &Style, out: &mut Vec<ShapedSegment>) {
     if args.fragment.is_empty() {
         return;
@@ -613,18 +426,12 @@ fn push_run(args: &PushRunArgs<'_>, chain: &[Font], style: &Style, out: &mut Vec
     }
 }
 
-/// One coalesced sub-run of `push_run`'s fragment: a byte range
-/// (relative to the fragment) every grapheme cluster in which picked
-/// the same fallback-chain face.
 struct FaceSpan {
     start: usize,
     end: usize,
     face_slot: u16,
 }
 
-/// Segment `fragment` into [`FaceSpan`]s by per-grapheme-cluster face
-/// selection ([`select_face`]), coalescing adjacent clusters that pick
-/// the same face.
 fn coalesce_face_spans(chain: &[Font], fragment: &str) -> Vec<FaceSpan> {
     let mut spans: Vec<FaceSpan> = Vec::new();
     for (offset, cluster) in fragment.grapheme_indices(true) {
@@ -646,9 +453,6 @@ fn coalesce_face_spans(chain: &[Font], fragment: &str) -> Vec<FaceSpan> {
     spans
 }
 
-/// Shape one [`FaceSpan`] of `args.fragment` and push the resulting
-/// [`ShapedSegment`]. Validates the shape ([`shape_validated`]) rather
-/// than trusting the cmap-coverage pre-filter blindly (finding 2).
 fn push_face_span(
     args: &PushRunArgs<'_>,
     chain: &[Font],
@@ -674,7 +478,6 @@ fn push_face_span(
         run,
         advance,
         is_break_opportunity: args.is_break_opportunity,
-        // Set in the paragraph-wide post-pass, mark_break_opportunities.
         breakable_before: false,
         is_hard_break: false,
         level: args.level,
@@ -683,15 +486,6 @@ fn push_face_span(
     });
 }
 
-/// Pick the first face in `chain` with full cmap coverage of
-/// `fragment` (see [`Font::covers`] for the default-ignorable
-/// transparency), falling back to `chain[0]` (the paragraph's primary
-/// face — rendering `.notdef` tofu) when no registered face covers
-/// it. `chain` is never empty: `FontCollection::fallback_chain`
-/// always seeds it with the primary face.
-///
-/// This is a cheap cmap pre-filter, not a shaping-success guarantee —
-/// [`shape_validated`] is what actually confirms the pick worked.
 fn select_face<'a>(chain: &'a [Font], fragment: &str) -> (u16, &'a Font) {
     for (idx, font) in chain.iter().enumerate() {
         if font.covers(fragment) {
@@ -704,16 +498,6 @@ fn select_face<'a>(chain: &'a [Font], fragment: &str) -> (u16, &'a Font) {
     (0, primary)
 }
 
-/// Shape `fragment` with `chain[initial_slot]` and validate the result
-/// has no disallowed `.notdef` glyph (a glyph clustered to a
-/// non-default-ignorable byte); if it does, retry against the rest of
-/// `chain` in order and take the first clean shape. Falls back to the
-/// initial attempt — still better than nothing — if none is clean.
-///
-/// Closes the gap `select_face`'s cmap pre-filter can't: cmap presence
-/// doesn't prove the shaped buffer avoids `.notdef` (a face can map a
-/// codepoint but still fail to produce the glyph a script's GSUB rules
-/// substitute).
 fn shape_validated(
     chain: &[Font],
     initial_slot: u16,
@@ -745,27 +529,6 @@ fn shape_validated(
     (0, Shaper::new(primary).shape(&seg, style))
 }
 
-/// Whether `run` contains a `.notdef` glyph whose grapheme cluster has
-/// no default-ignorable codepoint (ZWJ/ZWNJ/VS15/VS16/CGJ/etc — see
-/// [`crate::shaper::is_default_ignorable`]) that could explain it. A
-/// `.notdef` on a default-ignorable control is expected — those carry
-/// no visible glyph by design — so it doesn't disqualify the shape.
-///
-/// Checks the WHOLE grapheme cluster starting at `g.cluster`, not just
-/// the codepoint at that exact byte offset: the owned (non-`HarfRust`)
-/// shaper positions every codepoint of a multi-codepoint cluster (a
-/// base plus a combining mark or ignorable control) at the SAME
-/// `cluster` value — e.g. `"a" + VS17` clusters both glyphs at byte 0,
-/// so checking only `fragment[0..]`'s first char would classify a
-/// VS17-caused `.notdef` against `'a'` (non-ignorable) and wrongly
-/// flag it.
-///
-/// ponytail: per-cluster (not per-glyph) attribution — a `.notdef` for
-/// a genuinely-uncovered BASE character sharing a cluster with an
-/// ignorable mark would also be (wrongly) excused here, since OpenType
-/// clustering doesn't expose which glyph came from which codepoint.
-/// Upgrade path: thread per-glyph source-codepoint provenance through
-/// `GlyphPos` if a real fixture exercises this combination.
 fn run_has_disallowed_notdef(run: &GlyphRun, fragment: &str) -> bool {
     run.glyphs.iter().any(|g| {
         if g.id.0 != 0 {
@@ -783,16 +546,10 @@ fn run_has_disallowed_notdef(run: &GlyphRun, fragment: &str) -> bool {
     })
 }
 
-/// Lookup the bidi level for the byte at `byte`, returning `0` when
-/// the index is past the end of `levels` (defensive — should never
-/// fire because `levels.len() == text.len()`).
 fn byte_level(levels: &[u8], byte: usize) -> u8 {
     levels.get(byte).copied().unwrap_or(0)
 }
 
-/// Classify a single char into our coarse `Script` enum. Mirrors the
-/// per-segment classifier in `shaper::classify` but operates on a
-/// single codepoint so the engine can split before shaping.
 fn char_script(ch: char) -> Script {
     use unicode_script::{Script as UScript, UnicodeScript};
     match ch.script() {
@@ -843,7 +600,10 @@ fn run_total_advance(run: &GlyphRun) -> f32 {
     run.glyphs.iter().map(|g| g.advance).sum()
 }
 
-#[allow(clippy::cast_possible_truncation)]
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "values are bounded to the target range before the cast"
+)]
 const fn u32_clamp(v: usize) -> u32 {
     if v > u32::MAX as usize {
         u32::MAX
@@ -852,11 +612,6 @@ const fn u32_clamp(v: usize) -> u32 {
     }
 }
 
-/// Segments collected for the line currently being assembled, in
-/// logical (source) order. Wrap decisions only need the
-/// order-independent sum of advances, so the visual reorder
-/// ([`push_visual_line`]) happens once per completed line rather than
-/// per segment.
 struct PendingLine<'a> {
     segs: Vec<&'a ShapedSegment>,
     width: f32,
@@ -880,12 +635,6 @@ impl<'a> PendingLine<'a> {
     }
 }
 
-/// Break `segments` into [`LayoutLine`]s honouring `max_width`.
-///
-/// Algorithm: greedy word-boundary fit. A non-whitespace segment that
-/// would overflow the current line forces a wrap (the trailing
-/// whitespace from the previous line is elided). When `max_width` is
-/// `None` everything stays on one line modulo explicit `\n`.
 fn break_lines(
     segments: &[ShapedSegment],
     max_width: Option<f32>,
@@ -900,10 +649,6 @@ fn break_lines(
     }
     let mut lines: Vec<LayoutLine> = Vec::new();
     let mut pending = PendingLine::new();
-    // Logical byte position for the line CURRENTLY being assembled,
-    // used only when it turns out empty (consecutive hard breaks, or a
-    // leading/trailing hard break) — a non-empty line's true byte
-    // range comes from its own segments instead (see `push_visual_line`).
     let mut cursor: u32 = 0;
     for seg in segments {
         if seg.is_hard_break {
@@ -917,7 +662,6 @@ fn break_lines(
             pending = PendingLine::new();
             cursor = seg.start;
             if seg.is_break_opportunity {
-                // Elide the leading whitespace at the start of a wrapped line.
                 continue;
             }
         }
@@ -931,10 +675,6 @@ fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option
     let Some(limit) = max_width else {
         return false;
     };
-    // UAX #14: a soft wrap may only fall where a break is permitted
-    // before this segment. Elidable whitespace never starts a line, and
-    // glue / prohibited-break boundaries keep the run intact (overflowing
-    // rather than splitting), matching CSS `overflow-wrap: normal`.
     if seg.is_break_opportunity || !seg.breakable_before {
         return false;
     }
@@ -944,22 +684,6 @@ fn should_wrap(pending: &PendingLine<'_>, seg: &ShapedSegment, max_width: Option
     pending.width + seg.advance > limit
 }
 
-/// Assemble one [`LayoutLine`] from `pending`'s logical-order segments,
-/// reordering them into UAX #9 visual (paint) order first.
-///
-/// Uses [`bidi::ParagraphBidi::visual_order_for_line`] — rule L1 (reset
-/// trailing whitespace/separators to the paragraph level) for THIS
-/// line's actual byte range, then rule L2 — rather than feeding
-/// paragraph-resolved segment levels straight into L2: L1 depends on
-/// where a line ends after word-wrapping, which a paragraph-wide
-/// levels array can't know. Each segment is already uniform in bidi
-/// level by construction, so reordering at segment granularity is
-/// equivalent to reordering at codepoint granularity.
-///
-/// `empty_line_byte` is the true logical byte position to stamp on
-/// `pending` when it turns out to be empty (consecutive hard breaks,
-/// or a leading/trailing one) — see
-/// [`LayoutLine::set_empty_byte_position`].
 fn push_visual_line(
     lines: &mut Vec<LayoutLine>,
     pending: &PendingLine<'_>,

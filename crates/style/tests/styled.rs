@@ -295,7 +295,7 @@ fn empty_builder_has_empty_style() {
     assert!(!style.has_state_overlays());
 }
 
-// ----- W4.99.B2 silent-trap regression tests -----
+// ----- Silent-trap regression tests -----
 
 /// Trap 1: `Styled::grow` was renamed to `Styled::flex_grow` to avoid
 /// the silent type-confusion footgun with `LayoutStyle::grow(f32)`.

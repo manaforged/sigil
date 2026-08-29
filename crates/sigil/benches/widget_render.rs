@@ -2,10 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Widget-render baseline bench — W5.0b infrastructure for W5.1.
+//! Widget-render baseline bench — offscreen wgpu path.
 //!
 //! Measures cost of rendering each catalog widget in `Default` and
-//! `Hover` modes through the offscreen wgpu path. After W5.1 the
+//! `Hover` modes through the offscreen wgpu path. Since the
 //! binding-install hook may add per-frame overhead routed through
 //! `Animator::tick`; this curve is the regression baseline.
 //!
@@ -139,7 +139,7 @@ fn pointer_move(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "bench harness; deliberate")]
 fn pointer_down(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),

@@ -179,7 +179,7 @@ fn border_click_toggles_popup_open_and_closed() {
 
 /// A `disabled` flip between pointer-down and pointer-up must veto
 /// activation on release — for the frame path AND the interior path
-/// (review follow-up, 2026-07-13).
+///.
 fn mid_gesture_disable_vetoes_release(scope: &'static str, x: f32, y: f32) {
     sigil::reactive::Runtime::scope(scope, || {
         let disabled = signal(false);
@@ -210,7 +210,7 @@ fn mid_gesture_disable_vetoes_border_release() {
 
 /// The keyboard open path must honor a reactive disable too: focus
 /// while enabled, flip `disabled`, `ArrowDown` must not open the popup
-/// (review follow-up, 2026-07-13).
+///.
 #[test]
 fn reactive_disable_vetoes_arrow_down_open() {
     sigil::reactive::Runtime::scope("dd-disable-arrow", || {

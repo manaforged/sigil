@@ -17,7 +17,6 @@ fn app_tree(cx: &mut Cx) -> NodeId {
         }
     };
     let lines = session.lines;
-    let session = session.clone();
     cx.add(
         splitter(SplitterOrientation::Vertical)
             .width(800.0)

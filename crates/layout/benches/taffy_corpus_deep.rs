@@ -109,11 +109,15 @@ fn bench_owned_deep_random(c: &mut Criterion) {
         let mut cx = Cx::new_root();
         let root = build_owned_deep_random(&mut cx);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("bench harness invariant");
         cx.clear_dirty();
         b.iter(|| {
             cx.mark_mutated();
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine
+                .compute(&mut cx, root, AVAILABLE)
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });
@@ -147,7 +151,8 @@ fn build_taffy_deep_random_node(
         children.push(build_taffy_deep_random_node(tree, rng, depth + 1));
         children.push(build_taffy_deep_random_node(tree, rng, depth + 1));
     }
-    tree.new_with_children(style, &children).unwrap()
+    tree.new_with_children(style, &children)
+        .expect("bench harness invariant")
 }
 
 fn bench_taffy_deep_random(c: &mut Criterion) {
@@ -155,12 +160,12 @@ fn bench_taffy_deep_random(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let root = build_taffy_deep_random(&mut tree);
         tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-            .unwrap();
+            .expect("bench harness invariant");
         b.iter(|| {
-            tree.mark_dirty(root).unwrap();
+            tree.mark_dirty(root).expect("bench harness invariant");
             tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench harness invariant");
+            black_box(tree.layout(root).expect("bench harness invariant"));
         });
     });
 }
@@ -194,11 +199,15 @@ fn bench_owned_deep_auto(c: &mut Criterion) {
         let mut cx = Cx::new_root();
         let root = build_owned_deep_auto(&mut cx);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("bench harness invariant");
         cx.clear_dirty();
         b.iter(|| {
             cx.mark_mutated();
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine
+                .compute(&mut cx, root, AVAILABLE)
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });
@@ -230,10 +239,11 @@ fn build_taffy_deep_auto_node(tree: &mut taffy::TaffyTree<()>, depth: usize) -> 
                 },
                 ..Default::default()
             })
-            .unwrap();
+            .expect("bench harness invariant");
         return leaf;
     }
-    tree.new_with_children(style, &children).unwrap()
+    tree.new_with_children(style, &children)
+        .expect("bench harness invariant")
 }
 
 fn bench_taffy_deep_auto(c: &mut Criterion) {
@@ -241,12 +251,12 @@ fn bench_taffy_deep_auto(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let root = build_taffy_deep_auto(&mut tree);
         tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-            .unwrap();
+            .expect("bench harness invariant");
         b.iter(|| {
-            tree.mark_dirty(root).unwrap();
+            tree.mark_dirty(root).expect("bench harness invariant");
             tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench harness invariant");
+            black_box(tree.layout(root).expect("bench harness invariant"));
         });
     });
 }

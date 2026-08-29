@@ -1,8 +1,3 @@
-//! GPUI side of the 1:1 frame: construct the element, then
-//! `layout_as_root` + `prepaint`.
-//!
-//! `TestAppContext` is created once and never enters the clock.
-
 use std::collections::HashMap;
 use std::ops::Range;
 use std::rc::Rc;
@@ -35,12 +30,10 @@ use rand::SeedableRng;
 use rand::rngs::StdRng;
 use timing::{Host, new_host, time_construct_layout};
 
-/// GPUI framework runner.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct GpuiRunner;
 
 impl GpuiRunner {
-    /// Construct a fresh runner.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -120,7 +113,10 @@ fn quote_row(index: usize, quote: &Quote, row_h: f32) -> Div {
 }
 
 fn table_row(index: usize, row_h: f32, cols: usize) -> Div {
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let width = TABLE_CELL_W * cols as f32;
     let mut row = div().h(px(row_h)).w(px(width)).flex().flex_row();
     for col in 0..cols {
@@ -254,7 +250,6 @@ fn list_result(
     finish_gpui_list(workload, step, book, book_len, obs)
 }
 
-/// Build the rows GPUI asks for, recording the observed range.
 fn range_rows(
     range: Range<usize>,
     recorder: &RangeRecorder,
@@ -316,7 +311,6 @@ fn semantic_row(
     vec![krausest_id(id), krausest_label(id), KRAUSEST_ACTION.into()]
 }
 
-/// Row ids for the krausest list; tables key on row content instead.
 fn row_ids(p: &bench_parity::WorkloadParams, table: bool) -> Option<Arc<Vec<u32>>> {
     (!table).then(|| {
         Arc::new(
@@ -327,19 +321,16 @@ fn row_ids(p: &bench_parity::WorkloadParams, table: bool) -> Option<Arc<Vec<u32>
     })
 }
 
-/// Live row count: the book when present, else the id list.
 fn held_rows(book: Option<&Arc<Mutex<Vec<Quote>>>>, ids: Option<&Arc<Vec<u32>>>) -> usize {
     book.and_then(|rows| rows.lock().ok().map(|g| g.len()))
         .or_else(|| ids.map(|rows| rows.len()))
         .unwrap_or(0)
 }
 
-/// First quote's `last_done`, for the tick-change check.
 fn first_last_done(book: Option<&Arc<Mutex<Vec<Quote>>>>) -> Option<f64> {
     book.and_then(|rows| rows.lock().ok()?.first().map(|quote| quote.last_done))
 }
 
-/// First row index for the initial scroll position (tail = last page).
 fn first_row(p: &bench_parity::WorkloadParams, vis_lo: usize) -> usize {
     if p.tail() {
         p.row_count.saturating_sub(vis_lo.max(1))
@@ -348,7 +339,6 @@ fn first_row(p: &bench_parity::WorkloadParams, vis_lo: usize) -> usize {
     }
 }
 
-/// Bump the tick counter and mutate the visible rows of the data-table book.
 fn tick_gpui_book(book: Option<&Arc<Mutex<Vec<Quote>>>>, step_n: &mut u32, vis: usize) {
     let n = step_n.saturating_add(1);
     *step_n = n;
@@ -359,7 +349,6 @@ fn tick_gpui_book(book: Option<&Arc<Mutex<Vec<Quote>>>>, step_n: &mut u32, vis: 
     }
 }
 
-/// What the sampled steps observed: (painted ranges, paint health).
 #[derive(Clone, Copy)]
 struct Observed<'a>(
     &'a RangeRecorder,
@@ -367,7 +356,6 @@ struct Observed<'a>(
     &'a std::cell::Cell<[i64; 2]>,
 );
 
-/// Pass when `ok`, else Fail with `detail`.
 fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
     if ok {
         EquivalenceCheck::Pass
@@ -378,7 +366,6 @@ fn pass_if(ok: bool, detail: &str) -> EquivalenceCheck {
     }
 }
 
-/// Drain the measured samples, then verify + assemble the run result.
 fn finish_gpui_list(
     workload: &Workload,
     step: &mut impl FnMut(usize) -> u64,
@@ -394,7 +381,6 @@ fn finish_gpui_list(
     let samples_ns = drain_gpui(p, &mut scroll_first, step);
     let now_last = first_last_done(book);
     let pair = seed_last.zip(now_last);
-    // Change detection wants exact inequality, not an epsilon band.
     let moved = tick && pair.is_some_and(|(a, b)| a.to_bits() != b.to_bits());
     let ranges = obs.0.ranges.lock().map(|g| g.clone()).unwrap_or_default();
     let last = last_real_range(&ranges);
@@ -463,8 +449,6 @@ fn drain_gpui(
         if p.tail() {
             return *ix;
         }
-        // Construct 1:1 is the same window every sample. GPUI 0.2.2
-        // still rebuilds the element tree.
         if !p.reuse && !p.tick() && p.gpui_table() {
             *ix = 0;
             return 0;

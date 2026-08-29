@@ -1,4 +1,3 @@
-//! Cubic→quadratic Bézier approximation via `lyon_geom`.
 #![allow(clippy::redundant_pub_crate)]
 
 use lyon_geom::{CubicBezierSegment, Point, QuadraticBezierSegment};
@@ -7,14 +6,10 @@ use usvg::tiny_skia_path::PathSegment;
 use crate::parser::SvgPath;
 use crate::{BakeError, MAX_PATH_SEGMENTS};
 
-/// A quadratic Bézier segment in viewBox-space coordinates.
 #[derive(Clone, Copy, Debug)]
 pub struct QuadCurve {
-    /// Start point (anchor).
     pub start: (f32, f32),
-    /// Control point.
     pub control: (f32, f32),
-    /// End point (anchor).
     pub end: (f32, f32),
 }
 
@@ -28,14 +23,6 @@ impl QuadCurve {
     }
 }
 
-/// Convert a slice of [`SvgPath`]s into a flat list of [`QuadCurve`]s.
-///
-/// Cubics are split into quadratic approximations at tolerance 0.5 path-units.
-/// Lines are represented as degenerate quads (control = midpoint).
-/// Move and Close segments are consumed as contour boundaries with no curve output.
-///
-/// Returns [`BakeError::TooManySegments`] if the total exceeds
-/// [`MAX_PATH_SEGMENTS`].
 pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
     const TOLERANCE: f32 = 0.5;
     let mut quads: Vec<QuadCurve> = Vec::new();
@@ -88,10 +75,6 @@ pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
     Ok(quads)
 }
 
-/// Converts a cubic Bézier into quadratic approximations at the given tolerance.
-///
-/// Lyon's max-deviation tolerance is not the same as the sampled Hausdorff
-/// distance used by property tests, especially on high-curvature cubics.
 #[must_use]
 pub fn cubic_to_quadratics(
     p0: (f32, f32),

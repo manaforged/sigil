@@ -102,7 +102,9 @@ fn bench_owned_incremental(c: &mut Criterion) {
         let mut cx = Cx::new_root();
         let (root, leaf) = build_owned(&mut cx);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("bench harness invariant");
         cx.clear_dirty();
 
         let mut width = LEAF_WIDTH;
@@ -120,7 +122,9 @@ fn bench_owned_incremental(c: &mut Criterion) {
             cx.get_mut(leaf)
                 .expect("leaf is live")
                 .attach(LayoutStyle::block().fixed_size(width, LEAF_HEIGHT));
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine
+                .compute(&mut cx, root, AVAILABLE)
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });
@@ -140,7 +144,9 @@ fn build_taffy(tree: &mut taffy::TaffyTree<()>) -> (taffy::NodeId, taffy::NodeId
     for col_idx in 0..CHILDREN {
         let mut leaves = Vec::with_capacity(LEAVES_PER_CHILD);
         for leaf_idx in 0..LEAVES_PER_CHILD {
-            let leaf = tree.new_leaf(leaf_style.clone()).unwrap();
+            let leaf = tree
+                .new_leaf(leaf_style.clone())
+                .expect("bench harness invariant");
             if col_idx == 0 && leaf_idx == 0 {
                 first_leaf = Some(leaf);
             }
@@ -156,7 +162,7 @@ fn build_taffy(tree: &mut taffy::TaffyTree<()>) -> (taffy::NodeId, taffy::NodeId
                 ),
                 &leaves,
             )
-            .unwrap();
+            .expect("bench harness invariant");
         columns.push(column);
     }
     let root = tree
@@ -169,7 +175,7 @@ fn build_taffy(tree: &mut taffy::TaffyTree<()>) -> (taffy::NodeId, taffy::NodeId
             ),
             &columns,
         )
-        .unwrap();
+        .expect("bench harness invariant");
     (root, first_leaf.expect("at least one leaf"))
 }
 
@@ -178,7 +184,7 @@ fn bench_taffy_incremental(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let (root, leaf) = build_taffy(&mut tree);
         tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-            .unwrap();
+            .expect("bench harness invariant");
 
         let mut width = LEAF_WIDTH;
         b.iter(|| {
@@ -196,10 +202,10 @@ fn bench_taffy_incremental(c: &mut Criterion) {
                     LEAF_HEIGHT,
                 ),
             )
-            .unwrap();
+            .expect("bench harness invariant");
             tree.compute_layout(root, fixed_available(ROOT_WIDTH, ROOT_HEIGHT))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench harness invariant");
+            black_box(tree.layout(root).expect("bench harness invariant"));
         });
     });
 }

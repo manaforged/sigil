@@ -1,13 +1,5 @@
-//! Unicode segmentation wrappers — graphemes, words, sentences.
-//!
-//! Thin newtype wrappers over `unicode-segmentation`. The G1.2 body
-//! delegates straight to the upstream iterators; the wrappers exist
-//! so downstream crates can name the iterator type without pulling
-//! in `unicode-segmentation` directly (DR-044 lib boundary).
-
 use unicode_segmentation::{UnicodeSegmentation, UnicodeWords};
 
-/// Iterator over extended grapheme clusters in a string.
 pub struct GraphemeIter<'a> {
     inner: unicode_segmentation::Graphemes<'a>,
 }
@@ -19,8 +11,6 @@ impl<'a> Iterator for GraphemeIter<'a> {
     }
 }
 
-/// Iterator over Unicode words (UAX #29 word boundaries, filtered to
-/// word-like spans).
 pub struct WordIter<'a> {
     inner: UnicodeWords<'a>,
 }
@@ -32,7 +22,6 @@ impl<'a> Iterator for WordIter<'a> {
     }
 }
 
-/// Iterator over Unicode sentences (UAX #29 sentence boundaries).
 pub struct SentenceIter<'a> {
     inner: unicode_segmentation::USentenceBounds<'a>,
 }
@@ -44,7 +33,6 @@ impl<'a> Iterator for SentenceIter<'a> {
     }
 }
 
-/// Iterate extended grapheme clusters in `input`.
 #[must_use]
 pub fn graphemes(input: &str) -> GraphemeIter<'_> {
     GraphemeIter {
@@ -52,7 +40,6 @@ pub fn graphemes(input: &str) -> GraphemeIter<'_> {
     }
 }
 
-/// Iterate Unicode words in `input`.
 #[must_use]
 pub fn words(input: &str) -> WordIter<'_> {
     WordIter {
@@ -60,7 +47,6 @@ pub fn words(input: &str) -> WordIter<'_> {
     }
 }
 
-/// Iterate Unicode sentences in `input`.
 #[must_use]
 pub fn sentences(input: &str) -> SentenceIter<'_> {
     SentenceIter {
@@ -69,6 +55,10 @@ pub fn sentences(input: &str) -> SentenceIter<'_> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::indexing_slicing)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    reason = "test/instrumentation context; the invariant is proven by the caller"
+)]
 #[path = "segment_tests.rs"]
 mod tests;

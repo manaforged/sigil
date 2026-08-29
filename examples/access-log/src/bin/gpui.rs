@@ -186,7 +186,7 @@ fn main() {
                 })
             },
         )
-        .unwrap();
+        .expect("example harness");
     });
 }
 

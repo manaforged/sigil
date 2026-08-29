@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! W4.99.RC2 — repros for the two rendering failures the VG1 dispatch
+//! Repros for the two rendering failures the VG1 dispatch
 //! had to work around but never root-caused:
 //!
 //! 1. Children of a [`Position::Relative`] parent didn't paint in the

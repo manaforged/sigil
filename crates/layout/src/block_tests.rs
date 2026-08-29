@@ -1,20 +1,3 @@
-//! Block-layout integration tests. Lives in-crate (not under `tests/`)
-//! because `BlockSolver` + the forest types are `pub(crate)` per
-//! DR-041 — integration tests outside the crate can't reach them
-//! without elevating the visibility of a frozen API surface.
-//!
-//! Coverage matches the P0.2 (W2.3) brief:
-//! * single block with explicit size
-//! * `width: auto` fills containing block
-//! * padding / border / margin offset placement
-//! * adjacent-sibling margin collapse (positive, mixed sign)
-//! * `Position::Absolute` isolated from in-flow stacking
-//! * content-box vs border-box sizing
-//! * min / max clamping
-//! * `Display::None` skipped
-//! * percent dimensions
-//! * nested blocks
-
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -92,7 +75,6 @@ fn padding_contributes_to_auto_height() {
     let root = f.insert(None, style);
     let s = run(&f, root, 200.0, 150.0);
     let b = s.boxed(root).unwrap();
-    // No children — auto height is top+bottom padding (and 0 content).
     assert!(near(b.h, 16.0));
 }
 
@@ -152,11 +134,7 @@ fn adjacent_sibling_top_bottom_margins_collapse() {
     let s = run(&f, parent, 400.0, 300.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // a sits flush with parent's content top (parent has zero
-    // padding/border; outer top of `a` is 0 because the first child's
-    // top-margin lands raw against the sealed parent in this subset).
     assert!(near(ba.y, 0.0));
-    // Gap between a's bottom edge and b's top edge = max(20, 12) = 20.
     assert!(near(bb.y, ba.y + ba.h + 20.0));
 }
 
@@ -191,7 +169,6 @@ fn mixed_sign_margins_sum() {
     let s = run(&f, parent, 400.0, 300.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // 15 + (-5) = 10 gap.
     assert!(near(bb.y, ba.y + ba.h + 10.0));
 }
 
@@ -214,9 +191,7 @@ fn absolute_child_does_not_advance_flow() {
     f.attach(parent, flow).unwrap();
     let s = run(&f, parent, 400.0, 300.0);
     let bf = s.boxed(flow).unwrap();
-    // Absolute first child must NOT push the in-flow sibling down.
     assert!(near(bf.y, 0.0));
-    // Absolute child still placed (sized + recorded).
     let ba = s.boxed(abs).unwrap();
     assert!(near(ba.w, 40.0));
     assert!(near(ba.h, 40.0));
@@ -234,7 +209,6 @@ fn border_box_width_includes_padding() {
     let root = f.insert(None, style);
     let s = run(&f, root, 400.0, 300.0);
     let b = s.boxed(root).unwrap();
-    // BorderBox: 100 is the OUTER (border-box) width.
     assert!(near(b.w, 100.0));
     assert!(near(b.h, 50.0));
 }
@@ -251,7 +225,6 @@ fn content_box_width_adds_padding() {
     let root = f.insert(None, style);
     let s = run(&f, root, 400.0, 300.0);
     let b = s.boxed(root).unwrap();
-    // ContentBox: 100 is content width, border-box = 100 + 2*10.
     assert!(near(b.w, 120.0));
     assert!(near(b.h, 70.0));
 }
@@ -321,9 +294,7 @@ fn display_none_child_is_skipped() {
     f.attach(parent, hidden).unwrap();
     f.attach(parent, visible).unwrap();
     let s = run(&f, parent, 400.0, 300.0);
-    // Hidden node never visited.
     assert!(s.boxed(hidden).is_none());
-    // Visible sits flush with the parent's content origin.
     let bv = s.boxed(visible).unwrap();
     assert!(near(bv.y, 0.0));
 }
@@ -353,12 +324,9 @@ fn nested_blocks_stack_vertically() {
     assert!(near(ba.y, 0.0));
     assert!(near(bb.y, 40.0));
     assert!(near(bc.y, 65.0));
-    // Auto-width children fill parent's content width (200, parent
-    // has zero padding so content == border-box width).
     assert!(near(ba.w, 200.0));
     assert!(near(bb.w, 200.0));
     assert!(near(bc.w, 200.0));
-    // Parent's auto height = total child stack.
     let bp = s.boxed(parent).unwrap();
     assert!(near(bp.h, 80.0));
 }
@@ -401,7 +369,6 @@ fn absolute_pinned_to_padding_box() {
     f.attach(parent, abs).unwrap();
     let s = run(&f, parent, 400.0, 300.0);
     let ba = s.boxed(abs).unwrap();
-    // Absolute child pinned to parent's content (padding-inside) origin.
     assert!(near(ba.x, 8.0));
     assert!(near(ba.y, 8.0));
 }
@@ -424,7 +391,6 @@ fn border_offsets_child_origin() {
     f.attach(parent, child).unwrap();
     let s = run(&f, parent, 400.0, 300.0);
     let bc = s.boxed(child).unwrap();
-    // Child origin = border (4) + padding (6) = 10 on each axis.
     assert!(near(bc.x, 10.0));
     assert!(near(bc.y, 10.0));
 }
@@ -454,7 +420,6 @@ fn negative_margin_pulls_sibling_up() {
     let s = run(&f, parent, 400.0, 300.0);
     let ba = s.boxed(a).unwrap();
     let bb = s.boxed(b).unwrap();
-    // Collapse of (0, -10) = -10 → b sits 10 above a's bottom edge.
     assert!(near(bb.y, ba.y + ba.h - 10.0));
 }
 

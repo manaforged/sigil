@@ -1,29 +1,17 @@
-//! Pair gate for `vs gpui`.
-//!
-//! A numeric ratio prints only when both sides did the same named work
-//! on the same host, passed the same verdicts, and neither run is void
-//! or noisy.
-
 use std::collections::{BTreeSet, HashMap};
 
 use crate::{EquivalenceCheck, RunResult};
 
-/// Coefficient of variation above this refuses the pair. Median stays
-/// in the table; the cell is `NOISY`.
 pub const CV_CEILING: f64 = 0.25;
 
-/// True when every sample was a layout cache hit — the timer did no work.
 #[must_use]
-#[allow(clippy::implicit_hasher)]
+#[allow(clippy::implicit_hasher, reason = "intentional, reviewed trade-off")]
 pub fn layout_void(verify: &HashMap<String, u64>) -> bool {
     let samples = verify.get("samples").copied().unwrap_or(0);
     let hits = verify.get("layout_hits").copied().unwrap_or(0);
     samples > 0 && hits >= samples && verify.get("tick").copied().unwrap_or(0) == 0
 }
 
-/// True when this result may sit on one side of a pair.
-///
-/// An empty check map is not a pass.
 #[must_use]
 pub fn ratio_ok(result: &RunResult) -> bool {
     if layout_void(&result.verify) {
@@ -78,7 +66,6 @@ fn passed_or_na(result: &RunResult, name: &str) -> bool {
     )
 }
 
-/// True when two results declared the same check names.
 #[must_use]
 pub fn same_checks(a: &RunResult, b: &RunResult) -> bool {
     names(a) == names(b)
@@ -88,9 +75,6 @@ fn names(result: &RunResult) -> BTreeSet<String> {
     result.equivalence_check_results.keys().cloned().collect()
 }
 
-/// True when every shared check has the same verdict kind.
-///
-/// Pass vs N/A is not the same work.
 #[must_use]
 pub fn same_verdicts(a: &RunResult, b: &RunResult) -> bool {
     if !same_checks(a, b) {
@@ -115,7 +99,6 @@ const fn verdict_eq(left: &EquivalenceCheck, right: &EquivalenceCheck) -> bool {
     )
 }
 
-/// True when OS, CPU brand, and rustc match.
 #[must_use]
 pub fn same_host(a: &RunResult, b: &RunResult) -> bool {
     a.host.os == b.host.os
@@ -123,9 +106,6 @@ pub fn same_host(a: &RunResult, b: &RunResult) -> bool {
         && a.host.rustc_version == b.host.rustc_version
 }
 
-/// True when both sides stamped the same reuse/tick mode.
-///
-/// Missing `reuse` is not construct — stale JSON cannot pair.
 #[must_use]
 pub fn same_mode(a: &RunResult, b: &RunResult) -> bool {
     match (mode(a), mode(b)) {
@@ -134,7 +114,6 @@ pub fn same_mode(a: &RunResult, b: &RunResult) -> bool {
     }
 }
 
-/// True when both results came from the same clean source revision.
 #[must_use]
 pub fn same_source(a: &RunResult, b: &RunResult) -> bool {
     match (&a.source, &b.source) {
@@ -149,17 +128,11 @@ pub fn same_source(a: &RunResult, b: &RunResult) -> bool {
     }
 }
 
-/// True when both runners emitted the same canonical last-frame output.
 #[must_use]
 pub fn same_output(a: &RunResult, b: &RunResult) -> bool {
     matches!((&a.output, &b.output), (Some(left), Some(right)) if left == right)
 }
 
-/// True when both sides mounted the same number of rows.
-///
-/// Missing and zero are the same "no window" (flex / labels). A
-/// window on one side only, or 76 vs 38, is not 1:1. Canonical output
-/// clips overscan, so this check is the one that refuses extra pages.
 #[must_use]
 pub fn same_visible(a: &RunResult, b: &RunResult) -> bool {
     match (window_rows(a), window_rows(b)) {
@@ -183,13 +156,11 @@ fn mode(result: &RunResult) -> Option<(u64, u64)> {
     Some((reuse, tick))
 }
 
-/// True when the run's CV is at or under [`CV_CEILING`].
 #[must_use]
 pub fn cv_ok(result: &RunResult) -> bool {
     result.summary.cv <= CV_CEILING
 }
 
-/// True when the two results may share a numeric `vs gpui` cell.
 #[must_use]
 pub fn comparable(a: &RunResult, b: &RunResult) -> bool {
     ratio_ok(a)
@@ -204,26 +175,17 @@ pub fn comparable(a: &RunResult, b: &RunResult) -> bool {
         && cv_ok(b)
 }
 
-/// True when this run reconstructed the tree every sample (not retain, not tick).
 #[must_use]
 pub fn is_construct(result: &RunResult) -> bool {
     result.verify.get("reuse").copied() == Some(0)
         && result.verify.get("tick").copied().unwrap_or(0) == 0
 }
 
-/// Defendable 1:1: [`comparable`] and both sides constructed.
-///
-/// GPUI 0.2.2 always reconstructs. A Sigil retain/tick run cannot be 1:1
-/// with it. Quote [`vs_gpui`] only when this is true.
 #[must_use]
 pub fn one_to_one(a: &RunResult, b: &RunResult) -> bool {
     comparable(a, b) && is_construct(a) && is_construct(b)
 }
 
-/// Pair cell for `row` against `other` (the other framework on this workload).
-///
-/// A number only when [`comparable`] holds. `1.00×` on the GPUI row
-/// requires the Sigil row to be comparable too.
 #[must_use]
 pub fn vs_gpui(row: &RunResult, other: Option<&RunResult>) -> String {
     if layout_void(&row.verify) {
@@ -264,7 +226,6 @@ pub fn vs_gpui(row: &RunResult, other: Option<&RunResult>) -> String {
     format_ratio(row.summary.median_us / baseline)
 }
 
-/// Format a speedup so a sub-0.01 ratio does not print as `0.00×`.
 fn format_ratio(ratio: f64) -> String {
     if ratio > 0.0 && ratio < 0.01 {
         format!("{ratio:.3}×")
@@ -273,10 +234,6 @@ fn format_ratio(ratio: f64) -> String {
     }
 }
 
-/// True when one side retained the tree and the other reconstructed.
-///
-/// That is a GPUI 0.2.2 app frame (`Render` + `layout_as_root` +
-/// `prepaint`) against a Sigil retained `compute`. It is not 1:1 remount.
 #[must_use]
 pub fn frame_pair(a: &RunResult, b: &RunResult) -> bool {
     ratio_ok(a)
@@ -297,7 +254,6 @@ fn complementary_mode(a: &RunResult, b: &RunResult) -> bool {
     }
 }
 
-/// Retained-vs-reconstruct cell. A number only when [`frame_pair`] holds.
 #[must_use]
 pub fn vs_frame(row: &RunResult, other: Option<&RunResult>) -> String {
     if layout_void(&row.verify) {

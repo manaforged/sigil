@@ -24,9 +24,16 @@ smallvec = { workspace = true }
 # G5 (DR-048): Task<T> wraps oneshot for completion routing and stores
 # AbortHandle for RAII cancel. Sync feature pulls in `oneshot`; the
 # `task` module is implicit in the crate root and provides AbortHandle.
-# We do NOT enable `rt`/`rt-multi-thread` here — the executor itself is
-# owned by sigil-async and installed via the TaskExecutor trait.
+# Base sync features only. The `rt` family is enabled per-target in the
+# target tables below — `rt-multi-thread` on native (the tasks executor
+# owns a multi-thread tokio runtime), bare `rt` on wasm.
 tokio = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

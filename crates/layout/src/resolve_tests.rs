@@ -2,12 +2,10 @@ use super::*;
 use crate::style_data::{BoxSizing, Dimension};
 
 impl Edges {
-    /// Sum of the inline-axis edges (left + right).
     pub(crate) const fn inline(self) -> f32 {
         self.left + self.right
     }
 
-    /// Sum of the block-axis edges (top + bottom).
     pub(crate) const fn block(self) -> f32 {
         self.top + self.bottom
     }
@@ -38,7 +36,6 @@ fn clamp_applies_min_then_max() {
 
 #[test]
 fn clamp_min_floors_above_max() {
-    // CSS: min wins when min > max.
     assert_eq!(clamp(80.0, Some(120.0), Some(100.0)), 120.0);
 }
 

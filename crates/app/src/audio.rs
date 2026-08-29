@@ -1,21 +1,10 @@
-//! Audio playback host service.
-//!
-//! Bind [`Player::playing`] and [`Player::progress`] to `transport()`.
-//! [`Player::play_path`] holds the output stream until this player
-//! drops. [`Player::tick`] writes progress when the decoder reports a
-//! duration. [`Player::seek`] jumps when duration is known.
-//! `launch` drives that tick through `tick_intervals`.
-
 #[cfg(feature = "audio")]
 use sigil_reactive::{IntervalId, cancel_interval, register_interval};
 use sigil_reactive::{Signal, signal};
 
-/// Playback handle. Signals are `Copy`; the device lives in the sink.
 #[derive(Clone)]
 pub struct Player {
-    /// True while a sink is playing.
     pub playing: Signal<bool>,
-    /// 0–1 progress. Written by [`Player::tick`] when duration is known.
     pub progress: Signal<f32>,
     #[cfg(feature = "audio")]
     device: std::rc::Rc<std::cell::RefCell<Option<Device>>>,
@@ -23,7 +12,6 @@ pub struct Player {
 
 #[cfg(feature = "audio")]
 struct Device {
-    /// Must outlive [`Self::sink`].
     _stream: rodio::OutputStream,
     sink: rodio::Sink,
     duration: Option<std::time::Duration>,
@@ -40,7 +28,6 @@ impl Drop for Device {
 }
 
 impl Player {
-    /// Idle player. Call [`play_path`] to open a file.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -51,10 +38,10 @@ impl Player {
         }
     }
 
-    /// Toggle pause/resume when a sink exists.
-    ///
-    /// No-op until [`Player::play_path`] opens a device. Tests write
-    /// [`Player::playing`] directly.
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "no-op body without feature `audio` is trivially const-able; the real body is not"
+    )]
     pub fn toggle(&self) {
         #[cfg(feature = "audio")]
         {
@@ -71,10 +58,10 @@ impl Player {
         }
     }
 
-    /// Write [`Player::progress`] and [`Player::playing`] from the sink.
-    ///
-    /// `launch` registers an interval that calls this. An embed host
-    /// that does not tick intervals should call it once per frame.
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "const-eligible only under one cfg configuration"
+    )]
     pub fn tick(&self) {
         #[cfg(feature = "audio")]
         {
@@ -82,13 +69,6 @@ impl Player {
         }
     }
 
-    /// Seek to a 0–1 ratio. Requires feature `audio` and a playing
-    /// file whose decoder reports a duration.
-    ///
-    /// # Errors
-    ///
-    /// Returns when no sink is open, duration is unknown, or the
-    /// decoder cannot seek. Without feature `audio`, always errors.
     pub fn seek(&self, ratio: f32) -> crate::AppResult<()> {
         #[cfg(feature = "audio")]
         {
@@ -101,15 +81,6 @@ impl Player {
         }
     }
 
-    /// Decode and play `path`. Requires feature `audio`.
-    ///
-    /// Holds the output stream on this player. [`Player::tick`] writes
-    /// [`Player::progress`] when the decoder reports a duration.
-    ///
-    /// # Errors
-    ///
-    /// Returns when the file cannot be opened, decoded, or the device
-    /// cannot start. Without feature `audio`, always errors.
     pub fn play_path(&self, path: &std::path::Path) -> crate::AppResult<()> {
         #[cfg(feature = "audio")]
         {

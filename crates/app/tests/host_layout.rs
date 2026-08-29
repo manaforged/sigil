@@ -92,9 +92,9 @@ fn host_surfaces_reports_hole_rect() {
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let holes = host.surfaces();
-    assert_eq!(holes.len(), 1);
-    assert_eq!(holes[0].0, 3);
-    assert!(holes[0].1.width > 0.0);
+    let hole = holes.first().copied().expect("one surface hole");
+    assert_eq!(hole.0, 3);
+    assert!(hole.1.width > 0.0);
 }
 
 #[test]

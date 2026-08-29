@@ -1,5 +1,3 @@
-//! Edge-triggered event channels.
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -14,18 +12,12 @@ struct Inner<T> {
     subs: Vec<SubEntry<T>>,
 }
 
-/// An edge-triggered one-shot broadcast channel.
-///
-/// `emit` notifies current subscribers once and does not retain `T`.
-/// Use [`EventChannel`] for fire-once edges (menu click, tray click).
-/// Use [`Signal<T>`](crate::Signal) when callers need a current value.
 #[derive(Clone)]
 pub struct EventChannel<T: 'static> {
     inner: Rc<RefCell<Inner<T>>>,
 }
 
 impl<T: Clone + 'static> EventChannel<T> {
-    /// Create an empty channel.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -36,7 +28,6 @@ impl<T: Clone + 'static> EventChannel<T> {
         }
     }
 
-    /// Broadcast `value` to current subscribers. The value is not stored.
     pub fn emit(&self, value: T) {
         let subs: Vec<Rc<dyn Fn(T)>> = self
             .inner
@@ -50,10 +41,6 @@ impl<T: Clone + 'static> EventChannel<T> {
         }
     }
 
-    /// Register a subscriber. Drop the [`Subscription`] to unregister.
-    ///
-    /// If a reactive owner is active, disposing that owner also
-    /// unregisters the callback.
     #[must_use = "dropping the subscription immediately unregisters the callback"]
     pub fn subscribe(&self, f: impl Fn(T) + 'static) -> Subscription {
         let id = {

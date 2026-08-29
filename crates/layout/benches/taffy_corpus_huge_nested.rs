@@ -81,12 +81,16 @@ fn bench_owned_huge_nested(c: &mut Criterion) {
         let mut cx = Cx::new_root();
         let root = build_owned_huge_nested(&mut cx);
         let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-        engine.compute(&mut cx, root, AVAILABLE).unwrap();
+        engine
+            .compute(&mut cx, root, AVAILABLE)
+            .expect("bench harness invariant");
         cx.clear_dirty();
 
         b.iter(|| {
             cx.mark_mutated();
-            engine.compute(&mut cx, root, AVAILABLE).unwrap();
+            engine
+                .compute(&mut cx, root, AVAILABLE)
+                .expect("bench harness invariant");
             black_box(engine.result(root));
         });
     });
@@ -110,7 +114,7 @@ fn build_taffy_huge_nested_node(tree: &mut taffy::TaffyTree<()>, index: usize) -
     }
 
     tree.new_with_children(taffy_flex_column_fixed(NODE_SIZE, NODE_SIZE), &children)
-        .unwrap()
+        .expect("bench harness invariant")
 }
 
 fn bench_taffy_huge_nested(c: &mut Criterion) {
@@ -118,13 +122,13 @@ fn bench_taffy_huge_nested(c: &mut Criterion) {
         let mut tree = taffy::TaffyTree::<()>::new();
         let root = build_taffy_huge_nested(&mut tree);
         tree.compute_layout(root, fixed_available(NODE_SIZE, NODE_SIZE))
-            .unwrap();
+            .expect("bench harness invariant");
 
         b.iter(|| {
-            tree.mark_dirty(root).unwrap();
+            tree.mark_dirty(root).expect("bench harness invariant");
             tree.compute_layout(root, fixed_available(NODE_SIZE, NODE_SIZE))
-                .unwrap();
-            black_box(tree.layout(root).unwrap());
+                .expect("bench harness invariant");
+            black_box(tree.layout(root).expect("bench harness invariant"));
         });
     });
 }

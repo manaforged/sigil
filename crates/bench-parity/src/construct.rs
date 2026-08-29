@@ -1,37 +1,29 @@
-//! Shared 1:1 construct strings and output. Both runners call these.
-
 use std::collections::BTreeMap;
 
 use crate::{OutputProof, Workload};
 
-/// Leaf label for [`nested-flex`] spines.
 pub const NESTED_LEAF: &str = "leaf";
 
-/// Wrapping paragraph. Same bytes on both runners.
 #[must_use]
 pub fn wrap_paragraph(index: usize) -> String {
     format!("Paragraph {index} wraps across several lines of payload text for layout.")
 }
 
-/// Form row key. Same bytes on both runners.
 #[must_use]
 pub fn form_key(index: usize) -> String {
     format!("Name {index}")
 }
 
-/// Form row value. Same bytes on both runners.
 #[must_use]
 pub fn form_value(index: usize) -> String {
     format!("Value {index}")
 }
 
-/// Overlay card label. Same bytes on both runners.
 #[must_use]
 pub fn overlay_label(index: usize) -> String {
     format!("card {index}")
 }
 
-/// True when this category shapes text (not empty flex boxes).
 #[must_use]
 pub fn text_construct(category: &str) -> bool {
     matches!(
@@ -40,7 +32,6 @@ pub fn text_construct(category: &str) -> bool {
     )
 }
 
-/// True when a workload id is a text construct pair.
 #[must_use]
 pub fn text_construct_id(workload_id: &str) -> bool {
     workload_id.starts_with("text-labels")
@@ -50,7 +41,6 @@ pub fn text_construct_id(workload_id: &str) -> bool {
         || workload_id.starts_with("overlay-stack")
 }
 
-/// Canonical visible strings for a construct workload, in scrape order.
 #[must_use]
 pub fn expected_texts(workload: &Workload) -> Vec<String> {
     let n = workload.params.row_count;
@@ -68,7 +58,6 @@ pub fn expected_texts(workload: &Workload) -> Vec<String> {
     }
 }
 
-/// Output proof both runners emit for construct trees.
 #[must_use]
 pub fn construct_proof(
     workload: &Workload,

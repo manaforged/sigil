@@ -1,5 +1,3 @@
-//! Class-list merge support.
-
 use std::collections::HashSet;
 use std::sync::{Mutex, OnceLock};
 
@@ -7,10 +5,8 @@ use smallvec::SmallVec;
 
 use crate::{Px, StyleAtom};
 
-/// Stable component identifier used for merge diagnostics.
 pub type ComponentId = u64;
 
-/// Merge default atoms with override atoms, resolving conflicts last-wins.
 #[must_use]
 pub fn merge_classes(
     defaults: &[StyleAtom],
@@ -27,30 +23,21 @@ pub fn merge_classes(
     merged.into_iter().map(|(_slot, atom)| atom).collect()
 }
 
-/// Return the number of merge conflicts warned in this session.
 #[must_use]
 pub fn merge_warning_count() -> usize {
     diagnostic::warning_count()
 }
 
-/// Return merge conflicts warned for a specific component.
 #[must_use]
 pub fn merge_warning_count_for_component(component_id: ComponentId) -> usize {
     diagnostic::warning_count_for_component(component_id)
 }
 
-/// Number of unknown-class tokens dropped by the class parser this session.
-///
-/// Bumped by [`bump_unknown_class_count`] when `.class("...")` receives a
-/// token outside the documented atomic-class catalog. Useful in tests to
-/// assert the catalog covers every token a widget emits.
 #[must_use]
 pub fn unknown_class_warning_count() -> usize {
     diagnostic::unknown_class_count()
 }
 
-/// Bump the unknown-class counter. Called from the class parser's diagnostic
-/// path alongside the `tracing::warn!` emission.
 pub fn bump_unknown_class_count() {
     diagnostic::bump_unknown_class();
 }
@@ -193,7 +180,10 @@ fn expand_margin_y(px: Px, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4]>) {
     ]);
 }
 
-#[allow(clippy::too_many_lines)]
+#[allow(
+    clippy::too_many_lines,
+    reason = "one sequential pass; splitting would scatter the ordering it documents"
+)]
 const fn slot(atom: StyleAtom) -> ResolvedSlot {
     match atom {
         StyleAtom::PaddingAll(_) | StyleAtom::PaddingY(_) | StyleAtom::PaddingTop(_) => {

@@ -22,18 +22,14 @@
 //!
 //! 1. **Unconditional** tests exercise compile-time bounds and error
 //!    surface shape. These always run.
-//! 2. **Display-gated** tests construct a real `EventLoop` and are
-//!    marked `#[ignore]` so `cargo test` is green on CI. Run locally
-//!    with:
+//! 2. **Display-gated** construction lives in the sibling `display_gate`
+//!    target (`harness = false`), which runs on the process main thread
+//!    — the only thread `AppKit` accepts. It is skipped unless
+//!    `SIGIL_DISPLAY_GATE=1` is set:
 //!
 //!    ```text
-//!    cargo test -p sigil-shell -- --ignored --test-threads=1
+//!    SIGIL_DISPLAY_GATE=1 cargo test -p sigil-shell --test display_gate
 //!    ```
-//!
-//!    Because of (2) above only *one* display-gated test may run per
-//!    process invocation. The consolidated
-//!    [`construct_and_probe`] test owns the single allowed
-//!    `EventLoop` and exercises the full pre-run contract in one go.
 //!
 //! See DR-002 for the trait contract being verified.
 
@@ -61,9 +57,8 @@ fn shell_error_implements_std_error() {
 }
 
 /// `ShellError::AlreadyRun` must carry a user-facing message. The
-/// corresponding runtime path is covered by
-/// `construct_and_probe::run_then_retry` when ignored tests are run
-/// locally.
+/// corresponding runtime path is covered by the display-gated
+/// `display_gate` target when run locally on a GUI machine.
 #[test]
 fn already_run_error_has_display_message() {
     let err = ShellError::AlreadyRun;
@@ -94,86 +89,7 @@ fn take_failed_windows_signature_is_owned_vec() {
 }
 
 // ---------------------------------------------------------------------------
-// Display-gated single-shot test.
+// Display-gated construction lives in `tests/display_gate.rs`
+// (`harness = false`): winit demands the process main thread on macOS,
+// and libtest dispatches tests onto worker threads in every mode.
 // ---------------------------------------------------------------------------
-
-/// Consolidated pre-run contract check. Constructs the single
-/// `EventLoop` winit allows per process and walks every pre-run
-/// surface: waker bounds and liveness, wake coalescing, window
-/// handle allocation, window lookup before `resumed`, the failed-
-/// window drain shape, and post-drop waker error shape.
-///
-/// Ignored by default — see the module docs for the invocation
-/// string. This test cannot be run inside the normal `cargo test`
-/// because `cargo test` dispatches onto a worker thread and `winit`
-/// on Windows demands the process main thread.
-#[test]
-#[ignore = "requires the process main thread; run locally with --ignored --test-threads=1"]
-fn construct_and_probe() {
-    use std::sync::atomic::Ordering;
-
-    use sigil_hal::{PhysicalSize, Shell};
-
-    let mut shell = WinitShell::new().expect("construct shell on the main thread");
-
-    // waker: cheap-to-clone, live against a fresh loop.
-    let waker = shell.waker();
-    let cloned = waker.clone();
-    assert!(
-        <WinitShell as Shell>::wake(&waker).is_ok(),
-        "wake should succeed while the event loop is alive"
-    );
-    drop(cloned);
-
-    // --- coalescing -------------------------------------------------
-    //
-    // The first wake above already incremented `WAKE_DELIVERED_COUNT`
-    // once. We call wake() ten more times from the same thread; none
-    // of them should forward a WakeEvent because `user_event` has not
-    // yet run (the event loop is not executing), so the pending flag
-    // remains set from the first call. The counter must still be
-    // exactly 1.
-    let baseline = sigil_shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
-    for _ in 0..10 {
-        <WinitShell as Shell>::wake(&waker).expect("wake still ok");
-    }
-    let after = sigil_shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
-    assert_eq!(
-        after,
-        baseline,
-        "10 additional wakes without a user_event drain must coalesce into 0 deliveries, saw {delta}",
-        delta = after - baseline,
-    );
-
-    // create_window: returns unique handles, no window is
-    // materialised before `resumed` fires.
-    let a = shell
-        .create_window("alpha", PhysicalSize::new(800, 600))
-        .expect("queue alpha");
-    let b = shell
-        .create_window("beta", PhysicalSize::new(1024, 768))
-        .expect("queue beta");
-    assert_ne!(a.id(), b.id(), "handles must be unique");
-    assert!(
-        shell.window_for(a).is_none(),
-        "window lookups must be None before the event loop runs"
-    );
-    assert!(shell.windows().is_empty());
-
-    // take_failed_windows: nothing has been attempted yet.
-    assert!(
-        shell.take_failed_windows().is_empty(),
-        "no materialisation has run; failure list must be empty"
-    );
-
-    // drop(shell) tears the event loop down; the previously-cloned
-    // waker must then surface a clean error instead of panicking.
-    drop(shell);
-    let err =
-        <WinitShell as Shell>::wake(&waker).expect_err("wake on a dropped event loop must error");
-    let msg = err.to_string();
-    assert!(
-        msg.contains("event loop") || msg.contains("closed"),
-        "error should mention event loop closure, got: {msg}"
-    );
-}

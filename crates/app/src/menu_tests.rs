@@ -7,9 +7,6 @@ use super::*;
 
 #[test]
 fn events_channel_delivers_activations_to_subscribers() {
-    // The reactive surface apps use: subscribe to menu activations and
-    // receive the emitted id. (The native menu-bar install needs a real
-    // desktop and is exercised on device, not here.)
     Runtime::scope("menu-events", || {
         let hits: Rc<Cell<u32>> = Rc::new(Cell::new(0));
         let subscription = events().subscribe({

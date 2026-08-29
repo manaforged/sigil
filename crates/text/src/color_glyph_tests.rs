@@ -28,10 +28,11 @@ fn rasterizes_check_mark_in_color() {
         (raster.width * raster.height * 4) as usize
     );
 
-    // ✅ is a green check on transparent — expect opaque green-dominant pixels.
     let green_pixels = raster
         .rgba
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[3] > 200 && p[1] > 120 && p[1] > p[0] && p[1] > p[2])
         .count();
     assert!(
@@ -42,7 +43,6 @@ fn rasterizes_check_mark_in_color() {
 
 #[test]
 fn non_emoji_glyph_has_no_color_raster() {
-    // Glyph id past the subset's glyph count yields no strike.
     let font = FontRef::new(EMOJI).unwrap();
     assert!(rasterize(&font, GlyphId::new(9_999), 128.0).is_none());
 }
