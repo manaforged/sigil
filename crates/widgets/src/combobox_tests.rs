@@ -1,5 +1,3 @@
-// Tests may unwrap/panic on structural assertions (house test exemption,
-// per rust-hygiene: crate-root allow with a reason).
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
 use super::*;

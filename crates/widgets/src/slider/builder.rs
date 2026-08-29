@@ -25,13 +25,10 @@ const HORIZONTAL_WIDTH: f32 = 180.0;
 const HORIZONTAL_HEIGHT: f32 = 24.0;
 const VERTICAL_WIDTH: f32 = 24.0;
 const VERTICAL_HEIGHT: f32 = 180.0;
-/// Slider orientation.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Orientation {
-    /// Horizontal left-to-right slider.
     #[default]
     Horizontal,
-    /// Vertical bottom-to-top slider.
     Vertical,
 }
 
@@ -48,11 +45,9 @@ pub(super) struct SliderRuntime {
     pub(super) step: f32,
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) orientation: Orientation,
-    /// Main-axis extent override; `None` uses the built-in default.
     pub(super) length: Option<f32>,
 }
 
-/// Builder returned by [`slider`].
 pub struct SliderBuilder {
     value: Signal<f32>,
     range: SliderRange,
@@ -65,14 +60,12 @@ pub struct SliderBuilder {
     style_accumulator: Style,
 }
 
-/// Create a slider widget.
 #[must_use]
 pub fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder {
     SliderBuilder::new(value, range)
 }
 
 impl SliderBuilder {
-    /// Create a slider builder.
     #[must_use]
     pub fn new(value: Signal<f32>, range: RangeInclusive<f32>) -> Self {
         let start = *range.start();
@@ -90,48 +83,36 @@ impl SliderBuilder {
         }
     }
 
-    /// Set the track's extent along the slider's own axis: width for a
-    /// horizontal slider, height for a vertical one.
-    ///
-    /// Without this the track takes a fixed default (180px), which is
-    /// what makes a bare slider overflow a narrower parent. Pointer
-    /// mapping follows the measured track, so any length here stays
-    /// click-accurate.
     #[must_use]
     pub const fn length(mut self, length: f32) -> Self {
         self.length = Some(length);
         self
     }
 
-    /// Set the step used for pointer quantization and keyboard movement.
     #[must_use]
     pub const fn step(mut self, step: f32) -> Self {
         self.step = step;
         self
     }
 
-    /// Set a reactive disabled signal.
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
         self
     }
 
-    /// Run a callback when a user gesture commits a value.
     #[must_use]
     pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
-    /// Set the slider orientation.
     #[must_use]
     pub const fn orientation(mut self, orientation: Orientation) -> Self {
         self.orientation = orientation;
         self
     }
 
-    /// Add utility classes or atoms after the built-in slider defaults.
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -139,16 +120,12 @@ impl SliderBuilder {
         self
     }
 
-    /// Add struct-built style atoms after the built-in slider defaults.
-    ///
-    /// The mutable trait hook is [`sigil_style::StyleAccess::style_mut`].
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
 
-    /// Attach a scoped theme to the slider root.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
@@ -162,17 +139,11 @@ impl SliderBuilder {
             .on_change
             .as_ref()
             .map_or_else(noop_value_change, Rc::clone);
-        // Drain user-supplied state-slot overlays before the base
-        // accumulator attaches — they resolve against the track root's
-        // interaction slot so `.hover(|s| s.bg(...))` paints the track.
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
-        // Styled accumulator installed after explicit mutators so the
-        // trait surface layers ON TOP of `.class()` / `.style(Style)`
-        // calls (additive composition per DR-049 §10).
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
@@ -246,11 +217,6 @@ impl SliderRuntime {
     }
 
     pub(super) fn set_from_position(self, event: &PointerEvent) {
-        // Divide by the track's MEASURED extent, not the default constant:
-        // a slider laid out at any other width would otherwise map clicks
-        // to the wrong value, and a drag past the default extent would
-        // saturate early. Fall back to the default only when the event
-        // arrived without a laid-out target (synthesized/direct dispatch).
         let (extent, fallback) = match self.orientation {
             Orientation::Horizontal => (event.target_size.width, HORIZONTAL_WIDTH),
             Orientation::Vertical => (event.target_size.height, VERTICAL_HEIGHT),
@@ -292,11 +258,6 @@ fn slider_root(
     interaction: InteractionState,
     user_overlay: StyleOverlay,
 ) -> NodeBuilder {
-    // Thin-track idiom (native range inputs, ShadCN, Zed): the root is a
-    // transparent 28px hit area; the visible track is a 4px line split
-    // into an accent fill (value fraction) and a neutral rest, with the
-    // round thumb flowing between them so the fill always meets the
-    // thumb's leading edge exactly.
     let root = container()
         .role(Role::Slider)
         .label("Slider")
@@ -311,7 +272,6 @@ fn slider_root(
             .child(track_fill(runtime))
             .child(slider_thumb(interaction, runtime.disabled))
             .child(track_rest(runtime)),
-        // Value grows upward: rest on top, fill below the thumb.
         Orientation::Vertical => root
             .child(track_rest(runtime))
             .child(slider_thumb(interaction, runtime.disabled))
@@ -320,9 +280,6 @@ fn slider_root(
 }
 
 fn slider_layout(orientation: Orientation, length: Option<f32>) -> LayoutStyle {
-    // A slider spans the row it sits in (the `<input type=range>`
-    // convention); `.length()` opts back out. Pointer mapping already
-    // divides by the MEASURED track, so a filled track stays accurate.
     match orientation {
         Orientation::Horizontal => {
             let base = LayoutStyle::flex_row().height(HORIZONTAL_HEIGHT);

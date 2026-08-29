@@ -1,10 +1,3 @@
-//! Modal widget — full-viewport dimmed backdrop with a centered
-//! GPU-drawn dialog frame whose visibility is gated by a reactive
-//! `show` signal.
-//!
-//! This is not NSAlert. Native alerts are `sigil::dialog::message` /
-//! `sigil::dialog::confirm`.
-
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -28,19 +21,10 @@ use super::super::shared::BuilderMutator;
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
-/// Inner padding around the dialog frame body.
 const DIALOG_PADDING: f32 = 16.0;
-/// Title bar height in logical pixels.
 const TITLE_HEIGHT: f32 = 24.0;
-/// Backdrop dimensions — large enough to fully cover any practical
-/// viewport. The kernel clamps overflowing absolute children to the
-/// parent rect during paint; oversizing here just guarantees the
-/// backdrop reaches every edge without needing reactive viewport input.
 const BACKDROP_SIZE: f32 = 4_096.0;
 
-// Dim scrim — resolves to the theme's "scrim" token (60 % opacity black
-// by default; see `sigil_style::theme::Theme::built_in_color`). Themable
-// rather than a hardcoded literal so a preset can rebind it.
 static BACKDROP_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("scrim"),
     StyleAtom::Transition(MODAL_TRANSITION),
@@ -51,18 +35,13 @@ static DIALOG_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(MODAL_TRANSITION),
 ];
 
-/// Where a [`sheet`] docks. [`modal`] stays centered (`None`).
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
-    /// Leading edge.
     Left,
-    /// Trailing edge. Default for [`sheet`].
     Right,
-    /// Bottom edge.
     Bottom,
 }
 
-/// Builder returned by [`modal`] and [`sheet`].
 pub struct ModalBuilder {
     show: Signal<bool>,
     title: Option<TextContent>,
@@ -76,16 +55,11 @@ pub struct ModalBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Centered dialog. Pass the open signal, same as `checkbox(on)`.
 #[must_use]
 pub fn modal(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
 }
 
-/// Panel on an edge. Same builder as [`modal`].
-///
-/// Defaults: right side, backdrop click dismisses. Call
-/// [`.side`](ModalBuilder::side) for left or bottom.
 #[must_use]
 pub fn sheet(show: Signal<bool>) -> ModalBuilder {
     ModalBuilder::new(show)
@@ -94,7 +68,6 @@ pub fn sheet(show: Signal<bool>) -> ModalBuilder {
 }
 
 impl ModalBuilder {
-    /// Create a modal builder bound to `show`.
     #[must_use]
     pub fn new(show: Signal<bool>) -> Self {
         Self {
@@ -111,67 +84,42 @@ impl ModalBuilder {
         }
     }
 
-    /// Dock the frame to an edge. `None` (default for [`modal`])
-    /// centers it.
     #[must_use]
     pub const fn side(mut self, side: Side) -> Self {
         self.side = Some(side);
         self
     }
 
-    /// Set the dialog title (rendered in the dialog's title bar).
-    ///
-    /// Takes the same `impl Into<TextContent>` as `checkbox`/`gauge`
-    /// `.label()`: a `&'static str` / `String` stays fixed, a
-    /// `Signal<String>` updates the title bar and the dialog's
-    /// accessible name reactively.
     #[must_use]
     pub fn title(mut self, title: impl Into<TextContent>) -> Self {
         self.title = Some(title.into());
         self
     }
 
-    /// Bind the modal's visibility to a reactive boolean signal.
-    ///
-    /// When the signal reads `false`, both backdrop and dialog frame
-    /// paint with `Display::None` and contribute no layout box.
     #[must_use]
     pub const fn show(mut self, show: Signal<bool>) -> Self {
         self.show = show;
         self
     }
 
-    /// Enable or disable the modal focus trap marker.
-    ///
-    /// Enabled by default. Passing `false` opts out of registering the
-    /// dialog as a modal focus scope.
     #[must_use]
     pub const fn trap(mut self, enabled: bool) -> Self {
         self.trap = enabled;
         self
     }
 
-    /// Enable or disable Escape-key dismissal.
-    ///
-    /// Enabled by default. When enabled, Escape closes the topmost open
-    /// modal by setting its `show` signal to `false`.
     #[must_use]
     pub const fn escape_closes(mut self, enabled: bool) -> Self {
         self.escape_closes = enabled;
         self
     }
 
-    /// Enable or disable backdrop-click dismissal.
-    ///
-    /// Disabled by default. When enabled, pointer-down on the backdrop
-    /// closes the modal by setting its `show` signal to `false`.
     #[must_use]
     pub const fn dismiss_on_backdrop(mut self, enabled: bool) -> Self {
         self.dismiss_on_backdrop = enabled;
         self
     }
 
-    /// Append a child node to the dialog body.
     #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.children.push(Box::new(child));
@@ -227,30 +175,11 @@ impl WidgetLayoutExt for ModalBuilder {
     }
 }
 
-/// Register a reactive effect that announces the dialog title to
-/// assistive tech on every `false → true` rising edge of `show`.
-///
-/// Initial state — including a modal that opens with `show == true`
-/// at first read — is treated as steady, not a rising edge: ARIA-style
-/// live regions should fire when the modal *opens*, not when the host
-/// mounts with the dialog already visible. Re-opens (`false → true`
-/// after a `true → false`) do re-announce.
-///
-/// The title resolves at fire time, so a signal-driven title announces
-/// its current text.
-///
-/// The effect does not need `&mut Cx`. It queues the announcement via
-/// [`queue_announcement`]; the host drains it through
-/// [`sigil_kernel::Cx::flush_announcements`] on the next frame tick.
 fn install_open_announcement(show: Signal<bool>, title: Option<TextContent>) {
     let prev = Rc::new(Cell::new(true));
     effect_named("sigil::modal::open_announce", move || {
         let open_now = show.get();
         let was_open = prev.replace(open_now);
-        // Rising edge: only fire when we just transitioned closed -> open.
-        // `was_open == true` covers both steady-open and the implicit
-        // initial read (prev seeded to true), suppressing the mount-time
-        // announce.
         if open_now && !was_open {
             let name = title
                 .as_ref()
@@ -311,8 +240,6 @@ impl IntoNode for ModalBuilder {
     }
 }
 
-// ---- structural helpers --------------------------------------------------
-
 fn root_layout(side: Option<Side>) -> LayoutStyle {
     let root = match side {
         None | Some(Side::Bottom) => LayoutStyle::flex_column(),
@@ -349,7 +276,6 @@ fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder 
     backdrop
 }
 
-/// Dialog frame inputs, moved out of [`ModalBuilder`].
 struct DialogSpec {
     show: Signal<bool>,
     title: Option<TextContent>,
@@ -371,12 +297,6 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         layout_overrides,
     } = spec;
     let title_label = accessible_name(title.as_ref());
-    // Focus-visible ring on the dialog frame itself — the modal's own
-    // focusable primary action (WAI-ARIA dialog pattern: the dialog is
-    // the tab-ring entry point). Mirrors `InteractionState`'s
-    // focus_in/focus_out → ring_visible wiring in `interaction.rs`,
-    // scoped down to focus-only (no hover/press) since only Role::Dialog
-    // itself carries `.focusable(true)` here.
     let ring_visible = signal(false);
 
     let mut dialog = container()
@@ -433,9 +353,6 @@ fn dialog_title(title: TextContent) -> impl IntoNode {
         .class("text-on-surface")
 }
 
-/// Accessible name for the modal root and dialog frame. A signal-driven
-/// title maps to [`AccessibleName::Derived`], so the name tracks the
-/// title reactively.
 fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
     let Some(title) = title else {
         return AccessibleName::Static(String::from("Dialog"));
@@ -443,13 +360,9 @@ fn accessible_name(title: Option<&TextContent>) -> AccessibleName {
     match title {
         TextContent::Static(value) => AccessibleName::Static(value.clone()),
         TextContent::Reactive(value) => AccessibleName::Derived(*value),
-        // ponytail: compute-sourced names freeze to the build-time value;
-        // upgrade when TextContent exposes a node-owned live conversion.
         TextContent::Compute(_) => AccessibleName::Static(title.resolve()),
     }
 }
-
-// ---- show / closed visibility --------------------------------------------
 
 fn show_display(show: Signal<bool>) -> &'static [StyleAtom] {
     if show.get() {

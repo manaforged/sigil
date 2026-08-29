@@ -33,9 +33,6 @@ fn option_rows_carry_radio_button_role() {
 
 #[test]
 fn defaults_to_primary_tone() {
-    // The default tone is `Tone::Primary` so the selected mark
-    // paints with the accent color out of the box. Changing the
-    // default would silently re-tint every existing call site.
     Runtime::scope("radio-group-default-tone", || {
         let group = radio_group(signal(String::from("a"))).option("a", "A");
         assert!(matches!(group.tone, Tone::Primary));
@@ -48,8 +45,7 @@ fn mark_ring_clears_non_text_contrast() {
     use sigil_style::scale::ScaleRole;
     use sigil_style::theme::Theme;
 
-    // keep luminance arithmetic bit-stable for goldens
-    #[allow(clippy::suboptimal_flops)]
+    #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
     fn luminance(c: Rgba8) -> f64 {
         let ch = |v: u8| {
             let v = f64::from(v) / 255.0;
@@ -62,10 +58,6 @@ fn mark_ring_clears_non_text_contrast() {
         0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
     }
 
-    // The `bg-gray-9` ring must clear the WCAG 1.4.11 non-text
-    // 3:1 floor against the surface it floats on, in both themes.
-    // The previous flat gray-7 mark measured 1.49:1 on light
-    // (Fable visual adversarial 2026-07-13).
     for (name, theme) in [("light", Theme::default()), ("dark", Theme::dark())] {
         let ring = theme.scale(ScaleRole::Gray).step(9);
         let (lr, ls) = (luminance(ring), luminance(theme.surface));

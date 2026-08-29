@@ -1,7 +1,3 @@
-//! Slider visual layer — track line, value fill, and thumb nodes plus
-//! their state-variant tables. Builder + interaction wiring live in
-//! `builder.rs`; pointer/keyboard handling in `handlers.rs`.
-
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
@@ -9,7 +5,9 @@ use sigil_animation_runtime::presets;
 use sigil_kernel::{NodeBuilder, container};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::Signal;
-use sigil_style::{NodeStyleExt, Px, StateStyle, Style, StyleAtom, StyleVariant, TransitionId};
+use sigil_style::{
+    Elevation, NodeStyleExt, Px, StateStyle, Style, StyleAtom, StyleVariant, TransitionId,
+};
 
 use crate::interaction::InteractionState;
 
@@ -19,40 +17,36 @@ use super::builder::{Orientation, SliderRuntime};
 
 const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
 const SLIDER_COMPONENT_ID: u64 = 0x5110_E000;
-// Animator-only base slice: scanned by `install_transition_animators`
-// for the `Transition` atom that flips the thumb into the animated path.
 static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
 
 const THUMB_SIZE: f32 = 16.0;
-const TRACK_THICKNESS: f32 = 4.0;
+const TRACK_THICKNESS: f32 = 6.0;
 
-// Rest-of-track uses `border-strong` (gray-8): quiet but still
-// measurable against both step-1 and step-2 surfaces (the gauge/
-// progress tracks at `surface-hover` measured ~1.3:1 — near-invisible,
-// visual review 2026-08-15).
-static TRACK_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border-strong")];
-static TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-8")];
+static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
+static TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static ROOT_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
-// The knob paints in `on-accent` (white) with a 1px step-7 rim so it
-// separates from its own accent fill — an accent knob on the accent
-// fill was only perceivable over the unfilled track (Fable 2026-08-15).
 static THUMB_REST: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("on-accent"),
     StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderToneStep(7),
+    StyleAtom::BorderThemeRef("accent"),
+    StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_HOVER: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("on-accent"),
     StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderToneStep(8),
+    StyleAtom::BorderThemeRef("accent-hover"),
+    StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_DOWN: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("on-accent"),
     StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderToneStep(8),
+    StyleAtom::BorderThemeRef("accent-hover"),
+    StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_DISABLED: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface"),
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderToneStep(7),
     StyleAtom::Opacity(5_000),
 ];
 
@@ -66,15 +60,9 @@ pub(super) fn track_fill(runtime: SliderRuntime) -> NodeBuilder {
         Orientation::Vertical => LayoutStyle::block().width(TRACK_THICKNESS),
     };
     container()
-        // Inner parts are paint-only: the root owns all pointer handling,
-        // and pointer capture binds to the deepest HITTABLE node — a
-        // hittable fill/thumb/rest would steal capture and deafen the
-        // root's drag handlers.
         .hittable(false)
         .layout(layout)
-        // 2px radius keeps the line's ends soft; the fill's inner end is
-        // always hidden behind the thumb.
-        .style(Style::new().radius(2))
+        .style(Style::new().radius(3))
         .class(TRACK_FILL)
         .style_reactive(move || fill_extent_atoms(runtime))
 }
@@ -84,15 +72,16 @@ fn fill_extent_atoms(runtime: SliderRuntime) -> &'static [StyleAtom] {
     cached_fill_atoms(runtime.orientation, ratio)
 }
 
-// Leak-and-cache per distinct extent — the gauge fill pattern: a node
-// carries one reactive atom slot returning `&'static [StyleAtom]`, so
-// computed extents go through a bounded static map (per-mille steps).
 type FillAtomCache = Mutex<HashMap<(bool, u16), &'static [StyleAtom]>>;
 
 fn cached_fill_atoms(orientation: Orientation, ratio: f32) -> &'static [StyleAtom] {
     static CACHE: OnceLock<FillAtomCache> = OnceLock::new();
     let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     let scaled = (ratio.clamp(0.0, 1.0) * 10_000.0).round() as u16;
     let key = (orientation == Orientation::Vertical, scaled);
     let build = || {
@@ -122,7 +111,7 @@ pub(super) fn track_rest(runtime: SliderRuntime) -> NodeBuilder {
     container()
         .hittable(false)
         .layout(layout)
-        .style(Style::new().radius(2))
+        .style(Style::new().radius(3))
         .class(TRACK_REST)
 }
 
@@ -134,8 +123,6 @@ pub(super) fn slider_thumb(
     let node = container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
-        // THUMB is 16 px; explicit radius avoids the Px(9_999) SDF
-        // clipping bug (radio_group precedent). Radius 8 = full circle.
         .style(Style::new().radius(8))
         .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
@@ -161,7 +148,6 @@ const fn slider_thumb_state_style() -> StateStyle {
 }
 
 pub(super) const fn slider_root_variant() -> StyleVariant {
-    // Root is the transparent hit area; disabled dims the whole control.
     const EMPTY: &[StyleAtom] = &[];
     StyleVariant::new(
         EMPTY,

@@ -1,34 +1,3 @@
-//! Tooltip widget — small floating bubble over a hover-targeted child.
-//!
-//! `tooltip("Save the file").child(button("Save"))` wraps the supplied
-//! target with a hover sensor; when the pointer enters the wrapper a
-//! reactive visibility signal flips and an absolutely-positioned bubble
-//! becomes visible above the target. Pointer-leave fades it back out.
-//!
-//! Positioning is naive on purpose: the bubble sits at `top = -32`
-//! relative to the wrapper. When the brief's "natural offset would
-//! clip" path is selected (via [`TooltipBuilder::clamp_top`]) the
-//! bubble pins to `top = 0` so a target near the viewport's top edge
-//! still renders the hint inside the visible area. Callers that need
-//! richer placement (flip-below-target, viewport-aware probes) can
-//! layer that on top of the same builder via the same flag.
-//!
-//! Accessibility:
-//! * The bubble itself is tagged with `Role::Tooltip` and its accessible
-//!   name is the tooltip label.
-//! * The wrapper carries an `aria-description` (the same label) so AT
-//!   that follows the description relation on the target surface
-//!   announces the hint alongside the target's own name. The DR-050
-//!   `A11yProps` struct does not yet carry an explicit
-//!   `aria_described_by` node-reference field; using the `description`
-//!   string source is the documented W5.3a fallback (see followup).
-//!
-//! Builder shape (one-word methods per W4.99 ergonomics bar):
-//! * `tooltip(label)` — constructor.
-//! * `.shortcut(Some("Ctrl+S"))` — optional keyboard hint.
-//! * `.child(target)` — the wrapped node.
-//! * `.class(...)` / `.style(...)` / `.theme(...)` via the trait surface.
-
 use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -45,16 +14,8 @@ use sigil_style::{
 
 use super::shared::BuilderMutator;
 
-/// Vertical offset (in logical px) from the wrapper origin to the bubble
-/// when rendered above the target. Negative = above.
 const BUBBLE_OFFSET_ABOVE: f32 = -32.0;
-/// Vertical offset used when the bubble's natural position would clip
-/// off the wrapper's top edge — pin to `top = 0` per the W5.3a brief
-/// ("a target near (0,0) clamps to (0,0)"). This deliberately overlaps
-/// the target rather than flipping below; the simpler model keeps the
-/// renderer's z-order doing the work.
 const BUBBLE_OFFSET_CLAMPED: f32 = 0.0;
-/// Nominal bubble dimensions.
 const BUBBLE_HEIGHT: f32 = 28.0;
 const BUBBLE_WIDTH: f32 = 160.0;
 const BUBBLE_PADDING: f32 = 6.0;
@@ -67,7 +28,6 @@ static BUBBLE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(TOOLTIP_TRANSITION),
 ];
 
-/// Builder returned by [`tooltip`].
 pub struct TooltipBuilder {
     label: String,
     shortcut: Option<String>,
@@ -78,18 +38,12 @@ pub struct TooltipBuilder {
     style_accumulator: Style,
 }
 
-/// Create a tooltip widget.
-///
-/// The `label` is the hint shown when the wrapped target is hovered.
-/// Call [`TooltipBuilder::child`] with the target node to complete the
-/// builder.
 #[must_use]
 pub fn tooltip(label: impl Into<String>) -> TooltipBuilder {
     TooltipBuilder::new(label)
 }
 
 impl TooltipBuilder {
-    /// Create a tooltip builder with the supplied hint text.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
@@ -103,53 +57,30 @@ impl TooltipBuilder {
         }
     }
 
-    /// Delay (in milliseconds) before the bubble appears after the
-    /// pointer enters the wrapper. Default `0` (immediate).
-    ///
-    /// Set to ~500-700 ms for the VSCode-style "don't flicker while
-    /// I sweep across an icon row" feel. A pointer-leave inside the
-    /// delay window cancels the pending show; subsequent re-entries
-    /// restart the timer.
-    ///
-    /// Driven via `sigil_reactive::register_interval` — the host app must
-    /// call `sigil_reactive::tick_intervals()` once per frame for the
-    /// delay to elapse (the standard reactive runtime already does).
     #[must_use]
     pub const fn delay(mut self, ms: u64) -> Self {
         self.delay_ms = ms;
         self
     }
 
-    /// Set an optional keyboard-shortcut hint shown alongside the label.
     #[must_use]
     pub fn shortcut(mut self, shortcut: Option<impl Into<String>>) -> Self {
         self.shortcut = shortcut.map(Into::into);
         self
     }
 
-    /// Attach the target node the tooltip wraps.
     #[must_use]
     pub fn child(mut self, target: impl IntoNode + 'static) -> Self {
         self.child = Some(Box::new(target));
         self
     }
 
-    /// Drive the explicit "clamped-offscreen" position.
-    ///
-    /// The default places the bubble at `top = -32` above the target.
-    /// When the caller knows the target sits flush against the
-    /// viewport's top edge, calling `.clamp_top()` pins the bubble at
-    /// `top = 0` instead (the W5.3a brief's "a target near (0,0)
-    /// clamps to (0,0)" scenario). Useful for deterministic visual
-    /// goldens — callers that want full auto-clamping can flip this
-    /// flag based on their own top-edge probe.
     #[must_use]
     pub const fn clamp_top(mut self) -> Self {
         self.clamp_top = true;
         self
     }
 
-    /// Add utility classes or atoms onto the wrapper.
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -157,14 +88,12 @@ impl TooltipBuilder {
         self
     }
 
-    /// Add struct-built style atoms onto the wrapper.
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
 
-    /// Attach a scoped theme to the tooltip wrapper.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
@@ -182,9 +111,6 @@ impl TooltipBuilder {
         let description = bubble_description(&self.label, self.shortcut.as_deref());
         let bubble = build_bubble(&self.label, self.shortcut.as_deref(), visible, bubble_top);
 
-        // Pending one-shot timer for the delay window. Holds an
-        // `IntervalId` we cancel either on early leave or after the
-        // single fire. `None` when no timer is pending.
         let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
         let delay_ms = self.delay_ms;
         let pending_for_enter = Rc::clone(&pending);

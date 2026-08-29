@@ -1,15 +1,3 @@
-//! Leading checkbox selection column for the `table()` view, opted
-//! into via `TableBuilder::selectable_checkboxes`.
-//!
-//! A narrow fixed column prepended to the header and every body-row
-//! cell track. The row checkbox toggles that row through
-//! [`TableState::toggle_selected`]; the header checkbox selects every
-//! visible row (or deselects them when all are selected) and paints a
-//! dash while the selection is partial. Checkbox clicks stop
-//! pointer-down propagation so the row's own pointer selection never
-//! fires alongside the toggle. The box art mirrors the `checkbox`
-//! widget's idiom (18 px box, stroked white vector mark).
-
 use std::rc::Rc;
 
 use sigil_events::prelude::{MouseButton, NodeEventsExt};
@@ -20,19 +8,13 @@ use sigil_style::{NodeStyleExt, Rgba8, StyleAtom};
 
 use super::state::TableState;
 
-/// Column width in logical pixels. Counts into the hscroll extent as
-/// a fixed column when the opt-in is on. 32 matches the reference
-/// DataTable's `w-8` checkbox cell.
 pub(super) const WIDTH: f32 = 32.0;
 const BOX: f32 = 18.0;
 const MARK: f32 = 12.0;
 
-// Same tokens the checkbox widget paints: accent fill when checked
-// (or indeterminate), inset surface when empty.
 static CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
 static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-inset")];
 
-/// Header-box tri-state over selection ∩ visible rows.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mark {
     Empty,
@@ -40,7 +22,6 @@ enum Mark {
     Full,
 }
 
-/// The header cell: a select-all-visible checkbox with a partial dash.
 pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) -> NodeBuilder {
     let mark = header_mark(state.clone());
     let toggle = state.clone();
@@ -54,7 +35,6 @@ pub(super) fn header_cell<Row: 'static>(state: &TableState<Row>, height: f32) ->
         }))
 }
 
-/// One body-row cell: a checkbox bound to that row's selection bit.
 pub(super) fn row_cell<Row: 'static>(
     state: &TableState<Row>,
     row: u32,
@@ -82,10 +62,6 @@ pub(super) fn row_cell<Row: 'static>(
         ))
 }
 
-/// The clickable box. Left-button down stops propagation so the row's
-/// pointer-down selection does not also fire; left-button up toggles
-/// exactly once. Other buttons propagate (right-click still opens the
-/// row context menu).
 fn select_box(
     mark: Signal<Mark>,
     label: impl Into<AccessibleName>,
@@ -124,8 +100,6 @@ fn select_box(
             }
         })
         .pointer_up(move |event| {
-            // Synthetic up events carry no button; real ones carry the
-            // released button. Either way only a left release toggles.
             if event
                 .button
                 .is_none_or(|button| button == MouseButton::Left)
@@ -144,8 +118,6 @@ fn cell_layout(height: f32) -> LayoutStyle {
         .justify_content(JustifyContent::Center)
 }
 
-/// Tri-state for the header box: none of the visible rows selected,
-/// some, or all.
 fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
     derived_eq(move || {
         let visible = state.visible().get();
@@ -161,8 +133,6 @@ fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
     })
 }
 
-/// Select every visible row, or deselect the visible rows when all of
-/// them are selected. Rows hidden by the quick-filter keep their bit.
 fn toggle_all<Row: 'static>(state: &TableState<Row>) {
     let visible = state.visible().peek();
     let mut set = (*state.selection().peek()).clone();
@@ -183,9 +153,6 @@ fn mark_node(path: super::super::vector::PathNode) -> NodeBuilder {
         .child(path)
 }
 
-// Stroked ✓ / – rasterized at 2x the logical mark size and pinned back
-// down via `.layout()` — the checkbox widget's mark idiom, white in
-// both built-in themes.
 fn check_path() -> super::super::vector::PathNode {
     super::super::vector::path(24, 24)
         .move_to(5.0, 12.5)

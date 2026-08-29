@@ -1,8 +1,3 @@
-//! Command menu navigation runtime — the author-time [`LevelDef`] tree
-//! converted into a reactive `Signal<Vec<MenuLevel>>` stack, plus the
-//! Up/Down/Enter/Right/Esc/Left action functions [`super::render`]
-//! wires to keyboard input.
-
 use std::rc::Rc;
 
 use sigil_reactive::{Signal, signal};
@@ -10,7 +5,6 @@ use sigil_reactive::{Signal, signal};
 use super::super::shared::Activate;
 use super::builder::{EntryDef, LevelDef};
 
-/// Observer invoked with a leaf row's label on every activation.
 pub(super) type SelectObserver = Rc<dyn Fn(&str)>;
 
 pub(super) enum Entry {
@@ -85,9 +79,6 @@ pub(super) fn first_enabled(entries: &[Entry]) -> usize {
     entries.iter().position(|e| !e.disabled()).unwrap_or(0)
 }
 
-/// Next non-disabled index from `from`, walking forward or backward.
-/// Clamps at the ends — stays at `from` when no further enabled row
-/// exists in that direction.
 fn next_enabled(entries: &[Entry], from: usize, forward: bool) -> usize {
     if entries.is_empty() {
         return from;

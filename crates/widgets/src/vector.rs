@@ -1,29 +1,3 @@
-//! Arbitrary vector-path rendering.
-//!
-//! Rasterizes a Bézier path (fill and/or stroke, anti-aliased) on the CPU
-//! via `tiny-skia` into an RGBA canvas, then renders it through the built-in
-//! image node — the same reuse pattern color emoji uses. This closes the
-//! "no arbitrary vector paths" gap: SVG-style icons, chart shapes, sparklines,
-//! and any custom 2D graphic the rect/gradient/text primitives cannot express.
-//!
-//! Coordinates are in the raster's pixel space (`0..width`, `0..height`).
-//! Equal command lists reuse one CPU raster. The renderer keys GPU
-//! uploads on [`ImageSource`] id, so a remount does not re-upload.
-//!
-//! ```rust,no_run
-//! use sigil::prelude::*;
-//! use sigil_style::Rgba8;
-//!
-//! // A filled triangle.
-//! let accent = Rgba8 { r: 80, g: 120, b: 255, a: 255 };
-//! let _tri = path(48, 48)
-//!     .move_to(24.0, 4.0)
-//!     .line_to(44.0, 44.0)
-//!     .line_to(4.0, 44.0)
-//!     .close()
-//!     .fill(accent);
-//! ```
-
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -35,50 +9,29 @@ use tiny_skia::{
     Pixmap, Point as TsPoint, RadialGradient, Shader, SpreadMode, Stroke, Transform,
 };
 
-/// A path fill: a flat color or a gradient. Gradient stops are `(position
-/// in 0..1, color)`, and gradient coordinates share the path's pixel space.
 pub enum PathFill {
-    /// Flat fill.
     Solid(Rgba8),
-    /// Linear gradient from `start` to `end`.
     Linear {
-        /// Gradient axis start point, in raster pixels.
         start: (f32, f32),
-        /// Gradient axis end point, in raster pixels.
         end: (f32, f32),
-        /// Colour stops along the axis.
         stops: Vec<(f32, Rgba8)>,
     },
-    /// Radial gradient centred at `center` reaching `radius`.
     Radial {
-        /// Centre point, in raster pixels.
         center: (f32, f32),
-        /// Outer radius, in raster pixels.
         radius: f32,
-        /// Colour stops from centre (0.0) to edge (1.0).
         stops: Vec<(f32, Rgba8)>,
     },
 }
 
-/// One command in a vector path, in the raster's pixel coordinate space.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PathCmd {
-    /// Begin a new subpath at `(x, y)`.
     MoveTo(f32, f32),
-    /// Straight line to `(x, y)`.
     LineTo(f32, f32),
-    /// Quadratic Bézier: control `(cx, cy)`, end `(x, y)`.
     QuadTo(f32, f32, f32, f32),
-    /// Cubic Bézier: controls `(c1x, c1y)` and `(c2x, c2y)`, end `(x, y)`.
     CubicTo(f32, f32, f32, f32, f32, f32),
-    /// Close the current subpath back to its start point.
     Close,
 }
 
-/// A vector path plus its fill/stroke, rasterized to an image node on build.
-///
-/// Construct with [`path`], chain the segment methods, set [`fill`](Self::fill)
-/// and/or [`stroke`](Self::stroke), then drop it into the tree like any node.
 pub struct PathNode {
     width: u32,
     height: u32,
@@ -153,7 +106,6 @@ fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
     }
 }
 
-/// Start a vector path rasterized onto a `width × height` RGBA canvas.
 #[must_use]
 pub const fn path(width: u32, height: u32) -> PathNode {
     PathNode {
@@ -168,53 +120,46 @@ pub const fn path(width: u32, height: u32) -> PathNode {
 }
 
 impl PathNode {
-    /// Begin a new subpath at `(x, y)`.
     #[must_use]
     pub fn move_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::MoveTo(x, y));
         self
     }
 
-    /// Add a straight line to `(x, y)`.
     #[must_use]
     pub fn line_to(mut self, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::LineTo(x, y));
         self
     }
 
-    /// Add a quadratic Bézier through control `(cx, cy)` to `(x, y)`.
     #[must_use]
     pub fn quad_to(mut self, cx: f32, cy: f32, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::QuadTo(cx, cy, x, y));
         self
     }
 
-    /// Add a cubic Bézier through controls `(c1x, c1y)`, `(c2x, c2y)` to `(x, y)`.
-    // A cubic Bézier is six coordinates by definition; the flat SVG-style
-    // signature reads better than tupling them just to satisfy the arg cap.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the argument list mirrors the upstream API contract"
+    )]
     #[must_use]
     pub fn cubic_to(mut self, c1x: f32, c1y: f32, c2x: f32, c2y: f32, x: f32, y: f32) -> Self {
         self.cmds.push(PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y));
         self
     }
 
-    /// Close the current subpath.
     #[must_use]
     pub fn close(mut self) -> Self {
         self.cmds.push(PathCmd::Close);
         self
     }
 
-    /// Fill the path with a flat `color` (non-zero winding rule).
     #[must_use]
     pub fn fill(mut self, color: Rgba8) -> Self {
         self.fill = Some(PathFill::Solid(color));
         self
     }
 
-    /// Fill the path with a linear gradient along `start` → `end`. `stops`
-    /// are `(position in 0..1, color)` in gradient order.
     #[must_use]
     pub fn fill_linear(
         mut self,
@@ -226,8 +171,6 @@ impl PathNode {
         self
     }
 
-    /// Fill the path with a radial gradient centred at `center` reaching
-    /// `radius`. `stops` run from the centre (0.0) to the edge (1.0).
     #[must_use]
     pub fn fill_radial(
         mut self,
@@ -243,33 +186,28 @@ impl PathNode {
         self
     }
 
-    /// Stroke the path outline with `color` at `width` pixels.
     #[must_use]
     pub const fn stroke(mut self, color: Rgba8, width: f32) -> Self {
         self.stroke = Some((color, width));
         self
     }
 
-    /// Pin the node's laid-out size, overriding the raster's intrinsic
-    /// pixel size. Rasterize at 2x the intended logical size and pin the
-    /// logical box here for crisp output on hi-dpi targets.
     #[must_use]
     pub fn layout(mut self, style: LayoutStyle) -> Self {
         self.layout = Some(style);
         self
     }
 
-    /// Raster at 2× and pin a non-shrinking box of the path's declared
-    /// size. Stroke icons stay visible in flex rows on retina.
     #[must_use]
     pub fn fit(self) -> Self {
-        // Path sizes are small pixel dimensions, far below f32's exact-integer range.
-        #[allow(clippy::cast_precision_loss)]
+        #[allow(
+            clippy::cast_precision_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        )]
         let logical = self.width as f32;
         self.fit_size(logical)
     }
 
-    /// Raster at 2× and pin a non-shrinking `logical` square.
     #[must_use]
     pub fn fit_size(mut self, logical: f32) -> Self {
         self.scale = 2;
@@ -332,8 +270,6 @@ impl PathNode {
         hash
     }
 
-    /// Rasterize into an [`ImageSource`], or `None` if the path is empty or
-    /// the canvas size is degenerate.
     fn rasterize(&self) -> Option<ImageSource> {
         let key = self.intern_key();
         if let Some(hit) = RASTER.with(|map| map.borrow().get(&key).cloned()) {
@@ -342,18 +278,18 @@ impl PathNode {
         sigil_profile::count("path.raster");
         let path = build_ts_path(&self.cmds)?;
         let scale = f32::from(self.scale.max(1));
-        // Pixel dimensions are far below f32's exact-integer range and
-        // scale is positive, so no sign or precision is lost.
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
-            clippy::cast_sign_loss
+            clippy::cast_sign_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
         )]
         let pix_w = ((self.width as f32) * scale).round() as u32;
         #[allow(
             clippy::cast_precision_loss,
             clippy::cast_possible_truncation,
-            clippy::cast_sign_loss
+            clippy::cast_sign_loss,
+            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
         )]
         let pix_h = ((self.height as f32) * scale).round() as u32;
         let mut pixmap = Pixmap::new(pix_w, pix_h)?;
@@ -400,14 +336,11 @@ impl IntoNode for PathNode {
                 }
                 id
             }
-            // Empty / degenerate path: a zero-size node so callers can still
-            // place it without a special case.
             None => container().build(cx),
         }
     }
 }
 
-/// Translate accumulated commands into a `tiny-skia` path.
 fn build_ts_path(cmds: &[PathCmd]) -> Option<tiny_skia::Path> {
     let mut builder = TsPathBuilder::new();
     for cmd in cmds {
@@ -424,8 +357,6 @@ fn build_ts_path(cmds: &[PathCmd]) -> Option<tiny_skia::Path> {
     builder.finish()
 }
 
-/// `tiny-skia` renders into premultiplied RGBA; the image node wants
-/// straight alpha, so demultiply every pixel back.
 fn straight_rgba(pixmap: &Pixmap) -> Vec<u8> {
     let mut out = Vec::with_capacity(pixmap.pixels().len().saturating_mul(4));
     for pixel in pixmap.pixels() {
@@ -439,8 +370,6 @@ fn to_ts_color(color: Rgba8) -> TsColor {
     TsColor::from_rgba8(color.r, color.g, color.b, color.a)
 }
 
-/// Build the `tiny-skia` shader for a fill, falling back to transparent if
-/// a gradient is degenerate (no stops, zero radius).
 fn fill_shader(fill: &PathFill) -> Shader<'static> {
     let transparent = Shader::SolidColor(TsColor::TRANSPARENT);
     match fill {

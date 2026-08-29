@@ -16,10 +16,6 @@ fn dot_uses_generic_container_role() {
 
 #[test]
 fn dot_wraps_step9_fill_in_step11_ring() {
-    // Two-layer construction: outer step-11 ring + inner step-9
-    // fill. The ring lifts edge contrast against the surface so
-    // low-luminance hues (amber / yellow / green) still meet WCAG
-    // 1.4.11 at the 8 px Compact size.
     Runtime::scope("dot-ring-and-fill", || {
         let mut cx = Cx::new_root();
         let id = dot(Tone::Warn).build(&mut cx);

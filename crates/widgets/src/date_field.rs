@@ -1,5 +1,3 @@
-//! Date field — ISO `YYYY-MM-DD` bound to a [`Date`] signal.
-
 use std::fmt::Write as _;
 
 use sigil_kernel::{Cx, IntoNode, NodeId};
@@ -7,19 +5,14 @@ use sigil_reactive::{Signal, effect, signal};
 
 use super::text_field::{TextFieldBuilder, text_field};
 
-/// Civil date in the proleptic Gregorian calendar.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Date {
-    /// Year, including BCE as negative.
     pub year: i32,
-    /// Month, 1–12.
     pub month: u8,
-    /// Day of month, 1–31 (clamped to the month).
     pub day: u8,
 }
 
 impl Date {
-    /// Parse `YYYY-MM-DD`. Returns `None` when the text is not a date.
     #[must_use]
     pub fn parse(input: &str) -> Option<Self> {
         let mut parts = input.trim().splitn(3, '-');
@@ -29,7 +22,6 @@ impl Date {
         Self::new(year, month, day)
     }
 
-    /// Build a date when `month`/`day` fall in range.
     #[must_use]
     pub fn new(year: i32, month: u8, day: u8) -> Option<Self> {
         if !(1..=12).contains(&month) {
@@ -42,7 +34,6 @@ impl Date {
         Some(Self { year, month, day })
     }
 
-    /// Format as `YYYY-MM-DD`.
     #[must_use]
     pub fn render(self) -> String {
         let mut out = String::with_capacity(10);
@@ -65,13 +56,11 @@ const fn is_leap(year: i32) -> bool {
     y.is_multiple_of(4) && (!y.is_multiple_of(100) || y.is_multiple_of(400))
 }
 
-/// Builder returned by [`date_field`].
 pub struct DateFieldBuilder {
     inner: TextFieldBuilder,
 }
 
 impl DateFieldBuilder {
-    /// The inner text field, for class / layout / events.
     pub fn text_field(self) -> TextFieldBuilder {
         self.inner
     }
@@ -83,7 +72,6 @@ impl IntoNode for DateFieldBuilder {
     }
 }
 
-/// Bind `value` to an ISO date field.
 #[must_use]
 pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
     let buffer = signal(value.peek().render());

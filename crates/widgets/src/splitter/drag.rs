@@ -1,18 +1,3 @@
-//! Drag-handle plumbing for the splitter widget.
-//!
-//! Each handle sits between adjacent panes. On pointer-down it captures
-//! the pointer and snapshots the local position + the current pane-size
-//! vector. Subsequent pointer-move events compute the axis delta
-//! relative to that anchor and re-distribute the delta across the two
-//! adjacent panes — pane `idx` grows, pane `idx + 1` shrinks. Min/max
-//! constraints clamp the resulting sizes. Pointer-up settles the drag,
-//! applying any configured snap pulls.
-//!
-//! The router dispatches captured-pointer events to the leaf the
-//! pointer was captured on, so all three hooks (`pointer_down`,
-//! `pointer_move`, `pointer_up`) live on the handle node itself — never
-//! on an ancestor.
-
 use std::cell::{Cell, RefCell};
 
 use sigil_events::prelude::NodeEventsExt;
@@ -21,12 +6,6 @@ use sigil_reactive::Signal;
 
 use super::builder::SplitterOrientation;
 
-/// Shared per-splitter-instance drag state.
-///
-/// Heap-leaked (one allocation per `splitter(...)` call) so per-handle
-/// closures can carry a `Copy` reference instead of threading
-/// `Rc<RefCell<_>>`. The state holds the live `sizes` vector, the
-/// per-pane min/max constraints, and any optional snap points.
 #[derive(Clone, Copy)]
 pub(super) struct SplitterState {
     inner: &'static SplitterStateInner,
@@ -38,26 +17,15 @@ struct SplitterStateInner {
     mins: RefCell<Vec<f32>>,
     maxs: RefCell<Vec<f32>>,
     grows: Vec<f32>,
-    /// One snap-point slice per handle (index `i` between panes `i` and
-    /// `i + 1`). Empty means "no snap for that handle".
     snap_points: RefCell<Vec<Vec<f32>>>,
     snap_threshold: Cell<f32>,
-    /// Optional external observation signal.
     sizes_bind: Cell<Option<Signal<Vec<f32>>>>,
-    /// Per-handle drag anchor: starting pointer position (axis-major)
-    /// and a snapshot of the sizes vector at pointer-down. Indexed by
-    /// handle index.
     drag_anchor: RefCell<Option<DragAnchor>>,
 }
 
 struct DragAnchor {
     handle: usize,
-    /// The pointer's axis position (local to the captured handle) at
-    /// the moment of pointer-down. We add subsequent
-    /// `event.position - down_position` deltas to redistribute sizes.
     down_axis: f32,
-    /// Snapshot of `sizes` at pointer-down so successive move events
-    /// apply against a stable base instead of compounding.
     snapshot: Vec<f32>,
 }
 
@@ -104,8 +72,6 @@ impl SplitterState {
     }
 
     pub(super) fn bind_sizes(self, signal: Signal<Vec<f32>>) {
-        // Seed the signal with the current size vector so observers
-        // see the layout snapshot before any drag fires.
         signal.set(self.inner.sizes.borrow().clone());
         self.inner.sizes_bind.set(Some(signal));
     }
@@ -186,11 +152,6 @@ impl SplitterState {
     }
 }
 
-/// Compute the redistributed size vector for a drag of `delta` axis-pixels
-/// on `handle`. Pane `handle` grows by `delta`, pane `handle + 1` shrinks
-/// by `delta`; constraints clamp the actual applied delta so neither
-/// pane crosses its min or max.
-/// Per-pane size constraints for redistribution.
 struct PaneBounds<'a> {
     mins: &'a [f32],
     maxs: &'a [f32],
@@ -201,8 +162,6 @@ fn redistribute(snapshot: &[f32], handle: usize, delta: f32, bounds: &PaneBounds
     let mut out = snapshot.to_vec();
     let left_grows = bounds.grows.get(handle).copied().unwrap_or(0.0) > 0.0;
     let right_grows = bounds.grows.get(handle + 1).copied().unwrap_or(0.0) > 0.0;
-    // A grow pane takes leftover via flex. The sash only moves the
-    // fixed neighbour's pixel size.
     if left_grows != right_grows {
         let fixed = if right_grows { handle } else { handle + 1 };
         let signed = if right_grows { delta } else { -delta };
@@ -229,9 +188,6 @@ fn redistribute(snapshot: &[f32], handle: usize, delta: f32, bounds: &PaneBounds
         .copied()
         .unwrap_or(f32::INFINITY);
 
-    // Allowed delta range: pane `handle` may grow up to (grow_max - grow_base)
-    // and shrink down to (grow_min - grow_base, negative). Pane `handle + 1`
-    // mirrors that constraint.
     let max_delta = (grow_max - grow_base).min(shrink_base - shrink_min);
     let min_delta = (grow_min - grow_base).max(shrink_base - shrink_max);
     let applied = delta.clamp(min_delta, max_delta);
@@ -265,9 +221,6 @@ fn nearest_snap(points: &[f32], current: f32, threshold: f32) -> Option<f32> {
     best.map(|(p, _)| p)
 }
 
-/// Install drag handlers on a splitter handle node. The handle owns its
-/// own capture-pointer / move / up flow because the router dispatches
-/// captured events only to the captured leaf.
 pub(super) fn install_handle_hooks(
     node: NodeBuilder,
     state: SplitterState,

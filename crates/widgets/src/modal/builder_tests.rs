@@ -42,8 +42,6 @@ fn signal_title_drives_dialog_text_and_accessible_name() {
         let title = signal(String::from("Create entry"));
         let root = cx.add(modal(show).title(title));
 
-        // The dialog's accessible name is the derived title, so it
-        // tracks the signal without a rebuild.
         let frame = cx
             .get(root)
             .expect("root")
@@ -58,7 +56,6 @@ fn signal_title_drives_dialog_text_and_accessible_name() {
         };
         assert_eq!(name.get(), "Create entry");
 
-        // The title bar text child resolves from the same signal.
         let title_node = cx
             .get(frame)
             .expect("frame")

@@ -1,14 +1,8 @@
-//! Toast — a short status line. Pass the message signal.
-
 use sigil_kernel::{NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use sigil_reactive::{Signal, derived};
 use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 
-/// Show `message` at the bottom of the host when it is `Some`.
-///
-/// Set the signal to `None` to hide. Same signal-first shape as
-/// [`modal`](super::modal).
 #[must_use]
 pub fn toast(message: Signal<Option<String>>) -> NodeBuilder {
     let body = derived(move || message.get().unwrap_or_default());

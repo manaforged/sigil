@@ -1,5 +1,3 @@
-//! Play/pause chrome over host-service signals.
-
 use std::rc::Rc;
 
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
@@ -9,11 +7,6 @@ use sigil_reactive::{Signal, derived};
 use super::button::icon_button;
 use super::slider::slider;
 
-/// Play/pause control plus a 0–1 progress slider (`IntoNode`).
-///
-/// Bind a host `Player` through its signals. Chain
-/// [`.seek`](TransportBuilder::seek) so a drag jumps the file.
-/// This widget does not open a device.
 #[must_use]
 pub fn transport(
     playing: Signal<bool>,
@@ -28,7 +21,6 @@ pub fn transport(
     }
 }
 
-/// Builder returned by [`transport`].
 pub struct TransportBuilder {
     playing: Signal<bool>,
     progress: Signal<f32>,
@@ -37,7 +29,6 @@ pub struct TransportBuilder {
 }
 
 impl TransportBuilder {
-    /// Run `seek` with the 0–1 ratio when the user commits the slider.
     #[must_use]
     pub fn seek(mut self, seek: impl Fn(f32) + 'static) -> Self {
         self.seek = Some(Rc::new(seek));

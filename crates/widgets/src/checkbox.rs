@@ -24,7 +24,6 @@ const CHECKBOX_COMPONENT_ID: u64 = 0xC4EC_B0CC;
 const CHECKBOX_BOX_SIZE: f32 = 18.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
-/// Builder returned by [`checkbox`].
 pub struct CheckboxBuilder {
     checked: Signal<bool>,
     label: Option<TextContent>,
@@ -37,82 +36,52 @@ pub struct CheckboxBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-// Root-row variant: every slot empty — the labelled row is transparent
-// by default and stays that way. `stateful_style` uses it purely to
-// publish the interaction slot cell on the row root so a user
-// `.hover()` / `.pressed()` overlay resolves against the surface the
-// pointer is actually over; the indicator child keeps the widget's own
-// checked-state art (DS2 Phase 2 / T1 wiring).
 static CHECKBOX_ROOT_VARIANT: StyleVariant = StyleVariant::new(EMPTY_BASE, StateStyle::EMPTY);
-// Animator-only base slice: scanned by `install_transition_animators`
-// for the `Transition` atom that flips it into the animated path. Does
-// not affect the visual variant (which is still computed reactively).
 static CHECKBOX_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(CHECKBOX_TRANSITION)];
-static PRIMARY_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent-hover")];
-static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-// Neutral checked: a strong neutral fill (gray-9) rather than the old
-// surface-hover tint, which read as "hovered", not "checked".
-static NEUTRAL_CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-9")];
-static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-10")];
-static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("gray-10")];
-static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-inset")];
-// Hover skips straight to surface-pressed (rather than surface-hover)
-// so the default→hover delta is perceptible on a 16-20px indicator.
-// A border-darkening cue would be richer but the renderer has no
-// border primitive (logged as a follow-up).
+static PRIMARY_CHECKED: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("accent"),
+    StyleAtom::BorderThemeRef("accent"),
+];
+static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("accent-hover"),
+    StyleAtom::BorderThemeRef("accent-hover"),
+];
+static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("accent"),
+    StyleAtom::BorderThemeRef("accent"),
+];
+static NEUTRAL_CHECKED: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("gray-9"),
+    StyleAtom::BorderThemeRef("gray-9"),
+];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("gray-10"),
+    StyleAtom::BorderThemeRef("gray-10"),
+];
+static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("gray-10"),
+    StyleAtom::BorderThemeRef("gray-10"),
+];
+static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("field")];
 static UNCHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-// Pressed uses the dedicated `surface-pressed-strong` token (a third
-// step past `surface_pressed`) so the hover→pressed delta clears the
-// same-hue JND at 16-20 px swatch scale. The previous 75 %-opacity
-// blend over `surface_pressed` produced only a ~6 sRGB unit step vs
-// hover — sub-perceptual on a 16 px indicator.
 static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-// Disabled paints the dedicated `border` token at full opacity. The
-// previous design used `surface-hover` + 50 % opacity, but the alpha
-// blend composited back into the parent `bg-surface` (also near-white)
-// and produced only an ~11 sRGB delta vs the resting state — below the
-// JND on a 16-20 px indicator. `border` (alpha_mix(text, bg, 0.35) —
-// ~(166,171,178) under the default light theme) carries a clear muted-
-// grey reading that's visibly distinct from every other slot and works
-// the same way under dark palettes (where it lifts toward the text
-// colour instead). Opacity is dropped from the disabled slot — the
-// W5.3 widget-catalog pass owns the richer "faded" semantic.
-// Disabled paints the `surface-hover` token at full opacity. The
-// previous design used `surface-hover` + 50 % opacity, but the alpha
-// blend composited back over the parent `bg-surface` and produced
-// only an ~11 sRGB delta versus the resting state. Dropping the
-// opacity blend lets the full `surface-hover` brightness reach the
-// framebuffer — that's a ~23 sRGB step versus rest and a ~21 step
-// versus hover after the gamma encoding the offscreen RGBA8UNORM-SRGB
-// target applies. `border` was the obvious alternative but its raw
-// linear value (148,163,184) under the default theme renders close
-// enough to `surface-pressed` after gamma to confuse the hover ↔
-// disabled comparison. W5.3 owns the richer faded semantic.
 static CHECKBOX_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-// The mark is a stroked vector check (the square-fill mark read as a
-// radio dot / indeterminate dash — visual review 2026-08-15). White in
-// both built-in themes: on_accent is white in each. ponytail: a scoped
-// theme with a dark on_accent gets a white check anyway — the path
-// primitive paints concrete colors; upgrade when paths take theme refs.
 static MARK_VISIBLE: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
 static MARK_HIDDEN: &[StyleAtom] = &[StyleAtom::Opacity(0)];
 
-/// Create a checkbox widget.
 #[must_use]
 pub fn checkbox(checked: Signal<bool>) -> CheckboxBuilder {
     CheckboxBuilder::new(checked)
 }
 
 impl CheckboxBuilder {
-    /// Create a checkbox builder.
     #[must_use]
     pub fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
             label: None,
             disabled: None,
-            tone: Tone::Neutral,
+            tone: Tone::Primary,
             on_change: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
@@ -120,36 +89,30 @@ impl CheckboxBuilder {
         }
     }
 
-    /// Set the checkbox label.
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Set a reactive disabled signal.
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
         self
     }
 
-    /// Set the visual tone. Neutral is gray; every other tone uses
-    /// the accent checked fill.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Run a callback after checked state changes.
     #[must_use]
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
-    /// Add utility classes or atoms after the built-in checkbox defaults.
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -157,16 +120,12 @@ impl CheckboxBuilder {
         self
     }
 
-    /// Add struct-built style atoms after the built-in checkbox defaults.
-    ///
-    /// The mutable trait hook is [`sigil_style::StyleAccess::style_mut`].
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
 
-    /// Attach a scoped theme to the checkbox root.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
@@ -182,17 +141,11 @@ impl CheckboxBuilder {
             .map_or_else(noop_bool_change, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
         let has_label = self.label.is_some();
-        // Drain user-supplied state-slot overlays before the base
-        // accumulator attaches — they resolve against the row root's
-        // interaction slot so `.hover(|s| s.bg(...))` paints the row.
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
-        // Styled accumulator installed after explicit mutators so the
-        // trait surface layers ON TOP of `.class()` / `.style(Style)`
-        // calls (additive composition per DR-049 §10).
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
@@ -265,11 +218,8 @@ fn checkbox_layout(has_label: bool) -> LayoutStyle {
         .gap(gap)
         .align_items(AlignItems::Center);
     if has_label {
-        // Labeled checkbox flows with its parent — the row stretches to
-        // fill available width and the label inside wraps naturally.
         row.fill_width()
     } else {
-        // Unlabeled checkbox is just the indicator box.
         row.width(root_size)
     }
 }
@@ -289,12 +239,6 @@ fn checkbox_indicator(
                 .justify_content(JustifyContent::Center),
         )
         .class("rounded")
-        // 1px muted outline so the box reads as a checkbox against a
-        // same-tone surface. Without it the near-white `bg-surface-inset`
-        // box vanishes into the panel and only the inner mark shows, so an
-        // unchecked box is invisible and a checked one reads as a bullet.
-        // (The old "renderer has no border primitive" note is stale —
-        // DR-057 wired the border stroke.)
         .class("border")
         .class("border-border")
         .class(CHECKBOX_ANIM_BASE)
@@ -351,8 +295,6 @@ fn checkbox_mark(checked: Signal<bool>) -> NodeBuilder {
         .child(check_path())
 }
 
-// Stroked ✓ rasterized at 2x the logical mark size and pinned back
-// down via `.layout()` so it stays crisp on hi-dpi targets.
 fn check_path() -> super::vector::PathNode {
     super::vector::path(24, 24)
         .move_to(5.0, 12.5)
@@ -371,8 +313,6 @@ fn check_path() -> super::vector::PathNode {
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
-    // No fixed width — the label wraps to whatever the parent row
-    // (`flex_row().fill_width()`) hands it.
     label(source).layout(LayoutStyle::block().fill_width())
 }
 

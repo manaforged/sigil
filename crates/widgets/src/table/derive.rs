@@ -1,5 +1,3 @@
-//! Filter + sort derivation for the headless table core (DR-057 D1).
-
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::rc::Rc;
@@ -7,11 +5,6 @@ use std::rc::Rc;
 use super::columns::TableColumn;
 use super::state::{SortDir, SortKey};
 
-/// Filter-then-sort the row indices.
-///
-/// Source order (no sort, empty filter) reuses one `0..n` allocation
-/// for a given length. A permutation is allocated only when sort or
-/// filter actually remaps rows.
 pub(super) fn compute_visible<Row>(
     rows: &Rc<Vec<Row>>,
     columns: &[TableColumn<Row>],
@@ -40,9 +33,6 @@ fn reuse_identity(len: usize, cache: &RefCell<Option<Rc<Vec<u32>>>>) -> Rc<Vec<u
     fresh
 }
 
-/// Filter-then-sort the row indices. Quick filter keeps a row when ANY
-/// filterable column matches; the sort is stable so equal keys keep
-/// source order (spreadsheet expectations).
 fn permuted_indices<Row>(
     rows: &Rc<Vec<Row>>,
     columns: &[TableColumn<Row>],

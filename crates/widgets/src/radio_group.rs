@@ -1,31 +1,3 @@
-//! Mutually exclusive selection — N labelled options, one chosen.
-//!
-//! ```ignore
-//! use sigil::prelude::*;
-//!
-//! let theme = signal(String::from("light"));
-//! radio_group(theme)
-//!     .option("light", "Light")
-//!     .option("dark", "Dark")
-//!     .option("auto", "Match system");
-//! ```
-//!
-//! The selection signal holds the active option's key. Clicking a
-//! row writes the row's key into the signal — any subscriber
-//! observing the signal sees the new value. Keys and labels are
-//! owned `String`s so runtime values (i18n labels, locale codes
-//! loaded from disk, enum-derived keys) compose without
-//! `Box::leak`.
-//!
-//! # Keyboard + a11y
-//!
-//! The widget advertises `Role::RadioGroup` + `Role::RadioButton`
-//! with per-row `checked` signals, and is fully keyboard-operable
-//! (5/5 Wave 3 T10): the group is focusable; `↓` / `↑` move the
-//! selection with wraparound, `Home` / `End` jump to the edges, and
-//! the checked row shows the focus ring while the group holds focus
-//! (ARIA roving-selection behavior — selection follows movement).
-
 use std::rc::Rc;
 
 use sigil_events::prelude::{Key, NodeEventsExt};
@@ -38,14 +10,12 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use sigil_kernel::IntoNode;
 use sigil_style::StyleAccess;
 
-/// One radio option — a `(key, label)` pair.
 #[derive(Clone, Debug)]
 struct RadioOption {
     key: String,
     label: String,
 }
 
-/// Builder returned by [`radio_group`].
 pub struct RadioGroupBuilder {
     selected: Signal<String>,
     options: Vec<RadioOption>,
@@ -54,14 +24,12 @@ pub struct RadioGroupBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a radio group bound to the given selection signal.
 #[must_use]
 pub fn radio_group(selected: Signal<String>) -> RadioGroupBuilder {
     RadioGroupBuilder::new(selected)
 }
 
 impl RadioGroupBuilder {
-    /// Construct an empty radio group bound to `selected`.
     #[must_use]
     pub fn new(selected: Signal<String>) -> Self {
         Self {
@@ -73,10 +41,6 @@ impl RadioGroupBuilder {
         }
     }
 
-    /// Add an option. `key` is the value stored in the selection
-    /// signal when this option is chosen; `label` is the visible
-    /// text. Both accept `&str`, `String`, or anything that converts
-    /// `Into<String>`.
     #[must_use]
     pub fn option(mut self, key: impl Into<String>, label: impl Into<String>) -> Self {
         self.options.push(RadioOption {
@@ -86,7 +50,6 @@ impl RadioGroupBuilder {
         self
     }
 
-    /// Set the accent tone used for the selected option's mark.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
@@ -97,10 +60,6 @@ impl RadioGroupBuilder {
         let selected = self.selected;
         let tone = self.tone;
         let keys: Vec<String> = self.options.iter().map(|opt| opt.key.clone()).collect();
-        // Roving-selection keyboard model (5/5 Wave 3 T10): the group is
-        // focusable; Arrow/Home/End move the SELECTION itself (ARIA radio
-        // behavior — selection follows movement), and the checked row
-        // shows the focus ring while the group holds focus.
         let group_focus = sigil_reactive::signal(false);
         let mut group = container()
             .role(Role::RadioGroup)
@@ -138,9 +97,6 @@ impl RadioGroupBuilder {
     }
 }
 
-/// Move the selection `delta` steps from the currently selected key,
-/// wrapping at both ends (ARIA radio navigation). No-ops on an empty
-/// option list.
 fn select_offset(selected: Signal<String>, keys: &[String], delta: isize) {
     if keys.is_empty() {
         return;
@@ -157,7 +113,6 @@ fn select_offset(selected: Signal<String>, keys: &[String], delta: isize) {
     }
 }
 
-/// Select the first (`first == true`) or last option. No-ops when empty.
 fn select_edge(selected: Signal<String>, keys: &[String], first: bool) {
     let key = if first { keys.first() } else { keys.last() };
     if let Some(key) = key {
@@ -175,15 +130,8 @@ fn option_row(
     let key_for_activate = key.clone();
     let activate = Rc::new(move || selected.set(key_for_activate.clone()));
     let activate_for_pointer = Rc::clone(&activate);
-    // Per-row `checked` signal — derives from the group's selected
-    // string. Without this the row's `Role::RadioButton` advertises a
-    // selectable contract that assistive tech can't actually read
-    // (caught by adversarial review 2026-05-21).
     let key_for_checked = key.clone();
     let checked: Signal<bool> = derived(move || selected.get() == key_for_checked);
-    // Virtual-focus ring: visible while the group holds focus AND this
-    // row is the checked one (selection follows movement, so the ring
-    // is always on the selected row).
     let key_for_ring = key.clone();
     let ring_visible = derived(move || group_focus.get() && selected.get() == key_for_ring);
     container()
@@ -202,15 +150,10 @@ fn option_row(
 }
 
 fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder {
-    // Inner dot — TONAL fill (resolves through the tone's scale at
-    // step 8 when selected). The tone context lives on this node so
-    // the FILL gets the accent color while the OUTER ring stays
-    // neutral.
+    let ring_key = key.clone();
     let mark_inner = container()
         .layout(mark_inner_layout())
         .tone(tone)
-        // MARK_INNER is 8 px; explicit radius avoids the Px(9_999) SDF clipping bug
-        // where rounded-full on a small rect evaluates every pixel as outside the shape.
         .style(Style::new().radius(4))
         .style_reactive(move || {
             if selected.get() == key {
@@ -219,49 +162,33 @@ fn option_mark(selected: Signal<String>, key: String, tone: Tone) -> NodeBuilder
                 MARK_EMPTY
             }
         });
-    // Surface core — punches the interior out of the outer disc so
-    // the frame reads as a 1.5 px ring (the nested-fill border idiom;
-    // text_field's frame is the precedent — no border atom exists).
-    // ponytail: core paints the global `surface` token, so a radio on
-    // a tinted panel shows a surface-colored hole; correct on every
-    // current call site (all bg-surface). Upgrade path: SDF ring /
-    // stroke primitive in the renderer (followup 2026-07-13).
     let mark_core = container()
         .layout(mark_core_layout())
-        // MARK_CORE is 13 px; explicit radius avoids the Px(9_999) SDF clipping bug.
         .style(Style::new().radius(7))
         .class("bg-surface")
         .child(mark_inner);
-    // Outer ring — NEUTRAL border. `gray-9` is the sanctioned rest-
-    // border step (text_field frame, visual review 2026-05-21): the
-    // previous flat `gray-7` fill measured 1.49:1 against the gray-2
-    // surface, failing the 3:1 non-text floor this comment used to
-    // claim it met (Fable visual adversarial 2026-07-13); gray-9
-    // measures 3.14:1. The class resolves through the gray scale
-    // directly, ignoring the tone context;
-    // `mark_ring_clears_non_text_contrast` pins the floor.
     container()
         .role(Role::GenericContainer)
         .layout(mark_outer_layout())
-        // MARK_OUTER is 16 px; explicit radius avoids the Px(9_999) SDF clipping bug.
         .style(Style::new().radius(8))
-        .class("bg-gray-9")
+        .tone(tone)
+        .class("bg-gray-7")
+        .style_reactive(move || {
+            if selected.get() == ring_key {
+                RING_SELECTED
+            } else {
+                MARK_EMPTY
+            }
+        })
         .child(mark_core)
 }
 
-// Inner-fill atoms — read on the tonal inner node, so the step
-// resolves through the accent (steel-blue / success / error / etc.)
-// scale. Step 8, not 9: the selected dot uses the muted state-fill
-// register (same discipline as the toggle on-state); step 9 is
-// reserved for primary actions. The outer ring's neutral border is
-// supplied via the `bg-gray-9` class above.
-static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(8)];
+static MARK_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
+static RING_SELECTED: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 static MARK_EMPTY: &[StyleAtom] = &[];
 
 const ROW_HEIGHT: f32 = 28.0;
 const MARK_OUTER: f32 = 16.0;
-// Core 13 px inside a 16 px ring = a 1.5 px stroke — the previous
-// 2.5 px read clunky next to ShadCN's ~1 px rings (Fable 2026-08-15).
 const MARK_CORE: f32 = 13.0;
 const MARK_INNER: f32 = 8.0;
 

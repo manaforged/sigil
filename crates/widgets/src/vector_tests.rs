@@ -33,10 +33,8 @@ fn fills_a_triangle_in_color() {
         "same commands reuse the CPU raster"
     );
 
-    // The centroid pixel must be opaque and blue-dominant.
     let rgba = node.rasterize().unwrap();
     assert_eq!(rgba.width(), 32);
-    // Re-rasterize to inspect pixels via a fresh pixmap.
     let mut pixmap = Pixmap::new(32, 32).unwrap();
     let ts_path = build_ts_path(&node.cmds).unwrap();
     let mut paint = Paint::default();

@@ -9,7 +9,6 @@ use super::*;
 
 #[test]
 fn visible_window_at_scroll_zero_returns_first_window() {
-    // 15 in view + 15 overscan below. Nothing above.
     assert_eq!(
         visible_window(0.0, 100, 32.0, 480.0, 1),
         VisibleWindow { first: 0, end: 30 }
@@ -26,7 +25,6 @@ fn visible_window_overscan_zero_is_geometric_page() {
         visible_window(0.0, 100, 32.0, 480.0, 0),
         VisibleWindow { first: 0, end: 15 }
     );
-    // Geometric page is 50..65.
     assert_eq!(
         visible_window(1_600.0, 100, 32.0, 480.0, 0),
         VisibleWindow { first: 50, end: 65 }
@@ -35,7 +33,6 @@ fn visible_window_overscan_zero_is_geometric_page() {
 
 #[test]
 fn visible_window_mid_list_pads_one_page_each_side() {
-    // Geometric page is 50..65. Pad 15 → 35..80.
     assert_eq!(
         visible_window(1_600.0, 100, 32.0, 480.0, 1),
         VisibleWindow { first: 35, end: 80 }
@@ -99,9 +96,11 @@ fn variable_height_visible_window() {
 }
 
 #[test]
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn variable_height_mid_list_pads_one_viewport() {
-    // 20 rows × 20 px. Viewport 40 px → geometric 4..6 at y=80.
     let mut tops = [0.0; 21];
     for (i, top) in tops.iter_mut().enumerate() {
         *top = i as f32 * 20.0;
@@ -113,7 +112,10 @@ fn variable_height_mid_list_pads_one_viewport() {
 }
 
 #[test]
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn variable_height_overscan_zero_is_geometric_page() {
     let mut tops = [0.0; 21];
     for (i, top) in tops.iter_mut().enumerate() {

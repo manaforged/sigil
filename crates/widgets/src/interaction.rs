@@ -1,16 +1,8 @@
-//! Reusable widget interaction contract.
-
 use sigil_events::prelude::{KeyEvent, NodeEventsExt, PointerEvent};
 use sigil_kernel::NodeBuilder;
 use sigil_reactive::{Signal, signal};
 use sigil_style::{FocusRing, NodeStyleExt, StyleState};
 
-/// Shared hover/press/focus state for focusable widgets.
-///
-/// `focused` tracks logical focus (set on any focus, pointer or keyboard) and
-/// drives state-styles + caret/display. `ring_visible` is the `:focus-visible`
-/// signal: set only when focus arrives via the keyboard (or programmatically),
-/// so a mouse click focuses a widget without raising the keyboard focus ring.
 #[derive(Clone, Copy)]
 pub struct InteractionState {
     enabled: bool,
@@ -22,13 +14,6 @@ pub struct InteractionState {
 }
 
 impl InteractionState {
-    /// Create a reusable interaction state bundle.
-    ///
-    /// # Panics
-    ///
-    /// The signals are owned by the current reactive scope. Calling
-    /// outside [`Runtime::scope`](sigil_reactive::Runtime::scope)
-    /// creates handles that panic on the next signal read.
     #[must_use]
     pub fn new(enabled: bool) -> Self {
         Self {
@@ -41,13 +26,11 @@ impl InteractionState {
         }
     }
 
-    /// Whether this widget accepts interaction.
     #[must_use]
     pub const fn enabled(self) -> bool {
         self.enabled
     }
 
-    /// Current state as a style resolver input.
     #[must_use]
     pub fn style_state(self) -> StyleState {
         StyleState {
@@ -58,24 +41,20 @@ impl InteractionState {
         }
     }
 
-    /// Whether this widget is in an active drag gesture.
     #[must_use]
     pub fn dragging(self) -> bool {
         self.dragging.get()
     }
 
-    /// Set whether this widget is in an active drag gesture.
     pub fn drag(self, next: bool) {
         set_if_changed(self.dragging, next);
     }
 
-    /// The focus visibility signal used by focus-ring emission.
     #[must_use]
     pub const fn focus_visible(self) -> Signal<bool> {
         self.focused
     }
 
-    /// Install the baseline widget handlers and focus-ring semantics.
     #[must_use]
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
         node.focusable(self.enabled)
@@ -88,7 +67,6 @@ impl InteractionState {
             .pointer_down(move |event| self.pointer_down(event))
     }
 
-    /// Release a pointer press and return whether this was a valid activation.
     pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
         let was_pressed = self.pressed.peek();
         self.set_pressed(false);
@@ -98,8 +76,10 @@ impl InteractionState {
         self.enabled && was_pressed && self.hovered.peek()
     }
 
-    /// Return whether a key event should activate this widget.
-    #[allow(clippy::missing_const_for_fn)]
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "const-eligible only under one cfg configuration"
+    )]
     pub fn activate_key(self, event: &mut KeyEvent) -> bool {
         if self.enabled {
             event.stop_propagation();
@@ -141,9 +121,6 @@ impl InteractionState {
         set_if_changed(self.focused, next);
     }
 
-    /// On gaining focus: always logically focused (drives state-style + caret),
-    /// but only raise the focus-visible ring when focus came from the keyboard
-    /// (or programmatically) — not from a mouse click.
     fn on_focus_in(self) {
         self.set_focused(true);
         set_if_changed(self.ring_visible, sigil_events::focus_from_keyboard());

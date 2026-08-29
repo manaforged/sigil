@@ -1,7 +1,3 @@
-//! Unit tests for [`super::buffer::TextEdit`], split out of
-//! `buffer.rs` to keep the production file under the 400-line cap
-//! (rust-hygiene structural rule).
-
 use super::TextEdit;
 
 #[test]
@@ -16,7 +12,6 @@ fn place_caret_sets_caret_and_collapses_selection() {
 
 #[test]
 fn place_caret_clamps_past_end_and_off_boundary() {
-    // "café" — the 'é' is 2 bytes (3..5), so byte 4 is mid-codepoint.
     let mut edit = TextEdit::new("café".to_owned());
     edit.place_caret(999);
     assert_eq!(edit.caret(), edit.len(), "past-end clamps to length");
@@ -45,9 +40,6 @@ fn extend_to_back_onto_anchor_collapses() {
     assert_eq!(edit.caret(), 1);
 }
 
-/// W5-IME-TE HIGH-2 regression coverage at the buffer layer: an
-/// external write shorter than the current caret must clamp, not
-/// panic or leave the caret pointing past the new buffer's end.
 #[test]
 fn sync_external_clamps_caret_past_new_end() {
     let mut edit = TextEdit::new("hello world".to_owned());
@@ -57,14 +49,10 @@ fn sync_external_clamps_caret_past_new_end() {
     assert_eq!(edit.caret(), 2, "caret clamps to the new (shorter) length");
 }
 
-/// W5-IME-TE HIGH-1/HIGH-2: a caret valid in the old buffer can land
-/// mid-codepoint in the new one — must snap back to a real boundary,
-/// never panic.
 #[test]
 fn sync_external_snaps_caret_off_new_boundary() {
     let mut edit = TextEdit::new("world".to_owned());
     edit.place_caret(4); // valid boundary in "world" (between 'l' and 'd')
-    // "café" — byte 4 sits mid-codepoint of the 2-byte 'é' (bytes 3..5).
     edit.sync_external("café".to_owned());
     assert_eq!(
         edit.caret(),
@@ -93,7 +81,6 @@ fn sync_external_is_a_no_op_when_buffer_already_matches() {
 
 #[test]
 fn move_up_down_keeps_byte_column_across_lines() {
-    // "abc\nde\nfghi" — lines at 0, 4, 7.
     let mut edit = TextEdit::new("abc\nde\nfghi".to_owned());
     edit.place_caret(6); // line 1 ("de"), column 2
     edit.move_up();
@@ -108,7 +95,6 @@ fn move_up_down_keeps_byte_column_across_lines() {
 
 #[test]
 fn move_up_clamps_column_to_shorter_line_end() {
-    // "a\nlongline" — column 4 on line 1 maps to column 1 (line end) on line 0.
     let mut edit = TextEdit::new("a\nlongline".to_owned());
     edit.place_caret(6); // line 1, column 4
     edit.move_up();
@@ -124,8 +110,6 @@ fn page_up_down_jumps_ten_lines() {
     let mut edit = TextEdit::new(buffer);
     edit.place_caret(edit.len());
     edit.move_page_up();
-    // 25 lines of "lNN" (3 bytes) joined by `\n` (4 bytes per full line).
-    // End is line 24 col 3; ten lines up is line 14 col 3 = 14*4 + 3.
     assert_eq!(edit.caret(), 59, "page up lands ten lines earlier");
     edit.move_page_down();
     assert_eq!(edit.caret(), edit.len(), "page down returns to the end");
@@ -144,7 +128,6 @@ fn move_up_from_first_line_goes_to_start() {
 
 #[test]
 fn vertical_moves_never_split_multibyte_graphemes() {
-    // "é\nab" — 'é' is bytes 0..2, line 1 starts at 3.
     let mut edit = TextEdit::new("é\nab".to_owned());
     edit.place_caret(4); // line 1, column 1
     edit.move_up();
@@ -171,10 +154,6 @@ fn shift_down_extends_selection_to_next_line() {
 
 #[test]
 fn rtl_arrow_keys_move_visually() {
-    // Hebrew "אבג" (pure RTL, 2 bytes/letter). Displayed right-to-left, so
-    // ArrowRight (visual-right) steps the caret LOGICALLY BACKWARD and
-    // ArrowLeft forward. `new` places the caret at the logical end, which
-    // is the visual-LEFT edge.
     let mut edit = TextEdit::new("אבג".to_owned());
     assert_eq!(edit.caret(), 6, "caret starts at logical end");
     edit.move_right();

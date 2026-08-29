@@ -1,5 +1,3 @@
-//! PTY pane: mono rows in the existing list, not a second renderer.
-
 use std::rc::Rc;
 
 use sigil_events::prelude::{Key, KeyEvent, KeyPhase, LogicalKey, NodeEventsExt};
@@ -10,8 +8,6 @@ use sigil_style::NodeStyleExt;
 
 use super::virtual_list::virtual_list;
 
-/// Windowed list of terminal rows. `on_input` receives typed text and
-/// named controls (`\n`, `\t`, backspace). Bind a host PTY session.
 #[must_use]
 pub fn terminal(lines: Signal<Vec<String>>, on_input: impl Fn(String) + 'static) -> NodeBuilder {
     let on_input = Rc::new(on_input);

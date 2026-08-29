@@ -1,9 +1,3 @@
-//! GPU menu bar. A styled strip of menus. Each menu is a trigger plus
-//! a dropdown that uses the same items as [`super::menu`].
-//!
-//! Native OS bars stay on the desktop host (`set_menu_bar`). This bar
-//! is the tree you `.class()`.
-
 use std::rc::Rc;
 
 use sigil_events::prelude::NodeEventsExt;
@@ -25,7 +19,6 @@ struct Slot {
     rows: Vec<Row>,
 }
 
-/// Builder returned by [`menu_bar`].
 pub struct MenuBarBuilder {
     slots: Vec<Slot>,
     mutators: Vec<BuilderMutator>,
@@ -33,15 +26,6 @@ pub struct MenuBarBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Horizontal GPU menu bar. Style the strip with `.class(...)`.
-///
-/// ```ignore
-/// use sigil::prelude::*;
-///
-/// menu_bar()
-///     .class("bg-surface px-2")
-///     .menu("File", [MenuItem::new("Open").select(|| {})])
-/// ```
 #[must_use]
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
@@ -53,7 +37,6 @@ pub fn menu_bar() -> MenuBarBuilder {
 }
 
 impl MenuBarBuilder {
-    /// Append a named menu. Click the label to open the dropdown.
     #[must_use]
     pub fn menu(
         mut self,
@@ -67,8 +50,6 @@ impl MenuBarBuilder {
         self
     }
 
-    /// Utility classes on the strip (`bg-surface`, `px-2`, `hover:` on
-    /// triggers is per-item).
     #[must_use]
     pub fn class(mut self, classes: &str) -> Self {
         self.style_accumulator = self.style_accumulator.class(classes);
@@ -125,10 +106,14 @@ fn bar_layout() -> LayoutStyle {
         .align_items(AlignItems::Center)
 }
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "char counts are tiny; exactness is irrelevant at pixel scale"
+)]
 fn trigger_width(label: &str) -> f32 {
     const PAD: f32 = 16.0;
     const EM: f32 = 8.0;
-    PAD + (label.chars().count() as f32) * EM
+    (label.chars().count() as f32).mul_add(EM, PAD)
 }
 
 fn slot_node(index: usize, slot: Slot, open_idx: Signal<Option<usize>>) -> NodeBuilder {

@@ -1,20 +1,10 @@
-//! First-party Sigil widgets. Host-agnostic: no window, no GPU.
-//!
-//! Built from kernel, layout, style, events, and reactive state.
-//! Desktop apps import through `sigil::prelude::*` (`button`,
-//! `icon_button`, `text_field`, `text_edit`, `table`, `virtual_list`,
-//! `card`, `avatar`, `sidebar`, and the rest).
-
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
-#![deny(missing_docs)]
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]
 mod tests;
 
-/// Shared hover/press/focus state for focusable widgets.
 pub mod interaction;
-/// Widget-author prelude for built-in and extension widgets.
 pub mod widget_dev;
 
 mod button;
@@ -74,7 +64,7 @@ pub use button::{ButtonBuilder, button, icon_button};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
 pub use chip::{ChipBuilder, badge, chip};
-pub use clipboard::{ClipError, Clipboard, NoopClipboard, clipboard, set_clipboard};
+pub use clipboard::{ClipError, Clipboard, NoopClipboard, clipboard, install};
 pub use code_edit::{ChangeKind, CodeEditBuilder, DiagSeverity, DiagSpan, HlSpan, code_edit};
 pub use color_field::{color_field, parse_hex, to_hex};
 pub use combobox::{Combobox, combobox};

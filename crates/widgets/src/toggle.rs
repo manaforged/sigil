@@ -22,7 +22,6 @@ use super::transition_seam::install_transition_animators;
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
 const TOGGLE_COMPONENT_ID: u64 = 0x7066_1000;
 
-/// Builder returned by [`toggle`].
 pub struct ToggleBuilder {
     on: Signal<bool>,
     label: Option<TextContent>,
@@ -39,22 +38,17 @@ impl WidgetLayoutExt for ToggleBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-// Animator-only base slice: scanned by `install_transition_animators`
-// for the `Transition` atom that flips it into the animated path.
 static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
-    // Step 8, not 9: the on-state is a muted slate-blue (Zed's toggle
-    // register), reserving the full-saturation step 9 for primary
-    // actions and focus.
-    StyleAtom::BackgroundThemeRef("accent-8"),
+    StyleAtom::BackgroundThemeRef("accent"),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-9"),
+    StyleAtom::BackgroundThemeRef("accent-hover"),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-9"),
+    StyleAtom::BackgroundThemeRef("accent-hover"),
     StyleAtom::JustifyContent(JustifyKind::End),
     StyleAtom::Opacity(8_800),
 ];
@@ -77,14 +71,12 @@ static TOGGLE_DISABLED: &[StyleAtom] = &[
 ];
 static TOGGLE_THUMB: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-accent")];
 
-/// Create a toggle widget.
 #[must_use]
 pub const fn toggle(on: Signal<bool>) -> ToggleBuilder {
     ToggleBuilder::new(on)
 }
 
 impl ToggleBuilder {
-    /// Create a toggle builder.
     #[must_use]
     pub const fn new(on: Signal<bool>) -> Self {
         Self {
@@ -97,28 +89,24 @@ impl ToggleBuilder {
         }
     }
 
-    /// Set the toggle label.
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Set a reactive disabled signal.
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
         self
     }
 
-    /// Run a callback after state changes.
     #[must_use]
     pub fn change(mut self, change: impl Fn(bool) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
         self
     }
 
-    /// Add utility classes or atoms after the built-in toggle defaults.
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -126,16 +114,12 @@ impl ToggleBuilder {
         self
     }
 
-    /// Add struct-built style atoms after the built-in toggle defaults.
-    ///
-    /// The mutable trait hook is [`sigil_style::StyleAccess::style_mut`].
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
         self.mutators.push(Box::new(move |node| node.style(style)));
         self
     }
 
-    /// Attach a scoped theme to the toggle root.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
@@ -218,8 +202,6 @@ fn toggle_track(
                 .padding(3.0)
                 .align_items(AlignItems::Center),
         )
-        // TRACK is 20 px; explicit radius avoids the Px(9_999) SDF clipping bug
-        // (radio_group's mark is the precedent). Radius 10 = full capsule.
         .style(Style::new().radius(10))
         .class(TOGGLE_ANIM_BASE)
         .style_reactive(move || {
@@ -258,8 +240,6 @@ const fn toggle_state_style(on: bool) -> StateStyle {
 fn toggle_thumb() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(14.0, 14.0))
-        // THUMB is 14 px; explicit radius avoids the Px(9_999) SDF
-        // clipping bug. Radius 7 = full circle.
         .style(Style::new().radius(7))
         .class(TOGGLE_THUMB)
 }

@@ -22,8 +22,6 @@ fn redistribute_within_bounds() {
 
 #[test]
 fn redistribute_clamps_to_min() {
-    // pane 1 has min=100; pushing delta=300 would shrink pane 1 to -100,
-    // so the applied delta is clamped to 100 (200 - 100).
     let next = redistribute(
         &[200.0, 200.0, 200.0],
         0,

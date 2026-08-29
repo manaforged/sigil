@@ -20,11 +20,11 @@ pub(super) fn positive_px(px: f32, fallback: f32) -> f32 {
     }
 }
 
-/// Rows in one viewport (the geometric page).
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 pub(super) fn page_rows(viewport_height: f32, row_height: f32) -> usize {
     let row_height = positive_px(row_height, DEFAULT_ROW_HEIGHT);
@@ -36,8 +36,10 @@ fn pad_rows(viewport_height: f32, row_height: f32, overscan: usize) -> usize {
     page_rows(viewport_height, row_height).saturating_mul(overscan)
 }
 
-/// Host height that fits the viewport plus `overscan` pages each side.
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 pub(super) fn strip_height(viewport_height: f32, row_height: f32, overscan: usize) -> f32 {
     let pad = pad_rows(viewport_height, row_height, overscan) as f32;
     (pad * 2.0).mul_add(row_height, viewport_height)
@@ -46,7 +48,8 @@ pub(super) fn strip_height(viewport_height: f32, row_height: f32, overscan: usiz
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::cast_sign_loss
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
 )]
 pub(super) fn visible_window(
     scroll_y: f32,
@@ -102,7 +105,10 @@ pub(super) fn visible_window_variable(
     }
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn pad_start_variable(
     row_tops: &[f32],
     first: usize,
@@ -114,14 +120,20 @@ fn pad_start_variable(
     y_to_row(row_tops, (top - pad_px).max(0.0))
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 fn pad_end_variable(row_tops: &[f32], end: usize, viewport_height: f32, overscan: usize) -> usize {
     let top = prefix_row_top(row_tops, end);
     let pad_px = viewport_height * overscan as f32;
     first_row_at_or_after_y(row_tops, top + pad_px)
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 pub(super) fn total_height(rows: usize, row_height: f32) -> f32 {
     rows as f32 * row_height
 }
@@ -130,7 +142,10 @@ pub(super) fn total_height_variable(row_tops: &[f32]) -> f32 {
     row_tops.last().copied().unwrap_or(0.0)
 }
 
-#[allow(clippy::cast_precision_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+)]
 pub(super) fn row_top(index: usize, row_height: f32) -> f32 {
     index as f32 * row_height
 }

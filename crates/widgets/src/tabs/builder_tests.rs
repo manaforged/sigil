@@ -16,6 +16,6 @@ fn build_strip(chrome: impl FnOnce(TabsBuilder) -> TabsBuilder) {
 
 #[test]
 fn line_and_pill_build_on_default_theme() {
-    build_strip(|tabs| tabs.line());
-    build_strip(|tabs| tabs.pill());
+    build_strip(super::TabsBuilder::line);
+    build_strip(super::TabsBuilder::pill);
 }

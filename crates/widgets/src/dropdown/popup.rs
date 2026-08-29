@@ -21,15 +21,10 @@ pub(super) struct OptionCtx {
     pub(super) open: sigil_reactive::Signal<bool>,
     pub(super) cursor: sigil_reactive::Signal<usize>,
     pub(super) disabled: Option<sigil_reactive::Signal<bool>>,
-    /// Trigger width, or `None` when the trigger fills its parent. The
-    /// popup and its rows follow it either way, so the menu stays flush
-    /// with the control that opened it.
     pub(super) width: Option<f32>,
     pub(super) trigger_height: f32,
 }
 
-/// Apply an explicit width, or fill the containing block when the trigger
-/// is filling its parent (in which case no pixel width is known here).
 fn sized(base: LayoutStyle, width: Option<f32>, height: f32) -> LayoutStyle {
     match width {
         Some(px) => base.width(px).height(height),
@@ -51,13 +46,14 @@ pub(super) fn build_popup(
         trigger_height,
     } = ctx;
     let n = options.len();
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let popup_h = (n.min(POPUP_MAX_VISIBLE) as f32) * OPTION_HEIGHT;
 
     let popup = container()
         .role(Role::ListBox)
-        // Top layer: without this the popup paints in tree order and any
-        // later sibling (the next settings row) draws over it.
         .with(sigil_kernel::TopLayer)
         .layout(
             sized(LayoutStyle::flex_column(), width, popup_h)
@@ -80,12 +76,6 @@ pub(super) fn build_popup(
     attach_options(popup, options, item_ctx, on_change, popup_h)
 }
 
-/// Attach the option rows to `popup`, wrapped in a scroll when they
-/// overflow it.
-///
-/// `<= POPUP_MAX_VISIBLE` options fit the box exactly and stay a plain
-/// child (unchanged). More than that clip and scroll, so the overflow is
-/// reachable instead of painting past the popup onto whatever sits beneath.
 fn attach_options(
     popup: NodeBuilder,
     options: &Rc<Vec<String>>,
@@ -94,7 +84,10 @@ fn attach_options(
     popup_h: f32,
 ) -> NodeBuilder {
     let n = options.len();
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let extent = n as f32 * OPTION_HEIGHT;
     let mut list = container().layout(sized(LayoutStyle::flex_column(), item_ctx.width, extent));
     for (idx, label) in options.iter().enumerate() {
@@ -124,8 +117,6 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChang
         .layout(
             sized(LayoutStyle::flex_row(), ctx.width, OPTION_HEIGHT)
                 .padding(8.0)
-                // Clip labels wider than the row at the popup's edge
-                // instead of painting past it (matches trigger_label).
                 .overflow_x(Overflow::Hidden),
         )
         .style_reactive(move || option_atoms(idx, ctx.selected.get(), ctx.cursor.get()))

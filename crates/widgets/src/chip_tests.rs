@@ -10,11 +10,7 @@ fn chip_uses_label_role_and_holds_text_child() {
         let mut cx = Cx::new_root();
         let id = chip("INFO", Tone::Info).build(&mut cx);
         let node = cx.get(id).expect("chip node exists");
-        // Role::Label is the documented a11y contract — screen
-        // readers must announce the chip's text verbatim, not as
-        // an interactive widget.
         assert_eq!(node.a11y.role, sigil_kernel::Role::Label);
-        // The chip should hold exactly one child — the text node.
         assert_eq!(node.children().len(), 1, "chip wraps a single text child");
         let text_child = cx.get(node.children()[0]).expect("chip text child exists");
         assert!(
@@ -66,17 +62,13 @@ fn tone_class_strings_are_distinct() {
     }
 }
 
-/// The tone pairings must HOLD WCAG AA 4.5:1, not just match token
-/// strings — a palette change can silently reintroduce the failure
-/// the 2026-07-12 ui-review gate caught (adversarial review finding).
 #[test]
 fn every_tone_clears_wcag_aa_contrast() {
     use sigil_style::Rgba8;
     use sigil_style::scale::ScaleRole;
     use sigil_style::theme::Theme;
 
-    // keep luminance arithmetic bit-stable for goldens
-    #[allow(clippy::suboptimal_flops)]
+    #[allow(clippy::suboptimal_flops, reason = "intentional, reviewed trade-off")]
     fn luminance(c: Rgba8) -> f64 {
         let ch = |v: u8| {
             let v = f64::from(v) / 255.0;
@@ -90,8 +82,6 @@ fn every_tone_clears_wcag_aa_contrast() {
     }
 
     let theme = Theme::default();
-    // (tone, role, text step) — bg is always step 3, matching
-    // `chip_class`. Error stays step 11 (measures 4.70:1).
     let cases = [
         (Tone::Neutral, ScaleRole::Gray, 12),
         (Tone::Primary, ScaleRole::Accent, 12),

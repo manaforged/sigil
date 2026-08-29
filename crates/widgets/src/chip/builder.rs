@@ -1,5 +1,3 @@
-//! `ChipBuilder` — fluent surface for the [`chip`](crate::widgets::chip) badge widget.
-
 use std::rc::Rc;
 
 use sigil_events::prelude::{Key, NodeEventsExt};
@@ -13,9 +11,6 @@ use crate::interaction::InteractionState;
 use super::super::shared::{Activate, activate_key_reactive, activate_pointer_reactive};
 use super::{CHIP_PADDING_X, CHIP_PADDING_Y, chip_class};
 
-/// Builder returned by [`chip()`](crate::chip). Static tone by default;
-/// `.tone_signal(...)` retints reactively without a remount (the
-/// widget-playground FRICTION ask).
 pub struct ChipBuilder {
     label: sigil_kernel::TextContent,
     tone: Tone,
@@ -25,7 +20,6 @@ pub struct ChipBuilder {
 }
 
 impl ChipBuilder {
-    /// Construct a chip with a static tone.
     #[must_use]
     pub(crate) fn new(label: impl Into<sigil_kernel::TextContent>, tone: Tone) -> Self {
         Self {
@@ -37,47 +31,35 @@ impl ChipBuilder {
         }
     }
 
-    /// Round the chip into a badge (full pill).
     #[must_use]
     pub const fn pill(mut self) -> Self {
         self.pill = true;
         self
     }
 
-    /// Retint the chip (static override of the constructor tone).
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Drive the tone from a signal — flips background/foreground live
-    /// with no `children_reactive` remount.
     #[must_use]
     pub const fn tone_signal(mut self, tone: Signal<Tone>) -> Self {
         self.tone_signal = Some(tone);
         self
     }
 
-    /// Run a callback when the chip is activated by pointer or Enter.
-    ///
-    /// Makes the chip a button (`Role::Button`, focusable, hittable).
-    /// Without this the chip stays a label.
     #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
         self
     }
 
-    /// Set the chip's layout — mirrors the `NodeBuilder::layout`
-    /// chaining surface the pre-builder `chip()` returned, so call
-    /// sites like the log-tailer example keep their shape.
     #[must_use]
     pub fn layout(self, layout: sigil_layout::prelude::LayoutStyle) -> NodeBuilder {
         self.into_node_builder().layout(layout)
     }
 
-    /// Consume into a [`NodeBuilder`].
     #[must_use]
     pub fn into_node_builder(self) -> NodeBuilder {
         let activate = self.activate;
@@ -125,7 +107,6 @@ impl sigil_kernel::IntoNode for ChipBuilder {
     }
 }
 
-/// Pre-parsed atom slices for each tone, built once on first use.
 fn tone_atoms(tone: Tone) -> &'static [StyleAtom] {
     use std::sync::OnceLock;
     static TABLE: OnceLock<[&'static [StyleAtom]; 6]> = OnceLock::new();
@@ -149,9 +130,6 @@ fn tone_atoms(tone: Tone) -> &'static [StyleAtom] {
     }
 }
 
-/// Parse a known-good utility-class fragment into a leaked static slice.
-/// Falls back to an empty slice (unreachable for the tone table's
-/// compile-known tokens).
 fn parse_and_leak(class: &str) -> &'static [StyleAtom] {
     match sigil_style::parse_class_string(class) {
         Ok(atoms) => Box::leak(atoms.into_vec().into_boxed_slice()),

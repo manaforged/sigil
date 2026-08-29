@@ -1,13 +1,3 @@
-//! Gauge widget — labeled HP/CT bar for battler HUDs.
-//!
-//! Reuses the [`progress`](super::progress) widget's track/fill shape
-//! (a `border-strong` track holding a reactive-width `accent` fill)
-//! and adds two things a battler HUD needs on top: an optional visible
-//! plus accessible label, and a `.warn(threshold)` tone shift. Once
-//! `value / max` drops below `threshold` the fill flips from the
-//! `accent` scale to the `warn-9` scale step so a low-HP/low-CT bar
-//! reads as danger at a glance.
-
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
@@ -20,12 +10,10 @@ const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
 const GAUGE_GAP: f32 = 8.0;
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border-strong")];
+static TRACK: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
 
-/// Cache key: fill width in px + whether the warn tone is active.
 type FillAtomCache = HashMap<(i16, bool), &'static [StyleAtom]>;
 
-/// Builder returned by [`gauge`].
 pub struct GaugeBuilder {
     value: Signal<f32>,
     max: f32,
@@ -34,17 +22,12 @@ pub struct GaugeBuilder {
     style_accumulator: Style,
 }
 
-/// Create a labeled gauge bar (HP, CT, and similar battler HUD stats).
-///
-/// - `value` — current amount, tracked reactively.
-/// - default `max` is `1.0`; override with [`GaugeBuilder::max`].
 #[must_use]
 pub fn gauge(value: Signal<f32>) -> GaugeBuilder {
     GaugeBuilder::new(value)
 }
 
 impl GaugeBuilder {
-    /// Create a gauge builder with default settings.
     #[must_use]
     pub fn new(value: Signal<f32>) -> Self {
         Self {
@@ -56,7 +39,6 @@ impl GaugeBuilder {
         }
     }
 
-    /// Set the gauge's maximum value (default `1.0`). Clamped above zero.
     #[must_use]
     pub const fn max(mut self, max: f32) -> Self {
         self.max = if max > f32::EPSILON {
@@ -67,15 +49,12 @@ impl GaugeBuilder {
         self
     }
 
-    /// Set the visible + accessible label text (e.g. `"HP"`, `"CT"`).
     #[must_use]
     pub fn label(mut self, label: impl Into<TextContent>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Shift the fill to the warn tone once `value / max` drops below
-    /// `threshold` (expected range `0.0..=1.0`).
     #[must_use]
     pub const fn warn(mut self, threshold: f32) -> Self {
         self.warn_threshold = Some(threshold);
@@ -145,9 +124,6 @@ fn track_layout() -> LayoutStyle {
         .align_items(AlignItems::Center)
 }
 
-/// The fill node's width AND tone are both driven from one reactive
-/// closure so they land on the same `style_reactive` channel — a node
-/// only carries one reactive atom slot (see [`fill_atoms`]).
 fn fill(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
@@ -158,7 +134,11 @@ fn fill(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> NodeBuilde
 
 fn fill_atoms(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> &'static [StyleAtom] {
     let ratio = (value.get() / max).clamp(0.0, 1.0);
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     let px = (ratio * TRACK_WIDTH).round() as i16;
     let is_warn = warn_threshold.is_some_and(|threshold| ratio < threshold);
     cached_fill_atoms(px, is_warn)

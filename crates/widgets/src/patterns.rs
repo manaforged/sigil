@@ -1,19 +1,3 @@
-//! Composition patterns: layout shells and discoverability surfaces built
-//! on existing widget primitives.
-//!
-//! Layout shells (Phase E):
-//! * [`app_shell`] — top bar / work / status bar / optional modal overlay.
-//! * [`field`] — label-above-control vertical pair for form rows.
-//! * [`kv_grid`] — key + value rows for header tables / metadata panes.
-//!
-//! Discoverability (Phase F):
-//! * [`tooltip`] — hover/focus-driven hint over any target node. Thin
-//!   re-export of [`super::tooltip`], the existing widget.
-//! * [`hint_overlay`] — translucent keybinding cheat-sheet.
-//! * [`card`] — padded surface for a header + body.
-//! * [`avatar`] — initials disc.
-//! * [`sidebar`] — fixed-width column.
-
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use sigil_reactive::{Signal, derived};
@@ -23,34 +7,12 @@ use super::shared::label;
 use super::text_field::TextFieldBuilder;
 use super::tooltip::{TooltipBuilder, tooltip as tooltip_widget};
 
-/// Fixed top-bar height in logical pixels.
 const TOP_BAR_HEIGHT: f32 = 48.0;
-/// Fixed status-bar height in logical pixels.
 const STATUS_BAR_HEIGHT: f32 = 28.0;
-/// Inter-element gap between label and control in [`field`].
 const FIELD_GAP: f32 = 4.0;
-/// Inter-row gap in [`kv_grid`].
 const KV_GRID_ROW_GAP: f32 = 4.0;
-/// Inter-column gap inside each [`kv_grid`] row.
 const KV_GRID_COLUMN_GAP: f32 = 12.0;
 
-/// Four-section application shell: top bar, work area, status bar, and an
-/// optional modal overlay. The root is a `flex_column` filling the parent.
-///
-/// `top` sits at a fixed 48 px, `work` flex-grows to fill the remainder,
-/// `status` sits at a fixed 28 px, and `modal` (when `Some`) is appended as
-/// an absolutely-positioned sibling so it overlays the column.
-///
-/// ```ignore
-/// use sigil::prelude::*;
-///
-/// patterns::app_shell(
-///     container().child(text("title")),
-///     container().child(text("work")),
-///     status_bar([chip("READY", Tone::Success)]),
-///     None::<NodeBuilder>,
-/// )
-/// ```
 #[must_use]
 pub fn app_shell(
     top: impl IntoNode + 'static,
@@ -106,14 +68,6 @@ fn modal_overlay(child: impl IntoNode + 'static) -> NodeBuilder {
         .child(child)
 }
 
-/// Label-above-control form row: a `flex_column` containing the label
-/// followed by the supplied control with a 4 px gap between them.
-///
-/// ```ignore
-/// use sigil::prelude::*;
-///
-/// patterns::field("Username", text_field().placeholder("you@host"))
-/// ```
 #[must_use]
 pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'static) -> NodeBuilder {
     container()
@@ -123,29 +77,6 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
         .child(control)
 }
 
-/// Variant of [`field`] with a reactive validation-error slot.
-///
-/// `error` is a `Signal<Option<String>>` — when it reads `Some("…")`
-/// a red helper-text node appears under the control with the
-/// supplied message; when `None`, the slot collapses via
-/// `Display::None` and contributes no layout box.
-///
-/// ```ignore
-/// use sigil::prelude::*;
-/// use sigil_reactive::{signal, derived};
-///
-/// let email = signal(String::new());
-/// let email_error = derived(move || {
-///     let v = email.get();
-///     (!v.contains('@')).then(|| String::from("Email must contain @"))
-/// });
-///
-/// patterns::validated_field(
-///     "Email",
-///     text_field(email).placeholder("you@example.com"),
-///     email_error,
-/// )
-/// ```
 #[must_use]
 pub fn validated_field(
     label_text: impl Into<TextContent>,
@@ -154,12 +85,6 @@ pub fn validated_field(
 ) -> NodeBuilder {
     let message: Signal<String> = derived(move || error.get().unwrap_or_default());
     let visible: Signal<bool> = derived(move || error.get().is_some());
-    // Wire the error state into the control's invalid border so the
-    // field itself enters an error state, not just the helper text.
-    // Without this, a review flagged validated_field as
-    // "carrying the error in the helper text only" — a semantic-drift
-    // a11y failure (the field doesn't signal invalidity to assistive
-    // tech or sighted users glancing at the control).
     let invalid_signal: Signal<bool> = derived(move || error.get().is_some());
     let control = control.invalid_when(invalid_signal);
     container()
@@ -168,12 +93,6 @@ pub fn validated_field(
         .child(label(label_text))
         .child(control)
         .child(
-            // step-12 instead of step-11: at the 12 px `text-xs` size
-            // antialiasing dilutes effective contrast by ~1.5 stops vs.
-            // the pure colour pair, pushing step-11 ruby (~5.4:1 solid)
-            // into the ~3.5:1 measured zone — below the 4.5:1 floor for
-            // small body text. Step 12 ruby (#641723) measures ~12:1
-            // against light surfaces and survives the AA penalty.
             text(message)
                 .role(Role::Label)
                 .class("text-error-12 text-xs font-medium")
@@ -190,17 +109,6 @@ pub fn validated_field(
 static ERROR_VISIBLE: &[StyleAtom] = &[];
 static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
-/// Two-column key/value grid: each row is a `flex_row` with the key on the
-/// left and the value (rendered in the monospace class) on the right.
-///
-/// ```ignore
-/// use sigil::prelude::*;
-///
-/// patterns::kv_grid(&[
-///     ("Content-Type", "application/json"),
-///     ("Status", "200 OK"),
-/// ])
-/// ```
 #[must_use]
 pub fn kv_grid(rows: &[(&'static str, &'static str)]) -> NodeBuilder {
     let mut root = container()
@@ -220,48 +128,18 @@ fn kv_grid_row(key: &'static str, value: &'static str) -> NodeBuilder {
         .child(text(value).class("font-mono"))
 }
 
-/// Wrap `target` with a hover/focus tooltip that shows `hint`.
-///
-/// Direct composition helper — equivalent to
-/// `tooltip(hint).child(target)`. Provided as a free function in the
-/// `patterns::` namespace so authoring code reads top-down:
-///
-/// ```no_run
-/// use sigil::prelude::*;
-/// use sigil::widgets::patterns;
-///
-/// # fn ui(_cx: &mut Cx) {
-/// let _node = patterns::tooltip(button("Save"), "Save the file");
-/// # }
-/// ```
-///
-/// The wrapped target inherits the existing tooltip widget's
-/// `pointer_enter` / `pointer_leave` driven visibility and ARIA
-/// description wiring.
 #[must_use]
 pub fn tooltip(target: impl IntoNode + 'static, hint: impl Into<String>) -> TooltipBuilder {
     tooltip_widget(hint).child(target)
 }
 
-/// A single chord/description pair displayed by [`hint_overlay`].
-///
-/// The borrowed form keeps the call-site terse — `&[("Ctrl+S",
-/// "Save"), ("Ctrl+Z", "Undo")]` — without forcing `String`
-/// allocations for static keybinding tables.
 pub type HintEntry<'a> = (&'a str, &'a str);
 
-/// Builder returned by [`hint_overlay`].
-///
-/// Renders a translucent column of `chord — description` rows. Always
-/// visible while mounted; hosts that want toggleable visibility wrap
-/// the builder in a reactive `if let` against a `Signal<bool>` at the
-/// call site (the typical "press `?` to toggle the cheat sheet" UX).
 pub struct HintOverlayBuilder {
     entries: Vec<(String, String)>,
 }
 
 impl HintOverlayBuilder {
-    /// Construct a hint overlay seeded with the supplied entries.
     #[must_use]
     pub fn new(hints: &[HintEntry<'_>]) -> Self {
         let entries = hints
@@ -271,7 +149,6 @@ impl HintOverlayBuilder {
         Self { entries }
     }
 
-    /// Push an additional hint onto the overlay.
     #[must_use]
     pub fn entry(mut self, chord: impl Into<String>, description: impl Into<String>) -> Self {
         self.entries.push((chord.into(), description.into()));
@@ -323,36 +200,13 @@ fn hint_row(chord: &str, description: &str) -> NodeBuilder {
         .child(text(description.to_owned()))
 }
 
-/// Construct a hint overlay from a slice of `(chord, description)` pairs.
-///
-/// Intended for "press `?` for shortcuts" UX. The overlay is always
-/// visible while mounted; gate visibility from the host using a
-/// reactive `if`:
-///
-/// ```no_run
-/// use sigil::prelude::*;
-/// use sigil::widgets::patterns;
-///
-/// # fn ui(_cx: &mut Cx) {
-/// let visible = signal(false);
-/// // Mount/unmount the overlay reactively based on `visible.get()`.
-/// let _hints = patterns::hint_overlay(&[
-///     ("Ctrl+S", "Save"),
-///     ("Ctrl+Z", "Undo"),
-///     ("?",      "Toggle this overlay"),
-/// ]);
-/// # let _ = visible;
-/// # }
-/// ```
 #[must_use]
 pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
 }
 
 const AVATAR_PX: f32 = 28.0;
-const SIDEBAR_DEFAULT: f32 = 220.0;
 
-/// Padded surface for a header or body. Compose children yourself.
 #[must_use]
 pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
@@ -367,7 +221,6 @@ pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {
         .child(child)
 }
 
-/// Initials disc. Pass one or two characters.
 #[must_use]
 pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
     let content: TextContent = initials.into();
@@ -389,21 +242,9 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
         .child(text(content).class("text-xs font-medium").hittable(false))
 }
 
-/// Fixed-width column for a nav list.
-#[must_use]
-pub fn sidebar(child: impl IntoNode + 'static) -> NodeBuilder {
-    sidebar_width(SIDEBAR_DEFAULT, child)
-}
+mod sidebar;
 
-/// [`sidebar`] with an explicit width in logical px.
-#[must_use]
-pub fn sidebar_width(width: f32, child: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .role(Role::Navigation)
-        .layout(LayoutStyle::flex_column().width(width).fill())
-        .class("bg-surface-hover")
-        .child(child)
-}
+pub use sidebar::{sidebar, sidebar_width};
 
 #[cfg(test)]
 #[path = "patterns_tests.rs"]

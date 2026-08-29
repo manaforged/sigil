@@ -21,29 +21,17 @@ use super::super::transition_seam::install_transition_animators;
 
 const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
 const TEXT_FIELD_COMPONENT_ID: u64 = 0x7E47_F000;
-// Animator-only base slice scanned by `install_transition_animators`.
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
-// Border colour for the rest/disabled states. `theme.border` resolves
-// to slate step 7 (#CDCED7) which measures ~1.5:1 against the surface —
-// well below the 3:1 WCAG 1.4.11 floor for non-text UI boundaries
-// (visual review 2026-05-21). `gray-9` (#8B8D98 in slate-light)
-// measures ~3.3:1 and lifts the field edge to a compliant boundary
-// without going so dark it reads as a focused-state border.
 static FIELD_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-inset"),
+    StyleAtom::BackgroundThemeRef("field"),
     StyleAtom::BorderWidth(Px(1)),
 ];
-static FIELD_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(9)];
+static FIELD_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(7)];
 static FIELD_FOCUS: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
-static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BorderToneStep(10)];
+static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BorderToneStep(8)];
 static FIELD_DOWN: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
-static FIELD_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(8), StyleAtom::Opacity(5_000)];
-// Invalid-state overlay: a saturated red border paint that overrides
-// every other state slot when the `invalid_when` signal peeks `true`.
-// Colour matches WCAG AAA-compliant Material "error" (#D32F2F → sRGB
-// (211,47,47)) so the 1 px-thick outer band stays legible against the
-// default light + dark surfaces.
+static FIELD_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(6), StyleAtom::Opacity(5_000)];
 pub(super) static FIELD_INVALID: &[StyleAtom] =
     &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
         r: 211,
@@ -52,7 +40,6 @@ pub(super) static FIELD_INVALID: &[StyleAtom] =
         a: 255,
     }))];
 
-/// Inputs a text field binds while building its frame.
 #[derive(Clone)]
 pub(super) struct FieldInputs {
     pub(super) value: Signal<String>,
@@ -113,10 +100,6 @@ pub(super) fn build_base_node(
     )
 }
 
-/// The frame's reactive style channel: publishes the resolved slot into
-/// `slot_cell` for the per-instance user-overlay pass, then returns the
-/// invalid override or the variant atoms for the same state. Kept as a
-/// named helper so `build_base_node` stays under the 50-line cap.
 fn field_style_channel(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
@@ -126,9 +109,6 @@ fn field_style_channel(
     move || {
         let state = field_state(interaction, disabled);
         slot_cell.set(state.slot());
-        // Invalid overrides every other state slot — a red border is the
-        // universal "fix this before continuing" cue. `.get()` (not
-        // `.peek()`) re-subscribes the effect whenever the signal flips.
         if invalid.is_some_and(Signal::get) {
             FIELD_INVALID
         } else {
@@ -148,9 +128,6 @@ const fn field_state_style() -> StateStyle {
 }
 
 pub(super) fn field_layout() -> LayoutStyle {
-    // min-width 0 releases the min-content floor (placeholder or a long
-    // single-line value), so a fill-width field inside a flex row shrinks
-    // beside fixed siblings instead of overflowing the row.
     LayoutStyle::flex_row()
         .fill_width()
         .min_size(0.0, sigil_layout::prelude::Dimension::Auto)
@@ -174,9 +151,6 @@ fn field_inner(
 }
 
 fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
-    // An explicit builder width pins the content track to width − 2 so
-    // the field's one-pixel border remains inside the requested width.
-    // With no override the content fills the frame's available width.
     let base = width.map_or_else(
         || LayoutStyle::flex_row().fill_width().grow(1.0),
         |w| LayoutStyle::flex_row().width((w - 2.0).max(0.0)),
@@ -194,10 +168,6 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
     let _ = interaction.release_pointer(event);
 }
 
-/// The field's displayed text: the committed buffer with any in-flight
-/// IME preedit spliced in at the caret for display only (`value` never
-/// carries preedit text — DR-051 §Decision-3's `Commit` handler is the
-/// only writer of the committed buffer).
 fn displayed_text(
     value: Signal<String>,
     placeholder: TextContent,
@@ -217,10 +187,6 @@ fn displayed_text(
     })
 }
 
-/// Insert `preedit` into `value` at the `caret` byte offset, for display
-/// only. The caret mirrors `TextEdit`'s caret, but value and caret publish
-/// through separate signals — the clamp guards the transient state between
-/// the two writes (same fix as `text_edit`'s gated HIGH-1).
 fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
     let caret = crate::text_edit::floor_char_boundary(value, caret.min(value.len()));
     let mut out = String::with_capacity(value.len() + preedit.len());

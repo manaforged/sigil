@@ -1,28 +1,3 @@
-//! Numeric text field — types a value, parses on change, clamps to range.
-//!
-//! `number_field(signal, range)` wraps the existing [`text_field`](super::text_field)
-//! widget with a small reactive bridge: the inner edit buffer holds the
-//! string representation, but the host-supplied [`Signal<T>`] is the
-//! source of truth. Every edit parses `&str` into `T`, clamps to the
-//! supplied [`RangeInclusive<T>`], and writes the clamped value back
-//! through the signal. The display string re-syncs from the signal so
-//! the displayed text stays consistent with the clamped value.
-//!
-//! Generic over [`NumericKind`] — a sealed trait implemented for `i32`,
-//! `i64`, `f32`, `f64`, and `usize`. Adding another numeric type requires
-//! adding the impl here (which keeps the surface deliberately small —
-//! Sigil ships the obvious widths and nothing else).
-//!
-//! ```no_run
-//! use sigil::prelude::*;
-//! use sigil::widgets::number_field;
-//!
-//! # fn build(_cx: &mut Cx) {
-//! let volume = signal(50i32);
-//! let _node = number_field(volume, 0..=100);
-//! # }
-//! ```
-
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -31,22 +6,11 @@ use sigil_reactive::{Signal, effect, signal};
 
 use super::text_field::{TextFieldBuilder, text_field};
 
-/// Numeric types accepted by [`number_field`].
-///
-/// Sealed — implemented only for `i32`, `i64`, `f32`, `f64`, `usize`.
-/// Each impl provides string parsing + a `clamp` shim so the widget
-/// stays one generic function rather than one widget-per-type.
 pub trait NumericKind: Copy + PartialOrd + 'static + private::Sealed {
-    /// Parse a user-typed string into this kind.
-    ///
-    /// Returns `None` when the input cannot be interpreted — the widget
-    /// keeps the prior value in that case.
     #[must_use]
     fn parse(input: &str) -> Option<Self>;
-    /// Render this value as a string the field can display.
     #[must_use]
     fn render(self) -> String;
-    /// Clamp `self` to the inclusive `range`.
     #[must_use]
     fn clamp_to(self, range: &RangeInclusive<Self>) -> Self;
 }
@@ -90,8 +54,6 @@ macro_rules! impl_numeric_float {
                 self.to_string()
             }
             fn clamp_to(self, range: &RangeInclusive<Self>) -> Self {
-                // Float `clamp` panics on NaN; `parse` already filtered
-                // non-finite, so the panic path is unreachable here.
                 self.clamp(*range.start(), *range.end())
             }
         }
@@ -101,26 +63,12 @@ macro_rules! impl_numeric_float {
 impl_numeric_float!(f32);
 impl_numeric_float!(f64);
 
-/// Builder returned by [`number_field`].
-///
-/// Currently a thin wrapper around [`TextFieldBuilder`]; exposed as a
-/// distinct type so future configuration (step, precision, stepper
-/// visibility) can land without changing the call-site signature.
 pub struct NumberFieldBuilder<T: NumericKind> {
     inner: TextFieldBuilder,
-    // Held so future config methods (step, precision) can read it; the
-    // current builder only needs `T` at construction time, but keeping
-    // the marker avoids an API break when those land.
     _marker: std::marker::PhantomData<fn() -> T>,
 }
 
 impl<T: NumericKind> NumberFieldBuilder<T> {
-    /// Return the underlying [`TextFieldBuilder`] for further styling /
-    /// layout / event configuration.
-    ///
-    /// Use the inherent `.class()` / `.style()` chain on the returned
-    /// builder; `NumberFieldBuilder` does not re-expose those methods
-    /// itself (keeps the typed-and-clamped contract small).
     pub fn text_field(self) -> TextFieldBuilder {
         self.inner
     }
@@ -132,16 +80,6 @@ impl<T: NumericKind> IntoNode for NumberFieldBuilder<T> {
     }
 }
 
-/// Construct a number field bound to `value` and clamped to `range`.
-///
-/// Edits parse the typed string; valid finite numbers are clamped into
-/// `range` and written back through `value`. Whenever `value` changes
-/// externally the displayed string re-syncs to match (so a host that
-/// taps a "reset to default" button sees the field update).
-///
-/// Must be called inside a reactive [`Runtime`](sigil_reactive::Runtime)
-/// scope — both internal effects and the text-field's reactive
-/// bindings expect one.
 #[must_use]
 pub fn number_field<T: NumericKind>(
     value: Signal<T>,
@@ -150,7 +88,6 @@ pub fn number_field<T: NumericKind>(
     let buffer = signal(value.peek().render());
     let range = Rc::new(range);
 
-    // value -> buffer sync: clamp then mirror as a string.
     let buf_for_value = buffer;
     let range_for_value = Rc::clone(&range);
     effect(move || {
@@ -168,12 +105,6 @@ pub fn number_field<T: NumericKind>(
                 return;
             };
             let clamped = parsed.clamp_to(&range);
-            // `NumericKind: Copy + PartialOrd` — Copy implies Clone so
-            // `Signal::peek` is callable; PartialOrd does NOT imply
-            // PartialEq for arbitrary T, but every NumericKind impl
-            // here (i32 / i64 / usize / f32 / f64) also implements
-            // PartialEq, so the partial-cmp-eq direct comparison is
-            // safe without an extra trait bound.
             let current = value.peek();
             if current.partial_cmp(&clamped) != Some(core::cmp::Ordering::Equal) {
                 value.set(clamped);

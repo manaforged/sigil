@@ -58,7 +58,6 @@ fn overscan_zero_bind_mounts_the_geometric_page() {
 #[test]
 fn scroll_to_end_seeds_signal_at_bottom() {
     Runtime::scope("sigil-virtual-list-scroll-to-end", || {
-        // 100 rows × 30 px = 3000 px content; viewport 200 px → max scroll = 2800
         let scroll_y = sigil_reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..100).collect();
         let mut cx = Cx::new_root();
@@ -76,8 +75,6 @@ fn scroll_to_end_seeds_signal_at_bottom() {
 #[test]
 fn scroll_into_view_seeds_signal_at_row_position() {
     Runtime::scope("sigil-virtual-list-scroll-into-view", || {
-        // Row 50 starts at 50 × 30 = 1500 px. Viewport is 200 px.
-        // Max scroll = 100*30 - 200 = 2800. Target 1500 is within range.
         let scroll_y = sigil_reactive::signal(0.0_f32);
         let items: Vec<usize> = (0..100).collect();
         let mut cx = Cx::new_root();
@@ -88,7 +85,6 @@ fn scroll_into_view_seeds_signal_at_row_position() {
                 .scroll_bind(scroll_y)
                 .scroll_into_view(50),
         );
-        // Row 50 at top of viewport → scroll = 1500
         assert_eq!(scroll_y.get(), 1500.0);
     });
 }
@@ -179,7 +175,6 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
             .get_extension::<sigil_layout::LayoutStyle>()
             .expect("root has LayoutStyle")
             .clone();
-        // Both axes resolve against the parent content box at layout time.
         assert_eq!(style.data().size.width, Dimension::Fill);
         assert_eq!(style.data().size.height, Dimension::Fill);
     });
@@ -187,8 +182,6 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
 
 #[test]
 fn viewport_fill_tracks_parent_pane_measured_size() {
-    // Drop a virtual_list with .viewport_fill() into a fixed-size parent
-    // and verify the rendered viewport rect tracks the parent's content box.
     use sigil_hal::{LogicalSize, Size};
     use sigil_kernel::TextContent;
     use sigil_layout::prelude::LayoutBuilderExt;
@@ -203,7 +196,6 @@ fn viewport_fill_tracks_parent_pane_measured_size() {
 
     Runtime::scope("sigil-virtual-list-viewport-fill-layout", || {
         let mut cx = Cx::new_root();
-        // Parent container has a fixed 400×300 content box.
         let items: Vec<usize> = (0..50).collect();
         let parent = cx.add(
             container()
@@ -252,7 +244,6 @@ fn select_fires_with_selected_index() {
             .viewport_height(200.0)
             .selection(SelectionMode::Single);
 
-        // Capture the selection signal before wiring .select().
         let selection = builder.selection_state();
         let builder = builder.select(move |i| {
             last_clone.set(Some(i));
@@ -261,22 +252,11 @@ fn select_fires_with_selected_index() {
         let mut cx = Cx::new_root();
         let _ = cx.add(builder);
 
-        // Trigger a selection change — the effect re-runs.
         selection.update(|state| state.click(7));
         assert_eq!(last_index.get(), Some(7));
     });
 }
 
-// ── items_bind / reactive path ────────────────────────────────────────────────
-
-/// Helper: navigate root → reactive host → content → visible window for
-/// `build_bound` trees.
-///
-/// Tree shape produced by `build_bound` (windowed, 5/5 Wave 2 T6-prereq):
-///   root (`viewport_container`)
-///   └─ host (block)
-///      └─ content (`content_container`)
-///         └─ visible window (absolute-positioned rows container)
 fn bound_visible(cx: &Cx, root: NodeId) -> NodeId {
     let host = cx
         .first_child(root)
@@ -327,17 +307,12 @@ fn items_bind_signal_mutation_replaces_rows() {
 
 #[test]
 fn items_bind_static_path_still_works() {
-    // Guard: static `virtual_list(vec, render)` without `virtual_list_bind` must
-    // still build correctly (smoke test for the bound/static split regression).
     Runtime::scope("sigil-vlist-items-bind-static-smoke", || {
         let items: Vec<usize> = (0..5).collect();
         let mut cx = Cx::new_root();
         let root = cx.add(virtual_list(items, |_, _| container()));
         let content = cx.first_child(root).expect("content");
         let visible = cx.first_child(content).expect("visible window");
-        // Static path materialises the visible window inline — no flush needed.
-        // With DEFAULT_VIEWPORT_HEIGHT 480 and DEFAULT_ROW_HEIGHT 32, a 5-item
-        // list fits entirely in the first window (5 < 30 = page + overscan).
         assert_eq!(
             cx.child_count(visible),
             5,
@@ -390,12 +365,9 @@ fn items_bind_window_advances_in_place_on_scroll() {
                 .viewport_height(100.0),
         );
         cx.flush_reactive_children();
-        // 5 in view + 5 overscan below at scroll 0.
         assert_eq!(cx.child_count(bound_visible(&cx, root)), 10);
         assert_eq!(first_row_label(&cx, root), Some("row 0".to_string()));
 
-        // Scroll to row 200 WITHOUT touching the items signal — the same
-        // tree must re-render the window in place (no rebuild).
         scroll_y.set(4_000.0);
         cx.flush_reactive_children();
         assert_eq!(cx.child_count(bound_visible(&cx, root)), 15);
@@ -482,7 +454,6 @@ fn items_bind_same_len_keeps_nodes() {
         assert_eq!(first, keep, "same length must keep NodeId");
     });
 }
-/// Accessible name of the first visible row.
 fn first_row_label(cx: &Cx, root: NodeId) -> Option<String> {
     let visible = bound_visible(cx, root);
     let first = cx.first_child(visible)?;

@@ -1,19 +1,12 @@
-//! Virtual list widget with fixed-height row virtualization.
-//!
-//! The widget owns a scroll signal unless one is supplied by the host. On
-//! build it reads the current scroll offset, derives the visible row range,
-//! and materializes that range plus [`VirtualListBuilder::overscan`]
-//! viewports of rows on each side (default one).
-
 #![allow(clippy::missing_const_for_fn, clippy::mod_module_files)]
 
 mod keyboard;
 mod render;
+mod scroll;
 mod selection;
 mod viewport;
 mod window;
 
-use sigil_events::prelude::NodeEventsExt;
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
 use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::LayoutBuilderExt;
@@ -22,13 +15,14 @@ use sigil_reactive::{Signal, derived_eq, effect, signal};
 use std::ops::Deref;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::scroll::{WheelX, pin_to_bottom as follow_bottom, wheel, wheel2};
+use super::scroll::WheelX;
 use super::table::Identifiable;
 use keyboard::{KeyboardRuntime, KeyboardRuntimeInit, attach_key_handlers};
 use render::{
     BoundStrip, HeightSpec, VisibleRenderSpec, bound_strip, build_visible_window,
     content_container, viewport_container, width_apply, width_spec,
 };
+use scroll::{apply_bound_scroll, attach_wheel};
 use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
 use viewport::{ViewportSize, apply_viewport_overrides};
@@ -37,23 +31,15 @@ use window::{
     visible_window, visible_window_variable,
 };
 
-/// Default uniform row height in logical pixels.
-#[allow(unreachable_pub)]
+#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
 pub const DEFAULT_ROW_HEIGHT: f32 = 32.0;
-/// Default viewport height in logical pixels.
-#[allow(unreachable_pub)]
+#[allow(unreachable_pub, reason = "intentional, reviewed trade-off")]
 pub const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
-/// Extra viewports of rows mounted above and below the geometric page.
 const DEFAULT_OVERSCAN: usize = 1;
 
 type ItemHeightFn<T> = dyn Fn(usize, &T) -> f32 + 'static;
 pub(super) type RowKey<T> = std::rc::Rc<dyn Fn(usize, &T) -> u64>;
 
-/// Runtime context passed to the bind thunk by
-/// [`VirtualListBuilder::into_node_builder`] so the thunk — which was
-/// built inside [`virtual_list_bind`] with the item-slice bound already
-/// resolved — can build the reactive visible-window subtree without
-/// needing access to `&mut self`.
 struct BoundCtx<T, R> {
     render: R,
     row_height: f32,
@@ -65,29 +51,14 @@ struct BoundCtx<T, R> {
     row_key: Option<RowKey<T>>,
 }
 
-/// Type-erased "build reactive visible window" thunk produced by
-/// [`virtual_list_bind`]. The thunk encapsulates the
-/// `S: AsRef<[T]>` bound so the rest of the builder body can stay generic
-/// over `T: 'static` without forcing `Clone` on the static-`Vec` path.
 type BoundVisibleThunk<T, R> = dyn FnOnce(BoundCtx<T, R>) -> NodeBuilder + 'static;
 
-/// Bookkeeping captured at [`virtual_list_bind`] time:
-/// the thunk that builds the reactive visible-window subtree plus the
-/// initial item count (peeked from the signal without subscribing) so
-/// [`VirtualListBuilder::into_node_builder`] can seed scroll, content
-/// height, and keyboard `total_rows` from the same snapshot.
 struct BoundItems<T, R> {
     thunk: Box<BoundVisibleThunk<T, R>>,
     initial_rows: usize,
-    /// Live item count tracked from the bound signal — feeds the
-    /// keyboard runtime so navigation clamps follow filter/sort
-    /// mutations instead of the build-time snapshot.
     live_rows: Signal<usize>,
 }
 
-/// Pre-resolved per-axis runtime values shared between
-/// `build_static` and `build_bound` so the dispatcher
-/// `into_node_builder` stays under the 50-line hygiene cap.
 #[derive(Clone, Copy)]
 struct BuildAxes {
     row_height: f32,
@@ -99,9 +70,6 @@ struct BuildAxes {
     selection_state: Signal<SelectionState>,
 }
 
-/// Borrow the bound signal's value as an item slice. The `Deref`
-/// indirection lets `Rc<Vec<T>>` (deref → `Vec<T>` → `&[T]`) and
-/// plain `Vec<T>` (deref → `[T]`) share one bound.
 fn bound_slice<S, T>(value: &S) -> &[T]
 where
     S: Deref,
@@ -110,81 +78,6 @@ where
     (*value).as_ref()
 }
 
-fn max_scroll(rows: usize, row_height: f32, viewport_height: f32) -> f32 {
-    (total_height(rows, row_height) - viewport_height).max(0.0)
-}
-
-fn seed_bound_scroll(
-    scroll_y: Signal<f32>,
-    initial: Option<InitialScroll>,
-    rows: usize,
-    row_height: f32,
-    viewport_height: f32,
-) {
-    let Some(initial) = initial else {
-        return;
-    };
-    let max = max_scroll(rows, row_height, viewport_height);
-    let target = match initial {
-        InitialScroll::End => max,
-        InitialScroll::Row(index) => row_top(index, row_height).clamp(0.0, max),
-    };
-    scroll_y.set(target);
-}
-
-fn apply_bound_scroll(
-    axes: BuildAxes,
-    initial: Option<InitialScroll>,
-    pin_bottom: bool,
-    initial_rows: usize,
-    live_rows: Signal<usize>,
-) {
-    seed_bound_scroll(
-        axes.scroll_y,
-        initial,
-        initial_rows,
-        axes.row_height,
-        axes.viewport_height,
-    );
-    if pin_bottom {
-        pin_to_bottom(
-            axes.scroll_y,
-            live_rows,
-            axes.row_height,
-            axes.viewport_height,
-        );
-    }
-}
-
-fn pin_to_bottom(
-    scroll_y: Signal<f32>,
-    live_rows: Signal<usize>,
-    row_height: f32,
-    viewport_height: f32,
-) {
-    let max = derived_eq(move || max_scroll(live_rows.get(), row_height, viewport_height));
-    follow_bottom(scroll_y, max);
-}
-
-/// Attach the wheel-scroll handler to the viewport root. `max_scroll`
-/// is consulted per event so the bound (`virtual_list_bind`) path tracks the
-/// live item count — a filter can shrink the content while the pointer
-/// is hovering over the list.
-fn attach_wheel(
-    root: NodeBuilder,
-    axes: BuildAxes,
-    max_scroll: impl Fn() -> f32 + 'static,
-) -> NodeBuilder {
-    let scroll_y = axes.scroll_y;
-    let viewport_height = axes.viewport_height;
-    let scroll_x = axes.scroll_x;
-    root.on_scroll(move |ev| match scroll_x {
-        Some(x) => wheel2(ev, scroll_y, viewport_height, max_scroll(), x),
-        None => wheel(ev, scroll_y, viewport_height, max_scroll()),
-    })
-}
-
-/// Builder returned by [`virtual_list`].
 pub struct VirtualListBuilder<T, R>
 where
     T: 'static,
@@ -212,34 +105,20 @@ where
     pin_bottom: bool,
 }
 
-/// Pre-build instruction for seeding the scroll signal.
 #[derive(Clone, Copy)]
 enum InitialScroll {
     End,
     Row(usize),
 }
 
-/// Anchor for [`VirtualListBuilder::initial_scroll`].
-///
-/// Selects where the viewport should be parked on first build:
-/// * [`Top`](ScrollAnchor::Top) — start at offset 0.
-/// * [`Bottom`](ScrollAnchor::Bottom) — start at the maximum scroll
-///   offset (equivalent to the long-standing `scroll_to_end` helper).
-/// * [`Index`](ScrollAnchor::Index) — start so the row at the supplied
-///   index is at the top of the viewport.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScrollAnchor {
-    /// Park the viewport at offset 0.
     Top,
-    /// Park the viewport at the last page (`content_height - viewport`).
     Bottom,
-    /// Park the viewport at the supplied row index.
     Index(usize),
 }
 
-/// Rows for [`virtual_list`]: a `Vec` (snapshot) or a `Signal` (live).
 pub trait IntoList<T, R: Fn(usize, &T) -> NodeBuilder + 'static> {
-    /// Build the list from this source.
     fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
 }
 
@@ -265,14 +144,6 @@ where
     }
 }
 
-/// Build a virtual list.
-///
-/// `items` is a `Vec` (snapshot) or a `Signal` (live). Each item
-/// produces one row via `render`. The viewport plus
-/// [`VirtualListBuilder::overscan`] pages on each side become nodes.
-/// If `T: Identifiable`, call
-/// [`.identified()`](VirtualListBuilder::identified) so reorder
-/// keeps `NodeId`.
 #[must_use]
 pub fn virtual_list<T, R, I>(items: I, render: R) -> VirtualListBuilder<T, R>
 where
@@ -312,7 +183,6 @@ where
     }
 }
 
-/// Same as [`virtual_list`] with a `Signal`. Prefer [`virtual_list`].
 #[must_use]
 pub fn virtual_list_bind<S, T, R>(items: Signal<S>, render: R) -> VirtualListBuilder<T, R>
 where
@@ -329,9 +199,6 @@ where
     T: 'static,
     R: Fn(usize, &T) -> NodeBuilder + 'static,
 {
-    /// Key rows by [`Identifiable::id`] instead of list index.
-    ///
-    /// Same id [`crate::TableState::identified`] uses for selection.
     #[must_use]
     pub fn identified(self) -> Self
     where
@@ -345,28 +212,18 @@ where
         })
     }
 
-    /// Key a bound row by domain identity, not list slot.
-    ///
-    /// Default keys are list indices. A table whose `visible()` list
-    /// is a permutation of row ids must key by that id so sort and
-    /// filter keep the same [`NodeId`].
     #[must_use]
     pub fn key_by(mut self, f: impl Fn(usize, &T) -> u64 + 'static) -> Self {
         self.row_key = Some(std::rc::Rc::new(f));
         self
     }
 
-    /// Set the uniform row height in logical pixels (non-positive falls back to default).
     #[must_use]
     pub const fn row_height(mut self, px: f32) -> Self {
         self.row_height = px;
         self
     }
 
-    /// Set a per-item row height function.
-    ///
-    /// When present, this overrides the uniform row height and builds a
-    /// prefix-sum row-top index for O(log n) scroll offset lookup.
     #[must_use]
     pub fn item_height(mut self, f: impl Fn(usize, &T) -> f32 + 'static) -> Self {
         self.item_height = Some(Box::new(f));
@@ -374,65 +231,36 @@ where
         self
     }
 
-    /// Set the viewport height in logical pixels (non-positive falls back to default).
     #[must_use]
     pub const fn viewport_height(mut self, px: f32) -> Self {
         self.viewport_height = px;
         self
     }
 
-    /// Extra viewports of rows mounted above and below the geometric page.
-    ///
-    /// Default 1. Zero mounts the geometric page only.
     #[must_use]
     pub const fn overscan(mut self, pages: usize) -> Self {
         self.overscan = pages;
         self
     }
 
-    /// Set the viewport width in logical pixels. When omitted the viewport
-    /// stretches to `100%` of the host's layout constraint.
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
-    /// Make the viewport inherit its parent's resolved content box on
-    /// both axes (sets [`sigil_layout::Dimension::Fill`] for width and
-    /// height). Overrides any explicit
-    /// [`viewport_width`](Self::viewport_width) /
-    /// [`viewport_height`](Self::viewport_height) settings; the layout
-    /// engine then reads the parent pane's measured size at layout time.
-    ///
-    /// ```ignore
-    /// use sigil::widgets::virtual_list;
-    /// use sigil_kernel::container;
-    /// let _list = virtual_list((0..1_000).collect(), |_, _| container())
-    ///     .row_height(24.0)
-    ///     .viewport_fill();
-    /// ```
     #[must_use]
     pub const fn viewport_fill(mut self) -> Self {
         self.viewport_fill = true;
         self
     }
 
-    /// Bind the list to an external scroll offset signal (default: internal `0.0`).
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
-    /// Bind horizontal scrolling into the list's wheel handler.
-    ///
-    /// `scroll_x` is the live offset, `max` the clamp
-    /// (`content_width - viewport_width`), `width` the viewport width for
-    /// line-delta clamping. Trackpads emit both axes in one event; with a
-    /// binding the handler consumes x and y together instead of dropping
-    /// the horizontal half of a diagonal gesture. The list itself does
-    /// not shift content — the host (e.g. `table()`) owns the offset.
     #[must_use]
     pub const fn scroll_x_bind(
         mut self,
@@ -444,52 +272,29 @@ where
         self
     }
 
-    /// Bind the list to an external focused row signal.
-    ///
-    /// Without this binding, the builder creates an internal `Signal<usize>`
-    /// at build time and initializes it to `0`.
     #[must_use]
     pub const fn focused_row_bind(mut self, focused_row: Signal<usize>) -> Self {
         self.focused_row = Some(focused_row);
         self
     }
 
-    /// Set the list selection mode.
     #[must_use]
     pub const fn selection(mut self, mode: SelectionMode) -> Self {
         self.selection_mode = mode;
         self
     }
 
-    /// Return the live selection state signal.
-    ///
-    /// Calling this before build installs the same signal that row click
-    /// handlers will update.
     #[must_use]
     pub fn selection_state(&mut self) -> Signal<SelectionState> {
         self.ensure_selection_state()
     }
 
-    /// Enable keyboard navigation.
-    ///
-    /// Enabled by default. When disabled, the list root does not install
-    /// intra-list key handlers.
     #[must_use]
     pub const fn keyboard(mut self, enabled: bool) -> Self {
         self.keyboard_enabled = enabled;
         self
     }
 
-    /// Register a callback that fires whenever the first selected row
-    /// changes. Must be called inside a reactive
-    /// [`Runtime`](sigil_reactive::Runtime) scope.
-    ///
-    /// The underlying [`effect`](sigil_reactive::effect) runs the
-    /// closure once at registration time to record subscriptions, so
-    /// `f` fires ONCE synchronously during build if a selection is
-    /// already present (pre-seeded selection-state signal or a prior
-    /// [`selection_state`](Self::selection_state) call). Callers that
-    /// only want *future* changes should branch on a first-call flag.
     #[must_use]
     pub fn select(mut self, f: impl Fn(usize) + 'static) -> Self {
         let selection = self.ensure_selection_state();
@@ -501,45 +306,18 @@ where
         self
     }
 
-    /// Seed the scroll signal at `(content_height - viewport_height).max(0.0)`
-    /// before first paint. Useful for "tail -f" log-style views.
     #[must_use]
     pub const fn scroll_to_end(mut self) -> Self {
         self.initial_scroll = Some(InitialScroll::End);
         self
     }
 
-    /// Keep the viewport on the last row when the bound list grows.
-    ///
-    /// On [`virtual_list_bind`], a length increase snaps scroll to
-    /// the new bottom only when the viewport was already on the
-    /// previous bottom. A user who scrolled up stays put. Static
-    /// [`virtual_list`] lists do not grow, so this is a no-op there.
     #[must_use]
     pub const fn auto_pin_to_bottom(mut self, on: bool) -> Self {
         self.pin_bottom = on;
         self
     }
 
-    /// Bind the list's items to a signal whose value derefs to an item
-    /// slice (`Signal<Vec<T>>`, `Signal<Rc<Vec<T>>>`, …).
-    ///
-    /// Item-count writes remount index-keyed rows. Item *value* writes
-    /// at the same length leave the host in place — row cells that
-    /// read the signal update without a remount. Scroll writes keep
-    /// overlapping row [`NodeId`]s via [`NodeBuilder::children_keyed`]
-    /// and park the strip in viewport space. Selection state lives in
-    /// the external [`Signal<SelectionState>`](SelectionState) — row
-    /// identity is the item index.
-    ///
-    /// [`virtual_list_bind`] calls this and ignores the empty `Vec`
-    /// passed to [`virtual_list`]. Pass `Signal<Rc<Vec<T>>>` for a
-    /// clone-free bind — `Rc`'s `Clone` is O(1), so 100k-row tables
-    /// never copy row storage on the reactive path.
-    ///
-    /// The keyboard runtime reads the LIVE item count derived from this
-    /// signal, so Home/End/Page clamps follow signal mutations (e.g. a
-    /// table quick-filter narrowing the visible rows).
     fn bind_items<S>(mut self, signal: Signal<S>) -> Self
     where
         S: Deref + Clone + 'static,
@@ -547,10 +325,6 @@ where
     {
         let initial_rows = bound_slice(&signal.peek()).len();
         let live_rows = derived_eq(move || bound_slice(&signal.get()).len());
-        // Captures `S: Clone` so the outer builder body can stay
-        // `T: 'static`. The thunk receives `BoundCtx<R>` at
-        // into_node_builder time and produces the reactive
-        // visible-window NodeBuilder.
         let thunk: Box<BoundVisibleThunk<T, R>> = Box::new(move |ctx: BoundCtx<T, R>| {
             let BoundCtx {
                 render,
@@ -564,8 +338,6 @@ where
             } = ctx;
             let render = std::rc::Rc::new(render);
             let live_len = live_rows;
-            // Sync host. Length changes remount index-keyed rows inside
-            // the strip — one flush on first layout, not two.
             container()
                 .layout(width_apply(width, LayoutStyle::block()))
                 .child(
@@ -594,36 +366,12 @@ where
         self
     }
 
-    /// Pre-seed the scroll position so row `index` is visible at build time.
-    ///
-    /// Overrides any prior [`scroll_to_end`](Self::scroll_to_end) call.
     #[must_use]
     pub const fn scroll_into_view(mut self, index: usize) -> Self {
         self.initial_scroll = Some(InitialScroll::Row(index));
         self
     }
 
-    /// Seat the scroll position on first build using the supplied anchor.
-    ///
-    /// Unifies [`scroll_to_end`](Self::scroll_to_end) and
-    /// [`scroll_into_view`](Self::scroll_into_view) under one entrypoint
-    /// keyed by [`ScrollAnchor`]:
-    ///
-    /// * [`ScrollAnchor::Top`] — park at offset 0.
-    /// * [`ScrollAnchor::Bottom`] — park at the last page.
-    /// * [`ScrollAnchor::Index(n)`](ScrollAnchor::Index) — park so row
-    ///   `n` is at the top of the viewport.
-    ///
-    /// Overrides any prior anchor / `scroll_to_end` / `scroll_into_view`
-    /// on the same builder.
-    ///
-    /// ```
-    /// use sigil::prelude::*;
-    /// use sigil::widgets::{virtual_list, ScrollAnchor};
-    /// let items = (0..200u32).collect::<Vec<_>>();
-    /// let _b = virtual_list(items, |_, n| container().child(text(n.to_string())))
-    ///     .initial_scroll(ScrollAnchor::Bottom);
-    /// ```
     #[must_use]
     pub const fn initial_scroll(mut self, anchor: ScrollAnchor) -> Self {
         self.initial_scroll = match anchor {
@@ -634,28 +382,6 @@ where
         self
     }
 
-    /// Re-seat the scroll position to keep `target` visible whenever the
-    /// supplied signal mutates.
-    ///
-    /// Installs a [`sigil_reactive::effect`] that reads `target.get()`
-    /// and re-pins the scroll offset to that row top on every change,
-    /// clamped to the maximum scroll. The effect is registered at build
-    /// time and lives for the surrounding [`Runtime`](sigil_reactive::Runtime)
-    /// scope.
-    ///
-    /// Use for "follow the cursor" / "scroll to selected" UX where the
-    /// host owns a `Signal<usize>` cursor and wants the list to chase it.
-    /// Combine with [`initial_scroll`](Self::initial_scroll) to seed the
-    /// starting position.
-    ///
-    /// ```no_run
-    /// use sigil::prelude::*;
-    /// use sigil::widgets::virtual_list;
-    /// let cursor = signal(42usize);
-    /// let items = (0..200u32).collect::<Vec<_>>();
-    /// let _b = virtual_list(items, |_, n| container().child(text(n.to_string())))
-    ///     .follow(cursor);
-    /// ```
     #[must_use]
     pub fn follow(mut self, target: Signal<usize>) -> Self {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0));
@@ -711,8 +437,6 @@ where
             .take()
             .expect("build_bound called without virtual_list_bind");
         let selection = SelectionRuntime::new(axes.selection_state);
-        // Bound lists remount content height from the live item count.
-        // Scroll reuses keyed rows on the strip inside that host.
         let content = (bound.thunk)(BoundCtx {
             render: self.render,
             row_height: axes.row_height,
@@ -827,8 +551,6 @@ where
         (row_height, variable.then_some(self.row_tops.as_slice()))
     }
 
-    /// Build row-top index if variable heights are active, apply any pending
-    /// initial-scroll request to `scroll_y`, and return the variable flag.
     fn prepare_scroll(&mut self, scroll_y: Signal<f32>, row_height: f32, vh: f32) -> bool {
         let variable = self.item_height.is_some();
         if variable {
@@ -880,8 +602,6 @@ where
     }
 }
 
-/// Attach keyboard navigation when enabled; otherwise return `root`
-/// unchanged.
 fn attach_keyboard(
     root: NodeBuilder,
     axes: BuildAxes,

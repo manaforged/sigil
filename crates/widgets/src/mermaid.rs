@@ -1,13 +1,7 @@
-//! Unicode flowchart subset. Same text nodes on desktop and TUI.
-
 use sigil_kernel::{NodeBuilder, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use sigil_style::NodeStyleExt;
 
-/// Render a Mermaid source string as box-drawing text.
-///
-/// Supports `graph TD` / `flowchart TD` edges `A --> B` and optional
-/// `A[Label]`. Other diagrams fall back to a framed source block.
 #[must_use]
 pub fn mermaid(source: impl Into<String>) -> NodeBuilder {
     let lines = draw(&source.into());
@@ -20,7 +14,6 @@ pub fn mermaid(source: impl Into<String>) -> NodeBuilder {
     col
 }
 
-/// Box-drawing lines for `source`.
 #[must_use]
 pub fn draw(source: &str) -> Vec<String> {
     let Some(edges) = flow_edges(source) else {

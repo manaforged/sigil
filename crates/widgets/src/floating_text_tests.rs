@@ -20,8 +20,6 @@ fn floating_text_returns_buildable_node() {
     Runtime::scope("fct-build-node", || {
         let time = signal(0.0_f32);
         let spawn = signal(FctSpawn::default());
-        // Smoke: the returned builder can be configured without panicking
-        // and the spawn signal can be driven through it.
         let _builder = floating_text(spawn).time(time).duration(1.0);
         spawn.set(FctSpawn::new([10.0, 20.0], "100", red()));
         spawn.set(FctSpawn::new([30.0, 40.0], "50", red()));
@@ -78,12 +76,14 @@ fn pool_capacity_is_capped() {
         let time = signal(0.0_f32);
         let state = Rc::new(FctState::new(10.0, [0.0, -32.0], time, FCT_POOL_CAPACITY));
         for i in 0..FCT_POOL_CAPACITY {
-            #[allow(clippy::cast_precision_loss)]
+            #[allow(
+                clippy::cast_precision_loss,
+                reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+            )]
             let f = i as f32;
             assert!(state.spawn(FctSpawn::new([f, f], "x", red()), 0.0));
         }
         assert_eq!(state.alive_count(), FCT_POOL_CAPACITY);
-        // 1025th spawn drops on the floor.
         assert!(!state.spawn(FctSpawn::new([0.0, 0.0], "y", red()), 0.0));
     });
 }

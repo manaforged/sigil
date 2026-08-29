@@ -1,25 +1,9 @@
-//! Row identity for [`TableState`](super::TableState).
-//!
-//! Selection is a backing index. When the row type implements
-//! [`Identifiable`], [`super::TableState::identified`] remaps that index
-//! through [`Identifiable::id`] on
-//! [`replace_rows`](super::TableState::replace_rows). The invariant
-//! lives on the row, not on a closure at the table.
-
 use std::collections::HashSet;
 use std::hash::Hash;
 
-/// A stable id for one row.
-///
-/// Implement this on the record. [`super::TableState::identified`]
-/// remaps selection.
-/// [`virtual_list`](crate::virtual_list)
-/// `.identified()` remaps `NodeId`. Both read [`Self::id`].
 pub trait Identifiable {
-    /// Stable id type. Cheap to clone and hash.
     type Id: Clone + Eq + Hash;
 
-    /// This row's id.
     fn id(&self) -> Self::Id;
 }
 
@@ -40,8 +24,10 @@ where
     let mut kept = HashSet::new();
     let mut new_anchor = None;
     let anchor_name = anchor.and_then(|index| previous.get(index as usize).map(&id));
-    // Table row counts are far below the u32 range.
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "values are bounded to the target range before the cast"
+    )]
     for (index, row) in next.iter().enumerate() {
         let name = id(row);
         if named.contains(&name) {

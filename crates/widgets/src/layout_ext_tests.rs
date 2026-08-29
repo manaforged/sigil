@@ -9,8 +9,6 @@ use super::*;
 use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::Dimension;
 
-// ---- LayoutOverrides unit tests -----------------------------------------
-
 #[test]
 fn empty_overrides_are_pass_through() {
     let base = LayoutStyle::flex_row().fixed_size(10.0, 20.0);
@@ -54,10 +52,6 @@ fn full_layout_then_partials_compose() {
     assert_eq!(result, expected);
 }
 
-// ---- per-builder smoke tests --------------------------------------------
-// Each builder gains .width()/.height() from WidgetLayoutExt.
-// We verify the override reaches the root node's LayoutStyle extension.
-
 fn root_layout_style(cx: &sigil_kernel::Cx, root: sigil_kernel::NodeId) -> LayoutStyle {
     cx.get(root)
         .expect("root node exists")
@@ -71,8 +65,6 @@ fn button_height_override_reaches_root_node() {
     use crate::button::button;
     sigil_reactive::Runtime::scope("layout-ext-button-smoke", || {
         let mut cx = sigil_kernel::Cx::new_root();
-        // .width(100.0) calls ButtonBuilder's inherent setter (intrinsic width).
-        // .height(50.0) goes through WidgetLayoutExt into layout_overrides.
         let root = cx.add(button("OK").width(100.0).height(50.0));
         let style = root_layout_style(&cx, root);
         assert_eq!(style.data().size.width, Dimension::Px(100.0));
@@ -175,8 +167,6 @@ fn modal_width_height_override_reaches_dialog_frame() {
         let mut cx = sigil_kernel::Cx::new_root();
         let show = sigil_reactive::signal(true);
         let root = cx.add(modal(show).width(100.0).height(50.0));
-        // The override pins the dialog frame — the visible box — not
-        // the centering overlay root (see `dialog_layout`).
         let frame = cx
             .get(root)
             .expect("modal root")

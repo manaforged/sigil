@@ -1,14 +1,14 @@
 //! Phase 0.7 — hygiene enforcement over the widget public surface.
 //!
 //! Scans `crates/widgets/src/**/*.rs` and fails the build if any
-//! forbidden naming pattern reappears. Documents the W4.99 + Phase 0
+//! forbidden naming pattern reappears. Documents the style-naming
 //! ergonomics bar so future dispatches can't quietly regress it.
 //!
 //! Forbidden patterns:
 //!
 //! - `pub fn on_<name>` — event-handler builder methods must be one-word
 //!   (Phase 0.1; e.g. `.activate()`, `.change()`, `.submit()`).
-//! - `pub fn with_<name>` — no `with_` builder prefix (W4.99 bar).
+//! - `pub fn with_<name>` — no `with_` builder prefix (style-naming bar).
 //! - `pub fn set_<name>` / `pub fn get_<name>` / `pub fn create_<name>` —
 //!   configure-as-noun rule; setters and getters drop the verb prefix.
 //! - `pub fn <name>_px(` — no `_px` suffix on layout setters (Phase 0.2;
@@ -93,7 +93,9 @@ fn check_line(path: &Path, lineno: usize, line: &str, out: &mut Vec<String>) {
         out.push(format!("{cite}  — forbidden `on_` prefix (Phase 0.1)"));
     }
     if name.starts_with("with_") {
-        out.push(format!("{cite}  — forbidden `with_` prefix (W4.99 bar)"));
+        out.push(format!(
+            "{cite}  — forbidden `with_` prefix (style-naming bar)"
+        ));
     }
     if name.starts_with("set_") {
         out.push(format!(

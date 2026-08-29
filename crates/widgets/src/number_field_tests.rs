@@ -24,7 +24,6 @@ fn number_field_builds_and_writes_clamped_value() {
     Runtime::scope("number-field-build", || {
         let value = signal(50i32);
         let _builder = number_field(value, 0..=100);
-        // Builder constructed; underlying text_field is wired.
         assert_eq!(value.peek(), 50);
     });
 }
@@ -34,8 +33,6 @@ fn external_set_resyncs_display_after_clamp() {
     Runtime::scope("number-field-resync", || {
         let value = signal(150i32);
         let _builder = number_field(value, 0..=100);
-        // Effect should clamp the out-of-range initial value into
-        // the supplied range on first run.
         assert_eq!(
             value.peek(),
             150,

@@ -1,5 +1,3 @@
-//! Color field — hex text plus a swatch, bound to [`Rgba8`].
-
 use sigil_kernel::{NodeBuilder, container};
 use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use sigil_reactive::{Signal, effect, signal};
@@ -7,9 +5,6 @@ use sigil_style::{NodeStyleExt, Rgba8, Style};
 
 use super::text_field::text_field;
 
-/// Bind `value` to a hex field and a color swatch.
-///
-/// Accepts `#rgb` and `#rrggbb`. Invalid edits keep the last good value.
 #[must_use]
 pub fn color_field(value: Signal<Rgba8>) -> NodeBuilder {
     let buffer = signal(to_hex(value.peek()));
@@ -49,7 +44,6 @@ fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
     })
 }
 
-/// Parse `#rgb` or `#rrggbb`.
 #[must_use]
 pub fn parse_hex(input: &str) -> Option<Rgba8> {
     let hex = input.trim().strip_prefix('#')?;
@@ -76,7 +70,6 @@ pub fn parse_hex(input: &str) -> Option<Rgba8> {
     }
 }
 
-/// Format as `#rrggbb`.
 #[must_use]
 pub fn to_hex(color: Rgba8) -> String {
     format!("#{:02x}{:02x}{:02x}", color.r, color.g, color.b)

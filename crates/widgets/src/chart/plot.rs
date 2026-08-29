@@ -1,5 +1,3 @@
-//! Plot nodes for [`super::ChartBuilder`].
-
 use sigil_kernel::{NodeBuilder, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_style::NodeStyleExt;
@@ -143,8 +141,10 @@ fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
         let last = u32::try_from(count - 1).unwrap_or(u32::MAX);
         let mut stroke = path(W, H);
         for (point, value) in item.values.iter().take(count).enumerate() {
-            // Point counts are far below f32's 2^24 exact-integer range.
-            #[allow(clippy::cast_precision_loss)]
+            #[allow(
+                clippy::cast_precision_loss,
+                reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+            )]
             let x = if count <= 1 {
                 W_F * 0.5
             } else {

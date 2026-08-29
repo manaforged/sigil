@@ -1,6 +1,3 @@
-//! Linear markdown parse: blocks then inlines.
-
-/// One block after a linear CommonMark-shaped pass.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Block {
     Heading { level: u8, text: String },
@@ -11,7 +8,6 @@ pub(crate) enum Block {
     Table(Vec<Vec<String>>),
 }
 
-/// Inline run inside a heading, paragraph, or list item.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Span {
     Text(String),
@@ -21,7 +17,6 @@ pub(crate) enum Span {
     Link { text: String, href: String },
 }
 
-/// Block-split state: finished blocks plus the open paragraph/list/fence.
 #[derive(Default)]
 struct Blocks {
     out: Vec<Block>,
@@ -30,7 +25,6 @@ struct Blocks {
     fence: Option<(String, String)>,
 }
 
-/// Split `source` into heading / paragraph / list / fence / table blocks.
 pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
     let lines: Vec<&str> = source.lines().map(str::trim_end).collect();
     let mut blocks = Blocks::default();
@@ -42,7 +36,6 @@ pub(crate) fn parse_blocks(source: &str) -> Vec<Block> {
 }
 
 impl Blocks {
-    /// Consume the line at `i`; returns how many lines were eaten.
     fn step(&mut self, lines: &[&str], i: usize) -> usize {
         let Some(&line) = lines.get(i) else {
             return 1;
@@ -86,7 +79,6 @@ impl Blocks {
         1
     }
 
-    /// Feed `line` into the open fence. Returns false when no fence is open.
     fn feed_fence(&mut self, line: &str) -> bool {
         let Some((lang, buf)) = self.fence.as_mut() else {
             return false;
@@ -209,7 +201,6 @@ fn list_item(line: &str) -> Option<&str> {
     Some(body.trim())
 }
 
-/// Split a line into text / bold / italic / code / link runs.
 pub(crate) fn parse_inlines(source: &str) -> Vec<Span> {
     let bytes = source.as_bytes();
     let mut out = Vec::new();

@@ -1,8 +1,3 @@
-//! Tone-native chart — bar and line marks (DR-057 D2).
-//!
-//! Data is a list of numbers. Style follows [`Tone`]. Placement is
-//! `.width` / `.height`. Open the hood with extra series.
-
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use sigil_style::{NodeStyleExt, Theme, Tone};
@@ -11,24 +6,19 @@ use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::label;
 mod plot;
 
-/// How values are drawn.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum ChartMark {
-    /// Vertical bars, one group per index.
     #[default]
     Bar,
-    /// Polyline through each index.
     Line,
 }
 
-/// One named series.
 pub(super) struct ChartSeries {
     name: String,
     values: Vec<f32>,
     tone: Tone,
 }
 
-/// Builder returned by [`chart`].
 pub struct ChartBuilder {
     series: Vec<ChartSeries>,
     labels: Vec<String>,
@@ -38,8 +28,6 @@ pub struct ChartBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Chart from one series of values. Defaults to bars and
-/// [`Tone::Primary`].
 #[must_use]
 pub fn chart(values: impl IntoIterator<Item = f32>) -> ChartBuilder {
     ChartBuilder {
@@ -57,21 +45,18 @@ pub fn chart(values: impl IntoIterator<Item = f32>) -> ChartBuilder {
 }
 
 impl ChartBuilder {
-    /// Draw vertical bars.
     #[must_use]
     pub const fn bar(mut self) -> Self {
         self.mark = ChartMark::Bar;
         self
     }
 
-    /// Draw a polyline.
     #[must_use]
     pub const fn line(mut self) -> Self {
         self.mark = ChartMark::Line;
         self
     }
 
-    /// Retint the first series.
     #[must_use]
     pub fn tone(mut self, tone: Tone) -> Self {
         if let Some(series) = self.series.first_mut() {
@@ -80,14 +65,12 @@ impl ChartBuilder {
         self
     }
 
-    /// Bottom labels, one per index.
     #[must_use]
     pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
         self.labels = labels.into_iter().map(Into::into).collect();
         self
     }
 
-    /// Add another series.
     #[must_use]
     pub fn series(
         mut self,
@@ -103,14 +86,12 @@ impl ChartBuilder {
         self
     }
 
-    /// Plot height in logical pixels.
     #[must_use]
     pub const fn height(mut self, px: f32) -> Self {
         self.height = px.max(48.0);
         self
     }
 
-    /// Plot width in logical pixels.
     #[must_use]
     pub const fn width(mut self, px: f32) -> Self {
         self.width = px.max(80.0);
@@ -164,12 +145,10 @@ impl WidgetLayoutExt for ChartBuilder {
     }
 }
 
-/// Solid mark color for `tone`.
 pub(crate) fn tone_solid(tone: Tone) -> sigil_style::Rgba8 {
     Theme::default().scale(tone.scale_role()).step(9)
 }
 
-/// Fill class for a bar of `tone`.
 pub(crate) const fn tone_fill(tone: Tone) -> &'static str {
     match tone {
         Tone::Neutral => "bg-gray-9",
@@ -181,7 +160,6 @@ pub(crate) const fn tone_fill(tone: Tone) -> &'static str {
     }
 }
 
-/// Round `max` up to a 1-2-5 × 10^n ceiling.
 pub(crate) fn nice_max(max: f32) -> f32 {
     if !max.is_finite() || max <= 0.0 {
         return 1.0;

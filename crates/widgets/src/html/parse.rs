@@ -1,10 +1,7 @@
-//! HTML subset → the same [`Block`] values markdown produces.
-
 use std::fmt::Write as _;
 
 use crate::markdown::parse::Block;
 
-/// Map a document subset to markdown blocks. Scripts and styles drop.
 pub(crate) fn parse_html(source: &str) -> Vec<Block> {
     let body = strip_noise(source);
     let mut out = Vec::new();

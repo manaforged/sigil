@@ -16,12 +16,6 @@ use super::render::{build_base_node, edit_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
-/// Builder returned by [`text_edit`].
-///
-/// Mirrors [`TextFieldBuilder`](super::super::text_field::TextFieldBuilder)
-/// for the multi-line case: same factory shape, same callback signatures,
-/// same layout-override surface. The two widgets share an editing
-/// primitive but render differently.
 pub struct TextEditBuilder {
     pub(super) value: Signal<String>,
     pub(super) placeholder: TextContent,
@@ -35,25 +29,12 @@ pub struct TextEditBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a text editor widget over a newline-preserving value signal.
-///
-/// Pair with [`text_field`](super::super::text_field::text_field) for
-/// strictly single-line input.
-///
-/// # Multi-line rendering
-///
-/// The bound `Signal<String>` preserves newline characters; the
-/// visible line row count rebuilds reactively against the rope via
-/// `NodeBuilder::children_reactive` (B1). Typing `Enter` after build
-/// grows the on-screen row count without requiring a full tree rebuild.
-/// `↑` / `↓` move the caret by line. `PageUp` / `PageDown` move ten lines.
 #[must_use]
 pub fn text_edit(value: Signal<String>) -> TextEditBuilder {
     TextEditBuilder::new(value)
 }
 
 impl TextEditBuilder {
-    /// Create a text editor builder.
     #[must_use]
     pub fn new(value: Signal<String>) -> Self {
         Self {
@@ -70,12 +51,6 @@ impl TextEditBuilder {
         }
     }
 
-    /// Add utility classes or atoms after the built-in text-edit defaults.
-    ///
-    /// Mirrors the inherent `.class()` on
-    /// [`crate::TextFieldBuilder`] and `ButtonBuilder`. Classes
-    /// install AFTER the editor's own base atoms (DR-049 §10 additive
-    /// composition).
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -83,42 +58,34 @@ impl TextEditBuilder {
         self
     }
 
-    /// Signal that tracks whether the text cursor should be rendered.
     pub fn caret_visible(&mut self) -> Signal<bool> {
         *self.caret_visible.get_or_insert_with(|| signal(true))
     }
 
-    /// Set placeholder text rendered while the buffer is empty and
-    /// unfocused.
     #[must_use]
     pub fn placeholder(mut self, text: impl Into<TextContent>) -> Self {
         self.placeholder = text.into();
         self
     }
 
-    /// Set a reactive disabled signal.
     #[must_use]
     pub const fn disabled(mut self, flag: Signal<bool>) -> Self {
         self.disabled = Some(flag);
         self
     }
 
-    /// Run a callback after user editing changes the value.
     #[must_use]
     pub fn change(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.change = Some(Rc::new(f));
         self
     }
 
-    /// Run a callback when `Ctrl+Enter` is pressed. Bare `Enter` always
-    /// inserts a newline.
     #[must_use]
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
         self
     }
 
-    /// Provide a platform clipboard implementation.
     #[must_use]
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
@@ -142,9 +109,6 @@ impl TextEditBuilder {
         let runtime =
             TextEditRuntime::new(value, disabled, change, submit, clipboard, caret_visible);
 
-        // Drain user-supplied state-slot overlays before the base
-        // accumulator attaches — the edit frame resolves them against
-        // its live interaction slot so `.hover(|s| s.bg(...))` paints.
         let user_overlay = style_accumulator.take_state_overlay();
         let frame_h = layout_overrides
             .height_hint()

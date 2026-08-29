@@ -31,11 +31,9 @@ const SPLIT_HEIGHT: u32 = SPLIT_HALF_HEIGHT * 2;
 const SPLIT_VIEWPORT: (f32, f32) = (SPLIT_WIDTH as f32, SPLIT_HALF_HEIGHT as f32);
 
 #[cfg(feature = "capture")]
-#[path = "support/capture.rs"]
-mod capture;
-
-#[cfg(feature = "capture")]
-use capture::{CaptureExtent, FORMAT, capture_texture, clear_texture, read_texture};
+use sigil_renderer::capture::{
+    CaptureExtent, FORMAT, capture_texture, clear_texture, read_texture,
+};
 
 #[cfg(feature = "capture")]
 fn main() -> Result<(), Box<dyn Error>> {

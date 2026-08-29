@@ -1,30 +1,17 @@
-//! Internal rope/buffer + caret + selection + undo state.
-//!
-//! Shared editing primitive used by both [`text_field`] (single-line)
-//! and [`text_edit`] (multi-line) widgets. The struct deliberately does
-//! NOT know whether `\n` is allowed — callers gate input semantics.
-//!
-//! [`text_field`]: super::super::text_field
-//! [`text_edit`]: super
-
 #![allow(clippy::redundant_pub_crate)]
 
 const MAX_HISTORY: usize = 100;
-/// Lines moved by `PageUp` / `PageDown` when the widget has no viewport.
 const PAGE_LINES: isize = 10;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TextEdit {
     buffer: String,
     caret: usize,
-    /// Anchor byte offset for selection. When `Some(anchor)`, the selection
-    /// spans `anchor..caret` or `caret..anchor`. `None` means caret-only.
     selection: Option<usize>,
     history: Vec<Snapshot>,
     future: Vec<Snapshot>,
 }
 
-/// A point-in-time snapshot of buffer + caret used by undo/redo.
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct Snapshot {
     buffer: String,
@@ -100,11 +87,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// One caret step in the visual direction (`right` = display-right),
-    /// bidi-aware. In a single-direction line (pure LTR or pure RTL) this
-    /// moves the caret by its *visual* neighbour (Left = visually left,
-    /// whatever the logical direction). Mixed-direction or multi-line
-    /// buffers keep the plain logical char walk (see [`super::bidi`]).
     fn step(&self, right: bool) -> Option<usize> {
         let logical = || {
             if right {
@@ -134,7 +116,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one visual position to the left.
     pub(crate) fn shift_left(&mut self) {
         let anchor = *self.selection.get_or_insert(self.caret);
         if let Some(previous) = self.step(false) {
@@ -146,7 +127,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one visual position to the right.
     pub(crate) fn shift_right(&mut self) {
         let anchor = *self.selection.get_or_insert(self.caret);
         if let Some(next) = self.step(true) {
@@ -158,67 +138,54 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Move the caret to the same byte-column on the previous line
-    /// (clamped to that line's end; never splits a grapheme).
     pub(crate) fn move_up(&mut self) {
         self.selection = None;
         self.caret = vertical_target(&self.buffer, self.caret, -1);
         self.debug_assert_invariants();
     }
 
-    /// Move the caret to the same byte-column on the next line
-    /// (clamped to that line's end; never splits a grapheme).
     pub(crate) fn move_down(&mut self) {
         self.selection = None;
         self.caret = vertical_target(&self.buffer, self.caret, 1);
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one line up (same column semantics as
-    /// [`Self::move_up`]).
     pub(crate) fn shift_up(&mut self) {
         self.selection.get_or_insert(self.caret);
         self.caret = vertical_target(&self.buffer, self.caret, -1);
         self.debug_assert_invariants();
     }
 
-    /// Extend selection one line down (same column semantics as
-    /// [`Self::move_down`]).
     pub(crate) fn shift_down(&mut self) {
         self.selection.get_or_insert(self.caret);
         self.caret = vertical_target(&self.buffer, self.caret, 1);
         self.debug_assert_invariants();
     }
 
-    /// Move the caret [`PAGE_LINES`] up (same column as [`Self::move_up`]).
     pub(crate) fn move_page_up(&mut self) {
         self.selection = None;
         self.caret = vertical_target(&self.buffer, self.caret, -PAGE_LINES);
         self.debug_assert_invariants();
     }
 
-    /// Move the caret [`PAGE_LINES`] down (same column as [`Self::move_down`]).
     pub(crate) fn move_page_down(&mut self) {
         self.selection = None;
         self.caret = vertical_target(&self.buffer, self.caret, PAGE_LINES);
         self.debug_assert_invariants();
     }
 
-    /// Extend selection [`PAGE_LINES`] up.
     pub(crate) fn shift_page_up(&mut self) {
         self.selection.get_or_insert(self.caret);
         self.caret = vertical_target(&self.buffer, self.caret, -PAGE_LINES);
         self.debug_assert_invariants();
     }
 
-    /// Extend selection [`PAGE_LINES`] down.
     pub(crate) fn shift_page_down(&mut self) {
         self.selection.get_or_insert(self.caret);
         self.caret = vertical_target(&self.buffer, self.caret, PAGE_LINES);
         self.debug_assert_invariants();
     }
 
-    /// Extend selection to the start of the buffer.
     pub(crate) fn shift_home(&mut self) {
         if self.caret == 0 {
             return;
@@ -228,7 +195,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Extend selection to the end of the buffer.
     pub(crate) fn shift_end(&mut self) {
         let end = self.buffer.len();
         if self.caret == end {
@@ -239,7 +205,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Restore the previous edit state. Returns `true` if state changed.
     pub(crate) fn undo(&mut self) -> bool {
         let Some(snapshot) = self.history.pop() else {
             return false;
@@ -259,7 +224,6 @@ impl TextEdit {
         true
     }
 
-    /// Reapply the next edit state. Returns `true` if state changed.
     pub(crate) fn redo(&mut self) -> bool {
         let Some(snapshot) = self.future.pop() else {
             return false;
@@ -279,7 +243,6 @@ impl TextEdit {
         true
     }
 
-    /// Return the selected text slice, or `None` if the selection is empty.
     #[must_use]
     pub(crate) fn selected_text(&self) -> Option<&str> {
         let anchor = self.selection?;
@@ -287,7 +250,6 @@ impl TextEdit {
         Some(&self.buffer[start..end])
     }
 
-    /// Select all text.
     pub(crate) const fn select_all(&mut self) {
         if self.buffer.is_empty() {
             return;
@@ -296,23 +258,12 @@ impl TextEdit {
         self.caret = self.buffer.len();
     }
 
-    /// Place the caret at `byte`, collapsing any active selection.
-    ///
-    /// Used by pointer-down to set the caret at the click position. `byte` is
-    /// clamped to a UTF-8 boundary at or below the buffer length, so callers
-    /// may pass a raw hit-test result. Caret moves are not undoable, so this
-    /// records no history (consistent with [`Self::move_left`] et al.).
     pub(crate) fn place_caret(&mut self, byte: usize) {
         self.caret = self.clamp_boundary(byte);
         self.selection = None;
         self.debug_assert_invariants();
     }
 
-    /// Move the caret to `byte`, extending the selection from its anchor.
-    ///
-    /// Used by pointer-drag. The first call after [`Self::place_caret`] turns
-    /// the current caret into the anchor; a drag that lands back on the anchor
-    /// collapses the selection (mirrors [`Self::shift_left`]).
     pub(crate) fn extend_to(&mut self, byte: usize) {
         let byte = self.clamp_boundary(byte);
         let anchor = *self.selection.get_or_insert(self.caret);
@@ -323,27 +274,15 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    /// Current selection anchor, or `None` when the caret is collapsed.
     #[must_use]
     pub(crate) const fn selection(&self) -> Option<usize> {
         self.selection
     }
 
-    /// Clamp `byte` to the nearest UTF-8 boundary at or below the buffer length.
     fn clamp_boundary(&self, byte: usize) -> usize {
         clamp_to_len_boundary(&self.buffer, byte)
     }
 
-    /// Resynchronize the buffer against an externally-written value —
-    /// the app called `value.set(...)` directly, bypassing this
-    /// editor's own mutation path (`TextEditRuntime::edit_mut` calls
-    /// this before every widget-originated mutation so a stale
-    /// internal buffer never clobbers an external write, e.g. on the
-    /// next IME commit). Clamps the caret/selection into the new
-    /// buffer's bounds (nearest UTF-8 boundary) so a stale offset can
-    /// never outlive the swap. Does not touch undo/redo history — an
-    /// external write is not itself undoable, matching how
-    /// `value.set` already bypasses every other consumer's history.
     pub(crate) fn sync_external(&mut self, external: String) {
         if self.buffer == external {
             return;
@@ -374,7 +313,6 @@ impl TextEdit {
         &self.buffer
     }
 
-    /// Delete the selected range and collapse caret to the start.
     fn delete_selection_range(&mut self) {
         let Some(anchor) = self.selection.take() else {
             return;
@@ -407,10 +345,6 @@ impl TextEdit {
     }
 }
 
-/// Clamp `byte` to the nearest UTF-8 boundary at or below `text.len()`.
-/// Shared by `TextEdit::clamp_boundary` (against the live buffer) and
-/// `TextEdit::sync_external` (against a not-yet-installed candidate
-/// buffer).
 fn clamp_to_len_boundary(text: &str, byte: usize) -> usize {
     let mut byte = byte.min(text.len());
     while byte > 0 && !text.is_char_boundary(byte) {
@@ -447,11 +381,6 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
 }
 
-/// Byte offset on the line above (`dir < 0`) or below (`dir > 0`)
-/// `caret` at the same byte column, clamped to the target line's end
-/// and floored to a char boundary so multibyte content never splits.
-/// Above the first line the target is 0; past the last line it is
-/// `buffer.len()`.
 fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
     let mut starts = vec![0_usize];
     for (index, byte) in buffer.bytes().enumerate() {
@@ -470,10 +399,7 @@ fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
     let Some(&target_start) = starts.get(target_index) else {
         return buffer.len();
     };
-    // `line_index` is always in range (`partition_point` is >= 1 on a
-    // vec that always holds a leading 0), so the fallback never fires.
     let column = caret - starts.get(line_index).copied().unwrap_or(0);
-    // Target line's end excludes its trailing newline.
     let line_end = starts
         .get(target_index + 1)
         .map_or(buffer.len(), |end| end.saturating_sub(1));

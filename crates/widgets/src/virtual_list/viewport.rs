@@ -1,20 +1,8 @@
-//! Viewport-root layout helpers for [`super::virtual_list`].
-//!
-//! Splits the per-axis size decision and the `apply_viewport_overrides`
-//! merge out of `mod.rs` to keep the entry-point file under the 400-line
-//! hygiene cap.
-
 use sigil_kernel::NodeBuilder;
 use sigil_layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 
 use super::super::layout_ext::LayoutOverrides;
 
-/// Viewport sizing decision passed to [`apply_viewport_overrides`].
-///
-/// `fill` takes precedence: when true, both axes are set to
-/// [`Dimension::Fill`] so the layout engine inherits the parent pane's
-/// resolved content box. Otherwise `height` (always) and `width` (when
-/// `Some`) are applied as fixed pixel values.
 #[derive(Clone, Copy)]
 pub(super) struct ViewportSize {
     pub(super) height: f32,
@@ -22,7 +10,6 @@ pub(super) struct ViewportSize {
     pub(super) fill: bool,
 }
 
-/// Apply layout overrides on top of the viewport root's base style.
 pub(super) fn apply_viewport_overrides(
     root: NodeBuilder,
     overrides: &LayoutOverrides,

@@ -1,39 +1,3 @@
-//! The `table(state)` view — sticky header + virtualised body (DR-057 D2).
-//!
-//! Assembles the pieces the headless core deliberately never knew
-//! about: a pinned header row ([`Role::ColumnHeader`] cells with sort
-//! indicators) above a `virtual_list` body bound to
-//! [`TableState::visible`], so filtering, sorting, and scrolling all
-//! advance in place at viewport cost, never whole-table rebuilds.
-//!
-//! Columns fill the table with flex: `Fixed` keeps its pixels,
-//! `Fraction` takes the leftover. Users resize, reorder, hide, and
-//! right-click through the header and row chrome. When the resolved
-//! columns are wider than the viewport, the table scrolls horizontally:
-//! trackpad/wheel x deltas shift the header and body in lockstep, and a
-//! thin scrollbar appears along the bottom.
-//!
-//! ```rust,no_run
-//! use sigil::prelude::*;
-//! use sigil::widgets::{TableColumn, TableState};
-//!
-//! #[derive(Clone)]
-//! struct Row {
-//!     name: String,
-//! }
-//!
-//! let state = TableState::new(
-//!     vec![Row { name: "alpha".into() }],
-//!     vec![
-//!         TableColumn::new("name", "Name")
-//!             .sort_by(|row: &Row| row.name.clone())
-//!             .width(ColWidth::Fraction(1.0))
-//!             .cell(|row: &Row| label(row.name.clone())),
-//!     ],
-//! );
-//! let view = table(state).row_height(24.0).viewport_height(400.0);
-//! ```
-
 use std::rc::Rc;
 
 use sigil_events::prelude::NodeEventsExt;
@@ -55,19 +19,13 @@ use super::row::{RowSpec, body_row};
 use super::select;
 use super::state::TableState;
 
-/// Default body row height in logical pixels.
 const DEFAULT_ROW_HEIGHT: f32 = 36.0;
-/// Default header row height in logical pixels.
 const DEFAULT_HEADER_HEIGHT: f32 = 36.0;
-/// Default body viewport height in logical pixels.
 const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
 
-/// Row and header height set.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Density {
-    /// 28 px rows, 32 px header.
     Compact,
-    /// 36 px rows and header.
     #[default]
     Default,
 }
@@ -88,7 +46,6 @@ impl Density {
     }
 }
 
-/// Builder returned by [`table`].
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
     row_height: f32,
@@ -103,14 +60,6 @@ pub struct TableBuilder<Row: 'static> {
     layout_overrides: LayoutOverrides,
 }
 
-/// Build a data-table view over a [`TableState`].
-///
-/// The root is a [`Role::Grid`] with reactive row count; the sticky
-/// header sits above a windowed body that materializes only the
-/// viewport's rows. Sorting (header click / Enter / Space), selection
-/// (row click with the usual modifier shapes), quick-filtering, wheel
-/// scrolling, column resize / reorder / hide, and right-click menus
-/// all flow through the shared `TableState`.
 #[must_use]
 pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
     TableBuilder {
@@ -129,53 +78,42 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 }
 
 impl<Row: 'static> TableBuilder<Row> {
-    /// Set the body row height in logical pixels.
     #[must_use]
     pub const fn row_height(mut self, px: f32) -> Self {
         self.row_height = px;
         self
     }
 
-    /// Set the header row height in logical pixels.
     #[must_use]
     pub const fn header_height(mut self, px: f32) -> Self {
         self.header_height = px;
         self
     }
 
-    /// Set the body viewport height in logical pixels.
     #[must_use]
     pub const fn viewport_height(mut self, px: f32) -> Self {
         self.viewport_height = px;
         self
     }
 
-    /// Set the table width in logical pixels. When omitted the table
-    /// stretches to the host's layout constraint so `Fraction` columns
-    /// fill leftover space.
     #[must_use]
     pub const fn viewport_width(mut self, px: f32) -> Self {
         self.viewport_width = Some(px);
         self
     }
 
-    /// Fill the parent pane on both axes. Overrides explicit
-    /// [`viewport_width`](Self::viewport_width) /
-    /// [`viewport_height`](Self::viewport_height).
     #[must_use]
     pub const fn viewport_fill(mut self) -> Self {
         self.viewport_fill = true;
         self
     }
 
-    /// Build the row context menu from the clicked row.
     #[must_use]
     pub fn row_menu(mut self, build: impl Fn(&Row) -> Vec<MenuItem> + 'static) -> Self {
         self.row_menu = Some(Rc::new(build));
         self
     }
 
-    /// Set row and header heights together.
     #[must_use]
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
@@ -183,25 +121,18 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    /// Node shown when no rows survive the filter.
     #[must_use]
     pub fn empty(mut self, build: impl Fn() -> NodeBuilder + 'static) -> Self {
         self.empty = Some(Rc::new(build));
         self
     }
 
-    /// Prepend a fixed-width checkbox column wired to [`TableState`]
-    /// selection. A row checkbox toggles that row; the header checkbox
-    /// selects every visible row (or deselects them when all are
-    /// selected) and shows a dash while the selection is partial.
     #[must_use]
     pub const fn selectable_checkboxes(mut self) -> Self {
         self.select = true;
         self
     }
 
-    /// Add utility classes after the table root defaults (`border`,
-    /// `rounded-md`, `bg-surface`).
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         let source = source.into();
@@ -263,8 +194,6 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 }
 
-/// The grid root layout: fill the host pane, or size to the explicit
-/// viewport width.
 fn root_layout(viewport_fill: bool, viewport_width: Option<f32>) -> LayoutStyle {
     let mut layout = LayoutStyle::flex_column()
         .fill_width()
@@ -277,7 +206,6 @@ fn root_layout(viewport_fill: bool, viewport_width: Option<f32>) -> LayoutStyle 
     layout
 }
 
-/// Body viewport sizing resolved from the builder.
 #[derive(Clone, Copy)]
 struct BodySpec {
     row_height: f32,
@@ -287,7 +215,6 @@ struct BodySpec {
     select: bool,
 }
 
-/// The windowed body list, wired into the table's horizontal scroll.
 fn body_view<Row: 'static>(
     state: TableState<Row>,
     chrome: TableChrome<Row>,
@@ -327,8 +254,6 @@ fn apply_mutators(mut root: NodeBuilder, mutators: Vec<BuilderMutator>) -> NodeB
     root
 }
 
-/// Attach the width probe (when the viewport is measured, not explicit)
-/// and the horizontal wheel handler for the header band and root.
 fn wire_hscroll(root: NodeBuilder, hs: hscroll::HScroll) -> NodeBuilder {
     let root = match hs.probe {
         Some(probe) => root.child(hscroll::probe(probe)),

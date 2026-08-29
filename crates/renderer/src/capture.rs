@@ -1,17 +1,24 @@
-#![allow(clippy::redundant_pub_crate)]
+//! Headless capture: render into an offscreen texture and read the pixels
+//! back as tightly packed RGBA8 rows.
+//!
+//! Consumers pair this with [`crate::WgpuRenderer::render_command_scene_offscreen`]
+//! to turn a [`crate::CommandScene`] into image bytes without a window.
 
 use std::error::Error;
 use std::io;
 use std::sync::mpsc;
 
-pub(super) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+/// Texture format every capture renders in.
+pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 const BYTES_PER_PIXEL: u32 = 4;
-const MIN_LONG_AXIS: u32 = 1024;
-const MAX_LONG_AXIS: u32 = 2048;
-const MAX_INTEGER_SCALE: u32 = 4;
+const MIN_LONG_AXIS: f32 = 1024.0;
+const MAX_LONG_AXIS: f32 = 2048.0;
+const MAX_INTEGER_SCALE: f32 = 4.0;
 
-pub(super) fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Texture {
+/// Create the render-attachment texture a capture draws into.
+#[must_use]
+pub fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("sigil-renderer capture texture"),
         size: wgpu::Extent3d {
@@ -28,7 +35,8 @@ pub(super) fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> w
     })
 }
 
-pub(super) fn clear_texture(
+/// Clear `view` to `color` before drawing a partial scene into it.
+pub fn clear_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     view: &wgpu::TextureView,
@@ -63,7 +71,8 @@ pub(super) fn clear_texture(
     queue.submit(core::iter::once(encoder.finish()));
 }
 
-pub(super) fn read_texture(
+/// Read `texture` back as tightly packed RGBA8 bytes, row padding stripped.
+pub fn read_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     texture: &wgpu::Texture,
@@ -122,7 +131,7 @@ fn map_readback(
     let slice = buffer.slice(..);
     let (tx, rx) = mpsc::channel();
     slice.map_async(wgpu::MapMode::Read, move |result| {
-        let _ = tx.send(result);
+        drop(tx.send(result));
     });
     device.poll(wgpu::PollType::wait_indefinitely())?;
     rx.recv()
@@ -142,6 +151,10 @@ fn strip_padding(mapped: &[u8], layout: ReadbackLayout) -> Vec<u8> {
     for row in 0..height {
         let src = row * padded;
         let dst = row * unpadded;
+        #[allow(
+            clippy::indexing_slicing,
+            reason = "ranges derive from ReadbackLayout, which sizes both buffers"
+        )]
         pixels[dst..dst + unpadded].copy_from_slice(&mapped[src..src + unpadded]);
     }
     pixels
@@ -168,31 +181,31 @@ impl ReadbackLayout {
     }
 }
 
+/// Physical pixel size of a capture texture.
 #[derive(Clone, Copy)]
-pub(super) struct CaptureExtent {
-    pub(super) width: u32,
-    pub(super) height: u32,
+pub struct CaptureExtent {
+    /// Width in physical pixels.
+    pub width: u32,
+    /// Height in physical pixels.
+    pub height: u32,
 }
 
 impl CaptureExtent {
-    pub(super) fn from_viewport(viewport: (f32, f32)) -> Self {
+    /// Scale a logical viewport to an integer-scaled extent whose long axis
+    /// lands between 1024 and 2048 physical pixels.
+    #[must_use]
+    pub fn from_viewport(viewport: (f32, f32)) -> Self {
         let logical_width = viewport.0.max(1.0);
         let logical_height = viewport.1.max(1.0);
         let long_axis = logical_width.max(logical_height);
-        let integer_scale = (MAX_LONG_AXIS as f32 / long_axis)
+        let integer_scale = (MAX_LONG_AXIS / long_axis)
             .ceil()
-            .max(1.0)
-            .min(MAX_INTEGER_SCALE as f32);
+            .clamp(1.0, MAX_INTEGER_SCALE);
         let scaled_width = logical_width * integer_scale;
         let scaled_height = logical_height * integer_scale;
         let scaled_long_axis = scaled_width.max(scaled_height);
-        let clamp_scale = if scaled_long_axis > MAX_LONG_AXIS as f32 {
-            MAX_LONG_AXIS as f32 / scaled_long_axis
-        } else if scaled_long_axis < MIN_LONG_AXIS as f32 {
-            MIN_LONG_AXIS as f32 / scaled_long_axis
-        } else {
-            1.0
-        };
+        let clamped_long = scaled_long_axis.clamp(MIN_LONG_AXIS, MAX_LONG_AXIS);
+        let clamp_scale = clamped_long / scaled_long_axis;
         Self {
             width: rounded_extent(scaled_width * clamp_scale),
             height: rounded_extent(scaled_height * clamp_scale),
@@ -200,8 +213,13 @@ impl CaptureExtent {
     }
 }
 
-fn rounded_extent(value: f32) -> u32 {
-    value.round().clamp(1.0, MAX_LONG_AXIS as f32) as u32
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "value is rounded and clamped to 1.0..=2048.0 before the cast"
+)]
+const fn rounded_extent(value: f32) -> u32 {
+    value.round().clamp(1.0, MAX_LONG_AXIS) as u32
 }
 
 const fn align_to(value: u32, alignment: u32) -> u32 {

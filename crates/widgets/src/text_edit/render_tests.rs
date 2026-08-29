@@ -18,7 +18,6 @@ fn notice_counts_the_withheld_lines() {
 #[test]
 fn caret_line_col_maps_offsets_across_lines() {
     let buf = "ab\ncde\nf";
-    // "ab" | "cde" | "f", newlines at bytes 2 and 6.
     assert_eq!(caret_line_col(buf, 0), (0, 0), "start of line 0");
     assert_eq!(caret_line_col(buf, 2), (0, 2), "end of line 0 (before \\n)");
     assert_eq!(

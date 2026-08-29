@@ -39,9 +39,6 @@ impl KeyboardRuntime {
         }
     }
 
-    /// Live row count: the bound (`virtual_list_bind`) path tracks the items
-    /// signal so filter / sort mutations re-clamp navigation targets;
-    /// the static path falls back to the build-time snapshot.
     fn count(&self) -> usize {
         self.total_rows_live.map_or(self.total_rows, Signal::get)
     }
@@ -73,7 +70,8 @@ impl KeyboardRuntime {
     #[allow(
         clippy::cast_possible_truncation,
         clippy::cast_precision_loss,
-        clippy::cast_sign_loss
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
     )]
     fn page_step(&self) -> usize {
         let avg = self.row_tops.as_ref().map_or(self.row_height, |row_tops| {
@@ -83,7 +81,10 @@ impl KeyboardRuntime {
         (self.viewport_height / avg).ceil().max(1.0) as usize
     }
 
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     fn average_variable_row_height(&self, row_tops: &[f32]) -> f32 {
         let count = self.count();
         if count == 0 {

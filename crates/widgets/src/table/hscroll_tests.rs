@@ -29,8 +29,6 @@ fn fixed_columns_sum_to_extent() {
 #[test]
 fn fraction_columns_count_their_floor() {
     Runtime::scope("hscroll-fraction-floor", || {
-        // Mirrors flex_cell: once Fixed(300) overflows a 400 px
-        // viewport, the fraction column squeezes to its min width.
         let state = TableState::new(
             vec![1_u32, 2, 3],
             vec![
@@ -104,9 +102,6 @@ fn measured_viewport_follows_the_probe() {
 #[test]
 fn select_column_prefix_counts_as_fixed_pixels() {
     Runtime::scope("hscroll-select-prefix", || {
-        // The opt-in checkbox column prepends its fixed width to the
-        // extent: 2 × Fixed(100) + 36 px prefix overflows a 200 px
-        // viewport by exactly the prefix.
         let state = state_with(&[("a", ColWidth::Fixed(100.0)), ("b", ColWidth::Fixed(100.0))]);
         let hs = bind(&state, Some(200.0), 36.0);
         assert_eq!(hs.extent.get(), 236.0);

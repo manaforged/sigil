@@ -1,6 +1,3 @@
-//! Shared table chrome: context-menu target, row-menu callback, and
-//! the overlay that builds and hosts the open menu.
-
 use std::rc::Rc;
 
 use sigil_kernel::{NodeBuilder, container};
@@ -9,7 +6,6 @@ use sigil_reactive::{Signal, signal};
 use super::super::menu::{MenuItem, menu};
 use super::state::{SortDir, TableState};
 
-/// What the open context menu is pointed at.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum ContextKind {
     Header(&'static str),
@@ -18,7 +14,6 @@ pub(super) enum ContextKind {
 
 pub(super) type RowMenu<Row> = Rc<dyn Fn(&Row) -> Vec<MenuItem>>;
 
-/// Per-table overlay state. Cheap to clone (signals are `Copy`).
 pub(super) struct TableChrome<Row: 'static> {
     pub open: Signal<bool>,
     pub pos: Signal<(f32, f32)>,
@@ -54,8 +49,6 @@ impl<Row: 'static> TableChrome<Row> {
     }
 }
 
-/// The menu overlay host: empty while closed, a `menu` panel anchored
-/// at the right-click point while open.
 pub(super) fn context_overlay<Row: 'static>(
     state: TableState<Row>,
     chrome: TableChrome<Row>,
@@ -83,7 +76,6 @@ pub(super) fn context_overlay<Row: 'static>(
     })
 }
 
-/// Header menu: sort, hide, autosize, move, show all.
 fn header_menu<Row: 'static>(state: &TableState<Row>, id: &'static str) -> Vec<MenuItem> {
     let sortable = state
         .columns()

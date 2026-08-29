@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::panic)]
 
 use super::*;
 use sigil_kernel::{AccessibleName, Cx, Role};

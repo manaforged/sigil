@@ -1,5 +1,3 @@
-//! Widget-author prelude for implementing built-in and extension widgets.
-
 pub use sigil_animation_runtime::presets;
 pub use sigil_events::prelude::{Key, NodeEventsExt};
 pub use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, TextBuilder, container, text};

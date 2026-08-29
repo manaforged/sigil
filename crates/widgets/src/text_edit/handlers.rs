@@ -20,22 +20,16 @@ pub(super) struct TextEditRuntime {
     pub(super) submit: TextChange,
     pub(super) clipboard: Rc<dyn Clipboard>,
     pub(super) caret_visible: Signal<bool>,
-    /// Caret byte offset mirrored from the buffer — used to splice the
-    /// IME preedit span into the displayed text and to compute the
-    /// published IME caret anchor. `text_edit` has no visible caret/
-    /// selection overlay yet (unlike `text_field`); this mirror exists
-    /// solely for IME, not general caret rendering.
     pub(super) caret: Signal<usize>,
-    /// Selection anchor mirrored from the buffer for the selection
-    /// overlay. `None` means caret-only (no selection).
     pub(super) selection: Signal<Option<usize>>,
-    /// Widget-local IME composition state (preedit text + caret
-    /// anchor). See `super::ime`.
     pub(super) ime: ImeState,
 }
 
 impl TextEditRuntime {
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the argument list mirrors the upstream API contract"
+    )]
     pub(super) fn new(
         value: Signal<String>,
         disabled: Option<Signal<bool>>,
@@ -65,16 +59,6 @@ impl TextEditRuntime {
         disabled_now(self.disabled)
     }
 
-    /// Borrow the internal edit buffer for mutation, first
-    /// resynchronizing it against the bound `value` signal if the app
-    /// wrote to `value` directly since the last widget-originated
-    /// mutation (external doc replace, host-driven undo, etc.) —
-    /// otherwise a stale internal buffer would silently clobber that
-    /// external write on the next keystroke or IME commit. The
-    /// equality check inside `sync_external` makes this a no-op on
-    /// our own writes (a widget-originated mutation always leaves
-    /// `edit.as_str() == value.peek()` immediately after `commit`),
-    /// so no separate origin-tracking flag is needed.
     pub(super) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
         let mut edit = self.edit.borrow_mut();
         edit.sync_external(self.value.peek());
@@ -82,11 +66,6 @@ impl TextEditRuntime {
     }
 }
 
-/// Publish post-mutation state: keep the caret visible and mirror the
-/// buffer's caret into the render/IME-anchor signal. Mirrors
-/// `text_field::handlers::commit`, minus selection/scroll — `text_edit`
-/// has no selection overlay or scroll signal to keep in sync (pre-
-/// existing gap; this dispatch only wires IME, not that).
 pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
     runtime.caret_visible.set(true);
     if runtime.caret.peek() != state.caret() {
@@ -251,7 +230,6 @@ fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if runtime.disabled() {
         return;
     }
-    // Reject Ctrl+Enter here so the shortcut handler can fire instead.
     if event.modifiers.contains(ModifiersState::CONTROL) {
         return;
     }
@@ -321,7 +299,6 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
         return;
     };
     let mut state = runtime.edit_mut();
-    // text_edit preserves newlines from clipboard; only normalise \r\n.
     let normalised = text.replace("\r\n", "\n").replace('\r', "\n");
     state.insert_str(&normalised);
     sync_value(runtime, &state);
@@ -367,16 +344,6 @@ fn submit_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     (runtime.submit)(value.as_str());
 }
 
-/// Publish a mutated buffer's `value` + `caret` as one atomic reactive
-/// unit. Without `batch`, `write_value`'s `Signal::update` would run
-/// every dependent effect synchronously (including `text_edit`'s
-/// preedit-splice `derived_eq`) BEFORE `commit` gets a chance to
-/// publish the matching new caret — a reader observing `value` after
-/// the shrink but `caret` before it can slice a preedit splice
-/// mid-codepoint. `batch` coalesces both writes into a single drain
-/// after this closure returns, so every dependent effect always sees
-/// the post-mutation `(value, caret)` pair together, never the
-/// half-updated one (adversarial review finding [W5-IME-TE] HIGH-1).
 fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
     batch(|| {
         write_value(runtime.value, state.as_str());
@@ -392,8 +359,6 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
     });
 }
 
-/// Accept any text payload whose chars are not control codes (newlines
-/// arrive on the `Enter` key, not the text payload).
 fn is_printable(text: &str) -> bool {
     !text.is_empty() && text.chars().all(|ch| !ch.is_control() || ch == '\t')
 }

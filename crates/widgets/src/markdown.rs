@@ -1,5 +1,3 @@
-//! Read-only markdown view. Headings, paragraphs, lists, fences, tables.
-
 pub(crate) mod parse;
 
 use sigil_kernel::{NodeBuilder, Role, container, text};
@@ -10,11 +8,6 @@ use sigil_style::NodeStyleExt;
 
 use parse::{Block, Span, parse_blocks, parse_inlines};
 
-/// Render `source` as a document column.
-///
-/// Headings (`#`–`###`), paragraphs, `-`/`*` lists, fenced code, and
-/// pipe tables. Inline `**bold**`, `` `code` ``, and `[label](url)`.
-/// Not an in-place editor.
 #[must_use]
 pub fn markdown(source: Signal<String>) -> NodeBuilder {
     let blocks = derived_eq(move || parse_blocks(&source.get()));
@@ -28,10 +21,6 @@ pub(crate) fn document(blocks: Signal<Vec<Block>>) -> NodeBuilder {
         .children_reactive(move || blocks.get().into_iter().map(block_node).collect::<Vec<_>>())
 }
 
-/// Source on the left, live [`markdown`] preview on the right.
-///
-/// Edits write the markdown string. The caret lives in
-/// [`text_edit`](super::text_edit), not in the painted marks.
 #[must_use]
 pub fn markdown_edit(source: Signal<String>) -> NodeBuilder {
     use super::splitter::{SplitterOrientation, splitter};

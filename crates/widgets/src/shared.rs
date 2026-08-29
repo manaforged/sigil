@@ -12,10 +12,6 @@ pub(super) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
 pub(super) type BuilderMutator = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
 
-/// Chrome label: on-surface colour, one line.
-///
-/// Use [`text`] for wrapping prose. A label in a 28 px row must not
-/// reflow or the row clips.
 #[must_use]
 pub fn label(source: impl Into<TextContent>) -> TextBuilder {
     text(source).nowrap().class("text-on-surface")
@@ -41,10 +37,6 @@ pub(super) fn activate_key(
     }
 }
 
-/// Pointer-release activation that also respects a reactive disabled signal.
-///
-/// Suppresses the callback when `disabled` peeks `true`, even if the
-/// initial constructor enabled state allowed interaction.
 pub(super) fn activate_pointer_reactive(
     event: &mut PointerEvent,
     interaction: InteractionState,
@@ -56,7 +48,6 @@ pub(super) fn activate_pointer_reactive(
     }
 }
 
-/// Key-activation that also respects a reactive disabled signal.
 pub(super) fn activate_key_reactive(
     event: &mut KeyEvent,
     interaction: InteractionState,
@@ -68,8 +59,6 @@ pub(super) fn activate_key_reactive(
     }
 }
 
-/// A no-op activation callback — the default for interactive widgets
-/// that haven't been wired with `.activate(...)` yet.
 pub(crate) fn noop_activate() -> Activate {
     Rc::new(|| {})
 }
@@ -99,10 +88,6 @@ pub(super) fn activate_binary_key(
     }
 }
 
-/// Fold the widget's interaction state with the reactive `disabled`
-/// signal into a [`StyleState`]. Peeks the signal — use
-/// [`reactive_style_state`] when the enclosing reactive closure
-/// should re-run on `disabled` flips.
 pub(crate) fn binary_style_state(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
@@ -112,12 +97,6 @@ pub(crate) fn binary_style_state(
     state
 }
 
-/// Same as [`binary_style_state`] but also subscribes to `disabled` so
-/// the enclosing reactive effect re-runs on signal flips.
-///
-/// Use this inside a `stateful_style` closure when the widget has a
-/// reactive `disabled` signal; the standalone `binary_style_state`
-/// only peeks and won't drive re-resolution on its own.
 pub(crate) fn reactive_style_state(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
@@ -126,12 +105,10 @@ pub(crate) fn reactive_style_state(
     binary_style_state(interaction, disabled)
 }
 
-/// Peek a reactive disabled signal — `false` when absent.
 pub(crate) fn disabled_now(disabled: Option<Signal<bool>>) -> bool {
     disabled.is_some_and(Signal::peek)
 }
 
-/// Combine two disable signals. Either true disables the control.
 pub(crate) fn or_disabled(
     a: Option<Signal<bool>>,
     b: Option<Signal<bool>>,

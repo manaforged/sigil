@@ -22,31 +22,20 @@ pub(super) struct TextFieldRuntime {
     pub(super) submit: TextChange,
     pub(super) clipboard: Rc<dyn Clipboard>,
     pub(super) caret_visible: Signal<bool>,
-    /// Horizontal scroll of the text track in logical px (>= 0). The render
-    /// layer translates the glyph/caret/selection track left by this much so
-    /// the caret stays inside the clipped viewport. Pixel-, not character-,
-    /// based so it stays correct at any field width and font.
     pub(super) scroll: Signal<f32>,
-    /// Visible inner column width in logical px — the viewport the caret must
-    /// stay within. Fed into the scroll math so a wider field scrolls later.
     pub(super) column: f32,
-    /// Caret byte offset mirrored from the buffer for the render overlay.
     pub(super) caret: Signal<usize>,
-    /// Selection anchor mirrored from the buffer (`None` = collapsed caret).
     pub(super) selection: Signal<Option<usize>>,
-    /// Effective inherited typography published by layout for the field frame.
-    /// Geometry reads this same style so caret, selection, hit testing, and IME
-    /// stay aligned with the descendant glyph run.
     pub(super) text_style: Signal<TextStyle>,
-    /// Widget-local IME composition state (preedit text + caret anchor).
-    /// See `super::ime` — DR-051's "widget-local signal" default.
     pub(super) ime: ImeState,
-    /// True after a clipboard write fails. Paints the invalid slot.
     pub(super) clip_fail: Signal<bool>,
 }
 
 impl TextFieldRuntime {
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the argument list mirrors the upstream API contract"
+    )]
     pub(super) fn new(
         value: Signal<String>,
         disabled: Option<Signal<bool>>,
@@ -341,14 +330,6 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
     });
 }
 
-/// Publish post-mutation state: keep the caret visible, scroll it into view,
-/// and mirror the buffer's caret + selection into the render signals that
-/// drive the caret/selection overlay. Called after every buffer mutation
-/// (keyboard or pointer) so the visible caret tracks the model.
-/// Atomically publish a mutation: value, change callback, and caret/
-/// selection mirrors coalesce into one signal drain so no effect (the
-/// preedit splice above all) observes a new value with a stale caret —
-/// the `text_edit` HIGH-1 shape, mirrored here (review gate, 2026-07-13).
 pub(super) fn publish(runtime: &TextFieldRuntime, state: &TextEdit) {
     batch(|| {
         write_value(runtime.value, state.as_str());
@@ -368,12 +349,6 @@ pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
     }
 }
 
-/// Slide the horizontal scroll so the caret stays inside the `column`-wide
-/// viewport. Pixel-based: the caret's x comes from the real text engine
-/// (`with_text_geometry`), so this is correct at any width and font — unlike
-/// the old fixed "≈19 chars" guess that mis-scrolled wider fields like the
-/// composer. With no geometry provider installed (headless layout tests) the
-/// caret x is unknown, so scroll is left untouched (stays 0).
 pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
     let style = runtime.text_style.peek();
     let Some(caret_x) =
@@ -383,10 +358,8 @@ pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
     };
     let mut offset = runtime.scroll.peek();
     if caret_x < offset {
-        // Caret moved left of the window — pin it to the left edge.
         offset = caret_x;
     } else if caret_x > offset + runtime.column {
-        // Caret moved past the right edge — pin it to the right edge.
         offset = caret_x - runtime.column;
     }
     let offset = offset.max(0.0);
@@ -395,9 +368,6 @@ pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
     }
 }
 
-/// Insertable into a single-line field: non-empty, no line breaks or
-/// control characters. A terminal paste arrives as one multi-scalar
-/// event, so length is not the bar — line structure is.
 pub(super) fn insertable(text: &str) -> bool {
     !text.is_empty() && !text.chars().any(char::is_control)
 }

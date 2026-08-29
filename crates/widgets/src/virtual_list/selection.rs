@@ -3,20 +3,14 @@ use std::collections::BTreeSet;
 use sigil_events::prelude::{ModifiersState, MouseButton, PointerEvent};
 use sigil_reactive::Signal;
 
-/// Selection behavior for a virtual list.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionMode {
-    /// Row clicks do not affect selection.
     None,
-    /// A row click replaces selection with the clicked row.
     Single,
-    /// Ctrl/cmd-click toggles rows; plain click replaces selection.
     Multi,
-    /// Shift-click extends from the anchor; ctrl/cmd-click toggles.
     Extend,
 }
 
-/// Current selected row indices and range-extension anchor.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SelectionState {
     mode: SelectionMode,
@@ -36,7 +30,6 @@ struct ClickModifiers {
 }
 
 impl SelectionState {
-    /// Create an empty selection state for the given mode.
     #[must_use]
     pub fn new(mode: SelectionMode) -> Self {
         Self {
@@ -46,34 +39,28 @@ impl SelectionState {
         }
     }
 
-    /// Return this state's selection mode.
     #[must_use]
     pub const fn mode(&self) -> SelectionMode {
         self.mode
     }
 
-    /// Return whether `index` is selected.
     #[must_use]
     pub fn contains(&self, index: usize) -> bool {
         self.selected.contains(&index)
     }
 
-    /// Iterate selected row indices in ascending order.
     pub fn selected_indices(&self) -> impl Iterator<Item = usize> + '_ {
         self.selected.iter().copied()
     }
 
-    /// Apply a plain row click.
     pub fn click(&mut self, index: usize) {
         self.apply_click(index, false, false);
     }
 
-    /// Apply a row click with ctrl/cmd toggling.
     pub fn ctrl_click(&mut self, index: usize) {
         self.apply_click(index, false, true);
     }
 
-    /// Apply a row click with shift range extension.
     pub fn shift_click(&mut self, index: usize) {
         self.apply_click(index, true, false);
     }
@@ -130,7 +117,6 @@ impl SelectionRuntime {
         event.stop_propagation();
     }
 
-    /// True when clicks do not change selection — no slot wrapper.
     pub(super) fn idle(self) -> bool {
         self.state.peek().mode() == SelectionMode::None
     }

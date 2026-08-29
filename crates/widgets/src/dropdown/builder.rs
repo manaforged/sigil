@@ -7,40 +7,31 @@ use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, Layout
 use sigil_reactive::{Signal, derived_eq, signal};
 use sigil_style::{
     NodeStyleExt, Px, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
-    StyleVariant, TransitionId,
+    StyleVariant, Tone, TransitionId,
 };
 
 use crate::interaction::InteractionState;
 
+use super::super::chart::tone_solid;
 use super::super::shared::{
     Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
 use super::super::transition_seam::install_transition_animators;
+use super::super::vector::path;
 use super::popup::{OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
 
-/// Selection-change callback channel: the newly selected index.
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
 const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
 const DROPDOWN_COMPONENT_ID: u64 = 0xD012_D000;
-// Animator-only base slice scanned by `install_transition_animators`.
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-inset"),
+    StyleAtom::BackgroundThemeRef("field"),
     StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderToneStep(9),
+    StyleAtom::BorderToneStep(7),
 ];
 static TRIGGER_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-// Disabled paints `surface-pressed-strong` at full opacity. The
-// previous design used `surface-hover` + 50 % opacity, but the alpha
-// blend back over `bg-surface` produced only an ~11 sRGB delta versus
-// the resting state. `surface-pressed-strong` lands ~63 sRGB units
-// below the resting `surface` after gamma encoding and ~40 below the
-// hover slot's `surface-hover` — well clear of the JND on the
-// 200×40 trigger. The token semantically reads as "darker than
-// pressed" rather than "faded", but the W5.3 widget-catalog pass
-// owns the richer faded look; this fix just buys visible distinction.
 static TRIGGER_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
 
 static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
@@ -54,7 +45,6 @@ static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
     ),
 );
 
-/// Builder returned by [`dropdown`].
 pub struct DropdownBuilder {
     selected: Signal<usize>,
     options: Vec<String>,
@@ -67,17 +57,12 @@ pub struct DropdownBuilder {
     height: f32,
 }
 
-/// Create a dropdown (combobox) widget.
-///
-/// `selected` holds the index of the currently selected option.
-/// `options` is the list of labels shown in the popup.
 #[must_use]
 pub fn dropdown(selected: Signal<usize>, options: Vec<String>) -> DropdownBuilder {
     DropdownBuilder::new(selected, options)
 }
 
 impl DropdownBuilder {
-    /// Create a dropdown builder.
     #[must_use]
     pub fn new(selected: Signal<usize>, options: Vec<String>) -> Self {
         Self {
@@ -93,43 +78,30 @@ impl DropdownBuilder {
         }
     }
 
-    /// Set the accessible name announced for this combobox.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = label.into();
         self
     }
 
-    /// Set a reactive disabled signal.
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
         self
     }
 
-    /// Override the trigger width in logical pixels.
-    ///
-    /// The default is a fixed 200px, which is what makes a bare dropdown
-    /// ignore the width of whatever it is placed in. The popup and its
-    /// option rows follow this width so the menu stays flush with the
-    /// control that opened it.
     #[must_use]
     pub const fn width(mut self, px: f32) -> Self {
         self.width = Some(px);
         self
     }
 
-    /// Override the trigger height in logical pixels.
     #[must_use]
     pub const fn height(mut self, px: f32) -> Self {
         self.height = px;
         self
     }
 
-    /// Run a callback when the selection changes, receiving the newly
-    /// selected index (5/5 Wave 1 T5 — widget callbacks carry their value:
-    /// checkbox `Fn(bool)`, slider `Fn(f32)`, `text_field` `Fn(&str)`,
-    /// dropdown `Fn(usize)`).
     #[must_use]
     pub fn change(mut self, cb: impl Fn(usize) + 'static) -> Self {
         self.on_change = Some(Rc::new(cb));
@@ -158,11 +130,6 @@ impl DropdownBuilder {
             width: self.width,
             trigger_height: self.height,
         };
-        // The Styled trait surface targets the TRIGGER — that is the
-        // user-visible chrome of the dropdown (the popup is a transient
-        // surface, the root is an invisible event sink). Passing the
-        // accumulator into `build_trigger` lets `.bg()` / `.rounded()`
-        // / `.hover()` shape the trigger appearance directly.
         let user_overlay = self.style_accumulator.take_state_overlay();
         let trigger = build_trigger(
             ctx,
@@ -283,9 +250,6 @@ fn build_trigger(
                 open.set(!open.peek());
                 cursor.set(selected.peek());
             });
-            // Reactive guard: a `disabled` flip between down and up
-            // must veto activation on release, matching the Enter
-            // handler below (review follow-up 2026-07-13).
             activate_pointer_reactive(ev, interaction, disabled, &cb);
         })
         .key(Key::Enter, move |ev| {
@@ -303,19 +267,12 @@ fn build_trigger(
         DROPDOWN_COMPONENT_ID,
         interaction,
     );
-    // Styled accumulator merges into the trigger's class chain LAST so
-    // user-supplied tokens layer on top of the variant default.
     if !styled.is_empty() {
         node = node.style(styled);
     }
     node
 }
 
-// Push the chevron flush against the right padding edge: SpaceBetween
-// distributes free space between the label wrapper (fixed-width child)
-// and the chevron, landing the chevron at the trigger's trailing edge.
-// Without SpaceBetween, both children pack to the left and the chevron
-// renders mid-trigger (the v2 bug).
 fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill()
@@ -337,24 +294,6 @@ const fn dropdown_trigger_state_style() -> StateStyle {
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {
     let label_sig = derived_eq(move || options.get(selected.get()).cloned().unwrap_or_default());
-    // Wrap the text node in a flex_row container so it participates as
-    // a flex SIBLING of the chevron under the trigger's flex layout.
-    // The wrapper uses `grow(1.0)` instead of a fixed width so the
-    // trigger row's `SpaceBetween` justification consumes the free
-    // space here and pushes the chevron flush against the trailing
-    // padding edge. A `LayoutStyle::block()` text child sits inside
-    // the wrapper so the text laying-out behaviour matches the v2
-    // single-line block formatting.
-    // The wrapper takes the row's free space via `grow(1.0)`, so the
-    // chevron lands flush against the trailing padding edge at ANY
-    // trigger width. This previously used a width computed from the
-    // fixed trigger size because `grow` did not distribute free space to
-    // an item that had children (fixed earlier on this branch), which
-    // left the chevron mid-trigger.
-    // `overflow_x(Hidden)` clips labels wider than the slot at the
-    // trigger's edge instead of painting past the pill (Fable visual
-    // 2026-07-13); giving long options readable short labels remains
-    // the caller's concern.
     container()
         .layout(
             LayoutStyle::flex_row()
@@ -371,18 +310,15 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
         )
 }
 
-// Down-triangle chevron (U+25BE) as a content-sized text leaf. An
-// earlier raw-text `v` glyph never rasterised because it flowed through
-// a 14 px *width-clipped* block, so the fallback was an accent-coloured
-// swatch — visible but reading as a "featureless square", not a menu
-// affordance. A content-sized leaf (no width clip; §4.5 gives text
-// leaves their measured width) paints the real triangle and cannot
-// overflow — it is itself the leaf. In-flow flex child: the label
-// wrapper's `grow(1.0)` eats the free space, so the chevron sits flush
-// at the trailing padding edge whatever the trigger's width.
 fn trigger_chevron() -> impl IntoNode {
-    text("\u{25BE}")
-        .layout(LayoutStyle::block())
-        .class("text-sm")
-        .class("text-on-surface-muted")
+    path(16, 16)
+        .move_to(3.5, 5.4)
+        .line_to(4.6, 4.3)
+        .line_to(8.0, 7.7)
+        .line_to(11.4, 4.3)
+        .line_to(12.5, 5.4)
+        .line_to(8.0, 9.9)
+        .close()
+        .fill(tone_solid(Tone::Neutral))
+        .fit_size(16.0)
 }

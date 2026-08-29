@@ -1,9 +1,3 @@
-//! Command menu node construction — builds the reactive panel stack
-//! and wires Up/Down/Enter/Right/Esc/Left to [`super::nav`]'s action
-//! functions. Panels lay out left-to-right in normal flex flow (no
-//! absolute viewport insets) so the open stack cascades beside its
-//! parent level.
-
 use sigil_events::prelude::{Key, NodeEventsExt};
 use sigil_kernel::{NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
@@ -18,7 +12,6 @@ use super::nav::{
     move_cursor,
 };
 
-/// Gap between cascading level panels.
 const LEVEL_GAP: f32 = 8.0;
 const SUBMENU_INDICATOR_SIZE: f32 = 8.0;
 

@@ -1,9 +1,3 @@
-//! Menu widget — vertical stack of menu items in a floating GPU panel
-//! whose visibility is bound to a reactive `open` signal.
-//!
-//! This is a popup, not the app bar. Use [`crate::menu_bar`] for a
-//! styled strip. Native OS chrome is `set_menu_bar` on the desktop host.
-
 use std::rc::Rc;
 
 use sigil_animation_runtime::presets;
@@ -20,24 +14,10 @@ use super::super::shared::BuilderMutator;
 
 const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 
-/// Separator stripe thickness in logical pixels.
 const SEPARATOR_HEIGHT: f32 = 1.0;
-/// Logical viewport the golden harness renders at — used to centre the
-/// menu inside the canvas via absolute insets when no anchor is set.
-/// Application code that needs trigger-anchored placement should call
-/// [`MenuBuilder::anchor`] with the cursor / trigger position instead.
 const GOLDEN_VIEWPORT_W: f32 = 240.0;
-/// See [`GOLDEN_VIEWPORT_W`].
 const GOLDEN_VIEWPORT_H: f32 = 280.0;
-/// Wrapper size for anchored menus — matches modal's backdrop sentinel
-/// so absolute insets are interpreted relative to (0, 0) of the
-/// viewport regardless of the surrounding layout.
 const ANCHORED_WRAPPER_SIZE: f32 = 4_096.0;
-// Disabled rows paint `surface-pressed-strong` (the same token the
-// dropdown uses for its disabled trigger). The background-only approach
-// gives ~63 sRGB delta against the resting `surface` slot, well clear
-// of the JND; per-text opacity would require an Opacity atom on the
-// glyph layer, which the kernel currently applies only to backgrounds.
 
 pub(super) static MENU_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface"),
@@ -52,20 +32,11 @@ static SEPARATOR_BASE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-p
 
 static DISABLED_DIM: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
 
-/// A single row inside a [`MenuBuilder`].
-///
-/// Construct with [`MenuItem::new`] and refine with the chained
-/// [`MenuItem::shortcut`], [`MenuItem::disabled`],
-/// [`MenuItem::submenu`], and [`MenuItem::select`] builder methods.
 #[derive(Clone)]
 pub struct MenuItem {
-    /// Primary label rendered on the left of the row.
     pub label: String,
-    /// Optional shortcut hint rendered on the right of the row.
     pub shortcut: Option<String>,
-    /// When `true`, the row paints dimmed and ignores activation.
     pub disabled: bool,
-    /// When `true`, the row renders a trailing `›` indicator.
     pub submenu_indicator: bool,
     select: Option<Rc<dyn Fn()>>,
 }
@@ -77,14 +48,12 @@ impl std::fmt::Debug for MenuItem {
             .field("shortcut", &self.shortcut)
             .field("disabled", &self.disabled)
             .field("submenu_indicator", &self.submenu_indicator)
-            // The closure itself is not Debug; report presence only.
             .field("select", &self.select.is_some())
             .finish()
     }
 }
 
 impl MenuItem {
-    /// Create a menu item with the given label and no shortcut.
     #[must_use]
     pub fn new(label: impl Into<String>) -> Self {
         Self {
@@ -96,28 +65,24 @@ impl MenuItem {
         }
     }
 
-    /// Set the right-aligned shortcut hint (for example `"Ctrl+S"`).
     #[must_use]
     pub fn shortcut(mut self, hint: impl Into<String>) -> Self {
         self.shortcut = Some(hint.into());
         self
     }
 
-    /// Mark the row as disabled (dimmed, non-activatable).
     #[must_use]
     pub const fn disabled(mut self, yes: bool) -> Self {
         self.disabled = yes;
         self
     }
 
-    /// Render a trailing `›` submenu indicator on the row.
     #[must_use]
     pub const fn submenu(mut self, yes: bool) -> Self {
         self.submenu_indicator = yes;
         self
     }
 
-    /// Run `select` when the row is activated (pointer or Enter).
     #[must_use]
     pub fn select(mut self, select: impl Fn() + 'static) -> Self {
         self.select = Some(Rc::new(select));
@@ -125,15 +90,12 @@ impl MenuItem {
     }
 }
 
-/// Internal row representation — items and separators share the same
-/// vertical-stack slot.
 #[derive(Clone)]
 pub(super) enum Row {
     Item(MenuItem),
     Separator,
 }
 
-/// Builder returned by [`menu`].
 pub struct MenuBuilder {
     open: Signal<bool>,
     rows: Vec<Row>,
@@ -144,22 +106,12 @@ pub struct MenuBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a menu widget.
-///
-/// Renders a vertical stack of items in a floating panel. The
-/// `open` signal gates visibility: when it reads `false`, the panel
-/// paints `Display::None` and contributes no layout box.
-///
-/// Position via the [`Styled`](sigil_style::Styled) surface (for
-/// example `.style(Style::new().padding(8))`). The default placement
-/// centres the panel in the golden viewport.
 #[must_use]
 pub fn menu(open: Signal<bool>) -> MenuBuilder {
     MenuBuilder::new(open)
 }
 
 impl MenuBuilder {
-    /// Create a menu builder bound to `open`.
     #[must_use]
     pub fn new(open: Signal<bool>) -> Self {
         Self {
@@ -173,39 +125,24 @@ impl MenuBuilder {
         }
     }
 
-    /// Set an accessible label on the menu root.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
-    /// Anchor the menu panel at viewport coordinates `(x, y)`.
-    ///
-    /// When set, the panel paints with its top-left at the given
-    /// position instead of being centred in the golden viewport.
-    /// Use this for trigger-positioned popovers (right-click context
-    /// menus, button-anchored dropdowns, etc.).
-    ///
-    /// V1 limitation — the anchor is captured at build time. To
-    /// reposition between opens, rebuild the menu (rebuild the
-    /// containing component, or conditionally insert the menu into
-    /// the tree). Reactive re-anchoring waits on the kernel's
-    /// reactive-layout primitive landing.
     #[must_use]
     pub const fn anchor(mut self, x: f32, y: f32) -> Self {
         self.anchor = Some((x, y));
         self
     }
 
-    /// Append a menu item row.
     #[must_use]
     pub fn item(mut self, item: MenuItem) -> Self {
         self.rows.push(Row::Item(item));
         self
     }
 
-    /// Append a 1 px separator stripe between items.
     #[must_use]
     pub fn separator(mut self) -> Self {
         self.rows.push(Row::Separator);
@@ -255,20 +192,6 @@ impl MenuBuilder {
             panel = panel.style(self.style_accumulator);
         }
 
-        // Wrap the absolute-positioned panel in a block-layout outer
-        // root that anchors the absolute insets to the viewport. Without
-        // a non-absolute parent, the kernel ignores `inset_top_px` /
-        // `inset_left_px` and the panel snaps to (0, 0). Anchored menus
-        // use a 4096-square sentinel (matches modal's backdrop) so
-        // insets resolve to viewport coordinates; the unanchored
-        // fallback keeps the original golden-viewport box for the
-        // existing golden suite.
-        //
-        // The wrapper itself flips `Display::None` in lockstep with the
-        // `open` signal — without that gate the 4096-square anchored
-        // wrapper expanded surrounding layout even when the menu was
-        // closed (caught by the cross-vendor adversarial-review on
-        // 2026-05-21).
         let mut root = container()
             .layout(LayoutStyle::block().fixed_size(wrapper_size, wrapper_size))
             .style_reactive(move || open_display(open))
@@ -299,8 +222,6 @@ impl IntoNode for MenuBuilder {
     }
 }
 
-// ---- structural helpers --------------------------------------------------
-
 pub(super) fn panel_height(rows: &[Row]) -> f32 {
     let theme = Theme::default();
     let item_height = theme.control_height(Size::Default).px_or_zero();
@@ -324,7 +245,6 @@ fn panel_layout(top: f32, left: f32, height: f32) -> LayoutStyle {
         .justify_content(JustifyContent::Start)
 }
 
-/// Wire pointer-up + Enter activation onto a non-disabled row.
 fn wire_activate(
     node: NodeBuilder,
     select: Option<Rc<dyn Fn()>>,
@@ -419,11 +339,6 @@ const fn row_atoms(hover: bool, disabled: bool) -> &'static [StyleAtom] {
 }
 
 fn submenu_swatch() -> impl IntoNode {
-    // Real U+25B8 right-triangle as a content-sized text leaf, matching
-    // the dropdown chevron. The old accent swatch was a placeholder for
-    // a glyph the earlier width-clipped path collapsed to zero width;
-    // §4.5 min-size now gives single-char leaves their measured width,
-    // so the glyph paints (confirmed in the stub-measure golden path).
     text("\u{25B8}")
         .layout(LayoutStyle::block())
         .class("text-xs")
@@ -436,8 +351,6 @@ pub(super) fn build_separator() -> NodeBuilder {
         .layout(LayoutStyle::block().height(SEPARATOR_HEIGHT).padding(0.0))
         .class(SEPARATOR_BASE)
 }
-
-// ---- open / closed visibility --------------------------------------------
 
 fn open_display(open: Signal<bool>) -> &'static [StyleAtom] {
     if open.get() {

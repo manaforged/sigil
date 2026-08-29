@@ -10,9 +10,6 @@ fn horizontal_is_decorative_not_a_focusable_splitter() {
         let mut cx = Cx::new_root();
         let id = horizontal().build(&mut cx);
         let node = cx.get(id).expect("divider node exists");
-        // The hairline must not announce as an interactive ARIA
-        // splitter or any other focusable resize handle. We mark
-        // it non-hittable so the a11y projection hides it.
         assert!(
             !node.a11y.hittable,
             "horizontal divider must opt out of the a11y tree"

@@ -1,38 +1,3 @@
-//! wgpu-backed [`sigil_hal::Renderer`] adapter for Sigil.
-//!
-//! This crate is the single chokepoint where `wgpu` types live. Every
-//! downstream crate names the [`sigil_hal::Renderer`] trait and treats the
-//! GPU as an opaque implementation detail. See internal decision record
-//! DR-001 for the rationale and [the trait docs][`sigil_hal::Renderer`]
-//! for the Phase 2 surface area (create surface, resize,
-//! clear-and-present).
-//!
-//! # Usage
-//!
-//! ```text
-//! use std::sync::Arc;
-//!
-//! use sigil_hal::{Color, PhysicalSize, Renderer};
-//! use sigil_renderer::{WgpuRenderer, into_window_handle};
-//!
-//! fn run(window: Arc<impl raw_window_handle::HasWindowHandle
-//!     + raw_window_handle::HasDisplayHandle
-//!     + Send + Sync + 'static>) -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut renderer = WgpuRenderer::new()?;
-//!     let mut surface = renderer.create_surface(
-//!         into_window_handle(window),
-//!         PhysicalSize::new(720, 480),
-//!     )?;
-//!     renderer.clear(&mut surface, Color::BLACK)?;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! The block above is rendered as `text` rather than runnable Rust
-//! because the example needs a live windowed handle to be meaningful;
-//! `hello-rect` (once ported) is the executable reference instead.
-
-#![deny(missing_docs)]
 #![cfg_attr(
     feature = "windowed",
     allow(
@@ -40,16 +5,13 @@
         reason = "the feature supplies dependencies to windowed examples"
     )
 )]
-// wgpu-hal 29.0.1 (GLES / WGL backend) expects
-// `impl std::error::Error for windows_core::Error`, which is gated
-// behind `windows-core`'s `std` feature. Features are additive across a
-// dep graph, so enabling the crate here with `std` unifies it across
-// the whole build. This crate does not use `windows-core` directly.
 #[cfg(windows)]
 use windows_core as _;
 
 mod blur_paint;
 mod blur_shader;
+#[cfg(feature = "capture")]
+pub mod capture;
 mod color_glyph_paint;
 mod corner_radii;
 mod decoration_paint;
@@ -110,10 +72,6 @@ pub use surface::WgpuSurface;
 pub use test_state::{GlobalTextState, lock_global_text_state};
 pub use window_handle::{WindowHandle, into_window_handle};
 
-/// Convenience re-exports for widget and renderer authors.
-///
-/// `use sigil_renderer::prelude::*;` gives a typical scene-building session
-/// all the types it needs without a 15-line import block.
 pub mod prelude {
     pub use crate::style::{Decoration, Gradient, Pattern, Rect, Sprite};
     pub use crate::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, Transform};

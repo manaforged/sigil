@@ -15,7 +15,6 @@ use super::window::{
 
 pub(super) type HeightSpec<'a> = (f32, Option<&'a [f32]>);
 
-/// Live keyed rows shared with the strip effect: key → mounted node.
 type MountedRows = RefCell<Vec<(u64, NodeId)>>;
 
 #[derive(Clone, Copy)]
@@ -61,7 +60,6 @@ where
         || row_top(window.first, row_height),
         |row_tops| prefix_row_top(row_tops, window.first),
     );
-    // Park the strip in viewport space so overflow clip still intersects.
     let top = document_top - spec.scroll_y;
     let visible_height = row_tops.map_or_else(
         || total_height(window.len(), row_height),
@@ -136,9 +134,6 @@ impl WidthSpec {
     }
 }
 
-/// Module-public adapter for [`WidthSpec::apply`] so callers in
-/// `mod.rs` can decorate a [`LayoutStyle`] without exposing the
-/// per-axis enum's private method.
 pub(super) fn width_apply(width: WidthSpec, style: LayoutStyle) -> LayoutStyle {
     width.apply(style)
 }
@@ -166,7 +161,6 @@ impl<'a> VisibleRenderSpec<'a> {
     }
 }
 
-/// Spec for the bound strip: keyed visible rows + viewport offset.
 pub(super) struct BoundStrip<T, R> {
     pub render: Rc<R>,
     pub row_height: f32,
@@ -178,7 +172,6 @@ pub(super) struct BoundStrip<T, R> {
     pub row_key: Option<super::RowKey<T>>,
 }
 
-/// Stable content child: keyed rows, strip parked at `first*rh - scroll`.
 pub(super) fn bound_strip<S, T, R>(
     signal: Signal<S>,
     scroll_y: Signal<f32>,
@@ -219,8 +212,6 @@ where
             Rc::new(RefCell::new(Vec::new()))
         };
         let primed = Cell::new(true);
-        // Seeded with the build-time length so the priming run does not
-        // bump the generation out from under the seeded keys.
         let last_len = Cell::new(spec.live_len.peek());
         let generation = Cell::new(0_u64);
         effect_named("sigil-virtual-list::strip", move || {
@@ -229,10 +220,6 @@ where
             if spec.row_key.is_some() {
                 let _ = signal.get();
             } else if last_len.replace(len) != len {
-                // Index keys name a list SLOT: when the count changes the
-                // slots hold new items, so salt the keys to force a remount.
-                // Reusing the mounted node would paint the previous
-                // occupant's content (stale rows after a filter shrink).
                 generation.set(generation.get() + 1);
             }
             if primed.replace(false) {
@@ -254,7 +241,10 @@ fn strip_offset(
         return (0.0, 0.0);
     }
     let first = visible_window(scroll_y, usize::MAX, row_height, viewport_height, overscan).first;
-    #[allow(clippy::cast_precision_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+    )]
     let first_top = first as f32 * row_height;
     (0.0, first_top - scroll_y)
 }
@@ -287,18 +277,9 @@ where
             break;
         };
         let key = spec.row_key.as_ref().map_or_else(
-            // Slot keys live in a per-count generation so a length change
-            // never matches a stale mounted row.
             || (generation << 32) | index as u64,
             |key_of| key_of(index, item),
         );
-        // A cheap placeholder stands in for a key that is already MOUNTED:
-        // `apply_keyed` reuses the live node and drops the builder. The
-        // decision must come from the mounted map, not from the previous
-        // window's keys: the strip effect can re-run (and re-enqueue a
-        // replacement rebuild) before the pending one is applied, and a
-        // placeholder for a key that was never mounted would mount as an
-        // empty, zero-height row — the filtered-table blank-window bug.
         let kept = mounted.is_some_and(|mounted| mounted.borrow().iter().any(|(k, _)| *k == key));
         if kept {
             rows.push((key, container()));

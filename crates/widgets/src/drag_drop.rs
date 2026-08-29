@@ -1,33 +1,3 @@
-//! `drag_drop` — payload-carrying, widget-to-widget drag sessions.
-//!
-//! The missing middle between [`crate::axis_drag`] (position-only handle
-//! drags) and the OS file drop: a [`DragState<T>`] session carries a
-//! typed payload from a `.drag_source(...)` node to a `.drop_target(...)`
-//! node, with a floating [`drag_ghost`] chip following the pointer.
-//!
-//! ## Session model (signal-first)
-//!
-//! * Left `pointer_down` on a source ARMS a candidate — no capture, no
-//!   stop-propagation, so click-to-select and right-click menus keep
-//!   working.
-//! * A move past [`DRAG_THRESHOLD_PX`] begins the session: payload +
-//!   position publish into the state's signals and the source captures
-//!   the pointer. Capture binds to the REQUESTING node, not the hit
-//!   leaf, so the session survives leaving the source's children.
-//! * Captured moves track `position` and hit-test registered targets
-//!   against their layout-published bounds; the hovered accepting target
-//!   gets [`DROP_TARGET_CLASS`] reactively.
-//! * `pointer_up` over an accepting target fires `on_drop(payload)`;
-//!   anywhere else cancels cleanly.
-//!
-//! ## Ceilings
-//!
-//! * No autoscroll near scroll-container edges. Upgrade trigger: a
-//!   consumer dragging through long lists.
-//! * Overlapping targets: the last-built (topmost) containing target
-//!   wins; a rejecting target has no fall-through to one underneath.
-//! * Target bounds read last frame's published layout (router contract).
-
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -37,31 +7,17 @@ use sigil_layout::LayoutReactiveExt;
 use sigil_reactive::{Signal, derived, signal};
 use sigil_style::NodeStyleExt;
 
-/// Pointer travel (logical px) before a press becomes a drag.
 pub const DRAG_THRESHOLD_PX: f32 = 4.0;
 
-/// Class toggled on the hovered drop target while it accepts the payload.
 pub const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
 const GHOST_CLASS: &str = "rounded-md px-2 py-1 bg-accent-3 text-accent-12 border border-accent-6";
-/// Chip offset from the pointer so it doesn't sit under the cursor.
 const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
 
 type Armed = Rc<Cell<Option<(f32, f32)>>>;
 type Accepts<T> = Rc<dyn Fn(&T) -> bool>;
 type OnDrop<T> = Rc<dyn Fn(T)>;
 
-/// Shared handle to a drag session channel with payload type `T`.
-///
-/// Create one per drag DOMAIN (e.g. "tasks on the group rail"), share it
-/// between every source and target of that domain, and mount one
-/// [`drag_ghost`] per domain near the app root. Clone handles freely —
-/// all clones talk to the same session.
-///
-/// # Panics
-///
-/// Creating outside [`Runtime::scope`](sigil_reactive::Runtime::scope)
-/// panics on the next signal read (the signals are scope-owned).
 pub struct DragState<T: 'static> {
     active: Signal<bool>,
     position: Signal<(f32, f32)>,
@@ -82,8 +38,6 @@ struct DropTarget<T: 'static> {
     on_drop: OnDrop<T>,
 }
 
-/// Deregisters the drop-target entry when the node leaves the tree
-/// (rebuild, windowed scroll-off), so stale bounds never hit-test.
 struct TargetGuard<T: 'static> {
     registry: Rc<RefCell<Registry<T>>>,
     id: usize,
@@ -109,7 +63,6 @@ impl<T: 'static> Clone for DragState<T> {
 }
 
 impl<T: Clone + 'static> DragState<T> {
-    /// Create an idle drag-session channel.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -123,31 +76,26 @@ impl<T: Clone + 'static> DragState<T> {
         }
     }
 
-    /// Whether a drag session is currently active.
     #[must_use]
     pub fn is_active(&self) -> bool {
         self.active.peek()
     }
 
-    /// Current pointer position (window coordinates) of the session.
     #[must_use]
     pub fn position(&self) -> (f32, f32) {
         self.position.peek()
     }
 
-    /// The payload being dragged, while a session is active.
     #[must_use]
     pub fn payload(&self) -> Option<T> {
         self.payload.peek()
     }
 
-    /// End the active session without dropping. Safe when idle.
     pub fn cancel(&self) {
         self.end();
     }
 
     fn begin(&self, payload: T, at: (f32, f32)) {
-        // `set_always`: payloads aren't required to be `PartialEq`.
         self.payload.set_always(Some(payload));
         self.position.set(at);
         self.active.set(true);
@@ -164,8 +112,6 @@ impl<T: Clone + 'static> DragState<T> {
             .payload()
             .and_then(|payload| self.accepting_drop(at, &payload).map(|cb| (cb, payload)));
         self.end();
-        // Invoke AFTER the registry borrow is released and the session has
-        // ended: `on_drop` mutates app state and may rebuild targets inline.
         if let Some((on_drop, payload)) = drop {
             on_drop(payload);
         }
@@ -173,12 +119,10 @@ impl<T: Clone + 'static> DragState<T> {
 
     fn end(&self) {
         self.active.set(false);
-        // Payload cleared first, so this hover pass clears every target.
         self.payload.set_always(None);
         self.update_hover((0.0, 0.0));
     }
 
-    /// The topmost (last-built) target under `at` that accepts `payload`.
     fn accepting_drop(&self, at: (f32, f32), payload: &T) -> Option<OnDrop<T>> {
         self.targets
             .borrow()
@@ -189,8 +133,6 @@ impl<T: Clone + 'static> DragState<T> {
             .map(|target| Rc::clone(&target.on_drop))
     }
 
-    /// Highlight exactly the topmost containing target that accepts the
-    /// payload; clear every other target.
     fn update_hover(&self, at: (f32, f32)) {
         let payload = self.payload();
         let registry = self.targets.borrow();
@@ -235,17 +177,10 @@ impl<T: Clone + 'static> Default for DragState<T> {
     }
 }
 
-/// The drag-drop mixin surface on [`NodeBuilder`].
 pub trait DragDropExt<T: Clone + 'static> {
-    /// Make this node a drag source carrying `payload` (cloned when the
-    /// session begins). A plain click never starts a drag: the press must
-    /// travel past [`DRAG_THRESHOLD_PX`] first.
     #[must_use]
     fn drag_source(self, state: DragState<T>, payload: T) -> Self;
 
-    /// Make this node a drop target. While a session is active and the
-    /// pointer is over this node, `accepts` gates the highlight; on
-    /// pointer-up an accepting target fires `on_drop(payload)`.
     #[must_use]
     fn drop_target(
         self,
@@ -280,13 +215,6 @@ impl<T: Clone + 'static> DragDropExt<T> for NodeBuilder {
     }
 }
 
-/// The floating chip that follows the pointer during a session.
-///
-/// Mount once per [`DragState`] domain as the LAST child of the app-root
-/// container (position is absolute against the parent, and later children
-/// paint on top). `render` builds the chip content from the payload —
-/// e.g. `move |task| text(task.name.clone())`. The node is non-hittable
-/// and empty while idle, so it never intercepts pointer input.
 #[must_use]
 pub fn drag_ghost<T, N>(state: DragState<T>, render: impl Fn(&T) -> N + 'static) -> NodeBuilder
 where
@@ -318,8 +246,6 @@ where
     vec![container().class(GHOST_CLASS).child(render(&payload))]
 }
 
-/// Arm a drag candidate on left-press; never captures or stops
-/// propagation, so plain clicks and right-click menus pass through.
 fn arm(armed: Armed) -> impl Fn(&mut PointerEvent) + 'static {
     move |event| {
         if event.button == Some(MouseButton::Left) {
@@ -328,8 +254,6 @@ fn arm(armed: Armed) -> impl Fn(&mut PointerEvent) + 'static {
     }
 }
 
-/// Drive the session: threshold-crossing begins it (and captures the
-/// pointer onto the source); captured moves track position + hover.
 fn drive<T: Clone + 'static>(
     state: DragState<T>,
     armed: Armed,
@@ -359,8 +283,6 @@ fn drive_session<T: Clone + 'static>(
     at: (f32, f32),
 ) {
     if !event.buttons.contains(MouseButtons::LEFT) {
-        // The button went away without an Up reaching us (window blur,
-        // OS cancel) — heal instead of sticking the session on.
         state.cancel();
         return;
     }
@@ -368,8 +290,6 @@ fn drive_session<T: Clone + 'static>(
     event.stop_propagation();
 }
 
-/// Release: disarm the candidate; settle (drop or cancel) only when a
-/// session is active — plain clicks pass through untouched.
 fn release<T: Clone + 'static>(
     state: DragState<T>,
     armed: Armed,

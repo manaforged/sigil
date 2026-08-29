@@ -1,26 +1,8 @@
-//! Status indicator dot — small filled circle in a semantic tone.
-//!
-//! The smallest possible status primitive: a fixed-size square with
-//! `rounded-full` and a tone-driven background. Pair with a sibling
-//! label to express "online" / "draft" / "error" / etc.
-//!
-//! ```ignore
-//! use sigil::prelude::*;
-//!
-//! dot(Tone::Success);                    // 8 px filled green dot
-//! dot(Tone::Warn).size(Size::Default);   // 12 px filled amber dot
-//! ```
-//!
-//! Accessibility — the dot is decorative on its own. Place a text
-//! sibling that names the state ("Online", "Draft", etc.) so screen
-//! readers see the meaning, not the dot.
-
 use crate::widget_dev::*;
 use sigil_style::{Px, StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
-/// Builder returned by [`dot`].
 pub struct DotBuilder {
     tone: Tone,
     size: Size,
@@ -28,15 +10,12 @@ pub struct DotBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a status indicator dot.
 #[must_use]
 pub fn dot(tone: Tone) -> DotBuilder {
     DotBuilder::new(tone)
 }
 
 impl DotBuilder {
-    /// Construct a dot builder for the given tone — defaults to
-    /// `Size::Compact` (8 px).
     #[must_use]
     pub fn new(tone: Tone) -> Self {
         Self {
@@ -47,7 +26,6 @@ impl DotBuilder {
         }
     }
 
-    /// Size preset — `Compact` = 8, `Default` = 12, `Wide` = 16 px.
     #[must_use]
     pub const fn size(mut self, size: Size) -> Self {
         self.size = size;
@@ -60,18 +38,6 @@ impl DotBuilder {
             Size::Default => 12.0,
             Size::Wide | Size::Grow => 16.0,
         };
-        // Two-layer construction. The outer ring is tone step 11 ("high-
-        // contrast text" step in Radix) and defines the boundary against
-        // the surface; the inner fill is the vibrant step 9 that carries
-        // the hue identity. Step-9 amber/green alone measure < 3:1 on
-        // light surfaces (visual review 2026-05-21), failing WCAG
-        // 1.4.11 for the dot edge — the ring lifts the boundary contrast
-        // without sacrificing the saturated colour that makes a status
-        // dot recognisable. Mirrors the radio_group mark structure.
-        //
-        // Radii are clamped to half-extent so the renderer's rounded
-        // SDF receives a valid radius (Px(9_999) "rounded-full" falls
-        // outside the dot's bounds and clips the entire fill).
         #[allow(
             clippy::cast_possible_truncation,
             reason = "extent is 8.0..=16.0 → half_radius 4..=8, exact i16."
@@ -102,12 +68,8 @@ impl DotBuilder {
     }
 }
 
-/// Inner fill — step 9 vibrant solid (carries the hue identity).
 static DOT_FILL_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 
-/// Outer ring — step 11 high-contrast tonal (lifts the dot edge to
-/// ≥4.5:1 against light surfaces for the low-luminance hues amber /
-/// yellow / green where step 9 alone fails WCAG 1.4.11).
 static DOT_RING_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(11)];
 
 fn dot_outer_layout(extent: f32) -> LayoutStyle {

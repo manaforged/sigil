@@ -1,11 +1,3 @@
-//! Sticky header row for the `table()` view (DR-057 D2).
-//!
-//! One [`Role::ColumnHeader`] cell per visible column, sharing the
-//! column layout signal with the body so header and cells stay aligned.
-//! Sortable columns cycle [`TableState::toggle_sort`] on click; a
-//! resize handle on the trailing edge pins a pixel width; a drag past
-//! the threshold reorders columns; right-click opens the column menu.
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -54,10 +46,6 @@ fn resize_handle<Row: 'static>(
     )
 }
 
-/// Build the header row. Cells rebuild when the column layout changes.
-/// The cell track slides horizontally inside the stationary header
-/// (which keeps the full-width background and bottom border), in
-/// lockstep with the body rows via the shared `hscroll` offset.
 pub(super) fn header_row<Row: 'static>(
     state: &TableState<Row>,
     height: f32,
@@ -96,9 +84,6 @@ pub(super) fn header_row<Row: 'static>(
 }
 
 fn header_layout(height: f32) -> LayoutStyle {
-    // The header keeps its height. A filled viewport grows the body, and a
-    // shrinkable header would give that space up and slide under row one.
-    // px-3 matches the body rows (and the reference DataTable's header).
     LayoutStyle::flex_row()
         .fill_width()
         .height(height)
@@ -108,22 +93,15 @@ fn header_layout(height: f32) -> LayoutStyle {
 }
 
 fn track_layout(height: f32) -> LayoutStyle {
-    // Flex item of the header: grow fills the viewport when content
-    // fits; the reactive MinWidth atom floors it at the column extent
-    // when overflowing, so the shifted track box always spans its
-    // cells (the emit walk culls subtrees whose box misses the clip).
     LayoutStyle::flex_row()
         .grow(1.0)
         .height(height)
         .align_items(AlignItems::Center)
 }
 
-/// Table context shared by the header cell builders.
 struct HeaderCtx<'a, Row: 'static> {
     state: &'a TableState<Row>,
     chrome: &'a TableChrome<Row>,
-    /// The checkbox selection column is prepended: data columns shift
-    /// one a11y column index to the right.
     select: bool,
 }
 
@@ -164,8 +142,6 @@ fn header_cell<Row: 'static>(
     }
 }
 
-/// Click cycles sort; a drag on the trailing edge resizes; a longer
-/// drag reorders.
 fn sortable_cell<Row: 'static>(
     state: &TableState<Row>,
     column: &'static str,
@@ -211,8 +187,10 @@ fn sortable_cell<Row: 'static>(
             };
             let delta = event.window_position.x - start_x;
             if delta.abs() >= REORDER_THRESHOLD {
-                // A drag delta spans the window, never the i32 range.
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "values are bounded to the target range before the cast"
+                )]
                 let steps = (delta / REORDER_STEP).round() as i32;
                 move_state.move_column(from, from.saturating_add_signed(steps as isize));
             } else {
@@ -222,7 +200,6 @@ fn sortable_cell<Row: 'static>(
     sort_keys(node, state, column)
 }
 
-/// Wire Enter + Space sort toggles onto a header cell.
 fn sort_keys<Row: 'static>(
     cell: NodeBuilder,
     state: &TableState<Row>,
@@ -276,8 +253,10 @@ fn reorder_only<Row: 'static>(
             };
             let delta = event.position.x - start_x;
             if delta.abs() >= REORDER_THRESHOLD {
-                // A drag delta spans the window, never the i32 range.
-                #[allow(clippy::cast_possible_truncation)]
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    reason = "values are bounded to the target range before the cast"
+                )]
                 let steps = (delta / REORDER_STEP).round() as i32;
                 state.move_column(from, from.saturating_add_signed(steps as isize));
             }
@@ -285,7 +264,6 @@ fn reorder_only<Row: 'static>(
         })
 }
 
-/// ▲/▼/none text for one column, tracked off the sort signal.
 fn sort_indicator<Row: 'static>(state: &TableState<Row>, column: &'static str) -> Signal<String> {
     let sort = state.sort_key();
     derived(move || {
@@ -300,8 +278,6 @@ fn sort_indicator<Row: 'static>(state: &TableState<Row>, column: &'static str) -
     })
 }
 
-/// AccessKit sort direction for one column, tracked off the sort
-/// signal. `None` while another column (or no column) is sorted.
 fn sort_direction<Row: 'static>(
     state: &TableState<Row>,
     column: &'static str,

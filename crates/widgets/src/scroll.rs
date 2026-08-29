@@ -1,9 +1,3 @@
-//! Scroll widget — viewport clip with reactive scroll position.
-//!
-//! Content is offset by a negative `MarginTop` driven by a `Signal<f32>`.
-//! Viewport clipping relies on layout `overflow: hidden`; visual clipping
-//! is deferred to a future renderer integration pass.
-
 #![allow(clippy::missing_const_for_fn)]
 
 use sigil_events::prelude::NodeEventsExt;
@@ -22,17 +16,10 @@ pub(crate) const SCROLLBAR_WIDTH: f32 = 8.0;
 pub(crate) const THUMB_MIN_HEIGHT: f32 = 24.0;
 const SCROLL_LINE: f32 = 40.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-// Thumb paints `surface-pressed-strong` — visibly darker than the
-// track's `border` background. Earlier the thumb shared the track's
-// `border` token, leaving the gutter readable as a single uniform
-// strip with no visible thumb affordance. The strong-pressed step
-// clears the same-hue JND against `border` at 8 px gutter scale.
 pub(crate) static THUMB_ATOMS: &[StyleAtom] =
     &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-/// Track background shared by the vertical and horizontal scrollbars.
 pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
 
-/// Builder returned by [`scroll`].
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Signal<f32>,
@@ -46,13 +33,7 @@ pub struct ScrollBuilder {
     style_accumulator: Style,
 }
 
-/// Coerce a content-extent value into a [`Signal<f32>`].
-///
-/// Implemented for `f32` (wraps in a fresh signal) and `Signal<f32>`
-/// (passes through). Lets `scroll(content, 800.0)` and
-/// `scroll(content, my_signal)` both compile.
 pub trait IntoScrollExtent {
-    /// Return the extent as a reactive signal in logical pixels.
     fn into_extent(self) -> Signal<f32>;
 }
 
@@ -68,12 +49,6 @@ impl IntoScrollExtent for Signal<f32> {
     }
 }
 
-/// Create a scroll widget that clips `content` to a viewport.
-///
-/// `extent` is the total height of the content in logical pixels.
-/// Pass a `Signal<f32>` to keep scroll bounds reactive (the widget
-/// re-clamps as content height changes), or a bare `f32` for static
-/// content.
 #[must_use]
 pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuilder {
     ScrollBuilder {
@@ -91,51 +66,42 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
 }
 
 impl ScrollBuilder {
-    /// Apply utility classes to the viewport container root.
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         self.extra = Some(source.into());
         self
     }
 
-    /// Set the visible viewport height in pixels.
     #[must_use]
     pub const fn height(mut self, px: f32) -> Self {
         self.height = px;
         self
     }
 
-    /// Set the visible viewport width in pixels.
     #[must_use]
     pub const fn width(mut self, px: f32) -> Self {
         self.width = Some(px);
         self
     }
 
-    /// Fill the parent's resolved height and use that measured height for
-    /// scroll bounds, page steps, and scrollbar geometry.
     #[must_use]
     pub const fn fill(mut self) -> Self {
         self.fill = true;
         self
     }
 
-    /// Bind the viewport to a caller-owned vertical scroll offset.
     #[must_use]
     pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
         self.scroll_y = Some(scroll_y);
         self
     }
 
-    /// Seed the viewport at the bottom before its first paint.
     #[must_use]
     pub const fn scroll_to_end(mut self) -> Self {
         self.initial_end = true;
         self
     }
 
-    /// Follow content growth while the viewport is already at the bottom.
-    /// Manual scrolling upward disables following until the user returns.
     #[must_use]
     pub const fn auto_pin_to_bottom(mut self, on: bool) -> Self {
         self.pin_bottom = on;
@@ -160,8 +126,6 @@ impl ScrollBuilder {
         }
         let body = wrap_content(content, scroll_y, max_scroll, extent, viewport_height);
         let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height);
-        // The thumb lives inside the track so it can use inset_right
-        // against that parent, not the viewport.
         let track = scrollbar_track(height, fill).child(thumb);
 
         let root = viewport_container(width, height, fill)
@@ -174,9 +138,6 @@ impl ScrollBuilder {
         if let Some(classes) = self.extra {
             root = root.class(classes);
         }
-        // Styled accumulator installed AFTER `.class()` extras so the
-        // trait surface layers ON TOP of the explicit class call
-        // (additive composition per DR-049 §10). Order matches batch 1.
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
@@ -243,13 +204,6 @@ fn wrap_content(
             to_i16(extent.get().max(viewport_height.get())),
         )
     });
-    // Wrap the user's content in a fresh anonymous sizing container so
-    // that the user's own LayoutStyle (flex_column, padding, gap, etc.)
-    // is preserved verbatim. Previously this called `.layout(…)` directly
-    // on `content`, which replaced any previously-attached LayoutStyle
-    // because NodeBuilder::with::<T>() routes through attach::<T>() which
-    // replaces on TypeId collision. Option B: the sizing box owns the
-    // fixed_size; content is added as its child unchanged.
     container()
         .layout(
             LayoutStyle::block()
@@ -289,19 +243,8 @@ fn scrollbar_thumb(
         (to_i16(thumb_h), to_i16(t * max_travel))
     });
 
-    // Track-relative drag: record the down-position and the
-    // scroll value at that moment, then translate subsequent
-    // pointer-move deltas via the thumb-to-content ratio. Using
-    // raw event.position.y would snap the thumb to the global
-    // coordinate, which is wrong whenever the scroll widget isn't
-    // anchored at window y=0.
     let drag_anchor = signal::<Option<(f32, f32)>>(None);
 
-    // Thumb is absolute-positioned against the viewport (the
-    // viewport_container is the closest positioned ancestor in the
-    // sigil layout model). Pin it to the right gutter at
-    // `width - SCROLLBAR_WIDTH` left inset; the reactive
-    // `margin_top_atoms` slides it vertically as scroll progresses.
     container()
         .layout(
             LayoutStyle::block()
@@ -340,7 +283,11 @@ fn scrollbar_thumb(
 }
 
 pub(crate) fn to_i16(px: f32) -> i16 {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "values are bounded to the target range before the cast"
+    )]
     {
         px.clamp(f32::from(i16::MIN), f32::from(i16::MAX)).round() as i16
     }

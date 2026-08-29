@@ -21,8 +21,10 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 # Enables direct access to pipeline internals for criterion benches.
 # Not a default feature; activated by bench targets via `cargo bench`.
 bench = []
-# Enables PNG output for the headless capture example.
-capture = ["dep:image"]
+# Enables the offscreen capture module used by the headless capture
+# example and the widget catalog example. PNG encoding stays with the
+# consumers; `image` is a dev-dependency.
+capture = []
 # Enables the winit shell used by the windowed showcase examples.
 windowed = ["dep:sigil-shell"]
 
@@ -43,7 +45,6 @@ bytemuck = { workspace = true }
 skrifa = { workspace = true }
 smallvec = { workspace = true }
 half = { workspace = true }
-image = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature

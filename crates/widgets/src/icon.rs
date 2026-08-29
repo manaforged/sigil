@@ -1,45 +1,11 @@
-//! Glyph icon — a sized, tone-tinted text glyph.
-//!
-//! The smallest possible icon primitive: a single Unicode glyph
-//! rendered as text, with a semantic [`Tone`] for color and a
-//! [`Size`] for the bounding square. Icon-font glyphs (Lucide,
-//! Material Symbols, Phosphor, etc.) drop in as the `glyph`
-//! argument; the widget itself is font-agnostic.
-//!
-//! Stroke chrome (nav, titlebar, KPI marks) uses
-//! [`crate::widgets::path`] + [`PathNode::fit_size`](crate::widgets::PathNode::fit_size),
-//! not this widget. This widget has no vector outline and no emoji font.
-//!
-//! Accessibility — by default an icon is decorative (no
-//! accessible name, screen readers skip it). When the icon is the
-//! only content of an interactive control, attach a label so the
-//! control gets one:
-//!
-//! ```ignore
-//! use sigil::prelude::*;
-//!
-//! // Decorative — usually paired with a text sibling.
-//! icon("\u{2699}");
-//!
-//! // Standalone, semantic.
-//! icon("\u{2699}").label("Settings").tone(Tone::Primary);
-//! ```
-
 use crate::widget_dev::*;
 use sigil_kernel::TextContent;
 use sigil_style::Tone;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
-/// Glyph text-colour atom: step 11 of the current tone's scale.
-///
-/// Applied to the inner text node so the glyph visually reflects the
-/// widget's tone. Without this the text node defaults to
-/// `theme.on_surface` (dark gray on light theme, near-invisible on the
-/// test harness's black clear-colour background).
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
-/// Builder returned by [`icon`].
 pub struct IconBuilder {
     glyph: TextContent,
     tone: Tone,
@@ -49,15 +15,12 @@ pub struct IconBuilder {
     layout_overrides: LayoutOverrides,
 }
 
-/// Create a glyph icon.
 #[must_use]
 pub fn icon(glyph: impl Into<TextContent>) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
 impl IconBuilder {
-    /// Construct an icon builder defaulting to neutral tone +
-    /// `Size::Default` (20 px square).
     #[must_use]
     pub fn new(glyph: impl Into<TextContent>) -> Self {
         Self {
@@ -70,23 +33,18 @@ impl IconBuilder {
         }
     }
 
-    /// Set the semantic tone — drives the foreground color via
-    /// [`Tone::scale_role`] step 11.
     #[must_use]
     pub const fn tone(mut self, tone: Tone) -> Self {
         self.tone = tone;
         self
     }
 
-    /// Set a semantic theme-resolved size preset.
     #[must_use]
     pub const fn size(mut self, size: Size) -> Self {
         self.size = size;
         self
     }
 
-    /// Attach an accessible label — promotes the icon's role to
-    /// `Image` and adds the label for screen readers.
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
@@ -94,10 +52,6 @@ impl IconBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        // Icon extents are decoupled from `theme.control_height` —
-        // control-height tokens are hit-target sized (24/32/44) and
-        // would make `Compact` larger than `Default`. Icon-specific
-        // sizes follow a monotonic 16/20/24 ladder.
         let extent = match self.size {
             Size::Compact => 16.0,
             Size::Default => 20.0,
@@ -112,13 +66,6 @@ impl IconBuilder {
             .label
             .as_ref()
             .map_or(Role::GenericContainer, |_| Role::Image);
-        // The glyph text child is always purely visual — the
-        // accessible name lives on the container's `Role::Image +
-        // label` for semantic icons, or the icon is decorative and
-        // the container's `GenericContainer + no name` hides it. The
-        // glyph itself is hidden from hit-test and pointer routing so
-        // it does not leak into the a11y tree as a phantom label
-        // sibling (adversarial review 2026-05-21).
         let mut container_node = container()
             .role(role)
             .layout(self.layout_overrides.apply(icon_layout(extent)))

@@ -1,7 +1,3 @@
-//! GPU menus: popup [`menu`] and strip [`menu_bar`].
-//!
-//! Native OS bars live on the desktop host: `sigil::menu::set_menu_bar`.
-
 mod bar;
 mod builder;
 
