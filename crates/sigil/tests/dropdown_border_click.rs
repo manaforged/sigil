@@ -388,8 +388,8 @@ fn compact_dropdown_keeps_its_label_and_popup_anchor() {
             .origin
             .y;
         assert!(
-            (popup_y - 28.0).abs() < f32::EPSILON,
-            "compact popup must anchor at y=28; got {popup_y}",
+            (popup_y - 32.0).abs() < f32::EPSILON,
+            "compact popup must anchor 4px below the 28px trigger; got {popup_y}",
         );
     });
 }

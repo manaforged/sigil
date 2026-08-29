@@ -362,6 +362,20 @@ fn dropdown_options() -> Vec<String> {
 }
 
 #[test]
+fn dropdown_open() {
+    let img = render_widget_to_png(
+        |cx| {
+            let sel = signal(0_usize);
+            cx.add(dropdown(sel, dropdown_options()))
+        },
+        InteractionMode::Clicked,
+        [212, 160],
+        (90.0, 22.0),
+    );
+    check("dropdown_open", img);
+}
+
+#[test]
 fn dropdown_default() {
     let img = render_widget_to_png(
         |cx| {

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use sigil_kernel::{NodeBuilder, Role, container, text};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use sigil_style::{NodeStyleExt, StyleAtom};
+use sigil_style::{NodeStyleExt, Px, StyleAtom};
 
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
@@ -11,9 +11,17 @@ pub(super) const TRIGGER_HEIGHT: f32 = 32.0;
 pub(super) const OPTION_HEIGHT: f32 = 28.0;
 pub(super) const POPUP_MAX_VISIBLE: usize = 6;
 
-pub(super) static SURFACE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
 pub(super) static SURFACE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
 pub(super) static OPTION_ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static OPTION_REST: &[StyleAtom] = &[];
+static POPUP: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef("field"),
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderToneStep(6),
+];
+
+const POPUP_PAD: f32 = 4.0;
+const POPUP_GAP: f32 = 4.0;
 
 #[derive(Clone, Copy)]
 pub(super) struct OptionCtx {
@@ -52,18 +60,20 @@ pub(super) fn build_popup(
     )]
     let popup_h = (n.min(POPUP_MAX_VISIBLE) as f32) * OPTION_HEIGHT;
 
+    let frame_h = 2.0f32.mul_add(POPUP_PAD, popup_h) + 2.0;
     let popup = container()
         .role(Role::ListBox)
         .with(sigil_kernel::TopLayer)
         .layout(
-            sized(LayoutStyle::flex_column(), width, popup_h)
+            sized(LayoutStyle::flex_column(), width, frame_h)
                 .position(Position::Absolute)
-                .inset_top(trigger_height)
-                .inset_left(0.0),
+                .inset_top(trigger_height + POPUP_GAP)
+                .inset_left(0.0)
+                .padding(POPUP_PAD),
         )
         .class("rounded-md")
         .class("shadow-lg")
-        .class(SURFACE_HOVER);
+        .class(POPUP);
 
     let item_ctx = OptionCtx {
         selected,
@@ -119,6 +129,7 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChang
                 .padding(8.0)
                 .overflow_x(Overflow::Hidden),
         )
+        .class("rounded-sm")
         .style_reactive(move || option_atoms(idx, ctx.selected.get(), ctx.cursor.get()))
         .pointer_up(move |ev| {
             if ev.is_captured() {
@@ -148,6 +159,6 @@ pub(super) fn option_atoms(idx: usize, selected: usize, cursor: usize) -> &'stat
     } else if idx == cursor {
         SURFACE_HOVER
     } else {
-        SURFACE
+        OPTION_REST
     }
 }

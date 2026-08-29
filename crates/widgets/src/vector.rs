@@ -306,8 +306,10 @@ impl PathNode {
             let mut paint = Paint::default();
             paint.set_color(to_ts_color(color));
             paint.anti_alias = true;
+            // `stroke_path` widens in path coordinates and the transform
+            // scales the outline, so the width must stay in path units.
             let stroke = Stroke {
-                width: width * scale,
+                width,
                 ..Stroke::default()
             };
             pixmap.stroke_path(&path, &paint, &stroke, transform, None);

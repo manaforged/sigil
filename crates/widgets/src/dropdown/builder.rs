@@ -312,13 +312,9 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
 
 fn trigger_chevron() -> impl IntoNode {
     path(16, 16)
-        .move_to(3.5, 5.4)
-        .line_to(4.6, 4.3)
-        .line_to(8.0, 7.7)
-        .line_to(11.4, 4.3)
-        .line_to(12.5, 5.4)
-        .line_to(8.0, 9.9)
-        .close()
-        .fill(tone_solid(Tone::Neutral))
+        .move_to(4.5, 6.0)
+        .line_to(8.0, 9.5)
+        .line_to(11.5, 6.0)
+        .stroke(tone_solid(Tone::Neutral), 1.6)
         .fit_size(16.0)
 }

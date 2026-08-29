@@ -62,6 +62,9 @@ pub enum InteractionMode {
     Hover,
     /// Pointer is down inside the widget (active press).
     Pressed,
+    /// Full click — pointer down then up — for widgets that act on
+    /// release (dropdown open, toggle flip).
+    Clicked,
     /// Keyboard focus on the widget.
     Focused,
     /// Widget disabled (the widget builder must own this — harness skips events).
@@ -106,6 +109,7 @@ impl InteractionMode {
             Self::Default => "default",
             Self::Hover | Self::HoverAfterFrames { .. } => "hover",
             Self::Pressed | Self::PressedAfterFrames { .. } => "pressed",
+            Self::Clicked => "clicked",
             Self::Focused | Self::FocusedAfterFrames { .. } => "focused",
             Self::Disabled => "disabled",
         }
@@ -575,6 +579,11 @@ fn drive_state(
             router.route(cx, layout, pointer_move(hit.0, hit.1));
             router.route(cx, layout, pointer_down(hit.0, hit.1));
         }
+        InteractionMode::Clicked => {
+            router.route(cx, layout, pointer_move(hit.0, hit.1));
+            router.route(cx, layout, pointer_down(hit.0, hit.1));
+            router.route(cx, layout, pointer_up(hit.0, hit.1));
+        }
         InteractionMode::Focused => {
             router.set_focus(cx, Some(focus_target));
         }
@@ -640,6 +649,18 @@ fn pointer_down(x: f32, y: f32) -> ShellEvent {
         button: Some(MouseButton::Left),
         phase: PointerPhase::Down,
         buttons: MouseButtons::LEFT,
+        modifiers: ModifiersState::empty(),
+    }))
+}
+
+fn pointer_up(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(MouseButton::Left),
+        phase: PointerPhase::Up,
+        buttons: MouseButtons::empty(),
         modifiers: ModifiersState::empty(),
     }))
 }
