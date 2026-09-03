@@ -1,4 +1,4 @@
-use sigil_events::EventRouter;
+use sigil_events::{EventRouter, FocusIntent};
 #[cfg(feature = "scene")]
 use sigil_hal::Point;
 use sigil_hal::{LogicalSize, Rect, ShellEvent, Size};
@@ -25,9 +25,13 @@ pub struct Painted {
     pub fill: Option<Rgba8>,
     pub ink: Option<Rgba8>,
     pub weight: u16,
+    pub italic: bool,
     pub bare: bool,
     pub clip: Option<Rect>,
 }
+
+/// AccessKit projection of a retained Sigil tree.
+pub type AccessibilityTree = accesskit::TreeUpdate;
 
 pub struct Host {
     cx: Cx,
@@ -122,6 +126,21 @@ impl Host {
     pub fn repair_focus(&mut self, router: &mut EventRouter) {
         if self.root.is_some() {
             router.focus_if_needed(&mut self.cx, &self.layout);
+        }
+    }
+
+    /// Project the mounted tree, current layout bounds, and router focus.
+    #[must_use]
+    pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
+        sigil_a11y::tree(&self.cx, router.focus(), &|id| {
+            self.layout.result(id).map(|result| result.rect())
+        })
+    }
+
+    /// Move focus in a host-provided spatial direction.
+    pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {
+        if self.root.is_some() {
+            router.focus_intent(&mut self.cx, &self.layout, intent);
         }
     }
 

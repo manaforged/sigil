@@ -9,13 +9,14 @@ use sigil as _;
 
 pub mod audio;
 mod config;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "dialog")]
 pub mod dialog;
 mod embed;
 mod error;
+mod exit;
 #[cfg(feature = "desktop")]
 mod launch;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "menu")]
 pub mod menu;
 #[cfg(feature = "desktop")]
 pub mod open;
@@ -27,14 +28,15 @@ mod text_geometry;
 mod text_measure;
 #[cfg(feature = "desktop")]
 mod theme_file;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "tray")]
 pub mod tray;
 mod tree_root;
 
 pub use audio::Player;
 pub use config::{AppConfig, PanicPolicy};
-pub use embed::{Host, Painted};
+pub use embed::{AccessibilityTree, Host, Painted};
 pub use error::{AppResult, Error};
+pub use exit::{clear_exit, request_exit, take_exit};
 #[cfg(feature = "desktop")]
 pub use launch::launch;
 #[cfg(feature = "desktop")]

@@ -26,17 +26,17 @@ use sigil_renderer as _;
 #[cfg(test)]
 use wgpu as _;
 
-#[cfg(feature = "desktop")]
+#[cfg(feature = "dialog")]
 pub use sigil_app::dialog;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "menu")]
 pub use sigil_app::menu;
 #[cfg(feature = "desktop")]
 pub use sigil_app::open;
-#[cfg(feature = "desktop")]
+#[cfg(feature = "tray")]
 pub use sigil_app::tray;
 pub use sigil_app::{
-    Anchor, AppConfig, AppResult, Error, Host, Painted, PanicPolicy, Player, ResizeDirection,
-    Session, TreeRoot, WindowCommand, WindowOpts, audio, pty, root,
+    AccessibilityTree, Anchor, AppConfig, AppResult, Error, Host, Painted, PanicPolicy, Player,
+    ResizeDirection, Session, TreeRoot, WindowCommand, WindowOpts, audio, pty, request_exit, root,
 };
 #[cfg(any(feature = "desktop", feature = "render"))]
 pub use sigil_app::{
@@ -64,8 +64,9 @@ where
     sigil_tui::run(config, tree)
 }
 #[cfg(feature = "tui")]
-pub use sigil_tui::{Screen, every, work};
+pub use sigil_tui::{Screen, every, present, step, work};
 
+#[cfg(feature = "clipboard")]
 pub mod clipboard;
 pub mod input_glyphs;
 pub mod testing;
@@ -96,7 +97,10 @@ pub mod prelude {
         StyleVariant, Styleable, Styled, Theme, ThemeValue, Tone, Transitions, Typography, Visual,
         classes,
     };
-    pub use sigil_tasks::{OwnerHandle, Status, dispatch_to_owner, dispatcher, post, spawn};
+    pub use sigil_tasks::{
+        OwnerHandle, SignalWriter, Status, dispatch_to_owner, dispatcher, post, signal_writer,
+        spawn,
+    };
 
     pub use crate::clipboard::{copy, install, paste};
     pub use crate::interaction::InteractionState;
@@ -114,7 +118,7 @@ pub mod prelude {
     pub use crate::widgets::patterns;
     pub use crate::widgets::{
         ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, ClipError, Clipboard,
-        CodeEditBuilder, ColWidth, Combobox, CommandMenuBuilder, DRAG_THRESHOLD_PX,
+        CodeEditBuilder, ColAlign, ColWidth, Combobox, CommandMenuBuilder, DRAG_THRESHOLD_PX,
         DROP_TARGET_CLASS, Date, DateFieldBuilder, Density, DotBuilder, DragDropExt, DragState,
         DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
         HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder, InteractiveBuilder,
