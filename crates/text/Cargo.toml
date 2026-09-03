@@ -36,7 +36,7 @@ unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-bidi = "0.3"
 ahash = { workspace = true }
-harfrust = { version = "0.6", optional = true }
+harfrust = { version = "0.13", optional = true }
 image = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -46,7 +46,7 @@ zed-font-kit = { workspace = true }
 core-text = "21"
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 sigil-kernel = { path = "../kernel" }
 sigil-layout = { path = "../layout" }
 

@@ -111,6 +111,7 @@ fn try_request_device() -> Option<wgpu::Device> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;

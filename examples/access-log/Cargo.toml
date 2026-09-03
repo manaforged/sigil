@@ -7,6 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
+autobins = false
 description = "10M-line access-log viewer. Same book in Sigil and GPUI 0.2.2."
 
 [lib]

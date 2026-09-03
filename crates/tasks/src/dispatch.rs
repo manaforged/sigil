@@ -1,10 +1,47 @@
 use std::future::Future;
 
-use sigil_reactive::{Signal, signal};
+use sigil_reactive::{SendableSignal, Signal, signal};
 
 use crate::handle::OwnerHandle;
 use crate::runtime::{AsyncRuntime, DispatchMessage, Dispatcher, register_abort};
+use crate::schedule_error::ScheduleError;
 use crate::status::Status;
+
+#[derive(Clone)]
+pub struct SignalWriter<T: Send + 'static> {
+    dispatcher: Dispatcher,
+    owner: OwnerHandle,
+    signal: SendableSignal<T>,
+}
+
+impl<T: Send + 'static> SignalWriter<T> {
+    pub(crate) fn new(dispatcher: Dispatcher, owner: OwnerHandle, signal: Signal<T>) -> Self {
+        Self {
+            dispatcher,
+            owner,
+            signal: signal.into_sendable(),
+        }
+    }
+
+    pub fn set(&self, value: T) -> Result<(), ScheduleError> {
+        let signal = self.signal;
+        self.dispatcher.send(DispatchMessage {
+            owner: self.owner,
+            callback: Box::new(move || signal.into_signal().set_always(value)),
+        })
+    }
+
+    pub fn update<F>(&self, update: F) -> Result<(), ScheduleError>
+    where
+        F: FnOnce(&mut T) + Send + 'static,
+    {
+        let signal = self.signal;
+        self.dispatcher.send(DispatchMessage {
+            owner: self.owner,
+            callback: Box::new(move || signal.into_signal().update(update)),
+        })
+    }
+}
 
 pub fn dispatch_to_owner<F>(dispatcher: &Dispatcher, handle: OwnerHandle, f: F)
 where

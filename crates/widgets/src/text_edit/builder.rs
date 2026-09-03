@@ -24,6 +24,7 @@ pub struct TextEditBuilder {
     pub(super) submit: Option<TextChange>,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
+    pub(super) caret_position: Option<Signal<usize>>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -45,6 +46,7 @@ impl TextEditBuilder {
             submit: None,
             clipboard: None,
             caret_visible: None,
+            caret_position: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -60,6 +62,12 @@ impl TextEditBuilder {
 
     pub fn caret_visible(&mut self) -> Signal<bool> {
         *self.caret_visible.get_or_insert_with(|| signal(true))
+    }
+
+    #[must_use]
+    pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
+        self.caret_position = Some(position);
+        self
     }
 
     #[must_use]
@@ -106,8 +114,15 @@ impl TextEditBuilder {
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);
         let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
-        let runtime =
-            TextEditRuntime::new(value, disabled, change, submit, clipboard, caret_visible);
+        let runtime = TextEditRuntime::new(
+            value,
+            disabled,
+            change,
+            submit,
+            clipboard,
+            caret_visible,
+            self.caret_position,
+        );
 
         let user_overlay = style_accumulator.take_state_overlay();
         let frame_h = layout_overrides

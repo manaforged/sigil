@@ -166,7 +166,7 @@ fn pipeline(
             module: shader,
             entry_point: Some("vs_main"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[UNIT_QUAD_LAYOUT, INSTANCE_LAYOUT],
+            buffers: &[Some(UNIT_QUAD_LAYOUT), Some(INSTANCE_LAYOUT)],
         },
         fragment: Some(wgpu::FragmentState {
             module: shader,

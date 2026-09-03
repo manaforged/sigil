@@ -26,12 +26,12 @@ sigil-profile = { workspace = true }
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 # Threadpool primitive for the layout_ops benchmark only. Was a regular
 # dependency for the (deleted) ParallelMeasure substrate; demoted to
 # dev-only so it leaves the published dependency set.
 rayon = { workspace = true }
-taffy = "0.10"
+taffy = "0.14"
 
 [[bench]]
 name = "layout_ops"

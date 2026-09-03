@@ -10,7 +10,7 @@ description = "Frame profiler for Sigil — Chrome/Perfetto traces and phase sum
 readme.workspace = true
 keywords = ["gui", "profile", "perf"]
 categories = ["development-tools::profiling"]
-include = ["src/**", "/Cargo.toml"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lints]
 workspace = true

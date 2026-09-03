@@ -10,8 +10,8 @@ use sigil_profile as profile;
 use sigil_reactive::{Signal, signal};
 
 use super::sigil_runner::{
-    SceneCount, check_visible, finish, first_from_scroll, last_measure_count, list_output,
-    new_engine, paint, validate, verify_map, visible_row_count,
+    SceneCount, check_visible, finish, first_from_scroll, list_output, new_engine, paint,
+    peak_measure_count, validate, verify_map, visible_row_count,
 };
 
 use crate::{EquivalenceCheck, Surface, Workload, layout_void};
@@ -264,7 +264,7 @@ fn finish_table(
         samples_ns.len(),
         misses,
         u64::try_from(proof.visible).unwrap_or(0),
-        last_measure_count(),
+        peak_measure_count(),
     );
     verify.insert("scene_cmds_last".into(), proof.scene.draws);
     verify.insert("scene_glyphs_last".into(), proof.scene.glyphs);

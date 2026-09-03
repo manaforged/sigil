@@ -119,9 +119,11 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
+        | StyleAtom::FontItalic(_)
         | StyleAtom::FontFamily(_)
         | StyleAtom::LineHeight(_)
         | StyleAtom::LetterSpacing(_)
+        | StyleAtom::TabularNums(_)
         | StyleAtom::TextDecoration(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)
@@ -236,9 +238,11 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
+        StyleAtom::FontItalic(_) => ResolvedSlot::FontItalic,
         StyleAtom::FontFamily(_) => ResolvedSlot::FontFamily,
         StyleAtom::LineHeight(_) => ResolvedSlot::LineHeight,
         StyleAtom::LetterSpacing(_) => ResolvedSlot::LetterSpacing,
+        StyleAtom::TabularNums(_) => ResolvedSlot::TabularNums,
         StyleAtom::TextDecoration(_) => ResolvedSlot::TextDecoration,
         StyleAtom::OverflowX(_) => ResolvedSlot::OverflowX,
         StyleAtom::OverflowY(_) => ResolvedSlot::OverflowY,
@@ -289,9 +293,11 @@ enum ResolvedSlot {
     Opacity,
     FontSize,
     FontWeight,
+    FontItalic,
     FontFamily,
     LineHeight,
     LetterSpacing,
+    TabularNums,
     TextDecoration,
     OverflowX,
     OverflowY,

@@ -127,12 +127,14 @@ fn styled_font_size_and_line_height_change_metrics() {
         font_size: 12.0,
         line_height: TextLineHeight::Absolute(14.0),
         letter_spacing_em: 0.0,
+        tabular_nums: false,
         ..TextStyle::default()
     };
     let large = TextStyle {
         font_size: 24.0,
         line_height: TextLineHeight::Absolute(32.0),
         letter_spacing_em: 0.0,
+        tabular_nums: false,
         ..TextStyle::default()
     };
 
@@ -177,6 +179,7 @@ fn baseline_is_half_leading_plus_real_ascent() {
         font_size: FONT_SIZE,
         line_height: TextLineHeight::Absolute(LINE_HEIGHT),
         letter_spacing_em: 0.0,
+        tabular_nums: false,
         ..TextStyle::default()
     };
     let para = e.layout_paragraph_styled("A\ng", None, &style).unwrap();

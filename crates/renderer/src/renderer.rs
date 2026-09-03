@@ -259,6 +259,7 @@ impl Renderer for WgpuRenderer {
         let alpha_mode = select_alpha_mode(&caps.alpha_modes, self.transparent);
         let (width, height) = surface_extent(initial_size, ready.max_texture_dimension_2d());
         let config = wgpu::SurfaceConfiguration {
+            color_space: wgpu::SurfaceColorSpace::Srgb,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format,
             width,
@@ -294,7 +295,7 @@ impl Renderer for WgpuRenderer {
             return Ok(());
         };
         submit_clear(&ready.device, &ready.queue, &view, color);
-        frame.present();
+        ready.queue.present(frame);
         Ok(())
     }
 }

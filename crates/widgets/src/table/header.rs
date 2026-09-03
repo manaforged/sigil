@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use sigil_events::prelude::{Key, LogicalKey, MouseButton, NodeEventsExt, Shortcut};
 use sigil_kernel::{NodeBuilder, Role, container, text};
-use sigil_layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use sigil_reactive::{Signal, derived};
 use sigil_style::{Fill, NodeStyleExt, StateVariants};
 
@@ -11,7 +11,7 @@ use super::super::drag::{Axis, axis_drag};
 use super::super::interactive::interactive;
 use super::super::shared::label;
 use super::chrome::{ContextKind, TableChrome};
-use super::columns::{TableColumn, flex_cell};
+use super::columns::{CellSpec, ColAlign, TableColumn, flex_cell};
 use super::hscroll::HScroll;
 use super::select;
 use super::state::{SortDir, TableState};
@@ -32,7 +32,9 @@ fn resize_handle<Row: 'static>(
         .layout(
             LayoutStyle::block()
                 .fixed_size(RESIZE_HANDLE, height)
-                .shrink(0.0),
+                .position(Position::Absolute)
+                .inset_right(0.0)
+                .inset_top(0.0),
         );
     let widths = state.clone();
     axis_drag(
@@ -46,15 +48,26 @@ fn resize_handle<Row: 'static>(
     )
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct HeaderSpec {
+    pub height: f32,
+    pub select: bool,
+    pub pad_x: f32,
+}
+
 pub(super) fn header_row<Row: 'static>(
     state: &TableState<Row>,
-    height: f32,
+    spec: HeaderSpec,
     chrome: &TableChrome<Row>,
     hscroll: HScroll,
-    select: bool,
 ) -> NodeBuilder {
     let state = state.clone();
     let chrome = chrome.clone();
+    let HeaderSpec {
+        height,
+        select,
+        pad_x,
+    } = spec;
     let track = container()
         .layout(track_layout(height))
         .children_reactive(move || {
@@ -63,6 +76,7 @@ pub(super) fn header_row<Row: 'static>(
                 state: &state,
                 chrome: &chrome,
                 select,
+                pad_x,
             };
             let mut cells = Vec::new();
             if select {
@@ -78,18 +92,18 @@ pub(super) fn header_row<Row: 'static>(
     container()
         .role(Role::Row)
         .row_index(1)
-        .layout(header_layout(height))
-        .class("bg-surface border-b border-gray-6")
+        .layout(header_layout(height, pad_x))
+        .class("bg-surface-0 border-b border-border-strong")
         .child(hscroll.shifted(track))
 }
 
-fn header_layout(height: f32) -> LayoutStyle {
+fn header_layout(height: f32, pad_x: f32) -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
         .height(height)
         .shrink(0.0)
         .align_items(AlignItems::Center)
-        .padding_x(12.0)
+        .padding_x(pad_x)
 }
 
 fn track_layout(height: f32) -> LayoutStyle {
@@ -103,6 +117,7 @@ struct HeaderCtx<'a, Row: 'static> {
     state: &'a TableState<Row>,
     chrome: &'a TableChrome<Row>,
     select: bool,
+    pad_x: f32,
 }
 
 fn header_cell<Row: 'static>(
@@ -115,24 +130,38 @@ fn header_cell<Row: 'static>(
     let layout = ctx.state.column_layout().peek();
     let override_px = layout.widths.get(column.id()).copied();
     let id = column.id();
+    let title = label(column.title().to_owned())
+        .ellipsize()
+        .class("text-xs font-medium text-gray-11");
+    let title = if column.alignment() == ColAlign::End {
+        container()
+            .layout(
+                LayoutStyle::flex_row()
+                    .grow(1.0)
+                    .padding_x(ctx.pad_x)
+                    .justify_content(JustifyContent::End),
+            )
+            .child(title)
+    } else {
+        container()
+            .layout(LayoutStyle::block().grow(1.0).padding_x(ctx.pad_x))
+            .child(title)
+    };
     let cell = container()
         .role(Role::ColumnHeader)
         .label(column.title().to_owned())
         .column_index(def_index + 1 + usize::from(ctx.select))
         .hittable(true)
-        .layout(flex_cell(
-            column.col_width(),
+        .layout(flex_cell(CellSpec {
+            policy: column.col_width(),
             override_px,
             height,
-            false,
-            column.min_px(),
-        ))
-        .child(
-            label(column.title().to_owned())
-                .ellipsize()
-                .layout(LayoutStyle::block().grow(1.0).padding_x(8.0))
-                .class("text-xs font-medium text-gray-11"),
-        )
+            clip: false,
+            min_px: column.min_px(),
+            align: ColAlign::Start,
+            pad_x: ctx.pad_x,
+        }))
+        .child(title)
         .child(text(sort_indicator(ctx.state, id)).class("text-xs text-gray-11"))
         .child(resize_handle(ctx.state.clone(), id, height));
     if column.is_sortable() {

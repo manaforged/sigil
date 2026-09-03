@@ -47,7 +47,7 @@ pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + '
 type A11yAdapterEntry = (
     WinitWindowHandle,
     accesskit_winit::Adapter,
-    Arc<Mutex<Option<accesskit::TreeUpdate>>>,
+    Arc<a11y::Activation>,
 );
 
 pub struct WinitShell {

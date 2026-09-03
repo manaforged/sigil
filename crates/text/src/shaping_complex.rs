@@ -1,8 +1,12 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use harfrust::{
-    Direction, FontRef as HrFontRef, GlyphBuffer, Script as HrScript, ShaperData, ShaperInstance,
-    Tag, UnicodeBuffer, Variation, script as hr_script,
+    Direction, Feature, FontRef as HrFontRef, GlyphBuffer, Script as HrScript, ShapeOptions,
+    ShapePlan, ShaperInstance, Tag, UnicodeBuffer, Variation, script as hr_script,
 };
 use skrifa::FontRef;
 use skrifa::MetadataProvider;
@@ -16,14 +20,27 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
     if segment.text.is_empty() {
         return Some(GlyphRun::empty());
     }
+    if let Some(run) = crate::numeric_run::shape(segment, style, font, shape_full) {
+        return Some(run);
+    }
+    shape_full(segment, style, font)
+}
+
+pub(crate) fn shape_full(
+    segment: &TextSegment<'_>,
+    style: &Style,
+    font: &Font,
+) -> Option<GlyphRun> {
+    if segment.text.is_empty() {
+        return Some(GlyphRun::empty());
+    }
     let bytes = font.bytes_arc();
     let hr_font = HrFontRef::from_index(bytes.as_slice(), font.face_index()).ok()?;
-    let data = ShaperData::new(&hr_font);
     let instance = shaper_instance(&hr_font, style, font);
-    let hr_shaper = data
+    let hr_shaper = font
+        .tables(&hr_font)
         .shaper(&hr_font)
         .instance(Some(&instance))
-        .point_size(Some(style.size_px))
         .build();
 
     let script = classify_segment_script(segment);
@@ -40,7 +57,19 @@ pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Op
     buffer.set_script(hr_script);
 
     let features = build_features(style);
-    let glyphs_buf = hr_shaper.shape(buffer, &features);
+    let key = Key {
+        id: font.id(),
+        index: font.face_index(),
+        script: hr_script,
+        direction,
+        features: features.iter().map(|feature| feature.tag).collect(),
+    };
+    let plan = plan(&hr_shaper, &key, &features);
+    let options = ShapeOptions::new()
+        .plan(Some(&plan))
+        .point_size(Some(style.size_px))
+        .features(&features);
+    let glyphs_buf = hr_shaper.shape(buffer, options);
     if glyphs_buf.is_empty() {
         return None;
     }
@@ -68,6 +97,36 @@ fn shaper_instance(font_ref: &HrFontRef<'_>, style: &Style, font: &Font) -> Shap
             value: *value,
         }),
     )
+}
+
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct Key {
+    id: u64,
+    index: u32,
+    script: HrScript,
+    direction: Direction,
+    features: SmallVec<[Tag; 4]>,
+}
+
+thread_local! {
+    static PLANS: RefCell<HashMap<Key, Rc<ShapePlan>>> = RefCell::new(HashMap::new());
+}
+
+fn plan(shaper: &harfrust::Shaper<'_>, key: &Key, features: &[Feature]) -> Rc<ShapePlan> {
+    PLANS.with_borrow_mut(|plans| {
+        if let Some(plan) = plans.get(key) {
+            return Rc::clone(plan);
+        }
+        let plan = Rc::new(ShapePlan::new(
+            shaper,
+            key.direction,
+            Some(key.script),
+            None,
+            features,
+        ));
+        plans.insert(key.clone(), Rc::clone(&plan));
+        plan
+    })
 }
 
 const fn map_script(script: Script) -> HrScript {

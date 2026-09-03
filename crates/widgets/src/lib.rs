@@ -105,8 +105,8 @@ pub use slider::{Orientation, SliderBuilder, slider};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
 pub use surface::surface;
 pub use table::{
-    ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey, TableBuilder,
-    TableColumn, TableState, table,
+    ColAlign, ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey,
+    TableBuilder, TableColumn, TableState, table,
 };
 pub use tabs::{TabsBuilder, tabs};
 pub use terminal::terminal;

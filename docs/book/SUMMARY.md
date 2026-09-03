@@ -13,6 +13,7 @@
 - [Profiling](05-profile.md)
 - [The terminal host](06-terminal.md)
 - [The application host](07-application.md)
+- [Component gallery](07-component-gallery.md)
 
 # Architecture
 

@@ -46,6 +46,7 @@ fn adapter_available() -> bool {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .is_ok()

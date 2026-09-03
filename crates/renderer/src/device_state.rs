@@ -6,6 +6,7 @@ use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::LayerPool;
+use crate::raster_paint::RasterTextPipeline;
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
 use crate::slug::SlugTextPipeline;
@@ -26,6 +27,7 @@ pub(crate) struct ReadyState {
     pub(crate) fill_pipelines: Vec<FillPipeline>,
     pub(crate) shadow_pipelines: Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: Vec<SlugTextPipeline>,
+    pub(crate) raster_pipelines: Vec<RasterTextPipeline>,
     pub(crate) sprite_pipelines: Vec<SpritePipeline>,
     pub(crate) decoration_pipelines: Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
@@ -107,6 +109,7 @@ impl DeviceState {
                         fill_pipelines: Vec::new(),
                         shadow_pipelines: Vec::new(),
                         slug_pipelines: Vec::new(),
+                        raster_pipelines: Vec::new(),
                         sprite_pipelines: Vec::new(),
                         decoration_pipelines: Vec::new(),
                         layer_pipelines: Vec::new(),
@@ -133,6 +136,7 @@ fn request_adapter_and_device(
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: surface,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
     {
@@ -142,6 +146,7 @@ fn request_adapter_and_device(
                 power_preference: wgpu::PowerPreference::LowPower,
                 compatible_surface: surface,
                 force_fallback_adapter: true,
+                apply_limit_buckets: false,
             })
             .block_on()
             .map_err(|_| RendererError::NoAdapter)?,

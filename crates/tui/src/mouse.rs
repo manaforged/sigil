@@ -8,6 +8,43 @@ use sigil_hal::{
 const NOTCH: f32 = 3.0;
 
 #[must_use]
+pub fn cell_point(col: u16, row: u16) -> Point {
+    let cell = sigil_app::Host::CELL;
+    Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
+}
+
+#[must_use]
+pub fn pointer(phase: PointerPhase, col: u16, row: u16) -> ShellEvent {
+    let at = cell_point(col, row);
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: at,
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: Some(MouseButton::Left),
+        buttons: if matches!(phase, PointerPhase::Up) {
+            MouseButtons::empty()
+        } else {
+            MouseButtons::LEFT
+        },
+        modifiers: ModifiersState::empty(),
+        phase,
+    }))
+}
+
+#[must_use]
+pub fn click(col: u16, row: u16) -> [ShellEvent; 2] {
+    [
+        pointer(PointerPhase::Down, col, row),
+        pointer(PointerPhase::Up, col, row),
+    ]
+}
+
+#[must_use]
+pub fn wheel(col: u16, row: u16, lines: f32) -> ShellEvent {
+    scroll(cell_point(col, row), 0.0, lines, ModifiersState::empty())
+}
+
+#[must_use]
 pub fn map_mouse(event: &MouseEvent, cell: f32, last: &mut Point) -> Option<ShellEvent> {
     let at = Point::new(
         (f32::from(event.column) + 0.5) * cell,
@@ -60,6 +97,10 @@ const fn press(button: TermButton) -> MouseButton {
         TermButton::Middle => MouseButton::Middle,
     }
 }
+
+#[cfg(test)]
+#[path = "mouse_tests.rs"]
+mod tests;
 
 const fn bit(button: MouseButton) -> MouseButtons {
     match button {

@@ -18,7 +18,6 @@ pub(crate) struct MatchSegment {
 
 pub(crate) struct MatchArm {
     pub(crate) pat: syn::Pat,
-    pub(crate) guard: Option<(Token![if], Box<Expr>)>,
     pub(crate) atoms: Vec<TokenStream>,
 }
 
@@ -66,7 +65,6 @@ fn parse_match_segment(expr_match: ExprMatch) -> syn::Result<Segment> {
         };
         arms.push(MatchArm {
             pat: arm.pat,
-            guard: arm.guard,
             atoms: parse_class_literal(&value)?,
         });
     }
@@ -196,6 +194,11 @@ fn flex_token(token: &str) -> Option<TokenStream> {
 }
 
 fn tracking_token(token: &str) -> Option<TokenStream> {
+    if token == "tabular-nums" {
+        return Some(quote!(::sigil::__private::style::StyleAtom::TabularNums(
+            true
+        )));
+    }
     let thousandths: i16 = match token {
         "tracking-tighter" => -50,
         "tracking-tight" => -25,

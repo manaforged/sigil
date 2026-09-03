@@ -1,5 +1,10 @@
 //! Sigil live tape: 1M lines, visible band ticks at 60 Hz, rows kept.
 
+#![allow(
+    unused_crate_dependencies,
+    reason = "target does not use every package dependency"
+)]
+
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -153,5 +158,5 @@ fn tape_row(index: usize, line: &AccessLine, book: Signal<Rc<Vec<AccessLine>>>) 
 }
 
 #[cfg(test)]
-#[path = "../sigil_tests.rs"]
+#[path = "sigil_tests.rs"]
 mod tests;

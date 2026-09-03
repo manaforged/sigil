@@ -12,6 +12,7 @@ pub enum RendererError {
     InvalidViewProj,
     InvalidViewport,
     Layer(crate::layer_pool::LayerError),
+    Software(String),
 }
 
 impl fmt::Display for RendererError {
@@ -26,6 +27,7 @@ impl fmt::Display for RendererError {
             Self::SurfaceValidation => {
                 f.write_str("surface acquisition failed with a validation error")
             }
+            Self::Software(detail) => write!(f, "software renderer failed: {detail}"),
             Self::NotInitialized => {
                 f.write_str("renderer has not yet picked a GPU device; call create_surface first")
             }
@@ -59,7 +61,8 @@ impl core::error::Error for RendererError {
             | Self::NotInitialized
             | Self::InvalidViewProj
             | Self::InvalidViewport
-            | Self::Layer(_) => None,
+            | Self::Layer(_)
+            | Self::Software(_) => None,
         }
     }
 }

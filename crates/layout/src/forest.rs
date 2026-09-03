@@ -581,21 +581,43 @@ fn text_memo_content(text: &LayoutText) -> u64 {
     hasher.finish()
 }
 
+const TEXT_MEMO_LIVE: usize = 8_192;
+
+#[derive(Default)]
+struct TextMemo {
+    live: ahash::AHashMap<TextMemoKey, crate::style_data::Size<f32>>,
+    stale: ahash::AHashMap<TextMemoKey, crate::style_data::Size<f32>>,
+}
+
+impl TextMemo {
+    fn get(&mut self, key: TextMemoKey) -> Option<crate::style_data::Size<f32>> {
+        if let Some(hit) = self.live.get(&key) {
+            return Some(*hit);
+        }
+        let hit = self.stale.remove(&key)?;
+        self.live.insert(key, hit);
+        Some(hit)
+    }
+
+    fn store(&mut self, key: TextMemoKey, size: crate::style_data::Size<f32>) {
+        if self.live.len() >= TEXT_MEMO_LIVE {
+            self.stale = std::mem::take(&mut self.live);
+        }
+        self.live.insert(key, size);
+    }
+
+    fn clear(&mut self) {
+        self.live.clear();
+        self.stale.clear();
+    }
+}
+
 fn text_memo_get(key: TextMemoKey) -> Option<crate::style_data::Size<f32>> {
-    TEXT_MEMO.with(|cell| {
-        let memo = cell.borrow();
-        memo.get(&key).copied()
-    })
+    TEXT_MEMO.with(|cell| cell.borrow_mut().get(key))
 }
 
 fn text_memo_store(key: TextMemoKey, size: crate::style_data::Size<f32>) {
-    TEXT_MEMO.with(|cell| {
-        let mut memo = cell.borrow_mut();
-        if memo.len() > 8_192 {
-            memo.clear();
-        }
-        memo.insert(key, size);
-    });
+    TEXT_MEMO.with(|cell| cell.borrow_mut().store(key, size));
 }
 
 pub(crate) fn text_memo_clear() {
@@ -603,9 +625,7 @@ pub(crate) fn text_memo_clear() {
 }
 
 thread_local! {
-    static TEXT_MEMO: std::cell::RefCell<
-        ahash::AHashMap<TextMemoKey, crate::style_data::Size<f32>>,
-    > = std::cell::RefCell::new(ahash::AHashMap::new());
+    static TEXT_MEMO: std::cell::RefCell<TextMemo> = std::cell::RefCell::new(TextMemo::default());
 }
 
 const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> sigil_hal::Dim {

@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use crate::font_family::FontFamily;
+use crate::shaper::{Font, Script};
 
 #[derive(Clone)]
 pub(crate) struct SystemFonts {
@@ -15,6 +16,21 @@ pub(crate) fn load() -> SystemFonts {
     SYSTEM_FONTS.get_or_init(native::load).clone()
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn script_fallbacks(script: Script) -> Vec<Font> {
+    use std::collections::HashMap;
+    use std::sync::Mutex;
+    static SCRIPTS: Mutex<Option<HashMap<Script, Vec<Font>>>> = Mutex::new(None);
+    let mut guard = SCRIPTS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    guard
+        .get_or_insert_with(HashMap::new)
+        .entry(script)
+        .or_insert_with(|| native::script_faces(script))
+        .clone()
+}
+
 #[cfg(target_arch = "wasm32")]
 pub(crate) const fn load() -> SystemFonts {
     SystemFonts {
@@ -22,6 +38,11 @@ pub(crate) const fn load() -> SystemFonts {
         mono: None,
         serif: None,
     }
+}
+
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn script_fallbacks(_: Script) -> Vec<Font> {
+    Vec::new()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -44,7 +65,7 @@ mod native {
 
     use super::SystemFonts;
     use crate::font_family::FontFamily;
-    use crate::shaper::Font;
+    use crate::shaper::{Font, Script};
 
     pub(super) fn load() -> SystemFonts {
         let source = SystemSource::new();
@@ -64,6 +85,18 @@ mod native {
             mono,
             serif,
         }
+    }
+
+    pub(super) fn script_faces(script: Script) -> Vec<Font> {
+        let source = SystemSource::new();
+        let mut cache = FontCache::default();
+        crate::script_fonts::candidates(script)
+            .iter()
+            .filter_map(|name| {
+                let family = [FamilyName::Title((*name).to_owned())];
+                load_family(&source, &family, &mut cache).map(|family| family.select(400).clone())
+            })
+            .collect()
     }
 
     fn load_family(

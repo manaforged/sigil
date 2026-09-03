@@ -86,6 +86,7 @@ fn try_init_gpu() -> Option<Gpu> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;

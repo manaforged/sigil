@@ -2,8 +2,8 @@
 //!
 //! `FiraSans` (the bundled sans primary) has no Hebrew coverage; these
 //! tests prove a mixed Latin+Hebrew paragraph resolves the Hebrew run
-//! against a separately-registered face instead of rendering
-//! `.notdef` tofu, and that the renderer-facing invariant
+//! against a registered face (or the system script fallback) instead of
+//! rendering `.notdef` tofu, and that the renderer-facing invariant
 //! (`Paragraph::for_each_font` enumerating every face a glyph
 //! actually references) holds.
 
@@ -22,17 +22,17 @@ fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextConfig::default())
 }
 
+/// Ethiopic "ሰላም" — no bundled face and no system script table cover it.
+const ETHIOPIC_WORD: &str = "\u{1230}\u{120B}\u{121D}";
+
 #[test]
-fn without_a_fallback_face_hebrew_renders_as_tofu() {
-    // Control: proves the scenario below is exercising a real
-    // codepath (FiraSans genuinely lacks Hebrew), not masking an
-    // already-covering primary face.
+fn without_any_fallback_face_a_script_renders_as_tofu() {
     let e = engine();
-    let p = e.layout_paragraph(HEBREW_WORD, None).unwrap();
+    let p = e.layout_paragraph(ETHIOPIC_WORD, None).unwrap();
     let glyphs = p.rendered_glyphs();
     assert!(
         glyphs.iter().any(|g| g.glyph_id == 0),
-        "FiraSans has no Hebrew coverage; without a fallback face this must be .notdef tofu",
+        "no bundled or system face covers Ethiopic; this must be .notdef tofu",
     );
 }
 

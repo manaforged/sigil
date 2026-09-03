@@ -18,6 +18,7 @@ members = [
     "crates/layout",
     "crates/reactive",
     "crates/renderer",
+    "crates/ide-core",
     "crates/shell",
     "crates/style",
     "crates/style-macros",
@@ -25,7 +26,8 @@ members = [
     "crates/profile",
     "crates/tui",
     "crates/bench-parity",
-    "crates/bench-parity-gpui",
+    "crates/bench-gpui",
+    "crates/bench-spec",
     "examples/hello-counter",
     "examples/hello-host",
     "examples/hello-tui",
@@ -46,6 +48,7 @@ members = [
     "examples/password-generator",
     "examples/csv-viewer",
     "examples/data-table",
+    "examples/ledger",
     "examples/access-log",
     "examples/todo",
     "examples/regex-tester",
@@ -164,24 +167,29 @@ redundant_clone = "deny"
 
 [workspace.dependencies]
 winit = "0.30"
-wgpu = "29"
-pollster = "0.4"
+wgpu = "30"
+pollster = "1"
 raw-window-handle = "0.6"
+softbuffer = "0.4"
+tiny-skia = "0.12"
 bytemuck = { version = "1", features = ["derive"] }
 half = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
-skrifa = "0.42"
+skrifa = "0.46"
+# CPU mask rasterizer for the hinted small-text path. Already in-graph
+# transitively (cosmic-text -> swash -> zeno), zero-dep crate.
+zeno = "0.3"
 # Native desktop font discovery and CSS weight matching. This is Zed's
 # cross-platform CoreText / DirectWrite / Fontconfig fork of font-kit.
 zed-font-kit = "0.14.1-zed"
 smallvec = "1"
 rayon = "1.10"
-phf = { version = "0.13", features = ["macros"] }
+phf = { version = "0.14", features = ["macros"] }
 strsim = "0.11"
 slotmap = "1"
 ahash = "0.8"
 tracing = "0.1"
-accesskit = "0.24"
+accesskit = "0.25"
 # W5-A11Y (DR-050 §1) — the winit-side platform adapter half of the
 # AccessKit bridge. `tokio` (not the default `async-io`) matches DR-008's
 # zbus-panic workaround already assumed for the bare `accesskit` dep on
@@ -198,7 +206,7 @@ accesskit = "0.24"
 # matches the `accesskit = "0.24"` line above per accesskit_winit's own
 # dependency manifest (verified against the vendored crate source, not
 # web-fetched).
-accesskit_winit = { version = "0.32", default-features = false, features = [
+accesskit_winit = { version = "0.34", default-features = false, features = [
     "accesskit_unix",
     "tokio",
     "rwh_06",
@@ -214,7 +222,7 @@ notify = { version = "8", default-features = false, features = ["macos_fsevent"]
 ignore = "0.4"
 crossbeam-channel = "0.5"
 # I-T7 settings: parse-only TOML (serde feature for typed deserialize).
-toml = { version = "0.9", default-features = false, features = ["parse", "serde"] }
+toml = { version = "1", default-features = false, features = ["parse", "serde"] }
 tempfile = "3"
 # F1 (dogfood-v2): system clipboard. `arboard` is the de-facto cross-platform
 # Rust crate (Win32, X11, Wayland, AppKit). Default features include the
@@ -253,7 +261,7 @@ sigil-style = { path = "crates/style", version = "0.1.0-alpha.1" }
 sigil-style-macros = { path = "crates/style-macros", version = "0.1.0-alpha.1" }
 sigil-icons = { path = "crates/icons", version = "0.1.0-alpha.1" }
 sigil-text = { path = "crates/text", version = "0.1.0-alpha.1" }
-usvg = { version = "0.47", default-features = false }
+usvg = { version = "0.48", default-features = false }
 lyon_geom = { version = "1.0" }
 
 [profile.release]

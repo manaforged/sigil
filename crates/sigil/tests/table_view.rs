@@ -1002,14 +1002,14 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             .get(root)
             .and_then(|node| node.children().first().copied())
             .expect("wrapper holds the grid");
-        // Content box: 800 - 2*10 padding - 2*1 border = 778. Rows carry
-        // 2*12 padding and body cells 2*8 (base 56 with the 40px stub
-        // measure), so the name column is
-        // 56 + 1.4/2.2 * (778 - 24 - 96 - 112) ≈ 403.5. The
+        // Content box: 800 - 2*10 padding - 2*1 border = 778. Rows and body
+        // cells both carry the density pad_x of 12 per side (base 64 with the
+        // 40px stub measure), so the name column is
+        // 64 + 1.4/2.2 * (778 - 24 - 104 - 120) ≈ 401.3. The
         // floor-collapse regression rendered it at 48.
         let name_w = body_cell_x(&cx, &layout, grid, 1) - body_cell_x(&cx, &layout, grid, 0);
         assert!(
-            (name_w - 403.5).abs() < 1.0,
+            (name_w - 401.3).abs() < 1.0,
             "Fraction(1.4) must stretch into the leftover by grow ratio, not sit at its 48px floor: {name_w}",
         );
         assert_eq!(

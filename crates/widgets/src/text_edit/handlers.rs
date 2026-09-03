@@ -37,9 +37,13 @@ impl TextEditRuntime {
         submit: TextChange,
         clipboard: Rc<dyn Clipboard>,
         caret_visible: Signal<bool>,
+        caret_position: Option<Signal<usize>>,
     ) -> Self {
-        let edit = TextEdit::new(value.peek());
-        let caret = signal(edit.caret());
+        let buffer = value.peek();
+        let requested = caret_position.map_or(buffer.len(), Signal::peek);
+        let edit = TextEdit::new_at(buffer, requested);
+        let caret = caret_position.unwrap_or_else(|| signal(edit.caret()));
+        caret.set(edit.caret());
         let selection = signal(edit.selection());
         Self {
             value,

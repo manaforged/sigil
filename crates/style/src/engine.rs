@@ -123,9 +123,11 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::GridRows(_)
             | StyleAtom::FontSize(_)
             | StyleAtom::FontWeight(_)
+            | StyleAtom::FontItalic(_)
             | StyleAtom::FontFamily(_)
             | StyleAtom::LineHeight(_)
             | StyleAtom::LetterSpacing(_)
+            | StyleAtom::TabularNums(_)
             | StyleAtom::TextDecoration(_)
             | StyleAtom::OverflowX(_)
             | StyleAtom::OverflowY(_)
@@ -215,10 +217,12 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
     match atom {
         StyleAtom::FontSize(px) => text.font_size = f32::from(px.0).max(1.0),
         StyleAtom::FontWeight(weight) => text.font_weight = weight.clamp(1, 1000),
+        StyleAtom::FontItalic(italic) => text.italic = italic,
         StyleAtom::FontFamily(name) => name.clone_into(&mut text.font_family),
         StyleAtom::LineHeight(px) => {
             text.line_height = TextLineHeight::Absolute(f32::from(px.0).max(1.0));
         }
+        StyleAtom::TabularNums(on) => text.tabular_nums = on,
         StyleAtom::LetterSpacing(thousandths) => {
             text.letter_spacing_em = f32::from(thousandths) / 1000.0;
         }

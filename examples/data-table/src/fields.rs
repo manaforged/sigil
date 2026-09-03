@@ -25,7 +25,7 @@ pub struct Field {
 }
 
 /// Discriminant for [`cell_text`].
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FieldKind {
     Id,
     Symbol,

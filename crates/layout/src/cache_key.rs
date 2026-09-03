@@ -114,6 +114,19 @@ pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &AHashSet<DefaultKey>) -> 
     hasher.finish()
 }
 
+pub(crate) fn reactive_seed_signature(node: &Node) -> u64 {
+    let mut hasher = AHasher::default();
+    hash_unversioned_layout(node, &mut hasher);
+    if let Some(binding) = node.get_extension::<StyleBinding>() {
+        for reactive in binding.reactive_channels() {
+            for atom in reactive {
+                atom.hash(&mut hasher);
+            }
+        }
+    }
+    hasher.finish()
+}
+
 pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool {
     let hidden = node.get_extension::<StyleBinding>().is_some_and(|binding| {
         for reactive in binding.reactive_channels() {

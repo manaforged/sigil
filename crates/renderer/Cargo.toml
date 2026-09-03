@@ -18,6 +18,10 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 # is a `text` block specifically to avoid this path.
 
 [features]
+default = ["cpu"]
+# Software renderer: tiny-skia rasterization presented through softbuffer.
+# Picked at surface creation when no GPU adapter is available.
+cpu = ["dep:softbuffer", "dep:tiny-skia"]
 # Enables direct access to pipeline internals for criterion benches.
 # Not a default feature; activated by bench targets via `cargo bench`.
 bench = []
@@ -43,8 +47,11 @@ pollster = { workspace = true }
 raw-window-handle = { workspace = true }
 bytemuck = { workspace = true }
 skrifa = { workspace = true }
+zeno = { workspace = true }
 smallvec = { workspace = true }
 half = { workspace = true }
+softbuffer = { workspace = true, optional = true }
+tiny-skia = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
@@ -53,7 +60,7 @@ half = { workspace = true }
 windows-core = { version = "0.62", default-features = false, features = ["std"] }
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 image = { workspace = true }
 proptest = { workspace = true }
 

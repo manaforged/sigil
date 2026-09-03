@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 description = "First-party Sigil widgets — host-agnostic builders (no window, no GPU)."
-readme.workspace = true
+readme = "README.md"
 keywords = ["gui", "widgets", "ui"]
 categories = ["gui"]
 include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
@@ -24,7 +24,7 @@ sigil-reactive = { workspace = true }
 sigil-style = { workspace = true }
 sigil-profile = { workspace = true }
 tracing = { workspace = true }
-tiny-skia = "0.11"
+tiny-skia = "0.12"
 image = { workspace = true, optional = true }
 
 [features]

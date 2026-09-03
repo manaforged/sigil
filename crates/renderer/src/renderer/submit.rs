@@ -117,6 +117,7 @@ pub(super) fn walk_screen(
         fill_pipelines,
         shadow_pipelines,
         slug_pipelines,
+        raster_pipelines,
         sprite_pipelines,
         decoration_pipelines,
         layer_pipelines,
@@ -138,6 +139,7 @@ pub(super) fn walk_screen(
             fill_pipelines,
             shadow_pipelines,
             slug_pipelines,
+            raster_pipelines,
             sprite_pipelines,
             decoration_pipelines,
             layer_pipelines,
@@ -163,7 +165,7 @@ where
     };
     submit_clear(&ready.device, &ready.queue, &view, clear_color);
     draw(&ready.device, &ready.queue, &view);
-    frame.present();
+    ready.queue.present(frame);
     Ok(())
 }
 
@@ -214,7 +216,7 @@ pub(super) fn render_command_scene_surface(
         stats,
     )?;
     queue.submit(core::iter::once(encoder.into_inner().finish()));
-    frame.present();
+    queue.present(frame);
     if let Some(pool) = ready.layer_pool.as_mut() {
         for handle in retained {
             pool.release(handle);

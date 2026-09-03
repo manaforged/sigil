@@ -9,7 +9,7 @@ mod select;
 mod state;
 mod view;
 
-pub use columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
+pub use columns::{ColAlign, ColWidth, MIN_COL_WIDTH, TableColumn};
 pub use identity::Identifiable;
 pub use state::{ColumnLayout, SortDir, SortKey, TableState};
 pub use view::{Density, TableBuilder, table};

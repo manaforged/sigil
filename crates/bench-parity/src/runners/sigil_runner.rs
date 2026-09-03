@@ -357,7 +357,7 @@ fn finish_list(
         samples_ns.len(),
         misses,
         u64::try_from(visible).unwrap_or(0),
-        last_measure_count(),
+        peak_measure_count(),
     );
     verify.insert("book_rows".into(), u64::try_from(book).unwrap_or(0));
     verify.insert("first_visible".into(), u64::try_from(first).unwrap_or(0));
@@ -567,6 +567,14 @@ pub(super) fn last_measure_count() -> u64 {
     profile::frames()
         .last()
         .map_or(0, |frame: &Frame| frame.counter("text.measure"))
+}
+
+pub(super) fn peak_measure_count() -> u64 {
+    profile::frames()
+        .iter()
+        .map(|frame: &Frame| frame.counter("text.measure"))
+        .max()
+        .unwrap_or(0)
 }
 
 pub(super) fn verify_map(

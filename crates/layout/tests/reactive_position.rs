@@ -106,3 +106,125 @@ fn bounds_reactive_publishes_the_absolute_rect() {
         );
     });
 }
+
+#[test]
+fn reposition_translates_the_subtree_without_a_resolve() {
+    Runtime::scope("layout_reactive_translate", || {
+        let pos = signal((0.0_f32, 0.0_f32));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(800.0, 600.0))
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(100.0, 40.0))
+                        .position_reactive(pos)
+                        .child(container().layout(LayoutStyle::block().fixed_size(10.0, 10.0))),
+                ),
+        );
+        let strip = *cx.get(root).unwrap().children().first().unwrap();
+        let leaf = *cx.get(strip).unwrap().children().first().unwrap();
+        let mut engine = stub_engine();
+        engine
+            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .expect("initial compute");
+        sigil_profile::enable();
+        sigil_profile::reset();
+        sigil_profile::begin_frame();
+        pos.set((0.0, -35.0));
+        engine
+            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .expect("translate compute");
+        sigil_profile::tick_frame();
+        let counts = sigil_profile::frames()
+            .last()
+            .map(|f| f.counts.clone())
+            .unwrap_or_default();
+        assert!(
+            counts.iter().any(|(name, _)| *name == "layout.translate"),
+            "a position-only change must take the translate path; counts {counts:?}"
+        );
+        assert_eq!(rect(&cx, strip).origin.y, -35.0);
+        assert_eq!(rect(&cx, leaf).origin.y, -35.0);
+    });
+}
+
+#[test]
+fn reposition_with_a_dirty_descendant_still_translates() {
+    Runtime::scope("layout_reactive_translate_dirty_child", || {
+        let pos = signal((0.0_f32, 0.0_f32));
+        let label = signal(String::from("a"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(800.0, 600.0))
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(100.0, 40.0))
+                        .position_reactive(pos)
+                        .child(
+                            container()
+                                .layout(LayoutStyle::block().fixed_size(50.0, 10.0))
+                                .child(text_live(move || label.get())),
+                        ),
+                ),
+        );
+        let strip = *cx.get(root).unwrap().children().first().unwrap();
+        let mut engine = stub_engine();
+        engine
+            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .expect("initial compute");
+        sigil_profile::enable();
+        sigil_profile::reset();
+        sigil_profile::begin_frame();
+        label.set(String::from("bb"));
+        pos.set((0.0, -35.0));
+        engine
+            .compute(&mut cx, root, Size::fixed(800.0, 600.0))
+            .expect("second compute");
+        sigil_profile::tick_frame();
+        let counts = sigil_profile::frames()
+            .last()
+            .map(|f| f.counts.clone())
+            .unwrap_or_default();
+        assert!(
+            counts.iter().any(|(name, _)| *name == "layout.translate"),
+            "the strip must translate even when a cell inside it is dirty; counts {counts:?}"
+        );
+        assert_eq!(rect(&cx, strip).origin.y, -35.0);
+    });
+}
+
+#[test]
+fn incremental_root_with_margin_keeps_its_place() {
+    Runtime::scope("layout_margin_root", || {
+        let label = signal(String::from("a"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(400.0, 300.0))
+                .child(container().layout(LayoutStyle::block().fixed_size(100.0, 20.0)))
+                .child(
+                    container()
+                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0).margin(10.0))
+                        .child(text_live(move || label.get())),
+                ),
+        );
+        let boxed = *cx.get(root).unwrap().children().get(1).unwrap();
+        let mut engine = stub_engine();
+        engine
+            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .expect("initial compute");
+        let before = rect(&cx, boxed);
+        label.set(String::from("bb"));
+        engine
+            .compute(&mut cx, root, Size::fixed(400.0, 300.0))
+            .expect("incremental compute");
+        let after = rect(&cx, boxed);
+        assert_eq!(
+            (after.origin.x, after.origin.y),
+            (before.origin.x, before.origin.y),
+            "a margin root must not drift when re-solved on its own"
+        );
+    });
+}

@@ -225,9 +225,11 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::Opacity(opacity) => Style::new().opacity_raw(opacity),
         StyleAtom::FontSize(px) => Style::new().font_size(px.0),
         StyleAtom::FontWeight(weight) => Style::new().font_weight(weight),
+        StyleAtom::FontItalic(italic) => Style::new().font_italic(italic),
         StyleAtom::FontFamily(name) => Style::new().font_family(name),
         StyleAtom::LineHeight(px) => Style::new().line_height(px.0),
         StyleAtom::LetterSpacing(em) => Style::new().letter_spacing_em(f32::from(em) / 1000.0),
+        StyleAtom::TabularNums(on) => Style::new().tabular_nums(on),
         StyleAtom::TextDecoration(decoration) => Style::new().text_decoration(decoration),
         StyleAtom::Transition(transition) => Style::new().transition(transition),
         StyleAtom::TransitionDuration(duration) => Style::new().duration(duration),
@@ -268,7 +270,7 @@ fn parse_grammar_branches() {
          items-start items-center items-end items-stretch justify-start justify-center \
          justify-end justify-between justify-around rounded rounded-sm rounded-lg rounded-full \
          text-xs text-sm text-base text-lg text-xl text-on-surface font-normal font-medium \
-         font-bold leading-6 opacity-75",
+         font-bold italic not-italic leading-6 opacity-75",
     )
     .unwrap();
 
@@ -299,6 +301,8 @@ fn parse_grammar_branches() {
     assert!(parsed.contains(&StyleAtom::FontWeight(400)));
     assert!(parsed.contains(&StyleAtom::FontWeight(500)));
     assert!(parsed.contains(&StyleAtom::FontWeight(700)));
+    assert!(parsed.contains(&StyleAtom::FontItalic(true)));
+    assert!(parsed.contains(&StyleAtom::FontItalic(false)));
     assert!(parsed.contains(&StyleAtom::LineHeight(Px(24))));
     assert!(parsed.contains(&StyleAtom::Opacity(7_500)));
 }

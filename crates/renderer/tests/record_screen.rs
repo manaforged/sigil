@@ -163,6 +163,7 @@ fn try_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;
@@ -248,7 +249,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
     rx.recv().expect("recv").expect("map ok");
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((W * H * 4) as usize);
     for row in 0..H {
         let off = (row * bpr) as usize;

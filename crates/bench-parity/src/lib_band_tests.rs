@@ -28,8 +28,8 @@ fn band_accepts_gpui_page_and_sigil_overscan() {
 fn construct_span_is_the_geometric_page() {
     assert_eq!(
         visible_span(&params(false, 1_280.0, 32.0, 100_000)),
-        (40, 41)
+        (40, 51)
     );
-    assert_eq!(visible_span(&params(false, 912.0, 24.0, 10_000)), (38, 39));
-    assert_eq!(visible_span(&params(true, 912.0, 24.0, 10_000)), (38, 115));
+    assert_eq!(visible_span(&params(false, 912.0, 24.0, 10_000)), (38, 48));
+    assert_eq!(visible_span(&params(true, 912.0, 24.0, 10_000)), (38, 133));
 }

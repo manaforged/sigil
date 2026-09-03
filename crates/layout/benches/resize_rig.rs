@@ -1,9 +1,10 @@
 #![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeId, TextContent, container};
 use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use sigil_layout::{LayoutEngine, TextMeasure};
+use std::hint::black_box;
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
     fn measure(&self, _: &TextContent, _: sigil_hal::Size) -> LogicalSize {

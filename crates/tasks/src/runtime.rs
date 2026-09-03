@@ -96,7 +96,9 @@ impl AsyncRuntime {
     where
         F: Fn() + Send + Sync + 'static,
     {
-        self.sender.waker = Arc::new(waker);
+        let waker: Arc<dyn Fn() + Send + Sync + 'static> = Arc::new(waker);
+        self.sender.waker = Arc::clone(&waker);
+        replace_bridge_waker(&mut self.bridge, waker);
     }
 
     #[must_use]
@@ -109,15 +111,9 @@ impl AsyncRuntime {
         crate::TokioExecutor::new(self.rt.handle().clone())
     }
 
-    pub fn set_bridge_waker<F>(&mut self, waker: F)
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        replace_bridge_waker(&mut self.bridge, waker);
-    }
-
-    pub fn pump_completions_into_reactive(&mut self) -> usize {
-        drain_into_reactive(&mut self.bridge_rx)
+    pub fn pump(&mut self) -> usize {
+        let scheduled = Scheduler::drain(self);
+        scheduled + drain_into_reactive(&mut self.bridge_rx)
     }
 
     #[must_use]

@@ -413,6 +413,11 @@ impl Style {
     }
 
     #[must_use]
+    pub fn font_italic(self, italic: bool) -> Self {
+        self.push(StyleAtom::FontItalic(italic))
+    }
+
+    #[must_use]
     pub fn font_family(self, name: &'static str) -> Self {
         self.push(StyleAtom::FontFamily(name))
     }
@@ -430,6 +435,11 @@ impl Style {
         )]
         let thousandths = (em * 1000.0).round().clamp(-2000.0, 2000.0) as i16;
         self.push(StyleAtom::LetterSpacing(thousandths))
+    }
+
+    #[must_use]
+    pub fn tabular_nums(self, on: bool) -> Self {
+        self.push(StyleAtom::TabularNums(on))
     }
 
     #[must_use]

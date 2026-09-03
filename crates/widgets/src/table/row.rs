@@ -6,7 +6,7 @@ use sigil_style::{Fill, NodeStyleExt, StateVariants};
 
 use super::super::interactive::interactive;
 use super::chrome::{ContextKind, TableChrome};
-use super::columns::flex_cell;
+use super::columns::{CellSpec, flex_cell};
 use super::hscroll::HScroll;
 use super::select;
 use super::state::TableState;
@@ -15,9 +15,13 @@ use super::state::TableState;
 pub(super) struct RowSpec {
     pub row_height: f32,
     pub select: bool,
+    pub pad_x: f32,
+    pub striped: bool,
 }
 
 const SELECTED_CLASS: &str = "bg-accent-5";
+const STRIPE_CLASS: &str = "bg-surface-0";
+const NUMERIC_CLASS: &str = "tabular-nums";
 
 pub(super) fn body_row<Row: 'static>(
     state: TableState<Row>,
@@ -49,13 +53,17 @@ fn build_row<Row: 'static>(
     let track = container()
         .layout(track_layout(row_height))
         .children_reactive(move || row_cells(&state_cells, spec, row_index));
-    let cells = container()
+    let mut cells = container()
         .role(Role::Row)
         .label(format!("row {}", visible_pos + 1))
         .row_index(visible_pos + 2)
         .selected(is_selected)
-        .layout(row_layout(row_height))
-        .class("border-b border-gray-6")
+        .layout(row_layout(row_height, spec.pad_x))
+        .class("border-b border-line");
+    if spec.striped && visible_pos % 2 == 1 {
+        cells = cells.class(STRIPE_CLASS);
+    }
+    let cells = cells
         .class_when(is_selected, SELECTED_CLASS)
         .child(hscroll.shifted(track));
     let _ = row;
@@ -86,28 +94,35 @@ fn row_cells<Row: 'static>(
             .into_iter()
             .map(|(def_index, column)| {
                 let override_px = layout.widths.get(column.id()).copied();
-                body_cell(
+                let cell = body_cell(
                     column.cell_render().map(|render| render(live_row)),
                     def_index + offset,
-                    flex_cell(
-                        column.col_width(),
+                    flex_cell(CellSpec {
+                        policy: column.col_width(),
                         override_px,
-                        spec.row_height,
-                        true,
-                        column.min_px(),
-                    ),
-                )
+                        height: spec.row_height,
+                        clip: true,
+                        min_px: column.min_px(),
+                        align: column.alignment(),
+                        pad_x: spec.pad_x,
+                    }),
+                );
+                if column.is_numeric() {
+                    cell.class(NUMERIC_CLASS)
+                } else {
+                    cell
+                }
             }),
     );
     cells
 }
 
-fn row_layout(height: f32) -> LayoutStyle {
+fn row_layout(height: f32, pad_x: f32) -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill_width()
         .height(height)
         .align_items(AlignItems::Center)
-        .padding_x(12.0)
+        .padding_x(pad_x)
         .overflow_x(Overflow::Hidden)
 }
 

@@ -304,3 +304,33 @@ fn node_ref_style_on_stale_id_falls_back_to_default() {
     let n = f.refer(live).unwrap();
     assert_eq!(n.style().display, crate::style_data::Display::Block);
 }
+
+#[test]
+fn text_memo_keeps_recent_entries_across_overflow() {
+    let key = |index: u32| TextMemoKey {
+        index,
+        tag: 0,
+        known_w: 0,
+        known_h: 0,
+        wrap: 0,
+        content: 0,
+    };
+    let size = crate::style_data::Size {
+        width: 1.0,
+        height: 2.0,
+    };
+    let live = u32::try_from(TEXT_MEMO_LIVE).expect("memo cap fits u32");
+    let mut memo = TextMemo::default();
+    for index in 0..live {
+        memo.store(key(index), size);
+    }
+    memo.store(key(u32::MAX), size);
+    assert_eq!(memo.live.len(), 1);
+    assert_eq!(memo.get(key(7)), Some(size));
+    assert_eq!(memo.live.len(), 2);
+    assert_eq!(memo.stale.len(), TEXT_MEMO_LIVE - 1);
+    for index in 0..2 * live {
+        memo.store(key(1_000_000 + index), size);
+    }
+    assert_eq!(memo.get(key(7)), None);
+}

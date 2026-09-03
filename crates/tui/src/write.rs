@@ -8,7 +8,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 use sigil_style::Tone;
 
-use crate::paint::{CONTINUES, Grid, Ink};
+use crate::paint::{CONTINUES, Cell, Grid, Ink};
 use sigil_style::Rgba8;
 
 pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
@@ -40,11 +40,12 @@ pub(crate) fn dirty(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Resul
 fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -> io::Result<()> {
     let y = u16::try_from(row).unwrap_or(u16::MAX);
     queue!(out, cursor::MoveTo(0, y))?;
-    let mut style: Option<(Ink, Ink, bool)> = None;
+    let mut style: Option<(Ink, Ink, bool, bool)> = None;
     let end = grid.painted_width(row);
     for col in 0..end {
         let cell = grid.get(col, row).unwrap_or_default();
-        let next = (cell.fg, cell.bg, cell.bold);
+        let (foreground, background) = terminal_inks(cell);
+        let next = (foreground, background, cell.bold, cell.italic);
         if style != Some(next) {
             if !line.is_empty() {
                 queue!(out, Print(&*line))?;
@@ -57,8 +58,13 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
                 } else {
                     Attribute::NormalIntensity
                 }),
-                SetForegroundColor(paint(cell.fg)),
-                SetBackgroundColor(paint(cell.bg)),
+                SetAttribute(if cell.italic {
+                    Attribute::Italic
+                } else {
+                    Attribute::NoItalic
+                }),
+                SetForegroundColor(paint(foreground)),
+                SetBackgroundColor(paint(background)),
             )?;
             style = Some(next);
         }
@@ -76,6 +82,10 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
     queue!(out, Clear(ClearType::UntilNewLine))
 }
 
+const fn terminal_inks(cell: Cell) -> (Ink, Ink) {
+    (cell.fg, if cell.ch == '█' { cell.fg } else { cell.bg })
+}
+
 fn truecolor() -> bool {
     static ANSWER: OnceLock<bool> = OnceLock::new();
     *ANSWER.get_or_init(|| {
@@ -85,15 +95,42 @@ fn truecolor() -> bool {
     })
 }
 
-fn supports_truecolor(program: Option<&str>, color: Option<&str>) -> bool {
-    program != Some("Apple_Terminal")
-        && color.is_some_and(|value| value.contains("truecolor") || value.contains("24bit"))
+fn supports_truecolor(_program: Option<&str>, color: Option<&str>) -> bool {
+    color.is_some_and(|value| value.contains("truecolor") || value.contains("24bit"))
 }
 
 fn cube(colour: Rgba8) -> u8 {
-    let step = |channel: u8| u16::from(channel) * 5 / 255;
-    let index = 16 + 36 * step(colour.r) + 6 * step(colour.g) + step(colour.b);
-    u8::try_from(index).unwrap_or(u8::MAX)
+    let (red, r) = nearest_level(colour.r);
+    let (green, g) = nearest_level(colour.g);
+    let (blue, b) = nearest_level(colour.b);
+    let cube_distance = distance(colour, red, green, blue);
+    let mean = (u16::from(colour.r) + u16::from(colour.g) + u16::from(colour.b)) / 3;
+    let gray_index = mean.saturating_sub(8).saturating_add(5) / 10;
+    let gray_index = gray_index.min(23) as u8;
+    let gray = 8 + gray_index * 10;
+    if distance(colour, gray, gray, gray) < cube_distance {
+        232 + gray_index
+    } else {
+        16 + 36 * r + 6 * g + b
+    }
+}
+
+fn nearest_level(channel: u8) -> (u8, u8) {
+    const LEVELS: [u8; 6] = [0, 95, 135, 175, 215, 255];
+    let mut best = (LEVELS[0], 0_u8);
+    let mut delta = channel.abs_diff(LEVELS[0]);
+    for (index, level) in (1_u8..).zip(LEVELS.into_iter().skip(1)) {
+        if channel.abs_diff(level) < delta {
+            best = (level, index);
+            delta = channel.abs_diff(level);
+        }
+    }
+    best
+}
+
+fn distance(colour: Rgba8, red: u8, green: u8, blue: u8) -> u32 {
+    let square = |value: u8, target: u8| u32::from(value.abs_diff(target)).pow(2);
+    square(colour.r, red) + square(colour.g, green) + square(colour.b, blue)
 }
 
 fn paint(ink: Ink) -> Color {

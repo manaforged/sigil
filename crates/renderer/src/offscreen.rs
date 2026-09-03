@@ -8,6 +8,7 @@ use crate::fill_paint::FillPipeline;
 use crate::frame_stats::FrameStats;
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
+use crate::raster_paint::RasterTextPipeline;
 use crate::renderer::{ScreenSubmission, WgpuRenderer, record_clear};
 use crate::scene_command::CommandScene;
 use crate::scene_command::walk::{WalkCtx, walk_command_scene};
@@ -104,6 +105,7 @@ fn walk_with_ready(
         fill_pipelines,
         shadow_pipelines,
         slug_pipelines,
+        raster_pipelines,
         sprite_pipelines,
         decoration_pipelines,
         layer_pipelines,
@@ -125,6 +127,7 @@ fn walk_with_ready(
             fill_pipelines,
             shadow_pipelines,
             slug_pipelines,
+            raster_pipelines,
             sprite_pipelines,
             decoration_pipelines,
             layer_pipelines,
@@ -151,6 +154,7 @@ pub(crate) fn walk_with_temporary_pipelines(
     let mut fill_pipelines = Vec::<FillPipeline>::new();
     let mut shadow_pipelines = Vec::<ShadowPipeline>::new();
     let mut slug_pipelines = Vec::<SlugTextPipeline>::new();
+    let mut raster_pipelines = Vec::<RasterTextPipeline>::new();
     let mut sprite_pipelines = Vec::<SpritePipeline>::new();
     let mut decoration_pipelines = Vec::<DecorationPipeline>::new();
     let mut layer_pipelines = Vec::<LayerCompositePipeline>::new();
@@ -170,6 +174,7 @@ pub(crate) fn walk_with_temporary_pipelines(
             fill_pipelines: &mut fill_pipelines,
             shadow_pipelines: &mut shadow_pipelines,
             slug_pipelines: &mut slug_pipelines,
+            raster_pipelines: &mut raster_pipelines,
             sprite_pipelines: &mut sprite_pipelines,
             decoration_pipelines: &mut decoration_pipelines,
             layer_pipelines: &mut layer_pipelines,

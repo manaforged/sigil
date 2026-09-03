@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::rc::Rc;
 
 use sigil_kernel::IntoNode;
-use sigil_layout::prelude::{AlignItems, LayoutStyle, Overflow};
+use sigil_layout::prelude::{AlignItems, JustifyContent, LayoutStyle, Overflow};
 
 pub const MIN_COL_WIDTH: f32 = 48.0;
 
@@ -18,6 +18,13 @@ pub enum ColWidth {
     Fraction(f32),
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum ColAlign {
+    #[default]
+    Start,
+    End,
+}
+
 pub struct TableColumn<Row> {
     id: &'static str,
     title: String,
@@ -26,6 +33,8 @@ pub struct TableColumn<Row> {
     cell: Option<CellFn<Row>>,
     width: ColWidth,
     min_width: f32,
+    align: ColAlign,
+    numeric: bool,
 }
 
 impl<Row> Clone for TableColumn<Row> {
@@ -38,6 +47,8 @@ impl<Row> Clone for TableColumn<Row> {
             cell: self.cell.clone(),
             width: self.width,
             min_width: self.min_width,
+            align: self.align,
+            numeric: self.numeric,
         }
     }
 }
@@ -53,7 +64,22 @@ impl<Row> TableColumn<Row> {
             cell: None,
             width: ColWidth::Fraction(1.0),
             min_width: MIN_COL_WIDTH,
+            align: ColAlign::Start,
+            numeric: false,
         }
+    }
+
+    #[must_use]
+    pub const fn align(mut self, align: ColAlign) -> Self {
+        self.align = align;
+        self
+    }
+
+    #[must_use]
+    pub const fn numeric(mut self) -> Self {
+        self.align = ColAlign::End;
+        self.numeric = true;
+        self
     }
 
     #[must_use]
@@ -141,21 +167,45 @@ impl<Row> TableColumn<Row> {
     pub fn is_sortable(&self) -> bool {
         self.compare.is_some()
     }
+
+    #[must_use]
+    pub const fn alignment(&self) -> ColAlign {
+        self.align
+    }
+
+    #[must_use]
+    pub const fn is_numeric(&self) -> bool {
+        self.numeric
+    }
 }
 
-pub(super) fn flex_cell(
-    policy: ColWidth,
-    override_px: Option<f32>,
-    height: f32,
-    clip: bool,
-    min_px: f32,
-) -> LayoutStyle {
+#[derive(Clone, Copy)]
+pub(super) struct CellSpec {
+    pub policy: ColWidth,
+    pub override_px: Option<f32>,
+    pub height: f32,
+    pub clip: bool,
+    pub min_px: f32,
+    pub align: ColAlign,
+    pub pad_x: f32,
+}
+
+pub(super) fn flex_cell(spec: CellSpec) -> LayoutStyle {
+    let CellSpec {
+        policy,
+        override_px,
+        height,
+        clip,
+        min_px,
+        align,
+        pad_x,
+    } = spec;
     let mut style = LayoutStyle::flex_row().align_items(AlignItems::Center);
-    if clip {
-        style = style.padding_x(8.0);
+    if align == ColAlign::End {
+        style = style.justify_content(JustifyContent::End);
     }
     if clip {
-        style = style.overflow_x(Overflow::Hidden);
+        style = style.padding_x(pad_x).overflow_x(Overflow::Hidden);
     }
     let floor = min_px.max(0.0);
     if let Some(px) = override_px {

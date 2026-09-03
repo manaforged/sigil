@@ -29,8 +29,11 @@ highlights below; see rustdoc for the full builder surface.
 - **text_field(Signal\<String\>)** — `.placeholder()`,
   `.change(Fn(&str))` (side effect; the signal is already two-way),
   `.submit()`, `.clipboard()`, `.disabled(Signal)`,
-  `.invalid_when(Signal\<bool\>)`, IME (preedit inline, caret anchor
-  published). Pass a `Signal<String>` for the field value.
+  `.invalid_when(Signal\<bool\>)`,
+  `.password()` (mask glyphs with `*`; value stays plaintext),
+  `.reveal(Signal<bool>)` (show plaintext while true),
+  IME (preedit inline, caret anchor published). Pass a `Signal<String>`
+  for the field value.
 - **text_edit(Signal\<String\>)** — multi-line: same surface plus
   newline entry, vertical caret (↑/↓), shift-selection.
 - **number_field(Signal\<T\>, Range)** — numeric text field.

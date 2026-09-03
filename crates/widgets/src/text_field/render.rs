@@ -65,23 +65,25 @@ pub(super) fn build_base_node(
         height,
     } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
-    let displayed = displayed_text(
-        value,
-        placeholder.clone(),
-        runtime.ime.preedit,
-        runtime.caret,
-    );
+    let displayed = displayed_text(value, placeholder.clone(), &runtime);
     let state_style = field_state_style();
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
     let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
     let text_style = runtime.text_style;
-    let node = container()
+    let mut node = container()
         .mutate(move |node| {
             let _ = node.attach(TextStyleCapture::new(text_style));
         })
-        .role(Role::TextInput)
-        .label(accessible_label(placeholder_str.as_str()))
-        .text_value(value)
+        .role(if runtime.password {
+            Role::PasswordInput
+        } else {
+            Role::TextInput
+        })
+        .label(accessible_label(placeholder_str.as_str()));
+    if !runtime.password {
+        node = node.text_value(value);
+    }
+    let node = node
         .placeholder(placeholder_str)
         .layout(field_layout())
         .class("rounded-md")
@@ -171,16 +173,27 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
 fn displayed_text(
     value: Signal<String>,
     placeholder: TextContent,
-    preedit: Signal<String>,
-    caret: Signal<usize>,
+    runtime: &TextFieldRuntime,
 ) -> Signal<String> {
+    let preedit = runtime.ime.preedit;
+    let caret = runtime.caret;
+    let password = runtime.password;
+    let reveal = runtime.reveal;
     derived_eq(move || {
         let current = value.get();
         let composing = preedit.get();
+        let hiding = super::mask::hiding(password, reveal);
         if !composing.is_empty() {
-            splice_preedit(&current, caret.get(), &composing)
+            let spliced = splice_preedit(&current, caret.get(), &composing);
+            if hiding {
+                super::mask::mask_chars(&spliced)
+            } else {
+                spliced
+            }
         } else if current.is_empty() {
             text_content(&placeholder)
+        } else if hiding {
+            super::mask::mask_chars(&current)
         } else {
             current
         }

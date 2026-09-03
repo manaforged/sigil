@@ -12,8 +12,8 @@ pub struct Player {
 
 #[cfg(feature = "audio")]
 struct Device {
-    _stream: rodio::OutputStream,
-    sink: rodio::Sink,
+    _stream: rodio::MixerDeviceSink,
+    sink: rodio::Player,
     duration: Option<std::time::Duration>,
     interval: Option<IntervalId>,
 }
@@ -201,13 +201,13 @@ fn play_rodio(player: &Player, path: &std::path::Path) -> crate::AppResult<()> {
     use std::io::BufReader;
     use std::time::Duration;
 
-    use rodio::{Decoder, OutputStream, Sink, Source};
+    use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer, Source};
 
     let file = File::open(path).map_err(crate::Error::new)?;
     let decoder = Decoder::new(BufReader::new(file)).map_err(crate::Error::new)?;
     let duration = decoder.total_duration();
-    let (stream, handle) = OutputStream::try_default().map_err(crate::Error::new)?;
-    let sink = Sink::try_new(&handle).map_err(crate::Error::new)?;
+    let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::Error::new)?;
+    let sink = RodioPlayer::connect_new(stream.mixer());
     sink.append(decoder);
     sink.play();
     player.playing.set(true);

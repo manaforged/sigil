@@ -18,9 +18,17 @@ Rust 1.90. A GPU for `launch`. A terminal for `run_tui`.
 
 ## Install
 
-```toml
-[dependencies]
-sigil-ui = "0.1.0-alpha.1"
+The alpha is not on crates.io yet. From this repository:
+
+```bash
+cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui
+```
+
+For the terminal host, disable the desktop defaults and enable `tui`:
+
+```bash
+cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui \
+  --no-default-features --features tui
 ```
 
 ## Usage
@@ -40,8 +48,8 @@ fn app_tree(cx: &mut Cx) -> NodeId {
     cx.add(
         container()
             .layout(LayoutStyle::flex_column().fixed_size(480.0, 240.0).gap(16.0))
-            .class("p-8 bg-surface")
-            .child(text(label_text).class("text-on-surface"))
+            .class(classes!("p-8 bg-surface"))
+            .child(text(label_text).class(classes!("text-on-surface")))
             .child(button("Increment").primary().activate(move || {
                 count.set(count.peek() + 1);
             })),
@@ -94,6 +102,10 @@ Open a URL or path with the OS handler: `open("https://example.com")`.
 |---|---|
 | `desktop` (default) | `launch`, OS chrome, `Host::scene` |
 | `tui` | `run_tui` |
+| `clipboard` | system clipboard access through `sigil::clipboard` |
+| `dialog` | native open, save, and folder dialogs |
+| `menu` | native application menus |
+| `tray` | system tray icons and events |
 | `render` | `Host::scene`, `sigil::render`, `sigil::text`. No winit |
 | `audio` | `Player::play_path` (holds the stream; `tick` writes progress; `seek` jumps) |
 | `pty` | `pty::Session::spawn` |

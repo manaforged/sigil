@@ -237,6 +237,7 @@ fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;
@@ -329,7 +330,7 @@ fn read_pixels(
         .expect("device poll");
     rx.recv().expect("map callback").expect("map result");
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let un = unpadded_bpr as usize;
     let pad = padded_bpr as usize;
     let h = height as usize;

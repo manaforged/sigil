@@ -86,6 +86,7 @@ pub(super) fn edit_layout() -> LayoutStyle {
         .fill_width()
         .height(DEFAULT_HEIGHT)
         .min_size(0.0, 0.0)
+        .padding(BORDER_PX)
 }
 
 fn edit_inner(

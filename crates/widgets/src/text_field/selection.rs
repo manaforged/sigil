@@ -111,10 +111,11 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
     } else {
         (caret, anchor)
     };
+    let (layout, lo, hi) = layout_span(runtime, &value, lo, hi);
     let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let start = engine.caret(&value, &style, lo);
-        let end = engine.caret(&value, &style, hi);
+        let start = engine.caret(&layout, &style, lo);
+        let end = engine.caret(&layout, &style, hi);
         (start.x, end.x, start.top, start.height)
     });
     let Some((x0, x1, top, height)) = geom else {
@@ -133,9 +134,10 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
     }
     let value = runtime.value.get();
     let caret = runtime.caret.get();
+    let (layout, caret, _) = layout_span(runtime, &value, caret, caret);
     let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let pos = engine.caret(&value, &style, caret);
+        let pos = engine.caret(&layout, &style, caret);
         (pos.x, pos.top, pos.height)
     });
     let Some((x, top, height)) = geom else {
@@ -201,5 +203,30 @@ fn hit(runtime: &TextFieldRuntime, x: f32) -> usize {
     let value = runtime.value.peek();
     let text_x = x + runtime.scroll.peek();
     let style = runtime.text_style.peek();
-    with_text_geometry(|engine| engine.hit(&value, &style, text_x)).unwrap_or(0)
+    let hiding = super::mask::hiding_peek(runtime.password, runtime.reveal);
+    if hiding {
+        let layout = super::mask::mask_chars(&value);
+        let mask_byte =
+            with_text_geometry(|engine| engine.hit(&layout, &style, text_x)).unwrap_or(0);
+        super::mask::unmask_byte(&value, mask_byte)
+    } else {
+        with_text_geometry(|engine| engine.hit(&value, &style, text_x)).unwrap_or(0)
+    }
+}
+
+fn layout_span(
+    runtime: &TextFieldRuntime,
+    value: &str,
+    lo: usize,
+    hi: usize,
+) -> (String, usize, usize) {
+    if super::mask::hiding(runtime.password, runtime.reveal) {
+        (
+            super::mask::mask_chars(value),
+            super::mask::mask_byte(value, lo),
+            super::mask::mask_byte(value, hi),
+        )
+    } else {
+        (value.to_owned(), lo, hi)
+    }
 }

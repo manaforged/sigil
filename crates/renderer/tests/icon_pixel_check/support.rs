@@ -29,6 +29,7 @@ pub(super) fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;
@@ -152,7 +153,7 @@ fn map_readback(
         .expect("device poll");
     rx.recv().expect("map callback").expect("map result");
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let pixels = strip_padding(&mapped, unpadded_bpr, padded_bpr, height);
     drop(mapped);
     buffer.unmap();

@@ -7,16 +7,18 @@ framework's own 1,600+ tests use exactly these surfaces.
 ## Smoke: the tree builds
 
 ```rust,ignore
-sigil::testing::with_cx(|cx| {
-    let root = app_tree(cx);
-    assert!(cx.tree_size(root) > 0);
+use sigil::testing::{tree_size, with_cx};
+
+with_cx("smoke", |cx| {
+    let _root = app_tree(cx);
 });
+assert!(tree_size("smoke-count", app_tree) > 0);
 ```
 
-`sigil::testing` gives `with_cx` (a scoped `Cx`) and `tree_size` —
-enough to prove the tree assembles with no GPU. (A fuller public
-interaction-testing API is on the roadmap; today these are the helpers
-the examples use.)
+`sigil::testing` gives `with_cx(name, f)` (a scoped `Cx`) and
+`tree_size(name, f)` — enough to prove the tree assembles with no GPU.
+(A fuller public interaction-testing API is on the roadmap; today these
+are the helpers the examples use.)
 
 ## Drive reactivity and events
 

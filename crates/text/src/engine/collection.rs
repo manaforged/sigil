@@ -1,7 +1,7 @@
 use crate::error::TextError;
 use crate::font_family::FontFamily;
 use crate::fonts::DefaultFontSource;
-use crate::shaper::Font;
+use crate::shaper::{Font, Script};
 
 pub struct FontCollection {
     sans: FontFamily,
@@ -133,8 +133,18 @@ impl FontCollection {
     }
 
     #[must_use]
-    pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16) -> Vec<Font> {
+    pub(crate) fn fallback_chain(&self, primary: &Font, weight: u16, text: &str) -> Vec<Font> {
         let mut chain: Vec<Font> = vec![primary.clone()];
+        let mut scripts: Vec<Script> = Vec::new();
+        for script in text.chars().map(super::char_script) {
+            if !crate::script_fonts::candidates(script).is_empty() && !scripts.contains(&script) {
+                scripts.push(script);
+            }
+        }
+        let system: Vec<Font> = scripts
+            .into_iter()
+            .flat_map(crate::system_fonts::script_fallbacks)
+            .collect();
         let candidates = [
             Some(self.sans.select(weight)),
             Some(self.mono.select(weight)),
@@ -145,6 +155,7 @@ impl FontCollection {
             .into_iter()
             .flatten()
             .chain(&self.fallbacks)
+            .chain(&system)
             .chain(std::iter::once(&self.emoji));
         for candidate in candidates {
             if chain.iter().all(|f| f.id() != candidate.id()) {

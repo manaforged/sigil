@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use sigil_animation_runtime::{active_count as active_animation_count, tick as tick_animations};
 use sigil_events::EventRouter;
-use sigil_hal::{LogicalSize, PhysicalSize, Renderer as _, Scale, Shell};
+use sigil_hal::{LogicalSize, PhysicalSize, Scale, Shell};
 use sigil_kernel::Cx;
 #[cfg(test)]
 use sigil_layout::LayoutEngine;
@@ -12,19 +12,21 @@ use sigil_layout::prelude::Size;
 use sigil_reactive::{
     MainThreadDispatcher, Runtime, TaskExecutor, next_interval_deadline, tick_intervals,
 };
-use sigil_renderer::{WgpuRenderer, WgpuSurface};
 use sigil_shell::{WinitShell, WinitWindowHandle};
 use sigil_tasks::AsyncRuntime;
 
 use crate::config::{AppConfig, PanicPolicy};
 use crate::embed::Host;
 use crate::error::{AppResult, Error};
+use crate::exit::{clear_exit, take_exit};
 use crate::tree_root::TreeRoot;
 
+mod backend;
 mod event_wiring;
 #[path = "scene_cache.rs"]
 mod scene_cache;
 
+use backend::{Backend, Surface};
 use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime};
 use scene_cache::{PaintRequest, SceneCache};
 
@@ -73,10 +75,11 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
 
     let mut router = EventRouter::new();
     let a11y_action_rx = shell.a11y_action_receiver();
-    let mut renderer = WgpuRenderer::new()?;
+    let mut renderer = Backend::from_env()?;
     renderer.set_transparent(config.overlay || config.frameless);
-    let mut surface: Option<WgpuSurface> = None;
+    let mut surface: Option<Surface> = None;
     let mut exit_requested = false;
+    clear_exit();
     let mut frame_state = FrameState::default();
 
     shell.on_idle_deadline(next_interval_deadline);
@@ -122,11 +125,11 @@ fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
 
 fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
     let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
-    async_rt.install_current();
     let waker = shell.waker();
-    async_rt.set_bridge_waker(move || {
+    async_rt.set_waker(move || {
         let _ = WinitShell::wake(&waker);
     });
+    async_rt.install_current();
     install_g5_executor(&async_rt);
     Ok(async_rt)
 }
@@ -176,8 +179,8 @@ struct FrameCtx<'a> {
     window_handle: WinitWindowHandle,
     host: &'a mut Host,
     router: &'a mut EventRouter,
-    renderer: &'a mut WgpuRenderer,
-    surface: &'a mut Option<WgpuSurface>,
+    renderer: &'a mut Backend,
+    surface: &'a mut Option<Surface>,
     viewport: &'a mut (f32, f32),
     exit_requested: &'a mut bool,
     async_rt: &'a mut AsyncRuntime,
@@ -222,6 +225,7 @@ impl AnimationClock {
     }
 }
 
+#[cfg(all(feature = "menu", target_os = "windows"))]
 fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     use raw_window_handle::{HasWindowHandle, RawWindowHandle};
     let window = shell.window_for(handle)?;
@@ -231,6 +235,20 @@ fn menu_hwnd(shell: &WinitShell, handle: WinitWindowHandle) -> Option<isize> {
     }
 }
 
+#[cfg(all(feature = "menu", not(target_os = "windows")))]
+const fn menu_hwnd(_shell: &WinitShell, _handle: WinitWindowHandle) -> Option<isize> {
+    None
+}
+
+/// Run one frame under the configured [`PanicPolicy`].
+///
+/// `Abort` runs the frame directly, so a panic propagates and the process
+/// dies (paired with `panic = "abort"` when a crash-report pipeline should
+/// own the failure). `Isolate` catches a panic in this frame — a widget
+/// handler, an effect, a paint closure — logs it, and resets the reactive
+/// runtime to a clean resting state so the NEXT frame still runs. Without
+/// this the loop simply dies, which made `PanicPolicy::Isolate` (the
+/// default) a promise the app did not keep.
 fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) {
     match policy {
         PanicPolicy::Abort => frame_once(ctx),
@@ -284,14 +302,18 @@ fn frame_once(ctx: FrameCtx<'_>) {
         Runtime::mark_frame_dirty();
     }
 
-    let _moved = async_rt.pump_completions_into_reactive();
+    let _drained = async_rt.pump();
 
+    #[cfg(feature = "menu")]
     if crate::menu::has_pending() {
         let waker = shell.waker();
-        crate::menu::install(menu_hwnd(shell, window_handle), move || {
+        if let Err(error) = crate::menu::install(menu_hwnd(shell, window_handle), move || {
             let _ = waker.wake();
-        });
+        }) {
+            tracing::error!("sigil-app: cannot install native menu: {error}");
+        }
     }
+    #[cfg(feature = "tray")]
     if crate::tray::has_pending() {
         let waker = shell.waker();
         crate::tray::install(move || {
@@ -314,7 +336,9 @@ fn frame_once(ctx: FrameCtx<'_>) {
         viewport,
         user_zoom: config.user_zoom,
     });
+    #[cfg(feature = "menu")]
     crate::menu::pump();
+    #[cfg(feature = "tray")]
     crate::tray::pump();
     if let Some((cx, layout, _)) = host.tree() {
         drain_events(DrainCtx {
@@ -329,6 +353,9 @@ fn frame_once(ctx: FrameCtx<'_>) {
             config,
             exit_requested,
         });
+    }
+    if take_exit() {
+        *exit_requested = true;
     }
     let animation_advanced = frame_state.animation_clock.tick_active(Instant::now());
     if animation_advanced {
@@ -399,11 +426,7 @@ pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce())
     Runtime::end_frame();
 }
 
-fn resize_surface(
-    renderer: &mut WgpuRenderer,
-    surface: &mut Option<WgpuSurface>,
-    physical: PhysicalSize,
-) {
+fn resize_surface(renderer: &mut Backend, surface: &mut Option<Surface>, physical: PhysicalSize) {
     if let Some(surface) = surface.as_mut()
         && let Err(err) = renderer.resize(surface, physical)
     {

@@ -7,11 +7,11 @@ use smallvec::SmallVec;
 
 use crate::cache_key::{
     AvailableKey, CacheDecision, LayoutCacheKey, has_unversioned_layout, layout_input_signature,
-    reactive_layout_signature,
+    reactive_layout_signature, reactive_seed_signature,
 };
 use crate::engine_drive::{LayoutDrive, NodeHandle};
 use crate::forest::{AvailableSpace, SpaceConstraint};
-use crate::style_data::Dimension;
+use crate::style_data::{Dimension, Display};
 use crate::text_geometry::TextStyleCapture;
 use crate::text_style::{InheritedText, inherited_text_style, text_style_signature};
 use crate::{LayoutError, LayoutResult, LayoutStyle, TextMeasure};
@@ -25,6 +25,11 @@ pub struct LayoutEngine {
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
     reactive_layout: AHashSet<slotmap::DefaultKey>,
+    positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
+    text_sizes: SecondaryMap<slotmap::DefaultKey, (u32, u32)>,
+    reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
+    steady: AHashSet<NodeId>,
+    restyled: AHashSet<NodeId>,
     last_reactive_sig: u64,
 }
 
@@ -40,6 +45,11 @@ impl LayoutEngine {
             generation: 0,
             cached_key: None,
             reactive_layout: AHashSet::new(),
+            positions: SecondaryMap::new(),
+            text_sizes: SecondaryMap::new(),
+            reactive_sigs: SecondaryMap::new(),
+            steady: AHashSet::new(),
+            restyled: AHashSet::new(),
             last_reactive_sig: 0,
         }
     }
@@ -56,6 +66,11 @@ impl LayoutEngine {
 
     #[must_use]
     pub fn result(&self, id: NodeId) -> Option<LayoutResult> {
+        self.fresh(id)
+            .or_else(|| self.published_result.get(id.key()).copied())
+    }
+
+    fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
         let handle = self.core_to_handle.get(id.key()).copied()?;
         let layout = self.drive.computed_box(handle)?;
         let clips = self.drive.clips_content(handle);
@@ -90,18 +105,12 @@ impl LayoutEngine {
         else {
             return Ok(());
         };
-        let cx_instance_changed = self
+        if self
             .cached_key
-            .is_some_and(|prev| prev.cx_instance != cache_key.cx_instance);
-        if cx_instance_changed {
-            self.synced_version.clear();
-            self.synced_text_sig.clear();
-            self.published_result.clear();
-            self.core_to_handle.clear();
-            self.reactive_layout.clear();
-            self.last_reactive_sig = 0;
+            .is_some_and(|prev| prev.cx_instance != cache_key.cx_instance)
+        {
+            self.reset_mirror();
         }
-
         self.drive.begin_frame();
         let mut dirty = cx.dirty().collect::<Vec<_>>();
         let live_count = cx.len();
@@ -110,30 +119,42 @@ impl LayoutEngine {
             .cached_key
             .is_some_and(|key| key.cx_generation != cx.mutation_generation());
 
-        let mirror_current = dirty.is_empty()
-            && self.cached_key.is_some_and(|prev| {
-                prev.cx_instance == cache_key.cx_instance
-                    && prev.root == cache_key.root
-                    && prev.input_signature == cache_key.input_signature
-            });
-        self.seed_reactive_dirty(&mut dirty, mirrored, mirror_current);
+        let mirror_current = dirty.is_empty() && self.same_inputs(cache_key);
+        self.seed_reactive_dirty(cx, &mut dirty, mirrored, mirror_current);
+        if mirrored && self.translate_moved(cx, &mut dirty)? > 0 && dirty.is_empty() {
+            self.finish(cx, cache_key);
+            return Ok(());
+        }
         let broadcast = !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         if mirror_current {
             sigil_profile::count("layout.resize");
             self.remeasure_and_publish(cx, root, available)?;
         } else if broadcast {
-            sigil_profile::count("layout.full");
+            note_full(mirrored, &dirty);
             self.full_sync_and_measure(cx, root, available)?;
         } else {
             sigil_profile::count("layout.incr");
             self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
         }
 
+        self.finish(cx, cache_key);
+        Ok(())
+    }
+
+    fn same_inputs(&self, cache_key: LayoutCacheKey) -> bool {
+        self.cached_key.is_some_and(|prev| {
+            prev.cx_instance == cache_key.cx_instance
+                && prev.root == cache_key.root
+                && prev.input_signature == cache_key.input_signature
+        })
+    }
+
+    fn finish(&mut self, cx: &mut Cx, cache_key: LayoutCacheKey) {
         cx.clear_dirty();
         self.generation = self.generation.wrapping_add(1);
         self.cached_key = Some(cache_key);
+        let _sig = sigil_profile::span("layout.sig");
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
-        Ok(())
     }
 
     pub fn gc(&mut self, cx: &Cx) -> Result<(), LayoutError> {
@@ -231,26 +252,125 @@ impl LayoutEngine {
         available: Size,
         structural: bool,
     ) -> Result<(), LayoutError> {
-        self.apply_dirty_nodes(cx, dirty)?;
-        if structural && self.core_to_handle.len() > cx.len() {
-            self.gc(cx)?;
-        }
-        let roots = self.containment_roots(cx, dirty, root);
-        let origins: SmallVec<[(f32, f32); 4]> =
-            roots.iter().map(|&r| self.published_origin(r)).collect();
+        let roots = {
+            let _dirty = sigil_profile::span("layout.dirty");
+            self.dirty_roots(cx, dirty, root, structural)?
+        };
         {
             let _solve = sigil_profile::span("layout.solve");
-            self.remeasure_roots(&roots, available)?;
-            for (&subroot, &(dx, dy)) in roots.iter().zip(origins.iter()) {
-                let handle = self.handle(subroot)?;
-                self.drive.translate_subtree(handle, dx, dy)?;
-            }
+            self.solve_roots(&roots, root, available)?;
         }
         let _attach = sigil_profile::span("layout.attach");
         for subroot in roots {
             self.attach_subtree_results(cx, subroot)?;
         }
         Ok(())
+    }
+
+    fn dirty_roots(
+        &mut self,
+        cx: &mut Cx,
+        dirty: &[NodeId],
+        root: NodeId,
+        structural: bool,
+    ) -> Result<Vec<NodeId>, LayoutError> {
+        let mut repositioned: Vec<NodeId> = dirty
+            .iter()
+            .copied()
+            .filter(|id| self.position_changed(cx, *id))
+            .collect();
+        self.restyled.clear();
+        self.apply_dirty_nodes(cx, dirty)?;
+        repositioned.extend(self.restyled.iter().copied());
+        for id in dirty.iter().copied() {
+            self.clear_hidden(cx, id);
+        }
+        if structural && self.core_to_handle.len() > cx.len() {
+            self.gc(cx)?;
+        }
+        let resized: Vec<NodeId> = dirty
+            .iter()
+            .copied()
+            .filter(|id| !self.steady.contains(id) && !self.text_kept_size(cx, *id))
+            .collect();
+        sigil_profile::count_add("layout.dirty.n", dirty.len() as u64);
+        sigil_profile::count_add("layout.resized.n", resized.len() as u64);
+        let roots = self.containment_roots(cx, &resized, root, &repositioned);
+        sigil_profile::count_add("layout.roots", roots.len() as u64);
+        Ok(roots)
+    }
+
+    fn solve_roots(
+        &mut self,
+        roots: &[NodeId],
+        root: NodeId,
+        available: Size,
+    ) -> Result<(), LayoutError> {
+        let origins: SmallVec<[(f32, f32); 4]> =
+            roots.iter().map(|&r| self.published_origin(r)).collect();
+        self.remeasure_roots(roots, root, available)?;
+        for (&subroot, &(px, py)) in roots.iter().zip(origins.iter()) {
+            let handle = self.handle(subroot)?;
+            let solved = self
+                .drive
+                .stored_box(handle)
+                .map_or((0.0, 0.0), |b| (b.x, b.y));
+            self.drive
+                .translate_subtree(handle, px - solved.0, py - solved.1)?;
+        }
+        Ok(())
+    }
+
+    fn text_kept_size(&mut self, cx: &Cx, id: NodeId) -> bool {
+        let Some(node) = cx.get(id) else {
+            return false;
+        };
+        if !matches!(node.kind, NodeType::Text { .. }) || !node.children().is_empty() {
+            return false;
+        }
+        let Ok(handle) = self.handle(id) else {
+            return false;
+        };
+        let unbounded = Size {
+            width: Dim::MaxContent,
+            height: Dim::MaxContent,
+        };
+        let saved = self.drive.stored_box(handle);
+        if self
+            .drive
+            .measure_with_constraints(handle, to_available_space(unbounded))
+            .is_err()
+        {
+            return false;
+        }
+        let measured = self.drive.computed_box(handle);
+        if let Some(saved) = saved {
+            drop(self.drive.write_box(handle, saved));
+        }
+        let Some(cb) = measured else {
+            return false;
+        };
+        let size = (cb.w.to_bits(), cb.h.to_bits());
+        self.text_sizes.insert(id.key(), size) == Some(size)
+    }
+
+    fn clear_hidden(&mut self, cx: &mut Cx, id: NodeId) {
+        let hidden = self
+            .handle(id)
+            .ok()
+            .and_then(|handle| self.drive.style_for(handle))
+            .is_some_and(|style| matches!(style.display, Display::None));
+        if !hidden {
+            return;
+        }
+        let mut ids = SmallVec::<[_; 32]>::new();
+        cx.visit_preorder(id, |node, _| ids.push(node));
+        for node in ids {
+            self.published_result.remove(node.key());
+            if let Some(kernel) = cx.get_mut_untracked(node) {
+                let _ = kernel.remove_extension::<LayoutResult>();
+            }
+        }
     }
 
     fn published_origin(&self, id: NodeId) -> (f32, f32) {
@@ -381,6 +501,9 @@ impl LayoutEngine {
                 .drive
                 .style_for(handle)
                 .is_some_and(|existing| existing == intent.data());
+            if !style_matches {
+                self.restyled.insert(id);
+            }
             let text_matches = text_content.is_none() && self.drive.text_for(handle).is_none();
             if style_matches && text_matches {
                 return Ok(());
@@ -430,6 +553,7 @@ impl LayoutEngine {
             Self::layout_inputs_for_node(node, &inherited);
         let existing = self.core_to_handle.get(id.key()).copied();
         self.upsert_with_text(id, existing, &intent, text_content, text_style, flags)?;
+        self.synced_version.insert(id.key(), node.version());
 
         let layered = node
             .get_extension::<StyleBinding>()
@@ -565,9 +689,45 @@ impl LayoutEngine {
         (intent, text_content, text_style, flags)
     }
 
-    fn seed_reactive_dirty(&self, dirty: &mut Vec<NodeId>, mirrored: bool, mirror_current: bool) {
-        if mirrored && dirty.is_empty() && !mirror_current {
-            dirty.extend(self.reactive_layout.iter().copied().map(NodeId::from_key));
+    fn reset_mirror(&mut self) {
+        self.synced_version.clear();
+        self.synced_text_sig.clear();
+        self.published_result.clear();
+        self.core_to_handle.clear();
+        self.reactive_layout.clear();
+        self.positions.clear();
+        self.text_sizes.clear();
+        self.reactive_sigs.clear();
+        self.last_reactive_sig = 0;
+    }
+
+    fn seed_reactive_dirty(
+        &mut self,
+        cx: &Cx,
+        dirty: &mut Vec<NodeId>,
+        mirrored: bool,
+        mirror_current: bool,
+    ) {
+        self.steady.clear();
+        if !mirrored || mirror_current {
+            return;
+        }
+        for key in self.reactive_layout.iter().copied() {
+            let id = NodeId::from_key(key);
+            let Some(node) = cx.get(id) else {
+                continue;
+            };
+            let sig = reactive_seed_signature(node);
+            let unchanged = self.reactive_sigs.insert(key, sig) == Some(sig);
+            if unchanged {
+                self.steady.insert(id);
+            }
+            if unchanged && !animated(node) {
+                continue;
+            }
+            if !dirty.contains(&id) {
+                dirty.push(id);
+            }
         }
     }
 
@@ -577,6 +737,66 @@ impl LayoutEngine {
         } else {
             self.reactive_layout.remove(&id.key());
         }
+        if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
+            self.positions.insert(id.key(), pos.get());
+        }
+    }
+
+    fn position_changed(&self, cx: &Cx, id: NodeId) -> bool {
+        cx.get(id)
+            .and_then(|node| node.get_extension::<crate::ReactivePosition>())
+            .is_some_and(|pos| self.positions.get(id.key()).copied() != Some(pos.get()))
+    }
+
+    fn moved_only(&self, cx: &Cx, id: NodeId) -> bool {
+        let Some(node) = cx.get(id) else {
+            return false;
+        };
+        let Some(pos) = node.get_extension::<crate::ReactivePosition>() else {
+            return false;
+        };
+        self.positions
+            .get(id.key())
+            .is_some_and(|prior| *prior != pos.get())
+            && self.synced_version.get(id.key()).copied() == Some(node.version())
+    }
+
+    fn translate_moved(
+        &mut self,
+        cx: &mut Cx,
+        dirty: &mut Vec<NodeId>,
+    ) -> Result<usize, LayoutError> {
+        let moved: Vec<NodeId> = dirty
+            .iter()
+            .copied()
+            .filter(|id| self.moved_only(cx, *id))
+            .collect();
+        dirty.retain(|id| !moved.contains(id));
+        for id in moved.iter().copied() {
+            sigil_profile::count("layout.translate");
+            self.translate(cx, id)?;
+        }
+        Ok(moved.len())
+    }
+
+    fn translate(&mut self, cx: &mut Cx, id: NodeId) -> Result<(), LayoutError> {
+        let node = cx.get(id).ok_or(LayoutError::NodeMissing(id))?;
+        let Some(next) = node
+            .get_extension::<crate::ReactivePosition>()
+            .map(crate::ReactivePosition::get)
+        else {
+            return Ok(());
+        };
+        let prior = self.positions.get(id.key()).copied().unwrap_or(next);
+        if prior == next {
+            return Ok(());
+        }
+        self.sync_one_node(cx, id)?;
+        let handle = self.handle(id)?;
+        self.drive
+            .translate_subtree(handle, next.0 - prior.0, next.1 - prior.1)?;
+        self.positions.insert(id.key(), next);
+        self.attach_subtree_results(cx, id)
     }
 
     fn remove_mirror_if_present(&mut self, id: NodeId) -> Result<(), LayoutError> {
@@ -655,11 +875,21 @@ impl LayoutEngine {
         clippy::unused_self,
         reason = "kept as method for symmetry with sibling helpers; will gain &self use in incremental sync follow-up"
     )]
-    fn containment_roots(&self, cx: &Cx, dirty: &[NodeId], root: NodeId) -> Vec<NodeId> {
+    fn containment_roots(
+        &self,
+        cx: &Cx,
+        dirty: &[NodeId],
+        root: NodeId,
+        repositioned: &[NodeId],
+    ) -> Vec<NodeId> {
         let mut seen = AHashSet::with_capacity(dirty.len());
         let mut roots = Vec::with_capacity(dirty.len());
         for id in dirty.iter().copied() {
-            let start = cx.parent(id).unwrap_or(id);
+            let start = if Self::has_definite_size(cx, id) && !repositioned.contains(&id) {
+                id
+            } else {
+                cx.parent(id).unwrap_or(id)
+            };
             let containment = Self::find_containment_root(cx, start, root);
             if seen.insert(containment) {
                 roots.push(containment);
@@ -683,7 +913,7 @@ impl LayoutEngine {
     fn find_containment_root(cx: &Cx, start: NodeId, root: NodeId) -> NodeId {
         let mut current = start;
         loop {
-            if current == root || Self::has_fixed_size(cx, current) {
+            if current == root || Self::has_definite_size(cx, current) {
                 return current;
             }
             let Some(parent) = cx.parent(current) else {
@@ -693,7 +923,7 @@ impl LayoutEngine {
         }
     }
 
-    fn has_fixed_size(cx: &Cx, id: NodeId) -> bool {
+    fn has_definite_size(cx: &Cx, id: NodeId) -> bool {
         let Some(node) = cx.get(id) else {
             return false;
         };
@@ -701,15 +931,36 @@ impl LayoutEngine {
             .get_extension::<LayoutStyle>()
             .cloned()
             .unwrap_or_default();
-        matches!(style.data().size.width, Dimension::Px(_))
-            && matches!(style.data().size.height, Dimension::Px(_))
+        let definite = |dim: Dimension| {
+            matches!(
+                dim,
+                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill
+            )
+        };
+        definite(style.data().size.width) && definite(style.data().size.height)
     }
 
-    fn remeasure_roots(&mut self, roots: &[NodeId], available: Size) -> Result<(), LayoutError> {
+    fn remeasure_roots(
+        &mut self,
+        roots: &[NodeId],
+        tree_root: NodeId,
+        available: Size,
+    ) -> Result<(), LayoutError> {
+        self.drive.begin_measure_frame();
+        let space = to_available_space(available);
         for root in roots {
             let handle = self.handle(*root)?;
-            self.drive
-                .measure_with_constraints(handle, to_available_space(available))?;
+            let assigned = (*root != tree_root)
+                .then(|| self.published_result.get(root.key()).copied())
+                .flatten();
+            match assigned {
+                Some(published) => {
+                    let rect = published.rect();
+                    self.drive
+                        .measure_assigned(handle, space, rect.width, rect.height)?;
+                }
+                None => self.drive.measure_keep_frame(handle, space)?,
+            }
         }
         Ok(())
     }
@@ -726,7 +977,7 @@ impl LayoutEngine {
         ids: SmallVec<[NodeId; 32]>,
     ) -> Result<(), LayoutError> {
         for id in ids {
-            let Some(result) = self.result(id) else {
+            let Some(result) = self.fresh(id) else {
                 continue;
             };
             if self.published_result.get(id.key()).copied() == Some(result) {
@@ -756,7 +1007,7 @@ impl LayoutEngine {
         Ok(())
     }
 
-    fn remove_stale_extensions(&self, cx: &mut Cx, previous_ids: SmallVec<[NodeId; 32]>) {
+    fn remove_stale_extensions(&mut self, cx: &mut Cx, previous_ids: SmallVec<[NodeId; 32]>) {
         for id in previous_ids {
             let still_fresh = self
                 .core_to_handle
@@ -766,6 +1017,7 @@ impl LayoutEngine {
             if still_fresh {
                 continue;
             }
+            self.published_result.remove(id.key());
             if let Some(node) = cx.get_mut_untracked(id) {
                 if node.get_extension::<LayoutResult>().is_none() {
                     continue;
@@ -821,3 +1073,19 @@ const fn to_space_constraint(dim: Dim) -> SpaceConstraint {
 mod overlays;
 
 use overlays::{apply_intrinsic_image_size, apply_reactive_position, apply_style_overlay};
+fn animated(node: &sigil_kernel::Node) -> bool {
+    node.get_extension::<StyleBinding>().is_some_and(|binding| {
+        binding.animator_overlay().is_some() || binding.state_overlay().is_some()
+    })
+}
+
+fn note_full(mirrored: bool, dirty: &[NodeId]) {
+    sigil_profile::count("layout.full");
+    sigil_profile::count(if !mirrored {
+        "layout.full.unmirrored"
+    } else if dirty.is_empty() {
+        "layout.full.nodirty"
+    } else {
+        "layout.full.majority"
+    });
+}

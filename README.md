@@ -6,37 +6,81 @@ paints it on a character grid. The widget catalog (button, table,
 text_field, virtual_list, modal, dropdown, tabs, chart, …) lives in
 `sigil::widgets`.
 
+![The workbench example application](site/assets/screenshots/workbench.png)
+
 **Status:** alpha (`0.1.0-alpha.1`). The API is not stable; pin exact
 versions.
 
+## Install
+
+The alpha is not on crates.io yet. From this repository:
+
+```bash
+cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui
+```
+
+The package is named `sigil-ui` because `sigil` was already taken on
+crates.io. The library name is `sigil`, so application imports start with
+`sigil::`. After the first crates.io publish, `cargo add sigil-ui@0.1.0-alpha.1`
+is the install.
+
 ## Requirements
 
-- Rust 1.90 (pinned in `rust-toolchain.toml`)
+- Rust 1.90 or newer (`rust-toolchain.toml` pins stable for development)
+- macOS, Windows, or Linux
 - A wgpu-capable GPU for the windowed hosts; the TUI host needs none
 
 ## Run
 
 ```bash
 cargo run -p hello-counter        # smallest runnable app
+cargo run -p hello-host           # embed the tree in your own loop
 cargo run -p widget-playground    # live widget catalog
 mdbook serve docs/book            # author guide and architecture
 ```
 
 ## Usage
 
-```rust
+Put this code in `src/main.rs`, then run `cargo run`:
+
+```rust,no_run
 use sigil::prelude::*;
 
-fn app(cx: &mut Cx) -> NodeId {
+fn main() -> sigil::AppResult<()> {
+    sigil::launch(("Sigil - counter", 480, 240), app_tree)
+}
+
+fn app_tree(cx: &mut Cx) -> NodeId {
     let count = signal(0_i32);
+    let label = derived(move || format!("Count: {}", count.get()));
+
     cx.add(
         container()
-            .layout(LayoutStyle::flex_column().gap(8.0))
-            .child(text(derived(move || count.get().to_string())))
-            .child(button("+").activate(move || count.set(count.peek() + 1))),
+            .layout(LayoutStyle::flex_column().fixed_size(480.0, 240.0).gap(16.0))
+            .class(classes!("p-8 bg-surface"))
+            .child(text(label).class(classes!("text-on-surface")))
+            .child(button("Increment").primary().activate(move || {
+                count.set(count.peek() + 1);
+            })),
     )
 }
 ```
+
+The repository includes runnable examples for events, styles, tables, and
+headless rendering under [`examples/`](examples/).
+
+## Run in a terminal
+
+Select the terminal host instead of the default desktop host:
+
+```bash
+cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui \
+  --no-default-features --features tui
+```
+
+Call `sigil::run_tui` with the same tree. See the
+[terminal host guide](docs/book/06-terminal.md) for a complete example and
+the differences between desktop and terminal rendering.
 
 ## How it works
 
@@ -56,13 +100,32 @@ The architecture chapters are in [`docs/book/arch/`](docs/book/arch/);
 the crate-by-crate map is
 [crates.md](docs/book/arch/crates.md).
 
+## Benchmarks
+
+Two stress workloads ship as parity builds against reference
+implementations, and the site's Performance page documents the
+measurement rules: same host, checked-in seed and viewport, an
+output-equivalence assertion, frame-time distributions.
+
+```bash
+cargo run --release -p access-log    # 1,000,000-row live tape, 60 x 8 cells @ 16 ms
+cargo run --release -p data-table    # 10,000 rows x 24 columns, parity with GPUI 0.2.2
+```
+
+No speed numbers are published without that record. Measurement
+scripts live in `scripts/`.
+
 ## Limits
 
 - Alpha: the API changes between releases. Pin exact versions.
 - Headless machines can run the TUI host and the test suite, but not
   the windowed hosts: rendering needs an adapter.
+- Web and mobile hosts are not included.
+- The terminal host does not support IME, images, rounded corners, or shadows.
 - Fuzz targets do not exist yet. Do not feed untrusted documents to
   the markdown, HTML, or SVG parsers (see Security).
+- Public interaction-test helpers are limited; see the
+  [testing guide](docs/book/04-testing.md) for the current boundary.
 
 ## Security
 

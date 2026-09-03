@@ -1,12 +1,12 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use accesskit::{ActionHandler, ActionRequest, ActivationHandler, DeactivationHandler, TreeUpdate};
+use sigil_hal::Shell as _;
 use winit::{event_loop::ActiveEventLoop, window::Window};
 
-use super::WinitShell;
+use super::{WinitShell, WinitWaker};
 use crate::WinitWindowHandle;
-
-type LatestTree = Arc<Mutex<Option<TreeUpdate>>>;
 
 pub(crate) struct ActionSender {
     tx: crossbeam_channel::Sender<ActionRequest>,
@@ -18,23 +18,49 @@ impl ActionHandler for ActionSender {
     }
 }
 
-struct LatestTreeActivationHandler {
-    latest: LatestTree,
+#[derive(Default)]
+pub(crate) struct Activation {
+    active: AtomicBool,
+    pending: AtomicBool,
 }
 
-impl ActivationHandler for LatestTreeActivationHandler {
-    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
-        self.latest
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .clone()
+impl Activation {
+    pub(crate) fn is_active(&self) -> bool {
+        self.active.load(Ordering::Acquire)
+    }
+
+    pub(crate) fn take_pending(&self) -> bool {
+        self.pending.swap(false, Ordering::AcqRel)
+    }
+
+    fn activate(&self) {
+        self.active.store(true, Ordering::Release);
+        self.pending.store(true, Ordering::Release);
+    }
+
+    fn deactivate(&self) {
+        self.active.store(false, Ordering::Release);
+        self.pending.store(false, Ordering::Release);
     }
 }
 
-struct NoopDeactivationHandler;
+struct ActivationSwitch {
+    activation: Arc<Activation>,
+    waker: WinitWaker,
+}
 
-impl DeactivationHandler for NoopDeactivationHandler {
-    fn deactivate_accessibility(&mut self) {}
+impl ActivationHandler for ActivationSwitch {
+    fn request_initial_tree(&mut self) -> Option<TreeUpdate> {
+        self.activation.activate();
+        let _ = self.waker.wake();
+        None
+    }
+}
+
+impl DeactivationHandler for ActivationSwitch {
+    fn deactivate_accessibility(&mut self) {
+        self.activation.deactivate();
+    }
 }
 
 impl WinitShell {
@@ -47,19 +73,20 @@ impl WinitShell {
         let action_sender = ActionSender {
             tx: self.a11y_action_tx.clone(),
         };
-        let latest: LatestTree = Arc::new(Mutex::new(None));
-        let activation_handler = LatestTreeActivationHandler {
-            latest: Arc::clone(&latest),
+        let activation = Arc::new(Activation::default());
+        let switch = || ActivationSwitch {
+            activation: Arc::clone(&activation),
+            waker: self.waker(),
         };
         let adapter = accesskit_winit::Adapter::with_direct_handlers(
             event_loop,
             window,
-            activation_handler,
+            switch(),
             action_sender,
-            NoopDeactivationHandler,
+            switch(),
         );
         window.set_visible(true);
-        self.a11y_adapters.push((handle, adapter, latest));
+        self.a11y_adapters.push((handle, adapter, activation));
     }
 
     pub(crate) fn process_a11y_event(
@@ -83,11 +110,20 @@ impl WinitShell {
         }
     }
 
+    #[must_use]
+    pub fn a11y_active(&self) -> bool {
+        self.a11y_adapters.iter().any(|(_, _, a)| a.is_active())
+    }
+
+    #[must_use]
+    pub fn take_a11y_activation(&self) -> bool {
+        self.a11y_adapters
+            .iter()
+            .fold(false, |acc, (_, _, a)| a.take_pending() || acc)
+    }
+
     pub fn publish_a11y_update(&mut self, update: &TreeUpdate) {
-        for (_, adapter, latest) in &mut self.a11y_adapters {
-            *latest
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(update.clone());
+        for (_, adapter, _) in &mut self.a11y_adapters {
             let for_adapter = update.clone();
             adapter.update_if_active(|| for_adapter);
         }

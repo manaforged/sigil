@@ -14,6 +14,8 @@ mod blur_shader;
 pub mod capture;
 mod color_glyph_paint;
 mod corner_radii;
+#[cfg(feature = "cpu")]
+mod cpu;
 mod decoration_paint;
 mod device_state;
 mod error;
@@ -23,6 +25,8 @@ mod frame_upload;
 mod layer_composite;
 mod layer_pool;
 mod offscreen;
+mod raster;
+mod raster_paint;
 mod renderer;
 mod scene;
 mod scene_builder;
@@ -46,10 +50,13 @@ mod tests;
 mod window_handle;
 
 pub use corner_radii::CornerRadii;
+#[cfg(feature = "cpu")]
+pub use cpu::{CpuRenderer, CpuSurface};
 pub use error::RendererError;
 pub use frame_stats::FrameStats;
 pub use layer_pool::{LayerError, LayerHandle, LayerPool};
 pub use offscreen::OffscreenTarget;
+pub use raster_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer, WorldSubmission, submit_clear};
 #[doc(hidden)]
 pub use scene_command::shape_glyph_run;

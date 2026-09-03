@@ -4,7 +4,7 @@ use sigil_events::prelude::NodeEventsExt;
 use sigil_kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use sigil_layout::LayoutStyle;
 use sigil_layout::prelude::{LayoutBuilderExt, Overflow};
-use sigil_reactive::derived;
+use sigil_reactive::{Signal, derived};
 use sigil_style::{ClassSource, NodeStyleExt};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -13,7 +13,7 @@ use super::super::scroll::wheel_x;
 use super::super::shared::BuilderMutator;
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowMenu, TableChrome, context_overlay};
-use super::header::header_row;
+use super::header::{HeaderSpec, header_row};
 use super::hscroll;
 use super::row::{RowSpec, body_row};
 use super::select;
@@ -25,6 +25,7 @@ const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Density {
+    Grid,
     Compact,
     #[default]
     Default,
@@ -33,6 +34,7 @@ pub enum Density {
 impl Density {
     const fn row(self) -> f32 {
         match self {
+            Self::Grid => 24.0,
             Self::Compact => 28.0,
             Self::Default => 36.0,
         }
@@ -40,8 +42,24 @@ impl Density {
 
     const fn header(self) -> f32 {
         match self {
+            Self::Grid => 26.0,
             Self::Compact => 32.0,
             Self::Default => 36.0,
+        }
+    }
+
+    const fn pad_x(self) -> f32 {
+        match self {
+            Self::Grid => 6.0,
+            Self::Compact => 8.0,
+            Self::Default => 12.0,
+        }
+    }
+
+    const fn text(self) -> &'static str {
+        match self {
+            Self::Grid => "text-xs",
+            Self::Compact | Self::Default => "text-sm",
         }
     }
 }
@@ -56,6 +74,9 @@ pub struct TableBuilder<Row: 'static> {
     row_menu: Option<RowMenu<Row>>,
     empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
     select: bool,
+    density: Density,
+    striped: bool,
+    scroll_y: Option<Signal<f32>>,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
 }
@@ -72,6 +93,9 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         row_menu: None,
         empty: None,
         select: false,
+        density: Density::Default,
+        striped: false,
+        scroll_y: None,
         mutators: Vec::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -118,6 +142,19 @@ impl<Row: 'static> TableBuilder<Row> {
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
         self.header_height = density.header();
+        self.density = density;
+        self
+    }
+
+    #[must_use]
+    pub const fn striped(mut self) -> Self {
+        self.striped = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn scroll_bind(mut self, scroll_y: Signal<f32>) -> Self {
+        self.scroll_y = Some(scroll_y);
         self
     }
 
@@ -140,7 +177,21 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
+    const fn body_spec(&self, pad_x: f32) -> BodySpec {
+        BodySpec {
+            row_height: self.row_height,
+            viewport_height: self.viewport_height,
+            viewport_width: self.viewport_width,
+            viewport_fill: self.viewport_fill,
+            select: self.select,
+            pad_x,
+            striped: self.striped,
+            scroll_y: self.scroll_y,
+        }
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
+        let body_spec = self.body_spec(self.density.pad_x());
         let state = self.state;
         let chrome = TableChrome::new(self.row_menu);
         let viewport_fill = self.viewport_fill;
@@ -151,34 +202,28 @@ impl<Row: 'static> TableBuilder<Row> {
         let menu_state = state.clone();
         let empty_state = state.clone();
         let prefix = if self.select { select::WIDTH } else { 0.0 };
+        let pad_x = self.density.pad_x();
         let hscroll = hscroll::bind(&state, viewport_width, prefix);
-        let body = body_view(
-            state.clone(),
-            chrome.clone(),
-            BodySpec {
-                row_height: self.row_height,
-                viewport_height: self.viewport_height,
-                viewport_width,
-                viewport_fill,
-                select: self.select,
-            },
-            hscroll,
-        );
+        let body = body_view(state.clone(), chrome.clone(), body_spec, hscroll);
         let root = container()
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len() + usize::from(self.select))
-            .class("border border-gray-6 rounded-md bg-surface")
+            .class("border border-border-strong rounded-md bg-surface")
+            .class(self.density.text())
             .layout(
                 self.layout_overrides
                     .apply(root_layout(viewport_fill, viewport_width)),
             )
             .child(header_row(
                 &state,
-                self.header_height,
+                HeaderSpec {
+                    height: self.header_height,
+                    select: self.select,
+                    pad_x,
+                },
                 &chrome,
                 hscroll,
-                self.select,
             ))
             .child(body)
             .child(container().children_reactive(move || {
@@ -213,6 +258,9 @@ struct BodySpec {
     viewport_width: Option<f32>,
     viewport_fill: bool,
     select: bool,
+    pad_x: f32,
+    striped: bool,
+    scroll_y: Option<Signal<f32>>,
 }
 
 fn body_view<Row: 'static>(
@@ -228,6 +276,8 @@ fn body_view<Row: 'static>(
             RowSpec {
                 row_height: spec.row_height,
                 select: spec.select,
+                pad_x: spec.pad_x,
+                striped: spec.striped,
             },
             chrome,
             hs,
@@ -236,6 +286,10 @@ fn body_view<Row: 'static>(
     .key_by(|_, id| u64::from(*id))
     .row_height(spec.row_height)
     .scroll_x_bind(hs.scroll_x, hs.max, hs.viewport);
+    let body = match spec.scroll_y {
+        Some(scroll_y) => body.scroll_bind(scroll_y),
+        None => body,
+    };
     if spec.viewport_fill {
         body.viewport_fill()
     } else {

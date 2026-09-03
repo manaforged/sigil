@@ -16,7 +16,7 @@ fn krausest_scroll() -> Workload {
             viewport_height_px: 1280.0,
             row_shape: "krausest-4-cell".into(),
             scroll_pattern: "linear-one-row-per-frame".into(),
-            iterations: 4,
+            iterations: 16,
             warmup: 1,
             surface: "layout".into(),
             reuse: true,

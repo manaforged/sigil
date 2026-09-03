@@ -392,6 +392,7 @@ fn fill_shader(fill: &PathFill) -> Shader<'static> {
             let focus = point(*center);
             RadialGradient::new(
                 focus,
+                0.0,
                 focus,
                 *radius,
                 ts_stops(stops),

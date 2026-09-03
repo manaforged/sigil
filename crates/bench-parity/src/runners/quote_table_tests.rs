@@ -15,7 +15,7 @@ fn tiny(reuse: bool) -> Workload {
             viewport_height_px: 912.0,
             row_shape: "gpui-24-field".into(),
             scroll_pattern: "linear".into(),
-            iterations: 4,
+            iterations: 16,
             warmup: 1,
             surface: "layout".into(),
             reuse,

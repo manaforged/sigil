@@ -78,12 +78,13 @@ pub trait NodeStyleExt {
     {
         let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
         let cell_for_closure = Rc::clone(&slot_cell);
-        self.style_reactive(move || {
-            let state = state_fn();
-            cell_for_closure.set(state.slot());
-            variant.state(state)
-        })
-        .state_overlay(overlay, slot_cell)
+        self.class(variant.base())
+            .style_reactive(move || {
+                let state = state_fn();
+                cell_for_closure.set(state.slot());
+                variant.state(state)
+            })
+            .state_overlay(overlay, slot_cell)
     }
 
     #[must_use]

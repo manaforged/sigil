@@ -1,6 +1,7 @@
-# MSRV is 1.90; verify before release with:
+# MSRV is 1.90 (checked before promotion); verify with:
 #   cargo +1.90.0 check --locked --all-features --workspace
-# Developers use stable. There is no CI runner (see README owned-host gate).
+# Developers use stable. The GPU tier runs on owned machines before
+# release.
 [toolchain]
 channel = "stable"
 components = ["rustfmt", "clippy"]

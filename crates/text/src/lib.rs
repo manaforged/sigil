@@ -12,7 +12,9 @@ mod engine;
 mod error;
 mod font_family;
 mod fonts;
+mod numeric_run;
 mod paragraph;
+mod script_fonts;
 mod system_fonts;
 
 pub mod bidi;

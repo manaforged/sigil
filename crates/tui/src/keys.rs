@@ -36,6 +36,7 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     if event
         .modifiers
         .contains(crossterm::event::KeyModifiers::SHIFT)
+        || event.code == crossterm::event::KeyCode::BackTab
     {
         modifiers |= ModifiersState::SHIFT;
     }
@@ -78,7 +79,7 @@ fn logical(code: crossterm::event::KeyCode) -> Option<LogicalKey> {
     Some(match code {
         KeyCode::Enter => LogicalKey::Named(Key::Enter),
         KeyCode::Esc => LogicalKey::Named(Key::Escape),
-        KeyCode::Tab => LogicalKey::Named(Key::Tab),
+        KeyCode::Tab | KeyCode::BackTab => LogicalKey::Named(Key::Tab),
         KeyCode::Backspace => LogicalKey::Named(Key::Backspace),
         KeyCode::Delete => LogicalKey::Named(Key::Delete),
         KeyCode::Left => LogicalKey::Named(Key::ArrowLeft),

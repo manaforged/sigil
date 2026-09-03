@@ -1,7 +1,9 @@
 use sigil_hal::Color;
 use sigil_kernel::{Cx, NodeId};
 use sigil_reactive::Runtime;
-use sigil_renderer::{CommandScene, SceneCommand, WgpuRenderer, WgpuSurface};
+use sigil_renderer::{CommandScene, SceneCommand};
+
+use crate::launch::backend::{Backend, Surface};
 
 use crate::embed::emit_viewport_scene;
 
@@ -78,7 +80,7 @@ impl SceneCache {
             Color::rgba(0.03, 0.04, 0.05, 1.0)
         };
         let _gpu = sigil_profile::span("gpu");
-        if let Err(err) = renderer.render_command_scene(surface, scene, clear, viewport) {
+        if let Err(err) = renderer.render(surface, scene, clear, viewport) {
             tracing::warn!("sigil-app: render_command_scene failed: {err}");
             Runtime::mark_frame_dirty();
         }
@@ -122,8 +124,8 @@ fn note_gpu(stats: sigil_renderer::FrameStats) {
 pub(super) struct PaintRequest<'a> {
     pub(super) cx: &'a Cx,
     pub(super) root: NodeId,
-    pub(super) renderer: &'a mut WgpuRenderer,
-    pub(super) surface: &'a mut Option<WgpuSurface>,
+    pub(super) renderer: &'a mut Backend,
+    pub(super) surface: &'a mut Option<Surface>,
     pub(super) viewport: (f32, f32),
     pub(super) allow_replay: bool,
 }

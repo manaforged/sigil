@@ -188,12 +188,19 @@ pub fn visible_band(viewport_h: f32, row_h: f32, row_count: usize) -> (usize, us
 #[must_use]
 pub fn visible_span(params: &WorkloadParams) -> (usize, usize) {
     let (_, vh) = params.viewport();
+    let page = visible_page(vh, params.row_h(), params.row_count);
+    let block = (page / 4).max(1);
     if !params.reuse && !params.tick() {
-        let page = visible_page(vh, params.row_h(), params.row_count);
-        let hi = page.saturating_add(1).min(params.row_count.max(page));
+        let hi = page
+            .saturating_add(block + 1)
+            .min(params.row_count.max(page));
         (page, hi.max(page))
     } else {
-        visible_band(vh, params.row_h(), params.row_count)
+        let (lo, hi) = visible_band(vh, params.row_h(), params.row_count);
+        (
+            lo,
+            hi.saturating_add(2 * block).min(params.row_count.max(hi)),
+        )
     }
 }
 

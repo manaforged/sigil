@@ -36,18 +36,18 @@ const INSTANCE_ATTRS: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
     5 => Float32,
 ];
 
-const fn vertex_buffers<'a>() -> [wgpu::VertexBufferLayout<'a>; 2] {
+const fn vertex_buffers<'a>() -> [Option<wgpu::VertexBufferLayout<'a>>; 2] {
     [
-        wgpu::VertexBufferLayout {
+        Some(wgpu::VertexBufferLayout {
             array_stride: 8, // 2 × f32
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &QUAD_ATTRS,
-        },
-        wgpu::VertexBufferLayout {
+        }),
+        Some(wgpu::VertexBufferLayout {
             array_stride: 40,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &INSTANCE_ATTRS,
-        },
+        }),
     ]
 }
 

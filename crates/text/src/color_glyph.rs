@@ -59,10 +59,10 @@ fn bgra_to_rgba(bytes: &[u8], w: u32, h: u32) -> Option<Vec<u8>> {
         .as_chunks_mut::<4>()
         .0
         .iter_mut()
-        .zip(bytes.as_chunks::<4>().0)
+        .zip(bytes.as_chunks::<4>().0.iter())
     {
-        let &[b, g, r, a] = src;
-        let &mut [ref mut dr, ref mut dg, ref mut db, ref mut da] = dst;
+        let [b, g, r, a] = *src;
+        let [dr, dg, db, da] = dst;
         *dr = unpremultiply(r, a);
         *dg = unpremultiply(g, a);
         *db = unpremultiply(b, a);

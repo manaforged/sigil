@@ -44,7 +44,7 @@ struct SurfaceUniform {
 
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
-struct GlyphInstance {
+pub(crate) struct GlyphInstance {
     origin: [f32; 2],
     size: [f32; 2],
     color: [f32; 4],
@@ -52,6 +52,20 @@ struct GlyphInstance {
     polarity: f32,
 }
 pub(crate) const SLUG_INSTANCE_BYTES: usize = core::mem::size_of::<GlyphInstance>();
+
+pub(crate) struct QueuedRun {
+    pub(crate) instances: Vec<GlyphInstance>,
+    pub(crate) clip: Option<Rect>,
+}
+
+pub(crate) struct RunFrame<'a> {
+    pub(crate) device: &'a wgpu::Device,
+    pub(crate) queue: &'a wgpu::Queue,
+    pub(crate) view: &'a wgpu::TextureView,
+    pub(crate) surface_width: f32,
+    pub(crate) surface_height: f32,
+    pub(crate) scale: f32,
+}
 
 const QUAD_UVS: &[f32] = &[0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 1.0];
 
@@ -97,7 +111,7 @@ impl SlugTextPipeline {
                 label: Some("slug-encoder"),
             });
         let mut encoder = SplitEncoder::new(params.device, params.queue, encoder);
-        self.record_paragraph_in_frame(&mut encoder, params, None)?;
+        self.record_paragraph_in_frame(&mut encoder, params, None);
         params
             .queue
             .submit(core::iter::once(encoder.into_inner().finish()));
@@ -118,22 +132,17 @@ impl SlugTextPipeline {
                 }),
         );
         let mut split = SplitEncoder::new(params.device, params.queue, real);
-        let result = self.record_paragraph_in_frame(&mut split, params, None);
+        self.record_paragraph_in_frame(&mut split, params, None);
         *encoder = split.into_inner();
-        result
+        Ok(())
     }
 
-    #[allow(
-        clippy::too_many_lines,
-        clippy::unnecessary_wraps,
-        reason = "one sequential pass; splitting would scatter the ordering it documents"
-    )]
     pub(crate) fn record_paragraph_in_frame(
         &mut self,
         encoder: &mut SplitEncoder,
         params: &DrawParams<'_>,
         frame: Option<(&mut FrameUploads, &mut FrameStats)>,
-    ) -> Result<(), RendererError> {
+    ) {
         let owned_glyphs;
         let glyphs = if let Some(glyphs) = params.glyphs {
             glyphs
@@ -141,30 +150,61 @@ impl SlugTextPipeline {
             owned_glyphs = params.paragraph.rendered_glyphs();
             &owned_glyphs
         };
+        let instances = self.instances_for(glyphs, params);
+        let run = QueuedRun {
+            instances,
+            clip: params.clip,
+        };
+        let frame_params = RunFrame {
+            device: params.device,
+            queue: params.queue,
+            view: params.view,
+            surface_width: params.surface_width,
+            surface_height: params.surface_height,
+            scale: params.scale,
+        };
+        self.record_runs_in_frame(encoder, &frame_params, &[run], frame);
+    }
+
+    pub(crate) fn instances_for(
+        &mut self,
+        glyphs: &[RenderedGlyph],
+        params: &DrawParams<'_>,
+    ) -> Vec<GlyphInstance> {
         if glyphs.is_empty() {
-            return Ok(());
+            return Vec::new();
         }
         self.ensure_preprocessed(glyphs, params.paragraph);
         self.atlas.rebuild(params.device, params.queue, &self.cache);
-        let instances = self.build_instances(glyphs, params);
-        if instances.is_empty() {
-            return Ok(());
+        self.build_instances(glyphs, params)
+    }
+
+    pub(crate) fn record_runs_in_frame(
+        &self,
+        encoder: &mut SplitEncoder,
+        frame: &RunFrame<'_>,
+        runs: &[QueuedRun],
+        uploads: Option<(&mut FrameUploads, &mut FrameStats)>,
+    ) {
+        let all: Vec<GlyphInstance> = runs
+            .iter()
+            .flat_map(|run| run.instances.iter().copied())
+            .collect();
+        if all.is_empty() {
+            return;
         }
         let uploaded =
-            frame.and_then(|(uploads, stats)| uploads.upload_slug(params.queue, &instances, stats));
-        let instances = uploaded.unwrap_or_else(|| {
-            let buffer = upload_instances(params.device, &instances);
-            UploadedRange {
-                buffer,
-                bytes: 0..u64::try_from(instances.len() * SLUG_INSTANCE_BYTES).unwrap_or(u64::MAX),
-                count: u32::try_from(instances.len()).expect("paragraph glyph count overflows u32"),
-            }
+            uploads.and_then(|(uploads, stats)| uploads.upload_slug(frame.queue, &all, stats));
+        let range = uploaded.unwrap_or_else(|| UploadedRange {
+            buffer: upload_instances(frame.device, &all),
+            bytes: 0..u64::try_from(all.len() * SLUG_INSTANCE_BYTES).unwrap_or(u64::MAX),
+            count: u32::try_from(all.len()).expect("frame glyph count overflows u32"),
         });
-        let bind_group = make_bind_group(params, &self.bgl, self.atlas.buffer());
+        let bind_group = make_bind_group(frame, &self.bgl, self.atlas.buffer());
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("slug-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: params.view,
+                view: frame.view,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
@@ -177,20 +217,21 @@ impl SlugTextPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !crate::scissor::apply(
-            &mut pass,
-            params.clip,
-            params.scale,
-            (params.surface_width, params.surface_height),
-        ) {
-            return Ok(());
-        }
         pass.set_pipeline(&self.pipeline);
         pass.set_bind_group(0, &bind_group, &[]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
-        pass.draw(0..6, 0..instances.count);
-        Ok(())
+        pass.set_vertex_buffer(1, range.buffer.slice(range.bytes));
+        let viewport = (frame.surface_width, frame.surface_height);
+        let mut first = 0_u32;
+        for run in runs {
+            let count = u32::try_from(run.instances.len()).unwrap_or(u32::MAX);
+            let slice = first..first.saturating_add(count);
+            first = slice.end;
+            if count == 0 || !crate::scissor::apply(&mut pass, run.clip, frame.scale, viewport) {
+                continue;
+            }
+            pass.draw(0..6, slice);
+        }
     }
 
     fn ensure_preprocessed(&mut self, glyphs: &[RenderedGlyph], para: &Paragraph) {
@@ -314,7 +355,7 @@ fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
 }
 
 fn make_bind_group(
-    params: &DrawParams<'_>,
+    params: &RunFrame<'_>,
     bgl: &wgpu::BindGroupLayout,
     atlas_buf: &wgpu::Buffer,
 ) -> wgpu::BindGroup {

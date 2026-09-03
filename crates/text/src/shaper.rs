@@ -1,7 +1,12 @@
 #![allow(clippy::redundant_pub_crate, clippy::missing_const_for_fn)]
 
 use std::sync::Arc;
+#[cfg(feature = "shaping-complex")]
+use std::sync::OnceLock;
 use std::sync::atomic::{AtomicU64, Ordering};
+
+#[cfg(feature = "shaping-complex")]
+use harfrust::{FontRef as HrFontRef, ShaperData};
 
 use skrifa::FontRef;
 use skrifa::MetadataProvider;
@@ -27,12 +32,24 @@ pub(crate) use classify_mod::{Script, classify_segment_script};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FeatureTag(pub [u8; 4]);
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Font {
     data: Arc<Vec<u8>>,
     index: u32,
     id: u64,
     variations: variations::VariationModel,
+    #[cfg(feature = "shaping-complex")]
+    tables: Arc<OnceLock<ShaperData>>,
+}
+
+impl core::fmt::Debug for Font {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Font")
+            .field("len", &self.data.len())
+            .field("index", &self.index)
+            .field("id", &self.id)
+            .finish_non_exhaustive()
+    }
 }
 
 static NEXT_FONT_ID: AtomicU64 = AtomicU64::new(1);
@@ -50,10 +67,18 @@ impl Font {
             index,
             id: NEXT_FONT_ID.fetch_add(1, Ordering::Relaxed),
             variations,
+            #[cfg(feature = "shaping-complex")]
+            tables: Arc::new(OnceLock::new()),
         })
     }
 
-    fn font_ref(&self) -> FontRef<'_> {
+    /// `HarfRust` per-face tables for this font, built once and shared by every clone.
+    #[cfg(feature = "shaping-complex")]
+    pub(crate) fn tables(&self, font: &HrFontRef<'_>) -> &ShaperData {
+        self.tables.get_or_init(|| ShaperData::new(font))
+    }
+
+    pub(crate) fn font_ref(&self) -> FontRef<'_> {
         FontRef::from_index(&self.data, self.index)
             .expect("Font::data validated in Font::from_bytes")
     }

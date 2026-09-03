@@ -17,8 +17,10 @@ pub struct TextStyle {
     pub font_family: String,
     pub font_size: f32,
     pub font_weight: u16,
+    pub italic: bool,
     pub line_height: TextLineHeight,
     pub letter_spacing_em: f32,
+    pub tabular_nums: bool,
     pub decoration: crate::TextDecoration,
 }
 
@@ -28,8 +30,10 @@ impl Default for TextStyle {
             font_family: String::from("system-ui"),
             font_size: 14.0,
             font_weight: 400,
+            italic: false,
             line_height: TextLineHeight::default(),
             letter_spacing_em: 0.0,
+            tabular_nums: false,
             decoration: crate::TextDecoration::None,
         }
     }
@@ -41,9 +45,11 @@ pub const fn is_typography_atom(atom: crate::StyleAtom) -> bool {
         atom,
         crate::StyleAtom::FontSize(_)
             | crate::StyleAtom::FontWeight(_)
+            | crate::StyleAtom::FontItalic(_)
             | crate::StyleAtom::FontFamily(_)
             | crate::StyleAtom::LineHeight(_)
             | crate::StyleAtom::LetterSpacing(_)
+            | crate::StyleAtom::TabularNums(_)
             | crate::StyleAtom::TextDecoration(_)
     )
 }

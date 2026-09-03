@@ -1,0 +1,25 @@
+[package]
+name = "bench-spec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+description = "Framework-neutral benchmark spec: the Ledger interaction script, record-v1, and the report tool. No UI dependency."
+
+[lib]
+
+[dependencies]
+data-table = { path = "../../examples/data-table", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
+
+[[bin]]
+name = "bench-report"
+path = "src/bin/bench-report.rs"
+
+[lints]
+workspace = true

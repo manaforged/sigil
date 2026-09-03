@@ -87,7 +87,7 @@ fn caret_sits_on_the_line_its_offset_is_on() {
     });
 }
 
-use sigil_hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil_hal::{KeyEventInit, MouseButton, MouseButtons, Point, PointerEventInit};
 
 fn click_at(cx: &mut Cx, layout: &LayoutEngine, router: &mut EventRouter, x: f32, y: f32) {
     router.route(
@@ -140,5 +140,36 @@ fn clicking_moves_the_caret_to_the_clicked_line() {
             start.origin.y,
             after.origin.y,
         );
+    });
+}
+
+#[test]
+fn caller_owned_caret_tracks_keyboard_movement() {
+    sigil::reactive::Runtime::scope("caret-signal", || {
+        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        let mut cx = Cx::new_root();
+        let caret = signal(5);
+        let root = cx.add(text_edit(signal("hello".to_string())).caret_position(caret));
+        let mut layout =
+            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+        layout
+            .compute(&mut cx, root, Size::fixed(400.0, 200.0))
+            .expect("layout");
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(
+            &mut cx,
+            &layout,
+            ShellEvent::Key(KeyEvent::new(KeyEventInit {
+                key: LogicalKey::Named(Key::ArrowLeft),
+                physical: PhysicalKey::Unidentified,
+                modifiers: ModifiersState::empty(),
+                repeat: false,
+                phase: KeyPhase::Down,
+                text: None,
+            })),
+        );
+
+        assert_eq!(caret.peek(), 4);
     });
 }

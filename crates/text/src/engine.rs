@@ -11,7 +11,7 @@ use crate::config::TextConfig;
 use crate::error::TextError;
 use crate::glyph::GlyphRun;
 use crate::paragraph::{LayoutLine, Paragraph, SegmentAppend, TextMetrics};
-use crate::shaper::{Font, Script, Shaper, Style, TextSegment};
+use crate::shaper::{FeatureTag, Font, Script, Shaper, Style, TextSegment};
 
 pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
@@ -124,7 +124,7 @@ impl OwnedTextEngine {
     pub fn debug_segments_for_tests(&self, text: &str) -> Vec<(u32, u32, u8, &'static str)> {
         let fonts = self.fonts.borrow();
         let primary = fonts.select_weight("sans", self.config.font_weight);
-        let chain = fonts.fallback_chain(primary, self.config.font_weight);
+        let chain = fonts.fallback_chain(primary, self.config.font_weight, text);
         let style = to_shaper_style(&self.config.text_style());
         let paragraph_bidi = bidi::ParagraphBidi::new(text);
         shape_segments(&chain, text, &style, &paragraph_bidi)
@@ -155,7 +155,7 @@ impl OwnedTextEngine {
     fn build_paragraph(&self, text: &str, max_width: Option<f32>, style: &TextStyle) -> Paragraph {
         let fonts = self.fonts.borrow();
         let primary = fonts.select_weight(&style.font_family, style.font_weight);
-        let chain = fonts.fallback_chain(primary, style.font_weight);
+        let chain = fonts.fallback_chain(primary, style.font_weight, text);
         let shaper = Shaper::new(primary);
         let shaper_style = to_shaper_style(style);
         let strut = LineStrut::from_shaper(&shaper, &shaper_style, resolve_line_height(style));
@@ -209,7 +209,11 @@ fn to_shaper_style(style: &TextStyle) -> Style {
     Style {
         size_px: style.font_size.max(1.0),
         weight: style.font_weight,
-        features: smallvec::SmallVec::new(),
+        features: if style.tabular_nums {
+            smallvec::smallvec![FeatureTag(*b"tnum")]
+        } else {
+            smallvec::SmallVec::new()
+        },
         letter_spacing_em: style.letter_spacing_em,
     }
 }

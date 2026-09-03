@@ -8,12 +8,13 @@
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_hal::Size;
 use sigil_kernel::{TextContent, prelude::*};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use sigil_renderer::{SceneCommand, emit_scene};
 use sigil_text::{OwnedTextEngine, TextConfig};
+use std::hint::black_box;
 
 fn text_paint_cost(c: &mut Criterion) {
     let scene = text_scene();

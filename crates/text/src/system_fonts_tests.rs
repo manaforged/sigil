@@ -26,3 +26,17 @@ fn macos_system_families_resolve_real_weight_faces() {
         "regular and bold mono must resolve to distinct faces or locations",
     );
 }
+
+#[test]
+fn cjk_script_fallback_covers_han_and_hangul() {
+    let faces = script_fallbacks(Script::Cjk);
+    assert!(!faces.is_empty(), "macOS must expose a CJK face");
+    assert!(faces.iter().any(|font| font.covers("東京証券")));
+    assert!(faces.iter().any(|font| font.covers("서울")));
+}
+
+#[test]
+fn arabic_script_fallback_covers_arabic() {
+    let faces = script_fallbacks(Script::Arabic);
+    assert!(faces.iter().any(|font| font.covers("مصرف")));
+}

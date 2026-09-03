@@ -111,57 +111,70 @@ fn vs_main(
     );
 }
 
-// Analytic coverage contribution of quadratic Bézier (p0→p1→p2) for a +x ray from p.
+// Analytic coverage of quadratic Bézier (p0→p1→p2) for a +x ray from p, plus
+// the reliability of that ray at this pixel.
 //
-// For each root t of B(t).y = p.y in [0,1) the signed fractional contribution is:
+// For each root t of B(t).y = p.y in [0,1) the signed fractional contribution is
 //   clamp((B(t).x − p.x) × width + 0.5, 0.0, 1.0) × sign(B′(t).y)
-// where `width` is the glyph pixel width so the 1-px clamp window is in pixel space.
-// The +0.5 term converts fragment-center UVs to a pixel-edge coverage ramp.
+// (Lengyel 2017 eq. 3; `width` puts the 1-px clamp window in pixel space).
 //
-// Summing over all curves and taking abs(sum) yields coverage ∈ [0,1].
-// Ref: Lengyel (2017) §4.3, eqs. (17)–(21).
+// A ray only antialiases edges it crosses at an angle: a +x ray gives an exact
+// ramp on a vertical stem and a hard step on a horizontal one. Averaging the two
+// axis rays therefore leaves stair-steps on near-axis edges. Each ray reports
+// how perpendicular the nearest crossing is (|B′.y| against |B′.x|, in pixels),
+// and the fragment blends the two coverages by that weight
+// (Lund 2020 "Rendering Resolution Independent Fonts in Games" §4.2.1 eq. 4.4–4.5).
+struct RayHit {
+    cov:    f32,
+    weight: f32,
+    dist:   f32,
+}
+
 fn edge_coverage(edge_x: f32, sample_x: f32, width: f32) -> f32 {
     return clamp((edge_x - sample_x) * width + 0.5, 0.0, 1.0);
 }
 
-fn quad_coverage(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, width: f32) -> f32 {
+fn root_hit(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<f32>, t: f32, hit: ptr<function, RayHit>) {
+    let mt = 1.0 - t;
+    let bx = mt * mt * p0.x + 2.0 * mt * t * p1.x + t * t * p2.x;
+    let d  = ((2.0 * t - 2.0) * p0 + (2.0 - 4.0 * t) * p1 + 2.0 * t * p2) * px;
+    let dy = d.y;
+    (*hit).cov += edge_coverage(bx, p.x, px.x) * sign(dy);
+    let dist = abs(bx - p.x) * px.x;
+    if dist < (*hit).dist {
+        (*hit).dist   = dist;
+        (*hit).weight = abs(dy) / max(abs(d.x) + abs(dy), 1e-6);
+    }
+}
+
+fn quad_coverage(p0: vec2<f32>, p1: vec2<f32>, p2: vec2<f32>, p: vec2<f32>, px: vec2<f32>, hit: ptr<function, RayHit>) {
     let a = p0.y - 2.0 * p1.y + p2.y;
     let b = 2.0 * (p1.y - p0.y);
     let c = p0.y - p.y;
-    var cov: f32 = 0.0;
 
     if abs(a) < 1e-6 {
         if abs(b) > 1e-6 {
             let t = -c / b;
             if t >= 0.0 && t < 1.0 {
-                let mt = 1.0 - t;
-                let bx = mt * mt * p0.x + 2.0 * mt * t * p1.x + t * t * p2.x;
-                cov += edge_coverage(bx, p.x, width) * sign(b);
+                root_hit(p0, p1, p2, p, px, t, hit);
             }
         }
-        return cov;
+        return;
     }
 
     let disc = b * b - 4.0 * a * c;
-    if disc < 0.0 { return 0.0; }
+    if disc < 0.0 { return; }
     let sq    = sqrt(disc);
     let inv2a = 0.5 / a;
 
     let t1 = (-b - sq) * inv2a;
     if t1 >= 0.0 && t1 < 1.0 {
-        let mt1 = 1.0 - t1;
-        let bx1 = mt1 * mt1 * p0.x + 2.0 * mt1 * t1 * p1.x + t1 * t1 * p2.x;
-        cov += edge_coverage(bx1, p.x, width) * sign(2.0 * a * t1 + b);
+        root_hit(p0, p1, p2, p, px, t1, hit);
     }
-
     let t2 = (-b + sq) * inv2a;
     if t2 >= 0.0 && t2 < 1.0 {
-        let mt2 = 1.0 - t2;
-        let bx2 = mt2 * mt2 * p0.x + 2.0 * mt2 * t2 * p1.x + t2 * t2 * p2.x;
-        cov += edge_coverage(bx2, p.x, width) * sign(2.0 * a * t2 + b);
+        root_hit(p0, p1, p2, p, px, t2, hit);
     }
-
-    return cov;
 }
 
 // Rotate a point 90°. Casting the +x ray against rotated curves is equivalent to
@@ -170,12 +183,12 @@ fn rotate(v: vec2<f32>) -> vec2<f32> {
     return vec2(v.y, -v.x);
 }
 
-// Signed coverage accumulated over the curves of one band. `sample` is the (already
-// rotated, for the vertical pass) ray origin; `width` is the px-per-uv span along
-// the ramp axis. `do_rotate` rotates each curve so the +x ray becomes a +y ray.
-fn band_coverage(base: u32, sample: vec2<f32>, width: f32, do_rotate: bool) -> f32 {
+// Signed coverage and reliability accumulated over the curves of one band.
+// `sample` is the (already rotated, for the vertical pass) ray origin; `px` is the
+// pixel size of the local frame along (ramp axis, cross axis).
+fn band_coverage(base: u32, sample: vec2<f32>, px: vec2<f32>, do_rotate: bool) -> RayHit {
     let count = min(u32(atlas[base]), MAX_CURVES);
-    var cov: f32 = 0.0;
+    var hit = RayHit(0.0, 0.0, 1e9);
     for (var i = 0u; i < count; i++) {
         let o  = base + 1u + i * 6u;
         var p0 = vec2(atlas[o],      atlas[o + 1u]);
@@ -186,9 +199,10 @@ fn band_coverage(base: u32, sample: vec2<f32>, width: f32, do_rotate: bool) -> f
             p1 = rotate(p1);
             p2 = rotate(p2);
         }
-        cov += quad_coverage(p0, p1, p2, sample, width);
+        quad_coverage(p0, p1, p2, sample, px, &hit);
     }
-    return cov;
+    hit.cov = abs(hit.cov);
+    return hit;
 }
 
 @fragment
@@ -196,33 +210,36 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // A/B gating: when `enabled` is 0 fall back to raw Slug — unit-width AA ramp
     // (sharpen 1) and no stem darkening (gamma 1).
     let sharpen = mix(1.0, surface.sharpen, surface.enabled);
-    // Per-polarity stem darkening: the flat `polarity` flag (1.0 = light-on-dark,
-    // 0.0 = dark-on-light) selects the polarity-tuned gamma, then `enabled` gates
-    // it to 1.0 (off) for the raw-Slug baseline.
     let gamma_sel = mix(surface.gamma_dol, surface.gamma_lod, in.polarity);
     let gamma     = mix(1.0, gamma_sel, surface.enabled);
 
-    // uv can fall slightly outside [0,1] now (dilation), so clamp the band-index
+    // uv can fall slightly outside [0,1] (dilation), so clamp the band-index
     // selection — u32() of a negative float is undefined in WGSL. The coverage
     // SAMPLE stays the raw uv so the border AA ramp still computes correctly.
     let uy = clamp(in.uv.y, 0.0, 0.999999);
     let ux = clamp(in.uv.x, 0.0, 0.999999);
+    let w = in.glyph_width * sharpen;
+    let h = in.glyph_height * sharpen;
 
     // Horizontal +x ray over the y-partitioned bands (antialiases vertical edges).
     let hband = min(u32(uy * f32(BANDS)), BANDS - 1u);
-    let cov_h = band_coverage(
-        in.atlas_offset + hband * FLOATS_PER_BAND, in.uv,
-        in.glyph_width * sharpen, false);
+    let hx = band_coverage(in.atlas_offset + hband * FLOATS_PER_BAND, in.uv, vec2(w, h), false);
 
-    // Vertical +y ray over the x-partitioned bands (antialiases horizontal edges) —
-    // the missing second axis whose absence made near-horizontal strokes jagged.
+    // Vertical +y ray over the x-partitioned bands (antialiases horizontal edges).
     let vband = min(u32(ux * f32(BANDS)), BANDS - 1u);
-    let cov_v = band_coverage(
+    let vy = band_coverage(
         in.atlas_offset + HBAND_FLOATS + vband * FLOATS_PER_BAND,
-        rotate(in.uv), in.glyph_height * sharpen, true);
+        rotate(in.uv), vec2(h, w), true);
 
-    // Average the two rays (Slug's 2D coverage), per Lengyel (2017) / GreenLightning.
-    let cov = clamp(0.5 * (abs(cov_h) + abs(cov_v)), 0.0, 1.0);
+    // A ray whose nearest crossing is farther than the 1-px ramp reports a hard
+    // in/out value; only rays inside the ramp carry edge information. Blend the
+    // informative rays by their perpendicularity, fall back to the plain average
+    // when neither (deep inside or outside the glyph, both agree).
+    let wh = select(0.0, hx.weight, hx.dist <= 1.0);
+    let wv = select(0.0, vy.weight, vy.dist <= 1.0);
+    let sum = wh + wv;
+    let blended = select(0.5 * (hx.cov + vy.cov), (hx.cov * wh + vy.cov * wv) / max(sum, 1e-6), sum > 1e-6);
+    let cov = clamp(blended, 0.0, 1.0);
     if cov < 1e-6 { return vec4(0.0); }
     // Per-polarity stem darkening for linear-space sRGB blending (1.0 = off).
     let alpha = pow(cov, 1.0 / gamma);

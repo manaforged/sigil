@@ -82,12 +82,9 @@ fn assert_direct_path_is_sharp(scale: f32) {
 
 // ---- embed-path tests: ScreenSubmission.scale is load-bearing (Wave 1) ----
 
-// 6x, not the more obvious 2x: shipped tuning (`sharpen: 2.0` — see
-// slug/tuning.rs) narrows the AA ramp enough that a realistic 2x embed
-// mismatch only softens to ~1.0px (vs ~0.0-0.5px direct), under
-// RAMP_THRESHOLD_PX. The defect scales linearly with the mismatch instead of
-// staying flat; 6x reliably crosses the threshold. See dispatch return for
-// the 2x/8x measured values.
+// 6x, not the more obvious 2x: the softening scales linearly with the
+// mismatch, and a 2x mismatch lands near RAMP_THRESHOLD_PX; 6x reliably
+// crosses it.
 const EMBED_TEXTURE_SCALE: f32 = 6.0;
 
 /// Real embed/screen path: a `CommandScene` built the way an embedding host
@@ -617,6 +614,7 @@ fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;
@@ -702,7 +700,7 @@ fn read_pixels(
         .expect("device poll");
     rx.recv().expect("map callback").expect("map result");
 
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let un = unpadded_bpr as usize;
     let pad = padded_bpr as usize;
     let h = height as usize;

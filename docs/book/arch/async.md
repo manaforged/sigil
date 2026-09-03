@@ -35,6 +35,21 @@ dropped if the owner is gone.
 Use this when a worker already exists and you only need to write
 signals. Use `spawn` when you have a future.
 
+For repeated writes to one signal, create a `SignalWriter` on the reactive
+thread and move it into the worker:
+
+```rust,ignore
+let rows = signal(Vec::new());
+let writer = signal_writer(rows);
+std::thread::spawn(move || {
+    writer.update(|rows| rows.push(load_row()?))?;
+    Ok::<_, ScheduleError>(())
+});
+```
+
+The writer keeps the current owner. Writes are dropped if that owner no
+longer exists.
+
 ## What not to call
 
 `EntityCx::spawn` + `AsyncContext::update` is the hidden Entity seam.
@@ -43,6 +58,7 @@ async is `spawn` → `Signal<Status>`.
 
 ## Frame timing
 
-`launch` pumps completions **before** `begin_effect`, so a finished
-future is visible in this frame's layout and paint. The bridge waker
-wakes winit so the loop does not wait for an unrelated OS event.
+`launch` pumps scheduler writes and entity completions **before**
+`begin_effect`, so finished work is visible in this frame's layout and paint.
+Both queues share the winit waker, so the loop does not wait for an unrelated
+OS event.

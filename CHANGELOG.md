@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The workspace publishes in lockstep: every `sigil-*` crate shares one version.
 
-## [0.1.0-alpha.1] — Unreleased
+## [0.1.0-alpha.1] — 2026-08-30
 
 First public alpha. The facade publishes as `sigil-ui` (the `sigil` name was
 already taken on crates.io); its library is still named `sigil`, so
@@ -55,6 +55,10 @@ already taken on crates.io); its library is still named `sigil`, so
   - `sigil::every` runs a callback on the frame clock; `sigil::work` runs a
     job on a worker thread and hands the result back on a frame, with no
     async runtime.
+  - `sigil::present` and `sigil::step` drive the host in tests. `click`,
+    `pointer`, and `wheel` build pointer events without crossterm.
+  - `sigil::request_exit` returns from `launch` and `run_tui` after the
+    current frame.
   - `sigil_style::grid` measures control chrome in terminal cells, so a
     button is one line rather than four.
   - Text is placed by display width, so a CJK glyph keeps its two columns.

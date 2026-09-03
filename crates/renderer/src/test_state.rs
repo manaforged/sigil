@@ -1,5 +1,6 @@
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
+use crate::raster_paint::{set_test_atlas_size_override, test_atlas_size_override};
 use crate::slug::{TextTuning, set_text_tuning, text_tuning};
 
 fn lock() -> &'static Mutex<()> {
@@ -10,11 +11,14 @@ fn lock() -> &'static Mutex<()> {
 pub struct GlobalTextState {
     _guard: MutexGuard<'static, ()>,
     tuning: TextTuning,
+    atlas: (u32, u32),
 }
 
 impl Drop for GlobalTextState {
     fn drop(&mut self) {
         set_text_tuning(self.tuning);
+        let (initial, max) = self.atlas;
+        set_test_atlas_size_override(initial, max);
     }
 }
 
@@ -26,5 +30,6 @@ pub fn lock_global_text_state() -> GlobalTextState {
     GlobalTextState {
         _guard: guard,
         tuning: text_tuning(),
+        atlas: test_atlas_size_override(),
     }
 }

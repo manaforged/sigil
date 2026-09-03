@@ -250,6 +250,7 @@ impl Gpu {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         }))
         .map_err(|_| io::Error::other("no GPU adapter available for offscreen capture"))?;
         let descriptor = wgpu::DeviceDescriptor {

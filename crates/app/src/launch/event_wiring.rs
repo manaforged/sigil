@@ -5,14 +5,12 @@ use sigil_hal::{
 use sigil_kernel::Cx;
 use sigil_layout::LayoutEngine;
 use sigil_reactive::Runtime;
-use sigil_renderer::{WgpuRenderer, WgpuSurface};
 use sigil_shell::{WinitShell, WinitWindowHandle};
 
 use crate::config::AppConfig;
-use sigil_hal::Renderer as _;
-use sigil_renderer::into_window_handle;
 use std::sync::Arc;
 
+use super::backend::{Backend, Surface};
 use super::{
     clamp_physical_size, logical_size_from_viewport, resize_surface, scale_from_f64, set_viewport,
 };
@@ -23,8 +21,8 @@ pub(super) struct DrainCtx<'a> {
     pub(super) cx: &'a mut Cx,
     pub(super) layout: &'a LayoutEngine,
     pub(super) router: &'a mut EventRouter,
-    pub(super) surface: &'a mut Option<WgpuSurface>,
-    pub(super) renderer: &'a mut WgpuRenderer,
+    pub(super) surface: &'a mut Option<Surface>,
+    pub(super) renderer: &'a mut Backend,
     pub(super) viewport: &'a mut (f32, f32),
     pub(super) config: &'a AppConfig,
     pub(super) exit_requested: &'a mut bool,
@@ -34,8 +32,8 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) shell: &'a WinitShell,
     pub(super) window_handle: WinitWindowHandle,
     pub(super) cx: &'a mut Cx,
-    pub(super) renderer: &'a mut WgpuRenderer,
-    pub(super) surface: &'a mut Option<WgpuSurface>,
+    pub(super) renderer: &'a mut Backend,
+    pub(super) surface: &'a mut Option<Surface>,
     pub(super) viewport: &'a (f32, f32),
     pub(super) user_zoom: f32,
 }
@@ -61,9 +59,9 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
     cx.set_scale(scale);
     let logical = logical_size_from_viewport(*viewport);
 
-    let handle = into_window_handle(Arc::clone(window));
-    match renderer.create_surface(handle, scale.to_physical(logical)) {
+    match renderer.create_surface(Arc::clone(window), scale.to_physical(logical)) {
         Ok(new_surface) => {
+            tracing::info!("sigil-app: rendering with the {} backend", renderer.name());
             *surface = Some(new_surface);
             Runtime::mark_frame_dirty();
         }
@@ -156,7 +154,8 @@ pub(super) fn publish_a11y(
     layout: &LayoutEngine,
     dirty: bool,
 ) {
-    if !dirty {
+    let fresh = shell.take_a11y_activation();
+    if !shell.a11y_active() || !(dirty || fresh) {
         return;
     }
     let update = sigil_a11y::tree(cx, router.focus(), &|id| {
@@ -219,8 +218,8 @@ fn adjust_value(cx: &Cx, target: sigil_kernel::NodeId, increase: bool) {
 
 struct WindowEventCtx<'a> {
     cx: &'a mut Cx,
-    renderer: &'a mut WgpuRenderer,
-    surface: &'a mut Option<WgpuSurface>,
+    renderer: &'a mut Backend,
+    surface: &'a mut Option<Surface>,
     viewport: &'a mut (f32, f32),
     exit_requested: &'a mut bool,
 }

@@ -27,6 +27,8 @@ pub struct TextFieldBuilder {
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
     focus_trigger: Option<Signal<u64>>,
+    pub(super) password: bool,
+    pub(super) reveal: Option<Signal<bool>>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -51,6 +53,8 @@ impl TextFieldBuilder {
             caret_visible: None,
             scroll_offset: None,
             focus_trigger: None,
+            password: false,
+            reveal: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -114,6 +118,22 @@ impl TextFieldBuilder {
         self
     }
 
+    #[must_use]
+    pub const fn password(mut self) -> Self {
+        self.password = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn reveal(mut self, show: Signal<bool>) -> Self {
+        self.reveal = Some(show);
+        self
+    }
+
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one assembly path: inputs, runtime, base node, mutators"
+    )]
     pub(super) fn into_node_builder(self) -> (NodeBuilder, TextFieldRuntime) {
         let value = self.value;
         let disabled = self.disabled;
@@ -134,6 +154,7 @@ impl TextFieldBuilder {
         let width = layout_overrides.width_hint();
         let height = layout_overrides.height_hint();
         let column = super::selection::column_width(width);
+        let reveal = self.reveal.unwrap_or_else(|| signal(false));
         let runtime = TextFieldRuntime::new(
             value,
             disabled,
@@ -143,6 +164,8 @@ impl TextFieldBuilder {
             caret_visible,
             scroll,
             column,
+            self.password,
+            reveal,
         );
         let clip_fail = runtime.clip_fail;
         let invalid = Some(derived(move || {

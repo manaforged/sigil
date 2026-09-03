@@ -159,6 +159,7 @@ fn view(cols: u16, rows: u16) -> (f32, f32) {
 
 fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
     guard();
+    sigil_app::clear_exit();
     let mut term = Term::enter().map_err(Error::new)?;
     let (mut cols, mut rows) = crossterm::terminal::size().map_err(Error::new)?;
     limit(config, &mut cols, &mut rows);
@@ -202,6 +203,9 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
             .frame(&mut host, &mut router, incoming, (cols, rows))
             .map_err(Error::new)?;
         term.paint(&mut screen).map_err(Error::new)?;
+        if sigil_app::take_exit() {
+            break;
+        }
     }
     Ok(())
 }

@@ -45,7 +45,7 @@
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_possible_truncation)]
 
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
 use sigil_hal::Color;
 use sigil_renderer::{
@@ -53,6 +53,7 @@ use sigil_renderer::{
     OffscreenTarget, SceneBuilder, SceneGradientStyle, SceneRectStyle, WgpuRenderer,
 };
 use sigil_style::Rgba8;
+use std::hint::black_box;
 use wgpu::TextureFormat;
 
 // ---------------------------------------------------------------------------
@@ -326,6 +327,7 @@ fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
             power_preference: wgpu::PowerPreference::LowPower,
             compatible_surface: None,
             force_fallback_adapter: false,
+            apply_limit_buckets: false,
         })
         .block_on()
         .ok()?;

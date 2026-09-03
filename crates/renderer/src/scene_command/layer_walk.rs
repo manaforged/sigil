@@ -74,12 +74,13 @@ fn render_nodes(
         match node {
             Node::Command(command) => batch.push(command),
             Node::Layer { scope, children } => {
-                flush_command_batch(ctx, &mut batch, view, viewport)?;
+                flush_command_batch(ctx, &mut batch, view, viewport);
                 render_layer(ctx, *scope, children, view, viewport, Point::new(0.0, 0.0))?;
             }
         }
     }
-    flush_command_batch(ctx, &mut batch, view, viewport)
+    flush_command_batch(ctx, &mut batch, view, viewport);
+    Ok(())
 }
 
 fn flush_command_batch(
@@ -87,17 +88,16 @@ fn flush_command_batch(
     batch: &mut Vec<&SceneCommand>,
     view: &wgpu::TextureView,
     viewport: (f32, f32),
-) -> Result<(), RendererError> {
+) {
     if batch.is_empty() {
-        return Ok(());
+        return;
     }
     let capacity = UploadCapacities::from_commands(batch.iter().copied());
     let mut walk = Walk::new(reborrow_ctx(ctx, view, viewport), capacity);
     for command in batch.drain(..) {
-        walk.handle(command)?;
+        walk.handle(command);
     }
     walk.finish();
-    Ok(())
 }
 
 fn render_layer(
@@ -198,7 +198,7 @@ fn render_layer_children(
                 scope,
                 children: nested,
             } => {
-                flush_layer_batch(ctx, &mut batch, clip, view)?;
+                flush_layer_batch(ctx, &mut batch, clip, view);
                 render_layer(
                     ctx,
                     *scope,
@@ -210,7 +210,8 @@ fn render_layer_children(
             }
         }
     }
-    flush_layer_batch(ctx, &mut batch, clip, view)
+    flush_layer_batch(ctx, &mut batch, clip, view);
+    Ok(())
 }
 
 fn flush_layer_batch(
@@ -218,19 +219,18 @@ fn flush_layer_batch(
     batch: &mut Vec<&SceneCommand>,
     clip: Rect,
     view: &wgpu::TextureView,
-) -> Result<(), RendererError> {
+) {
     if batch.is_empty() {
-        return Ok(());
+        return;
     }
     let capacity = UploadCapacities::from_commands(batch.iter().copied());
     let mut walk = Walk::new(reborrow_ctx(ctx, view, (clip.width, clip.height)), capacity);
     walk.push_clip(Rect::new(Point::new(0.0, 0.0), clip.width, clip.height));
     walk.push_transform(translation(-clip.origin.x, -clip.origin.y));
     for command in batch.drain(..) {
-        walk.handle(command)?;
+        walk.handle(command);
     }
     walk.finish();
-    Ok(())
 }
 
 fn composite_layer(
@@ -283,6 +283,7 @@ fn reborrow_ctx<'a>(
         fill_pipelines: &mut *ctx.fill_pipelines,
         shadow_pipelines: &mut *ctx.shadow_pipelines,
         slug_pipelines: &mut *ctx.slug_pipelines,
+        raster_pipelines: &mut *ctx.raster_pipelines,
         sprite_pipelines: &mut *ctx.sprite_pipelines,
         decoration_pipelines: &mut *ctx.decoration_pipelines,
         layer_pipelines: &mut *ctx.layer_pipelines,

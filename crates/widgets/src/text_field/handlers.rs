@@ -29,6 +29,8 @@ pub(super) struct TextFieldRuntime {
     pub(super) text_style: Signal<TextStyle>,
     pub(super) ime: ImeState,
     pub(super) clip_fail: Signal<bool>,
+    pub(super) password: bool,
+    pub(super) reveal: Signal<bool>,
 }
 
 impl TextFieldRuntime {
@@ -45,6 +47,8 @@ impl TextFieldRuntime {
         caret_visible: Signal<bool>,
         scroll: Signal<f32>,
         column: f32,
+        password: bool,
+        reveal: Signal<bool>,
     ) -> Self {
         let edit = TextEdit::new(value.peek());
         let caret = signal(edit.caret());
@@ -65,6 +69,8 @@ impl TextFieldRuntime {
             text_style,
             ime: ImeState::new(),
             clip_fail: signal(false),
+            password,
+            reveal,
         }
     }
 

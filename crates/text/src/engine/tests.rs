@@ -143,7 +143,7 @@ fn registered_fallback_face_joins_the_chain() {
     let hebrew = noto_hebrew();
     collection.fallbacks = vec![hebrew.clone()];
     let primary = collection.primary().clone();
-    let chain = collection.fallback_chain(&primary, 400);
+    let chain = collection.fallback_chain(&primary, 400, "");
     assert!(
         chain.iter().any(|f| f.id() == hebrew.id()),
         "fallback face must appear in the chain",
@@ -166,4 +166,26 @@ fn bundled_default_family_resolves_weight_500_to_medium() {
         medium.id(),
         "bundled sans family must contain a distinct Medium face"
     );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn mixed_script_names_shape_without_notdef() {
+    let engine = crate::OwnedTextEngine::new(crate::TextConfig::default());
+    for text in [
+        "KW.M · 東京証券 株式会社",
+        "مصرف الخليج الأول",
+        "בנק הפועלים",
+        "서울반도체",
+    ] {
+        let para = engine
+            .layout_paragraph_styled(text, None, &sigil_style::TextStyle::default())
+            .expect("layout");
+        let notdef = para
+            .rendered_glyphs()
+            .iter()
+            .filter(|g| g.glyph_id == 0)
+            .count();
+        assert_eq!(notdef, 0, "{text} shaped {notdef} notdef glyphs");
+    }
 }

@@ -166,7 +166,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
         .recv()
         .expect("map callback")
         .expect("readback map — device lost");
-    slice.get_mapped_range().to_vec()
+    slice.get_mapped_range().expect("mapped range").to_vec()
 }
 
 const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {

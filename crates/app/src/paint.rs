@@ -168,6 +168,7 @@ fn mark(
         fill: style.fill,
         ink: style.ink,
         weight: style.text.font_weight,
+        italic: style.text.italic,
         bare: true,
         clip,
     }

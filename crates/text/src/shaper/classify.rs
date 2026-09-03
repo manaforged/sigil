@@ -7,7 +7,7 @@ use unicode_script::{Script as UScript, UnicodeScript};
 
 use crate::shaper::TextSegment;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Script {
     Latin,
     Cjk,

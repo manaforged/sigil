@@ -28,9 +28,10 @@ Build without the GPU stack by disabling default features:
 sigil-ui = { version = "...", default-features = false, features = ["tui"] }
 ```
 
-Layout runs the same engine at a fixed 8 px cell scale, so widget
-proportions match the window host. Paint rasterizes onto a character
-grid and writes only the rows that changed.
+Layout runs the same engine at `Host::CELL` (8 px) per terminal cell,
+so widget proportions match the window host. A pointer report maps to
+the centre of that cell, not its corner. Paint rasterizes onto a
+character grid and writes only the rows that changed.
 
 ## What reaches the terminal
 
@@ -68,7 +69,9 @@ loop.
 
 ## Testing
 
-`sigil_tui::present(tree, cols, rows, &events)` mounts, routes, and
-returns the painted grid as text — assert on what a reader sees.
-`step` drives one frame at a time when a test owns the host and
-router. See `crates/tui/tests/host.rs`.
+`sigil::present(tree, cols, rows, &events)` (feature `tui`) mounts,
+routes, and returns the painted grid as text — assert on what a reader
+sees. `sigil::step` drives one frame at a time when a test owns the
+host and router. Build pointer events with `sigil_tui::click(col, row)`
+or `pointer(phase, col, row)` next to `key_down`. See
+`crates/tui/tests/host.rs`.

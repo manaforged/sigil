@@ -1,6 +1,6 @@
 use sigil_hal::{Point, Rect};
 
-use super::{Grid, Ink, paint, paint_for, row_bytes, supports_truecolor};
+use super::{Grid, Ink, paint, paint_for, row_bytes, supports_truecolor, terminal_inks};
 use crate::paint::raster;
 use sigil_app::{Host, Painted};
 use sigil_kernel::{Cx, text as text_node};
@@ -19,6 +19,7 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
         fill: None,
         ink: None,
         weight: 400,
+        italic: false,
         bare,
         clip: None,
     }
@@ -63,14 +64,25 @@ fn a_colour_without_truecolor_lands_in_the_cube() {
         }),
         231
     );
+    assert_eq!(
+        cube(Rgba8 {
+            r: 24,
+            g: 15,
+            b: 46,
+            a: 255,
+        }),
+        234,
+        "a dark violet is closer to xterm gray 28 than saturated blue"
+    );
 }
 
 #[test]
-fn apple_terminal_uses_the_256_colour_cube() {
-    assert!(!supports_truecolor(
+fn apple_terminal_honors_an_explicit_truecolor_capability() {
+    assert!(supports_truecolor(
         Some("Apple_Terminal"),
         Some("truecolor")
     ));
+    assert!(!supports_truecolor(Some("Apple_Terminal"), None));
     assert!(supports_truecolor(Some("WezTerm"), Some("truecolor")));
     assert_eq!(
         paint_for(
@@ -127,6 +139,16 @@ fn bold_text_sets_the_bold_attribute() {
     assert!(out.contains("\u{1b}[1m"), "expected bold in {out:?}");
 }
 
+#[test]
+fn italic_text_sets_the_italic_attribute() {
+    let mut node = painted("THOUGHT", None, false);
+    node.italic = true;
+    let grid = raster(&[node], 20, 3, 8.0);
+    assert!(grid.get(0, 0).is_some_and(|cell| cell.italic));
+    let out = bytes(&grid, 0);
+    assert!(out.contains("\u{1b}[3m"), "expected italic in {out:?}");
+}
+
 fn bytes(grid: &Grid, row: usize) -> String {
     let mut out: Vec<u8> = Vec::new();
     let mut line = String::new();
@@ -171,6 +193,31 @@ fn toned_text_does_not_paint_its_own_background() {
     assert_eq!(cell.ch, 'S');
     assert_eq!(cell.fg, Ink::Of(Tone::Warn));
     assert_eq!(cell.bg, Ink::Bare, "the glyph must not sit on its own tone");
+}
+
+#[test]
+fn a_full_block_fills_font_seams_with_its_ink() {
+    let dark = Rgba8 {
+        r: 6,
+        g: 4,
+        b: 11,
+        a: 255,
+    };
+    let blue = Rgba8 {
+        r: 105,
+        g: 140,
+        b: 210,
+        a: 255,
+    };
+    let mut background = painted("", None, false);
+    background.text = None;
+    background.fill = Some(dark);
+    let mut block = painted("█", None, false);
+    block.ink = Some(blue);
+    let grid = raster(&[background, block], 2, 1, 8.0);
+    let cell = grid.get(0, 0).expect("full-block cell");
+    assert_ne!(cell.fg, cell.bg, "the grid must preserve authored colours");
+    assert_eq!(terminal_inks(cell), (cell.fg, cell.fg));
 }
 
 #[test]

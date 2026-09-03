@@ -1,4 +1,4 @@
-use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, Tree, TreeId, TreeUpdate};
+use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate};
 use sigil_hal::Rect;
 use sigil_kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 
@@ -19,7 +19,7 @@ pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpd
         .unwrap_or(root_ak);
     TreeUpdate {
         nodes,
-        tree: Some(Tree::new(root_ak)),
+        tree: Some(TreeInfo::new(root_ak)),
         tree_id: TreeId::ROOT,
         focus: focus_ak,
     }

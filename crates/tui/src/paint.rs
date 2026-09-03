@@ -32,6 +32,7 @@ pub struct Cell {
     pub fg: Ink,
     pub bg: Ink,
     pub bold: bool,
+    pub italic: bool,
 }
 
 impl Cell {
@@ -42,6 +43,7 @@ impl Cell {
             fg: Ink::Bare,
             bg: Ink::Bare,
             bold: false,
+            italic: false,
         }
     }
 }
@@ -53,6 +55,7 @@ struct Run<'a> {
     text: &'a str,
     fg: Ink,
     bold: bool,
+    italic: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -206,6 +209,7 @@ impl Grid {
             if let Some(cell) = line.get_mut(x) {
                 cell.ch = ch;
                 cell.bold = run.bold;
+                cell.italic = run.italic;
                 if run.fg.set() {
                     cell.fg = run.fg;
                 }
@@ -214,6 +218,7 @@ impl Grid {
                 if let Some(cell) = line.get_mut(x.saturating_add(pad)) {
                     cell.ch = CONTINUES;
                     cell.bold = run.bold;
+                    cell.italic = run.italic;
                     if run.fg.set() {
                         cell.fg = run.fg;
                     }
@@ -280,6 +285,7 @@ pub fn raster_into(grid: &mut Grid, nodes: &[Painted], cell: f32) {
                 text,
                 fg: ink,
                 bold: node.weight >= 700,
+                italic: node.italic,
             });
         }
     }

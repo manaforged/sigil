@@ -137,6 +137,42 @@ impl LayoutDrive {
         let _ = self.forest.next_frame();
     }
 
+    pub(crate) fn measure_assigned(
+        &self,
+        root: NodeHandle,
+        avail: AvailableSpace,
+        width: f32,
+        height: f32,
+    ) -> Result<(), LayoutError> {
+        let root_id = root.0;
+        let handle = self
+            .forest
+            .refer(root_id)
+            .ok_or_else(|| LayoutError::LayoutInvalid(format!("stale measure root {root_id:?}")))?;
+        let scope = MeasureScope::new(&self.forest, self.text.as_ref(), avail);
+        match handle.style().display {
+            Display::Flex => FlexSolver::new(scope).solve_at_area(
+                handle,
+                crate::flex::CbSize {
+                    w: width,
+                    h: height,
+                },
+                crate::flex::Position2::new(0.0, 0.0),
+            ),
+            Display::Grid => crate::grid::GridSolver::new(scope).solve_at(
+                handle,
+                width,
+                crate::block::Position2 { x: 0.0, y: 0.0 },
+            ),
+            Display::Block | Display::None => BlockSolver::new(scope).solve_at_assigned(
+                handle,
+                Size { width, height },
+                crate::block::Position2 { x: 0.0, y: 0.0 },
+                Some(width),
+            ),
+        }
+    }
+
     pub(crate) fn measure_keep_frame(
         &self,
         root: NodeHandle,
@@ -179,6 +215,33 @@ impl LayoutDrive {
     }
 
     #[must_use]
+    pub(crate) fn stored_box(&self, node: NodeHandle) -> Option<ResolvedBox> {
+        let cb = self.forest.boxed(node.0)?;
+        Some(ResolvedBox {
+            x: cb.x,
+            y: cb.y,
+            w: cb.w,
+            h: cb.h,
+        })
+    }
+
+    pub(crate) fn write_box(
+        &mut self,
+        node: NodeHandle,
+        cb: ResolvedBox,
+    ) -> Result<(), LayoutError> {
+        self.forest.write(
+            node.0,
+            ComputedBox {
+                x: cb.x,
+                y: cb.y,
+                w: cb.w,
+                h: cb.h,
+            },
+        )
+    }
+
+    #[must_use]
     pub fn computed_box(&self, node: NodeHandle) -> Option<ResolvedBox> {
         if self.forest.frame_for(node.0)? != self.forest.current_frame() {
             return None;
@@ -210,8 +273,12 @@ impl LayoutDrive {
         }
         let mut handles = Vec::new();
         self.collect_subtree(root, &mut handles)?;
+        let root_frame = self.forest.frame_for(root.0).unwrap_or(0);
         for handle in handles {
-            let Some(box_) = self.computed_box(handle) else {
+            if self.forest.frame_for(handle.0).unwrap_or(0) < root_frame {
+                continue;
+            }
+            let Some(box_) = self.stored_box(handle) else {
                 continue;
             };
             self.forest.write(

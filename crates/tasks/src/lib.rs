@@ -12,10 +12,10 @@ mod runtime;
 mod schedule_error;
 mod status;
 
-pub use current::{dispatcher, post, spawn};
-pub use dispatch::dispatch_to_owner;
+pub use current::{dispatcher, post, signal_writer, spawn};
 #[doc(hidden)]
 pub use dispatch::spawn_to_signal;
+pub use dispatch::{SignalWriter, dispatch_to_owner};
 pub use handle::OwnerHandle;
 pub use reactive_bridge::{ReactiveBridge, TokioExecutor};
 pub use runtime::{AsyncRuntime, Dispatcher};

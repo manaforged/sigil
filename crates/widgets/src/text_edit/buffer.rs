@@ -2,7 +2,6 @@
 
 const MAX_HISTORY: usize = 100;
 const PAGE_LINES: isize = 10;
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TextEdit {
     buffer: String,
@@ -22,6 +21,12 @@ impl TextEdit {
     #[must_use]
     pub(crate) fn new(buffer: String) -> Self {
         let caret = buffer.len();
+        Self::new_at(buffer, caret)
+    }
+
+    #[must_use]
+    pub(crate) fn new_at(buffer: String, caret: usize) -> Self {
+        let caret = clamp_to_len_boundary(&buffer, caret);
         let this = Self {
             buffer,
             caret,

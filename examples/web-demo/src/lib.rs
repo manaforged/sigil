@@ -83,6 +83,7 @@ impl Demo {
                 power_preference: wgpu::PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
+                apply_limit_buckets: false,
             })
             .await
             .map_err(js_error)?;
@@ -161,7 +162,7 @@ impl Demo {
                 &scene,
             )
             .map_err(js_error)?;
-        frame.present();
+        self.queue.present(frame);
         Ok(())
     }
 

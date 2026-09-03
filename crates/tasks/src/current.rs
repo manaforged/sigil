@@ -3,6 +3,7 @@ use std::future::Future;
 
 use sigil_reactive::Signal;
 
+use crate::dispatch::SignalWriter;
 use crate::dispatch::spawn_with;
 use crate::handle::OwnerHandle;
 use crate::runtime::SpawnParts;
@@ -56,5 +57,22 @@ where
             .expect("spawn() requires AsyncRuntime::install_current")
             .clone();
         spawn_with(parts, owner, future)
+    })
+}
+
+#[must_use]
+#[track_caller]
+pub fn signal_writer<T>(signal: Signal<T>) -> SignalWriter<T>
+where
+    T: Send + 'static,
+{
+    let owner = OwnerHandle::current().expect("signal_writer() called outside a reactive scope");
+    HOST.with(|slot| {
+        let parts = slot
+            .borrow()
+            .as_ref()
+            .expect("signal_writer() requires AsyncRuntime::install_current")
+            .clone();
+        SignalWriter::new(parts.dispatcher, owner, signal)
     })
 }

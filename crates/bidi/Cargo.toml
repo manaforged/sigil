@@ -10,7 +10,7 @@ description = "Visual-order caret stepping for bidirectional text editing in Sig
 readme.workspace = true
 keywords = ["bidi", "rtl", "text", "caret", "gui"]
 categories = ["gui", "text-processing"]
-include = ["src/**", "/Cargo.toml"]
+include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [dependencies]
 unicode-bidi = "0.3"

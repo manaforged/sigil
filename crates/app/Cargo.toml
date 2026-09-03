@@ -18,15 +18,17 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 default = ["desktop"]
 # Slug text + command scene. No window. `Host::scene` lives here.
 scene = ["dep:sigil-renderer", "dep:sigil-text"]
-# winit + wgpu launch, native dialogs/menu/tray, Slug text.
+# winit + wgpu launch and Slug text.
 desktop = [
     "scene",
     "dep:sigil-shell",
-    "dep:rfd",
-    "dep:muda",
-    "dep:tray-icon",
     "dep:raw-window-handle",
 ]
+# Native integrations stay opt-in so a basic window does not require GTK on
+# Linux or compile platform services it never uses.
+dialog = ["dep:rfd"]
+menu = ["dep:muda", "dep:raw-window-handle"]
+tray = ["menu", "dep:tray-icon"]
 # Test seam: exposes `dialog::mock` so downstream apps can inject canned
 # file-dialog responses in their own tests without opening a native picker.
 # Sigil's own tests see the mock via `cfg(test)` without enabling this.
@@ -61,16 +63,16 @@ toml = { workspace = true }
 unicode-width = { workspace = true }
 # Native file dialogs (open / save / folder) and message alerts.
 # Uses the OS-native picker on macOS + Windows; Linux uses GTK3.
-rfd = { version = "0.15", optional = true }
+rfd = { version = "0.17", optional = true }
 # Native menu bar (muda) + system tray (tray-icon). Native on macOS/Windows.
-muda = { version = "0.17", optional = true }
-tray-icon = { version = "0.21", optional = true }
-# Extract the Win32 hwnd for muda's init_for_hwnd. The enum carries all
-# variants on every OS, so the match compile-checks cross-platform.
+muda = { version = "0.19", optional = true }
+tray-icon = { version = "0.24", optional = true }
+rodio = { version = "0.22", optional = true }
+portable-pty = { version = "0.9", optional = true }
+vt100 = { version = "0.16", optional = true }
+# Window and display handles for the wgpu surface; also the Win32 HWND
+# for muda's `init_for_hwnd`.
 raw-window-handle = { version = "0.6", optional = true }
-rodio = { version = "0.20", optional = true }
-portable-pty = { version = "0.8", optional = true }
-vt100 = { version = "0.15", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 # wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
@@ -82,7 +84,7 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 # (`sigil::menu` / `sigil::dialog` / `sigil::tray`). Dev-dep cycles back to
 # sigil-ui are allowed by cargo. Default features stay on: the examples
 # need the facade's desktop-gated re-exports.
-sigil-ui = { path = "../sigil" }
+sigil-ui = { path = "../sigil", features = ["dialog", "menu", "tray"] }
 
 [lints]
 workspace = true

@@ -168,7 +168,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
     device
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("poll");
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut out = Vec::with_capacity((unpadded * H) as usize);
     for row in 0..H {
         let start = (row * padded) as usize;

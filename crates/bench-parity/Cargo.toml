@@ -24,7 +24,7 @@ data-table = { path = "../../examples/data-table" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 clap = { version = "4", features = ["derive"] }
-sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+sysinfo = { version = "0.39", default-features = false, features = ["system"] }
 time = { version = "0.3", default-features = false, features = ["formatting"] }
 
 [[bin]]

@@ -186,9 +186,11 @@ pub enum StyleAtom {
     Opacity(u16),
     FontSize(Px),
     FontWeight(u16),
+    FontItalic(bool),
     FontFamily(&'static str),
     LineHeight(Px),
     LetterSpacing(i16),
+    TabularNums(bool),
     TextDecoration(TextDecoration),
     OverflowX(OverflowKind),
     OverflowY(OverflowKind),
@@ -241,9 +243,11 @@ impl StyleAtom {
                 | Self::BorderLeft(_)
                 | Self::FontSize(_)
                 | Self::FontWeight(_)
+                | Self::FontItalic(_)
                 | Self::FontFamily(_)
                 | Self::LineHeight(_)
                 | Self::LetterSpacing(_)
+                | Self::TabularNums(_)
                 | Self::OverflowX(_)
                 | Self::OverflowY(_)
         )

@@ -49,14 +49,10 @@ fn emit_segments(
             let expr = &match_segment.expr;
             let arms = match_segment.arms.iter().map(|arm| {
                 let pat = &arm.pat;
-                let guard = arm
-                    .guard
-                    .as_ref()
-                    .map(|(if_token, guard)| quote!(#if_token #guard));
                 let mut next = atoms.clone();
                 next.extend(arm.atoms.iter().cloned());
                 let body = emit_segments(tail, next);
-                quote!(#pat #guard => #body)
+                quote!(#pat => #body)
             });
             quote!(match #expr { #(#arms),* })
         }

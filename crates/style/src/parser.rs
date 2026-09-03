@@ -7,7 +7,7 @@ use crate::{
     Px, StateSlot, StyleAtom,
 };
 
-const STRUCTURAL_TOKENS: [&str; 77] = [
+const STRUCTURAL_TOKENS: [&str; 80] = [
     "p-4",
     "px-4",
     "py-4",
@@ -72,6 +72,7 @@ const STRUCTURAL_TOKENS: [&str; 77] = [
     "text-base",
     "text-lg",
     "text-xl",
+    "tabular-nums",
     "text-on-surface",
     "border",
     "border-2",
@@ -79,6 +80,8 @@ const STRUCTURAL_TOKENS: [&str; 77] = [
     "font-normal",
     "font-medium",
     "font-bold",
+    "italic",
+    "not-italic",
     "font-sans",
     "font-mono",
     "font-serif",
@@ -226,6 +229,8 @@ fn parse_font_token(token: &str) -> Option<StyleAtom> {
         "font-normal" => Some(StyleAtom::FontWeight(400)),
         "font-medium" => Some(StyleAtom::FontWeight(500)),
         "font-bold" => Some(StyleAtom::FontWeight(700)),
+        "italic" => Some(StyleAtom::FontItalic(true)),
+        "not-italic" => Some(StyleAtom::FontItalic(false)),
         "font-sans" => Some(StyleAtom::FontFamily("sans")),
         "font-mono" => Some(StyleAtom::FontFamily("mono")),
         "font-serif" => Some(StyleAtom::FontFamily("serif")),
@@ -237,6 +242,7 @@ fn parse_font_token(token: &str) -> Option<StyleAtom> {
 
 fn parse_tracking_token(token: &str) -> Option<StyleAtom> {
     match token {
+        "tabular-nums" => Some(StyleAtom::TabularNums(true)),
         "tracking-tighter" => Some(StyleAtom::LetterSpacing(-50)),
         "tracking-tight" => Some(StyleAtom::LetterSpacing(-25)),
         "tracking-normal" => Some(StyleAtom::LetterSpacing(0)),

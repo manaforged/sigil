@@ -435,6 +435,22 @@ fn map_enter_is_the_shell_enter_key() {
     let mapped = map_key(&event).expect("enter maps");
     assert_eq!(mapped, key_down(Key::Enter));
 }
+
+#[test]
+fn map_backtab_is_shift_tab() {
+    use sigil_hal::{Key, LogicalKey, ModifiersState, ShellEvent};
+    use sigil_tui::map_key;
+
+    let event = crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::BackTab,
+        crossterm::event::KeyModifiers::NONE,
+    );
+    let Some(ShellEvent::Key(mapped)) = map_key(&event) else {
+        panic!("backtab did not map");
+    };
+    assert_eq!(mapped.key, LogicalKey::Named(Key::Tab));
+    assert_eq!(mapped.modifiers, ModifiersState::SHIFT);
+}
 /// A state change reaches the terminal and survives the frames after it.
 ///
 /// This does not assert interpolation — it asserts the animator runs on the

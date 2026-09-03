@@ -1,9 +1,12 @@
-use sigil_hal::Color;
+use sigil_hal::{Color, RenderedGlyph};
 
 use crate::decoration_paint::{DecorationPipeline, decoration_instance};
-use crate::error::RendererError;
 use crate::fill_paint::FillPipeline;
-use crate::scene_command::walk::{Walk, rect_from_fields, transform_point, transform_rect};
+use crate::raster::RASTER_MAX_LOGICAL_PX;
+use crate::raster_paint::{RasterDrawParams, RasterTextPipeline};
+use crate::scene_command::walk::{
+    QueuedGlyphs, Walk, rect_from_fields, transform_point, transform_rect,
+};
 use crate::scene_command::{
     DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite,
     GlyphRun, SpriteKind, SpriteSource,
@@ -14,7 +17,7 @@ use crate::scene_instance::{
 };
 use crate::scene_paint::{PaintCtx, ScenePipeline};
 use crate::shadow_paint::{Shadow, ShadowPipeline};
-use crate::slug::{DrawParams, SlugTextPipeline};
+use crate::slug::{DrawParams, QueuedRun, RunFrame, SlugTextPipeline, text_tuning};
 use crate::sprite_paint::SpritePipeline;
 
 impl Walk<'_> {
@@ -286,30 +289,34 @@ impl Walk<'_> {
         self.draw_sprite(&sprite);
     }
 
-    pub(super) fn draw_glyph_run(&mut self, draw: &DrawGlyphRun) -> Result<(), RendererError> {
+    pub(super) fn queue_glyph_run(&mut self, draw: &DrawGlyphRun) {
         let run = &draw.run;
         let rect = transform_rect(self.current_transform(), run.rect);
-        if self.clip_rect(rect).is_none() {
-            return Ok(());
-        }
+        let Some(bounds) = self.clip_rect(rect) else {
+            return;
+        };
         let clip = self.current_clip();
         let Some(paragraph) = run.paragraph() else {
-            return Ok(());
+            return;
         };
+        let glyphs = run.positioned_glyphs();
+        if glyphs.is_empty() {
+            return;
+        }
         self.ctx.stats.glyph_runs += 1;
         let space = BlendSpace::from_format(self.ctx.format);
         let color = glyph_run_color(run, self.current_opacity(), space);
         let origin = (rect.origin.x, rect.origin.y);
-
-        let glyphs = run.positioned_glyphs();
-        if glyphs.is_empty() {
-            return Ok(());
-        }
-
-        let (uploads, ctx) = (&mut self.uploads, &mut self.ctx);
+        let leftover = self.raster_pass(run, origin, color, clip);
+        let glyphs: &[RenderedGlyph] = match leftover.as_deref() {
+            Some([]) => return,
+            Some(slice) => slice,
+            None => glyphs,
+        };
+        let ctx = &mut self.ctx;
         let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
-        pipeline.record_paragraph_in_frame(
-            &mut *ctx.encoder,
+        let instances = pipeline.instances_for(
+            glyphs,
             &DrawParams {
                 device: ctx.device,
                 queue: ctx.queue,
@@ -323,9 +330,92 @@ impl Walk<'_> {
                 color: Some(color),
                 clip,
             },
-            Some((uploads, &mut *ctx.stats)),
-        )
+        );
+        self.pending_glyphs.push(QueuedGlyphs {
+            run: QueuedRun { instances, clip },
+            bounds,
+        });
     }
+
+    fn raster_pass(
+        &mut self,
+        run: &GlyphRun,
+        origin: (f32, f32),
+        color: Color,
+        clip: Option<sigil_hal::Rect>,
+    ) -> Option<Vec<RenderedGlyph>> {
+        let eligible = text_tuning().raster
+            && self.is_identity_transform()
+            && run.style.font_size <= RASTER_MAX_LOGICAL_PX;
+        if !eligible {
+            return None;
+        }
+        let paragraph = run.paragraph()?;
+        self.finish();
+        let glyphs = run.positioned_glyphs();
+        let ctx = &mut self.ctx;
+        let pipeline = raster_pipeline_for(ctx.raster_pipelines, ctx.device, ctx.format);
+        Some(pipeline.record_paragraph(
+            ctx.encoder,
+            &RasterDrawParams {
+                device: ctx.device,
+                queue: ctx.queue,
+                view: ctx.view,
+                surface_width: ctx.viewport.0,
+                surface_height: ctx.viewport.1,
+                scale: ctx.scale,
+                paragraph,
+                glyphs,
+                origin,
+                color,
+                clip,
+            },
+        ))
+    }
+
+    pub(super) fn flush_glyphs(&mut self) {
+        if self.pending_glyphs.is_empty() {
+            return;
+        }
+        self.flush_shapes();
+        let runs: Vec<QueuedRun> = self
+            .pending_glyphs
+            .drain(..)
+            .map(|queued| queued.run)
+            .collect();
+        let (uploads, ctx) = (&mut self.uploads, &mut self.ctx);
+        let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
+        pipeline.record_runs_in_frame(
+            &mut *ctx.encoder,
+            &RunFrame {
+                device: ctx.device,
+                queue: ctx.queue,
+                view: ctx.view,
+                surface_width: ctx.viewport.0,
+                surface_height: ctx.viewport.1,
+                scale: ctx.scale,
+            },
+            &runs,
+            Some((uploads, &mut *ctx.stats)),
+        );
+    }
+}
+
+fn raster_pipeline_for<'a>(
+    pipelines: &'a mut Vec<RasterTextPipeline>,
+    device: &wgpu::Device,
+    format: wgpu::TextureFormat,
+) -> &'a mut RasterTextPipeline {
+    let idx = pipelines
+        .iter()
+        .position(|p| p.format() == format)
+        .unwrap_or_else(|| {
+            pipelines.push(RasterTextPipeline::new(device, format));
+            pipelines.len() - 1
+        });
+    pipelines
+        .get_mut(idx)
+        .expect("raster pipeline index was just constructed from the vec")
 }
 
 fn decoration_pipeline_for<'a>(

@@ -3,14 +3,16 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use sigil_events::prelude::NodeEventsExt;
-use sigil_kernel::{NodeBuilder, NodeId, Role, container, schedule_keyed_rebuild};
+use sigil_kernel::{
+    Cx, IntoNode, NodeBuilder, NodeId, Role, container, node, schedule_keyed_rebuild,
+};
 use sigil_layout::LayoutReactiveExt;
 use sigil_layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use sigil_reactive::{Signal, derived, effect_named};
+use sigil_reactive::{Signal, derived, effect_named, signal as signal_of};
 
 use super::selection::SelectionRuntime;
 use super::window::{
-    VisibleWindow, prefix_row_top, row_top, strip_height, total_height, visible_window,
+    VisibleWindow, page_rows, prefix_row_top, row_top, strip_height, total_height, visible_window,
 };
 
 pub(super) type HeightSpec<'a> = (f32, Option<&'a [f32]>);
@@ -186,9 +188,11 @@ where
     let rh = spec.row_height;
     let vh = spec.viewport_height;
     let overscan = spec.overscan;
-    let pos = derived(move || strip_offset(scroll_y.get(), rh, vh, overscan));
     let height = strip_height(vh, rh, overscan);
-    let first = keyed_rows(signal, scroll_y.get(), &spec, 0, None);
+    let mounted = mounted_window(signal, scroll_y.get(), &spec);
+    let anchor = signal_of(mounted.first);
+    let pos = derived(move || strip_offset(anchor.get(), scroll_y.get(), rh));
+    let first = keyed_rows(signal, mounted, &spec, 0, None);
     let seed: Vec<u64> = first.iter().map(|(key, _)| *key).collect();
     let mut strip = container()
         .layout(
@@ -211,56 +215,81 @@ where
         } else {
             Rc::new(RefCell::new(Vec::new()))
         };
-        let primed = Cell::new(true);
-        let last_len = Cell::new(spec.live_len.peek());
-        let generation = Cell::new(0_u64);
-        effect_named("sigil-virtual-list::strip", move || {
-            let len = spec.live_len.get();
-            let y = scroll_y.get();
-            if spec.row_key.is_some() {
-                let _ = signal.get();
-            } else if last_len.replace(len) != len {
-                generation.set(generation.get() + 1);
-            }
-            if primed.replace(false) {
-                return;
-            }
-            let incoming = keyed_rows(signal, y, &spec, generation.get(), Some(&prior));
-            schedule_keyed_rebuild(parent, Rc::clone(&prior), incoming);
-        });
+        let runner = Strip {
+            parent,
+            prior,
+            primed: Cell::new(true),
+            last_len: Cell::new(spec.live_len.peek()),
+            generation: Cell::new(0),
+            window: Cell::new(mounted),
+            anchor,
+            scroll_y,
+            signal,
+            spec,
+        };
+        effect_named("sigil-virtual-list::strip", move || runner.run());
     })
 }
 
-fn strip_offset(
-    scroll_y: f32,
-    row_height: f32,
-    viewport_height: f32,
-    overscan: usize,
-) -> (f32, f32) {
-    if row_height <= 0.0 {
-        return (0.0, 0.0);
-    }
-    let first = visible_window(scroll_y, usize::MAX, row_height, viewport_height, overscan).first;
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    let first_top = first as f32 * row_height;
-    (0.0, first_top - scroll_y)
+struct Strip<S: 'static, T: 'static, R: 'static> {
+    parent: NodeId,
+    prior: Rc<MountedRows>,
+    primed: Cell<bool>,
+    last_len: Cell<usize>,
+    generation: Cell<u64>,
+    window: Cell<VisibleWindow>,
+    anchor: Signal<usize>,
+    scroll_y: Signal<f32>,
+    signal: Signal<S>,
+    spec: BoundStrip<T, R>,
 }
 
-fn keyed_rows<S, T, R>(
-    signal: Signal<S>,
-    scroll_y: f32,
-    spec: &BoundStrip<T, R>,
-    generation: u64,
-    mounted: Option<&MountedRows>,
-) -> Vec<(u64, NodeBuilder)>
+impl<S, T, R> Strip<S, T, R>
 where
     S: Deref + Clone + 'static,
     S::Target: AsRef<[T]>,
     T: 'static,
     R: Fn(usize, &T) -> NodeBuilder + 'static,
+{
+    fn run(&self) {
+        let len = self.spec.live_len.get();
+        let y = self.scroll_y.get();
+        let mut stale = false;
+        if self.spec.row_key.is_some() {
+            let _ = self.signal.get();
+            stale = true;
+        } else if self.last_len.replace(len) != len {
+            self.generation.set(self.generation.get() + 1);
+            stale = true;
+        }
+        if self.primed.replace(false) {
+            return;
+        }
+        let next = mounted_window(self.signal, y, &self.spec);
+        if !stale && next == self.window.get() {
+            return;
+        }
+        self.window.set(next);
+        self.anchor.set(next.first);
+        let incoming = keyed_rows(
+            self.signal,
+            next,
+            &self.spec,
+            self.generation.get(),
+            Some(&self.prior),
+        );
+        schedule_keyed_rebuild(self.parent, Rc::clone(&self.prior), incoming);
+    }
+}
+
+fn mounted_window<S, T, R>(
+    signal: Signal<S>,
+    scroll_y: f32,
+    spec: &BoundStrip<T, R>,
+) -> VisibleWindow
+where
+    S: Deref + Clone + 'static,
+    S::Target: AsRef<[T]>,
 {
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
@@ -271,6 +300,46 @@ where
         spec.viewport_height,
         spec.overscan,
     );
+    let block = mount_block(spec.viewport_height, spec.row_height);
+    VisibleWindow {
+        first: window.first / block * block,
+        end: window
+            .end
+            .div_ceil(block)
+            .saturating_mul(block)
+            .min(slice.len()),
+    }
+}
+
+const MOUNT_BLOCKS_PER_PAGE: usize = 4;
+
+fn mount_block(viewport_height: f32, row_height: f32) -> usize {
+    (page_rows(viewport_height, row_height) / MOUNT_BLOCKS_PER_PAGE).max(1)
+}
+
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "row indices are far below the f32 mantissa limit"
+)]
+fn strip_offset(first: usize, scroll_y: f32, row_height: f32) -> (f32, f32) {
+    (0.0, (first as f32).mul_add(row_height, -scroll_y))
+}
+
+fn keyed_rows<S, T, R>(
+    signal: Signal<S>,
+    window: VisibleWindow,
+    spec: &BoundStrip<T, R>,
+    generation: u64,
+    mounted: Option<&MountedRows>,
+) -> Vec<(u64, Box<dyn IntoNode>)>
+where
+    S: Deref + Clone + 'static,
+    S::Target: AsRef<[T]>,
+    T: 'static,
+    R: Fn(usize, &T) -> NodeBuilder + 'static,
+{
+    let items = signal.peek();
+    let slice: &[T] = (*items).as_ref();
     let mut rows = Vec::with_capacity(window.len());
     for index in window.first..window.end {
         let Some(item) = slice.get(index) else {
@@ -282,19 +351,34 @@ where
         );
         let kept = mounted.is_some_and(|mounted| mounted.borrow().iter().any(|(k, _)| *k == key));
         if kept {
-            rows.push((key, container()));
+            rows.push((key, node(container())));
             continue;
         }
-        rows.push((
-            key,
-            place_row(
-                index,
-                spec.row_height,
-                spec.width,
-                (*spec.render)(index, item),
-                spec.selection,
-            ),
-        ));
+        rows.push((key, node(deferred_row(items.clone(), index, spec))));
     }
     rows
+}
+
+fn deferred_row<S, T, R>(
+    items: S,
+    index: usize,
+    spec: &BoundStrip<T, R>,
+) -> impl FnOnce(&mut Cx) -> NodeId + use<S, T, R>
+where
+    S: Deref + 'static,
+    S::Target: AsRef<[T]>,
+    T: 'static,
+    R: Fn(usize, &T) -> NodeBuilder + 'static,
+{
+    let render = Rc::clone(&spec.render);
+    let row_height = spec.row_height;
+    let width = spec.width;
+    let selection = spec.selection;
+    move |cx: &mut Cx| {
+        let slice: &[T] = (*items).as_ref();
+        let row = slice
+            .get(index)
+            .map_or_else(container, |item| (*render)(index, item));
+        place_row(index, row_height, width, row, selection).build(cx)
+    }
 }

@@ -7,7 +7,7 @@ use sigil_style::{TextLineHeight, TextStyle};
 
 use crate::Paragraph;
 
-const MAX_ENTRIES: usize = 2_048;
+const MAX_ENTRIES: usize = 16_384;
 
 fn hasher() -> &'static RandomState {
     static HASHER: OnceLock<RandomState> = OnceLock::new();
@@ -41,6 +41,7 @@ struct DiscreteTextStyle {
     font_weight: u16,
     line_height: DiscreteLineHeight,
     letter_spacing_bits: u32,
+    tabular_nums: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -136,6 +137,7 @@ impl From<&TextStyle> for DiscreteTextStyle {
             font_weight: style.font_weight,
             line_height: DiscreteLineHeight::from(style.line_height),
             letter_spacing_bits: style.letter_spacing_em.to_bits(),
+            tabular_nums: style.tabular_nums,
         }
     }
 }

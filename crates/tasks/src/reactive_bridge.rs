@@ -85,9 +85,9 @@ pub(crate) fn drain_into_reactive(rx: &mut UnboundedReceiver<(OwnerId, BoxMainCa
     moved
 }
 
-pub(crate) fn replace_bridge_waker<F>(bridge: &mut ReactiveBridge, waker: F)
-where
-    F: Fn() + Send + Sync + 'static,
-{
-    bridge.waker = Arc::new(waker);
+pub(crate) fn replace_bridge_waker(
+    bridge: &mut ReactiveBridge,
+    waker: Arc<dyn Fn() + Send + Sync + 'static>,
+) {
+    bridge.waker = waker;
 }

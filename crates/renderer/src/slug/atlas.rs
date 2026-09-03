@@ -50,7 +50,6 @@ impl AtlasLayout {
             return RebuildDecision::Current;
         }
 
-        self.offsets.clear();
         RebuildDecision::Upload {
             required_bytes: glyph_count * BYTES_PER_GLYPH,
         }
@@ -118,9 +117,13 @@ impl GlyphAtlas {
                 mapped_at_creation: false,
             });
             self.capacity = new_cap;
+            self.layout.offsets.clear();
         }
 
         for (key, cached) in cache.iter() {
+            if self.layout.offset(key).is_some() {
+                continue;
+            }
             let byte_offset = u64::from(cached.slot) * BYTES_PER_GLYPH;
             self.layout.record_offset(key, byte_offset);
             queue.write_buffer(&self.buffer, byte_offset, cached.band_data.as_bytes());

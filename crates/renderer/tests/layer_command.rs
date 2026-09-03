@@ -327,7 +327,7 @@ fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Textu
         .poll(wgpu::PollType::wait_indefinitely())
         .expect("device poll");
     receiver.recv().expect("map callback").expect("map result");
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range().expect("mapped range");
     let mut pixels = Vec::with_capacity((row_bytes * VIEWPORT_HEIGHT) as usize);
     for row in mapped.chunks_exact(padded_row_bytes as usize) {
         pixels.extend_from_slice(&row[..row_bytes as usize]);

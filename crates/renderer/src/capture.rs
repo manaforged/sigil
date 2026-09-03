@@ -136,7 +136,7 @@ fn map_readback(
     device.poll(wgpu::PollType::wait_indefinitely())?;
     rx.recv()
         .map_err(|err| io::Error::other(format!("readback map callback dropped: {err}")))??;
-    let mapped = slice.get_mapped_range();
+    let mapped = slice.get_mapped_range()?;
     let pixels = strip_padding(&mapped, layout);
     drop(mapped);
     buffer.unmap();

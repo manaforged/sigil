@@ -8,15 +8,16 @@ use crate::frame_stats::FrameStats;
 use crate::frame_upload::{FrameUploads, UploadCapacities};
 use crate::layer_composite::LayerCompositePipeline;
 use crate::layer_pool::{LayerHandle, LayerPool};
+use crate::raster_paint::RasterTextPipeline;
 use crate::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
 use crate::scene_paint::ScenePipeline;
 use crate::shadow_paint::ShadowPipeline;
-use crate::slug::SlugTextPipeline;
+use crate::slug::{QueuedRun, SlugTextPipeline};
 use crate::split_encoder::SplitEncoder;
 use crate::sprite_paint::SpritePipeline;
 
-const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+pub(crate) const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
 pub(crate) struct WalkCtx<'a> {
     pub(crate) device: &'a wgpu::Device,
@@ -31,6 +32,7 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) fill_pipelines: &'a mut Vec<FillPipeline>,
     pub(crate) shadow_pipelines: &'a mut Vec<ShadowPipeline>,
     pub(crate) slug_pipelines: &'a mut Vec<SlugTextPipeline>,
+    pub(crate) raster_pipelines: &'a mut Vec<RasterTextPipeline>,
     pub(crate) sprite_pipelines: &'a mut Vec<SpritePipeline>,
     pub(crate) decoration_pipelines: &'a mut Vec<DecorationPipeline>,
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
@@ -55,7 +57,8 @@ pub(crate) fn walk_command_scene(
         return super::layer_walk::walk_layer_command_scene(ctx, scene);
     }
     let capacity = UploadCapacities::from_commands(scene.commands.iter());
-    Walk::new(ctx, capacity).walk(scene)
+    Walk::new(ctx, capacity).walk(scene);
+    Ok(())
 }
 
 pub(super) struct Walk<'a> {
@@ -69,6 +72,20 @@ pub(super) struct Walk<'a> {
     pub(super) pending_stops: Vec<GpuStop>,
     pub(super) pending_shadows: Vec<ShadowInstance>,
     pub(super) pending_decorations: Vec<DecorationInstance>,
+    pub(super) pending_glyphs: Vec<QueuedGlyphs>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Shape {
+    Rect,
+    Fill,
+    Shadow,
+    Decoration,
+}
+
+pub(super) struct QueuedGlyphs {
+    pub(super) run: QueuedRun,
+    pub(super) bounds: Rect,
 }
 
 impl<'a> Walk<'a> {
@@ -91,22 +108,25 @@ impl<'a> Walk<'a> {
             pending_stops: Vec::new(),
             pending_shadows: Vec::new(),
             pending_decorations: Vec::new(),
+            pending_glyphs: Vec::new(),
         }
     }
 
-    pub(super) fn walk(mut self, scene: &CommandScene) -> Result<(), RendererError> {
+    pub(super) fn walk(mut self, scene: &CommandScene) {
         for command in &scene.commands {
-            self.handle(command)?;
+            self.handle(command);
         }
         self.finish();
-        Ok(())
     }
 
-    pub(super) fn handle(&mut self, command: &SceneCommand) -> Result<(), RendererError> {
+    pub(super) fn handle(&mut self, command: &SceneCommand) {
         if self.queue_batchable(command) {
-            return Ok(());
+            return;
         }
-        self.finish();
+        match command {
+            SceneCommand::PushClip(_) | SceneCommand::PopClip => self.flush_shapes(),
+            _ => self.finish(),
+        }
         match command {
             SceneCommand::PushClip(rect) => self.push_clip(*rect),
             SceneCommand::PopClip => {
@@ -132,33 +152,35 @@ impl<'a> Walk<'a> {
             | SceneCommand::Decoration(_) => {
                 unreachable!("batchable commands return before dispatch")
             }
-            SceneCommand::GlyphRun(draw) => self.draw_glyph_run(draw)?,
+            SceneCommand::GlyphRun(_) => unreachable!("glyph runs are queued before dispatch"),
             SceneCommand::Sprite(draw) => self.draw_sprite(draw),
             SceneCommand::Image(draw) => self.draw_image(draw),
         }
-        Ok(())
     }
 
     fn queue_batchable(&mut self, command: &SceneCommand) -> bool {
         match command {
+            SceneCommand::GlyphRun(draw) => {
+                self.queue_glyph_run(draw);
+                true
+            }
             SceneCommand::Rect(draw) => {
-                self.flush_fills();
-                self.flush_shadows();
-                self.flush_decorations();
+                if self.glyphs_under(transform_rect(self.current_transform(), draw.rect)) {
+                    self.flush_glyphs();
+                }
+                self.flush_shapes_except(Shape::Rect);
                 self.queue_rect(draw);
                 true
             }
             SceneCommand::Gradient(draw) => {
-                self.flush_rects();
-                self.flush_shadows();
-                self.flush_decorations();
+                self.flush_glyphs();
+                self.flush_shapes_except(Shape::Fill);
                 self.queue_gradient(draw);
                 true
             }
             SceneCommand::Pattern(draw) => {
-                self.flush_rects();
-                self.flush_shadows();
-                self.flush_decorations();
+                self.flush_glyphs();
+                self.flush_shapes_except(Shape::Fill);
                 self.queue_pattern(draw);
                 true
             }
@@ -167,16 +189,14 @@ impl<'a> Walk<'a> {
                 radii,
                 shadow,
             } => {
-                self.flush_rects();
-                self.flush_fills();
-                self.flush_decorations();
+                self.flush_glyphs();
+                self.flush_shapes_except(Shape::Shadow);
                 self.queue_shadow(*rect, *radii, *shadow);
                 true
             }
             SceneCommand::Decoration(draw) => {
-                self.flush_rects();
-                self.flush_fills();
-                self.flush_shadows();
+                self.flush_glyphs();
+                self.flush_shapes_except(Shape::Decoration);
                 self.queue_decoration(draw);
                 true
             }
@@ -184,11 +204,37 @@ impl<'a> Walk<'a> {
         }
     }
 
+    fn flush_shapes_except(&mut self, keep: Shape) {
+        if keep != Shape::Rect {
+            self.flush_rects();
+        }
+        if keep != Shape::Fill {
+            self.flush_fills();
+        }
+        if keep != Shape::Shadow {
+            self.flush_shadows();
+        }
+        if keep != Shape::Decoration {
+            self.flush_decorations();
+        }
+    }
+
     pub(super) fn finish(&mut self) {
+        self.flush_shapes();
+        self.flush_glyphs();
+    }
+
+    pub(super) fn flush_shapes(&mut self) {
         self.flush_rects();
         self.flush_fills();
         self.flush_shadows();
         self.flush_decorations();
+    }
+
+    fn glyphs_under(&self, rect: Rect) -> bool {
+        self.pending_glyphs
+            .iter()
+            .any(|queued| intersect_rect(queued.bounds, rect).is_some())
     }
 
     pub(super) fn push_clip(&mut self, rect: Rect) {
@@ -220,6 +266,10 @@ impl<'a> Walk<'a> {
         self.transforms.last().copied().unwrap_or(IDENTITY)
     }
 
+    pub(super) fn is_identity_transform(&self) -> bool {
+        self.current_transform() == IDENTITY
+    }
+
     pub(super) fn current_opacity(&self) -> f32 {
         self.layers.last().copied().unwrap_or(1.0)
     }
@@ -229,7 +279,7 @@ pub(super) const fn translation(tx: f32, ty: f32) -> Transform {
     [[1.0, 0.0, tx], [0.0, 1.0, ty]]
 }
 
-fn compose(parent: Transform, child: Transform) -> Transform {
+pub(crate) fn compose(parent: Transform, child: Transform) -> Transform {
     [
         [
             parent[0][0].mul_add(child[0][0], parent[0][1] * child[1][0]),
@@ -244,7 +294,7 @@ fn compose(parent: Transform, child: Transform) -> Transform {
     ]
 }
 
-pub(super) fn transform_rect(transform: Transform, rect: Rect) -> Rect {
+pub(crate) fn transform_rect(transform: Transform, rect: Rect) -> Rect {
     let p0 = transform_point(transform, rect.origin);
     let p1 = transform_point(
         transform,
@@ -285,7 +335,7 @@ pub(super) const fn rect_from_fields(fields: [f32; 4]) -> Rect {
     Rect::new(Point::new(x, y), width, height)
 }
 
-fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {
+pub(crate) fn intersect_rect(left: Rect, right: Rect) -> Option<Rect> {
     let x0 = left.origin.x.max(right.origin.x);
     let y0 = left.origin.y.max(right.origin.y);
     let x1 = (left.origin.x + left.width).min(right.origin.x + right.width);

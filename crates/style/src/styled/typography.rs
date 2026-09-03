@@ -15,6 +15,12 @@ pub trait Typography: StyleAccess {
     }
 
     #[must_use]
+    fn font_italic(mut self, italic: bool) -> Self {
+        self.style_mut().push_atom(StyleAtom::FontItalic(italic));
+        self
+    }
+
+    #[must_use]
     fn font_family(mut self, name: &'static str) -> Self {
         self.style_mut().push_atom(StyleAtom::FontFamily(name));
         self

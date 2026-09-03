@@ -47,10 +47,15 @@ sigil-hal = { workspace = true, optional = true }
 [features]
 default = ["desktop"]
 # winit + wgpu `launch`. Default so existing desktop binaries stay unchanged.
-desktop = ["sigil-app/desktop", "dep:arboard"]
+desktop = ["sigil-app/desktop", "clipboard"]
+# Native services are opt-in so a basic window only builds the window host.
+clipboard = ["dep:arboard"]
+dialog = ["desktop", "sigil-app/dialog"]
+menu = ["desktop", "sigil-app/menu"]
+tray = ["menu", "sigil-app/tray"]
 # Terminal host. Does not enable wgpu. Combine with `default-features = false`
 # for a TUI-only binary.
-tui = ["dep:sigil-tui", "dep:arboard"]
+tui = ["dep:sigil-tui", "clipboard"]
 # Exposes `sigil::{render, text}` and `Host::scene` without winit.
 # See DR-054.
 render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal", "sigil-app/scene"]
@@ -59,12 +64,12 @@ render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal", "sigil-app/sc
 image-decode = ["sigil-widgets/image-decode"]
 # Exposes `dialog::mock` — inject canned file-dialog responses in your app's
 # tests without opening a native picker. Enable in dev-dependencies.
-test-support = ["sigil-app/test-support"]
+test-support = ["dialog", "sigil-app/test-support"]
 audio = ["sigil-app/audio"]
 pty = ["sigil-app/pty"]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 sigil-animation = { path = "../animation" }
 sigil-animation-runtime = { path = "../animation_runtime" }
 sigil-bidi = { path = "../bidi" }
