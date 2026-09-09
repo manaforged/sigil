@@ -90,7 +90,15 @@ fn logical(code: crossterm::event::KeyCode) -> Option<LogicalKey> {
         KeyCode::End => LogicalKey::Named(Key::End),
         KeyCode::PageUp => LogicalKey::Named(Key::PageUp),
         KeyCode::PageDown => LogicalKey::Named(Key::PageDown),
+        KeyCode::F(number) => LogicalKey::Named(match format!("F{number}").parse() {
+            Ok(key) => key,
+            Err(_unsupported) => return None,
+        }),
         KeyCode::Char(ch) => LogicalKey::character(ch.to_string()),
         _ => return None,
     })
 }
+
+#[cfg(test)]
+#[path = "keys_tests.rs"]
+mod tests;
