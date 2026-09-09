@@ -66,9 +66,17 @@ impl TextEditRuntime {
     pub(super) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
         let mut edit = self.edit.borrow_mut();
         edit.sync_external(self.value.peek());
+        let caret = self.caret.peek();
+        if caret != edit.caret() {
+            edit.place_caret(caret);
+        }
         edit
     }
 }
+
+#[cfg(test)]
+#[path = "handlers_tests.rs"]
+mod tests;
 
 pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
     runtime.caret_visible.set(true);
