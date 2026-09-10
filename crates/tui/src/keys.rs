@@ -21,9 +21,10 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     if event.kind != crossterm::event::KeyEventKind::Press {
         return None;
     }
-    let key = logical(event.code)?;
+    let code = shifted(event);
+    let key = logical(code)?;
     let mut modifiers = ModifiersState::empty();
-    let text = match event.code {
+    let text = match code {
         crossterm::event::KeyCode::Char(ch)
             if !event.modifiers.intersects(
                 crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::ALT,
@@ -72,6 +73,20 @@ pub fn paste(text: &str) -> ShellEvent {
         phase: KeyPhase::Down,
         text: Some(SmolStr::from(text)),
     }))
+}
+
+fn shifted(event: &crossterm::event::KeyEvent) -> crossterm::event::KeyCode {
+    match event.code {
+        crossterm::event::KeyCode::Char(ch)
+            if ch.is_ascii_lowercase()
+                && event
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::SHIFT) =>
+        {
+            crossterm::event::KeyCode::Char(ch.to_ascii_uppercase())
+        }
+        code => code,
+    }
 }
 
 fn logical(code: crossterm::event::KeyCode) -> Option<LogicalKey> {
