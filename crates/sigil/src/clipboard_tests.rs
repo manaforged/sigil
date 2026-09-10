@@ -3,6 +3,29 @@ use std::cell::RefCell;
 
 struct Memory(RefCell<Option<String>>);
 
+#[cfg(feature = "clipboard-image")]
+#[test]
+#[ignore = "requires a native clipboard containing the 2x2 RGBA fixture"]
+fn native_image_reads_pixels() {
+    let source = image()
+        .expect("native clipboard read")
+        .expect("image present");
+    assert_eq!((source.width(), source.height()), (2, 2));
+    assert_eq!(
+        source.rgba(),
+        [
+            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255
+        ]
+    );
+}
+
+#[cfg(feature = "clipboard-image")]
+#[test]
+#[ignore = "requires a native clipboard containing only text"]
+fn native_image_without_pixels() {
+    assert_eq!(image().expect("native clipboard read"), None);
+}
+
 impl Clipboard for Memory {
     fn set(&self, text: &str) -> Result<(), sigil_widgets::ClipError> {
         *self.0.borrow_mut() = Some(text.to_owned());

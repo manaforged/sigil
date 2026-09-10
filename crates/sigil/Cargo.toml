@@ -50,6 +50,7 @@ default = ["desktop"]
 desktop = ["sigil-app/desktop", "clipboard"]
 # Native services are opt-in so a basic window only builds the window host.
 clipboard = ["dep:arboard"]
+clipboard-image = ["clipboard", "arboard/image-data"]
 dialog = ["desktop", "sigil-app/dialog"]
 menu = ["desktop", "sigil-app/menu"]
 tray = ["menu", "sigil-app/tray"]

@@ -86,6 +86,7 @@ impl LayoutEngine {
     }
 
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
+        self.gc(cx)?;
         let root_text = TextStyle::default();
         self.sync_subtree(cx, root, InheritedText::new(&root_text))
             .map(|_handles| ())
@@ -152,7 +153,15 @@ impl LayoutEngine {
     fn finish(&mut self, cx: &mut Cx, cache_key: LayoutCacheKey) {
         cx.clear_dirty();
         self.generation = self.generation.wrapping_add(1);
-        self.cached_key = Some(cache_key);
+        self.cached_key = self
+            .reactive_layout
+            .iter()
+            .all(|key| {
+                cx.get(NodeId::from_key(*key)).is_some_and(|node| {
+                    self.reactive_sigs.get(*key).copied() == Some(reactive_seed_signature(node))
+                })
+            })
+            .then_some(cache_key);
         let _sig = sigil_profile::span("layout.sig");
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
     }
@@ -274,6 +283,9 @@ impl LayoutEngine {
         root: NodeId,
         structural: bool,
     ) -> Result<Vec<NodeId>, LayoutError> {
+        if structural {
+            self.gc(cx)?;
+        }
         let mut repositioned: Vec<NodeId> = dirty
             .iter()
             .copied()
@@ -284,9 +296,6 @@ impl LayoutEngine {
         repositioned.extend(self.restyled.iter().copied());
         for id in dirty.iter().copied() {
             self.clear_hidden(cx, id);
-        }
-        if structural && self.core_to_handle.len() > cx.len() {
-            self.gc(cx)?;
         }
         let resized: Vec<NodeId> = dirty
             .iter()
@@ -734,8 +743,11 @@ impl LayoutEngine {
     fn track_reactive(&mut self, id: NodeId, node: &sigil_kernel::Node) {
         if has_unversioned_layout(node) {
             self.reactive_layout.insert(id.key());
+            self.reactive_sigs
+                .insert(id.key(), reactive_seed_signature(node));
         } else {
             self.reactive_layout.remove(&id.key());
+            self.reactive_sigs.remove(id.key());
         }
         if let Some(pos) = node.get_extension::<crate::ReactivePosition>() {
             self.positions.insert(id.key(), pos.get());
@@ -1089,3 +1101,7 @@ fn note_full(mirrored: bool, dirty: &[NodeId]) {
         "layout.full.majority"
     });
 }
+
+#[cfg(test)]
+#[path = "engine_tests.rs"]
+mod tests;
