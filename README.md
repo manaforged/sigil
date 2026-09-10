@@ -2,46 +2,32 @@
 
 Desktop UI in Rust. One widget tree, three hosts: `launch` opens a
 window, `Host` embeds the tree in another engine's loop, and `run_tui`
-paints it on a character grid. The widget catalog (button, table,
-text_field, virtual_list, modal, dropdown, tabs, chart, …) lives in
-`sigil::widgets`.
+paints it on a character grid. The widgets (button, table, text_field,
+virtual_list, modal, dropdown, tabs, chart) live in `sigil::widgets`.
 
 ![The workbench example application](site/assets/screenshots/workbench.png)
 
-**Status:** alpha (`0.1.0-alpha.1`). The API is not stable; pin exact
-versions.
+Version 0.1.0. The API moves between 0.x releases; pin an exact rev.
+
+## Requirements
+
+- Rust 1.90 or newer. `rust-toolchain.toml` selects stable.
+- macOS, Windows, or Linux.
+- A wgpu-capable GPU for the windowed hosts. The terminal host needs none.
 
 ## Install
 
-The alpha is not on crates.io yet. From this repository:
+The crates are not on crates.io. Add the facade from this repository:
 
 ```bash
 cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
 ```
 
-The package is named `sigil-ui` because `sigil` was already taken on
-crates.io. The library name is `sigil`, so application imports start with
-`sigil::`. After the first crates.io publish, `cargo add sigil-ui@0.1.0-alpha.1`
-is the install.
-
-## Requirements
-
-- Rust 1.90 or newer (`rust-toolchain.toml` pins stable for development)
-- macOS, Windows, or Linux
-- A wgpu-capable GPU for the windowed hosts; the TUI host needs none
-
-## Run
-
-```bash
-cargo run -p hello-counter        # smallest runnable app
-cargo run -p hello-host           # embed the tree in your own loop
-cargo run -p widget-playground    # live widget catalog
-mdbook serve docs/book            # author guide and architecture
-```
+The package is `sigil-ui` because `sigil` was taken on crates.io. The
+library is still `sigil`, so imports read `sigil::`. For a terminal-only
+binary add `--no-default-features --features tui`.
 
 ## Usage
-
-Put this code in `src/main.rs`, then run `cargo run`:
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -66,79 +52,63 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
-The repository includes runnable examples for events, styles, tables, and
-headless rendering under [`examples/`](examples/).
-
-## Run in a terminal
-
-Select the terminal host instead of the default desktop host:
+Swap `sigil::launch` for `sigil::run_tui` and the same tree paints in a
+terminal. Runnable examples:
 
 ```bash
-cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui \
-  --no-default-features --features tui
+cargo run -p hello-counter        # the app above
+cargo run -p hello-host           # embed the tree in your own loop
+cargo run -p widget-playground    # every widget in one window
+mdbook serve docs/book            # the guide and the architecture chapters
 ```
-
-Call `sigil::run_tui` with the same tree. See the
-[terminal host guide](docs/book/06-terminal.md) for a complete example and
-the differences between desktop and terminal rendering.
 
 ## How it works
 
-No virtual DOM and no per-frame rebuild. A signal write marks the
-nodes it touched, and a clean frame skips layout and scene assembly.
-Frames run a typed phase machine (Effect, Layout, Paint); a write
-during paint panics in debug builds and defers in release.
+A signal write marks the nodes it touched. A clean frame skips layout
+and scene assembly; there is no virtual DOM and no per-frame rebuild.
+Frames run three phases (Effect, Layout, Paint). A write during Paint
+panics in a debug build and is deferred in release.
 
-- **Layout, text, and rendering are owned.** Flexbox, block, and grid
-  layout (Taffy stays a bench corpus); HarfRust shaping, skrifa
-  metrics, bidi, and font fallback; wgpu rendering with glyphs and SVG
-  icons in one GPU pipeline.
-- **Accessibility is a node property.** AccessKit, IME, drag-and-drop,
-  and animation wire from the same tree.
-
-The architecture chapters are in [`docs/book/arch/`](docs/book/arch/);
-the crate-by-crate map is
-[crates.md](docs/book/arch/crates.md).
+Layout (flexbox, block, grid), text shaping (HarfRust, skrifa, bidi,
+font fallback), and wgpu rendering are owned code in this workspace.
+AccessKit, IME, drag-and-drop, and animation attach to the same tree.
+The crate map is [crates.md](docs/book/arch/crates.md).
 
 ## Benchmarks
 
-Two stress workloads ship as parity builds against reference
-implementations, and the site's Performance page documents the
-measurement rules: same host, checked-in seed and viewport, an
-output-equivalence assertion, frame-time distributions.
+Two workloads ship as parity builds against reference implementations.
+Each run records the host, a checked-in seed and viewport, and an
+output-equivalence assertion before any frame time is reported.
 
 ```bash
-cargo run --release -p access-log    # 1,000,000-row live tape, 60 x 8 cells @ 16 ms
-cargo run --release -p data-table    # 10,000 rows x 24 columns, parity with GPUI 0.2.2
+cargo run --release -p access-log --bin access-log-sigil   # 1,000,000-row live tape, 60 x 8 cells, 16 ms tick
+cargo run --release -p data-table                          # 10,000 rows x 24 columns, the GPUI 0.2.2 example ported 1:1
 ```
-
-No speed numbers are published without that record. Measurement
-scripts live in `scripts/`.
 
 ## Limits
 
-- Alpha: the API changes between releases. Pin exact versions.
-- Headless machines can run the TUI host and the test suite, but not
-  the windowed hosts: rendering needs an adapter.
-- Web and mobile hosts are not included.
-- The terminal host does not support IME, images, rounded corners, or shadows.
-- Fuzz targets do not exist yet. Do not feed untrusted documents to
-  the markdown, HTML, or SVG parsers (see Security).
-- Public interaction-test helpers are limited; see the
-  [testing guide](docs/book/04-testing.md) for the current boundary.
+- Headless machines run the terminal host and the test suite. The
+  windowed hosts need a GPU adapter.
+- No supported web or mobile host. `examples/web-demo` is a wasm
+  renderer proof.
+- The terminal host has no IME, images, rounded corners, or shadows.
+- No fuzz targets yet. Do not feed untrusted documents to the markdown,
+  HTML, or SVG parsers.
+- The public interaction-test helpers are `with_cx`, `with_runtime`,
+  and `tree_size`; see the [testing guide](docs/book/04-testing.md).
 
 ## Security
 
-Report vulnerabilities through GitHub's private vulnerability
-reporting (Security tab), never as public issues. The workspace denies
-`unsafe`, and `cargo deny check` gates dependency advisories. The
-untrusted-input surfaces are the style-class parser, the markdown and
-HTML ingest, text shaping, and SVG baking.
+Report a vulnerability through GitHub's private reporting on this
+repository, never as a public issue. See [SECURITY.md](SECURITY.md).
+The workspace denies `unsafe` except one waived Win32 call that installs
+the native menu (`crates/app/src/menu.rs`). `cargo deny check` gates
+advisories.
 
 ## Contributing
 
-Issues are welcome. Unsolicited pull requests are not accepted; if a
-patch is wanted, it will be asked for.
+Issues are welcome. Pull requests are by invitation: open an issue
+first, and send a patch only when asked.
 
 ## Influences
 

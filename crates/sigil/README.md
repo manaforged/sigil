@@ -4,11 +4,11 @@ GPU UI in Rust. One widget tree. Open it with `sigil::launch`, pump
 it with `sigil::Host`, or paint it on a terminal with `sigil::run_tui`.
 
 The package is `sigil-ui` because `sigil` was taken on crates.io. The
-library name is `sigil`, so imports read `sigil::…`.
+library name is `sigil`, so imports read `sigil::`.
 
 Write `use sigil::prelude::*;`. That brings in `launch`, `Host`,
 `Painted`, `Player`, `Session`, `root`, `run_tui`, widgets,
-`copy`, `paste`, and `set_clipboard`. Widget helpers are `IntoNode`;
+`copy`, `paste`, and `install`. Widget helpers are `IntoNode`;
 type a helper as `impl IntoNode`. Pass other widgets to `launch`
 with `root(button("Go"))`. `launch` and `run_tui` pump `Host`.
 
@@ -18,7 +18,7 @@ Rust 1.90. A GPU for `launch`. A terminal for `run_tui`.
 
 ## Install
 
-The alpha is not on crates.io yet. From this repository:
+The crates are not on crates.io yet. From this repository:
 
 ```bash
 cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
@@ -81,9 +81,10 @@ holes. You place a native view. Sigil does not create an OS window
 for the hole.
 
 Clipboard: `copy("text")` after `launch` / `run_tui`,
-or after `set_clipboard` on an embed host.
+or after `install(MyClipboard)` on an embed host.
 
-Open a URL or path with the OS handler: `open("https://example.com")`.
+With the `desktop` feature, open a URL or path with the OS handler:
+`open("https://example.com")`.
 
 ## Limits
 
@@ -94,7 +95,7 @@ Open a URL or path with the OS handler: `open("https://example.com")`.
   winit.
 - `launch` does not parent a native view into a `surface(key)` hole.
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
-- The crate is `0.1.0-alpha.1`. Names can still move.
+- The crate is `0.1.0`. Names can still move.
 
 ## Features
 
@@ -103,6 +104,7 @@ Open a URL or path with the OS handler: `open("https://example.com")`.
 | `desktop` (default) | `launch`, OS chrome, `Host::scene` |
 | `tui` | `run_tui` |
 | `clipboard` | system clipboard access through `sigil::clipboard` |
+| `clipboard-image` | `sigil::clipboard::image()`, native clipboard pixels |
 | `dialog` | native open, save, and folder dialogs |
 | `menu` | native application menus |
 | `tray` | system tray icons and events |
@@ -120,7 +122,7 @@ Open a URL or path with the OS handler: `open("https://example.com")`.
 
 ## Macro note
 
-`classes!` and `#[derive(Action)]` expand to `sigil::__private::…`.
+`classes!` and `#[derive(Action)]` expand to `sigil::__private`.
 Depend on this facade crate. Keep the package name `sigil-ui`.
 
 License: MIT.

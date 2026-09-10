@@ -25,7 +25,7 @@ fn main() -> AppResult<()> {
 Build without the GPU stack by disabling default features:
 
 ```toml
-sigil-ui = { version = "...", default-features = false, features = ["tui"] }
+sigil-ui = { git = "https://github.com/ThomGardiner/sigil.git", tag = "v0.1.0", default-features = false, features = ["tui"] }
 ```
 
 Layout runs the same engine at `Host::CELL` (8 px) per terminal cell,

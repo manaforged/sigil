@@ -4,11 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The workspace publishes in lockstep: every `sigil-*` crate shares one version.
+The workspace publishes in lockstep: every published `sigil-*` crate shares one version.
 
-## [0.1.0-alpha.1] — 2026-08-30
+## [0.1.0] — 2026-09-10
 
-First public alpha. The facade publishes as `sigil-ui` (the `sigil` name was
+First public release. The facade publishes as `sigil-ui` (the `sigil` name was
 already taken on crates.io); its library is still named `sigil`, so
 `use sigil::prelude::*;` remains the single import user code needs.
 
@@ -24,8 +24,8 @@ already taken on crates.io); its library is still named `sigil`, so
   a `Style` struct API, and `style_reactive` signal binding; 12-step design
   tokens; tone × variant theming with WCAG-aware foregrounds.
 - Widget catalog: avatar, badge, button, card, chart, checkbox, chip,
-  code_edit, color_field, combobox, command_menu (FFT nested actions, not
-  Cmd-K), date_field, divider, dot, dropdown, field, floating_text, gauge,
+  code_edit, color_field, combobox, command_menu (a nested action
+  tree, not a searchable Cmd-K palette), date_field, divider_horizontal, divider_vertical, dot, dropdown, field, floating_text, gauge,
   icon, icon_button, image_rgba, interactive, markdown, markdown_edit, menu,
   mermaid, modal, number_field, panel, path, progress, radio_group, scroll,
   sheet, sidebar, slider, splitter, table (headless state), tabs, text_edit,
@@ -47,7 +47,7 @@ already taken on crates.io); its library is still named `sigil`, so
     frames; `render` writes the difference between two of them. A frame that
     changed nothing sends the terminal no bytes.
   - Colour resolves through the same code as the window host
-    (`sigil_style::resolve`), so a badge is the theme's own swatch. 24-bit
+    (`sigil_style::Theme::resolve_color`), so a badge is the theme's own swatch. 24-bit
     where `COLORTERM` advertises it, the 256-colour cube otherwise.
   - Mouse and wheel input, mapped onto `ShellEvent::Pointer` and `::Scroll`:
     hover, click-to-select, wheel scrolling, and header sort work as they do
@@ -55,8 +55,8 @@ already taken on crates.io); its library is still named `sigil`, so
   - `sigil::every` runs a callback on the frame clock; `sigil::work` runs a
     job on a worker thread and hands the result back on a frame, with no
     async runtime.
-  - `sigil::present` and `sigil::step` drive the host in tests. `click`,
-    `pointer`, and `wheel` build pointer events without crossterm.
+  - `sigil::present` and `sigil::step` drive the host in tests.
+    `sigil_tui::{click, pointer, wheel}` build pointer events without crossterm.
   - `sigil::request_exit` returns from `launch` and `run_tui` after the
     current frame.
   - `sigil_style::grid` measures control chrome in terminal cells, so a
@@ -64,18 +64,14 @@ already taken on crates.io); its library is still named `sigil`, so
   - Text is placed by display width, so a CJK glyph keeps its two columns.
   - A panic restores the terminal before it prints, rather than leaving a
     blank screen and no reason.
+- Text editors accept native copy, cut, paste, select-all, undo, and
+  redo shortcuts (Control everywhere, Command on macOS). A terminal host
+  reads the OS clipboard when no bracketed paste is queued.
 - `TextContent::resolve_into` and `refresh` resolve text into a caller's
   buffer, and report whether it changed, without allocating for fixed text.
 - `Host::repaint` emits the paint scene and reports whether anything moved.
 
-### Fixed
+### Changed
 
-- `table()` cells read their row data reactively. `replace_rows` changed the
-  data and the screen kept its first frame.
-- `chart()` asked for a `border-line` theme token that does not exist, which
-  panics in a debug build on either host.
-
-### Removed
-
-- GitHub Actions orchestration, in favor of direct verification on owned
-  native builders.
+- GitHub Actions runs on release tags and manual dispatch only. Tests run
+  on the author's machine before a push.

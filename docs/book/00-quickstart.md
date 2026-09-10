@@ -1,13 +1,12 @@
-# Sigil — Quickstart
+# Quickstart
 
-> Book status: written for `sigil-ui 0.1.0-alpha.1`. Every example on this
+> Book status: written for `sigil-ui 0.1.0`. Every example on this
 > page compiles in `examples/` (built by the workspace check gate).
 
-Sigil is a Rust-native desktop UI framework: signal-graph reactivity, an
-owned incremental layout engine, a wgpu renderer with an owned text
-pipeline, AccessKit accessibility and IME, a utility-class style
-layer, and a widget catalog in the crate (buttons, fields, tables,
-lists, charts, menus). You write plain Rust against one import. Widget helpers are
+Sigil is a Rust desktop UI framework. Reactivity is a signal graph.
+Layout, text shaping, and the wgpu renderer are owned code. AccessKit,
+IME, utility classes, and the widget catalog ship in the crate. You
+write plain Rust against one import. Widget helpers are
 `IntoNode`; type a layout helper as `impl IntoNode`. `launch` and
 `run_tui` take a closure, `text`, `container`, or `root(button("Go"))`.
 
@@ -19,15 +18,17 @@ use sigil::prelude::*;
 
 ```toml
 [dependencies]
-sigil-ui = "0.1.0-alpha.1"
+sigil-ui = { git = "https://github.com/ThomGardiner/sigil.git", tag = "v0.1.0" }
 ```
+
+The crates are not on crates.io.
 
 The package is `sigil-ui` (the bare `sigil` name was taken on crates.io);
 the library is still `sigil`, so imports read `sigil::…` as usual.
 
 ## The smallest app
 
-A complete reactive counter in ~30 lines (`examples/hello-counter`):
+A complete reactive counter in about 20 lines (`examples/hello-counter`):
 
 ```rust,ignore
 use sigil::prelude::*;
@@ -58,8 +59,8 @@ The four moving parts:
 - **`signal(0)`** creates a reactive cell. Signals are `Copy` — pass
   them into closures freely.
 - **`derived(...)`** computes a value from signals and re-evaluates when
-  they change. `text(label_text)` re-renders for free when the count
-  changes — no subscriptions, no repaints to schedule.
+  they change. `text(label_text)` re-renders when the count changes.
+  You do not subscribe or schedule a repaint.
 - **`.activate(move || ...)`** is an event handler: a plain closure
   that writes signals. `count.peek()` reads without subscribing the
   enclosing effect; `count.get()` reads with subscription.
@@ -81,7 +82,7 @@ that scope. An embed host that uses signals must call it.
 `Host::painted`. After layout, `Host::surfaces` lists `surface(key)`
 holes. You place a native view. See [The application host](07-application.md).
 
-## Styling in one breath
+## Styling
 
 `classes!("p-8 bg-surface rounded-md")` is the default styling path:
 Tailwind-shaped utility tokens, **validated at compile time** (a typo
@@ -91,7 +92,7 @@ tokens (`bg-surface`, `text-on-surface`, `bg-accent`) come from the
 active theme — dark mode is a theme swap, not a restyle. Chapter 2
 covers the full system.
 
-## Interaction in one breath
+## Interaction
 
 Static styling works on any node; interaction styling goes through
 `interactive()` — the opt-in wrapper that gives plain containers hover,
@@ -106,9 +107,9 @@ interactive(
 .hover(|s| s.bg("accent-hover"))
 ```
 
-No pointer math, no manual hit-testing, no signal plumbing for a hover
-background. Widgets carry their own interaction model — `button` ships
-working `.hover()` / `.focus()` / `.pressed()` / `.disabled_style()`
+`interactive()` owns the hit-testing and the state, so a hover
+background needs no signal of your own. `button` already defines
+`.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`
 closures out of the box.
 
 ## Where to go next
