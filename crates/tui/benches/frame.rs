@@ -65,7 +65,7 @@ fn rows(n: u32) -> Vec<Row> {
             pid: 1000 + i,
             port: 5000 + u16::try_from(i % 900).unwrap_or(0),
             place: format!("repo-{}", i % 17),
-            cmd: format!("node /path/to/dev/project-{i}/node_modules/.bin/vite"),
+            cmd: format!("node /home/dev/project-{i}/node_modules/.bin/vite"),
         })
         .collect()
 }

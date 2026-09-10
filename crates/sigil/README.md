@@ -21,13 +21,13 @@ Rust 1.90. A GPU for `launch`. A terminal for `run_tui`.
 The alpha is not on crates.io yet. From this repository:
 
 ```bash
-cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui
+cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
 ```
 
 For the terminal host, disable the desktop defaults and enable `tui`:
 
 ```bash
-cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui \
+cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui \
   --no-default-features --features tui
 ```
 

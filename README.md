@@ -16,7 +16,7 @@ versions.
 The alpha is not on crates.io yet. From this repository:
 
 ```bash
-cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui
+cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
 ```
 
 The package is named `sigil-ui` because `sigil` was already taken on
@@ -74,7 +74,7 @@ headless rendering under [`examples/`](examples/).
 Select the terminal host instead of the default desktop host:
 
 ```bash
-cargo add --git ssh://git@github.com/ThomGardiner/sigil.git sigil-ui \
+cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui \
   --no-default-features --features tui
 ```
 

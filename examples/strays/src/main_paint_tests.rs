@@ -10,7 +10,7 @@ fn the_tree_paints_a_header_and_a_frame() {
             let state = AppState::adopt(
                 Arc::clone(&reader),
                 first.clone(),
-                PathBuf::from(scan::DEV),
+                scan::dev_root(),
                 scan::LIMIT,
             );
             cx.add(view::app_tree(&state))

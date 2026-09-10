@@ -1,22 +1,19 @@
 # Sigil CI
 #
-# Jobs run only when a matching path changed; a re-run after a docs edit
-# will not rebuild the workspace. Concurrency cancels superseded runs on
-# the same branch. The path gate is a cost optimization, not a security
-# boundary: enforcement lives in branch protection on main (require PR,
-# required checks gate + msrv, no force pushes).
+# Runs on release tags and manual dispatch only. Tests run on the
+# author's machine before a push; the pre-push hook runs the same
+# check. A runner exists to prove a release from a clean Linux
+# checkout. Concurrency cancels superseded runs on the same ref.
 #
-# The GPU and main-thread tier (cargo test -- --ignored) still runs on
+# The GPU and main-thread tier (the ignored tests) still runs on
 # owned native builders before a release; hosted runners have no
-# adapters and renderer tests are #[ignore]d by default.
+# adapters and renderer tests are ignored by default.
 
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
@@ -49,19 +46,8 @@ jobs:
           persist-credentials: false
       - name: list changed paths
         id: filter
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
         run: |
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            base="origin/$BASE_REF"
-          else
-            base="$BEFORE"
-            if [[ -z "$base" || "$base" == *000000* ]]; then base="HEAD~1"; fi
-          fi
-          if ! changed=$(git diff --name-only "$base"...HEAD 2>/dev/null); then
-            changed="Cargo.toml"   # undecidable diff: run the gate
-          fi
+          changed=$(git ls-files)
           is_rust=$(grep -qE '^(crates/|examples/|Cargo\.(toml|lock)|clippy\.toml|deny\.toml|rust-toolchain\.toml|\.github/workflows/ci\.yml)' <<<"$changed" && echo true || echo false)
           is_site=$(grep -qE '^(site/|scripts/check-site-catalog\.mjs)' <<<"$changed" && echo true || echo false)
           is_docs=$(grep -qE '^docs/' <<<"$changed" && echo true || echo false)

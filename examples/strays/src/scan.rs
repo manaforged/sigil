@@ -11,8 +11,17 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState, get_sockets_info};
 use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
-/// Directory roots that count as source trees.
-pub(crate) const DEV: &str = "/path/to/dev";
+/// The directory whose children count as source trees: `STRAYS_DEV_ROOT`,
+/// else `dev` under the home directory.
+pub(crate) fn dev_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("STRAYS_DEV_ROOT") {
+        return PathBuf::from(root);
+    }
+    std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_default()
+        .join("dev")
+}
 
 /// How long a dev-tree server may run unattended before it is a stray.
 #[allow(

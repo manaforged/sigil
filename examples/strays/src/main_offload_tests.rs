@@ -17,7 +17,7 @@ fn a_refresh_lands_without_blocking_the_frame() {
         let state = AppState::adopt(
             Arc::clone(&reader),
             Vec::new(),
-            PathBuf::from(scan::DEV),
+            scan::dev_root(),
             scan::LIMIT,
         );
         assert!(state.table.rows().peek().is_empty(), "starts with nothing");

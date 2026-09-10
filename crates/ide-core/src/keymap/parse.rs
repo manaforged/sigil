@@ -1,7 +1,7 @@
 //! Single-keystroke string parser used by [`super::key::Key::parse`].
 //!
-//! Split out of `key.rs` to keep that file under the the author
-//! 400-LoC cap. No behavioural difference — the same `parse_tokens`
+//! Split out of `key.rs` to keep that file under the
+//! 400-line file cap. No behavioural difference — the same `parse_tokens`
 //! / `parse_code` / `parse_function_key` helpers, lifted verbatim.
 
 use super::key::{Key, KeyCode, Modifier, Modifiers, NamedKey, ParseError};
