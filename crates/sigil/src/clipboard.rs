@@ -7,7 +7,7 @@ use sigil_widgets::ClipError;
 pub use sigil_widgets::{Clipboard, install};
 
 #[cfg(any(feature = "desktop", feature = "tui"))]
-struct OsClipboard;
+pub struct OsClipboard;
 
 #[cfg(any(feature = "desktop", feature = "tui"))]
 impl Clipboard for OsClipboard {
@@ -35,7 +35,6 @@ pub fn paste() -> AppResult<String> {
         .ok_or_else(|| Error::new(Empty))
 }
 
-/// Read native clipboard pixels. Returns `None` when no image is available.
 #[cfg(feature = "clipboard-image")]
 pub fn image() -> AppResult<Option<ImageSource>> {
     with_handle(|clip| {
