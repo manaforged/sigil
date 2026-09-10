@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Production a11y snapshot: `tree()` peeks live signals.
-//!
-//! Launch remaps the AccessKit tree on paint. There is no second
-//! observer/publisher in the reactive runtime.
-
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,

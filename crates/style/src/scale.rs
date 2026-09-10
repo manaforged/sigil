@@ -27,7 +27,7 @@ impl ColorScale {
     #[allow(
         clippy::indexing_slicing,
         reason = "indices are computed from the same lengths that sized the buffer"
-    )] // clamped to 0..=11 above; .get() not available in const fn
+    )]
     pub const fn step(&self, n: u8) -> Rgba8 {
         let idx = if n == 0 { 0 } else { (n - 1) as usize };
         let clamped = if idx > 11 { 11 } else { idx };

@@ -1,9 +1,3 @@
-//! Headless increment-to-present: hello-counter Increment.
-//!
-//! Times `signal.set` + layout + scene emit — the path `Host` and a
-//! game loop take after a handler. Not a pointer event and not a
-//! presented wgpu frame. Native bar is `FRAME_BUDGET_NS` (16.67 ms).
-
 #![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
 use std::time::Instant;

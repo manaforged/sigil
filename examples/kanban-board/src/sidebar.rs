@@ -1,5 +1,3 @@
-//! Sidebar pane — header label + project [`virtual_list`].
-
 use sigil::prelude::*;
 
 use crate::state::BoardState;

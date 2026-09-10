@@ -2,25 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Widget-render baseline bench — offscreen wgpu path.
-//!
-//! Measures cost of rendering each catalog widget in `Default` and
-//! `Hover` modes through the offscreen wgpu path. Since the
-//! binding-install hook may add per-frame overhead routed through
-//! `Animator::tick`; this curve is the regression baseline.
-//!
-//! Each iteration spans: build widget → layout → drive interaction →
-//! re-layout → `emit_scene` → `render_command_scene_offscreen` →
-//! `device.poll`. wgpu device + renderer + capture texture are built
-//! once per group and reused across iterations to keep the measured
-//! cost on the per-frame hot path.
-//!
-//! Run with `cargo bench -p sigil-ui --bench widget_render`. Compile-only
-//! smoke: `cargo bench -p sigil-ui --bench widget_render -- --test`.
-//!
-//! The bench cleanly skips when no wgpu adapter is available on the
-//! host (same heuristic as the visual-golden tests).
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -47,7 +28,6 @@ use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
-/// Which interaction state to drive the widget into.
 #[derive(Clone, Copy, Debug)]
 enum Mode {
     Default,
@@ -63,7 +43,6 @@ impl Mode {
     }
 }
 
-/// Stub text measurement (deterministic, matches golden_support).
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
@@ -72,7 +51,6 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Per-group GPU resources held across iterations.
 struct Gpu {
     device: wgpu::Device,
     queue: wgpu::Queue,
@@ -163,13 +141,10 @@ fn drive(
     if matches!(mode, Mode::Hover) {
         router.route(cx, layout, pointer_move(hit.0, hit.1));
     }
-    // Default mode: no events.
     let _ = layout;
     let _ = cx;
 }
 
-/// One iteration: build → layout → drive → relayout → emit_scene →
-/// render → device.poll. Mirrors the golden capture path minus PNG IO.
 fn render_one(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -223,9 +198,6 @@ fn render_one(
     });
 }
 
-/// Widget catalog entry. `build` is a stable `fn` pointer; bench-time
-/// state (signals) is constructed afresh inside the closure each
-/// iteration so the reactive runtime stays scoped to the iter.
 struct Widget {
     name: &'static str,
     size_px: (u32, u32),

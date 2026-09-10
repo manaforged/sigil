@@ -2,22 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Integration tests for the `SIGIL_TRACE_EFFECTS` effect trace
-//! log (DR-005 addendum item 6).
-//!
-//! These tests never touch the `SIGIL_TRACE_EFFECTS` environment
-//! variable. `OnceLock` in [`sigil_reactive::trace`] latches the env
-//! result at the first effect fire in the process, so toggling env
-//! from tests would be flaky under parallel or ordered runs. Instead
-//! we exercise the per-thread capture hook exposed via
-//! `__trace_test_hook`: the hook sits in the same formatting path as
-//! the stderr emitter and mirrors the exact line a stderr consumer
-//! would see. The env-gated side is covered by the line-format
-//! assertion and by module-level documentation — what matters here
-//! is that the hook fires when expected, carries the right fields,
-//! and stays silent when capture is off.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
@@ -25,8 +9,6 @@ use std::rc::Rc;
 
 use sigil_reactive::{__trace_test_hook, Runtime, effect, effect_named, signal};
 
-/// Guard that turns capture off at test end so a failure in one
-/// test does not leak state into the next on this thread.
 struct CaptureGuard;
 
 impl Drop for CaptureGuard {
@@ -44,7 +26,6 @@ fn with_capture<R>(f: impl FnOnce() -> R) -> R {
 
 #[test]
 fn capture_disabled_records_nothing() {
-    // No enable_capture call — the hook must not populate the buffer.
     __trace_test_hook::reset_last_line();
     Runtime::scope("trace::off", || {
         let n = signal(0_i32);
@@ -68,12 +49,9 @@ fn effect_fire_records_expected_line_shape() {
             let seen = Rc::new(Cell::new(0));
             let seen_for = Rc::clone(&seen);
 
-            // Real effect: depends on two signals.
             effect_named("reader.sum", move || {
                 seen_for.set(a.get() + b.get());
             });
-            // Clear the registration fire so we inspect only the
-            // write-driven re-run.
             __trace_test_hook::reset_last_line();
 
             a.set(10);
@@ -81,7 +59,6 @@ fn effect_fire_records_expected_line_shape() {
             let line =
                 __trace_test_hook::take_last_line().expect("effect fire should record a line");
 
-            // Literal format, component by component.
             assert!(
                 line.starts_with("[sigil trace] effect fired: "),
                 "prefix mismatch: {line:?}"
@@ -104,7 +81,6 @@ fn effect_fire_records_expected_line_shape() {
                 "no batch, pending queue drains synchronously: {line:?}"
             );
 
-            // Value was applied end-to-end.
             assert_eq!(seen.get(), 12);
         });
     });
@@ -146,19 +122,11 @@ fn batched_writes_report_pending_queue_depth() {
             });
             __trace_test_hook::reset_last_line();
 
-            // Inside a batch, effect writes re-queue rather than run
-            // synchronously. The trace hook runs per-fire and sees
-            // the pending queue at the moment the hook fires.
             batch(|| {
                 a.set(1);
                 b.set(2);
             });
 
-            // The LAST fire observed the pending queue after its own
-            // schedule cycle. The queue drains in FIFO, so at the
-            // point the second fire's hook runs, pending is empty.
-            // The important invariant is that at least one line was
-            // captured with a well-formed pending field.
             let line = __trace_test_hook::take_last_line()
                 .expect("batched drain should record at least one fire");
             assert!(

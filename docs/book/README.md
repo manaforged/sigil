@@ -29,6 +29,7 @@ Companion material: `examples/` (compile-checked apps, including
 - [The reactive model](01-reactive-model.md) — signals, derived, spawn
 - [Styling](02-styling.md) — classes, cascade, theme
 - [Widgets](03-widgets.md) — catalog
+- [Component gallery](07-component-gallery.md) — rendered widgets, light and dark
 - [Testing](04-testing.md) — headless harnesses
 - [Profiling](05-profile.md) — `SIGIL_PROFILE`, Perfetto
 - [The terminal host](06-terminal.md) — `run_tui`, not a PTY pane

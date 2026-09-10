@@ -1,6 +1,3 @@
-//! `bench-report <records-dir> [out.md]` — one row per record, grouped by
-//! scenario. Reads record-v1 only; prints nothing it did not read.
-
 #![allow(clippy::print_stdout)]
 
 use data_table as _;

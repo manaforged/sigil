@@ -7,10 +7,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-//! `position_reactive` binds a node's absolute inset to a signal, repositions
-//! on signal change via the layout-signature cache, and keeps the node's
-//! identity stable (so an in-flight pointer capture / drag survives).
-
 mod stub;
 use stub::stub_engine;
 
@@ -53,7 +49,6 @@ fn position_reactive_tracks_signal_with_stable_identity() {
             (r1.origin.x, r1.origin.y),
         );
 
-        // Move the signal — the node must follow on the next compute.
         pos.set((120.0, 200.0));
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
@@ -66,8 +61,6 @@ fn position_reactive_tracks_signal_with_stable_identity() {
             (r2.origin.x, r2.origin.y),
         );
 
-        // Identity is stable across the reposition — no rebuild, so a live
-        // pointer capture on this node would survive a drag.
         let node_again = *cx.get(root).unwrap().children().first().unwrap();
         assert_eq!(
             node, node_again,

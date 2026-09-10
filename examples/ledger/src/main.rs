@@ -1,7 +1,3 @@
-//! `cargo run --release -p ledger` opens the app.
-//! `cargo run --release -p ledger -- --bench out.json` replays the shared
-//! benchmark script in the window and writes a record-v1.
-
 #![allow(
     unused_crate_dependencies,
     reason = "headless harness dev-dependencies are used by the library tests only"

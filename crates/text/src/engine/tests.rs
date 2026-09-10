@@ -124,17 +124,17 @@ fn assert_ignorable_control_stays_bounded(control: char) {
 
 #[test]
 fn shape_validated_bounded_for_combining_grapheme_joiner() {
-    assert_ignorable_control_stays_bounded('\u{034F}'); // CGJ
+    assert_ignorable_control_stays_bounded('\u{034F}');
 }
 
 #[test]
 fn shape_validated_bounded_for_word_joiner() {
-    assert_ignorable_control_stays_bounded('\u{2060}'); // WORD JOINER
+    assert_ignorable_control_stays_bounded('\u{2060}');
 }
 
 #[test]
 fn shape_validated_bounded_for_supplementary_variation_selector() {
-    assert_ignorable_control_stays_bounded('\u{E0100}'); // VS17
+    assert_ignorable_control_stays_bounded('\u{E0100}');
 }
 
 #[test]

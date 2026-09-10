@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `DefaultTextMeasure` launch behaviour.
-
 #![allow(missing_docs)]
 
 use sigil_app::DefaultTextMeasure;

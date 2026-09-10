@@ -1,4 +1,4 @@
-#![allow(clippy::panic)] // hygiene-exception: hygiene-cleanup-framework.md
+#![allow(clippy::panic)]
 
 use core::panic::Location;
 

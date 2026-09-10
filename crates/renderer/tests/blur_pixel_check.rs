@@ -2,32 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pixel-verification test for Phase R12 backdrop blur (dual-Kawase).
-//!
-//! Renders the R12 backdrop-blur showcase scene and asserts four pixel contracts:
-//!
-//! 1. **`assert_control_preserves_contrast`** — rect 0 (sigma=0) centre shows full
-//!    black-bar / white-gap contrast: min_R < 50 AND max_R > 200 over an 8-px scan.
-//!
-//! 2. **`assert_mild_blur_reduces_contrast`** — rect 1 (sigma=6) centre shows muted
-//!    contrast: min_R > 60 AND max_R < 220, with a swing of roughly 100 units.
-//!
-//! 3. **`assert_strong_blur_eliminates_contrast`** — rect 2 (sigma=18) centre shows
-//!    near-uniform gray: max_R - min_R < 80 across the same 8-px scan.
-//!
-//! 4. **`assert_blur_respects_layer_clip`** — 16 pixels left of all blur rects show
-//!    unblurred bars: at least 3 pixels with R < 50 AND at least 3 with R > 200.
-//!
-//! ## Bar geometry (implementer-locked)
-//!
-//! Background has 24 vertical bars, 8 px wide, repeating at a 16-px period:
-//!   bar spans  [16k, 16k+7]  (black, R≈0)
-//!   gap spans  [16k+8, 16k+15] (white, R≈255)
-//! for k = 0..23, across the full viewport height.
-//!
-//! This file will not compile until the implementer's R12 work lands
-//! (`scenes::backdrop_blur`, `LayerEffect::LayerBlur`). That is expected.
-//! Once it lands all four assertions must pass or the pixel contract is violated.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -47,55 +21,24 @@ use std::sync::mpsc;
 use pollster::FutureExt;
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
 
-// Physical scale factor: texture dims = viewport × SCALE.
-// Viewport (1024, 360) × scale 1 = (1024, 360) px — under the 2048-px downlevel cap.
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
-// ---- bar geometry constants -------------------------------------------------
-//
-// 24 vertical bars, 8 px wide, 16-px period. Bar k spans x = [16k, 16k+7].
-// Gap k spans x = [16k+8, 16k+15]. Both are full viewport height.
-//
-// Assert scans straddle the bar / gap boundary nearest each rect centre.
-// Bars sit at x = 4 + 16k with width 8 → bar k spans [4+16k, 11+16k]; the
-// adjacent gap k spans [12+16k, 19+16k]. We pick scan windows that include
-// 4 bar pixels followed by 4 gap pixels so an unblurred sample swings from
-// R≈0 to R≈255 and a blurred sample averages toward gray.
-const BAR_SCAN_RECT0_X: u32 = 216; // rect 0 centre 220 → bar k=13 ends 219, gap to 227
-const BAR_SCAN_RECT1_X: u32 = 520; // rect 1 centre 520 → bar k=32 ends 523, gap to 531
-const BAR_SCAN_RECT2_X: u32 = 824; // rect 2 centre 820 → bar k=51 ends 827, gap to 835
+const BAR_SCAN_RECT0_X: u32 = 216;
+const BAR_SCAN_RECT1_X: u32 = 520;
+const BAR_SCAN_RECT2_X: u32 = 824;
 const BAR_SCAN_LEN: u32 = 8;
 
-// Assert 4 clip-check scan: x=[50..65], y=180. Fully left of rect 0 (x=100).
-// Bar k=3 spans [48..55] (dark), gap k=3 spans [56..63] (light), bar k=4 at [64..71].
-// 16 samples give ≥3 dark and ≥3 light.
 const CLIP_SCAN_START_X: u32 = 50;
 const CLIP_SCAN_LEN: u32 = 16;
 const CLIP_SCAN_Y: u32 = 180;
 
-// ---- rect centres -----------------------------------------------------------
-//
-// Locked scene: 3 blur surfaces at Rect(100,60,240,240), Rect(400,60,240,240),
-// Rect(700,60,240,240). Centres at logical (220,180), (520,180), (820,180).
-//
-// Note: the phase-R12 plan document states y=80 for the rects (giving centres at
-// y=200). The locked-scene spec in this task states y=60 (centres at y=180). The
-// implementer's scenes::backdrop_blur() is the single source of truth; these
-// constants match the task-brief spec. If the implementer uses y=80, update
-// RECT_CENTRE_Y to 200 and CLIP_SCAN_Y to 200.
-const RECT0_CENTRE_X: u32 = 220; // 100 + 240/2
-const RECT1_CENTRE_X: u32 = 520; // 400 + 240/2
-const RECT2_CENTRE_X: u32 = 820; // 700 + 240/2
-const RECT_CENTRE_Y: u32 = 180; // 60 + 240/2
+const RECT0_CENTRE_X: u32 = 220;
+const RECT1_CENTRE_X: u32 = 520;
+const RECT2_CENTRE_X: u32 = 820;
+const RECT_CENTRE_Y: u32 = 180;
 
-// ---- entry point ------------------------------------------------------------
-
-/// Render the R12 backdrop-blur scene and assert all four pixel-level contracts.
-/// Loud-skip doctrine (see golden_support): a silent return on a missing
-/// adapter is a ghost-pass — the test reports green while certifying
-/// nothing. Headless CI must run this `--ignored`, never pass it vacuously.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_pixel_check() {
@@ -111,8 +54,6 @@ fn blur_pixel_check() {
     assert_strong_blur_eliminates_contrast(&pixels, phys_w);
     assert_blur_respects_layer_clip(&pixels, phys_w);
 }
-
-// ---- render -----------------------------------------------------------------
 
 fn render_backdrop_blur_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     let (command_scene, viewport, clear) = sigil_renderer::scenes::backdrop_blur();
@@ -142,18 +83,6 @@ fn render_backdrop_blur_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec
     read_pixels(device, queue, &texture, phys_w, phys_h)
 }
 
-// ---- assertion 1: sigma=0 preserves full black/white bar contrast -----------
-
-/// At the centre of rect 0 (sigma=0, logical x=220, y=180), scan 8 horizontal
-/// pixels starting at BAR_SCAN_RECT0_X (x=208). With no blur applied, the
-/// pixel values must cycle between the black bar (R < 50) and the white gap
-/// (R > 200). MIN and MAX must each be on the expected side of the contrast
-/// boundary.
-///
-/// Failure modes this catches:
-/// - LayerBlur with sigma=0 erroneously applies blur passes → bars soften.
-/// - The sigma=0 code path routes through the blur pipeline instead of
-///   pass-through composite. Check that `num_passes == 0` short-circuits.
 fn assert_control_preserves_contrast(pixels: &[u8], phys_w: u32) {
     let y = RECT_CENTRE_Y;
     let r_values = scan_r_channel(pixels, phys_w, BAR_SCAN_RECT0_X, y, BAR_SCAN_LEN);
@@ -183,17 +112,6 @@ fn assert_control_preserves_contrast(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 2: sigma=6 mutes contrast without eliminating it -------------
-
-/// At the centre of rect 1 (sigma=6, logical x=520, y=180), scan 8 horizontal
-/// pixels straddling the bar nearest the centre (k=32 ends at x=523, gap
-/// follows). A sharp unblurred edge produces `[0,0,0,0,255,255,255,255]` —
-/// every pixel is at one extreme. A blurred edge produces a monotone ramp
-/// with intermediate grey pixels between the extremes.
-///
-/// The proof-of-blur signal is the count of "intermediate" pixels
-/// (50 < R < 200): zero for an unblurred step, ≥ 3 for a Kawase-smoothed
-/// edge at sigma=6.
 fn assert_mild_blur_reduces_contrast(pixels: &[u8], phys_w: u32) {
     let y = RECT_CENTRE_Y;
     let r_values = scan_r_channel(pixels, phys_w, BAR_SCAN_RECT1_X, y, BAR_SCAN_LEN);
@@ -210,19 +128,6 @@ fn assert_mild_blur_reduces_contrast(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 3: sigma=18 smears bars into near-uniform gray ---------------
-
-/// At the centre of rect 2 (sigma=18, logical x=820, y=180), scan 8 horizontal
-/// pixels straddling the bar nearest the centre (k=51 → x=820..827). Strong
-/// blur (sigma=18 → 6 Kawase passes) should reduce the contrast window to
-/// < 80 R units — the bars are effectively invisible; the region looks like a
-/// uniform mid-gray.
-///
-/// Failure modes:
-/// - max_R - min_R ≥ 80: only 2–4 passes ran instead of 6 (check the pass-count
-///   table in blur_paint.rs: sigma>16 → 3 down + 3 up = 6 total passes).
-/// - max_R - min_R is exactly the same as the mild blur: the sigma→pass-count
-///   mapping is not being read (all sigmas using the same count).
 fn assert_strong_blur_eliminates_contrast(pixels: &[u8], phys_w: u32) {
     let y = RECT_CENTRE_Y;
     let r_values = scan_r_channel(pixels, phys_w, BAR_SCAN_RECT2_X, y, BAR_SCAN_LEN);
@@ -246,23 +151,6 @@ fn assert_strong_blur_eliminates_contrast(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 4: pixels outside blur rects are unblurred -------------------
-
-/// Scan 16 horizontal pixels at y=180, x=[50..65] — entirely left of rect 0
-/// (left edge at x=100). No blur surface covers this region. The original
-/// background bars must be fully unblurred.
-///
-/// Bar k=3 spans [48..55] (dark), gap k=3 spans [56..63] (light), bar k=4
-/// starts at [64..71]. Within the 16-pixel scan we expect at least 3 pixels
-/// with R < 50 (inside a bar) and at least 3 pixels with R > 200 (inside a gap).
-///
-/// Failure modes:
-/// - Dark-pixel count < 3: the blur effect is bleeding outside its layer clip
-///   rect. Check that the composite quad is scissored to LayerScope::clip.
-/// - Light-pixel count < 3: the bars may not be reaching this x range due to an
-///   off-by-one in the bar renderer. Verify bars start at x=0 (period 16, width 8).
-/// - Both counts < 3: the backdrop-blur snapshot is capturing / restoring the
-///   wrong surface region, polluting pixels outside the clip.
 fn assert_blur_respects_layer_clip(pixels: &[u8], phys_w: u32) {
     let y = CLIP_SCAN_Y;
     let r_values = scan_r_channel(pixels, phys_w, CLIP_SCAN_START_X, y, CLIP_SCAN_LEN);
@@ -295,16 +183,11 @@ fn assert_blur_respects_layer_clip(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- scan helper ------------------------------------------------------------
-
-/// Return the R channel for `len` consecutive horizontal pixels at (x_start, y).
 fn scan_r_channel(pixels: &[u8], phys_w: u32, x_start: u32, y: u32, len: u32) -> Vec<u8> {
     (x_start..x_start + len)
         .map(|x| pixel_rgba(pixels, phys_w, x, y)[0])
         .collect()
 }
-
-// ---- pixel helpers ----------------------------------------------------------
 
 fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
     let base = ((y * width + x) * BYTES_PER_PIXEL) as usize;
@@ -315,8 +198,6 @@ fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
         pixels[base + 3],
     ]
 }
-
-// ---- wgpu plumbing ----------------------------------------------------------
 
 fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());

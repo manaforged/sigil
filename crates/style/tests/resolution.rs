@@ -236,8 +236,6 @@ fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::UnknownThemeRef(token) => Style::new().unknown_theme_ref(token),
         StyleAtom::OverflowX(kind) => Style::new().overflow_x(kind),
         StyleAtom::OverflowY(kind) => Style::new().overflow_y(kind),
-        // Tone-parameterized atoms are emitted by `variant_kit`, not by
-        // the fluent `Style` API — they have no roundtrip surface here.
         StyleAtom::BgToneStep(_)
         | StyleAtom::FgToneStep(_)
         | StyleAtom::FgOnSolid
@@ -409,8 +407,6 @@ fn theme_swap_invalidates_binding() {
     assert!(node.get_extension::<StyleBinding>().is_some());
 }
 
-/// flex-wrap, per-axis gap, justify-evenly, and
-/// overflow-auto round trip through the runtime parser.
 #[test]
 fn t12_vocabulary_tokens_parse() {
     use sigil_style::{FlexWrapKind, OverflowKind};

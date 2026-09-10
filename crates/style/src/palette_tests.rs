@@ -64,7 +64,7 @@ fn spellforge_picks_dark_surface_for_bright_accent() {
 
 #[test]
 fn spellforge_role_colours_inherit_accent_saturation() {
-    let saturated = rgb(0x33, 0x70, 0xFF); // saturated blue
+    let saturated = rgb(0x33, 0x70, 0xFF);
     let palette = Palette::spellforge(saturated);
     let (_, s_success, _) = rgb_to_hsv(palette.success);
     let (_, s_warning, _) = rgb_to_hsv(palette.warning);
@@ -85,14 +85,14 @@ fn spellforge_role_colours_inherit_accent_saturation() {
 #[test]
 fn spellforge_role_colours_hit_canonical_hues() {
     let accents = [
-        rgb(0xFF, 0x33, 0x33), // red-ish
-        rgb(0xFF, 0xC0, 0x33), // amber
-        rgb(0x33, 0xFF, 0x70), // green
-        rgb(0x33, 0xC0, 0xFF), // cyan
-        rgb(0x33, 0x70, 0xFF), // blue
-        rgb(0xC0, 0x33, 0xFF), // magenta
-        rgb(0x80, 0x40, 0xC0), // desaturated violet
-        rgb(0xE6, 0xD8, 0xB0), // pale cream
+        rgb(0xFF, 0x33, 0x33),
+        rgb(0xFF, 0xC0, 0x33),
+        rgb(0x33, 0xFF, 0x70),
+        rgb(0x33, 0xC0, 0xFF),
+        rgb(0x33, 0x70, 0xFF),
+        rgb(0xC0, 0x33, 0xFF),
+        rgb(0x80, 0x40, 0xC0),
+        rgb(0xE6, 0xD8, 0xB0),
     ];
 
     for accent in accents {

@@ -1,10 +1,3 @@
-//! Widget playground — a runnable catalog of every sigil widget.
-//!
-//! `cargo run -p widget-playground` opens a single window with five
-//! categorized sections rendering one instance of every widget the
-//! library exposes (plus the interesting disabled variants). Intended
-//! for fast manual smoke-testing of hover / focus / disabled state.
-
 #![allow(missing_docs)]
 
 mod section_container;
@@ -71,11 +64,6 @@ fn page_header() -> NodeBuilder {
         )
 }
 
-/// Wrap a category in a labeled card.
-///
-/// The header is a plain `text(...)` node (not `patterns::field`, whose
-/// label slot is `Into<TextContent>` — that rejects a styled
-/// `TextBuilder`), so the title can carry its own `text-lg` class.
 pub(crate) fn category(title: &'static str, body: NodeBuilder) -> NodeBuilder {
     let card = container()
         .layout(LayoutStyle::flex_column().gap(12.0).padding(16.0))
@@ -87,11 +75,6 @@ pub(crate) fn category(title: &'static str, body: NodeBuilder) -> NodeBuilder {
         .child(card)
 }
 
-/// Horizontal row of widget cells; one cell per child. Each cell is
-/// wrapped in a `flex_grow(1.0) + width(0)` sizing container so the row
-/// distributes its inline space equally — without this, a single wide
-/// cell (e.g. a multi-line `text_edit`) pushes its siblings off the right
-/// edge of the section.
 pub(crate) fn row(children: Vec<NodeBuilder>) -> NodeBuilder {
     let mut c = container().layout(
         LayoutStyle::flex_row()
@@ -109,7 +92,6 @@ pub(crate) fn row(children: Vec<NodeBuilder>) -> NodeBuilder {
     c
 }
 
-/// Vertical column of widget cells; one cell per child.
 pub(crate) fn column(children: Vec<NodeBuilder>) -> NodeBuilder {
     let mut c = container().layout(LayoutStyle::flex_column().gap(8.0).fill_width());
     for child in children {
@@ -118,10 +100,6 @@ pub(crate) fn column(children: Vec<NodeBuilder>) -> NodeBuilder {
     c
 }
 
-/// Wrap any `IntoNode` in a `container()` so the result is a
-/// `NodeBuilder` (chainable for `.class()` / `.layout()`). Use for
-/// `TextBuilder` / `ScrollBuilder` / `TabsBuilder` etc. that return
-/// their own builder type but need to slot into a `Vec<NodeBuilder>`.
 pub(crate) fn wrap(node: impl IntoNode + 'static) -> NodeBuilder {
     container().child(node)
 }

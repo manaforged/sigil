@@ -2,17 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Animator-tick micro-benchmark — baseline.
-//!
-//! Establishes the per-frame cost of [`tick(dt)`](sigil_animation_runtime::tick)
-//! at varying active-animator counts (1, 10, 100, 1000). The
-//! binding-install hook routes every widget's state transitions through
-//! `Animator::tick`, so this curve is the regression baseline.
-//!
-//! Run with `cargo bench -p sigil-animation-runtime --bench animator_ticks`.
-//! Compile-only smoke: `cargo bench -p sigil-animation-runtime
-//! --bench animator_ticks -- --test`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -34,10 +23,6 @@ fn bench_animator_ticks(c: &mut Criterion) {
     for &count in &[1_usize, 10, 100, 1000] {
         group.bench_with_input(BenchmarkId::from_parameter(count), &count, |b, &count| {
             Runtime::scope("animator_ticks_bench", || {
-                // Build `count` animators with the Smooth preset spring,
-                // each retargeted to a non-settled value so tick does real
-                // work every frame. Hold them in a Vec to keep them alive
-                // across iterations (Drop deregisters from the active set).
                 let mut animators: Vec<Animator> = (0..count)
                     .map(|_| {
                         let s = signal(0.0_f32);
@@ -53,9 +38,6 @@ fn bench_animator_ticks(c: &mut Criterion) {
                     .collect();
 
                 b.iter(|| {
-                    // Re-arm any animator that has settled so subsequent
-                    // ticks keep doing real work. Cheap on still-running
-                    // animators; the spring just notes the new target.
                     for a in &mut animators {
                         if a.settled() {
                             a.target(black_box(1.0));
@@ -64,9 +46,6 @@ fn bench_animator_ticks(c: &mut Criterion) {
                     tick(black_box(DT_60HZ));
                 });
 
-                // Explicit drop so the active set is empty before the
-                // next parameter sweep. (Drop runs at scope end anyway,
-                // but being explicit keeps the bench fence-clean.)
                 drop(animators);
             });
         });

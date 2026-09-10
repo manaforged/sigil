@@ -2,33 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Owned-engine vs Taffy comparison — the canonical "deep" tree shapes
-//! from Taffy's published bench corpus
-//! (`benches/benches/flexbox.rs`).
-//!
-//! ## Methodology
-//!
-//! These are direct ports of Taffy's `deep_random` and `deep_auto`
-//! shapes — branching factor 2, depth 17, ~131k nodes. The reason this
-//! corpus matters: production UI trees are deep + narrow (panels inside
-//! panels inside scroll views), not wide-flat. Both Taffy and Yoga
-//! publish their numbers on this exact shape, so reviewers can compare
-//! sigil vs Taffy without us picking a custom-favorable tree.
-//!
-//! - `deep_random` — fixed-size leaves with randomly chosen width/height
-//!   (auto, length, percent) at interior nodes. Stresses the dimension
-//!   resolution path.
-//! - `deep_auto` — every interior node is auto-sized with `flex_grow: 1`
-//!   and `margin: 10`. Stresses the content-sizing path.
-//!
-//! Run with `cargo bench -p sigil-layout --bench taffy_corpus_deep`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used,
-    // u32→f32 cast is intentional: xorshift output bucketed into 200 slots,
-    // so values 0..200 are well within f32's exact integer range (≤2^23).
     clippy::cast_precision_loss
 )]
 
@@ -41,8 +18,6 @@ use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
 
-// Taffy's published deep shape: 2^17 = 131_072 leaves on a binary tree.
-// We use the same depth so the work-per-frame matches.
 const DEPTH: usize = 17;
 const ROOT_WIDTH: f32 = 800.0;
 const ROOT_HEIGHT: f32 = 800.0;
@@ -63,7 +38,6 @@ const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::Availabl
     }
 }
 
-// Tiny xorshift so both engines see the same "random" dimension stream.
 struct Rng(u32);
 
 impl Rng {
@@ -79,13 +53,10 @@ impl Rng {
         self.0
     }
     fn pick_dim(&mut self, max: f32) -> f32 {
-        // Bucketed length 10..max so the layout work stays representative.
         let r = (self.next() % 200) as f32;
         10.0 + r * (max / 200.0)
     }
 }
-
-// === deep_random — owned ===
 
 fn build_owned_deep_random(cx: &mut Cx) -> NodeId {
     let mut rng = Rng::new(0xC0FF_EE42);
@@ -122,8 +93,6 @@ fn bench_owned_deep_random(c: &mut Criterion) {
         });
     });
 }
-
-// === deep_random — taffy ===
 
 fn build_taffy_deep_random(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
     let mut rng = Rng::new(0xC0FF_EE42);
@@ -170,15 +139,11 @@ fn bench_taffy_deep_random(c: &mut Criterion) {
     });
 }
 
-// === deep_auto — owned ===
-
 fn build_owned_deep_auto(cx: &mut Cx) -> NodeId {
     cx.add(owned_deep_auto_node(0))
 }
 
 fn owned_deep_auto_node(depth: usize) -> NodeBuilder {
-    // Auto sizing on both axes — content-sized recursion is the exact
-    // shape Taffy's deep_auto bench stresses.
     let mut node = container().layout(
         LayoutStyle::flex_column()
             .width(Dimension::Auto)
@@ -188,7 +153,6 @@ fn owned_deep_auto_node(depth: usize) -> NodeBuilder {
         node = node.child(owned_deep_auto_node(depth + 1));
         node = node.child(owned_deep_auto_node(depth + 1));
     } else {
-        // Leaves are fixed so the auto chain has something to size against.
         node = node.layout(LayoutStyle::block().fixed_size(10.0, 10.0));
     }
     node
@@ -212,8 +176,6 @@ fn bench_owned_deep_auto(c: &mut Criterion) {
         });
     });
 }
-
-// === deep_auto — taffy ===
 
 fn build_taffy_deep_auto(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
     build_taffy_deep_auto_node(tree, 0)

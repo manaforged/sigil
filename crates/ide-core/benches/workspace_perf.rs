@@ -1,7 +1,3 @@
-//! Cold-walk perf bench for `WorkspaceRoot::files()`.
-//!
-//! Target: walk a 10k-file synthetic workspace in ≤ 500ms (release).
-
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 
 use crossbeam_channel as _;
@@ -32,7 +28,6 @@ fn populate(root: &Path, files: usize, fanout: usize) {
         left -= n;
         dir_idx += 1;
     }
-    // realistic ignore pattern
     fs::write(root.join(".gitignore"), "target\n*.tmp\n").expect("gitignore");
 }
 

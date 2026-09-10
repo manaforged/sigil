@@ -6,7 +6,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Cross-framework bench-parity harness — locked workloads, identical measurement, swappable framework runners."
+description = "Sigil-only headless bench harness — locked workloads, identical measurement, swappable framework runners."
 publish = false
 
 [lib]

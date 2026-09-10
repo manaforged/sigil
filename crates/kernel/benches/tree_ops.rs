@@ -2,10 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Tier 4 tree operation benchmarks for `sigil-kernel`.
-//!
-//! Run with `cargo bench -p sigil-kernel`.
-
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 
 use std::hint::black_box;

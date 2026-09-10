@@ -1,11 +1,3 @@
-//! `csv-viewer` — a dogfooded viewer-class app on Sigil's `virtual_list`.
-//!
-//! Synthesises a ~5k-row mock CSV (six columns of trade-ticket-shaped
-//! data) and renders it as a virtualised table: a fixed header row at
-//! the top, the body scrolls beneath it, click a row to highlight it.
-//! The corpus never changes — this is strictly a viewer; nothing is
-//! written back.
-
 mod data;
 mod state;
 mod view;

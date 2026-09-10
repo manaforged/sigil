@@ -4,7 +4,6 @@
 )]
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
-// The geometry stub uses simple px↔byte casts; precision is irrelevant in tests.
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -147,8 +146,6 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
         );
         assert_eq!(displayed_text(&cx, root), "か");
 
-        // No further ImeEvent at all — disabling the field itself must
-        // clear the stale preedit immediately .
         disabled.set(true);
 
         assert_eq!(
@@ -207,8 +204,6 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
             .ime_caret_rect(&cx, &layout)
             .expect("anchor published while composing");
 
-        // The anchor-sync effect reacts to `scroll` directly — no new
-        // ImeEvent needed .
         scroll.set(150.0);
         let scrolled = router
             .ime_caret_rect(&cx, &layout)
@@ -290,10 +285,6 @@ fn backspace() -> ShellEvent {
     }))
 }
 
-/// Mirror of a `text_edit` regression: `text_field`'s
-/// handlers publish value and caret through separate signal writes, so a
-/// raw Backspace during an active preedit can splice mid-codepoint on the
-/// transient state. Red before the batch fix, green after.
 #[test]
 fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
     sigil::reactive::Runtime::scope("text-field-ime-multibyte-backspace", || {

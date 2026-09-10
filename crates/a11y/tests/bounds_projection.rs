@@ -2,16 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! A11Y (DR-050 §2 mapping table, §5 focus) — `TreeUpdate` projection
-//! over a small real widget tree (button + text field + modal), verified
-//! against an injected per-node bounds lookup.
-//!
-//! `FocusScope` trap semantics are explicitly NOT exercised here: DR-050
-//! itself lists `FocusScope` under "what does not exist" — kernel has no
-//! such extension yet (a separate, not-yet-landed slice). The modal below
-//! exercises the widget's current `Role::Dialog` projection only.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
 
@@ -31,13 +21,6 @@ impl TextMeasure for ZeroTextMeasure {
     }
 }
 
-/// Ordering requirement: `publish_a11y` must run AFTER
-/// `recompute_layout`, not before — otherwise a signal-driven move/resize
-/// publishes stale bounds and the correction never lands on a later
-/// clean frame (the dirty gate suppresses it). This proves the contract
-/// `publish_a11y` depends on: `tree()` called with a bounds closure
-/// backed by a REAL `LayoutEngine`, after a FRESH `compute`, reflects the
-/// node's current position — not the position from before the move.
 #[test]
 fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
     Runtime::scope("sigil_a11y::bounds_freshness", || {
@@ -65,9 +48,6 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
         let before = projected_bounds(&cx, &layout, moved);
         assert_eq!(before, (10.0, 20.0), "starts at the signal's initial pos");
 
-        // Move via the signal (mirrors a drag/resize) and recompute — the
-        // load-bearing step `publish_a11y`'s ordering fix depends on:
-        // bounds must only be read from a fresh `compute`.
         pos.set((200.0, 250.0));
         recompute(&mut cx, &mut layout, root);
         let after = projected_bounds(&cx, &layout, moved);
@@ -111,9 +91,6 @@ fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
         let field_id = build_text_field(&mut cx);
         let modal_id = build_modal(&mut cx);
 
-        // Distinct synthetic rects per node — proves the bounds lookup's
-        // return value lands on the SAME node it was keyed against, not
-        // merely "some node has bounds somewhere in the tree".
         let button_rect = Rect::new(Point::new(10.0, 20.0), 80.0, 32.0);
         let field_rect = Rect::new(Point::new(10.0, 60.0), 200.0, 28.0);
         let modal_rect = Rect::new(Point::new(0.0, 0.0), 400.0, 300.0);
@@ -149,11 +126,6 @@ fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
             "text field bounds",
         );
 
-        // The modal's `.build()` root is the outer flex-centering
-        // container the widget composes internally, not necessarily the
-        // inner `Role::Dialog` node — the bounds lookup is keyed by
-        // whichever id `.build()` actually returned, so this asserts
-        // against that same root rather than assuming a fixed role.
         let modal_root = find(&update, modal_id).expect("modal root must project a node");
         assert_rect_eq(
             modal_root.bounds().expect("modal root bounds must be set"),

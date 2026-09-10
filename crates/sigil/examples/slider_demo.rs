@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Slider widget demo — horizontal and vertical orientations.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

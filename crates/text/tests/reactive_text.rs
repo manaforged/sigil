@@ -1,5 +1,3 @@
-//! Reactive text measurement tests.
-
 #![allow(missing_docs, clippy::unwrap_used)]
 
 use std::rc::Rc;

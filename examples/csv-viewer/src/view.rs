@@ -1,10 +1,3 @@
-//! View construction for the CSV viewer.
-//!
-//! The whole table is `table(state)`: the sticky header, sort cycling,
-//! windowed body, row hover, and selection all come from the widget.
-//! What remains here is the frame — title bar, the configured table,
-//! and a status bar reading the engine's selection signal.
-
 use sigil::prelude::*;
 
 use crate::data::Row;
@@ -15,7 +8,6 @@ const HEADER_HEIGHT: f32 = 28.0;
 const VIEWPORT_WIDTH: f32 = 928.0;
 const VIEWPORT_HEIGHT: f32 = 520.0;
 
-/// Build the full CSV-viewer tree.
 pub(crate) fn app_tree(state: &AppState) -> NodeBuilder {
     container()
         .role(Role::Main)

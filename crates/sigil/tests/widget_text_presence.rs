@@ -1,19 +1,3 @@
-//! Widgets that display text must actually emit it.
-//!
-//! On 2026-07-20 a dropdown rendered with its label gone entirely. Nothing
-//! caught it: the suite was green, and re-baking the golden simply wrote a
-//! picture of the bug. Pixel budgets cannot see it either — the missing
-//! label was 146 of 3494 non-background pixels, ~4% of the image, far under
-//! any threshold that would not also fire on ordinary re-bakes.
-//!
-//! Scope, learned by testing the guard against the real bug: scene
-//! presence alone is NOT enough. `emit_scene` emits a glyph run for a text
-//! node even when its container resolved to zero width, so the run is in
-//! the scene while nothing is visible. These tests therefore also require
-//! the run to have a non-degenerate box. The collapse itself is caught
-//! independently by `layout_invariants`; this file guards the text-specific
-//! half (a widget that silently stops emitting its content at some width).
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -37,11 +21,6 @@ impl TextMeasure for ProportionalText {
     }
 }
 
-/// Every string the scene paints with a non-degenerate box, at `width`.
-///
-/// Runs whose own extent is zero are excluded deliberately: a glyph run
-/// inside a collapsed container is emitted but paints nothing, and counting
-/// it would make this guard agree that an invisible label is present.
 fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> {
     let mut found = Vec::new();
     sigil::reactive::Runtime::scope("text-presence", || {
@@ -74,7 +53,6 @@ fn assert_paints(width: f32, needle: &str, build: impl FnOnce() -> NodeBuilder) 
     );
 }
 
-/// Narrow enough to squeeze the widget, wide enough to be roomy.
 const WIDTHS: [f32; 3] = [140.0, 320.0, 900.0];
 
 #[test]
@@ -124,8 +102,6 @@ fn checkbox_paints_its_label() {
     }
 }
 
-/// Text must survive being squeezed into a `flex: 1 1 0` cell, which is
-/// where the vanished dropdown label actually happened.
 #[test]
 fn text_survives_the_equal_columns_idiom() {
     for width in WIDTHS {

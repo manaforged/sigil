@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests keep assertions direct; unwraps name the expected
-// topology and failed assertions are the test output.
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use std::cell::Cell;

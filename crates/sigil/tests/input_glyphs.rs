@@ -2,9 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration tests for `input_glyphs`: reactive hot-swap, mapping
-//! coverage, and per-device `glyph_for` builds.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::panic)]
@@ -89,15 +86,10 @@ fn glyph_emits_reactive_text_bound_to_current_input_device() {
 fn hot_swap_re_renders_glyph_when_device_signal_changes() {
     reset_for_tests();
     Runtime::scope("glyph_hot_swap", || {
-        // Build the glyph against the default (Keyboard) device.
         let mut cx = Cx::new_root();
         let root = cx.add(glyph(InputAction::Confirm));
         let child = cx.first_child(root).expect("fragment has child text");
 
-        // Snapshot the reactive signal that backs the text node, then
-        // flip the device and confirm the backing signal reflects the
-        // new glyph. This is the same pathway `TextContent::Reactive`
-        // uses to drive re-paint.
         let device = current_input_device();
         let signal = match &cx.get(child).expect("text node").kind {
             NodeType::Text {

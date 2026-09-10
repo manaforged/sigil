@@ -18,7 +18,7 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 accesskit = { workspace = true }
 sigil-hal = { workspace = true }
 sigil-kernel = { workspace = true }
-# W5-A11Y (DR-050 §1) — `AccessKitBridge::take_action` drains the
+# DR-050: `AccessKitBridge::take_action` drains the
 # inbound `ActionRequest` channel the shell-side winit adapter feeds
 # (`crates/shell/src/shell/a11y.rs`). Same channel primitive already
 # used workspace-wide (`crates/hal/src/a11y.rs`'s doc comment
@@ -26,15 +26,15 @@ sigil-kernel = { workspace = true }
 crossbeam-channel = { workspace = true }
 
 [dev-dependencies]
-# W5.2 — `reactive_flow` integration test drives `A11yObserver` +
+# The `reactive_flow` integration test drives `A11yObserver` +
 # `Runtime::install_a11y_publisher` against `RecordingBridge`.
 sigil-reactive = { path = "../reactive" }
-# Phase 1.3 acceptance gate (`live_regions`) drives the modal widget's
+# The `live_regions` acceptance test drives the modal widget's
 # rising-edge announcement effect end-to-end through the AccessKit
 # projection. Dev-dep only — no cycle, since `sigil` does not depend on
 # `sigil-a11y`.
 sigil-ui = { path = "../sigil" }
-# RC-focus adversarial finding 1 — `bounds_projection.rs` drives a real
+# `bounds_projection.rs` drives a real
 # `LayoutEngine::compute` pass (not injected bounds) to prove a
 # signal-moved/resized node's projected bounds reflect the FRESH layout,
 # not a stale one. Dev-dep only — production `mapping.rs` stays decoupled

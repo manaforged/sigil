@@ -2,25 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `command_menu` — state-machine + visual-golden tests for the FFT-style
-//! nested action menu (HD-2D Task 9).
-//!
-//! Logic tests drive keyboard input through the same `EventRouter` +
-//! `LayoutEngine` pipeline the sibling widget tests use (see
-//! `modal_trap.rs` / `slider_keyboard.rs`), re-running `layout.compute`
-//! after every key so the widget's `children_reactive` navigation stack
-//! is flushed before the next assertion (see `sigil_kernel::Cx::build`'s
-//! `children_reactive` doc: the rebuild queue only drains inside
-//! `LayoutEngine::compute`).
-//!
-//! Goldens reuse `golden_support` directly, mirroring
-//! `visual_goldens_extra.rs`. The "nested" and "disabled item" goldens
-//! pre-navigate the widget with a private key-driven helper *inside*
-//! the `build` closure — the shared harness's `InteractionMode` only
-//! covers hover/press/focus, not arbitrary key sequences, so the
-//! navigation happens before `golden_support::render_widget_to_png`
-//! takes over the (idempotent) second layout pass.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -56,8 +37,6 @@ fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
     }))
 }
 
-/// A representative menu: a leaf, a two-item submenu with one disabled
-/// entry, a disabled root row, and a trailing leaf.
 fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuBuilder + 'static {
     move || {
         command_menu()
@@ -71,8 +50,6 @@ fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuB
             .select(select)
     }
 }
-
-// ---- logic: EventRouter + LayoutEngine harness -----------------------------
 
 fn setup(build: impl FnOnce() -> CommandMenuBuilder) -> (Cx, LayoutEngine, EventRouter, NodeId) {
     let mut cx = Cx::new_root();
@@ -161,7 +138,6 @@ fn disabled_item_skipped_by_navigation() {
                 .select(move |label| selected.update(|v| v.push(label.to_owned())))
         });
 
-        // From "A", ArrowDown must skip disabled "B" and land on "C".
         press(
             &mut cx,
             &mut layout,
@@ -214,7 +190,6 @@ fn leaf_select_fires_observer_and_closes() {
                 .select(move |label| selected_label.set(label.to_owned()))
         });
 
-        // Descend into Ability, then fire its one leaf.
         press(
             &mut cx,
             &mut layout,
@@ -259,8 +234,6 @@ fn leaf_select_fires_observer_and_closes() {
     });
 }
 
-// ---- goldens ------------------------------------------------------------------
-
 const DELTA_PCT: f32 = 0.5;
 
 fn check(stem: &str, img: Option<image::RgbaImage>) {
@@ -271,10 +244,6 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
     assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
 }
 
-/// Pre-navigate a freshly-added command menu with `keys`, using a
-/// throwaway `LayoutEngine` + `EventRouter` so the widget's own
-/// reactive navigation stack reflects the sequence before the golden
-/// harness's own layout/emit pass captures it.
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
     let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     layout
@@ -325,8 +294,6 @@ fn command_menu_disabled_item() {
     let img = render_widget_to_png(
         |cx| {
             let root = cx.add(sample_menu(|_| {})());
-            // Attack -> Ability -> (skip disabled Item) -> Wait: proves the
-            // dimmed "Item" row renders distinctly while navigation skips it.
             navigate(
                 cx,
                 root,

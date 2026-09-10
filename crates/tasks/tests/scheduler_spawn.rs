@@ -1,5 +1,3 @@
-//! `spawn` / `spawn_to_signal` write a [`Status`] signal on drain.
-
 #![allow(clippy::panic, missing_docs, unused_crate_dependencies)]
 
 use std::time::Duration;

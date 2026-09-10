@@ -1,15 +1,9 @@
-//! Enforce: sigil-ide-core never depends on the sigil widget library.
-//! IDE primitives must stay substrate-independent so they're consumable
-//! beyond sigil's widget surface.
-
 use std::env;
 
 fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
     let cargo_toml = std::path::Path::new(&manifest_dir).join("Cargo.toml");
     let raw = std::fs::read_to_string(&cargo_toml).expect("read Cargo.toml");
-    // Strip comments + whitespace before checking — comments mentioning
-    // `sigil = ` are allowed (this build script itself describes the rule).
     let stripped: String = raw
         .lines()
         .filter(|line| !line.trim_start().starts_with('#'))

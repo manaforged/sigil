@@ -1,6 +1,3 @@
-//! `ledger-gpui [out.json]` — opens the GPUI Ledger, replays the shared
-//! script, writes a record-v1, and quits.
-
 use data_table as _;
 
 use std::path::PathBuf;

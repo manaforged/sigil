@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "support/mock_shell.rs"]
@@ -119,8 +117,6 @@ fn text_key_event(text: &str, physical: PhysicalKey) -> sigil_hal::ShellEvent {
     }))
 }
 
-/// A page-level `/` shortcut plus a text-input node, mirroring the
-/// web-app pattern of page-scoped hotkeys that must yield while typing.
 struct SlashFixture {
     cx: Cx,
     layout: LayoutEngine,

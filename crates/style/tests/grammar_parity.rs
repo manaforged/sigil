@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DR-056 D3 grammar/atom parity gate.
-//!
-//! `style-macros/grammar/structural.toml` is the single source of truth
-//! for the utility-token catalog. Every token it lists must parse
-//! through the runtime parser into a real atom (never
-//! `UnknownThemeRef`). The macro side of the same contract is pinned by
-//! `style-macros/tests/expand.rs` + trybuild compile-fail cases.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -61,8 +53,6 @@ fn every_grammar_token_parses_to_a_real_atom() {
 
 #[test]
 fn shadow_family_resolves_to_elevation_atoms() {
-    // Once rejected as NotYetRenderable; the drop-shadow paint path is now
-    // wired, so every `shadow-*` token resolves to a `Shadow` atom.
     for token in ["shadow", "shadow-sm", "shadow-md", "shadow-lg", "shadow-xl"] {
         let atoms = parse_class_string(token)
             .unwrap_or_else(|e| panic!("'{token}' must parse now, got {e:?}"));

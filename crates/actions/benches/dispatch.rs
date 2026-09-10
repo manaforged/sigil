@@ -2,19 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Criterion micro-bench for `ActionRegistry::dispatch`.
-//!
-//! Three measurement points target the latency cost of walking a focus
-//! chain of varying depth, with and without a handler at the leaf:
-//!
-//! - `dispatch_chain_1` — single-entry chain, handler at leaf.
-//! - `dispatch_chain_10` — depth-10 chain, no handler (worst-case walk).
-//! - `dispatch_chain_10_handled` — depth-10 chain, handler at the leaf
-//!   (fires immediately on the first iteration).
-//! - `dispatch_chain_100_handled` — depth-100 chain, handler at the
-//!   leaf (sanity check that handled-at-leaf is O(1) regardless of
-//!   chain length).
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
@@ -61,8 +48,6 @@ fn bench_dispatch(c: &mut Criterion) {
     });
 
     c.bench_function("dispatch_chain_10", |b| {
-        // Handler registered on key=99 — outside the chain — so dispatch
-        // walks the whole chain finding nothing.
         let mut registry = ActionRegistry::new();
         registry.register::<Ping>(HandlerKey::from_raw(99), |_, _| {});
         let chain = build_chain(10);

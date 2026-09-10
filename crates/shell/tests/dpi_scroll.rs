@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Scroll DPI regression coverage.
-
 #![allow(missing_docs)]
 
 #[allow(dead_code)]

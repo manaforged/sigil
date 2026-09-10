@@ -1,5 +1,3 @@
-//! Board pane — three columns with drag between them.
-
 use sigil::prelude::*;
 use sigil::widgets::{DragDropExt, DragState, drag_ghost};
 

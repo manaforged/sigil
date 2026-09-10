@@ -1,23 +1,3 @@
-//! Phase 0.7 — hygiene enforcement over the widget public surface.
-//!
-//! Scans `crates/widgets/src/**/*.rs` and fails the build if any
-//! forbidden naming pattern reappears. Documents the style-naming
-//! ergonomics bar so future dispatches can't quietly regress it.
-//!
-//! Forbidden patterns:
-//!
-//! - `pub fn on_<name>` — event-handler builder methods must be one-word
-//!   (Phase 0.1; e.g. `.activate()`, `.change()`, `.submit()`).
-//! - `pub fn with_<name>` — no `with_` builder prefix (style-naming bar).
-//! - `pub fn set_<name>` / `pub fn get_<name>` / `pub fn create_<name>` —
-//!   configure-as-noun rule; setters and getters drop the verb prefix.
-//! - `pub fn <name>_px(` — no `_px` suffix on layout setters (Phase 0.2;
-//!   pixel values infer through `impl Into<Dimension>` etc.).
-//! - `pub fn fixed_size(` — Wave A item 4; use `.width().height()` instead.
-//! - `pub fn style_atoms(` — Wave B item 9; the builder setter is `.style()`,
-//!   the trait surface is `.style_mut()`.
-//! - `pub fn open(... Signal<bool>)` on modal — Wave A item 3; use `.show()`.
-
 #![allow(dead_code, unused_crate_dependencies, clippy::panic)]
 
 use std::fs;
@@ -77,7 +57,6 @@ fn check_line(path: &Path, lineno: usize, line: &str, out: &mut Vec<String>) {
         .or_else(|| trimmed.strip_prefix("pub(crate) fn "))
         .unwrap_or(trimmed);
 
-    // Drop generics + arg list — we only care about the leading identifier.
     let name_end = after_pub_fn
         .find(|c: char| !c.is_ascii_alphanumeric() && c != '_')
         .unwrap_or(after_pub_fn.len());

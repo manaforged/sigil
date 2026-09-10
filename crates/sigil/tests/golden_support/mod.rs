@@ -1,16 +1,3 @@
-//! Visual-golden PNG harness for sigil widgets.
-//!
-//! Public API mirrors the brief: drive a widget into one of five interaction
-//! states, render through the wgpu offscreen path, then assert against a
-//! committed PNG byte-for-byte (with a small pixel-delta budget). Setting
-//! `SIGIL_REGEN_GOLDENS=1` rewrites the file instead of asserting.
-//!
-//! `InteractionState` is intentionally NOT an external lever in sigil — each
-//! widget owns its own [`crate::interaction::InteractionState`] reactive
-//! bundle, driven by `EventRouter` pointer/key events. So the harness instead
-//! takes an [`InteractionMode`] enum and applies it via the same event-router
-//! pathway the existing `widget_states.rs` integration tests use.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -34,75 +21,22 @@ use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
-/// Safety cap on `*AfterFrames { frames: u32::MAX, .. }` ticking. 600
-/// frames at 60 Hz = 10 s of simulated time — well past any production
-/// transition. A runaway animator that never settles will trip this and
-/// panic with a clear message rather than stall the test silently.
 pub const SETTLE_SAFETY_CAP: u32 = 600;
 
-/// Which interaction state to drive the widget into before capture.
-///
-/// The `*AfterFrames` variants drive the same event the non-AfterFrames
-/// variant does, then advance `sigil_animation_runtime::tick(dt)` for
-/// `frames` iterations so animator-driven style atoms settle to the
-/// post-tick value before `emit_scene` captures.
-///
-/// `frames: u32::MAX` is a sentinel meaning "tick until every active
-/// animator reports settled, OR until [`SETTLE_SAFETY_CAP`] is hit." A
-/// runaway animator that never settles will panic with the cap value in
-/// the message so the test surfaces the failure rather than stalling.
-///
-/// `dt` is the per-tick delta in seconds; `1.0 / 60.0` is the canonical
-/// 60 Hz value.
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
-    /// Resting / neutral.
     Default,
-    /// Pointer is over the widget but no button is down.
     Hover,
-    /// Pointer is down inside the widget (active press).
     Pressed,
-    /// Full click — pointer down then up — for widgets that act on
-    /// release (dropdown open, toggle flip).
     Clicked,
-    /// Keyboard focus on the widget.
     Focused,
-    /// Widget disabled (the widget builder must own this — harness skips events).
     Disabled,
-    /// Pointer-enter, then tick the animation runtime so hover-driven
-    /// transitions resolve to their post-tick value.
-    HoverAfterFrames {
-        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
-        /// (capped by [`SETTLE_SAFETY_CAP`]).
-        frames: u32,
-        /// Per-tick delta in seconds.
-        dt: f32,
-    },
-    /// Pointer-down, then tick the animation runtime so press-driven
-    /// transitions resolve to their post-tick value.
-    PressedAfterFrames {
-        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
-        /// (capped by [`SETTLE_SAFETY_CAP`]).
-        frames: u32,
-        /// Per-tick delta in seconds.
-        dt: f32,
-    },
-    /// Focus the widget, then tick the animation runtime so focus-driven
-    /// transitions resolve to their post-tick value.
-    FocusedAfterFrames {
-        /// Number of `tick(dt)` calls. `u32::MAX` ticks until settled
-        /// (capped by [`SETTLE_SAFETY_CAP`]).
-        frames: u32,
-        /// Per-tick delta in seconds.
-        dt: f32,
-    },
+    HoverAfterFrames { frames: u32, dt: f32 },
+    PressedAfterFrames { frames: u32, dt: f32 },
+    FocusedAfterFrames { frames: u32, dt: f32 },
 }
 
 impl InteractionMode {
-    /// Lowercase tag used in golden filenames. AfterFrames variants
-    /// share the tag of their non-AfterFrames counterpart so animated
-    /// goldens can opt-in to a stable name with a `_animated` suffix at
-    /// the call site.
     #[must_use]
     pub const fn tag(self) -> &'static str {
         match self {
@@ -116,25 +50,8 @@ impl InteractionMode {
     }
 }
 
-/// 4-pixel-wide black separator between frames in a filmstrip.
 pub const FILMSTRIP_GAP_PX: u32 = 4;
 
-/// Render an animation filmstrip: a single wide RgbaImage containing
-/// `frame_count` frames stitched horizontally with a [`FILMSTRIP_GAP_PX`]
-/// black separator between each frame.
-///
-/// Frame 0 renders the widget in the default state. Frames 1..N render
-/// after applying hover (pointer enter at `hit_point`) and advancing
-/// `sigil_animation_runtime::tick(dt)` once per frame. The point of the
-/// filmstrip is to show the *full transition curve* at a glance — frame
-/// 0 = default, frame 1 = hover-engaged, frames 2..N = interpolating.
-///
-/// `build` is called once per frame so each frame gets a fresh widget
-/// tree under its own [`Runtime`] scope; animator state lives in a
-/// per-thread cell, so ticking across frames is the canonical way to
-/// observe the animation curve.
-///
-/// Returns `None` when no wgpu adapter is available on the host.
 #[must_use]
 pub fn capture_filmstrip(
     build: impl Fn(&mut Cx) -> NodeId,
@@ -152,10 +69,6 @@ pub fn capture_filmstrip(
         let mode = if index == 0 {
             InteractionMode::Default
         } else {
-            // After-frames count = ticks since hover engaged. Frame 1
-            // is "hover just applied, zero ticks" — this matches the
-            // brief's contract that frame 1 looks the same as frame 0
-            // (transition just started) or slightly transitioning.
             InteractionMode::HoverAfterFrames {
                 frames: index - 1,
                 dt,
@@ -167,9 +80,6 @@ pub fn capture_filmstrip(
     Some(stitch_horizontal(&frames, FILMSTRIP_GAP_PX))
 }
 
-/// Stitch `frames` horizontally with a `gap_px` black separator between
-/// each pair. Frames must all share the same height; the result width is
-/// `n * frame_width + (n - 1) * gap_px`.
 fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaImage {
     assert!(!frames.is_empty(), "stitch_horizontal: no frames");
     let frame_w = frames[0].width();
@@ -193,7 +103,6 @@ fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaIma
     out
 }
 
-/// Minimal text measurement stub matching the existing widget tests.
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
@@ -202,7 +111,6 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Return `true` when `SIGIL_REGEN_GOLDENS=1` is set in the environment.
 #[must_use]
 pub fn regen_enabled() -> bool {
     matches!(
@@ -211,12 +119,6 @@ pub fn regen_enabled() -> bool {
     )
 }
 
-/// Return `true` when `SIGIL_REAL_MEASURE=1` is set. Diagnostic switch:
-/// the `StubMeasure`-backed `render_widget_to_png` then measures text
-/// through the production [`DefaultTextMeasure`](sigil_app::DefaultTextMeasure)
-/// instead of the constant 40x16 stub, so an audit run reveals which
-/// goldens depend on true glyph advances (their layout shifts). Off by
-/// default so ordinary golden runs stay deterministic and stub-fast.
 #[must_use]
 pub fn real_measure_enabled() -> bool {
     matches!(
@@ -225,8 +127,6 @@ pub fn real_measure_enabled() -> bool {
     )
 }
 
-/// The measure `render_widget_to_png` installs: the production measure
-/// under `SIGIL_REAL_MEASURE=1`, otherwise the deterministic stub.
 fn default_text_measure() -> Box<dyn sigil_layout::TextMeasure> {
     if real_measure_enabled() {
         Box::new(sigil_app::DefaultTextMeasure::new())
@@ -235,7 +135,6 @@ fn default_text_measure() -> Box<dyn sigil_layout::TextMeasure> {
     }
 }
 
-/// Resolve a golden PNG path relative to this crate.
 #[must_use]
 pub fn golden_path(stem: &str) -> PathBuf {
     let mut p = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -245,13 +144,6 @@ pub fn golden_path(stem: &str) -> PathBuf {
     p
 }
 
-/// Full render → image::RgbaImage. `build` constructs the widget; `mode` drives
-/// the state into one of the five interaction modes through `EventRouter`.
-///
-/// `hit_point` is the logical-pixel point used to drive Hover / Pressed events.
-/// Choose it so the pointer lands inside the widget's hit-test surface.
-///
-/// Skips with `None` if no wgpu adapter is available on the host.
 #[must_use]
 pub fn render_widget_to_png(
     build: impl FnOnce(&mut Cx) -> NodeId,
@@ -262,11 +154,6 @@ pub fn render_widget_to_png(
     render_widget_to_png_with(build, mode, size_px, hit_point, default_text_measure())
 }
 
-/// Same as [`render_widget_to_png`] but lets the caller inject a
-/// concrete [`sigil_layout::TextMeasure`] instead of the deterministic
-/// `StubMeasure`. Use this when the golden's correctness depends on
-/// real glyph-advance widths (e.g. the live `widget-playground`
-/// capture, which has to match what the user sees on screen).
 #[must_use]
 pub fn render_widget_to_png_with(
     build: impl FnOnce(&mut Cx) -> NodeId,
@@ -280,16 +167,6 @@ pub fn render_widget_to_png_with(
     })
 }
 
-/// DPI-scale capture variant of [`render_widget_to_png_with`]: renders
-/// `build` into a LOGICAL viewport of `logical_size_px`, but captures into
-/// a PHYSICAL texture of `logical_size_px * scale` (rounded to the nearest
-/// pixel). Use this to exercise the DPI-scale axis from the internal
-/// text-quality / gap-closure plan.
-///
-/// As of Wave 1, the offscreen path is DPI-aware: the physical/logical ratio
-/// is threaded through as [`OffscreenTarget::scale`], so captures at
-/// `scale != 1.0` render the text AA ramp one *physical* pixel wide (sharp),
-/// not the Wave-0 stretched/soft baseline.
 #[must_use]
 pub fn render_widget_to_png_scaled(
     build: impl FnOnce(&mut Cx) -> NodeId,
@@ -315,16 +192,6 @@ pub fn render_widget_to_png_scaled(
     )
 }
 
-/// Same as [`render_widget_to_png`], but for composite widgets whose
-/// render root is not itself the focusable primitive (e.g. a modal
-/// wrapped in a coverage-panel backing container for the golden's
-/// corner-clear-color trick, where the panel — not the modal's dialog
-/// frame — is what `build` returns).
-///
-/// `InteractionMode::Focused` / `FocusedAfterFrames` route focus to the
-/// first focusable descendant of `root` in document order instead of
-/// `root` itself. Falls back to `root` when the subtree has no
-/// focusable node, matching [`render_widget_to_png`]'s behavior.
 #[must_use]
 pub fn render_widget_to_png_focus_descendant(
     build: impl FnOnce(&mut Cx) -> NodeId,
@@ -342,11 +209,6 @@ pub fn render_widget_to_png_focus_descendant(
     )
 }
 
-/// Shared render pipeline: build → layout → drive state (focused via
-/// `focus_target`) → re-layout → emit scene → rasterize. Delegates to
-/// [`render_core_scaled`] with logical viewport == physical texture size
-/// (scale 1.0), which is exactly what every pre-existing caller expects —
-/// this keeps their output byte-identical.
 fn render_core(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
@@ -367,10 +229,6 @@ fn render_core(
     )
 }
 
-/// Generalization of [`render_core`] over a distinct LOGICAL viewport and
-/// PHYSICAL capture-texture size, enabling DPI-scale capture: build →
-/// layout (at `logical_size`) → drive state → re-layout → emit scene →
-/// rasterize into a `physical_size_px` texture.
 fn render_core_scaled(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
@@ -395,7 +253,6 @@ fn render_core_scaled(
         let mut router = EventRouter::new();
         drive_state(&mut router, &mut cx, &layout, target, mode, hit_point);
 
-        // Re-run layout: state changes may have updated reactive size signals.
         layout
             .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
             .expect("layout-after-state");
@@ -413,8 +270,6 @@ fn render_core_scaled(
     image
 }
 
-/// Depth-first search for the first focusable descendant of `id`
-/// (inclusive of `id` itself), in document order.
 fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
     let node = cx.get(id)?;
     if node.a11y.focusable {
@@ -425,12 +280,6 @@ fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
         .find_map(|child| find_first_focusable(cx, *child))
 }
 
-/// Either assert the captured image matches `golden_path`, or — when
-/// `SIGIL_REGEN_GOLDENS=1` — overwrite the golden file with `actual`.
-///
-/// `max_delta_pct` is the maximum percentage of differing pixels permitted
-/// (range 0.0..=100.0). A pixel is "different" when any RGBA channel differs
-/// by more than `CHANNEL_TOLERANCE`.
 pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_delta_pct: f32) {
     const CHANNEL_TOLERANCE: u8 = 2;
 
@@ -483,15 +332,6 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
     );
 }
 
-/// Assert that two committed golden PNGs (by stem, resolved through
-/// [`golden_path`]) are byte-different.
-///
-/// Guards the ghost-pass failure mode where a state-driven golden
-/// (hover / focus / disabled / ...) accidentally renders identical to
-/// its baseline counterpart: the state transition the pair exists to
-/// capture authors no visible difference, so a plain `check()` call
-/// Count of pixels that are not the image's single most common colour —
-/// a proxy for "how much is actually drawn here".
 fn ink(image: &image::RgbaImage) -> usize {
     use std::collections::HashMap;
     let mut census: HashMap<[u8; 4], usize> = HashMap::new();
@@ -502,17 +342,6 @@ fn ink(image: &image::RgbaImage) -> usize {
     (image.width() as usize * image.height() as usize).saturating_sub(background)
 }
 
-/// Refuse a re-bake that erases most of what the widget used to draw.
-///
-/// A re-bake overwrites the reference with whatever just rendered, so a
-/// regression that DELETES content certifies itself: the suite goes green
-/// on an image of the bug. This happened twice on 2026-07-20 — a dropdown
-/// whose label vanished, and a page collapsed to its left margin — and both
-/// times the tests passed after regenerating.
-///
-/// Losing most of the drawn content is nearly always a bug rather than an
-/// intended redesign, so it must be acknowledged explicitly via
-/// `SIGIL_REGEN_ALLOW_CONTENT_LOSS=1`.
 fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) {
     const RETAINED_FRACTION: f32 = 0.5;
 
@@ -520,7 +349,7 @@ fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) 
         return;
     }
     let Ok(previous) = image::open(golden) else {
-        return; // first bake: nothing to compare against
+        return;
     };
     let before = ink(&previous.to_rgba8());
     let after = ink(actual);
@@ -543,8 +372,6 @@ fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) 
     );
 }
 
-/// passes green while certifying nothing. See
-/// BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
 pub fn assert_goldens_differ(name_a: &str, name_b: &str) {
     let path_a = golden_path(name_a);
     let path_b = golden_path(name_b);
@@ -559,8 +386,6 @@ pub fn assert_goldens_differ(name_a: &str, name_b: &str) {
          widget, then re-bake with SIGIL_REGEN_GOLDENS=1.",
     );
 }
-
-// ---- state driving -----------------------------------------------------------
 
 fn drive_state(
     router: &mut EventRouter,
@@ -603,9 +428,6 @@ fn drive_state(
     }
 }
 
-/// Advance `sigil_animation_runtime::tick(dt)` `frames` times. When
-/// `frames == u32::MAX` ticks until every active animator settles, with
-/// [`SETTLE_SAFETY_CAP`] guarding against runaway loops.
 fn tick_animation_runtime(frames: u32, dt: f32) {
     if frames == u32::MAX {
         for _ in 0..SETTLE_SAFETY_CAP {
@@ -665,14 +487,6 @@ fn pointer_up(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-// ---- wgpu offscreen plumbing -------------------------------------------------
-
-/// Acquire the offscreen wgpu device, panicking loudly when no adapter is
-/// available. Loud-skip doctrine: a golden suite that silently returns
-/// `None` and lets every `#[test]` pass green on a machine with no GPU is a
-/// ghost-pass — the tests certify nothing while reporting success. Run the
-/// golden suite only where a real adapter exists (CI without a GPU must mark
-/// these `--ignored`, never let them pass vacuously).
 fn request_device() -> (wgpu::Device, wgpu::Queue) {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = instance
@@ -713,11 +527,6 @@ fn render_scene_to_image(
         a: 1.0,
     };
 
-    // Physical-per-logical ratio of this capture: the width of the physical
-    // texture over the width of the logical viewport. Plain (non-scaled)
-    // captures pass physical == logical, so this is exactly 1.0 and their
-    // output stays byte-identical; DPI captures pass a larger physical
-    // texture, so the offscreen path scales the text AA ramp for sharpness.
     let scale = size_px[0] as f32 / viewport.0;
 
     WgpuRenderer::new()

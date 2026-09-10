@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Windowed showcase for text decorations.
-
 #![allow(clippy::missing_panics_doc)]
 #![allow(missing_docs)]
 

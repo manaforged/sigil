@@ -1,20 +1,3 @@
-//! The owned rope — a persistent B-tree text buffer.
-//!
-//! # Persistence model
-//!
-//! The root is an `Arc<Node>`. Cloning the `Rope` does a shallow
-//! reference-count bump: O(1). `insert` / `remove` use `Arc::make_mut`
-//! to copy-on-write only the path from root to the affected leaf, so
-//! snapshots before the edit are still valid (the substrate for I-T3
-//! history).
-//!
-//! # Coordinate convention
-//!
-//! All public `insert` / `remove` / `slice` / `line` offsets are
-//! **UTF-8 byte offsets**. The `coords` module provides conversions
-//! to char, line/col, and UTF-16 units. Splitting on a non-boundary
-//! byte position is a logic error; the functions panic in debug mode.
-
 use std::io;
 use std::ops::Range;
 use std::sync::Arc;
@@ -30,10 +13,6 @@ use super::{
     },
 };
 
-/// An owned, persistent UTF-8 rope buffer.
-///
-/// `clone()` is O(1) (bumps the root `Arc`). Edits copy-on-write only
-/// the affected path from root to leaf.
 #[derive(Debug, Clone)]
 pub struct Rope {
     root: Arc<Node>,
@@ -46,7 +25,6 @@ impl Default for Rope {
 }
 
 impl Rope {
-    /// Create an empty rope.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -54,13 +32,6 @@ impl Rope {
         }
     }
 
-    /// Build a rope from a UTF-8 string slice.
-    ///
-    /// The method is named `from_str` to match the brief API surface
-    /// (W3.5a) and standard Rust `From*` naming convention. The
-    /// `should_implement_trait` lint is suppressed here because this
-    /// method is infallible — `std::str::FromStr` would require returning
-    /// a `Result` which adds noise at every call site for a can't-fail op.
     #[must_use]
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(text: &str) -> Self {
@@ -69,44 +40,32 @@ impl Rope {
         }
     }
 
-    /// Read a UTF-8 stream into a rope.
-    ///
-    /// Reads the entire stream into a `String` first, then slices into
-    /// leaves. A streaming version can be added later if memory is a concern.
     pub fn from_reader<R: io::Read>(mut reader: R) -> io::Result<Self> {
         let mut buf = String::new();
         reader.read_to_string(&mut buf)?;
         Ok(Self::from_str(&buf))
     }
 
-    /// Number of UTF-8 bytes in the buffer.
     #[must_use]
     pub fn len_bytes(&self) -> usize {
         self.root.counts().bytes
     }
 
-    /// Whether the buffer is empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len_bytes() == 0
     }
 
-    /// Number of Unicode scalar values in the buffer.
     #[must_use]
     pub fn len_chars(&self) -> usize {
         self.root.counts().chars
     }
 
-    /// Number of `\n` bytes (logical line count is this + 1 unless the
-    /// last byte is `\n`).
     #[must_use]
     pub fn len_lines(&self) -> usize {
         self.root.counts().lines
     }
 
-    /// Insert `text` at `byte_pos`.
-    ///
-    /// `byte_pos` must be a UTF-8 char boundary in \[0, `len_bytes`\].
     pub fn insert(&mut self, byte_pos: usize, text: &str) {
         if text.is_empty() {
             return;
@@ -118,9 +77,6 @@ impl Rope {
         self.maybe_rebalance();
     }
 
-    /// Remove bytes in `byte_range`.
-    ///
-    /// Both endpoints must be UTF-8 char boundaries in \[0, `len_bytes`\].
     pub fn remove(&mut self, byte_range: Range<usize>) {
         if byte_range.is_empty() {
             return;
@@ -130,10 +86,6 @@ impl Rope {
         self.maybe_rebalance();
     }
 
-    /// Return a slice view over `byte_range`.
-    ///
-    /// Collects the byte range into a `Vec<u8>` for simple access;
-    /// zero-copy tree-walk iteration is a follow-up.
     #[must_use]
     pub fn slice(&self, byte_range: Range<usize>) -> RopeSlice<'_> {
         let data = collect_bytes(&self.root, byte_range);
@@ -143,10 +95,6 @@ impl Rope {
         }
     }
 
-    /// Return a slice view of the `line_idx`-th line (0-based).
-    ///
-    /// Includes the trailing `\n` if present. Returns an empty slice
-    /// for `line_idx` beyond the last line.
     #[must_use]
     pub fn line(&self, line_idx: usize) -> RopeSlice<'_> {
         let start = self.line_byte_start(line_idx);
@@ -154,15 +102,10 @@ impl Rope {
         self.slice(start..end)
     }
 
-    /// Write the entire rope to `writer`.
     pub fn write_to<W: io::Write>(&self, mut writer: W) -> io::Result<()> {
         write_node(&self.root, &mut writer)
     }
 
-    /// Return a cheap O(1) snapshot (clones the root `Arc`).
-    ///
-    /// The snapshot is structurally shared with `self` until either is
-    /// mutated, at which point only the modified path is copied.
     #[must_use]
     pub fn snapshot(&self) -> Self {
         Self {
@@ -170,20 +113,11 @@ impl Rope {
         }
     }
 
-    /// Whether `self` and `other` share the same root `Arc`.
-    ///
-    /// O(1). Returns `true` when one was produced from the other via
-    /// `snapshot()` (or `clone()`) and neither has been mutated since.
-    /// Used by [`super::history::History`] to dedup consecutive
-    /// checkpoints — pushing two pointer-equal snapshots is pure
-    /// memory waste, and silently turns one logical undo into two
-    /// physical undos.
     #[must_use]
     pub fn same_root(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.root, &other.root)
     }
 
-    /// Collect the full text into a `String`.
     #[must_use]
     pub fn to_string_lossy(&self) -> String {
         let mut out = String::with_capacity(self.len_bytes());
@@ -191,37 +125,31 @@ impl Rope {
         out
     }
 
-    /// Convert a UTF-8 byte index to a Unicode char index.
     #[must_use]
     pub fn byte_to_char(&self, byte: ByteIdx) -> CharIdx {
         CharIdx(byte_to_char_in_rope(&self.root, byte.0))
     }
 
-    /// Convert a Unicode char index to a UTF-8 byte index.
     #[must_use]
     pub fn char_to_byte(&self, char: CharIdx) -> ByteIdx {
         ByteIdx(char_to_byte_in_rope(&self.root, char.0))
     }
 
-    /// Convert a byte offset to a line + column.
     #[must_use]
     pub fn byte_to_linecol(&self, byte: ByteIdx) -> LineCol {
         byte_to_linecol_in_rope(&self.root, byte.0)
     }
 
-    /// Convert a line + column to a byte offset.
     #[must_use]
     pub fn linecol_to_byte(&self, lc: LineCol) -> ByteIdx {
         ByteIdx(linecol_to_byte_in_rope(&self.root, lc))
     }
 
-    /// Convert a byte offset to a UTF-16 code-unit offset (for LSP).
     #[must_use]
     pub fn byte_to_utf16(&self, byte: ByteIdx) -> usize {
         byte_to_utf16_in_rope(&self.root, byte.0)
     }
 
-    /// Convert a UTF-16 code-unit offset to a byte offset (for LSP).
     #[must_use]
     pub fn utf16_to_byte(&self, utf16: usize) -> ByteIdx {
         ByteIdx(utf16_to_byte_in_rope(&self.root, utf16))
@@ -249,8 +177,6 @@ impl Rope {
             .map_or_else(|| self.len_bytes(), |nl| start + nl + 1)
     }
 
-    /// After an insert/remove, if the root is an `Internal` with one
-    /// child, unwrap it so the tree stays balanced.
     fn maybe_rebalance(&mut self) {
         loop {
             match self.root.as_ref() {
@@ -264,10 +190,6 @@ impl Rope {
     }
 }
 
-// ---- Insert ------------------------------------------------------------
-
-/// Insert `text` into `node` at `byte_pos`, returning a new sibling
-/// `Arc` if the node split (the parent absorbs it).
 fn insert_at(node: &mut Node, byte_pos: usize, text: &str) -> Option<Arc<Node>> {
     match node {
         Node::Leaf(leaf) => insert_at_leaf(leaf, byte_pos, text),
@@ -352,8 +274,6 @@ fn find_child(internal: &Internal, byte_pos: usize) -> (usize, usize) {
     (0, 0)
 }
 
-// ---- Remove ------------------------------------------------------------
-
 fn remove_range(node: &mut Node, range: Range<usize>) {
     match node {
         Node::Leaf(leaf) => remove_from_leaf(leaf, range),
@@ -399,8 +319,6 @@ fn range_overlap(a: &Range<usize>, b: &Range<usize>) -> Range<usize> {
     let end = a.end.min(b.end);
     start..end.max(start)
 }
-
-// ---- Collect bytes / text ----------------------------------------------
 
 fn collect_bytes(node: &Node, range: Range<usize>) -> Vec<u8> {
     let mut buf = Vec::with_capacity(range.len());
@@ -459,8 +377,6 @@ fn write_node<W: io::Write>(node: &Node, w: &mut W) -> io::Result<()> {
         }
     }
 }
-
-// ---- Coordinate conversion helpers -------------------------------------
 
 fn byte_to_char_in_rope(node: &Node, byte: usize) -> usize {
     match node {
@@ -557,10 +473,6 @@ fn utf16_to_byte_in_rope(node: &Node, utf16: usize) -> usize {
     }
 }
 
-// ---- Descent helpers ---------------------------------------------------
-
-/// Walk children accumulating bytes; return (`child`, `remaining_bytes`,
-/// `chars_accumulated_before_child`).
 fn descend_by_bytes(i: &Internal, byte: usize) -> (&Node, usize, usize) {
     let mut rem = byte;
     let mut chars_acc = 0usize;
@@ -703,71 +615,48 @@ fn descend_by_linecol(i: &Internal, lc: LineCol) -> (&Node, usize, usize, usize)
     )
 }
 
-// ---- RopeSlice ---------------------------------------------------------
-
-/// A borrowed view of a byte range in a [`Rope`].
-///
-/// Backed by a collected `Vec<u8>` for simplicity. Zero-copy tree
-/// iteration is a follow-up.
 pub struct RopeSlice<'a> {
-    /// Collected bytes for this slice.
     data: Vec<u8>,
     _marker: std::marker::PhantomData<&'a Rope>,
 }
 
 impl<'a> RopeSlice<'a> {
-    /// Length in bytes.
     #[must_use]
     pub const fn len_bytes(&self) -> usize {
         self.data.len()
     }
 
-    /// Whether the slice is empty.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
 
-    /// Return as a `&str` if the data is valid UTF-8 (it always should
-    /// be; returns `None` only if a bug caused a bad slice boundary).
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
         std::str::from_utf8(&self.data).ok()
     }
 
-    /// Collect into a `String`.
-    ///
-    /// Named `to_string` to match the API surface in W3.5a. The inherent
-    /// `to_string` lint is suppressed: we intentionally do NOT implement
-    /// `Display` on `RopeSlice` (it would require infallible UTF-8, which
-    /// we can't guarantee without the `as_str()` guard), so the standard
-    /// `ToString` derivation route is blocked.
     #[must_use]
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         String::from_utf8_lossy(&self.data).into_owned()
     }
 
-    /// Iterate bytes.
     #[must_use]
     pub fn bytes(&'a self) -> RopeBytesIter<'a> {
         RopeBytesIter::new(&self.data)
     }
 
-    /// Iterate Unicode scalar values.
     #[must_use]
     pub fn chars(&'a self) -> RopeCharsIter<'a> {
         RopeCharsIter::new(self.as_str().unwrap_or(""))
     }
 
-    /// Iterate lines (each line includes its trailing `\n` if present).
     #[must_use]
     pub fn lines(&'a self) -> RopeLinesIter<'a> {
         RopeLinesIter::new(self.as_str().unwrap_or(""))
     }
 }
-
-// ---- Smoke tests -------------------------------------------------------
 
 #[cfg(test)]
 #[allow(

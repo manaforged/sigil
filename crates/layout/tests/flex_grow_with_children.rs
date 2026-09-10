@@ -1,16 +1,3 @@
-//! Regression: a flex item that has children must still grow.
-//!
-//! `write_container` re-derives a container's box after laying out its
-//! children. It used to shrink-wrap the cross axis to content, which
-//! silently discarded the extent the parent's flexible-length pass had
-//! already resolved — so `grow(1)` collapsed back to the content width
-//! the moment the item gained a child. Childless items return early from
-//! `layout_item_subtree` and never reach that overwrite, which is why the
-//! existing flex tests (all childless leaves) stayed green.
-//!
-//! This is the `flex: 1 1 0` equal-columns idiom, so the failure hit
-//! essentially every real composed layout.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -30,13 +17,9 @@ impl TextMeasure for NoText {
     }
 }
 
-/// Two `grow(1)` cells in a 400px row with a 12px gap: 194 each.
 fn two_cells(with_child: bool) -> Vec<f32> {
     let mut cx = Cx::new_root();
     let cell = || {
-        // `flex: 1 1 0` as authored in real code: grow + a zero basis
-        // expressed via `width(0)`. The flexed size must win over the
-        // specified zero.
         let node = container().layout(LayoutStyle::flex_column().grow(1.0).width(0.0));
         if with_child {
             node.child(container().layout(LayoutStyle::flex_column().width(148.0).height(20.0)))

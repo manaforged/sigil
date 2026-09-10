@@ -2,17 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Micro-benchmarks for the sigil-reactive hot paths.
-//!
-//! These establish a perf baseline for the six operations that
-//! matter under real load: signal read, signal write (no subscribers,
-//! one subscriber, many subscribers), effect registration, batched
-//! coalesced writes, and deep owner-tree disposal.
-//!
-//! Run with `cargo bench -p sigil-reactive`. Criterion writes
-//! `target/criterion/` HTML reports.
-
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
 
 use std::cell::Cell;
@@ -22,9 +11,6 @@ use std::rc::Rc;
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil_reactive::{Owner, Runtime, batch, effect, signal};
 
-/// Reading a signal: arena lookup, type check, clone, subscribe.
-/// No current effect = no subscription path, so this measures the
-/// bare read cost.
 fn bench_signal_get(c: &mut Criterion) {
     c.bench_function("signal_get_no_effect", |b| {
         Runtime::scope("bench_get", || {
@@ -36,8 +22,6 @@ fn bench_signal_get(c: &mut Criterion) {
     });
 }
 
-/// Writing a signal with no subscribers: slot swap + drop + empty
-/// subscriber set clone.
 fn bench_signal_set_no_subs(c: &mut Criterion) {
     c.bench_function("signal_set_no_subscribers", |b| {
         Runtime::scope("bench_set_nosub", || {
@@ -51,9 +35,6 @@ fn bench_signal_set_no_subs(c: &mut Criterion) {
     });
 }
 
-/// Writing a signal with one subscribed effect: slot swap +
-/// subscriber clone + schedule + run effect (1 cycle + 4 `with_rt`
-/// calls + empty closure).
 fn bench_signal_set_one_sub(c: &mut Criterion) {
     c.bench_function("signal_set_one_subscriber", |b| {
         Runtime::scope("bench_set_1sub", || {
@@ -72,8 +53,6 @@ fn bench_signal_set_one_sub(c: &mut Criterion) {
     });
 }
 
-/// Writing a signal with 10 subscribed effects: subscriber-set
-/// clone cost scales here.
 fn bench_signal_set_ten_subs(c: &mut Criterion) {
     c.bench_function("signal_set_ten_subscribers", |b| {
         Runtime::scope("bench_set_10sub", || {
@@ -92,8 +71,6 @@ fn bench_signal_set_ten_subs(c: &mut Criterion) {
     });
 }
 
-/// Full register+dispose cycle for an effect: create owner, register
-/// effect, first run, dispose parent scope.
 fn bench_effect_register_and_drop(c: &mut Criterion) {
     c.bench_function("effect_register_and_drop", |b| {
         b.iter(|| {
@@ -107,8 +84,6 @@ fn bench_effect_register_and_drop(c: &mut Criterion) {
     });
 }
 
-/// Batch 100 writes to one signal with one subscriber: drain should
-/// run the effect exactly once.
 fn bench_batch_coalesce_100(c: &mut Criterion) {
     c.bench_function("batch_coalesce_100_writes", |b| {
         Runtime::scope("bench_batch", || {
@@ -129,8 +104,6 @@ fn bench_batch_coalesce_100(c: &mut Criterion) {
     });
 }
 
-/// Deep owner tree disposal: 100 nested owners, dispose root.
-/// Measures recursive disposal overhead.
 fn bench_deep_owner_disposal(c: &mut Criterion) {
     c.bench_function("deep_owner_disposal_100", |b| {
         b.iter(|| {

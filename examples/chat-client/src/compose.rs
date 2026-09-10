@@ -1,11 +1,3 @@
-//! Compose box — multi-line [`text_edit`] over `state.compose_draft`,
-//! with a "Send" button that drains the draft into the selected
-//! channel's message log.
-//!
-//! `text_edit` (not `text_field`) is the right pick because chat
-//! drafts can carry newline characters. Line children rebuild through
-//! `children_reactive`. Ctrl+Enter fires `.submit`.
-
 use sigil::prelude::*;
 
 use crate::state::ChatState;

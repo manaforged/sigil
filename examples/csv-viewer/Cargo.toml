@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "Dogfooded CSV table viewer on Sigil's `virtual_list`."
+description = "CSV table viewer on Sigil's `virtual_list`."
 
 [[bin]]
 name = "csv-viewer"

@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DR-057 D1 headless table core — logic contract, no node tree.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -99,7 +97,6 @@ fn sort_is_stable_on_ties() {
     Runtime::scope("table-sort-stable", || {
         let state = TableState::new(items(), columns());
         state.toggle_sort("count");
-        // gamma and delta tie at 30; source order must hold.
         assert_eq!(visible_names(&state), ["alpha", "beta", "gamma", "delta"]);
     });
 }
@@ -119,7 +116,6 @@ fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
         let state = TableState::new(items(), columns());
         state.quick_filter().set("a".into());
         state.toggle_sort("name");
-        // Every name contains 'a' except none — all four match; sorted.
         assert_eq!(visible_names(&state), ["alpha", "beta", "delta", "gamma"]);
         state.quick_filter().set("elt".into());
         assert_eq!(visible_names(&state), ["delta"]);
@@ -132,16 +128,13 @@ fn quick_filter_matches_any_filterable_column_and_composes_with_sort() {
 fn selection_ops_follow_click_shapes() {
     Runtime::scope("table-selection", || {
         let state = TableState::new(items(), columns());
-        state.toggle_sort("name"); // visible: alpha(1) beta(3) delta(2) gamma(0)
+        state.toggle_sort("name");
         state.select_only(1);
         assert!(state.selection().get().contains(&1));
-        // Shift-select to delta: the span covers the VISIBLE run
-        // alpha → beta → delta, i.e. source indices {1, 3, 2}.
         state.select_range_to(2);
         let selected = state.selection().get();
         assert_eq!(selected.len(), 3);
         assert!(selected.contains(&1) && selected.contains(&3) && selected.contains(&2));
-        // Ctrl-toggle beta off.
         state.toggle_selected(3);
         assert!(!state.selection().get().contains(&3));
         state.clear_selection();

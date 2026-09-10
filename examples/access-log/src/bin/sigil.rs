@@ -1,5 +1,3 @@
-//! Sigil live tape: 1M lines, visible band ticks at 60 Hz, rows kept.
-
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -34,7 +32,7 @@ fn build(cx: &mut Cx, n: usize) -> NodeId {
     #[allow(
         clippy::cast_precision_loss,
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )] // 1M rows ≪ 2^24 — exact in f32.
+    )]
     let max_y = (held as f32).mul_add(ROW_H, -VIEW_H).max(0.0);
     let vis = visible_rows();
     start_tick(cx, rows, scroll, hud, held);
@@ -76,7 +74,6 @@ fn build(cx: &mut Cx, n: usize) -> NodeId {
     )
 }
 
-/// Tick the visible band every `TICK_MS` and post the elapsed µs to the HUD.
 fn start_tick(
     cx: &Cx,
     rows: Signal<Rc<Vec<AccessLine>>>,
@@ -95,13 +92,12 @@ fn start_tick(
                 end.saturating_sub(first),
             );
         });
-        #[allow(clippy::cast_precision_loss, reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale")] // tick nanos are far below 2^53.
+        #[allow(clippy::cast_precision_loss, reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale")]
         let us = start.elapsed().as_nanos() as f64 / 1_000.0;
         hud.set(access_log::hud_line("SIGIL", us));
     });
 }
 
-/// "Held N lines · view a..b · mounted c..d · V in view".
 fn status_line(scroll: Signal<f32>, held: usize, vis: usize) -> Signal<String> {
     derived(move || {
         let y = scroll.get();
@@ -114,7 +110,6 @@ fn status_line(scroll: Signal<f32>, held: usize, vis: usize) -> Signal<String> {
     })
 }
 
-/// Scroll-to-top / scroll-to-tail buttons.
 fn tape_controls(scroll: Signal<f32>, max_y: f32) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().gap(8.0).height(28.0))

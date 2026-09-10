@@ -1,4 +1,4 @@
-#![allow(clippy::suboptimal_flops)] // Bézier polynomial form is clearer than mul_add chains
+#![allow(clippy::suboptimal_flops)]
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(super) struct QuadBez {

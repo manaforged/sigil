@@ -1,9 +1,3 @@
-//! Terminal frame cost: layout, paint walk, raster, and the diffed write.
-//!
-//! The workload is a table of 200 rows on a 120x40 grid — a process list on
-//! a full-screen terminal. `steady` re-renders an unchanged tree, which is
-//! what an idle app does 30 times a second.
-
 #![allow(
     missing_docs,
     unused_crate_dependencies,
@@ -47,7 +41,6 @@ struct Row {
     cmd: String,
 }
 
-/// The same shape as `rows`, with every cell's text different per `turn`.
 fn churned(n: u32, turn: u32) -> Vec<Row> {
     (0..n)
         .map(|i| Row {
@@ -110,9 +103,6 @@ fn frame(c: &mut Criterion) {
     let mut group = c.benchmark_group("tui-frame");
     group.measurement_time(Duration::from_secs(5));
 
-    // Two frames worth measuring: one where nothing changed, one where every
-    // row did. Both flush, because a host that never flushes takes a branch
-    // through Screen that the live loop never does.
     group.bench_function("idle/200-rows", |b| {
         Runtime::scope("bench-idle", || {
             let mut host = Host::cells();
@@ -158,8 +148,6 @@ fn frame(c: &mut Criterion) {
             screen.flush(&mut sink).expect("flush");
             let mut turn = 0_u32;
             b.iter(|| {
-                // Same row count each time, so this measures churn rather
-                // than a tree that shrank.
                 turn = turn.wrapping_add(1);
                 state.replace_rows(churned(200, turn));
                 screen
@@ -218,8 +206,6 @@ fn frame(c: &mut Criterion) {
     group.finish();
 }
 
-/// Print allocation counts per phase. Criterion measures time; this says
-/// whether the time is allocation.
 fn allocations(_c: &mut Criterion) {
     Runtime::scope("bench-allocs", || {
         grid(CELL);

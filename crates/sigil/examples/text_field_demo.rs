@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Text field widget demo — empty, placeholder, and pre-filled.
-
 #![allow(missing_docs, clippy::print_stdout)]
 
 use sigil::prelude::*;

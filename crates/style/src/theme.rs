@@ -242,7 +242,7 @@ impl Default for Theme {
             surface_pressed_strong: gray.step(6),
             on_surface: gray.step(12),
             border: gray.step(7),
-            missing_token_fallback: rgba(255, 0, 255), // Debug magenta for misses.
+            missing_token_fallback: rgba(255, 0, 255),
             tokens: phf::Map::new(),
             runtime_tokens: crate::grid::tokens(),
         }
@@ -313,8 +313,6 @@ impl Theme {
             "accent" => Some(self.accent),
             "accent-hover" => Some(self.accent_hover),
             "on-accent" => Some(self.on_accent),
-            // Input interiors sit one visible step off the page in both
-            // schemes: lifted above a dark page, sunken below a light one.
             "field" => Some(if is_dark(self.surface) {
                 self.gray.step(3)
             } else {

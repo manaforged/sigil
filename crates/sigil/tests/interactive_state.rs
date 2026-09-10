@@ -1,11 +1,3 @@
-//! 5/5 Wave 1 (T2) — `interactive()` container wrapper, input→pixel proof.
-//!
-//! A plain container wrapped in `interactive()` must paint its
-//! `.hover()` / `.pressed()` overlay slices when the router delivers
-//! pointer events — ending the hello-style era of hand-rolled pointer
-//! math. Also pins the non-propagating hover contract (ancestors keep
-//! their own hover) and disabled inertness.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -122,9 +114,6 @@ fn interactive_hover_overlay_paints_on_pointer_enter() {
 
 #[test]
 fn interactive_class_hover_prefix_paints_on_pointer_enter() {
-    // The `.class("hover:…")` form must drive the same interaction
-    // channel as the `.hover(|s| …)` closure: a state-prefixed class
-    // populates the overlay slot, and pointer enter repaints it.
     Runtime::scope("interactive-class-hover", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -173,7 +162,6 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
         router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
         assert!(rect_colors(&cx, root).contains(&HOVER_BG));
 
-        // Pressed slice replaces the hover slice while the button is down.
         router.route(&mut cx, &layout, pointer_down_event(50.0, 50.0));
         let colors = rect_colors(&cx, root);
         assert!(
@@ -204,8 +192,6 @@ fn interactive_hover_does_not_stop_ancestor_hover() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
-        // Both ancestor and descendant paint hover: the inner handler
-        // must not stop propagation to the outer.
         let count = rect_colors(&cx, root)
             .iter()
             .filter(|c| **c == HOVER_BG)

@@ -1,15 +1,9 @@
-//! `radio_group` keyboard operation (5/5 Wave 3 T10): the group is
-//! focusable and Arrow/Home/End move the selection with wraparound —
-//! ARIA roving-selection behavior, selection follows movement.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used)]
-// Probe closures take a `&Cx` param named `cx` mirroring the outer test
-// binding — the shadowing is intentional and local.
 #![allow(clippy::shadow_unrelated)]
 
 use sigil::prelude::*;

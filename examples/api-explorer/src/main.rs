@@ -1,14 +1,3 @@
-//! api-explorer dogfood example.
-//!
-//! Multi-pane mock REST API explorer. Left pane is a `virtual_list` of
-//! endpoint paths; a horizontal `splitter` separates it from the right
-//! pane, which is a `tabs` widget with three routed panels
-//! (Request / Response / Headers). Clicking a row in the left pane
-//! re-routes the right pane to that endpoint's data.
-//!
-//! Everything is mocked — see `endpoints::catalog` — so the example is
-//! deterministic and works as a `cargo test` smoke target.
-
 pub mod endpoints;
 pub mod left_pane;
 pub mod right_pane;

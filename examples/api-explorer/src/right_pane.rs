@@ -1,11 +1,3 @@
-//! Right pane: tabs (Request / Response / Headers) routed off the
-//! `selected_index` signal.
-//!
-//! All three tab bodies are built once at `app_tree`-build time; each
-//! body consults `selected_index` reactively via a `derived` string
-//! signal so switching endpoints re-renders the visible tab without
-//! rebuilding the kernel tree.
-
 use sigil::prelude::*;
 use sigil::reactive::{Signal, derived, signal};
 
@@ -16,7 +8,6 @@ const PANE_HEIGHT: f32 = 600.0;
 const PANEL_HEIGHT: f32 = PANE_HEIGHT - 40.0;
 const BODY_WIDTH: f32 = PANE_WIDTH - 16.0;
 
-/// Build the right pane.
 #[must_use]
 pub(super) fn build(
     endpoints: Vec<MockEndpoint>,
@@ -98,8 +89,6 @@ fn headers_tab(
     )
 }
 
-/// Wrap the per-endpoint string projection in a `derived` signal that
-/// clamps the index to the catalog length on every read.
 fn endpoint_derived(
     endpoints: Vec<MockEndpoint>,
     selected_index: Signal<usize>,

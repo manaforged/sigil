@@ -17,7 +17,6 @@ fn drain(watcher: &Watcher, max_wait: Duration) -> Vec<FsEvent> {
 fn watcher_fires_on_create() {
     let dir = tempfile::tempdir().unwrap();
     let watcher = Watcher::start_with_window(dir.path(), Duration::from_millis(20)).unwrap();
-    // Brief settle so the OS watcher is ready before the create.
     thread::sleep(Duration::from_millis(50));
     fs::write(dir.path().join("new.rs"), b"hi").unwrap();
     let events = drain(&watcher, Duration::from_millis(500));
@@ -45,9 +44,6 @@ fn watcher_coalesces_burst() {
         .iter()
         .filter(|e| e.primary_path().ends_with("hot.rs"))
         .collect();
-    // 10 bursty writes within a 50ms window collapse to one
-    // Modified event for hot.rs. We allow ≤ 2 in case a write
-    // straddles a window boundary.
     assert!(
         hot_events.len() <= 2,
         "expected ≤2 coalesced events for hot.rs, got {}: {hot_events:?}",

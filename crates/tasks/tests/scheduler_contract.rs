@@ -2,28 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Integration tests for the `sigil-async` scheduler adapter — enqueue/drain
-//! and owner-scoping invariants.
-//!
-//! Spawn/cancellation and `spawn_to_signal` tests live in
-//! `scheduler_spawn.rs`.
-//!
-//! Each test exercises one invariant from DR-007 and the DR-005
-//! addendum §3 end-to-end: enqueue-order preservation, owner-disposal
-//! cancellation, waker firing, and the reactive-owner scoping of
-//! `dispatch_to_owner` callbacks. We keep the surface primitive by
-//! leaning on atomic flags and short polling loops instead of
-//! `tokio::time`; that way the `time` feature stays off and the
-//! tests do not flake on a slow runner.
-//!
-//! Tests are self-contained — each creates its own reactive scope via
-//! `Runtime::scope` and its own `AsyncRuntime`. That keeps them
-//! independent despite the thread-local reactive arena.
-
-// Integration-test file: tests assert by panicking. rust-hygiene
-// contract permits panic / indexing_slicing bends in test code via
-// crate-root #![allow]. See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 #![allow(missing_docs)]
 
@@ -35,8 +13,6 @@ use sigil_hal::Scheduler;
 use sigil_reactive::{Owner, Runtime};
 use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
 
-/// Small helper: create an `AsyncRuntime` + capture the current owner
-/// as an `OwnerHandle`. Called inside a `Runtime::scope` closure.
 #[must_use]
 #[allow(clippy::missing_panics_doc)]
 pub fn setup() -> (AsyncRuntime, OwnerHandle) {
@@ -45,11 +21,6 @@ pub fn setup() -> (AsyncRuntime, OwnerHandle) {
     (rt, handle)
 }
 
-/// Poll the closure at 1 ms intervals until it returns `true` or the
-/// deadline elapses. Returns `true` iff the predicate succeeded.
-///
-/// Used to wait for cross-thread state transitions without pulling in
-/// `tokio::time` (which would require enabling its `time` feature).
 #[must_use]
 pub fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = std::time::Instant::now();
@@ -93,10 +64,6 @@ fn enqueue_main_runs_callback_on_drain() {
 
 #[test]
 fn enqueue_main_drops_callback_for_disposed_owner() {
-    // Explicit owner so we can dispose while the scheduler is still
-    // alive and exercise the dead-owner drain path in the same test
-    // body. `Runtime::scope` disposes on exit, which would also work,
-    // but this form is clearer.
     let ran = Arc::new(AtomicBool::new(false));
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
 
@@ -121,9 +88,6 @@ fn enqueue_main_drops_callback_for_disposed_owner() {
     );
 }
 
-// Three chained tasks in deterministic order make this test inherently
-// sequential — splitting would fragment the narrative without reducing
-// complexity. Same rationale as `builds_expected_tree_shape`.
 #[allow(clippy::too_many_lines)]
 #[test]
 fn drain_preserves_enqueue_order() {
@@ -132,17 +96,12 @@ fn drain_preserves_enqueue_order() {
         let order: Arc<std::sync::Mutex<Vec<&'static str>>> =
             Arc::new(std::sync::Mutex::new(Vec::new()));
 
-        // Three background tasks each push one label. Tasks chain
-        // through atomic gates so the enqueue-order is deterministic
-        // — a, then b, then c — no matter which tokio worker picked
-        // each task up.
         let gate_a = Arc::new(AtomicBool::new(false));
         let gate_b = Arc::new(AtomicBool::new(false));
         let gate_c = Arc::new(AtomicBool::new(false));
 
         let dispatcher = scheduler.dispatcher();
 
-        // Task A
         {
             let dispatcher = dispatcher.clone();
             let order = Arc::clone(&order);
@@ -154,7 +113,6 @@ fn drain_preserves_enqueue_order() {
                 gate_a.store(true, Ordering::SeqCst);
             });
         }
-        // Task B waits for A, then enqueues.
         {
             let dispatcher = dispatcher.clone();
             let order = Arc::clone(&order);
@@ -170,8 +128,6 @@ fn drain_preserves_enqueue_order() {
                 gate_b.store(true, Ordering::SeqCst);
             });
         }
-        // Task C waits for B, then enqueues. (Last task consumes
-        // the dispatcher directly — no final clone needed.)
         {
             let order = Arc::clone(&order);
             let gate_b_rd = Arc::clone(&gate_b);
@@ -187,7 +143,6 @@ fn drain_preserves_enqueue_order() {
             });
         }
 
-        // All three should have enqueued within a generous deadline.
         assert!(
             spin_until(Duration::from_secs(5), || gate_c.load(Ordering::SeqCst)),
             "tasks a, b, c should all enqueue"
@@ -261,10 +216,6 @@ fn wake_proxy_is_called_on_enqueue() {
 
 #[test]
 fn drain_does_not_process_callbacks_enqueued_during_drain() {
-    // Proves the Finding #3 fix: drain honours a snapshot of the
-    // queue length at drain-start. A callback that re-enqueues
-    // itself (or enqueues another callback) during drain must NOT
-    // be processed in the same drain cycle.
     Runtime::scope(
         "drain_does_not_process_callbacks_enqueued_during_drain",
         || {
@@ -272,9 +223,6 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
             let a_ran = Arc::new(AtomicBool::new(false));
             let b_ran = Arc::new(AtomicBool::new(false));
 
-            // Callback A, when it runs, enqueues callback B through the
-            // dispatcher. If drain were unbounded it would keep reading
-            // until empty and run B in the same cycle.
             let dispatcher_for_a = scheduler.dispatcher();
             let a_ran_cb = Arc::clone(&a_ran);
             let b_ran_for_b = Arc::clone(&b_ran);
@@ -283,8 +231,6 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
                     handle,
                     Box::new(move || {
                         a_ran_cb.store(true, Ordering::SeqCst);
-                        // Enqueue B from inside A — this is the re-entry
-                        // that used to starve the frame.
                         dispatch_to_owner(&dispatcher_for_a, handle, move || {
                             b_ran_for_b.store(true, Ordering::SeqCst);
                         });
@@ -300,7 +246,6 @@ fn drain_does_not_process_callbacks_enqueued_during_drain() {
                 "B was enqueued during drain and must defer to the next cycle"
             );
 
-            // A second drain picks up B.
             let ran_second = scheduler.drain();
             assert_eq!(ran_second, 1, "second drain runs exactly B");
             assert!(

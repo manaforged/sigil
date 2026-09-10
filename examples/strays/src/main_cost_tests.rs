@@ -2,7 +2,6 @@ use std::time::Instant;
 
 use crate::scan::Scanner;
 
-/// A scan runs on the frame clock, so it has to cost less than a frame.
 #[test]
 fn a_repeat_scan_stays_under_a_frame() {
     let mut reader = Scanner::new();

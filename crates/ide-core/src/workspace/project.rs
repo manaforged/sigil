@@ -1,62 +1,24 @@
-//! Project model — `.sigil-ide/workspace.toml` parser.
-//!
-//! A `Project` is the per-workspace configuration document. It is
-//! optional: a `WorkspaceRoot` can open a directory that has no
-//! `workspace.toml` at all, in which case the project is `None`.
-//!
-//! Schema (v0):
-//! ```toml
-//! source_roots = ["src", "crates"]
-//! ignore_patterns = ["target", "*.tmp"]
-//!
-//! [language.rust]
-//! server = "rust-analyzer"
-//!
-//! [build]
-//! check = "cargo check"
-//! test = "cargo test"
-//! ```
-
 use std::collections::BTreeMap;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use toml::{Table, Value};
 
-/// Per-workspace project configuration.
-///
-/// Loaded from `<root>/.sigil-ide/workspace.toml`. Every field is
-/// optional — a missing file yields `None` at the caller, which is
-/// why `WorkspaceRoot::project` is an `Option<Project>`.
 #[derive(Debug, Default, Clone)]
 pub struct Project {
-    /// Subdirectories of the workspace root that contain source.
-    /// Used by language servers and search to narrow scope. Empty
-    /// means "walk the whole root respecting `.gitignore`".
     pub source_roots: Vec<PathBuf>,
-    /// Additional ignore globs layered on top of `.gitignore`.
-    /// Forwarded to the `ignore::WalkBuilder` overrides.
     pub ignore_patterns: Vec<String>,
-    /// `language.<name>` table — server binary + extension hints.
     pub languages: BTreeMap<String, LanguageConfig>,
-    /// `[build]` table — named shell commands (`check`, `test`, ...).
-    /// Bound to keymap commands by the editor surface.
     pub build_commands: BTreeMap<String, String>,
 }
 
-/// Per-language configuration loaded from `[language.<name>]`.
 #[derive(Debug, Default, Clone)]
 pub struct LanguageConfig {
-    /// Language-server binary name or absolute path.
     pub server: Option<String>,
-    /// File extensions this language claims (`["rs"]`, `["ts","tsx"]`).
     pub extensions: Vec<String>,
 }
 
 impl Project {
-    /// Load `<root>/.sigil-ide/workspace.toml`, returning `Ok(None)`
-    /// if the file does not exist. Parse errors surface as
-    /// [`io::ErrorKind::InvalidData`].
     pub fn load(root: &Path) -> io::Result<Option<Self>> {
         let path = root.join(".sigil-ide").join("workspace.toml");
         let raw = match std::fs::read_to_string(&path) {

@@ -2,18 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Glyph pixel-sharpness check — Wave 0/1 (internal text-quality /
-//! gap-closure plan).
-//! Rasterizes real glyphs, reads back raw RGBA8 pixels, and measures the AA
-//! ramp width across a vertical stem in PHYSICAL pixels. Two families:
-//! - **Direct path** — [`sigil_renderer::DrawParams`] with an explicit `scale`; sharp
-//!   at every DPI.
-//! - **Embed path** — the real screen path (`sigil_renderer::shape_glyph_run` →
-//!   `ScreenSubmission`/`submit_screen`). Wave 1 added `ScreenSubmission.scale`;
-//!   these prove it is load-bearing: a matching `scale` into a 6× physical
-//!   texture is sharp, `scale: 1.0` into the same texture is soft (the shipped
-//!   blur). The suite is ignored by default; run the GPU tier with
-//!   `--ignored` on real hardware.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -35,20 +23,13 @@ use sigil_text::{OwnedTextEngine, TextConfig};
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
-// Logical viewport + glyph placement.
 const LOGICAL_W: f32 = 240.0;
 const LOGICAL_H: f32 = 100.0;
 const FONT_SIZE: f32 = 32.0;
 const ORIGIN: (f32, f32) = (20.0, 20.0);
-// "IIIIII": plain vertical bars, no crossbar — a crossbar (e.g. "H") creates
-// a T-junction where analytic AA legitimately blends both axes and produced
-// false-positive "wide ramp" readings unrelated to the DPI-scale defect.
 const TEXT: &str = "IIIIII";
 
-// AA ramp must be at most this many PHYSICAL pixels wide (doc target: ~1px).
 const RAMP_THRESHOLD_PX: f32 = 1.75;
-
-// ---- active tests: direct DrawParams path (scale field respected) ----------
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -80,18 +61,8 @@ fn assert_direct_path_is_sharp(scale: f32) {
     assert_sharp(&format!("scale {scale}"), &pixels, w, h);
 }
 
-// ---- embed-path tests: ScreenSubmission.scale is load-bearing (Wave 1) ----
-
-// 6x, not the more obvious 2x: the softening scales linearly with the
-// mismatch, and a 2x mismatch lands near RAMP_THRESHOLD_PX; 6x reliably
-// crosses it.
 const EMBED_TEXTURE_SCALE: f32 = 6.0;
 
-/// Real embed/screen path: a `CommandScene` built the way an embedding host
-/// (the host engine) builds one — `shape_glyph_run` + `SceneBuilder` — submitted via
-/// `submit_screen` into a physically-larger-than-logical target. With
-/// `ScreenSubmission.scale` set to the target's true DPI ratio, the AA ramp
-/// must stay sharp — this is the Wave 1 fix.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn embed_path_glyph_edges_are_sharp_with_matching_scale() {
@@ -104,11 +75,6 @@ fn embed_path_glyph_edges_are_sharp_with_matching_scale() {
     );
 }
 
-/// Companion negative case: the identical scene into the identical 6×
-/// physical target, but `ScreenSubmission.scale` stuck at 1.0 (today's
-/// shipped default before this field existed) — proves the field is
-/// load-bearing, not just present. Must stay soft; if this regresses to
-/// sharp, `scale` stopped reaching the Slug draw.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn embed_path_glyph_edges_are_soft_with_mismatched_scale() {
@@ -121,10 +87,6 @@ fn embed_path_glyph_edges_are_soft_with_mismatched_scale() {
     );
 }
 
-/// Render `TEXT` through the real screen/embed path: build a `CommandScene`
-/// via `shape_glyph_run`, submit via `submit_screen` with
-/// `ScreenSubmission.scale = submission_scale` into a physical texture fixed
-/// at `EMBED_TEXTURE_SCALE`× the logical viewport, read back raw pixels.
 fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
     renderer
@@ -158,8 +120,6 @@ fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
     (pixels, phys_w, phys_h)
 }
 
-/// Build the embed-path `CommandScene`: one glyph run positioned at `ORIGIN`,
-/// shaped the same way an embedding host emits text (`shape_glyph_run`).
 fn build_text_scene() -> CommandScene {
     let style = TextStyle {
         font_family: String::from("system-ui"),
@@ -191,8 +151,6 @@ fn build_text_scene() -> CommandScene {
     builder.finish()
 }
 
-/// Shared assertion body for both scenario families: measure `pixels`, print
-/// the evidence line, and assert the softest edge is under threshold.
 fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     let measurement = measure(pixels, w, h);
     assert!(
@@ -218,8 +176,6 @@ fn assert_sharp(label: &str, pixels: &[u8], w: u32, h: u32) {
     );
 }
 
-/// Inverse of [`assert_sharp`]: proves a mismatched `ScreenSubmission.scale`
-/// actually degrades sharpness — i.e. the field is load-bearing, not inert.
 fn assert_soft(label: &str, pixels: &[u8], w: u32, h: u32) {
     let measurement = measure(pixels, w, h);
     assert!(
@@ -245,18 +201,8 @@ fn assert_soft(label: &str, pixels: &[u8], w: u32, h: u32) {
     );
 }
 
-// ---- polarity parity: stroke weight must match across contrast polarity ----
-
-// Max relative difference permitted between the two contrast polarities'
-// measured stroke weight. The Wave-2 per-polarity gamma defaults
-// (`slug/tuning.rs`) are tuned until both land inside this — the honest
-// stroke-weight-parity gate. Do NOT widen past 0.15.
 const POLARITY_TOLERANCE: f32 = 0.15;
 
-// Curvy mixed-case string for the parity check: unlike the "IIIIII" stem probe
-// (whose pure vertical edges the dilation+sharpen path hard-clips, leaving no
-// partial coverage for gamma to act on), curved/diagonal glyphs carry genuine
-// AA-edge coverage — the exact region the per-polarity gamma transfer corrects.
 const POLARITY_TEXT: &str = "sample";
 
 #[test]
@@ -270,15 +216,6 @@ fn polarity_stroke_weight_parity_scale_2_0() {
     assert_polarity_parity(2.0);
 }
 
-/// Render [`POLARITY_TEXT`] as WHITE-on-black (light-on-dark) and BLACK-on-white
-/// (dark-on-light) at `scale`, then assert the two measured stroke weights match
-/// within [`POLARITY_TOLERANCE`]. Proves the per-polarity gamma transfer removes
-/// the polarity-dependent stem-weight drift a single global gamma leaves behind
-/// (uncorrected drift is ~19% at scale 1.0 — see the dispatch return).
-///
-/// Two weight metrics, both gated at 15%: `ink_mass` (mean normalised coverage,
-/// integrates the AA-edge pixels) is the primary continuous measure; the
-/// brief-named `ink_fraction` (50%-threshold core count) is the coarser check.
 fn assert_polarity_parity(scale: f32) {
     let Some((device, queue)) = try_request_device() else {
         println!("no adapter — skipping polarity parity at scale {scale}");
@@ -292,8 +229,6 @@ fn assert_polarity_parity(scale: f32) {
         (sigil_hal::Color::WHITE, wgpu::Color::BLACK),
     );
     let lod = measure(&lod_px, lw, lh);
-    // Dark-on-light: invert R so the shared measure (which keys "ink" to high
-    // luminance) reads the dark stems on the light field as ink.
     let (dol_raw, dw, dh) = render_text_string(
         &device,
         &queue,
@@ -332,8 +267,6 @@ fn assert_polarity_parity(scale: f32) {
     );
 }
 
-/// Relative difference of two non-negative measurements, normalised by the
-/// larger. Zero when both are (near) zero — identically sharp edges are parity.
 fn rel_diff(a: f32, b: f32) -> f32 {
     let m = a.max(b);
     if m <= f32::EPSILON {
@@ -343,12 +276,6 @@ fn rel_diff(a: f32, b: f32) -> f32 {
     }
 }
 
-// ---- render -----------------------------------------------------------------
-
-/// Render `TEXT` into an offscreen RGBA texture, read back raw pixels.
-/// `texture_scale` sets physical resolution; `draw_scale` is
-/// `DrawParams.scale`. Equal args = correct direct path; `draw_scale=1.0`
-/// with `texture_scale>1.0` = embed-path defect. White text on black.
 fn render_text(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -368,8 +295,6 @@ fn render_text(
     )
 }
 
-/// Render `content` at `scale` (physical == draw scale) with an explicit text
-/// and background colour, for the contrast-polarity parity checks.
 fn render_text_string(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -390,7 +315,6 @@ fn render_text_string(
     )
 }
 
-/// Grouped render inputs — keeps the render helper under the 5-arg cap.
 struct RenderArgs<'a> {
     texture_scale: f32,
     draw_scale: f32,
@@ -478,20 +402,10 @@ fn clear_to(encoder: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, color:
     });
 }
 
-// ---- sharpness metrics --------------------------------------------------------
-
 struct Measurement {
     max_lum: u8,
     ink_fraction: f32,
-    /// Mean normalised coverage across every pixel (Σ luminance/max ÷ N). Unlike
-    /// `ink_fraction`'s 50%-threshold count, this integrates the *partial*-
-    /// coverage AA-edge pixels — exactly the region the per-polarity gamma
-    /// transfer acts on — so it is the continuous stroke-weight-parity metric.
     ink_mass: f32,
-    /// The widest AA ramp (physical px) found on any glyph edge in the
-    /// image. Taking the MAX rather than a single "widest run" avoids being
-    /// fooled by a run whose boundary happens to land on an exact pixel
-    /// while a neighbouring edge in the same render is genuinely soft.
     softest_ramp_px: Option<f32>,
 }
 
@@ -511,8 +425,6 @@ fn measure(pixels: &[u8], width: u32, height: u32) -> Measurement {
     }
 }
 
-/// Mean normalised luminance over every pixel — the total ink "mass", including
-/// partial-coverage AA-edge pixels. `0.0` for an empty frame.
 fn ink_mass(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> f32 {
     if max_lum < 1.0 {
         return 0.0;
@@ -525,7 +437,6 @@ fn ink_mass(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> f32 {
     sum / total
 }
 
-// Text is achromatic; the R channel alone carries luminance.
 fn luminance(pixels: &[u8], width: u32, x: u32, y: u32) -> u8 {
     pixels[((y * width + x) * BYTES_PER_PIXEL) as usize]
 }
@@ -546,8 +457,6 @@ fn ink_fraction(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> f32 {
     count as f32 / total
 }
 
-/// Scan every row, find every solid-ink run's two edges, and return the
-/// widest AA ramp found anywhere in the image.
 fn softest_edge_ramp(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> Option<f32> {
     let lower = 0.10 * max_lum;
     let upper = 0.90 * max_lum;
@@ -566,7 +475,6 @@ fn softest_edge_ramp(pixels: &[u8], width: u32, height: u32, max_lum: f32) -> Op
     worst
 }
 
-/// Every maximal run of pixels whose luminance is ≥ `upper`, as `[start, end)`.
 fn solid_runs(row: &[u8], upper: f32) -> Vec<(usize, usize)> {
     let mut runs = Vec::new();
     let mut i = 0;
@@ -584,10 +492,6 @@ fn solid_runs(row: &[u8], upper: f32) -> Vec<(usize, usize)> {
     runs
 }
 
-/// Walk from `from` (a "high" pixel) in `step` direction, counting pixels
-/// strictly between `lower`/`upper` AND strictly decreasing vs. the previous
-/// one — a genuine AA falloff, distinguishing it from a flat plateau at the
-/// same intensity band (e.g. a crossbar's own partial coverage).
 fn count_ramp(row: &[u8], from: usize, step: i32, lower: f32, upper: f32) -> usize {
     let mut count = 0usize;
     let mut prev = f32::from(row[from]);
@@ -604,8 +508,6 @@ fn count_ramp(row: &[u8], from: usize, step: i32, lower: f32, upper: f32) -> usi
     }
     count
 }
-
-// ---- wgpu plumbing ------------------------------------------------------------
 
 fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());

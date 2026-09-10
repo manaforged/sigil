@@ -1,9 +1,3 @@
-//! Interactive dashboard vertical slice for Sigil.
-//!
-//! Exercises the full public path: tree construction, reactive text,
-//! reactive style, layout, pointer/keyboard events, focus, scene
-//! emission, and the default `sigil::launch` render loop.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

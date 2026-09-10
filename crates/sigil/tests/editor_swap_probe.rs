@@ -10,11 +10,6 @@
     clippy::cast_precision_loss
 )]
 
-//! Repro: clicking another file in the Explorer swaps the Editor subtree
-//! (a `scroll` wrapping a wide single-text-node column) via
-//! `children_reactive`, against a PERSISTENT engine — exactly the shell
-//! path. Goal: catch whatever "breaks the whole thing" on the second file.
-
 use sigil::prelude::*;
 use sigil_hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
@@ -29,9 +24,6 @@ struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        // Approximate a monospace block: width by longest line, height by
-        // line count — so the editor's single text node reports a realistic
-        // (tall) intrinsic size, the way the real shaper would.
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1);
         let cols = text.lines().map(str::len).max().unwrap_or(0).max(1);
@@ -62,9 +54,6 @@ fn recompute(layout: &mut LayoutEngine, cx: &mut Cx, root: NodeId) {
 
 const FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 
-/// Promote the renderer to a headless device and clone its `(device, queue)`
-/// (both Arc-backed handles) so the offscreen render targets the renderer's OWN
-/// device — the only way to hit the persistent `walk_with_ready` path.
 fn renderer_device(renderer: &mut WgpuRenderer) -> Option<(wgpu::Device, wgpu::Queue)> {
     renderer.ensure_headless_for_tests().ok()?;
     let device = renderer.device()?.clone();
@@ -75,10 +64,6 @@ fn renderer_device(renderer: &mut WgpuRenderer) -> Option<(wgpu::Device, wgpu::Q
 const W: u32 = 1440;
 const H: u32 = 900;
 
-/// Render the current tree through a real headless device, read pixels back, and
-/// save a PNG to /tmp for inspection. The renderer is PERSISTENT across calls —
-/// mirroring the live app, where the same `WgpuRenderer` (glyph cache, atlas,
-/// pipeline state) is reused frame to frame.
 fn render(
     renderer: &mut WgpuRenderer,
     cx: &Cx,
@@ -206,12 +191,6 @@ fn clicking_second_file_swaps_editor_without_breaking() {
                 }),
         );
 
-        // Render through the renderer's OWN device so the offscreen call takes
-        // the PERSISTENT `walk_with_ready` path (same glyph atlas, pipeline
-        // caches, and layer pool reused across frames) — exactly like the live
-        // app. Requesting a separate device silently forced the temporary-
-        // pipeline path, which rebuilds all GPU state per frame and hid any
-        // cross-frame corruption.
         let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
         let dev = renderer_device(&mut renderer);
 
@@ -219,14 +198,10 @@ fn clicking_second_file_swaps_editor_without_breaking() {
         recompute(&mut layout, &mut cx, root);
         render(&mut renderer, &cx, root, dev.as_ref(), "file-0-initial");
 
-        // The click: Explorer writes the new index. Next compute flushes the
-        // reactive rebuild — old editor_view (with its scroll widget) removed,
-        // new one built — against the SAME engine + SAME renderer. Then re-render.
         selected.set(1);
         recompute(&mut layout, &mut cx, root);
         render(&mut renderer, &cx, root, dev.as_ref(), "file-1-after-swap");
 
-        // And back again, to shake out node-id recycling / stale owners.
         selected.set(0);
         recompute(&mut layout, &mut cx, root);
         render(&mut renderer, &cx, root, dev.as_ref(), "file-0-again");
@@ -265,10 +240,6 @@ const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-/// A shell-like tree: a focusable, clickable Explorer (writes `selected`) beside
-/// a reactive Editor. Clicking a row rebuilds BOTH panes — the click handler's
-/// own row included — which is what the live app does and the direct-signal repro
-/// did not exercise.
 fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuilder {
     let explorer_files = files.clone();
     container()
@@ -336,7 +307,6 @@ fn routed_clicks_through_explorer_dont_break() {
         recompute(&mut layout, &mut cx, root);
         render(&mut renderer, &cx, root, dev.as_ref(), "routed-0");
 
-        // Row y-centres: padding 6 + idx*22 + 11. Row1 ≈ 39, row2 ≈ 61, row0 ≈ 17.
         for (label_name, y) in [("routed-1", 39.0), ("routed-2", 61.0), ("routed-0b", 17.0)] {
             router.route(&mut cx, &layout, pointer_move(20.0, y));
             router.route(&mut cx, &layout, pointer_down(20.0, y));
@@ -358,11 +328,6 @@ const fn pointer_up(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-/// The workflow's "confirmed" theory: capture the editor's scroll THUMB, then
-/// rebuild the editor (disposing that scroll widget + its signals), then route a
-/// pointer move/up. If the router dispatches the captured event to the disposed
-/// thumb, scroll's `pointer_move` handler peeks a disposed signal and PANICS.
-/// This test asserts that sequence does NOT crash.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn captured_scroll_thumb_survives_editor_rebuild() {
@@ -390,27 +355,20 @@ fn captured_scroll_thumb_survives_editor_rebuild() {
         let mut router = EventRouter::new();
         recompute(&mut layout, &mut cx, root);
 
-        // The scroll thumb sits in the editor pane's right gutter. shell_root:
-        // explorer 248 wide, editor at x≈248, scroll 580 wide, thumb at
-        // left inset 580-8=572 -> x≈248+572=820, near the top of the scroll
-        // (filename tab is 28 tall, so y≈28+thumb_top).
         for tx in [820.0_f32, 824.0, 816.0, 818.0] {
             for ty in [34.0_f32, 40.0, 30.0, 50.0] {
                 router.route(&mut cx, &layout, pointer_move(tx, ty));
-                router.route(&mut cx, &layout, pointer_down(tx, ty)); // thumb captures
-                router.route(&mut cx, &layout, pointer_move(tx, ty + 40.0)); // drag
+                router.route(&mut cx, &layout, pointer_down(tx, ty));
+                router.route(&mut cx, &layout, pointer_move(tx, ty + 40.0));
             }
         }
 
-        // Rebuild the editor: removes + disposes the captured scroll widget.
         selected.set(1);
         recompute(&mut layout, &mut cx, root);
 
-        // Captured pointer move/up AFTER disposal — the alleged crash point.
         router.route(&mut cx, &layout, pointer_move(824.0, 120.0));
         router.route(&mut cx, &layout, pointer_up(824.0, 120.0));
         recompute(&mut layout, &mut cx, root);
-        // Swap back and forth a few times under a held capture, too.
         for s in [0_usize, 1, 0, 1] {
             router.route(&mut cx, &layout, pointer_down(824.0, 40.0));
             selected.set(s);
@@ -420,18 +378,8 @@ fn captured_scroll_thumb_survives_editor_rebuild() {
     });
 }
 
-/// Regression for the "long file makes the editor escape to the window's
-/// top-left, painting over the sidebar" bug. A deep reactive subtree
-/// (`pane > children_reactive(scroll(tall))`) inside a BIG tree (so the
-/// editor-switch dirty set is < half the nodes → the engine takes the
-/// `incremental_sync_and_measure` path) used to spawn two containment roots —
-/// the tree root AND the scroll's nested fixed-size box — and the nested one
-/// was remeasured as an isolated root anchored at (0,0), clobbering the
-/// content's real in-tree position. Asserts the tall content stays placed.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
-// Upstream test walks one toggle-remeasure scenario (53 lines);
-// splitting it would obscure the regression it pins.
 #[allow(clippy::too_many_lines)]
 fn deep_reactive_scroll_switch_stays_positioned() {
     sigil::reactive::Runtime::scope("deep-reactive-scroll", || {
@@ -450,8 +398,6 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .child(text(body));
                 vec![scroll(code, extent).width(580.0).height(720.0)]
             });
-        // Filler inflates the live node count so the editor-switch dirty set
-        // stays under half → the incremental layout path (where the bug lives).
         let mut filler = container().layout(LayoutStyle::flex_column());
         for i in 0..120 {
             filler = filler.child(label(format!("filler row {i}")));
@@ -474,16 +420,13 @@ fn deep_reactive_scroll_switch_stays_positioned() {
         let mut layout = fresh_engine();
         recompute(&mut layout, &mut cx, root);
 
-        tall.set(true); // open the "long file"
+        tall.set(true);
         recompute(&mut layout, &mut cx, root);
 
         let mut escaped = Vec::new();
         cx.visit_preorder(root, |id, _node| {
             if let Some(res) = layout.result(id) {
                 let r = res.rect();
-                // Width targets the scroll body (`width(2000)`), not the viewport-width
-                // filler column, which now legitimately sits tall (auto-height column
-                // sizes to content, not shrinks).
                 if r.height > 900.0 && r.width > 1500.0 && r.origin.x < 60.0 && r.origin.y < 60.0 {
                     escaped.push((r.origin.x, r.origin.y, r.width, r.height));
                 }

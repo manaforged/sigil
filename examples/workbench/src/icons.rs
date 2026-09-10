@@ -1,5 +1,3 @@
-//! Tiny path glyphs for the workbench chrome.
-
 use sigil::prelude::*;
 
 const fn ink() -> Rgba8 {

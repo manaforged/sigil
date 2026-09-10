@@ -2,23 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! The display-gated shell contract, run on the process main thread.
-//!
-//! `winit` requires the `EventLoop` on macOS to be constructed on the
-//! process main thread, and libtest dispatches tests onto worker threads
-//! in every mode — including `--test-threads=1`. A `harness = false`
-//! target runs `main` on the process main thread, which is the only
-//! thread `AppKit` accepts.
-//!
-//! Skipped unless `SIGIL_DISPLAY_GATE=1` is set, mirroring the
-//! `#[ignore]` contract of the rest of the suite:
-//!
-//! ```text
-//! SIGIL_DISPLAY_GATE=1 cargo test -p sigil-shell --test display_gate
-//! ```
-//!
-//! `winit` allows exactly one `EventLoop` per process, so `main` owns
-//! the single loop and each contract phase borrows it. See `DR-002`.
 
 use sigil_hal::{PhysicalSize, Shell};
 use sigil_shell::WinitShell;
@@ -44,7 +27,6 @@ fn main() {
     println!("display_gate: PASS");
 }
 
-/// Waker bounds and liveness against a fresh loop, plus wake coalescing.
 fn wake_contract(shell: &WinitShell) {
     let waker = shell.waker();
     let cloned = waker.clone();
@@ -54,10 +36,6 @@ fn wake_contract(shell: &WinitShell) {
     );
     drop(cloned);
 
-    // The first wake above already incremented `WAKE_DELIVERED_COUNT`
-    // once. Ten more wakes from the same thread must forward nothing:
-    // `user_event` has not yet run (the loop is not executing), so the
-    // pending flag stays set and the counter stays exactly 1.
     let baseline = sigil_shell::WAKE_DELIVERED_COUNT.load(Ordering::Relaxed);
     for _ in 0..10 {
         <WinitShell as Shell>::wake(&waker).expect("wake still ok");
@@ -71,8 +49,6 @@ fn wake_contract(shell: &WinitShell) {
     );
 }
 
-/// Window handles are unique, unmaterialised before `resumed`, and no
-/// failure list exists before any window is attempted.
 fn window_contract(shell: &mut WinitShell) {
     let a = shell
         .create_window("alpha", PhysicalSize::new(800, 600))
@@ -92,8 +68,6 @@ fn window_contract(shell: &mut WinitShell) {
     );
 }
 
-/// Dropping the loop surfaces a clean error on the cloned waker
-/// instead of panicking.
 fn drop_contract(waker: &<WinitShell as Shell>::Waker) {
     let err = <WinitShell as Shell>::wake(waker).expect_err("wake after drop must error");
     let msg = err.to_string();

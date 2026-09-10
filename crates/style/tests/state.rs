@@ -64,9 +64,6 @@ fn state_style_resolves_overlay_slice() {
 
 #[test]
 fn state_style_builders_mutate_only_named_slot() {
-    // Incremental construction: EMPTY + with_* must touch only the slot
-    // named, leaving everything else empty. Mirrors how downstream widgets
-    // want to extend a state style without re-declaring every slot.
     let style = StateStyle::EMPTY.with_hovered(HOVER).with_pressed(PRESS);
 
     assert_eq!(style.rest(), &[] as &[StyleAtom]);
@@ -75,7 +72,6 @@ fn state_style_builders_mutate_only_named_slot() {
     assert_eq!(style.hovered(), HOVER);
     assert_eq!(style.pressed(), PRESS);
 
-    // Replacing a slot is write-last-wins, not append.
     let refined = style.with_hovered(FOCUS);
     assert_eq!(refined.hovered(), FOCUS);
     assert_eq!(refined.pressed(), PRESS);

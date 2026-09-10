@@ -2,24 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pixel-verification test for Phase R11 offscreen layer pool.
-//!
-//! Renders the R11 layer-pool showcase and asserts four pixel contracts:
-//! 1. Background far from any rect is red-dominant (two-phase walker doesn't
-//!    corrupt non-layer regions).
-//! 2. Middle rect centre shows the 50% Identity-layer blend.
-//! 3. Left rect centre is full-opacity white-ish (outside any layer scope).
-//! 4. Two pixels straddling the layer clip edge show a clear discontinuity.
-//!
-//! NOTE on assertion 2's gradient numbers: the plan states the background at
-//! x=480 (viewport midpoint) is ≈ (168, 88, 168) sRGB for a red→cyan gradient.
-//! A linear red→cyan at 50% x yields ≈ (186, 186, 186), not (168, 88, 168).
-//! The plan's value implies non-linear interpolation or different endpoints.
-//! This test uses the actual sRGB readback from the existing renderer gradient
-//! path at x=480 as the reference value.
-//!
-//! This file will not compile until R11 lands (`scenes::layer_pool`,
-//! `PushLayer`, `PopLayer`, `LayerEffect`). That is expected.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -34,32 +16,19 @@ use std::sync::mpsc;
 use pollster::FutureExt;
 use sigil_renderer::{OffscreenTarget, WgpuRenderer};
 
-// Physical scale factor: texture dims = viewport × SCALE.
-// Viewport (960, 320) × scale 1 = (960, 320) px — under the 2048-px downlevel cap.
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 const VIEWPORT: (f32, f32) = (960.0, 320.0);
 
-// Locked rect geometry (x, y, w, h):
-//   Left   Rect(100, 80, 180, 160)  centre (190, 160)
-//   Middle Rect(390, 80, 180, 160)  centre (480, 160) — inside Identity layer
-//   Right  Rect(680, 80, 180, 160)
 const LEFT_RECT: (f32, f32, f32, f32) = (100.0, 80.0, 180.0, 160.0);
 const MID_RECT: (f32, f32, f32, f32) = (390.0, 80.0, 180.0, 160.0);
 
-// 50% blend expectation at middle rect centre. The existing gradient pipeline
-// reads back near (174,174,192) under the middle rect, so the 50% layer blend
-// lands near (207,207,221).
 const BLEND_EXPECT_R: u8 = 204;
 const BLEND_EXPECT_G: u8 = 207;
 const BLEND_EXPECT_B: u8 = 209;
 const BLEND_TOL: u8 = 20;
 
-// ---- entry point ------------------------------------------------------------
-
-/// Render the R11 layer-pool scene and assert all four pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn layer_pixel_check() {
@@ -76,8 +45,6 @@ fn layer_pixel_check() {
     assert_unlayered_rects_full_opacity(&pixels, phys_w);
     assert_layer_boundary_sharp(&pixels, phys_w);
 }
-
-// ---- render -----------------------------------------------------------------
 
 fn render_layer_pool_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     let (command_scene, viewport, clear) = sigil_renderer::scenes::layer_pool();
@@ -107,11 +74,6 @@ fn render_layer_pool_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8
     read_pixels(device, queue, &texture, phys_w, phys_h)
 }
 
-// ---- assertion 1: background unaffected by two-phase walker -----------------
-
-/// At (50, 160) — far from any rect, near the red end of the gradient — R must
-/// be > 80 and B must be < 80. The two-phase walker must not corrupt non-layer
-/// regions of the frame.
 fn assert_layer_free_content_unchanged(pixels: &[u8], phys_w: u32) {
     let x = 50_u32;
     let y = 160_u32;
@@ -131,14 +93,9 @@ fn assert_layer_free_content_unchanged(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 2: middle rect at half opacity via Identity layer -------------
-
-/// At (480, 160) — centre of middle rect inside the Identity layer — the pixel
-/// must be the 50% blend of rect fill (240,240,250) and background gradient.
-/// Expected ≈ (204, 164, 209) within ±20 per channel.
 fn assert_layered_middle_rect_at_half_opacity(pixels: &[u8], phys_w: u32) {
-    let cx = (MID_RECT.0 + MID_RECT.2 / 2.0) as u32; // 480
-    let cy = (MID_RECT.1 + MID_RECT.3 / 2.0) as u32; // 160
+    let cx = (MID_RECT.0 + MID_RECT.2 / 2.0) as u32;
+    let cy = (MID_RECT.1 + MID_RECT.3 / 2.0) as u32;
     let [r, g, b, _a] = pixel_rgba(pixels, phys_w, cx, cy);
 
     assert!(
@@ -161,13 +118,9 @@ fn assert_layered_middle_rect_at_half_opacity(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 3: left rect at full opacity (outside any layer) -------------
-
-/// At (190, 160) — centre of left rect — all channels must be > 220.
-/// The left rect is outside any PushLayer scope; full opacity must be preserved.
 fn assert_unlayered_rects_full_opacity(pixels: &[u8], phys_w: u32) {
-    let cx = (LEFT_RECT.0 + LEFT_RECT.2 / 2.0) as u32; // 190
-    let cy = (LEFT_RECT.1 + LEFT_RECT.3 / 2.0) as u32; // 160
+    let cx = (LEFT_RECT.0 + LEFT_RECT.2 / 2.0) as u32;
+    let cy = (LEFT_RECT.1 + LEFT_RECT.3 / 2.0) as u32;
     let [r, g, b, _a] = pixel_rgba(pixels, phys_w, cx, cy);
 
     assert!(
@@ -187,15 +140,10 @@ fn assert_unlayered_rects_full_opacity(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 4: sharp pixel discontinuity at the layer clip edge ----------
-
-/// x=388 (2 px outside middle rect left edge) vs x=392 (2 px inside).
-/// At y=160, at least one of |ΔR| or |ΔG| must exceed 30.
-/// Proves the Identity layer applies inside the clip, not outside.
 fn assert_layer_boundary_sharp(pixels: &[u8], phys_w: u32) {
     let y = 160_u32;
-    let x_outside = 388_u32; // 2 px left of clip edge (x=390)
-    let x_inside = 392_u32; // 2 px right of clip edge
+    let x_outside = 388_u32;
+    let x_inside = 392_u32;
 
     let [ro, go, _bo, _ao] = pixel_rgba(pixels, phys_w, x_outside, y);
     let [ri, gi, _bi, _ai] = pixel_rgba(pixels, phys_w, x_inside, y);
@@ -212,8 +160,6 @@ fn assert_layer_boundary_sharp(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- pixel helpers ----------------------------------------------------------
-
 fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
     let base = ((y * width + x) * BYTES_PER_PIXEL) as usize;
     [
@@ -227,8 +173,6 @@ fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
 fn abs_diff(a: u8, b: u8) -> u8 {
     a.abs_diff(b)
 }
-
-// ---- wgpu plumbing ----------------------------------------------------------
 
 fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());

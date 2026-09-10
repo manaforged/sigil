@@ -32,7 +32,6 @@ fn small_glyph_has_ink_and_sane_dims() {
     );
     assert_eq!(mask.data.len(), (mask.width * mask.height) as usize);
     assert!(mask.data.iter().any(|&b| b > 128), "expected solid ink");
-    // 'A' sits on the baseline: top ≈ cap height above it.
     assert!(
         mask.top > 0,
         "cap-height glyph rises above baseline, got top {}",
@@ -40,8 +39,6 @@ fn small_glyph_has_ink_and_sane_dims() {
     );
 }
 
-/// 'L' is bottom-heavy (the foot stroke). If the mask came back
-/// vertically flipped, the top row would carry the heavy ink.
 #[test]
 fn mask_is_not_vertically_flipped() {
     let font = FontRef::new(FIRA).unwrap();
@@ -68,7 +65,6 @@ fn subpixel_bins_shift_coverage() {
     let gid = glyph_a(&font);
     let bin0 = mask(gid, 12.0, 0).unwrap();
     let bin2 = mask(gid, 12.0, 2).unwrap();
-    // A half-pixel shift must change the coverage distribution.
     assert!(
         bin0.width != bin2.width || bin0.data != bin2.data,
         "bin 0 and bin 2 rendered identical masks"

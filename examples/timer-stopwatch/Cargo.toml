@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Dogfood: a press-to-record stopwatch built on `sigil::launch`."
+description = "Press-to-record stopwatch built on `sigil::launch`."
 
 [dependencies]
 sigil-ui = { workspace = true }

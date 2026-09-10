@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Owned-engine vs Taffy comparison - `huge_nested` scene from Taffy's
-//! published bench corpus.
-//!
-//! Run with `cargo bench -p sigil-layout --bench taffy_corpus_huge_nested`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -21,8 +16,6 @@ use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
-
-// allow unused dev-dep extern crates per repo convention
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;
@@ -54,8 +47,6 @@ fn taffy_flex_column_fixed(width: f32, height: f32) -> taffy::Style {
         ..Default::default()
     }
 }
-
-// === owned engine ===
 
 fn build_owned_huge_nested(cx: &mut Cx) -> NodeId {
     cx.add(owned_huge_nested_node(0))
@@ -95,8 +86,6 @@ fn bench_owned_huge_nested(c: &mut Criterion) {
         });
     });
 }
-
-// === taffy directly ===
 
 fn build_taffy_huge_nested(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
     build_taffy_huge_nested_node(tree, 0)

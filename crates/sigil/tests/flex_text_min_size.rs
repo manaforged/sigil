@@ -1,13 +1,3 @@
-//! CSS Flexbox §4.5 automatic minimum size for content leaves.
-//!
-//! A text leaf in a flex column that is shorter than its content must not
-//! shrink below the text's own height. Before this fix the shrink pass
-//! crushed stacked text toward zero, so a large title and its subtitle
-//! painted on top of each other (found via the widget-playground render:
-//! layout allocated ~5px for a 24px title). This pins the floor: two
-//! stacked text nodes in an over-constrained column keep their measured
-//! heights and stay vertically separated.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -22,9 +12,6 @@ fn stacked_text_in_a_short_column_does_not_crush() {
     sigil::reactive::Runtime::scope("flex-min", || {
         sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
-        // A column pinned to 20px — far shorter than its two text children
-        // stacked (a large title + a smaller subtitle ~40px total). With
-        // default shrink and no §4.5 floor, both collapsed toward 0.
         let title = text("Large title here").class("text-xl font-bold");
         let sub = text("A smaller subtitle line").class("text-sm");
         let col = container()

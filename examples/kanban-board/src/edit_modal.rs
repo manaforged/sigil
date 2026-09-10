@@ -1,15 +1,8 @@
-//! Edit modal — title + description text fields with Save/Cancel.
-
 use sigil::prelude::*;
 
 use crate::state::BoardState;
 
 pub(crate) fn edit_modal(state: BoardState) -> NodeBuilder {
-    // The modal widget returns a NodeBuilder wrapping itself in
-    // `into_node_builder`; we drive it through the impl IntoNode
-    // pathway as a child of a passthrough container so the host tree
-    // can attach it under the root without exposing the modal's
-    // builder-only `.show()` requirement to the caller.
     container().layout(LayoutStyle::block()).child(
         modal(state.modal_open)
             .title("Edit card")

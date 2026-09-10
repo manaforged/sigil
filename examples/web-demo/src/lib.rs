@@ -1,12 +1,8 @@
-//! Browser-hosted Sigil renderer proof.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "getrandom selects the browser entropy backend for ahash"
 )]
-// Native targets compile an empty cdylib — the demo is wasm-only, and
-// `cargo check --workspace --all-targets` must stay green on the host.
 #![cfg(target_arch = "wasm32")]
 #![allow(
     clippy::cast_possible_truncation,

@@ -124,9 +124,6 @@ fn multi_root_overlapping_resolves_per_root() {
                 .to_owned()
         })
         .collect();
-    // Each root sees its own scope. file.rs lives under both
-    // canonical paths so both roots yield it; outer-only.rs
-    // is only visible from the outer root.
     assert!(outer_files.contains("file.rs"));
     assert!(outer_files.contains("outer-only.rs"));
     assert!(inner_files.contains("file.rs"));

@@ -1,16 +1,3 @@
-//! Tiny-atlas growth-boundary and atlas-full end-to-end checks — Wave-3 D3
-//! (`docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 3, DR-055
-//! §2/§3). Uses the `#[doc(hidden)]` `set_test_atlas_size_override` hook to
-//! force the real 1024²→2048² atlas down to a few dozen texels, so a small
-//! paragraph — not the ~10k distinct glyphs a real 2048² atlas would need —
-//! can cross a growth boundary mid-accumulation, or overflow it entirely.
-//!
-//! Both tests render through the real embed path (`shape_glyph_run` →
-//! `submit_screen`), the same production code the `draw_glyph_run` /
-//! `RasterTextPipeline::place_glyphs` growth-and-fallback logic runs
-//! through — this validates the `normalize_uvs`-after-growth fix (and the
-//! atlas-full → vector-fallback leftover path) end-to-end, not just via the
-//! unit tests already in `raster_paint.rs`.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -48,32 +35,15 @@ use sigil_style::{Rgba8, TextLineHeight, TextStyle};
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
-// Wide enough that each fixture's lines lay out without soft-wrapping
-// (explicit `\n` controls line breaks) and tall enough to hold the
-// fixtures' 3 lines with a small margin.
 const LOGICAL_W: f32 = 460.0;
 const LOGICAL_H: f32 = 90.0;
-const FONT_SIZE: f32 = 14.0; // within RASTER_MAX_LOGICAL_PX (20px)
+const FONT_SIZE: f32 = 14.0;
 const ORIGIN: (f32, f32) = (8.0, 12.0);
 
-/// ~30 unique glyphs (upper/lower case, digits, punctuation) — enough that
-/// a 64² atlas (holding roughly two dozen ~10×14px hinted masks) fills and
-/// grows to 128² partway through a single accumulation, then the repeated
-/// second/third copies exercise the cache under the grown size.
 const GROWTH_TEXT: &str = "The Quick Brown Fox Jumps 0123456789!?.,\n\
                             The Quick Brown Fox Jumps 0123456789!?.,\n\
                             The Quick Brown Fox Jumps 0123456789!?.,";
 
-/// Wave-3 D3 (DR-055 §2 kill-criteria follow-up): force a growth crossing
-/// (64² → 128²) mid-accumulation with [`GROWTH_TEXT`], then compare the
-/// PIXELS against a reference render of the same content through the same
-/// code path with the real (uncapped) atlas sizes — where no grow ever
-/// happens, since ~30 unique glyphs is far below 1024²'s capacity. A
-/// `normalize_uvs` regression (normalizing against the pre-growth size,
-/// the actual review-caught bug) corrupts UVs for every instance placed
-/// before the grow — sampling out-of-range atlas texels, which
-/// `ClampToEdge` turns into wrong-but-nonzero ink, not blank pixels, so a
-/// mere "is there ink" check would NOT catch it. A pixel comparison does.
 #[test]
 fn growth_crossing_produces_correctly_placed_ink() {
     let _guard = lock_global_text_state();
@@ -90,10 +60,10 @@ fn growth_crossing_produces_correctly_placed_ink() {
         ..TextTuning::default()
     });
 
-    set_test_atlas_size_override(0, 0); // real defaults — no grow needed
+    set_test_atlas_size_override(0, 0);
     let (reference, rw, rh) = render(&mut ref_renderer, GROWTH_TEXT);
 
-    set_test_atlas_size_override(40, 2048); // grows once (40→80), never full
+    set_test_atlas_size_override(40, 2048);
     let (tiny, tw, th) = render(&mut tiny_renderer, GROWTH_TEXT);
 
     assert_eq!((rw, rh), (tw, th), "viewport size mismatch between renders");
@@ -106,33 +76,12 @@ fn growth_crossing_produces_correctly_placed_ink() {
     );
 }
 
-/// ~90 unique glyphs (full mixed-case alphabet, digits, wide punctuation
-/// set, one per line) — enough to overflow a 32²→64² atlas after its one
-/// permitted grow, forcing `RasterTextPipeline::record_paragraph` to fall
-/// back the overflow glyphs to vector Slug (DR-055 §2's "atlas full ->
-/// silent vector fallback"). Asserts the MIXED raster+vector render still
-/// carries ink in both the early (raster-placed) and late (vector-
-/// fallback) regions — not just a nonzero total, which a render that
-/// silently dropped the fallback half would still pass.
 const OVERFLOW_UNIQUE_GLYPHS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ\n\
                                        abcdefghijklmnopqrstuvwxyz\n\
                                        0123456789!?.,;:()[]{}+-*/=<>@#$%^&";
 
-/// Number of horizontal bands [`OVERFLOW_UNIQUE_GLYPHS`]' 3 explicit lines
-/// are checked in — one per line, so a whole dropped line (not just a
-/// dimmer one) is caught regardless of which line the atlas happened to
-/// fill up on.
 const OVERFLOW_BANDS: u32 = 3;
 
-/// Wave-3 D3 (DR-055 §2 "atlas full -> silent vector fallback"): force an
-/// overflow (32²→64², then full) with [`OVERFLOW_UNIQUE_GLYPHS`] (~90
-/// unique glyphs, one per line across 3 lines) and compare each line's ink
-/// against a PURE VECTOR reference render of the same content
-/// (`TextTuning.raster = false`, which never drops a glyph). A render that
-/// silently swallowed the atlas-full leftover instead of handing it to
-/// vector Slug would show near-zero ink in whichever band the overflow
-/// landed on, while the vector reference always has ink in every band —
-/// catching a dropped line regardless of where in the sequence it falls.
 #[test]
 fn atlas_full_falls_back_to_vector_with_ink_throughout() {
     let _guard = lock_global_text_state();
@@ -152,7 +101,7 @@ fn atlas_full_falls_back_to_vector_with_ink_throughout() {
     });
     let (vector_px, vw, vh) = render(&mut vector_renderer, OVERFLOW_UNIQUE_GLYPHS);
 
-    set_test_atlas_size_override(32, 64); // grows once to 64, then overflows
+    set_test_atlas_size_override(32, 64);
     set_text_tuning(TextTuning {
         raster: true,
         ..TextTuning::default()
@@ -160,10 +109,6 @@ fn atlas_full_falls_back_to_vector_with_ink_throughout() {
     let (mixed_px, mw, mh) = render(&mut mixed_renderer, OVERFLOW_UNIQUE_GLYPHS);
     assert_eq!((vw, vh), (mw, mh), "viewport size mismatch between renders");
 
-    // Band the ACTUAL ink extent of the vector reference (its 3 lines don't
-    // divide the padded viewport into equal thirds), not the raw viewport —
-    // otherwise a band can straddle a near-empty gap between lines and read
-    // as "no ink" in both renders, proving nothing.
     let (ink_y0, ink_y1) =
         ink_row_bounds(&vector_px, vw, vh).expect("vector reference produced no ink at all");
     for band in 0..OVERFLOW_BANDS {
@@ -190,7 +135,6 @@ fn atlas_full_falls_back_to_vector_with_ink_throughout() {
     }
 }
 
-/// Highest luminance in the frame, or `None` for an all-black (no-ink) frame.
 fn frame_max_luminance(pixels: &[u8], width: u32, height: u32) -> Option<u8> {
     (0..height)
         .flat_map(|y| (0..width).map(move |x| (x, y)))
@@ -199,9 +143,6 @@ fn frame_max_luminance(pixels: &[u8], width: u32, height: u32) -> Option<u8> {
         .filter(|&m| m > 0)
 }
 
-/// The `[min_y, max_y)` row range containing any "ink" pixel (R > half the
-/// frame's max luminance), or `None` for a blank frame. Used to band a
-/// render by its ACTUAL text extent rather than the padded viewport.
 fn ink_row_bounds(pixels: &[u8], width: u32, height: u32) -> Option<(u32, u32)> {
     let half = f32::from(frame_max_luminance(pixels, width, height)?) * 0.5;
     let mut min_y = None;
@@ -216,9 +157,6 @@ fn ink_row_bounds(pixels: &[u8], width: u32, height: u32) -> Option<(u32, u32)> 
     min_y.map(|y0| (y0, max_y))
 }
 
-/// Fraction of "ink" pixels (R > half of the frame's max luminance) within
-/// rows `[y0, y1)` — used to check ink is spread across the render, not
-/// just present somewhere.
 fn ink_fraction_band(pixels: &[u8], width: u32, height: u32, y0: u32, y1: u32) -> f32 {
     let y1 = y1.min(height);
     if y1 <= y0 {
@@ -236,10 +174,6 @@ fn ink_fraction_band(pixels: &[u8], width: u32, height: u32, y0: u32, y1: u32) -
     count as f32 / total
 }
 
-/// Fraction of bytes in `a`/`b` (same length assumed — callers assert
-/// matching dimensions first) that differ by more than a small tolerance —
-/// tolerating harmless sRGB/blend rounding while catching a genuinely
-/// different render (wrong atlas texels, misplaced quads).
 const PIXEL_DIFF_TOLERANCE: u8 = 4;
 
 fn pixel_diff_fraction(a: &[u8], b: &[u8]) -> f32 {
@@ -258,7 +192,6 @@ const fn luminance(pixels: &[u8], width: u32, x: u32, y: u32) -> u8 {
     pixels[((y * width + x) * BYTES_PER_PIXEL) as usize]
 }
 
-/// Render `content` through the real embed path, white-on-black.
 fn render(renderer: &mut WgpuRenderer, content: &str) -> (Vec<u8>, u32, u32) {
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
@@ -317,8 +250,6 @@ fn build_text_scene(content: &str) -> CommandScene {
     builder.finish()
 }
 
-// ---- wgpu plumbing --------------------------------------------------------
-
 fn try_headless_renderer() -> Option<WgpuRenderer> {
     let mut renderer = WgpuRenderer::new().ok()?;
     renderer.ensure_headless_for_tests().ok()?;
@@ -342,9 +273,6 @@ fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgp
     })
 }
 
-/// Copy `texture` into a fresh mapped-readback buffer and block until the
-/// GPU copy completes. Split out of [`read_pixels`] to stay under the
-/// 50-line function cap.
 fn copy_to_readback_buffer(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

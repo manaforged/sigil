@@ -7,16 +7,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-//! Regression: `fill_width()` on a flex-column child must resolve
-//! against the parent's WIDTH (cross axis), not its HEIGHT.
-//!
-//! Before the fix in `item_cross_basis`, the column-direction branch
-//! resolved a child's width against `cb_main` (parent height), which
-//! silently degraded `fill_width()` to the parent's height value and
-//! collapsed every `JustifyContent::SpaceBetween` row whose own width
-//! depended on `fill_width()` — visible in the playground as `kv_row`'s
-//! label and value overprinting at x=0.
-
 mod stub;
 use stub::stub_engine;
 
@@ -32,9 +22,6 @@ fn child_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
 
 #[test]
 fn fill_width_in_flex_column_resolves_against_parent_width() {
-    // Parent: flex_column 220 wide × 40 tall (NOT square, so a swapped
-    // axis is immediately visible in the assertion).
-    // Child: fill_width — expected to resolve to 220, NOT 40.
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(container()));
     cx.get_mut(root)
@@ -66,10 +53,6 @@ fn fill_width_in_flex_column_resolves_against_parent_width() {
 
 #[test]
 fn fill_height_in_flex_row_resolves_against_parent_height() {
-    // Mirror: a row parent with fill_height child. This case worked
-    // before the fix (the row-direction branch already used cb_cross
-    // correctly) — included so any future regression on the row side
-    // surfaces alongside the column case.
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(container()));
     cx.get_mut(root)

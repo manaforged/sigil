@@ -1,7 +1,3 @@
-//! The hello-counter tree on `sigil::run_tui`.
-//!
-//! Same signal, derived label, and button. The host is cells, not wgpu.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

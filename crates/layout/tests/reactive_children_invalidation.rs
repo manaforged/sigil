@@ -1,17 +1,3 @@
-//! Regression tests for `children_reactive` × layout engine integration.
-//!
-//! These tests verify that:
-//!
-//! 1. Reactive child mutations inside a fixed-size container only relayout
-//!    the containing subtree — the outer (intrinsic-sized) ancestor is not
-//!    remeasured.
-//! 2. An identical rebuild (same child content, same count) hits the layout
-//!    cache and does not bump `engine.generation()`.
-//! 3. `LayoutEngine::compute` itself drains the deferred rebuild queue via
-//!    the `cx.flush_reactive_children()` call wired in B1.b.
-//!
-//! The canonical model test is
-//! `compute_after_add_child_invalidates_cache` in `incremental.rs`.
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -27,7 +13,6 @@ use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 use sigil_reactive::{Runtime, signal};
 
-/// Available space fed to the layout engine in each test.
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
 
 fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
@@ -37,21 +22,6 @@ fn layout_rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
         .rect()
 }
 
-/// A `children_reactive` parent inside a fixed-size container must not
-/// trigger a root-level re-layout when children are added.
-///
-/// Tree shape:
-///
-/// ```text
-/// outer  (flex_column, no fixed size — intrinsic-sized)
-///   middle (fixed_size 400x600 — containment root)
-///     inner  (flex_column, no fixed size)
-///       [reactive children]
-/// ```
-///
-/// When inner's children grow, `find_containment_root` stops at `middle`
-/// (the first Px-sized ancestor). The outer is NOT remeasured, so its
-/// rect is identical before and after the mutation.
 #[test]
 fn reactive_children_in_sized_container_only_relayouts_subtree() {
     Runtime::scope("layout_reactive_children_sized_container_subtree", || {
@@ -83,22 +53,18 @@ fn reactive_children_in_sized_container_only_relayouts_subtree() {
         let gen_after_initial = engine.generation();
         let outer_rect_initial = layout_rect(&cx, outer);
 
-        // Add 2 more items — structural change inside the fixed-size subtree.
         items.set(vec!["a", "b", "c", "d"]);
 
         engine
             .compute(&mut cx, outer, AVAILABLE)
             .expect("reactive compute succeeds");
 
-        // Generation must advance — a structural change happened.
         assert_ne!(
             engine.generation(),
             gen_after_initial,
             "engine generation must advance after children_reactive mutation"
         );
 
-        // Outer's rect must be unchanged because the remeasure is
-        // contained inside `middle` (the fixed-size ancestor).
         let outer_rect_after = layout_rect(&cx, outer);
         assert_eq!(
             outer_rect_after.width.to_bits(),
@@ -113,8 +79,6 @@ fn reactive_children_in_sized_container_only_relayouts_subtree() {
     });
 }
 
-/// `Signal::set` skips an equal write, so an identical item list does
-/// not rebuild children or invalidate layout.
 #[test]
 fn reactive_children_identical_set_is_a_cache_hit() {
     Runtime::scope("layout_reactive_children_identical_rebuild_cache", || {
@@ -153,12 +117,6 @@ fn reactive_children_identical_set_is_a_cache_hit() {
     });
 }
 
-/// `LayoutEngine::compute` must drain the reactive-children queue via
-/// `cx.flush_reactive_children()` WITHOUT the caller doing it explicitly.
-///
-/// Build a tree with `children_reactive`, mutate the signal (queuing a
-/// rebuild), then call `engine.compute` without a manual flush — the
-/// children must materialise, proving the B1.b hookup works end-to-end.
 #[test]
 fn reactive_children_dispatched_through_compute() {
     Runtime::scope("layout_reactive_children_via_compute", || {
@@ -178,7 +136,6 @@ fn reactive_children_dispatched_through_compute() {
 
         let mut engine = stub_engine();
 
-        // Initial compute — empty list, no children.
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("initial compute succeeds");
@@ -189,10 +146,8 @@ fn reactive_children_dispatched_through_compute() {
             "no children in the initial empty build"
         );
 
-        // Queue a rebuild — do NOT call flush_reactive_children explicitly.
         items.set(vec!["x", "y", "z"]);
 
-        // compute() must drain the queue internally.
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("compute with queued rebuild succeeds");

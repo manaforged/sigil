@@ -54,7 +54,7 @@ softbuffer = { workspace = true, optional = true }
 tiny-skia = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
-# wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
+# wgpu-hal 30 GLES/WGL backend needs windows-core's `std` feature
 # to provide `impl std::error::Error for windows_core::Error`. See
 # examples/hello-rect/Cargo.toml for the full rationale.
 windows-core = { version = "0.62", default-features = false, features = ["std"] }

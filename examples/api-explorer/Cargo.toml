@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "Dogfooding example: multi-pane mock REST API explorer composing splitter + virtual_list + tabs."
+description = "Example: multi-pane mock REST API explorer composing splitter + virtual_list + tabs."
 
 [[bin]]
 name = "api-explorer"

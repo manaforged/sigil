@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DR-056 typography inheritance — measurement side.
-//!
-//! Paint-side inheritance is pinned in
-//! `crates/renderer/tests/style_integration.rs`; these tests pin the
-//! layout half of the contract: text nodes MEASURE with the typography
-//! they inherit, and ancestor typography changes re-measure descendant
-//! text even when the descendant's own `Node::version` is unchanged
-//! (the ε1 fast-path + incremental cascade).
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
@@ -22,8 +13,6 @@ use sigil_kernel::{TextContent, prelude::*};
 use sigil_layout::{LayoutEngine, TextMeasure};
 use sigil_style::{NodeStyleExt, StyleBinding, TextStyle, parse_class_string};
 
-/// Records every styled measurement so tests can assert which
-/// typography reached the measure boundary.
 #[derive(Default)]
 struct RecordingMeasure {
     calls: Rc<RefCell<Vec<(String, TextStyle)>>>,
@@ -111,9 +100,6 @@ fn text_child_measures_with_inherited_typography() {
 #[test]
 fn ancestor_typography_change_remeasures_descendant_text() {
     let mut cx = Cx::new_root();
-    // Wide tree so a single dirty node stays under the broadcast
-    // threshold and the change flows through the incremental
-    // sync_one_node + cascade path, not a full re-sync.
     let styled = container().class("text-lg").child(text("Target"));
     let root = cx.add(
         container()
@@ -136,9 +122,6 @@ fn ancestor_typography_change_remeasures_descendant_text() {
     }
     calls.borrow_mut().clear();
 
-    // Swap the container's classes through the dynamic-atom channel
-    // (a fresh binding attach bumps the container's version); the text
-    // child's own version never changes.
     let atoms = parse_class_string("text-xl").expect("text-xl parses");
     cx.get_mut(styled_id)
         .unwrap()

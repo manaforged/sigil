@@ -1,5 +1,3 @@
-//! Coverage for [`LayerPool`] reuse and fail-closed acquire.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -93,7 +91,6 @@ fn oversized_returns_err() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn zero_extent_returns_empty() {
     let mut pool = LayerPool::new();
-    // Device is unused on the empty path.
     let Some(device) = try_request_device() else {
         eprintln!("no adapter - skipping zero_extent_returns_empty");
         return;

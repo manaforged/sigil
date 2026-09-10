@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Floating combat text demo — particle damage numbers without layout.
-//!
-//! The demo wires a 60 Hz tick signal and spawns three particles per
-//! tick at randomised positions, simulating a burst-damage scenario.
-//! Particles age + drift over `duration` seconds, then dispose.
-//!
-//! Run with `cargo run -p sigil-ui --example floating_text_demo`.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
@@ -24,9 +15,6 @@ fn build(cx: &mut Cx) -> NodeId {
     let time = signal(0.0_f32);
     let spawn = signal(FctSpawn::default());
 
-    // 60 Hz tick driver: each frame nudges `time` forward and emits a
-    // burst of three particles. Real apps would route shell frame
-    // ticks here; this demo synthesises them via a self-driving effect.
     let mut frame: u32 = 0;
     effect(move || {
         let now = time.get();
@@ -52,8 +40,6 @@ fn build(cx: &mut Cx) -> NodeId {
 }
 
 fn burst_spawn(frame: u32) -> FctSpawn {
-    // Pseudo-random scatter using a small LCG of the frame counter —
-    // deterministic, no `rand` dep, fits inside the example budget.
     let seed = frame.wrapping_mul(2_654_435_761);
     let x = f32::from((seed & 0x1ff) as u16) + 60.0;
     let y = f32::from(((seed >> 9) & 0xff) as u8) + 200.0;

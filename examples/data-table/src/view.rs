@@ -1,9 +1,3 @@
-//! Window tree matching GPUI `examples/data_table.rs`.
-//!
-//! Status line + clipped 24-column header + `virtual_list` body
-//! (scroll reuses keyed rows; quote ticks update cell text in place)
-//! + 8×100 thumb.
-
 use std::ops::Range;
 use std::rc::Rc;
 
@@ -45,7 +39,6 @@ const THUMB_HOVER: Rgba8 = rgb(160, 160, 160);
 const GREEN: Rgba8 = rgb(0, 128, 0);
 const RED: Rgba8 = rgb(255, 0, 0);
 
-/// Build the full data-table tree.
 #[must_use]
 pub fn app_tree() -> NodeBuilder {
     let items = signal(Rc::new(generate(TOTAL_ITEMS)));
@@ -65,9 +58,6 @@ pub fn app_tree() -> NodeBuilder {
         .child(table_frame(items, scroll_y))
 }
 
-/// Visible row range at `scroll_y`, same formula as `virtual_list`.
-///
-/// One viewport of rows on each side of the geometric page.
 #[must_use]
 pub fn visible_range(scroll_y: f32, total: usize) -> Range<usize> {
     if total == 0 {
@@ -166,9 +156,6 @@ fn body(items: Signal<Rc<Vec<Quote>>>, scroll_y: Signal<f32>) -> NodeBuilder {
         .child(scrollbar(scroll_y))
 }
 
-/// Windowed body used by the live window and the Sigil bench runner.
-///
-/// Default overscan is one page. 1:1 construct benches chain `.overscan(0)`.
 #[must_use]
 pub fn quote_list(
     items: Signal<Rc<Vec<Quote>>>,
@@ -182,7 +169,6 @@ pub fn quote_list(
         .keyboard(false)
 }
 
-/// One 24-column quote row — the production cell tree the bench times.
 #[must_use]
 pub fn table_row(index: usize, quote: &Quote, book: Signal<Rc<Vec<Quote>>>) -> NodeBuilder {
     let tint = if quote.up() { GREEN } else { RED };

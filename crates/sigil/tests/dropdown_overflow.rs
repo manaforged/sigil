@@ -1,11 +1,3 @@
-//! A dropdown with more options than the popup shows must clip and scroll
-//! them, not paint the overflow past the popup onto sibling UI.
-//!
-//! Before this, the popup box was capped at `POPUP_MAX_VISIBLE` rows but all
-//! options were appended as plain children with no clip and no scroll, so
-//! options 7+ painted below the popup and were unreachable by keyboard
-//! (the cursor clamps to n-1).
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -16,8 +8,6 @@
 use sigil::prelude::*;
 use sigil_hal::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
 
-/// The popup box height for `POPUP_MAX_VISIBLE` (6) rows of 36px.
-// Mirrors popup.rs: POPUP_MAX_VISIBLE * OPTION_HEIGHT (6 * 28).
 const POPUP_VISIBLE_H: f32 = 6.0 * 28.0;
 
 fn has_scrollview(cx: &Cx, id: NodeId) -> bool {
@@ -28,8 +18,6 @@ fn has_scrollview(cx: &Cx, id: NodeId) -> bool {
     node.children().iter().any(|c| has_scrollview(cx, *c))
 }
 
-/// The tallest laid-out box under `id` whose role is `ScrollView`, as
-/// (viewport height, content extent). None when there is no scroll view.
 fn scrollview_id(cx: &Cx, id: NodeId) -> Option<NodeId> {
     let node = cx.get(id)?;
     if node.a11y.role == Role::ScrollView {
@@ -91,7 +79,6 @@ fn many_options_scroll_within_the_popup() {
             .compute(&mut cx, root, Size::fixed(640.0, 640.0))
             .expect("layout");
 
-        // Closed dropdowns do not keep an invisible option tree alive.
         assert!(!has_scrollview(&cx, root));
         open_popup(&mut cx, root, &mut layout);
         assert!(
@@ -112,9 +99,6 @@ fn many_options_scroll_within_the_popup() {
             "20 options ({extent}px) must exceed the {viewport}px viewport so the \
              overflow is scrollable rather than painted past the popup",
         );
-        // The paint-time scissor is what actually stops options painting
-        // past the popup onto sibling UI. `clips()` is the layout's promise
-        // that the renderer will scissor this box.
         assert!(
             layout.result(sv).unwrap().clips(),
             "the scroll viewport must clip so overflow options do not paint \

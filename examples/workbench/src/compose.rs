@@ -1,5 +1,3 @@
-//! Bottom composer card.
-
 use sigil::prelude::*;
 
 use crate::icons;

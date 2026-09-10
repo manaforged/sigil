@@ -1,6 +1,5 @@
 use super::*;
 
-/// Render the real tree at terminal size and dump it.
 #[test]
 fn the_tree_paints_a_header_and_a_frame() {
     let reader = Arc::new(Mutex::new(scan::Scanner::new()));

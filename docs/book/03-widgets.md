@@ -43,7 +43,7 @@ highlights below; see rustdoc for the full builder surface.
   `.disabled(Signal)`; trigger + popup with focus trap.
 - **radio_group(Signal\<String\>)** — `.option(key, label)`;
   keyboard: arrows wrap, Home/End, focus ring on checked row.
-- **command_menu()** — FFT nested actions: `.item(label, action)`,
+- **command_menu()** — nested action tree: `.item(label, action)`,
   `.submenu(...)`, `.select(Fn(&str))`. Not a searchable Cmd-K
   palette. That shape is `text_field` + `virtual_list` inside
   `modal` / `sheet` (recipe below).

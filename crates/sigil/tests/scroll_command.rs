@@ -4,8 +4,6 @@
 )]
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
-// Scroll offsets in this suite use exactly representable pixel values;
-// exact comparison is the point (regression pins, not float math).
 
 use sigil::prelude::*;
 use sigil_hal::{Point, ScrollEventInit};

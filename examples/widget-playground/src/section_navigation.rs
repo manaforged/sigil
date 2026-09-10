@@ -1,5 +1,3 @@
-//! Navigation widgets: `tabs`, `menu_bar`, `menu`, `tooltip`, `hint_overlay`.
-
 use sigil::prelude::*;
 use sigil::widgets::patterns::{self, HintOverlayBuilder};
 use sigil::widgets::{MenuItem, menu, menu_bar, tabs, tooltip};

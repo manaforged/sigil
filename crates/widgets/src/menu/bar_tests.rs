@@ -9,7 +9,7 @@ use sigil_reactive::Runtime;
     clippy::suboptimal_flops,
     clippy::float_cmp,
     reason = "exact comparison is the contract (regression pin)"
-)] // regression pin: exact f32 math
+)]
 fn trigger_width_is_pad_plus_count_times_em() {
     assert_eq!(super::trigger_width("File"), 16.0 + 4.0 * 8.0);
     assert_eq!(super::trigger_width(""), 16.0);

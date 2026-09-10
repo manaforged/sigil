@@ -1,23 +1,8 @@
-//! Greedy subsequence matcher with bonus scoring.
-//!
-//! The matcher walks `haystack` once, advancing through `needle` on
-//! each ASCII-case-insensitive char hit. It tracks the running score
-//! using [`super::score`]'s bonus table.
-//!
-//! For exact / prefix matches we short-circuit so they always rank
-//! above any subsequence result.
-
 use smallvec::SmallVec;
 
 use super::INLINE_POSITIONS;
 use super::score;
 
-/// Compute the best score and matched byte positions for `needle`
-/// against `haystack`. Returns `None` when no subsequence match
-/// exists at all.
-///
-/// `needle` is non-empty (caller checks). `haystack` may be empty,
-/// in which case we return `None`.
 pub(super) fn score_entry(
     needle: &str,
     haystack: &str,
@@ -41,10 +26,6 @@ fn exact_or_prefix(
     if haystack.starts_with(needle) {
         return Some((score::PREFIX, positions_for_prefix(needle)));
     }
-    // Smart-case: when the needle contains an uppercase letter, treat
-    // the query as case-sensitive — do not fall back to icase exact /
-    // prefix. The subsequence path will still find matches with the
-    // appropriate camel-boundary bonuses.
     let icase_allowed = !needle.chars().any(|c| c.is_ascii_uppercase());
     if icase_allowed {
         if haystack.eq_ignore_ascii_case(needle) {
@@ -113,8 +94,6 @@ const fn chars_match(a: char, b: char) -> bool {
     if a == b {
         return true;
     }
-    // `char::to_ascii_lowercase` is const-stable; the `==` between
-    // two `char`s is also const, so the whole function stays const.
     let la = a.to_ascii_lowercase();
     let lb = b.to_ascii_lowercase();
     la == lb

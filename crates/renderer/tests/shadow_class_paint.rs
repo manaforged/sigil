@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Shadow style wiring — `shadow-*` classes drive the drop-shadow pass.
-//!
-//! The renderer shipped a full Evan Wallace rounded-rect shadow pipeline,
-//! but the style layer never emitted into it, so `shadow-*` rejected at
-//! parse time and no widget could float. These tests pin the wiring:
-//! class → `StyleAtom::Shadow` → `RenderStyle.shadow` →
-//! `SceneCommand::DrawShadow`. The visual proof (real ink under a modal)
-//! lives in the `modal_dimmed_backdrop` golden.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
 
@@ -34,8 +25,6 @@ fn layout(cx: &mut Cx, root: NodeId) {
         .expect("layout compute");
 }
 
-/// The blur radius plus vertical offset of the first drop shadow a
-/// `shadow-*` class emits, or `None` when nothing was emitted.
 fn shadow_extent(class: &'static str) -> Option<f32> {
     let mut cx = Cx::new_root();
     let root = cx.add(

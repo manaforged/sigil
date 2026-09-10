@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Editor-tier dogfooding example: live regex pattern tester with derived match list."
+description = "Editor example: live regex pattern tester with derived match list."
 
 [dependencies]
 sigil-ui = { workspace = true }

@@ -2,18 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! impl — integration tests for G5 `Task<T>` + `AsyncContext` +
-//! the executor-install seam (DR-048).
-//!
-//! Covers `Context::spawn` end-to-end: a TestExecutor backed by a
-//! multi-thread tokio runtime supplies real `AbortHandle`s; a
-//! TestDispatcher buffers main-thread callbacks in a `Mutex<VecDeque>`
-//! that the test code drains explicitly. The drain seam keeps the
-//! tests deterministic — no `tokio::time` feature, no race window
-//! polling on wall-clock sleeps.
-//!
-//! See DR-048 §8 (test seam) and §4 (completion routing).
-
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
@@ -43,11 +31,6 @@ use tokio::runtime::Builder as TokioBuilder;
 use tokio::sync::oneshot;
 use tokio::task::AbortHandle;
 
-// ---- Test fixture: TestExecutor + TestDispatcher --------------------
-
-/// Single tokio multi-thread runtime kept inside an Arc so the executor
-/// can hand out abort handles. Each test builds its own to avoid
-/// cross-test state.
 struct TestExecutor {
     rt: Option<tokio::runtime::Runtime>,
 }
@@ -68,9 +51,6 @@ impl TestExecutor {
 
 impl Drop for TestExecutor {
     fn drop(&mut self) {
-        // Force background shutdown so the test thread doesn't block
-        // on worker join. Idempotent — Option::take returns None on
-        // double-drop.
         if let Some(rt) = self.rt.take() {
             rt.shutdown_background();
         }
@@ -84,7 +64,6 @@ impl TaskExecutor for TestExecutor {
     }
 }
 
-/// Buffers callbacks posted by the worker until the test drains them.
 #[derive(Default)]
 struct TestDispatcher {
     queue: Mutex<VecDeque<(OwnerId, BoxMainCallback)>>,
@@ -99,9 +78,6 @@ impl TestDispatcher {
         self.queue.lock().expect("dispatcher mutex").len()
     }
 
-    /// Drain every buffered callback by running it inline on the
-    /// current thread. The test thread IS the reactive runtime's
-    /// main thread, so this satisfies the "post_to_main" contract.
     fn drain_inline(&self) -> usize {
         let drained: Vec<(OwnerId, BoxMainCallback)> = {
             let mut guard = self.queue.lock().expect("dispatcher mutex");
@@ -114,8 +90,6 @@ impl TestDispatcher {
         count
     }
 
-    /// Busy-wait until at least `n` callbacks are buffered or the
-    /// deadline elapses. Returns whether the threshold was reached.
     fn wait_for_pending(&self, n: usize, timeout: Duration) -> bool {
         let deadline = Instant::now() + timeout;
         while Instant::now() < deadline {
@@ -138,8 +112,6 @@ impl MainThreadDispatcher for TestDispatcher {
     }
 }
 
-/// Spin up an executor + dispatcher pair, install them, and run `f`
-/// inside a `Runtime::scope`. Each test gets a fresh pair.
 fn with_async_fixture<F>(name: &'static str, f: F)
 where
     F: FnOnce(&Arc<TestExecutor>, &Arc<TestDispatcher>),
@@ -154,8 +126,6 @@ where
     });
 }
 
-/// Test entity payload — wraps an atomic counter shared with the
-/// background future.
 struct Counter {
     n: Arc<AtomicUsize>,
 }
@@ -167,9 +137,6 @@ impl Counter {
     }
 }
 
-/// Busy-wait for the worker to set `flag` to a non-zero value, or
-/// time out. Used by tests that need to observe a future's body
-/// running without a tokio::time::sleep dependency.
 fn wait_for_atomic(flag: &AtomicUsize, target: usize, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
@@ -181,9 +148,6 @@ fn wait_for_atomic(flag: &AtomicUsize, target: usize, timeout: Duration) -> bool
     flag.load(Ordering::SeqCst) >= target
 }
 
-// ---- Tests -----------------------------------------------------------
-
-// 1. — spawn drives the future, dispatcher receives the update closure.
 #[test]
 fn spawn_runs_future_to_completion() {
     with_async_fixture("spawn_runs_to_completion", |_exec, dispatcher| {
@@ -213,7 +177,6 @@ fn spawn_runs_future_to_completion() {
     });
 }
 
-// 2. — Completion drains on Idle by default; phase observed is Idle.
 #[test]
 fn spawn_completion_phase_under_test_drain() {
     with_async_fixture("completion_phase", |_exec, dispatcher| {
@@ -242,15 +205,11 @@ fn spawn_completion_phase_under_test_drain() {
     });
 }
 
-// 3. — Dropping the Task aborts the future before it can run.
 #[test]
 fn task_drop_cancels_future() {
     with_async_fixture("drop_cancels", |_exec, dispatcher| {
         let flag = Arc::new(AtomicUsize::new(0));
         let flag_clone = flag.clone();
-        // Signalled-future shape: the future awaits a oneshot we
-        // never send. Dropping the Task aborts the future at its
-        // await-point; the post-await flag mutation never runs.
         let (_tx, rx) = oneshot::channel::<()>();
         let (counter, _) = Counter::new();
         let entity = Entity::<Counter>::new("droppable", |_| counter);
@@ -261,11 +220,8 @@ fn task_drop_cancels_future() {
                     flag_clone.fetch_add(1, Ordering::SeqCst);
                 })
             });
-            drop(task); // explicit drop → abort
+            drop(task);
         }
-        // Give the worker time to observe the abort. We do NOT send
-        // through tx — the future stays parked on rx.await and the
-        // abort drops the future at that yield point.
         thread::sleep(Duration::from_millis(80));
         dispatcher.drain_inline();
         assert_eq!(
@@ -276,7 +232,6 @@ fn task_drop_cancels_future() {
     });
 }
 
-// 4. — `.detach()` keeps the task alive past handle drop.
 #[test]
 fn detach_keeps_task_alive() {
     with_async_fixture("detach_alive", |_exec, dispatcher| {
@@ -289,7 +244,7 @@ fn detach_keeps_task_alive() {
                 flag_clone.fetch_add(1, Ordering::SeqCst);
             })
         });
-        task.detach(); // consume without abort
+        task.detach();
         assert!(
             wait_for_atomic(&flag, 1, Duration::from_secs(2)),
             "detached future ran to completion"
@@ -298,7 +253,6 @@ fn detach_keeps_task_alive() {
     });
 }
 
-// 5. — Owner-cascade abort: entity's owner disposal cancels the task.
 #[test]
 fn owner_cascade_cancels_owned_tasks() {
     Runtime::scope("owner_cascade", || {
@@ -325,9 +279,8 @@ fn owner_cascade_cancels_owned_tasks() {
                 })
             })
         });
-        // Owner disposal runs cleanups → abort fires.
         child.dispose();
-        task.detach(); // remove RAII to isolate owner-cascade behaviour
+        task.detach();
 
         thread::sleep(Duration::from_millis(80));
         dispatcher.drain_inline();
@@ -339,19 +292,8 @@ fn owner_cascade_cancels_owned_tasks() {
     });
 }
 
-// 6. — `update` returns Err(EntityGone) when the dispatcher's MPSC is
-//      closed (DR-007 invariant 5 — runtime shutting down).
-//
-// NOTE: the "entity literally removed from arena → EntityGone" path
-// exists in `run_update_on_main` but cannot be exercised end-to-end
-// today because `dispose_owner` does not yet evict the owner's
-// entities from `rt.entities` (DR-045 followup, separate follow-up).
-// Until that wiring lands, the dispatcher-closed surface is the
-// only externally-observable EntityGone path.
 #[test]
 fn update_returns_err_on_dispatcher_closed() {
-    /// Dispatcher whose `post_to_main` always returns `Closed` — models
-    /// the "runtime tearing down" case.
     struct ClosedDispatcher;
     impl MainThreadDispatcher for ClosedDispatcher {
         fn post(&self, _owner: OwnerId, _callback: BoxMainCallback) -> Result<(), DispatchError> {
@@ -378,7 +320,6 @@ fn update_returns_err_on_dispatcher_closed() {
                 }
             })
         });
-        // Wait for the worker to capture acx.
         let deadline = Instant::now() + Duration::from_secs(2);
         while Instant::now() < deadline && captured.lock().expect("captured").is_none() {
             thread::sleep(Duration::from_millis(2));
@@ -388,9 +329,6 @@ fn update_returns_err_on_dispatcher_closed() {
             .expect("captured")
             .clone()
             .expect("acx captured before timeout");
-        // Probe: acx.update must return Err because the dispatcher is
-        // closed. Run on the worker so the await actually exercises
-        // the dispatch path.
         let result_is_err = executor.handle().block_on(async move {
             let res = acx.update(|_this: &mut Counter, _cx| ()).await;
             res.is_err()
@@ -404,7 +342,6 @@ fn update_returns_err_on_dispatcher_closed() {
     });
 }
 
-// 7. — pump_completions is a no-op when nothing is queued.
 #[test]
 fn pump_completions_no_op_when_empty() {
     Runtime::scope("pump_empty", || {
@@ -422,7 +359,6 @@ fn pump_completions_no_op_when_empty() {
     });
 }
 
-// 8. — run_until_idle is a no-op when nothing is queued.
 #[test]
 fn run_until_idle_quiescent_baseline() {
     Runtime::scope("run_until_idle_baseline", || {
@@ -440,8 +376,6 @@ fn run_until_idle_quiescent_baseline() {
     });
 }
 
-// 9. — Multiple completions all arrive (set equality, not order — the
-//      multi-thread tokio runtime gives no per-spawn order guarantee).
 #[test]
 fn multiple_completions_all_arrive() {
     with_async_fixture("ordered_completions", |_exec, dispatcher| {
@@ -493,8 +427,6 @@ fn multiple_completions_all_arrive() {
     });
 }
 
-// 10. — Spawn during Effect phase is legal — the canonical path for
-//      action handlers, observer callbacks, and frame-driver hooks.
 #[test]
 fn effect_phase_spawn_is_legal() {
     with_async_fixture("effect_spawn", |_exec, dispatcher| {
@@ -507,8 +439,6 @@ fn effect_phase_spawn_is_legal() {
                 n_for_future.fetch_add(1, Ordering::SeqCst);
             })
         });
-        // Walk through the rest of the frame so the phase returns to
-        // Idle cleanly.
         Runtime::begin_layout();
         Runtime::begin_paint();
         Runtime::end_frame();
@@ -521,7 +451,6 @@ fn effect_phase_spawn_is_legal() {
     });
 }
 
-// 11. — Cancel + await_or_cancel returns Err(Cancelled).
 #[test]
 fn await_or_cancel_after_cancel_returns_cancelled() {
     with_async_fixture("await_or_cancel", |exec, _dispatcher| {
@@ -544,11 +473,6 @@ fn await_or_cancel_after_cancel_returns_cancelled() {
     });
 }
 
-// 12. — DR-048 amendment B3: `Context::spawn` is a write seam — every
-//       Paint-phase write path panics in debug. The composite message
-//       is "Entity::update called during DrawPhase::Paint" because
-//       Entity::update fires its own assert_paint_safe first; the
-//       spawn-specific guard is verified by source inspection.
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "DrawPhase::Paint")]
@@ -567,8 +491,6 @@ fn spawn_in_paint_panics() {
 
 type ProbeOut = Arc<Mutex<Option<Result<(), sigil_reactive::EntityGone>>>>;
 
-/// Spawn a future that captures `acx`, then wait for the capture.
-/// Returns the `AsyncContext` and the originating `Task` handle.
 fn capture_acx(child: Owner) -> (AsyncContext<Counter>, Task<()>) {
     let captured: Arc<Mutex<Option<AsyncContext<Counter>>>> = Arc::new(Mutex::new(None));
     let captured_for_spawn = captured.clone();
@@ -594,9 +516,6 @@ fn capture_acx(child: Owner) -> (AsyncContext<Counter>, Task<()>) {
     (acx, task)
 }
 
-/// Drain the dispatcher in a loop on the test thread until the worker
-/// stashes a result into `probe_out`. Returns the result or panics on
-/// timeout.
 fn drain_until_probe_done(
     dispatcher: &TestDispatcher,
     probe_out: &ProbeOut,
@@ -613,11 +532,6 @@ fn drain_until_probe_done(
     panic!("probe future did not resolve within timeout");
 }
 
-// 13. — DR-045 amendment §A4: after the entity's owner disposes, the
-//      arena slot is evicted (DR-045 §A1) so `acx.update(...)` returns
-//      `Err(EntityGone)`. Prior to the eviction phase this test path
-//      did not exist — the slot survived dispose and `update` returned
-//      `Ok(())`.
 #[test]
 fn update_after_entity_gone_returns_err() {
     with_async_fixture("entity_gone", |exec, dispatcher| {
@@ -628,14 +542,8 @@ fn update_after_entity_gone_returns_err() {
         let (acx, task) = capture_acx(child);
         task.detach();
 
-        // Dispose the child owner. DR-045 §A1 eviction removes the
-        // entity slot from rt.entities; the slot's generation has
-        // bumped so the EntityKey stored inside `acx` is now stale.
         child.dispose();
 
-        // Issue acx.update from a tokio worker; stash the outcome
-        // in a Mutex the test thread polls while draining the
-        // dispatcher.
         let probe_out: ProbeOut = Arc::new(Mutex::new(None));
         let probe_out_for_worker = Arc::clone(&probe_out);
         exec.handle().spawn(async move {
@@ -651,7 +559,6 @@ fn update_after_entity_gone_returns_err() {
     });
 }
 
-// 14. — Awaiting a successfully-completed Task yields its result.
 #[test]
 fn task_await_yields_result() {
     with_async_fixture("await_result", |exec, _dispatcher| {

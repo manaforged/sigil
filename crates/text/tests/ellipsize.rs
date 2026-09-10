@@ -1,5 +1,3 @@
-//! Single-line ellipsis truncation (`layout_paragraph_ellipsized`).
-
 #![allow(missing_docs, clippy::unwrap_used)]
 
 use sigil_hal::ParagraphMetrics;
@@ -18,7 +16,6 @@ fn short_text_is_returned_untruncated() {
         .layout_paragraph_styled("Hi", None, &style)
         .unwrap()
         .width();
-    // A generous budget: the text fits, so it must come back unchanged.
     let para = e
         .layout_paragraph_ellipsized("Hi", natural + 100.0, &style)
         .unwrap();
@@ -45,8 +42,6 @@ fn long_text_is_truncated_to_fit_the_budget() {
         "ellipsized width {} must fit the {budget} budget",
         para.width(),
     );
-    // It must still draw *something* — not collapse to empty — and be a
-    // single line (ellipsis keeps one line, never wraps).
     assert!(para.width() > 0.0, "ellipsized text must be non-empty");
     assert_eq!(para.line_count(), 1, "ellipsis stays on one line");
 }
@@ -55,8 +50,6 @@ fn long_text_is_truncated_to_fit_the_budget() {
 fn budget_smaller_than_ellipsis_still_returns_one_line() {
     let e = engine();
     let style = TextStyle::default();
-    // A budget below even the ellipsis glyph: degrade to the bare ellipsis
-    // rather than panicking or looping.
     let para = e
         .layout_paragraph_ellipsized("some text", 0.5, &style)
         .unwrap();

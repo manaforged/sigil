@@ -1,13 +1,7 @@
-//! Synthesised log corpus.
-//!
-//! Generates a deterministic stream of mock log lines so the viewer
-//! always has a fixed dataset to virtualise over.
-
 use core::fmt;
 
 use sigil::prelude::Tone;
 
-/// Log severity level.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Level {
     Trace,
@@ -18,7 +12,6 @@ pub(crate) enum Level {
 }
 
 impl Level {
-    /// Short uppercase label used in the row formatting.
     pub(crate) const fn label(self) -> &'static str {
         match self {
             Self::Trace => "TRACE",
@@ -29,7 +22,6 @@ impl Level {
         }
     }
 
-    /// Map this severity to its semantic chip tone.
     pub(crate) const fn tone(self) -> Tone {
         match self {
             Self::Trace => Tone::Neutral,
@@ -40,7 +32,6 @@ impl Level {
         }
     }
 
-    /// All five levels in display order.
     pub(crate) const fn all() -> [Self; 5] {
         [
             Self::Trace,
@@ -68,19 +59,14 @@ impl fmt::Display for Level {
     }
 }
 
-/// One synthesised log line.
 #[derive(Clone, Debug)]
 pub(crate) struct LogLine {
-    /// Pre-formatted clock string `HH:MM:SS.mmm`.
     pub(crate) timestamp: String,
-    /// Severity bucket.
     pub(crate) level: Level,
-    /// Human-readable message body.
     pub(crate) message: String,
 }
 
 impl LogLine {
-    /// Render the row text the viewer displays.
     pub(crate) fn format(&self) -> String {
         format!("{} {:>5} {}", self.timestamp, self.level, self.message)
     }
@@ -112,10 +98,6 @@ fn pick<'a>(table: &'a [&'a str], index: usize) -> &'a str {
     table.get(index % table.len()).copied().unwrap_or("?")
 }
 
-/// Generate `count` mock log lines.
-///
-/// The output is deterministic for a given count so the smoke test can
-/// pin against it without seeding a RNG.
 pub(crate) fn generate(count: usize) -> Vec<LogLine> {
     let mut lines = Vec::with_capacity(count);
     for index in 0..count {

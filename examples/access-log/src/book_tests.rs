@@ -1,4 +1,3 @@
-// The tests index the small book they just allocated; bounds are fixed by construction.
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use super::*;

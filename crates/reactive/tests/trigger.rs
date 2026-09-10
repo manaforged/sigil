@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration tests for typed state and edge triggers.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;

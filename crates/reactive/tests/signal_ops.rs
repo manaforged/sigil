@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Integration tests for the `Signal<T>` operator overloads and
-//! `Display` impl introduced in the ergonomics polish.
-//!
-//! See `crates/sigil/reactive/src/signal_ops.rs`.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
@@ -83,9 +77,6 @@ fn shift_assign() {
     });
 }
 
-/// Shift ops must accept an RHS type different from `T` — `u32`
-/// implements `ShlAssign<u8>`, `ShlAssign<u16>`, `ShlAssign<usize>`,
-/// and so on, and the macro must not collapse to `T = U`.
 #[test]
 fn shift_assign_with_different_rhs_type() {
     Runtime::scope("shift_assign_with_different_rhs_type", || {
@@ -103,9 +94,6 @@ fn shift_assign_with_different_rhs_type() {
 fn assign_ops_work_inside_move_closure() {
     Runtime::scope("assign_ops_work_inside_move_closure", || {
         let count = signal(0_i32);
-        // `Signal: Copy`, so `move` closures capturing it own a fresh
-        // mutable copy of the handle — the outer binding need not be
-        // `let mut`. This is the on_click ergonomic the polish unlocks.
         let increment = move |amount: i32| {
             let mut c = count;
             c += amount;
@@ -136,8 +124,6 @@ fn display_inside_effect_subscribes() {
 
         let rendered_clone = Rc::clone(&rendered);
         effect(move || {
-            // `format!("{count}")` calls Signal's Display impl, which
-            // forwards to .get() and subscribes this effect.
             rendered_clone.set(format!("Count: {count}"));
         });
         assert_eq!(rendered.take(), "Count: 0");
@@ -175,13 +161,9 @@ fn assign_op_respects_recursion_guard() {
     Runtime::scope("assign_op_respects_recursion_guard", || {
         let mut n = signal(0_i32);
 
-        // Sanity: bare AddAssign works.
         n += 1;
         assert_eq!(n.peek(), 1);
 
-        // Direct recursive `Signal::update` on the same signal must
-        // still panic (the guard is upheld through the assign-op
-        // forwarding path).
         let result = catch_unwind(AssertUnwindSafe(|| {
             n.update(|_inner| {
                 let mut inner = n;

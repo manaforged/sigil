@@ -1,5 +1,3 @@
-//! Main column: title bar, transcript, empty thread.
-
 use sigil::prelude::*;
 
 use crate::icons;

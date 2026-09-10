@@ -1,12 +1,3 @@
-//! Sustained-writes (bench 6) and `spawn_to_signal` (bench 7) benches.
-//!
-//! Infrastructure (`spin_until`) lives in the parent `async_ops` module.
-
-// Private submodule inside a bench binary: `pub` is the only way to
-// expose items to the parent without triggering `redundant_pub_crate`
-// (which fires on `pub(crate)` / `pub(super)` in a binary-crate root).
-// The items are not reachable outside the binary; `unreachable_pub` is
-// the expected false-positive here.
 #![allow(unreachable_pub)]
 
 use std::hint::black_box;
@@ -21,15 +12,6 @@ use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner, spawn_to_signal}
 
 use super::spin_until;
 
-// ---------------------------------------------------------------------------
-// 6. sustained_cross_thread_writes_1k_per_sec
-// ---------------------------------------------------------------------------
-//
-// DR-009 budget: sustained 1k writes/sec, frame latency p99 ≤ 16 ms.
-//
-// A background tokio task writes a signal at ~1 kHz via
-// `dispatch_to_owner`. The main thread simulates a 60 Hz frame loop:
-// every ~16.6 ms it drains the queue and records the drain duration.
 pub fn bench_sustained_cross_thread_writes_1k_per_sec(c: &mut Criterion) {
     let mut group = c.benchmark_group("sustained_cross_thread_writes_1k_per_sec");
     group.sample_size(10);
@@ -48,8 +30,6 @@ pub fn bench_sustained_cross_thread_writes_1k_per_sec(c: &mut Criterion) {
     group.finish();
 }
 
-/// Run the 60 Hz frame loop for `total_frames` frames, draining once per
-/// frame. Returns `(sum_drain_time, max_drain_time)`.
 fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration, Duration) {
     let frame_period = Duration::from_micros(16_667);
     let mut sum = Duration::ZERO;
@@ -67,7 +47,6 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
         }
         let now = Instant::now();
         if now < next_frame_at {
-            // Bench pacing: this loop models wall-clock frame cadence.
             #[allow(
                 clippy::disallowed_methods,
                 reason = "bench paces to real wall-clock frame times by design"
@@ -78,11 +57,6 @@ fn run_frame_loop(scheduler: &mut AsyncRuntime, total_frames: u32) -> (Duration,
     (sum, max)
 }
 
-/// One criterion iteration of the sustained-writes bench.
-///
-/// Spins up a fresh runtime + 1 kHz writer task, runs a simulated 60 Hz
-/// frame loop for ~1 second, then tears down. Returns the sum of per-frame
-/// drain durations (criterion divides by frame count to report a mean).
 fn run_one_sustained_iteration() -> Duration {
     let mut scheduler = AsyncRuntime::new().expect("build tokio runtime");
     let handle = OwnerHandle::current().expect("inside a reactive scope");
@@ -126,12 +100,6 @@ fn run_one_sustained_iteration() -> Duration {
     sum
 }
 
-// ---------------------------------------------------------------------------
-// 7. spawn_to_signal_smoke_latency
-// ---------------------------------------------------------------------------
-//
-// No fixed DR-009 budget. Measures `spawn_to_signal` overhead with an
-// already-resolved future.
 pub fn bench_spawn_to_signal_smoke_latency(c: &mut Criterion) {
     c.bench_function("spawn_to_signal_smoke_latency", |b| {
         Runtime::scope("bench_spawn_to_signal", || {

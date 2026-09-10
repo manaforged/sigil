@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "support/mock_shell.rs"]
@@ -56,9 +54,6 @@ fn pointer_down_hits_top_of_z_stack() {
 
 #[test]
 fn file_drop_broadcasts_to_registered_handlers() {
-    // A window-level file drop (no OS drop position) is delivered to every
-    // node carrying a file-drop handler. Here the sole drop zone records
-    // the dropped path.
     let dropped = Rc::new(RefCell::new(Vec::<String>::new()));
     let mut cx = Cx::new_root();
     let root = cx.add({
@@ -234,9 +229,6 @@ fn pointer_move_synthesizes_enter_leave() {
 
 #[test]
 fn window_blur_dispatches_synthetic_leaves() {
-    // Regression: alt-tabbing while hovering a widget used to leave
-    // hover state frozen because the router cleared `hover_path` in
-    // place without firing synthetic PointerPhase::Leave events.
     let order = Rc::new(RefCell::new(Vec::new()));
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -293,9 +285,6 @@ fn disposed_handler_node_no_panic() {
 
 #[test]
 fn scroll_dispatches_via_fresh_hit_test() {
-    // No pointer event has fired before the first scroll — the
-    // router should hit-test event.position rather than rely on a
-    // stale hover path. Regression for scroll-before-first-move.
     let order = Rc::new(RefCell::new(Vec::new()));
     let mut cx = Cx::new_root();
     let outer = Rc::clone(&order);

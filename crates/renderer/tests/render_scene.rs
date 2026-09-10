@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `WgpuRenderer::render_scene` headless tests.
-//!
-//! The shader-validation regression that crashed `hello-style` on launch
-//! (a WGSL reserved-keyword collision in `RectInstance`) had no test
-//! coverage. These tests construct the scene pipeline against a real GPU
-//! adapter, which forces shader validation, and exercise the public
-//! method end-to-end against a headless render target.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -23,16 +15,12 @@ use sigil_style::Rgba8;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_construction_does_not_panic() {
-    // Cheap construction — only allocates the wgpu Instance.
-    // Catches API-shape regressions in WgpuRenderer::new without
-    // requiring a window.
     let _ = WgpuRenderer::new().expect("renderer construction");
 }
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_new_repeatable() {
-    // Two construction sites must not contend on global wgpu state.
     let _a = WgpuRenderer::new().expect("first renderer");
     let _b = WgpuRenderer::new().expect("second renderer");
 }
@@ -40,9 +28,6 @@ fn renderer_new_repeatable() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn renderer_pre_surface_accessors_return_none() {
-    // Bulletproof contract: device/queue accessors must not panic
-    // before create_surface (which is when launch first calls them
-    // for the lazy surface init path).
     let r = WgpuRenderer::new().expect("renderer");
     assert!(r.device().is_none());
     assert!(r.queue().is_none());

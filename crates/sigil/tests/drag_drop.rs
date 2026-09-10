@@ -1,20 +1,9 @@
-//! Widget-to-widget drag-and-drop (`DragState` / `.drag_source` /
-//! `.drop_target` / `drag_ghost`) — routed-pointer contract.
-//!
-//! Covers the click/drag threshold (plain click and right-click never
-//! start a session), capture survival once the pointer leaves the source,
-//! payload delivery on an accepting target, clean cancel outside any
-//! target, the reactive target highlight, predicate rejection, and the
-//! ghost chip's lifetime.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
-// Re-computed layouts intentionally shadow the previous binding, matching
-// the table_view harness shape.
 #![allow(clippy::shadow_unrelated)]
 
 use std::cell::RefCell;
@@ -100,9 +89,6 @@ fn route(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, event: Sh
 type Drops = Rc<RefCell<Vec<String>>>;
 type Downs = Rc<RefCell<u32>>;
 
-/// The demo tree: a drag-source row (with a text child, so the hit leaf
-/// is NOT the source), a filler gap, and a drop target, with the ghost
-/// mounted last. Source: x in [0,100), target: x in [200,300).
 fn demo_tree(
     state: DragState<String>,
     drops: &Drops,
@@ -153,7 +139,6 @@ fn plain_click_and_right_click_never_start_a_session() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Plain click: down + up, no move at all.
         route(
             &mut router,
             &mut cx,
@@ -170,7 +155,6 @@ fn plain_click_and_right_click_never_start_a_session() {
         assert_eq!(state.payload(), None);
         assert_eq!(*downs.borrow(), 1, "the row's own down handler still fired");
 
-        // Click with sub-threshold jitter: 2 px < DRAG_THRESHOLD_PX.
         route(
             &mut router,
             &mut cx,
@@ -191,7 +175,6 @@ fn plain_click_and_right_click_never_start_a_session() {
         );
         assert!(!state.is_active(), "sub-threshold jitter stays idle");
 
-        // Right-press then drag: never arms, so no session either.
         route(&mut router, &mut cx, &layout, right_down(10.0, 10.0));
         route(
             &mut router,
@@ -246,8 +229,6 @@ fn drag_past_threshold_activates_and_survives_leaving_the_source() {
         assert_eq!(state.payload().as_deref(), Some("task-7"));
         assert_eq!(state.position(), (30.0, 25.0));
 
-        // Captured: a move far outside the source (and over no target)
-        // still tracks.
         route(
             &mut router,
             &mut cx,
@@ -257,7 +238,6 @@ fn drag_past_threshold_activates_and_survives_leaving_the_source() {
         assert!(state.is_active());
         assert_eq!(state.position(), (500.0, 300.0));
 
-        // Up over empty space cancels cleanly.
         route(
             &mut router,
             &mut cx,

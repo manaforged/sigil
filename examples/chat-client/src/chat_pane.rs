@@ -1,7 +1,3 @@
-//! Chat pane — horizontal [`tabs`] across Messages / Members / Pinned,
-//! routing to a per-tab content node. Messages embeds a
-//! [`virtual_list`] of messages + the compose [`text_edit`].
-
 use sigil::prelude::*;
 
 use crate::compose::compose_box;
@@ -35,9 +31,6 @@ fn tab_strip(state: ChatState) -> NodeBuilder {
     .into_node_builder_passthrough()
 }
 
-// `TabsBuilder` is `IntoNode` so it can be used as a child directly,
-// but the surrounding container needs a `NodeBuilder`. Wrap it in a
-// thin passthrough to keep the type uniform across the file.
 trait TabsPassthrough {
     fn into_node_builder_passthrough(self) -> NodeBuilder;
 }

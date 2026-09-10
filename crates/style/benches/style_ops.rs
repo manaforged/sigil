@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Style operation benchmarks.
-
 #![allow(missing_docs, clippy::panic)]
 
 use std::hint::black_box;
@@ -275,7 +273,6 @@ fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
     else {
         return &[];
     };
-    // T0 composition: concatenate every reactive channel in install order.
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())
 }

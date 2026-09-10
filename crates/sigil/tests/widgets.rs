@@ -19,8 +19,6 @@ use sigil_hal::{KeyEventInit, Point, PointerEventInit};
 use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil_renderer::{SceneCommand, emit_scene};
 
-// Cut routes through the clipboard: install a memory handle so the
-// write succeeds and the selection clears.
 struct CutMemory(RefCell<Option<String>>);
 
 impl sigil::clipboard::Clipboard for CutMemory {
@@ -47,8 +45,6 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Deterministic geometry: a uniform 10 px per byte (matches the editing
-/// suite). Lets the scroll test assert pixel advance without real font metrics.
 struct StubGeometry;
 
 impl TextGeometry for StubGeometry {
@@ -314,7 +310,6 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        // Home → shift+right×5 to select "hello"
         router.route(&mut cx, &layout, named_key(Key::Home, PhysicalKey::Home));
         for _ in 0..5 {
             router.route(
@@ -323,7 +318,6 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
                 shift_arrow(Key::ArrowRight, PhysicalKey::ArrowRight),
             );
         }
-        // Ctrl+X cuts the selection — field should now be empty
         router.route(&mut cx, &layout, ctrl_key("x", PhysicalKey::KeyX));
         assert_eq!(value.get(), "");
     });
@@ -510,15 +504,11 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
 
         let theme = Theme::default();
         let unchecked_colors = scene_rect_colors(&cx, root);
-        // Unchecked fill is the `surface-inset` well — gray step 1.
         assert!(unchecked_colors.contains(&theme.gray.step(1)));
 
         checked.set(true);
         let checked_colors = scene_rect_colors(&cx, root);
         assert!(checked_colors.contains(&theme.accent));
-        // The check mark is a white stroked vector rasterized to an
-        // `Image` command — visibility is its opacity, not a rect
-        // colour. Checked means the mark paints at full opacity.
         assert!(
             emit_scene(&cx, root)
                 .commands
@@ -605,7 +595,6 @@ fn toggle_scene_emits_on_and_off_variants() {
             .expect("layout recomputes");
         let on_colors = scene_rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
-        // ON track paints the solid accent.
         assert!(on_colors.contains(&theme.accent));
         assert!(on_thumb_x > off_thumb_x);
     });
@@ -859,8 +848,6 @@ fn text_field_caret_visible_resets_on_keystroke() {
 #[test]
 fn text_field_scroll_offset_advances_past_visible_window() {
     sigil::reactive::Runtime::scope("sigil-widget-text-field-scroll", || {
-        // Pixel scroll is driven by real caret geometry; install the stub so
-        // the caret x is known (10 px/byte) instead of staying at 0.
         set_text_geometry(Rc::new(StubGeometry));
         let value = signal(String::new());
         let mut builder = text_field(value);
@@ -883,8 +870,6 @@ fn text_field_scroll_offset_advances_past_visible_window() {
                 type_char_owned(key_str, PhysicalKey::KeyA),
             );
         }
-        // 26 chars × 10 px = 260 px caret, past the 156 px inner column, so the
-        // track must have scrolled right (260 − 156 = 104 px) to keep it in view.
         assert!(
             scroll_offset.get() > 0.0,
             "scroll_offset should advance after long input, got {}",
@@ -1049,9 +1034,6 @@ fn arrow_down(key: Key, physical: PhysicalKey) -> ShellEvent {
     }))
 }
 
-/// Historic default slider track width. These tests verify pointer->value
-/// mapping and their click positions are calibrated against it, so they pin
-/// it explicitly now that a bare slider fills its parent instead.
 const SLIDER_TRACK: f32 = 180.0;
 
 fn assert_approx(actual: f32, expected: f32) {

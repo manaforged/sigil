@@ -1,7 +1,3 @@
-//! Offscreen wgpu capture + pixel-inspection helpers for
-//! `child_paint_repro.rs`, split out to keep both files under the
-//! 400-line hygiene cap.
-
 #![allow(clippy::cast_lossless, clippy::cast_possible_truncation)]
 #![allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
 #![allow(clippy::unwrap_used)]
@@ -21,15 +17,12 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Compare an observed RGB triple against `expected` within `tolerance`
-/// per channel.
 pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil_style::Rgba8, tolerance: i32) -> bool {
     (i32::from(r) - i32::from(expected.r)).abs() <= tolerance
         && (i32::from(g) - i32::from(expected.g)).abs() <= tolerance
         && (i32::from(b) - i32::from(expected.b)).abs() <= tolerance
 }
 
-/// A pixel-space sampling window within a captured image.
 #[derive(Clone, Copy)]
 pub(super) struct InkWindow {
     pub(super) x: u32,
@@ -38,9 +31,6 @@ pub(super) struct InkWindow {
     pub(super) h: u32,
 }
 
-/// Count pixels inside `window` whose channel sum is meaningfully
-/// darker than `background` — i.e. glyph ink painted over a uniform
-/// background fill.
 pub(super) fn count_ink(
     img: &image::RgbaImage,
     window: InkWindow,
@@ -62,8 +52,6 @@ pub(super) fn count_ink(
     ink
 }
 
-/// Build → layout → `emit_scene` → offscreen-render → read back an
-/// `image::RgbaImage`, logical size == physical size (scale 1.0).
 pub(super) fn capture(
     build: impl FnOnce(&mut Cx) -> sigil_kernel::NodeId,
     size_px: [u32; 2],
@@ -158,7 +146,6 @@ fn render_to_image(
     image::RgbaImage::from_raw(size_px[0], size_px[1], raw).expect("rgba image from raw")
 }
 
-/// Round `unpadded_bpr` up to wgpu's `COPY_BYTES_PER_ROW_ALIGNMENT`.
 const fn padded_bytes_per_row(unpadded_bpr: u32) -> u32 {
     let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let remainder = unpadded_bpr % align;
@@ -169,8 +156,6 @@ const fn padded_bytes_per_row(unpadded_bpr: u32) -> u32 {
     }
 }
 
-/// Record + submit a texture-to-buffer copy for the whole `width x height`
-/// extent of `texture`, padded to wgpu's row-alignment requirement.
 fn copy_texture_to_readback_buffer(
     device: &wgpu::Device,
     queue: &wgpu::Queue,

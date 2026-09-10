@@ -2,16 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Regression coverage for Phase C reactive attribute methods of the
-//! dogfood-v2 gap-closure plan:
-//!
-//! - C2: [`ButtonBuilder::disabled(Signal<bool>)`] gates the
-//!   constructor focusable bit on the signal's initial value and
-//!   keeps the reactive style slice in sync with subsequent flips.
-//! - C3: [`TextFieldBuilder::invalid_when(Signal<bool>)`] paints a
-//!   red border overlay while the signal peeks `true` and clears it
-//!   the moment the signal flips back to `false`.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -25,7 +15,6 @@ fn reactive_slice(cx: &Cx, id: sigil_kernel::NodeId) -> &'static [StyleAtom] {
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
         .unwrap();
-    // T0 composition: concatenate every reactive channel in install order.
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())
 }
@@ -65,8 +54,6 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
             "field starts without the red-invalid overlay; got {before:?}",
         );
 
-        // Flip the invalid signal — the reactive effect must rewrite
-        // the field's reactive slot to the red FIELD_INVALID overlay.
         invalid.set(true);
         let painted = reactive_slice(&cx, id);
         assert_eq!(
@@ -75,7 +62,6 @@ fn text_field_invalid_when_paints_red_border_on_flip() {
             "invalid_when(true) must install the red border overlay, got {painted:?}",
         );
 
-        // Flip back — the field must clear the overlay.
         invalid.set(false);
         let cleared = reactive_slice(&cx, id);
         assert!(
@@ -92,11 +78,8 @@ fn button_disabled_signal_flips_reactive_state_slice() {
         let mut cx = Cx::new_root();
         let id = cx.add(button("Save").disabled(disabled));
 
-        // Snapshot the rest-state reactive slice while the signal is false.
         let before = reactive_slice(&cx, id);
 
-        // Flip the signal — the `style_reactive` effect must re-run and
-        // rewrite the reactive slice to the disabled-slot overlay.
         disabled.set(true);
         let after = reactive_slice(&cx, id);
 

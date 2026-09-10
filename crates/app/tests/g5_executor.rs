@@ -2,20 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! G5 (DR-048 §5) — production install path end-to-end.
-//!
-//! Drives the same wiring `launch::run` uses (`AsyncRuntime` →
-//! `install_g5_executor` → `AsyncRuntime::pump` →
-//! `Runtime::begin_effect`) against a fixture that does not boot
-//! winit or wgpu. The tests confirm that a future spawned via
-//! `Context::spawn` against the real Tokio multi-thread runtime
-//! actually completes, posts its callback through the reactive
-//! bridge, and lands inside the next frame's Effect phase.
-//!
-//! These complement `crates/reactive/tests/task.rs` (TestExecutor
-//! synchronous fixture); production uses MPSC queues and one frame pump
-//! rather than an inline `Mutex<VecDeque>` drain.
-
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
@@ -26,10 +12,6 @@
     clippy::doc_markdown
 )]
 
-// Workspace transitive — sigil-app's full dep tree is pulled into
-// every integration test's compilation unit; alias the ones this test
-// doesn't reference directly so `-D unused-crate-dependencies` stays
-// silent (same pattern as `scale_handling.rs`).
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
@@ -39,8 +21,6 @@ use sigil_app::install_g5_executor;
 use sigil_reactive::{AsyncContext, Entity, Owner, Runtime, Task, signal};
 use sigil_tasks::{AsyncRuntime, signal_writer};
 
-/// Entity payload that carries a shared atomic counter so the worker
-/// thread can prove it observed the entity through `acx.update`.
 struct Counter {
     n: Arc<AtomicUsize>,
 }
@@ -52,8 +32,6 @@ impl Counter {
     }
 }
 
-/// Busy-wait until `flag >= target` or the deadline elapses. Returns
-/// whether the threshold was reached.
 fn wait_for_atomic(flag: &AtomicUsize, target: usize, timeout: Duration) -> bool {
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
@@ -65,9 +43,6 @@ fn wait_for_atomic(flag: &AtomicUsize, target: usize, timeout: Duration) -> bool
     flag.load(Ordering::SeqCst) >= target
 }
 
-/// Walk one production-shaped frame: pump the bridge, then run the
-/// reactive frame phases. Mirrors `launch::frame_once` in shape, but
-/// without the winit/wgpu side.
 fn drive_one_frame(async_rt: &mut AsyncRuntime) -> usize {
     let moved = async_rt.pump();
     Runtime::begin_effect();
@@ -135,9 +110,6 @@ fn spawn_completion_arrives_at_next_frame_begin_effect() {
             })
         });
 
-        // The worker has to (a) run the future, (b) post the closure
-        // through the bridge MPSC. Once the MPSC has the entry, we
-        // pump and drive a frame; the entity mutation should land.
         let deadline = Instant::now() + Duration::from_secs(2);
         let mut frames_driven = 0_usize;
         while Instant::now() < deadline {
@@ -153,8 +125,6 @@ fn spawn_completion_arrives_at_next_frame_begin_effect() {
             "future completion landed within timeout (after {frames_driven} frame(s))",
         );
 
-        // Detach so the Task drop doesn't try to abort a finished task
-        // (no-op, but keeps the test's intent explicit).
         task.detach();
     });
 }
@@ -168,9 +138,6 @@ fn multi_task_concurrent_completion() {
         let (counter, n) = Counter::new();
         let entity = Entity::<Counter>::new("multi", |_| counter);
 
-        // Spawn five tasks; each increments the same counter via
-        // `acx.update`. The multi-thread tokio runtime fans them out
-        // across worker threads.
         let mut tasks: Vec<Task<()>> = Vec::with_capacity(5);
         for _ in 0..5_u32 {
             let t = entity.update(|_, cx| {
@@ -185,7 +152,6 @@ fn multi_task_concurrent_completion() {
             tasks.push(t);
         }
 
-        // Drive frames until five mutations land or we time out.
         let deadline = Instant::now() + Duration::from_secs(2);
         let mut total_moved = 0_usize;
         while Instant::now() < deadline && n.load(Ordering::SeqCst) < 5 {
@@ -204,27 +170,20 @@ fn multi_task_concurrent_completion() {
     });
 }
 
-/// Negative-path test — `AsyncRuntime::pump` is a no-op
-/// when no worker has posted anything, and the frame loop stays
-/// quiescent.
 #[test]
 fn pump_returns_zero_when_nothing_pending() {
     Runtime::scope("g5_quiescent", || {
         let mut async_rt = AsyncRuntime::new().expect("AsyncRuntime::new");
         install_g5_executor(&async_rt);
 
-        // No spawns: bridge is empty.
         let moved = drive_one_frame(&mut async_rt);
         assert_eq!(moved, 0, "quiescent frame moves zero completions");
 
-        // Drive a second frame to confirm no leftover state pollution.
         let moved_two = drive_one_frame(&mut async_rt);
         assert_eq!(moved_two, 0, "second quiescent frame also moves zero");
     });
 }
 
-/// Wait for the bridge waker to fire after a worker posts. Confirms the
-/// `ReactiveBridge`-supplied waker actually runs on the producer side.
 #[test]
 fn shared_waker_fires_for_bridge_post() {
     Runtime::scope("g5_waker", || {
@@ -249,8 +208,6 @@ fn shared_waker_fires_for_bridge_post() {
             "bridge waker fired at least once for the worker's post",
         );
 
-        // Pump + drive the frame so the test's Drop ordering doesn't
-        // hit a still-pending callback.
         drive_one_frame(&mut async_rt);
         task.detach();
     });

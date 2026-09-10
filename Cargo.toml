@@ -101,7 +101,7 @@ default-members = [
 ]
 
 [workspace.package]
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
@@ -113,8 +113,8 @@ authors = ["Thomas Gardiner"]
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
 # NOTE: Cargo does NOT allow member crates to override workspace lints while
-# `[lints] workspace = true` is set (verified 2026-07-18 on cargo 1.97: the
-# manifest fails to parse). Per-crate strictness therefore lives in crate-root
+# `[lints] workspace = true` is set (the manifest fails to parse).
+# Per-crate strictness therefore lives in crate-root
 # attributes instead — library crates that contract on full rustdoc coverage
 # use `#![deny(missing_docs)]` in their lib.rs. Binary / example crates only
 # have bin targets, where missing_docs does not fire.
@@ -190,8 +190,8 @@ slotmap = "1"
 ahash = "0.8"
 tracing = "0.1"
 accesskit = "0.25"
-# W5-A11Y (DR-050 §1) — the winit-side platform adapter half of the
-# AccessKit bridge. `tokio` (not the default `async-io`) matches DR-008's
+# The winit-side platform adapter half of the AccessKit bridge (DR-050).
+# `tokio` (not the default `async-io`) matches DR-008's
 # zbus-panic workaround already assumed for the bare `accesskit` dep on
 # Linux; sigil's own tokio runtime (`sigil-async`) already exists so this
 # adds no new async-executor surface. `accesskit_unix` keeps the Linux
@@ -202,10 +202,9 @@ accesskit = "0.25"
 # manifest, only from the crate that owns the `[features]` table; our
 # own direct `winit` dependency below already turns those backends on
 # via default features, and Cargo's feature unification carries that
-# into accesskit_winit's copy of the same `winit` crate. Pinned 0.32 —
-# matches the `accesskit = "0.24"` line above per accesskit_winit's own
-# dependency manifest (verified against the vendored crate source, not
-# web-fetched).
+# into accesskit_winit's copy of the same `winit` crate. The pinned
+# version matches the `accesskit` line above per accesskit_winit's own
+# dependency manifest.
 accesskit_winit = { version = "0.34", default-features = false, features = [
     "accesskit_unix",
     "tokio",
@@ -215,16 +214,16 @@ keyboard-types = { version = "0.8.3", default-features = false }
 smol_str = { version = "0.3.6", default-features = false }
 tokio = { version = "1", default-features = false, features = ["sync", "macros"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
-# I-T6 workspace + fs-watch primitives. Forever-rentals: `notify` is the
+# Workspace and file-watch primitives: `notify` is the
 # de-facto cross-platform fs-watcher; `ignore` is BurntSushi's gitignore
 # parser/walker; `crossbeam-channel` carries fs events into consumer code.
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
 ignore = "0.4"
 crossbeam-channel = "0.5"
-# I-T7 settings: parse-only TOML (serde feature for typed deserialize).
+# Settings: parse-only TOML (serde feature for typed deserialize).
 toml = { version = "1", default-features = false, features = ["parse", "serde"] }
 tempfile = "3"
-# F1 (dogfood-v2): system clipboard. `arboard` is the de-facto cross-platform
+# System clipboard. `arboard` is the de-facto cross-platform
 # Rust crate (Win32, X11, Wayland, AppKit). Default features include the
 # image-encoding path we do not need, so depend with `default-features = false`
 # to keep the transitive surface narrow.
@@ -235,32 +234,32 @@ arboard = { version = "3", default-features = false }
 # crates.io) with the library still named `sigil`, so `use sigil::prelude::*`
 # stays the single import user code needs. `sigil-async` became `sigil-tasks`
 # because `async` is a Rust reserved keyword and would force `r#async` on
-# consumers. Lockstep: every internal dep carries the workspace version —
-# bump them together (lockstep policy — see docs/plans/releasing.md, local only).
-sigil-ui = { path = "crates/sigil", version = "0.1.0-alpha.1" }
-sigil-widgets = { path = "crates/widgets", version = "0.1.0-alpha.1" }
-sigil-a11y = { path = "crates/a11y", version = "0.1.0-alpha.1" }
-sigil-actions = { path = "crates/actions", version = "0.1.0-alpha.1" }
-sigil-actions-macros = { path = "crates/actions_macros", version = "0.1.0-alpha.1" }
-sigil-animation = { path = "crates/animation", version = "0.1.0-alpha.1" }
-sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0-alpha.1" }
-sigil-app = { path = "crates/app", version = "0.1.0-alpha.1", default-features = false }
-sigil-tui = { path = "crates/tui", version = "0.1.0-alpha.1" }
+# consumers. Lockstep: every internal dep carries the workspace version;
+# bump them together.
+sigil-ui = { path = "crates/sigil", version = "0.1.0" }
+sigil-widgets = { path = "crates/widgets", version = "0.1.0" }
+sigil-a11y = { path = "crates/a11y", version = "0.1.0" }
+sigil-actions = { path = "crates/actions", version = "0.1.0" }
+sigil-actions-macros = { path = "crates/actions_macros", version = "0.1.0" }
+sigil-animation = { path = "crates/animation", version = "0.1.0" }
+sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0" }
+sigil-app = { path = "crates/app", version = "0.1.0", default-features = false }
+sigil-tui = { path = "crates/tui", version = "0.1.0" }
 unicode-width = "0.2"
-sigil-tasks = { path = "crates/tasks", version = "0.1.0-alpha.1" }
-sigil-kernel = { path = "crates/kernel", version = "0.1.0-alpha.1" }
-sigil-bidi = { path = "crates/bidi", version = "0.1.0-alpha.1" }
-sigil-events = { path = "crates/events", version = "0.1.0-alpha.1" }
-sigil-hal = { path = "crates/hal", version = "0.1.0-alpha.1" }
-sigil-layout = { path = "crates/layout", version = "0.1.0-alpha.1" }
-sigil-profile = { path = "crates/profile", version = "0.1.0-alpha.1" }
-sigil-reactive = { path = "crates/reactive", version = "0.1.0-alpha.1" }
-sigil-renderer = { path = "crates/renderer", version = "0.1.0-alpha.1" }
-sigil-shell = { path = "crates/shell", version = "0.1.0-alpha.1" }
-sigil-style = { path = "crates/style", version = "0.1.0-alpha.1" }
-sigil-style-macros = { path = "crates/style-macros", version = "0.1.0-alpha.1" }
-sigil-icons = { path = "crates/icons", version = "0.1.0-alpha.1" }
-sigil-text = { path = "crates/text", version = "0.1.0-alpha.1" }
+sigil-tasks = { path = "crates/tasks", version = "0.1.0" }
+sigil-kernel = { path = "crates/kernel", version = "0.1.0" }
+sigil-bidi = { path = "crates/bidi", version = "0.1.0" }
+sigil-events = { path = "crates/events", version = "0.1.0" }
+sigil-hal = { path = "crates/hal", version = "0.1.0" }
+sigil-layout = { path = "crates/layout", version = "0.1.0" }
+sigil-profile = { path = "crates/profile", version = "0.1.0" }
+sigil-reactive = { path = "crates/reactive", version = "0.1.0" }
+sigil-renderer = { path = "crates/renderer", version = "0.1.0" }
+sigil-shell = { path = "crates/shell", version = "0.1.0" }
+sigil-style = { path = "crates/style", version = "0.1.0" }
+sigil-style-macros = { path = "crates/style-macros", version = "0.1.0" }
+sigil-icons = { path = "crates/icons", version = "0.1.0" }
+sigil-text = { path = "crates/text", version = "0.1.0" }
 usvg = { version = "0.48", default-features = false }
 lyon_geom = { version = "1.0" }
 

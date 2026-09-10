@@ -2,12 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Directional (dpad / stick-shaped) focus navigation — spatial
-//! resolution against laid-out rects, independent of Tab order.
-
 #![allow(missing_docs)]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "support/mock_shell.rs"]
@@ -27,9 +22,6 @@ fn focusable_at(x: f32, y: f32, w: f32, h: f32) -> NodeBuilder {
 
 #[test]
 fn dpad_right_moves_to_nearest_in_row() {
-    // Three focusables in a row: left-most, a near middle, and a far
-    // right one. Right must land on the middle — nearest in-direction,
-    // not simply "any candidate to the right".
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -51,9 +43,6 @@ fn dpad_right_moves_to_nearest_in_row() {
 
 #[test]
 fn dpad_up_from_bottom_grid_row() {
-    // A 2x2 grid. From bottom-right, Up must land on top-right (same
-    // column, zero cross-axis deviation) rather than top-left (same
-    // travel distance but a much larger cross-axis deviation).
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -76,9 +65,6 @@ fn dpad_up_from_bottom_grid_row() {
 
 #[test]
 fn dpad_no_candidate_falls_back_tab() {
-    // Focus the right-most node in a row of three; there is no
-    // candidate further right, so Right must fall back to Tab-order
-    // next, which wraps to the first (left-most) node.
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()

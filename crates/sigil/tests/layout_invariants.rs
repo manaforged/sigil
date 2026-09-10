@@ -1,23 +1,3 @@
-//! Structural layout invariants over REAL compositions at MANY widths.
-//!
-//! Why this file exists: on 2026-07-20 the suite was 1672/1672 green while
-//! the widget playground rendered with every column collapsed onto the left
-//! margin, and separately with a dropdown whose label had vanished. Neither
-//! was visible to the suite, because:
-//!
-//!   * `widgets.rs` runs all 31 of its cases at one 320x120 viewport, so
-//!     nothing exercises adaptation;
-//!   * its `StubMeasure` returns 40x16 for EVERY string, so text extent
-//!     bugs cannot be observed;
-//!   * the goldens are single widgets on a fixed canvas, so composition
-//!     bugs are out of frame — and regenerating them enshrines whatever is
-//!     currently wrong.
-//!
-//! These checks are deliberately mechanical rather than pixel-based: they
-//! assert properties that must hold for ANY correct layout, so they keep
-//! working as the design changes. A golden says "it looks like this"; these
-//! say "it is not broken".
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -27,9 +7,6 @@
 
 use sigil::prelude::*;
 
-/// Text measure proportional to the CONTENT, unlike the fixed 40x16 stub
-/// the widget suite uses. A layout that only holds together because every
-/// string measures the same is not actually holding together.
 struct ProportionalText;
 
 impl TextMeasure for ProportionalText {
@@ -73,18 +50,12 @@ struct Violation {
 
 const EPS: f32 = 0.5;
 
-/// Walk the laid-out tree and collect every structural violation.
 fn violations(cx: &Cx, layout: &LayoutEngine, root: NodeId) -> Vec<Violation> {
     let mut out = Vec::new();
     visit(cx, layout, root, (0, false), &mut out);
     out
 }
 
-/// `clipped` is true once ANY ancestor clips: overflow inside a clipped
-/// subtree is contained by that ancestor, so it is not a violation. A
-/// `text_field`'s scrolling track is deliberately wider than the field and is
-/// held in by the field's `overflow: hidden` viewport, not by its own box.
-/// `(depth, clipped)` — how deep we are, and whether an ancestor clips.
 type WalkState = (usize, bool);
 
 fn visit(cx: &Cx, layout: &LayoutEngine, id: NodeId, state: WalkState, out: &mut Vec<Violation>) {
@@ -95,14 +66,8 @@ fn visit(cx: &Cx, layout: &LayoutEngine, id: NodeId, state: WalkState, out: &mut
         return;
     };
     let rect = result.rect();
-    // A container that clips is ENTITLED to oversized children — that is
-    // what `overflow: hidden` means. Only non-clipping parents are checked,
-    // so this does not fire on deliberately-clipped text.
     let clips = result.clips();
 
-    // A node that HAS children but resolved to zero on an axis has
-    // collapsed: its contents cannot possibly be visible. This is the exact
-    // shape of the flex-grow and block-dispatch bugs.
     if !children.is_empty() && (rect.width <= EPS || rect.height <= EPS) {
         out.push(Violation {
             depth,
@@ -119,8 +84,6 @@ fn visit(cx: &Cx, layout: &LayoutEngine, id: NodeId, state: WalkState, out: &mut
         let Some(c) = layout.result(*child).map(|r| r.rect()) else {
             continue;
         };
-        // Children must stay inside their parent's box. Overflow is how the
-        // sliver text_field spilled its text outside the field.
         let overflows_right = c.origin.x + c.width > rect.origin.x + rect.width + EPS;
         let overflows_bottom = c.origin.y + c.height > rect.origin.y + rect.height + EPS;
         if !clips && !clipped && (overflows_right || overflows_bottom) {
@@ -146,7 +109,6 @@ fn visit(cx: &Cx, layout: &LayoutEngine, id: NodeId, state: WalkState, out: &mut
     }
 }
 
-/// Lay `build` out at `width` and assert it has no structural violations.
 fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
     sigil::reactive::Runtime::scope("layout-invariants", || {
         let mut cx = Cx::new_root();
@@ -170,7 +132,6 @@ fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
     });
 }
 
-/// Widths a real app actually hits: a narrow pane, a normal window, wide.
 const WIDTHS: [f32; 4] = [320.0, 640.0, 1100.0, 1600.0];
 
 fn labeled_field(label: &'static str, control: impl IntoNode + 'static) -> NodeBuilder {
@@ -180,8 +141,6 @@ fn labeled_field(label: &'static str, control: impl IntoNode + 'static) -> NodeB
         .child(control)
 }
 
-/// The `flex: 1 1 0` equal-columns idiom, which is how real form layouts
-/// are built and how every widget ends up sharing a row.
 fn columns(children: Vec<NodeBuilder>) -> NodeBuilder {
     let mut row = container().layout(LayoutStyle::flex_row().fill_width().gap(12.0));
     for child in children {
@@ -248,13 +207,6 @@ fn compact_text_field_contains_native_line_height() {
     });
 }
 
-/// Long CONTENT inside widgets must stay inside them — the widgets clip it.
-///
-/// A content-blind text stub (the widget suite's returns 40x16 for every
-/// string) cannot see this class of bug at all.
-///
-/// Bare `text()` wraps to a definite-width box (`text_wrap.rs`).
-/// `.ellipsize()` is the one-line slot.
 #[test]
 fn long_content_stays_inside_its_widget() {
     for width in WIDTHS {
@@ -278,13 +230,6 @@ fn long_content_stays_inside_its_widget() {
     }
 }
 
-/// Content inside a `scroll` viewport must survive at every width.
-///
-/// This shape is what the block-dispatch bug broke: the viewport's content
-/// wrapper is a `Display::Block` flex item that grows into the space the
-/// scrollbar gutter leaves, and `BlockSolver` re-derived its width from its
-/// own style, collapsing it (and therefore the whole page) to zero. Without
-/// a scroll in the fixture, the checker cannot see that class at all.
 #[test]
 fn scrolled_content_is_sound_at_every_width() {
     for width in WIDTHS {
@@ -307,16 +252,10 @@ fn scrolled_content_is_sound_at_every_width() {
     }
 }
 
-/// A container whose width changes between passes must re-resolve. Kimi's
-/// review noted no test in the repo did this.
 #[test]
 fn layout_re_resolves_when_the_container_resizes() {
     sigil::reactive::Runtime::scope("layout-invariants-resize", || {
         let mut cx = Cx::new_root();
-        // Filling widgets, deliberately: a FIXED-size control (button keeps
-        // its themed `control_width`) legitimately overflows a cell narrower
-        // than itself, which would make this about button sizing rather than
-        // about re-resolution.
         let root = cx.add(columns(vec![
             labeled_field("a", progress(signal(0.5_f32), 1.0)),
             labeled_field("b", progress(signal(0.5_f32), 1.0)),
@@ -342,8 +281,6 @@ fn layout_re_resolves_when_the_container_resizes() {
             widths.push(layout.result(first).unwrap().rect().width);
         }
 
-        // Each cell is half the row minus the gap; the cell must TRACK the
-        // container, not keep a stale width from the previous pass.
         let expected = [194.0_f32, 444.0, 119.0];
         for (got, want) in widths.iter().zip(expected) {
             assert!(

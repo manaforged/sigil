@@ -1,8 +1,8 @@
 # Sigil examples
 
-Each example is a `cargo run -p <name>` binary. The recommended reading
-order goes top to bottom — the user-facing examples come first, the
-headless / internals reference comes last.
+Most examples are a `cargo run -p <name>` binary (`access-log` needs
+`--bin`; `web-demo` is a wasm cdylib). Read top to bottom: user-facing
+examples first, internals last.
 
 Use `sigil::prelude::*`. Event handlers are `.activate`, not
 `.on_activate`. Form submit is `.submit`, not `.on_submit`. Hover
@@ -21,7 +21,7 @@ class strings live on `interactive(...)`, not on a plain container.
 | [`hello-tree`](hello-tree/) | Headless `Cx` build, no window — prints the node tree. | Debug tree shape without rendering. |
 | [`hello-layout`](hello-layout/) | Headless layout pass, prints computed rectangles. | Verify layout without rendering. |
 
-## Catalog and dogfood
+## Catalog
 
 | Example | Concepts | When to read |
 |---|---|---|
@@ -42,8 +42,9 @@ class strings live on `interactive(...)`, not on a plain container.
 | [`chat-client`](chat-client/) | `sidebar` + `avatar` + `text_edit` compose + `virtual_list`. | Kitchen-sink chat. |
 | [`workbench`](workbench/) | Desktop workspace: rail, work log, compose, diffs. | Dense desktop layout. |
 | [`strays`](strays/) | `table()` over live system data on `run_tui`. | Keyboard-first terminal app. |
+| [`catalog`](catalog/) | Renders every widget headlessly and writes light and dark PNGs. | Regenerating the component gallery images. |
 
-FRICTION.md files in those folders are historical dogfood logs. A
+FRICTION.md files in those folders are logs from building the example. A
 **Current tree** stamp at the top of each stale log names what has
 since landed in the prelude. Do not re-open a closed item.
 
@@ -51,6 +52,6 @@ since landed in the prelude. Do not re-open a closed item.
 
 | Example | Concepts | When to read |
 |---|---|---|
-| [`data-table`](data-table/) | 1:1 of GPUI 0.2.2 `examples/data_table.rs`: 10k rows, 24 columns, `virtual_list`. | Side-by-side with `cargo run --example data_table -p gpui`. Profiler page: [`showcase/compare/data-table.html`](../showcase/compare/data-table.html). |
+| [`data-table`](data-table/) | 1:1 of GPUI 0.2.2 `examples/data_table.rs`: 10k rows, 24 columns, `virtual_list`. | Side-by-side with GPUI's own `examples/data_table.rs` from a zed checkout at 0.2.2. |
 | [`access-log`](access-log/) | 1M HTTP lines, 60×8 live tape, same book in Sigil and GPUI. | `cargo run --release -p access-log --bin access-log-sigil`. |
 | [`internals/hello-rect`](internals/hello-rect/) | Direct kernel + scene-command surface; pre-dates `sigil::launch`. | Only when working below the launch facade. |

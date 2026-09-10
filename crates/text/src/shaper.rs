@@ -72,7 +72,6 @@ impl Font {
         })
     }
 
-    /// `HarfRust` per-face tables for this font, built once and shared by every clone.
     #[cfg(feature = "shaping-complex")]
     pub(crate) fn tables(&self, font: &HrFontRef<'_>) -> &ShaperData {
         self.tables.get_or_init(|| ShaperData::new(font))

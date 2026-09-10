@@ -1,22 +1,14 @@
-//! To-do app state.
-//!
-//! All state lives on a `Copy` carrier of signals, so event handlers and
-//! menu callbacks are plain `move ||` closures. The list persists to a
-//! human-readable `[x] task` / `[ ] task` text file.
-
 use std::fs;
 use std::path::Path;
 
 use sigil::prelude::*;
 
-/// One to-do item.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Todo {
     pub(crate) text: String,
     pub(crate) done: bool,
 }
 
-/// Which items the list shows.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Filter {
     All,
@@ -24,7 +16,6 @@ pub(crate) enum Filter {
     Done,
 }
 
-/// The whole app state. `Copy` — clone it into any closure freely.
 #[derive(Clone, Copy)]
 pub(crate) struct TodoState {
     pub(crate) todos: Signal<Vec<Todo>>,
@@ -34,7 +25,6 @@ pub(crate) struct TodoState {
 }
 
 impl TodoState {
-    /// Seed a few sample tasks so the window is not empty on launch.
     pub(crate) fn seed() -> Self {
         Self {
             todos: signal(vec![
@@ -57,7 +47,6 @@ impl TodoState {
         }
     }
 
-    /// Append the current draft as a new task, if non-empty.
     pub(crate) fn add(self) {
         let text = self.draft.peek().trim().to_owned();
         if text.is_empty() {
@@ -73,7 +62,6 @@ impl TodoState {
         self.status.set(format!("Added: {text}"));
     }
 
-    /// Flip the done flag of the task at `index`.
     pub(crate) fn toggle(self, index: usize) {
         self.todos.update(|todos| {
             if let Some(todo) = todos.get_mut(index) {
@@ -82,7 +70,6 @@ impl TodoState {
         });
     }
 
-    /// Remove the task at `index`.
     pub(crate) fn remove(self, index: usize) {
         self.todos.update(|todos| {
             if index < todos.len() {
@@ -92,32 +79,25 @@ impl TodoState {
         self.status.set(String::from("Removed a task."));
     }
 
-    /// Drop every completed task.
     pub(crate) fn clear_completed(self) {
         self.todos.update(|todos| todos.retain(|todo| !todo.done));
         self.status.set(String::from("Cleared completed tasks."));
     }
 
-    /// Empty the list (File \u{2192} New).
     pub(crate) fn new_list(self) {
         self.todos.set(Vec::new());
         self.draft.set(String::new());
         self.status.set(String::from("New list."));
     }
 
-    /// Show which subset of the list.
     pub(crate) fn set_filter(self, filter: Filter) {
         self.filter.set(filter);
     }
 
-    /// Count of not-yet-done tasks (subscribes, for a reactive label).
     pub(crate) fn active_count(self) -> usize {
         self.todos.get().iter().filter(|todo| !todo.done).count()
     }
 
-    /// The `(original index, task)` pairs the current filter shows.
-    /// Subscribes to both `todos` and `filter`, so a `children_reactive`
-    /// list built from it rebuilds on any change.
     pub(crate) fn visible(self) -> Vec<(usize, Todo)> {
         let filter = self.filter.get();
         self.todos
@@ -133,7 +113,6 @@ impl TodoState {
             .collect()
     }
 
-    /// Write the list to `path` as `[x] task` / `[ ] task` lines.
     pub(crate) fn save_to(self, path: &Path) {
         use std::fmt::Write as _;
         let mut body = String::new();
@@ -147,7 +126,6 @@ impl TodoState {
         }
     }
 
-    /// Replace the list with the contents of `path`.
     pub(crate) fn load_from(self, path: &Path) {
         match fs::read_to_string(path) {
             Ok(body) => {
@@ -162,8 +140,6 @@ impl TodoState {
     }
 }
 
-/// Parse the `[x] task` / `[ ] task` save format. Lines without the marker
-/// are ignored, so hand-edited files degrade gracefully.
 fn parse(body: &str) -> Vec<Todo> {
     body.lines()
         .filter_map(|line| {

@@ -22,8 +22,7 @@ fn camel_detected() {
 #[test]
 fn utf8_len_handles_ascii_and_multibyte() {
     assert_eq!(utf8_len(b"a", 0), 1);
-    // First byte of 'é' (0xC3 0xA9) — two-byte sequence.
     let s = "é";
     assert_eq!(utf8_len(s.as_bytes(), 0), 2);
-    assert_eq!(utf8_len(b"a", 9), 1); // Out-of-bounds → safe default.
+    assert_eq!(utf8_len(b"a", 9), 1);
 }

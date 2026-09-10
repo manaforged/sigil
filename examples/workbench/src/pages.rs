@@ -1,5 +1,3 @@
-//! Schedule and tool pages.
-
 use sigil::prelude::*;
 
 use crate::icons;

@@ -52,11 +52,11 @@ sigil-style = { workspace = true }
 sigil-text = { workspace = true, optional = true }
 sigil-profile = { workspace = true }
 tracing = { workspace = true }
-# W5-A11Y (DR-050 §1) — production AccessKit wiring in the frame loop.
+# DR-050: production AccessKit wiring in the frame loop.
 sigil-a11y = { workspace = true }
 accesskit = { workspace = true }
 crossbeam-channel = { workspace = true }
-# T14 (5/5 Wave 4) — dev-mode theme-file watch: parse theme TOML and
+# Dev-mode theme-file watch: parse theme TOML and
 # reload on fs change events.
 notify = { workspace = true }
 toml = { workspace = true }
@@ -75,7 +75,7 @@ vt100 = { version = "0.16", optional = true }
 raw-window-handle = { version = "0.6", optional = true }
 
 [target.'cfg(windows)'.dependencies]
-# wgpu-hal 29.0.1 GLES/WGL backend needs windows-core's `std` feature
+# wgpu-hal 30 GLES/WGL backend needs windows-core's `std` feature
 # to provide `impl std::error::Error for windows_core::Error`.
 windows-core = { version = "0.62", default-features = false, features = ["std"] }
 

@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `floating_text` — damage-floater extension tests (HD-2D Task 11).
-//!
-//! World-anchored tracking (`.at(pos)`) and semantic color mapping
-//! (`.style(FloaterStyle)`) are exercised directly against
-//! [`FctState`]/[`FloatingTextBuilder`] — the same state-machine style
-//! `gauge_turn_strip.rs` uses — since the widget's particle pool is
-//! read by a downstream renderer without going through sigil's own
-//! scene emission (see the `floating_text` module doc).
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -35,8 +26,6 @@ fn placeholder_color() -> Rgba8 {
     }
 }
 
-// ---- state machine -------------------------------------------------------
-
 #[test]
 fn anchored_floater_tracks_position_signal() {
     Runtime::scope("floater-anchor-tracks", || {
@@ -48,14 +37,12 @@ fn anchored_floater_tracks_position_signal() {
         state.tick(0.25);
         let first = state.snapshot();
         assert_eq!(first.len(), 1);
-        // anchor(100, 200) + drift[0, -40] * elapsed(0.25) = (100, 190).
         assert!((first[0].position[0] - 100.0).abs() < 0.001);
         assert!((first[0].position[1] - 190.0).abs() < 0.001);
 
         anchor.set((150.0, 220.0));
         state.tick(0.5);
         let second = state.snapshot();
-        // anchor(150, 220) + drift[0, -40] * elapsed(0.5) = (150, 200).
         assert!((second[0].position[0] - 150.0).abs() < 0.001);
         assert!((second[0].position[1] - 200.0).abs() < 0.001);
 
@@ -153,14 +140,3 @@ fn fct_state(cx: &Cx, id: NodeId) -> Rc<FctState> {
         .map(|ext| Rc::clone(ext.state()))
         .expect("floating_text node carries an FctNode extension")
 }
-
-// NO GOLDEN for floaters, deliberately. `floating_text` particles are
-// read by a downstream renderer (the pool bypasses sigil's own scene
-// emission — see the module doc), so a `capture_filmstrip` golden here
-// captures a SOLID BLACK frame: sigil never paints the particles. A
-// committed black PNG asserted byte-equal every run certifies nothing
-// and is exactly the ghost-pass pattern the goldens-inequality guards
-// exist to kill. Rise/fade/anchor/color behavior is pinned by the three
-// state-machine tests above reading `FctState::snapshot()`; the VISUAL
-// verification lives where the pixels exist — the host engine composite
-// (HD-2D Wave 2 acceptance).

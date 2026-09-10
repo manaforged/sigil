@@ -1,7 +1,3 @@
-//! Dense desktop workbench built from Sigil widgets.
-//!
-//! Seeded local data only. No service backend.
-
 #![allow(missing_docs)]
 
 mod compose;

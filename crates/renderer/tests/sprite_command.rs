@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Sprite command integration coverage.
-
 #![allow(missing_docs)]
 #![allow(clippy::panic)]
 

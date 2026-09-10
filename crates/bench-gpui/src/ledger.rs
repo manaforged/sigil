@@ -84,7 +84,6 @@ impl Ledger {
         }
     }
 
-    /// One driver pulse; false once the script is complete.
     pub fn pulse(&mut self, cx: &mut Context<'_, Self>) -> bool {
         if !self.advance() {
             return false;
@@ -102,8 +101,6 @@ impl Ledger {
         true
     }
 
-    /// Ticks, applies the step for this pulse, and stamps the clock.
-    /// Returns false when the script already completed.
     pub fn advance(&mut self) -> bool {
         if self.drive.pulse >= PULSES {
             return false;

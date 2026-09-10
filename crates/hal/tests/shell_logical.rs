@@ -94,8 +94,6 @@ fn default_create_window_with_ignores_opts_and_delegates() {
         )
         .expect("default opts create should delegate");
 
-    // Opts are dropped by the default impl: the adapter records a plain
-    // physical-size creation, exactly like create_window_logical.
     assert_eq!(handle, 0);
     assert_eq!(
         shell.created,

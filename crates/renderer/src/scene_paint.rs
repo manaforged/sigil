@@ -182,12 +182,12 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<RectInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
-        1 => Float32x4,  // rect
-        2 => Float32x4,  // color
-        3 => Float32x4,  // corner radii
-        4 => Float32x4,  // params
-        5 => Float32x4,  // stroke color
-        6 => Float32x4,  // stroke metadata
+        1 => Float32x4,
+        2 => Float32x4,
+        3 => Float32x4,
+        4 => Float32x4,
+        5 => Float32x4,
+        6 => Float32x4,
     ],
 };
 

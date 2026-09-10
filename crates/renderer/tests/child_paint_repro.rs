@@ -2,25 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Repro tests for the 2026-05-19 VG1 renderer-correctness findings,
-//! items (b) and (c):
-//!
-//!   (b) Children of `Position::Relative` parents did not paint reliably
-//!       in the offscreen path (the VG1 scroll thumb had to be hoisted
-//!       to a viewport-sibling absolute node as a workaround).
-//!   (c) Narrow text glyphs in flex/block children did not rasterise —
-//!       `text("v")` at a ~14px block width inside a 16x16 wrapper
-//!       produced zero glyph pixels. Same family as the Tooltip
-//! tooltip-shape repro (bubble renders, inner text invisible in a
-//!       nested absolute-positioned container).
-//!
-//! Built directly against `kernel` + `layout` + `style` + `renderer`
-//! (no `sigil` dependency) so the repro stays in the renderer crate's
-//! own test scope, mirroring `tests/style_integration.rs`'s pattern but
-//! adding a real wgpu offscreen pixel capture (`golden_support`'s
-//! pattern, factored into `child_paint_repro/support.rs`) instead of
-//! only inspecting `CommandScene` contents.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::print_stdout, clippy::doc_markdown)]
 #![allow(clippy::cast_precision_loss)]
@@ -33,12 +14,6 @@ use sigil_style::{NodeStyleExt, Theme};
 mod support;
 use support::{InkWindow, capture, close, count_ink};
 
-/// (b) — VG1 scroll-thumb shape: an out-of-flow `Position::Absolute`
-/// child nested directly inside a `Position::Relative` track, which is
-/// itself inside an `overflow: hidden` viewport (the exact ancestor
-/// chain the scroll widget had before the thumb was hoisted to a
-/// viewport-sibling). The thumb must still paint at its assigned
-/// position instead of vanishing or landing off the clip.
 #[test]
 fn relative_track_absolute_child_paints_under_clip() {
     const VIEWPORT_W: u32 = 64;
@@ -165,10 +140,6 @@ fn build_partially_clipped_round_rect(cx: &mut Cx) -> sigil_kernel::NodeId {
     )
 }
 
-/// (c) — narrow text glyph inside a flex child. `text("v")` clipped to
-/// a 14px block width, nested inside a 16x16 wrapper that is itself a
-/// flex item (not the simpler block-in-block nesting), must still
-/// rasterise visible glyph ink.
 #[test]
 fn narrow_text_in_flex_child_renders_ink() {
     const ROOT_W: u32 = 64;
@@ -223,11 +194,6 @@ fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     cx.add(root)
 }
 
-/// (c continued) — The tooltip bubble shape: text nested inside a
-/// `Position::Absolute` bubble that is itself a child of a
-/// `Position::Relative` wrapper (not the wrapper's flow child — the
-/// bubble is pulled out of flow like the real tooltip). Glyph ink must
-/// appear inside the bubble's painted rect.
 const TOOLTIP_ROOT_W: u32 = 160;
 const TOOLTIP_ROOT_H: u32 = 100;
 const TOOLTIP_BUBBLE_X: u32 = 4;
@@ -258,10 +224,6 @@ fn nested_absolute_text_tooltip_shape_renders_ink() {
     );
 }
 
-/// Tooltip bubble shape: a `Position::Absolute` bubble (holding a text
-/// child) as a sibling of the hovered target, both children of a
-/// `Position::Relative` wrapper — the bubble is pulled out of flow
-/// like the real tooltip widget.
 fn build_tooltip_shape(cx: &mut Cx) -> sigil_kernel::NodeId {
     let bubble_text = text("Save the file")
         .layout(LayoutStyle::block().width(TOOLTIP_BUBBLE_W as f32 - 8.0))

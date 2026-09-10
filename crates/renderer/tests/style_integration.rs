@@ -140,10 +140,6 @@ fn nested_text_scene_rect_is_absolute() {
 
 #[test]
 fn shadow_class_parses_cleanly_and_paints() {
-    // `shadow-*` was rejected at parse under DR-056 (no paint path). It
-    // now resolves to `StyleAtom::Shadow` and drives the pre-existing
-    // Evan Wallace shadow pass, so it must parse WITHOUT an unknown-class
-    // diagnostic and emit a DrawShadow command through `emit_scene`.
     let before = sigil_style::unknown_class_warning_count();
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -278,10 +274,6 @@ fn own_font_class_beats_inherited_typography() {
 
 #[test]
 fn deferred_top_layer_subtree_keeps_inherited_typography() {
-    // The overlay work paints `TopLayer` subtrees after the main tree
-    // via a deferral queue; the queued entry must carry the ancestor's
-    // effective typography across the deferral (the Rc-owned
-    // `Inherited` context), not reset to defaults.
     let mut cx = Cx::new_root();
     let popup = container()
         .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
@@ -334,8 +326,6 @@ fn own_text_class_beats_inherited_cascade() {
 #[test]
 fn top_layer_subtree_paints_after_later_siblings() {
     let mut cx = Cx::new_root();
-    // First child is flagged TopLayer (a dropdown popup's shape); the
-    // second is an ordinary later sibling that would otherwise overdraw it.
     let floating = container()
         .with(TopLayer)
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))

@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DR-015 footgun guards on style APIs for fragments.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 

@@ -1,8 +1,5 @@
-//! Seed data for the desktop workbench.
-
 use sigil::prelude::*;
 
-/// Sidebar page.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Page {
     Activity,
@@ -10,21 +7,18 @@ pub(crate) enum Page {
     Tools,
 }
 
-/// Who wrote a line.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Speaker {
     User,
     System,
 }
 
-/// One transcript line.
 #[derive(Clone, Debug)]
 pub(crate) struct Line {
     pub speaker: Speaker,
     pub body: String,
 }
 
-/// Where the work runs.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Where {
     Local,
@@ -32,7 +26,6 @@ pub(crate) enum Where {
     Cloud,
 }
 
-/// One sidebar thread.
 #[derive(Clone, Debug)]
 pub(crate) struct Thread {
     pub id: u32,
@@ -44,7 +37,6 @@ pub(crate) struct Thread {
     pub lines: Vec<Line>,
 }
 
-/// Copy handles for the window.
 #[derive(Clone, Copy)]
 pub(crate) struct Shell {
     pub page: Signal<Page>,

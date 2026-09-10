@@ -86,7 +86,6 @@ fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
         .unwrap();
-    // T0 composition: concatenate every reactive channel in install order.
     let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
     Box::leak(atoms.into_boxed_slice())
 }

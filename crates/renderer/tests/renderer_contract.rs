@@ -3,23 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 
-//! Contract tests for [`sigil_renderer::WgpuRenderer`].
-//!
-//! A real-GPU test suite is not practical for every machine — we don't know what
-//! hardware runners have. We split the tests into two tiers:
-//!
-//! 1. **Unconditional** tests that exercise pure types (error formatting,
-//!    trait shape). These always run.
-//! 2. **GPU-gated** tests that construct a `WgpuRenderer`. These are
-//!    marked `#[ignore]` by default so `cargo test` is green on
-//!    runners without a GPU; run locally with
-//!    `cargo test -p sigil-renderer -- --ignored` on a machine with a
-//!    working adapter.
-//!
-//! We deliberately do NOT add a cargo feature gate: the `#[ignore]`
-//! attribute gives the exact opt-in semantics we want without pulling
-//! a feature flag through every workspace build.
-
 use core::error::Error;
 use std::time::{Duration, Instant};
 
@@ -57,10 +40,6 @@ fn assert_near(actual: f32, expected: f32) {
     );
 }
 
-/// Every `RendererError` variant must produce non-empty `Display`
-/// output and report an `Error::source` that matches the variant
-/// shape. This is the floor for log-debuggability; regressions here
-/// mean operators see empty strings when the renderer fails.
 #[test]
 fn renderer_error_display_format() {
     let no_adapter = RendererError::NoAdapter;
@@ -78,9 +57,6 @@ fn renderer_error_display_format() {
     assert!(!format!("{validation}").is_empty());
     assert!(validation.source().is_none());
 
-    // `NoSupportedFormat` and `NotInitialized` were added when the
-    // renderer moved to lazy adapter/device selection. Both must
-    // produce a non-empty Display and carry no inner cause.
     let no_format = RendererError::NoSupportedFormat;
     let rendered_no_format = format!("{no_format}");
     assert!(
@@ -98,17 +74,12 @@ fn renderer_error_display_format() {
     assert!(not_init.source().is_none());
 }
 
-/// `RendererError` must satisfy the HAL's `Send + Sync + 'static`
-/// contract so it can be returned from trait methods across threads.
-/// This is a compile-time assertion dressed up as a test.
 #[test]
 fn renderer_error_is_send_sync_static() {
     fn assert_send_sync_static<T: Send + Sync + 'static>() {}
     assert_send_sync_static::<RendererError>();
 }
 
-/// `WgpuRenderer` must implement `sigil_hal::Renderer` with the expected
-/// associated types. Pure-types check — no GPU needed.
 #[test]
 fn renderer_associated_types_match_hal_contract() {
     fn assert_impls<R>()
@@ -120,10 +91,6 @@ fn renderer_associated_types_match_hal_contract() {
     assert_impls::<WgpuRenderer>();
 }
 
-/// The Slug shader receives UVs at fragment centers, so the analytic
-/// edge ramp must include the half-pixel bias from the center to the
-/// pixel edge. This source-level guard keeps the WGSL helper aligned
-/// with the math regression below.
 #[test]
 fn slug_shader_edge_ramp_accounts_for_fragment_centers() {
     let expected = "return clamp((edge_x - sample_x) * width + 0.5, 0.0, 1.0);";
@@ -134,9 +101,6 @@ fn slug_shader_edge_ramp_accounts_for_fragment_centers() {
     );
 }
 
-/// A one-pixel stem whose edge falls on pixel boundaries should render
-/// its interior center samples at full coverage. Without the +0.5 edge
-/// bias, the pixel just inside the right edge evaluates to 0.5 alpha.
 #[test]
 fn slug_aa_keeps_one_pixel_stem_centers_opaque() {
     let vertical = StemRect {
@@ -158,8 +122,6 @@ fn slug_aa_keeps_one_pixel_stem_centers_opaque() {
     assert_near(stem_coverage(horizontal, 2.5, 1.5), 1.0);
 }
 
-/// A freshly-constructed renderer on a GPU-capable host must succeed.
-/// Gated because CI runners often have no adapter.
 #[test]
 #[ignore = "requires a working GPU adapter; run locally with --ignored"]
 fn wgpu_renderer_constructs_without_panic() {
@@ -171,21 +133,6 @@ fn wgpu_renderer_constructs_without_panic() {
     );
 }
 
-/// `WgpuRenderer::new` must not touch an adapter or device — that work
-/// is deferred to the first `create_surface` call so we pick a GPU
-/// that is known-compatible with the user's window.
-///
-/// We express "does not block on the GPU" as a wall-clock budget that
-/// is loose enough to absorb first-call backend-DLL loading on Windows
-/// debug builds (observed ~170 ms) but tight enough to fail loudly if
-/// adapter enumeration or device creation leaks back out of
-/// `create_surface`. On a dGPU laptop, `request_adapter` alone can
-/// take 500 ms to 2 s while the discrete GPU spins up, so a 1 s
-/// budget still catches regressions without flaking on cold Windows
-/// machines.
-///
-/// This test runs unconditionally: it should pass on CI runners with
-/// no GPU because `new` never asks for one.
 #[test]
 fn renderer_new_does_not_block_on_gpu() {
     let start = Instant::now();
@@ -206,21 +153,9 @@ fn renderer_new_does_not_block_on_gpu() {
     );
 }
 
-/// `resize` on a zero-sized dimension is a documented no-op. Gated
-/// because we need a real surface to exercise the path, which needs a
-/// real window handle and therefore a real GPU pipeline end-to-end.
-///
-/// This test is a placeholder for the real end-to-end exercise the
-/// `hello-rect` rewrite will provide. Leaving it here as a reminder
-/// that the zero-size invariant is part of the trait contract, not
-/// just `WgpuRenderer`'s convenience.
 #[test]
 #[ignore = "needs a real windowed surface; exercised by the hello-rect rewrite"]
 fn zero_sized_resize_is_noop() {
-    // Constructing a surface requires a `WindowHandle`, which in turn
-    // requires an OS window. Event loops can't spin inside a cargo
-    // test reliably across platforms. The contract is exercised by
-    // `examples/hello-rect` once it is ported onto `sigil-renderer`.
     let _ = PhysicalSize::new(0, 0);
     let _ = Color::BLACK;
 }

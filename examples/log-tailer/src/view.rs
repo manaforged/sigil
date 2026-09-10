@@ -1,8 +1,3 @@
-//! View construction for the log tailer.
-//!
-//! Composes a header bar (filter text field + level picker buttons +
-//! auto-scroll toggle), a virtualised log list, and a status bar.
-
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
 
@@ -14,7 +9,6 @@ const VIEWPORT_WIDTH: f32 = 928.0;
 const VIEWPORT_HEIGHT: f32 = 520.0;
 const LEVEL_CHIP_WIDTH: f32 = 64.0;
 
-/// Build the full log-tailer tree.
 pub(crate) fn app_tree(state: AppState) -> NodeBuilder {
     container()
         .role(Role::Main)
@@ -43,18 +37,12 @@ fn header(state: AppState) -> NodeBuilder {
 }
 
 fn filter_input(state: AppState) -> NodeBuilder {
-    // text_field has no `.layout()` of its own, so wrap it in a sized
-    // container.
     container()
         .layout(LayoutStyle::block().width(240.0).height(32.0))
         .child(
             text_field(state.filter_text)
                 .placeholder("substring")
-                .change(move |_| {
-                    // The signal itself is the source of truth; the
-                    // list rebuilds on every render and re-reads
-                    // state.filter_text via `state.filtered()`.
-                }),
+                .change(move |_| {}),
         )
 }
 
@@ -98,10 +86,6 @@ fn log_list(state: AppState) -> NodeBuilder {
     .viewport_height(VIEWPORT_HEIGHT)
     .viewport_width(VIEWPORT_WIDTH)
     .selection(SelectionMode::Single);
-    // Auto-scroll: when toggled on, seed the scroll signal at the
-    // bottom of the content; otherwise the list pins to the top by
-    // default. `scroll_to_end` replaces the hand-computed
-    // `(total_rows * row_height - viewport_height).max(0.0)` recipe.
     if auto_scroll {
         list = list.scroll_to_end();
     }

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Dropdown demo — Pack 3 D2 showcase.
 #![allow(missing_docs, clippy::print_stdout)]
 
 use sigil::prelude::*;

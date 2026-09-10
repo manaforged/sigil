@@ -5,15 +5,6 @@
 #![allow(missing_docs)]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
-//! Capture binds to the node whose handler REQUESTED it, not the
-//! hit-path leaf.
-//!
-//! A drag source wrapping child content (a table row over text cells)
-//! requests capture from the row's own handlers; the hit leaf at
-//! pointer-down is a child with no move/up logic of its own. Routing
-//! captured move/up to the requester — not the leaf — is what lets the
-//! session survive the pointer leaving the row's children.
-
 #[path = "support/mock_shell.rs"]
 mod mock_shell;
 #[path = "support/routing_helpers.rs"]
@@ -50,9 +41,7 @@ fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {
         let layout = compute_layout(&mut cx, root, 400.0, 300.0);
         let mut router = EventRouter::new();
 
-        // Down lands on the CHILD (leaf); the parent requests capture.
         route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
-        // Moves anywhere — including outside the parent — reach the parent.
         route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 150.0));
         route_event(&mut router, &mut cx, &layout, pointer_move(350.0, 250.0));
         route_event(&mut router, &mut cx, &layout, pointer_up(350.0, 250.0));
@@ -68,8 +57,6 @@ fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {
             "captured up dispatches to the requesting parent",
         );
 
-        // Capture released on Up: a later move hit-tests normally and
-        // reaches no captured handler.
         route_event(&mut router, &mut cx, &layout, pointer_move(20.0, 20.0));
         assert_eq!(moves.borrow().len(), 2, "capture released after up");
     });
@@ -77,8 +64,6 @@ fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {
 
 type Log = Rc<RefCell<Vec<(f32, f32)>>>;
 
-/// Parent (100×60 at origin) holding a hittable child leaf; the parent
-/// requests capture on down and logs captured move/up window positions.
 fn tree() -> (Cx, NodeId, Log, Log) {
     let moves: Log = Rc::new(RefCell::new(Vec::new()));
     let ups: Log = Rc::new(RefCell::new(Vec::new()));

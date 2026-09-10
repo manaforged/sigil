@@ -1,13 +1,3 @@
-//! A flex container with an AUTO cross size shrinks to fit its content,
-//! even under `align-items: center`.
-//!
-//! Regression: a single-line flex row with `align-items: center` and no
-//! explicit height used to inflate to its containing block's cross extent
-//! (the auto fallback in `container_inner_size`), then centre its child in
-//! that oversized band — so a ~19px row ballooned to ~114px in a tall
-//! parent, and a `text_field` grew to ~173px in a flexible column. The row
-//! must keep its content height regardless of `align-items`.
-
 #![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
 use sigil_hal::Size;
@@ -24,8 +14,6 @@ impl TextMeasure for NoText {
 fn row_height(align: AlignItems) -> f32 {
     use sigil_kernel::{Cx, container};
     let mut cx = Cx::new_root();
-    // A 20px fixed-height child inside a flex row with the given align, all
-    // inside a column laid out in a 400px-tall viewport.
     let child = container().layout(LayoutStyle::block().height(20.0).fill_width());
     let row = container()
         .layout(LayoutStyle::flex_row().fill_width().align_items(align))

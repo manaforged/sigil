@@ -1,7 +1,3 @@
-//! Linear-style issue row from one class string.
-//!
-//! No `LayoutStyle` on the row. Hover lives on `interactive().class`.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

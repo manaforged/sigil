@@ -1,7 +1,3 @@
-//! Reactive demos: `virtual_list` on a signal (push/pop),
-//! `text_edit` that mutates a keystroke counter signal, `chip` whose
-//! tone flips on a toggle.
-
 use sigil::prelude::*;
 use sigil::widgets::chip;
 use sigil::widgets::patterns;
@@ -111,8 +107,6 @@ fn reactive_chip_row() -> NodeBuilder {
     });
 
     let toggle_widget = toggle(success).label("flip tone (Success / Error)");
-    // ChipBuilder::tone_signal retints in place (5/5 Wave 1 T5) — no
-    // `children_reactive` remount host needed anymore.
     let chip_widget = chip("STATUS", Tone::Success).tone_signal(tone);
     let stack = container()
         .layout(LayoutStyle::flex_column().gap(6.0))

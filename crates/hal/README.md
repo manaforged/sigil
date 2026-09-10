@@ -19,6 +19,6 @@ the plain constraint types (`Dim`, `Size`) defined here.
 
 ## Status
 
-The trait shapes here harden as their real adapters land. Until then,
-treat every provisional method signature as subject to change; the
-documented invariants are the load-bearing part.
+The trait shapes track their adapters in `sigil-renderer`, `sigil-shell`,
+`sigil-text`, `sigil-a11y`, and `sigil-tasks`. Signatures can still move before 1.0; the
+documented invariants are the stable part.

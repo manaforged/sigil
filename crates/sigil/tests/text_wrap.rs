@@ -1,5 +1,3 @@
-//! Default `text()` wraps to a definite-width box. `.nowrap()` hugs one line.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -9,7 +7,6 @@
 
 use sigil::prelude::*;
 
-/// 7px per character, one 16px line, so height reveals the line count.
 struct CharText;
 impl TextMeasure for CharText {
     fn measure(&self, content: &TextContent, space: sigil_hal::Size) -> sigil_hal::LogicalSize {
@@ -112,11 +109,6 @@ fn wrapped_text_stays_within_its_container_width() {
     });
 }
 
-/// 100 chars = 700px at 7px/char — longer than the 400px viewport below.
-/// Gap 24(a): a `wrap = false` run measured against the definite viewport
-/// width wrapped at the viewport edge, so an ellipsized cell reported two
-/// lines and bled over the next row. Measurement must be unconstrained
-/// (max-content) regardless of the node's layout style.
 const LONGER_THAN_VIEWPORT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 fn row_cell_rect(style: LayoutStyle) -> sigil_hal::Rect {
@@ -180,11 +172,6 @@ fn ellipsize_longer_than_viewport_stays_one_line_when_grown() {
 
 #[test]
 fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
-    // A 200px row: a fixed 96px cell plus an ellipsized cell whose content
-    // wants 420px. When the ellipsized cell is floored at its content
-    // width (CSS §4.5 automatic minimum), it cannot shrink and the fixed
-    // cell is crushed to zero. An ellipsizing leaf truncates instead, so
-    // its automatic minimum is zero and both cells keep a share.
     sigil::reactive::Runtime::scope("text-ellipsize-floor", || {
         let mut cx = Cx::new_root();
         let fixed = container().layout(LayoutStyle::block().width(96.0).height(16.0));

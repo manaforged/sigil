@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Button widget demo — neutral and primary tones.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

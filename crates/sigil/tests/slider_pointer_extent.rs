@@ -1,13 +1,3 @@
-//! A slider's pointer->value math must divide by the track's MEASURED
-//! extent, not by its default constant.
-//!
-//! `set_from_position` used to divide by `HORIZONTAL_WIDTH` (180). Any
-//! slider laid out at another width mapped clicks to the wrong value and
-//! saturated early on drag, and nothing in the suite caught it because
-//! every slider test used the default size.
-//!
-//! Surfaced by the Kimi production-readiness review (2026-07-20).
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -30,7 +20,6 @@ fn click_at(x: f32, width: f32) -> f32 {
     sigil::reactive::Runtime::scope("slider-extent", || {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
-        // Force the slider to a known non-default width.
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_row().fixed_size(width, 40.0))
@@ -62,8 +51,6 @@ fn click_at(x: f32, width: f32) -> f32 {
 
 #[test]
 fn click_maps_through_the_measured_track_width() {
-    // Midpoint of a 400px slider is 200px -> 50, regardless of the
-    // 180px default. Dividing by the constant would give 200/180 -> 100.
     let mid = click_at(200.0, 400.0);
     assert!(
         (mid - 50.0).abs() < 1.0,
@@ -71,8 +58,6 @@ fn click_maps_through_the_measured_track_width() {
     );
 }
 
-/// The point of fill-by-default: no `.length()` call, the track simply
-/// takes the parent's width, and pointer mapping follows it.
 #[test]
 fn filled_slider_maps_clicks_through_its_parent_width() {
     let mut got = 0.0;
@@ -104,7 +89,6 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
         );
         got = value.peek();
     });
-    // 300 of a filled 400px track is 75%, NOT 300/180 saturated to 100.
     assert!(
         (got - 75.0).abs() < 1.0,
         "click at 300px of a filled 400px slider should be ~75, got {got}",
@@ -113,7 +97,6 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
 
 #[test]
 fn click_maps_through_a_narrow_track() {
-    // 100px slider: 25px in is 25%. Dividing by 180 would give ~14.
     let quarter = click_at(25.0, 100.0);
     assert!(
         (quarter - 25.0).abs() < 2.0,

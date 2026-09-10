@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Icon command integration coverage.
-
 #![allow(missing_docs)]
 #![allow(clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]

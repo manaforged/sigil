@@ -712,7 +712,7 @@ fn margin_on_a_nested_flex_container_applies_once_not_twice() {
         },
     );
     let child_style = StyleData {
-        display: Display::Flex, // a flex container, not a leaf
+        display: Display::Flex,
         flex_direction: FlexDirection::Column,
         size: StyleSize::new(Dimension::Px(100.0), Dimension::Px(50.0)),
         margin: Rect {

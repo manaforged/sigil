@@ -27,10 +27,10 @@ impl Default for TextTuning {
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
 static SNAP: AtomicBool = AtomicBool::new(true);
-static DILATION: AtomicU32 = AtomicU32::new(0x3F00_0000); // 0.5
-static SHARPEN: AtomicU32 = AtomicU32::new(0x3F80_0000); // 1.0
-static GAMMA_LOD: AtomicU32 = AtomicU32::new(0x3F80_0000); // 1.0
-static GAMMA_DOL: AtomicU32 = AtomicU32::new(0x4060_0000); // 3.5
+static DILATION: AtomicU32 = AtomicU32::new(0x3F00_0000);
+static SHARPEN: AtomicU32 = AtomicU32::new(0x3F80_0000);
+static GAMMA_LOD: AtomicU32 = AtomicU32::new(0x3F80_0000);
+static GAMMA_DOL: AtomicU32 = AtomicU32::new(0x4060_0000);
 static RASTER: AtomicBool = AtomicBool::new(true);
 
 #[must_use]

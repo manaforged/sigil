@@ -1,10 +1,3 @@
-//! Minimum viable reactive counter on `sigil::launch`.
-//!
-//! A `Signal<i32>` holds the count. A button increments it. A reactive
-//! label derived from the count re-renders on every change. This is the
-//! "hello world" of Sigil's reactive UI: one signal, one event handler,
-//! one derived view.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

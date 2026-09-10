@@ -1,8 +1,3 @@
-//! Shared 10k × 24-column table used by the live window and bench-parity.
-//!
-//! `quote` / `fields` have no UI deps so the GPUI runner can format the
-//! same cells. `view` is behind the `ui` feature (Sigil widgets).
-
 #![allow(missing_docs)]
 
 pub mod fields;

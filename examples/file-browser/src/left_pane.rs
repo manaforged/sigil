@@ -1,15 +1,8 @@
-//! Left pane: a `virtual_list` of mock file paths with single-select.
-
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
 
 use crate::files::MockFile;
 
-/// Build the left pane.
-///
-/// `selected_index` is the host-owned selection bound — when a row click
-/// updates the `virtual_list`'s `SelectionState`, `.select` mirrors the
-/// chosen index into this signal so the right pane re-renders.
 #[must_use]
 pub(super) fn build(files: &[MockFile], selected_index: Signal<usize>) -> impl IntoNode + use<> {
     let labels: Vec<&'static str> = files.iter().map(|file| file.path).collect();

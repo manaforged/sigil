@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests keep assertions direct; unwraps name the expected
-// topology and failed assertions are the test output.
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil_kernel::{Cx, IntoNode, NodeId, Role, container, text};
@@ -41,8 +39,6 @@ fn add_child_links_parent_and_uses_component_owner() {
     assert_eq!(cx.get(heading).expect("heading").parent(), Some(panel));
     assert_eq!(cx.get(body).expect("body").parent(), Some(panel));
 
-    // Each add_child created its own component owner distinct from the
-    // panel's owner.
     let panel_owner = cx.component_owner(panel).expect("panel owner");
     let heading_owner = cx.component_owner(heading).expect("heading owner");
     let body_owner = cx.component_owner(body).expect("body owner");

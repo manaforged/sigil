@@ -1,9 +1,3 @@
-//! Headless `Host`: the hello-counter tree, no window.
-//!
-//! Same signal, derived label, and button as `hello-counter`. You pump
-//! layout and read [`sigil::Host::painted`]. `surface(1)` is a hole;
-//! [`sigil::Host::surfaces`] returns its rect.
-
 #![allow(missing_docs, clippy::print_stdout)]
 
 use sigil::prelude::*;

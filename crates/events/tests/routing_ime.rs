@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "support/mock_shell.rs"]
@@ -26,8 +24,6 @@ const fn ime_event(event: ImeEvent) -> sigil_hal::ShellEvent {
     sigil_hal::ShellEvent::Ime(event)
 }
 
-/// Discriminant-only label so assertions don't depend on `ImeEvent`'s
-/// `Debug` formatting of its `SmolStr`/tuple payloads.
 const fn ime_label(event: &ImeEvent) -> &'static str {
     match event {
         ImeEvent::Enabled => "Enabled",
@@ -89,9 +85,6 @@ fn route_ime_delivers_commit_to_focused_target() {
     let mut router = EventRouter::new();
     router.set_focus(&mut cx, Some(root));
 
-    // A session must open (Enabled/Preedit) before Commit is a valid
-    // continuation — a bare Commit with no owner is dropped by design
-    // never adopt a fresh owner from Commit/Disabled.
     route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Enabled));
     route_event(
         &mut router,
@@ -118,7 +111,6 @@ fn route_ime_dropped_when_no_focus() {
     );
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
-    // No `set_focus` call: nothing is focused.
 
     route_event(
         &mut router,
@@ -142,7 +134,6 @@ fn route_ime_dropped_when_focused_node_has_no_ime_target() {
     let mut router = EventRouter::new();
     router.set_focus(&mut cx, Some(root));
 
-    // Focused, but never called `.on_ime(...)` — must not panic.
     route_event(
         &mut router,
         &mut cx,
@@ -174,8 +165,6 @@ fn focus_wants_ime_reflects_on_ime_registration() {
 
 type ImeLog = Rc<RefCell<Vec<&'static str>>>;
 
-/// Two side-by-side focusable IME targets, each logging the
-/// discriminant of every `ImeEvent` it receives.
 fn two_logging_ime_fields(cx: &mut Cx) -> (NodeId, NodeId, ImeLog, ImeLog) {
     let a_log = ImeLog::default();
     let b_log = ImeLog::default();
@@ -208,9 +197,6 @@ fn two_logging_ime_fields(cx: &mut Cx) -> (NodeId, NodeId, ImeLog, ImeLog) {
 
 #[test]
 fn route_ime_focus_change_cancels_owner_and_drops_commit() {
-    // Regression: Preedit(A) -> focus moves to B -> Commit must
-    // be a no-op on B, and A must see its session cancelled instead of
-    // being left with a stale preedit.
     let mut cx = Cx::new_root();
     let (a, b, a_log, b_log) = two_logging_ime_fields(&mut cx);
     let root = cx.parent(a).expect("field A has a parent");
@@ -246,10 +232,6 @@ fn route_ime_focus_change_cancels_owner_and_drops_commit() {
 
 #[test]
 fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
-    // final review HIGH: after a focus change cancels the session,
-    // the SAME composition's follow-up Preedit/Commit must NOT adopt the
-    // newly focused node as a fresh owner — only an OS lifecycle
-    // boundary (Disabled then Enabled) may open a new session.
     let mut cx = Cx::new_root();
     let (a, b, a_log, b_log) = two_logging_ime_fields(&mut cx);
     let root = cx.parent(a).expect("field A has a parent");
@@ -264,7 +246,6 @@ fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
         ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
     router.set_focus(&mut cx, Some(b));
-    // The in-flight composition keeps streaming: neither event may reach B.
     route_event(
         &mut router,
         &mut cx,
@@ -283,8 +264,6 @@ fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
         b_log.borrow()
     );
 
-    // OS lifecycle boundary: Disabled closes the old session, Enabled +
-    // Preedit open a legitimate new one on B.
     route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Disabled));
     route_event(&mut router, &mut cx, &layout, ime_event(ImeEvent::Enabled));
     route_event(
@@ -307,10 +286,6 @@ fn route_ime_preedit_after_focus_change_stays_quarantined_until_enabled() {
 
 #[test]
 fn route_ime_scope_change_cancels_owner_without_focus_move() {
-    // A composing field stays literally focused, but a modal scope opens
-    // ABOVE it without moving focus into the modal — the
-    // "inert modal opening over a composing field" case. The owner falls
-    // outside the new active scope, so the session must still cancel.
     let field_log = Rc::new(RefCell::new(Vec::new()));
     let mut cx = Cx::new_root();
     let root = cx.add(
@@ -338,8 +313,6 @@ fn route_ime_scope_change_cancels_owner_without_focus_move() {
         ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
     );
 
-    // Open a modal scope that does NOT contain `field` and does NOT
-    // steal focus (the composing field is still `router.focus()`).
     let _modal = cx.add_child(
         root,
         container()

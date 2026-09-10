@@ -21,7 +21,7 @@ all-features = false
 no-default-features = false
 # The checks govern what we SHIP. publish = false crates — the bench-parity
 # harnesses (which deliberately import GPUI's whole dependency tree),
-# examples, deleted crates (ide-core, engine_adapter — removed from the workspace) — are not shipping code, and their
+# examples, ide-core) are not shipping code, and their
 # unique transitive deps are excluded recursively.
 exclude-unpublished = true
 
@@ -58,10 +58,6 @@ ignore = [
     # decorations). winit's transitive tree; we render text with our own
     # skrifa/HarfRust stack and never touch ab_glyph at runtime.
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser via sctk-adwaita/winit; not our text path" },
-    # serial (unmaintained) via portable-pty 0.8: unmaintained notice, not a
-    # vulnerability, and the serial code path is not exercised by any sigil
-    # host. Collapse when portable-pty ships 0.9 and the dep can move.
-    { id = "RUSTSEC-2017-0008", reason = "serial via portable-pty 0.8; unmaintained, no vulnerability, path unused" },
 ]
 
 # --- licenses ---------------------------------------------------------------
@@ -82,10 +78,10 @@ allow = [
     "CC0-1.0",
     "ISC",
     # MPL-2.0 retained for any fluent-rs or future weak-copyleft deps.
-    # Note: usvg 0.45+ relicensed to Apache-2.0 OR MIT, so current R8 deps
+    # Note: usvg 0.45+ relicensed to Apache-2.0 OR MIT, so the current deps
     # do not exercise this entry. It is kept as an explicit opt-in for
     # any future MPL-2.0 dep that passes legal review (unmodified
-    # library use only; the host engine's proprietary code is not contaminated by
+    # library use only; a downstream consumer's proprietary code is not contaminated by
     # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
     "Unicode-3.0",
@@ -110,8 +106,7 @@ registries = []
 [bans]
 multiple-versions = "deny"
 # Internal dev-dependencies of published crates are deliberately version-less
-# path deps so `cargo publish` strips them (lockstep policy — see
-# docs/plans/releasing.md, local only). Deny would
+# path deps so `cargo publish` strips them (lockstep policy). Deny would
 # block the gate on our own release policy, so keep this at warn: visibility
 # is retained in the output, and external deps are unaffected because they
 # all carry registry versions.
@@ -127,14 +122,14 @@ deny = []
 # duplicated version EXCEPT the newest, so any additional new version still
 # fails the gate.
 skip = [
-    # wgpu 29 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
+    # wgpu 30 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
     # wgpu-core, wgpu-hal, gpu-allocator). All in the wgpu dep tree, no
     # workaround available.
-    { crate = "hashbrown@0.15.5", reason = "wgpu 29 transitive (gpu-descriptor)" },
-    { crate = "hashbrown@0.16.1", reason = "wgpu 29 transitive (naga/wgpu-core)" },
+    { crate = "hashbrown@0.15.5", reason = "wgpu 30 transitive (gpu-descriptor)" },
+    { crate = "hashbrown@0.16.1", reason = "wgpu 30 transitive (naga/wgpu-core)" },
 
     # foldhash follows hashbrown's version split for the same reason.
-    { crate = "foldhash@0.1.5",   reason = "wgpu 29 transitive via hashbrown 0.15" },
+    { crate = "foldhash@0.1.5",   reason = "wgpu 30 transitive via hashbrown 0.15" },
 
     # winit 0.30 pins windows-sys 0.52; criterion 0.5 (via is-terminal /
     # winapi-util / walkdir) pulls windows-sys 0.61. Both are dev/runtime
@@ -142,13 +137,13 @@ skip = [
     { crate = "windows-sys@0.52.0", reason = "winit 0.30 pins this version" },
     { crate = "windows-sys@0.61.2", reason = "criterion 0.5 transitive (is-terminal, walkdir)" },
 
-    # R8 (icon baker): usvg 0.47 requires tiny-skia-path 0.12.0; winit 0.30
+    # usvg 0.48 requires tiny-skia-path 0.12.0; winit 0.30
     # pulls sctk-adwaita 0.10.1 which requires tiny-skia 0.11.4 (and thus
     # tiny-skia-path 0.11.4). Both are deep transitive deps we cannot unify
     # without forking sctk-adwaita or pinning usvg to an older version.
     # Re-check when sctk-adwaita is updated to tiny-skia 0.12+.
     { crate = "tiny-skia@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30; renderer uses 0.12.0" },
-    { crate = "tiny-skia-path@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30 (R8 introduced usvg 0.47 which needs 0.12.0)" },
+    { crate = "tiny-skia-path@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30 (usvg 0.48 needs 0.12.0)" },
 
     # --- winit 0.30 / accesskit_winit 0.32 chain ---------------------------
     # winit 0.30 and accesskit_macos 0.26.1 pin the objc2 0.5 / block2 0.5 /
@@ -220,13 +215,8 @@ skip = [
     { crate = "windows_x86_64_msvc@0.48.5", reason = "follows windows-targets 0.48.5" },
     { crate = "windows_x86_64_msvc@0.52.6", reason = "follows windows-targets 0.52.6" },
 
-    # --- portable-pty 0.8 chain (sigil-app PTY hosting) ---------------------
-    # portable-pty 0.8.1 pins nix 0.25 (memoffset 0.6) and pulls serial
-    # (unmaintained, see the advisory ignore). Collapses when portable-pty
-    # ships a 0.9 the workspace can move to.
-    { crate = "memoffset@0.6.5",    reason = "nix 0.25.1 via portable-pty 0.8.1; nix 0.27+ users are on 0.9" },
-    { crate = "rustc-hash@1.1.0",   reason = "transitive via portable-pty 0.8.1 chain; rest of tree on 2.x" },
-    { crate = "unicode-width@0.1.14", reason = "crossterm 0.28 via portable-pty 0.8.1 chain; sigil-text uses 0.2" },
+    # --- portable-pty 0.9 chain (sigil-app PTY hosting) ---------------------
+    { crate = "rustc-hash@1.1.0",   reason = "transitive via portable-pty 0.9 chain; rest of tree on 2.x" },
 
     # --- cpal/rodio 0.15 chain (sigil-app audio playback) -------------------
     # rodio 0.20 -> cpal 0.15 pins the windows 0.54 generation; the rest of

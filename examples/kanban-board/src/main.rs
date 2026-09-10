@@ -1,8 +1,3 @@
-//! Tier-5 kitchen-sink kanban app.
-//!
-//! Left sidebar of projects, a splitter, three kanban columns with
-//! drag between them, and a modal for new/edit-card.
-
 #![allow(clippy::similar_names, clippy::assigning_clones)]
 
 mod board;
@@ -25,9 +20,6 @@ fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - kanban", 1100, 720), app_tree)
 }
 
-/// Build the full app tree under `cx`. Exposed `pub(crate)` so tests
-/// (and any future host that wants to embed the demo without `launch`)
-/// can call it directly with a fresh `Cx`.
 pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
     let state = BoardState::seed();
     cx.add(root_shell(state))
@@ -64,9 +56,6 @@ fn top_bar(state: BoardState) -> NodeBuilder {
 }
 
 fn work_area(state: BoardState) -> NodeBuilder {
-    // Vertical (splitter laid out flex-column means rows; horizontal
-    // means left/right). The splitter widget's `Horizontal` is the
-    // left/right split we want.
     container()
         .layout(LayoutStyle::flex_row().grow(1.0))
         .class(classes!("w-full"))

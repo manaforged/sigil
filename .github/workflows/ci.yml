@@ -3,7 +3,8 @@
 # Runs on release tags and manual dispatch only. Tests run on the
 # author's machine before a push; the pre-push hook runs the same
 # check. A runner exists to prove a release from a clean Linux
-# checkout. Concurrency cancels superseded runs on the same ref.
+# checkout, so every job runs on every tag. Concurrency cancels
+# superseded runs on the same ref.
 #
 # The GPU and main-thread tier (the ignored tests) still runs on
 # owned native builders before a release; hosted runners have no
@@ -31,38 +32,7 @@ env:
   CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      rust: ${{ steps.filter.outputs.rust }}
-      site: ${{ steps.filter.outputs.site }}
-      docs: ${{ steps.filter.outputs.docs }}
-      files: ${{ steps.filter.outputs.files }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: list changed paths
-        id: filter
-        run: |
-          changed=$(git ls-files)
-          is_rust=$(grep -qE '^(crates/|examples/|Cargo\.(toml|lock)|clippy\.toml|deny\.toml|rust-toolchain\.toml|\.github/workflows/ci\.yml)' <<<"$changed" && echo true || echo false)
-          is_site=$(grep -qE '^(site/|scripts/check-site-catalog\.mjs)' <<<"$changed" && echo true || echo false)
-          is_docs=$(grep -qE '^docs/' <<<"$changed" && echo true || echo false)
-          {
-            echo "rust=$is_rust"
-            echo "site=$is_site"
-            echo "docs=$is_docs"
-            echo "files<<DELIM_CHANGED" >> "$GITHUB_OUTPUT"
-            echo "$changed" >> "$GITHUB_OUTPUT"
-            echo "DELIM_CHANGED" >> "$GITHUB_OUTPUT"
-          } >> "$GITHUB_OUTPUT"
-
   lint:
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -101,8 +71,6 @@ jobs:
         run: cargo deny check
 
   test:
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -122,59 +90,10 @@ jobs:
       - uses: swatinem/rust-cache@aa7c1c80a07a27a84c0aa76d0cef0aad3830e330 # v2.7.8
         with:
           cache-on-failure: true
-      - name: compute affected packages (changed + reverse-dep closure)
-        id: affected
-        env:
-          FILES: ${{ needs.changes.outputs.files }}
-        run: |
-          cargo metadata --format-version 1 > /tmp/meta.json
-          python3 - <<'PY'
-          import json, os
-
-          meta = json.load(open("/tmp/meta.json"))
-          changed = [f for f in os.environ["FILES"].splitlines() if f.strip()]
-
-          member_by_dir = {}
-          cwd = os.getcwd() + "/"
-          for p in meta["packages"]:
-              directory = os.path.dirname(p["manifest_path"])
-              if directory.startswith(cwd):
-                  member_by_dir[directory[len(cwd) :]] = p["name"]
-
-          changed_members = set()
-          for f in changed:
-              for directory, name in member_by_dir.items():
-                  if f == directory or f.startswith(directory + "/"):
-                      changed_members.add(name)
-
-          rev = {name: set() for name in member_by_dir.values()}
-          for p in meta["packages"]:
-              for dep in p.get("dependencies", []):
-                  if dep.get("path") and dep["name"] in rev and p["name"] in rev:
-                      rev[dep["name"]].add(p["name"])
-
-          affected, frontier = set(), sorted(changed_members)
-          while frontier:
-              current = frontier.pop()
-              if current in affected:
-                  continue
-              affected.add(current)
-              frontier.extend(rev.get(current, ()))
-
-          flags = "".join(f" -p {name}" for name in sorted(affected))
-          if not flags:
-              print("no member matched; falling back to the full workspace")
-              flags = "--workspace"
-          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
-              out.write(f"flags={flags}\n")
-          print("flags=" + flags)
-          PY
       - name: test
-        run: cargo test --no-fail-fast ${{ steps.affected.outputs.flags }}
+        run: cargo test --workspace --no-fail-fast
 
   msrv:
-    needs: changes
-    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -197,8 +116,6 @@ jobs:
         run: cargo check --workspace --all-targets --locked --all-features
 
   site:
-    needs: changes
-    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -209,8 +126,6 @@ jobs:
         run: node scripts/check-site-catalog.mjs
 
   docs:
-    needs: changes
-    if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

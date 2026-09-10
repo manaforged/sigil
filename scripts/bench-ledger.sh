@@ -1,10 +1,4 @@
 #!/bin/sh
-# Ledger benchmark: the shared script replayed in a real window on every
-# framework, alternating order, N rounds. Writes record-v1 JSON plus
-# REPORT.md under the output directory. Run this by hand on the reference
-# machine with nothing else on screen; do not run it from CI or an agent.
-#
-#   scripts/bench-ledger.sh [rounds] [out-dir]
 set -eu
 root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$root"

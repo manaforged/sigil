@@ -2,10 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Phase 10 layout invalidation benchmarks.
-//!
-//! Run with `cargo bench -p sigil-layout --bench invalidation_rig`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,

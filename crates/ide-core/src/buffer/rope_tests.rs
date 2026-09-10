@@ -41,7 +41,6 @@ fn insert_at_boundaries() {
 
 #[test]
 fn utf8_boundary_insert() {
-    // "café" — 'é' is 2 bytes (U+00E9).
     let mut r = Rope::from_str("caf");
     r.insert(3, "é");
     assert_eq!(r.to_string_lossy(), "café");
@@ -51,7 +50,6 @@ fn utf8_boundary_insert() {
 
 #[test]
 fn cross_leaf_insert() {
-    // Build a rope bigger than one leaf, then insert in the middle.
     let base: String = "a".repeat(LEAF_TARGET + 10);
     let mut r = Rope::from_str(&base);
     let mid = LEAF_TARGET / 2;
@@ -63,12 +61,11 @@ fn cross_leaf_insert() {
 
 #[test]
 fn cross_leaf_remove() {
-    let base: String = "abcdefgh".repeat(200); // 1600 bytes, 3+ leaves
+    let base: String = "abcdefgh".repeat(200);
     let mut r = Rope::from_str(&base);
     r.remove(500..510);
     let s = r.to_string_lossy();
     assert_eq!(s.len(), base.len() - 10);
-    // Verify the content around the gap is correct.
     let mut expected = base;
     expected.replace_range(500..510, "");
     assert_eq!(s, expected);
@@ -109,7 +106,6 @@ fn snapshot_is_independent() {
 #[test]
 fn byte_to_char_conversion() {
     let r = Rope::from_str("🦀abc");
-    // '🦀' is 4 bytes; byte 4 should be char index 1.
     assert_eq!(r.byte_to_char(ByteIdx(4)), CharIdx(1));
     assert_eq!(r.char_to_byte(CharIdx(1)), ByteIdx(4));
 }
@@ -133,7 +129,7 @@ fn write_to_roundtrip() {
 
 #[test]
 fn large_insert() {
-    let big = "x".repeat(1_024 * 1_024); // 1 MB
+    let big = "x".repeat(1_024 * 1_024);
     let r = Rope::from_str(&big);
     assert_eq!(r.len_bytes(), big.len());
     assert_eq!(r.to_string_lossy(), big);

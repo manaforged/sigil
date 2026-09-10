@@ -1,13 +1,3 @@
-//! `todo` — a to-do app that dogfoods Sigil chrome.
-//!
-//! - **GPU menu bar:** File and Edit, styled with `.class`. Native
-//!   `set_menu_bar` is opt-in OS chrome; this example does not use it.
-//! - **File dialogs:** Open… and Save… persist the list as a text file.
-//! - **System tray:** an icon with a tooltip and a Quit menu.
-//!
-//! File → Documentation… calls `sigil::open`. Pure logic is unit-tested
-//! (see the tests below and the `dialog::mock` seam).
-
 mod state;
 mod view;
 
@@ -32,7 +22,6 @@ fn build_root(cx: &mut Cx) -> NodeId {
     cx.add(app_tree(&state))
 }
 
-/// File / Edit actions from the GPU menu bar.
 pub(crate) fn on_menu(state: TodoState, id: &str) {
     match id {
         "new" => state.new_list(),
@@ -65,7 +54,6 @@ pub(crate) fn on_menu(state: TodoState, id: &str) {
     }
 }
 
-/// A tray icon with a tooltip and a Quit context menu.
 fn build_tray() -> Option<TrayIconBuilder> {
     let icon = Icon::from_rgba(accent_icon(), ICON_SIZE, ICON_SIZE).ok()?;
     let quit = PredefinedMenuItem::quit(None);
@@ -81,7 +69,6 @@ fn build_tray() -> Option<TrayIconBuilder> {
 
 const ICON_SIZE: u32 = 32;
 
-/// A solid accent-coloured square for the tray icon.
 fn accent_icon() -> Vec<u8> {
     let pixels = (ICON_SIZE * ICON_SIZE) as usize;
     let mut rgba = Vec::with_capacity(pixels * 4);

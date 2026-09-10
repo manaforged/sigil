@@ -21,7 +21,6 @@ fn scan_returns_empty_for_empty_pattern() {
 
 #[test]
 fn scan_returns_err_for_invalid_pattern() {
-    // Unbalanced bracket — the regex crate rejects this.
     let err = scan("[unclosed", "anything").expect_err("invalid pattern must error");
     assert!(!err.is_empty(), "error string should carry diagnostic text");
 }
@@ -52,7 +51,6 @@ fn format_matches_handles_empty_list() {
 fn result_label_updates_when_pattern_changes() {
     Runtime::scope("regex-result-label", || {
         let state = RegexState::new();
-        // Default: "\w+" against "hello world 123" → 3 matches.
         assert_eq!(state.result_label.get(), "3 matches");
 
         state.pattern.set(String::from(r"\d+"));

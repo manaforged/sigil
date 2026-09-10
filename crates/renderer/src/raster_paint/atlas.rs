@@ -1,17 +1,3 @@
-//! Shelf-packed R8 glyph atlas for the raster text path (DR-055 §1).
-//!
-//! One shared texture per [`super::RasterTextPipeline`], starting at 1024²
-//! and growing once to 2048². Shelf packing is O(1) per glyph: pack
-//! left-to-right along a shelf, start a new shelf when a glyph doesn't fit
-//! the remaining width, grow when a shelf doesn't fit the remaining height.
-//!
-//! No eviction — a real application would need ~10k distinct small-glyph
-//! masks to fill 2048² (DR-055's working-set math), far beyond a realistic
-//! UI. When the atlas is full (already grown once), allocation fails and the
-//! caller falls back to vector Slug for that glyph; a `tracing::warn!` fires
-//! once per process so a real overflow is observable.
-//! ponytail: no eviction — add LRU shelf reuse if a real app fills 2048².
-
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
@@ -20,31 +6,15 @@ use crate::raster::{GlyphMask, RasterKey};
 const INITIAL_ATLAS_SIZE: u32 = 1024;
 const MAX_ATLAS_SIZE: u32 = 2048;
 
-// ---- Wave-3 D3 test hook (docs/plans/2026-07-07-text-quality-and-gap-closure.md) --
-//
-// Process-global override for the atlas's initial/max edge length, in
-// texels. `0` (the default) disables the override and falls back to the
-// real `INITIAL_ATLAS_SIZE`/`MAX_ATLAS_SIZE` constants above. Exists so an
-// integration test can force a growth-boundary or atlas-full crossing with
-// a paragraph of a few dozen glyphs instead of the ~10k a real 2048² atlas
-// would need — see `tests/raster_atlas_growth.rs`.
 static TEST_INITIAL_SIZE: AtomicU32 = AtomicU32::new(0);
 static TEST_MAX_SIZE: AtomicU32 = AtomicU32::new(0);
 
-/// Set (or clear, with `(0, 0)`) the test-only atlas size override. This is
-/// a process global: callers must serialize (`--test-threads=1`) and reset
-/// to `(0, 0)` after use (a `Drop` guard in the test is the safe pattern —
-/// see `tests/raster_atlas_growth.rs`) so later tests see production sizes.
 #[doc(hidden)]
 pub fn set_test_atlas_size_override(initial: u32, max: u32) {
     TEST_INITIAL_SIZE.store(initial, Ordering::Relaxed);
     TEST_MAX_SIZE.store(max, Ordering::Relaxed);
 }
 
-/// Read the current test-only atlas size override.
-///
-/// Exists so [`crate::lock_global_text_state`] can snapshot and restore it;
-/// prefer that guard over calling the setter directly.
 #[must_use]
 pub(crate) fn test_atlas_size_override() -> (u32, u32) {
     (
@@ -67,20 +37,11 @@ fn max_atlas_size() -> u32 {
     }
 }
 
-/// Resolved atlas placement for one cached glyph mask: texel-space rect
-/// plus the pixel geometry the draw path needs to size and offset the quad.
 #[derive(Clone, Copy)]
 pub(super) struct Placement {
-    /// `[x0, y0, x1, y1]` in atlas TEXELS, not normalised. A later glyph in
-    /// the same accumulation can grow the atlas, which would invalidate any
-    /// UV normalised against the pre-growth size — so normalisation happens
-    /// once per draw, after all placements, against the final atlas size
-    /// (see `place_glyphs`).
     pub(super) px: [f32; 4],
-    /// Mask width/height in physical pixels (matches the atlas texel rect).
     pub(super) width: u32,
     pub(super) height: u32,
-    /// Baseline-relative offsets, physical pixels (see `raster::GlyphMask`).
     pub(super) left: i32,
     pub(super) top: i32,
 }
@@ -97,13 +58,9 @@ struct CachedMask {
     rect: AtlasRect,
     left: i32,
     top: i32,
-    /// Retained so a grow can re-upload every cached glyph into the new,
-    /// larger texture without re-rasterizing.
     data: Vec<u8>,
 }
 
-/// Session-wide latch: the atlas-full warning fires once per process, not
-/// once per overflowing glyph.
 static WARNED_ATLAS_FULL: AtomicBool = AtomicBool::new(false);
 
 pub(super) struct RasterAtlas {
@@ -137,14 +94,10 @@ impl RasterAtlas {
         &self.view
     }
 
-    /// Look up an already-placed glyph without rasterizing.
     pub(super) fn get(&self, key: &RasterKey) -> Option<Placement> {
         self.cache.get(key).map(Self::placement)
     }
 
-    /// Place a freshly rasterized `mask` in the atlas and upload it.
-    /// Returns `None` when the atlas is full (already grown once) — the
-    /// caller falls back to vector Slug for this glyph.
     pub(super) fn insert(
         &mut self,
         device: &wgpu::Device,
@@ -181,8 +134,6 @@ impl RasterAtlas {
         }
     }
 
-    /// Current atlas edge length in texels. Read AFTER all placements for a
-    /// draw — growth during accumulation changes it.
     pub(super) const fn size(&self) -> u32 {
         self.size
     }
@@ -233,10 +184,6 @@ impl RasterAtlas {
         Some(rect)
     }
 
-    /// Recreate the texture at double size (capped at [`MAX_ATLAS_SIZE`], or
-    /// the test override — see [`set_test_atlas_size_override`]) and
-    /// re-upload every cached mask. Existing pixel rects stay valid — only
-    /// the canvas grew — so shelf-packer cursor state is untouched.
     fn grow(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let new_size = (self.size * 2).min(max_atlas_size());
         let (texture, view) = create_texture(device, new_size);
@@ -254,10 +201,6 @@ const fn f32_from_u32(v: u32) -> f32 {
     v as f32
 }
 
-/// Upload `data` (tight-packed, `rect.w` bytes per row) one row at a time.
-/// `write_texture` requires `bytes_per_row` to be a multiple of 256 for
-/// multi-row copies; per-row (height = 1) copies are exempt, so this stays
-/// correct for any glyph width without padding the CPU-side buffer.
 fn upload_rows(queue: &wgpu::Queue, texture: &wgpu::Texture, rect: AtlasRect, data: &[u8]) {
     let row_bytes = rect.w as usize;
     for row in 0..rect.h {

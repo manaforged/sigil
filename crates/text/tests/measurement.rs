@@ -1,5 +1,3 @@
-//! Core measurement correctness tests.
-
 #![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use skrifa::instance::{LocationRef, Size};
@@ -70,15 +68,9 @@ fn line_count_is_one_for_short_text() {
     assert_eq!(para.line_count(), 1);
 }
 
-/// UAX #14 glue: a no-break space (U+00A0) must keep its neighbours on
-/// one line even when the same width wraps the ordinary-space version.
-/// The pre-UAX#14 breaker treated U+00A0 as ordinary whitespace and
-/// split it — this is the regression pin for that fix.
 #[test]
 fn nbsp_glues_across_a_wrap_boundary() {
     let e = engine();
-    // Width that comfortably wraps "10 km" but is narrower than the full
-    // run, so the ordinary space is the only thing that can break.
     let full = e.layout_paragraph("10 km", None).unwrap().width();
     let limit = Some(full * 0.6);
 
@@ -97,9 +89,6 @@ fn nbsp_glues_across_a_wrap_boundary() {
     );
 }
 
-/// UAX #14 hyphen: a break is permitted after U+002D, so a hyphenated
-/// run wraps, while the same characters with no hyphen have no soft
-/// break opportunity and overflow on a single line.
 #[test]
 fn hyphen_offers_a_break_but_solid_run_does_not() {
     let e = engine();
@@ -159,9 +148,6 @@ fn styled_font_size_and_line_height_change_metrics() {
     );
 }
 
-/// The baseline must come from the face's real ascent/descent under the
-/// CSS half-leading model, not a fixed fraction of the line box.
-/// Expectation computed independently from the same font bytes via skrifa.
 #[test]
 fn baseline_is_half_leading_plus_real_ascent() {
     const FONT_SIZE: f32 = 16.0;

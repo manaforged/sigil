@@ -1,17 +1,4 @@
-//! Unit tests for the keymap primitive.
-//!
-//! Covers (per the I-T8 dispatch brief):
-//! - `Key::parse` on every modifier + every named key + letters +
-//!   digits + symbols + chord forms (≥10 cases).
-//! - Resolver state machine: single-key → action, chord → action,
-//!   partial-chord → pending, unbound → unbound, context mismatch,
-//!   user-overrides-default conflict.
-//! - Layered config loading: default-only, workspace-override,
-//!   chord-binding, table-form with `when`, parse-error tolerance,
-//!   invalid-key + invalid-value diagnostics, reload, missing user
-//!   dir.
-
-#![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)] // tests
+#![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
@@ -20,8 +7,6 @@ use super::{
     Bindings, ContextSet, Key, KeyCode, Keymap, KeymapDiagnostic, Modifier, Modifiers, NamedKey,
     ParseError, Resolution, Resolver,
 };
-
-// ---- Key::parse ------------------------------------------------------------
 
 #[test]
 fn parse_plain_letter_lowercases() {
@@ -207,8 +192,6 @@ fn display_round_trips_for_modifier_combos() {
     }
 }
 
-// ---- Resolver state machine -----------------------------------------------
-
 fn keys(s: &str) -> Vec<Key> {
     s.split_whitespace()
         .map(|t| Key::parse(t).unwrap())
@@ -264,7 +247,7 @@ fn resolver_context_mismatch_yields_unbound() {
         [Cow::Borrowed("editor"), Cow::Borrowed("focused")],
     );
     let mut ctx = ContextSet::new();
-    ctx.insert("editor"); // missing "focused"
+    ctx.insert("editor");
     let mut r = Resolver::new();
     let out = r.feed(&bindings, &ctx, Key::parse("ctrl-s").unwrap());
     assert_eq!(out, Resolution::Unbound);
@@ -326,8 +309,6 @@ fn resolver_distinct_contexts_select_correct_binding() {
     assert_eq!(out2, Resolution::Action(Cow::Borrowed("modal.dismiss")));
 }
 
-// ---- Config layering -------------------------------------------------------
-
 fn write_workspace_keymap(dir: &Path, body: &str) -> PathBuf {
     let cfg_dir = dir.join(".sigil-ide");
     std::fs::create_dir_all(&cfg_dir).unwrap();
@@ -357,8 +338,6 @@ fn config_workspace_overrides_default() {
     let (keymap, diags) = Keymap::open(tmp.path(), defaults).unwrap();
     assert!(diags.is_empty(), "valid TOML emits no diagnostics");
     let res = Resolver::resolve_sequence(keymap.bindings(), &ContextSet::new(), &keys("ctrl-s"));
-    // The workspace layer is applied last in `flatten` so it overrides
-    // both user and default — verifying transitive precedence.
     assert_eq!(res, Resolution::Action(Cow::Borrowed("buffer.save_as")));
 }
 

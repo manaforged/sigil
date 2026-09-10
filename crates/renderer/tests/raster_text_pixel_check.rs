@@ -1,12 +1,3 @@
-//! Raster glyph-atlas draw-path check — Wave-3 D2 (DR-055).
-//!
-//! Renders a small (12px) string through the real command-scene draw path
-//! (`shape_glyph_run` → `SceneBuilder` → `WgpuRenderer::render_command_scene_offscreen`)
-//! twice: once with [`TextTuning::raster`] on (the new hinted atlas path)
-//! and once with it off (today's default — vector Slug). Both must produce
-//! ink, and the ink must land in roughly the same region — proving the
-//! raster path is actually wired into `draw_glyph_run`'s selection logic,
-//! not just unit-tested in isolation.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -51,8 +42,6 @@ const FONT_SIZE: f32 = 12.0;
 const ORIGIN: (f32, f32) = (10.0, 8.0);
 const TEXT: &str = "Hi there";
 
-/// Renders through the raster path (on) and the vector path (off) and
-/// asserts both produce ink whose bounding boxes substantially overlap.
 #[test]
 fn raster_path_renders_ink_matching_vector_position() {
     let Some(mut renderer) = try_headless_renderer() else {
@@ -74,9 +63,6 @@ fn raster_path_renders_ink_matching_vector_position() {
         "vector path (TextTuning.raster=false) produced no ink at {FONT_SIZE}px"
     );
 
-    // Positional sanity, generous tolerance: hinted-raster and analytic-vector
-    // AA differ pixel-for-pixel, but both lay out the same glyph run from the
-    // same origin — their ink bounding boxes must substantially overlap.
     let overlap = bbox_overlap(&raster.bbox, &vector.bbox);
     println!(
         "raster bbox={:?} vector bbox={:?} overlap={overlap:.3}",
@@ -91,12 +77,7 @@ fn raster_path_renders_ink_matching_vector_position() {
     );
 }
 
-/// Render [`TEXT`] once with `TextTuning.raster` set to `raster`, restoring
-/// the default tuning afterward so this test stays hermetic within its
-/// binary (other `#[test]`s in this file run `--test-threads=1`).
 fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
-    // Serialise + auto-restore the process-global tuning rather than relying
-    // on the caller passing `--test-threads=1`.
     let _guard = sigil_renderer::lock_global_text_state();
     set_text_tuning(TextTuning {
         raster,
@@ -131,8 +112,6 @@ fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
     (pixels, phys_w, phys_h)
 }
 
-/// Build a `CommandScene` the way an embedding host emits text: one glyph
-/// run positioned at [`ORIGIN`], shaped via `shape_glyph_run`.
 fn build_text_scene() -> CommandScene {
     let style = TextStyle {
         font_family: String::from("system-ui"),
@@ -163,8 +142,6 @@ fn build_text_scene() -> CommandScene {
     builder.finish()
 }
 
-// ---- measurement --------------------------------------------------------
-
 #[derive(Debug, Clone, Copy)]
 struct BBox {
     x0: u32,
@@ -178,7 +155,6 @@ struct Measurement {
     bbox: BBox,
 }
 
-/// Luminance threshold (of 255) above which a pixel counts as "ink".
 const INK_THRESHOLD: u8 = 40;
 
 fn measure(pixels: &[u8], width: u32, height: u32) -> Measurement {
@@ -213,7 +189,6 @@ fn measure(pixels: &[u8], width: u32, height: u32) -> Measurement {
     Measurement { has_ink, bbox }
 }
 
-/// Intersection-over-union of two ink bounding boxes.
 fn bbox_overlap(a: &BBox, b: &BBox) -> f32 {
     let ix0 = a.x0.max(b.x0);
     let iy0 = a.y0.max(b.y0);
@@ -232,10 +207,6 @@ fn bbox_overlap(a: &BBox, b: &BBox) -> f32 {
     if union <= 0.0 { 0.0 } else { inter / union }
 }
 
-// ---- wgpu plumbing --------------------------------------------------------
-
-/// Adapter-skip guard: build a headless `WgpuRenderer`, or `None` if this
-/// machine has no adapter (CI runners without a GPU).
 fn try_headless_renderer() -> Option<WgpuRenderer> {
     let mut renderer = WgpuRenderer::new().ok()?;
     renderer.ensure_headless_for_tests().ok()?;

@@ -1,10 +1,3 @@
-//! [`Store`] — the layered settings primitive.
-//!
-//! Layout responsibility split: this file owns the layered-lookup logic
-//! and the public surface. Path resolution and TOML parsing are inlined
-//! here (small enough that splitting into another module would just hide
-//! the call). Watch dispatch lives in [`super::watch`].
-
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -16,32 +9,16 @@ use crate::settings::schema::{Entry, Schema};
 use crate::settings::value::{ErasedValue, SettingValue};
 use crate::settings::watch::{self, Subscription, WatchList};
 
-/// Layered key/value settings store with TOML hot-reload.
-///
-/// Construct with [`Store::open`]. Read keys with [`Store::get`].
-/// Subscribe to changes with [`Store::watch`]. Trigger a re-read with
-/// [`Store::reload`].
 pub struct Store {
     schema: Schema,
     workspace_path: PathBuf,
     user_path: Option<PathBuf>,
-    /// Resolved (post-precedence) value for every schema key. Always
-    /// populated for every registered key — either from a TOML layer or
-    /// from the schema default.
     resolved: HashMap<String, ErasedValue>,
-    /// Per-key watcher list. Lazily inserted on the first
-    /// [`Store::watch`] call.
     watchers: Mutex<HashMap<String, WatchList>>,
     next_sub_id: AtomicU64,
 }
 
 impl Store {
-    /// Open a store rooted at `workspace_root`.
-    ///
-    /// Reads `<workspace_root>/.sigil-ide/settings.toml` and the user
-    /// settings file (platform-specific) synchronously. Missing files
-    /// are treated as empty (not an error). Returns the store plus any
-    /// non-fatal diagnostics produced during the read.
     pub fn open(workspace_root: &Path, schema: Schema) -> io::Result<(Self, Vec<Diagnostic>)> {
         let workspace_path = workspace_root.join(".sigil-ide").join("settings.toml");
         let user_path = user_settings_path();
@@ -57,25 +34,12 @@ impl Store {
         Ok((store, diags))
     }
 
-    /// Look up `key`. Returns the resolved value cast to `T`, or `None`
-    /// if `T` doesn't match the schema-declared type (i.e. the caller
-    /// asked for the wrong type).
-    ///
-    /// Keys not in the schema always return `None`. Keys in the schema
-    /// always have a resolved value — the schema default if no layer set
-    /// it.
     #[must_use]
     pub fn get<T: SettingValue>(&self, key: &str) -> Option<T> {
         let erased = self.resolved.get(key)?;
         erased.downcast_ref::<T>().cloned()
     }
 
-    /// Subscribe to changes for `key`. The callback fires whenever the
-    /// resolved value for `key` changes after a [`Store::reload`].
-    ///
-    /// Dropping the returned [`Subscription`] unsubscribes. Callbacks
-    /// must not call [`Store::watch`] back for the same store from
-    /// inside the callback — doing so deadlocks the per-key watch list.
     pub fn watch<F>(&self, key: &str, on_change: F) -> Subscription
     where
         F: Fn(&Diagnostic) + Send + 'static + Sync,
@@ -94,12 +58,6 @@ impl Store {
         }
     }
 
-    /// Re-read both TOML layers and re-resolve every schema key.
-    ///
-    /// Callbacks registered via [`Store::watch`] fire for every key
-    /// whose resolved value changed. Callbacks fire after the resolve
-    /// table is fully updated, so a callback reading [`Store::get`] sees
-    /// the new value.
     pub fn reload(&mut self) -> io::Result<Vec<Diagnostic>> {
         let prior = std::mem::take(&mut self.resolved);
         let diags = self.reload_resolved()?;
@@ -107,8 +65,6 @@ impl Store {
         self.fire_change_callbacks(&changed);
         Ok(diags)
     }
-
-    // ---- internals ----
 
     fn reload_resolved(&mut self) -> io::Result<Vec<Diagnostic>> {
         let mut diags = Vec::new();
@@ -127,7 +83,6 @@ impl Store {
             );
             self.resolved.insert(key.clone(), resolved);
         }
-        // Surface unknown-keys for any TOML key not in the schema.
         if let Some(table) = workspace_raw.as_ref() {
             collect_unknown(table, &self.schema, &self.workspace_path, &mut diags);
         }
@@ -163,10 +118,6 @@ impl Store {
                 key,
                 where_: PathBuf::new(),
             };
-            // The `Diagnostic` parameter to user callbacks is a coarse
-            // change-notification token rather than a literal error.
-            // It carries the key name so the same callback can subscribe
-            // to multiple keys and dispatch on `diag.key()`.
             watch::fire(&list, &diag);
         }
     }
@@ -177,9 +128,6 @@ fn read_toml_layer(path: &Path, diags: &mut Vec<Diagnostic>) -> io::Result<Optio
         Ok(text) => match toml::from_str::<toml::Table>(&text) {
             Ok(table) => Ok(Some(table)),
             Err(e) => {
-                // Surface as a synthetic UnknownKey diagnostic at file
-                // scope rather than killing the load. Editors usually
-                // want to keep running on a half-broken config.
                 diags.push(Diagnostic::UnknownKey {
                     key: format!("<parse error: {e}>"),
                     where_: path.to_path_buf(),
@@ -285,11 +233,6 @@ fn collect_changed_keys(
     changed
 }
 
-/// Best-effort pointer-equality on `Arc<dyn Any>`. Two resolved values
-/// from the same TOML read share an Arc; values built from different
-/// layers do not. The corner case (workspace and user TOMLs both set
-/// the same key to the same literal in a reload-no-op) would falsely
-/// fire callbacks, but the cost is one redundant fire — acceptable.
 fn erased_eq(a: &ErasedValue, b: &ErasedValue) -> bool {
     Arc::ptr_eq(a, b) || erased_typed_eq(a, b)
 }

@@ -1,5 +1,3 @@
-//! Right rail: uncommitted changes.
-
 use sigil::prelude::*;
 
 use crate::state::Shell;

@@ -1,12 +1,3 @@
-//! user state-overlay merging on widgets.
-//!
-//! Driving `.hover(|s| s.bg(error_9))` on a button should override the
-//! widget's default hover bg with `error_9` at runtime. The button's
-//! `into_node_builder` drains the user's state overlays from the
-//! `Style` accumulator and merges them into the widget's
-//! `StyleVariant`; the renderer's last-atom-wins resolution then
-//! lets user atoms beat widget atoms per property.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -59,21 +50,6 @@ const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-// NOTE: live hover/pressed render-comparison is tracked separately
-// — the transition animator currently intercepts bg color resolution
-// and interpolates from its baked source/target. After this commit's
-// `variant.merge_overlay(user)` change the animator IS aware of the
-// merged state slot, but the per-frame interpolation may still hold a
-// non-user color when the test reads colors immediately after the
-// pointer event. The structural merge below proves the StateStyle path;
-// the live integration acceptance test goes in `state_overlay_button_live`.
-
-// NOTE: the `disabled` name collision is resolved (5/5 Wave 1, D-U2):
-// the behavioral form keeps `.disabled(Signal<bool>)` (the common call,
-// and the one rustc's inherent-method preference already picked), and
-// the style-closure form is `.disabled_style(|s| ...)` on StateVariants.
-// This codifies in the API what method resolution was already doing.
-
 #[test]
 fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
     sigil::reactive::Runtime::scope("ds2-button-pressed-overlay", || {
@@ -81,9 +57,7 @@ fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
         let ruby_10 = ruby_light().step(10);
         let root = cx.add(button("Delete").pressed(|s| s.bg(ruby_10)));
         let layout = compute(&mut cx, root);
-        // Drive into hover, then press.
         let mut router = EventRouter::new();
-        // Hug button is 62x28 at the origin; click its centre.
         router.route(&mut cx, &layout, pointer_move_event(31.0, 14.0));
         router.route(
             &mut cx,
@@ -113,7 +87,6 @@ fn button_user_rest_overlay_overrides_widget_rest_bg() {
     sigil::reactive::Runtime::scope("ds2-button-rest-overlay", || {
         let mut cx = Cx::new_root();
         let ruby_3 = ruby_light().step(3);
-        // No interaction event — pure rest state.
         let root = cx.add(button("Cancel").rest(|s| s.bg(ruby_3)));
         compute(&mut cx, root);
 
@@ -130,8 +103,6 @@ fn button_user_rest_overlay_overrides_widget_rest_bg() {
 fn button_destructive_sugar_matches_solid_error_tone() {
     sigil::reactive::Runtime::scope("ds2-5-button-destructive", || {
         let mut cx = Cx::new_root();
-        // `.destructive()` is sugar for `.solid().tone(Tone::Error)`
-        // — both paths must paint the same error-9 background.
         let root = cx.add(button("Delete").destructive());
         compute(&mut cx, root);
 
@@ -149,9 +120,6 @@ fn button_destructive_sugar_matches_solid_error_tone() {
 fn button_solid_error_tone_paints_error_scale_step_9() {
     sigil::reactive::Runtime::scope("ds2-5-button-tone-error", || {
         let mut cx = Cx::new_root();
-        // The the overlay slot destructive-button canonical pattern — solid
-        // variant + Tone::Error resolves through the theme's error
-        // scale at step 9 (Radix solid).
         let root = cx.add(button("Delete").solid().tone(Tone::Error));
         compute(&mut cx, root);
 
@@ -171,9 +139,6 @@ fn button_without_overlay_keeps_widget_defaults() {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root);
-        // Default button is soft + neutral — the raised-control slot at
-        // step 4 of the gray scale, one step above the step-3 element
-        // rest.
         let gray_4 = slate_light().step(4);
         let colors = rect_colors(&cx, root);
         assert!(

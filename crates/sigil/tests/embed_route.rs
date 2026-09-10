@@ -1,8 +1,5 @@
 #![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
-//! `Host::route` and `Host::painted` through the public facade.
-//! Layout, not `scene`: this path does not need feature `render`.
-
 use std::cell::Cell;
 use std::rc::Rc;
 

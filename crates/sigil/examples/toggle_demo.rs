@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Toggle widget demo — on/off and disabled states.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

@@ -1,9 +1,3 @@
-//! Gap 24(b): `ellipsize()` implies clip-to-box — an ellipsized run that
-//! still exceeds its layout box (a bare `…` wider than the box, or a box
-//! shorter than one line) paints clipped to the box. Non-ellipsized text
-//! keeps the historic overflow-visible behaviour and emits no clip, so
-//! scenes without ellipsis are untouched.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -16,9 +10,6 @@ use sigil_renderer::SceneCommand;
 
 const LONG: &str = "an over-long single-line value that cannot fit a ninety-six pixel box";
 
-/// Build a 200x40 root holding `cell`, lay it out with the real text
-/// engine, emit the scene, and report the clip active when the cell's
-/// glyph run was emitted plus the cell's layout rect.
 fn clip_for(cell: TextBuilder) -> (Option<sigil_hal::Rect>, sigil_hal::Rect) {
     let mut out = (
         None,

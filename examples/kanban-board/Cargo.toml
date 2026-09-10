@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "Tier-5 kitchen-sink kanban app exercising modal + tabs + splitter + virtual_list + text_field."
+description = "Kanban board exercising modal + tabs + splitter + virtual_list + text_field."
 
 [[bin]]
 name = "kanban-board"

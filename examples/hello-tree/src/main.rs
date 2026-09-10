@@ -1,6 +1,3 @@
-//! Headless sigil-kernel tree example.
-
-// Example prints its tree to stdout by design.
 #![allow(clippy::print_stdout)]
 
 use sigil_kernel::prelude::*;

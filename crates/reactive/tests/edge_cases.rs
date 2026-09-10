@@ -2,24 +2,12 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Edge-case behaviour tests beyond the DR-005 happy paths.
-//!
-//! Each test asserts a specific contract that is easy to break by
-//! accident in future changes: dependency tracking under control
-//! flow, batched coalescing under nesting, disposal cascades across
-//! multiple owner levels, type isolation, re-entrant updates, and
-//! the safe / unsafe boundary for calling reactive ops inside a
-//! `Signal::update` closure.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil_reactive::{Owner, Runtime, batch, effect, on_cleanup, signal};
-
-// ----- subscription mechanics -----
 
 #[test]
 fn multiple_subscribers_to_same_signal_all_fire() {
@@ -43,10 +31,6 @@ fn multiple_subscribers_to_same_signal_all_fire() {
 
 #[test]
 fn diamond_dependency_propagates_through_intermediate_signal() {
-    // Source signal feeds a derived-style intermediate (an effect
-    // that writes another signal), which in turn feeds a sink.
-    // Once derived() lands in Phase 1.1b, this same shape becomes
-    // the canonical diamond test.
     Runtime::scope("diamond", || {
         let src = signal(1_i32);
         let mid = signal(0_i32);
@@ -80,23 +64,18 @@ fn conditional_dependencies_are_cleared_between_runs() {
         }
         assert_eq!(last.get(), 1);
 
-        // b is not currently subscribed — write should be a no-op.
         b.set(200);
         assert_eq!(last.get(), 1);
 
-        // a is subscribed — write should fire the effect.
         a.set(2);
         assert_eq!(last.get(), 2);
 
-        // Flip cond, re-runs the effect with b's branch active.
         cond.set(false);
         assert_eq!(last.get(), 200);
 
-        // Now a should be inactive.
         a.set(99);
         assert_eq!(last.get(), 200);
 
-        // And b should be active.
         b.set(300);
         assert_eq!(last.get(), 300);
     });
@@ -112,7 +91,6 @@ fn effect_with_zero_deps_runs_once_and_never_again() {
         }
         assert_eq!(runs.get(), 1);
 
-        // Unrelated signal write should not re-run the effect.
         let n = signal(0_i32);
         n.set(1);
         n.set(2);
@@ -154,10 +132,6 @@ fn signals_of_different_types_dont_conflate() {
 
 #[test]
 fn set_with_same_value_does_not_fire_effects() {
-    // `set` equality-checks writes: an equal value is a no-op (no
-    // notify, no frame dirty). `set_always` keeps the fire-anyway
-    // path for values whose equality is identity or whose effects
-    // must run regardless.
     Runtime::scope("set_same_value", || {
         let n = signal(7_i32);
         let runs = Rc::new(Cell::new(0_u32));
@@ -177,8 +151,6 @@ fn set_with_same_value_does_not_fire_effects() {
         assert_eq!(runs.get(), 2, "set_always always fires");
     });
 }
-
-// ----- batching -----
 
 #[test]
 fn nested_batch_drains_only_on_outer_exit() {
@@ -200,12 +172,9 @@ fn nested_batch_drains_only_on_outer_exit() {
                 n.set(2);
                 n.set(3);
             });
-            // Inner batch finished, but we are still in the outer
-            // batch — no re-run yet.
             assert_eq!(runs.get(), 1);
             n.set(4);
         });
-        // Outer batch exited — exactly one re-run.
         assert_eq!(runs.get(), 2);
         assert_eq!(n.peek(), 4);
     });
@@ -240,8 +209,6 @@ fn empty_batch_is_noop() {
     });
 }
 
-// ----- update closure -----
-
 #[test]
 fn update_observes_current_value_and_writes_back() {
     Runtime::scope("update_observe", || {
@@ -259,9 +226,6 @@ fn update_observes_current_value_and_writes_back() {
 
 #[test]
 fn update_can_call_back_into_other_signals() {
-    // update() releases the runtime borrow before calling f, so f
-    // is free to read or write OTHER signals. This is the bug fix
-    // verified.
     Runtime::scope("update_callback", || {
         let n = signal(0_i32);
         let other = signal(100_i32);
@@ -281,8 +245,6 @@ fn update_re_entry_on_same_signal_panics() {
             let n = signal(0_i32);
             n.update(|v| {
                 *v = 1;
-                // Calling update on n from within n.update should
-                // panic with an actionable message.
                 n.update(|w| *w = 2);
             });
         });
@@ -306,8 +268,6 @@ fn get_on_self_during_own_update_panics() {
         "peek on self during own update closure must panic"
     );
 }
-
-// ----- owner tree -----
 
 #[test]
 fn nested_owner_re_entry_restores_outer_owner() {
@@ -352,15 +312,12 @@ fn double_dispose_is_noop() {
     Runtime::scope("double_dispose", || {
         let owner = Owner::new("doomed", Owner::current());
         owner.dispose();
-        owner.dispose(); // must not panic
+        owner.dispose();
     });
 }
 
 #[test]
 fn cleanup_can_read_signals_in_outer_scope() {
-    // Cleanup runs after the disposing owner's children are gone
-    // but before its own signals are invalidated. Signals belonging
-    // to outer scopes must remain readable.
     Runtime::scope("cleanup_reads_sibling", || {
         let counter = signal(0_i32);
         let cleanup_saw = Rc::new(Cell::new(-1));
@@ -393,8 +350,6 @@ fn multiple_cleanups_in_one_owner_run_lifo() {
     });
 }
 
-// ----- scheduling chains -----
-
 #[test]
 fn effect_writing_to_unrelated_signal_chains_to_other_effects() {
     Runtime::scope("indirect_chain", || {
@@ -402,10 +357,8 @@ fn effect_writing_to_unrelated_signal_chains_to_other_effects() {
         let target = signal(0_i32);
         let saw = Rc::new(Cell::new(-1));
 
-        // Effect A: reads trigger, writes target.
         effect(move || target.set(trigger.get() * 2));
 
-        // Effect B: reads target.
         let saw_for = Rc::clone(&saw);
         effect(move || saw_for.set(target.get()));
 
@@ -425,11 +378,7 @@ fn mutual_recursion_through_separate_effects_panics() {
             let a = signal(0_i32);
             let b = signal(0_i32);
 
-            // Effect 1: a -> writes b.
             effect(move || b.set(a.get() + 1));
-            // Effect 2: b -> writes a. This re-fires effect 1
-            // through a's subscription, and effect 1 is currently
-            // running — cycle.
             effect(move || a.set(b.get() + 1));
         });
     });
@@ -451,15 +400,11 @@ fn mutual_recursion_through_separate_effects_warns_and_skips_in_release() {
     });
 }
 
-// ----- handle identity -----
-
 #[test]
 fn signal_handles_are_distinct_per_construction() {
     Runtime::scope("distinct_signals", || {
         let a = signal(1_i32);
         let b = signal(1_i32);
-        // Both hold the same value but the handles are not equal
-        // (they index different arena slots).
         a.set(99);
         assert_eq!(a.get(), 99);
         assert_eq!(b.get(), 1, "b should be unaffected by a's writes");

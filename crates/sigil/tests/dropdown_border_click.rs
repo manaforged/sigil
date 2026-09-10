@@ -2,13 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pointer routing over the dropdown trigger's 1 px rest frame.
-//!
-//! The frame is part of the hit surface: a click landing exactly on
-//! the border must toggle the popup just like an interior click, and
-//! an interior click must toggle exactly once (`release_pointer`
-//! consumes the press, so the frame's mirrored handler cannot
-//! double-fire).
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -94,8 +87,6 @@ fn frame_click(
     }
 }
 
-/// Glyph runs visible in the scene — 1 when closed (trigger label),
-/// 1 + option count when the popup is open.
 fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
     compute(cx, root);
     emit_scene(cx, root)
@@ -160,8 +151,6 @@ fn border_click_toggles_popup_open_and_closed() {
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
-        // (0.5, 20) sits inside the 1 px frame, outside the padded
-        // interior node — the exact dead zone from the gate finding.
         click(&mut router, &mut cx, &layout, 0.5, 20.0);
         recompute(&mut cx, root, &mut layout);
         let open = glyph_runs(&mut cx, root);
@@ -177,9 +166,6 @@ fn border_click_toggles_popup_open_and_closed() {
     });
 }
 
-/// A `disabled` flip between pointer-down and pointer-up must veto
-/// activation on release — for the frame path AND the interior path
-///.
 fn mid_gesture_disable_vetoes_release(scope: &'static str, x: f32, y: f32) {
     sigil::reactive::Runtime::scope(scope, || {
         let disabled = signal(false);
@@ -208,9 +194,6 @@ fn mid_gesture_disable_vetoes_border_release() {
     mid_gesture_disable_vetoes_release("dd-disable-border", 0.5, 20.0);
 }
 
-/// The keyboard open path must honor a reactive disable too: focus
-/// while enabled, flip `disabled`, `ArrowDown` must not open the popup
-///.
 #[test]
 fn reactive_disable_vetoes_arrow_down_open() {
     sigil::reactive::Runtime::scope("dd-disable-arrow", || {
@@ -260,8 +243,6 @@ fn interior_click_toggles_exactly_once() {
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
-        // A double-fire (inner handler + frame handler) would toggle
-        // open then immediately closed again.
         click(&mut router, &mut cx, &layout, 100.0, 20.0);
         recompute(&mut cx, root, &mut layout);
         assert_eq!(
@@ -290,7 +271,6 @@ fn trigger_reopens_after_selecting_an_option() {
 
         click(&mut router, &mut cx, &layout, 100.0, 20.0);
         recompute(&mut cx, root, &mut layout);
-        // y=74 is the midpoint of option row 1 (popup top 32 + 28 + 14).
         click(&mut router, &mut cx, &layout, 100.0, 74.0);
         recompute(&mut cx, root, &mut layout);
         assert_eq!(selected.get(), 1, "second option must be selected");
@@ -333,7 +313,6 @@ fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
             &mut layout,
             Point::new(100.0, 20.0),
         );
-        // y=74 is the midpoint of option row 1 (popup top 32 + 28 + 14).
         frame_click(
             &mut router,
             &mut cx,

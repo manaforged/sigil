@@ -1,5 +1,3 @@
-//! Layout engine records profiler counters on compute.
-
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -16,12 +14,8 @@ use sigil_profile::{disable, enable, frames, reset, tick_frame};
 use sigil_reactive::{Runtime, derived, signal};
 use sigil_style::NodeStyleExt;
 
-/// The profiler is one global recorder. Two tests enabling, resetting, and
-/// reading it at once read each other's frames, so the ones that touch it
-/// take this in turn.
 static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
-/// Hold the recorder for the rest of the test, panic or not.
 fn alone() -> std::sync::MutexGuard<'static, ()> {
     RECORDER
         .lock()

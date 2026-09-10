@@ -2,27 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pixel-verification test for Phase R8 icon baker (SVG → MonoSprite).
-//!
-//! Renders the R8 icon showcase scene via the offscreen capture path, reads back
-//! raw RGBA8 bytes (no PNG roundtrip), and asserts four spatial + colour contracts:
-//!
-//! 1. Each icon's center pixel is tinted correctly (RGB within ±30 of the supplied
-//!    tint colour; alpha > 200).
-//! 2. Each icon's far corner (10 px inside the top-left of the dest rect) composites
-//!    back to the clear colour, proving the baked alpha-mask is transparent outside
-//!    the glyph shape.
-//! 3. The "x" icon (index 4) has a sharp alpha transition across a 5-pixel horizontal
-//!    band, proving the bake produces a resolution-independent edge, not a blurry raster.
-//! 4. The "heart" and "x" icons produce distinct alpha fingerprints — their per-icon
-//!    alpha sums differ by ≥ 5% of the theoretical maximum — proving the baker
-//!    produces unique output per distinct SVG source.
-//!
-//! This file will not compile until the implementer's R8 work lands (`scenes::icon()`
-//! + `SpritePipeline::register_icon`). That is expected. Once it lands, all four
-//! assertions must pass or the pixel-test contract defined in phase-R8-icon-baker.md
-//! is violated.
-//!
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -40,28 +19,14 @@ mod support;
 
 use support::{abs_diff, create_capture_texture, pixel_rgba, read_pixels, try_request_device};
 
-// Physical scale factor. Viewport 1024 × scale 1 = 1024 px — well under the
-// 2048 px downlevel texture-dimension cap.
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
-// Clear colour as sRGB-encoded u8 components. Color::rgba(0.05, 0.06, 0.09, 1.0)
-// in sRGB: 0.05^(1/2.2) ≈ 0.243 → 62? No — sRGB encodes linear 0.05 as
-// ~0.05 * 255 ≈ 13 for the *stored* sRGB byte when the texture format is
-// Rgba8UnormSrgb and wgpu performs the linear→sRGB conversion on write.
-// Linear 0.05 → sRGB ≈ 0.2492 → 63; 0.06 → 0.2673 → 68; 0.09 → 0.3254 → 83.
-// We use a ±12 tolerance in the corner assertion to absorb rounding.
 const CLEAR_R_SRGB: u8 = 63;
 const CLEAR_G_SRGB: u8 = 68;
 const CLEAR_B_SRGB: u8 = 83;
 const CLEAR_TOL: u8 = 12;
 
-// Icon layout — dest rects as (x, y, w, h) logical pixels, matching scenes::icon().
-// Icon 0 "heart"       tint (220,  80,  80)
-// Icon 1 "gear"        tint (200, 200, 220)
-// Icon 2 "search"      tint (100, 220, 140)
-// Icon 3 "arrow-right" tint (230, 200, 100)
-// Icon 4 "x"           tint (220, 100, 220)
 const ICONS: [(f32, f32, f32, f32, [u8; 3]); 5] = [
     (40.0, 80.0, 128.0, 128.0, [220, 80, 80]),
     (208.0, 80.0, 128.0, 128.0, [200, 200, 220]),
@@ -70,14 +35,10 @@ const ICONS: [(f32, f32, f32, f32, [u8; 3]); 5] = [
     (712.0, 80.0, 128.0, 128.0, [220, 100, 220]),
 ];
 
-// Tolerance per channel for tint-match assertion (§ pixel-test contract item 1).
 const TINT_TOL: u8 = 30;
 
-// Minimum alpha for the "center is inside the icon shape" check.
 const CENTER_ALPHA_MIN: u8 = 200;
 
-/// Render the R8 icon scene and assert the four pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn icon_pixels_match_tint_shape_sharpness_and_uniqueness_contracts() {
@@ -95,11 +56,7 @@ fn icon_pixels_match_tint_shape_sharpness_and_uniqueness_contracts() {
     assert_heart_and_x_fingerprints_differ(&pixels, phys_w);
 }
 
-// ---- render -----------------------------------------------------------------
-
 fn render_icon_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
-    // scenes::icon() is provided by the implementer; locked API returns
-    // (CommandScene, (f32, f32) viewport, Color clear).
     let (command_scene, viewport, clear) = sigil_renderer::scenes::icon();
 
     let phys_w = (viewport.0 * SCALE as f32) as u32;
@@ -127,17 +84,6 @@ fn render_icon_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     read_pixels(device, queue, &texture, phys_w, phys_h)
 }
 
-// ---- assertion 1: each icon paints at least one tinted opaque pixel ---------
-
-/// Lucide icons are 2-px strokes, not filled silhouettes, so the geometric
-/// centre of any given icon may be hollow (heart outline, gear ring, search
-/// lens). The pixel-test contract proves "the baker tints correctly" by
-/// scanning the entire icon rect and asserting that at least one pixel has
-/// alpha ≥ `CENTER_ALPHA_MIN` AND RGB within `TINT_TOL` of the supplied tint.
-///
-/// This is strictly stronger than a centre-pixel probe: it survives any future
-/// asset swap (Heroicons-solid, custom stroke geometry) without re-targeting
-/// sample points per icon.
 fn assert_icon_centers_are_tinted(pixels: &[u8], phys_w: u32) {
     for (i, &(rx, ry, rw, rh, tint)) in ICONS.iter().enumerate() {
         let x0 = rx as u32;
@@ -176,15 +122,6 @@ fn assert_icon_centers_are_tinted(pixels: &[u8], phys_w: u32) {
     }
 }
 
-// ---- assertion 2: icon corners composite to clear colour --------------------
-
-/// For each icon, sample 10 px inside the top-left corner of the dest rect.
-/// The baked alpha mask should be ~0 there (outside the glyph contour), so
-/// the rendered pixel must composite back to the clear colour.
-///
-/// The clear colour in sRGB encoding is approximately (63, 68, 83). We allow
-/// ±12 per channel to absorb sRGB gamma rounding and any sub-pixel bleed from
-/// a bilinear atlas fetch.
 fn assert_icon_corners_are_clear_colour(pixels: &[u8], phys_w: u32) {
     for (i, &(rx, ry, _rw, _rh, _tint)) in ICONS.iter().enumerate() {
         let px = (rx + 10.0) as u32;
@@ -208,22 +145,6 @@ fn assert_icon_corners_are_clear_colour(pixels: &[u8], phys_w: u32) {
     }
 }
 
-// ---- assertion 3: "x" icon edge is sharp ------------------------------------
-
-/// Scans a horizontal band crossing one diagonal of the "x" icon at
-/// `y = center_y + 16` and asserts that the icon's R channel cleanly rises
-/// from the clear-colour baseline (≈ 63) to the tint (220) over a narrow
-/// transition.
-///
-/// The framebuffer alpha is always 255 (the offscreen target clears to an
-/// opaque colour and PREMULTIPLIED_ALPHA_BLENDING preserves dst.a). The actual
-/// "icon is present here" signal lives in RGB — at a stroked pixel R = tint.r,
-/// at an empty pixel R = clear.r. Sharp-edge proof is that the transition
-/// between those two states spans ≤ 3 pixels.
-///
-/// Picking `y = center_y + 16` (~viewBox y = 15) places the scan well inside
-/// the stroke of the diagonal "M6 6 18 18", which crosses x at viewBox x = 15
-/// (dest x ≈ rect.x + 80).
 fn assert_x_icon_edge_is_sharp(pixels: &[u8], phys_w: u32) {
     let (rx, ry, _rw, rh, tint) = ICONS[4];
     let scan_y = (ry + rh / 2.0 + 16.0) as u32;
@@ -272,21 +193,13 @@ fn assert_x_icon_edge_is_sharp(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 4: distinct icons have distinct alpha fingerprints ------------
-
-/// Compute the per-icon alpha fingerprint for "heart" (icon 0) and "x" (icon 4)
-/// by summing all alpha bytes inside each icon's physical dest rect.
-///
-/// The two sums must differ by ≥ 5% of the theoretical maximum per icon
-/// (rect_pixel_count × 255). This proves the baker produces unique alpha masks
-/// for distinct SVG sources, not a single baked-once output replicated to every slot.
 fn assert_heart_and_x_fingerprints_differ(pixels: &[u8], phys_w: u32) {
     let count_heart = stroked_pixel_count(pixels, phys_w, ICONS[0]);
     let count_x = stroked_pixel_count(pixels, phys_w, ICONS[4]);
 
     let (rw, rh) = (ICONS[0].2 as u64, ICONS[0].3 as u64);
     let max_count = rw * rh;
-    let threshold = max_count / 50; // 2% of rect area
+    let threshold = max_count / 50;
 
     let diff = count_heart.abs_diff(count_x);
     assert!(
@@ -298,11 +211,6 @@ fn assert_heart_and_x_fingerprints_differ(pixels: &[u8], phys_w: u32) {
     );
 }
 
-/// Count pixels inside `icon`'s rect whose R channel is more than `CLEAR_TOL`
-/// away from `CLEAR_R_SRGB` — a proxy for "this pixel is part of the icon's
-/// stroke" since the framebuffer alpha is always 255 (opaque clear). Distinct
-/// SVG geometries produce distinct counts even when both have alpha = 255
-/// across the composited rect.
 fn stroked_pixel_count(pixels: &[u8], phys_w: u32, icon: (f32, f32, f32, f32, [u8; 3])) -> u64 {
     let (rx, ry, rw, rh, _) = icon;
     let x0 = rx as u32;

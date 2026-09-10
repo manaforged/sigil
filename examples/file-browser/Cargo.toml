@@ -7,7 +7,7 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 publish = false
-description = "Dogfooding example: multi-pane mock file browser composing splitter + virtual_list + tabs."
+description = "Multi-pane mock file browser composing splitter + virtual_list + tabs."
 
 [[bin]]
 name = "file-browser"

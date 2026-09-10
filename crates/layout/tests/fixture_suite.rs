@@ -197,14 +197,9 @@ fn absolute_child_uses_inset_offset() {
     assert_close(result.y, 50.0);
 }
 
-/// Fragment children should appear as direct siblings of the fragment's parent,
-/// meaning they receive the same gap spacing as real children of that parent.
 #[test]
 fn fragment_children_treated_as_siblings_of_parent() {
     let mut cx = Cx::new_root();
-    // root (flex-column, gap=4) contains: text("A"), fragment { text("B"), text("C") }
-    // After flattening the fragment, layout sees three siblings: A, B, C.
-    // B should start at ~20px (height of A + 4px gap), C at ~44px (20+4+16+4).
     let root = cx.add(
         container()
             .child(text("A"))
@@ -222,7 +217,6 @@ fn fragment_children_treated_as_siblings_of_parent() {
         .compute(&mut cx, root, Size::max_content())
         .expect("compute succeeds");
 
-    // Collect the three text nodes from the tree.
     let root_children: Vec<_> = cx.get(root).expect("root").children().to_vec();
     let text_a = root_children.first().copied().expect("text A");
     let frag = root_children.get(1).copied().expect("fragment node");
@@ -234,12 +228,9 @@ fn fragment_children_treated_as_siblings_of_parent() {
     let result_b = result_for(&cx, text_b);
     let result_c = result_for(&cx, text_c);
 
-    // A is at the top.
     assert_close(result_a.rect().origin.y, 0.0);
-    // B is one text-height + gap below A.
     let b_expected_y = result_a.rect().height + 4.0;
     assert_close(result_b.rect().origin.y, b_expected_y);
-    // C is one text-height + gap below B.
     let c_expected_y = b_expected_y + result_b.rect().height + 4.0;
     assert_close(result_c.rect().origin.y, c_expected_y);
 }

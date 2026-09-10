@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Owned-engine vs Taffy comparison - `wide_tree` scene from Taffy's
-//! published bench corpus.
-//!
-//! Run with `cargo bench -p sigil-layout --bench taffy_corpus_wide_tree`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -21,8 +16,6 @@ use sigil_hal::{LogicalSize, Size};
 use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
 use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use taffy::prelude::*;
-
-// allow unused dev-dep extern crates per repo convention
 
 const ROOT_WIDTH: f32 = 12_800.0;
 const ROOT_HEIGHT: f32 = 100.0;
@@ -66,8 +59,6 @@ fn taffy_fixed_style(
     }
 }
 
-// === owned engine ===
-
 fn build_owned_wide_tree(cx: &mut Cx) -> NodeId {
     let mut root = container().layout(LayoutStyle::flex_row().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
     for _ in 0..CHILDREN {
@@ -107,8 +98,6 @@ fn bench_owned_wide_tree(c: &mut Criterion) {
         });
     });
 }
-
-// === taffy directly ===
 
 fn build_taffy_wide_tree(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
     let mut children = Vec::with_capacity(CHILDREN);

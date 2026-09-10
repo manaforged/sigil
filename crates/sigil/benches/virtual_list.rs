@@ -2,13 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Virtual list — GPUI `uniform_list` parity bench.
-//!
-//! This bench drives the real `virtual_list(items, render)` widget API.
-//! The 100,000-row data source is built in `iter_batched` setup or kept
-//! warm outside the measured scroll loop; the timed work is per-frame
-//! widget tree construction into a fresh `Cx` plus one layout pass.
-
 #![allow(
     missing_docs,
     dead_code,

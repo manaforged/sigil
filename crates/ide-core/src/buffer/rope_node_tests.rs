@@ -25,6 +25,5 @@ fn build_from_leaves_balances() {
     let leaves = leaves_from_str(&s);
     let root = build_from_leaves(leaves);
     assert_eq!(root.len_bytes(), s.len());
-    // Depth grows logarithmically in BRANCH_MAX; should be < 5.
     assert!(root.depth() < 5);
 }

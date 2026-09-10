@@ -3,15 +3,10 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests keep assertions direct; panics and indexing make
-// topology failures much easier to read than hand-rolled match noise.
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil_kernel::{Cx, NodeType, Role, container, text};
 
-// Single smoke test that covers root, children, nesting, text content,
-// and dump_tree in one pass. Sequential assertions naturally raise the
-// cognitive-complexity score above the per-function threshold.
 #[allow(clippy::cognitive_complexity)]
 #[test]
 fn builds_expected_tree_shape() {

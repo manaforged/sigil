@@ -2,17 +2,8 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! IME composition tests for the multi-line `text_edit` widget.
-//!
-//! Mirrors `text_field_ime.rs` — same event-routing shape, same
-//! preedit/commit/cancel/disable coverage — adapted for a multi-line
-//! buffer: the caret-anchor test proves the published anchor's `top`
-//! reflects the caret's *line*, not just its byte offset, and that a
-//! commit lands at the right position mid-buffer (not just appended).
-
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
-// The geometry stub uses simple px↔byte casts; precision is irrelevant in tests.
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -34,10 +25,6 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Deterministic multi-line geometry: 10px per column, 16px per line —
-/// `top` is derived from the number of `\n`s before `byte`, so a caret
-/// on line 2 reports a distinct `top` from line 0 (real line-aware
-/// behaviour, unlike a flat single-line stub).
 struct StubGeometry;
 
 impl TextGeometry for StubGeometry {
@@ -84,9 +71,6 @@ fn text_edit_preedit_displays_inline() {
     });
 }
 
-/// Commit inserts at the caret on line 2 of a 3-line buffer, proving
-/// (a) mid-buffer insertion (not append), and (b) the published caret
-/// anchor's `top` reflects the caret's line, not just x.
 #[test]
 fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
     sigil::reactive::Runtime::scope("text-edit-ime-line2-commit", || {
@@ -99,8 +83,6 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
 
-        // Buffer caret starts at end (byte 11); walk it back to byte 4
-        // (right after "aaa\n", the start of line 2) with 7 ArrowLefts.
         for _ in 0..7 {
             router.route(&mut cx, &layout, arrow_left());
         }
@@ -113,7 +95,6 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         let anchor = router
             .ime_caret_rect(&cx, &layout)
             .expect("anchor published while composing on line 2");
-        // top = line*16 (StubGeometry) + CONTENT_PADDING_Y (8.0, MEDIUM-3).
         assert!(
             (anchor.origin.y - 24.0).abs() < 0.01,
             "caret on line 2 (0-indexed line 1) must anchor at top=16.0+8.0 padding, got {}",
@@ -130,9 +111,6 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
     });
 }
 
-/// TE MEDIUM-3: the anchor must track the OS-reported *compose*
-/// cursor within the preedit (`range.1`), not always assume the cursor
-/// sits at the end of the preedit text.
 #[test]
 fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
     sigil::reactive::Runtime::scope("text-edit-ime-preedit-cursor", || {
@@ -145,8 +123,6 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
 
-        // Preedit "ab" with the compose cursor after 'a' (byte 1), not
-        // at the end (byte 2).
         router.route(
             &mut cx,
             &layout,
@@ -156,7 +132,6 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
             .ime_caret_rect(&cx, &layout)
             .expect("anchor published while composing");
 
-        // Same preedit text, cursor now at the end (byte 2).
         router.route(
             &mut cx,
             &layout,
@@ -183,16 +158,10 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
     });
 }
 
-/// a regular (non-IME) multibyte-deleting keystroke
-/// while a preedit is active must not panic — the buffer shrinks under
-/// a caret that was valid for the *old* value but may not be for the
-/// new one, and `value`+`caret` publish through separate signals.
 #[test]
 fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
     sigil::reactive::Runtime::scope("text-edit-ime-multibyte-backspace", || {
         set_text_geometry(std::rc::Rc::new(StubGeometry));
-        // "é" is a 2-byte codepoint; caret at byte 1 is valid for "aé"
-        // (between 'a' and 'é') but mid-codepoint for "é" alone.
         let value = signal(String::from("aé"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -200,37 +169,24 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        router.route(&mut cx, &layout, arrow_left()); // caret: 3 -> 1
+        router.route(&mut cx, &layout, arrow_left());
 
-        // Enter composition — the widget now has an active preedit
-        // splicing against the caret on every `value` read.
         router.route(
             &mut cx,
             &layout,
             ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
 
-        // A raw (non-IME) Backspace deletes 'a', shrinking value to
-        // "é" — must not panic.
         router.route(&mut cx, &layout, backspace());
 
         assert_eq!(value.get(), "é", "backspace must land on the shrunk buffer");
     });
 }
 
-/// a raw (non-IME) keystroke that replaces an active
-/// multi-byte selection while a preedit is composing must not panic —
-/// the same value/caret atomicity requirement as the backspace case,
-/// but through the selection-delete path (`TextEdit::insert_str`'s
-/// `delete_selection_range`) rather than plain `backspace`.
 #[test]
 fn text_edit_selection_replace_during_preedit_does_not_panic() {
     sigil::reactive::Runtime::scope("text-edit-ime-selection-replace", || {
         set_text_geometry(std::rc::Rc::new(StubGeometry));
-        // "café" — a 2-byte 'é' — select the whole (multi-byte) buffer
-        // via Ctrl+A so replacing it shrinks the buffer by a
-        // multi-byte amount under an active preedit, without hand
-        // -counting byte offsets.
         let value = signal(String::from("café"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
@@ -246,7 +202,6 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
             ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
 
-        // A raw typed 'z' replaces the selected "café" — must not panic.
         router.route(&mut cx, &layout, type_char("z"));
 
         let result = value.get();
@@ -261,10 +216,6 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
     });
 }
 
-/// Regression: an app that writes `value.set(...)` directly after
-/// build (already supported per `crates/sigil/tests/text_edit.rs`) must
-/// not have that external update silently reverted by a subsequent IME
-/// commit operating on a stale internal buffer.
 #[test]
 fn text_edit_external_value_mutation_survives_ime_commit() {
     sigil::reactive::Runtime::scope("text-edit-ime-external-mutation", || {
@@ -274,8 +225,6 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
 
-        // App replaces the document after build, bypassing the
-        // widget's own edit path entirely.
         value.set(String::from("replaced by app"));
 
         let mut router = EventRouter::new();
@@ -287,14 +236,6 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         );
         router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("!".into())));
 
-        // Exact insert position depends on the caret-clamp policy
-        // (`TextEdit::sync_external`, which preserves the pre-external
-        // caret's numeric offset, clamped) — not the load-bearing claim
-        // here. What the regression requires is that the external replacement's
-        // characters all survive the commit, in order, and the stale
-        // pre-build buffer never resurfaces. Pre-fix, this would have
-        // produced "initial!" (the commit clobbering the app's write
-        // outright, discarding "replaced by app" entirely).
         let result = value.get();
         assert!(
             !result.contains("initial"),
@@ -367,8 +308,6 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
 
-        // No further ImeEvent at all — disabling the editor itself must
-        // clear the stale preedit immediately.
         disabled.set(true);
 
         assert_eq!(
@@ -435,11 +374,6 @@ fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     layout
 }
 
-/// Reads the editor's rendered text. `text_edit` splits its displayed
-/// signal into one text node per line via `children_reactive` (B1), so
-/// a signal change (preedit spliced in, or cleared) needs a flush
-/// before the new child text node exists to read — mirrors the flush
-/// pattern in `crates/sigil/tests/text_edit.rs`.
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();
     let text_node = find_text_node(cx, root).expect("editor has a text node");

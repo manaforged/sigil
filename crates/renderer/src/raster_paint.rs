@@ -1,12 +1,3 @@
-//! Raster glyph-atlas text pipeline — Wave-3 D2 (DR-055).
-//!
-//! Draws glyphs pre-rasterized by the hinted CPU path (`crate::raster`)
-//! through a shared R8 atlas, as a separate pipeline beside
-//! [`crate::slug::SlugTextPipeline`] (DR-055 §1: distinct instance layouts,
-//! no merged discriminant branch). Selection between this path and vector
-//! Slug happens at the draw entry point (`scene_command::draw_handlers`),
-//! not in here — this pipeline only knows how to place glyphs it is given.
-
 use sigil_hal::{Color, Rect, RenderedGlyph};
 use sigil_text::Paragraph;
 
@@ -25,16 +16,12 @@ use setup::{
     uniform_buffer, unit_quad,
 };
 
-/// Parameters for one [`RasterTextPipeline::record_paragraph`] call. Mirrors
-/// [`crate::slug::DrawParams`] so the two pipelines stay call-compatible at
-/// the draw entry point.
 pub(crate) struct RasterDrawParams<'a> {
     pub(crate) device: &'a wgpu::Device,
     pub(crate) queue: &'a wgpu::Queue,
     pub(crate) view: &'a wgpu::TextureView,
     pub(crate) surface_width: f32,
     pub(crate) surface_height: f32,
-    /// Physical pixels per logical pixel — the size masks are rasterized at.
     pub(crate) scale: f32,
     pub(crate) paragraph: &'a Paragraph,
     pub(crate) glyphs: &'a [RenderedGlyph],
@@ -43,23 +30,16 @@ pub(crate) struct RasterDrawParams<'a> {
     pub(crate) clip: Option<Rect>,
 }
 
-/// Per-instance GPU record for one placed glyph quad (48 bytes).
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
 struct RasterInstance {
-    /// `[x, y, w, h]` destination quad, logical pixels.
     quad_rect: [f32; 4],
-    /// `[u0, v0, u1, v1]` atlas UV rect, normalised.
     uv_rect: [f32; 4],
-    /// `[r, g, b, a]` linear color; alpha pre-multiplies atlas coverage.
     color: [f32; 4],
 }
 
 const _: () = assert!(core::mem::size_of::<RasterInstance>() == 48);
 
-/// GPU-side raster text pipeline: owns the render pipeline, sampler, and the
-/// shared [`RasterAtlas`]. Construct once per surface format; reuse across
-/// frames — the atlas persists cached glyph masks across draws.
 pub(crate) struct RasterTextPipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
@@ -90,14 +70,6 @@ impl RasterTextPipeline {
         self.format
     }
 
-    /// Place every eligible glyph in `params.glyphs` into the atlas and
-    /// record a single raster draw covering every face
-    /// `params.paragraph` uses (Wave 4 fallback chain — a paragraph can
-    /// reference more than one face; review finding 4). Returns the
-    /// glyphs that could not be placed (atlas full, or a defensive
-    /// catch-all for a glyph matching no enumerated face) — the caller
-    /// draws those through vector Slug instead, per DR-055's "at most
-    /// two draws per run".
     pub(crate) fn record_paragraph(
         &mut self,
         encoder: &mut SplitEncoder,
@@ -110,9 +82,6 @@ impl RasterTextPipeline {
         let mut leftover: Vec<RenderedGlyph> = Vec::new();
         let mut claimed = vec![false; params.glyphs.len()];
         let mut any_face = false;
-        // `for_each_font`'s callback signature erases the byte-slice lifetime
-        // (HRTB `for<'a> FnMut(u64, &'a [u8], u32)`), so the placement work
-        // has to happen INSIDE the closure — `font_bytes` cannot escape it.
         params
             .paragraph
             .for_each_font(|font_id, font_bytes, font_index| {
@@ -129,16 +98,11 @@ impl RasterTextPipeline {
         if !any_face {
             return params.glyphs.to_vec();
         }
-        // Defensive: a glyph matching no enumerated face still falls
-        // back to vector Slug instead of silently vanishing.
         for (g, was_claimed) in params.glyphs.iter().zip(&claimed) {
             if !was_claimed {
                 leftover.push(g.clone());
             }
         }
-        // Normalised once against the atlas's FINAL size across every
-        // face's placements — a mid-draw grow from ANY face invalidates
-        // an earlier normalize (review finding, 2026-07-12).
         normalize_uvs(&mut all_instances, self.atlas.size());
         if !all_instances.is_empty() {
             self.draw_instances(encoder, params, &all_instances);
@@ -146,11 +110,6 @@ impl RasterTextPipeline {
         leftover
     }
 
-    /// Rasterize/allocate every `params.glyphs` entry belonging to ONE
-    /// face `(font_id, font_index)`, splitting into GPU instances
-    /// (placed) and leftover [`RenderedGlyph`]s (atlas full). A glyph
-    /// belonging to a DIFFERENT face is skipped, not leftover'd — a
-    /// later `for_each_font` call (or the caller's catch-all) handles it.
     fn place_glyphs_for_face(
         &mut self,
         params: &RasterDrawParams<'_>,
@@ -187,9 +146,6 @@ impl RasterTextPipeline {
         }
     }
 
-    /// Resolve one glyph's atlas placement (cache hit or fresh rasterize +
-    /// insert) into a positioned [`RasterInstance`] (color left zeroed —
-    /// the caller fills it in).
     fn place_one(
         &mut self,
         params: &RasterDrawParams<'_>,
@@ -221,8 +177,6 @@ impl RasterTextPipeline {
         let physical_baseline_y = (params.origin.1 + g.y) * scale;
         GlyphOutcome::Placed(quad_instance(
             &placement,
-            // The wrap carry shifts the anchor to the next physical pixel —
-            // bin 0 of pixel N+1 is the nearest baked mask for frac >= 0.875.
             physical_pen_x + carry,
             physical_baseline_y,
             scale,
@@ -278,33 +232,18 @@ impl RasterTextPipeline {
     }
 }
 
-/// Output of [`RasterTextPipeline::place_glyphs_for_face`] for one face.
 struct FaceRasterResult {
     instances: Vec<RasterInstance>,
     leftover: Vec<RenderedGlyph>,
-    /// Indices into the caller's `params.glyphs` this face claimed
-    /// (placed, blank, or atlas-full) — used to detect glyphs no
-    /// enumerated face claimed at all.
     claimed_indices: Vec<usize>,
 }
 
-/// Result of resolving one glyph against the atlas.
 enum GlyphOutcome {
-    /// Placed and ready to draw.
     Placed(RasterInstance),
-    /// No outline (space, control) — dropped silently by both text paths.
     Blank,
-    /// Atlas is full (already grown once) — caller falls back to vector Slug.
     AtlasFull,
 }
 
-/// Baseline positioning (DR-055 dispatch brief §4): `GlyphMask.left/top` are
-/// offsets from the pen position on the baseline (top = rise above
-/// baseline, positive up). The sub-pixel X fraction is already baked into
-/// the mask via `bin`, so the quad anchors at `floor(pen_x) + left`; the Y
-/// axis has no sub-pixel baking, so it snaps to the nearest physical pixel.
-/// Both are converted back to logical px (÷ scale) to match the vertex
-/// shader's logical-space NDC conversion.
 #[allow(clippy::cast_precision_loss)]
 fn quad_instance(
     placement: &Placement,
@@ -321,17 +260,11 @@ fn quad_instance(
             placement.width as f32 / scale,
             placement.height as f32 / scale,
         ],
-        // Atlas TEXELS at this point — normalised against the final atlas
-        // size in `normalize_uvs` once the whole draw's placements are done
-        // (mid-accumulation growth would invalidate early normalisation).
         uv_rect: placement.px,
         color: [0.0; 4],
     }
 }
 
-/// Convert accumulated texel-space `uv_rect`s to normalised UVs against the
-/// FINAL atlas size for this draw. Must run after every `place_one` call —
-/// growth during accumulation is exactly the case this ordering exists for.
 fn normalize_uvs(instances: &mut [RasterInstance], atlas_size: u32) {
     #[allow(clippy::cast_precision_loss)]
     let s = atlas_size as f32;
@@ -342,11 +275,6 @@ fn normalize_uvs(instances: &mut [RasterInstance], atlas_size: u32) {
     }
 }
 
-/// Quantize a physical-pixel pen position into a subpixel mask bin plus the
-/// integer carry the anchor must absorb. Nearest-bin rounding wraps at
-/// `frac >= 1 - 1/(2*BINS)`: the mask for bin 0 of the NEXT pixel is the
-/// closest, so the quad anchor shifts +1px — dropping that carry (plain
-/// `% BINS`) misplaces glyphs by up to a full pixel at the wrap boundary.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
     let bins = f32::from(raster::SUBPIXEL_BINS);
@@ -354,10 +282,6 @@ fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
     if q >= bins { (0, 1.0) } else { (q as u8, 0.0) }
 }
 
-/// Apply the active clip (if any) as a GPU scissor. Mirrors
-/// `slug::draw::apply_clip_scissor` — small enough that duplicating it here
-/// keeps the two pipelines independent per DR-055 §1 (watch the rule of
-/// three before extracting a shared helper).
 fn apply_clip_scissor(pass: &mut wgpu::RenderPass<'_>, params: &RasterDrawParams<'_>) -> bool {
     let Some(clip) = params.clip else {
         return true;

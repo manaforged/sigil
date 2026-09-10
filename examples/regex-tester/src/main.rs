@@ -1,26 +1,3 @@
-//! Regex tester — a tier-3 dogfood example.
-//!
-//! Two text fields: a regex pattern + a sample text body. A derived
-//! signal compiles the pattern on every change; if compilation succeeds
-//! it scans the sample and emits a `Vec<MatchInfo>`. If compilation
-//! fails the error string is surfaced inline (no panic — `Regex::new`
-//! returns a `Result`).
-//!
-//! The result is rendered three ways so the dogfood pass exercises the
-//! reactive surface end-to-end:
-//!
-//! 1. A status label — "3 matches" / "Invalid regex: …" — bound to a
-//!    derived `Signal<String>`.
-//! 2. A formatted match list — one derived text body (byte range plus
-//!    substring per line). A live list can also be
-//!    `virtual_list(signal_of_vec, …)`.
-//! 3. A "Clear" button that resets both fields to empty.
-//!
-//! Pattern and sample stay single-line `text_field`s. Multi-line
-//! buffers use `text_edit` (in the prelude; line children rebuild
-//! through `children_reactive`). See `FRICTION.md` for the historical
-//! dogfood log.
-
 use regex::Regex;
 use sigil::prelude::*;
 
@@ -36,19 +13,11 @@ fn app_tree(cx: &mut Cx) -> NodeId {
     cx.add(root_view(state))
 }
 
-/// Reactive state for the regex tester.
-///
-/// `pattern` and `sample` are user-editable inputs. `result_label` and
-/// `match_body` are derived from those two inputs and surface the
-/// compile/scan outcome to the view.
 #[derive(Clone, Copy)]
 struct RegexState {
     pattern: Signal<String>,
     sample: Signal<String>,
-    /// Either "N match(es)" or "Invalid regex: `<error>`."
     result_label: Signal<String>,
-    /// One line per match, formatted "[start..end] `matched_text`".
-    /// Empty string when there are no matches or the pattern is invalid.
     match_body: Signal<String>,
 }
 
@@ -87,7 +56,6 @@ impl RegexState {
     }
 }
 
-/// A single regex match: byte range + captured slice.
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct MatchInfo {
     start: usize,
@@ -95,10 +63,6 @@ struct MatchInfo {
     text: String,
 }
 
-/// Compile `pattern` and find all matches in `sample`.
-///
-/// Returns `Err` with a humanised error string if the pattern fails to
-/// compile. Returns an empty `Vec` if it compiles but matches nothing.
 fn scan(pattern: &str, sample: &str) -> core::result::Result<Vec<MatchInfo>, String> {
     if pattern.is_empty() {
         return Ok(Vec::new());
@@ -116,7 +80,6 @@ fn scan(pattern: &str, sample: &str) -> core::result::Result<Vec<MatchInfo>, Str
     }
 }
 
-/// Render a list of matches as a newline-joined block.
 fn format_matches(matches: &[MatchInfo]) -> String {
     if matches.is_empty() {
         return String::from("(no matches)");

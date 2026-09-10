@@ -1,9 +1,3 @@
-//! Windowed replay of the shared Ledger script (`bench_spec::ledger`).
-//!
-//! One interval at `PULSE` ticks the price stream, applies the step for
-//! that pulse, and stamps the wall clock. The record is written and the
-//! window closes after the last pulse.
-
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -61,8 +55,6 @@ impl Driver {
         }
     }
 
-    /// Runs one pulse. Returns true once the script is complete and the
-    /// record is written.
     pub fn pulse(&mut self) -> bool {
         if self.pulse >= PULSES {
             return true;

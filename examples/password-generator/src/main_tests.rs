@@ -32,9 +32,6 @@ fn generate_respects_length_and_alphabet() {
 
 #[test]
 fn generate_includes_all_classes_when_enabled() {
-    // With every class on and a long-enough length, all four char
-    // classes should appear. Not strictly guaranteed for a single
-    // seed, but for `length=128` collision is astronomical.
     let spec = PasswordSpec {
         length: 128,
         classes: CLASS_LOWER | CLASS_UPPER | CLASS_DIGITS | CLASS_SYMBOLS,
@@ -58,8 +55,6 @@ fn empty_alphabet_returns_hint() {
 
 #[test]
 fn xorshift_changes_state() {
-    // Sanity: the PRNG actually mixes bits (would catch an all-zero
-    // bug where the seed propagated unchanged).
     let a = xorshift64(1);
     let b = xorshift64(a);
     assert_ne!(a, 1);

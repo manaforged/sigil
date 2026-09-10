@@ -1,25 +1,4 @@
-//! Tier 3 benches for the `sigil-async` cross-thread runtime.
-//!
-//! DR-009 budgets exercised here:
-//!
-//! - Cross-thread dispatch round-trip ≤ 500 µs p99
-//! - Drain with 100 pending callbacks ≤ 2 ms
-//! - Sustained 1k writes/sec, frame latency p99 ≤ 16 ms
-//!
-//! Each bench is annotated inline with its DR-009 line and target.
-//!
-//! Run with:
-//!
-//! ```text
-//! cargo bench -p sigil-tasks --bench async_ops -- \
-//!     --warm-up-time 1 --measurement-time 3 --sample-size 30
-//! ```
-//!
-//! Sustained-writes and `spawn_to_signal` benches live in `async_ops_sustained`.
-
 #![allow(missing_docs, clippy::missing_docs_in_private_items)]
-// Bench targets are allowed to bend `panic` / `indexing_slicing` per
-// the rust-hygiene framework (internal hygiene-cleanup-framework plan).
 #![allow(clippy::panic)]
 
 mod async_ops_sustained;
@@ -37,9 +16,6 @@ use sigil_hal::Scheduler;
 use sigil_reactive::{Runtime, effect, signal};
 use sigil_tasks::{AsyncRuntime, OwnerHandle, dispatch_to_owner};
 
-/// Spin until `cond` returns true or the deadline elapses.
-/// Used by the round-trip benches to wait for cross-thread work to
-/// land in the dispatcher queue without depending on `tokio::time`.
 pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> bool {
     let start = Instant::now();
     while start.elapsed() < deadline {
@@ -51,14 +27,6 @@ pub(crate) fn spin_until(deadline: Duration, mut cond: impl FnMut() -> bool) -> 
     cond()
 }
 
-// ---------------------------------------------------------------------------
-// 1. enqueue_main_latency
-// ---------------------------------------------------------------------------
-//
-// Floor cost for a single MPSC send + waker fire. Same-thread (no hop),
-// no waker installed. Expected: tens of ns. This is the lower bound on
-// any cross-thread enqueue — anything above this is wake / scheduler
-// overhead.
 fn bench_enqueue_main_latency(c: &mut Criterion) {
     c.bench_function("enqueue_main_latency", |b| {
         Runtime::scope("bench_enqueue_main", || {
@@ -74,15 +42,6 @@ fn bench_enqueue_main_latency(c: &mut Criterion) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// 2. dispatch_to_owner_roundtrip_single
-// ---------------------------------------------------------------------------
-//
-// DR-009 budget: cross-thread dispatch round-trip ≤ 500 µs p99.
-//
-// Full path: tokio worker calls `dispatch_to_owner`, the dispatcher
-// flips an atomic via the waker, the main thread spins until pending,
-// drains, and reads back a signal-driven flag.
 fn bench_dispatch_to_owner_roundtrip_single(c: &mut Criterion) {
     c.bench_function("dispatch_to_owner_roundtrip_single", |b| {
         Runtime::scope("bench_dispatch_roundtrip", || {
@@ -121,11 +80,6 @@ fn bench_dispatch_to_owner_roundtrip_single(c: &mut Criterion) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// 3. drain_100_empty_callbacks
-// ---------------------------------------------------------------------------
-//
-// DR-009 budget: drain with 100 pending callbacks ≤ 2 ms.
 fn bench_drain_100_empty_callbacks(c: &mut Criterion) {
     c.bench_function("drain_100_empty_callbacks", |b| {
         Runtime::scope("bench_drain_100_empty", || {
@@ -153,11 +107,6 @@ fn bench_drain_100_empty_callbacks(c: &mut Criterion) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// 4. drain_1000_empty_callbacks
-// ---------------------------------------------------------------------------
-//
-// No DR-009 budget — scaling probe.
 fn bench_drain_1000_empty_callbacks(c: &mut Criterion) {
     c.bench_function("drain_1000_empty_callbacks", |b| {
         Runtime::scope("bench_drain_1000_empty", || {
@@ -185,11 +134,6 @@ fn bench_drain_1000_empty_callbacks(c: &mut Criterion) {
     });
 }
 
-// ---------------------------------------------------------------------------
-// 5. drain_100_callbacks_each_writing_signal
-// ---------------------------------------------------------------------------
-//
-// DR-009 budget: drain with 100 pending callbacks ≤ 2 ms (with payload).
 fn bench_drain_100_callbacks_each_writing_signal(c: &mut Criterion) {
     c.bench_function("drain_100_callbacks_each_writing_signal", |b| {
         Runtime::scope("bench_drain_100_signals", || {

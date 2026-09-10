@@ -1,8 +1,3 @@
-//! Form widgets: `button`, `text_field`, `text_edit`, `checkbox`,
-//! `toggle`, `slider`, `dropdown`, `number_field`. One instance each
-//! at default state, with disabled variants rendered side-by-side for
-//! the widgets where that's interesting.
-
 use sigil::prelude::*;
 use sigil::widgets::patterns;
 

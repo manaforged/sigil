@@ -2,16 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Committed-PNG visual goldens for sigil widgets.
-//!
-//! Each (widget, state) combo renders through the wgpu offscreen path and
-//! asserts byte-equivalent (within a 0.5% pixel-delta budget) against a
-//! committed PNG at `crates/sigil/tests/goldens/`. Run with
-//! `SIGIL_REGEN_GOLDENS=1` to re-bake — and always eyeball every regenerated
-//! file in an image viewer before committing.
-//!
-//! Skips cleanly when no wgpu adapter is available (CI without GPU).
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -37,14 +27,6 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
     assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
 }
 
-/// Wrap a widget in a frame-filling, BLACK-background container with a
-/// few px of padding. The quality gate measures coverage as "differs
-/// from the corner pixel"; the black border keeps the corner at the
-/// clear colour while the bright themed widget (and its `bg-surface`
-/// backing, added at the call site) fills the rest — so coverage
-/// reflects the widget, not intra-widget variance. A panel that bleeds
-/// to the edge would make the corner part of the widget and collapse the
-/// metric to ~0 %.
 fn on_panel(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
     container()
         .layout(
@@ -55,8 +37,6 @@ fn on_panel(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
         )
         .child(inner)
 }
-
-// ---- BUTTON ------------------------------------------------------------------
 
 #[test]
 fn button_default() {
@@ -71,8 +51,6 @@ fn button_default() {
 
 #[test]
 fn button_solid_default() {
-    // The redesigned solid path (shadow frame, no border) had no golden
-    // until the 2026-08 pass — the soft default covered every prior pin.
     let img = render_widget_to_png(
         |cx| cx.add(button("Save").primary()),
         InteractionMode::Default,
@@ -126,12 +104,8 @@ fn button_disabled() {
     check("button_disabled", img);
 }
 
-// ---- CHECKBOX ----------------------------------------------------------------
-
 #[test]
 fn checkbox_checked() {
-    // Default tone renders the ACCENT checked fill since the
-    // Neutral→Primary default flip; this pins that reading.
     let img = render_widget_to_png(
         |cx| {
             let checked = signal(true);
@@ -219,8 +193,6 @@ fn checkbox_disabled() {
     check("checkbox_disabled", img);
 }
 
-// ---- SLIDER ------------------------------------------------------------------
-
 #[test]
 fn slider_default() {
     let img = render_widget_to_png(
@@ -292,11 +264,6 @@ fn slider_disabled() {
     check("slider_disabled", img);
 }
 
-// ---- PANEL -------------------------------------------------------------------
-//
-// Panel is a passive surface — it has no hover / pressed / focused / disabled
-// states. We commit a single default golden.
-
 #[test]
 fn panel_default() {
     let img = render_widget_to_png(
@@ -307,11 +274,6 @@ fn panel_default() {
     );
     check("panel_default", img);
 }
-
-// ---- PROGRESS ----------------------------------------------------------------
-//
-// Progress is also passive — commit one golden per visually distinct fill
-// level: empty, half, full.
 
 #[test]
 fn progress_empty() {
@@ -354,8 +316,6 @@ fn progress_full() {
     );
     check("progress_full", img);
 }
-
-// ---- DROPDOWN ----------------------------------------------------------------
 
 fn dropdown_options() -> Vec<String> {
     vec!["Easy".into(), "Normal".into(), "Hard".into()]
@@ -446,11 +406,6 @@ fn dropdown_disabled() {
     check("dropdown_disabled", img);
 }
 
-// ---- SCROLL ------------------------------------------------------------------
-//
-// Scroll wraps a content node; the only meaningful golden is the default
-// composed view.
-
 #[test]
 fn scroll_default() {
     let img = render_widget_to_png(
@@ -466,8 +421,6 @@ fn scroll_default() {
     );
     check("scroll_default", img);
 }
-
-// ---- TEXT_FIELD --------------------------------------------------------------
 
 #[test]
 fn text_field_default() {
@@ -540,8 +493,6 @@ fn text_field_disabled() {
     check("text_field_disabled", img);
 }
 
-// ---- TABS --------------------------------------------------------------------
-
 fn tab_labels() -> Vec<String> {
     vec!["First".into(), "Second".into(), "Third".into()]
 }
@@ -569,7 +520,6 @@ fn tabs_hover_tab2() {
         },
         InteractionMode::Hover,
         [260, 56],
-        // Hit-point in middle of the second tab (x ∈ [80, 160]).
         (120.0, 17.0),
     );
     check("tabs_hover_tab2", img);
@@ -591,14 +541,6 @@ fn tabs_active_tab2() {
 
 #[test]
 fn tabs_focused() {
-    // `render_widget_to_png_focus_descendant`, not `render_widget_to_png`:
-    // the tabs root is a non-focusable `Role::TabList` wrapper — routing
-    // focus there fires no `focus_in` handler on anything. The individual
-    // `Role::Tab` children are the focusable primitives (see
-    // `crate::interaction::InteractionState::install` in
-    // `widgets/tabs/builder.rs`), matching the same root-mismatch bug
-    // `modal_focused` had. See
-    // BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
     let img = render_widget_to_png_focus_descendant(
         |cx| {
             let active = signal(0_usize);
@@ -630,14 +572,6 @@ fn tabs_disabled() {
     check("tabs_disabled", img);
 }
 
-// ---- MODAL -------------------------------------------------------------------
-//
-// Modal renders a full-viewport dimmed backdrop with a centred dialog
-// frame inside the 400×280 golden viewport. The dialog body holds a
-// regular flex child (a button) — per the rendering caveat, text inside
-// extra Position::Absolute wrappers does not rasterise, so the dialog
-// itself is absolute but its body children are normal flex siblings.
-
 #[test]
 fn modal_open() {
     let img = render_widget_to_png(
@@ -656,10 +590,6 @@ fn modal_open() {
             cx.add(on_panel(m, 286.0, 164.0))
         },
         InteractionMode::Default,
-        // The modal's dialog is a bright panel but its backdrop region is
-        // black; a `bg-surface` backing makes the whole frame interior
-        // bright so the dialog reads against the thin black `on_panel`
-        // border (corner = clear colour), clearing the ≥70 % rule.
         [286, 164],
         (143.0, 82.0),
     );
@@ -668,16 +598,6 @@ fn modal_open() {
 
 #[test]
 fn modal_dimmed_backdrop() {
-    // The viewport clear colour is black; the modal's backdrop paints
-    // 60 % opacity black over the same backing, which makes the scrim
-    // invisible against a default-clear canvas. To make the dim layer
-    // observable we stack an absolutely-positioned accent fill sibling
-    // BEFORE the modal so both nodes occupy the same logical rect; the
-    // modal's backdrop then alpha-blends over the saturated accent
-    // colour, producing a measurable per-channel delta that pixel diff
-    // (and the eye) can read. The wrapper itself uses block layout but
-    // both its children are Position::Absolute so the modal's root
-    // does not push the fill out of the viewport.
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
@@ -700,9 +620,6 @@ fn modal_dimmed_backdrop() {
             cx.add(on_panel(stack, 412.0, 292.0))
         },
         InteractionMode::Default,
-        // `on_panel` adds a 6 px black border so the corner is the clear
-        // colour; the saturated accent fill under the dimmed scrim then
-        // dominates ≥70 % of the frame.
         [412, 292],
         (200.0, 140.0),
     );
@@ -711,13 +628,6 @@ fn modal_dimmed_backdrop() {
 
 #[test]
 fn modal_focused() {
-    // `render_widget_to_png_focus_descendant`, not `render_widget_to_png`:
-    // the tree root here is the `on_panel` coverage backing, not the
-    // modal's own focusable dialog frame — plain `InteractionMode::Focused`
-    // would set keyboard focus on the (non-focusable) panel wrapper and
-    // never reach the dialog at all. The descendant-aware variant finds
-    // the dialog (first focusable node in document order) and focuses
-    // that instead. See BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
     let img = render_widget_to_png_focus_descendant(
         |cx| {
             let open = signal(true);
@@ -735,8 +645,6 @@ fn modal_focused() {
         },
         InteractionMode::Focused,
         [286, 164],
-        // Hit point inside the dialog's OK button (unused by Focused
-        // mode itself, kept for signature parity with the other modes).
         (143.0, 82.0),
     );
     check("modal_focused", img);
@@ -744,21 +652,11 @@ fn modal_focused() {
 
 #[test]
 fn modal_focused_differs_from_open() {
-    // Ghost-pass guard: a focus-visible golden that renders identical to
-    // its baseline state means the focus indicator authored no visible
-    // pixels — WCAG 2.4.7 gap that a plain pixel-diff `check()` can't
-    // catch on its own. See BUG-2026-07-02-modal-tabs-focus-states-render-nothing.
     assert_goldens_differ("modal_focused", "modal_open");
 }
 
 #[test]
 fn modal_dismissing() {
-    // The full dismiss-transition curve is owned by the transition
-    // seam; emulating "mid-dismiss" here uses the Visual::opacity
-    // styled-trait method to render the dialog at 50 % opacity over
-    // the backdrop. This keeps the test in pure pixel-diff territory
-    // without depending on HoverAfterFrames timing (the open signal is
-    // a boolean, not a numeric the runtime can interpolate).
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
@@ -781,14 +679,6 @@ fn modal_dismissing() {
     );
     check("modal_dismissing", img);
 }
-
-// ---- MENU --------------------------------------------------------------------
-//
-// Menu renders a centred 200 px-wide vertical stack of items inside the
-// 240×280 golden viewport. Each row places its label text as a direct
-// child of the row's flex container — the deeply-nested-text caveat
-// applies, so labels are siblings of the (optional) shortcut and
-// submenu-indicator texts, never wrapped in extra containers.
 
 #[test]
 fn menu_open() {
@@ -816,8 +706,6 @@ fn menu_open() {
 
 #[test]
 fn menu_hover_item2() {
-    // Hit point lands on the second row inside the centred 200 px panel.
-    // Panel top = (280 - 3*32) / 2 = 92; row 2 spans y = 124..156.
     let img = render_widget_to_png(
         |cx| {
             let open = signal(true);
@@ -913,15 +801,6 @@ fn menu_submenu_open() {
     check("menu_submenu_open", img);
 }
 
-// ---- TOOLTIP -----------------------------------------------------------------
-//
-// Tooltip wraps the supplied target in a flex_column wrapper and places the
-// bubble as an absolutely-positioned child of that wrapper. The outer
-// container's `padding_top_px(30)` reserves 30 logical px above the target
-// so the bubble at `top = -32` only clips 2 px at the very top — keeping
-// the canvas tight enough for the brutal-quality ≥70% coverage rule while
-// still proving the bubble renders above the target.
-
 #[test]
 fn tooltip_visible() {
     let img = render_widget_to_png(
@@ -970,8 +849,6 @@ fn tooltip_with_keyboard_shortcut() {
     );
     check("tooltip_with_keyboard_shortcut", img);
 }
-
-// ---- TABLE -------------------------------------------------------------------
 
 #[derive(Clone)]
 struct TableRow {

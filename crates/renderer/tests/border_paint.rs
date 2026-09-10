@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DR-057 D3 border wiring — command emission + real offscreen pixels.
-//!
-//! `border-*` utility classes flipped from DR-056 rejection to painting
-//! through the pre-existing R2 `Stroke` primitive. These tests pin the
-//! full pipe: class → atom → `RenderStyle` → inside-aligned stroke on the
-//! node's rect → actual ink at the border edge, with the interior
-//! untouched.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
 
@@ -135,9 +127,6 @@ fn border_without_background_shows_parent_through_interior() {
 
 #[test]
 fn border_width_insets_child_content_box_model() {
-    // `border` is box-model-affecting (DR-057 D3): the solvers reserve
-    // the edge, so a child's content origin shifts by the border width
-    // exactly like CSS `box-sizing: border-box`.
     let mut cx = Cx::new_root();
     let child = container().layout(LayoutStyle::block().fixed_size(8.0, 8.0));
     let root = cx.add(

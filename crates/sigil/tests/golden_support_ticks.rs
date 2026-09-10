@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Unit tests for the animated-golden harness's `*AfterFrames`
-//! interaction modes.
-//!
-//! These tests do NOT render — they exercise the tick-driving logic in
-//! [`golden_support::drive_state`] directly by reading the
-//! `animation_runtime` active-set state and the bound `Signal<f32>`
-//! before and after the harness drive.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -24,16 +16,7 @@ use golden_support::{InteractionMode, SETTLE_SAFETY_CAP};
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 
-/// Construct a minimal root node and a fresh `EventRouter` + `LayoutEngine`
-/// so we can call the harness driver in isolation. The widget is a no-op
-/// stack — the tests exercise the runtime tick loop, not rendering.
 fn drive_in_harness(mode: InteractionMode) {
-    // The harness's `drive_state` is private to the support module, so we
-    // exercise it through the public surface: `render_widget_to_png`
-    // returns `None` when no GPU adapter is available, but it still walks
-    // `drive_state` end-to-end up to that point. We pick a viewport that
-    // forces a layout pass and a hit-point inside the (1, 1) stack so
-    // pointer events route.
     let _ = golden_support::render_widget_to_png(
         |cx| cx.add(button("tick")),
         mode,
@@ -49,7 +32,6 @@ fn after_frames_calls_tick_exactly_n_times() {
         let value = signal(0.0_f32);
         let mut anim = Animator::new(
             value,
-            // Long tween so 6 ticks are well short of settle.
             AnimationConfig::Tween {
                 ms: 10_000,
                 easing: sigil_animation::Easing::Linear,
@@ -67,9 +49,6 @@ fn after_frames_calls_tick_exactly_n_times() {
             dt: DT_60HZ,
         });
 
-        // Linear tween over 10 s, 6 ticks at 1/60 s = 0.1 s = 1% of the
-        // way to 1.0. Expected ≈ 0.01; any non-trivial deviation means
-        // the harness ticked the wrong number of times.
         let after = value.peek();
         let expected = 6.0 * DT_60HZ / 10.0;
         let delta = (after - expected).abs();
@@ -118,10 +97,6 @@ fn after_frames_with_u32_max_stops_when_settled() {
 
 #[test]
 fn after_frames_safety_cap_panics_on_runaway() {
-    // We construct a runaway by retargeting on every tick via a tween
-    // whose duration is far longer than the safety cap's wall-time. At
-    // dt=1/60s and the cap of 600 frames, total simulated time is 10 s;
-    // a 60 s tween won't be near settled.
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         Runtime::scope("after_frames_safety_cap_panics_on_runaway", || {
             MotionPrefs::set(false);
@@ -154,15 +129,11 @@ fn after_frames_safety_cap_panics_on_runaway() {
         "panic message must reference the safety cap; got {msg:?}",
     );
 
-    // Drain the runaway animator so it doesn't leak into a sibling test
-    // on this thread (thread-locals persist across `Runtime::scope`).
     for _ in 0..SETTLE_SAFETY_CAP {
         if active_count() == 0 {
             break;
         }
-        tick(0.0); // no-op, just to remind future readers tick(0) is rejected
-        // Force eviction by retargeting to current then ticking with a
-        // large dt to finish the tween.
+        tick(0.0);
         tick(120.0);
     }
 }

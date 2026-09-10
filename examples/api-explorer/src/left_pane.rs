@@ -1,6 +1,3 @@
-//! Left pane: a `virtual_list` of mock REST endpoint paths with
-//! single-select. Each row shows `METHOD  /path`.
-
 use sigil::prelude::*;
 
 use crate::endpoints::MockEndpoint;
@@ -11,12 +8,6 @@ const ROW_HEIGHT: f32 = 28.0;
 const VIEWPORT_HEIGHT: f32 = 540.0;
 const METHOD_COL_WIDTH: f32 = 56.0;
 
-/// Build the left pane.
-///
-/// `selected_index` is the host-owned selection signal — when a row
-/// click updates the `virtual_list`'s `SelectionState`, `.select`
-/// mirrors the chosen index into this signal so the right pane
-/// re-renders the routed tab content.
 #[must_use]
 pub(super) fn build(
     endpoints: &[MockEndpoint],
@@ -74,12 +65,6 @@ fn endpoint_row(index: usize, method: Method, path: &'static str) -> NodeBuilder
         )
 }
 
-/// Pick a class string for the method label so GET / POST / DELETE
-/// read at a glance. Falls back to a neutral colour for unknown verbs.
-///
-/// All write-verbs share `font-bold` against `text-on-surface`; GET
-/// uses the accent token. The unknown branch drops `font-bold` so a
-/// non-standard verb is visibly de-emphasised.
 fn method_class(method: &str) -> &'static str {
     match method {
         "GET" => "text-accent text-sm font-bold",
@@ -88,6 +73,4 @@ fn method_class(method: &str) -> &'static str {
     }
 }
 
-// Re-export so the row tuple can be `(Method, &'static str)` without
-// `use crate::endpoints::Method` at the call site.
 use crate::endpoints::Method;

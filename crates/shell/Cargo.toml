@@ -21,13 +21,13 @@ harness = false
 [dependencies]
 sigil-hal = { workspace = true }
 smol_str = { workspace = true }
-# NOTE: `sigil-async` is intentionally not a direct dependency in Phase 2.
+# NOTE: `sigil-async` is intentionally not a direct dependency yet.
 # The wake bridge is exposed as an `Arc<dyn Fn() + Send + Sync>` so
 # that `sigil-shell` does not pin the `sigil-async` public API before it
 # stabilises. Add the dep (and replace the hook closure with a typed
 # `sigil_async::AsyncRuntime` handle) when the `sigil-async` surface lands.
 winit = { workspace = true }
-# W5-A11Y (DR-050 §1) — the production `accesskit_winit::Adapter` wiring.
+# DR-050: the production `accesskit_winit::Adapter` wiring.
 # `crossbeam-channel` bridges the adapter's `Send`-bound `ActionHandler`
 # callback (may run on a platform AT-SPI/UIA/AX thread) back to the `!Send`
 # UI thread; see `crates/shell/src/shell/a11y.rs`.

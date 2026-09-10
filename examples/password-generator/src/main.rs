@@ -1,22 +1,3 @@
-//! Dogfood example — a tier-1 utility password generator.
-//!
-//! Reactive state:
-//! - `length: Signal<f32>` — slider value, 4..=64 (f32 because `slider`
-//!   takes `Signal<f32>`; see FRICTION.md "Confusing names" for why).
-//! - `use_lower / use_upper / use_digits / use_symbols: Signal<bool>` —
-//!   per-class toggles wired to checkboxes.
-//! - `seed: Signal<u64>` — bumped by the "Generate" button so the
-//!   derived `password` re-runs and produces a new value.
-//! - `password: Signal<String>` — derived; recomputes whenever any
-//!   input changes or the user presses Generate.
-//!
-//! Layout: a vertical column with a big monospaced password readout at
-//! the top, the length slider with a live count, four class toggles,
-//! and a Generate button that bumps the seed.
-
-// Examples bend the f32->integer cast pedantic lints: slider values are
-// bounded f32s that always round to small positive integers, so the
-// "could truncate" / "could lose sign" warnings are noise here.
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -28,7 +9,6 @@ fn main() -> sigil::AppResult<()> {
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {
-    // Reactive inputs.
     let length: Signal<f32> = signal(16.0_f32);
     let use_lower: Signal<bool> = signal(true);
     let use_upper: Signal<bool> = signal(true);
@@ -36,9 +16,6 @@ fn app_tree(cx: &mut Cx) -> NodeId {
     let use_symbols: Signal<bool> = signal(false);
     let seed: Signal<u64> = signal(initial_seed());
 
-    // Derived: the generated password reruns whenever any input or the
-    // seed changes. Cheap pure function of its inputs, so re-deriving on
-    // every keystroke is fine.
     let password: Signal<String> = derived(move || {
         let mut classes = 0_u8;
         if use_lower.get() {
@@ -76,7 +53,6 @@ fn app_tree(cx: &mut Cx) -> NodeId {
             .child(slider(length, 4.0..=64.0).step(1.0))
             .child(class_toggles(use_lower, use_upper, use_digits, use_symbols))
             .child(button("Generate").primary().activate(move || {
-                // Bump the seed; the derived password re-runs.
                 seed.set(seed.peek().wrapping_add(0x9E37_79B9_7F4A_7C15));
             })),
     )
@@ -95,8 +71,6 @@ fn class_toggles(
         .child(checkbox(use_digits).label("digits (0-9)"))
         .child(checkbox(use_symbols).label("symbols (!@#…)"))
 }
-
-// --- pure logic --------------------------------------------------------
 
 const CLASS_LOWER: u8 = 0b0001;
 const CLASS_UPPER: u8 = 0b0010;

@@ -2,10 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Tier 1/2/4 layout operation benchmarks for `sigil-layout`.
-//!
-//! Run with `cargo bench -p sigil-layout`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -310,11 +306,6 @@ fn bench_incremental_single_leaf_mutation(c: &mut Criterion) {
     });
 }
 
-// NOTE: `compute` is SERIAL. This runs one serial compute on a rayon
-// worker pool of `threads` threads, so the `{threads}_threads` variants
-// measure worker-dispatch overhead of running layout OFF the main thread
-// — NOT parallel-layout scaling (the engine does not parallelize a single
-// compute). Do not read the multi-thread numbers as a speedup.
 fn bench_compute_100k_flex_tree(c: &mut Criterion, threads: usize) {
     let pool = ThreadPoolBuilder::new()
         .num_threads(threads)

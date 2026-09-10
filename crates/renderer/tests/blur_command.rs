@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Walker integration test for Phase R12 backdrop-blur.
-//!
-//! Verifies that `LayerEffect::LayerBlur` is correctly threaded through the
-//! command-scene walker without panics, that sigma=0 is treated as a no-op, and
-//! that the blur pipeline is lazily initialised on first use.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
@@ -21,7 +15,6 @@ const VIEWPORT: (f32, f32) = (128.0, 64.0);
 const VIEWPORT_WIDTH: u32 = 128;
 const VIEWPORT_HEIGHT: u32 = 64;
 
-/// sigma=0 must not crash and must produce zero blur passes (identity path).
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_zero_is_identity() {
@@ -39,7 +32,6 @@ fn blur_sigma_zero_is_identity() {
     render_scene(&mut renderer, &device, &queue, &scene);
 }
 
-/// sigma>0 exercises the blur pipeline initialisation and upsample path.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_nonzero_renders_without_panic() {
@@ -57,7 +49,6 @@ fn blur_sigma_nonzero_renders_without_panic() {
     render_scene(&mut renderer, &device, &queue, &scene);
 }
 
-/// sigma=18 (>16) hits the 3-pass branch in `pass_count_for`.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_sigma_strong_renders_without_panic() {

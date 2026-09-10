@@ -1,5 +1,3 @@
-//! Generates the static structural utility table.
-
 use std::env;
 use std::fs::File;
 use std::io::{BufWriter, Write};

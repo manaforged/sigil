@@ -74,7 +74,6 @@ fn contained_selection_coalesce() {
 
 #[test]
 fn coalesce_preserves_forward_direction() {
-    // Two cursors, one forward, one backward — merged is forward.
     let mut set = CursorSet::new(Cursor::selection(0, 5));
     set.add(Cursor::selection(8, 4));
     set.coalesce();

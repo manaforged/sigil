@@ -1,23 +1,7 @@
-//! Literal-match "next-occurrence" cursor insertion.
-//!
-//! Sublime/VSCode-style "add cursor at next match". We walk the rope's
-//! collected text for an exact byte-level substring match starting
-//! AFTER the existing cursor with the highest head position; on match,
-//! we add a selection cursor `match_start..match_end` and coalesce.
-//!
-//! Why not the I-T5 fuzzy matcher: "next match" in the editor sense
-//! is a literal substring scan (Vim's `*`, `VSCode` Ctrl-D). Fuzzy is
-//! for the command palette, not the cursor-multiplier hotkey.
-
 use super::super::rope::Rope;
 use super::{Cursor, CursorSet};
 
 impl CursorSet {
-    /// Add a cursor selection at the next literal occurrence of
-    /// `pattern` after the last cursor's head. Returns `true` if a
-    /// match was found and added (or coalesced).
-    ///
-    /// An empty `pattern` is a no-op (returns `false`).
     pub fn add_next_match(&mut self, rope: &Rope, pattern: &str) -> bool {
         if pattern.is_empty() {
             return false;
@@ -36,8 +20,6 @@ impl CursorSet {
     }
 }
 
-/// Find the byte offset of the next literal match of `pattern` in
-/// `rope` starting at or after `from`. Returns `None` if no match.
 fn find_literal(rope: &Rope, pattern: &str, from: usize) -> Option<usize> {
     let text = rope.to_string_lossy();
     let start = from.min(text.len());

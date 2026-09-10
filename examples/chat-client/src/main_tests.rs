@@ -1,7 +1,3 @@
-//! Headless smoke tests — build the app tree without a window, then
-//! mutate the modal-open signal and rebuild to assert the modal path
-//! also constructs cleanly. Mirrors the kanban-board tests shape.
-
 #![allow(clippy::expect_used)]
 
 use sigil::testing::with_cx;
@@ -25,9 +21,6 @@ fn modal_open_rebuilds_cleanly() {
     with_cx("chat-client-modal-rebuild", |cx| {
         let state = ChatState::seed();
 
-        // Mutate modal-open as the user would when they click
-        // "Channel settings", then rebuild the full tree against the
-        // mutated state. The build path is what we're asserting on.
         state.open_channel_settings();
         assert!(
             state.modal_open.peek(),
@@ -40,7 +33,6 @@ fn modal_open_rebuilds_cleanly() {
             "modal-open tree must still construct children",
         );
 
-        // Cancel restores closed state without panicking.
         state.cancel_modal();
         assert!(
             !state.modal_open.peek(),

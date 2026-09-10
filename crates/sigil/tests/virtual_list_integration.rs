@@ -37,7 +37,6 @@ fn widget_renders_only_visible_window_at_100k_items() {
                 .scroll_bind(signal(0.0_f32)),
         );
 
-        // 15 in view + 15 overscan below. Mid-list is three pages (45).
         assert!(count_role(&cx, root, Role::ListItem) <= 45);
     });
 }
@@ -57,7 +56,6 @@ fn scroll_signal_drives_window_advance() {
             .first()
             .copied()
             .expect("visible row materialised");
-        // Geometric first is 1000. One page of overscan (15) sits above.
         assert_eq!(first, 985, "first row was {first}");
     });
 }

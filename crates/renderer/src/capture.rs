@@ -1,14 +1,7 @@
-//! Headless capture: render into an offscreen texture and read the pixels
-//! back as tightly packed RGBA8 rows.
-//!
-//! Consumers pair this with [`crate::WgpuRenderer::render_command_scene_offscreen`]
-//! to turn a [`crate::CommandScene`] into image bytes without a window.
-
 use std::error::Error;
 use std::io;
 use std::sync::mpsc;
 
-/// Texture format every capture renders in.
 pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 const BYTES_PER_PIXEL: u32 = 4;
@@ -16,7 +9,6 @@ const MIN_LONG_AXIS: f32 = 1024.0;
 const MAX_LONG_AXIS: f32 = 2048.0;
 const MAX_INTEGER_SCALE: f32 = 4.0;
 
-/// Create the render-attachment texture a capture draws into.
 #[must_use]
 pub fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
@@ -35,7 +27,6 @@ pub fn capture_texture(device: &wgpu::Device, extent: CaptureExtent) -> wgpu::Te
     })
 }
 
-/// Clear `view` to `color` before drawing a partial scene into it.
 pub fn clear_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -71,7 +62,6 @@ pub fn clear_texture(
     queue.submit(core::iter::once(encoder.finish()));
 }
 
-/// Read `texture` back as tightly packed RGBA8 bytes, row padding stripped.
 pub fn read_texture(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -181,18 +171,13 @@ impl ReadbackLayout {
     }
 }
 
-/// Physical pixel size of a capture texture.
 #[derive(Clone, Copy)]
 pub struct CaptureExtent {
-    /// Width in physical pixels.
     pub width: u32,
-    /// Height in physical pixels.
     pub height: u32,
 }
 
 impl CaptureExtent {
-    /// Scale a logical viewport to an integer-scaled extent whose long axis
-    /// lands between 1024 and 2048 physical pixels.
     #[must_use]
     pub fn from_viewport(viewport: (f32, f32)) -> Self {
         let logical_width = viewport.0.max(1.0);

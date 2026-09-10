@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Editor-tier dogfooding example: a single-field scratchpad with a save/dirty model."
+description = "Editor example: a single-field scratchpad with a save/dirty model."
 
 [dependencies]
 sigil-ui = { workspace = true }

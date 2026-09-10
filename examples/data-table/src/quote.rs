@@ -1,17 +1,9 @@
-//! Quote corpus matching GPUI 0.2.2 `examples/data_table.rs`.
-//!
-//! Same derived change / turnover formulas. Generation is a seeded
-//! LCG so the tree is deterministic without a `rand` dependency.
-
 use std::time::Duration;
 
-/// Row count in the GPUI example.
 pub const TOTAL_ITEMS: usize = 10_000;
 
-/// Uniform row height in the live window and the 1:1 bench.
 pub const ROW_HEIGHT: f32 = 24.0;
 
-/// One stock row. Field set matches GPUI `Quote`.
 #[derive(Clone, Debug)]
 pub struct Quote {
     pub name: String,
@@ -39,26 +31,22 @@ pub struct Quote {
 }
 
 impl Quote {
-    /// Percent change from previous close.
     #[must_use]
     pub fn change(&self) -> f64 {
         (self.last_done - self.prev_close) / self.prev_close * 100.0
     }
 
-    /// True when last done is above previous close.
     #[must_use]
     pub fn up(&self) -> bool {
         self.change() > 0.0
     }
 
-    /// Volume / turnover × 100, matching GPUI `turnover_ratio`.
     #[must_use]
     pub fn turnover_ratio(&self) -> f64 {
         f64::from(self.volume) / self.turnover * 100.0
     }
 }
 
-/// Advance last-done on the visible band. In-place; no allocation.
 pub fn tick_visible(book: &mut [Quote], first: usize, count: usize, step: u32) {
     let end = first.saturating_add(count).min(book.len());
     let delta = f64::from(step) * 0.001;
@@ -67,8 +55,6 @@ pub fn tick_visible(book: &mut [Quote], first: usize, count: usize, step: u32) {
     }
 }
 
-/// Build `count` quotes. Row `i` is seeded from `i`, so the same
-/// index always yields the same ticker.
 #[must_use]
 pub fn generate(count: usize) -> Vec<Quote> {
     (0..count).map(quote_at).collect()

@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Raster image wiring — a `NodeType::Image` uploads its pixels to a GPU
-//! texture and samples them into its laid-out rect.
-//!
-//! Pins the full pipe: `ImageSource` → `NodeType::Image` → intrinsic
-//! layout size → `SceneCommand::Image` → paint-time `register_image`
-//! (once per content id) → Poly sprite sampling → real ink. The two-tone
-//! fixture proves the texture is actually sampled, not filled with a
-//! single average colour.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
 
@@ -25,9 +16,6 @@ use support::{capture, close};
 
 const SIZE: u32 = 32;
 
-/// A `SIZE`×`SIZE` four-quadrant image: TL red, TR green, BL blue, BR
-/// white. Asymmetric on both axes, so it fails a single-colour fallback,
-/// a horizontal mirror, AND a vertical flip.
 fn quadrant_image() -> ImageSource {
     let mut rgba = Vec::with_capacity((SIZE * SIZE * 4) as usize);
     for y in 0..SIZE {
@@ -67,8 +55,6 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
 
 #[test]
 fn contain_letterboxes_a_wide_image_in_a_square_box() {
-    // A 40x20 (2:1) solid-red image in a 32x32 box with Contain fits to
-    // width (32 wide, 16 tall, centred), leaving clear strips top+bottom.
     let src = ImageSource::from_rgba8(40, 20, [255, 0, 0, 255].repeat(40 * 20)).unwrap();
     let img = capture(
         |cx| {
@@ -113,8 +99,6 @@ fn image_samples_its_texture_with_correct_orientation() {
     let img = capture(|cx| cx.add(image(quadrant_image())), [SIZE, SIZE]);
     let lo = SIZE / 4;
     let hi = 3 * SIZE / 4;
-    // (sample point, expected rgb, label) — one per quadrant. A vertical
-    // flip would swap top/bottom; a mirror would swap left/right.
     let checks = [
         ((lo, lo), [255, 0, 0], "top-left red"),
         ((hi, lo), [0, 255, 0], "top-right green"),
@@ -141,8 +125,6 @@ fn image_samples_its_texture_with_correct_orientation() {
 
 #[test]
 fn twenty_four_distinct_images_all_paint() {
-    // Twenty-four solid swatches must all sample distinct cells after
-    // packing onto a shared atlas page.
     let swatches: Vec<_> = (0..24_u8)
         .map(|i| {
             let color = [i.saturating_mul(10), 40, 200_u8.saturating_sub(i), 255];
@@ -169,7 +151,6 @@ fn twenty_four_distinct_images_all_paint() {
     for i in 0..24 {
         let x = i * 8 + 4;
         let px = img.get_pixel(x, 4).0;
-        // `i` is bounded by the 24 swatches in this test.
         #[allow(clippy::cast_possible_truncation)]
         let expect = (i as u8).saturating_mul(10);
         assert!(

@@ -1,5 +1,3 @@
-//! Cache lifecycle tests.
-
 #![allow(missing_docs, clippy::unwrap_used)]
 
 use sigil_hal::{ParagraphMetrics, TextEngine};
@@ -39,9 +37,6 @@ fn different_width_is_cache_miss() {
 
 #[test]
 fn clear_cache_forces_rebuild_with_new_config() {
-    // Prove clear actually evicts: measure with one config, clear,
-    // reconfigure the engine (different font size), measure again.
-    // If the cache wasn't cleared, we'd get the old size back.
     let config_a = TextConfig {
         font_size: 16.0,
         ..TextConfig::default()

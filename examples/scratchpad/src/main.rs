@@ -1,15 +1,3 @@
-//! Scratchpad — a dogfood example of an editor-tier Sigil app.
-//!
-//! A single editable text field acts as the working buffer. A second
-//! `Signal<String>` represents the "persisted" state. A derived signal
-//! compares the two so a dirty indicator can light up without manual
-//! state syncing. "Save" copies current → saved; "Revert" copies the
-//! other way; "Clear" empties the buffer.
-//!
-//! The buffer is a single-line `text_field` so Enter can fire Save
-//! via `.submit`. Multi-line notes use `text_edit` (in the prelude).
-//! See `FRICTION.md` for the historical dogfood log.
-
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
@@ -23,16 +11,9 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 
 #[derive(Clone, Copy)]
 struct ScratchpadState {
-    /// Live editing buffer bound to the text field.
     current: Signal<String>,
-    /// "Persisted" buffer. Save copies `current` here; Revert copies
-    /// `saved` back into `current`.
     saved: Signal<String>,
-    /// Derived label: "● unsaved" when `current != saved`, "✓ saved"
-    /// otherwise. The underlying dirty boolean is internal to the
-    /// closure; tests query it via `dirty()` which compares peeks.
     status_label: Signal<String>,
-    /// Plain count of characters in `current`.
     char_label: Signal<String>,
 }
 

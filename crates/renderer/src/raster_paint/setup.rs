@@ -1,13 +1,9 @@
-//! wgpu setup helpers for [`super::RasterTextPipeline`] — pipeline
-//! construction, bind-group layout, buffers, and vertex layouts.
-
 use wgpu::util::DeviceExt as _;
 
 use super::RasterInstance;
 
 pub(super) const RASTER_SHADER: &str = include_str!("../raster_paint.wgsl");
 
-/// `SurfaceParams` uniform mirrored from the WGSL struct (16 bytes).
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
 pub(super) struct SurfaceParams {
@@ -36,9 +32,9 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<RasterInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
-        1 => Float32x4, // quad_rect
-        2 => Float32x4, // uv_rect
-        3 => Float32x4, // color
+        1 => Float32x4,
+        2 => Float32x4,
+        3 => Float32x4,
     ],
 };
 
@@ -118,10 +114,6 @@ pub(super) fn pipeline(
 }
 
 pub(super) fn sampler(device: &wgpu::Device) -> wgpu::Sampler {
-    // Nearest: the raster path rasterizes masks at physical-pixel size and
-    // positions quads on the physical pixel grid, so every fragment maps
-    // 1:1 onto an atlas texel — no filtering needed, and nearest avoids any
-    // bilinear bleed across shelf-packed glyph boundaries.
     device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("sigil-renderer raster text sampler"),
         address_mode_u: wgpu::AddressMode::ClampToEdge,

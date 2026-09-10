@@ -2,21 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! verify the round-trip from `StyleAtom::OverflowX` / `OverflowY`
-//! through the style adapter into `StyleData::overflow`.
-//!
-//! Renderer-side clipping behavior is out of scope here — this test
-//! only proves the storage path: atoms in → resolved `StyleData` carries
-//! the matching `Overflow` variant on the right axis.
-
 #![allow(
     clippy::unwrap_used,
     clippy::missing_docs_in_private_items,
     missing_docs
 )]
-
-// Workspace dev-deps that other layout tests reach for; keep the unused
-// list quiet under -D warnings.
 
 use sigil_layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
 use sigil_style::{OverflowKind, StyleAtom};

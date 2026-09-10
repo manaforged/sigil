@@ -1,19 +1,3 @@
-//! Regression: a flex item's grow factor is its OWN declared grow.
-//!
-//! An item whose child declares `grow(1.0)` used to resolve with the
-//! child's grow instead of its own: the intrinsic-basis probe in
-//! `container_intrinsic_main` lays the item's subtree out through
-//! `layout_item_subtree`, which recomputed `assigned_w` from the item's
-//! own `flex_grow > 0` — even though the probe context deliberately
-//! carries `assigned: None` ("shrink-to-fit is the wanted behaviour").
-//! The fake assignment made the item fill the full containing block, its
-//! `grow(1.0)` child then filled the item, and the probe read back the
-//! full width as the item's natural basis. Every grow item probed to the
-//! same inflated basis, so free space went NEGATIVE and the shrink pass
-//! (equal scaled shrink factors) split the line equally — a 1.4:0.8 row
-//! came out 341/341 and the clamp loop could even squeeze a `Fixed(96)`
-//! sibling.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -33,8 +17,6 @@ impl TextMeasure for NoText {
     }
 }
 
-/// 778 px row: two grow items (1.4 / 0.8), each wrapping a
-/// `block().grow(1.0)` child, beside a fixed 96 px sibling.
 fn row_widths() -> Vec<f32> {
     let mut cx = Cx::new_root();
     let cell = |grow: f32| {
@@ -61,9 +43,6 @@ fn row_widths() -> Vec<f32> {
 
 #[test]
 fn item_grow_wins_over_child_grow() {
-    // Free space = 778 - 96 = 682, split 1.4 : 0.8 → 434 / 248.
-    // The bug split it equally (341 / 341) and squeezed the fixed
-    // sibling below its declared 96.
     assert_eq!(
         row_widths(),
         vec![434.0, 248.0, 96.0],

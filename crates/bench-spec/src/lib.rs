@@ -1,9 +1,3 @@
-//! Benchmark spec shared by every framework runner.
-//!
-//! A runner drives a real window through [`ledger::script`], stamps
-//! `Instant::now()` on every 16 ms pulse, and writes a [`Record`]. The
-//! report tool reads records only; it never measures.
-
 #![allow(missing_docs)]
 
 pub mod ledger;

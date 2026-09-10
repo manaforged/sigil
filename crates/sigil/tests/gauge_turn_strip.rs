@@ -2,17 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `gauge` + `turn_strip` — state-machine and visual-golden tests for
-//! the two battler HUD display widgets (HD-2D Task 10).
-//!
-//! State-machine tests read the resolved reactive style slice straight
-//! off each node's [`StyleBinding`] extension — the same pattern
-//! `phase_c_reactive_attrs.rs` uses for `text_field`/`button` reactive
-//! overlays — rather than rendering, since the assertion is "did the
-//! atom list change", not "does it look right" (goldens cover that).
-//!
-//! Goldens reuse `golden_support` directly, mirroring `command_menu.rs`.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -29,9 +18,6 @@ use golden_support::{
     InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
 };
 
-/// Read the current reactive style slices off `id`'s [`StyleBinding`]
-/// extension, concatenated in install order (T0 composition) — mirrors
-/// `phase_c_reactive_attrs.rs`'s helper of the same name.
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
     let Some(binding) = cx
         .get(id)
@@ -76,15 +62,11 @@ fn has_accent_tone(atoms: &[StyleAtom]) -> bool {
         .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("accent")))
 }
 
-// Gauge fills use the muted state-fill register (accent-8); turn_strip's
-// active chip keeps the full accent highlight.
 fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
     atoms
         .iter()
         .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("accent-8")))
 }
-
-// ---- gauge: state machine -----------------------------------------------------
 
 #[test]
 fn gauge_warn_tone_below_threshold() {
@@ -101,7 +83,6 @@ fn gauge_warn_tone_below_threshold() {
         );
         assert!(!has_warn_tone(before));
 
-        // Drop below the threshold: 0.2 / 1.0 = 0.2 < 0.3.
         value.set(0.2);
         let after = reactive_slice(&cx, fill_id);
         assert!(
@@ -132,8 +113,6 @@ fn gauge_fill_tracks_signal() {
         );
     });
 }
-
-// ---- turn_strip: state machine -------------------------------------------------
 
 #[test]
 fn turn_strip_active_follows_signal() {
@@ -166,8 +145,6 @@ fn turn_strip_active_follows_signal() {
     });
 }
 
-// ---- goldens ------------------------------------------------------------------
-
 const DELTA_PCT: f32 = 0.5;
 
 fn check(stem: &str, img: Option<image::RgbaImage>) {
@@ -178,10 +155,6 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
     assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
 }
 
-/// Short unit names — the golden harness's `StubMeasure` reports a
-/// fixed 40x16px per text node regardless of content, so a label
-/// longer than that wraps and clips within its own chip. Keep entries
-/// short enough to render on one line under that stub.
 fn battler_entries() -> Vec<String> {
     vec!["Alric".to_owned(), "Vex".to_owned(), "Doom".to_owned()]
 }

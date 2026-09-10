@@ -3,13 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 
-//! DR-050 phase-1 tests — projection correctness for the four most
-//! common authoring patterns.
-//!
-//! Each test builds a tiny `Cx` arena, runs the projection, and asserts
-//! against an inline snapshot. The snapshot format is the indented-text
-//! formatter from [`sigil_a11y::snapshot`].
-
 use accesskit::Role;
 use sigil_a11y::{snapshot, tree};
 use sigil_kernel::{Cx, container, fragment};
@@ -55,8 +48,6 @@ fn generic_container_default_role() {
 
 #[test]
 fn fragment_reparents_children_in_projection() {
-    // Fragment wraps a button; the projection should elide the fragment
-    // and surface the button as the root.
     let mut cx = Cx::new_root();
     let _ = fragment()
         .child(container().role(Role::Button).label("Inner"))

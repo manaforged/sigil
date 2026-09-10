@@ -15,8 +15,6 @@ fn tree_builds_without_panic() {
 
 #[test]
 fn open_via_mocked_dialog_loads_tasks() {
-    // The File -> Open flow, tested end to end with no native picker: the
-    // dialog mock returns a temp file, and load_from parses it.
     with_cx("todo-open", |_cx| {
         let path = std::env::temp_dir().join("sigil-todo-open-test.txt");
         std::fs::write(&path, "[x] shipped\n[ ] pending\n").unwrap();

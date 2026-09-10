@@ -1,12 +1,3 @@
-//! Per-run font fallback chain integration tests.
-//!
-//! `FiraSans` (the bundled sans primary) has no Hebrew coverage; these
-//! tests prove a mixed Latin+Hebrew paragraph resolves the Hebrew run
-//! against a registered face (or the system script fallback) instead of
-//! rendering `.notdef` tofu, and that the renderer-facing invariant
-//! (`Paragraph::for_each_font` enumerating every face a glyph
-//! actually references) holds.
-
 #![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use std::collections::HashSet;
@@ -15,14 +6,12 @@ use sigil_hal::{ParagraphMetrics, TextEngine};
 use sigil_text::{OwnedTextEngine, TextConfig};
 
 const NOTO_HEBREW: &[u8] = include_bytes!("fixtures/NotoSansHebrew-Regular.ttf");
-/// SHIN LAMED VAV MEM-FINAL — "שלום" (Shalom).
 const HEBREW_WORD: &str = "\u{05E9}\u{05DC}\u{05D5}\u{05DD}";
 
 fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextConfig::default())
 }
 
-/// Ethiopic "ሰላም" — no bundled face and no system script table cover it.
 const ETHIOPIC_WORD: &str = "\u{1230}\u{120B}\u{121D}";
 
 #[test]
@@ -52,9 +41,6 @@ fn mixed_latin_hebrew_falls_back_to_registered_face() {
         "no glyph should be .notdef once a covering face is registered: {glyphs:?}",
     );
 
-    // Renderer-facing invariant: the Latin run (FiraSans) and the
-    // Hebrew run (fallback face) must carry two DISTINCT font ids —
-    // proving fallback actually happened, not just luck.
     let distinct_fonts: HashSet<u64> = glyphs.iter().map(|g| g.font_id).collect();
     assert_eq!(
         distinct_fonts.len(),
@@ -66,10 +52,6 @@ fn mixed_latin_hebrew_falls_back_to_registered_face() {
 
 #[test]
 fn emoji_falls_back_to_the_bundled_color_face() {
-    // No registration needed: the bundled Noto Color Emoji subset is the
-    // built-in last-resort fallback. "A✅" must resolve the check mark to
-    // that face (a real glyph, a distinct font id from the Latin "A"),
-    // not render .notdef tofu.
     let e = engine();
     let p = e.layout_paragraph("A\u{2705}", None).unwrap();
     let glyphs = p.rendered_glyphs();
@@ -118,8 +100,6 @@ fn for_each_font_yields_every_face_a_glyph_actually_uses() {
 
 #[test]
 fn fallback_face_registration_does_not_disturb_pure_latin_layout() {
-    // Registering a Hebrew fallback face must not change how a
-    // Latin-only paragraph shapes or measures.
     let e_baseline = engine();
     let baseline = e_baseline.layout_paragraph("Hello world", None).unwrap();
 

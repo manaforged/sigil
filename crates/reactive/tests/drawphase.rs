@@ -2,15 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! impl — integration tests for G4 `DrawPhase` .
-//!
-//! Covers the phase state machine, the write-during-Paint debug-assert
-//! seam, the deferred-write queue, and the `is_painting` ergonomic
-//! shortcut. Tests asserting debug-panic behaviour are gated on
-//! `cfg(debug_assertions)` — in release the `debug_assert_*` family
-//! compiles out and the same call site either no-ops or defers per
-//! the draw-phase contract.
-
 #![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
@@ -28,13 +19,10 @@ use sigil_reactive::{DrawPhase, Entity, Runtime, effect, set_global, signal};
 #[derive(Clone, DeriveAction)]
 struct Tick;
 
-// frame_dirty — the change-gate the app frame driver reads to skip paint.
 #[test]
 fn frame_dirty_tracks_visual_mutations() {
     Runtime::scope("frame_dirty_tracks_visual_mutations", || {
         let tracked = signal(0_i32);
-        // Reading `tracked` in an effect subscribes it; writes then schedule
-        // observer work — exactly the mutation that must mark a frame dirty.
         effect(move || {
             let _ = tracked.get();
         });
@@ -56,7 +44,6 @@ fn frame_dirty_tracks_visual_mutations() {
         Runtime::begin_paint();
         Runtime::end_frame();
 
-        // Each frame starts clean; a structural mark (no signal) still paints.
         Runtime::begin_effect();
         assert!(!Runtime::frame_dirty(), "the next frame starts clean");
         Runtime::mark_frame_dirty();
@@ -70,7 +57,6 @@ fn frame_dirty_tracks_visual_mutations() {
     });
 }
 
-// 1. -----------------------------------------------------------------
 #[test]
 fn idle_phase_is_default() {
     Runtime::scope("idle_default", || {
@@ -82,7 +68,6 @@ fn idle_phase_is_default() {
     });
 }
 
-// 2. -----------------------------------------------------------------
 #[test]
 fn phase_round_trips_through_idle() {
     Runtime::scope("round_trip", || {
@@ -110,7 +95,6 @@ fn phase_round_trips_through_idle() {
     });
 }
 
-// 3. -----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "DrawPhase::Paint")]
@@ -126,7 +110,6 @@ fn update_during_paint_panics_in_debug() {
     });
 }
 
-// 4. -----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "Signal::set")]
@@ -140,7 +123,6 @@ fn signal_set_during_paint_panics_in_debug() {
     });
 }
 
-// 5. -----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "Signal::update")]
@@ -154,11 +136,6 @@ fn signal_update_during_paint_panics_in_debug() {
     });
 }
 
-// 6. -----------------------------------------------------------------
-// Notify is reached only via `cx.notify` inside `Entity::update`; the
-// Entity::update guard fires first. The composite panic message still
-// carries "DrawPhase::Paint" — load-bearing diagnostic — and the
-// notify seam is wired (visible via source inspection).
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "DrawPhase::Paint")]
@@ -174,10 +151,6 @@ fn notify_during_paint_panics_in_debug() {
     });
 }
 
-// 7. -----------------------------------------------------------------
-// dispatch_action is reached via `Context` inside Entity::update. The
-// Entity::update guard fires first; the composite panic message still
-// carries "DrawPhase::Paint".
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "DrawPhase::Paint")]
@@ -193,11 +166,6 @@ fn dispatch_action_during_paint_panics_in_debug() {
     });
 }
 
-// 8. -----------------------------------------------------------------
-// In release the `debug_assert` family compiles out — a Paint-phase
-// dispatch enqueues to deferred_writes and end_frame replays it. The
-// test only runs under not(debug_assertions); test #7 covers the
-// debug-build panic path.
 #[cfg(not(debug_assertions))]
 #[test]
 fn dispatch_action_during_paint_defers_in_release() {
@@ -225,10 +193,6 @@ fn dispatch_action_during_paint_defers_in_release() {
     });
 }
 
-// 9. -----------------------------------------------------------------
-// Outside Paint the dispatch path is immediate (no defer). Confirms
-// end_frame closes cleanly even with an empty deferred queue and the
-// scope re-enters Idle on the next frame.
 #[test]
 fn dispatch_outside_paint_fires_immediately() {
     let fired = Rc::new(Cell::new(0_u32));
@@ -253,13 +217,8 @@ fn dispatch_outside_paint_fires_immediately() {
     });
 }
 
-// 10. ----------------------------------------------------------------
 #[test]
 fn observer_fires_in_effect_phase() {
-    // Observers schedule on cx.notify and drain at end-of-outermost-
-    // update. Verifies that an observer triggered by an Effect-phase
-    // update sees phase == Effect when its callback fires — confirming
-    // the drain happens in Effect, never in Paint.
     let phase_at_fire = Rc::new(Cell::new(DrawPhase::Idle));
     let capture = Rc::clone(&phase_at_fire);
     Runtime::scope("observer_in_effect", || {
@@ -286,18 +245,16 @@ fn observer_fires_in_effect_phase() {
     });
 }
 
-// 11. ----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "expected Layout")]
 fn phase_transition_out_of_order_panics_in_debug() {
     Runtime::scope("ooo_transition", || {
         Runtime::begin_effect();
-        Runtime::begin_paint(); // skips Layout — panic
+        Runtime::begin_paint();
     });
 }
 
-// 12. ----------------------------------------------------------------
 #[test]
 fn begin_layout_drains_pending_observers() {
     let fired = Rc::new(Cell::new(false));
@@ -325,7 +282,6 @@ fn begin_layout_drains_pending_observers() {
     });
 }
 
-// 13. ----------------------------------------------------------------
 #[test]
 fn read_paths_in_paint_are_legal() {
     Runtime::scope("read_paint_legal", || {
@@ -342,15 +298,8 @@ fn read_paths_in_paint_are_legal() {
     });
 }
 
-// 14. ----------------------------------------------------------------
 #[test]
 fn is_painting_reflects_current_phase() {
-    // Context::is_painting is reachable inside Entity::update, which
-    // is itself only legal outside Paint. Verifies false in Effect /
-    // Layout. The Paint == true case is verified through
-    // Runtime::current_phase() (also publicly observable) inside the
-    // Paint window because reaching `cx.painting()` from within
-    // Paint requires Entity::update, which panics in debug.
     let saw_effect = Rc::new(Cell::new(true));
     let saw_layout = Rc::new(Cell::new(true));
     let saw_effect_c = Rc::clone(&saw_effect);
@@ -379,29 +328,17 @@ fn is_painting_reflects_current_phase() {
     );
 }
 
-// 15. ----------------------------------------------------------------
-// MAX_DRAIN_PASSES cap: see threshold-deviation note in the dispatch
-// return. The cycle case requires a handler that re-enters
-// dispatch_action from within a deferred-replay context, which is not
-// reachable through the public Context API today (replay runs outside
-// any Context). The cap branch is exercised by the panic-on-overflow
-// path inside `drain_deferred_writes`; the constant is testable
-// through current_phase + queue length observability. We assert the
-// shape of the public end_frame contract: deferred-write queue drains
-// to empty and runtime returns to Idle.
 #[test]
 fn end_frame_drains_to_idle_with_empty_queue() {
     Runtime::scope("end_frame_drain", || {
         Runtime::begin_effect();
         Runtime::begin_layout();
         Runtime::begin_paint();
-        // No deferred writes; end_frame still drains cleanly.
         Runtime::end_frame();
         assert_eq!(Runtime::current_phase(), DrawPhase::Idle);
     });
 }
 
-// 16. ----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "DrawPhase::Paint")]
@@ -418,7 +355,6 @@ fn focus_during_paint_panics_in_debug() {
     });
 }
 
-// 17. ----------------------------------------------------------------
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "set_global")]
@@ -433,7 +369,6 @@ fn set_global_during_paint_panics_in_debug() {
     });
 }
 
-// 18. ----------------------------------------------------------------
 #[test]
 fn current_phase_observable_throughout_frame() {
     Runtime::scope("observable", || {

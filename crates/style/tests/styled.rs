@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Behavioral tests for the G6 `Styled` fluent trait. See DR-049.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
@@ -15,7 +13,6 @@ use sigil_style::{
     StateStyleBuilder, StateVariants, StyleAtom, Styleable, Typography, Visual,
 };
 
-/// Helper — start a fresh styled builder on a container node.
 fn styled() -> sigil_style::NodeStyledBuilder {
     container().styled()
 }
@@ -191,8 +188,6 @@ fn all_four_state_slots_populate_independently() {
 
 #[test]
 fn state_builder_implements_styled_within_closure() {
-    // Verifies the StateStyleBuilder responds to the same fluent vocab
-    // as the outer builder — uses bg / px / opacity / text_color.
     let b = styled().hover(|s| {
         s.bg("surface-hover")
             .text_color("on-surface")
@@ -209,7 +204,6 @@ fn state_builder_implements_styled_within_closure() {
 
 #[test]
 fn color_or_token_from_impls_route_correctly() {
-    // Direct ColorOrToken construction (the path widget impls use).
     let from_rgba: ColorOrToken = Rgba8 {
         r: 1,
         g: 2,
@@ -233,8 +227,6 @@ fn color_or_token_from_impls_route_correctly() {
 
 #[test]
 fn state_style_builder_can_be_built_standalone() {
-    // The pub(crate) constructor is reachable through .hover etc.
-    // This verifies the trait method works through the closure path.
     let outer = styled().hover(|s: StateStyleBuilder| s.bg("h"));
     let hover = outer.style().hover_atoms();
     assert_eq!(hover.len(), 1);
@@ -295,12 +287,6 @@ fn empty_builder_has_empty_style() {
     assert!(!style.has_state_overlays());
 }
 
-// ----- Silent-trap regression tests -----
-
-/// Trap 1: `Styled::grow` was renamed to `Styled::flex_grow` to avoid
-/// the silent type-confusion footgun with `LayoutStyle::grow(f32)`.
-/// The new method must write `FlexGrow(value)` to the atom stream, and
-/// the old `.grow(u16)` name on this trait must no longer exist.
 #[test]
 fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
     let b = styled().flex_grow(2);
@@ -308,18 +294,10 @@ fn trap1_flex_grow_writes_atom_and_grow_is_gone() {
     assert_eq!(atoms.len(), 1);
     assert_eq!(atoms[0], StyleAtom::FlexGrow(2));
 
-    // Compile-time evidence that the `.grow(u16)` method on the Flex
-    // trait no longer exists: if it did, the trait probe below would
-    // succeed and `flex_grow` would fail to resolve. We instead just
-    // re-call `.flex_grow` to lock in the new name as the only one.
     let b2 = styled().flex_grow(1000);
     assert_eq!(b2.style().as_atoms()[0], StyleAtom::FlexGrow(1000));
 }
 
-/// Trap 2: `Styled::opacity` now takes `f32` in `0.0..=1.0` and scales
-/// internally to the `StyleAtom::Opacity` u16 representation (×`10_000`).
-/// Authoring `.opacity(0.5)` must produce `Opacity(5_000)` (50 %),
-/// not `Opacity(50)` (0.5 %).
 #[test]
 fn trap2_opacity_f32_scales_to_atom() {
     let b = styled().opacity(0.5);
@@ -328,8 +306,6 @@ fn trap2_opacity_f32_scales_to_atom() {
     assert_eq!(atoms[0], StyleAtom::Opacity(5_000));
 }
 
-/// Trap 2: clamping at the boundaries — `.opacity(0.0)` and
-/// `.opacity(1.0)` must produce the exact min / max atom encoding.
 #[test]
 fn trap2_opacity_clamps_at_boundaries() {
     let zero = styled().opacity(0.0);
@@ -339,9 +315,6 @@ fn trap2_opacity_clamps_at_boundaries() {
     assert_eq!(one.style().as_atoms()[0], StyleAtom::Opacity(10_000));
 }
 
-/// `Style::class` routes each state-prefixed token into its overlay slot
-/// while unprefixed tokens stay in the base list — the parse half of the
-/// `hover:`/`focus:`/`active:`/`disabled:` class support.
 #[test]
 fn class_routes_state_prefixes_to_overlay_slots() {
     let s = sigil_style::Style::new()
@@ -363,8 +336,6 @@ fn class_routes_state_prefixes_to_overlay_slots() {
     assert_eq!(s.disabled_atoms(), [StyleAtom::Opacity(5_000)]);
 }
 
-/// Multiple tokens for the same slot accumulate, and an unknown / plain
-/// unsupported prefix is skipped without derailing the rest of the string.
 #[test]
 fn class_accumulates_slot_and_skips_unknown() {
     let s = sigil_style::Style::new().class("hover:bg-accent hover:rounded-md bogus:x px-4");

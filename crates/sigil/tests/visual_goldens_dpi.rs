@@ -2,32 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! DPI-scale golden axis — Wave 0 truth harness.
-//!
-//! Captures ONE text-bearing widget (a button with a real label) at four
-//! DPI scales (1.0 / 1.25 / 1.5 / 2.0) through
-//! [`render_widget_to_png_scaled`] using the REAL `sigil_app::DefaultTextMeasure`
-//! (an `OwnedTextEngine`-backed measurer, not the deterministic stub), per
-//! the internal text-quality / gap-closure plan, Wave 0.
-//!
-//! IMPORTANT — these goldens capture TODAY'S baseline, not a corrected
-//! pipeline. `crates/renderer/src/offscreen.rs:97,142` hardcode
-//! `scale: 1.0` in the offscreen `WalkCtx` regardless of the
-//! logical-viewport/physical-texture split expressed here, so every
-//! capture at scale > 1.0 bakes the current stretched/soft output — the
-//! same logical-space geometry rasterized into a larger texture with no
-//! AA re-tuning for the higher pixel density. That IS the Wave-0 point:
-//! these four PNGs are the visible "before" that Wave 1's DPI plumbing
-//! (real `scale` threaded through `ScreenSubmission` + both offscreen
-//! walkers) is expected to visibly change. Do not "fix" the renderer here
-//! to make these look sharp — that is Wave 1's job, and Wave 1's gate is a
-//! deliberate re-bake of this exact set with visual-review sign-off.
-//!
-//! Run with `SIGIL_REGEN_GOLDENS=1` to bake initially, then re-run to
-//! verify green. Always with `--test-threads=1` — the wgpu device-init
-//! race under parallel test threads crashes this
-//! suite otherwise.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -48,7 +22,6 @@ const DELTA_PCT: f32 = 0.5;
 const LOGICAL_SIZE: [u32; 2] = [160, 56];
 const HIT_POINT: (f32, f32) = (74.0, 22.0);
 
-/// The four scales in the Wave 0 axis, paired with their golden stems.
 const SCALE_STEMS: [(&str, f32); 4] = [
     ("dpi/button_label_s100", 1.0),
     ("dpi/button_label_s125", 1.25),
@@ -96,11 +69,6 @@ fn button_label_dpi_scale_200() {
     capture_at_scale(SCALE_STEMS[3].0, SCALE_STEMS[3].1);
 }
 
-/// Ghost-pass guard: the four scale captures must not collapse to
-/// byte-identical PNGs. Because physical texture dimensions differ by
-/// construction (160x56 logical * scale), this also catches the coarser
-/// failure of a capture silently reusing another scale's texture size —
-/// not just a same-size-different-content regression.
 #[test]
 fn button_label_dpi_scales_are_pairwise_distinct() {
     for (i, (stem_a, _)) in SCALE_STEMS.iter().enumerate() {

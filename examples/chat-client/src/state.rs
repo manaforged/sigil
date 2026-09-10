@@ -1,20 +1,11 @@
-//! Chat client state.
-//!
-//! All signals live on a `Copy` carrier struct so handlers can be
-//! `move ||`-closures without unwieldy `Rc<RefCell<_>>` plumbing.
-//! Mirrors the kanban-board `BoardState` shape — the pattern that
-//! makes Sigil's reactive layer ergonomic for kitchen-sink apps.
-
 use sigil::prelude::*;
 
-/// One chat message in a channel timeline.
 #[derive(Clone, Debug)]
 pub(crate) struct Message {
     pub(crate) author: String,
     pub(crate) body: String,
 }
 
-/// Logical channel — name + member list + pinned-note set.
 #[derive(Clone, Debug)]
 pub(crate) struct Channel {
     pub(crate) name: String,
@@ -23,12 +14,10 @@ pub(crate) struct Channel {
     pub(crate) messages: Vec<Message>,
 }
 
-/// Right-pane tab indices — index into the `TabsBuilder` `labels` vec.
 pub(crate) const TAB_MESSAGES: usize = 0;
 pub(crate) const TAB_MEMBERS: usize = 1;
 pub(crate) const TAB_PINNED: usize = 2;
 
-/// Stable tab captions used in both the tab strip and the status bar.
 pub(crate) const fn tab_title(index: usize) -> &'static str {
     match index {
         TAB_MESSAGES => "Messages",
@@ -38,29 +27,20 @@ pub(crate) const fn tab_title(index: usize) -> &'static str {
     }
 }
 
-/// Per-app state. Every signal is `Copy`; the carrier struct is `Copy`
-/// too, so handler closures clone it for free.
 #[derive(Clone, Copy)]
 pub(crate) struct ChatState {
     pub(crate) channels: Signal<Vec<Channel>>,
     pub(crate) selected_channel: Signal<usize>,
     pub(crate) active_tab: Signal<usize>,
 
-    // Compose box — bound to the `text_edit` widget at the bottom of
-    // the Messages tab. Preserves newlines so callers can compose
-    // multi-paragraph drafts before sending.
     pub(crate) compose_draft: Signal<String>,
 
-    // Modal state — "Channel settings" modal.
     pub(crate) modal_open: Signal<bool>,
     pub(crate) modal_name_draft: Signal<String>,
     pub(crate) modal_topic_draft: Signal<String>,
 
-    // Splitter sizes — sidebar / right pane (logical px). Bind the
-    // splitter to this signal so drag updates persist across rebuilds.
     pub(crate) split_sizes: Signal<Vec<f32>>,
 
-    // Reactive status line — bound to a label at the bottom.
     pub(crate) status: Signal<String>,
 }
 
@@ -80,8 +60,6 @@ impl ChatState {
         }
     }
 
-    /// Open the modal preloaded with the current channel's name + topic.
-    /// New-channel mode is just the empty-name preload.
     pub(crate) fn open_channel_settings(self) {
         let idx = self.selected_channel.peek();
         let name = self
@@ -91,9 +69,6 @@ impl ChatState {
             .map(|c| c.name.clone())
             .unwrap_or_default();
         self.modal_name_draft.set(name);
-        // Use the first pinned line as a stand-in for "topic" — keeps
-        // the modal honest about exercising two text_fields without
-        // adding a topic field to the seed data.
         let topic = self
             .channels
             .peek()
@@ -146,7 +121,6 @@ impl ChatState {
         self.status.set(format!("Channel: {name}"));
     }
 
-    /// Send the current compose draft into the selected channel.
     pub(crate) fn send_compose(self) {
         let body = self.compose_draft.peek();
         if body.trim().is_empty() {

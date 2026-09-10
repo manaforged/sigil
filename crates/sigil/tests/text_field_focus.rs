@@ -1,9 +1,3 @@
-//! `text_field::focus_when` — signal-driven focus requests.
-//!
-//! The page-hotkey pattern: a `/` shortcut handler receives no `Cx`, so
-//! it bumps a `Signal<u64>`; the field's effect observes the bump and
-//! queues a focus request the router applies before the next event.
-
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -41,7 +35,6 @@ fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> ShellEvent {
     }))
 }
 
-/// The single `Role::TextInput` node in the tree (the field frame).
 fn field_node(cx: &Cx, root: NodeId) -> NodeId {
     let mut stack = vec![root];
     while let Some(id) = stack.pop() {
@@ -64,7 +57,6 @@ fn focus_when_bump_focuses_the_field() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Mount is steady: no bump, no focus steal.
         router.flush_focus_requests(&mut cx, &layout);
         assert_eq!(router.focus(), None);
 
@@ -93,8 +85,6 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
         let field = field_node(&cx, root);
         let mut router = EventRouter::new();
 
-        // `/` with nothing focused: the page shortcut fires and bumps the
-        // trigger; the queued request lands on the next routed event.
         router.route(
             &mut cx,
             &layout,
@@ -108,8 +98,6 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
             "focus request applies before the next event dispatches"
         );
 
-        // Typing `/` now reaches the field as text instead of re-firing
-        // the page shortcut.
         router.route(
             &mut cx,
             &layout,

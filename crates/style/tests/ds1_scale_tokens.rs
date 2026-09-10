@@ -1,15 +1,8 @@
-//! DS1 scale-token end-to-end: parse `bg-<role>-<step>`,
-//! `text-<role>-<step>`, the semantic aliases (`bg-surface-subtle`,
-//! `text-muted`, `border-strong`), and verify each resolves to the
-//! expected concrete color through the live `Theme` resolution path.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
 use sigil_style::scale::{
@@ -44,7 +37,6 @@ fn resolved_text(theme: &Theme, class: &str) -> Rgba8 {
 #[test]
 fn role_step_tokens_resolve_to_scale_steps() {
     let theme = Theme::default();
-    // Each `<role>-<step>` token routes through `Theme::scale(role).step(n)`.
     assert_eq!(resolved_bg(&theme, "bg-gray-2"), slate_light().step(2));
     assert_eq!(resolved_bg(&theme, "bg-gray-12"), slate_light().step(12));
     assert_eq!(resolved_bg(&theme, "bg-accent-9"), blue_light().step(9));
@@ -66,9 +58,6 @@ fn role_step_tokens_resolve_to_scale_steps() {
 #[test]
 fn semantic_aliases_resolve_to_scale_steps() {
     let theme = Theme::default();
-    // Aliases follow the parser-strip convention: `bg-X` looks up `X`,
-    // `text-X` looks up `X`. So the alias names live without the
-    // leading `bg-` / `text-`.
     assert_eq!(
         resolved_bg(&theme, "bg-surface-subtle"),
         slate_light().step(3)
@@ -86,18 +75,15 @@ fn semantic_aliases_resolve_to_scale_steps() {
 #[test]
 fn dark_theme_flips_every_scale_and_semantic_alias() {
     let theme = Theme::dark();
-    // Scales: step values flip from light to dark Radix.
     assert_eq!(resolved_bg(&theme, "bg-gray-2"), slate_dark().step(2));
     assert_eq!(resolved_bg(&theme, "bg-gray-12"), slate_dark().step(12));
     assert_eq!(resolved_bg(&theme, "bg-accent-9"), blue_dark().step(9));
 
-    // Flat-field shim populated from dark scales.
     assert_eq!(theme.surface, slate_dark().step(2));
     assert_eq!(theme.on_surface, slate_dark().step(12));
     assert_eq!(theme.accent, blue_dark().step(9));
     assert_eq!(theme.border, slate_dark().step(7));
 
-    // Semantic aliases keep their step references — values flip.
     assert_eq!(
         resolved_bg(&theme, "bg-surface-subtle"),
         slate_dark().step(3)
@@ -107,18 +93,14 @@ fn dark_theme_flips_every_scale_and_semantic_alias() {
         slate_dark().step(11)
     );
 
-    // Dark differs from light in the same slot.
     assert_ne!(theme.surface, slate_light().step(2));
     assert_ne!(theme.on_surface, slate_light().step(12));
 }
 
 #[test]
 fn customizing_accent_scale_propagates_through_role_tokens() {
-    // Swapping the accent scale must change every `accent-N` resolution
-    // — proves the "hella customizable" story.
     let theme = Theme::default().with_accent_scale(ruby_light());
     assert_eq!(resolved_bg(&theme, "bg-accent-9"), ruby_light().step(9));
     assert_eq!(resolved_bg(&theme, "bg-accent-3"), ruby_light().step(3));
-    // The flat `theme.accent` mirror also updates.
     assert_eq!(theme.accent, ruby_light().step(9));
 }

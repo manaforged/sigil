@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pixel-verification test for Phase R6 pattern fills (Slash + Checker).
-//!
-//! Renders a deterministic scene via the offscreen capture path, reads back
-//! raw RGBA8 bytes (no PNG roundtrip), and asserts spatial + colour properties.
-//!
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -23,12 +18,6 @@ use sigil_renderer::{
 };
 use sigil_style::Rgba8;
 
-// Physical scale factor: texture dims = viewport × SCALE.
-// wgpu's downlevel default texture-dimension limit is 2048 px on each
-// axis. Viewport 1200 × scale 2 = 2400 px exceeds it, so we stay at
-// scale 1 — period 40 logical = 40 physical still gives 30 cycles
-// across the 1200-px-wide capture, plenty of transitions to assert
-// against without rebuilding the device with a custom limit.
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -42,8 +31,6 @@ const SH: f32 = 240.0;
 const CX: f32 = 620.0;
 const CY: f32 = 80.0;
 
-/// Renders the R6 pattern scene and asserts pixel-level contracts.
-/// Skips cleanly when no GPU adapter is available (headless CI).
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pattern_pixels_match_slash_and_checker_contracts() {
@@ -123,10 +110,6 @@ fn render_pattern_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
     read_pixels(device, queue, &texture, phys_w, phys_h)
 }
 
-// ---- assertion 1: slash transitions ------------------------------------
-
-/// Scans a 32 physical-px horizontal band at mid-y of the slash rect.
-/// Counts dark→bright R-channel transitions. Requires ≥ 4 across ~960 px.
 fn assert_slash_transitions(pixels: &[u8], phys_w: u32) {
     let mid_y_phys = ((SY + SH / 2.0) * SCALE as f32) as u32;
     let band_start = mid_y_phys.saturating_sub(16);
@@ -159,16 +142,10 @@ fn assert_slash_transitions(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 2: slash 45° directionality ------------------------------
-
-/// Points A and B share the same `x − y` diagonal (same stripe phase
-/// since the slash math hashes on `x - y`). Point C is offset only
-/// horizontally from A by 20 logical px — `x - y` shifts by 20, which
-/// is half a 40-px period, so C lands at the opposite stripe phase.
 fn assert_slash_directionality(pixels: &[u8], phys_w: u32) {
     let (ax, ay) = lp(SX + 20.0, SY + 20.0);
-    let (bx, by) = lp(SX + 60.0, SY + 60.0); // same x−y as A (diff 0)
-    let (cx, cy) = lp(SX + 40.0, SY + 20.0); // x−y shifted by +20 (half period)
+    let (bx, by) = lp(SX + 60.0, SY + 60.0);
+    let (cx, cy) = lp(SX + 40.0, SY + 20.0);
 
     let ra = pixel_r(pixels, phys_w, ax, ay) as i32;
     let rb = pixel_r(pixels, phys_w, bx, by) as i32;
@@ -189,9 +166,6 @@ fn assert_slash_directionality(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 3: checker 2×2 alternation --------------------------------
-
-/// Four cell-centre samples in a 2×2 grid must alternate reddish/whitish.
 fn assert_checker_alternation(pixels: &[u8], phys_w: u32) {
     let [a, b, c, d] = four_checker_samples(pixels, phys_w);
     let pat = [is_reddish(a), is_reddish(b), is_reddish(c), is_reddish(d)];
@@ -202,9 +176,6 @@ fn assert_checker_alternation(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- assertion 4: checker colour sanity ---------------------------------
-
-/// At least one reddish cell matching color_a and one whitish matching color_b.
 fn assert_checker_colour_sanity(pixels: &[u8], phys_w: u32) {
     let samples = four_checker_samples(pixels, phys_w);
     assert!(
@@ -219,14 +190,10 @@ fn assert_checker_colour_sanity(pixels: &[u8], phys_w: u32) {
     );
 }
 
-// ---- helpers -------------------------------------------------------------
-
-/// Logical-to-physical coordinate conversion.
 fn lp(lx: f32, ly: f32) -> (u32, u32) {
     ((lx * SCALE as f32) as u32, (ly * SCALE as f32) as u32)
 }
 
-/// Returns [A, B, C, D] RGBA samples centred in 2×2 adjacent checker cells.
 fn four_checker_samples(pixels: &[u8], phys_w: u32) -> [[u8; 4]; 4] {
     let (ax, ay) = lp(CX + 16.0, CY + 16.0);
     let (bx, by) = lp(CX + 48.0, CY + 16.0);
@@ -249,12 +216,10 @@ fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
     [pixels[b], pixels[b + 1], pixels[b + 2], pixels[b + 3]]
 }
 
-/// Loose: R > 180 && G < 120 (catches reddish vs whitish for alternation).
 const fn is_reddish(rgba: [u8; 4]) -> bool {
     rgba[0] > 180 && rgba[1] < 120
 }
 
-/// Tight: matches color_a rgba(220,60,60) within sRGB gamma rounding.
 const fn is_reddish_tight(rgba: [u8; 4]) -> bool {
     rgba[0] >= 200
         && rgba[0] <= 240
@@ -264,12 +229,9 @@ const fn is_reddish_tight(rgba: [u8; 4]) -> bool {
         && rgba[2] <= 80
 }
 
-/// Matches color_b rgba(245,245,250): all channels > 200.
 const fn is_whitish(rgba: [u8; 4]) -> bool {
     rgba[0] > 200 && rgba[1] > 200 && rgba[2] > 200
 }
-
-// ---- wgpu plumbing -------------------------------------------------------
 
 fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());

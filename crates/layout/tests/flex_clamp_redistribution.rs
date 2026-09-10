@@ -1,18 +1,3 @@
-//! CSS Flexbox §9.7 "Resolve the flexible lengths" is a LOOP.
-//!
-//! Distributing free space once and then clamping to min/max strands the
-//! space a violating item refused. The spec instead freezes the violating
-//! items and redistributes the remainder to the survivors, repeating
-//! until nothing violates.
-//!
-//! The single-pass version passed every pre-existing flex test because
-//! those tests either use one child or never clamp — the deviation only
-//! fires when a *flexible* item hits a min/max bound, which is exactly
-//! what a layout full of `max-w-*` cards does.
-//!
-//! Cases below were surfaced independently by two production-readiness
-//! reviews (2026-07-20).
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -52,8 +37,6 @@ fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
 
 #[test]
 fn grow_max_clamp_redistributes_to_sibling() {
-    // 400px, two `grow:1` items with basis 0, A capped at 50.
-    // A freezes at 50; B must absorb the whole remaining 350.
     let a = LayoutStyle::flex_column()
         .grow(1.0)
         .width(0.0)
@@ -69,8 +52,6 @@ fn grow_max_clamp_redistributes_to_sibling() {
 
 #[test]
 fn shrink_min_clamp_redistributes_to_sibling() {
-    // 100px container, two 200px items, A floored at 150.
-    // A freezes at 150; B must absorb the entire remaining deficit.
     let a = LayoutStyle::flex_column()
         .width(200.0)
         .shrink(1.0)

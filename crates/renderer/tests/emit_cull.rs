@@ -1,5 +1,3 @@
-//! Viewport clip skips offscreen rows at emit time.
-
 #![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
 
 use sigil_hal::{Point, Rect, Size};
@@ -12,7 +10,6 @@ struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
     fn measure(&self, source: &TextContent, _space: Size) -> sigil_hal::LogicalSize {
-        // Test stub: string length is far below f32's exact-integer range.
         #[allow(clippy::cast_precision_loss)]
         let n = match source {
             TextContent::Static(s) => s.len() as f32,

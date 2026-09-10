@@ -1,47 +1,26 @@
-//! Batched edit application + offset remap for [`super::CursorSet`].
-//!
-//! The contract: take one [`Edit`] per cursor (or skip via `None`),
-//! apply in descending span-start order on a clone of the rope, and
-//! remap every cursor's `head`/`anchor` after each apply so the set
-//! ends up referring to the right positions in the new rope.
-
 use std::ops::Range;
 
 use super::super::rope::Rope;
 use super::{Cursor, CursorSet};
 
-/// A single batched edit operation on a rope.
-///
-/// Returned by the closure passed to [`super::CursorSet::edit`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Edit {
-    /// Insert `text` at byte offset `at`.
     Insert {
-        /// Byte offset (must be a UTF-8 char boundary).
         at: usize,
-        /// Text to insert.
         text: String,
     },
-    /// Delete bytes in `from..to`.
     Delete {
-        /// Inclusive start byte offset.
         from: usize,
-        /// Exclusive end byte offset.
         to: usize,
     },
-    /// Replace bytes in `from..to` with `text`.
     Replace {
-        /// Inclusive start byte offset.
         from: usize,
-        /// Exclusive end byte offset.
         to: usize,
-        /// Replacement text.
         text: String,
     },
 }
 
 impl Edit {
-    /// Byte range this edit will mutate in the source rope.
     pub(crate) const fn range(&self) -> Range<usize> {
         match self {
             Self::Insert { at, .. } => *at..*at,
@@ -49,7 +28,6 @@ impl Edit {
         }
     }
 
-    /// New length of the inserted/replaced text (0 for delete).
     pub(crate) const fn new_len(&self) -> usize {
         match self {
             Self::Insert { text, .. } | Self::Replace { text, .. } => text.len(),
@@ -58,8 +36,6 @@ impl Edit {
     }
 }
 
-/// Implement [`super::CursorSet::edit`]. Defined here so the module
-/// root stays small.
 pub(crate) fn run_edit<F>(set: &mut CursorSet, rope: &Rope, op: F) -> Rope
 where
     F: Fn(&Cursor, &Rope) -> Option<Edit>,
@@ -98,15 +74,6 @@ fn apply_edit(rope: &mut Rope, edit: &Edit) {
     }
 }
 
-/// Re-map a byte offset after `edit` has been applied to the rope.
-///
-/// Offsets strictly before the edit's start are unchanged. Offsets inside
-/// the edit's deleted range collapse to `start + new_len`. Offsets at or
-/// after the edit's end shift by the signed length delta `new_len -
-/// old_len`. For a pure [`Edit::Insert`] (empty range), offsets equal
-/// to the insertion point shift forward by `new_len` (sticky-right
-/// gravity): the cursor that performed the insert ends up after the
-/// inserted text.
 pub(crate) const fn remap_offset(offset: usize, edit: &Edit) -> usize {
     let range = edit.range();
     let new_len = edit.new_len();

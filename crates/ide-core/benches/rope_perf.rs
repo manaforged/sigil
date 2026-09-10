@@ -1,5 +1,3 @@
-//! Rope performance benches — placeholder; populated after rope ships.
-
 use criterion as _;
 use crossbeam_channel as _;
 use ignore as _;

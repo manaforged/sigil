@@ -40,7 +40,7 @@ fn line_start_byte_sums_prior_lines_and_newlines() {
     use super::line_start_byte;
     let buf = "ab
 cde
-f"; // lines start at 0, 3, 7
+f";
     assert_eq!(line_start_byte(buf, 0), 0);
     assert_eq!(line_start_byte(buf, 1), 3, "after 'ab\n'");
     assert_eq!(line_start_byte(buf, 2), 7, "after 'ab\ncde\n'");

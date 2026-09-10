@@ -1,6 +1,3 @@
-//! Settings modal — two [`text_field`]s (channel name + pinned topic)
-//! plus Save / Cancel actions. Bound to `state.modal_open`.
-
 use sigil::prelude::*;
 
 use crate::state::ChatState;

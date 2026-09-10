@@ -1,10 +1,3 @@
-//! `log-tailer` — a dogfooded viewer-class app on Sigil's `virtual_list`.
-//!
-//! Synthesises ~10k mock log lines and renders them through the virtual
-//! list with a text filter, a level filter, an auto-scroll toggle, and
-//! row selection. The corpus never changes — this is strictly a
-//! viewer; nothing is written back to a log.
-
 mod data;
 mod state;
 mod view;

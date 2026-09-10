@@ -1,5 +1,3 @@
-//! `MinContent` / `MaxContent` width tests.
-
 #![allow(missing_docs, clippy::unwrap_used)]
 
 use std::rc::Rc;
@@ -55,15 +53,11 @@ fn min_content_is_narrower_than_max_content() {
 fn min_content_equals_longest_word_width() {
     let m = make_measurer();
 
-    // "Hi x Internationalization x Go" — the longest word is
-    // "Internationalization". MinContent should equal the width of
-    // that word laid out alone (since it's the widest unbreakable
-    // segment).
     let text = "Hi Internationalization Go";
     let min = measure_with_space(&m, text, Dim::MinContent);
     let longest_alone = measure_with_space(&m, "Internationalization", Dim::MaxContent);
 
-    let tolerance = 1.0; // sub-pixel rounding
+    let tolerance = 1.0;
     assert!(
         (min.width - longest_alone.width).abs() < tolerance,
         "min content ({min_w}) should match longest word width ({word_w})",

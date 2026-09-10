@@ -2,19 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Phase 2.4 acceptance — splitter widget structural + layout tests.
-//!
-//! Coverage:
-//! - Horizontal splitter with 3 panes lays each pane to its initial size.
-//! - Vertical splitter does the same on the y axis.
-//! - Nested splitter (vertical → horizontal) builds without panic and
-//!   surfaces all leaf panes in the tree.
-//! - `sizes_bind` populates the bound signal with the initial sizes.
-//!
-//! Drag-driven resize testing is deferred — the captured-pointer flow
-//! needs viewport-aware event synthesis at specific handle positions.
-//! Tracked in plan followups.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
@@ -49,7 +36,6 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
 
     let layout = compute(&mut cx, root, 612.0, 200.0);
 
-    // 3 panes + 2 handles interleaved: pane / handle / pane / handle / pane.
     let pane_0 = cx.nth_child(root, 0).expect("pane 0");
     let pane_1 = cx.nth_child(root, 2).expect("pane 1");
     let pane_2 = cx.nth_child(root, 4).expect("pane 2");
@@ -105,9 +91,6 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
 
 #[test]
 fn nested_splitter_renders_all_leaves() {
-    // Outer vertical splitter; bottom pane is itself a horizontal splitter
-    // with two sub-panes. Total leaf panes: 1 (top) + 2 (bottom-left,
-    // bottom-right) = 3.
     let inner = splitter(SplitterOrientation::Horizontal)
         .child(container().label("bottom-left"), 150.0)
         .child(container().label("bottom-right"), 150.0);
@@ -121,13 +104,9 @@ fn nested_splitter_renders_all_leaves() {
 
     let _layout = compute(&mut cx, root, 306.0, 206.0);
 
-    // Outer splitter: top pane (0), handle (1), bottom pane (2).
     let bottom_pane = cx.nth_child(root, 2).expect("bottom pane");
-    // Bottom pane wraps the inner splitter as its content; the inner
-    // splitter lives one level down.
     let inner_root = cx.nth_child(bottom_pane, 0).expect("inner splitter root");
 
-    // Inner splitter: left (0), handle (1), right (2).
     let left = cx.nth_child(inner_root, 0).expect("bottom-left");
     let right = cx.nth_child(inner_root, 2).expect("bottom-right");
 
@@ -137,9 +116,6 @@ fn nested_splitter_renders_all_leaves() {
 
 #[test]
 fn pane_builder_carries_initial_min_max_into_layout() {
-    // The pane(node).initial(px).min(px).max(px) per-pane builder must
-    // produce the same layout result as the positional .child(...)/
-    // .min_size(idx, px)/.max_size(idx, px) triplet.
     let mut cx = Cx::new_root();
     let root = cx.add(
         splitter(SplitterOrientation::Horizontal)

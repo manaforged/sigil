@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `sigil_app::Error` wrapping behaviour.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -31,8 +29,6 @@ fn error_new_wraps_arbitrary_std_error() {
 
 #[test]
 fn error_renderer_error_into_works_via_question_mark() {
-    // The renderer error path is the main reason `?` should succeed
-    // inside `launch::run` — make sure the From impl exists.
     fn try_renderer() -> Result<(), Error> {
         Err(sigil_renderer::RendererError::NotInitialized)?;
         Ok(())

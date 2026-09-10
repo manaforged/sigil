@@ -1,14 +1,3 @@
-//! `text_edit` paints a multi-line selection highlight.
-//!
-//! Before this, `text_edit` had no selection overlay (the runtime comment
-//! said "no selection overlay or scroll signal"). A selection spanning
-//! lines paints one highlight rect per covered line — partial on the first
-//! and last, full between.
-//!
-//! Driven here by keyboard shift-select, which flows through the buffer's
-//! `shift_*` + `commit` (no pointer capture). Drag-select reuses the same
-//! selection signal + overlay — pointer-gated.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -56,7 +45,6 @@ fn shift_select_across_lines_highlights_each_covered_line() {
     sigil::reactive::Runtime::scope("sel-kbd", || {
         sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
-        // Caret starts at the end of the buffer, on line 3 (index 2).
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout =
             LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
@@ -71,7 +59,6 @@ fn shift_select_across_lines_highlights_each_covered_line() {
 
         assert!(selection_ys(&cx, root).is_empty(), "no selection at rest");
 
-        // Shift+Up twice: extend the selection from line 3 up to line 1.
         router.route(&mut cx, &layout, shift_up());
         router.route(&mut cx, &layout, shift_up());
         layout

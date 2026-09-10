@@ -1,11 +1,3 @@
-//! Right pane: tabs (Preview / Metadata / Hex) routed off the
-//! `selected_index` signal.
-//!
-//! All three tab bodies are built once at `app_tree`-build time; each
-//! body consults `selected_index` reactively via a `derived` string
-//! signal so switching files re-renders the visible tab without
-//! rebuilding the kernel tree.
-
 use std::fmt::Write as _;
 
 use sigil::prelude::*;
@@ -17,7 +9,6 @@ use crate::files::{MockFile, hex_dump};
 const RIGHT_WIDTH: f32 = 656.0;
 const RIGHT_HEIGHT: f32 = 600.0;
 
-/// Build the right pane.
 #[must_use]
 pub(super) fn build(files: Vec<MockFile>, selected_index: Signal<usize>) -> impl IntoNode + use<> {
     let active_tab = signal(0_usize);

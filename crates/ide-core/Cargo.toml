@@ -13,14 +13,14 @@ description = "IDE-grade primitives for sigil consumers: rope buffer, workspace 
 [lib]
 
 [dependencies]
-# I-T2 rope buffer (W3.5): no external deps — own the rope.
-# I-T5 fuzzy-search (W4.5): owned algorithm; smallvec backs the inline-position
+# Rope buffer: no external deps.
+# Fuzzy search: owned algorithm; smallvec backs the inline-position
 #   buffer on `Match` so short needles never allocate.
-# I-T6 workspace+fs-watch (W4.6): notify (fs events) + ignore (gitignore parser)
+# Workspace and fs-watch: notify (fs events) + ignore (gitignore parser)
 #   + crossbeam-channel + toml (config parsing).
-# I-T7 settings (W5.4): toml (parse-only). toml_edit deferred until comment-
-#   preserving round-trip is needed (post-I-T7-MVP).
-# I-T8 keymap (W5.5): inherits from settings.
+# Settings: toml (parse-only). toml_edit deferred until a comment-
+#   preserving round-trip is needed.
+# Keymap: inherits from settings.
 smallvec = { workspace = true }
 notify = { workspace = true }
 ignore = { workspace = true }
@@ -28,7 +28,7 @@ crossbeam-channel = { workspace = true }
 toml = { workspace = true }
 
 [dev-dependencies]
-# I-T2 oracle for property tests — never a runtime dep (DR-040 own-what-we-replace).
+# Reference rope for property tests; never a runtime dep (DR-040).
 ropey = "1"
 proptest = { workspace = true }
 criterion = { version = "0.5", features = ["html_reports"] }

@@ -1,7 +1,3 @@
-//! THROWAWAY PROTOTYPE AUDIT — visual-state capture for the 2026-08-14
-//! "does it look amateur" review. Renders flagship widgets across
-//! interaction states and saves PNGs to `tests/output/audit/` for
-//! pixel analysis. Not a golden. Delete after the audit lands.
 #![allow(
     missing_docs,
     unused_crate_dependencies,
@@ -41,7 +37,6 @@ fn render(stem: &str, mode: InteractionMode, build: impl FnOnce(&mut Cx) -> Node
     save(stem, img);
 }
 
-/// One card row: the five flagship widgets, default state, real text.
 #[test]
 fn audit_row_defaults() {
     let img = render_widget_to_png_with(

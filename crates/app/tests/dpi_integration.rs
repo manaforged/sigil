@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! No-window DPI integration coverage for launch-sized viewports.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 

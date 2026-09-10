@@ -1,12 +1,7 @@
-//! Unit tests for the raster glyph-atlas pipeline (Wave-3 D2, DR-055;
-//! Wave-4 multi-face draw, adversarial review finding 4).
-
 #![allow(clippy::unwrap_used, clippy::float_cmp, clippy::indexing_slicing)]
 
 use super::*;
 
-/// Wrap boundary: frac >= 0.875 must carry +1px into the anchor, not
-/// silently alias to bin 0 of the CURRENT pixel (review finding 2).
 #[test]
 fn subpixel_wrap_carries_into_anchor() {
     assert_eq!(subpixel_quantize(10.0), (0, 0.0));
@@ -17,8 +12,6 @@ fn subpixel_wrap_carries_into_anchor() {
     assert_eq!(subpixel_quantize(10.999), (0, 1.0));
 }
 
-/// Invariant: the quantized placement (anchor + bin offset) stays within
-/// half a bin (0.125px) of the true pen position across the whole range.
 #[test]
 fn quantized_placement_error_bounded_by_half_bin() {
     let bins = f32::from(raster::SUBPIXEL_BINS);
@@ -35,8 +28,6 @@ fn quantized_placement_error_bounded_by_half_bin() {
     }
 }
 
-/// UVs are normalised against the FINAL atlas size — texel rects divided
-/// by whatever size the atlas ended the accumulation at (review finding 1).
 #[test]
 fn normalize_uvs_divides_by_final_size() {
     let mut instances = vec![
@@ -51,7 +42,6 @@ fn normalize_uvs_divides_by_final_size() {
             color: [0.0; 4],
         },
     ];
-    // Simulates growth to 2048 AFTER the first instance was placed.
     normalize_uvs(&mut instances, 2048);
     assert_eq!(instances[0].uv_rect, [0.0, 0.0, 0.25, 0.25]);
     assert_eq!(instances[1].uv_rect, [0.5, 0.0, 1.0, 0.5]);
@@ -60,9 +50,6 @@ fn normalize_uvs_divides_by_final_size() {
 const NOTO_HEBREW: &[u8] =
     include_bytes!("../../../text/tests/fixtures/NotoSansHebrew-Regular.ttf");
 
-/// Build a mixed Latin+Hebrew paragraph with a registered fallback face
-/// (mirrors `crates/text/tests/font_fallback.rs`) — used to prove
-/// `record_paragraph` processes every face, not just the primary.
 fn mixed_face_paragraph() -> Paragraph {
     let mut engine = sigil_text::OwnedTextEngine::new(sigil_text::TextConfig::default());
     engine
@@ -80,9 +67,6 @@ fn mixed_face_paragraph() -> Paragraph {
         .expect("mixed-face paragraph must lay out")
 }
 
-/// Adapter-skip guard: a headless `(Device, Queue)` pair, or `None` on a
-/// machine with no adapter (CI runners without a GPU) — mirrors
-/// `raster_text_pixel_check.rs`'s `try_headless_renderer`.
 fn try_headless_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let mut renderer = crate::WgpuRenderer::new().ok()?;
     renderer.ensure_headless_for_tests().ok()?;
@@ -108,9 +92,6 @@ fn capture_texture(device: &wgpu::Device) -> wgpu::Texture {
     })
 }
 
-/// The first glyph whose `font_id` differs from the paragraph's
-/// primary (first-enumerated) face — asserts at least 2 faces are in
-/// play so the caller's test isn't vacuous.
 fn find_fallback_glyph<'a>(
     paragraph: &Paragraph,
     glyphs: &'a [RenderedGlyph],
@@ -128,18 +109,6 @@ fn find_fallback_glyph<'a>(
         .expect("expected at least one fallback-face glyph")
 }
 
-/// Review finding 4 guard: `record_paragraph` must process every face
-/// `for_each_font` enumerates, not just the primary — a paragraph-wide
-/// bug routed every fallback-face glyph to leftover regardless of
-/// atlas capacity. This proves a fallback-face glyph lands in the
-/// atlas cache and is NOT present in the returned leftover list.
-///
-/// No tiny-atlas test-size-override hook exists in this codebase (the
-/// dispatch brief referenced one; verified absent via a direct search
-/// of `crates/renderer/src` — flagged in the return rather than
-/// assumed). This test exercises the default-size atlas instead, which
-/// still directly proves the "only the first face was processed" bug
-/// is fixed — it just doesn't exercise the atlas-FULL edge case.
 #[allow(clippy::print_stdout)]
 #[test]
 fn fallback_face_glyph_lands_in_atlas_not_leftover() {

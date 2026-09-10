@@ -1,37 +1,19 @@
-//! Mock REST endpoint inventory used by the api-explorer example.
-//!
-//! Everything here is invented at compile time — the app never makes a
-//! real HTTP call, so the example is deterministic across machines and
-//! works as a `cargo test` smoke target.
-
 use std::fmt::Write as _;
 
-/// HTTP method label. Stored as `&'static str` so the row builder can
-/// hand it to `text(...)` without allocation.
 #[derive(Clone, Copy)]
 pub struct Method(pub &'static str);
 
-/// A mock REST endpoint with enough surface to populate every tab on the
-/// right pane (Request / Response / Headers).
 #[derive(Clone)]
 pub struct MockEndpoint {
-    /// HTTP method (GET / POST / PUT / DELETE …).
     pub method: Method,
-    /// Route path shown in the left pane.
     pub path: &'static str,
-    /// Status code returned by the mock response.
     pub status: u16,
-    /// Latency in milliseconds (advertised in Response tab).
     pub latency_ms: u32,
-    /// Body shown in the Request tab.
     pub request_body: &'static str,
-    /// Body shown in the Response tab.
     pub response_body: &'static str,
-    /// Free-form description (rendered above the request body).
     pub summary: &'static str,
 }
 
-/// Return the static list of mock endpoints. Order is stable.
 #[must_use]
 pub fn catalog() -> Vec<MockEndpoint> {
     let mut out = users_endpoints();
@@ -163,7 +145,6 @@ fn billing_endpoints() -> Vec<MockEndpoint> {
     ]
 }
 
-/// Render the synthetic response-header block for `endpoint`.
 #[must_use]
 pub fn header_block(endpoint: &MockEndpoint) -> String {
     let mut out = String::with_capacity(256);
@@ -176,7 +157,6 @@ pub fn header_block(endpoint: &MockEndpoint) -> String {
     out
 }
 
-/// Render a one-line summary string for `endpoint` (used in Response tab).
 #[must_use]
 pub fn response_summary(endpoint: &MockEndpoint) -> String {
     format!(
@@ -186,7 +166,6 @@ pub fn response_summary(endpoint: &MockEndpoint) -> String {
 }
 
 fn path_seed(path: &str) -> u32 {
-    // FNV-1a 32-bit. Plain runtime impl — cheap; not perf-sensitive.
     let mut hash: u32 = 0x811c_9dc5;
     for &byte in path.as_bytes() {
         hash ^= u32::from(byte);

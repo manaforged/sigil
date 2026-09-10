@@ -1,17 +1,3 @@
-//! Dogfood example — a press-to-record stopwatch.
-//!
-//! Reactive state:
-//! - `start_at: Signal<Option<Instant>>` — when the current run began.
-//!   `None` means "not running" (either reset or stopped).
-//! - `elapsed_ms: Signal<u64>` — frozen elapsed time captured at every
-//!   Stop / Lap press. The display reads this, since Sigil has no
-//!   per-frame tick hook for a continuously-rolling display (see
-//!   FRICTION.md).
-//! - `laps: Signal<Vec<u64>>` — captured lap times.
-//!
-//! Layout: vertical column with a big monospaced digit row at the top,
-//! a Start/Stop/Lap/Reset button row, and a lap-list below.
-
 use std::time::Instant;
 
 use sigil::prelude::*;
@@ -21,9 +7,6 @@ fn main() -> sigil::AppResult<()> {
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {
-    // Each Signal::new must run inside a reactive scope; constructing
-    // them here under sigil::launch's tree-build callback is the
-    // documented spot.
     let start_at: Signal<Option<Instant>> = signal(None);
     let elapsed_ms: Signal<u64> = signal(0_u64);
     let laps: Signal<Vec<u64>> = signal(Vec::<u64>::new());

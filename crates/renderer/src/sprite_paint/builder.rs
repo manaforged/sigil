@@ -175,9 +175,9 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<SpriteInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
-        1 => Float32x4,  // dest
-        2 => Float32x4,  // uv_rect
-        3 => Float32x4,  // color
-        4 => Float32x4,  // params
+        1 => Float32x4,
+        2 => Float32x4,
+        3 => Float32x4,
+        4 => Float32x4,
     ],
 };

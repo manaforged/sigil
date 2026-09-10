@@ -2,16 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! One-shot perf breakdown for the 100k-node flex tree compute path.
-//!
-//! Phase-level timing for `LayoutEngine::compute` on the same shape the
-//! `bench_compute_100k` criterion bench uses. Designed for B (investigate)
-//! in the foundation sprint perf gap finding — surfaces where the ~150ms
-//! goes so the fix can be aimed.
-//!
-//! Run with: `cargo run --release -p sigil-layout --example perf_100k_breakdown`.
-
 #![allow(clippy::cast_precision_loss)]
 
 use std::time::Instant;
@@ -63,7 +53,6 @@ fn build_100k_tree() -> (Cx, NodeId) {
     (cx, root)
 }
 
-// ponytail: linear profiling script — splitting it into functions would hide the timeline
 #[allow(clippy::too_many_lines)]
 fn main() {
     eprintln!("=== build 100k-node flex tree ===");
@@ -126,9 +115,6 @@ fn main() {
     );
 
     eprintln!("=== isolated sync only (mark_mutated → sync only, no compute_mirror) ===");
-    // Hot-loop sync alone to see its cost in isolation. compute_mirror is the
-    // other half; subtracting the two from total mutated compute tells us the
-    // split.
     let mut total_sync = 0.0;
     for i in 0..5 {
         cx.mark_mutated();
@@ -152,7 +138,6 @@ fn main() {
     );
 
     eprintln!("\n=== incremental: single-leaf mutation (5 iterations) ===");
-    // Fresh engine + tree to isolate this scenario from the prior sync churn.
     let (mut cx_incr, root_incr) = build_100k_tree();
     let mut engine_incr = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     engine_incr

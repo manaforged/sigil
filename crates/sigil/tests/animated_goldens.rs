@@ -2,16 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Animated state-transition goldens for sigil widgets.
-//!
-//! Three goldens per animated widget:
-//! - `<widget>_hover_settled.png` — `HoverAfterFrames { u32::MAX }`,
-//!   transition has fully landed at the hover endpoint.
-//! - `<widget>_hover_midflight.png` — `HoverAfterFrames { 6 }`, captures
-//!   the curve mid-animation (~100 ms in at 60 Hz).
-//! - `<widget>_hover_filmstrip.png` — 6 frames horizontally in one PNG,
-//!   the full visual review artifact for the entire animation curve.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -37,8 +27,6 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
     };
     assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
 }
-
-// ---- BUTTON ------------------------------------------------------------------
 
 #[test]
 fn button_hover_settled() {
@@ -70,8 +58,6 @@ fn button_hover_filmstrip() {
     let img = capture_filmstrip(|cx| cx.add(button("Save")), [160, 56], (24.0, 16.0), 6, DT);
     check("button_hover_filmstrip", img);
 }
-
-// ---- CHECKBOX ----------------------------------------------------------------
 
 fn checkbox_widget(cx: &mut Cx) -> NodeId {
     let checked = signal(false);
@@ -109,8 +95,6 @@ fn checkbox_hover_filmstrip() {
     check("checkbox_hover_filmstrip", img);
 }
 
-// ---- SLIDER ------------------------------------------------------------------
-
 fn slider_widget(cx: &mut Cx) -> NodeId {
     let v = signal(50.0_f32);
     cx.add(slider(v, 0.0..=100.0))
@@ -146,8 +130,6 @@ fn slider_hover_filmstrip() {
     let img = capture_filmstrip(slider_widget, [192, 36], (90.0, 14.0), 6, DT);
     check("slider_hover_filmstrip", img);
 }
-
-// ---- DROPDOWN ----------------------------------------------------------------
 
 fn dropdown_widget_options() -> Vec<String> {
     vec![String::from("First"), String::from("Second")]
@@ -189,8 +171,6 @@ fn dropdown_hover_filmstrip() {
     check("dropdown_hover_filmstrip", img);
 }
 
-// ---- TEXT_FIELD --------------------------------------------------------------
-
 fn text_field_widget(cx: &mut Cx) -> NodeId {
     let v = signal(String::from("Hello"));
     cx.add(text_field(v))
@@ -227,8 +207,6 @@ fn text_field_hover_filmstrip() {
     check("text_field_hover_filmstrip", img);
 }
 
-// ---- TOGGLE ------------------------------------------------------------------
-
 fn toggle_widget(cx: &mut Cx) -> NodeId {
     let on = signal(false);
     cx.add(toggle(on))
@@ -261,10 +239,6 @@ fn toggle_hover_midflight() {
 
 #[test]
 fn toggle_hover_filmstrip() {
-    // Per-frame box tight to the toggle's natural extent (matches the
-    // settled/midflight goldens' [50, 32] frame) so each stitched frame
-    // is dominated by the widget, not empty canvas. A 200×125 box left
-    // the ~44×24 toggle filling < 6 % of the frame.
     let img = capture_filmstrip(toggle_widget, [50, 32], (35.0, 22.4), 6, DT);
     check("toggle_hover_filmstrip", img);
 }

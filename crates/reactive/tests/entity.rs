@@ -2,20 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! integration tests for the G2 entity model.
-//!
-//! Six scenarios covering DR-045's locked decisions:
-//! - Entity creation + read/update via `Entity::new` + `Entity::read`
-//!   + `Entity::update`.
-//! - Owner-scope dispose cascade: entity created under an Owner is
-//!   removed when the Owner disposes.
-//! - `observe_global` registration + callback fires after `set_global`
-//!   + end-of-turn drain.
-//! - `Subscription` RAII unregisters on Drop.
-//! - `observe_global` is keyed by `TypeId` — two `set_global` on the
-//!   same type reuse the same backing entity.
-//! - Entity arena slot survives across interleaved read + update.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
@@ -46,10 +32,6 @@ fn entity_update_mutates_in_place_and_read_observes_it() {
 #[test]
 fn observe_global_callback_fires_after_set_global_turn() {
     Runtime::scope("observe_global_fires", || {
-        // Pick a wrapper type private to this test so we don't collide
-        // with anything else the global registry has seen.
-        // Field is set via `set_global` but not read by the observer;
-        // suppress the dead-code lint for this test-local marker.
         #[derive(Default)]
         struct CounterCfg(#[allow(dead_code)] i32);
 
@@ -60,17 +42,11 @@ fn observe_global_callback_fires_after_set_global_turn() {
             fired_clone.set(fired_clone.get() + 1);
         });
 
-        // Initial state — observer registered but no notify yet.
         assert_eq!(fired.get(), 0);
 
-        // Install the global. set_global notifies subscribers via the
-        // pending-observer queue; the end-of-turn drain fires the
-        // callback before the call returns to the test body.
         set_global(CounterCfg(5));
         assert_eq!(fired.get(), 1, "observer should fire on set_global");
 
-        // A second set_global on the same type is another mutation —
-        // observers fire again.
         set_global(CounterCfg(9));
         assert_eq!(fired.get(), 2, "observer should fire on each set");
     });
@@ -92,8 +68,6 @@ fn subscription_drop_unregisters_observer() {
         set_global(Flagged);
         assert_eq!(fired.get(), 1);
 
-        // Drop the Subscription. After this, set_global should still
-        // succeed but the callback must not fire.
         drop(sub);
 
         set_global(Flagged);
@@ -117,7 +91,6 @@ fn set_global_round_trips_through_global_reader() {
         let read_back = global::<Config, f32>(|c| c.scale);
         assert!((read_back - 2.5).abs() < f32::EPSILON);
 
-        // Re-installing the global with a new value updates the read.
         set_global(Config { scale: 7.0 });
         let read_back2 = global::<Config, f32>(|c| c.scale);
         assert!((read_back2 - 7.0).abs() < f32::EPSILON);
@@ -126,8 +99,6 @@ fn set_global_round_trips_through_global_reader() {
 
 #[test]
 fn entity_value_persists_across_multiple_reads_and_updates() {
-    // Witnesses both that the arena slot survives and that the
-    // generational handle stays valid through interleaved access.
     Runtime::scope("entity_persistence", || {
         let log = Entity::<Vec<i32>>::new("log", |_cx| Vec::new());
 

@@ -1,5 +1,3 @@
-//! GPUI 0.2.2 live tape: same book, same tick. Rebuilds the window every tick.
-
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"

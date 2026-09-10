@@ -1,4 +1,3 @@
-//! `image_bytes` PNG decode path (requires the `image-decode` feature).
 #![allow(
     missing_docs,
     unused_crate_dependencies,
@@ -13,7 +12,6 @@ mod decode {
     use sigil::prelude::*;
     use sigil::widgets::image_bytes;
 
-    /// Encode a `w`×`h` solid-colour image to PNG bytes.
     fn png(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {
         let pixels = rgba.repeat((w * h) as usize);
         let img = image::RgbaImage::from_raw(w, h, pixels).unwrap();

@@ -2,17 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Profiling harness for the `wide_tree` F1 corpus.
-//!
-//! Runs `LayoutEngine::compute` 500 times against the published
-//! `wide_tree` scene (1 root + 1000 flex columns + 100k block leaves).
-//! Pair with `SIGIL_LAYOUT_PROFILE=1` to print per-phase timings out
-//! of the engine itself (sync / measure / preorder / attach).
-//!
-//! Build + run:
-//!     `SIGIL_LAYOUT_PROFILE=1` cargo run --profile profiling --example `profile_wide_tree`
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,

@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Scale handling regression coverage for the launch stack.
-
 #![allow(missing_docs)]
 
 use sigil_hal::Scale;

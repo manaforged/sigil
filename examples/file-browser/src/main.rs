@@ -1,14 +1,3 @@
-//! File-browser dogfood example.
-//!
-//! Multi-pane mock file browser. Left pane is a `virtual_list` of file
-//! paths; a `splitter` separates it from the right pane, which is a
-//! `tabs` widget with three routed panels (Preview / Metadata / Hex).
-//! Clicking a row in the left pane re-routes the right pane to that
-//! file's data.
-//!
-//! Everything is mocked — see `files::inventory` — so the example is
-//! deterministic and works as a `cargo test` smoke target.
-
 pub mod files;
 pub mod left_pane;
 pub mod right_pane;

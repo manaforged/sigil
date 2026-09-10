@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Virtual-list paint tests that need `emit_scene` (GPU crate).
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, missing_docs)]
 
 use sigil::widgets::virtual_list_bind;

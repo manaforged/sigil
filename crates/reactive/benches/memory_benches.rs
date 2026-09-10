@@ -1,8 +1,3 @@
-//! Bench body functions for the Tier 5 memory bench.
-//!
-//! Infrastructure (allocator, helpers, slot shadows) lives in `memory.rs`.
-//! Each function here runs one budget check and prints its own table row.
-
 use std::cell::Cell;
 use std::hint::black_box;
 use std::mem;
@@ -13,21 +8,6 @@ use sigil_reactive::{Owner, Runtime, effect, signal};
 
 use super::{bytes_allocated, fmt_delta, lcg_next, slot_shadow, with_alloc_delta};
 
-/// Print sizeof breakdown for the three slot types.
-///
-/// These numbers are inline storage only; the heap-allocated payload
-/// per slot is approximately:
-///
-/// - `OwnerSlot`: 4 `Vec`s + 1 `Vec<Box<dyn FnOnce()>>` (each empty
-///   here, so 0 heap bytes until populated). 4 `Vec` headers are
-///   already in the inline size.
-/// - `SignalSlot`: `Box<dyn Any>` for the value (heap-allocates the
-///   actual `T`, here `i32` → 8 B incl. fat-pointer overhead) + a
-///   `SmallVec<[EffectKey; 4]>` whose 4 inline slots are part of the
-///   inline size; spills heap-only past 4 subscribers.
-/// - `EffectSlot`: `Box<dyn FnMut()>` for the closure (heap-allocates
-///   captures + vtable) + two `SmallVec<[SignalKey; 4]>` dep sets
-///   and a same-order cursor.
 pub fn report_slot_sizes() {
     let owner = mem::size_of::<slot_shadow::OwnerSlot>();
     let signal = mem::size_of::<slot_shadow::SignalSlot>();
@@ -47,12 +27,6 @@ pub fn report_slot_sizes() {
     println!();
 }
 
-/// Budget: ≤ 128 B amortised.
-///
-/// Creates 10_000 signals inside one scope, measures the heap delta,
-/// divides. The result includes the slot itself, the `Box<i32>` value,
-/// the owner's `signals` Vec growth, and any arena slot/free-list
-/// growth.
 pub fn bench_signal_creation_bytes() -> i64 {
     const N: usize = 10_000;
     let mut bytes_per_signal = 0_i64;
@@ -89,9 +63,6 @@ pub fn bench_signal_creation_bytes() -> i64 {
     bytes_per_signal
 }
 
-/// Per-effect cost. Effects hold a `Box<dyn FnMut()>` plus a per-run
-/// owner allocation, so the per-effect number is intentionally larger
-/// than per-signal.
 pub fn bench_effect_creation_bytes() {
     const N: usize = 10_000;
     let mut bytes_per_effect = 0_i64;
@@ -130,10 +101,6 @@ pub fn bench_effect_creation_bytes() {
     println!();
 }
 
-/// Leak check: 10 cycles of "create 10_000 signals → dispose scope".
-///
-/// Budget: total residual after 10 cycles ≤ 2× the steady-state of
-/// one batch.
 pub fn bench_create_dispose_cycles_no_growth(steady_bytes_per_signal: i64) {
     const CYCLES: usize = 10;
     const PER_CYCLE: usize = 10_000;
@@ -171,9 +138,6 @@ pub fn bench_create_dispose_cycles_no_growth(steady_bytes_per_signal: i64) {
     println!();
 }
 
-/// Streaming-session simulation: 10 s of writes, 100 signals × 100 effects.
-///
-/// Budget: heap delta during the run ≤ 10 MB (DR-009).
 pub fn bench_streaming_session_10_seconds() {
     const NUM_SIGNALS: usize = 100;
     const SECONDS: u64 = 10;
@@ -226,9 +190,6 @@ pub fn bench_streaming_session_10_seconds() {
     println!();
 }
 
-/// Deep owner tree: 1000 nested owners, then dispose the root.
-///
-/// Budgets: disposal time ≤ 100 µs; residual heap ≤ 10 KB (DR-009).
 pub fn bench_deep_tree_disposal_1000_nodes() {
     const DEPTH: usize = 1000;
     let mut elapsed = Duration::ZERO;

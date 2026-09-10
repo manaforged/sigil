@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! The terminal host over the shared widget catalogue.
-//!
-//! These drive `present` and `step` the way an app does, then assert on the
-//! painted grid: what a reader sees is what the terminal receives.
-
 #![allow(
     clippy::expect_used,
     clippy::unwrap_used,
@@ -77,7 +72,6 @@ fn progress_paints_a_block_bar() {
         8,
         &[],
     );
-    // Presence alone passes at 0.0 and at 1.0. The bar has to be the value.
     let filled = grid.matches('█').count();
     let empty = present(
         |cx: &mut Cx| {
@@ -174,8 +168,6 @@ fn a_chip_cell_paints_on_its_own_row() {
         14,
         &[],
     );
-    // Chip chrome offsets its text inside the row. The glyph still
-    // belongs to the row its middle falls in, not the next one down.
     for name in ["aaa", "bbb"] {
         let line = grid
             .lines()
@@ -224,8 +216,6 @@ fn a_wide_cell_clips_at_the_column_edge() {
         .lines()
         .find(|line| line.contains('a'))
         .unwrap_or_else(|| panic!("no data row in:\n{grid}"));
-    // The column is four cells wide. Unclipped, the sixteen-character value
-    // runs straight through its neighbour: " aaaatailaaaaaaaa".
     assert!(
         row.matches('a').count() <= 4,
         "the value must be cut at the column edge, got {row:?} in:\n{grid}"
@@ -248,8 +238,6 @@ fn a_button_surface_is_not_a_block_slab() {
 
 #[test]
 fn a_control_stands_one_line_tall() {
-    // Two stacked buttons on a cell grid occupy two consecutive lines.
-    // At desktop metrics the first would reserve four.
     let grid = present(
         |cx: &mut Cx| {
             use sigil_widgets::widget_dev::LayoutBuilderExt;
@@ -310,8 +298,6 @@ fn a_filled_table_keeps_its_header_off_row_one() {
         12,
         &[],
     );
-    // A growing body must not shrink the sticky header out from under
-    // itself; the header owns its own line whatever the viewport does.
     let header = grid
         .lines()
         .position(|line| line.contains("NAME"))
@@ -344,8 +330,6 @@ fn a_timer_comes_due_on_the_frame_clock() {
         sigil_tui::every(Duration::from_millis(99), move || {
             counter.set(counter.get() + 1);
         });
-        // The loop ticks 33 ms a frame, so a 99 ms timer comes due on
-        // every third one.
         for _ in 0..9 {
             drop(step(&mut host, &mut router, [], 20, 4));
         }
@@ -354,7 +338,6 @@ fn a_timer_comes_due_on_the_frame_clock() {
     assert_eq!(ticks.get(), 3, "a 99 ms timer fires 3 times in 9 frames");
 }
 
-/// A wide glyph owns two columns, so what follows it must not slide.
 #[test]
 fn a_wide_glyph_keeps_the_next_column() {
     use unicode_width::UnicodeWidthChar;
@@ -400,9 +383,6 @@ fn a_wide_glyph_keeps_the_next_column() {
         10,
         &[],
     );
-    // Display column, not byte offset and not char index: a CJK glyph is
-    // three bytes and one `char` but two columns, and `Grid::text` drops the
-    // continuation cell. Skip the header, whose own text carries the markers.
     let column = |mark: char| -> Option<usize> {
         grid.lines()
             .filter(|line| !line.contains("NAME"))
@@ -451,10 +431,6 @@ fn map_backtab_is_shift_tab() {
     assert_eq!(mapped.key, LogicalKey::Named(Key::Tab));
     assert_eq!(mapped.modifiers, ModifiersState::SHIFT);
 }
-/// A state change reaches the terminal and survives the frames after it.
-///
-/// This does not assert interpolation — it asserts the animator runs on the
-/// frame clock without either reverting the change or wiping it.
 #[test]
 fn a_focus_change_reaches_the_terminal() {
     use sigil_hal::Key;
@@ -484,7 +460,6 @@ fn a_focus_change_reaches_the_terminal() {
     });
 }
 
-/// An unchanged tree paints the same records twice.
 #[test]
 fn a_still_tree_reports_no_movement() {
     use sigil_tui::Host;
@@ -506,15 +481,12 @@ fn a_still_tree_reports_no_movement() {
     });
 }
 
-/// A reactive class repaints. Its atoms live in a cell the node never sees,
-/// so a cache keyed on the node alone would keep the old colour.
 #[test]
 fn a_reactive_class_change_repaints() {
     use sigil_reactive::signal;
     use sigil_style::NodeStyleExt;
     use sigil_tui::Host;
 
-    // Ground truth first: two hosts built at the two states must differ.
     fn fills(start: bool) -> Vec<Option<sigil_style::Rgba8>> {
         sigil_reactive::Runtime::scope("reactive-truth", || {
             let active = signal(start);
@@ -567,7 +539,6 @@ fn a_reactive_class_change_repaints() {
     });
 }
 
-/// A skipped frame still returns the frame that is on screen.
 #[test]
 fn a_skipped_frame_returns_what_is_showing() {
     use sigil_tui::{EventRouter, Host, Screen};
@@ -586,8 +557,6 @@ fn a_skipped_frame_returns_what_is_showing() {
         let mut sink = std::io::sink();
         screen.flush(&mut sink).expect("flush");
 
-        // Nothing changed, so this frame is skipped. It must still describe
-        // the terminal, not the buffer that was retired by the swap.
         let again = screen
             .frame(&mut host, &mut router, [], (30, 6))
             .expect("layout")
@@ -596,10 +565,6 @@ fn a_skipped_frame_returns_what_is_showing() {
     });
 }
 
-/// The screen keeps up: a change reaches the terminal, and only a change does.
-///
-/// Guards the direction that freezes a UI. A walk that never reports movement
-/// makes every other test here pass while the terminal stops updating.
 #[test]
 fn only_a_change_sends_bytes() {
     use sigil_reactive::signal;
@@ -643,11 +608,6 @@ fn only_a_change_sends_bytes() {
     });
 }
 
-/// New row data reaches the screen.
-///
-/// A table whose cells read row data without subscribing to it repaints only
-/// when something else happens to invalidate them — so a list that refreshes
-/// itself shows the first frame forever.
 #[test]
 fn replacing_rows_repaints_the_table() {
     use sigil_tui::Host;
@@ -696,11 +656,6 @@ fn replacing_rows_repaints_the_table() {
     });
 }
 
-/// A click selects the row under the pointer.
-///
-/// The terminal reports a cell; widgets hit-test in logical pixels. If those
-/// disagree, every pointer-driven widget in the catalogue is dead on the
-/// terminal host.
 #[test]
 fn a_click_selects_the_row_under_it() {
     use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
@@ -739,7 +694,6 @@ fn a_click_selects_the_row_under_it() {
         });
         drop(step(&mut host, &mut router, [], 40, 10));
 
-        // Row 0 sits on the line below the header, so click cell row 1.
         let mut at = Point::new(0.0, 0.0);
         let press = |kind| MouseEvent {
             kind,
@@ -764,7 +718,6 @@ fn a_click_selects_the_row_under_it() {
     });
 }
 
-/// The wheel scrolls a table past its viewport.
 #[test]
 fn the_wheel_scrolls_the_body() {
     use crossterm::event::{KeyModifiers, MouseEvent, MouseEventKind};
@@ -828,11 +781,8 @@ fn the_wheel_scrolls_the_body() {
     });
 }
 
-/// A combining mark rides on its base letter instead of replacing it.
 #[test]
 fn a_combining_mark_keeps_its_base() {
-    // "e" then U+0301 COMBINING ACUTE is one grapheme in one column, so the
-    // marked word and the plain one must occupy the same width.
     let marked = present(|cx: &mut Cx| cx.add(text("cafe\u{301}|")), 20, 3, &[]);
     let plain = present(|cx: &mut Cx| cx.add(text("cafe|")), 20, 3, &[]);
     let bar = |grid: &str| -> Option<usize> {
@@ -854,7 +804,6 @@ fn a_combining_mark_keeps_its_base() {
     );
 }
 
-/// Slow work runs off the frame thread and lands on a frame.
 #[test]
 fn work_lands_on_the_frame_clock() {
     use sigil_tasks::Status;
@@ -875,7 +824,6 @@ fn work_lands_on_the_frame_clock() {
             "a job in flight reports pending"
         );
 
-        // Frames keep running while it works; the result arrives on one.
         for _ in 0..200 {
             std::thread::sleep(std::time::Duration::from_millis(2));
             drop(step(&mut host, &mut router, [], 20, 4));
@@ -891,7 +839,6 @@ fn work_lands_on_the_frame_clock() {
     });
 }
 
-/// A job that panics reports the panic instead of waiting forever.
 #[test]
 fn a_panicking_job_reports_why() {
     use sigil_tasks::Status;
@@ -918,8 +865,6 @@ fn a_panicking_job_reports_why() {
     });
 }
 
-/// Typing a character lands in a focused text field: the crossterm key map
-/// carries the glyph as `text`, the channel the insertion handler reads.
 #[test]
 fn typing_reaches_a_text_field() {
     use sigil_reactive::signal;
@@ -948,7 +893,6 @@ fn typing_reaches_a_text_field() {
     });
 }
 
-/// A control chord is a command, not text: it must not insert.
 #[test]
 fn a_control_chord_inserts_nothing() {
     use sigil_reactive::signal;
@@ -972,7 +916,6 @@ fn a_control_chord_inserts_nothing() {
     });
 }
 
-/// Pasted text arrives whole through the same insertion channel.
 #[test]
 fn paste_inserts_whole() {
     use sigil_reactive::signal;

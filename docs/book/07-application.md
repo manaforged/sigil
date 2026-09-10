@@ -22,7 +22,7 @@ command scene. Three ways to run it.
 | Terminal UI | `sigil::run_tui` | Nothing. Same tree on a character grid. |
 
 `use sigil::prelude::*;` brings in `Host`, `launch`, `open`, `run_tui`,
-`Player`, `Session`, `root`, `copy`, `paste`, and `set_clipboard`.
+`Player`, `Session`, `root`, `copy`, `paste`, and `install`.
 Widget helpers are `IntoNode`; type a helper as `impl IntoNode`.
 Pass a widget to `launch` with `root(button("Go"))`.
 
@@ -42,7 +42,7 @@ Clipboard, audio, PTY, and `open` are services, not HAL.
 
 | Service | Speaks | Default | Embed |
 |---|---|---|---|
-| Clipboard | `Clipboard` + `set_clipboard` | OS on `launch` / `run_tui` | Call `set_clipboard` |
+| Clipboard | `Clipboard` + `install` | OS on `launch` / `run_tui` | Call `install` |
 | Open | `open(target)` | `open` / `xdg-open` / `cmd start` | Call `open` |
 | Audio | `Player` signals | rodio (`audio`) | Write the same signals |
 | PTY | `Session.lines` | portable-pty (`pty`) | Mock session |
@@ -142,7 +142,7 @@ effects immediately outside a paint fence.
 A game clipboard:
 
 ```rust,ignore
-sigil::set_clipboard(MyPasteboard);
+sigil::clipboard::install(MyPasteboard);
 ```
 
 ## Features

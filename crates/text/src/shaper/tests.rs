@@ -42,12 +42,12 @@ pub(crate) fn classify(ch: char) -> CodepointClass {
 const fn is_emoji(cp: u32) -> bool {
     matches!(
         cp,
-        0x2600..=0x27BF      // Misc Symbols + Dingbats
-        | 0x1F300..=0x1F5FF  // Misc Symbols and Pictographs
-        | 0x1F600..=0x1F64F  // Emoticons
-        | 0x1F680..=0x1F6FF  // Transport and Map
-        | 0x1F700..=0x1F77F  // Alchemical
-        | 0x1F900..=0x1F9FF, // Supplemental Symbols and Pictographs
+        0x2600..=0x27BF
+        | 0x1F300..=0x1F5FF
+        | 0x1F600..=0x1F64F
+        | 0x1F680..=0x1F6FF
+        | 0x1F700..=0x1F77F
+        | 0x1F900..=0x1F9FF,
     )
 }
 
@@ -215,8 +215,8 @@ fn cjk_punctuation_classifies_and_routes_through_noto() {
 
 #[test]
 fn classify_emoji_block_check() {
-    assert_eq!(classify('\u{1F389}'), CodepointClass::Emoji); // 🎉
-    assert_eq!(classify('\u{2603}'), CodepointClass::Emoji); // ☃
+    assert_eq!(classify('\u{1F389}'), CodepointClass::Emoji);
+    assert_eq!(classify('\u{2603}'), CodepointClass::Emoji);
     assert_eq!(classify('a'), CodepointClass::Regular);
     assert_eq!(classify('\u{3000}'), CodepointClass::CjkPunctuation);
     assert_eq!(classify('\u{FF01}'), CodepointClass::HalfFullWidth);

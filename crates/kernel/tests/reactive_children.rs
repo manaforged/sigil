@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests keep assertions direct; unwraps name the expected
-// topology and failed assertions are the test output.
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use std::cell::Cell;
@@ -32,8 +30,6 @@ fn children_reactive_initial_build_adds_children() {
         let parent =
             cx.add(container().children_reactive(move || items.get().into_iter().map(text)));
 
-        // Initial build enqueues the first rebuild; explicit flush
-        // until B1.b wires it into LayoutEngine::compute.
         cx.flush_reactive_children();
 
         assert_eq!(child_ids(&cx, parent).len(), 3, "3 initial children");
@@ -199,8 +195,6 @@ fn children_reactive_reorder_visibly_rebuilds() {
         let after = child_ids(&cx, parent);
 
         assert_eq!(after.len(), 3, "same count post-reorder");
-        // Positional identity: no prior id survives even when the Vec is
-        // a permutation of the same values. Identity is purely by index.
         for old in &before {
             assert!(
                 !after.contains(old),

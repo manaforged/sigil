@@ -2,13 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration tests for the public `text_edit` widget surface.
-//!
-//! Covers the factory + builder API: factory shape, change-callback
-//! delivery, layout-override pass-through, and headless tree-build.
-//! The internal `TextEdit` rope primitive is covered by `#[cfg(test)]`
-//! tests inside `crates/sigil/src/widgets/text_edit/buffer.rs`.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
@@ -33,9 +26,6 @@ fn tree_builds_without_panic() {
 #[test]
 fn factory_returns_a_builder_that_carries_supplied_signal() {
     with_cx("text-edit-factory-binds-signal", |cx| {
-        // The builder threads the supplied Signal<String> through into
-        // the rendered node's a11y text_value, so we can assert
-        // post-build that the same signal reached the leaf.
         let value = signal(String::from("hello"));
         let builder: TextEditBuilder = text_edit(value);
         let root = cx.add(builder);
@@ -51,10 +41,6 @@ fn factory_returns_a_builder_that_carries_supplied_signal() {
 
 #[test]
 fn submit_callback_is_registered_without_firing_on_construction() {
-    // Submit-on-Ctrl+Enter is wired through a key handler that we
-    // cannot dispatch synthetically without a winit-driven event
-    // loop. As a smoke, assert the callback is accepted and is not
-    // invoked at builder-construction time.
     use std::cell::Cell;
     use std::rc::Rc;
     with_cx("text-edit-submit-not-fired", |cx| {
@@ -121,14 +107,6 @@ fn placeholder_accepts_string_literal() {
     });
 }
 
-/// line children rebuild reactively when the bound signal mutates.
-///
-/// Was previously a "pins the broken behaviour" regression test
-/// (`text_edit_line_children_freeze_at_build`). After B1
-/// (`children_reactive`) + B4 wired `edit_lines` through it, the same
-/// scenario now produces the correct count, so the assertion flipped
-/// from `lines_after_mutation == lines_at_build` to
-/// `lines_after_mutation == 2` (one node per line in `"a\nb"`).
 #[test]
 fn text_edit_line_children_rebuild_on_signal_mutation() {
     with_cx("text-edit-lines-rebuild", |cx| {
@@ -137,14 +115,11 @@ fn text_edit_line_children_rebuild_on_signal_mutation() {
         cx.flush_reactive_children();
 
         let lines_at_build = count_text_descendants(cx, root);
-        // Empty buffer: single empty-line placeholder text child.
         assert_eq!(
             lines_at_build, 1,
             "empty buffer should emit one placeholder line child"
         );
 
-        // Mutate the bound signal AFTER build — line children rebuild
-        // against the fresh line vector via `children_reactive`.
         value.set(String::from("a\nb"));
         cx.flush_reactive_children();
         let lines_after_mutation = count_text_descendants(cx, root);
@@ -156,7 +131,6 @@ fn text_edit_line_children_rebuild_on_signal_mutation() {
     });
 }
 
-/// Typing three lines after build expands the child set to three.
 #[test]
 fn text_edit_line_children_grow_to_three_lines() {
     with_cx("text-edit-lines-grow", |cx| {
@@ -175,7 +149,6 @@ fn text_edit_line_children_grow_to_three_lines() {
     });
 }
 
-/// Deleting the trailing newline collapses two visible lines to one.
 #[test]
 fn text_edit_line_children_collapse_after_delete() {
     with_cx("text-edit-lines-collapse", |cx| {
@@ -189,7 +162,6 @@ fn text_edit_line_children_collapse_after_delete() {
             "initial buffer of two lines should render two children"
         );
 
-        // Simulate the user backspacing the second line away.
         value.set(String::from("a"));
         cx.flush_reactive_children();
 
@@ -201,9 +173,6 @@ fn text_edit_line_children_collapse_after_delete() {
     });
 }
 
-/// Walk the subtree rooted at `root` and count nodes whose kind is
-/// [`NodeType::Text`]. Fragments are descended through; containers
-/// are also descended. Used by the freeze-regression test.
 fn count_text_descendants(cx: &sigil_kernel::Cx, root: NodeId) -> usize {
     let mut stack = vec![root];
     let mut count = 0_usize;

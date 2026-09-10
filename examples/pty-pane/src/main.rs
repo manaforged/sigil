@@ -1,5 +1,3 @@
-//! One splitter pane is a PTY. The other is ordinary Sigil widgets.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

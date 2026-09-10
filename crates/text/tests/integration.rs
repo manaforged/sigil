@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Text engine integration suite in one crate so dependency-hygiene lints are meaningful.
-
 #![allow(missing_docs)]
 
 #[path = "bidi_visual_order.rs"]

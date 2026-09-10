@@ -7,23 +7,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-//! Reproducer for the console-ui Workflows "cards stretch full height" bug.
-//!
-//! Shape (mirrors `workflows::body` → `cards` → `stage_card`):
-//!
-//! ```text
-//! root   (flex_column, fixed 1408x750)         definite-height ancestor
-//!   body (flex_column, grow 1)                  grows to fill root
-//!     row   (flex_row, align_items: Start)      the cards pipeline
-//!       card (flex_column, width 240)           a stage card
-//!         leaf (fixed 200x80)                   card content
-//!     spacer (flex_column, grow 1)              the trailing grow-spacer
-//! ```
-//!
-//! Expectation: `row` is intrinsic-height (~80), `spacer` absorbs the rest
-//! (~670), and `card` (no explicit height, parent align Start) stays ~80 —
-//! NOT stretched to the body's full height.
-
 mod stub;
 use stub::stub_engine;
 

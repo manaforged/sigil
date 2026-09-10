@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration tests for `ActionRegistry` dispatch semantics.
-//!
-//! Every test asserts observable behaviour — handler side-effects on a
-//! `Cell`, fire-ordering, payload delivery — not tautological
-//! roundtrips. See DR-046 §4 and §6 for the contract being verified.
-
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -113,7 +107,6 @@ fn dispatch_most_nested_wins() {
         });
     }
 
-    // Chain is [outer=1, inner=2] — most-nested first means key 2 fires.
     let result = registry.dispatch(&Ping, &[HandlerKey::from_raw(1), HandlerKey::from_raw(2)]);
 
     assert!(result.handled());
@@ -169,7 +162,6 @@ fn dispatch_unhandled_outside_chain() {
         f2.set(true);
     });
 
-    // Handler is on key 1; chain only walks key 2.
     let result = registry.dispatch(&Ping, &[HandlerKey::from_raw(2)]);
 
     assert!(

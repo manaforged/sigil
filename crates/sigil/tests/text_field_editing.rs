@@ -4,7 +4,6 @@
 )]
 #![allow(missing_docs)]
 #![allow(clippy::expect_used)]
-// The geometry stub uses simple px↔byte casts; precision is irrelevant in tests.
 #![allow(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -27,8 +26,6 @@ impl TextMeasure for StubMeasure {
     }
 }
 
-/// Deterministic geometry: a uniform 10 px per byte. Lets pointer tests assert
-/// exact byte hits without depending on real font metrics.
 struct StubGeometry;
 
 impl TextGeometry for StubGeometry {
@@ -104,9 +101,6 @@ fn text_field_select_all_then_type_replaces_buffer() {
 
 #[test]
 fn text_field_pointer_drag_selects_then_type_replaces() {
-    // A click-drag across "hello" must select those bytes so the next keystroke
-    // replaces them — the externally-observable proof of the full pointer chain
-    // (hit-test → place_caret → captured pointer_move → extend_to → selection).
     sigil::reactive::Runtime::scope("text-field-pointer-drag", || {
         set_text_geometry(std::rc::Rc::new(StubGeometry));
         let value = signal(String::from("hello world"));
@@ -116,10 +110,6 @@ fn text_field_pointer_drag_selects_then_type_replaces() {
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-        // The field hugs its single line (no longer fills the 120 px canvas),
-        // so the text region sits near the top: global x=13, y≈10..26. Local
-        // x = global − 13, then 10 px/byte (StubGeometry): global 14 → byte 0,
-        // global 64 → byte 5 (the space after "hello").
         router.route(&mut cx, &layout, pointer_down(14.0, 18.0));
         router.route(&mut cx, &layout, pointer_move(64.0, 18.0));
         router.route(&mut cx, &layout, pointer_up(64.0, 18.0));

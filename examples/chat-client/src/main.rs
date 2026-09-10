@@ -1,12 +1,3 @@
-//! Tier-5 kitchen-sink chat-client app.
-//!
-//! Exercises all five tier-5 widgets live together: a left sidebar
-//! [`virtual_list`] of channels, a horizontal [`splitter`] separating
-//! sidebar from chat pane, a [`tabs`] strip routing the chat pane to
-//! Messages / Members / Pinned, a [`text_edit`] compose box at the
-//! bottom of the Messages tab, and a [`modal`] for "Channel settings"
-//! containing two [`text_field`]s (channel name + topic).
-
 #![allow(clippy::similar_names, clippy::assigning_clones)]
 
 mod chat_pane;
@@ -30,9 +21,6 @@ fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - chat-client", 1100, 720), app_tree)
 }
 
-/// Build the full app tree under `cx`. Exposed `pub(crate)` so the
-/// headless smoke tests can call it with a fresh `Cx` instead of
-/// spinning up a window.
 pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
     let state = ChatState::seed();
     cx.add(root_shell(state))

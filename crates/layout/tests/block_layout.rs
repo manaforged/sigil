@@ -2,21 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration smoke test for the block layout body.
-//!
-//! The substantive block-layout tests (18 cases covering explicit
-//! sizing, auto width, padding/border/margin, margin collapse,
-//! absolute pinning, content-box vs border-box, min/max, percent,
-//! `Display::None`, nested stacks) live at
-//! `crates/layout/src/block_tests.rs` because `BlockSolver` and the
-//! forest types are `pub(crate)` per DR-041 — integration tests
-//! outside the crate cannot reach them without elevating a frozen API
-//! surface. This file guards against accidental visibility regressions
-//! in the public re-exports while the owned types land internally.
-
 #![allow(missing_docs)]
-
-// Workspace shared dev-deps surfaced into the integration target.
 
 use sigil_layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleData, StyleDisplay, StyleFlexDirection,
@@ -33,9 +19,6 @@ fn public_style_data_default_matches_css_baseline() {
 
 #[test]
 fn public_style_data_is_constructible_with_block_subset() {
-    // Construct a realistic block-layout style atom through the
-    // public re-exports. If any of these names regress to private,
-    // the test fails to compile — that's the guard.
     let style = StyleData {
         display: StyleDisplay::Block,
         position: StylePosition::Relative,
@@ -63,9 +46,6 @@ fn public_style_data_carries_min_max_clamps() {
 
 #[test]
 fn public_re_exports_cover_align_and_justify() {
-    // align-items and justify-content survive on the public surface
-    // (Block doesn't read them, but the same StyleData is shared with
-    // Flex; this guards their visibility for flex consumers).
     let style = StyleData {
         align_items: Some(StyleAlignItems::Center),
         justify_content: Some(StyleJustifyContent::SpaceBetween),

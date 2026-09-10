@@ -2,27 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Diagnostic — a real `text_field` placed deep in a tree (pushed far down,
-//! like the chat composer at the bottom of the window) must render its glyphs
-//! at the field, not escape to the window's top-left.
-//!
-//! Reproduces the reported bug: typing in the composer put the text in the
-//! corner of the window. This drives the ACTUAL `text_field` widget (relative
-//! region → absolute `position_reactive` track → reactive text + caret overlay)
-//! rather than a synthetic layout tree, so it exercises the real structure.
-//!
-//! Root cause (confirmed by this test): the first full layout positions the
-//! field correctly (text at y≈800). Typing then dirties the field's text and
-//! rebuilds the caret overlay (`children_reactive` — structural), so the next
-//! `compute` takes the incremental path: it re-solves the field's fixed-size
-//! `region` as an isolated layout root anchored at (0,0). Without the
-//! origin-restore fold in `LayoutEngine::incremental_sync_and_measure`, the
-//! whole field — text, track, caret — escapes to the window's top-left.
-//!
-//! Assertions read the `LayoutResult` ATTACHED to the kernel node, which is the
-//! source `renderer/scene.rs` paints from (not the live drive box, which
-//! legitimately reads (0,0) for the isolated remeasure root).
-
 #![allow(missing_docs)]
 #![allow(
     clippy::expect_used,
@@ -38,8 +17,6 @@ use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil_style::TextStyle;
 
 const VIEWPORT: Size = Size::fixed(1000.0, 1000.0);
-/// Height of the spacer that pushes the field down — the field's text must land
-/// at roughly this y, never near 0.
 const SPACER_H: f32 = 800.0;
 
 struct StubMeasure;
@@ -64,16 +41,12 @@ impl TextGeometry for StubGeometry {
 }
 
 #[test]
-// Upstream test walks one type-then-measure scenario (60 lines);
-// splitting the build/type/assert phases would obscure it.
 #[allow(clippy::too_many_lines)]
 fn deep_text_field_glyphs_stay_in_field_after_typing() {
     sigil::reactive::Runtime::scope("field-deep-position", || {
         set_text_geometry(std::rc::Rc::new(StubGeometry));
         let value = signal(String::from("a"));
 
-        // A tall spacer (with filler labels to inflate the node count so typing
-        // takes the incremental layout path) pushes the field down to ~SPACER_H.
         let mut spacer =
             container().layout(LayoutStyle::flex_column().fixed_size(1000.0, SPACER_H));
         for i in 0..120 {
@@ -100,8 +73,6 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
              static absolute containing-block error",
         );
 
-        // Focus + type: rebuilds the caret overlay (structural) and changes the
-        // text content, then re-layout — the incremental path the bug lived on.
         let gen_before = layout.generation();
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(field_root));
@@ -110,10 +81,6 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
             .compute(&mut cx, root, VIEWPORT)
             .expect("layout after typing");
 
-        // Guard against a vacuous pass: typing must have dirtied the tree enough
-        // to miss the layout cache and actually run the incremental path. Without
-        // this, a wiring regression (focus not landing, key handler unhooked)
-        // would leave y1 == y0 and the position asserts would pass for free.
         assert_ne!(
             layout.generation(),
             gen_before,
@@ -121,15 +88,11 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
         );
 
         let field_text2 = find_text_node(&cx, field_root).expect("field still has a text node");
-        // Paint path (attached extension, read by renderer/scene.rs).
         let y1 = attached_top(&cx, field_text2);
         assert!(
             y1 > SPACER_H - 100.0,
             "field text escaped after typing (paint): y went {y0} -> {y1} (expected ≈{SPACER_H})",
         );
-        // Hit-test path (engine.result → the live drive box, read by
-        // hit_test.rs + pointer_dispatch.rs). MUST agree with paint, or clicks
-        // miss the field and land on whatever sits at the top-left.
         let hit = layout
             .result(field_text2)
             .expect("field text has a drive result")
@@ -140,8 +103,6 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
              paint/hit-test split: clicks would miss the field",
             hit.origin.y,
         );
-        // x must survive too (the dx half of the translation, never 0 here:
-        // the field is inset from the window's left edge).
         assert!(
             hit.origin.x > 1.0,
             "field text x collapsed to the left edge: drive x={}",
@@ -150,7 +111,6 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
     });
 }
 
-/// The `text_field` root is the tree's second child (after the spacer).
 fn field_text_field_root(cx: &Cx, root: NodeId) -> NodeId {
     cx.nth_child(root, 1).expect("field is the second child")
 }
@@ -165,9 +125,6 @@ fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
     found
 }
 
-/// The y-origin the painter actually reads — the `LayoutResult` attached to the
-/// kernel node (translated by the incremental fix), not the live drive box.
-/// `scene.rs` emits geometry from this attached extension (`get_extension`).
 fn attached_top(cx: &Cx, id: NodeId) -> f32 {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())

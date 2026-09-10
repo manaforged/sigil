@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `TreeRoot` polymorphic-tree-fn coverage.
-//!
-//! `launch`'s second argument accepts a sealed `TreeRoot`: a closure,
-//! `text`, `container()`, or [`sigil_app::root`] around any `IntoNode`.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -36,8 +31,6 @@ fn builder_root_installs_and_returns_id() {
 
 #[test]
 fn fn_root_can_capture_state() {
-    // Realistic pattern: the tree fn closes over a signal so an
-    // event handler installed elsewhere can write into it.
     Runtime::scope("test", || {
         let captured = std::cell::Cell::new(0_u32);
         let mut cx = Cx::new_root();

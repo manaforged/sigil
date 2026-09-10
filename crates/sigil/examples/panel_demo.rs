@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Panel widget demo — themed surface cards at every elevation tier.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

@@ -4,13 +4,12 @@ Leptos 0.5+ style fine-grained reactive core. Signals, memoized
 derived values, effects, owner tree, `on_cleanup`, `batch`, and
 cycle detection.
 
-## Status — Phase 1.1 early slice
+## Status
 
-This crate is under active development. The public API is not yet
-stable. What's in place:
+The public API is not stable before 1.0. What's in place:
 
 - `Runtime` — thread-local arena, scoped for tests and app roots
-- `Owner` / `OwnerId` / `OwnerHandle` — parent-effect ownership model
+- `Owner` / `OwnerId` — parent-effect ownership model
 - `Signal<T>` — `Copy`, arena-backed, generational identity
 - `effect(f)` — subscribes to read signals, re-runs on write
 - `on_cleanup(f)` — fires when the current owner disposes,
@@ -22,9 +21,7 @@ stable. What's in place:
 
 ## Not yet
 
-- `dispatch_to_owner` main-thread post from background threads
 - Dev-mode leak detector and `dump_owner_tree` debug API
-- `spawn_to_signal`
 
 ## Thread model
 

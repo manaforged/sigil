@@ -9,18 +9,6 @@
     clippy::cast_precision_loss
 )]
 
-//! Regression: switching a deep `children_reactive` subtree to taller content
-//! inside a big tree (so layout takes the `incremental_sync_and_measure` path)
-//! must keep the new content positioned in its pane — not escaped to the
-//! window's top-left.
-//!
-//! The bug: the incremental path picked two "containment roots" — the tree root
-//! (from the high reactive node) AND the scroll widget's nested fixed-size box
-//! (from the deep new nodes) — and re-measured the nested one as an isolated
-//! layout root anchored at (0,0), clobbering the content's real in-tree
-//! position. A long editor file then painted over the sidebar. Fixed by
-//! dropping containment roots nested under another (engine.rs `containment_roots`).
-
 use sigil::prelude::*;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
@@ -36,8 +24,6 @@ impl TextMeasure for StubMeasure {
 }
 
 #[test]
-// One toggle-remeasure regression walk (57 lines); splitting it would
-// obscure the scenario it pins.
 #[allow(clippy::too_many_lines)]
 fn deep_reactive_scroll_switch_stays_positioned() {
     sigil::reactive::Runtime::scope("incremental-scroll-position", || {
@@ -56,8 +42,6 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .child(text(body));
                 vec![scroll(code, extent).width(580.0).height(720.0)]
             });
-        // Filler inflates the live node count so the editor-switch dirty set
-        // stays under half → the incremental layout path (where the bug lived).
         let mut filler = container().layout(LayoutStyle::flex_column());
         for i in 0..120 {
             filler = filler.child(label(format!("filler row {i}")));
@@ -83,19 +67,15 @@ fn deep_reactive_scroll_switch_stays_positioned() {
             .compute(&mut cx, root, VIEWPORT)
             .expect("initial layout");
 
-        tall.set(true); // open the "long file"
+        tall.set(true);
         layout
             .compute(&mut cx, root, VIEWPORT)
             .expect("layout after switch");
 
-        // No tall content box may sit at the window's top-left corner.
         let mut escaped = Vec::new();
         cx.visit_preorder(root, |id, _node| {
             if let Some(res) = layout.result(id) {
                 let r = res.rect();
-                // Width targets the scroll body (`width(2000)`), not the viewport-width
-                // filler column, which now legitimately sits tall (auto-height column
-                // sizes to content, not shrinks).
                 if r.height > 900.0 && r.width > 1500.0 && r.origin.x < 60.0 && r.origin.y < 60.0 {
                     escaped.push((r.origin.x, r.origin.y, r.width, r.height));
                 }

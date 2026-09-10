@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Text paint cost before and after carrying positioned glyphs in commands.
-
 #![allow(missing_docs)]
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]

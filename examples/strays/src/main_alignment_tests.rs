@@ -19,17 +19,13 @@ fn row(pid: u32, age: u64, tty: bool, cwd: Option<&str>) -> Stray {
     }
 }
 
-/// Every row's badge must sit on that row's line.
-///
-/// This is the fixture that first showed the chip column painting a row
-/// low, and it still fails if the header is allowed to shrink.
 #[test]
 fn each_row_paints_its_own_state() {
     let rows = vec![
-        row(1111, 99_999, false, None),           // system
-        row(2222, 99_999, false, Some("/dev/a")), // STRAY
-        row(3333, 99_999, true, Some("/dev/b")),  // held
-        row(4444, 10, false, Some("/dev/c")),     // fresh
+        row(1111, 99_999, false, None),
+        row(2222, 99_999, false, Some("/dev/a")),
+        row(3333, 99_999, true, Some("/dev/b")),
+        row(4444, 10, false, Some("/dev/c")),
     ];
     let grid = sigil_tui::present(
         move |cx: &mut Cx| {

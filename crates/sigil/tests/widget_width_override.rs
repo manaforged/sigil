@@ -1,12 +1,3 @@
-//! Widgets must be able to size to the space they are given.
-//!
-//! `progress` and `dropdown` had their extents baked into private
-//! constants (240px and 200px) with no way to express anything else, so a
-//! bare widget overflowed any narrower parent. Every widget test used the
-//! default size, so nothing caught it.
-//!
-//! Surfaced by the Kimi production-readiness review (2026-07-20).
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -37,10 +28,8 @@ impl TextMeasure for ProportionalMeasure {
     }
 }
 
-/// Width of `widget`, laid out inside a `parent_w`-wide parent.
 fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) -> f32 {
     let mut width = -1.0;
-    // Signals must be created inside the scope, so the widget is built here.
     sigil::reactive::Runtime::scope("width-override", || {
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -60,8 +49,6 @@ fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) 
 
 #[test]
 fn progress_fills_its_parent_by_default() {
-    // The point of fill-by-default: the same widget adapts, with no
-    // caller involvement, to whatever space it is given.
     for parent in [100.0_f32, 244.0, 600.0] {
         let got = widget_width(parent, || progress(signal(0.5_f32), 1.0));
         assert!(
@@ -73,7 +60,6 @@ fn progress_fills_its_parent_by_default() {
 
 #[test]
 fn progress_width_pins_an_explicit_extent() {
-    // `.width()` still opts out of filling.
     let sized = widget_width(600.0, || progress(signal(0.5_f32), 1.0).width(100.0));
     assert!(
         (sized - 100.0).abs() < 0.5,
@@ -105,11 +91,6 @@ fn dropdown_fits_a_narrow_parent_when_told_its_width() {
         "dropdown.width(120) should measure 120, got {sized}",
     );
 }
-
-// The remaining interactive widgets already carry `.width()` (button via
-// its inherent method, toggle via `WidgetLayoutExt`). These guard that the
-// whole kit is uniformly sizable, so a later "fill by default" change has a
-// consistent surface to build on.
 
 #[test]
 fn button_honours_its_width() {
@@ -144,9 +125,6 @@ fn hug_button_keeps_width_next_to_a_grow_spacer() {
             .result(*children.get(2).expect("start"))
             .expect("start")
             .rect();
-        // "Create Task" is 11 glyphs × 7 + 20 pad + 2 edge = 99.
-        // "Start All" is 9 glyphs × 7 + 20 + 2 = 85. Sum 184 > 160, so a
-        // shrinking hug would collapse both; shrink(0) keeps the floors.
         assert!(
             create.width >= 98.0,
             "Create Task must not shrink, got {}",
@@ -249,10 +227,6 @@ fn text_field_inner_surface_leaves_one_pixel_frame() {
     });
 }
 
-/// Fixed-size-by-design controls (button, toggle) opt INTO filling with
-/// the existing `WidgetLayoutExt::grow`, rather than needing a separate
-/// `.fill()`. This only works because flex-grow now distributes free
-/// space to items that have children.
 #[test]
 fn button_and_toggle_fill_via_grow() {
     let mut cx_widths = Vec::new();
@@ -277,10 +251,6 @@ fn button_and_toggle_fill_via_grow() {
         2,
         "expected button + toggle, got {cx_widths:?}"
     );
-    // `grow(1)` distributes FREE SPACE equally, it does not equalise
-    // widths — the two controls keep their different natural bases and
-    // split what's left over (`flex: 1 1 auto`, not `flex: 1 1 0`). What
-    // matters is that between them they consume the whole row.
     let total: f32 = cx_widths.iter().sum();
     assert!(
         (total - 400.0).abs() < 0.5,
@@ -291,7 +261,6 @@ fn button_and_toggle_fill_via_grow() {
 
 #[test]
 fn toggle_honours_its_width() {
-    // WidgetLayoutExt::width is a trait method; the prelude brings it in.
     let sized = widget_width(300.0, || toggle(signal(false)).width(160.0));
     assert!(
         (sized - 160.0).abs() < 0.5,

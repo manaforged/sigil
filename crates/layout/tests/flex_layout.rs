@@ -2,21 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Integration smoke test for the flex layout body.
-//!
-//! The substantive flex tests (43 cases covering direction, basis,
-//! grow/shrink, wrap, justify-content, align-items, align-self,
-//! align-content, gap, padding, margin, min/max, order, Display::None,
-//! Position::Absolute) live at `crates/layout/src/flex_tests.rs`
-//! because `FlexSolver` + forest types are `pub(crate)` per DR-041 —
-//! integration tests outside the crate cannot reach them without
-//! elevating a frozen API surface. This file guards against accidental
-//! visibility regressions in the public re-exports while the owned
-//! types land internally.
-
 #![allow(missing_docs, clippy::doc_markdown)]
-
-// Workspace shared dev-deps surfaced into the integration target.
 
 use sigil_layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleAlignSelf, StyleData, StyleDisplay,
@@ -26,8 +12,6 @@ use sigil_layout::{
 
 #[test]
 fn public_flex_direction_variants_visible() {
-    // Construct each direction through the public re-exports — if any
-    // regresses to private, this file fails to compile.
     let _row = StyleData {
         display: StyleDisplay::Flex,
         flex_direction: StyleFlexDirection::Row,

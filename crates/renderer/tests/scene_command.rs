@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Scene command builder contract tests.
 
 use sigil_hal::{Point, Rect};
 use sigil_renderer::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};

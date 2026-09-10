@@ -2,18 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Owned-engine vs Taffy comparison — the real-world shape: a
-//! ~100k-node tree where ONE leaf style changes between frames.
-//!
-//! Why this matters: most production UIs do not re-lay out the whole
-//! tree every frame. They mutate one or a few leaves (text field,
-//! hover indicator, animation tick). Spineless Traversal (PLDI 2025)
-//! and Flutter's relayout-boundary model both target this scenario.
-//! Our per-node `Node::version` short-circuit makes the cost
-//! proportional to nodes that actually changed, not tree size.
-//!
-//! Run with `cargo bench -p sigil-layout --bench taffy_corpus_incremental`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
@@ -71,17 +59,12 @@ fn taffy_fixed_style(
     }
 }
 
-// === owned engine ===
-
 fn build_owned(cx: &mut Cx) -> (NodeId, NodeId) {
     let mut root = container().layout(LayoutStyle::flex_row().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
     for _ in 0..CHILDREN {
         root = root.child(column());
     }
     let root_id = cx.add(root);
-    // Pick the first leaf under the first column — that's our
-    // mutation target. We re-find it via the kernel tree walk to
-    // avoid coupling the helper to internal id state.
     let first_col = cx.nth_child(root_id, 0).expect("root has a first column");
     let leaf = cx.nth_child(first_col, 0).expect("column has a first leaf");
     (root_id, leaf)
@@ -109,11 +92,6 @@ fn bench_owned_incremental(c: &mut Criterion) {
 
         let mut width = LEAF_WIDTH;
         b.iter(|| {
-            // Mutate ONE leaf's width by attaching a fresh
-            // LayoutStyle. This is the realistic shape: a single
-            // node changes per frame, the rest of the tree is
-            // unchanged. Our per-node version stamp short-circuits
-            // sync work for the 100,999 nodes we did not touch.
             width = if width >= LEAF_WIDTH + 10.0 {
                 LEAF_WIDTH
             } else {
@@ -129,8 +107,6 @@ fn bench_owned_incremental(c: &mut Criterion) {
         });
     });
 }
-
-// === taffy directly ===
 
 fn build_taffy(tree: &mut taffy::TaffyTree<()>) -> (taffy::NodeId, taffy::NodeId) {
     let leaf_style = taffy_fixed_style(

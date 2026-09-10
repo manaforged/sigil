@@ -2,43 +2,21 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Regression test: `scroll(content, height)` must not clobber the user's
-//! `LayoutStyle` on the content node.
-//!
-//! Before the fix, `wrap_content` called `.layout(LayoutStyle::block().fixed_size(…))`
-//! directly on the user-supplied `NodeBuilder`. Because `NodeBuilder::with::<T>()`
-//! routes through `Node::attach::<T>()` which replaces on `TypeId` collision, the
-//! user's padding/gap/display were silently replaced.
-//!
-//! After the fix (Option B), the user's content is wrapped in a fresh anonymous
-//! sizing container. The user's `LayoutStyle` is attached only to their own node.
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
 
-/// Build, wrap in scroll, walk the tree, and assert the content node's
-/// `LayoutStyle` still carries the original `flex_column`, padding=16, gap=24.
 #[test]
 fn scroll_preserves_content_layout_style() {
     sigil::reactive::Runtime::scope("scroll-preserves-content-layout", || {
         let mut cx = Cx::new_root();
 
-        // User supplies a styled content node with flex_column, padding=16, gap=24.
         let content =
             container().layout(LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32));
 
-        // Wrap content in scroll — this is the operation that used to clobber.
         let root = cx.add(scroll(content, 800.0_f32));
 
-        // Tree shape:
-        //   root (viewport_container, flex_row)
-        //     ├── body (sizing container, grows into the space left by the
-        //     │         gutter) ← wrapper
-        //     │     └── content (user node — must retain flex_column.padding.gap)
-        //     └── track (scrollbar track)
-        //           └── thumb (absolute, anchored inside the track so it
-        //                      needs no viewport width)
         let root_node = cx.get(root).expect("root node exists");
         let root_children = root_node.children().to_vec();
         assert!(
@@ -47,7 +25,6 @@ fn scroll_preserves_content_layout_style() {
             root_children.len()
         );
 
-        // First child is the body (sizing container).
         let body_id = *root_children.first().expect("body child exists");
         let body_node = cx.get(body_id).expect("body node exists");
         let body_children = body_node.children().to_vec();
@@ -58,11 +35,9 @@ fn scroll_preserves_content_layout_style() {
             body_children.len()
         );
 
-        // That one child is the user's original content node.
         let content_id = *body_children.first().expect("content child exists");
         let content_node = cx.get(content_id).expect("content node exists");
 
-        // The user's LayoutStyle must be intact — flex_column, padding=16, gap=24.
         let style = content_node
             .get_extension::<LayoutStyle>()
             .expect("content node must have a LayoutStyle");
@@ -76,8 +51,6 @@ fn scroll_preserves_content_layout_style() {
     });
 }
 
-/// Confirm the sizing container (body) gets the `block.fixed_size` layout,
-/// not the content node. This is the companion to the preservation test above.
 #[test]
 fn scroll_sizing_container_has_fixed_size_layout() {
     sigil::reactive::Runtime::scope("scroll-sizing-container-layout", || {
@@ -95,8 +68,6 @@ fn scroll_sizing_container_has_fixed_size_layout() {
             .get_extension::<LayoutStyle>()
             .expect("sizing container must have a LayoutStyle");
 
-        // Sizing container must NOT be flex_column with user's padding — it must be
-        // the block fixed_size style from wrap_content.
         let user_style = LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32);
         assert_ne!(
             body_style, &user_style,

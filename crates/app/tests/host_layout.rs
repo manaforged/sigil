@@ -1,7 +1,3 @@
-//! Pump [`sigil_app::Host`] with no window and read layout + text/tone.
-//!
-//! Run: `cargo test -p sigil-app --no-default-features --test host_layout`
-
 #![allow(clippy::unwrap_used, missing_docs, unused_crate_dependencies)]
 
 use sigil_app::Host;

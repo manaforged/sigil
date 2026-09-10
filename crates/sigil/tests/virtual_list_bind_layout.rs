@@ -2,11 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Repro for the capture-review dogfood finding: an `items_bind`
-//! virtual list that shrinks (filter narrowing 676 → 7 rows) painted
-//! nothing after the rebuild. Drives a persistent [`LayoutEngine`]
-//! across signal mutations exactly like the app frame loop does.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -48,14 +43,12 @@ fn items_bind_shrink_still_paints_rows() {
                 .viewport_width(300.0),
         );
 
-        // Persistent engine across frames, like the app loop.
         let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
         assert_eq!(glyph_runs(&cx, root), 6, "initial bind paints all rows");
 
-        // Shrink — the filter-narrowing case.
         items.set(vec!["match-1".to_string(), "match-2".to_string()]);
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -71,7 +64,6 @@ fn items_bind_shrink_still_paints_rows() {
             "remount drops the previous slot occupant's content"
         );
 
-        // Grow back.
         items.set(vec![
             "a".to_string(),
             "b".to_string(),
@@ -85,9 +77,6 @@ fn items_bind_shrink_still_paints_rows() {
     });
 }
 
-/// Same shape as the capture-review app: the bound items signal is set
-/// from inside ANOTHER effect (search → filter effect → `rows.set`),
-/// and the search signal mutates per keystroke.
 #[test]
 fn items_bind_via_effect_chain_still_paints_rows() {
     sigil::reactive::Runtime::scope("vl-bind-effect-chain", || {
@@ -118,19 +107,12 @@ fn items_bind_via_effect_chain_still_paints_rows() {
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
-        // Materialized window is 10 in view + 10 overscan below, but
-        // `emit_scene` culls rows outside the viewport's overflow clip
-        // (plus the 1px far-edge row): the stub-measured 16px rows
-        // intersecting [0, 201] are rows 0..=12.
         assert_eq!(
             glyph_runs(&cx, root),
             13,
             "window of unfiltered rows paints"
         );
 
-        // Per-keystroke narrowing, layout between keystrokes like frames.
-        // "token1" matches 11 rows (token1, token10..token19); at 16px
-        // each they span 176px, so all 11 sit inside the viewport clip.
         for (typed, expect) in [("t", 13_usize), ("to", 13), ("tok", 13), ("token1", 11)] {
             search.set(typed.to_string());
             layout
@@ -145,10 +127,6 @@ fn items_bind_via_effect_chain_still_paints_rows() {
     });
 }
 
-/// Phase-accurate variant — drives the reactive runtime through the
-/// production frame phases (Effect → Layout → Paint → `end_frame`) the
-/// way `sigil_app::launch` does, with the keystroke write landing in the
-/// Effect phase. This is the exact live-app shape.
 #[test]
 fn items_bind_shrink_paints_under_frame_phases() {
     sigil::reactive::Runtime::scope("vl-bind-phases", || {
@@ -191,10 +169,6 @@ fn items_bind_shrink_paints_under_frame_phases() {
             runs
         };
 
-        // Materialized window is 10 in view + 10 overscan; emit culls
-        // rows outside the overflow viewport (+1px far edge), so the
-        // 16px stub rows intersecting [0, 201] are rows 0..=12.
-        // "token1" matches 11 rows (176px); all fit inside the clip.
         assert_eq!(frame(&mut cx, None), 13, "unfiltered frame paints window");
         assert_eq!(frame(&mut cx, Some("t")), 13, "'t' frame paints window");
         assert_eq!(frame(&mut cx, Some("token1")), 11, "'token1' frame paints");
@@ -202,13 +176,7 @@ fn items_bind_shrink_paints_under_frame_phases() {
     });
 }
 
-/// Full capture-review shape: hundreds of multi-text rows, single
-/// selection with a `.select` callback, and BATCHED keystrokes (several
-/// signal writes inside one Effect phase — winit delivers fast typing
-/// as multiple key events drained in a single frame).
 #[test]
-// One app-shaped scenario (build + batched keystrokes + assert), 58 lines;
-// splitting would obscure the frame-batching behavior it pins.
 #[allow(clippy::too_many_lines)]
 fn items_bind_app_shape_batched_keystrokes() {
     sigil::reactive::Runtime::scope("vl-bind-app-shape", || {
@@ -267,9 +235,6 @@ fn items_bind_app_shape_batched_keystrokes() {
             runs
         };
 
-        // 15 in view + 15 overscan materialized; emit culls rows outside
-        // the 330px overflow viewport (+1px far edge). Rows are 22px
-        // here, so rows 0..=15 intersect [0, 331]: 16 rows × 2 texts.
         assert_eq!(frame(&mut cx, &[]), 16 * 2, "window of all rows paints");
         let shrunk = frame(&mut cx, &["t", "to", "tok", "toke", "token"]);
         assert_eq!(shrunk, 8 * 2, "batched shrink still paints rows");
@@ -277,15 +242,7 @@ fn items_bind_app_shape_batched_keystrokes() {
     });
 }
 
-/// Live-app divergence repro: a LARGE static sibling tree keeps the
-/// post-rebuild dirty set under the broadcast threshold
-/// (`dirty.len() < live/2`), forcing the layout engine down the
-/// INCREMENTAL sync path. In the live capture-review app this path left
-/// freshly rebuilt rows without layout — the list painted blank until a
-/// window resize forced a full sync.
 #[test]
-// One shrink-repaint regression walk (84 lines); splitting the
-// build/shrink/assert phases would obscure the incremental-sync bug it pins.
 #[allow(clippy::too_many_lines)]
 fn items_bind_shrink_paints_via_incremental_layout() {
     sigil::reactive::Runtime::scope("vl-bind-incremental", || {
@@ -313,9 +270,6 @@ fn items_bind_shrink_paints_via_incremental_layout() {
             rows.set(next);
         });
 
-        // Big static sibling subtree (like the session pane + detail
-        // tabs around the live request list) so the rebuild's dirty set
-        // stays far below live/2 and compute goes incremental.
         let mut ballast = container().layout(LayoutStyle::flex_column().fixed_size(300.0, 700.0));
         for i in 0..600 {
             ballast = ballast.child(
@@ -354,17 +308,12 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         };
 
         let ballast_runs = 600;
-        // 15 in view + 15 overscan covers all 30 unfiltered rows, but
-        // emit culls rows outside the 300px overflow viewport (+1px far
-        // edge): the 16px stub rows intersecting [0, 301] are 0..=18,
-        // so 19 list rows paint next to the 600 ballast rows.
         assert_eq!(
             frame(&mut cx, None),
             ballast_runs + 19,
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));
-        // Diagnostic: dump the token rows that actually painted + rects.
         for c in emit_scene(&cx, root).commands {
             if let SceneCommand::GlyphRun(d) = c
                 && d.run.text.contains("token")

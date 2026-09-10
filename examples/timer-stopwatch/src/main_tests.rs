@@ -22,8 +22,6 @@ fn format_ms_pads_correctly() {
 
 #[test]
 fn lap_list_handles_empty_and_filled() {
-    // `lap_list` is the production lap renderer. Build it under a
-    // reactive scope and assert it produces a populated container.
     with_cx("timer-stopwatch-lap-list", |cx| {
         let laps: Signal<Vec<u64>> = signal(Vec::new());
         let empty_root = cx.add(lap_list(laps));

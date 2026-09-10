@@ -1,9 +1,3 @@
-//! Single-keystroke string parser used by [`super::key::Key::parse`].
-//!
-//! Split out of `key.rs` to keep that file under the
-//! 400-line file cap. No behavioural difference — the same `parse_tokens`
-//! / `parse_code` / `parse_function_key` helpers, lifted verbatim.
-
 use super::key::{Key, KeyCode, Modifier, Modifiers, NamedKey, ParseError};
 
 pub(super) fn parse_tokens(lower: &str) -> Result<Key, ParseError> {
@@ -19,14 +13,10 @@ pub(super) fn parse_tokens(lower: &str) -> Result<Key, ParseError> {
             modifiers = modifiers.with(m);
             continue;
         }
-        // Not a modifier — must be the final key-code token. If a code
-        // has already been claimed, the input has two trailing keys.
         if code.is_some() {
             return Err(ParseError::TooManyKeys);
         }
         if !is_last {
-            // Mid-string non-modifier: the would-be modifier slot is
-            // not a recognised modifier name.
             return Err(ParseError::UnknownToken {
                 token: (*tok).to_string(),
             });
@@ -58,7 +48,6 @@ fn parse_code(tok: &str) -> Result<KeyCode, ParseError> {
         return Ok(KeyCode::Char(first.to_ascii_lowercase()));
     }
     if let Some(d) = first.to_digit(10) {
-        // `to_digit(10)` returns 0..=9 so the `as u8` is lossless.
         #[allow(clippy::cast_possible_truncation)]
         return Ok(KeyCode::Digit(d as u8));
     }
@@ -74,8 +63,6 @@ fn parse_function_key(tok: &str) -> Result<Option<u8>, ParseError> {
     let Some(rest) = tok.strip_prefix('f') else {
         return Ok(None);
     };
-    // `rest` may legitimately not be digits (e.g. `foo`) — fall back
-    // to "not a function key" so the symbol/letter path can run.
     if rest.is_empty() {
         return Ok(None);
     }
@@ -86,7 +73,6 @@ fn parse_function_key(tok: &str) -> Result<Option<u8>, ParseError> {
     if !(1..=24).contains(&n) {
         return Err(ParseError::FunctionKeyOutOfRange { n });
     }
-    // n is bounded 1..=24 — fits in u8.
     #[allow(clippy::cast_possible_truncation)]
     Ok(Some(n as u8))
 }

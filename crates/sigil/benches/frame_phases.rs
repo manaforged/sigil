@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Frame-phase bench — layout + emit on a 500-row tree.
-//!
-//! Records through `sigil::profile` so the same phases a live app
-//! prints show up here. Compile-only smoke:
-//! `cargo bench -p sigil-ui --bench frame_phases -- --test`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,

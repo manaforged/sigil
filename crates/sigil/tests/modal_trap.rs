@@ -145,10 +145,6 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
     });
 }
 
-/// A dismissed modal must release its focus scope: after `show` flips
-/// false (`Display::None`) and layout recomputes, Tab must reach the
-/// focusable OUTSIDE the dialog — not stay trapped in an invisible
-/// scope (review finding).
 #[test]
 fn dismissed_modal_releases_focus_trap() {
     sigil::reactive::Runtime::scope("sigil-modal-trap-release", || {
@@ -216,9 +212,6 @@ fn backdrop_click_closes_when_opt_in() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Click the centre of the dialog's real laid-out rect — the modal
-        // centres the dialog in the viewport, so a hardcoded point rots
-        // whenever the layout evolves.
         let dialog = modal_dialog(&cx, root);
         let rect = layout.result(dialog).expect("dialog layout").rect();
         let (mid_x, mid_y) = (

@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `AppConfig` polymorphic-arg coverage.
-//!
-//! `launch`'s first argument accepts four shapes via `Into<AppConfig>`.
-//! Each impl needs a regression test so a future refactor of any arm
-//! can't silently break the public surface advertised in DR-016.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -56,9 +50,6 @@ fn builder_chain_overrides_individual_fields() {
 
 #[test]
 fn default_panic_policy_is_isolate() {
-    // Phase 16 (DR-025) hasn't shipped the isolation machinery yet,
-    // but the default value is fixed so adding it later doesn't
-    // change observed behaviour for existing apps.
     assert_eq!(PanicPolicy::default(), PanicPolicy::Isolate);
 }
 

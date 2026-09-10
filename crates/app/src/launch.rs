@@ -240,15 +240,6 @@ const fn menu_hwnd(_shell: &WinitShell, _handle: WinitWindowHandle) -> Option<is
     None
 }
 
-/// Run one frame under the configured [`PanicPolicy`].
-///
-/// `Abort` runs the frame directly, so a panic propagates and the process
-/// dies (paired with `panic = "abort"` when a crash-report pipeline should
-/// own the failure). `Isolate` catches a panic in this frame — a widget
-/// handler, an effect, a paint closure — logs it, and resets the reactive
-/// runtime to a clean resting state so the NEXT frame still runs. Without
-/// this the loop simply dies, which made `PanicPolicy::Isolate` (the
-/// default) a promise the app did not keep.
 fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) {
     match policy {
         PanicPolicy::Abort => frame_once(ctx),

@@ -7,21 +7,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-//! Phase D — `LayoutStyle::fill()` acceptance tests.
-//!
-//! Verifies the new `Dimension::Fill` variant resolves against the
-//! parent's resolved content-box during the layout pass. Covers the
-//! brief's four acceptance cases:
-//!
-//! 1. `fill_resolves_to_parent_content_box` — parent 800×600 + Fill
-//!    child → 800×600.
-//! 2. `fill_honours_parent_padding` — parent 800×600 with padding(20)
-//!    + Fill child → 760×560.
-//! 3. `fill_axis_specific` — parent 800×600 + `fill_width().height(100)`
-//!    → 800×100.
-//! 4. `fill_independent_of_width_height_builders` — `LayoutStyle::fill()`
-//!    is a shorthand for `fill_width().fill_height()`.
-
 mod stub;
 use stub::stub_engine;
 
@@ -129,8 +114,6 @@ fn fill_axis_specific() {
 
 #[test]
 fn fill_height_axis_specific() {
-    // Symmetric counterpart to `fill_axis_specific` — verify the
-    // block-axis builder works independently of the inline axis.
     let mut cx = Cx::new_root();
     let root = cx.add(container().child(container()));
     cx.get_mut(root)
@@ -162,19 +145,11 @@ fn fill_height_axis_specific() {
 
 #[test]
 fn fill_shorthand_matches_fill_width_fill_height() {
-    // `fill()` must produce identical resolved sizes to chaining
-    // `fill_width().fill_height()`. This is a builder-shape contract:
-    // the shorthand is sugar, not a separate code path.
     let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .child(container()) // sibling-a uses fill()
-            .child(container()), // sibling-b uses fill_width().fill_height()
-    );
-    cx.get_mut(root).expect("root exists").attach(
-        LayoutStyle::flex_row() // row container so children sit side-by-side
-            .fixed_size(800.0, 600.0),
-    );
+    let root = cx.add(container().child(container()).child(container()));
+    cx.get_mut(root)
+        .expect("root exists")
+        .attach(LayoutStyle::flex_row().fixed_size(800.0, 600.0));
     let kids: Vec<NodeId> = cx.get(root).expect("root exists").children().to_vec();
     cx.get_mut(kids[0])
         .expect("a exists")

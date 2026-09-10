@@ -1,26 +1,8 @@
-//! Cursor motion APIs.
-//!
-//! All motion ops walk UTF-8 char boundaries — rope offsets are always
-//! char boundaries (the rope panics on non-boundary inserts in debug
-//! mode), so char-step motion is the safe baseline. CRLF pairs (`\r\n`)
-//! are treated atomically so left/right motion never lands between
-//! `\r` and `\n`.
-//!
-//! Full grapheme-cluster motion (combining marks, ZWJ sequences,
-//! regional indicators) needs `unicode-segmentation`; that's a
-//! follow-up. Today's motion stops at char boundaries, which matches
-//! what the rope itself enforces.
-
 use super::super::coords::LineCol;
 use super::super::rope::Rope;
 use super::{Cursor, CursorSet};
 
 impl CursorSet {
-    /// Move every cursor's head left (`steps < 0`) or right
-    /// (`steps > 0`) by `steps.abs()` char boundaries. Anchors collapse
-    /// to the new head (motion clears selection).
-    ///
-    /// CRLF is treated as a single stop.
     pub fn move_horizontal(&mut self, rope: &Rope, steps: isize) {
         self.move_each(|c| {
             let new_head = step_horizontal(rope, c.head, steps);
@@ -28,8 +10,6 @@ impl CursorSet {
         });
     }
 
-    /// Extend every selection — anchor stays, head moves by `steps`
-    /// char boundaries.
     pub fn extend_horizontal(&mut self, rope: &Rope, steps: isize) {
         let extender = |c: &Cursor| Cursor {
             anchor: c.anchor,
@@ -38,12 +18,6 @@ impl CursorSet {
         self.move_each(extender);
     }
 
-    /// Move every cursor's head up (`lines < 0`) or down (`lines > 0`)
-    /// by `lines.abs()` lines. Column (UTF-8 byte column) is preserved
-    /// across lines; if the target line is shorter, the head clamps to
-    /// the line's end.
-    ///
-    /// Anchors collapse to the new head (motion clears selection).
     pub fn move_vertical(&mut self, rope: &Rope, lines: isize) {
         self.move_each(|c| {
             let new_head = step_vertical(rope, c.head, lines);
@@ -51,15 +25,10 @@ impl CursorSet {
         });
     }
 
-    /// Add a caret cursor one line above (or below) every existing
-    /// cursor at the same byte column. Out-of-range targets (above
-    /// line 0 / below last line) are silently dropped. Coalesces
-    /// after.
     pub fn add_above(&mut self, rope: &Rope) {
         self.add_relative_line(rope, -1);
     }
 
-    /// See [`Self::add_above`].
     pub fn add_below(&mut self, rope: &Rope) {
         self.add_relative_line(rope, 1);
     }
@@ -76,32 +45,23 @@ impl CursorSet {
         self.coalesce();
     }
 
-    /// Move every cursor's head to the start of its line.
     pub fn move_to_line_start(&mut self, rope: &Rope) {
         self.move_each(|c| Cursor::at(line_start(rope, c.head)));
     }
 
-    /// Move every cursor's head to the end of its line (the position
-    /// just before the trailing `\n`, or buffer-end if no newline).
     pub fn move_to_line_end(&mut self, rope: &Rope) {
         self.move_each(|c| Cursor::at(line_end(rope, c.head)));
     }
 
-    /// Move every cursor to byte 0 (collapses to one cursor).
     pub fn move_to_buffer_start(&mut self) {
         self.set_primary(Cursor::at(0));
     }
 
-    /// Move every cursor to buffer end (collapses to one cursor).
     pub fn move_to_buffer_end(&mut self, rope: &Rope) {
         self.set_primary(Cursor::at(rope.len_bytes()));
     }
 }
 
-// ---- Free helpers ------------------------------------------------------
-
-/// Step `byte` left/right by `steps.abs()` char boundaries. CRLF is one
-/// stop. Clamps to `[0, rope.len_bytes()]`.
 pub(crate) fn step_horizontal(rope: &Rope, byte: usize, steps: isize) -> usize {
     let len = rope.len_bytes();
     let mut pos = byte.min(len);
@@ -119,7 +79,7 @@ pub(crate) fn step_horizontal(rope: &Rope, byte: usize, steps: isize) -> usize {
             step_one_left(bytes, pos)
         };
         if next == pos {
-            break; // hit boundary
+            break;
         }
         pos = next;
         remaining -= 1;
@@ -135,7 +95,6 @@ fn step_one_right(bytes: &[u8], pos: usize) -> usize {
     while next < bytes.len() && bytes.get(next).is_some_and(|b| !is_char_start(*b)) {
         next += 1;
     }
-    // CRLF: if we just stepped over '\r' and '\n' follows, skip the '\n'.
     let here = bytes.get(pos).copied();
     let landed = bytes.get(next).copied();
     if here == Some(b'\r') && landed == Some(b'\n') {
@@ -152,7 +111,6 @@ fn step_one_left(bytes: &[u8], pos: usize) -> usize {
     while next > 0 && bytes.get(next).is_some_and(|b| !is_char_start(*b)) {
         next -= 1;
     }
-    // CRLF: if we just stepped onto '\n' and '\r' precedes, step one more.
     let landed = bytes.get(next).copied();
     let before = bytes.get(next.wrapping_sub(1)).copied();
     if next > 0 && landed == Some(b'\n') && before == Some(b'\r') {
@@ -165,8 +123,6 @@ const fn is_char_start(b: u8) -> bool {
     (b & 0b1100_0000) != 0b1000_0000
 }
 
-/// Step a head `byte` up/down by `lines.abs()` lines, preserving the
-/// byte column when possible.
 pub(crate) fn step_vertical(rope: &Rope, byte: usize, lines: isize) -> usize {
     let lc = rope.byte_to_linecol(super::super::coords::ByteIdx(byte));
     let target_line = saturating_apply_delta(lc.line, lines);
@@ -181,8 +137,6 @@ pub(crate) fn step_vertical(rope: &Rope, byte: usize, lines: isize) -> usize {
     bi.0
 }
 
-/// Apply a signed delta to `line` saturating at 0; returns the new
-/// (unsigned) line index without any cast-warnings.
 const fn saturating_apply_delta(line: usize, delta: isize) -> usize {
     if delta >= 0 {
         line.saturating_add(delta.unsigned_abs())
@@ -229,12 +183,6 @@ fn line_end(rope: &Rope, byte: usize) -> usize {
     .0
 }
 
-/// Number of logical lines in the rope.
-///
-/// Equal to `len_lines() + 1` for any non-empty rope: each `\n` ends a
-/// line and the buffer-tail (whether content or an empty line implied
-/// by a trailing `\n`) counts as the next line. An empty rope has one
-/// (empty) line.
 fn total_lines(rope: &Rope) -> usize {
     if rope.len_bytes() == 0 {
         1
@@ -243,8 +191,6 @@ fn total_lines(rope: &Rope) -> usize {
     }
 }
 
-/// Length in bytes of the `line_idx`-th line's text, excluding any
-/// trailing `\n`.
 fn line_text_len(rope: &Rope, line_idx: usize) -> usize {
     let slice = rope.line(line_idx);
     let len = slice.len_bytes();

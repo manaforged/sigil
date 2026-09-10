@@ -1,16 +1,8 @@
-//! Windowed style proof — static + hover-reactive panes via `sigil::launch`.
-//!
-//! The hover pane uses `interactive()` (5/5 Wave 1 T2): no pointer math,
-//! no manual hit-testing, no `style_reactive` boilerplate — the fluent
-//! `.hover()` closure paints directly.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    // 720x480 logical pixels; physical size depends on monitor scale
-    // (1080x720 at 1.5x, 1440x960 at 2x).
     sigil::launch(("Sigil - hello-style", 720, 480), app_tree)
 }
 

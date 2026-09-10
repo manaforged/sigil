@@ -10,11 +10,6 @@ fn tree_builds_without_panic() {
     Runtime::scope("scratchpad-smoke", || {
         let mut cx = Cx::new_root();
         let root = app_tree(&mut cx);
-        // `NodeId` doesn't expose a public `is_null()`/`is_some()`
-        // helper, but a built node has a debug repr distinct from
-        // a freshly-constructed default. Sanity: re-building does
-        // not panic and we can produce a second tree under the
-        // same runtime scope without state collision.
         let _ = format!("{root:?}");
     });
 }

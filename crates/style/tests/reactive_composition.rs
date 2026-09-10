@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! multiple reactive style sources on one node compose
-//! in install order instead of silently replacing each other.
-//!
-//! Before T0, a second `style_reactive` / `class_when` install on the
-//! same node clobbered the first channel (`builder_ext.rs` documented the
-//! replacement). These tests pin the composition contract: every install
-//! appends a channel, channels resolve in install order.
-
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::unwrap_used)]
 

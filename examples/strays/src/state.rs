@@ -1,9 +1,3 @@
-//! One [`TableState`] over the live scan.
-//!
-//! Refresh replaces the rows. Selection survives it because [`Stray`]
-//! carries a stable id, so the row a user picked stays picked even as
-//! processes above it exit and the indices shift.
-
 use std::cell::RefCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -27,29 +21,16 @@ impl Identifiable for Stray {
     }
 }
 
-/// The whole app hangs off one table plus the policy it classifies against.
 #[derive(Clone)]
 pub(crate) struct AppState {
-    /// Rows, columns, sort, filter, and selection.
     pub(crate) table: TableState<Stray>,
-    /// Directory root that counts as a source tree.
     pub(crate) root: PathBuf,
-    /// Unattended run time a dev-tree server may reach before it is a stray.
     pub(crate) limit: Duration,
-    /// Reads the machine. Behind a lock because the read happens on a worker
-    /// thread — it forks `ps` and walks the process table, which is far too
-    /// much to do between two frames.
     reader: Arc<Mutex<Scanner>>,
-    /// The scan in flight, if any. One at a time.
     job: Rc<RefCell<Option<ScanJob>>>,
 }
 
 impl AppState {
-    /// Build over a reader that has already scanned.
-    ///
-    /// The first scan reads the whole socket and process table and costs tens
-    /// of milliseconds. Running it from the tree builder would mount the app
-    /// and then freeze it; the caller does it before the terminal comes up.
     pub(crate) fn adopt(
         reader: Arc<Mutex<Scanner>>,
         rows: Vec<Stray>,
@@ -61,7 +42,6 @@ impl AppState {
         state
     }
 
-    /// Build over rows the caller supplies.
     pub(crate) fn from_rows(rows: Vec<Stray>, root: PathBuf, limit: Duration) -> Self {
         let table = TableState::identified(rows, columns(root.clone(), limit));
         Self {
@@ -73,7 +53,6 @@ impl AppState {
         }
     }
 
-    /// Start a scan on a worker thread, unless one is already running.
     pub(crate) fn refresh(&self) {
         if self.job.borrow().is_some() {
             return;
@@ -82,14 +61,11 @@ impl AppState {
         let job = work(move || {
             reader
                 .lock()
-                // A prior scan panic can poison the lock. Report no rows
-                // instead of taking down the app.
                 .map_or_else(|_| Vec::new(), |mut scanner| scanner.read())
         });
         *self.job.borrow_mut() = Some(job);
     }
 
-    /// Take the rows from a finished scan. Cheap enough to call every frame.
     pub(crate) fn land(&self) {
         let Some(job) = *self.job.borrow() else {
             return;
@@ -101,7 +77,6 @@ impl AppState {
         self.table.replace_rows(rows);
     }
 
-    /// Count of rows the policy calls a stray.
     pub(crate) fn stray_count(&self) -> usize {
         self.table
             .rows()
@@ -111,10 +86,6 @@ impl AppState {
             .count()
     }
 
-    /// Signal the selected row's process group, then re-scan.
-    ///
-    /// Only a [`Verdict::Stray`] row is killable. Anything else is either
-    /// outside the dev roots or has somebody watching it.
     pub(crate) fn kill_selected(&self) -> Option<u32> {
         let row = self.table.selected_row()?;
         if row.verdict(&self.root, self.limit) != Verdict::Stray {
@@ -126,7 +97,6 @@ impl AppState {
     }
 }
 
-/// Tone the state badge paints in.
 const fn tone(verdict: Verdict) -> Tone {
     match verdict {
         Verdict::System => Tone::Neutral,
@@ -136,7 +106,6 @@ const fn tone(verdict: Verdict) -> Tone {
     }
 }
 
-/// `1h05m`, or `47m` under the hour.
 fn span(age: Duration) -> String {
     let secs = age.as_secs();
     match (secs / 3600, (secs % 3600) / 60) {

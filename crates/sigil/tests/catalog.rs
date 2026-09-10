@@ -1,9 +1,3 @@
-//! Component previews for the documentation site — NOT goldens. Each
-//! widget renders on its own logical-pixel stage at 2x scale (tight
-//! per-widget dimensions, see the shot calls), written to
-//! `site/assets/components/<name>.png`. Run explicitly:
-//! `cargo test -p sigil-ui --test catalog -- --ignored --test-threads=1`
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -36,16 +30,12 @@ fn install_fonts() {
     });
 }
 
-/// Per-widget documentation stage. Small enough that the widget fills
-/// the frame on the site; large enough for the widest intrinsics
-/// (dropdown 320, gauge/text-field 420, slider 420).
 fn out_dir() -> PathBuf {
     let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../site/assets/components");
     fs::create_dir_all(&dir).expect("create catalog dir");
     dir
 }
 
-/// Render `build` on the standard documentation stage.
 fn shot(name: &str, stage: [u32; 2], build: impl Fn(&mut Cx, sigil_style::Theme) -> NodeId) {
     install_fonts();
     let img = render_widget_to_png_scaled(
@@ -65,7 +55,6 @@ fn shot(name: &str, stage: [u32; 2], build: impl Fn(&mut Cx, sigil_style::Theme)
     println!("wrote {}", path.display());
 }
 
-/// Padded surface card that fills the capture canvas.
 fn card(theme: sigil_style::Theme, inner: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(
@@ -87,7 +76,6 @@ fn catalog() {
     catalog_inputs();
 }
 
-/// Buttons, chips, dropdown, gauge, progress, radio.
 fn catalog_controls() {
     shot("button_primary", [320, 120], |cx, t| {
         cx.add(card(t, button("Save changes").primary()))
@@ -138,7 +126,6 @@ fn catalog_controls() {
     });
 }
 
-/// Checkbox, slider, text field, toggle, tabs.
 fn catalog_inputs() {
     shot("checkbox", [340, 110], |cx, t| {
         let checked = signal(true);

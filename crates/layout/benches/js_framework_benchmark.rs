@@ -2,48 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Sigil-layout vs Taffy on the **krausest js-framework-benchmark**
-//! workload (<https://github.com/krausest/js-framework-benchmark>).
-//!
-//! ## Methodology
-//!
-//! krausest's bench is the de-facto industry standard for UI framework
-//! performance — every major JS framework (React, Vue, Svelte, Solid,
-//! Lit, `Angular`) publishes numbers against it, and the SCU / `WebKit`
-//! teams use the same shape internally. The canonical operations are:
-//!
-//! | Op | Description |
-//! |---|---|
-//! | `create_1k` | Build a 1,000-row table from empty |
-//! | `replace_1k` | Replace all 1,000 rows |
-//! | `partial_update_10k` | Touch every 10th row of 10,000 |
-//! | `select_row` | Toggle selection on one row of 1,000 |
-//! | `remove_row` | Detach one row from 1,000 |
-//! | `create_10k` | Build a 10,000-row table from empty |
-//! | `append_1k_to_10k` | Grow a 10,000-row table by 1,000 |
-//! | `clear_10k` | Tear down a 10,000-row table |
-//!
-//! Each row is a flex-row container with four fixed children — the same
-//! 4-cell structure krausest's vanillajs reference uses (id / label /
-//! action / spacer). For a layout engine this is the work that matters:
-//! the engine sees a wide-flat tree (1 root → N rows → 4 leaves each),
-//! which is exactly the shape of every real-world data grid.
-//!
-//! Swap-rows is intentionally absent — the sigil-kernel API does not
-//! expose child-reordering, and approximating it via detach+reinsert
-//! would measure detach+insert, not swap. Documented limitation.
-//!
-//! Run with `cargo bench -p sigil-layout --bench js_framework_benchmark`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used,
-    // usize→f32 casts are intentional: row counts fit comfortably in f32 mantissa
-    // for the small table sizes (≤10k rows) used in these benchmarks.
     clippy::cast_precision_loss,
-    // Indexing on `rows[i]` is always bounds-safe because `i = (i+1) % rows.len()`.
-    // Bench data is statically sized; the panic-as-bug trade-off is acceptable.
     clippy::indexing_slicing
 )]
 
@@ -79,8 +42,6 @@ const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::Availabl
     }
 }
 
-// === owned helpers ===
-
 fn owned_row() -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().fixed_size(
@@ -107,8 +68,6 @@ fn build_owned_table(cx: &mut Cx, rows: usize) -> (NodeId, Vec<NodeId>) {
         .collect();
     (root, row_ids)
 }
-
-// === taffy helpers ===
 
 fn taffy_row(tree: &mut taffy::TaffyTree<()>) -> taffy::NodeId {
     let mut cell = |w: f32| {
@@ -169,8 +128,6 @@ fn build_taffy_table(
     (root, row_ids)
 }
 
-// === op: create_1k ===
-
 fn bench_create_1k(c: &mut Criterion) {
     c.bench_function("create_1k/owned", |b| {
         b.iter_batched(
@@ -198,8 +155,6 @@ fn bench_create_1k(c: &mut Criterion) {
     });
 }
 
-// === op: create_10k ===
-
 fn bench_create_10k(c: &mut Criterion) {
     c.bench_function("create_10k/owned", |b| {
         b.iter_batched(
@@ -226,8 +181,6 @@ fn bench_create_10k(c: &mut Criterion) {
         );
     });
 }
-
-// === op: partial_update_10k (touch every 10th row's style) ===
 
 #[allow(
     clippy::too_many_lines,
@@ -284,8 +237,6 @@ fn bench_partial_update_10k(c: &mut Criterion) {
     });
 }
 
-// === op: select_row (single-row style mutation, the canonical sparse-update) ===
-
 #[allow(
     clippy::too_many_lines,
     reason = "one bench scenario kept linear for readability"
@@ -341,8 +292,6 @@ fn bench_select_row(c: &mut Criterion) {
         });
     });
 }
-
-// === op: replace_1k (tear down + rebuild every iteration) ===
 
 fn bench_replace_1k(c: &mut Criterion) {
     c.bench_function("replace_1k/owned", |b| {

@@ -33,7 +33,7 @@ fn arabic_alef_lam_ain_shapes_with_multiple_glyphs() {
     let style = Style::regular(16.0);
     let segment = TextSegment {
         text: "\u{0627}\u{0644}\u{0639}",
-        level: 1, // RTL
+        level: 1,
     };
     let run = shaping_complex::shape(&segment, &style, &font).expect("Arabic shape must succeed");
     assert!(
@@ -58,7 +58,7 @@ fn hebrew_shalom_shapes_rtl_with_glyph_per_consonant() {
     let style = Style::regular(16.0);
     let segment = TextSegment {
         text: "\u{05E9}\u{05DC}\u{05D5}\u{05DD}",
-        level: 1, // RTL
+        level: 1,
     };
     let run = shaping_complex::shape(&segment, &style, &font).expect("Hebrew shape must succeed");
     assert_eq!(

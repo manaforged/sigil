@@ -1,15 +1,9 @@
-//! `axis_drag` — capture-on-handle drag primitive, end-to-end through
-//! the real event router: snapshot at down, deltas against the snapshot
-//! at move, settle at up, no compounding across drags.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
-// Exact layout math: the widths under test are integer pixel results, so
-// asserting them with `==` is correct, not a float-precision hazard.
 #![allow(clippy::float_cmp)]
 
 use sigil::prelude::*;
@@ -65,7 +59,6 @@ fn axis_drag_applies_delta_against_down_snapshot_and_resettles() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Drag 1: down at x=10, move to x=60 → width = 100 + 50.
         router.route(
             &mut cx,
             &layout,
@@ -78,7 +71,6 @@ fn axis_drag_applies_delta_against_down_snapshot_and_resettles() {
         );
         assert_eq!(width.get(), 150.0, "delta applies against down snapshot");
 
-        // Drag 2: fresh snapshot (150) — down at x=60, move to x=30 → 150 − 30.
         router.route(
             &mut cx,
             &layout,
@@ -100,7 +92,6 @@ fn axis_drag_applies_delta_against_down_snapshot_and_resettles() {
             "second drag snapshots fresh state — no compounding"
         );
 
-        // Clamp: drag far left — width floors at 10.
         router.route(
             &mut cx,
             &layout,

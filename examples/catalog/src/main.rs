@@ -1,9 +1,3 @@
-//! Headless PNG capture of the site catalog widgets.
-//!
-//! Renders every catalog widget through [`Host::scene`] and the offscreen
-//! renderer path, then writes `showcase/catalog/{light,dark}/{name}.png`
-//! at 2x scale. Run from the workspace root: `cargo run -p catalog`.
-
 #![allow(missing_docs)]
 #![allow(clippy::print_stdout)]
 

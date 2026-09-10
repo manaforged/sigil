@@ -1,25 +1,9 @@
-//! Iterators over rope content.
-//!
-//! All iterators borrow a collected `Vec<u8>` snapshot of the slice
-//! range. This is a deliberate trade-off: the rope is designed for
-//! *edit* performance (copy-on-write `Arc` nodes); for *read* access,
-//! collecting the byte range into a contiguous buffer is simpler and
-//! still fast enough for IDE use (read < 1 MB at a time in practice).
-//!
-//! A zero-copy iterator that walks the B-tree node list directly can
-//! be added in a follow-up once the API is stable.
-
-/// Iterates over bytes in a rope slice.
-///
-/// Created by [`crate::buffer::rope::RopeSlice::bytes`].
 pub struct RopeBytesIter<'a> {
-    /// Backing byte slice (a collected snapshot of the rope range).
     data: &'a [u8],
     pos: usize,
 }
 
 impl<'a> RopeBytesIter<'a> {
-    /// Build from a contiguous byte slice.
     #[must_use]
     pub const fn new(data: &'a [u8]) -> Self {
         Self { data, pos: 0 }
@@ -43,19 +27,11 @@ impl Iterator for RopeBytesIter<'_> {
 
 impl ExactSizeIterator for RopeBytesIter<'_> {}
 
-/// Iterates over Unicode scalar values in a rope slice.
-///
-/// Created by [`crate::buffer::rope::RopeSlice::chars`].
 pub struct RopeCharsIter<'a> {
     inner: std::str::Chars<'a>,
 }
 
 impl<'a> RopeCharsIter<'a> {
-    /// Build from a UTF-8 string slice.
-    ///
-    /// # Panics (debug-only)
-    ///
-    /// In debug mode, asserts the input is valid UTF-8.
     #[must_use]
     pub fn new(s: &'a str) -> Self {
         Self { inner: s.chars() }
@@ -74,20 +50,12 @@ impl Iterator for RopeCharsIter<'_> {
     }
 }
 
-/// Iterates over lines in a rope slice, yielding each line as a `String`.
-///
-/// Lines include the trailing `\n` if present (matches `str::lines`
-/// semantics except we preserve the `\n`; the last line may have no
-/// trailing newline).
-///
-/// Created by [`crate::buffer::rope::RopeSlice::lines`].
 pub struct RopeLinesIter<'a> {
     remaining: &'a str,
     done: bool,
 }
 
 impl<'a> RopeLinesIter<'a> {
-    /// Build from a UTF-8 string slice.
     #[must_use]
     pub const fn new(s: &'a str) -> Self {
         Self {

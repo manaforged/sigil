@@ -2,12 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Glow command integration coverage — walker test for R10.
-//!
-//! Mirrors `tests/shadow_command.rs`. Builds a `CommandScene` with three
-//! `DrawShadow` commands (one each of Outer / Inner / Glow), walks the
-//! command list, and asserts the pipeline cache is populated.
-
 #![allow(missing_docs)]
 
 use sigil_hal::{Color, Point, Rect};
@@ -54,7 +48,6 @@ fn outer_inner_glow_emit_as_independent_commands() {
             && glow.kind == ShadowKind::Glow
     ));
 
-    // Verify the render_command_scene signature exists (compile-time check).
     let render_path: RenderCommandScene = WgpuRenderer::render_command_scene;
     let _ = render_path;
 }

@@ -1,7 +1,3 @@
-//! Player chrome from catalog names. Bind `Player` signals.
-//!
-//! Pass a file to play: `cargo run -p player -- /path/to/track`.
-
 #![allow(missing_docs)]
 
 use std::path::PathBuf;

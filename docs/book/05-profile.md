@@ -72,8 +72,8 @@ sigil-profile: frame 12 hover 16.8ms emit=14.1 cmds=4200
 ## Side-by-side with GPUI `data_table`
 
 A browser tab cannot host two live wgpu windows. Run the same 10k × 24
-column table as two native processes, then drop traces on
-[`showcase/compare/data-table.html`](../../showcase/compare/data-table.html).
+column table as two native processes, then compare the two traces in the
+Firefox Profiler.
 
 ```text
 ./scripts/compare-data-table.sh

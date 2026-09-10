@@ -1,28 +1,14 @@
-//! Mock file inventory used by the file-browser example.
-//!
-//! Everything here is invented at compile time — the app never touches
-//! the real filesystem so the example is deterministic across machines
-//! and works as a `cargo test` smoke target.
-
 use std::fmt::Write as _;
 
-/// A mock filesystem entry with enough surface to populate every tab
-/// (Preview, Metadata, Hex) on the right pane.
 #[derive(Clone)]
 pub struct MockFile {
-    /// Display path shown in the left pane.
     pub path: &'static str,
-    /// File size in bytes (advertised in Metadata + drives Hex length).
     pub size: usize,
-    /// MIME-ish description.
     pub kind: &'static str,
-    /// Mtime stamp (string — purely cosmetic).
     pub modified: &'static str,
-    /// Body shown in the Preview tab.
     pub preview: &'static str,
 }
 
-/// Return the static list of mock files. Order is stable.
 #[must_use]
 pub fn inventory() -> Vec<MockFile> {
     let mut out = home_entries();
@@ -124,8 +110,6 @@ fn system_entries() -> Vec<MockFile> {
     ]
 }
 
-/// Render an ASCII hex view of the first `limit` synthetic bytes derived
-/// from `seed`. Output shape: `OFFSET  HH HH HH ... HH  |ASCII|` per line.
 #[must_use]
 pub fn hex_dump(seed: usize, limit: usize) -> String {
     const WIDTH: usize = 16;
@@ -167,7 +151,6 @@ fn write_ascii_bytes(out: &mut String, seed: usize, start: usize, end: usize) {
 }
 
 const fn synth_byte(seed: usize, index: usize) -> u8 {
-    // Pure deterministic mix — no hashing crate dependency needed.
     let mixed = seed
         .wrapping_mul(2_654_435_761)
         .wrapping_add(index.wrapping_mul(40_503));

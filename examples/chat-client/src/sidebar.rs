@@ -1,5 +1,3 @@
-//! Sidebar pane — header label + channel [`virtual_list`].
-
 use sigil::prelude::*;
 
 use crate::state::ChatState;
@@ -16,9 +14,6 @@ pub(crate) fn sidebar_pane(state: ChatState) -> NodeBuilder {
 }
 
 fn channel_list(state: ChatState) -> NodeBuilder {
-    // Snapshot the channel-name list at build time. Adding channels
-    // would require a rebuild of the surrounding tree; for this
-    // dogfood pass that's fine — channel set is stable per session.
     let rows: Vec<String> = state
         .channels
         .peek()

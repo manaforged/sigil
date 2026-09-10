@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Scroll widget demo — tall column of buttons inside a clipped viewport.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

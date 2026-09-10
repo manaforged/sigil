@@ -21,7 +21,7 @@ include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 [dependencies]
 sigil-actions = { workspace = true }
 smallvec = { workspace = true }
-# G5 (DR-048): Task<T> wraps oneshot for completion routing and stores
+# DR-048: Task<T> wraps oneshot for completion routing and stores
 # AbortHandle for RAII cancel. Sync feature pulls in `oneshot`; the
 # `task` module is implicit in the crate root and provides AbortHandle.
 # Base sync features only. The `rt` family is enabled per-target in the

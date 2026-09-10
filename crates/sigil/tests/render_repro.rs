@@ -2,18 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Repros for the two rendering failures the VG1 dispatch
-//! had to work around but never root-caused:
-//!
-//! 1. Children of a [`Position::Relative`] parent didn't paint in the
-//!    offscreen render even with explicit `BackgroundThemeRef` styles.
-//! 2. Narrow text glyphs (a single character clipped to ≤ 14px) didn't
-//!    rasterise — the offscreen capture showed zero glyph pixels.
-//!
-//! Each test renders a minimal tree, then samples the resulting RGBA
-//! buffer for the expected non-background pixels. Both are expected to
-//! FAIL before the RC2 fix and PASS after.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::cast_lossless)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -25,24 +13,9 @@ mod golden_support;
 
 use golden_support::{InteractionMode, render_widget_to_png};
 
-/// Bug A — a deeply-nested child (here: `Position::Absolute` inside a
-/// `Position::Relative` parent inside a padded root) should paint at the
-/// position the layout engine assigned it. Root padding shifts the
-/// middle container off (0,0), which makes the scene-emitter's
-/// "double-accumulate parent_origin onto an already-root-coord layout
-/// rect" bug visible — the absolute child paints at the wrong screen
-/// location (off by the root padding).
 #[test]
 fn position_relative_child_paints() {
-    // Root padding shifts the middle container to (24, 24) in root
-    // coords. Without it, the bug is invisible because parent_origin=0
-    // and double-counting still gives the right answer.
     const ROOT_PADDING: u32 = 24;
-    // Sample point: middle.origin + inset(20,20) + half(40,40) =
-    // (24+20+20, 24+20+20) = (64, 64). With the double-count bug, the
-    // accent block lands at (24+24+20, 24+24+20) = (68, 68) — so a
-    // sample at (64, 64) shows surface_pressed (parent track) instead
-    // of accent.
     const SAMPLE_X: u32 = 64;
     const SAMPLE_Y: u32 = 64;
 
@@ -83,15 +56,10 @@ fn position_relative_child_paints() {
         return;
     };
 
-    // Theme defaults (see crates/style/src/theme.rs):
-    //   accent  = blue_light().step(9)  = rgba(0x3D, 0x6B, 0xB3) = (61, 107, 179)
-    //   surface = slate_light().step(2) = rgba(0xF9, 0xF9, 0xFB) = (249, 249, 251)
     let px = img.get_pixel(SAMPLE_X, SAMPLE_Y);
     let [r, g, b, _a] = px.0;
     println!("position_relative_child_paints @ ({SAMPLE_X},{SAMPLE_Y}) = ({r},{g},{b})");
 
-    // Accept any reasonable approximation of accent rgb(61, 107, 179).
-    // sRGB textures + linearisation can drift a couple of units.
     let close_to_accent =
         (r as i32 - 61).abs() <= 6 && (g as i32 - 107).abs() <= 6 && (b as i32 - 179).abs() <= 6;
     assert!(
@@ -102,23 +70,9 @@ fn position_relative_child_paints() {
     );
 }
 
-/// Bug B — text rendered into a narrow (≤14 px wide) layout box inside
-/// a nested wrapper should still rasterise its glyph at the wrapper's
-/// screen position. The followups doc reports the rendered PNG showed
-/// zero glyph pixels — the followups note that "(b)" (Position::Relative
-/// children mislocated) and "(c)" (narrow text not rasterising) are the
-/// same general thread. Confirming hypothesis: the glyph IS being
-/// rasterised, but at the wrong offscreen location (double-counted
-/// parent origin pushes it off the wrapper).
 #[test]
 fn narrow_text_renders_glyph() {
-    // Wrap in a non-zero-offset parent so the scene-emitter's double-
-    // accumulation visibly shifts the glyph. Without the outer padding,
-    // the wrapper sits at (0,0), parent_origin=0, and the double-count
-    // is invisible.
     const ROOT_PADDING: u32 = 24;
-    // Wrapper is at root content origin = (24, 24). Glyph paints inside
-    // wrapper. Sample window: x∈[24, 38), y∈[24, 40).
     const WIN_X: u32 = 24;
     const WIN_Y: u32 = 24;
     const WIN_W: u32 = 14;
@@ -151,9 +105,6 @@ fn narrow_text_renders_glyph() {
         return;
     };
 
-    // Background is `surface` rgba(248, 250, 252). The on-surface text
-    // colour is on_surface rgba(15, 23, 42). Count pixels visibly darker
-    // than surface inside the expected wrapper window.
     let mut dark = 0u32;
     for y in WIN_Y..(WIN_Y + WIN_H) {
         for x in WIN_X..(WIN_X + WIN_W) {

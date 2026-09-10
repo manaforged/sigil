@@ -30,7 +30,6 @@ pub struct Painted {
     pub clip: Option<Rect>,
 }
 
-/// AccessKit projection of a retained Sigil tree.
 pub type AccessibilityTree = accesskit::TreeUpdate;
 
 pub struct Host {
@@ -129,7 +128,6 @@ impl Host {
         }
     }
 
-    /// Project the mounted tree, current layout bounds, and router focus.
     #[must_use]
     pub fn accessibility_tree(&self, router: &EventRouter) -> AccessibilityTree {
         sigil_a11y::tree(&self.cx, router.focus(), &|id| {
@@ -137,7 +135,6 @@ impl Host {
         })
     }
 
-    /// Move focus in a host-provided spatial direction.
     pub fn focus_intent(&mut self, router: &mut EventRouter, intent: FocusIntent) {
         if self.root.is_some() {
             router.focus_intent(&mut self.cx, &self.layout, intent);

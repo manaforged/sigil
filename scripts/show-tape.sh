@@ -1,6 +1,4 @@
 #!/bin/sh
-# Open the Sigil and GPUI live tapes side by side.
-# ACCESS_LOG_ROWS=1000000 (default)  ACCESS_LOG_ROWS=200000 for a faster start.
 set -eu
 root="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$root"

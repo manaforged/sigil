@@ -7,7 +7,7 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "Dogfood: a tier-1 utility password generator on `sigil::launch`."
+description = "Password generator on `sigil::launch`."
 
 [dependencies]
 sigil-ui = { workspace = true }

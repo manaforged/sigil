@@ -1,6 +1,3 @@
-//! Headless sigil-layout proof example.
-
-// Example intentionally prints layout results to stdout.
 #![allow(clippy::print_stdout)]
 
 use std::error::Error;

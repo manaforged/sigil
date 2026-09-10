@@ -1,5 +1,3 @@
-//! Container widgets: panel, scroll, splitter, modal, sheet.
-
 use sigil::prelude::*;
 use sigil::widgets::patterns;
 use sigil::widgets::{SplitterOrientation, modal, panel, scroll, sheet, splitter};

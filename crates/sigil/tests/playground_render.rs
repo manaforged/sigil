@@ -1,10 +1,3 @@
-//! Render the widget-playground composition to a single 1100×800 PNG
-//! at `crates/sigil/tests/output/playground.png`.
-//!
-//! Not a byte-equivalence golden — the playground is iterating. This
-//! exists so a developer can inspect what the live
-//! composition actually paints after every layout-engine change.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
@@ -19,9 +12,6 @@ mod golden_support;
 use golden_support::{InteractionMode, render_widget_to_png_with};
 use sigil_app::DefaultTextMeasure;
 
-// Mount the playground section files verbatim. Each `use crate::{…}`
-// inside them resolves against the helpers defined at the root of
-// THIS test crate, below.
 #[path = "../../../examples/widget-playground/src/section_container.rs"]
 mod section_container;
 #[path = "../../../examples/widget-playground/src/section_display.rs"]

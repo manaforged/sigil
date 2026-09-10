@@ -2,17 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Integration tests for `sigil-reactive`.
-//!
-//! These are behaviour tests, not unit tests. Each test exercises
-//! one of the contracts documented in DR-005 end-to-end: effect
-//! subscription, disposal ordering, batched coalescing, cycle
-//! detection, and stale-handle behaviour.
-//!
-//! Tests here run serially by default because `sigil-reactive`'s
-//! runtime is thread-local. Each test gets a fresh `Runtime::scope`.
-
 #![allow(missing_docs)]
 
 use std::cell::Cell;
@@ -126,8 +115,6 @@ fn child_owners_dispose_before_parent_cleanups_run() {
             });
             let log_parent = Rc::clone(&log);
             on_cleanup(move || log_parent.borrow_mut().push("parent"));
-            // Note: we don't dispose `child` explicitly — parent
-            // disposal cascades to children.
             let _ = child;
         });
         parent.dispose();
@@ -149,8 +136,6 @@ fn signal_read_after_owner_dispose_panics() {
             parent.dispose();
             n
         });
-        // Reading a signal whose owner is disposed must panic, not
-        // return stale data.
         let _ = captured.peek();
     });
     assert!(result.is_err(), "reading disposed signal should panic");
@@ -165,8 +150,6 @@ fn cycle_detection_panics_on_self_reentry() {
             effect(move || {
                 let current = n.get();
                 if current < 3 {
-                    // Writing from inside the effect would re-enter
-                    // it before it finishes — that's the cycle.
                     n.set(current + 1);
                 }
             });
@@ -207,7 +190,7 @@ fn disposed_effect_stops_re_running() {
             });
             assert_eq!(runs.get(), 1);
             child.dispose();
-            n.set(1); // should not re-run the disposed effect
+            n.set(1);
             assert_eq!(runs.get(), 1);
         });
     }

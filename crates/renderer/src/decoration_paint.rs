@@ -30,9 +30,9 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: core::mem::size_of::<DecorationInstance>() as u64,
     step_mode: wgpu::VertexStepMode::Instance,
     attributes: &wgpu::vertex_attr_array![
-        1 => Float32x4,  // band
-        2 => Float32x4,  // color
-        3 => Float32x4,  // params
+        1 => Float32x4,
+        2 => Float32x4,
+        3 => Float32x4,
     ],
 };
 

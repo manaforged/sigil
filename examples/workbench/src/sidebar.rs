@@ -1,5 +1,3 @@
-//! Left rail: nav, thread groups, account.
-
 use sigil::prelude::*;
 
 use crate::icons;

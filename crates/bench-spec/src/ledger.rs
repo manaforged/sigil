@@ -1,9 +1,3 @@
-//! The Ledger scenario: one fixed script every framework runner replays.
-//!
-//! A pulse is one 16 ms driver fire. Every pulse ticks the price stream;
-//! some pulses also apply one [`Step`]. [`Tally::expect`] is the state a
-//! correct run ends in; a record whose checks fail is not comparable.
-
 use std::time::Duration;
 
 use data_table::ledger::{Row, TICK_STRIDE, tick};

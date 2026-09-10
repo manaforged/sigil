@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Integration tests intentionally keep assertions direct and use
-// indexing for fixed test topology. See the hygiene framework.
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "support/mock_shell.rs"]
@@ -23,10 +21,6 @@ use routing_helpers::{compute_layout, focus_tree, pointer_down, record_focus, ro
 
 #[test]
 fn pointer_down_focuses_nearest_focusable_ancestor() {
-    // Mirrors a `text_field`: a focusable outer node wrapping non-focusable
-    // inner children (its text/caret). A click lands on the inner leaf, so a
-    // leaf-only focus check would never focus the field — and keyboard input
-    // would never route to it. The hit must focus the focusable ancestor.
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -47,7 +41,6 @@ fn pointer_down_focuses_nearest_focusable_ancestor() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    // Click inside the non-focusable inner child.
     route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
 
     assert_eq!(

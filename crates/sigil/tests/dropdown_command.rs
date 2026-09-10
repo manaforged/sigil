@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `SceneCommand` smoke tests for the dropdown widget (D2).
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -55,7 +54,6 @@ fn dropdown_trigger_emits_surface_inset_rect() {
         ));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // Trigger fill is the `surface-inset` well — gray step 1.
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
     });
 }
@@ -67,7 +65,6 @@ fn dropdown_popup_hidden_emits_trigger_rect_only() {
         let opts = vec!["X".to_owned(), "Y".to_owned(), "Z".to_owned()];
         let root = cx.add(dropdown(signal(0_usize), opts));
         compute(&mut cx, root);
-        // Closed popup: trigger surface rect must be present, scene must be non-empty.
         let theme = Theme::default();
         let colors = rect_colors(&cx, root);
         assert!(!colors.is_empty(), "trigger rect should emit when closed");
@@ -124,7 +121,6 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
                 text: None,
             })),
         );
-        // Popup open via ArrowDown — selection unchanged.
         assert_eq!(selected.get(), 0);
     });
 }

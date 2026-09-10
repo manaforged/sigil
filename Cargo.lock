@@ -20,7 +20,7 @@ checksum = "366ffbaa4442f4684d91e2cd7c5ea7c4ed8add41959a31447066e279e432b618"
 
 [[package]]
 name = "access-log"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "gpui",
  "sigil-ui",
@@ -332,7 +332,7 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "api-explorer"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -829,7 +829,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
 name = "bench-gpui"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "bench-spec",
  "data-table",
@@ -838,7 +838,7 @@ dependencies = [
 
 [[package]]
 name = "bench-parity"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "clap",
  "data-table",
@@ -858,7 +858,7 @@ dependencies = [
 
 [[package]]
 name = "bench-spec"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "data-table",
  "serde",
@@ -1207,7 +1207,7 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "catalog"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "image",
  "pollster 1.0.1",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "chat-client"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -2003,7 +2003,7 @@ dependencies = [
 
 [[package]]
 name = "csv-viewer"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -2047,7 +2047,7 @@ checksum = "0c87e182de0887fd5361989c677c4e8f5000cd9491d6d563161a8f3a5519fc7f"
 
 [[package]]
 name = "data-table"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -2552,7 +2552,7 @@ dependencies = [
 
 [[package]]
 name = "file-browser"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -3617,28 +3617,28 @@ checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
 name = "hello-counter"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
 
 [[package]]
 name = "hello-events"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
 
 [[package]]
 name = "hello-host"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
 
 [[package]]
 name = "hello-layout"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-kernel",
  "sigil-layout",
@@ -3647,7 +3647,7 @@ dependencies = [
 
 [[package]]
 name = "hello-rect"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-hal",
  "sigil-reactive",
@@ -3661,21 +3661,21 @@ dependencies = [
 
 [[package]]
 name = "hello-style"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
 
 [[package]]
 name = "hello-tree"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-kernel",
 ]
 
 [[package]]
 name = "hello-tui"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -4268,7 +4268,7 @@ dependencies = [
 
 [[package]]
 name = "kanban-board"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -4394,7 +4394,7 @@ checksum = "7a79a3332a6609480d7d0c9eab957bca6b455b91bb84e66d19f5ff66294b85b8"
 
 [[package]]
 name = "ledger"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "bench-spec",
  "data-table",
@@ -4507,7 +4507,7 @@ dependencies = [
 
 [[package]]
 name = "linear-row"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -4563,7 +4563,7 @@ dependencies = [
 
 [[package]]
 name = "log-tailer"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -5842,7 +5842,7 @@ dependencies = [
 
 [[package]]
 name = "password-generator"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -6010,7 +6010,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "player"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -6332,7 +6332,7 @@ dependencies = [
 
 [[package]]
 name = "pty-pane"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -6829,7 +6829,7 @@ checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
 name = "regex-tester"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "regex",
  "sigil-ui",
@@ -7196,7 +7196,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scratchpad"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -7465,7 +7465,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "sigil-a11y"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "accesskit",
  "crossbeam-channel",
@@ -7478,7 +7478,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-actions"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
  "sigil-actions-macros",
@@ -7488,7 +7488,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-actions-macros"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -7499,11 +7499,11 @@ dependencies = [
 
 [[package]]
 name = "sigil-animation"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 
 [[package]]
 name = "sigil-animation-runtime"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
  "sigil-animation",
@@ -7513,7 +7513,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-app"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "accesskit",
  "crossbeam-channel",
@@ -7547,14 +7547,14 @@ dependencies = [
 
 [[package]]
 name = "sigil-bidi"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "unicode-bidi",
 ]
 
 [[package]]
 name = "sigil-events"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "accesskit",
  "allocation-counter",
@@ -7569,7 +7569,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-hal"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "keyboard-types 0.8.3",
  "smol_str 0.3.6",
@@ -7577,7 +7577,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-icons"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "lyon_geom",
  "proptest",
@@ -7587,7 +7587,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-ide-core"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "criterion 0.5.1",
  "crossbeam-channel",
@@ -7602,7 +7602,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-kernel"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "accesskit",
  "ahash",
@@ -7615,7 +7615,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-layout"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "ahash",
  "allocation-counter",
@@ -7633,11 +7633,11 @@ dependencies = [
 
 [[package]]
 name = "sigil-profile"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 
 [[package]]
 name = "sigil-reactive"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
  "sigil-actions",
@@ -7648,7 +7648,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-renderer"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -7677,7 +7677,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-shell"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "accesskit",
  "accesskit_winit",
@@ -7689,7 +7689,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-style"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "allocation-counter",
  "criterion 0.8.2",
@@ -7706,7 +7706,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-style-macros"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "phf",
  "phf_codegen",
@@ -7721,7 +7721,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-tasks"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "criterion 0.8.2",
  "sigil-hal",
@@ -7731,7 +7731,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-text"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "ahash",
  "core-text",
@@ -7755,7 +7755,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-tui"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "allocation-counter",
  "criterion 0.8.2",
@@ -7776,7 +7776,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-ui"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "arboard",
  "criterion 0.8.2",
@@ -7804,7 +7804,7 @@ dependencies = [
 
 [[package]]
 name = "sigil-widgets"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "image",
  "sigil-animation-runtime",
@@ -8119,7 +8119,7 @@ checksum = "d08889ec5408683408db66ad89e0e1f93dff55c73a4ccc71c427d5b277ee47e6"
 
 [[package]]
 name = "strays"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "netstat2",
  "sigil-tui",
@@ -8765,7 +8765,7 @@ dependencies = [
 
 [[package]]
 name = "timer-stopwatch"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -8881,7 +8881,7 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "todo"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -9458,7 +9458,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vertical-slice"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-app",
  "sigil-hal",
@@ -9751,7 +9751,7 @@ dependencies = [
 
 [[package]]
 name = "web-demo"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "getrandom 0.4.3",
  "sigil-ui",
@@ -9974,7 +9974,7 @@ dependencies = [
 
 [[package]]
 name = "widget-playground"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]
@@ -10724,7 +10724,7 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 
 [[package]]
 name = "workbench"
-version = "0.1.0-alpha.1"
+version = "0.1.0"
 dependencies = [
  "sigil-ui",
 ]

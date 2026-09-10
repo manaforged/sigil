@@ -2,13 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Table-core interaction budgets.
-//!
-//! Interaction-triggered operations (a sort click, a filter keystroke)
-//! answer to the ~50 ms perceptible-lag threshold, not the 16.7 ms
-//! frame budget — the derived recompute happens once per interaction,
-//! off the paint path. Record medians when they move.
-
 #![allow(missing_docs)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
@@ -25,9 +18,6 @@ fn rows(count: u32) -> Vec<Row> {
     (0..count)
         .map(|i| Row {
             label: format!("row-{}", i % 4096),
-            // Knuth-hash the index so the sort never hits a
-            // pattern-defeating fast path — the budget must reflect a
-            // genuinely unsorted click.
             value: i64::from(i.wrapping_mul(2_654_435_761)),
         })
         .collect()

@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Progress widget demo — determinate and indeterminate bars.
-
 #![allow(missing_docs)]
 
 use sigil::prelude::*;

@@ -19,12 +19,6 @@ static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
 static WIDE: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(96)))];
 static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
-// Regression (tabs content reveal, 2026-08): a container hidden on the
-// FIRST compute has its descendants pruned from the drive. Revealing it
-// marks only the container dirty — the descendants were never dirty on
-// their own terms — and the incremental child-list sync must materialize
-// their mirrors instead of raising `NodeMissing`. The nested grandchild
-// pins the recursion (the whole hidden subtree arrives at once).
 #[test]
 fn hidden_reveal_materializes_never_synced_subtree() {
     Runtime::scope("hidden-reveal", || {
@@ -54,12 +48,10 @@ fn hidden_reveal_materializes_never_synced_subtree() {
         let grandchild = cx.get(panel).unwrap().children().first().copied().unwrap();
 
         let mut engine = stub_engine();
-        // First compute: wrapper is HIDDEN — its subtree prunes to itself.
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("initial compute with hidden wrapper succeeds");
 
-        // Reveal: only the wrapper is dirty; panel + grandchild have no mirrors.
         hidden_flag.set(true);
         engine
             .compute(&mut cx, root, AVAILABLE)

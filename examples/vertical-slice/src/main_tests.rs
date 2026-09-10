@@ -179,11 +179,6 @@ fn center_of(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Point {
 }
 
 fn absolute_rect(_cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Rect {
-    // `LayoutResult::rect()` is already in root coordinates (see
-    // commit a84d207 / hit_test.rs comment): the layout solvers
-    // accumulate every ancestor's border + padding offset into the
-    // rect they write. Walking parents and re-summing would
-    // double-count. Read the rect through unchanged.
     layout.result(id).map_or_else(
         || Rect::new(Point::new(0.0, 0.0), 0.0, 0.0),
         |result| result.rect(),

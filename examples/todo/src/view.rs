@@ -1,12 +1,7 @@
-//! To-do app view. Header + add row, filter tabs, the reactive task list,
-//! and a status footer. File dialogs and tray live in `main.rs`. The
-//! styled GPU `menu_bar` is in this tree.
-
 use sigil::prelude::*;
 
 use crate::state::{Filter, Todo, TodoState};
 
-/// Build the whole window tree.
 pub(crate) fn app_tree(state: &TodoState) -> NodeBuilder {
     let state = *state;
     container()
@@ -24,7 +19,6 @@ pub(crate) fn app_tree(state: &TodoState) -> NodeBuilder {
         )
 }
 
-/// GPU menu bar. Style with `.class`. Native OS bar is opt-in.
 pub(crate) fn app_menu(state: TodoState) -> MenuBarBuilder {
     menu_bar()
         .class("bg-surface-hover px-3")

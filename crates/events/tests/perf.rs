@@ -3,8 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(missing_docs)]
-// Performance contract tests keep fixture setup direct. See the
-// hygiene framework for the test-only panic/indexing carve-out.
 #![allow(clippy::panic, clippy::unwrap_used)]
 
 use std::cell::Cell;
@@ -87,9 +85,6 @@ fn captured_pointer_up_release_does_not_allocate() {
     assert_eq!(info.count_total, 0, "{info:?}");
     assert_eq!(ups.get(), 1);
 
-    // Capture must be released — a follow-up move should take the hit-test
-    // path, not the captured fast-path. No allocation contract here; we only
-    // prove the capture state was cleared so `up` fires exactly once.
     router.route(&mut cx, &layout, pointer_move(200.0, 200.0));
     assert_eq!(ups.get(), 1);
 }

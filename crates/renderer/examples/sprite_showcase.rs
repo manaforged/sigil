@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Windowed showcase for three-way sprite rendering.
-
 #![allow(clippy::missing_panics_doc)]
 #![allow(missing_docs)]
 

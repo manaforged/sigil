@@ -2,9 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Headless PNG capture for renderer phase showcase scenes.
-
-#![allow(clippy::indexing_slicing)] // Examples may slice staging buffers; see the internal hygiene-cleanup-framework plan.
+#![allow(clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
@@ -97,7 +95,7 @@ enum PhaseCapture {
     Split(SplitFactory),
 }
 
-#[allow(clippy::too_many_lines)] // pure data table — one entry per phase, no logic
+#[allow(clippy::too_many_lines)]
 #[cfg(feature = "capture")]
 fn phases() -> [Phase; 13] {
     [
@@ -212,9 +210,6 @@ fn capture_phase(
 ) -> Result<(), Box<dyn Error>> {
     let texture = capture_texture(request.device, request.extent);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    // Keep scene coordinates in logical viewport space while rendering into a
-    // larger physical texture. The extra pixels improve screenshot resolution
-    // without changing layout, radii, shadow offsets, or stroke widths.
     renderer.submit_screen(
         &ScreenSubmission {
             device: request.device,
@@ -222,9 +217,6 @@ fn capture_phase(
             view: &view,
             format: FORMAT,
             viewport: request.viewport,
-            // The capture texture is supersampled (`CaptureExtent::from_viewport`
-            // scales the logical viewport up for screenshot resolution); the honest
-            // DPI factor is that physical/logical ratio, so screenshot text is sharp.
             scale: request.extent.width as f32 / request.viewport.0.max(1.0),
             clear: Some(request.clear),
         },
@@ -292,7 +284,6 @@ fn render_split_scene(
             view: &view,
             format: FORMAT,
             viewport: SPLIT_VIEWPORT,
-            // Split capture extent equals SPLIT_VIEWPORT — logical == physical.
             scale: 1.0,
             clear: clear_in_submit.then_some(scene.2),
         },

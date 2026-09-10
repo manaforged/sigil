@@ -3,8 +3,8 @@ use super::*;
 #[test]
 fn line_aware_l1_resets_trailing_neutral_that_paragraph_wide_levels_miss() {
     let text = "\u{05D0}\u{05D1}\u{05D2} abc def";
-    let space_before_def = 10_usize; // byte offset of the space between "abc" and "def"
-    let cut = 11_usize; // right after that space — "def" wraps away
+    let space_before_def = 10_usize;
+    let cut = 11_usize;
 
     let paragraph_wide = paragraph_levels(text);
     assert_eq!(
@@ -104,7 +104,7 @@ fn arabic_with_ascii_neutrals() {
     for i in 0..alef_len {
         assert!(levels[i] % 2 == 1, "Arabic alef byte {i} must be odd");
     }
-    let digit_start = alef_len + 1; // skip space
+    let digit_start = alef_len + 1;
     assert_eq!(
         levels[digit_start], 2,
         "ASCII digit inside RTL paragraph should be level 2",

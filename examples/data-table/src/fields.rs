@@ -1,30 +1,19 @@
-//! Column list matching GPUI `FIELDS` (24 columns, 2026 px).
-
 use crate::quote::Quote;
 
-/// Column count in GPUI `FIELDS`.
 pub const COLUMN_COUNT: usize = 24;
 
-/// Live window table width: 1280 − 2×16 padding.
 pub const TABLE_WIDTH: f32 = 1248.0;
 
-/// Live list viewport height: 1000 − pad − gap − status − header.
 pub const VIEWPORT_HEIGHT: f32 = 912.0;
 
-/// One column in the GPUI field list.
 #[derive(Clone, Copy)]
 pub struct Field {
-    /// Header key (`last_done` → `LAST DONE`).
     pub key: &'static str,
-    /// Logical pixel width from the GPUI `FIELDS` table.
     pub width: f32,
-    /// Which [`Quote`] value this column prints.
     pub kind: FieldKind,
-    /// Paint the cell with the row's up/down tint.
     pub tint: bool,
 }
 
-/// Discriminant for [`cell_text`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FieldKind {
     Id,
@@ -54,14 +43,12 @@ pub enum FieldKind {
 }
 
 impl FieldKind {
-    /// True when the cell updates on a quote tick (`last_done`).
     #[must_use]
     pub const fn live(self) -> bool {
         matches!(self, Self::LastDone)
     }
 }
 
-/// How many columns intersect `[0, max_x)` (emit clip + overscan).
 #[must_use]
 pub fn columns_intersecting(max_x: f32) -> usize {
     let mut x = 0.0;
@@ -84,7 +71,6 @@ const fn col(key: &'static str, width: f32, kind: FieldKind, tint: bool) -> Fiel
     }
 }
 
-/// GPUI `FIELDS` — 24 columns, 2026 px wide.
 pub const FIELDS: [Field; COLUMN_COUNT] = [
     col("id", 64.0, FieldKind::Id, false),
     col("symbol", 64.0, FieldKind::Symbol, false),
@@ -117,13 +103,11 @@ pub const FIELDS: [Field; COLUMN_COUNT] = [
     col("timestamp", 120.0, FieldKind::Timestamp, true),
 ];
 
-/// Header label: `last_done` → `LAST DONE`.
 #[must_use]
 pub fn header_label(key: &str) -> String {
     key.replace('_', " ").to_uppercase()
 }
 
-/// Format one cell the same way GPUI `TableRow::render_cell` does.
 #[must_use]
 pub fn cell_text(index: usize, quote: &Quote, kind: FieldKind) -> String {
     match kind {

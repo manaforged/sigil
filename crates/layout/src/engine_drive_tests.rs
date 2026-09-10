@@ -34,7 +34,7 @@ fn single_block_root_resolves_to_viewport() {
     d.measure(root, StyleSize::new(640.0, 480.0)).unwrap();
     let box_root = d.computed_box(root).expect("root reached");
     assert_eq!(box_root.w, 640.0);
-    assert_eq!(box_root.h, 0.0_f32.max(0.0)); // auto height with no children
+    assert_eq!(box_root.h, 0.0_f32.max(0.0));
     assert_eq!(box_root.x, 0.0);
     assert_eq!(box_root.y, 0.0);
 }

@@ -9,5 +9,5 @@
 - [ ] `cargo check --workspace --all-targets`
 - [ ] `cargo test --workspace`
 - [ ] Public API changes: rustdoc updated; `cargo doc --workspace --no-deps` clean
-- [ ] Visual changes: goldens regenerated + cross-vendor visual review (see `the contributor guide`)
+- [ ] Visual changes: goldens regenerated + cross-vendor visual review
 - [ ] Style/parser changes: `trybuild` expectations regenerated

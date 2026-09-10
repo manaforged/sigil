@@ -7,27 +7,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
 
-//! Regressions for the Q11 layout bug:
-//!
-//! 1. `item_main_basis` for column parents must pass axis-relative
-//!    `(cb_main, cb_cross)` to `container_intrinsic_main`, not raw
-//!    `(ctx.cb.w, ctx.cb.h)`. The raw form swapped the axes for
-//!    column parents — children got laid out at
-//!    `(parent_height, parent_width)` and the basis came back as the
-//!    parent's WIDTH instead of the child's natural HEIGHT.
-//!
-//! 2. The hypothetical layout inside `container_intrinsic_main` and
-//!    `container_intrinsic_cross` must suppress `align-items:
-//!    stretch`. With stretch on, an empty container child inflates
-//!    to fill its parent's cross axis; the OUTER read then sees that
-//!    as the OUTER's "natural" main extent and over-reports its
-//!    basis by the full parent dimension.
-//!
-//! Combined symptom: a `patterns::field` `flex_column` with a text
-//! label + a `flex_row` container child collapsed the label to ~1.6 px
-//! and stretched the container to ~58 px instead of leaving them at
-//! basis 16/16 with 24 px unused.
-
 mod stub;
 use stub::stub_engine;
 
@@ -43,11 +22,6 @@ fn rect(cx: &Cx, id: NodeId) -> sigil_hal::Rect {
 
 #[test]
 fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
-    // Reproducer for the `patterns::field("chip (all 5 tones)", chips)`
-    // shape: column-direction parent, leaf text + container holding
-    // its own text child. Both should keep their basis 16, sit
-    // stacked with the column's gap, and leave the rest of the
-    // parent's content height unused.
     let mut cx = Cx::new_root();
     let row_child = container()
         .layout(LayoutStyle::flex_row())
@@ -94,8 +68,6 @@ fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
 
 #[test]
 fn column_with_container_then_text_does_not_collapse_text() {
-    // Mirror of the above with the order swapped — symmetric coverage
-    // so a future regression that fires only on one ordering surfaces.
     let mut cx = Cx::new_root();
     let row_child = container()
         .layout(LayoutStyle::flex_row())
@@ -127,10 +99,6 @@ fn column_with_container_then_text_does_not_collapse_text() {
 
 #[test]
 fn column_with_text_and_empty_container_child_does_not_collapse_text() {
-    // Tightest reproducer: text leaf + container holding an EMPTY
-    // container. Without the suppress-stretch fix, the empty
-    // grandchild inflated to the parent's cross axis and the outer
-    // container reported a basis equal to the parent's height.
     let mut cx = Cx::new_root();
     let row_child = container()
         .layout(LayoutStyle::flex_row())

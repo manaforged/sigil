@@ -2,8 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Drop-shadow command integration coverage.
-
 #![allow(missing_docs)]
 
 use sigil_hal::{Color, Point, Rect};

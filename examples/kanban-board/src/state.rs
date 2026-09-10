@@ -1,25 +1,15 @@
-//! Kanban board state.
-//!
-//! All signals live on a `Copy` carrier struct so handlers can be
-//! `move ||`-closures without unwieldy `Rc<RefCell<_>>` plumbing.
-
 use sigil::prelude::*;
 
-/// One kanban card. Cards are immutable except via the edit modal,
-/// which replaces them by index inside the column vec.
 #[derive(Clone, Debug)]
 pub(crate) struct Card {
     pub(crate) title: String,
     pub(crate) description: String,
 }
 
-/// Column identifier — index into `BoardState::columns`.
 pub(crate) const COL_TODO: usize = 0;
 pub(crate) const COL_DOING: usize = 1;
 pub(crate) const COL_DONE: usize = 2;
 
-/// Per-project state. The whole board signal carries one column-vec
-/// per status; the active tab routes which column is shown.
 #[derive(Clone, Copy)]
 pub(crate) struct BoardState {
     pub(crate) projects: Signal<Vec<String>>,
@@ -27,17 +17,13 @@ pub(crate) struct BoardState {
     pub(crate) columns: Signal<[Vec<Card>; 3]>,
     pub(crate) active_tab: Signal<usize>,
 
-    // Modal state.
     pub(crate) modal_open: Signal<bool>,
     pub(crate) edit_title: Signal<String>,
     pub(crate) edit_description: Signal<String>,
-    /// `Some((col, idx))` when editing an existing card, `None` for new.
     pub(crate) edit_slot: Signal<Option<(usize, usize)>>,
 
-    // Splitter sizes for left sidebar / right pane (logical px).
     pub(crate) split_sizes: Signal<Vec<f32>>,
 
-    // Status line — reactive label at the bottom.
     pub(crate) status: Signal<String>,
 }
 
@@ -84,7 +70,6 @@ impl BoardState {
         }
     }
 
-    /// Open the modal in "new card" mode for the active column.
     pub(crate) fn open_new_card(self) {
         self.edit_title.set(String::new());
         self.edit_description.set(String::new());
@@ -94,7 +79,6 @@ impl BoardState {
             .set(String::from("New card — type a title, press Enter."));
     }
 
-    /// Open the modal preloaded with the card at `(col, idx)`.
     pub(crate) fn open_edit(self, col: usize, idx: usize) {
         let cards = self.columns.peek();
         let Some(column) = cards.get(col) else { return };
@@ -106,7 +90,6 @@ impl BoardState {
         self.status.set(format!("Editing {}", card.title));
     }
 
-    /// Commit the modal — insert new card OR replace existing slot.
     pub(crate) fn commit_modal(self) {
         let title = self.edit_title.peek();
         let description = self.edit_description.peek();
@@ -139,13 +122,11 @@ impl BoardState {
         self.status.set(format!("Saved card: {title}"));
     }
 
-    /// Close the modal without writing.
     pub(crate) fn cancel_modal(self) {
         self.modal_open.set(false);
         self.status.set(String::from("Edit cancelled."));
     }
 
-    /// Move the card at `(from, idx)` onto column `to`.
     pub(crate) fn move_card(self, from: usize, idx: usize, to: usize) {
         if from == to {
             return;
@@ -176,7 +157,6 @@ impl BoardState {
     }
 }
 
-/// Stable column titles for tab labels and the status line.
 #[allow(
     unreachable_pub,
     clippy::redundant_pub_crate,

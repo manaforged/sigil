@@ -2,18 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Gap-23 regression: a scene that records more render passes than Metal
-//! tolerates in one command buffer must not lose the device.
-//!
-//! Apple-silicon Metal kills the device ("Device is lost", no validation
-//! error) once a single submission accumulates roughly 2,000 render passes.
-//! A tall unvirtualized scene (the pre-virtualization activity page: one
-//! pass per glyph run plus interleaved row fills) crosses that line, and the
-//! failure only surfaced later as `Buffer::map_async: buffer is invalid` on
-//! the capture readback. The renderer now splits oversized submissions
-//! (`SplitEncoder`); this test renders a pass-heavy scene end to end and
-//! proves the device survives.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -30,9 +18,6 @@ use sigil_style::Rgba8;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (256.0, 256.0);
-/// Alternating rect/gradient commands force a batch flush (one render pass)
-/// per command. 2,100 passes is past the observed Metal device-loss
-/// threshold (~2,050) and well past the split budget.
 const DRAWS: u32 = 2_100;
 
 #[test]
@@ -49,9 +34,6 @@ fn pass_heavy_scene_keeps_device_alive() {
     let scene = pass_heavy_scene();
     let pixels = render_offscreen(&mut renderer, &device, &queue, &scene);
 
-    // Each 1px row is covered by exactly its own command: even rows are the
-    // solid red rect, odd rows the constant blue gradient. Rows past the
-    // split budget must still have rendered in order.
     assert_eq!(pixel(&pixels, 128, 150), [240, 30, 30, 255], "red row lost");
     assert_eq!(
         pixel(&pixels, 128, 151),

@@ -1,5 +1,3 @@
-//! Engine segmentation and owned-layout regression tests.
-
 #![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil_hal::{ParagraphMetrics, TextEngine};

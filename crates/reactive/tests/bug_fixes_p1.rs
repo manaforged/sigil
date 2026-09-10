@@ -2,20 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-
-//! Regression tests for past review findings.
-//!
-//! - P1 #1: stale owner / parent ids panic before arena mutation.
-//! - P1 #2: `Signal::set` drops the old value outside the runtime
-//!   borrow.
-//! - P1 #3: `batch` drains while `batch_depth > 0` so writes during
-//!   the drain re-queue rather than running synchronously.
-//!
-//! P0 regressions live in `bug_fixes.rs`.
-
 #![allow(missing_docs)]
-// Tests are permitted to use panic! per rust-hygiene contract.
-// See the internal hygiene-cleanup-framework plan.
 #![allow(clippy::panic)]
 
 use std::cell::Cell;
@@ -23,10 +10,6 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 
 use sigil_reactive::{Owner, Runtime, Signal, batch, effect, signal};
-
-// ---------------------------------------------------------------
-// P1 #1 — stale-owner validation
-// ---------------------------------------------------------------
 
 #[test]
 fn owner_new_with_disposed_parent_panics() {
@@ -48,7 +31,7 @@ fn owner_new_with_disposed_parent_panics() {
 fn owner_with_on_disposed_owner_panics() {
     Runtime::scope("owner_with_disposed", || {
         let owner = Owner::new("temp", Owner::current());
-        let alias = owner; // Owner is Copy
+        let alias = owner;
         owner.dispose();
         let result = catch_unwind(AssertUnwindSafe(|| {
             alias.with(|| {});
@@ -62,10 +45,6 @@ fn owner_with_on_disposed_owner_panics() {
 
 #[test]
 fn signal_after_active_owner_disposed_mid_flight_panics() {
-    // An effect's run_owner is the active current_owner while the
-    // effect body runs. If the body disposes that owner (via the
-    // parent chain), any subsequent `signal()` call has no live
-    // owner and must panic rather than leak a detached slot.
     Runtime::scope("signal_disposed_active_owner", || {
         let result = catch_unwind(AssertUnwindSafe(|| {
             Runtime::scope("inner_root", || {
@@ -83,16 +62,8 @@ fn signal_after_active_owner_disposed_mid_flight_panics() {
     });
 }
 
-// ---------------------------------------------------------------
-// P1 #2 — Signal::set drop-order safety
-// ---------------------------------------------------------------
-
 #[test]
 fn signal_set_with_dropping_t_does_not_deadlock_runtime() {
-    // A value whose Drop impl touches the runtime (here: writes
-    // another signal) must not deadlock `Signal::set` with a
-    // BorrowMutError. The fix is to drop the old T outside the
-    // `with_rt` borrow.
     Runtime::scope("set_drop_touches_runtime", || {
         struct Dropper {
             witness: Rc<Cell<bool>>,
@@ -124,17 +95,8 @@ fn signal_set_with_dropping_t_does_not_deadlock_runtime() {
     });
 }
 
-// ---------------------------------------------------------------
-// P1 #3 — batch drain ordering
-// ---------------------------------------------------------------
-
 #[test]
 fn effect_writing_during_drain_does_not_run_twice() {
-    // An effect that, during drain, writes a signal subscribed to
-    // by a second effect. Before the fix, the write ran the second
-    // effect synchronously even though it was still in the drain
-    // queue — yielding two runs per batch exit. After the fix the
-    // drain runs while batch_depth > 0, so the write re-queues.
     Runtime::scope("drain_ordering", || {
         let trigger = signal(0_i32);
         let bridge = signal(0_i32);

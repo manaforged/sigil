@@ -2,14 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Pixel-verification test for Phase R13: DR-029 split-path render API.
-//!
-//! Exercises `submit_screen` (new public API) and `submit_world` (stub),
-//! confirming pixel contracts and backward-compat with the deprecated
-//! `render_command_scene_offscreen`.
-//!
-//! This file will not compile until R13 lands (`ScreenSubmission`,
-//! `WorldSubmission`, `submit_screen`, `submit_world`). That is expected.
 #![allow(missing_docs)]
 #![allow(deprecated)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
@@ -35,13 +27,10 @@ use support::{
     pre_clear_texture, read_pixels, try_request_device,
 };
 
-// 1280×400 — canonical R13 split-path pixel-test dimensions (SCALE=1).
 const PHYS_W: u32 = 1280;
 const PHYS_H: u32 = 400;
 const VIEWPORT: (f32, f32) = (1280.0, 400.0);
 
-// Red rect geometry for assertions 1 and 3: x=400, y=100, w=480, h=200.
-// Centre at (640, 200) — well inside the rect, away from AA borders.
 const RED_RECT_X: f32 = 400.0;
 const RED_RECT_Y: f32 = 100.0;
 const RED_RECT_W: f32 = 480.0;
@@ -56,10 +45,6 @@ const fn identity_4x4() -> [[f32; 4]; 4] {
     ]
 }
 
-// ---- assertion 1 ------------------------------------------------------------
-
-/// `submit_screen` clears to black and paints a red rect at known coords.
-/// Clear region (top-left corner) must be dark; rect centre must be red.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_screen_renders_into_offscreen() {
@@ -90,18 +75,12 @@ fn assert_submit_screen_renders_into_offscreen() {
 
     let pixels = read_pixels(&device, &queue, &texture, PHYS_W, PHYS_H);
 
-    // Clear region: top-left corner far from the red rect.
     assert_pixel_dark(&pixels, 32, 32, "clear region (32,32)");
-    // Rect centre: must be red-dominant.
     let cx = (RED_RECT_X + RED_RECT_W / 2.0) as u32;
     let cy = (RED_RECT_Y + RED_RECT_H / 2.0) as u32;
     assert_pixel_red(&pixels, cx, cy, "red rect centre");
 }
 
-// ---- assertion 2 ------------------------------------------------------------
-
-/// Same `WgpuRenderer` drives two different offscreen targets in sequence.
-/// The two targets must be independently correct with no state bleed.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_renderer_reusable_across_targets() {
@@ -157,10 +136,6 @@ fn assert_renderer_reusable_across_targets() {
     assert_target_b_pattern_not_corrupted(&px_b, vp_b.0 as u32);
 }
 
-// ---- assertion 3 ------------------------------------------------------------
-
-/// `render_command_scene_offscreen` (deprecated) forwards to `submit_screen`.
-/// Identical args → pixel outputs that differ by at most ±2 per channel.
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_deprecated_offscreen_forwards() {
@@ -214,10 +189,6 @@ fn assert_deprecated_offscreen_forwards() {
     assert_bytes_near_identical(&pix_dep, &pix_new, 2);
 }
 
-// ---- assertion 4 ------------------------------------------------------------
-
-/// `submit_world` stub returns `Ok(())` and does not paint the target.
-/// 16 pixel samples must match the pre-submit clear colour (within ±20 sRGB).
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_world_stub_returns_ok() {
@@ -227,7 +198,7 @@ fn assert_submit_world_stub_returns_ok() {
     };
 
     let scene = SceneBuilder::new().finish();
-    let pre_clear = Color::rgba(0.3, 0.0, 0.5, 1.0); // distinctive purple
+    let pre_clear = Color::rgba(0.3, 0.0, 0.5, 1.0);
 
     let tex_world = create_capture_texture(&device, PHYS_W, PHYS_H, "world-target");
     let view_world = tex_world.create_view(&wgpu::TextureViewDescriptor::default());
@@ -256,8 +227,6 @@ fn assert_submit_world_stub_returns_ok() {
     assert_stub_left_pre_clear_intact(&pixels, pre_clear);
 }
 
-// ---- scene builder ----------------------------------------------------------
-
 fn build_red_rect_scene() -> CommandScene {
     use sigil_hal::{Point, Rect};
     let mut scene = SceneBuilder::new();
@@ -277,8 +246,6 @@ fn build_red_rect_scene() -> CommandScene {
     scene.finish()
 }
 
-// ---- assertion helpers ------------------------------------------------------
-
 fn assert_pixel_dark(pixels: &[u8], x: u32, y: u32, label: &str) {
     let [r, g, b, _] = pixel_rgba(pixels, PHYS_W, x, y);
     assert!(
@@ -290,10 +257,6 @@ fn assert_pixel_dark(pixels: &[u8], x: u32, y: u32, label: &str) {
 
 fn assert_pixel_red(pixels: &[u8], x: u32, y: u32, label: &str) {
     let [r, g, b, _] = pixel_rgba(pixels, PHYS_W, x, y);
-    // The scene fill Rgba8{r:220,g:20,b:20} is interpreted as linear by the
-    // shader; on an Rgba8UnormSrgb target the GPU encodes to sRGB on write,
-    // expanding small values via the sRGB curve (linear 20 → sRGB ≈ 79).
-    // R must dominate clearly; G and B must be less than R by a large margin.
     assert!(
         r > 200 && g < 110 && b < 110 && r > g + 100 && r > b + 100,
         "{label}: at ({x},{y}) expected red-dominant (R>200, G<110, B<110, R-G>100), \
@@ -303,8 +266,6 @@ fn assert_pixel_red(pixels: &[u8], x: u32, y: u32, label: &str) {
 }
 
 fn assert_target_a_gradient_not_corrupted(pixels: &[u8], phys_w: u32) {
-    // Gradient scene draws a full-viewport dark background rect (rgba ≈ 7,10,15).
-    // At (10,10) the background must dominate — not pattern colours from target B.
     let [r, g, b, _] = pixel_rgba(pixels, phys_w, 10, 10);
     assert!(
         r < 80 && g < 80 && b < 80,
@@ -314,8 +275,6 @@ fn assert_target_a_gradient_not_corrupted(pixels: &[u8], phys_w: u32) {
 }
 
 fn assert_target_b_pattern_not_corrupted(pixels: &[u8], phys_w: u32) {
-    // Pattern scene: slash rect starts at (60,50). At centre (330,190) the fill
-    // must be visibly non-dark — brighter than the gradient's dark background.
     let [r, g, b, _] = pixel_rgba(pixels, phys_w, 330, 190);
     let luminance = u32::from(r) + u32::from(g) + u32::from(b);
     assert!(

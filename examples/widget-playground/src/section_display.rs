@@ -1,7 +1,3 @@
-//! Display widgets: `text`, `label`, `chip` (5 tones),
-//! `divider_horizontal`, `divider_vertical`, `kv_row`, `status_bar`,
-//! `progress`.
-
 use sigil::prelude::*;
 use sigil::widgets::patterns;
 use sigil::widgets::{divider_horizontal, divider_vertical, kv_row, progress, status_bar};
@@ -28,8 +24,6 @@ fn text_row() -> NodeBuilder {
 }
 
 fn chips_row() -> NodeBuilder {
-    // Natural-pack row of small chips — NOT the equal-cells `row()`
-    // helper, which would stretch each chip to fill 1/5 of the parent.
     let chips = container()
         .layout(
             LayoutStyle::flex_row()
@@ -78,9 +72,6 @@ fn kv_row_demo() -> NodeBuilder {
 }
 
 fn status_bar_demo() -> NodeBuilder {
-    // `status_bar` iterates a homogeneous `I::Item`; `label()` is a
-    // `TextBuilder` and `chip()` is a `NodeBuilder`, so wrap both in
-    // plain `container().child(...)` to unify the slot type.
     patterns::field(
         "status_bar",
         status_bar(vec![

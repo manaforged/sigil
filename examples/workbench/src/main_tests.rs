@@ -1,5 +1,3 @@
-//! Headless smoke: the workbench tree builds.
-
 #![allow(clippy::expect_used)]
 
 use sigil::testing::with_cx;

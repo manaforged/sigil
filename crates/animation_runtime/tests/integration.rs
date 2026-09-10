@@ -2,20 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Phase-1 integration tests per DR-053 §6.
-//!
-//! Determinism: every test ticks at a fixed `dt = 1.0 / 60.0` so spring
-//! physics matches gate runs across machines.
 
 use sigil_animation::{Easing, SpringPreset};
 use sigil_animation_runtime::{AnimationConfig, Animator, MotionPrefs, tick};
 use sigil_reactive::{Runtime, signal};
-
-// sigil-style is a public-api dep of sigil-animation-runtime (registry
-// consumes `TransitionId`); the integration tests do not name it.
-
-// criterion is a dev-dep used by the `animator_ticks` bench; integration
-// tests do not name it.
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 
@@ -51,9 +41,6 @@ fn spring_animator_settles_within_known_frame_budget() {
             "settled value {} did not reach target 1.0 within epsilon",
             value.peek()
         );
-        // Smooth preset is calibrated for ~0.4s settle; 60Hz × 0.4s = 24
-        // frames, but the value/velocity epsilons drag the count up to
-        // ~80 in practice. 240 is the upper budget, not the expected.
         assert!(
             frames < 240,
             "spring took the full budget — preset may be miscalibrated"
@@ -77,7 +64,6 @@ fn tween_animator_lands_at_target_when_duration_elapses() {
             );
             animator.target(10.0);
 
-            // 200 ms / (1000/60) ms per frame = 12 frames.
             for _ in 0..15 {
                 tick(DT_60HZ);
             }
@@ -107,7 +93,6 @@ fn retarget_during_animation_continues_from_current_value() {
             );
             animator.target(1.0);
 
-            // Tick a few frames toward 1.0.
             for _ in 0..5 {
                 tick(DT_60HZ);
             }
@@ -117,8 +102,6 @@ fn retarget_during_animation_continues_from_current_value() {
                 "expected mid-flight value, got {mid}"
             );
 
-            // Re-aim at 0.5 — the spring should continue from `mid`,
-            // not jump back to 0.0.
             animator.target(0.5);
             tick(DT_60HZ);
             let after_retarget = value.peek();

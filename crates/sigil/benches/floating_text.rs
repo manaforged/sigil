@@ -2,23 +2,12 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! Floating combat text micro-benchmarks.
-//!
-//! Targets the F6 acceptance gate: 500 simultaneous spawns + per-frame
-//! animations under 2 ms per frame on the dev box. The bench measures
-//! the simulation step in isolation (no layout, no scene emit), which
-//! is the hot path the widget owns.
-//!
-//! Run with `cargo bench -p sigil-ui --bench floating_text`.
-
 #![allow(
     missing_docs,
     clippy::missing_docs_in_private_items,
     clippy::unwrap_used,
     clippy::panic
 )]
-
-// Workspace deps that the bench target inherits but does not call.
 
 use std::hint::black_box;
 use std::rc::Rc;
@@ -45,7 +34,6 @@ fn make_state(duration: f32) -> Rc<FctState> {
     ))
 }
 
-/// 500 spawns into an empty pool (cold burst).
 fn bench_spawn_500(c: &mut Criterion) {
     c.bench_function("fct_spawn_500_cold", |b| {
         Runtime::scope("fct-bench-spawn", || {
@@ -67,7 +55,6 @@ fn bench_spawn_500(c: &mut Criterion) {
     });
 }
 
-/// Steady-state per-frame tick over 500 live particles.
 fn bench_tick_500(c: &mut Criterion) {
     c.bench_function("fct_tick_500_steady", |b| {
         Runtime::scope("fct-bench-tick", || {
@@ -95,9 +82,6 @@ fn bench_tick_500(c: &mut Criterion) {
     });
 }
 
-/// Combined per-frame cost: spawn 8 + tick over a 500-live pool. This
-/// is the headline F6 number — "500 simultaneous spawns + animations
-/// ≤ 2ms/frame".
 fn bench_frame_500(c: &mut Criterion) {
     c.bench_function("fct_frame_8spawn_500live", |b| {
         Runtime::scope("fct-bench-frame", || {
@@ -120,9 +104,6 @@ fn bench_frame_500(c: &mut Criterion) {
             b.iter(|| {
                 t += 1.0 / 60.0;
                 state.tick(t);
-                // Spawn a small burst per frame to exercise the slot
-                // search; in a real game 1-10 new numbers per frame is
-                // typical, 8 is a generous upper bound.
                 for _ in 0..8 {
                     counter = counter.wrapping_add(1);
                     let payload = FctSpawn {
@@ -138,7 +119,6 @@ fn bench_frame_500(c: &mut Criterion) {
     });
 }
 
-/// Pool saturation: tick 1024 live particles (worst-case pool walk).
 fn bench_tick_pool_full(c: &mut Criterion) {
     c.bench_function("fct_tick_pool_full", |b| {
         Runtime::scope("fct-bench-pool-full", || {

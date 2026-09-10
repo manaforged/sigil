@@ -1,17 +1,3 @@
-//! Regression tests for `container_intrinsic_main` — Q1 primary fix.
-//!
-//! The bug: when a flex container child is itself a non-leaf container
-//! with `flex_basis: Auto` and main-axis `size: Auto`, the flex
-//! algorithm's main-axis basis function returned `0` (no content-
-//! intrinsic fallback existed). Result: every section in a flex column
-//! got `main_size = 0` and painted at the same y.
-//!
-//! These tests build trees where the children of a flex container are
-//! themselves containers (no fixed height/width on the children) and
-//! assert that the children receive non-zero main-axis extents derived
-//! from their own subtree content — the CSS flexbox §9.2 step 3
-//! hypothetical-size rule for the main axis, mirroring the existing
-//! cross-axis path.
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
@@ -26,11 +12,8 @@ use sigil_hal::{Rect, Size};
 use sigil_kernel::prelude::*;
 use sigil_layout::prelude::*;
 
-/// Available space passed to every compute (large enough that nothing
-/// hits the containing block bound).
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
 
-/// `StubMeasure` returns `chars * 8.0` wide × `16.0` high per text.
 const TEXT_H: f32 = 16.0;
 
 fn rect_of(cx: &Cx, id: NodeId) -> Rect {
@@ -50,9 +33,6 @@ fn child_rect(cx: &Cx, parent: NodeId, n: usize) -> Rect {
     rect_of(cx, id)
 }
 
-/// Build a flex container of the given direction with `n` child
-/// containers, each containing `child_leaves` text leaves with the
-/// given label. None of the children carry an explicit size.
 fn build_and_compute(
     outer: LayoutStyle,
     inner: &LayoutStyle,
@@ -74,12 +54,6 @@ fn build_and_compute(
     (cx, root)
 }
 
-/// Root flex_column with three child containers (each a flex_row with
-/// two text children). None of the children have explicit heights. The
-/// pre-fix behaviour gave each child `height = 0` and stacked them all
-/// at y = 0. After `container_intrinsic_main` lands, each child must
-/// have a height derived from its text content (≥ TEXT_H) and the
-/// y-offsets must be strictly increasing.
 #[test]
 fn flex_column_with_auto_height_container_children_stacks_vertically() {
     let (cx, root) = build_and_compute(
@@ -116,9 +90,6 @@ fn flex_column_with_auto_height_container_children_stacks_vertically() {
     );
 }
 
-/// Symmetric test for the row direction. Three child containers (each
-/// a flex_column of two text leaves), no explicit widths. Pre-fix gave
-/// each child `width = 0` and all three painted at the same x.
 #[test]
 fn flex_row_with_auto_width_container_children_distributes_horizontally() {
     let (cx, root) = build_and_compute(
@@ -131,7 +102,6 @@ fn flex_row_with_auto_width_container_children_distributes_horizontally() {
     let c1 = child_rect(&cx, root, 1);
     let c2 = child_rect(&cx, root, 2);
 
-    // StubMeasure: 2 chars * 8.0 = 16.0 px per text leaf.
     for (i, r) in [c0, c1, c2].iter().enumerate() {
         assert!(
             r.width >= 16.0,
@@ -156,11 +126,6 @@ fn flex_row_with_auto_width_container_children_distributes_horizontally() {
     );
 }
 
-/// Nested case: an outer flex_column contains an inner flex_column
-/// (no fixed height) which contains three text leaves. The outer's
-/// child (the inner column) must have a height ≥ the sum of inner text
-/// heights — the intrinsic main-size recursion must propagate through
-/// the nested container.
 #[test]
 fn nested_flex_column_in_flex_column_propagates_intrinsic() {
     let (cx, root) = build_and_compute(

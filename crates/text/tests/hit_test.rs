@@ -1,5 +1,3 @@
-//! Hit-testing, caret geometry, and selection geometry tests.
-
 #![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil_hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
@@ -9,15 +7,8 @@ fn engine() -> OwnedTextEngine {
     OwnedTextEngine::new(TextConfig::default())
 }
 
-// ---------------------------------------------------------------------------
-// hit_test
-// ---------------------------------------------------------------------------
-
 #[test]
 fn hit_test_samples_monotonically_increase_with_x() {
-    // As x advances left→right, the returned byte_index must be non-decreasing.
-    // This proves hit_test actually traverses the text in order, not just
-    // returning 0 for all positions.
     let e = engine();
     let text = "ABCDE";
     let para = e.layout_paragraph(text, None).unwrap();
@@ -36,7 +27,6 @@ fn hit_test_samples_monotonically_increase_with_x() {
 
 #[test]
 fn hit_test_empty_string_does_not_panic() {
-    // An empty text field must not crash on a hit-test at origin.
     let e = engine();
     let para = e.layout_paragraph("", None).unwrap();
     let pos = para.hit_test(0.0, 0.0);
@@ -82,8 +72,6 @@ fn hit_test_middle_lands_between_endpoints() {
 
 #[test]
 fn hit_test_multibyte_utf8_index_is_char_boundary() {
-    // Every byte_index returned by hit_test must be a valid UTF-8 boundary.
-    // "café🔥end" mixes 1-byte ASCII, 2-byte accented char, and 4-byte emoji.
     let e = engine();
     let text = "café🔥end";
     let para = e.layout_paragraph(text, None).unwrap();
@@ -101,13 +89,9 @@ fn hit_test_multibyte_utf8_index_is_char_boundary() {
 
 #[test]
 fn hit_right_half_of_interior_multibyte_lands_after_it() {
-    // Regression: clicking the right half of an interior multibyte glyph must
-    // place the caret AFTER it, not snap a whole codepoint to the left.
-    // "aébc": a=0, é=1..3 (2 bytes), b=3, c=4. The post-é boundary is byte 3.
     let e = engine();
     let text = "aébc";
     let para = e.layout_paragraph(text, None).unwrap();
-    // Locate é's pixel span via caret geometry, then hit its right quarter.
     let x_start = para
         .caret_rect(
             HitPosition {
@@ -128,7 +112,7 @@ fn hit_right_half_of_interior_multibyte_lands_after_it() {
         )
         .origin
         .x;
-    #[allow(clippy::suboptimal_flops)] // keep the asserted 75%-point arithmetic stable
+    #[allow(clippy::suboptimal_flops)]
     let right_of_e = x_start + (x_end - x_start) * 0.75;
 
     let hit = para.hit_test(right_of_e, 0.0);
@@ -144,10 +128,6 @@ fn hit_right_half_of_interior_multibyte_lands_after_it() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// caret_rect
-// ---------------------------------------------------------------------------
-
 #[test]
 fn caret_rect_at_origin_has_positive_height() {
     let e = engine();
@@ -162,7 +142,6 @@ fn caret_rect_at_origin_has_positive_height() {
 
 #[test]
 fn caret_rect_width_matches_requested_caret_width() {
-    // Width should approximately equal the requested caret_width (±1 px rounding).
     let e = engine();
     let para = e.layout_paragraph("Hello", None).unwrap();
     let pos = HitPosition {
@@ -216,10 +195,6 @@ fn caret_at_end_is_to_the_right_of_start() {
         start_rect.origin.x,
     );
 }
-
-// ---------------------------------------------------------------------------
-// selection_rects
-// ---------------------------------------------------------------------------
 
 #[test]
 fn collapsed_selection_returns_no_rects() {
@@ -283,7 +258,6 @@ fn selection_rect_has_positive_area() {
 
 #[test]
 fn reversed_selection_produces_rects() {
-    // Parley swaps anchor/focus internally. Prove our wrapper passes this through.
     let e = engine();
     let text = "Hello world";
     let para = e.layout_paragraph(text, None).unwrap();
@@ -314,7 +288,6 @@ fn reversed_selection_produces_rects() {
 
 #[test]
 fn wrapped_selection_returns_multiple_rects() {
-    // Full-document selection over wrapped text should yield one rect per line.
     let e = engine();
     let text = "The quick brown fox jumps over the lazy dog";
     let para = e.layout_paragraph(text, Some(60.0)).unwrap();
@@ -338,7 +311,6 @@ fn wrapped_selection_returns_multiple_rects() {
         "full selection over wrapped text should return >= 2 rects, got {}",
         rects.len()
     );
-    // Rects on different lines must have distinct y-coordinates.
     let distinct_y: std::collections::HashSet<_> =
         rects.iter().map(|r| r.origin.y.to_bits()).collect();
     assert_eq!(
@@ -350,9 +322,6 @@ fn wrapped_selection_returns_multiple_rects() {
 
 #[test]
 fn selection_rects_cover_expected_extent() {
-    // The sum of rect widths should approximate the total paragraph width.
-    // This proves selection_rects returns geometrically meaningful output,
-    // not just a token non-empty vec.
     let e = engine();
     let text = "Hello world";
     let para = e.layout_paragraph(text, None).unwrap();
@@ -376,10 +345,6 @@ fn selection_rects_cover_expected_extent() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// round-trip: hit_test → caret_rect
-// ---------------------------------------------------------------------------
-
 #[test]
 fn hit_test_then_caret_rect_stays_on_screen() {
     let e = engine();
@@ -402,10 +367,6 @@ fn hit_test_then_caret_rect_stays_on_screen() {
 
 #[test]
 fn hit_test_then_caret_rect_stays_on_screen_over_a_reordered_bidi_line() {
-    // Same round-trip invariant as above, over a mixed LTR/RTL line
-    // (Wave 4 visual bidi reorder — crates/text/tests/bidi_visual_order.rs
-    // covers the geometry in depth; this pins the hit_test.rs contract
-    // still holds once a line mixes bidi runs).
     let e = engine();
     let text = "abc \u{05D0}\u{05D1}\u{05D2} def";
     let para = e.layout_paragraph(text, None).unwrap();

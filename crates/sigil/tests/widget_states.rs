@@ -2,19 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! C4: 25 widget state coverage (5 widgets × 5 interaction states).
-//!
-//! Each test drives a widget into one of: rest, hovered, pressed, focused,
-//! disabled — by manipulating reactive signals or routing pointer/focus events —
-//! then asserts that the emitted scene contains the expected theme colour.
-//!
-//! State mapping:
-//!   rest     → base/rest colour (surface, accent, etc.)
-//!   hovered  → hover colour (surface-hover, accent-hover)
-//!   pressed  → pressed colour with opacity 0.88
-//!   focused  → focus ring visible (node.a11y.focusable + `focus_visible`)
-//!   disabled → opacity 0.50, `hit_test` disabled
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
@@ -86,14 +73,8 @@ fn enter_key() -> ShellEvent {
     }))
 }
 
-// ---- BUTTON (5 states) -------------------------------------------------------
-
 #[test]
 fn button_rest_emits_surface_color() {
-    // Default button is the SOFT variant on the neutral (slate) scale.
-    // Rest state paints `BgToneStep(4)` — the raised-control slot, one
-    // step above the step-3 element rest so the button reads on a
-    // step-2 card.
     sigil::reactive::Runtime::scope("c4-button-rest", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
@@ -146,12 +127,9 @@ fn button_hovered_emits_soft_hover_on_pointer_enter() {
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, pointer_move_event(24.0, 16.0));
         let theme = Theme::default();
-        // SOFT hover lifts the step-4 rest fill to gray step 5.
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(5)));
     });
 }
-
-// ---- CHECKBOX (5 states) -----------------------------------------------------
 
 #[test]
 fn checkbox_unchecked_rest_emits_surface_inset() {
@@ -161,7 +139,6 @@ fn checkbox_unchecked_rest_emits_surface_inset() {
         let root = cx.add(checkbox(checked));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // Unchecked fill is the `surface-inset` well — gray step 1.
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
     });
 }
@@ -216,8 +193,6 @@ fn checkbox_pressed_emits_rect() {
     });
 }
 
-// ---- SLIDER (5 states) -------------------------------------------------------
-
 #[test]
 fn slider_rest_emits_track_color() {
     sigil::reactive::Runtime::scope("c4-slider-rest", || {
@@ -226,8 +201,6 @@ fn slider_rest_emits_track_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // Track rest paints muted gray-4: quiet but measurable
-        // against both step-1 and step-2 surfaces.
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(4)));
     });
 }
@@ -240,8 +213,6 @@ fn slider_thumb_emits_accent_color() {
         let root = cx.add(slider(value, 0.0..=100.0));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // The accent FILL bar (solid accent) — the thumb itself is
-        // `on-accent` white with an accent rim.
         assert!(rect_colors(&cx, root).contains(&theme.accent));
     });
 }
@@ -296,8 +267,6 @@ fn slider_focus_changes_value_via_keyboard() {
     });
 }
 
-// ---- TOGGLE (5 states) -------------------------------------------------------
-
 #[test]
 fn toggle_off_emits_surface_hover() {
     sigil::reactive::Runtime::scope("c4-toggle-off", || {
@@ -318,8 +287,6 @@ fn toggle_on_emits_accent() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root);
         let theme = Theme::default();
-        // ON track paints the solid accent; the white thumb reads
-        // against it with the on-accent fill.
         assert!(rect_colors(&cx, root).contains(&theme.accent));
     });
 }
@@ -363,8 +330,6 @@ fn toggle_activates_on_enter_when_focused() {
     });
 }
 
-// ---- TEXT_FIELD (5 states) ---------------------------------------------------
-
 #[test]
 fn text_field_rest_emits_border_color() {
     sigil::reactive::Runtime::scope("c4-text-field-rest", || {
@@ -387,8 +352,6 @@ fn text_field_rest_emits_border_color() {
         assert_eq!(rects.len(), 1, "field must paint one rounded surface");
         let rect = rects.first().expect("field surface");
         let stroke = rect.stroke.expect("field border stroke");
-        // Fill is the `surface-inset` well (gray step 1); the rest
-        // border stays at gray step 9.
         assert_eq!(rect.color, theme.gray.step(1));
         assert_eq!(stroke.color, border);
         assert!((stroke.width - 1.0).abs() < f32::EPSILON);

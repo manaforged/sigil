@@ -8,8 +8,6 @@ use crate::state::AppState;
 use sigil::prelude::{LogicalKey, Shortcut};
 use sigil_tui::{Host, key_down};
 
-/// A bare `r` reaches the root through the capture phase, even though
-/// focus sits on a widget inside the table.
 #[test]
 fn a_bare_key_reaches_the_root() {
     sigil::prelude::Runtime::scope("keys", || {
@@ -42,7 +40,6 @@ fn a_bare_key_reaches_the_root() {
     });
 }
 
-/// Pressing `k` with no row selected must not kill anything.
 #[test]
 fn kill_needs_a_selected_stray() {
     sigil::prelude::Runtime::scope("kill-guard", || {

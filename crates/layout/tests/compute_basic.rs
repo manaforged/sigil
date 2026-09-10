@@ -85,10 +85,6 @@ fn compute_clears_results_for_nodes_detached_from_root_subtree() {
         "child receives initial layout result",
     );
 
-    // Detach via removal — the result-set invariant tested here holds whether
-    // the node is detached from the tree or removed entirely (both make it
-    // ineligible for the next compute pass). A dedicated `Cx::detach` would
-    // express this more precisely; tracked as a followup against B3.
     assert!(cx.remove(child));
     cx.mark_mutated();
 

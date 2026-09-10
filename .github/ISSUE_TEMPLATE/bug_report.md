@@ -6,7 +6,7 @@ labels: bug
 ---
 
 **sigil version / rev**
-<!-- e.g. 0.1.0-alpha.1, or git sha if building from source -->
+<!-- e.g. 0.1.0, or git sha if building from source -->
 
 **Platform**
 <!-- OS + version, GPU/backend if rendering-related -->

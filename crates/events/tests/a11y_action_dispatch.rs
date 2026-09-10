@@ -2,20 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! A11Y (DR-050 §4) — AT-initiated `accesskit::ActionRequest` dispatch.
-//!
-//! Mirrors exactly what `crates/app/src/launch/event_wiring.rs`'s
-//! `drain_a11y_actions` does (a validated match on `request.action`),
-//! since that function is private to the `app` crate. This proves the
-//! primitives it calls — `EventRouter::{is_focus_target, set_focus,
-//! is_click_target}` and `sigil_events::invoke_node` — actually produce the
-//! sigil-side effect a screen reader's Focus/Invoke gesture expects
-//! (focus moves, a button's click-activation handler fires through the
-//! SAME hover+press gate a real pointer click uses), AND that AT
-//! requests are held to the same interactivity contract real
-//! pointer/keyboard input already enforces (a platform request must
-//! not focus behind a modal or activate a hidden/non-focusable control).
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
@@ -37,8 +23,6 @@ use sigil_style::{DisplayKind, NodeStyleExt, StyleAtom};
 
 use routing_helpers::{compute_layout, pointer_move, route_event};
 
-/// Route one synthetic `ActionRequest` exactly as `drain_a11y_actions`
-/// does — the production validated-match this test exists to verify.
 fn dispatch(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, request: &ActionRequest) {
     let target = NodeId::from_accesskit(request.target_node);
     match request.action {
@@ -109,11 +93,6 @@ fn click_action_fires_the_same_hover_press_gate_a_real_pointer_click_uses() {
     let up_pressed = Rc::clone(&pressed);
     let up_activated = Rc::clone(&activated);
 
-    // Mirrors `sigil::interaction::InteractionState`'s hover/press gate
-    // (`crates/sigil/src/interaction.rs`): `release_pointer` only fires
-    // when BOTH `hovered` and `pressed` are true at the moment Up
-    // arrives. A bare synthetic Down+Up (no Enter) would leave `hovered`
-    // false and silently no-op here, exactly as it would in production.
     let root = cx.add(
         container()
             .focusable(true)
@@ -155,10 +134,6 @@ fn click_action_fires_the_same_hover_press_gate_a_real_pointer_click_uses() {
 
 #[test]
 fn unmapped_action_variants_are_a_documented_no_op() {
-    // DR-050 §4 / Wave-5 design brief item 7: per-widget state-signal
-    // actions (Increment/Decrement/SetValue/...) are out of scope for
-    // this slice — assert the dispatcher does not panic or move focus
-    // on an action it doesn't yet handle.
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
@@ -181,9 +156,6 @@ fn unmapped_action_variants_are_a_documented_no_op() {
         "an unmapped action must not move focus as a side effect"
     );
 }
-
-// ---- AT actions must obey the same
-// interactivity gates real pointer/keyboard input does. ------------------
 
 #[test]
 fn click_on_a_hidden_node_is_a_no_op() {
@@ -236,11 +208,6 @@ fn focus_on_a_non_focusable_node_is_a_no_op() {
     );
 }
 
-/// Builds root -> [focusable/clickable `outside` sibling, active modal
-/// scope with its own focusable inside]. `outside` carries a
-/// `pointer_up` handler that flips `activated` so click-suppression is
-/// observable the same way `click_on_a_hidden_node_is_a_no_op` checks it.
-/// Drives one real event first so `sync_scopes` registers the modal.
 fn scoped_tree_with_outside_sibling(
     cx: &mut Cx,
     activated: &Rc<Cell<bool>>,
@@ -315,9 +282,6 @@ fn click_outside_the_active_modal_scope_is_a_no_op() {
     );
 }
 
-// ---- Validation must use
-// THIS frame's fresh layout, not a stale pre-recompute snapshot. --------
-
 fn hidden_atoms(show: sigil_reactive::Signal<bool>) -> &'static [StyleAtom] {
     if show.get() {
         &[]
@@ -326,13 +290,6 @@ fn hidden_atoms(show: sigil_reactive::Signal<bool>) -> &'static [StyleAtom] {
     }
 }
 
-/// A root with one focusable CHILD whose `Display` is bound to `show` —
-/// mirrors `sigil::widgets::modal`'s own show/hide wiring (proven by
-/// a4972ca's `dismissed_modal_releases_focus_trap`), and matters
-/// mechanically: `Display::None` excludes a node from ITS PARENT's
-/// layout, so the hidden node must be a child, not the compute root
-/// itself (a `Display::None` compute root still gets a result — there is
-/// no parent flow to exclude it from).
 fn hideable_child_tree(cx: &mut Cx, show: sigil_reactive::Signal<bool>) -> (NodeId, NodeId) {
     let root = cx.add(
         container()
@@ -350,10 +307,6 @@ fn hideable_child_tree(cx: &mut Cx, show: sigil_reactive::Signal<bool>) -> (Node
 
 #[test]
 fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute() {
-    // "queue an action, hide the target in the same frame via a signal,
-    // run the frame — action must be rejected." Mirrors production:
-    // drain_a11y_actions now runs AFTER recompute_layout, so the
-    // validator sees the FRESH (post-hide) layout, not last frame's.
     Runtime::scope("sigil_a11y::hide_then_validate", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
@@ -365,9 +318,6 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
             "sanity: the visible node is a valid focus target before hiding"
         );
 
-        // Hide via signal THIS frame (mirrors an Effect-phase mutation
-        // that fires before the drain), then recompute — the "run the
-        // frame" step.
         show.set(false);
         layout
             .compute(&mut cx, root, Size::fixed(200.0, 200.0))
@@ -391,12 +341,6 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
 
 #[test]
 fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target() {
-    // Documents WHY the ordering fix matters: the SAME validator, queried
-    // against a layout snapshot that has NOT been recomputed since the
-    // hide (what the pre-fix `drain_a11y_actions` — called from inside
-    // `drain_events`, before `recompute_layout` — would have seen), still
-    // reports the node as a valid target. This is the exact bug the
-    // ordering fix in `frame_once` corrects.
     Runtime::scope("sigil_a11y::stale_layout_control", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
@@ -404,7 +348,7 @@ fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target()
         let layout = compute_layout(&mut cx, root, 200.0, 200.0);
         let mut router = EventRouter::new();
 
-        show.set(false); // hidden this frame, but layout NOT recomputed yet
+        show.set(false);
 
         assert!(
             router.is_focus_target(&cx, &layout, child),
@@ -414,9 +358,6 @@ fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target()
         );
     });
 }
-
-// ---- A node scrolled
-// outside the viewport must not be a valid AT click target. -------------
 
 #[test]
 fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
@@ -444,8 +385,6 @@ fn click_on_a_node_scrolled_outside_the_viewport_is_a_no_op() {
             "sanity: on-screen node is a valid click target before scrolling"
         );
 
-        // Scroll the node far outside the 200x200 viewport (mirrors a
-        // list item scrolled above/below the visible area) and recompute.
         pos.set((5000.0, 5000.0));
         layout
             .compute(&mut cx, root, Size::fixed(200.0, 200.0))

@@ -1,18 +1,3 @@
-//! Glyphs/frame throughput bench — Wave-3 D3 measurement gate
-//! (`docs/plans/2026-07-07-text-quality-and-gap-closure.md` Wave 3,
-//! DR-055 §3). Renders a ~2000-glyph paragraph through the real embed path
-//! (`shape_glyph_run` → `submit_screen`) 100 times, once per text path
-//! (vector Slug vs. the raster atlas), and reports µs/frame medians —
-//! separating the raster path's first ("cold": every glyph is a cache miss,
-//! rasterize + atlas upload) iteration from the rest ("warm": atlas
-//! populated, mostly cache hits).
-//!
-//! `#[ignore]`d: this is a manual timing bench, not a correctness gate — no
-//! criterion dependency added (renderer already has one via other benches,
-//! but this file deliberately stays plain `std::time::Instant` per the
-//! dispatch brief's "smallest harness that yields trustworthy numbers").
-//! Run with:
-//! `cargo test -p sigil-renderer --test raster_throughput_bench -- --ignored --nocapture`
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -49,23 +34,14 @@ use sigil_style::{Rgba8, TextLineHeight, TextStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
-// Wide/tall enough to lay out ~2000 glyphs of wrapped 14px text without
-// clipping (the walk applies no clip unless a scene pushes one, so an
-// undersized viewport wouldn't drop glyphs — this is just realistic sizing).
-// Height stays under wgpu's downlevel 2048 max-texture-dimension limit.
 const LOGICAL_W: f32 = 480.0;
 const LOGICAL_H: f32 = 2000.0;
-const FONT_SIZE: f32 = 14.0; // within RASTER_MAX_LOGICAL_PX (20px)
+const FONT_SIZE: f32 = 14.0;
 const ORIGIN: (f32, f32) = (8.0, 8.0);
 const ITERATIONS: usize = 100;
 const TARGET_GLYPHS: usize = 2000;
 const PARAGRAPH_UNIT: &str = "The quick brown fox jumps over the lazy dog. ";
 
-/// Measured µs/frame throughput, vector vs. raster (cold + warm), for a
-/// ~2000-glyph paragraph over 100 iterations. Prints a table; asserts only
-/// that every path produced non-zero, finite timings (a hung or panicking
-/// path is a real bug this test would catch) — no pass/fail speed gate, per
-/// the dispatch brief ("Do NOT flip the default yourself").
 #[test]
 #[ignore = "manual throughput bench — run with `cargo test -p sigil-renderer \
             --test raster_throughput_bench -- --ignored --nocapture`"]
@@ -94,11 +70,6 @@ fn raster_vs_vector_throughput() {
     }
 }
 
-/// Render `scene` `iterations` times with `TextTuning.raster` set to
-/// `raster`, timing each `submit_screen` + GPU-completion poll. Reuses one
-/// `renderer` across iterations so the raster atlas / pipeline caches
-/// persist frame-to-frame (production behavior — a fresh `WgpuRenderer`
-/// per call would force every raster iteration "cold").
 fn bench_path(
     renderer: &mut WgpuRenderer,
     scene: &CommandScene,
@@ -142,8 +113,6 @@ fn bench_path(
     samples
 }
 
-/// Repeat [`PARAGRAPH_UNIT`] until the content is at least `min_len` bytes
-/// — an approximation of glyph count for this all-ASCII fixture.
 fn build_paragraph(min_len: usize) -> String {
     let mut s = String::with_capacity(min_len + PARAGRAPH_UNIT.len());
     while s.len() < min_len {
@@ -152,8 +121,6 @@ fn build_paragraph(min_len: usize) -> String {
     s
 }
 
-/// Shape `content` into a `CommandScene` the way an embedding host emits
-/// text, returning the scene plus the shaped glyph count for the report.
 fn build_scene(content: &str) -> (CommandScene, usize) {
     let style = TextStyle {
         font_family: String::from("system-ui"),
@@ -208,15 +175,10 @@ fn report(label: &str, samples: &[f64]) {
     );
 }
 
-/// Raster gets a two-line report: the cold first frame (atlas empty, every
-/// glyph a rasterize+upload) split out from the warm median (iterations
-/// 2..N, atlas populated — mostly cache hits).
 fn report_raster(samples: &[f64]) {
     println!("raster cold (iter 1): {:.1}us/frame", samples[0]);
     report("raster warm (iter 2..N)", &samples[1..]);
 }
-
-// ---- wgpu plumbing --------------------------------------------------------
 
 fn try_headless_renderer() -> Option<WgpuRenderer> {
     let mut renderer = WgpuRenderer::new().ok()?;

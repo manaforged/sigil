@@ -36,7 +36,6 @@ fn bench_resize(c: &mut Criterion) {
         let mut w = 12800.0_f32;
         b.iter(|| {
             w = if w >= 12810.0 { 12800.0 } else { w + 1.0 };
-            // No tree change — only the available (viewport) size differs.
             engine
                 .compute(&mut cx, root, Size::fixed(w, 100.0))
                 .expect("bench harness invariant");

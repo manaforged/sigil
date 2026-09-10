@@ -2,20 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-//! `WgpuRenderer::record_screen` headless tests.
-//!
-//! `record_screen` records a screen-space scene into a caller-owned encoder
-//! without submitting (the host submits, ordering UI after its own passes in
-//! one submission — DR-054). These tests prove two contracts against a
-//! headless offscreen target:
-//!
-//! 1. **Ordering** — a scene that draws a red full-viewport rect then a blue
-//!    half rect composites blue *over* red in the blue region, and leaves red
-//!    in the bottom region. (The pre-fix shared-buffer bug made every batched
-//!    draw read the last write, so only one rect would survive.)
-//! 2. **Parity** — `record_screen` + one `queue.submit` produces the same
-//!    pixels as the self-submitting `submit_screen` for the same scene.
-
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -39,7 +25,6 @@ const H: u32 = 64;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (W as f32, H as f32);
 
-/// Red full-viewport rect, then a blue rect over the top half.
 fn ordering_scene() -> CommandScene {
     let mut b = SceneBuilder::new();
     b.draw_rect(
@@ -62,7 +47,6 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
     };
     let scene = ordering_scene();
 
-    // Path A: record into a caller-owned encoder, submit once.
     let recorded = {
         let tex = capture_texture(&device);
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -77,7 +61,6 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
         read_pixels(&device, &queue, &tex)
     };
 
-    // Ordering: top half is blue (drawn second), bottom half is red.
     let top = px(&recorded, W / 2, H / 4);
     let bottom = px(&recorded, W / 2, 3 * H / 4);
     assert!(
@@ -89,7 +72,6 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
         "bottom region should be red (R high, B low); got {bottom:?}"
     );
 
-    // Path B: self-submitting submit_screen must produce the same pixels.
     let submitted = {
         let tex = capture_texture(&device);
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
@@ -133,8 +115,6 @@ fn caller_owned_device_does_not_initialize_a_second_device() {
         "a caller-owned device must not initialize a redundant renderer device"
     );
 }
-
-// ---- helpers ----------------------------------------------------------------
 
 const fn solid(r: u8, g: u8, b: u8) -> SceneRectStyle {
     SceneRectStyle::new(Rgba8 { r, g, b, a: 255 }, CornerRadii::ZERO, 10_000)

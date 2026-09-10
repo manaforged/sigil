@@ -1,18 +1,9 @@
-//! DR-057 D2 `table(state)` view — input→pixel and windowing contract.
-//!
-//! Covers the header sort cycle (pointer + reorder), selection and
-//! hover painting, the 100k-row windowed reactive path (sort without
-//! rebuild), the LIVE keyboard row count under quick-filter, wheel
-//! scrolling, and the grid a11y channels on root / rows / headers.
-
 #![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
-// Probe closures and re-laid-out snapshots reuse names (`cx`, `_layout`,
-// `selected`) across a test body by design; the shadowing is intentional.
 #![allow(clippy::shadow_unrelated)]
 
 use sigil::prelude::*;
@@ -167,7 +158,6 @@ fn header_click_cycles_sort_and_reorders_rows() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Header cell "name": x in [0, 100), y in [0, 28).
         click(&mut router, &mut cx, &layout, 50.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
@@ -193,7 +183,6 @@ fn header_click_cycles_sort_and_reorders_rows() {
         assert_eq!(state.sort_key().get(), None, "third click clears the sort");
         assert_eq!(visible_names(&state), ["gamma", "alpha", "delta", "beta"]);
 
-        // The second column ("count", x in [100, 200)) sorts too.
         click(&mut router, &mut cx, &layout, 150.0, 14.0);
         assert_eq!(
             state.sort_key().get(),
@@ -220,7 +209,6 @@ fn row_click_drives_selection_with_modifiers() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Body row N sits at y = HEADER_H + N * ROW_H .. +ROW_H.
         let row_y = |n: usize| {
             #[allow(clippy::cast_precision_loss)]
             let n = n as f32;
@@ -246,7 +234,6 @@ fn row_click_drives_selection_with_modifiers() {
             &layout,
             pointer(PointerPhase::Down, 50.0, row_y(2), ModifiersState::SHIFT),
         );
-        // Anchor is row 3 (last toggle); shift extends 3..=2 → {2, 3}.
         let selected = state.selection().get();
         assert!(selected.contains(&2) && selected.contains(&3) && !selected.contains(&1));
     });
@@ -366,7 +353,6 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
                 .viewport_height(VIEW_H),
         );
         let _layout = compute(&mut cx, root);
-        // 200px viewport / 20px rows → 11 materialized rows, not 100k.
         let body_runs = |cx: &Cx| {
             glyph_texts(cx, root)
                 .into_iter()
@@ -376,8 +362,6 @@ fn hundred_thousand_rows_window_and_sort_without_rebuild() {
         assert_eq!(body_runs(&cx).len(), 11, "window stays viewport-sized");
         assert_eq!(body_runs(&cx).first().map(String::as_str), Some("r0099999"));
 
-        // Sorting re-orders through the derived visible list — the
-        // window rebuilds in place at the same 11-row cost.
         state.toggle_sort("name");
         let _layout = compute(&mut cx, root);
         assert_eq!(body_runs(&cx).len(), 11, "window cost unchanged by sort");
@@ -419,10 +403,6 @@ fn quick_filter_keeps_keyboard_row_count_live() {
         let layout = compute(&mut cx, root);
         assert_eq!(state.visible().get().len(), 10);
 
-        // Focus the body list (second child of the grid root) and jump
-        // to the end. A build-time snapshot (30) would clamp the window
-        // past the 10 filtered rows and paint NOTHING; the live count
-        // keeps End on the last filtered row.
         let body = cx
             .get(root)
             .and_then(|node| node.children().get(1).copied())
@@ -482,10 +462,6 @@ fn wheel_scroll_advances_the_window() {
             })),
         );
         let _layout = compute(&mut cx, root);
-        // 120px down = six 20px rows. The strip keeps a page of overscan
-        // above the viewport, and the emit walk's 1px clip tolerance keeps
-        // the row parked exactly against the top edge (r005 — zero visible
-        // pixels), so it heads the painted list with r006 right behind it.
         let texts = glyph_texts(&cx, root);
         let body = texts
             .iter()
@@ -552,8 +528,6 @@ fn grid_a11y_channels_attach() {
         let header = cx.get(header).expect("header node");
         assert_eq!(header.a11y.role, Role::Row);
         assert_eq!(header.a11y.row_index, Some(1));
-        // The header's first child is the horizontally scrolled cell
-        // track; the cells live under it.
         let track = header
             .children()
             .first()
@@ -608,8 +582,6 @@ fn resize_handle_pins_column_width() {
         );
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
-        // Name column is Fixed(100) starting after the 12 px row padding;
-        // the handle sits on its trailing 6 px.
         router.route(
             &mut cx,
             &layout,
@@ -735,10 +707,6 @@ fn fraction_column_honours_min_width() {
     });
 }
 
-// --- Horizontal scrolling (over-wide fixed column sets) ---
-
-/// 3 × Fixed(150) = 450 px of columns in a 200 px viewport → max
-/// horizontal scroll 250.
 fn wide_state() -> TableState<Item> {
     TableState::new(
         demo_rows(),
@@ -779,8 +747,6 @@ fn text_x(cx: &Cx, root: NodeId, expected: &str) -> Option<f32> {
         .map(|draw| draw.run.rect.origin.x)
 }
 
-/// The scrollbar host is the grid's fourth child (header, body, empty
-/// slot, then the host); it stays empty while the content fits.
 fn scrollbar_track_count(cx: &Cx, root: NodeId) -> usize {
     let host = cx
         .get(root)
@@ -789,10 +755,6 @@ fn scrollbar_track_count(cx: &Cx, root: NodeId) -> usize {
     cx.get(host).map_or(0, |node| node.children().len())
 }
 
-/// Layout x of the header cell at `index` (0-based over visible
-/// columns). Header cells are layout nodes, so unlike glyph runs they
-/// read fine even while clipped out of the scene. The header's first
-/// child is the horizontally scrolled cell track.
 fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f32 {
     let header = cx
         .get(grid)
@@ -814,9 +776,6 @@ fn header_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> 
         .x
 }
 
-/// x of the horizontal thumb: the only `surface-pressed-strong` rect at
-/// track height (8 px) and at least the minimum thumb width — the same
-/// token paints 1 px row borders, so filter on geometry too.
 fn thumb_x(cx: &Cx, root: NodeId) -> Option<f32> {
     let thumb = Theme::default().surface_pressed_strong;
     emit_scene(cx, root).commands.iter().find_map(|c| match c {
@@ -838,15 +797,10 @@ fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
         let layout = compute(&mut cx, root);
         let mut router = EventRouter::new();
 
-        // Header cell boxes and body cell text share one shift; body
-        // text sits padding inside the cell, so measure the header/body
-        // gap at rest (column 2) and require it to survive scrolling.
         let header_rest = header_cell_x(&cx, &layout, root, 1);
         let gap = text_x(&cx, root, "30").expect("gamma count cell at rest") - header_rest;
         let tag_rest = header_cell_x(&cx, &layout, root, 2);
 
-        // Wheel over the HEADER band: the table root claims x deltas
-        // outside the virtual-list body.
         router.route(&mut cx, &layout, wheel_x_at(50.0, 14.0, -100.0));
         let layout = compute(&mut cx, root);
         let header_x = header_cell_x(&cx, &layout, root, 1);
@@ -861,8 +815,6 @@ fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
             body_x - header_x,
         );
 
-        // Wheel over the BODY: the virtual-list handler consumes x and y
-        // together; the offset clamps at extent - viewport = 250.
         router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
         let layout = compute(&mut cx, root);
         let tag_x = header_cell_x(&cx, &layout, root, 2);
@@ -876,7 +828,6 @@ fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
             "body and header locked at the clamp: {tag_cell} vs {tag_x} + {gap}",
         );
 
-        // Already at the clamp: another max-strength gesture moves nothing.
         router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
         let layout = compute(&mut cx, root);
         assert!(
@@ -889,7 +840,6 @@ fn horizontal_wheel_shifts_header_and_body_in_lockstep() {
 #[test]
 fn fitting_table_has_no_scrollbar_and_no_offset() {
     sigil::reactive::Runtime::scope("table-view-hscroll-fits", || {
-        // demo_state: 2 × Fixed(100) in a 200 px viewport — exact fit.
         let state = demo_state();
         let mut cx = Cx::new_root();
         let root = cx.add(wide_table(state));
@@ -913,7 +863,6 @@ fn over_wide_columns_reveal_a_sliding_thumb() {
         assert_eq!(scrollbar_track_count(&cx, root), 1, "overflow: track");
         let parked = thumb_x(&cx, root).expect("overflow: thumb");
 
-        // Thumb travel is viewport - thumb_w = 200 - 200*(200/450) ≈ 111.1.
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, wheel_x_at(50.0, 100.0, -1_000.0));
         let _layout = compute(&mut cx, root);
@@ -925,8 +874,6 @@ fn over_wide_columns_reveal_a_sliding_thumb() {
     });
 }
 
-/// Layout x of the body cell at `index` in the first materialized row
-/// (grid child 1 is the body; rows hold a cell track as first child).
 fn body_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f32 {
     fn find_row(cx: &Cx, id: NodeId) -> Option<NodeId> {
         let node = cx.get(id)?;
@@ -954,10 +901,6 @@ fn body_cell_x(cx: &Cx, layout: &LayoutEngine, grid: NodeId, index: usize) -> f3
 #[test]
 fn fraction_columns_stretch_in_a_measured_viewport() {
     sigil::reactive::Runtime::scope("table-view-fraction-stretch", || {
-        // The proxies-table shape: fractions plus fixed columns, no
-        // explicit width, viewport_fill in a wide pane. The fractions
-        // must split the leftover by their grow ratio, not collapse to
-        // their 48 px floors (the hscroll width-atom regression).
         let state = TableState::new(
             demo_rows(),
             vec![
@@ -1002,11 +945,6 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             .get(root)
             .and_then(|node| node.children().first().copied())
             .expect("wrapper holds the grid");
-        // Content box: 800 - 2*10 padding - 2*1 border = 778. Rows and body
-        // cells both carry the density pad_x of 12 per side (base 64 with the
-        // 40px stub measure), so the name column is
-        // 64 + 1.4/2.2 * (778 - 24 - 104 - 120) ≈ 401.3. The
-        // floor-collapse regression rendered it at 48.
         let name_w = body_cell_x(&cx, &layout, grid, 1) - body_cell_x(&cx, &layout, grid, 0);
         assert!(
             (name_w - 401.3).abs() < 1.0,
@@ -1036,8 +974,6 @@ fn unset_viewport_width_measures_the_table() {
                 ),
         );
         let mut layout = compute(&mut cx, root);
-        // Drive frames so the width probe publishes during attach and the
-        // reactive extents settle at the measured content-box width.
         for _ in 0..3 {
             sigil_app::__drive_test_frame(
                 || {
@@ -1072,11 +1008,6 @@ fn unset_viewport_width_measures_the_table() {
     });
 }
 
-// --- Checkbox selection column (.selectable_checkboxes()) ---
-
-/// Demo table with the opt-in checkbox column. The 36 px column plus
-/// 2 × Fixed(100) overflows the 200 px viewport by 36, but `scroll_x`
-/// starts at 0, so rest geometry below is unaffected.
 fn check_table(state: TableState<Item>) -> impl IntoNode {
     table(state)
         .selectable_checkboxes()
@@ -1086,8 +1017,6 @@ fn check_table(state: TableState<Item>) -> impl IntoNode {
         .viewport_height(VIEW_H)
 }
 
-/// All `Role::CheckBox` nodes in depth-first order: the header box is
-/// first (the header is the grid's first child), then one per row.
 fn checkbox_nodes(cx: &Cx, root: NodeId) -> Vec<NodeId> {
     fn walk(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
         let Some(node) = cx.get(id) else {
@@ -1115,8 +1044,6 @@ fn header_checked(cx: &Cx, root: NodeId) -> Option<bool> {
         .map(|checked| checked.get())
 }
 
-/// Center of the checkbox column: 12 px row padding + half of the 32 px
-/// select column.
 const CHECK_X: f32 = 28.0;
 
 #[test]
@@ -1159,7 +1086,7 @@ fn row_checkbox_toggles_exactly_once() {
             "checkbox column counts into the grid",
         );
 
-        let row_y = ROW_H.mul_add(1.5, HEADER_H); // row index 1
+        let row_y = ROW_H.mul_add(1.5, HEADER_H);
         click(&mut router, &mut cx, &layout, CHECK_X, row_y);
         let selected = state.selection().get();
         assert!(
@@ -1174,8 +1101,6 @@ fn row_checkbox_toggles_exactly_once() {
             "second click unchecks the row",
         );
 
-        // Plain row-body clicks keep their select_only shape beside the
-        // checkbox column.
         click(
             &mut router,
             &mut cx,
@@ -1230,8 +1155,6 @@ fn header_checkbox_indeterminate_when_partial() {
             "partial selection does not read as fully checked",
         );
 
-        // From the partial state the header click completes the
-        // selection instead of clearing it.
         click(&mut router, &mut cx, &layout, CHECK_X, HEADER_H / 2.0);
         assert_eq!(
             state.selection().get().len(),
@@ -1246,7 +1169,6 @@ fn header_checkbox_indeterminate_when_partial() {
 fn header_checkbox_selects_only_visible_rows() {
     sigil::reactive::Runtime::scope("table-view-checks-visible", || {
         let state = demo_state();
-        // "ta" survives in "delta" (index 2) and "beta" (index 3) only.
         state.quick_filter().set("ta".to_owned());
         let mut cx = Cx::new_root();
         let root = cx.add(check_table(state.clone()));

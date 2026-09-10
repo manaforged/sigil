@@ -1,39 +1,14 @@
-//! [`Key`] — a single keystroke (modifiers + key code).
-//!
-//! A keystroke is `modifiers + code`. The textual form is the
-//! hyphen-separated lowercase representation used in keymap TOML:
-//!
-//! - `"a"` — letter
-//! - `"enter"` / `"f1"` / `"pageup"` — named key
-//! - `"ctrl-s"` / `"ctrl-shift-p"` — modifier + key
-//! - `","` / `"/"` / `";"` — symbol key
-//!
-//! Modifiers are normalised on parse: `Shift-Ctrl-A` and `ctrl-shift-a`
-//! parse to the same [`Key`].
-//!
-//! Sequences of [`Key`] (chords like `"g d"`) live one layer up in
-//! [`super::config`].
-
 use std::fmt;
 
-/// Bitset of pressed modifier keys.
-///
-/// `Default` is the empty modifier set. The bit layout is opaque; use
-/// [`Modifiers::with`] / [`Modifiers::contains`] / `Modifiers::all`.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Modifiers(u8);
 
-/// One of the four supported modifier keys.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(clippy::exhaustive_enums)]
 pub enum Modifier {
-    /// Control key (typically `Ctrl`).
     Ctrl,
-    /// Shift key.
     Shift,
-    /// Alt / Option key.
     Alt,
-    /// Meta / Cmd / Super / Windows key.
     Meta,
 }
 
@@ -68,25 +43,21 @@ impl Modifier {
 }
 
 impl Modifiers {
-    /// Empty modifier set.
     #[must_use]
     pub const fn empty() -> Self {
         Self(0)
     }
 
-    /// Return a new set with `m` added.
     #[must_use]
     pub const fn with(self, m: Modifier) -> Self {
         Self(self.0 | m.bit())
     }
 
-    /// Whether `m` is in this set.
     #[must_use]
     pub const fn contains(self, m: Modifier) -> bool {
         (self.0 & m.bit()) != 0
     }
 
-    /// Iterator over the modifiers in canonical order (ctrl, shift, alt, meta).
     pub fn iter(self) -> impl Iterator<Item = Modifier> {
         const ALL: [Modifier; 4] = [
             Modifier::Ctrl,
@@ -97,33 +68,22 @@ impl Modifiers {
         ALL.into_iter().filter(move |m| self.contains(*m))
     }
 
-    /// Whether the set is empty.
     #[must_use]
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
 }
 
-/// The non-modifier part of a key event.
-///
-/// Letters are normalised to lowercase (case is carried by the
-/// [`Modifier::Shift`] modifier). Function keys are F1..F24.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(clippy::exhaustive_enums)]
 pub enum KeyCode {
-    /// Single ASCII letter `a`..`z`.
     Char(char),
-    /// Decimal digit `0`..`9`.
     Digit(u8),
-    /// Function key (1..=24).
     Function(u8),
-    /// A named non-printing key.
     Named(NamedKey),
-    /// A symbol key (`,`, `.`, `/`, `;`, etc.).
     Symbol(char),
 }
 
-/// The named keys recognised by [`Key::parse`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[allow(missing_docs, clippy::exhaustive_enums)]
 pub enum NamedKey {
@@ -184,43 +144,21 @@ impl NamedKey {
     }
 }
 
-/// A single keystroke: modifiers plus the non-modifier key.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Key {
-    /// Modifier set held when the key was pressed.
     pub modifiers: Modifiers,
-    /// The non-modifier key code.
     pub code: KeyCode,
 }
 
-/// Parse errors surfaced by [`Key::parse`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::exhaustive_enums)]
 pub enum ParseError {
-    /// The input was empty (or all whitespace).
     Empty,
-    /// The input had no non-modifier token (e.g. `"ctrl-shift-"`).
     NoKey,
-    /// A token in the dash-list could not be parsed as a modifier or as
-    /// the trailing key code.
-    UnknownToken {
-        /// The unrecognised token (lowercased).
-        token: String,
-    },
-    /// The same modifier appeared twice (`"ctrl-ctrl-a"`).
-    DuplicateModifier {
-        /// The modifier that was duplicated.
-        modifier: Modifier,
-    },
-    /// More than one non-modifier token in the keystroke
-    /// (`"ctrl-a-b"`). For chords (multi-key sequences) use the
-    /// space-separated form in TOML, not multiple trailing tokens.
+    UnknownToken { token: String },
+    DuplicateModifier { modifier: Modifier },
     TooManyKeys,
-    /// Function-key index was outside 1..=24.
-    FunctionKeyOutOfRange {
-        /// The out-of-range index as written (e.g. `25`).
-        n: u32,
-    },
+    FunctionKeyOutOfRange { n: u32 },
 }
 
 impl fmt::Display for ParseError {
@@ -243,28 +181,12 @@ impl fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 impl Key {
-    /// Parse a single keystroke from its TOML-style textual form.
-    ///
-    /// The input is split on `-`. Every token but the last must be a
-    /// modifier name (`ctrl`, `shift`, `alt`, `meta` plus aliases like
-    /// `cmd`, `super`, `opt`). The last token is the key itself —
-    /// a letter, digit, function key (`f1`..`f24`), named key
-    /// (`enter`, `tab`, …) or symbol.
-    ///
-    /// Case is folded to lowercase before parsing. Surrounding
-    /// whitespace is trimmed.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ParseError`] for the cases enumerated on that type.
     pub fn parse(s: &str) -> Result<Self, ParseError> {
         let trimmed = s.trim();
         if trimmed.is_empty() {
             return Err(ParseError::Empty);
         }
         let lower = trimmed.to_lowercase();
-        // The minus character is itself a valid key — only treat `-` as
-        // a separator when it isn't the entire input.
         if lower == "-" {
             return Ok(Self {
                 modifiers: Modifiers::empty(),
@@ -274,7 +196,6 @@ impl Key {
         super::parse::parse_tokens(&lower)
     }
 
-    /// Construct a keystroke from explicit parts.
     #[must_use]
     pub const fn new(modifiers: Modifiers, code: KeyCode) -> Self {
         Self { modifiers, code }

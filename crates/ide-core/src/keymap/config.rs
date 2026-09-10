@@ -1,33 +1,3 @@
-//! Keymap TOML loader + three-layer precedence.
-//!
-//! Three layers (highest precedence first):
-//!   1. **workspace** — `.sigil-ide/keymap.toml` under the workspace root
-//!   2. **user** — platform user-config dir
-//!      (`~/.config/sigil-ide/keymap.toml` on Unix,
-//!      `%APPDATA%\sigil-ide\keymap.toml` on Windows)
-//!   3. **default** — compiled-in [`Bindings`] passed by the caller
-//!
-//! TOML format:
-//!
-//! ```toml
-//! [bindings]
-//! "ctrl-s" = "buffer.save"
-//! "ctrl-shift-p" = "command.palette.open"
-//! "g d" = "code.go_to_definition"        # chord
-//! "ctrl-c ctrl-v" = "buffer.paste_special"
-//! ```
-//!
-//! Per-binding context predicates are supported via the alternate
-//! object form:
-//!
-//! ```toml
-//! [bindings]
-//! "ctrl-s" = { action = "buffer.save", when = ["editor", "focused"] }
-//! ```
-//!
-//! Bad keystrokes / malformed entries produce [`KeymapDiagnostic`]
-//! entries (load still succeeds — the bad binding is simply omitted).
-
 use std::borrow::Cow;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -35,47 +5,30 @@ use std::path::{Path, PathBuf};
 use super::key::{Key, ParseError};
 use super::resolver::Bindings;
 
-/// Non-fatal issue encountered while loading a keymap TOML.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(clippy::exhaustive_enums)]
 pub enum KeymapDiagnostic {
-    /// The TOML file existed but did not parse.
     ParseError {
-        /// Path to the offending file.
         path: PathBuf,
-        /// `toml` parser's error rendered as a string.
         message: String,
     },
-    /// A binding key (left-hand side) could not be parsed.
     InvalidKey {
-        /// Path to the file.
         path: PathBuf,
-        /// The raw TOML key (e.g. `"ctrl-foo"`).
         raw: String,
-        /// The parse error for the specific keystroke that failed.
         cause: ParseError,
     },
-    /// A binding value (right-hand side) was the wrong shape.
-    /// Expected either a string action or an object with `action`.
     InvalidValue {
-        /// Path to the file.
         path: PathBuf,
-        /// The raw TOML key.
         raw: String,
-        /// A short reason ("expected string or table").
         reason: &'static str,
     },
-    /// A binding's required context list contained a non-string entry.
     InvalidContext {
-        /// Path to the file.
         path: PathBuf,
-        /// The raw TOML key.
         raw: String,
     },
 }
 
 impl KeymapDiagnostic {
-    /// Path the diagnostic came from.
     #[must_use]
     pub fn path(&self) -> &Path {
         match self {
@@ -87,11 +40,6 @@ impl KeymapDiagnostic {
     }
 }
 
-/// Layered keymap: compile-in defaults + user TOML + workspace TOML.
-///
-/// Construct with [`Keymap::open`]. The resolver in
-/// `super::resolver` operates on the flattened [`Bindings`] exposed
-/// by [`Keymap::bindings`].
 pub struct Keymap {
     defaults: Bindings,
     user: Bindings,
@@ -102,17 +50,6 @@ pub struct Keymap {
 }
 
 impl Keymap {
-    /// Open the keymap rooted at `workspace_root`, layering on top of
-    /// the supplied `defaults`.
-    ///
-    /// Returns the keymap plus any non-fatal diagnostics produced
-    /// while reading either TOML layer. Missing files are treated as
-    /// empty (not an error).
-    ///
-    /// # Errors
-    ///
-    /// Propagates only protocol-level I/O errors (e.g. permission
-    /// denied). Parse-level issues become diagnostics, not errors.
     pub fn open(
         workspace_root: &Path,
         defaults: Bindings,
@@ -139,35 +76,26 @@ impl Keymap {
         ))
     }
 
-    /// Read-only view of the resolved (post-precedence) binding set.
     #[must_use]
     pub const fn bindings(&self) -> &Bindings {
         &self.flattened
     }
 
-    /// Default layer (read-only).
     #[must_use]
     pub const fn defaults(&self) -> &Bindings {
         &self.defaults
     }
 
-    /// User layer (read-only).
     #[must_use]
     pub const fn user(&self) -> &Bindings {
         &self.user
     }
 
-    /// Workspace layer (read-only).
     #[must_use]
     pub const fn workspace(&self) -> &Bindings {
         &self.workspace
     }
 
-    /// Re-read both TOML layers and re-flatten.
-    ///
-    /// # Errors
-    ///
-    /// Same as [`Keymap::open`].
     pub fn reload(&mut self) -> io::Result<Vec<KeymapDiagnostic>> {
         let mut diags = Vec::new();
         self.user = match self.user_path.as_ref() {
@@ -182,8 +110,6 @@ impl Keymap {
 
 fn flatten(defaults: &Bindings, user: &Bindings, workspace: &Bindings) -> Bindings {
     let mut out = Bindings::new();
-    // Stack in precedence order; later inserts override earlier ones
-    // (Bindings::insert replaces on matching key+context).
     for b in defaults.iter() {
         out.insert(
             b.keys.clone(),
@@ -275,9 +201,6 @@ fn ingest_entry(
             return;
         }
     };
-    // Validate `when` contents (the extractor returns Strings already,
-    // but if the user wrote `when = [1, 2]` the extractor would have
-    // returned None — re-validate the entry if a table was present).
     if let toml::Value::Table(t) = value
         && let Some(when) = t.get("when")
         && !when_is_string_array(when)
