@@ -1,4 +1,5 @@
 use std::cell::{RefCell, RefMut};
+use std::iter::once;
 use std::rc::Rc;
 
 use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
@@ -95,7 +96,8 @@ pub(super) fn noop_change() -> TextChange {
 pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     let node = edit_keys(node, runtime.clone());
     let node = shift_keys(node, runtime.clone());
-    let node = clipboard_keys(node, runtime.clone());
+    let node = clipboard_keys(node, &runtime);
+    let node = word_keys(node, &runtime);
     history_keys(node, runtime)
 }
 
@@ -151,6 +153,67 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
         )
 }
 
+fn word_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+    let bindings: [(Shortcut, fn(&mut TextEdit), bool); 9] = [
+        (
+            Shortcut::new(Key::ArrowLeft, ModifiersState::ALT),
+            TextEdit::move_word_left,
+            false,
+        ),
+        (
+            Shortcut::new(Key::ArrowRight, ModifiersState::ALT),
+            TextEdit::move_word_right,
+            false,
+        ),
+        (
+            Shortcut::new(LogicalKey::character("b"), ModifiersState::ALT),
+            TextEdit::move_word_left,
+            false,
+        ),
+        (
+            Shortcut::new(LogicalKey::character("f"), ModifiersState::ALT),
+            TextEdit::move_word_right,
+            false,
+        ),
+        (
+            Shortcut::new(Key::Backspace, ModifiersState::ALT),
+            TextEdit::delete_word_backward,
+            true,
+        ),
+        (
+            Shortcut::ctrl(LogicalKey::character("w")),
+            TextEdit::delete_word_backward,
+            true,
+        ),
+        (
+            Shortcut::new(LogicalKey::character("d"), ModifiersState::ALT),
+            TextEdit::delete_word_forward,
+            true,
+        ),
+        (
+            Shortcut::ctrl(LogicalKey::character("u")),
+            TextEdit::delete_to_line_start,
+            true,
+        ),
+        (
+            Shortcut::ctrl(LogicalKey::character("k")),
+            TextEdit::delete_to_line_end,
+            true,
+        ),
+    ];
+    for (shortcut, edit, deletes) in bindings {
+        let runtime = runtime.clone();
+        node = node.key(shortcut, move |event| {
+            if deletes {
+                edit_value(event, &runtime, edit);
+            } else {
+                move_caret(event, &runtime, edit);
+            }
+        });
+    }
+    node
+}
+
 fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     let node = shift_key(node, Key::ArrowLeft, runtime.clone(), TextEdit::shift_left);
     let node = shift_key(
@@ -178,43 +241,66 @@ fn shift_key(
     })
 }
 
-fn clipboard_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let copy = runtime.clone();
-    let cut = runtime.clone();
-    let paste = runtime.clone();
-    let select_all = runtime;
-    node.key(Shortcut::ctrl(LogicalKey::character("c")), move |event| {
-        clipboard_copy(event, &copy);
-    })
-    .key(Shortcut::ctrl(LogicalKey::character("x")), move |event| {
-        clipboard_cut(event, &cut);
-    })
-    .key(Shortcut::ctrl(LogicalKey::character("v")), move |event| {
-        clipboard_paste(event, &paste);
-    })
-    .key(Shortcut::ctrl(LogicalKey::character("a")), move |event| {
-        select_all_text(event, &select_all);
-    })
+fn clipboard_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+    for modifiers in once(ModifiersState::CONTROL)
+        .chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
+    {
+        let copy = runtime.clone();
+        let cut = runtime.clone();
+        let paste = runtime.clone();
+        let select_all = runtime.clone();
+        node = node
+            .key(
+                Shortcut::new(LogicalKey::character("c"), modifiers),
+                move |event| {
+                    clipboard_copy(event, &copy);
+                },
+            )
+            .key(
+                Shortcut::new(LogicalKey::character("x"), modifiers),
+                move |event| {
+                    clipboard_cut(event, &cut);
+                },
+            )
+            .key(
+                Shortcut::new(LogicalKey::character("v"), modifiers),
+                move |event| {
+                    clipboard_paste(event, &paste);
+                },
+            )
+            .key(
+                Shortcut::new(LogicalKey::character("a"), modifiers),
+                move |event| {
+                    select_all_text(event, &select_all);
+                },
+            );
+    }
+    node
 }
 
-fn history_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let redo_shift = runtime.clone();
-    let redo_ctrl_y = runtime.clone();
-    let undo_rt = runtime;
-    node.key(
-        Shortcut::new(
-            LogicalKey::character("z"),
-            ModifiersState::CONTROL | ModifiersState::SHIFT,
-        ),
-        move |event| {
-            history_redo(event, &redo_shift);
-        },
-    )
-    .key(Shortcut::ctrl(LogicalKey::character("z")), move |event| {
-        history_undo(event, &undo_rt);
-    })
-    .key(Shortcut::ctrl(LogicalKey::character("y")), move |event| {
-        history_redo(event, &redo_ctrl_y);
+fn history_keys(mut node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
+    for modifiers in once(ModifiersState::CONTROL)
+        .chain(cfg!(target_os = "macos").then_some(ModifiersState::META))
+    {
+        let redo = runtime.clone();
+        let undo = runtime.clone();
+        node = node
+            .key(
+                Shortcut::new(
+                    LogicalKey::character("Z"),
+                    modifiers | ModifiersState::SHIFT,
+                ),
+                move |event| history_redo(event, &redo),
+            )
+            .key(
+                Shortcut::new(LogicalKey::character("z"), modifiers),
+                move |event| {
+                    history_undo(event, &undo);
+                },
+            );
+    }
+    node.key(Shortcut::ctrl(LogicalKey::character("y")), move |event| {
+        history_redo(event, &runtime);
     })
 }
 

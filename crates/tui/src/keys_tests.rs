@@ -24,3 +24,19 @@ fn terminal_function_keys_reach_application_shortcuts() -> Result<(), String> {
     }
     Ok(())
 }
+
+#[test]
+fn shifted_letters_map_to_uppercase() {
+    let event = crossterm::event::KeyEvent::new(
+        crossterm::event::KeyCode::Char('z'),
+        crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::SHIFT,
+    );
+    let Some(ShellEvent::Key(key)) = map_key(&event) else {
+        panic!("shifted letter did not map");
+    };
+    assert_eq!(key.key, LogicalKey::character("Z"));
+    assert!(
+        key.modifiers
+            .contains(ModifiersState::SHIFT | ModifiersState::CONTROL)
+    );
+}

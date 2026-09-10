@@ -22,8 +22,8 @@ fn place_caret_clamps_past_end_and_off_boundary() {
 #[test]
 fn extend_to_anchors_at_starting_caret_then_grows() {
     let mut edit = TextEdit::new("hello world".to_owned());
-    edit.place_caret(2); // caret at 2, no selection
-    edit.extend_to(6); // drag right to byte 6 (exclusive)
+    edit.place_caret(2);
+    edit.extend_to(6);
     assert_eq!(edit.caret(), 6);
     assert_eq!(edit.selection(), Some(2), "anchor stays at the drag origin");
     assert_eq!(edit.selected_text(), Some("llo "));
@@ -35,7 +35,7 @@ fn extend_to_back_onto_anchor_collapses() {
     edit.place_caret(1);
     edit.extend_to(4);
     assert_eq!(edit.selection(), Some(1));
-    edit.extend_to(1); // drag back to the origin
+    edit.extend_to(1);
     assert_eq!(edit.selection(), None, "a zero-width drag collapses");
     assert_eq!(edit.caret(), 1);
 }
@@ -43,7 +43,7 @@ fn extend_to_back_onto_anchor_collapses() {
 #[test]
 fn sync_external_clamps_caret_past_new_end() {
     let mut edit = TextEdit::new("hello world".to_owned());
-    edit.place_caret(11); // end of "hello world"
+    edit.place_caret(11);
     edit.sync_external("hi".to_owned());
     assert_eq!(edit.as_str(), "hi");
     assert_eq!(edit.caret(), 2, "caret clamps to the new (shorter) length");
@@ -52,7 +52,7 @@ fn sync_external_clamps_caret_past_new_end() {
 #[test]
 fn sync_external_snaps_caret_off_new_boundary() {
     let mut edit = TextEdit::new("world".to_owned());
-    edit.place_caret(4); // valid boundary in "world" (between 'l' and 'd')
+    edit.place_caret(4);
     edit.sync_external("café".to_owned());
     assert_eq!(
         edit.caret(),
@@ -82,7 +82,7 @@ fn sync_external_is_a_no_op_when_buffer_already_matches() {
 #[test]
 fn move_up_down_keeps_byte_column_across_lines() {
     let mut edit = TextEdit::new("abc\nde\nfghi".to_owned());
-    edit.place_caret(6); // line 1 ("de"), column 2
+    edit.place_caret(6);
     edit.move_up();
     assert_eq!(edit.caret(), 2, "up keeps column 2 on line 0");
     edit.move_down();
@@ -96,7 +96,7 @@ fn move_up_down_keeps_byte_column_across_lines() {
 #[test]
 fn move_up_clamps_column_to_shorter_line_end() {
     let mut edit = TextEdit::new("a\nlongline".to_owned());
-    edit.place_caret(6); // line 1, column 4
+    edit.place_caret(6);
     edit.move_up();
     assert_eq!(edit.caret(), 1, "column clamps to the shorter line's end");
 }
@@ -129,7 +129,7 @@ fn move_up_from_first_line_goes_to_start() {
 #[test]
 fn vertical_moves_never_split_multibyte_graphemes() {
     let mut edit = TextEdit::new("é\nab".to_owned());
-    edit.place_caret(4); // line 1, column 1
+    edit.place_caret(4);
     edit.move_up();
     let caret = edit.caret();
     assert!(
@@ -180,4 +180,44 @@ fn ltr_arrow_keys_stay_logical() {
     assert_eq!(edit.caret(), 2);
     edit.move_left();
     assert_eq!(edit.caret(), 1);
+}
+
+#[test]
+fn word_motion_and_deletion_follow_word_boundaries() {
+    let mut edit = TextEdit::new("fix the  frame_loop, then ship".to_owned());
+    edit.move_word_left();
+    assert_eq!(edit.caret(), 26, "back over `ship`");
+    edit.move_word_left();
+    assert_eq!(edit.caret(), 21, "back over `then`");
+    edit.move_word_right();
+    assert_eq!(edit.caret(), 25, "forward to the end of `then`");
+    edit.place_caret(19);
+    edit.delete_word_backward();
+    assert_eq!(
+        edit.as_str(),
+        "fix the  , then ship",
+        "`frame_loop` is one word"
+    );
+    edit.delete_word_forward();
+    assert_eq!(
+        edit.as_str(),
+        "fix the   ship",
+        "forward delete eats `, then`"
+    );
+    edit.undo();
+    assert_eq!(edit.as_str(), "fix the  , then ship");
+}
+
+#[test]
+fn line_deletion_stops_at_newlines() {
+    let mut edit = TextEdit::new("first line\nsecond line\nthird".to_owned());
+    edit.place_caret(18);
+    edit.delete_to_line_start();
+    assert_eq!(edit.as_str(), "first line\nline\nthird");
+    assert_eq!(edit.caret(), 11);
+    edit.delete_to_line_end();
+    assert_eq!(edit.as_str(), "first line\n\nthird");
+    edit.select_all();
+    edit.delete_to_line_end();
+    assert_eq!(edit.as_str(), "", "a selection wins over the line span");
 }

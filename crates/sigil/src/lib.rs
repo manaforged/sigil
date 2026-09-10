@@ -102,6 +102,7 @@ pub mod prelude {
         spawn,
     };
 
+    #[cfg(feature = "clipboard")]
     pub use crate::clipboard::{copy, install, paste};
     pub use crate::interaction::InteractionState;
     #[cfg(feature = "desktop")]

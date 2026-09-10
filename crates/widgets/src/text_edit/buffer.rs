@@ -110,6 +110,49 @@ impl TextEdit {
         }
     }
 
+    pub(crate) fn move_word_left(&mut self) {
+        self.selection = None;
+        self.caret = word_start_before(&self.buffer, self.caret);
+        self.debug_assert_invariants();
+    }
+
+    pub(crate) fn move_word_right(&mut self) {
+        self.selection = None;
+        self.caret = word_end_after(&self.buffer, self.caret);
+        self.debug_assert_invariants();
+    }
+
+    pub(crate) fn delete_word_backward(&mut self) {
+        self.delete_span(word_start_before(&self.buffer, self.caret), self.caret);
+    }
+
+    pub(crate) fn delete_word_forward(&mut self) {
+        self.delete_span(self.caret, word_end_after(&self.buffer, self.caret));
+    }
+
+    pub(crate) fn delete_to_line_start(&mut self) {
+        self.delete_span(line_start(&self.buffer, self.caret), self.caret);
+    }
+
+    pub(crate) fn delete_to_line_end(&mut self) {
+        self.delete_span(self.caret, line_end(&self.buffer, self.caret));
+    }
+
+    fn delete_span(&mut self, start: usize, end: usize) {
+        if self.selection.is_some() {
+            self.push_history();
+            self.delete_selection_range();
+            return;
+        }
+        if start >= end {
+            return;
+        }
+        self.push_history();
+        self.buffer.drain(start..end);
+        self.caret = start;
+        self.debug_assert_invariants();
+    }
+
     pub(crate) const fn move_home(&mut self) {
         self.selection = None;
         self.caret = 0;
@@ -384,6 +427,56 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         .char_indices()
         .nth(1)
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
+}
+
+fn line_start(buffer: &str, caret: usize) -> usize {
+    buffer[..caret].rfind('\n').map_or(0, |index| index + 1)
+}
+
+fn line_end(buffer: &str, caret: usize) -> usize {
+    buffer[caret..]
+        .find('\n')
+        .map_or(buffer.len(), |index| caret + index)
+}
+
+fn word_start_before(buffer: &str, caret: usize) -> usize {
+    let mut chars = buffer[..caret].char_indices().rev().peekable();
+    let mut start = caret;
+    while let Some((index, ch)) = chars.peek().copied() {
+        if ch.is_alphanumeric() || ch == '_' {
+            break;
+        }
+        start = index;
+        chars.next();
+    }
+    while let Some((index, ch)) = chars.peek().copied() {
+        if !(ch.is_alphanumeric() || ch == '_') {
+            break;
+        }
+        start = index;
+        chars.next();
+    }
+    start
+}
+
+fn word_end_after(buffer: &str, caret: usize) -> usize {
+    let mut end = caret;
+    let mut chars = buffer[caret..].char_indices().peekable();
+    while let Some((index, ch)) = chars.peek().copied() {
+        if ch.is_alphanumeric() || ch == '_' {
+            break;
+        }
+        end = caret + index + ch.len_utf8();
+        chars.next();
+    }
+    while let Some((index, ch)) = chars.peek().copied() {
+        if !(ch.is_alphanumeric() || ch == '_') {
+            break;
+        }
+        end = caret + index + ch.len_utf8();
+        chars.next();
+    }
+    end
 }
 
 fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
