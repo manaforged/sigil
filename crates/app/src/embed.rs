@@ -4,7 +4,7 @@ use sigil_hal::Point;
 use sigil_hal::{LogicalSize, Rect, ShellEvent, Size};
 use std::rc::Rc;
 
-use sigil_kernel::{Cx, NodeId, Surface, TextContent};
+use sigil_kernel::{Cx, ImageCrop, ImageSource, NodeId, Surface, TextContent};
 use sigil_layout::{LayoutEngine, LayoutError, LayoutResult, TextMeasure};
 use sigil_style::{Rgba8, TextStyle, Theme, Tone, grid};
 use unicode_width::UnicodeWidthStr;
@@ -28,6 +28,8 @@ pub struct Painted {
     pub italic: bool,
     pub bare: bool,
     pub clip: Option<Rect>,
+    pub image: Option<ImageSource>,
+    pub crop: Option<ImageCrop>,
 }
 
 pub type AccessibilityTree = accesskit::TreeUpdate;

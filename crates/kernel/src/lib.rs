@@ -22,7 +22,7 @@ pub use builder::{NodeBuilder, container, fragment};
 pub use component::{IntoNode, node};
 pub use cx::Cx;
 pub use id::NodeId;
-pub use image::{ImageBuilder, ImageSource, ObjectFit, image};
+pub use image::{ImageBuilder, ImageCrop, ImageSource, ObjectFit, image};
 pub use node::{Node, NodeExtensions, NodeType, Surface, TopLayer};
 pub use reactive_children::schedule_keyed_rebuild;
 pub use semantics::{A11yProps, AccessibleName, FocusScopeKind};

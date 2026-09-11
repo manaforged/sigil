@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use sigil_hal::Rect;
-use sigil_kernel::{Cx, Node, NodeId, NodeType, Surface, TextContent};
+use sigil_kernel::{Cx, ImageCrop, ImageSource, Node, NodeId, NodeType, Surface, TextContent};
 use sigil_layout::LayoutResult;
 use sigil_style::{
     Rgba8, StateSlot, StyleAtom, StyleBinding, TextStyle, Theme, Tone, ToneContext,
@@ -55,7 +55,12 @@ fn store(
         return true;
     };
     let text = slot.text.take();
-    let same = kept && slot.id == node.id && slot.rect == node.rect && slot.clip == node.clip;
+    let same = kept
+        && slot.id == node.id
+        && slot.rect == node.rect
+        && slot.clip == node.clip
+        && slot.image.as_ref().map(ImageSource::id) == node.image.as_ref().map(ImageSource::id)
+        && slot.crop == node.crop;
     let mut node = node;
     node.bare = slot.bare;
     *slot = node;
@@ -113,13 +118,10 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
     };
     let rect = result.rect();
     *walk.next = walk.next.saturating_add(1);
-    if store(
-        walk.out,
-        slot,
-        mark(id, rect, tone, &style, inherited.clip),
-        text_of(node),
-        kept,
-    ) {
+    let mut painted = mark(id, rect, tone, &style, inherited.clip);
+    painted.image = image_of(node);
+    painted.crop = node.get_extension::<ImageCrop>().copied();
+    if store(walk.out, slot, painted, text_of(node), kept) {
         *walk.moved = true;
     }
     if result.clips() {
@@ -143,6 +145,13 @@ fn descend(walk: &mut Walk<'_>, node: &Node, slot: usize, down: &Cascade<'_>) {
     {
         painted.bare = bare;
         *walk.moved = true;
+    }
+}
+
+fn image_of(node: &Node) -> Option<ImageSource> {
+    match &node.kind {
+        NodeType::Image { source, .. } => Some(source.clone()),
+        NodeType::Text { .. } | NodeType::Container | NodeType::Fragment => None,
     }
 }
 
@@ -171,6 +180,8 @@ fn mark(
         italic: style.text.italic,
         bare: true,
         clip,
+        image: None,
+        crop: None,
     }
 }
 

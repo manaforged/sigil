@@ -54,6 +54,7 @@ pub struct Screen {
     prev: Grid,
     fresh: bool,
     dirty: bool,
+    painter: crate::graphics::Painter,
 }
 
 impl Screen {
@@ -65,6 +66,7 @@ impl Screen {
             prev: Grid::new(cols, rows),
             fresh: true,
             dirty: true,
+            painter: crate::graphics::Painter::default(),
         }
     }
 
@@ -100,16 +102,27 @@ impl Screen {
             return Ok(());
         }
         self.dirty = false;
-        if self.fresh
+        let full = self.fresh
             || self.prev.cols() != self.grid.cols()
-            || self.prev.rows() != self.grid.rows()
-        {
+            || self.prev.rows() != self.grid.rows();
+        let rewritten: Vec<bool> = (0..self.grid.rows())
+            .map(|row| full || self.prev.row(row) != self.grid.row(row))
+            .collect();
+        if full {
             self.fresh = false;
             self.prev.mirror(&self.grid);
             crate::write::all(out, &self.grid)?;
         } else {
             crate::write::dirty(out, &self.prev, &self.grid)?;
         }
+        self.painter.emit(
+            out,
+            crate::graphics::Frame {
+                next: self.grid.images(),
+                rewritten: &rewritten,
+                redraw: full,
+            },
+        )?;
         core::mem::swap(&mut self.prev, &mut self.grid);
         Ok(())
     }

@@ -153,63 +153,65 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
         )
 }
 
-fn word_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let bindings: [(Shortcut, fn(&mut TextEdit), bool); 9] = [
+type Edit = fn(&mut TextEdit);
+
+fn word_keys(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+    let node = motion_keys(node, runtime);
+    deletion_keys(node, runtime)
+}
+
+fn motion_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+    let bindings: [(Shortcut, Edit); 4] = [
         (
             Shortcut::new(Key::ArrowLeft, ModifiersState::ALT),
             TextEdit::move_word_left,
-            false,
         ),
         (
             Shortcut::new(Key::ArrowRight, ModifiersState::ALT),
             TextEdit::move_word_right,
-            false,
         ),
         (
             Shortcut::new(LogicalKey::character("b"), ModifiersState::ALT),
             TextEdit::move_word_left,
-            false,
         ),
         (
             Shortcut::new(LogicalKey::character("f"), ModifiersState::ALT),
             TextEdit::move_word_right,
-            false,
         ),
+    ];
+    for (shortcut, edit) in bindings {
+        let runtime = runtime.clone();
+        node = node.key(shortcut, move |event| move_caret(event, &runtime, edit));
+    }
+    node
+}
+
+fn deletion_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+    let bindings: [(Shortcut, Edit); 5] = [
         (
             Shortcut::new(Key::Backspace, ModifiersState::ALT),
             TextEdit::delete_word_backward,
-            true,
         ),
         (
             Shortcut::ctrl(LogicalKey::character("w")),
             TextEdit::delete_word_backward,
-            true,
         ),
         (
             Shortcut::new(LogicalKey::character("d"), ModifiersState::ALT),
             TextEdit::delete_word_forward,
-            true,
         ),
         (
             Shortcut::ctrl(LogicalKey::character("u")),
             TextEdit::delete_to_line_start,
-            true,
         ),
         (
             Shortcut::ctrl(LogicalKey::character("k")),
             TextEdit::delete_to_line_end,
-            true,
         ),
     ];
-    for (shortcut, edit, deletes) in bindings {
+    for (shortcut, edit) in bindings {
         let runtime = runtime.clone();
-        node = node.key(shortcut, move |event| {
-            if deletes {
-                edit_value(event, &runtime, edit);
-            } else {
-                move_caret(event, &runtime, edit);
-            }
-        });
+        node = node.key(shortcut, move |event| edit_value(event, &runtime, edit));
     }
     node
 }

@@ -75,7 +75,7 @@ pub fn paste(text: &str) -> ShellEvent {
     }))
 }
 
-fn shifted(event: &crossterm::event::KeyEvent) -> crossterm::event::KeyCode {
+const fn shifted(event: &crossterm::event::KeyEvent) -> crossterm::event::KeyCode {
     match event.code {
         crossterm::event::KeyCode::Char(ch)
             if ch.is_ascii_lowercase()

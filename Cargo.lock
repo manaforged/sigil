@@ -7760,6 +7760,7 @@ dependencies = [
  "allocation-counter",
  "criterion 0.8.2",
  "crossterm",
+ "image",
  "sigil-animation-runtime",
  "sigil-app",
  "sigil-events",

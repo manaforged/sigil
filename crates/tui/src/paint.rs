@@ -1,4 +1,7 @@
 use sigil_app::Painted;
+use sigil_kernel::ImageSource;
+
+use crate::graphics::{Placement, blocks_window, protocol};
 use sigil_style::{Rgba8, Tone};
 use unicode_width::UnicodeWidthChar;
 
@@ -63,6 +66,7 @@ pub struct Grid {
     cols: usize,
     rows: usize,
     cells: Vec<Cell>,
+    images: Vec<Placement>,
 }
 
 impl Grid {
@@ -74,7 +78,13 @@ impl Grid {
             cols,
             rows,
             cells: vec![Cell::blank(); cols.saturating_mul(rows)],
+            images: Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn images(&self) -> &[Placement] {
+        &self.images
     }
 
     #[must_use]
@@ -89,6 +99,7 @@ impl Grid {
 
     pub fn reset(&mut self) {
         self.cells.fill(Cell::blank());
+        self.images.clear();
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {
@@ -161,6 +172,49 @@ impl Grid {
             }
         }
         out
+    }
+
+    fn place(
+        &mut self,
+        source: &ImageSource,
+        crop: Option<(u32, u32)>,
+        at: (usize, usize),
+        size: (usize, usize),
+    ) {
+        let (col, row) = at;
+        let (width, height) = size;
+        let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
+        self.images.push(Placement {
+            col: clip(col),
+            row: clip(row),
+            cols: clip(width),
+            rows: clip(height),
+            source: source.clone(),
+            crop,
+        });
+        if protocol().is_some() {
+            return;
+        }
+        let window = crop.unwrap_or_else(|| (0, source.height()));
+        for (dy, line) in blocks_window(source, window, width, height)
+            .into_iter()
+            .enumerate()
+        {
+            for (dx, (top, bottom)) in line.into_iter().enumerate() {
+                if let Some(cell) = self
+                    .index(col + dx, row + dy)
+                    .and_then(|index| self.cells.get_mut(index))
+                {
+                    *cell = Cell {
+                        ch: '▀',
+                        fg: Ink::Exact(top),
+                        bg: Ink::Exact(bottom),
+                        bold: false,
+                        italic: false,
+                    };
+                }
+            }
+        }
     }
 
     fn row_mut(&mut self, row: usize) -> &mut [Cell] {
@@ -258,6 +312,11 @@ pub fn raster_into(grid: &mut Grid, nodes: &[Painted], cell: f32) {
         let row = floor_cell(rect.origin.y / cell);
         let width = floor_cell(rect.width / cell).max(1);
         let height = floor_cell(rect.height / cell).max(1);
+        if let Some(source) = &node.image {
+            let crop = node.crop.map(|crop| (crop.top, crop.height));
+            grid.place(source, crop, (col, row), (width, height));
+            continue;
+        }
         let surface = Ink::pick(node.fill, node.tone);
         let ink = Ink::pick(node.ink, node.tone);
         if node.text.is_none() && surface.set() {

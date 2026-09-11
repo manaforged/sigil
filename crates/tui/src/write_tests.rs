@@ -22,6 +22,8 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
         italic: false,
         bare,
         clip: None,
+        image: None,
+        crop: None,
     }
 }
 

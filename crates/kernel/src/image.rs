@@ -51,6 +51,12 @@ impl ImageSource {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ImageCrop {
+    pub top: u32,
+    pub height: u32,
+}
+
 impl PartialEq for ImageSource {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
@@ -127,6 +133,13 @@ impl ImageBuilder {
     pub const fn fit(mut self, fit: ObjectFit) -> Self {
         self.fit = fit;
         self
+    }
+
+    #[must_use]
+    pub fn crop(self, top: u32, height: u32) -> Self {
+        self.mutate(move |node| {
+            node.attach(ImageCrop { top, height });
+        })
     }
 
     #[must_use]

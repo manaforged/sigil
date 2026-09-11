@@ -1,3 +1,4 @@
+mod graphics;
 mod keys;
 mod mouse;
 mod paint;
@@ -6,6 +7,9 @@ mod timer;
 mod work;
 mod write;
 
+pub use graphics::{
+    Placement, Protocol, base64, blocks, blocks_window, detect, png, png_window, protocol,
+};
 pub use keys::{key_down, map_key, paste};
 pub use mouse::{cell_point, click, map_mouse, pointer, wheel};
 pub use paint::{CONTINUES, Cell, Grid, Ink, raster, raster_into};

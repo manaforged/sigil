@@ -31,9 +31,12 @@ fn shifted_letters_map_to_uppercase() {
         crossterm::event::KeyCode::Char('z'),
         crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::SHIFT,
     );
-    let Some(ShellEvent::Key(key)) = map_key(&event) else {
-        panic!("shifted letter did not map");
-    };
+    let key = map_key(&event)
+        .and_then(|mapped| match mapped {
+            ShellEvent::Key(key) => Some(key),
+            _ => None,
+        })
+        .expect("shifted letter did not map");
     assert_eq!(key.key, LogicalKey::character("Z"));
     assert!(
         key.modifiers
