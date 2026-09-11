@@ -89,7 +89,7 @@ pub use image::{ImageBuilder, image_rgba};
 pub use interactive::{InteractiveBuilder, interactive};
 pub use markdown::{markdown, markdown_edit};
 pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, menu, menu_bar};
-pub use mermaid::{draw as mermaid_draw, mermaid};
+pub use mermaid::{diagram as mermaid_diagram, draw as mermaid_draw, mermaid};
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;

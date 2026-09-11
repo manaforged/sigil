@@ -14,6 +14,19 @@ already taken on crates.io); its library is still named `sigil`, so
 
 ### Added
 
+- `mermaid` renders flowcharts and state diagrams (layered layout, box-drawing
+  edges with labels, back edges through side lanes), sequence diagrams
+  (lifelines, arrows, notes, `loop`/`alt`/`opt` frames, `autonumber`), and
+  pie charts as bars; other kinds show the source in a frame.
+  `mermaid_draw` gives the lines, `mermaid_diagram` says whether a source
+  is a supported kind.
+- Terminal pictures: an `image` node in the terminal host draws through the
+  Kitty graphics protocol (Kitty, Ghostty, WezTerm, Konsole) or iTerm2
+  inline images (iTerm2, Warp), detected from the environment, and as
+  half-block cells elsewhere. `SIGIL_GRAPHICS=kitty|iterm2|none` overrides
+  the detection; tmux disables it. `Painted` carries the image source and
+  an optional `ImageCrop` (source rows), so a partly visible picture shows
+  its visible part without re-sending pixels.
 - Signal-graph reactivity (`signal`, `derived`, `effect`, `batch`) with a
   measured, budgeted write path.
 - Owned incremental layout engine, benchmarked against a Taffy reference corpus.
