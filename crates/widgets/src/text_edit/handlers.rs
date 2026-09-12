@@ -1,5 +1,6 @@
 use std::cell::{RefCell, RefMut};
 use std::iter::once;
+use std::ops::Range;
 use std::rc::Rc;
 
 use sigil_events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
@@ -11,6 +12,52 @@ use super::super::shared::disabled_now;
 use super::TextEdit;
 use super::builder::TextChange;
 use super::ime::ImeState;
+
+#[derive(Clone)]
+pub struct TextEditState {
+    pub(super) value: Signal<String>,
+    pub(super) caret: Signal<usize>,
+    selection: Signal<Option<usize>>,
+    edit: Rc<RefCell<TextEdit>>,
+}
+
+impl TextEditState {
+    #[must_use]
+    pub fn new(value: Signal<String>, caret: Signal<usize>) -> Self {
+        let edit = TextEdit::new_at(value.peek(), caret.peek());
+        caret.set(edit.caret());
+        Self {
+            value,
+            caret,
+            selection: signal(None),
+            edit: Rc::new(RefCell::new(edit)),
+        }
+    }
+
+    pub fn select(&self, byte: usize, extend: bool) {
+        let mut edit = self.edit.borrow_mut();
+        edit.sync_external(self.value.peek());
+        if edit.caret() != self.caret.peek() {
+            edit.place_caret(self.caret.peek());
+        }
+        if extend {
+            edit.extend_to(byte);
+        } else {
+            edit.place_caret(byte);
+        }
+        batch(|| {
+            self.caret.set(edit.caret());
+            self.selection.set(edit.selection());
+        });
+    }
+
+    #[must_use]
+    pub fn selection(&self) -> Option<Range<usize>> {
+        let anchor = self.selection.get()?;
+        let caret = self.caret.get();
+        Some(anchor.min(caret)..anchor.max(caret))
+    }
+}
 
 #[derive(Clone)]
 pub(super) struct TextEditRuntime {
@@ -27,35 +74,28 @@ pub(super) struct TextEditRuntime {
 }
 
 impl TextEditRuntime {
-    #[allow(
+    #[expect(
         clippy::too_many_arguments,
-        reason = "the argument list mirrors the upstream API contract"
+        reason = "wires retained editor state to widget event handlers"
     )]
     pub(super) fn new(
-        value: Signal<String>,
+        state: TextEditState,
         disabled: Option<Signal<bool>>,
         change: TextChange,
         submit: TextChange,
         clipboard: Rc<dyn Clipboard>,
         caret_visible: Signal<bool>,
-        caret_position: Option<Signal<usize>>,
     ) -> Self {
-        let buffer = value.peek();
-        let requested = caret_position.map_or(buffer.len(), Signal::peek);
-        let edit = TextEdit::new_at(buffer, requested);
-        let caret = caret_position.unwrap_or_else(|| signal(edit.caret()));
-        caret.set(edit.caret());
-        let selection = signal(edit.selection());
         Self {
-            value,
+            value: state.value,
             disabled,
-            edit: Rc::new(RefCell::new(edit)),
+            edit: state.edit,
             change,
             submit,
             clipboard,
             caret_visible,
-            caret,
-            selection,
+            caret: state.caret,
+            selection: state.selection,
             ime: ImeState::new(),
         }
     }

@@ -1,5 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use unicode_segmentation::UnicodeSegmentation;
+
 const MAX_HISTORY: usize = 100;
 const PAGE_LINES: isize = 10;
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -40,9 +42,17 @@ impl TextEdit {
 
     pub(crate) fn insert_str(&mut self, text: &str) {
         self.push_history();
+        let position = self
+            .selection
+            .map_or(self.caret, |anchor| anchor.min(self.caret));
         self.delete_selection_range();
-        self.buffer.insert_str(self.caret, text);
-        self.caret += text.len();
+        self.buffer.insert_str(position, text);
+        self.caret = self
+            .buffer
+            .grapheme_indices(true)
+            .map(|(index, _)| index)
+            .find(|index| *index >= position + text.len())
+            .unwrap_or(self.buffer.len());
         self.selection = None;
         self.debug_assert_invariants();
     }
@@ -58,7 +68,7 @@ impl TextEdit {
         };
         self.push_history();
         self.buffer.drain(previous..self.caret);
-        self.caret = previous;
+        self.caret = self.clamp_boundary(previous);
         self.debug_assert_invariants();
     }
 
@@ -73,6 +83,7 @@ impl TextEdit {
         };
         self.push_history();
         self.buffer.drain(self.caret..next);
+        self.caret = self.clamp_boundary(self.caret);
         self.debug_assert_invariants();
     }
 
@@ -104,7 +115,10 @@ impl TextEdit {
             return logical();
         }
         match sigil_bidi::visual_step(&self.buffer, self.caret, right) {
-            sigil_bidi::Step::To(pos) => Some(pos),
+            sigil_bidi::Step::To(pos) if pos > self.caret => {
+                next_boundary(&self.buffer, self.caret)
+            }
+            sigil_bidi::Step::To(_) => previous_boundary(&self.buffer, self.caret),
             sigil_bidi::Step::Edge => None,
             sigil_bidi::Step::Logical => logical(),
         }
@@ -149,7 +163,7 @@ impl TextEdit {
         }
         self.push_history();
         self.buffer.drain(start..end);
-        self.caret = start;
+        self.caret = self.clamp_boundary(start);
         self.debug_assert_invariants();
     }
 
@@ -367,7 +381,7 @@ impl TextEdit {
         };
         let (start, end) = selection_range(anchor, self.caret);
         self.buffer.drain(start..end);
-        self.caret = start;
+        self.caret = self.clamp_boundary(start);
         self.debug_assert_invariants();
     }
 
@@ -394,11 +408,13 @@ impl TextEdit {
 }
 
 fn clamp_to_len_boundary(text: &str, byte: usize) -> usize {
-    let mut byte = byte.min(text.len());
-    while byte > 0 && !text.is_char_boundary(byte) {
-        byte -= 1;
+    if byte >= text.len() {
+        return text.len();
     }
-    byte
+    text.grapheme_indices(true)
+        .map(|(index, _)| index)
+        .rfind(|index| *index <= byte)
+        .unwrap_or(0)
 }
 
 const fn selection_range(anchor: usize, caret: usize) -> (usize, usize) {
@@ -414,8 +430,8 @@ fn previous_boundary(buffer: &str, caret: usize) -> Option<usize> {
         return None;
     }
     buffer[..caret]
-        .char_indices()
-        .last()
+        .grapheme_indices(true)
+        .next_back()
         .map(|(index, _)| index)
 }
 
@@ -424,7 +440,7 @@ fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
         return None;
     }
     buffer[caret..]
-        .char_indices()
+        .grapheme_indices(true)
         .nth(1)
         .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
 }
@@ -440,17 +456,17 @@ fn line_end(buffer: &str, caret: usize) -> usize {
 }
 
 fn word_start_before(buffer: &str, caret: usize) -> usize {
-    let mut chars = buffer[..caret].char_indices().rev().peekable();
+    let mut chars = buffer[..caret].grapheme_indices(true).rev().peekable();
     let mut start = caret;
     while let Some((index, ch)) = chars.peek().copied() {
-        if ch.is_alphanumeric() || ch == '_' {
+        if word(ch) {
             break;
         }
         start = index;
         chars.next();
     }
     while let Some((index, ch)) = chars.peek().copied() {
-        if !(ch.is_alphanumeric() || ch == '_') {
+        if !word(ch) {
             break;
         }
         start = index;
@@ -461,22 +477,26 @@ fn word_start_before(buffer: &str, caret: usize) -> usize {
 
 fn word_end_after(buffer: &str, caret: usize) -> usize {
     let mut end = caret;
-    let mut chars = buffer[caret..].char_indices().peekable();
+    let mut chars = buffer[caret..].grapheme_indices(true).peekable();
     while let Some((index, ch)) = chars.peek().copied() {
-        if ch.is_alphanumeric() || ch == '_' {
+        if word(ch) {
             break;
         }
-        end = caret + index + ch.len_utf8();
+        end = caret + index + ch.len();
         chars.next();
     }
     while let Some((index, ch)) = chars.peek().copied() {
-        if !(ch.is_alphanumeric() || ch == '_') {
+        if !word(ch) {
             break;
         }
-        end = caret + index + ch.len_utf8();
+        end = caret + index + ch.len();
         chars.next();
     }
     end
+}
+
+fn word(text: &str) -> bool {
+    text.chars().any(|ch| ch.is_alphanumeric() || ch == '_')
 }
 
 fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
@@ -497,10 +517,14 @@ fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
     let Some(&target_start) = starts.get(target_index) else {
         return buffer.len();
     };
-    let column = caret - starts.get(line_index).copied().unwrap_or(0);
+    let column = buffer[line_start(buffer, caret)..caret]
+        .graphemes(true)
+        .count();
     let line_end = starts
         .get(target_index + 1)
         .map_or(buffer.len(), |end| end.saturating_sub(1));
-    let target = (target_start + column).min(line_end);
-    super::floor_char_boundary(buffer, target)
+    buffer[target_start..line_end]
+        .grapheme_indices(true)
+        .nth(column)
+        .map_or(line_end, |(index, _)| target_start + index)
 }

@@ -7772,6 +7772,7 @@ dependencies = [
  "sigil-tasks",
  "sigil-widgets",
  "smol_str 0.3.6",
+ "unicode-segmentation",
  "unicode-width",
 ]
 
@@ -7820,6 +7821,7 @@ dependencies = [
  "sigil-ui",
  "tiny-skia 0.12.0",
  "tracing",
+ "unicode-segmentation",
 ]
 
 [[package]]

@@ -110,7 +110,7 @@ pub use table::{
 };
 pub use tabs::{TabsBuilder, tabs};
 pub use terminal::terminal;
-pub use text_edit::{TextEditBuilder, text_edit};
+pub use text_edit::{TextEditBuilder, TextEditState, text_edit};
 pub use text_field::{TextFieldBuilder, text_field};
 pub use toast::toast;
 pub use toast_queue::{MAX_VISIBLE, TOAST_TTL, ToastEntry, ToastLevel, ToastQueue, toast_queue};

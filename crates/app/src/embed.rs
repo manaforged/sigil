@@ -2,12 +2,13 @@ use sigil_events::{EventRouter, FocusIntent};
 #[cfg(feature = "scene")]
 use sigil_hal::Point;
 use sigil_hal::{LogicalSize, Rect, ShellEvent, Size};
+use std::cell::Cell;
 use std::rc::Rc;
 
 use sigil_kernel::{Cx, ImageCrop, ImageSource, NodeId, Surface, TextContent};
 use sigil_layout::{LayoutEngine, LayoutError, LayoutResult, TextMeasure};
 use sigil_style::{Rgba8, TextStyle, Theme, Tone, grid};
-use unicode_width::UnicodeWidthStr;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[cfg(feature = "scene")]
 use sigil_renderer::{CommandScene, emit_scene_clipped};
@@ -223,13 +224,52 @@ struct CellMeasure {
     px: f32,
 }
 
+#[derive(Clone, Copy, Default)]
+pub enum CellWidth {
+    #[default]
+    Unicode,
+    Scalar {
+        joiner: usize,
+        nonjoiner: usize,
+        keycap: usize,
+    },
+}
+
+thread_local! {
+    static CELL_WIDTH: Cell<CellWidth> = const { Cell::new(CellWidth::Unicode) };
+}
+
+pub fn set_cell_width(width: CellWidth) {
+    CELL_WIDTH.set(width);
+}
+
+#[must_use]
+pub fn cell_width(text: &str) -> usize {
+    match CELL_WIDTH.get() {
+        CellWidth::Unicode => UnicodeWidthStr::width(text),
+        CellWidth::Scalar {
+            joiner,
+            nonjoiner,
+            keycap,
+        } => text
+            .chars()
+            .map(|ch| match ch {
+                '\u{200d}' => joiner,
+                '\u{200c}' => nonjoiner,
+                '\u{20e3}' => keycap,
+                _ => UnicodeWidthChar::width(ch).unwrap_or(0),
+            })
+            .sum(),
+    }
+}
+
 impl TextMeasure for CellMeasure {
     #[allow(
         clippy::cast_precision_loss,
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     fn measure(&self, content: &TextContent, _space: Size) -> LogicalSize {
-        let cells = UnicodeWidthStr::width(content.resolve().as_str()) as f32;
+        let cells = cell_width(content.resolve().as_str()) as f32;
         LogicalSize::new(cells * self.px, self.px)
     }
 }

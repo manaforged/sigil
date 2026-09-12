@@ -9,4 +9,5 @@ mod render;
 
 pub(crate) use buffer::TextEdit;
 pub use builder::{TextEditBuilder, text_edit};
+pub use handlers::TextEditState;
 pub(crate) use render::floor_char_boundary;

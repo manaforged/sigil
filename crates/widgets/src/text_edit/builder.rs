@@ -10,7 +10,7 @@ use crate::interaction::InteractionState;
 use super::super::clipboard::{Clipboard, clipboard};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
-use super::handlers::{TextEditRuntime, attach_key_handlers, noop_change};
+use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, edit_layout};
 
@@ -25,6 +25,7 @@ pub struct TextEditBuilder {
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
+    state: Option<TextEditState>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -47,6 +48,7 @@ impl TextEditBuilder {
             clipboard: None,
             caret_visible: None,
             caret_position: None,
+            state: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -67,6 +69,14 @@ impl TextEditBuilder {
     #[must_use]
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
+        self
+    }
+
+    #[must_use]
+    pub fn state(mut self, state: TextEditState) -> Self {
+        self.value = state.value;
+        self.caret_position = Some(state.caret);
+        self.state = Some(state);
         self
     }
 
@@ -114,15 +124,15 @@ impl TextEditBuilder {
         let enabled = !disabled_now(disabled);
         let interaction = InteractionState::new(enabled);
         let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
-        let runtime = TextEditRuntime::new(
-            value,
-            disabled,
-            change,
-            submit,
-            clipboard,
-            caret_visible,
-            self.caret_position,
-        );
+        let state = self.state.unwrap_or_else(|| {
+            TextEditState::new(
+                value,
+                self.caret_position
+                    .unwrap_or_else(|| signal(value.peek().len())),
+            )
+        });
+        let runtime =
+            TextEditRuntime::new(state, disabled, change, submit, clipboard, caret_visible);
 
         let user_overlay = style_accumulator.take_state_overlay();
         let frame_h = layout_overrides

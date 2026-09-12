@@ -8,7 +8,7 @@ use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 use sigil_style::Tone;
 
-use crate::paint::{CONTINUES, Cell, Grid, Ink};
+use crate::paint::{Cell, Grid, Ink};
 use sigil_style::Rgba8;
 
 pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
@@ -42,8 +42,7 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
     queue!(out, cursor::MoveTo(0, y))?;
     let mut style: Option<(Ink, Ink, bool, bool)> = None;
     let end = grid.painted_width(row);
-    for col in 0..end {
-        let cell = grid.get(col, row).unwrap_or_default();
+    for cell in grid.row(row).iter().take(end) {
         let (foreground, background) = terminal_inks(cell);
         let next = (foreground, background, cell.bold, cell.italic);
         if style != Some(next) {
@@ -68,9 +67,7 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
             )?;
             style = Some(next);
         }
-        if cell.ch != CONTINUES {
-            line.push(cell.ch);
-        }
+        line.push_str(&cell.text);
     }
     if !line.is_empty() {
         queue!(out, Print(&*line))?;
@@ -82,8 +79,8 @@ fn row_bytes(out: &mut impl Write, grid: &Grid, row: usize, line: &mut String) -
     queue!(out, Clear(ClearType::UntilNewLine))
 }
 
-const fn terminal_inks(cell: Cell) -> (Ink, Ink) {
-    (cell.fg, if cell.ch == '█' { cell.fg } else { cell.bg })
+fn terminal_inks(cell: &Cell) -> (Ink, Ink) {
+    (cell.fg, if cell.text == "█" { cell.fg } else { cell.bg })
 }
 
 fn truecolor() -> bool {

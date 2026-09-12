@@ -25,6 +25,7 @@ sigil-style = { workspace = true }
 sigil-profile = { workspace = true }
 tracing = { workspace = true }
 tiny-skia = "0.12"
+unicode-segmentation = "1.13.3"
 image = { workspace = true, optional = true }
 
 [features]

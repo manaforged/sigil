@@ -1,11 +1,12 @@
-use sigil_app::Painted;
+use sigil_app::{Painted, cell_width};
 use sigil_kernel::ImageSource;
 
 use crate::graphics::{Placement, blocks_window, protocol};
 use sigil_style::{Rgba8, Tone};
-use unicode_width::UnicodeWidthChar;
+use smol_str::SmolStr;
+use unicode_segmentation::UnicodeSegmentation;
 
-pub const CONTINUES: char = '\0';
+pub const CONTINUES: &str = "";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Ink {
@@ -29,9 +30,9 @@ impl Ink {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Cell {
-    pub ch: char,
+    pub text: SmolStr,
     pub fg: Ink,
     pub bg: Ink,
     pub bold: bool,
@@ -42,7 +43,7 @@ impl Cell {
     #[must_use]
     pub const fn blank() -> Self {
         Self {
-            ch: ' ',
+            text: SmolStr::new_inline(" "),
             fg: Ink::Bare,
             bg: Ink::Bare,
             bold: false,
@@ -147,7 +148,7 @@ impl Grid {
     #[must_use]
     pub fn get(&self, col: usize, row: usize) -> Option<Cell> {
         let i = self.index(col, row)?;
-        self.cells.get(i).copied()
+        self.cells.get(i).cloned()
     }
 
     #[must_use]
@@ -159,11 +160,7 @@ impl Grid {
             let Some(slice) = self.cells.get(start..end) else {
                 continue;
             };
-            let mut line: String = slice
-                .iter()
-                .map(|cell| cell.ch)
-                .filter(|ch| *ch != CONTINUES)
-                .collect();
+            let mut line: String = slice.iter().map(|cell| cell.text.as_str()).collect();
             let trimmed = line.trim_end();
             line.truncate(trimmed.len());
             out.push_str(&line);
@@ -206,7 +203,7 @@ impl Grid {
                     .and_then(|index| self.cells.get_mut(index))
                 {
                     *cell = Cell {
-                        ch: '▀',
+                        text: SmolStr::new_inline("▀"),
                         fg: Ink::Exact(top),
                         bg: Ink::Exact(bottom),
                         bold: false,
@@ -223,13 +220,13 @@ impl Grid {
         self.cells.get_mut(start..end).unwrap_or_default()
     }
 
-    fn put(&mut self, col: usize, row: usize, ch: char, fg: Ink) {
+    fn put(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
         let Some(i) = self.index(col, row) else {
             return;
         };
         if let Some(cell) = self.cells.get_mut(i) {
-            if ch != ' ' {
-                cell.ch = ch;
+            if text != " " {
+                cell.text = text.into();
             }
             if fg.set() {
                 cell.fg = fg;
@@ -255,13 +252,16 @@ impl Grid {
         let line = self.row_mut(run.row);
         let last = run.last.min(line.len());
         let mut x = run.col;
-        for ch in run.text.chars() {
-            if x >= last {
+        for text in run.text.graphemes(true) {
+            let step = cell_width(text);
+            if x >= last || x.saturating_add(step) > last {
                 return;
             }
-            let step = UnicodeWidthChar::width(ch).unwrap_or(0);
+            if step == 0 {
+                continue;
+            }
             if let Some(cell) = line.get_mut(x) {
-                cell.ch = ch;
+                cell.text = text.into();
                 cell.bold = run.bold;
                 cell.italic = run.italic;
                 if run.fg.set() {
@@ -270,7 +270,7 @@ impl Grid {
             }
             for pad in 1..step {
                 if let Some(cell) = line.get_mut(x.saturating_add(pad)) {
-                    cell.ch = CONTINUES;
+                    cell.text = SmolStr::new_inline(CONTINUES);
                     cell.bold = run.bold;
                     cell.italic = run.italic;
                     if run.fg.set() {
@@ -324,7 +324,7 @@ pub fn raster_into(grid: &mut Grid, nodes: &[Painted], cell: f32) {
             if node.bare {
                 for y in row..row.saturating_add(height) {
                     for x in col..col.saturating_add(width) {
-                        grid.put(x, y, '█', surface);
+                        grid.put(x, y, "█", surface);
                     }
                 }
             }

@@ -11,10 +11,13 @@ use crossterm::terminal::{
 };
 use crossterm::{cursor, execute, queue};
 use sigil_animation_runtime::tick as tick_animations;
-use sigil_app::{AppConfig, AppResult, Error, Host, LayoutError, Painted, TreeRoot};
+use sigil_app::{
+    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, Painted, TreeRoot, set_cell_width,
+};
 use sigil_events::EventRouter;
 use sigil_hal::ShellEvent;
 use sigil_reactive::Runtime;
+use unicode_width::UnicodeWidthStr;
 
 use crate::keys::map_key;
 use crate::mouse::map_mouse;
@@ -23,6 +26,39 @@ use crate::paint::{Grid, raster, raster_into};
 const TICK: Duration = Duration::from_millis(33);
 const BUFFER: usize = 64 * 1024;
 const CELL: f32 = sigil_app::Host::CELL;
+
+pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
+    set_cell_width(CellWidth::Unicode);
+    let modifier = probe(out, "👍🏽")?;
+    if modifier > UnicodeWidthStr::width("👍🏽") {
+        let joiner = probe(out, "\u{200d}")?;
+        let nonjoiner = probe(out, "\u{200c}")?;
+        let keycap = probe(out, "1\u{fe0f}\u{20e3}")?.saturating_sub(1);
+        set_cell_width(CellWidth::Scalar {
+            joiner,
+            nonjoiner,
+            keycap,
+        });
+    }
+    execute!(out, cursor::MoveTo(0, 0), Clear(ClearType::CurrentLine))
+}
+
+fn probe(out: &mut impl Write, text: &str) -> io::Result<usize> {
+    execute!(
+        out,
+        cursor::MoveTo(0, 0),
+        Clear(ClearType::CurrentLine),
+        Print(text)
+    )?;
+    let (col, row) = cursor::position()?;
+    if row != 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "terminal width probe wrapped",
+        ));
+    }
+    Ok(usize::from(col))
+}
 
 pub fn run<C, T>(config: C, tree: T) -> AppResult<()>
 where

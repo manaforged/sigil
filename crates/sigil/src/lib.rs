@@ -92,10 +92,10 @@ pub mod prelude {
     pub use sigil_layout::prelude::*;
     pub use sigil_reactive::{EventChannel, Signal, derived, effect, signal};
     pub use sigil_style::{
-        ColorAtom, ColorOrToken, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Rgba8, Sizing,
-        Spacing, StateStyle, StateVariants, Style, StyleAccess, StyleAtom, StyleState,
-        StyleVariant, Styleable, Styled, Theme, ThemeValue, Tone, Transitions, Typography, Visual,
-        classes,
+        ColorAtom, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing, Geometry,
+        NodeStyleExt, Px, Rgba8, Sizing, Spacing, StateStyle, StateVariants, Style, StyleAccess,
+        StyleAtom, StyleState, StyleVariant, Styleable, Styled, Theme, ThemeValue, Tone,
+        Transitions, Typography, Visual, classes,
     };
     pub use sigil_tasks::{
         OwnerHandle, SignalWriter, Status, dispatch_to_owner, dispatcher, post, signal_writer,

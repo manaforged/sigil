@@ -34,7 +34,7 @@ mod tree_root;
 
 pub use audio::Player;
 pub use config::{AppConfig, PanicPolicy};
-pub use embed::{AccessibilityTree, Host, Painted};
+pub use embed::{AccessibilityTree, CellWidth, Host, Painted, cell_width, set_cell_width};
 pub use error::{AppResult, Error};
 pub use exit::{clear_exit, request_exit, take_exit};
 #[cfg(feature = "desktop")]

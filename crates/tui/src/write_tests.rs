@@ -2,7 +2,7 @@ use sigil_hal::{Point, Rect};
 
 use super::{Grid, Ink, paint, paint_for, row_bytes, supports_truecolor, terminal_inks};
 use crate::paint::raster;
-use sigil_app::{Host, Painted};
+use sigil_app::{CellWidth, Host, Painted, set_cell_width};
 use sigil_kernel::{Cx, text as text_node};
 use sigil_style::{Rgba8, Tone};
 
@@ -25,6 +25,34 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
         image: None,
         crop: None,
     }
+}
+
+#[test]
+fn terminal_output_keeps_graphemes_in_their_display_columns() {
+    for (mode, widths) in [
+        (CellWidth::Unicode, [2, 1, 2, 2, 2, 1]),
+        (
+            CellWidth::Scalar {
+                joiner: 1,
+                nonjoiner: 1,
+                keycap: 1,
+            },
+            [4, 1, 5, 2, 2, 2],
+        ),
+    ] {
+        set_cell_width(mode);
+        for (symbol, width) in ["👍🏽", "e\u{301}", "👩\u{200d}💻", "🇳🇿", "1️⃣", "a\u{200c}"]
+            .into_iter()
+            .zip(widths)
+        {
+            let text = format!("A{symbol}B│");
+            let grid = raster(&[painted(&text, None, false)], 8, 1, 8.0);
+            assert_eq!(grid.text(), text);
+            assert_eq!(grid.painted_width(0), width + 3);
+            assert!(bytes(&grid, 0).contains(&text));
+        }
+    }
+    set_cell_width(CellWidth::Unicode);
 }
 
 #[test]
@@ -192,7 +220,7 @@ fn an_untoned_row_sets_no_colour() {
 fn toned_text_does_not_paint_its_own_background() {
     let grid = raster(&[painted("STRAY", Some(Tone::Warn), false)], 20, 3, 8.0);
     let cell = grid.get(0, 0).expect("first cell");
-    assert_eq!(cell.ch, 'S');
+    assert_eq!(cell.text, "S");
     assert_eq!(cell.fg, Ink::Of(Tone::Warn));
     assert_eq!(cell.bg, Ink::Bare, "the glyph must not sit on its own tone");
 }
@@ -219,7 +247,7 @@ fn a_full_block_fills_font_seams_with_its_ink() {
     let grid = raster(&[background, block], 2, 1, 8.0);
     let cell = grid.get(0, 0).expect("full-block cell");
     assert_ne!(cell.fg, cell.bg, "the grid must preserve authored colours");
-    assert_eq!(terminal_inks(cell), (cell.fg, cell.fg));
+    assert_eq!(terminal_inks(&cell), (cell.fg, cell.fg));
 }
 
 #[test]

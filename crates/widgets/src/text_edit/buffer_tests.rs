@@ -1,6 +1,64 @@
 use super::TextEdit;
 
 #[test]
+fn editing_keeps_graphemes_whole() {
+    for grapheme in ["👍🏽", "e\u{301}", "👩‍💻", "🇳🇿"] {
+        let text = format!("A{grapheme}B");
+        let mut edit = TextEdit::new(text.clone());
+        edit.move_left();
+        edit.backspace();
+        assert_eq!(edit.as_str(), "AB");
+        assert!(edit.undo());
+        assert_eq!(edit.as_str(), text);
+        edit.move_left();
+        assert_eq!(edit.caret(), 1);
+        edit.delete_forward();
+        assert_eq!(edit.as_str(), "AB");
+        let mut selection = TextEdit::new(text);
+        selection.place_caret(1 + grapheme.len() - 1);
+        assert_eq!(selection.caret(), 1);
+        selection.shift_right();
+        assert_eq!(selection.selected_text(), Some(grapheme));
+    }
+}
+
+#[test]
+fn joining_lines_and_inserting_before_marks_keeps_a_grapheme_boundary() {
+    let mut edit = TextEdit::new_at("e\n\u{301}".to_string(), 2);
+    edit.backspace();
+    assert_eq!(edit.as_str(), "e\u{301}");
+    assert_eq!(edit.caret(), 0);
+    edit.delete_forward();
+    assert!(edit.is_empty());
+    let mut insertion = TextEdit::new_at("\u{301}".to_string(), 0);
+    insertion.insert_str("e");
+    assert_eq!(insertion.caret(), "e\u{301}".len());
+    insertion.backspace();
+    assert!(insertion.is_empty());
+    let mut replacement = TextEdit::new_at("e\n\u{301}".to_string(), 1);
+    replacement.extend_to(2);
+    replacement.insert_str("x");
+    assert_eq!(replacement.as_str(), "ex\u{301}");
+    assert_eq!(replacement.caret(), replacement.len());
+}
+
+#[test]
+fn vertical_and_word_movement_preserve_combining_characters() {
+    let mut edit = TextEdit::new("A👍🏽B\nAe\u{301}B".to_string());
+    edit.move_left();
+    edit.move_up();
+    assert_eq!(edit.caret(), "A👍🏽".len());
+    edit.move_down();
+    edit.backspace();
+    assert_eq!(edit.as_str(), "A👍🏽B\nAB");
+    let mut words = TextEdit::new_at("e\u{301} next".to_string(), 0);
+    words.move_word_right();
+    assert_eq!(words.caret(), "e\u{301}".len());
+    words.delete_word_backward();
+    assert_eq!(words.as_str(), " next");
+}
+
+#[test]
 fn place_caret_sets_caret_and_collapses_selection() {
     let mut edit = TextEdit::new("hello world".to_owned());
     edit.select_all();
