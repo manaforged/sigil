@@ -1,31 +1,40 @@
 # Sigil
 
-Desktop UI in Rust. One widget tree, three hosts: `launch` opens a
-window, `Host` embeds the tree in another engine's loop, and `run_tui`
-paints it on a character grid. The widgets (button, table, text_field,
-virtual_list, modal, dropdown, tabs, chart) live in `sigil::widgets`.
+Desktop UI in Rust. One widget tree runs on three hosts: `launch` opens
+a window, `Host` embeds the tree in another engine's loop, and the
+separate `sigil-tui` crate paints it on a character grid.
 
-![The workbench example application](site/assets/screenshots/workbench.png)
+![The workbench example application](docs/workbench.png)
 
-Version 0.1.0. The API moves between 0.x releases; pin an exact rev.
+Version 0.1.0. The API can change between 0.x releases.
 
 ## Requirements
 
 - Rust 1.90 or newer. `rust-toolchain.toml` selects stable.
-- macOS, Windows, or Linux.
 - A wgpu-capable GPU for the windowed hosts. The terminal host needs none.
+
+| Platform | CI | GPU tier |
+| --- | --- | --- |
+| macOS | local gate | runs before a release |
+| Windows | local gate | runs before a release |
+| Linux | full CI | hosted runners have no adapter |
 
 ## Install
 
-The crates are not on crates.io. Add the facade from this repository:
-
 ```bash
-cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
+cargo add sigil-gui
 ```
 
-The package is `sigil-ui` because `sigil` was taken on crates.io. The
-library is still `sigil`, so imports read `sigil::`. For a terminal-only
-binary add `--no-default-features --features tui`.
+The package is `sigil-gui` because the `sigil` name is taken on
+crates.io. The library is `sigil`, so imports read `sigil::`. The first
+build compiles the wgpu stack; it can take a few minutes.
+
+For a terminal-only program:
+
+```bash
+cargo add sigil-tui
+cargo add sigil-gui --no-default-features
+```
 
 ## Usage
 
@@ -33,7 +42,7 @@ binary add `--no-default-features --features tui`.
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - counter", 480, 240), app_tree)
+    sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {
@@ -52,73 +61,46 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
-Swap `sigil::launch` for `sigil::run_tui` and the same tree paints in a
-terminal. Runnable examples:
+`sigil::launch` opens the window and drives the frame loop. An embed
+host pumps `Host` inside `Runtime::scope`. The terminal entry point is
+`sigil_tui::run`. Runnable examples ship with the crates:
 
 ```bash
-cargo run -p hello-counter        # the app above
-cargo run -p hello-host           # embed the tree in your own loop
-cargo run -p widget-playground    # every widget in one window
-mdbook serve docs/book            # the guide and the architecture chapters
+cargo run -p sigil-gui --example hello-counter   # the app above
+cargo run -p sigil-gui --example hello-host      # embed the tree
+cargo run -p sigil-tui --example hello-tui      # terminal host
+mdbook serve docs/book                          # the guide and architecture
 ```
 
-## How it works
-
-A signal write marks the nodes it touched. A clean frame skips layout
-and scene assembly; there is no virtual DOM and no per-frame rebuild.
-Frames run three phases (Effect, Layout, Paint). A write during Paint
-panics in a debug build and is deferred in release.
-
-Layout (flexbox, block, grid), text shaping (HarfRust, skrifa, bidi,
-font fallback), and wgpu rendering are owned code in this workspace.
-AccessKit, IME, drag-and-drop, and animation attach to the same tree.
-The crate map is [crates.md](docs/book/arch/crates.md).
-
-## Benchmarks
-
-Two workloads ship as parity builds against reference implementations.
-Each run records the host, a checked-in seed and viewport, and an
-output-equivalence assertion before any frame time is reported.
-
-```bash
-cargo run --release -p access-log --bin access-log-sigil   # 1,000,000-row live tape, 60 x 8 cells, 16 ms tick
-cargo run --release -p data-table                          # 10,000 rows x 24 columns, the GPUI 0.2.2 example ported 1:1
-```
+The larger apps live in the `sigil-examples` checkout.
 
 ## Limits
 
 - Headless machines run the terminal host and the test suite. The
-  windowed hosts need a GPU adapter.
-- No supported web or mobile host. `examples/web-demo` is a wasm
-  renderer proof.
-- The terminal host has no IME, images, rounded corners, or shadows.
-- No fuzz targets yet. Do not feed untrusted documents to the markdown,
+  windowed hosts need a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
+  the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
+- No supported web or mobile host. The wasm renderer proof lives in
+  `sigil-examples`.
+- The terminal host has no IME, no rounded corners, and no shadows.
+  Images render through the terminal graphics protocol on Kitty,
+  Ghostty, WezTerm, Konsole, iTerm2, and Warp. Other terminals show
+  half-block cells.
+- No fuzz targets. Do not feed untrusted documents to the markdown,
   HTML, or SVG parsers.
-- The public interaction-test helpers are `with_cx`, `with_runtime`,
-  and `tree_size`; see the [testing guide](docs/book/04-testing.md).
 
 ## Security
 
 Report a vulnerability through GitHub's private reporting on this
 repository, never as a public issue. See [SECURITY.md](SECURITY.md).
-The workspace denies `unsafe` except one waived Win32 call that installs
-the native menu (`crates/app/src/menu.rs`). `cargo deny check` gates
+The workspace denies `unsafe`, with one exception in the native menu
+path (`crates/sigil/src/app/menu.rs`). `cargo deny check` gates
 advisories.
 
 ## Contributing
 
 Issues are welcome. Pull requests are by invitation: open an issue
-first, and send a patch only when asked.
-
-## Influences
-
-[GPUI](https://github.com/zed-industries/zed/tree/main/crates/gpui),
-[Taffy](https://github.com/DioxusLabs/taffy),
-[SolidJS](https://www.solidjs.com/),
-[Leptos](https://github.com/leptos-rs/leptos), Eric Lengyel's
-[Slug](https://jcgt.org/published/0006/02/02/), and the W3C
-[Flexbox](https://www.w3.org/TR/css-flexbox-1/) and
-[Grid](https://www.w3.org/TR/css-grid-2/) specifications.
+first, and send a patch only when asked. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the build and the gate.
 
 ## License
 

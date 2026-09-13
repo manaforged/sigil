@@ -1,14 +1,25 @@
 # sigil-tui
 
-Terminal host for Sigil. Same `Host`, widget builders, and `ShellEvent`
-vocabulary as desktop. This crate paints cells; it does not add a second
-widget catalog.
+Terminal host for Sigil. It paints the same widget tree as the desktop
+host onto a character grid. It does not add a second widget catalog.
+
+## Install
+
+```bash
+cargo add sigil-tui
+cargo add sigil-gui --no-default-features
+```
+
+The second line provides `sigil::prelude`. Keep `--no-default-features`;
+the desktop defaults pull wgpu and winit.
+
+## Usage
 
 ```rust,no_run
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run_tui(("hello-tui", 80, 24), app_tree)
+    sigil_tui::run(("Sigil - hello-tui", 80, 24), app_tree)
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {
@@ -16,8 +27,13 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
-A TUI-only binary depends on `sigil-ui` with `default-features = false`
-and `features = ["tui"]`, as in the sample. A direct dependency on
-`sigil-tui` also works: the entry point is `sigil_tui::run`, there is no
-prelude, and the OS clipboard is not installed for you.
-`cargo tree -p sigil-tui` contains no `wgpu`, `winit`, or `sigil-renderer`.
+`sigil_tui::run` is the entry point. There is no prelude, and the OS
+clipboard is not installed for you.
+
+## Limits
+
+- No IME, no rounded corners, and no shadows.
+- Images render through the terminal graphics protocol where the
+  terminal supports it (Kitty, Ghostty, WezTerm, Konsole, iTerm2, or
+  Warp). Other terminals show half-block cells.
+- `cargo tree -p sigil-tui` contains no `wgpu` and no `winit`.

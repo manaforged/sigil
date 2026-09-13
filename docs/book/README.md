@@ -1,49 +1,31 @@
 # The Sigil Book
 
 How to write native Rust UIs with Sigil, and how the framework is built.
-The widget catalog (buttons, fields, tables, lists, charts, menus,
-cards, overlays) lives in the crate. You do not add a second
+
+The widget catalog ships in the crate. You do not add a second
 component package.
-
-The **Guide** is the author path: first window, the box, signals, style,
-widgets, tests, profiling, the terminal host, the application host.
-
-**Architecture** is the system path: crate map, why state is a signal
-graph, the owner tree, the frame loop, layout, the command scene, async,
-and accessibility.
 
 ```text
 mdbook serve docs/book
 ```
 
-Opens the book at `http://localhost:3000`. Build a static site with
-`mdbook build docs/book` (output is `docs/book/book/`, gitignored).
+The server opens the book at `http://localhost:3000`. Build a static
+site with `mdbook build docs/book`. The output goes to
+`docs/book/book/` and is not committed.
 
-Companion material: `examples/` (compile-checked apps, including
-`workbench`) and rustdoc on `sigil-ui`.
+Companion material: the `sigil-examples` checkout (compile-checked apps,
+including `workbench`) and the rustdoc on `sigil-gui`.
 
 ## Guide
 
-- [Quickstart](00-quickstart.md) — install, first app, three hosts
-- [The box](01-layout.md) — one `LayoutStyle`
-- [The reactive model](01-reactive-model.md) — signals, derived, spawn
-- [Styling](02-styling.md) — classes, cascade, theme
-- [Widgets](03-widgets.md) — catalog
-- [Component gallery](07-component-gallery.md) — rendered widgets, light and dark
-- [Testing](04-testing.md) — headless harnesses
-- [Profiling](05-profile.md) — `SIGIL_PROFILE`, Perfetto
-- [The terminal host](06-terminal.md) — `run_tui`, not a PTY pane
-- [The application host](07-application.md) — clipboard, documents, audio, PTY, surface holes
+- [Quickstart](quickstart.md) — install, first app, three hosts
+- [Widgets](widgets.md) — the widget set
+- [Terminal host](terminal.md) — the character-grid host
 
 ## Architecture
 
-- [Overview](arch/overview.md) — data flow from `launch` to GPU
-- [Signals, not entities](arch/signals.md) — the state model
-- [Owner tree](arch/owners.md) — dispose and cleanup
-- [Frame loop](arch/frame.md) — Effect → Layout → Paint
-- [Node tree](arch/tree.md) — `Cx`, identity, keyed children
-- [Layout engine](arch/layout.md) — owned incremental boxes
-- [Renderer](arch/renderer.md) — `CommandScene`, emit cache
-- [Async](arch/async.md) — `spawn` → `Signal<Status>`
-- [Accessibility](arch/a11y.md) — AccessKit on paint
-- [Crate map](arch/crates.md) — what each crate owns
+- [Overview](arch/overview.md) — what happens in one frame
+- [State](arch/state.md) — signals, owners, async tasks
+- [Painting](arch/painting.md) — tree, layout, text, renderer
+- [Platform](arch/platform.md) — shell, input, accessibility
+- [Modules](arch/modules.md) — the module map

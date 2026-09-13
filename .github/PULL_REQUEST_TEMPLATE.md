@@ -1,13 +1,23 @@
-## What
+## Problem
 
-<!-- one paragraph: what changes and why. -->
+<!-- what is broken or missing, and who hits it -->
 
-## Verification
+## Fix
+
+<!-- what the patch does -->
+
+## Impact
+
+<!-- what changes for a user or operator. "None" is fine. -->
+
+## Test
+
+<!-- the command you ran and the line that proves it -->
+
+## Gate
 
 - [ ] `cargo fmt --check`
 - [ ] `cargo clippy --workspace --all-targets -- -D warnings`
-- [ ] `cargo check --workspace --all-targets`
-- [ ] `cargo test --workspace`
-- [ ] Public API changes: rustdoc updated; `cargo doc --workspace --no-deps` clean
-- [ ] Visual changes: goldens regenerated + cross-vendor visual review
-- [ ] Style/parser changes: `trybuild` expectations regenerated
+- [ ] `cargo test --workspace --no-fail-fast`
+- [ ] `cargo deny check`
+- [ ] Goldens re-baked for visual changes

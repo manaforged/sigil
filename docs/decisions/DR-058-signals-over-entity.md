@@ -4,7 +4,7 @@ status: accepted
 date: 2026-08-19
 covers: Signals as the product surface — Entity/notify demoted to shared machinery
 supersedes: DR-045 (unavailable — local-only era, see README)
-relates: [DR-040, DR-046, docs/book/arch/signals.md]
+relates: [DR-040, DR-046, docs/book/arch/state.md]
 ---
 
 # DR-058 — Signals over entities
@@ -22,7 +22,7 @@ book chapter actually uses, while `Entity` survived only as plumbing under
 `spawn` and `EventChannel`. The Aug-18 widget-extraction commit (50ce481)
 made the split explicit: the book chapter is "Signals, not entities", and
 `Entity`, `EntityCx`, `AsyncContext`, and `Task` are `#[doc(hidden)]` in
-`crates/reactive/src/lib.rs`.
+`crates/sigil/src/reactive.rs`.
 
 The DR trail never recorded the pivot: DR-045 still read "accepted" while the
 public surface contradicted it.

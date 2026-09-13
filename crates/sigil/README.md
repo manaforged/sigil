@@ -1,39 +1,40 @@
-# sigil-ui
+# sigil-gui
 
-GPU UI in Rust. One widget tree. Open it with `sigil::launch`, pump
-it with `sigil::Host`, or paint it on a terminal with `sigil::run_tui`.
+GPU UI in Rust. One widget tree. Open it with `sigil::launch`, embed it
+with `sigil::Host`, or paint it on a character grid with the separate
+`sigil-tui` crate (`sigil_tui::run`).
 
-The package is `sigil-ui` because `sigil` was taken on crates.io. The
+The package is `sigil-gui` because `sigil` is taken on crates.io. The
 library name is `sigil`, so imports read `sigil::`.
 
-Write `use sigil::prelude::*;`. That brings in `launch`, `Host`,
-`Painted`, `Player`, `Session`, `root`, `run_tui`, widgets,
-`copy`, `paste`, and `install`. Widget helpers are `IntoNode`;
-type a helper as `impl IntoNode`. Pass other widgets to `launch`
-with `root(button("Go"))`. `launch` and `run_tui` pump `Host`.
+Write `use sigil::prelude::*;`. The prelude brings in `launch`, `Host`,
+`Painted`, `root`, widgets, and `copy`/`paste`/`install` with the
+`clipboard` feature. `Player` needs the `audio` feature; `Session`
+needs `pty`. Widget helpers implement `IntoNode`; type a helper as
+`impl IntoNode`. Pass another widget to `launch` with
+`root(button("Go"))`. The terminal host is the separate `sigil-tui`
+crate, entered with `sigil_tui::run`.
 
 ## Requirements
 
-Rust 1.90. A GPU for `launch`. A terminal for `run_tui`.
+Rust 1.90. A GPU for `launch`. A terminal for the `sigil-tui` crate.
 
 ## Install
 
-The crates are not on crates.io yet. From this repository:
-
 ```bash
-cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui
+cargo add sigil-gui
 ```
 
-For the terminal host, disable the desktop defaults and enable `tui`:
+For the terminal host:
 
 ```bash
-cargo add --git https://github.com/ThomGardiner/sigil.git sigil-ui \
-  --no-default-features --features tui
+cargo add sigil-tui
+cargo add sigil-gui --no-default-features
 ```
 
 ## Usage
 
-Desktop window (`examples/hello-counter`):
+Desktop window:
 
 ```rust,no_run
 use sigil::prelude::*;
@@ -57,7 +58,7 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
-Embed host. You own the window and the GPU (`examples/hello-host`):
+Embed host. You own the window and the GPU:
 
 ```rust
 use sigil::prelude::*;
@@ -77,11 +78,11 @@ Runtime::scope("embed", || {
 
 `Host::scene` needs feature `desktop` or `render`. Without it, use
 `Host::painted`. After layout, `Host::surfaces` lists `surface(key)`
-holes. You place a native view. Sigil does not create an OS window
-for the hole.
+holes. You place a native view; Sigil does not create an OS window for
+the hole.
 
-Clipboard: `copy("text")` after `launch` / `run_tui`,
-or after `install(MyClipboard)` on an embed host.
+Clipboard: `copy("text")` after `launch`, or after
+`install(MyClipboard)` on an embed host.
 
 With the `desktop` feature, open a URL or path with the OS handler:
 `open("https://example.com")`.
@@ -89,12 +90,17 @@ With the `desktop` feature, open a URL or path with the OS handler:
 ## Limits
 
 - `signal` / `derived` / `effect` panic outside `Runtime::scope`.
-  `launch` and `run_tui` open that scope. An embed host that uses
-  signals must call `Runtime::scope`.
+  `launch` opens that scope. An embed host that uses signals must call
+  `Runtime::scope`.
 - `Host::scene` needs `desktop` or `render`. `render` does not pull
   winit.
 - `launch` does not parent a native view into a `surface(key)` hole.
 - `html()` parses a document subset. No CSS, no JavaScript, no browser.
+- `markdown`, `html`, `mermaid`, and the SVG baker reject sources
+  larger than 1 MiB.
+- A `pty` session opens at 24x80. There is no resize path yet.
+- Modules marked `#[doc(hidden)]` are used by tests and macro expansion.
+  They are not API and can change in any 0.1.x release.
 - The crate is `0.1.0`. Names can still move.
 
 ## Features
@@ -102,14 +108,13 @@ With the `desktop` feature, open a URL or path with the OS handler:
 | Feature | Adds |
 |---|---|
 | `desktop` (default) | `launch`, OS chrome, `Host::scene` |
-| `tui` | `run_tui` |
 | `clipboard` | system clipboard access through `sigil::clipboard` |
 | `clipboard-image` | `sigil::clipboard::image()`, native clipboard pixels |
 | `dialog` | native open, save, and folder dialogs |
 | `menu` | native application menus |
 | `tray` | system tray icons and events |
 | `render` | `Host::scene`, `sigil::render`, `sigil::text`. No winit |
-| `audio` | `Player::play_path` (holds the stream; `tick` writes progress; `seek` jumps) |
+| `audio` | `Player::play_path`. The player holds the stream; `tick` writes progress; `seek` jumps |
 | `pty` | `pty::Session::spawn` |
 | `image-decode` | `image_bytes` |
 | `test-support` | `dialog::mock` |
@@ -117,12 +122,16 @@ With the `desktop` feature, open a URL or path with the OS handler:
 ## Docs
 
 - Book: `mdbook serve docs/book`
-- Examples: `cargo run -p hello-counter`, `cargo run -p hello-host`,
-  `cargo run -p hello-tui`
+- Examples: `cargo run -p sigil-gui --example hello-counter` and
+  `cargo run -p sigil-gui --example hello-host`. The larger apps live in
+  the `sigil-examples` checkout.
 
 ## Macro note
 
-`classes!` and `#[derive(Action)]` expand to `sigil::__private`.
-Depend on this facade crate. Keep the package name `sigil-ui`.
+`classes!` concatenates its string literal arguments and parses them at
+runtime through `sigil::style::parse_class_string`. The parser caches
+the atoms. Typed actions use a plain `impl Action for ...`; there is no
+derive macro.
 
-License: MIT.
+License: MIT. The bundled fonts under `assets/text/fonts` are under the
+SIL Open Font License; see `LICENSE-OFL.txt` there.
