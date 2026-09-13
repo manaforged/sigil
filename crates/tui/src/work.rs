@@ -1,9 +1,10 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::rc::Rc;
 use std::sync::mpsc::{Receiver, TryRecvError, channel};
 
-use sigil_reactive::{Signal, signal};
-use sigil_tasks::Status;
+use sigil::reactive::{Signal, on_cleanup, signal};
+use sigil::tasks::Status;
 
 type Pending = Box<dyn FnMut() -> bool>;
 
@@ -17,6 +18,9 @@ where
     F: FnOnce() -> T + Send + 'static,
 {
     let out = signal(Status::Pending);
+    let alive = Rc::new(Cell::new(true));
+    let cleanup = Rc::clone(&alive);
+    on_cleanup(move || cleanup.set(false));
     let (tx, rx): (_, Receiver<Result<T, String>>) = channel();
     std::thread::spawn(move || {
         let done = catch_unwind(AssertUnwindSafe(job)).map_err(|payload| blame(&*payload));
@@ -25,11 +29,15 @@ where
     WAITING.with_borrow_mut(|waiting| {
         waiting.push(Box::new(move || match rx.try_recv() {
             Ok(Ok(value)) => {
-                out.set_always(Status::Ok(value));
+                if alive.get() {
+                    out.set_always(Status::Ok(value));
+                }
                 true
             }
             Ok(Err(why)) => {
-                out.set_always(Status::Err(why));
+                if alive.get() {
+                    out.set_always(Status::Err(why));
+                }
                 true
             }
             Err(TryRecvError::Empty) => false,
