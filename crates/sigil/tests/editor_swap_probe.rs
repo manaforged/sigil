@@ -10,12 +10,12 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::prelude::*;
-use sigil_hal::{
+use sigil::hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use sigil_renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::prelude::*;
+use sigil::renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
 use wgpu::TextureFormat;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
@@ -23,11 +23,11 @@ const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1);
         let cols = text.lines().map(str::len).max().unwrap_or(0).max(1);
-        sigil_hal::LogicalSize::new(cols as f32 * 8.0, lines as f32 * 16.8)
+        sigil::hal::LogicalSize::new(cols as f32 * 8.0, lines as f32 * 16.8)
     }
 }
 

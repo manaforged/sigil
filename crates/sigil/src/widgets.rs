@@ -1,0 +1,131 @@
+#![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
+
+pub(crate) const MAX_SOURCE_BYTES: usize = 1 << 20;
+
+pub(crate) const fn source_too_large(source: &str) -> bool {
+    source.len() > MAX_SOURCE_BYTES
+}
+
+#[cfg(test)]
+#[path = "widgets/lib_tests.rs"]
+mod tests;
+
+pub mod interaction;
+pub mod widget_dev;
+
+mod button;
+mod chart;
+mod checkbox;
+mod chip;
+mod clipboard;
+mod code_edit;
+mod color_field;
+mod combobox;
+mod command_menu;
+mod composition;
+mod date_field;
+mod divider;
+mod dot;
+mod drag;
+mod drag_drop;
+mod dropdown;
+mod floating_text;
+mod gauge;
+mod html;
+mod icon;
+mod image;
+pub mod interactive;
+pub mod layout_ext;
+mod markdown;
+mod menu;
+mod mermaid;
+mod modal;
+pub mod number_field;
+pub mod overlay;
+mod panel;
+pub mod patterns;
+mod progress;
+mod radio_group;
+mod scroll;
+mod shared;
+mod slider;
+mod splitter;
+mod surface;
+mod table;
+mod tabs;
+mod terminal;
+mod text_edit;
+mod text_field;
+mod toast;
+mod toast_queue;
+mod toggle;
+mod tooltip;
+pub mod transition_seam;
+mod transport;
+mod turn_strip;
+mod vector;
+mod virtual_list;
+
+pub use button::{ButtonBuilder, button, icon_button};
+pub use chart::{ChartBuilder, ChartMark, chart};
+pub use checkbox::{CheckboxBuilder, checkbox};
+pub use chip::{ChipBuilder, badge, chip};
+pub use clipboard::{ClipError, Clipboard, NoopClipboard, clipboard, install};
+pub use code_edit::{ChangeKind, CodeEditBuilder, DiagSeverity, DiagSpan, HlSpan, code_edit};
+pub use color_field::{color_field, parse_hex, to_hex};
+pub use combobox::{Combobox, combobox};
+pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
+pub use composition::{kv_row, status_bar};
+pub use date_field::{Date, DateFieldBuilder, date_field};
+pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
+pub use dot::{DotBuilder, dot};
+pub use drag::{Axis, axis_drag};
+pub use drag_drop::{DRAG_THRESHOLD_PX, DROP_TARGET_CLASS, DragDropExt, DragState, drag_ghost};
+pub use dropdown::{DropdownBuilder, dropdown};
+pub use floating_text::{
+    FCT_POOL_CAPACITY, FctNode, FctSpawn, FctState, FloaterStyle, FloatingTextBuilder, Particle,
+    floating_text,
+};
+pub use gauge::{GaugeBuilder, gauge};
+pub use html::html;
+pub use icon::{IconBuilder, icon};
+#[cfg(feature = "image-decode")]
+pub use image::image_bytes;
+pub use image::{ImageBuilder, image_rgba};
+pub use interactive::{InteractiveBuilder, interactive};
+pub use markdown::{markdown, markdown_edit};
+pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, menu, menu_bar};
+pub use mermaid::{diagram as mermaid_diagram, draw as mermaid_draw, mermaid};
+pub use modal::{ModalBuilder, Side, modal, sheet};
+pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
+pub use overlay::heatmap;
+pub use panel::{PanelBuilder, panel};
+pub use patterns::{
+    HintOverlayBuilder, avatar, card, field, sidebar, sidebar_width, validated_field,
+};
+pub use progress::{ProgressBuilder, progress};
+pub use radio_group::{RadioGroupBuilder, radio_group};
+pub use scroll::{ScrollBuilder, scroll};
+pub use shared::label;
+pub use slider::{Orientation, SliderBuilder, slider};
+pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
+pub use surface::surface;
+pub use table::{
+    ColAlign, ColWidth, ColumnLayout, Density, Identifiable, MIN_COL_WIDTH, SortDir, SortKey,
+    TableBuilder, TableColumn, TableState, table,
+};
+pub use tabs::{TabsBuilder, tabs};
+pub use terminal::terminal;
+pub use text_edit::{TextEditBuilder, TextEditState, text_edit};
+pub use text_field::{TextFieldBuilder, text_field};
+pub use toast::toast;
+pub use toast_queue::{MAX_VISIBLE, TOAST_TTL, ToastEntry, ToastLevel, ToastQueue, toast_queue};
+pub use toggle::{ToggleBuilder, toggle};
+pub use tooltip::{TooltipBuilder, tooltip};
+pub use transport::{TransportBuilder, transport};
+pub use turn_strip::{TurnStripBuilder, turn_strip};
+pub use vector::{PathCmd, PathFill, PathNode, path};
+pub use virtual_list::{
+    IntoList, ScrollAnchor, SelectionMode, SelectionState, VirtualListBuilder, virtual_list,
+    virtual_list_bind,
+};

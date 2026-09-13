@@ -3,8 +3,8 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
 
 const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {

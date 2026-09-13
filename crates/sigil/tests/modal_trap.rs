@@ -5,14 +5,14 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -136,7 +136,7 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
         assert_eq!(node.a11y.role, Role::Dialog);
         assert_eq!(
             node.a11y.focus_scope,
-            Some(sigil_kernel::FocusScopeKind::Modal)
+            Some(sigil::kernel::FocusScopeKind::Modal)
         );
 
         let mut router = EventRouter::new();

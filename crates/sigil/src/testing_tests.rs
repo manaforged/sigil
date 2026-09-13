@@ -1,5 +1,5 @@
 use super::*;
-use sigil_reactive::{Signal, signal};
+use crate::reactive::{Signal, signal};
 
 #[test]
 fn closure_runs_with_fresh_cx() {

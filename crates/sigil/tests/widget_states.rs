@@ -5,17 +5,17 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, StrokeAlign, emit_scene};
-use sigil_style::Rgba8;
-use sigil_style::scale::ScaleRole;
+use sigil::renderer::{SceneCommand, StrokeAlign, emit_scene};
+use sigil::style::Rgba8;
+use sigil::style::scale::ScaleRole;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -79,7 +79,7 @@ fn button_rest_emits_surface_color() {
         let mut cx = Cx::new_root();
         let root = cx.add(button("OK"));
         compute(&mut cx, root);
-        let expected = sigil_style::scale::slate_light().step(4);
+        let expected = sigil::style::scale::slate_light().step(4);
         assert!(rect_colors(&cx, root).contains(&expected));
     });
 }

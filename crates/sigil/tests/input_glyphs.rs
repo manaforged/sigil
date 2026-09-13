@@ -9,9 +9,9 @@
 use sigil::input_glyphs::{
     InputAction, InputDevice, current_input_device, glyph, glyph_for, glyph_id, reset_for_tests,
 };
+use sigil::kernel::{NodeType, TextContent};
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
-use sigil_kernel::{NodeType, TextContent};
 
 #[test]
 fn glyph_id_covers_every_action_on_every_device() {

@@ -9,6 +9,6 @@ src = "."
 build-dir = "book"
 
 [output.html]
-git-repository-url = "https://github.com/ThomGardiner/sigil"
+git-repository-url = "https://github.com/thomgardiner/sigil"
 default-theme = "navy"
 preferred-dark-theme = "navy"

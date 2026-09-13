@@ -9,7 +9,7 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::prelude::*;
-use sigil_style::Size as ControlSize;
+use sigil::style::Size as ControlSize;
 
 mod golden_support;
 

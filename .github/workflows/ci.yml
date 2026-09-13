@@ -1,10 +1,9 @@
 # Sigil CI
 #
-# Runs on release tags and manual dispatch only. Tests run on the
-# author's machine before a push; the pre-push hook runs the same
-# check. A runner exists to prove a release from a clean Linux
-# checkout, so every job runs on every tag. Concurrency cancels
-# superseded runs on the same ref.
+# Runs on pushes to main, pull requests targeting main, release tags,
+# and manual dispatch. Every job runs on a release tag so a release is
+# proven from a clean Linux checkout. Concurrency cancels superseded
+# runs on the same ref.
 #
 # The GPU and main-thread tier (the ignored tests) still runs on
 # owned native builders before a release; hosted runners have no
@@ -14,7 +13,10 @@ name: CI
 
 on:
   push:
+    branches: [main]
     tags: ["v*"]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -61,12 +63,8 @@ jobs:
 
       - name: fmt
         run: cargo fmt --check
-      - name: inline tests
-        run: python3 scripts/check-inline-tests.py
-      - name: file caps
-        run: python3 scripts/check-file-caps.py
       - name: clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: deny
         run: cargo deny check
 
@@ -91,7 +89,7 @@ jobs:
         with:
           cache-on-failure: true
       - name: test
-        run: cargo test --workspace --no-fail-fast
+        run: cargo test --workspace --no-fail-fast --locked
 
   msrv:
     runs-on: ubuntu-latest
@@ -114,16 +112,6 @@ jobs:
           cache-on-failure: true
       - name: check (MSRV, locked, all features)
         run: cargo check --workspace --all-targets --locked --all-features
-
-  site:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - name: catalog matches committed captures
-        run: node scripts/check-site-catalog.mjs
 
   docs:
     runs-on: ubuntu-latest

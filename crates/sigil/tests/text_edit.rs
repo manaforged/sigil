@@ -4,11 +4,11 @@
 )]
 #![allow(missing_docs)]
 
+use sigil::kernel::{NodeId, NodeType};
+use sigil::layout::prelude::Dimension;
 use sigil::prelude::*;
 use sigil::testing::with_cx;
 use sigil::widgets::{TextEditBuilder, text_edit};
-use sigil_kernel::{NodeId, NodeType};
-use sigil_layout::prelude::Dimension;
 
 #[test]
 fn tree_builds_without_panic() {
@@ -173,7 +173,7 @@ fn text_edit_line_children_collapse_after_delete() {
     });
 }
 
-fn count_text_descendants(cx: &sigil_kernel::Cx, root: NodeId) -> usize {
+fn count_text_descendants(cx: &sigil::kernel::Cx, root: NodeId) -> usize {
     let mut stack = vec![root];
     let mut count = 0_usize;
     while let Some(id) = stack.pop() {

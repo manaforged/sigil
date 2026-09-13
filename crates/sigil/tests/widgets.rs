@@ -14,10 +14,10 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
+use sigil::hal::{KeyEventInit, Point, PointerEventInit};
+use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, Point, PointerEventInit};
-use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
 struct CutMemory(RefCell<Option<String>>);
 
@@ -30,18 +30,18 @@ impl sigil::clipboard::Clipboard for CutMemory {
         self.0.borrow().clone()
     }
 }
-use sigil_style::TextStyle;
+use sigil::style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
             TextContent::Compute(_) => content.resolve().len(),
         };
-        sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
+        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
     }
 }
 
@@ -602,10 +602,10 @@ fn toggle_scene_emits_on_and_off_variants() {
 
 #[test]
 fn toggle_and_checkbox_share_styled_interaction_path() {
-    let interaction_src = include_str!("../../widgets/src/interaction.rs");
-    let shared_src = include_str!("../../widgets/src/shared.rs");
-    let checkbox_src = include_str!("../../widgets/src/checkbox.rs");
-    let toggle_src = include_str!("../../widgets/src/toggle.rs");
+    let interaction_src = include_str!("../src/widgets/interaction.rs");
+    let shared_src = include_str!("../src/widgets/shared.rs");
+    let checkbox_src = include_str!("../src/widgets/checkbox.rs");
+    let toggle_src = include_str!("../src/widgets/toggle.rs");
 
     assert!(interaction_src.contains("pub fn style_state"));
     assert!(interaction_src.contains("pub fn release_pointer"));
@@ -812,7 +812,7 @@ fn text_field_redo_reapplies_undone_change() {
         router.route(&mut cx, &layout, ctrl_key("z", PhysicalKey::KeyZ));
         assert_eq!(value.get(), "");
 
-        router.route(&mut cx, &layout, ctrl_shift_key("z", PhysicalKey::KeyZ));
+        router.route(&mut cx, &layout, ctrl_shift_key("Z", PhysicalKey::KeyZ));
         assert_eq!(value.get(), "x", "redo should reapply 'x'");
     });
 }
@@ -911,7 +911,7 @@ fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
     }))
 }
 
-fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
+fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -922,7 +922,7 @@ fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
         .collect()
 }
 
-fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil_style::Rgba8) -> f32 {
+fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Rgba8) -> f32 {
     emit_scene(cx, root)
         .commands
         .iter()

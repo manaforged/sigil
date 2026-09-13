@@ -5,11 +5,11 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, PhysicalKey};
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
-const SEL: sigil_style::Rgba8 = sigil_style::Rgba8 {
+const SEL: sigil::style::Rgba8 = sigil::style::Rgba8 {
     r: 56,
     g: 118,
     b: 224,
@@ -43,11 +43,11 @@ fn shift_up() -> ShellEvent {
 #[test]
 fn shift_select_across_lines_highlights_each_covered_line() {
     sigil::reactive::Runtime::scope("sel-kbd", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");
@@ -78,7 +78,7 @@ fn shift_select_across_lines_highlights_each_covered_line() {
     });
 }
 
-use sigil_hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
 
 fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
@@ -95,11 +95,11 @@ fn pt(x: f32, y: f32, phase: PointerPhase, buttons: MouseButtons) -> ShellEvent 
 #[test]
 fn dragging_across_lines_highlights_each_covered_line() {
     sigil::reactive::Runtime::scope("sel-drag", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaaa\nbbbb\ncccc"))));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");

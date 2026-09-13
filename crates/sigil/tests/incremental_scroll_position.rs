@@ -16,10 +16,10 @@ const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1) as f32;
-        sigil_hal::LogicalSize::new(120.0, lines * 16.8)
+        sigil::hal::LogicalSize::new(120.0, lines * 16.8)
     }
 }
 

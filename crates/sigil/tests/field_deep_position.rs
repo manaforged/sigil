@@ -11,18 +11,18 @@
     clippy::cast_possible_truncation
 )]
 
+use sigil::hal::KeyEventInit;
+use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil_hal::KeyEventInit;
-use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
-use sigil_style::TextStyle;
+use sigil::style::TextStyle;
 
 const VIEWPORT: Size = Size::fixed(1000.0, 1000.0);
 const SPACER_H: f32 = 800.0;
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

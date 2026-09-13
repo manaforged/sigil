@@ -5,15 +5,15 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
+use sigil::hal::{Point, ScrollEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, ScrollEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(60.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(60.0, 16.0)
     }
 }
 

@@ -11,20 +11,20 @@
     clippy::items_after_statements
 )]
 
-use sigil_animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
-use sigil_hal::Size;
-use sigil_kernel::{Cx, IntoNode, NodeId, TextContent, container};
-use sigil_layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil_layout::{LayoutEngine, TextMeasure};
-use sigil_reactive::Runtime;
-use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
+use sigil::animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, IntoNode, NodeId, TextContent, container};
+use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::layout::{LayoutEngine, TextMeasure};
+use sigil::reactive::Runtime;
+use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

@@ -5,8 +5,8 @@
 #![allow(missing_docs)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use sigil::reactive::Runtime;
 use sigil::widgets::{TableColumn, TableState};
-use sigil_reactive::Runtime;
 
 #[derive(Clone)]
 struct Row {

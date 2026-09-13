@@ -7,8 +7,8 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
 
+use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, PhysicalKey};
 
 mod golden_support;
 
@@ -19,8 +19,8 @@ use golden_support::{
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

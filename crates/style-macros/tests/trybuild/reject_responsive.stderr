@@ -1,5 +1,0 @@
-error: responsive prefix 'sm:' is not supported
- --> tests/trybuild/reject_responsive.rs:4:29
-  |
-4 |     let _classes = classes!("sm:p-4");
-  |                             ^^^^^^^^

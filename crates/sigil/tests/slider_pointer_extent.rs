@@ -5,13 +5,13 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _c: &TextContent, _s: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(0.0, 0.0)
+    fn measure(&self, _c: &TextContent, _s: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(0.0, 0.0)
     }
 }
 

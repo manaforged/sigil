@@ -5,10 +5,10 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::animation::SpringPreset;
+use sigil::animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_count, tick};
 use sigil::prelude::*;
-use sigil_animation::SpringPreset;
-use sigil_animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_count, tick};
-use sigil_reactive::{Runtime, signal};
+use sigil::reactive::{Runtime, signal};
 
 mod golden_support;
 
@@ -34,7 +34,7 @@ fn after_frames_calls_tick_exactly_n_times() {
             value,
             AnimationConfig::Tween {
                 ms: 10_000,
-                easing: sigil_animation::Easing::Linear,
+                easing: sigil::animation::Easing::Linear,
             },
         );
         anim.target(1.0);
@@ -105,7 +105,7 @@ fn after_frames_safety_cap_panics_on_runaway() {
                 value,
                 AnimationConfig::Tween {
                     ms: 60_000,
-                    easing: sigil_animation::Easing::Linear,
+                    easing: sigil::animation::Easing::Linear,
                 },
             );
             anim.target(1.0);

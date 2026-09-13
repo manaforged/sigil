@@ -1,0 +1,296 @@
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+
+use crate::kernel::{Node, NodeBuilder, TextBuilder};
+use crate::reactive::Signal;
+use smallvec::SmallVec;
+
+use std::cell::Cell;
+use std::rc::Rc;
+
+use crate::style::{
+    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
+    StyleReactiveEffect, StyleState, StyleVariant, Theme, Tone, ToneContext, merge_classes,
+    parse_class_string, parser::ParseError,
+};
+
+static EMPTY_ATOMS: &[StyleAtom] = &[];
+
+pub enum ClassSource {
+    Static(&'static [StyleAtom]),
+    Owned(Box<SmallVec<[StyleAtom; 16]>>),
+    RawString(&'static str),
+}
+
+impl From<&'static [StyleAtom]> for ClassSource {
+    fn from(value: &'static [StyleAtom]) -> Self {
+        Self::Static(value)
+    }
+}
+
+impl<const N: usize> From<&'static [StyleAtom; N]> for ClassSource {
+    fn from(value: &'static [StyleAtom; N]) -> Self {
+        Self::Static(value.as_slice())
+    }
+}
+
+impl From<&'static str> for ClassSource {
+    fn from(value: &'static str) -> Self {
+        Self::RawString(value)
+    }
+}
+
+impl From<Style> for ClassSource {
+    fn from(value: Style) -> Self {
+        Self::Owned(Box::new(value.into_atoms()))
+    }
+}
+
+pub trait NodeStyleExt {
+    #[must_use]
+    fn class(self, source: impl Into<ClassSource>) -> Self;
+
+    #[must_use]
+    fn style(self, style: Style) -> Self;
+
+    #[must_use]
+    fn theme(self, theme: Theme) -> Self;
+
+    #[must_use]
+    fn tone(self, tone: Tone) -> Self;
+
+    #[must_use]
+    fn focus_ring(self, ring: FocusRing) -> Self;
+
+    #[must_use]
+    fn style_reactive<F>(self, f: F) -> Self
+    where
+        F: Fn() -> &'static [StyleAtom] + 'static;
+
+    #[must_use]
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self;
+
+    #[must_use]
+    fn stateful_style<F>(self, variant: StyleVariant, overlay: StyleOverlay, state_fn: F) -> Self
+    where
+        Self: Sized,
+        F: Fn() -> StyleState + 'static,
+    {
+        let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
+        let cell_for_closure = Rc::clone(&slot_cell);
+        self.class(variant.base())
+            .style_reactive(move || {
+                let state = state_fn();
+                cell_for_closure.set(state.slot());
+                variant.state(state)
+            })
+            .state_overlay(overlay, slot_cell)
+    }
+
+    #[must_use]
+    fn class_when(self, signal: Signal<bool>, class: &'static str) -> Self
+    where
+        Self: Sized,
+    {
+        let atoms = parse_classes(class);
+        self.style_reactive(move || if signal.get() { atoms } else { EMPTY_ATOMS })
+    }
+
+    #[must_use]
+    fn visible_when(self, signal: Signal<bool>) -> Self
+    where
+        Self: Sized,
+    {
+        let hidden = parse_classes("hidden");
+        self.style_reactive(move || if signal.get() { EMPTY_ATOMS } else { hidden })
+    }
+}
+
+impl NodeStyleExt for NodeBuilder {
+    fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.mutate(move |node| install_class(node, source))
+    }
+
+    fn style(self, style: Style) -> Self {
+        self.class(style)
+    }
+
+    fn theme(self, theme: Theme) -> Self {
+        self.mutate(move |node| install_theme(node, theme))
+    }
+
+    fn focus_ring(self, ring: FocusRing) -> Self {
+        self.mutate(move |node| install_focus_ring(node, ring))
+    }
+
+    fn style_reactive<F>(self, f: F) -> Self
+    where
+        F: Fn() -> &'static [StyleAtom] + 'static,
+    {
+        self.mutate(move |node| install_reactive(node, f))
+    }
+
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
+        self.mutate(move |node| install_state_overlay(node, overlay, slot))
+    }
+
+    fn tone(self, tone: Tone) -> Self {
+        self.mutate(move |node| install_tone(node, tone))
+    }
+}
+
+impl NodeStyleExt for TextBuilder {
+    fn class(self, source: impl Into<ClassSource>) -> Self {
+        let source = source.into();
+        self.mutate(move |node| install_class(node, source))
+    }
+
+    fn style(self, style: Style) -> Self {
+        self.class(style)
+    }
+
+    fn theme(self, theme: Theme) -> Self {
+        self.mutate(move |node| install_theme(node, theme))
+    }
+
+    fn focus_ring(self, ring: FocusRing) -> Self {
+        self.mutate(move |node| install_focus_ring(node, ring))
+    }
+
+    fn style_reactive<F>(self, f: F) -> Self
+    where
+        F: Fn() -> &'static [StyleAtom] + 'static,
+    {
+        self.mutate(move |node| install_reactive(node, f))
+    }
+
+    fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
+        self.mutate(move |node| install_state_overlay(node, overlay, slot))
+    }
+
+    fn tone(self, tone: Tone) -> Self {
+        self.mutate(move |node| install_tone(node, tone))
+    }
+}
+
+fn install_tone(node: &mut Node, tone: Tone) {
+    debug_assert_not_fragment(node, "tone");
+    let _previous = node.attach(ToneContext::new(tone));
+}
+
+fn install_state_overlay(node: &mut Node, overlay: StyleOverlay, slot: ReactiveStateSlot) {
+    debug_assert_not_fragment(node, "state_overlay");
+    if let Some(binding) = node.get_extension_mut_untracked::<StyleBinding>() {
+        binding.set_state_overlay(overlay, slot);
+        return;
+    }
+    let mut binding = StyleBinding::default();
+    binding.set_state_overlay(overlay, slot);
+    let _previous = node.attach_untracked(binding);
+}
+
+fn install_class(node: &mut Node, source: ClassSource) {
+    debug_assert_not_fragment(node, "class");
+    let incoming = binding_from_source(source);
+    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+        let existing = binding.all_atoms();
+        let incoming_atoms = incoming.all_atoms();
+        let merged = merge_classes(&existing, &incoming_atoms, 0);
+        binding.replace_owned(smallvec16(merged));
+        return;
+    }
+    let _previous = node.attach(incoming);
+}
+
+fn debug_assert_not_fragment(node: &Node, op: &'static str) {
+    debug_assert!(
+        !matches!(node.kind, crate::kernel::NodeType::Fragment),
+        "{op}() on a Fragment: fragments have no paint box; see DR-015"
+    );
+}
+
+fn install_theme(node: &mut Node, theme: Theme) {
+    debug_assert_not_fragment(node, "theme");
+    let _previous = node.attach(theme);
+}
+
+fn install_focus_ring(node: &mut Node, ring: FocusRing) {
+    debug_assert_not_fragment(node, "focus_ring");
+    let _previous = node.attach(ring);
+}
+
+fn install_reactive<F>(node: &mut Node, f: F)
+where
+    F: Fn() -> &'static [StyleAtom] + 'static,
+{
+    debug_assert_not_fragment(node, "style_reactive");
+    let reactive = StyleReactiveEffect::new();
+    let atoms = reactive.atoms();
+    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+        binding.add_reactive(atoms);
+    } else {
+        let _previous = node.attach(StyleBinding::reactive_atoms(atoms));
+    }
+
+    let effect_state = reactive.clone();
+    crate::reactive::effect_named("sigil-style::style_reactive", move || {
+        effect_state.set_slice(f());
+    });
+    let _previous = node.attach(reactive);
+}
+
+fn binding_from_source(source: ClassSource) -> StyleBinding {
+    match source {
+        ClassSource::Static(atoms) => StyleBinding::static_atoms(atoms),
+        ClassSource::Owned(atoms) => StyleBinding::owned_atoms(*atoms),
+        ClassSource::RawString(input) => StyleBinding::static_atoms(parse_classes(input)),
+    }
+}
+
+pub fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
+    static CACHE: OnceLock<Mutex<HashMap<&'static str, &'static [StyleAtom]>>> = OnceLock::new();
+
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    let Ok(mut cache) = cache.lock() else {
+        return parse_and_leak(input);
+    };
+    if let Some(atoms) = cache.get(input).copied() {
+        return atoms;
+    }
+    let atoms = parse_and_leak(input);
+    cache.insert(input, atoms);
+    atoms
+}
+
+fn parse_and_leak(input: &'static str) -> &'static [StyleAtom] {
+    let mut atoms: SmallVec<[StyleAtom; 16]> = SmallVec::new();
+    for token in input.split(' ').filter(|token| !token.is_empty()) {
+        match parse_class_string(token) {
+            Ok(parsed) => atoms.extend(parsed),
+            Err(err) => diagnostic::class_parse(input, &err),
+        }
+    }
+    Box::leak(atoms.into_vec().into_boxed_slice())
+}
+
+fn smallvec16(atoms: SmallVec<[StyleAtom; 32]>) -> SmallVec<[StyleAtom; 16]> {
+    atoms.into_iter().collect()
+}
+
+mod diagnostic {
+    use super::ParseError;
+    use crate::style::merge::bump_unknown_class_count;
+
+    #[cold]
+    #[track_caller]
+    pub(super) fn class_parse(input: &str, err: &ParseError) {
+        bump_unknown_class_count();
+        tracing::warn!(
+            target: "sigil_style::class",
+            input,
+            error = %err,
+            "unknown class token ignored",
+        );
+    }
+}

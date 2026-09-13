@@ -7,10 +7,10 @@
 
 use std::rc::Rc;
 
+use sigil::hal::Rect;
+use sigil::layout::{TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil_hal::Rect;
-use sigil_layout::{TextGeometry, set_text_geometry};
-use sigil_renderer::{CommandScene, SceneCommand, emit_scene};
+use sigil::renderer::{CommandScene, SceneCommand, emit_scene};
 
 const VALUE: &str = "Testing this is a complet";
 
@@ -24,7 +24,7 @@ fn caret_uses_the_fields_resolved_typography() {
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
-        let expected = sigil_app::EngineGeometry::new().caret(VALUE, &text.run.style, VALUE.len());
+        let expected = sigil::app::EngineGeometry::new().caret(VALUE, &text.run.style, VALUE.len());
         let expected_x = text.run.rect.origin.x + expected.x;
         let caret = nearest_caret(&scene, expected_x);
 
@@ -43,7 +43,7 @@ fn caret_uses_the_fields_resolved_typography() {
 }
 
 fn focused_field_scene() -> CommandScene {
-    set_text_geometry(Rc::new(sigil_app::EngineGeometry::new()));
+    set_text_geometry(Rc::new(sigil::app::EngineGeometry::new()));
     let mut cx = Cx::new_root();
     let root = cx.add(
         text_field(signal(VALUE.to_owned()))
@@ -52,7 +52,7 @@ fn focused_field_scene() -> CommandScene {
             .class("text-sm"),
     );
     let mut layout =
-        LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+        LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
     layout
         .compute(&mut cx, root, Size::fixed(500.0, 100.0))
         .expect("initial layout");

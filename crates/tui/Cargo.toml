@@ -10,28 +10,20 @@ description = "Terminal host for Sigil — same Host, widgets, and events as des
 readme = "README.md"
 keywords = ["tui", "terminal", "ui"]
 categories = ["command-line-interface", "gui"]
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "examples/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
 
 [lib]
+name = "sigil_tui"
 
 [dependencies]
+sigil-gui = { path = "../sigil", version = "0.1.0", default-features = false }
 crossterm = "0.29"
-sigil-animation-runtime = { workspace = true }
-sigil-app = { workspace = true }
-sigil-events = { workspace = true }
-sigil-hal = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
-sigil-tasks = { workspace = true }
-sigil-widgets = { workspace = true }
 smol_str = { workspace = true }
 unicode-segmentation = "1.13.3"
 unicode-width = { workspace = true }
 
 [dev-dependencies]
 image = { workspace = true }
-sigil-layout = { workspace = true }
 allocation-counter = "0.8.1"
 criterion = { version = "0.8", features = ["html_reports"] }
 

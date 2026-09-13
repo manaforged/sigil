@@ -5,12 +5,12 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
 use sigil::prelude::*;
-use sigil_kernel::Cx;
-use sigil_reactive::{Runtime, signal};
-use sigil_style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
+use sigil::reactive::{Runtime, signal};
+use sigil::style::{ColorAtom, Rgba8, StyleAtom, StyleBinding};
 
-fn reactive_slice(cx: &Cx, id: sigil_kernel::NodeId) -> &'static [StyleAtom] {
+fn reactive_slice(cx: &Cx, id: sigil::kernel::NodeId) -> &'static [StyleAtom] {
     let binding = cx
         .get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
@@ -27,7 +27,7 @@ fn button_disabled_initial_true_blocks_focus() {
         let id = cx.add(button("Save").disabled(disabled));
         let node = cx.get(id).unwrap();
         assert!(
-            !node.a11y.focusable,
+            !node.a11y.is_focusable(),
             "button(disabled=true) at construction must not be focusable",
         );
     });

@@ -6,8 +6,8 @@
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
 #![allow(clippy::float_cmp)]
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
 
 const ROW_H: f32 = 20.0;
 
@@ -37,8 +37,8 @@ fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

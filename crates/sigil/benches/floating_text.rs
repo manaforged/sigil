@@ -13,9 +13,9 @@ use std::hint::black_box;
 use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use sigil::reactive::{Runtime, signal};
+use sigil::style::Rgba8;
 use sigil::widgets::{FCT_POOL_CAPACITY, FctSpawn, FctState};
-use sigil_reactive::{Runtime, signal};
-use sigil_style::Rgba8;
 
 const RED: Rgba8 = Rgba8 {
     r: 240,

@@ -8,14 +8,14 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
+use sigil::hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit};
 
 struct WideMeasure;
 
 impl TextMeasure for WideMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(1600.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(1600.0, 16.0)
     }
 }
 
@@ -426,7 +426,7 @@ fn render_budget_tracks_the_published_viewport_height() {
         );
         let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
         for _ in 0..3 {
-            sigil_app::__drive_test_frame(
+            sigil::app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(400.0, pane_h))
@@ -460,7 +460,7 @@ fn short_doc_does_not_scroll_into_blank_space() {
         );
         let mut layout = layout_in(&mut cx, root, 400.0, pane_h);
         for _ in 0..3 {
-            sigil_app::__drive_test_frame(
+            sigil::app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(400.0, pane_h))

@@ -33,5 +33,6 @@ docs/r14-simplify-punch-list.md
 
 
 # WASM demo build output — rebuilt at publish time
-site/live/
-examples/web-demo/dist/
+
+# Test capture output (golden review, visual audit)
+crates/*/tests/output/

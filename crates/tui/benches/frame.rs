@@ -13,11 +13,11 @@ use std::io;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil_kernel::{Cx, NodeId, container};
-use sigil_reactive::Runtime;
-use sigil_style::{Tone, grid};
+use sigil::kernel::{Cx, NodeId, container};
+use sigil::reactive::Runtime;
+use sigil::style::{Tone, grid};
+use sigil::widgets::{ColWidth, TableColumn, TableState, badge, label, table};
 use sigil_tui::{EventRouter, Grid, Host, step as try_step};
-use sigil_widgets::{ColWidth, TableColumn, TableState, badge, label, table};
 
 const COLS: u16 = 120;
 const ROWS: u16 = 40;
@@ -26,7 +26,7 @@ const CELL: f32 = 8.0;
 fn step(
     host: &mut Host,
     router: &mut EventRouter,
-    events: impl IntoIterator<Item = sigil_hal::ShellEvent>,
+    events: impl IntoIterator<Item = sigil::hal::ShellEvent>,
     cols: u16,
     rows: u16,
 ) -> Grid {

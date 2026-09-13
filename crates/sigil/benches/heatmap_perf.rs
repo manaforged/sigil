@@ -7,10 +7,10 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use sigil::kernel::Cx;
+use sigil::reactive::Runtime;
+use sigil::style::Rgba8;
 use sigil::widgets::overlay::heatmap;
-use sigil_kernel::Cx;
-use sigil_reactive::Runtime;
-use sigil_style::Rgba8;
 
 const fn cell_color(x: usize, y: usize) -> Rgba8 {
     Rgba8 {

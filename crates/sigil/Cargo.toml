@@ -1,95 +1,228 @@
 [package]
-name = "sigil-ui"
+name = "sigil-gui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "GPU UI in Rust. One widget tree: launch, Host, or run_tui."
+description = "GPU UI in Rust. One widget tree: launch and Host; the terminal host is sigil-tui."
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui"]
-# Facade README is crate-local (crates/sigil/README.md) — it is also the
-# docs.rs front page via `#![doc = include_str!("../README.md")]` in src/lib.rs.
-# benches/** is intentionally absent: Cargo strips the four [[bench]] targets
-# from the packaged manifest, and the benches are dev-only anyway.
-include = ["src/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "benches/**", "examples/**"]
 autobenches = false
 
 [lib]
 name = "sigil"
 
 [dependencies]
-sigil-actions = { workspace = true }
-sigil-app = { workspace = true }
-sigil-tui = { workspace = true, optional = true }
-sigil-tasks = { workspace = true }
-sigil-kernel = { workspace = true }
-sigil-events = { workspace = true }
-sigil-layout = { workspace = true }
-sigil-reactive = { workspace = true }
-sigil-style = { workspace = true }
-sigil-profile = { workspace = true }
-sigil-widgets = { workspace = true }
+accesskit = { workspace = true }
+ahash = { workspace = true }
+crossbeam-channel = { workspace = true }
+keyboard-types = { workspace = true }
+notify = { workspace = true }
+phf = { workspace = true }
+slotmap = { workspace = true }
+smallvec = { workspace = true }
+smol_str = { workspace = true }
+strsim = { workspace = true }
+tiny-skia = { workspace = true }
+tokio = { workspace = true }
+toml = { workspace = true }
+tracing = { workspace = true }
+unicode-bidi = "0.3"
+unicode-linebreak = "0.1"
+unicode-script = "0.5"
+unicode-segmentation = "1"
+unicode-width = { workspace = true }
+
 arboard = { workspace = true, optional = true }
+accesskit_winit = { workspace = true, optional = true }
+winit = { workspace = true, optional = true }
+raw-window-handle = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }
+bytemuck = { workspace = true, optional = true }
+skrifa = { workspace = true, optional = true }
+zeno = { workspace = true, optional = true }
+half = { workspace = true, optional = true }
+softbuffer = { workspace = true, optional = true }
+image = { workspace = true, optional = true }
+usvg = { workspace = true, optional = true }
+lyon_geom = { workspace = true, optional = true }
+harfrust = { version = "0.13", optional = true }
+rfd = { version = "0.17", optional = true }
+muda = { version = "0.19", optional = true }
+tray-icon = { version = "0.24", optional = true }
+rodio = { version = "0.22", optional = true }
+portable-pty = { version = "0.9", optional = true }
+vt100 = { version = "0.16", optional = true }
 
-# Optional GPU text + render surface for external host engines (e.g. a game engine).
-# Off by default; enabled via the `render` feature. Pure-widget/desktop
-# consumers (`sigil::launch`) are unaffected. See DR-054.
-sigil-renderer = { workspace = true, optional = true }
-sigil-text = { workspace = true, optional = true }
-sigil-hal = { workspace = true, optional = true }
+[target.'cfg(windows)'.dependencies]
+windows-core = { version = "0.62", default-features = false, features = ["std"] }
 
-# Optional PNG decode for `image_bytes`. Off by default so the core lib
-# carries no image-format decoders; the raw-RGBA `image_rgba` path needs
-# nothing. The workspace `image` dep is already PNG-only + lean.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+zed-font-kit = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tokio = { workspace = true, features = ["rt"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-text = { version = "21", optional = true }
+
 [features]
 default = ["desktop"]
-# winit + wgpu `launch`. Default so existing desktop binaries stay unchanged.
-desktop = ["sigil-app/desktop", "clipboard"]
-# Native services are opt-in so a basic window only builds the window host.
+desktop = ["scene", "shell", "clipboard"]
+scene = [
+    "cpu",
+    "shaping-complex",
+    "dep:wgpu",
+    "dep:pollster",
+    "dep:bytemuck",
+    "dep:skrifa",
+    "dep:zeno",
+    "dep:half",
+    "dep:image",
+    "dep:usvg",
+    "dep:lyon_geom",
+    "dep:zed-font-kit",
+    "dep:core-text",
+    "dep:raw-window-handle",
+]
+shell = ["dep:winit", "dep:accesskit_winit"]
+cpu = ["dep:softbuffer"]
+shaping-complex = ["dep:harfrust"]
+windowed = ["scene", "shell"]
+capture = ["scene"]
+bench = []
+render = ["scene"]
 clipboard = ["dep:arboard"]
 clipboard-image = ["clipboard", "arboard/image-data"]
-dialog = ["desktop", "sigil-app/dialog"]
-menu = ["desktop", "sigil-app/menu"]
-tray = ["menu", "sigil-app/tray"]
-# Terminal host. Does not enable wgpu. Combine with `default-features = false`
-# for a TUI-only binary.
-tui = ["dep:sigil-tui", "clipboard"]
-# Exposes `sigil::{render, text}` and `Host::scene` without winit.
-# See DR-054.
-render = ["dep:sigil-renderer", "dep:sigil-text", "dep:sigil-hal", "sigil-app/scene"]
-# Exposes `image_bytes(&[u8])` — decode an encoded image (PNG) to a
-# widget. `image_rgba` (raw pixels) is always available without this.
-image-decode = ["sigil-widgets/image-decode"]
-# Exposes `dialog::mock` — inject canned file-dialog responses in your app's
-# tests without opening a native picker. Enable in dev-dependencies.
-test-support = ["dialog", "sigil-app/test-support"]
-audio = ["sigil-app/audio"]
-pty = ["sigil-app/pty"]
+dialog = ["desktop", "dep:rfd"]
+menu = ["desktop", "dep:muda", "dep:raw-window-handle"]
+tray = ["menu", "dep:tray-icon"]
+image-decode = ["dep:image"]
+test-support = ["dialog"]
+audio = ["dep:rodio"]
+pty = ["dep:portable-pty", "dep:vt100"]
 
 [dev-dependencies]
+allocation-counter = "0.8.1"
 criterion = { version = "0.8", features = ["html_reports"] }
-sigil-animation = { path = "../animation" }
-sigil-animation-runtime = { path = "../animation_runtime" }
-sigil-bidi = { path = "../bidi" }
-sigil-hal = { path = "../hal" }
-sigil-renderer = { path = "../renderer" }
 image = { workspace = true }
 pollster = { workspace = true }
+proptest = { workspace = true }
+rayon = { workspace = true }
+taffy = "0.14"
 wgpu = { workspace = true }
+
+[[test]]
+name = "text_integration"
+path = "tests/text_integration.rs"
+
+[[test]]
+name = "shell_display_gate"
+path = "tests/shell_display_gate.rs"
+harness = false
 
 [[example]]
 name = "profile_frame"
 required-features = ["render"]
+
+[[example]]
+name = "perf_100k_breakdown"
+path = "examples/layout/perf_100k_breakdown.rs"
+
+[[example]]
+name = "profile_wide_tree"
+path = "examples/layout/profile_wide_tree.rs"
+
+[[example]]
+name = "blur_showcase"
+path = "examples/renderer/blur_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "capture_phases"
+path = "examples/renderer/capture_phases.rs"
+required-features = ["capture"]
+
+[[example]]
+name = "corner_radius_showcase"
+path = "examples/renderer/corner_radius_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "decoration_showcase"
+path = "examples/renderer/decoration_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "glow_showcase"
+path = "examples/renderer/glow_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "gradient_showcase"
+path = "examples/renderer/gradient_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "icon_showcase"
+path = "examples/renderer/icon_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "inner_shadow_showcase"
+path = "examples/renderer/inner_shadow_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "layer_showcase"
+path = "examples/renderer/layer_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "pattern_showcase"
+path = "examples/renderer/pattern_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "shadow_showcase"
+path = "examples/renderer/shadow_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "split_path_showcase"
+path = "examples/renderer/split_path_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "sprite_showcase"
+path = "examples/renderer/sprite_showcase.rs"
+required-features = ["windowed"]
+
+[[example]]
+name = "stroke_showcase"
+path = "examples/renderer/stroke_showcase.rs"
+required-features = ["windowed"]
+
+[[bench]]
+name = "floating_text"
+harness = false
+
+[[bench]]
+name = "frame_phases"
+harness = false
 
 [[bench]]
 name = "heatmap_perf"
 harness = false
 
 [[bench]]
-name = "floating_text"
+name = "table_ops"
 harness = false
 
 [[bench]]
@@ -100,16 +233,88 @@ harness = false
 name = "widget_render"
 harness = false
 
+[[bench]]
+name = "actions_dispatch"
+harness = false
+
+[[bench]]
+name = "animation_runtime_animator_ticks"
+harness = false
+
+[[bench]]
+name = "events_events_ops"
+harness = false
+
+[[bench]]
+name = "kernel_tree_ops"
+harness = false
+
+[[bench]]
+name = "layout_invalidation_rig"
+harness = false
+
+[[bench]]
+name = "layout_js_framework_benchmark"
+harness = false
+
+[[bench]]
+name = "layout_layout_ops"
+harness = false
+
+[[bench]]
+name = "layout_resize_rig"
+harness = false
+
+[[bench]]
+name = "layout_taffy_corpus_deep"
+harness = false
+
+[[bench]]
+name = "layout_taffy_corpus_huge_nested"
+harness = false
+
+[[bench]]
+name = "layout_taffy_corpus_incremental"
+harness = false
+
+[[bench]]
+name = "layout_taffy_corpus_wide_tree"
+harness = false
+
+[[bench]]
+name = "reactive_fanout"
+harness = false
+
+[[bench]]
+name = "reactive_memory"
+harness = false
+
+[[bench]]
+name = "reactive_reactive_ops"
+harness = false
+
+[[bench]]
+name = "reactive_realtime"
+harness = false
+
+[[bench]]
+name = "renderer_text_paint_cost"
+harness = false
+
+[[bench]]
+name = "renderer_blur_cost"
+harness = false
+
+[[bench]]
+name = "style_style_ops"
+harness = false
+
+[[bench]]
+name = "tasks_async_ops"
+harness = false
+
 [lints]
 workspace = true
 
-[[bench]]
-name = "table_ops"
-harness = false
-
-[[bench]]
-name = "frame_phases"
-harness = false
-
 [package.metadata.docs.rs]
-all-features = true
+features = ["desktop", "render", "clipboard", "clipboard-image", "image-decode", "test-support"]

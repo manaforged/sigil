@@ -5,15 +5,15 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::KeyEventInit;
 use sigil::prelude::*;
-use sigil_hal::KeyEventInit;
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -23,7 +23,7 @@ fn compute(cx: &mut Cx, root: NodeId) {
         .expect("layout");
 }
 
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
+fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()

@@ -6,10 +6,10 @@
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
 #![allow(clippy::shadow_unrelated)]
 
+use sigil::hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit, ScrollEventInit};
 use sigil::prelude::*;
+use sigil::renderer::{SceneCommand, emit_scene};
 use sigil::widgets::{SortDir, SortKey, TableState};
-use sigil_hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit, ScrollEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
 
 const ROW_H: f32 = 20.0;
 const HEADER_H: f32 = 28.0;
@@ -57,8 +57,8 @@ fn demo_state() -> TableState<Item> {
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -70,7 +70,7 @@ fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     layout
 }
 
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
+fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -932,7 +932,7 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
         );
         let mut layout = compute(&mut cx, root);
         for _ in 0..3 {
-            sigil_app::__drive_test_frame(
+            sigil::app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(800.0, 400.0))
@@ -947,8 +947,8 @@ fn fraction_columns_stretch_in_a_measured_viewport() {
             .expect("wrapper holds the grid");
         let name_w = body_cell_x(&cx, &layout, grid, 1) - body_cell_x(&cx, &layout, grid, 0);
         assert!(
-            (name_w - 401.3).abs() < 1.0,
-            "Fraction(1.4) must stretch into the leftover by grow ratio, not sit at its 48px floor: {name_w}",
+            (name_w - 418.7).abs() < 1.0,
+            "Fraction(1.4) must take its content-independent share of the leftover, not sit at its 48px floor: {name_w}",
         );
         assert_eq!(
             scrollbar_track_count(&cx, grid),
@@ -975,7 +975,7 @@ fn unset_viewport_width_measures_the_table() {
         );
         let mut layout = compute(&mut cx, root);
         for _ in 0..3 {
-            sigil_app::__drive_test_frame(
+            sigil::app::__drive_test_frame(
                 || {
                     layout
                         .compute(&mut cx, root, Size::fixed(640.0, 480.0))

@@ -1,4 +1,4 @@
-use sigil_hal::{
+use sigil::hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
 use smol_str::SmolStr;

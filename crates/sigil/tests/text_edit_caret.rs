@@ -6,9 +6,9 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
-fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil_hal::Rect> {
+fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::hal::Rect> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -27,12 +27,12 @@ fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil_hal::Rect> {
 }
 
 fn focused_edit(buffer: &str) -> (Cx, NodeId, LayoutEngine) {
-    sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+    sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
 
     let mut cx = Cx::new_root();
     let root = cx.add(text_edit(signal(buffer.to_owned())));
     let mut layout =
-        LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+        LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
     layout
         .compute(&mut cx, root, Size::fixed(400.0, 200.0))
         .expect("layout");
@@ -72,7 +72,7 @@ fn caret_sits_on_the_line_its_offset_is_on() {
     });
 }
 
-use sigil_hal::{KeyEventInit, MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::hal::{KeyEventInit, MouseButton, MouseButtons, Point, PointerEventInit};
 
 fn click_at(cx: &mut Cx, layout: &LayoutEngine, router: &mut EventRouter, x: f32, y: f32) {
     router.route(
@@ -93,11 +93,11 @@ fn click_at(cx: &mut Cx, layout: &LayoutEngine, router: &mut EventRouter, x: f32
 #[test]
 fn clicking_moves_the_caret_to_the_clicked_line() {
     sigil::reactive::Runtime::scope("caret-click", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(String::from("aaa\nbbb\nccc"))));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");
@@ -129,12 +129,12 @@ fn clicking_moves_the_caret_to_the_clicked_line() {
 #[test]
 fn caller_owned_caret_tracks_keyboard_movement() {
     sigil::reactive::Runtime::scope("caret-signal", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
         let caret = signal(5);
         let root = cx.add(text_edit(signal("hello".to_string())).caret_position(caret));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");

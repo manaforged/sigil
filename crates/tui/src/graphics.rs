@@ -3,8 +3,8 @@ use std::io::{self, Write};
 use std::sync::OnceLock;
 
 use crossterm::{cursor, queue};
-use sigil_kernel::ImageSource;
-use sigil_style::Rgba8;
+use sigil::kernel::ImageSource;
+use sigil::style::Rgba8;
 
 const CHUNK: usize = 4096;
 const STORED: usize = 65_535;

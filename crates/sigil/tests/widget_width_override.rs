@@ -9,22 +9,22 @@ use sigil::prelude::*;
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _c: &TextContent, _s: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(0.0, 0.0)
+    fn measure(&self, _c: &TextContent, _s: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(0.0, 0.0)
     }
 }
 
 struct ProportionalMeasure;
 
 impl TextMeasure for ProportionalMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let len = match content {
             TextContent::Static(value) => value.len(),
             TextContent::Reactive(value) => value.peek().len(),
             TextContent::Compute(_) => content.resolve().len(),
         };
         let bounded = u16::try_from(len).unwrap_or(u16::MAX);
-        sigil_hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)
+        sigil::hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)
     }
 }
 
@@ -167,7 +167,7 @@ fn grow_size_fills_button_without_collapsing_its_height() {
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(300.0, 100.0))
-                .child(button("Save").size(sigil_style::Size::Grow)),
+                .child(button("Save").size(sigil::style::Size::Grow)),
         );
         let button = cx
             .get(root)

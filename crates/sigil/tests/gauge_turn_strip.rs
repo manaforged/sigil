@@ -7,10 +7,10 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
 
+use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
-use sigil_kernel::{Cx, NodeId};
-use sigil_reactive::{Runtime, signal};
-use sigil_style::{Dimension, Px, StyleAtom, StyleBinding};
+use sigil::reactive::{Runtime, signal};
+use sigil::style::{Dimension, Px, StyleAtom, StyleBinding};
 
 mod golden_support;
 

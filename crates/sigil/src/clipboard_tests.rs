@@ -27,7 +27,7 @@ fn native_image_without_pixels() {
 }
 
 impl Clipboard for Memory {
-    fn set(&self, text: &str) -> Result<(), sigil_widgets::ClipError> {
+    fn set(&self, text: &str) -> Result<(), crate::widgets::ClipError> {
         *self.0.borrow_mut() = Some(text.to_owned());
         Ok(())
     }
@@ -37,7 +37,7 @@ impl Clipboard for Memory {
     }
 }
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 #[test]
 fn copy_paste_roundtrip_when_platform_clipboard_available() {
     install_os();
@@ -60,12 +60,12 @@ fn copy_uses_the_installed_handle() {
     install(Memory(RefCell::new(None)));
     copy("x").expect("memory stores");
     assert_eq!(paste().expect("memory reads"), "x");
-    install(sigil_widgets::NoopClipboard);
+    install(crate::widgets::NoopClipboard);
 }
 
 #[test]
 fn copy_without_handle_errors() {
-    install(sigil_widgets::NoopClipboard);
+    install(crate::widgets::NoopClipboard);
     let err = copy("x").unwrap_err();
     assert!(
         err.to_string().contains("installed"),

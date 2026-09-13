@@ -5,8 +5,8 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
 use sigil::prelude::*;
-use sigil_hal::{KeyEvent, KeyEventInit, KeyPhase, PhysicalKey};
 
 const POPUP_VISIBLE_H: f32 = 6.0 * 28.0;
 
@@ -56,7 +56,7 @@ fn few_options_use_a_plain_popup() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(3)).width(200.0));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 640.0))
             .expect("layout");
@@ -74,7 +74,7 @@ fn many_options_scroll_within_the_popup() {
         let mut cx = Cx::new_root();
         let root = cx.add(dropdown(signal(0_usize), labels(20)).width(200.0));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 640.0))
             .expect("layout");

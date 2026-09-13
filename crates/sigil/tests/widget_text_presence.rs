@@ -6,18 +6,18 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
 struct ProportionalText;
 impl TextMeasure for ProportionalText {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
             TextContent::Compute(_) => content.resolve().len(),
         };
         #[allow(clippy::cast_precision_loss)]
-        sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
+        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
     }
 }
 

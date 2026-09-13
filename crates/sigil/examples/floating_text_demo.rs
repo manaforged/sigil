@@ -5,7 +5,7 @@
 #![allow(missing_docs)]
 
 use sigil::prelude::*;
-use sigil_style::Rgba8;
+use sigil::style::Rgba8;
 
 fn main() -> sigil::AppResult<()> {
     sigil::launch(("Sigil - floating combat text", 960, 540), build)

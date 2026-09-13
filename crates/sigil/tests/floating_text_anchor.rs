@@ -10,12 +10,12 @@
 
 use std::rc::Rc;
 
+use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
+use sigil::reactive::{Runtime, signal};
+use sigil::style::scale::ScaleRole;
+use sigil::style::{Rgba8, Theme};
 use sigil::widgets::{FCT_POOL_CAPACITY, FctNode, FctState};
-use sigil_kernel::{Cx, NodeId};
-use sigil_reactive::{Runtime, signal};
-use sigil_style::scale::ScaleRole;
-use sigil_style::{Rgba8, Theme};
 
 fn placeholder_color() -> Rgba8 {
     Rgba8 {

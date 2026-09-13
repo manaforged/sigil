@@ -1,9 +1,23 @@
 #![allow(dead_code, unused_imports, unused_crate_dependencies)]
 
+use std::any::Any;
+
 use sigil::prelude::*;
 
-#[derive(Clone, DeriveAction)]
+#[derive(Clone)]
 struct PreludeProbeAction;
+
+impl Action for PreludeProbeAction {
+    fn debug_name(&self) -> &'static str {
+        "PreludeProbeAction"
+    }
+    fn boxed_clone(&self) -> Box<dyn Action> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
 
 fn _action_in_prelude() -> Box<dyn Action> {
     Box::new(PreludeProbeAction)

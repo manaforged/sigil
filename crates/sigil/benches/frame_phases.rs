@@ -12,13 +12,13 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use sigil::hal::{LogicalSize, Point, Rect, Size};
+use sigil::kernel::{Cx, NodeId, TextContent};
+use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;
 use sigil::profile;
-use sigil_hal::{LogicalSize, Point, Rect, Size};
-use sigil_kernel::{Cx, NodeId, TextContent};
-use sigil_layout::{LayoutEngine, TextMeasure};
-use sigil_reactive::Runtime;
-use sigil_renderer::emit_scene_clipped;
+use sigil::reactive::Runtime;
+use sigil::renderer::emit_scene_clipped;
 
 const ROWS: u32 = 500;
 

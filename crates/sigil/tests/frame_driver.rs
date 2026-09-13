@@ -10,14 +10,27 @@
     clippy::ignored_unit_patterns
 )]
 
+use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil_actions::DeriveAction;
-use sigil_reactive::{DrawPhase, Entity, Runtime};
+use sigil::actions::Action;
+use sigil::reactive::{DrawPhase, Entity, Runtime};
 
-#[derive(Clone, DeriveAction)]
+#[derive(Clone)]
 struct Tick;
+
+impl Action for Tick {
+    fn debug_name(&self) -> &'static str {
+        "Tick"
+    }
+    fn boxed_clone(&self) -> Box<dyn Action> {
+        Box::new(self.clone())
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
 
 #[test]
 fn frame_driver_walks_idle_to_idle_through_all_phases() {
@@ -28,7 +41,7 @@ fn frame_driver_walks_idle_to_idle_through_all_phases() {
         let layout_trace = Rc::clone(&trace);
         let paint_trace = Rc::clone(&trace);
 
-        sigil_app::__drive_test_frame(
+        sigil::app::__drive_test_frame(
             move || layout_trace.borrow_mut().push(Runtime::current_phase()),
             move || paint_trace.borrow_mut().push(Runtime::current_phase()),
         );
@@ -64,7 +77,7 @@ fn action_registration_survives_frame_cycle() {
             cx.focus(&handle);
         });
 
-        sigil_app::__drive_test_frame(|| {}, || {});
+        sigil::app::__drive_test_frame(|| {}, || {});
 
         Runtime::begin_effect();
         host.update(|_, cx| cx.dispatch(&Tick));
@@ -106,7 +119,7 @@ fn g3_deferred_action_fires_at_end_of_frame() {
         let fired_during = Rc::clone(&fired);
         let host_for_paint = host.clone();
 
-        sigil_app::__drive_test_frame(
+        sigil::app::__drive_test_frame(
             || {},
             move || {
                 host_for_paint.update(|_, cx| cx.dispatch(&Tick));
@@ -132,9 +145,9 @@ fn begin_effect_runs_before_layout_pass() {
     Runtime::scope("frame_driver::effect_before_layout", || {
         let observed_phase = Rc::new(Cell::new(DrawPhase::Idle));
         let phase_writer = Rc::clone(&observed_phase);
-        let s = sigil_reactive::signal(0_i32);
+        let s = sigil::reactive::signal(0_i32);
 
-        sigil_reactive::effect(move || {
+        sigil::reactive::effect(move || {
             let _ = s.get();
             phase_writer.set(Runtime::current_phase());
         });
@@ -148,7 +161,7 @@ fn begin_effect_runs_before_layout_pass() {
             "Idle-phase write fires effect synchronously in Idle",
         );
 
-        sigil_app::__drive_test_frame(|| {}, || {});
+        sigil::app::__drive_test_frame(|| {}, || {});
 
         assert_eq!(
             Runtime::current_phase(),
@@ -164,7 +177,7 @@ fn begin_effect_runs_before_layout_pass() {
 fn paint_phase_write_panics_in_debug() {
     Runtime::scope("frame_driver::paint_write_panics", || {
         let counter = Entity::<u32>::new("counter", |_| 0_u32);
-        sigil_app::__drive_test_frame(
+        sigil::app::__drive_test_frame(
             || {},
             move || {
                 counter.update(|n, _cx| {
@@ -180,8 +193,8 @@ fn paint_phase_write_panics_in_debug() {
 #[should_panic(expected = "Signal::set")]
 fn paint_phase_signal_set_panics_in_debug() {
     Runtime::scope("frame_driver::paint_signal_set_panics", || {
-        let s = sigil_reactive::signal(0_i32);
-        sigil_app::__drive_test_frame(
+        let s = sigil::reactive::signal(0_i32);
+        sigil::app::__drive_test_frame(
             || {},
             move || {
                 s.set(7);
@@ -193,12 +206,12 @@ fn paint_phase_signal_set_panics_in_debug() {
 #[test]
 fn read_paths_in_paint_pass_are_legal() {
     Runtime::scope("frame_driver::read_in_paint", || {
-        let s = sigil_reactive::signal(42_i32);
+        let s = sigil::reactive::signal(42_i32);
         let e = Entity::<u32>::new("e", |_| 99_u32);
         let observed = Rc::new(Cell::new((0_i32, 0_u32, DrawPhase::Idle)));
         let writer = Rc::clone(&observed);
 
-        sigil_app::__drive_test_frame(
+        sigil::app::__drive_test_frame(
             || {},
             move || {
                 let s_val = s.get();

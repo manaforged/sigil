@@ -1,6 +1,6 @@
 use std::io::Cursor;
 
-use sigil_kernel::ImageSource;
+use sigil::kernel::ImageSource;
 
 use super::{
     Frame, Painter, Placement, Protocol, base64, blocks, blocks_window, detect, png, png_window,

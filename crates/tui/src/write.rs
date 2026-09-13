@@ -6,10 +6,10 @@ use crossterm::style::{
 };
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
-use sigil_style::Tone;
+use sigil::style::Tone;
 
 use crate::paint::{Cell, Grid, Ink};
-use sigil_style::Rgba8;
+use sigil::style::Rgba8;
 
 pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
     if prev.cols() == next.cols() && prev.rows() == next.rows() {

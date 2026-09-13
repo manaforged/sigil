@@ -5,10 +5,10 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_style::{Rgba8, Theme};
+use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::style::{Rgba8, Theme};
 
 const HOVER_BG: Rgba8 = Rgba8 {
     r: 10,
@@ -31,8 +31,8 @@ const REST_BG: Rgba8 = Rgba8 {
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -72,7 +72,7 @@ const fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
         kind: PointerKind::Mouse,
-        button: Some(sigil_hal::MouseButton::Left),
+        button: Some(sigil::hal::MouseButton::Left),
         phase: PointerPhase::Down,
         buttons: MouseButtons::empty(),
         modifiers: ModifiersState::empty(),

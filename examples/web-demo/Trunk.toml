@@ -1,3 +1,0 @@
-[build]
-dist = "../../site/live"
-public_url = "/live/"

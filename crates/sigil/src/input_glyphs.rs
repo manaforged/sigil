@@ -1,8 +1,8 @@
 use std::cell::Cell;
 
-use sigil_kernel::{NodeBuilder, TextContent, fragment, text};
-use sigil_reactive::{Signal, derived, signal};
-use sigil_style::NodeStyleExt as _;
+use crate::kernel::{NodeBuilder, TextContent, fragment, text};
+use crate::reactive::{Signal, derived, signal};
+use crate::style::NodeStyleExt as _;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum InputAction {

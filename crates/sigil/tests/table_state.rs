@@ -5,8 +5,8 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::reactive::Runtime;
 use sigil::widgets::{Identifiable, MIN_COL_WIDTH, SortDir, SortKey, TableColumn, TableState};
-use sigil_reactive::Runtime;
 
 #[derive(Clone)]
 struct Item {

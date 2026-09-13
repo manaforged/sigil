@@ -1,5 +1,5 @@
 use crate::prelude::{Cx, NodeId};
-use sigil_reactive::Runtime;
+use crate::reactive::Runtime;
 
 pub fn with_cx<F: FnOnce(&mut Cx)>(name: &'static str, f: F) {
     Runtime::scope(name, || {

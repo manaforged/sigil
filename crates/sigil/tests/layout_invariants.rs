@@ -10,31 +10,31 @@ use sigil::prelude::*;
 struct ProportionalText;
 
 impl TextMeasure for ProportionalText {
-    fn measure(&self, content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let len = match content {
             TextContent::Static(s) => s.len(),
             TextContent::Reactive(sig) => sig.peek().len(),
             TextContent::Compute(_) => content.resolve().len(),
         };
         #[allow(clippy::cast_precision_loss)]
-        sigil_hal::LogicalSize::new(len as f32 * 7.0, 16.0)
+        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
     }
 }
 
 struct NativeLineGeometry;
 
-impl sigil_layout::TextGeometry for NativeLineGeometry {
-    fn hit(&self, _text: &str, _style: &sigil_style::TextStyle, _x: f32) -> usize {
+impl sigil::layout::TextGeometry for NativeLineGeometry {
+    fn hit(&self, _text: &str, _style: &sigil::style::TextStyle, _x: f32) -> usize {
         0
     }
 
     fn caret(
         &self,
         _text: &str,
-        _style: &sigil_style::TextStyle,
+        _style: &sigil::style::TextStyle,
         _byte: usize,
-    ) -> sigil_layout::CaretGeometry {
-        sigil_layout::CaretGeometry {
+    ) -> sigil::layout::CaretGeometry {
+        sigil::layout::CaretGeometry {
             x: 0.0,
             top: 0.0,
             height: 19.2,
@@ -191,7 +191,7 @@ fn stacked_widgets_are_sound_at_every_width() {
 #[test]
 fn compact_text_field_contains_native_line_height() {
     sigil::reactive::Runtime::scope("compact-text-field-layout", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
         let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));

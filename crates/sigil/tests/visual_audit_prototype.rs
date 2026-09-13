@@ -10,8 +10,8 @@ use std::fs;
 mod golden_support;
 
 use golden_support::{InteractionMode, render_widget_to_png_with};
+use sigil::app::DefaultTextMeasure;
 use sigil::prelude::*;
-use sigil_app::DefaultTextMeasure;
 
 fn save(stem: &str, img: Option<image::RgbaImage>) {
     let dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/output/audit");

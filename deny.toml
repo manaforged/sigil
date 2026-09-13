@@ -19,9 +19,9 @@ targets = [
 ]
 all-features = false
 no-default-features = false
-# The checks govern what we SHIP. publish = false crates — the bench-parity
-# harnesses (which deliberately import GPUI's whole dependency tree),
-# examples, ide-core) are not shipping code, and their
+# The checks govern what we SHIP. publish = false crates and examples
+# (the bench harnesses and apps live in sigil-examples) are not shipping
+# code, and their
 # unique transitive deps are excluded recursively.
 exclude-unpublished = true
 
@@ -58,7 +58,7 @@ ignore = [
     # decorations). winit's transitive tree; we render text with our own
     # skrifa/HarfRust stack and never touch ab_glyph at runtime.
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser via sctk-adwaita/winit; not our text path" },
-]
+    ]
 
 # --- licenses ---------------------------------------------------------------
 # Allow list is the SPDX intersection of what has been cleared for
@@ -125,11 +125,9 @@ skip = [
     # wgpu 30 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
     # wgpu-core, wgpu-hal, gpu-allocator). All in the wgpu dep tree, no
     # workaround available.
-    { crate = "hashbrown@0.15.5", reason = "wgpu 30 transitive (gpu-descriptor)" },
     { crate = "hashbrown@0.16.1", reason = "wgpu 30 transitive (naga/wgpu-core)" },
 
     # foldhash follows hashbrown's version split for the same reason.
-    { crate = "foldhash@0.1.5",   reason = "wgpu 30 transitive via hashbrown 0.15" },
 
     # winit 0.30 pins windows-sys 0.52; criterion 0.5 (via is-terminal /
     # winapi-util / walkdir) pulls windows-sys 0.61. Both are dev/runtime
@@ -145,12 +143,11 @@ skip = [
     { crate = "tiny-skia@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30; renderer uses 0.12.0" },
     { crate = "tiny-skia-path@0.11.4", reason = "sctk-adwaita 0.10.1 via winit 0.30 (usvg 0.48 needs 0.12.0)" },
 
-    # --- winit 0.30 / accesskit_winit 0.32 chain ---------------------------
+    # --- winit / accesskit_winit chain -+
     # winit 0.30 and accesskit_macos 0.26.1 pin the objc2 0.5 / block2 0.5 /
     # core-graphics 0.23 generation; arboard, muda, rfd, tray-icon and
     # zed-font-kit have moved to the 0.6 / 0.24 generation. Cannot converge
     # until winit 0.31+ and a matching accesskit_winit land.
-    { crate = "accesskit_consumer@0.35.0", reason = "accesskit_windows 0.32.1 via accesskit_winit 0.32.2; accesskit_macos/atspi_common use 0.36" },
     { crate = "objc2@0.5.2",              reason = "accesskit_macos 0.26.1 / block2 0.5.1 (winit 0.30 chain); rest of tree on 0.6" },
     { crate = "objc2-app-kit@0.2.2",      reason = "accesskit_macos 0.26.1 and winit 0.30.13 pin; arboard/muda/rfd use 0.3.2" },
     { crate = "objc2-foundation@0.2.2",   reason = "accesskit_macos 0.26.1 / objc2-app-kit 0.2.2 pin; rest of tree on 0.3.2" },
@@ -160,28 +157,13 @@ skip = [
     { crate = "core-foundation@0.9.4",    reason = "follows core-graphics 0.23.2 (winit 0.30); 0.10 via core-graphics 0.24" },
     { crate = "bitflags@1.3.2",           reason = "core-graphics 0.23.2 / core-graphics-types 0.1.3 / png 0.17.16 pin v1" },
     { crate = "smol_str@0.2.2",           reason = "winit 0.30 pins; sigil-hal uses 0.3.6" },
-    { crate = "keyboard-types@0.7.0",     reason = "muda 0.17.2 pins; sigil-hal uses 0.8.3" },
 
     # --- Linux tray-icon stack (tray-icon -> libappindicator -> gtk3) ------
     # Same unmaintained GTK3 chain as the RUSTSEC-2024-04xx advisory ignores.
     # gtk3-macros/glib-macros pin an entire old proc-macro/toml ecosystem.
-    { crate = "heck@0.4.1",               reason = "glib-macros 0.18.5 (tray-icon GTK3 stack); system-deps uses 0.5" },
-    { crate = "libloading@0.7.4",         reason = "libappindicator-sys 0.9.0 (tray stack); ash/dlib/x11rb use 0.8" },
-    { crate = "syn@1.0.109",              reason = "proc-macro-error 1.0.4 via glib-macros (tray stack)" },
     { crate = "syn@2.0.119",              reason = "proc-macro ecosystem; bytemuck-derive has moved to syn 3" },
     { crate = "thiserror@1.0.69",         reason = "cairo-rs/glib/gio/calloop (tray + smithay chains); wgpu/naga use 2.0" },
     { crate = "thiserror-impl@1.0.69",    reason = "follows thiserror 1.0.69" },
-    { crate = "toml@0.8.23",              reason = "system-deps 6.2.2 (tray GTK3 stack); sigil-app on 0.9, trybuild on 1.x" },
-    { crate = "serde_spanned@0.6.9",      reason = "toml 0.8.23 / toml_edit 0.22.27 (tray stack)" },
-    { crate = "proc-macro-crate@1.3.1",   reason = "gtk3-macros 0.18.2 (tray stack)" },
-    { crate = "proc-macro-crate@2.0.0",   reason = "glib-macros 0.18.5 (tray stack); zbus uses 3.5" },
-    { crate = "toml_edit@0.19.15",        reason = "proc-macro-crate 1.3.1 (gtk3-macros, tray stack)" },
-    { crate = "toml_edit@0.20.7",         reason = "proc-macro-crate 2.0.0 (glib-macros, tray stack)" },
-    { crate = "toml_edit@0.22.27",        reason = "toml 0.8.23 (system-deps, tray stack)" },
-    { crate = "toml_datetime@0.6.11",     reason = "toml 0.8.23 + toml_edit 0.19/0.20/0.22 (tray stack)" },
-    { crate = "toml_datetime@0.7.5+spec-1.1.0", reason = "toml 0.9.12 (sigil-app); converges if workspace toml bumps to 1.x" },
-    { crate = "winnow@0.5.40",            reason = "toml_edit 0.19.15/0.20.7 (tray stack)" },
-    { crate = "winnow@0.7.15",            reason = "toml 0.9.12 (sigil-app) + toml_edit 0.22.27; converges if workspace toml bumps to 1.x" },
 
     # phf converged 2026-08-19 (workspace req 0.13 — phf family + rand 0.8 /
     # rand_core 0.6 skips removed). skrifa converged the same day (req 0.42,
@@ -190,10 +172,7 @@ skip = [
     # --- misc upstream splits ----------------------------------------------
     { crate = "dirs@5.0.1",          reason = "zed-font-kit 0.14.1-zed pins; tray-icon 0.21.3 uses 6.0" },
     { crate = "dirs-sys@0.4.1",      reason = "follows dirs 5.0.1 (zed-font-kit)" },
-    { crate = "cfg_aliases@0.1.1",   reason = "nix 0.28 via portable-pty 0.9; wgpu uses 0.2" },
     { crate = "miniz_oxide@0.8.9",   reason = "png 0.18 via image 0.25; flate2 uses 0.9" },
-    { crate = "pollster@0.4.0",      reason = "rfd 0.17; renderer uses 1.0" },
-    { crate = "png@0.17.16",         reason = "muda 0.17.2 + tiny-skia 0.11.4 (sctk-adwaita) pin; image 0.25 uses 0.18.1" },
     { crate = "rustix@0.38.44",      reason = "calloop 0.13 + crossterm 0.28.1 (winit/smithay chains); zbus/wayland on 1.x" },
     { crate = "linux-raw-sys@0.4.15", reason = "follows rustix 0.38.44" },
     { crate = "linux-raw-sys@0.9.4", reason = "drm-sys via softbuffer 0.4; rustix uses 0.12" },
@@ -216,15 +195,11 @@ skip = [
     { crate = "windows_x86_64_msvc@0.52.6", reason = "follows windows-targets 0.52.6" },
 
     # --- portable-pty 0.9 chain (sigil-app PTY hosting) ---------------------
-    { crate = "rustc-hash@1.1.0",   reason = "transitive via portable-pty 0.9 chain; rest of tree on 2.x" },
 
     # --- cpal/rodio 0.15 chain (sigil-app audio playback) -------------------
     # rodio 0.20 -> cpal 0.15 pins the windows 0.54 generation; the rest of
     # the tree (winit/arboard/muda chains) is on 0.62. Converges when cpal
     # ships a release on windows 0.62+.
-    { crate = "windows@0.54.0",        reason = "cpal 0.15.3 via rodio 0.20; rest of tree on 0.62" },
-    { crate = "windows-core@0.54.0",   reason = "follows windows 0.54.0 (cpal 0.15.3)" },
-    { crate = "windows-result@0.1.2",  reason = "follows windows-core 0.54.0 (cpal 0.15.3)" },
 ]
 skip-tree = []
 

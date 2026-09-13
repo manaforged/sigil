@@ -11,12 +11,12 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 use pollster::FutureExt;
-use sigil::prelude::*;
-use sigil_hal::{
+use sigil::hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::prelude::*;
+use sigil::renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -106,8 +106,8 @@ fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaIma
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -127,9 +127,9 @@ pub fn real_measure_enabled() -> bool {
     )
 }
 
-fn default_text_measure() -> Box<dyn sigil_layout::TextMeasure> {
+fn default_text_measure() -> Box<dyn sigil::layout::TextMeasure> {
     if real_measure_enabled() {
-        Box::new(sigil_app::DefaultTextMeasure::new())
+        Box::new(sigil::app::DefaultTextMeasure::new())
     } else {
         Box::new(StubMeasure)
     }
@@ -160,7 +160,7 @@ pub fn render_widget_to_png_with(
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil_layout::TextMeasure>,
+    text_measure: Box<dyn sigil::layout::TextMeasure>,
 ) -> Option<image::RgbaImage> {
     render_core(build, mode, size_px, hit_point, text_measure, |_, root| {
         root
@@ -174,7 +174,7 @@ pub fn render_widget_to_png_scaled(
     logical_size_px: [u32; 2],
     scale: f32,
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil_layout::TextMeasure>,
+    text_measure: Box<dyn sigil::layout::TextMeasure>,
 ) -> Option<image::RgbaImage> {
     let logical = [logical_size_px[0] as f32, logical_size_px[1] as f32];
     let physical = [
@@ -214,7 +214,7 @@ fn render_core(
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil_layout::TextMeasure>,
+    text_measure: Box<dyn sigil::layout::TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
 ) -> Option<image::RgbaImage> {
     let logical = [size_px[0] as f32, size_px[1] as f32];
@@ -235,7 +235,7 @@ fn render_core_scaled(
     logical_size: [f32; 2],
     physical_size_px: [u32; 2],
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil_layout::TextMeasure>,
+    text_measure: Box<dyn sigil::layout::TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
 ) -> Option<image::RgbaImage> {
     let mut image: Option<image::RgbaImage> = None;
@@ -258,7 +258,9 @@ fn render_core_scaled(
             .expect("layout-after-state");
 
         let scene = emit_scene(&cx, root);
-        let (device, queue) = request_device();
+        let Some((device, queue)) = request_device() else {
+            return;
+        };
         image = Some(render_scene_to_image(
             &device,
             &queue,
@@ -431,12 +433,12 @@ fn drive_state(
 fn tick_animation_runtime(frames: u32, dt: f32) {
     if frames == u32::MAX {
         for _ in 0..SETTLE_SAFETY_CAP {
-            if sigil_animation_runtime::active_count() == 0 {
+            if sigil::animation_runtime::active_count() == 0 {
                 return;
             }
-            sigil_animation_runtime::tick(dt);
+            sigil::animation_runtime::tick(dt);
         }
-        let remaining = sigil_animation_runtime::active_count();
+        let remaining = sigil::animation_runtime::active_count();
         assert!(
             remaining == 0,
             "golden harness: animation runtime did not settle within \
@@ -447,7 +449,7 @@ fn tick_animation_runtime(frames: u32, dt: f32) {
         return;
     }
     for _ in 0..frames {
-        sigil_animation_runtime::tick(dt);
+        sigil::animation_runtime::tick(dt);
     }
 }
 
@@ -487,7 +489,7 @@ fn pointer_up(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn request_device() -> (wgpu::Device, wgpu::Queue) {
+fn request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -496,9 +498,15 @@ fn request_device() -> (wgpu::Device, wgpu::Queue) {
             force_fallback_adapter: false,
             apply_limit_buckets: false,
         })
-        .block_on()
-        .expect("no wgpu adapter — visual goldens need a real GPU (run --ignored on headless CI)");
-    adapter
+        .block_on();
+    let Ok(adapter) = adapter else {
+        assert!(
+            std::env::var_os("SIGIL_REQUIRE_GOLDENS").is_none(),
+            "no wgpu adapter while SIGIL_REQUIRE_GOLDENS is set"
+        );
+        return None;
+    };
+    let (device, queue) = adapter
         .request_device(&wgpu::DeviceDescriptor {
             label: Some("visual-golden device"),
             required_features: wgpu::Features::empty(),
@@ -508,7 +516,8 @@ fn request_device() -> (wgpu::Device, wgpu::Queue) {
             trace: wgpu::Trace::Off,
         })
         .block_on()
-        .expect("wgpu adapter has no usable device for the visual-golden suite")
+        .expect("wgpu adapter has no usable device for the visual-golden suite");
+    Some((device, queue))
 }
 
 fn render_scene_to_image(

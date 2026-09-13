@@ -9,7 +9,7 @@ use core::time::Duration;
 use std::time::Instant;
 
 use sigil::prelude::*;
-use sigil_reactive::{
+use sigil::reactive::{
     __test_advance_clock, __test_clear_clock, __test_set_clock, Runtime, signal, tick_intervals,
 };
 

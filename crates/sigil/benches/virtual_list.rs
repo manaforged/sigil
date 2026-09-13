@@ -16,11 +16,11 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
+use sigil::hal::{LogicalSize, Size};
+use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::reactive::signal;
 use sigil::widgets::virtual_list;
-use sigil_hal::{LogicalSize, Size};
-use sigil_kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil_layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil_reactive::signal;
 
 const TOTAL_ROWS: usize = 100_000;
 const ROW_HEIGHT: f32 = 32.0;
@@ -61,7 +61,7 @@ fn row_node(_index: usize, data: &RowData) -> NodeBuilder {
         .child(container().layout(LayoutStyle::block().fixed_size(SPACER_CELL_W, ROW_HEIGHT)))
 }
 
-fn build_widget(cx: &mut Cx, data: Vec<RowData>, scroll_y: sigil_reactive::Signal<f32>) -> NodeId {
+fn build_widget(cx: &mut Cx, data: Vec<RowData>, scroll_y: sigil::reactive::Signal<f32>) -> NodeId {
     cx.add(
         virtual_list(data, row_node)
             .row_height(ROW_HEIGHT)
@@ -72,7 +72,7 @@ fn build_widget(cx: &mut Cx, data: Vec<RowData>, scroll_y: sigil_reactive::Signa
 }
 
 fn bench_first_render(c: &mut Criterion) {
-    sigil_reactive::Runtime::scope("sigil-virtual-list-bench-first-render", || {
+    sigil::reactive::Runtime::scope("sigil-virtual-list-bench-first-render", || {
         c.bench_function("virtual_list/first_render", |b| {
             b.iter_batched(
                 || {
@@ -96,7 +96,7 @@ fn bench_first_render(c: &mut Criterion) {
 }
 
 fn bench_scroll_step(c: &mut Criterion) {
-    sigil_reactive::Runtime::scope("sigil-virtual-list-bench-scroll-step", || {
+    sigil::reactive::Runtime::scope("sigil-virtual-list-bench-scroll-step", || {
         c.bench_function("virtual_list/scroll_step", |b| {
             let data = make_data_source();
             let scroll_y = signal(0.0_f32);

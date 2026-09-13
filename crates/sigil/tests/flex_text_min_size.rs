@@ -10,7 +10,7 @@ use sigil::prelude::*;
 #[test]
 fn stacked_text_in_a_short_column_does_not_crush() {
     sigil::reactive::Runtime::scope("flex-min", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let mut cx = Cx::new_root();
         let title = text("Large title here").class("text-xl font-bold");
         let sub = text("A smaller subtitle line").class("text-sm");
@@ -20,7 +20,7 @@ fn stacked_text_in_a_short_column_does_not_crush() {
             .child(sub);
         let root = cx.add(container().layout(LayoutStyle::flex_column()).child(col));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 400.0))
             .unwrap();

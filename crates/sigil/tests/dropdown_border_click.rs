@@ -5,15 +5,15 @@
 #![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{MouseButton, MouseButtons, Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, StrokeAlign, emit_scene};
+use sigil::renderer::{SceneCommand, StrokeAlign, emit_scene};
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -212,9 +212,9 @@ fn reactive_disable_vetoes_arrow_down_open() {
         router.route(
             &mut cx,
             &layout,
-            ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
+            ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
                 key: Key::ArrowDown.into(),
-                physical: sigil_hal::PhysicalKey::ArrowDown,
+                physical: sigil::hal::PhysicalKey::ArrowDown,
                 modifiers: ModifiersState::empty(),
                 repeat: false,
                 phase: KeyPhase::Down,

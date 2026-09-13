@@ -1,10 +1,10 @@
-use sigil_hal::{Point, Rect};
+use sigil::hal::{Point, Rect};
 
 use super::{Grid, Ink, paint, paint_for, row_bytes, supports_truecolor, terminal_inks};
 use crate::paint::raster;
-use sigil_app::{CellWidth, Host, Painted, set_cell_width};
-use sigil_kernel::{Cx, text as text_node};
-use sigil_style::{Rgba8, Tone};
+use sigil::app::{CellWidth, Host, Painted, set_cell_width};
+use sigil::kernel::{Cx, text as text_node};
+use sigil::style::{Rgba8, Tone};
 
 fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
     let mut host = Host::cells();

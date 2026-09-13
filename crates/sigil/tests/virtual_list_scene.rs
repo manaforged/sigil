@@ -4,17 +4,17 @@
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, missing_docs)]
 
+use sigil::hal::Size;
+use sigil::kernel::{Cx, TextContent, container, text_live};
+use sigil::layout::{LayoutEngine, TextMeasure};
+use sigil::reactive::{Runtime, signal};
+use sigil::renderer::emit_scene;
 use sigil::widgets::virtual_list_bind;
-use sigil_hal::Size;
-use sigil_kernel::{Cx, TextContent, container, text_live};
-use sigil_layout::{LayoutEngine, TextMeasure};
-use sigil_reactive::{Runtime, signal};
-use sigil_renderer::emit_scene;
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

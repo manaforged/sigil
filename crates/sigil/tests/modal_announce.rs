@@ -5,8 +5,8 @@
 #![allow(missing_docs)]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+use sigil::kernel::{AccessibleName, Live};
 use sigil::prelude::*;
-use sigil_kernel::{AccessibleName, Live};
 
 #[test]
 fn modal_announces_title_on_open_rising_edge() {

@@ -1,111 +1,14 @@
 [workspace]
 resolver = "3"
-members = [
-    "crates/sigil",
-    "crates/widgets",
-    "crates/a11y",
-    "crates/actions",
-    "crates/animation_runtime",
-    "crates/actions_macros",
-    "crates/animation",
-    "crates/app",
-    "crates/tasks",
-    "crates/kernel",
-    "crates/bidi",
-    "crates/events",
-    "crates/hal",
-    "crates/icons",
-    "crates/layout",
-    "crates/reactive",
-    "crates/renderer",
-    "crates/ide-core",
-    "crates/shell",
-    "crates/style",
-    "crates/style-macros",
-    "crates/text",
-    "crates/profile",
-    "crates/tui",
-    "crates/bench-parity",
-    "crates/bench-gpui",
-    "crates/bench-spec",
-    "examples/hello-counter",
-    "examples/hello-host",
-    "examples/hello-tui",
-    "examples/hello-events",
-    "examples/hello-style",
-    "examples/hello-tree",
-    "examples/hello-layout",
-    "examples/internals/hello-rect",
-    "examples/linear-row",
-    "examples/player",
-    "examples/pty-pane",
-    "examples/vertical-slice",
-    "examples/timer-stopwatch",
-    "examples/log-tailer",
-    "examples/scratchpad",
-    "examples/file-browser",
-    "examples/kanban-board",
-    "examples/password-generator",
-    "examples/csv-viewer",
-    "examples/data-table",
-    "examples/ledger",
-    "examples/access-log",
-    "examples/todo",
-    "examples/regex-tester",
-    "examples/api-explorer",
-    "examples/chat-client",
-    "examples/workbench",
-    "examples/widget-playground",
-    "examples/web-demo",
-    "examples/catalog",
-    "examples/strays",
-]
-default-members = [
-    "crates/sigil",
-    "crates/widgets",
-    "crates/a11y",
-    "crates/actions",
-    "crates/animation_runtime",
-    "crates/actions_macros",
-    "crates/animation",
-    "crates/app",
-    "crates/tasks",
-    "crates/kernel",
-    "crates/bidi",
-    "crates/events",
-    "crates/hal",
-    "crates/icons",
-    "crates/layout",
-    "crates/reactive",
-    "crates/renderer",
-    "crates/shell",
-    "crates/style",
-    "crates/style-macros",
-    "crates/text",
-    "crates/profile",
-    "crates/tui",
-    "examples/hello-counter",
-    "examples/hello-host",
-    "examples/hello-tui",
-    "examples/hello-events",
-    "examples/hello-style",
-    "examples/hello-tree",
-    "examples/hello-layout",
-    "examples/internals/hello-rect",
-    "examples/linear-row",
-    "examples/player",
-    "examples/pty-pane",
-    "examples/vertical-slice",
-    "examples/widget-playground",
-    "examples/strays",
-]
+members = ["crates/sigil", "crates/tui"]
+default-members = ["crates/sigil", "crates/tui"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
 license = "MIT"
-repository = "https://github.com/ThomGardiner/sigil"
+repository = "https://github.com/thomgardiner/sigil"
 readme = "README.md"
 authors = ["Thomas Gardiner"]
 
@@ -119,7 +22,8 @@ unsafe_op_in_unsafe_fn = "deny"
 # use `#![deny(missing_docs)]` in their lib.rs. Binary / example crates only
 # have bin targets, where missing_docs does not fire.
 unreachable_pub = "warn"
-unused_crate_dependencies = "warn"
+# Dropped after the crate collapse: one package now has one dependency list,
+# so every integration-test target would warn about every dep it does not use.
 rust_2018_idioms = { level = "warn", priority = -1 }
 
 [workspace.lints.clippy]
@@ -190,10 +94,10 @@ slotmap = "1"
 ahash = "0.8"
 tracing = "0.1"
 accesskit = "0.25"
-# The winit-side platform adapter half of the AccessKit bridge (DR-050).
-# `tokio` (not the default `async-io`) matches DR-008's
-# zbus-panic workaround already assumed for the bare `accesskit` dep on
-# Linux; sigil's own tokio runtime (`sigil-async`) already exists so this
+# The winit-side platform adapter half of the AccessKit bridge.
+# `tokio` (not the default `async-io`) matches the zbus-panic workaround
+# already assumed for the bare `accesskit` dep on
+# Linux; sigil's own tokio runtime (`sigil-tasks`) already exists so this
 # adds no new async-executor surface. `accesskit_unix` keeps the Linux
 # AT-SPI2 backend available (it is opt-out only via `default-features`,
 # there is no separate always-on gate). `winit/x11` + `winit/wayland`
@@ -215,53 +119,25 @@ smol_str = { version = "0.3.6", default-features = false }
 tokio = { version = "1", default-features = false, features = ["sync", "macros"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 # Workspace and file-watch primitives: `notify` is the
-# de-facto cross-platform fs-watcher; `ignore` is BurntSushi's gitignore
-# parser/walker; `crossbeam-channel` carries fs events into consumer code.
+# de-facto cross-platform fs-watcher. `crossbeam-channel` carries fs
+# events into consumer code.
 notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
-ignore = "0.4"
 crossbeam-channel = "0.5"
 # Settings: parse-only TOML (serde feature for typed deserialize).
 toml = { version = "1", default-features = false, features = ["parse", "serde"] }
-tempfile = "3"
 # System clipboard. `arboard` is the de-facto cross-platform
 # Rust crate (Win32, X11, Wayland, AppKit). Default features include the
 # image-encoding path we do not need, so depend with `default-features = false`
 # to keep the transitive surface narrow.
 arboard = { version = "3", default-features = false }
-# Internal crates publish as `sigil-*`; their directories keep the short
-# names for git history (crates/kernel → package sigil-kernel). The facade is
-# the one exception: package `sigil-ui` (the bare `sigil` name was taken on
+# The package publishes as `sigil-gui` (the bare `sigil` name was taken on
 # crates.io) with the library still named `sigil`, so `use sigil::prelude::*`
-# stays the single import user code needs. `sigil-async` became `sigil-tasks`
-# because `async` is a Rust reserved keyword and would force `r#async` on
-# consumers. Lockstep: every internal dep carries the workspace version;
-# bump them together.
-sigil-ui = { path = "crates/sigil", version = "0.1.0" }
-sigil-widgets = { path = "crates/widgets", version = "0.1.0" }
-sigil-a11y = { path = "crates/a11y", version = "0.1.0" }
-sigil-actions = { path = "crates/actions", version = "0.1.0" }
-sigil-actions-macros = { path = "crates/actions_macros", version = "0.1.0" }
-sigil-animation = { path = "crates/animation", version = "0.1.0" }
-sigil-animation-runtime = { path = "crates/animation_runtime", version = "0.1.0" }
-sigil-app = { path = "crates/app", version = "0.1.0", default-features = false }
+# stays the single import user code needs.
+sigil-gui = { path = "crates/sigil", version = "0.1.0" }
 sigil-tui = { path = "crates/tui", version = "0.1.0" }
 unicode-width = "0.2"
-sigil-tasks = { path = "crates/tasks", version = "0.1.0" }
-sigil-kernel = { path = "crates/kernel", version = "0.1.0" }
-sigil-bidi = { path = "crates/bidi", version = "0.1.0" }
-sigil-events = { path = "crates/events", version = "0.1.0" }
-sigil-hal = { path = "crates/hal", version = "0.1.0" }
-sigil-layout = { path = "crates/layout", version = "0.1.0" }
-sigil-profile = { path = "crates/profile", version = "0.1.0" }
-sigil-reactive = { path = "crates/reactive", version = "0.1.0" }
-sigil-renderer = { path = "crates/renderer", version = "0.1.0" }
-sigil-shell = { path = "crates/shell", version = "0.1.0" }
-sigil-style = { path = "crates/style", version = "0.1.0" }
-sigil-style-macros = { path = "crates/style-macros", version = "0.1.0" }
-sigil-icons = { path = "crates/icons", version = "0.1.0" }
-sigil-text = { path = "crates/text", version = "0.1.0" }
 usvg = { version = "0.48", default-features = false }
-lyon_geom = { version = "1.0" }
+lyon_geom = "1.0"
 
 [profile.release]
 lto = "thin"

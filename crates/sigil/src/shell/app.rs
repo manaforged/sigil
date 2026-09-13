@@ -1,0 +1,93 @@
+#![allow(clippy::redundant_pub_crate)]
+
+use std::sync::atomic::Ordering;
+
+use winit::{
+    application::ApplicationHandler,
+    event::{StartCause, WindowEvent as WinitWindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow},
+    window::WindowId,
+};
+
+use crate::hal::{ShellEvent, WindowEvent as SigilWindowEvent};
+
+use crate::shell::{shell::WinitShell, waker::WakeEvent};
+
+pub(crate) struct WinitApp<F> {
+    pub(crate) shell: WinitShell,
+    pub(crate) frame: F,
+    pub(crate) input_redraw_pending: bool,
+}
+
+impl<F> ApplicationHandler<WakeEvent> for WinitApp<F>
+where
+    F: FnMut(&mut WinitShell),
+{
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        self.shell.materialise_pending(event_loop);
+        for (_, window) in self.shell.windows() {
+            window.request_redraw();
+        }
+    }
+
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: WakeEvent) {
+        self.shell.materialise_pending(event_loop);
+
+        if let Some(hook) = self.shell.wake_hook() {
+            hook();
+        }
+
+        self.shell.pending_wake().store(false, Ordering::Release);
+
+        for (_, window) in self.shell.windows() {
+            window.request_redraw();
+        }
+    }
+
+    fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
+        if matches!(cause, StartCause::ResumeTimeReached { .. }) {
+            self.shell.request_redraws();
+        }
+    }
+
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        match self.shell.deadline_hook().and_then(|hook| hook()) {
+            Some(deadline) => event_loop.set_control_flow(ControlFlow::WaitUntil(deadline)),
+            None => event_loop.set_control_flow(ControlFlow::Wait),
+        }
+    }
+
+    fn window_event(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        window_id: WindowId,
+        event: WinitWindowEvent,
+    ) {
+        self.shell.process_a11y_event(window_id, &event);
+        match event {
+            WinitWindowEvent::CloseRequested => {
+                self.shell
+                    .push_event(ShellEvent::Window(SigilWindowEvent::CloseRequested));
+                self.shell.request_exit();
+                self.shell.request_redraws();
+            }
+            WinitWindowEvent::RedrawRequested => {
+                self.shell.materialise_pending(event_loop);
+                if !self.input_redraw_pending {
+                    self.shell.set_force_paint();
+                }
+                self.input_redraw_pending = false;
+                (self.frame)(&mut self.shell);
+                if self.shell.exit_requested() {
+                    event_loop.exit();
+                }
+            }
+            event => {
+                if self.shell.buffer_window_event(window_id, event) {
+                    self.input_redraw_pending = true;
+                    self.shell.request_redraws();
+                }
+            }
+        }
+    }
+}

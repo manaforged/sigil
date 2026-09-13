@@ -24,7 +24,7 @@ fn button_styled_bg_emits_atom() {
             "button bg('surface') must push BackgroundThemeRef onto the accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil_style::Px(8))),
+            atoms.contains(&StyleAtom::BorderRadius(sigil::style::Px(8))),
             "button rounded(8) must push BorderRadius, got {atoms:?}",
         );
     });
@@ -74,7 +74,7 @@ fn checkbox_styled_bg_emits_atom() {
             "checkbox bg('surface') must reach the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil_style::Px(6))),
+            atoms.contains(&StyleAtom::BorderRadius(sigil::style::Px(6))),
             "rounded(6) must land, got {atoms:?}",
         );
     });
@@ -105,7 +105,7 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
              merged into the trigger at build time), got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil_style::Px(12))),
+            atoms.contains(&StyleAtom::PaddingAll(sigil::style::Px(12))),
             "padding(12) must land in the accumulator, got {atoms:?}",
         );
     });
@@ -137,7 +137,7 @@ fn panel_accepts_styled_surface() {
             "panel bg('accent') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
             "panel px(20) must land in the trait accumulator, got {atoms:?}",
         );
     });
@@ -162,7 +162,7 @@ fn text_field_styled_composes_with_state_variant() {
             "text_field bg('surface') must land in trait accumulator base, got {base:?}",
         );
         assert!(
-            base.contains(&StyleAtom::PaddingX(sigil_style::Px(10))),
+            base.contains(&StyleAtom::PaddingX(sigil::style::Px(10))),
             "text_field px(10) must land in trait accumulator base, got {base:?}",
         );
         let hover = style.hover_atoms().to_vec();
@@ -191,7 +191,7 @@ fn slider_accepts_styled_surface() {
             "slider bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil_style::Px(8))),
+            atoms.contains(&StyleAtom::PaddingAll(sigil::style::Px(8))),
             "padding(8) must land in the accumulator, got {atoms:?}",
         );
     });
@@ -229,7 +229,7 @@ fn floating_text_accepts_styled_surface() {
 #[test]
 fn trap3_style_and_trait_style_coexist() {
     Runtime::scope("widget-styled-trap3-style", || {
-        let my_style = sigil_style::Style::new()
+        let my_style = sigil::style::Style::new()
             .padding(8)
             .background_theme("surface");
         let mut b = button("X").style(my_style);
@@ -237,13 +237,13 @@ fn trap3_style_and_trait_style_coexist() {
         assert!(style_view.is_empty());
 
         let checked = signal(false);
-        let _cb = checkbox(checked).style(sigil_style::Style::new().padding(4));
+        let _cb = checkbox(checked).style(sigil::style::Style::new().padding(4));
 
         let on = signal(false);
-        let _tg = toggle(on).style(sigil_style::Style::new().padding(4));
+        let _tg = toggle(on).style(sigil::style::Style::new().padding(4));
 
         let value = signal(0.5_f32);
-        let _sl = slider(value, 0.0..=1.0).style(sigil_style::Style::new().padding(4));
+        let _sl = slider(value, 0.0..=1.0).style(sigil::style::Style::new().padding(4));
     });
 }
 
@@ -261,7 +261,7 @@ fn modal_accepts_styled_surface() {
             "modal bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
             "modal px(20) must land in the trait accumulator, got {atoms:?}",
         );
     });
@@ -318,7 +318,7 @@ fn menu_accepts_styled_surface() {
             "menu bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil_style::Px(20))),
+            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
             "menu px(20) must land in the trait accumulator, got {atoms:?}",
         );
     });

@@ -9,7 +9,7 @@ use sigil::prelude::*;
 
 struct CharText;
 impl TextMeasure for CharText {
-    fn measure(&self, content: &TextContent, space: sigil_hal::Size) -> sigil_hal::LogicalSize {
+    fn measure(&self, content: &TextContent, space: sigil::hal::Size) -> sigil::hal::LogicalSize {
         let text = match content {
             TextContent::Static(s) => s.clone(),
             TextContent::Reactive(sig) => sig.peek(),
@@ -19,13 +19,13 @@ impl TextMeasure for CharText {
         #[allow(clippy::cast_precision_loss)]
         let natural = text.chars().count() as f32 * char_w;
         match space.width {
-            sigil_hal::Dim::Fixed(w) if w > 0.0 && natural > w => {
+            sigil::hal::Dim::Fixed(w) if w > 0.0 && natural > w => {
                 let per_line = (w / char_w).floor().max(1.0);
                 #[allow(clippy::cast_precision_loss)]
                 let lines = (text.chars().count() as f32 / per_line).ceil();
-                sigil_hal::LogicalSize::new(w, lines * 16.0)
+                sigil::hal::LogicalSize::new(w, lines * 16.0)
             }
-            _ => sigil_hal::LogicalSize::new(natural, 16.0),
+            _ => sigil::hal::LogicalSize::new(natural, 16.0),
         }
     }
 }
@@ -111,8 +111,8 @@ fn wrapped_text_stays_within_its_container_width() {
 
 const LONGER_THAN_VIEWPORT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-fn row_cell_rect(style: LayoutStyle) -> sigil_hal::Rect {
-    let mut rect = sigil_hal::Rect::new(sigil_hal::Point::new(0.0, 0.0), -1.0, -1.0);
+fn row_cell_rect(style: LayoutStyle) -> sigil::hal::Rect {
+    let mut rect = sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), -1.0, -1.0);
     sigil::reactive::Runtime::scope("text-wrap-off-viewport", || {
         let mut cx = Cx::new_root();
         let cell = label(LONGER_THAN_VIEWPORT).ellipsize().layout(style);

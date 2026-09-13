@@ -18,13 +18,13 @@ use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use pollster::FutureExt;
-use sigil::prelude::*;
-use sigil::reactive::{Runtime, signal};
-use sigil_hal::{
+use sigil::hal::{
     Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
     PointerPhase, ShellEvent,
 };
-use sigil_renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::prelude::*;
+use sigil::reactive::{Runtime, signal};
+use sigil::renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -46,8 +46,8 @@ impl Mode {
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

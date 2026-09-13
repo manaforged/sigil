@@ -6,13 +6,13 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::shadow_unrelated)]
 
+use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
-use sigil_hal::{KeyEventInit, PhysicalKey};
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

@@ -1,18 +1,18 @@
+#[cfg(feature = "clipboard-image")]
+use crate::kernel::ImageSource;
+#[cfg(feature = "clipboard-image")]
+use crate::widgets::ClipError;
 use crate::{AppResult, Error};
-#[cfg(feature = "clipboard-image")]
-use sigil_kernel::ImageSource;
-#[cfg(feature = "clipboard-image")]
-use sigil_widgets::ClipError;
 
-pub use sigil_widgets::{Clipboard, install};
+pub use crate::widgets::{Clipboard, install};
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 pub struct OsClipboard;
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 impl Clipboard for OsClipboard {
-    fn set(&self, text: &str) -> Result<(), sigil_widgets::ClipError> {
-        os_copy(text).map_err(sigil_widgets::ClipError::new)
+    fn set(&self, text: &str) -> Result<(), crate::widgets::ClipError> {
+        os_copy(text).map_err(crate::widgets::ClipError::new)
     }
 
     fn get(&self) -> Option<String> {
@@ -20,17 +20,17 @@ impl Clipboard for OsClipboard {
     }
 }
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 pub(crate) fn install_os() {
     install(OsClipboard);
 }
 
 pub fn copy(text: &str) -> AppResult<()> {
-    sigil_widgets::clipboard().set(text).map_err(Error::new)
+    crate::widgets::clipboard().set(text).map_err(Error::new)
 }
 
 pub fn paste() -> AppResult<String> {
-    sigil_widgets::clipboard()
+    crate::widgets::clipboard()
         .get()
         .ok_or_else(|| Error::new(Empty))
 }
@@ -51,17 +51,17 @@ pub fn image() -> AppResult<Option<ImageSource>> {
     })
 }
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 fn os_copy(text: &str) -> AppResult<()> {
     with_handle(|clip| clip.set_text(text.to_owned()).map_err(Error::new))
 }
 
-#[cfg(any(feature = "desktop", feature = "tui"))]
+#[cfg(feature = "desktop")]
 fn os_paste() -> AppResult<String> {
     with_handle(|clip| clip.get_text().map_err(Error::new))
 }
 
-#[cfg(any(feature = "desktop", feature = "tui", feature = "clipboard-image"))]
+#[cfg(any(feature = "desktop", feature = "clipboard-image"))]
 fn with_handle<R>(f: impl FnOnce(&mut arboard::Clipboard) -> AppResult<R>) -> AppResult<R> {
     use std::cell::RefCell;
 

@@ -8,7 +8,7 @@
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use sigil_app::DefaultTextMeasure;
+use sigil::app::DefaultTextMeasure;
 
 use sigil::prelude::*;
 use sigil::widgets::patterns;
@@ -363,13 +363,13 @@ fn number_field_focused() {
 fn vector_path_shapes() {
     let img = render_widget_to_png(
         |cx| {
-            let accent = sigil_style::Rgba8 {
+            let accent = sigil::style::Rgba8 {
                 r: 80,
                 g: 130,
                 b: 255,
                 a: 255,
             };
-            let warn = sigil_style::Rgba8 {
+            let warn = sigil::style::Rgba8 {
                 r: 240,
                 g: 160,
                 b: 40,
@@ -408,7 +408,7 @@ fn vector_path_shapes() {
 
 #[test]
 fn vector_gradient_fill() {
-    fn square(a: sigil_style::Rgba8, b: sigil_style::Rgba8, radial: bool) -> PathNode {
+    fn square(a: sigil::style::Rgba8, b: sigil::style::Rgba8, radial: bool) -> PathNode {
         let base = path(60, 60)
             .move_to(0.0, 0.0)
             .line_to(60.0, 0.0)
@@ -423,13 +423,13 @@ fn vector_gradient_fill() {
     }
     let img = render_widget_to_png(
         |cx| {
-            let gold = sigil_style::Rgba8 {
+            let gold = sigil::style::Rgba8 {
                 r: 255,
                 g: 210,
                 b: 60,
                 a: 255,
             };
-            let rose = sigil_style::Rgba8 {
+            let rose = sigil::style::Rgba8 {
                 r: 220,
                 g: 40,
                 b: 120,

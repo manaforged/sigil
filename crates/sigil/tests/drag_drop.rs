@@ -9,17 +9,17 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
 const WIDTH: f32 = 640.0;
 const HEIGHT: f32 = 480.0;
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -31,7 +31,7 @@ fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     layout
 }
 
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil_style::Rgba8> {
+fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -101,7 +101,7 @@ fn demo_tree(
     };
     let count_down = {
         let downs = Rc::clone(downs);
-        move |_: &mut sigil_hal::PointerEvent| *downs.borrow_mut() += 1
+        move |_: &mut sigil::hal::PointerEvent| *downs.borrow_mut() += 1
     };
     container()
         .layout(LayoutStyle::flex_row().fixed_size(WIDTH, HEIGHT))

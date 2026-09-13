@@ -6,9 +6,9 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil_renderer::{SceneCommand, emit_scene};
+use sigil::renderer::{SceneCommand, emit_scene};
 
-fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil_hal::Rect> {
+fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::hal::Rect> {
     emit_scene(cx, root)
         .commands
         .iter()
@@ -31,7 +31,7 @@ const OUTER_HEIGHT: f32 = 160.0;
 #[test]
 fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
     sigil::reactive::Runtime::scope("scroll-into-view", || {
-        sigil_layout::set_text_geometry(std::rc::Rc::new(sigil_app::EngineGeometry::new()));
+        sigil::layout::set_text_geometry(std::rc::Rc::new(sigil::app::EngineGeometry::new()));
         let buffer: String = (0..40)
             .map(|i| format!("line{i}"))
             .collect::<Vec<_>>()
@@ -39,7 +39,7 @@ fn scrolling_keeps_the_end_of_buffer_caret_in_view() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(signal(buffer)));
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(sigil_app::DefaultTextMeasure::new()));
+            LayoutEngine::with_text_measure(Box::new(sigil::app::DefaultTextMeasure::new()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 200.0))
             .expect("layout");

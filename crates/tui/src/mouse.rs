@@ -1,6 +1,6 @@
 use crossterm::event::{KeyModifiers, MouseButton as TermButton, MouseEvent, MouseEventKind};
-use sigil_hal::PointerEvent;
-use sigil_hal::{
+use sigil::hal::PointerEvent;
+use sigil::hal::{
     ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind, PointerPhase,
     ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
 };
@@ -9,7 +9,7 @@ const NOTCH: f32 = 3.0;
 
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {
-    let cell = sigil_app::Host::CELL;
+    let cell = sigil::app::Host::CELL;
     Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
 }
 

@@ -1,0 +1,1 @@
+use criterion as _;

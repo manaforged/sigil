@@ -5,17 +5,17 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil_hal::{Point, PointerEventInit};
-use sigil_renderer::{SceneCommand, emit_scene};
-use sigil_style::Rgba8;
-use sigil_style::Tone;
-use sigil_style::scale::{ruby_light, slate_light};
+use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::style::Rgba8;
+use sigil::style::Tone;
+use sigil::style::scale::{ruby_light, slate_light};
 
 struct StubMeasure;
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 

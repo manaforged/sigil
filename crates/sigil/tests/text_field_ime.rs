@@ -10,16 +10,16 @@
     clippy::cast_precision_loss
 )]
 
+use sigil::kernel::{NodeType, TextContent};
+use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil_kernel::{NodeType, TextContent};
-use sigil_layout::{CaretGeometry, TextGeometry, set_text_geometry};
-use sigil_style::TextStyle;
+use sigil::style::TextStyle;
 
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil_hal::Size) -> sigil_hal::LogicalSize {
-        sigil_hal::LogicalSize::new(40.0, 16.0)
+    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+        sigil::hal::LogicalSize::new(40.0, 16.0)
     }
 }
 
@@ -264,9 +264,9 @@ fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
 }
 
 fn arrow_left() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
         key: Key::ArrowLeft.into(),
-        physical: sigil_hal::PhysicalKey::ArrowLeft,
+        physical: sigil::hal::PhysicalKey::ArrowLeft,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,
@@ -275,9 +275,9 @@ fn arrow_left() -> ShellEvent {
 }
 
 fn backspace() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(sigil_hal::KeyEventInit {
+    ShellEvent::Key(KeyEvent::new(sigil::hal::KeyEventInit {
         key: Key::Backspace.into(),
-        physical: sigil_hal::PhysicalKey::Backspace,
+        physical: sigil::hal::PhysicalKey::Backspace,
         modifiers: ModifiersState::empty(),
         repeat: false,
         phase: KeyPhase::Down,

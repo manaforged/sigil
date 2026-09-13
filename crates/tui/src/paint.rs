@@ -1,8 +1,8 @@
-use sigil_app::{Painted, cell_width};
-use sigil_kernel::ImageSource;
+use sigil::app::{Painted, cell_width};
+use sigil::kernel::ImageSource;
 
 use crate::graphics::{Placement, blocks_window, protocol};
-use sigil_style::{Rgba8, Tone};
+use sigil::style::{Rgba8, Tone};
 use smol_str::SmolStr;
 use unicode_segmentation::UnicodeSegmentation;
 

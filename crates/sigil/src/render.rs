@@ -1,5 +1,5 @@
-pub use sigil_hal::{Color, PhysicalSize, RenderedGlyph};
-pub use sigil_renderer::{
+pub use crate::hal::{Color, PhysicalSize, RenderedGlyph};
+pub use crate::renderer::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,
     DrawParams, DrawPattern, DrawRect, DrawSprite, Fill, GlyphRun, GradientStop, LayerEffect,
     LayerScope, LinearGradient, OffscreenTarget, PatternKind, RendererError, SceneBuilder,
