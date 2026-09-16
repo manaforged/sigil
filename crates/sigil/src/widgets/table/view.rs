@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::LayoutStyle;
-use crate::layout::prelude::{LayoutBuilderExt, Overflow, Position};
+use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{ClassSource, NodeStyleExt};
 
@@ -205,6 +205,7 @@ impl<Row: 'static> TableBuilder<Row> {
         let hscroll = hscroll::bind(&state, viewport_width, prefix);
         let body = body_view(state.clone(), chrome.clone(), body_spec, hscroll);
         let root = container()
+            .bounds_reactive(chrome.bounds)
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len() + usize::from(self.select))

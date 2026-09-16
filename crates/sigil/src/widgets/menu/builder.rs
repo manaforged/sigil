@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use crate::events::prelude::{Key, MouseButton, NodeEventsExt, PointerEvent};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TopLayer, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{
@@ -17,7 +17,6 @@ const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 const SEPARATOR_HEIGHT: f32 = 1.0;
 const GOLDEN_VIEWPORT_W: f32 = 240.0;
 const GOLDEN_VIEWPORT_H: f32 = 280.0;
-const ANCHORED_WRAPPER_SIZE: f32 = 4_096.0;
 
 pub(super) static MENU_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface"),
@@ -153,32 +152,19 @@ impl MenuBuilder {
         let open = self.open;
         let panel_h = panel_height(&self.rows);
         let pinned_width = self.layout_overrides.width_hint();
-        let (top, left, wrapper_size) = if let Some((x, y)) = self.anchor {
-            (y, x, ANCHORED_WRAPPER_SIZE)
-        } else if let Some(width) = pinned_width {
-            let centered_left = (GOLDEN_VIEWPORT_W - width).max(0.0) / 2.0;
-            let centered_top = (GOLDEN_VIEWPORT_H - panel_h).max(0.0) / 2.0;
-            (
-                centered_top,
-                centered_left,
-                GOLDEN_VIEWPORT_W.max(GOLDEN_VIEWPORT_H),
-            )
-        } else {
-            (0.0, 0.0, GOLDEN_VIEWPORT_W.max(GOLDEN_VIEWPORT_H))
-        };
+        let (layout, placement) = placement(self.anchor, pinned_width, panel_h);
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
 
         let mut panel = container()
             .role(Role::Menu)
+            .with(TopLayer)
             .label(menu_label)
-            .layout(
-                self.layout_overrides
-                    .apply(panel_layout(top, left, panel_h)),
-            )
+            .layout(self.layout_overrides.apply(placement))
             .class("rounded-md")
             .class("shadow-lg")
             .class(MENU_BASE)
-            .style_reactive(move || open_display(open));
+            .style_reactive(move || open_display(open))
+            .pointer_down(PointerEvent::stop_propagation);
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
         for row in self.rows {
@@ -193,8 +179,12 @@ impl MenuBuilder {
         }
 
         let mut root = container()
-            .layout(LayoutStyle::block().fixed_size(wrapper_size, wrapper_size))
+            .layout(layout)
             .style_reactive(move || open_display(open))
+            .pointer_down(move |event| {
+                open.set(false);
+                event.stop_propagation();
+            })
             .child(panel);
 
         for mutate in self.mutators {
@@ -202,6 +192,35 @@ impl MenuBuilder {
         }
         root
     }
+}
+
+fn placement(
+    anchor: Option<(f32, f32)>,
+    width: Option<f32>,
+    height: f32,
+) -> (LayoutStyle, LayoutStyle) {
+    if let Some((x, y)) = anchor {
+        return (
+            LayoutStyle::block()
+                .position(Position::Absolute)
+                .inset_top(0.0)
+                .inset_left(0.0)
+                .fill_width()
+                .fill_height(),
+            panel_layout(y, x, height),
+        );
+    }
+    let (left, top) = width.map_or((0.0, 0.0), |width| {
+        (
+            (GOLDEN_VIEWPORT_W - width).max(0.0) / 2.0,
+            (GOLDEN_VIEWPORT_H - height).max(0.0) / 2.0,
+        )
+    });
+    let extent = GOLDEN_VIEWPORT_W.max(GOLDEN_VIEWPORT_H);
+    (
+        LayoutStyle::block().fixed_size(extent, extent),
+        panel_layout(top, left, height),
+    )
 }
 
 impl WidgetLayoutExt for MenuBuilder {
@@ -258,6 +277,9 @@ fn wire_activate(
     });
     let pointer_activate = Rc::clone(&activate);
     node.pointer_up(move |event| {
+        if event.button != Some(MouseButton::Left) {
+            return;
+        }
         event.stop_propagation();
         pointer_activate();
     })
