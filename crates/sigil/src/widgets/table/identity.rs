@@ -1,10 +1,19 @@
 use std::collections::HashSet;
 use std::hash::Hash;
+use std::sync::Arc;
 
 pub trait Identifiable {
     type Id: Clone + Eq + Hash;
 
     fn id(&self) -> Self::Id;
+}
+
+impl<Row: Identifiable> Identifiable for Arc<Row> {
+    type Id = Row::Id;
+
+    fn id(&self) -> Self::Id {
+        self.as_ref().id()
+    }
 }
 
 pub(super) fn remap<Row, Id>(
@@ -21,16 +30,20 @@ where
         .iter()
         .filter_map(|&index| previous.get(index as usize).map(&id))
         .collect();
+    let anchor_name = anchor.and_then(|index| previous.get(index as usize).map(&id));
+    if named.is_empty() && anchor_name.is_none() {
+        return (HashSet::new(), None);
+    }
+    let single = named.iter().next().filter(|_| named.len() == 1);
     let mut kept = HashSet::new();
     let mut new_anchor = None;
-    let anchor_name = anchor.and_then(|index| previous.get(index as usize).map(&id));
     #[allow(
         clippy::cast_possible_truncation,
         reason = "values are bounded to the target range before the cast"
     )]
     for (index, row) in next.iter().enumerate() {
         let name = id(row);
-        if named.contains(&name) {
+        if single.map_or_else(|| named.contains(&name), |only| only == &name) {
             kept.insert(index as u32);
         }
         if anchor_name.as_ref() == Some(&name) {

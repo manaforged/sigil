@@ -122,13 +122,14 @@ fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
     derived_eq(move || {
         let visible = state.visible().get();
         let selection = state.selection().get();
-        let hit = visible.iter().filter(|row| selection.contains(row)).count();
-        if hit == 0 {
-            Mark::Empty
-        } else if hit == visible.len() {
-            Mark::Full
-        } else {
-            Mark::Partial
+        if selection.is_empty() {
+            return Mark::Empty;
+        }
+        let mut marks = visible.iter().map(|row| selection.contains(row));
+        match marks.next() {
+            Some(first) if marks.any(|selected| selected != first) => Mark::Partial,
+            Some(true) => Mark::Full,
+            None | Some(false) => Mark::Empty,
         }
     })
 }

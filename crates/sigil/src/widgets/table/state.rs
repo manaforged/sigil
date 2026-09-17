@@ -1,11 +1,11 @@
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+use std::sync::Arc;
 
-use crate::reactive::{Signal, derived, signal};
+use crate::reactive::{Signal, effect, signal};
 
 use super::columns::{ColWidth, MIN_COL_WIDTH, TableColumn};
-use super::derive::compute_visible;
+use super::derive::{compute_visible, reuse_identity};
 use super::identity::{self, Identifiable};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -31,7 +31,7 @@ type Remap<Row> =
     Rc<dyn Fn(&[Row], &[Row], &HashSet<u32>, Option<u32>) -> (HashSet<u32>, Option<u32>)>;
 
 pub struct TableState<Row: 'static> {
-    rows: Signal<Rc<Vec<Row>>>,
+    rows: Signal<Arc<Vec<Row>>>,
     columns: Rc<Vec<TableColumn<Row>>>,
     sort: Signal<Option<SortKey>>,
     quick_filter: Signal<String>,
@@ -61,20 +61,27 @@ impl<Row: 'static> Clone for TableState<Row> {
 impl<Row: 'static> TableState<Row> {
     #[must_use]
     pub fn new(rows: Vec<Row>, columns: Vec<TableColumn<Row>>) -> Self {
-        let rows = signal(Rc::new(rows));
+        let rows = signal(Arc::new(rows));
         let columns = Rc::new(columns);
         let sort = signal(None::<SortKey>);
         let quick_filter = signal(String::new());
         let derive_columns = Rc::clone(&columns);
-        let identity = Rc::new(RefCell::new(None));
-        let visible = derived(move || {
-            compute_visible(
-                &rows.get(),
-                &derive_columns,
-                sort.get(),
-                &quick_filter.get(),
-                &identity,
-            )
+        let mut identity = None;
+        let mut previous = None;
+        let visible = signal(Rc::new(Vec::new()));
+        effect(move || {
+            let key = sort.get();
+            let query = quick_filter.get();
+            let live_rows = rows.get();
+            let indices = if key.is_none() && query.is_empty() {
+                reuse_identity(live_rows.len(), &mut identity)
+            } else {
+                compute_visible(&live_rows, &derive_columns, key, &query, previous.as_ref())
+            };
+            previous = (key.is_some() && query.is_empty()).then(|| Rc::clone(&indices));
+            if !Rc::ptr_eq(&visible.peek(), &indices) {
+                visible.set_always(indices);
+            }
         });
         let order = (0..columns.len()).collect();
         Self {
@@ -95,11 +102,12 @@ impl<Row: 'static> TableState<Row> {
     }
 
     #[must_use]
-    pub const fn rows(&self) -> Signal<Rc<Vec<Row>>> {
+    pub const fn rows(&self) -> Signal<Arc<Vec<Row>>> {
         self.rows
     }
 
-    pub fn replace_rows(&self, rows: Vec<Row>) {
+    pub fn replace_rows(&self, rows: impl Into<Arc<Vec<Row>>>) {
+        let rows = rows.into();
         let previous = self.rows.peek();
         #[allow(
             clippy::cast_possible_truncation,
@@ -122,7 +130,7 @@ impl<Row: 'static> TableState<Row> {
                 )
             },
         );
-        self.rows.set_always(Rc::new(rows));
+        self.rows.set_always(rows);
         self.selection.set(Rc::new(selected));
         self.select_anchor.set(anchor);
     }
