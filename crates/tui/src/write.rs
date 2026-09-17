@@ -11,6 +11,35 @@ use sigil::style::Tone;
 use crate::paint::{Cell, Grid, Ink};
 use sigil::style::Rgba8;
 
+pub(crate) struct Measured<'a, W> {
+    inner: &'a mut W,
+    pub(crate) bytes: u64,
+    pub(crate) writes: u64,
+}
+
+impl<'a, W: Write> Measured<'a, W> {
+    pub(crate) const fn new(inner: &'a mut W) -> Self {
+        Self {
+            inner,
+            bytes: 0,
+            writes: 0,
+        }
+    }
+}
+
+impl<W: Write> Write for Measured<'_, W> {
+    fn write(&mut self, buffer: &[u8]) -> io::Result<usize> {
+        let written = self.inner.write(buffer)?;
+        self.bytes += written as u64;
+        self.writes += 1;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.flush()
+    }
+}
+
 pub fn render(out: &mut impl Write, prev: &Grid, next: &Grid) -> io::Result<()> {
     if prev.cols() == next.cols() && prev.rows() == next.rows() {
         dirty(out, prev, next)

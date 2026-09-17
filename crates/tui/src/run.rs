@@ -12,7 +12,7 @@ use crossterm::terminal::{
 use crossterm::{cursor, execute, queue};
 use sigil::animation_runtime::tick as tick_animations;
 use sigil::app::{
-    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, Painted, TreeRoot, set_cell_width,
+    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, TreeRoot, set_cell_width,
 };
 use sigil::events::EventRouter;
 use sigil::hal::ShellEvent;
@@ -21,9 +21,11 @@ use unicode_width::UnicodeWidthStr;
 
 use crate::keys::map_key;
 use crate::mouse::map_mouse;
-use crate::paint::{Grid, raster, raster_into};
+use crate::paint::{Grid, raster};
+use crate::screen::Screen;
+use sigil::profile;
 
-const TICK: Duration = Duration::from_millis(33);
+pub(crate) const TICK: Duration = Duration::from_millis(33);
 const BUFFER: usize = 64 * 1024;
 const CELL: f32 = sigil::app::Host::CELL;
 
@@ -66,7 +68,9 @@ where
     T: TreeRoot,
 {
     let config = config.into();
-    Runtime::scope("sigil-tui", || live(&config, tree))
+    let result = Runtime::scope("sigil-tui", || live(&config, tree));
+    profile::dump_if_enabled();
+    result
 }
 
 pub fn present(
@@ -82,110 +86,6 @@ pub fn present(
         prime(&mut host, &mut router, cols, rows)?;
         Ok(step(&mut host, &mut router, events.iter().cloned(), cols, rows)?.text())
     })
-}
-
-pub struct Screen {
-    nodes: Vec<Painted>,
-    grid: Grid,
-    prev: Grid,
-    fresh: bool,
-    dirty: bool,
-    dt: f32,
-    painter: crate::graphics::Painter,
-}
-
-impl Screen {
-    #[must_use]
-    pub fn new(cols: u16, rows: u16) -> Self {
-        Self {
-            nodes: Vec::new(),
-            grid: Grid::new(cols, rows),
-            prev: Grid::new(cols, rows),
-            fresh: true,
-            dirty: true,
-            dt: TICK.as_secs_f32(),
-            painter: crate::graphics::Painter::default(),
-        }
-    }
-
-    pub fn frame(
-        &mut self,
-        host: &mut Host,
-        router: &mut EventRouter,
-        events: impl IntoIterator<Item = ShellEvent>,
-        size: (u16, u16),
-    ) -> Result<&Grid, LayoutError> {
-        let (cols, rows) = size;
-        Runtime::begin_effect();
-        for event in events {
-            host.route(router, event);
-        }
-        tick_animations(self.dt);
-        crate::timer::advance(self.dt);
-        crate::work::collect_work();
-        Runtime::begin_layout();
-        let layout = host.layout(view(cols, rows));
-        if layout.is_ok() {
-            host.repair_focus(router);
-        }
-        Runtime::begin_paint();
-        self.dirty = false;
-        if layout.is_ok() {
-            let resized = self.grid.cols() != cols as usize || self.grid.rows() != rows as usize;
-            let moved = host.repaint(&mut self.nodes);
-            self.dirty = moved || resized || self.fresh;
-            if self.dirty {
-                self.grid.resize(cols, rows);
-                raster_into(&mut self.grid, &self.nodes, CELL);
-            }
-        }
-        Runtime::end_frame();
-        layout?;
-        Ok(if self.dirty { &self.grid } else { &self.prev })
-    }
-
-    pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
-        if !self.dirty {
-            return Ok(());
-        }
-        self.dirty = false;
-        let full = self.fresh
-            || self.prev.cols() != self.grid.cols()
-            || self.prev.rows() != self.grid.rows();
-        let rewritten: Vec<bool> = (0..self.grid.rows())
-            .map(|row| full || self.prev.row(row) != self.grid.row(row))
-            .collect();
-        if full {
-            self.fresh = false;
-            self.prev.mirror(&self.grid);
-            crate::write::all(out, &self.grid)?;
-        } else {
-            crate::write::dirty(out, &self.prev, &self.grid)?;
-        }
-        self.painter.emit(
-            out,
-            crate::graphics::Frame {
-                next: self.grid.images(),
-                rewritten: &rewritten,
-                redraw: full,
-            },
-        )?;
-        core::mem::swap(&mut self.prev, &mut self.grid);
-        Ok(())
-    }
-
-    pub const fn set_dt(&mut self, dt: f32) {
-        self.dt = dt;
-    }
-
-    pub const fn invalidate(&mut self) {
-        self.fresh = true;
-    }
-
-    #[must_use]
-    pub const fn needs_flush(&self) -> bool {
-        self.dirty
-    }
 }
 
 pub fn step(
@@ -227,7 +127,7 @@ fn prime(
     Ok(())
 }
 
-fn view(cols: u16, rows: u16) -> (f32, f32) {
+pub(crate) fn view(cols: u16, rows: u16) -> (f32, f32) {
     (f32::from(cols) * CELL, f32::from(rows) * CELL)
 }
 
@@ -274,10 +174,15 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
                 Input::None => {}
             }
         }
+        profile::begin_frame();
         screen
             .frame(&mut host, &mut router, incoming, (cols, rows))
             .map_err(Error::new)?;
-        term.paint(&mut screen).map_err(Error::new)?;
+        {
+            let _phase = profile::span("tui.present");
+            term.paint(&mut screen).map_err(Error::new)?;
+        }
+        profile::tick_frame();
         if sigil::app::take_exit() {
             break;
         }

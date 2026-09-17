@@ -3,6 +3,7 @@ mod keys;
 mod mouse;
 mod paint;
 mod run;
+mod screen;
 mod timer;
 mod work;
 mod write;
@@ -13,7 +14,8 @@ pub use graphics::{
 pub use keys::{key_down, map_key, paste};
 pub use mouse::{cell_point, click, map_mouse, pointer, wheel};
 pub use paint::{CONTINUES, Cell, Grid, Ink, raster, raster_into};
-pub use run::{Screen, calibrate, present, run, step};
+pub use run::{calibrate, present, run, step};
+pub use screen::Screen;
 pub use sigil::app::{
     AppConfig, AppResult, CellWidth, Error, Host, Painted, TreeRoot, cell_width, set_cell_width,
 };
