@@ -6,7 +6,7 @@ use criterion as _;
 mod builder_ext;
 mod focus;
 mod handlers;
-mod hit_test;
+pub(crate) mod hit_test;
 mod ime_handlers;
 mod pointer_dispatch;
 pub mod prelude;

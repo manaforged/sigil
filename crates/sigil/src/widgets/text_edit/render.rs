@@ -14,11 +14,13 @@ use crate::style::TextStyle;
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
-use super::super::transition_seam::install_transition_animators;
 use super::handlers::TextEditRuntime;
 
+#[path = "render_selection.rs"]
+mod selection;
+use selection::selection_layer;
+
 const TEXT_EDIT_TRANSITION: TransitionId = presets::SMOOTH;
-const TEXT_EDIT_COMPONENT_ID: u64 = 0x7E47_F100;
 static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
@@ -55,8 +57,7 @@ pub(super) fn build_base_node(
         runtime.ime.preedit,
         runtime.caret,
     );
-    let state_style = edit_state_style();
-    let node = container()
+    container()
         .role(Role::TextInput)
         .label(accessible_label(placeholder_str.as_str()))
         .text_value(value)
@@ -67,18 +68,7 @@ pub(super) fn build_base_node(
         .stateful_style(edit_variant(), user_overlay, move || {
             edit_state(interaction, disabled)
         })
-        .child(edit_inner(displayed, runtime, interaction, frame_h));
-    install_transition_animators(
-        node,
-        TEXT_EDIT_ANIM_BASE,
-        state_style,
-        TEXT_EDIT_COMPONENT_ID,
-        interaction,
-    )
-}
-
-const fn edit_state_style() -> StateStyle {
-    StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED)
+        .child(edit_inner(displayed, runtime, interaction, frame_h))
 }
 
 pub(super) fn edit_layout() -> LayoutStyle {
@@ -148,94 +138,6 @@ fn scroll_into_view(runtime: &TextEditRuntime, frame_h: f32) -> Signal<f32> {
         }
     });
     scroll_y
-}
-
-static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(
-    crate::style::ColorAtom::Rgba8(crate::style::Rgba8 {
-        r: 56,
-        g: 118,
-        b: 224,
-        a: 130,
-    }),
-)];
-const NEWLINE_SEL_W: f32 = 6.0;
-
-fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
-    let value = runtime.value;
-    let caret = runtime.caret;
-    let selection = runtime.selection;
-    fragment()
-        .layout(LayoutStyle::block())
-        .children_reactive(move || {
-            let buffer = value.get();
-            let Some(anchor) = selection.get() else {
-                return Vec::new();
-            };
-            let caret = caret.get().min(buffer.len());
-            let anchor = anchor.min(buffer.len());
-            let (lo, hi) = (anchor.min(caret), anchor.max(caret));
-            selection_rects(&buffer, lo, hi)
-        })
-}
-
-fn selection_rects(buffer: &str, lo: usize, hi: usize) -> Vec<NodeBuilder> {
-    if lo >= hi {
-        return Vec::new();
-    }
-    let (lo_line, lo_col) = caret_line_col(buffer, lo);
-    let (hi_line, hi_col) = caret_line_col(buffer, hi);
-    let line_h = line_height();
-    (lo_line..=hi_line)
-        .filter_map(|line| {
-            let start_col = if line == lo_line { lo_col } else { 0 };
-            let end_col = if line == hi_line { hi_col } else { usize::MAX };
-            line_highlight(buffer, line, (start_col, end_col), hi_line, line_h)
-        })
-        .collect()
-}
-
-fn line_highlight(
-    buffer: &str,
-    line: usize,
-    cols: (usize, usize),
-    hi_line: usize,
-    line_h: f32,
-) -> Option<NodeBuilder> {
-    let (start_col, end_col) = cols;
-    let line_text = nth_line(buffer, line);
-    let (x0, x1) = with_text_geometry(|engine| {
-        let style = TextStyle::default();
-        let a = engine
-            .caret(line_text, &style, start_col.min(line_text.len()))
-            .x;
-        let b = engine
-            .caret(line_text, &style, end_col.min(line_text.len()))
-            .x;
-        (a, b)
-    })?;
-    let min_w = if line < hi_line { NEWLINE_SEL_W } else { 0.0 };
-    let width = (x1 - x0).max(min_w);
-    if width <= 0.0 {
-        return None;
-    }
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    let y = line as f32 * line_h;
-    Some(
-        container()
-            .hittable(false)
-            .layout(
-                LayoutStyle::block()
-                    .position(Position::Absolute)
-                    .inset_left(x0)
-                    .inset_top(y)
-                    .width(width)
-                    .height(line_h),
-            )
-            .class(SELECTION_ATOMS),
-    )
 }
 
 static CARET_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];

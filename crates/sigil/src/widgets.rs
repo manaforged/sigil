@@ -60,7 +60,6 @@ mod toast;
 mod toast_queue;
 mod toggle;
 mod tooltip;
-pub mod transition_seam;
 mod transport;
 mod turn_strip;
 mod vector;

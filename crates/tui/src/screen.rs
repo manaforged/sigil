@@ -55,10 +55,11 @@ impl Screen {
         let layout_phase = profile::span("layout");
         Runtime::begin_layout();
         let layout = host.layout(view(cols, rows));
+        drop(layout_phase);
         if layout.is_ok() {
+            let _phase = profile::span("focus");
             host.repair_focus(router);
         }
-        drop(layout_phase);
         let paint_phase = profile::span("tui.paint");
         Runtime::begin_paint();
         self.dirty = false;

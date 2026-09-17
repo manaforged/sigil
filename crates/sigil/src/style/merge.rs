@@ -116,6 +116,7 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::Shadow(_)
+        | StyleAtom::Transform(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::FontSize(_)
         | StyleAtom::FontWeight(_)
@@ -236,6 +237,7 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         }
         StyleAtom::Shadow(_) => ResolvedSlot::Shadow,
         StyleAtom::Opacity(_) => ResolvedSlot::Opacity,
+        StyleAtom::Transform(_) => ResolvedSlot::Transform,
         StyleAtom::FontSize(_) => ResolvedSlot::FontSize,
         StyleAtom::FontWeight(_) => ResolvedSlot::FontWeight,
         StyleAtom::FontItalic(_) => ResolvedSlot::FontItalic,
@@ -291,6 +293,7 @@ enum ResolvedSlot {
     BorderColor,
     Shadow,
     Opacity,
+    Transform,
     FontSize,
     FontWeight,
     FontItalic,

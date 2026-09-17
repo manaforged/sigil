@@ -146,6 +146,14 @@ impl<'a> Painter<'a> {
     }
 
     fn layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
+        if let LayerEffect::Transform(transform) = scope.effect {
+            self.transformed_layer(scope, transform, children);
+            return;
+        }
+        self.untransformed_layer(scope, children);
+    }
+
+    fn untransformed_layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
         let clip_logical = transform_rect(self.transform(), scope.clip);
         let Some(bounds) = self
             .clip()
@@ -194,6 +202,63 @@ impl<'a> Painter<'a> {
             TsTransform::identity(),
             mask.as_ref(),
         );
+        self.stats.offscreen_layers += 1;
+    }
+
+    fn transformed_layer(
+        &mut self,
+        scope: LayerScope,
+        transform: Transform,
+        children: &[SceneCommand],
+    ) {
+        let width = (scope.clip.width * self.scale).ceil().max(1.0) as u32;
+        let height = (scope.clip.height * self.scale).ceil().max(1.0) as u32;
+        let Some(mut layer) = Pixmap::new(width, height) else {
+            return;
+        };
+        Painter {
+            target: &mut layer,
+            scale: self.scale,
+            origin: Point::new(
+                scope.clip.origin.x * self.scale,
+                scope.clip.origin.y * self.scale,
+            ),
+            clips: vec![scope.clip],
+            transforms: vec![IDENTITY],
+            opacities: vec![1.0],
+            mask: None,
+            glyphs: &mut *self.glyphs,
+            raster: &mut *self.raster,
+            stats: &mut *self.stats,
+        }
+        .walk(children);
+        if let Some(mask) = source_mask(scope, width, height, self.scale) {
+            layer.apply_mask(&mask);
+        }
+        let transform = TsTransform::from_scale(1.0 / self.scale, 1.0 / self.scale)
+            .post_translate(scope.clip.origin.x, scope.clip.origin.y)
+            .post_concat(ts_transform(
+                compose(self.transform(), transform),
+                self.scale,
+                self.origin,
+            ));
+        let paint = PixmapPaint {
+            opacity: (scope.opacity * self.opacity()).clamp(0.0, 1.0),
+            ..PixmapPaint::default()
+        };
+        let mask = self.clip().and_then(|clip| {
+            let mut mask = Mask::new(self.target.width(), self.target.height())?;
+            let path = rounded_rect(clip, CornerRadii::ZERO)?;
+            mask.fill_path(
+                &path,
+                FillRule::Winding,
+                true,
+                ts_transform(IDENTITY, self.scale, self.origin),
+            );
+            Some(mask)
+        });
+        self.target
+            .draw_pixmap(0, 0, layer.as_ref(), &paint, transform, mask.as_ref());
         self.stats.offscreen_layers += 1;
     }
 
@@ -271,4 +336,20 @@ fn layer_end(commands: &[SceneCommand], start: usize) -> usize {
         }
     }
     commands.len()
+}
+
+fn source_mask(scope: LayerScope, width: u32, height: u32, scale: f32) -> Option<Mask> {
+    if scope.clip_radii.0.iter().all(|radius| *radius <= 0.0) {
+        return None;
+    }
+    let path = rounded_rect(scope.clip, scope.clip_radii)?;
+    let mut mask = Mask::new(width, height)?;
+    let origin = Point::new(scope.clip.origin.x * scale, scope.clip.origin.y * scale);
+    mask.fill_path(
+        &path,
+        FillRule::Winding,
+        true,
+        ts_transform(IDENTITY, scale, origin),
+    );
+    Some(mask)
 }

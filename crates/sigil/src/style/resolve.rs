@@ -52,12 +52,7 @@ pub fn render_style_for(
     apply_atoms(engine, binding.state_overlay_atoms(), &mut render, id, node);
 
     if let Some(overlay) = binding.animator_overlay() {
-        engine.apply_with_overlay(binding.static_slice(), overlay, &mut render);
-        engine.apply_with_overlay(binding.dynamic_slice(), overlay, &mut render);
-        for reactive in binding.reactive_channels() {
-            engine.apply_with_overlay(reactive, overlay, &mut render);
-        }
-        engine.apply_with_overlay(binding.state_overlay_atoms(), overlay, &mut render);
+        StyleEngine::overlay_render(overlay, &mut render);
     }
     render
 }
@@ -83,6 +78,9 @@ pub fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextS
         engine.apply_text(reactive, &mut style);
     }
     engine.apply_text(binding.state_overlay_atoms(), &mut style);
+    if let Some(overlay) = binding.animator_overlay() {
+        StyleEngine::overlay_text(overlay, &mut style);
+    }
     style
 }
 

@@ -16,7 +16,6 @@ use super::super::chart::tone_solid;
 use super::super::shared::{
     Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
-use super::super::transition_seam::install_transition_animators;
 use super::super::vector::path;
 use super::popup::{OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
 
@@ -27,7 +26,6 @@ mod tests;
 pub(super) type IndexChange = Rc<dyn Fn(usize) + 'static>;
 
 const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
-const DROPDOWN_COMPONENT_ID: u64 = 0xD012_D000;
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
@@ -271,7 +269,6 @@ fn build_trigger(
         width: _,
         trigger_height: _,
     } = ctx;
-    let state_style = dropdown_trigger_state_style();
     let mut node = container()
         .role(Role::Button)
         .label("Select option")
@@ -291,13 +288,6 @@ fn build_trigger(
         })
         .child(trigger_label(selected, label_options))
         .child(trigger_chevron());
-    node = install_transition_animators(
-        node,
-        DROPDOWN_ANIM_BASE,
-        state_style,
-        DROPDOWN_COMPONENT_ID,
-        interaction,
-    );
     if !styled.is_empty() {
         node = node.style(styled);
     }
@@ -311,16 +301,6 @@ fn trigger_layout() -> LayoutStyle {
         .gap(8.0)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
-}
-
-const fn dropdown_trigger_state_style() -> StateStyle {
-    StateStyle::new(
-        &[],
-        SURFACE_HOVER,
-        SURFACE_HOVER,
-        TRIGGER_DOWN,
-        TRIGGER_DISABLED,
-    )
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {

@@ -39,11 +39,28 @@ const DT_60HZ: f32 = 1.0 / 60.0;
 const OPACITY_BASE: u16 = 5_000;
 const OPACITY_HOVER: u16 = 10_000;
 
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "effective opacity is clamped to 0..10000"
+)]
 fn first_rect_opacity(cx: &Cx, root: NodeId) -> u16 {
     let scene = emit_scene(cx, root);
+    let mut opacities = vec![1.0_f32];
     for cmd in &scene.commands {
-        if let SceneCommand::Rect(rect) = cmd {
-            return rect.opacity;
+        let opacity = opacities.last().copied().expect("root opacity");
+        match cmd {
+            SceneCommand::PushLayer(scope) => opacities.push(opacity * scope.opacity),
+            SceneCommand::SaveLayer { opacity: layer } => opacities.push(opacity * layer),
+            SceneCommand::PopLayer | SceneCommand::RestoreLayer => {
+                opacities.pop();
+            }
+            SceneCommand::Rect(rect) => {
+                return (f32::from(rect.opacity) * opacity)
+                    .round()
+                    .clamp(0.0, 10000.0) as u16;
+            }
+            _ => {}
         }
     }
     panic!("no rect command emitted — the scene tree did not produce a background paint");

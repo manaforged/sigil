@@ -37,6 +37,34 @@ impl<'theme> StyleEngine<'theme> {
         }
     }
 
+    pub(crate) fn overlay_render(overlay: &dyn AnimatorOverlay, render: &mut RenderStyle) {
+        render.transform = render.transform.overlay(overlay);
+        if let Some(value) = overlay.value_for(NumericAtomKind::Opacity) {
+            render.opacity = encode_opacity(value);
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::BorderRadius) {
+            render.border_radius = Some(encode_px(value));
+        }
+        if let Some(color) = overlay.value_for_color(ColorAtomKind::Background) {
+            render.background_color = Some(color);
+        }
+        if let Some(color) = overlay.value_for_color(ColorAtomKind::Text) {
+            render.text_color = Some(color);
+        }
+        if let Some(color) = overlay.value_for_color(ColorAtomKind::Border) {
+            render.border_color = Some(color);
+        }
+    }
+
+    pub(crate) fn overlay_text(overlay: &dyn AnimatorOverlay, text: &mut TextStyle) {
+        if let Some(value) = overlay.value_for(NumericAtomKind::FontSize) {
+            text.font_size = value.max(1.0);
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::LineHeight) {
+            text.line_height = TextLineHeight::Absolute(value.max(1.0));
+        }
+    }
+
     #[allow(clippy::unused_self, reason = "intentional, reviewed trade-off")]
     pub fn apply_text(&self, atoms: &[StyleAtom], text: &mut TextStyle) {
         apply_text_atoms(atoms, text);
@@ -89,6 +117,7 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BorderToneStep(step) => render.border_color = Some(self.tone_step(step)),
             StyleAtom::Shadow(elevation) => render.shadow = Some(elevation),
             StyleAtom::Opacity(opacity) => render.opacity = opacity,
+            StyleAtom::Transform(transform) => render.transform = transform,
             StyleAtom::PaddingAll(_)
             | StyleAtom::PaddingX(_)
             | StyleAtom::PaddingY(_)
@@ -273,6 +302,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::BorderThemeRef(_)
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::Shadow(_)
+        | StyleAtom::Transform(_)
         | StyleAtom::Opacity(_)
         | StyleAtom::OverflowX(_)
         | StyleAtom::OverflowY(_)

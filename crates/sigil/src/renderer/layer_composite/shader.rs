@@ -17,6 +17,8 @@ struct InstanceIn {
     @location(2) clip_radii: vec4<f32>,
     @location(3) uv_max: vec2<f32>,
     @location(4) opacity: f32,
+    @location(5) transform_x: vec3<f32>,
+    @location(6) transform_y: vec3<f32>,
 };
 
 struct VertexOut {
@@ -31,7 +33,8 @@ struct VertexOut {
 @vertex
 fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     var out: VertexOut;
-    let pos_px = inst.dest.xy + v.unit * inst.dest.zw;
+    let local = vec3<f32>(inst.dest.xy + v.unit * inst.dest.zw, 1.0);
+    let pos_px = vec2<f32>(dot(inst.transform_x, local), dot(inst.transform_y, local));
     let ndc = vec2<f32>(
         (pos_px.x / u.viewport.x) * 2.0 - 1.0,
         1.0 - (pos_px.y / u.viewport.y) * 2.0,

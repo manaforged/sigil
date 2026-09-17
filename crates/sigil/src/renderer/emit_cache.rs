@@ -5,7 +5,7 @@ use std::hash::{Hash as _, Hasher as _};
 
 use crate::hal::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
-use crate::style::{ColorAtomKind, NumericAtomKind, Rgba8, StyleBinding, TextStyle, Theme};
+use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;
 
 use crate::renderer::scene_builder::SceneBuilder;
@@ -99,7 +99,7 @@ pub(crate) fn content_key(node: &Node) -> u64 {
             wrote = true;
         }
         if let Some(overlay) = binding.animator_overlay() {
-            hash_overlay(overlay, &mut hasher);
+            overlay.cache_key().hash(&mut hasher);
             wrote = true;
         }
     }
@@ -107,30 +107,6 @@ pub(crate) fn content_key(node: &Node) -> u64 {
         return 0;
     }
     hasher.finish()
-}
-
-fn hash_overlay(overlay: &dyn crate::style::AnimatorOverlay, hasher: &mut AHasher) {
-    const KINDS: [NumericAtomKind; 7] = [
-        NumericAtomKind::Opacity,
-        NumericAtomKind::BorderRadius,
-        NumericAtomKind::FontSize,
-        NumericAtomKind::LineHeight,
-        NumericAtomKind::Gap,
-        NumericAtomKind::PaddingX,
-        NumericAtomKind::PaddingY,
-    ];
-    for kind in KINDS {
-        if let Some(value) = overlay.value_for(kind) {
-            kind.hash(hasher);
-            value.to_bits().hash(hasher);
-        }
-    }
-    for kind in [ColorAtomKind::Background, ColorAtomKind::Text] {
-        if let Some(color) = overlay.value_for_color(kind) {
-            kind.hash(hasher);
-            [color.r, color.g, color.b, color.a].hash(hasher);
-        }
-    }
 }
 
 pub(crate) fn inherit_key(theme: &Theme, text_color: Option<Rgba8>, text_style: &TextStyle) -> u64 {

@@ -1,5 +1,6 @@
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
+use crate::style::StyleBinding;
 use smallvec::SmallVec;
 
 use crate::events::hit_test::visible;
@@ -53,12 +54,15 @@ impl FocusManager {
 }
 
 fn collect_scope_roots(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
-    if !visible(cx, id) {
-        return;
-    }
     let Some(node) = cx.get(id) else {
         return;
     };
+    if node
+        .get_extension::<StyleBinding>()
+        .is_some_and(StyleBinding::hides)
+    {
+        return;
+    }
     if node.a11y.focus_scope.is_some() {
         out.push(id);
     }

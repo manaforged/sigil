@@ -7,9 +7,13 @@ pub(crate) mod animator;
 pub mod binding_animate;
 pub(crate) mod binding_animate_color;
 pub(crate) mod config;
+pub(crate) mod keyframes;
 pub(crate) mod motion;
+pub(crate) mod motion_state;
+pub(crate) mod playback;
 pub(crate) mod registry;
 pub(crate) mod state;
+pub(crate) mod style;
 
 pub use crate::style::NumericAtomKind;
 pub use animator::{Animator, AnimatorStatus};
@@ -20,5 +24,6 @@ pub use binding_animate::{
 pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
 pub use config::AnimationConfig;
 pub use motion::MotionPrefs;
+pub use playback::Playback;
 pub use registry::{config, presets};
 pub use state::{active_count, tick};

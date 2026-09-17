@@ -1,7 +1,7 @@
 use crate::reactive::{Signal, signal};
 use crate::style::{
-    AnimatorOverlay, ColorAtomKind, ComponentId, MillisU16, NumericAtomKind, Rgba8, StateSlot,
-    StateStyle, StyleAtom, Theme, TransitionId, merge_warning_count_for_component,
+    AnimatorOverlay, ColorAtomKind, ComponentId, Dimension, MillisU16, NumericAtomKind, Rgba8,
+    StateSlot, StateStyle, StyleAtom, Theme, TransitionId, merge_warning_count_for_component,
 };
 
 use crate::animation_runtime::binding_animate_color::{
@@ -15,7 +15,7 @@ pub struct AttachedAnimator {
     pub kind: NumericAtomKind,
     pub signal: Signal<f32>,
     pub animator: Animator,
-    last_target: f32,
+    pub(crate) last_target: f32,
 }
 
 pub struct AttachedColorAnimator {
@@ -61,7 +61,7 @@ impl AttachedAnimators {
 
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.entries.is_empty()
+        self.entries.is_empty() && self.color_entries.is_empty()
     }
 
     #[must_use]
@@ -258,7 +258,7 @@ fn resolve_numeric(kind: NumericAtomKind, base: &[StyleAtom], overlay: &[StyleAt
         .unwrap_or(0.0)
 }
 
-fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {
+pub(crate) fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {
     atoms.iter().rev().find_map(|atom| match (*atom, kind) {
         (StyleAtom::Opacity(v), NumericAtomKind::Opacity) => Some(f32::from(v)),
         (StyleAtom::BorderRadius(px), NumericAtomKind::BorderRadius)
@@ -266,7 +266,9 @@ fn find_numeric(kind: NumericAtomKind, atoms: &[StyleAtom]) -> Option<f32> {
         | (StyleAtom::LineHeight(px), NumericAtomKind::LineHeight)
         | (StyleAtom::Gap(px), NumericAtomKind::Gap)
         | (StyleAtom::PaddingX(px), NumericAtomKind::PaddingX)
-        | (StyleAtom::PaddingY(px), NumericAtomKind::PaddingY) => Some(f32::from(px.0)),
+        | (StyleAtom::PaddingY(px), NumericAtomKind::PaddingY)
+        | (StyleAtom::Width(Dimension::Px(px)), NumericAtomKind::Width)
+        | (StyleAtom::Height(Dimension::Px(px)), NumericAtomKind::Height) => Some(f32::from(px.0)),
         _ => None,
     })
 }

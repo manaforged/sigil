@@ -1,11 +1,12 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use std::collections::BTreeSet;
 use std::hash::{Hash as _, Hasher as _};
 
 use crate::hal::{Dim, Size};
 use crate::kernel::{Cx, Node, NodeId, NodeType, TextContent};
-use crate::style::StyleBinding;
-use ahash::{AHashSet, AHasher};
+use crate::style::{NumericAtomKind, StyleBinding};
+use ahash::AHasher;
 use slotmap::DefaultKey;
 use smallvec::SmallVec;
 
@@ -102,11 +103,9 @@ pub(crate) fn has_unversioned_layout(node: &Node) -> bool {
     )
 }
 
-pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &AHashSet<DefaultKey>) -> u64 {
-    let mut keys: SmallVec<[DefaultKey; 8]> = ids.iter().copied().collect();
-    keys.sort_unstable();
+pub(crate) fn reactive_layout_signature(cx: &Cx, ids: &BTreeSet<DefaultKey>) -> u64 {
     let mut hasher = AHasher::default();
-    for key in keys {
+    for &key in ids {
         let id = NodeId::from_key(key);
         let Some(node) = cx.get(id) else {
             continue;
@@ -136,6 +135,22 @@ pub(crate) fn hash_unversioned_layout(node: &Node, hasher: &mut AHasher) -> bool
             for atom in reactive {
                 if atom.affects_layout() {
                     atom.hash(hasher);
+                }
+            }
+        }
+        for atom in binding.state_overlay_atoms() {
+            if atom.affects_layout() {
+                atom.hash(hasher);
+            }
+        }
+        if let Some(overlay) = binding.animator_overlay() {
+            for kind in NumericAtomKind::ALL
+                .into_iter()
+                .filter(|kind| kind.affects_layout())
+            {
+                if let Some(value) = overlay.value_for(kind) {
+                    kind.hash(hasher);
+                    value.to_bits().hash(hasher);
                 }
             }
         }

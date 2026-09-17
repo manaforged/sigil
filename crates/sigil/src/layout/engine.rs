@@ -3,6 +3,7 @@ use crate::kernel::{Cx, NodeId};
 use crate::style::{StyleBinding, TextStyle};
 use ahash::AHashSet;
 use slotmap::SecondaryMap;
+use std::collections::BTreeSet;
 
 use crate::layout::cache_key::{
     AvailableKey, CacheDecision, LayoutCacheKey, has_unversioned_layout, layout_input_signature,
@@ -20,7 +21,7 @@ pub struct LayoutEngine {
     published_result: SecondaryMap<slotmap::DefaultKey, LayoutResult>,
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
-    reactive_layout: AHashSet<slotmap::DefaultKey>,
+    reactive_layout: BTreeSet<slotmap::DefaultKey>,
     positions: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
     text_sizes: SecondaryMap<slotmap::DefaultKey, (u32, u32)>,
     reactive_sigs: SecondaryMap<slotmap::DefaultKey, u64>,
@@ -40,7 +41,7 @@ impl LayoutEngine {
             published_result: SecondaryMap::new(),
             generation: 0,
             cached_key: None,
-            reactive_layout: AHashSet::new(),
+            reactive_layout: BTreeSet::new(),
             positions: SecondaryMap::new(),
             text_sizes: SecondaryMap::new(),
             reactive_sigs: SecondaryMap::new(),
@@ -98,6 +99,9 @@ impl LayoutEngine {
             return Err(LayoutError::NodeMissing(root));
         }
         cx.flush_reactive_children();
+        for key in &self.reactive_layout {
+            crate::animation_runtime::style::prepare(cx, NodeId::from_key(*key));
+        }
         let Some(cache_key) = take_cache_miss(cx, self.resolve_cache_key(cx, root, available))
         else {
             return Ok(());
@@ -269,7 +273,7 @@ impl LayoutEngine {
             };
             let sig = reactive_seed_signature(node);
             let unchanged = self.reactive_sigs.insert(key, sig) == Some(sig);
-            if unchanged {
+            if unchanged && self.synced_version.get(key).copied() == Some(node.version()) {
                 self.steady.insert(id);
             }
             if unchanged && !animated(node) {

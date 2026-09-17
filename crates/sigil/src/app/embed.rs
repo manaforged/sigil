@@ -42,6 +42,7 @@ pub struct Host {
     theme: Theme,
     resolved: Vec<Resolved>,
     root_text: Rc<TextStyle>,
+    visual_transforms: bool,
 }
 
 pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
@@ -78,6 +79,7 @@ impl Host {
             theme: Theme::default(),
             resolved: Vec::new(),
             root_text: Rc::new(TextStyle::default()),
+            visual_transforms: true,
         }
     }
 
@@ -93,6 +95,7 @@ impl Host {
             theme: Theme::default(),
             resolved: Vec::new(),
             root_text: Rc::new(TextStyle::default()),
+            visual_transforms: false,
         }
     }
 
@@ -120,6 +123,7 @@ impl Host {
     }
 
     pub fn route(&mut self, router: &mut EventRouter, event: ShellEvent) {
+        router.set_visual_transforms(self.visual_transforms);
         if self.root.is_some() {
             router.route(&mut self.cx, &self.layout, event);
         }

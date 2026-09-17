@@ -17,10 +17,8 @@ use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change, reactive_style_state,
 };
-use super::transition_seam::install_transition_animators;
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
-const CHECKBOX_COMPONENT_ID: u64 = 0xC4EC_B0CC;
 const CHECKBOX_BOX_SIZE: f32 = 18.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
@@ -230,8 +228,7 @@ fn checkbox_indicator(
     tone: Tone,
     interaction: InteractionState,
 ) -> NodeBuilder {
-    let state_style = checkbox_state_style(tone, false);
-    let node = container()
+    container()
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
@@ -245,40 +242,7 @@ fn checkbox_indicator(
         .style_reactive(move || {
             checkbox_variant(tone, checked.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(checkbox_mark(checked));
-    install_transition_animators(
-        node,
-        CHECKBOX_ANIM_BASE,
-        state_style,
-        CHECKBOX_COMPONENT_ID,
-        interaction,
-    )
-}
-
-const fn checkbox_state_style(tone: Tone, checked: bool) -> StateStyle {
-    match (tone, checked) {
-        (Tone::Neutral, true) => StateStyle::new(
-            NEUTRAL_CHECKED,
-            NEUTRAL_CHECKED_HOVER,
-            NEUTRAL_CHECKED_HOVER,
-            NEUTRAL_CHECKED_DOWN,
-            CHECKBOX_DISABLED,
-        ),
-        (_, true) => StateStyle::new(
-            PRIMARY_CHECKED,
-            PRIMARY_CHECKED_HOVER,
-            PRIMARY_CHECKED_HOVER,
-            PRIMARY_CHECKED_DOWN,
-            CHECKBOX_DISABLED,
-        ),
-        (_, false) => StateStyle::new(
-            UNCHECKED,
-            UNCHECKED_HOVER,
-            UNCHECKED_HOVER,
-            UNCHECKED_DOWN,
-            CHECKBOX_DISABLED,
-        ),
-    }
+        .child(checkbox_mark(checked))
 }
 
 fn checkbox_mark(checked: Signal<bool>) -> NodeBuilder {

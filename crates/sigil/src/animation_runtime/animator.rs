@@ -1,16 +1,9 @@
 use crate::animation::{Easing, Spring, SpringPreset, Tween};
-use crate::reactive::Signal;
+use crate::reactive::{Runtime, Signal};
 
 use crate::animation_runtime::config::AnimationConfig;
 use crate::animation_runtime::motion::MotionPrefs;
 use crate::animation_runtime::state::{self, AnimatorId};
-
-pub(crate) trait Motion: 'static {
-    fn tick(&mut self, dt: f32) -> AnimatorStatus;
-    fn retarget(&mut self, value: f32);
-    fn value(&self) -> f32;
-    fn is_settled(&self) -> bool;
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AnimatorStatus {
@@ -21,13 +14,18 @@ pub enum AnimatorStatus {
 pub struct Animator {
     id: Option<AnimatorId>,
     signal: Signal<f32>,
+    config: AnimationConfig,
 }
 
 impl Animator {
     #[must_use]
     pub fn new(signal: Signal<f32>, config: AnimationConfig) -> Self {
         if MotionPrefs::reduced() {
-            return Self { id: None, signal };
+            return Self {
+                id: None,
+                signal,
+                config,
+            };
         }
         let id = match config {
             AnimationConfig::Spring { preset } => state::register_spring(signal, preset),
@@ -36,13 +34,58 @@ impl Animator {
         Self {
             id: Some(id),
             signal,
+            config,
         }
     }
 
+    pub(crate) fn set_config(&mut self, config: AnimationConfig) {
+        if self.config == config {
+            return;
+        }
+        if let Some(id) = self.id.take() {
+            state::deregister(id);
+        }
+        self.config = config;
+    }
+
     pub fn target(&mut self, value: f32) {
-        match self.id {
-            Some(id) => state::retarget(id, value),
-            None => self.signal.set(value),
+        assert!(value.is_finite(), "animation target must be finite");
+        if MotionPrefs::reduced() {
+            if let Some(id) = self.id.take() {
+                state::deregister(id);
+            }
+            self.signal.set(value);
+            Runtime::mark_frame_dirty();
+            return;
+        }
+        let id = *self.id.get_or_insert_with(|| match self.config {
+            AnimationConfig::Spring { preset } => state::register_spring(self.signal, preset),
+            AnimationConfig::Tween { ms, easing } => state::register_tween(self.signal, ms, easing),
+        });
+        state::retarget(id, value);
+    }
+
+    pub fn pause(&mut self) {
+        if let Some(id) = self.id {
+            state::pause(id, true);
+        }
+    }
+
+    pub fn resume(&mut self) {
+        if let Some(id) = self.id {
+            state::pause(id, false);
+        }
+    }
+
+    pub fn finish(&mut self) {
+        if let Some(id) = self.id {
+            state::finish(id);
+        }
+    }
+
+    pub fn cancel(&mut self) {
+        if let Some(id) = self.id.take() {
+            state::deregister(id);
         }
     }
 
@@ -78,8 +121,12 @@ impl SpringMotion {
     }
 }
 
-impl Motion for SpringMotion {
-    fn tick(&mut self, dt: f32) -> AnimatorStatus {
+impl SpringMotion {
+    pub(crate) const fn finish(&mut self) {
+        self.spring.reset(self.spring.target());
+    }
+
+    pub(crate) fn tick(&mut self, dt: f32) -> AnimatorStatus {
         if self.spring.is_settled() {
             return AnimatorStatus::Settled;
         }
@@ -91,15 +138,15 @@ impl Motion for SpringMotion {
         }
     }
 
-    fn retarget(&mut self, value: f32) {
+    pub(crate) const fn retarget(&mut self, value: f32) {
         self.spring.set_target(value);
     }
 
-    fn value(&self) -> f32 {
+    pub(crate) const fn value(&self) -> f32 {
         self.spring.value()
     }
 
-    fn is_settled(&self) -> bool {
+    pub(crate) fn is_settled(&self) -> bool {
         self.spring.is_settled()
     }
 }
@@ -122,8 +169,14 @@ impl TweenMotion {
     }
 }
 
-impl Motion for TweenMotion {
-    fn tick(&mut self, dt: f32) -> AnimatorStatus {
+impl TweenMotion {
+    pub(crate) const fn finish(&mut self) {
+        if let Some(tween) = self.tween.take() {
+            self.current = tween.to();
+        }
+    }
+
+    pub(crate) fn tick(&mut self, dt: f32) -> AnimatorStatus {
         let Some(tween) = self.tween.as_mut() else {
             return AnimatorStatus::Settled;
         };
@@ -137,7 +190,7 @@ impl Motion for TweenMotion {
         }
     }
 
-    fn retarget(&mut self, value: f32) {
+    pub(crate) fn retarget(&mut self, value: f32) {
         if self.secs <= 0.0 {
             self.current = value;
             self.tween = None;
@@ -150,11 +203,11 @@ impl Motion for TweenMotion {
         self.tween = Some(Tween::new(self.current, value, self.secs).with_easing(self.easing));
     }
 
-    fn value(&self) -> f32 {
+    pub(crate) const fn value(&self) -> f32 {
         self.current
     }
 
-    fn is_settled(&self) -> bool {
+    pub(crate) const fn is_settled(&self) -> bool {
         self.tween.is_none()
     }
 }

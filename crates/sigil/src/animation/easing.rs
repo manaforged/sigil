@@ -1,8 +1,11 @@
 #![allow(clippy::suboptimal_flops)]
 
 use core::f32::consts::{FRAC_PI_2, PI};
+use std::num::NonZeroU16;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+use super::bezier::CubicBezier;
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum Easing {
     #[default]
     Linear,
@@ -20,9 +23,24 @@ pub enum Easing {
     BackOut,
     BackInOut,
     BounceOut,
+    Bezier(CubicBezier),
+    Steps {
+        count: NonZeroU16,
+        start: bool,
+    },
 }
 
 impl Easing {
+    #[must_use]
+    pub fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
+        Self::Bezier(CubicBezier::new(x1, y1, x2, y2))
+    }
+
+    #[must_use]
+    pub const fn steps(count: NonZeroU16, start: bool) -> Self {
+        Self::Steps { count, start }
+    }
+
     #[must_use]
     pub fn apply(self, t: f32) -> f32 {
         let t = t.clamp(0.0, 1.0);
@@ -66,6 +84,11 @@ impl Easing {
             Self::BackOut => back_out(t),
             Self::BackInOut => back_in_out(t),
             Self::BounceOut => bounce_out(t),
+            Self::Bezier(curve) => curve.apply(t),
+            Self::Steps { count, start } => {
+                let count = f32::from(count.get());
+                ((t * count).floor() + f32::from(u8::from(start))).min(count) / count
+            }
         }
     }
 }

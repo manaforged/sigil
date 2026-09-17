@@ -1,11 +1,12 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::hal::Rect;
 use crate::kernel::{Cx, ImageCrop, ImageSource, Node, NodeId, NodeType, Surface, TextContent};
 use crate::layout::LayoutResult;
 use crate::style::{
-    Rgba8, StateSlot, StyleAtom, StyleBinding, TextStyle, Theme, Tone, ToneContext,
-    render_style_for,
+    AnimatorOverlay, Rgba8, StateSlot, StyleAtom, StyleBinding, TextStyle, Theme, Tone,
+    ToneContext, render_style_for,
 };
 
 use crate::app::Painted;
@@ -18,6 +19,7 @@ pub(crate) struct Resolved {
     text_in: Rc<TextStyle>,
     slices: Slices,
     slot_in: StateSlot,
+    animation: Option<u64>,
     fill: Option<Rgba8>,
     ink: Option<Rgba8>,
     text: Rc<TextStyle>,
@@ -103,7 +105,7 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
         text: &inherited.text,
     };
     let laid = node.get_extension::<LayoutResult>();
-    let (style, kept) = styled(walk, slot, node, &ask, laid.is_some());
+    let (style, kept) = styled(walk.cache, slot, node, &ask, laid.is_some());
     let mut down = Cascade {
         theme,
         clip: inherited.clip,
@@ -259,42 +261,51 @@ impl Ask<'_> {
     }
 }
 
-fn resolve(walk: &mut Walk<'_>, slot: usize, node: &Node, ask: &Ask<'_>) -> (Resolved, bool) {
+fn resolve<'a>(
+    cache: &'a mut Vec<Resolved>,
+    slot: usize,
+    node: &Node,
+    ask: &Ask<'_>,
+) -> (&'a Resolved, bool) {
     let version = node.version();
     let state = ask.slot();
-    let animating = ask.binding.is_some_and(|b| b.animator_overlay().is_some());
-    if !animating
-        && let Some(hit) = walk.cache.get(slot)
-        && hit.id == ask.id
-        && hit.version == version
-        && hit.ink_in == ask.ink
-        && hit.slot_in == state
-        && hit.slices.still(ask.binding)
-        && Rc::ptr_eq(&hit.text_in, ask.text)
-    {
-        return (hit.clone(), true);
+    let animation = ask
+        .binding
+        .and_then(StyleBinding::animator_overlay)
+        .map(AnimatorOverlay::cache_key);
+    let kept = cache.get(slot).is_some_and(|hit| {
+        hit.id == ask.id
+            && hit.version == version
+            && hit.ink_in == ask.ink
+            && hit.slot_in == state
+            && hit.animation == animation
+            && hit.slices.still(ask.binding)
+            && Rc::ptr_eq(&hit.text_in, ask.text)
+    });
+    if !kept {
+        let fresh = compute(node, ask, version, state, Slices::of(ask.binding));
+        match cache.get_mut(slot) {
+            Some(entry) => *entry = fresh,
+            None => cache.push(fresh),
+        }
     }
-    let fresh = compute(node, ask, version, state, Slices::of(ask.binding));
-    match walk.cache.get_mut(slot) {
-        Some(entry) => *entry = fresh.clone(),
-        None => walk.cache.push(fresh.clone()),
-    }
-    (fresh, false)
+    (cache.get(slot).expect("resolved paint slot"), kept)
 }
 
-fn styled(
-    walk: &mut Walk<'_>,
+fn styled<'a>(
+    cache: &'a mut Vec<Resolved>,
     slot: usize,
     node: &Node,
     ask: &Ask<'_>,
     owns_slot: bool,
-) -> (Resolved, bool) {
+) -> (Cow<'a, Resolved>, bool) {
     if owns_slot {
-        return resolve(walk, slot, node, ask);
+        let (style, kept) = resolve(cache, slot, node, ask);
+        return (Cow::Borrowed(style), kept);
     }
     let slices = Slices::of(ask.binding);
     (
-        compute(node, ask, node.version(), ask.slot(), slices),
+        Cow::Owned(compute(node, ask, node.version(), ask.slot(), slices)),
         false,
     )
 }
@@ -311,6 +322,10 @@ fn compute(node: &Node, ask: &Ask<'_>, version: u32, state: StateSlot, slices: S
         text_in: Rc::clone(ask.text),
         slices,
         slot_in: state,
+        animation: ask
+            .binding
+            .and_then(StyleBinding::animator_overlay)
+            .map(AnimatorOverlay::cache_key),
         fill: style.background_color,
         ink: style.text_color,
         text: layered.map_or_else(|| Rc::clone(ask.text), Rc::new),

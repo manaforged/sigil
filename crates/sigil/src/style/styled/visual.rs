@@ -1,9 +1,15 @@
 use super::StyleAccess;
-use crate::style::{OverflowKind, StyleAtom};
+use crate::style::{OverflowKind, StyleAtom, Transform2D};
 
 const OPACITY_SCALE: f32 = 10_000.0;
 
 pub trait Visual: StyleAccess {
+    #[must_use]
+    fn transform(mut self, transform: Transform2D) -> Self {
+        self.style_mut().push_atom(StyleAtom::Transform(transform));
+        self
+    }
+
     #[must_use]
     #[track_caller]
     fn opacity(mut self, value: f32) -> Self {

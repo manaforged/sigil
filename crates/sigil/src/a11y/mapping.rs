@@ -65,6 +65,9 @@ pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
     apply_state(&mut ak, a11y);
+    if !crate::events::hit_test::visible(cx, id) {
+        ak.set_hidden();
+    }
     apply_grid(&mut ak, a11y);
     apply_bounds(&mut ak, id, bounds);
     apply_children(cx, kernel_node, &mut ak);

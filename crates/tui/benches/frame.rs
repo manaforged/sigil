@@ -173,6 +173,17 @@ fn frame(c: &mut Criterion) {
         });
     });
 
+    group.bench_function("phase/focus", |b| {
+        Runtime::scope("bench-focus", || {
+            grid(CELL);
+            let mut host = Host::cells();
+            let mut router = EventRouter::new();
+            mount(&mut host, 200);
+            drop(step(&mut host, &mut router, [], COLS, ROWS));
+            b.iter(|| host.repair_focus(black_box(&mut router)));
+        });
+    });
+
     group.bench_function("phase/painted", |b| {
         Runtime::scope("bench-painted", || {
             grid(CELL);

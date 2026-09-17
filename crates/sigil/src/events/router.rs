@@ -33,6 +33,10 @@ impl EventRouter {
         Self::default()
     }
 
+    pub(crate) const fn set_visual_transforms(&mut self, enabled: bool) {
+        self.hit_cache.visual_transforms = enabled;
+    }
+
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
         self.focus.sync_scopes(cx, Some(layout));
         self.flush_focus_requests(cx, layout);
@@ -165,7 +169,7 @@ impl EventRouter {
             self.release_capture_on_terminal_phase(event.phase);
             return;
         };
-        let next_targets = pointer_targets(layout, &path);
+        let next_targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
         self.update_hover(cx, &next_targets, &event);
         self.focus_pointer_target(cx, &path, event.phase);
         let capture_requester =
@@ -193,7 +197,7 @@ impl EventRouter {
         event.set_captured(true);
         dispatch_pointer_target(
             cx,
-            pointer_target_for_node(cx, layout, captured),
+            pointer_target_for_node(cx, layout, captured, self.hit_cache.visual_transforms),
             event,
             global_position,
         );

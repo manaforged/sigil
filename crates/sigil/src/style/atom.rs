@@ -1,3 +1,5 @@
+use super::Transform2D;
+
 pub const SPACING_STEP: f32 = 4.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,6 +106,7 @@ pub struct RenderStyle {
     pub border_color: Option<Rgba8>,
     pub shadow: Option<Elevation>,
     pub opacity: u16,
+    pub transform: Transform2D,
 }
 
 impl Default for RenderStyle {
@@ -120,6 +123,7 @@ impl Default for RenderStyle {
             border_color: None,
             shadow: None,
             opacity: 10_000,
+            transform: Transform2D::IDENTITY,
         }
     }
 }
@@ -184,6 +188,7 @@ pub enum StyleAtom {
     BorderToneStep(u8),
     Shadow(Elevation),
     Opacity(u16),
+    Transform(Transform2D),
     FontSize(Px),
     FontWeight(u16),
     FontItalic(bool),

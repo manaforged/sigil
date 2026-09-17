@@ -7,19 +7,14 @@
 #![allow(clippy::too_many_arguments, clippy::missing_const_for_fn)]
 #![allow(unreachable_pub, dead_code)]
 
-use std::path::{Path, PathBuf};
-use std::sync::mpsc;
-
-use pollster::FutureExt;
-use sigil::hal::{
-    Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
-};
 use sigil::prelude::*;
-use sigil::renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::renderer::emit_scene;
+use std::path::{Path, PathBuf};
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
+mod gpu;
+use gpu::{render_scene_to_image, request_device};
+mod interaction;
+use interaction::drive_state;
 
 pub const SETTLE_SAFETY_CAP: u32 = 600;
 
@@ -257,6 +252,12 @@ fn render_core_scaled(
             .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
             .expect("layout-after-state");
 
+        interaction::advance(mode, || {
+            layout
+                .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
+                .expect("layout-after-animation");
+        });
+
         let scene = emit_scene(&cx, root);
         let Some((device, queue)) = request_device() else {
             return;
@@ -387,262 +388,4 @@ pub fn assert_goldens_differ(name_a: &str, name_b: &str) {
          change they exist to capture renders no visible difference. Fix the \
          widget, then re-bake with SIGIL_REGEN_GOLDENS=1.",
     );
-}
-
-fn drive_state(
-    router: &mut EventRouter,
-    cx: &mut Cx,
-    layout: &LayoutEngine,
-    focus_target: NodeId,
-    mode: InteractionMode,
-    hit: (f32, f32),
-) {
-    match mode {
-        InteractionMode::Default | InteractionMode::Disabled => {}
-        InteractionMode::Hover => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-        }
-        InteractionMode::Pressed => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
-        }
-        InteractionMode::Clicked => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
-            router.route(cx, layout, pointer_up(hit.0, hit.1));
-        }
-        InteractionMode::Focused => {
-            router.set_focus(cx, Some(focus_target));
-        }
-        InteractionMode::HoverAfterFrames { frames, dt } => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            tick_animation_runtime(frames, dt);
-        }
-        InteractionMode::PressedAfterFrames { frames, dt } => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
-            tick_animation_runtime(frames, dt);
-        }
-        InteractionMode::FocusedAfterFrames { frames, dt } => {
-            router.set_focus(cx, Some(focus_target));
-            tick_animation_runtime(frames, dt);
-        }
-    }
-}
-
-fn tick_animation_runtime(frames: u32, dt: f32) {
-    if frames == u32::MAX {
-        for _ in 0..SETTLE_SAFETY_CAP {
-            if sigil::animation_runtime::active_count() == 0 {
-                return;
-            }
-            sigil::animation_runtime::tick(dt);
-        }
-        let remaining = sigil::animation_runtime::active_count();
-        assert!(
-            remaining == 0,
-            "golden harness: animation runtime did not settle within \
-             SETTLE_SAFETY_CAP ({SETTLE_SAFETY_CAP}) frames at dt={dt}. \
-             Active animators remaining: {remaining}. A widget under test is \
-             likely retargeting every frame.",
-        );
-        return;
-    }
-    for _ in 0..frames {
-        sigil::animation_runtime::tick(dt);
-    }
-}
-
-fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
-}
-
-fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Down,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-    }))
-}
-
-fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Up,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
-}
-
-fn request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on();
-    let Ok(adapter) = adapter else {
-        assert!(
-            std::env::var_os("SIGIL_REQUIRE_GOLDENS").is_none(),
-            "no wgpu adapter while SIGIL_REQUIRE_GOLDENS is set"
-        );
-        return None;
-    };
-    let (device, queue) = adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("visual-golden device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .expect("wgpu adapter has no usable device for the visual-golden suite");
-    Some((device, queue))
-}
-
-fn render_scene_to_image(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    scene: &CommandScene,
-    viewport: (f32, f32),
-    size_px: [u32; 2],
-) -> image::RgbaImage {
-    let texture = create_capture_texture(device, size_px[0], size_px[1]);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let clear = Color {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
-
-    let scale = size_px[0] as f32 / viewport.0;
-
-    WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
-        .render_command_scene_offscreen(
-            OffscreenTarget {
-                device,
-                queue,
-                view: &view,
-                format: FORMAT,
-                viewport,
-                scale,
-            },
-            scene,
-            clear,
-        )
-        .expect("render_command_scene_offscreen");
-
-    let raw = read_pixels(device, queue, &texture, size_px[0], size_px[1]);
-    image::RgbaImage::from_raw(size_px[0], size_px[1], raw).expect("rgba image from raw")
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("visual-golden capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
-}
-
-fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let unpadded_bpr = width * BYTES_PER_PIXEL;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded_bpr = {
-        let r = unpadded_bpr % align;
-        if r == 0 {
-            unpadded_bpr
-        } else {
-            unpadded_bpr + align - r
-        }
-    };
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("visual-golden readback"),
-        size: u64::from(padded_bpr) * u64::from(height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("visual-golden copy"),
-    });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bpr),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("device poll");
-    rx.recv().expect("map callback").expect("map result");
-
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let un = unpadded_bpr as usize;
-    let pad = padded_bpr as usize;
-    let h = height as usize;
-    let mut out = vec![0u8; un * h];
-    for row in 0..h {
-        out[row * un..row * un + un].copy_from_slice(&mapped[row * pad..row * pad + un]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    out
 }

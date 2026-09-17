@@ -1,4 +1,4 @@
-use crate::style::{StyleBinding, StyleEngine, TextStyle};
+use crate::style::{NumericAtomKind, StyleBinding, StyleEngine, TextStyle};
 
 use crate::layout::LayoutStyle;
 use crate::layout::style_adapter::apply_style_atoms;
@@ -49,6 +49,25 @@ pub(super) fn apply_style_overlay(
 
     if keep_pad {
         intent.data_mut().padding = pad;
+    }
+
+    apply_style_atoms(binding.state_overlay_atoms(), intent);
+    if let Some(overlay) = binding.animator_overlay() {
+        if let Some(value) = overlay.value_for(NumericAtomKind::Gap) {
+            *intent = intent.clone().gap(value.max(0.0));
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::PaddingX) {
+            *intent = intent.clone().padding_x(value.max(0.0));
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::PaddingY) {
+            *intent = intent.clone().padding_y(value.max(0.0));
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::Width) {
+            *intent = intent.clone().width(value.max(0.0));
+        }
+        if let Some(value) = overlay.value_for(NumericAtomKind::Height) {
+            *intent = intent.clone().height(value.max(0.0));
+        }
     }
 
     if let Some(style) = text_style {

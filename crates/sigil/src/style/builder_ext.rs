@@ -1,17 +1,19 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use super::presence::install_presence;
+use crate::animation_runtime::AnimationConfig;
 use crate::kernel::{Node, NodeBuilder, TextBuilder};
-use crate::reactive::Signal;
+use crate::reactive::{Runtime, Signal, effect_named};
 use smallvec::SmallVec;
 
 use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::style::{
-    FocusRing, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding, StyleOverlay,
-    StyleReactiveEffect, StyleState, StyleVariant, Theme, Tone, ToneContext, merge_classes,
-    parse_class_string, parser::ParseError,
+    FocusRing, NumericAtomKind, ReactiveStateSlot, StateSlot, Style, StyleAtom, StyleBinding,
+    StyleOverlay, StyleReactiveEffect, StyleState, StyleVariant, Theme, Tone, ToneContext,
+    merge_classes, parse_class_string, parser::ParseError,
 };
 
 static EMPTY_ATOMS: &[StyleAtom] = &[];
@@ -66,6 +68,12 @@ pub trait NodeStyleExt {
     fn style_reactive<F>(self, f: F) -> Self
     where
         F: Fn() -> &'static [StyleAtom] + 'static;
+
+    #[must_use]
+    fn presence(self, shown: Signal<bool>, config: AnimationConfig) -> Self;
+
+    #[must_use]
+    fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self;
 
     #[must_use]
     fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self;
@@ -131,6 +139,14 @@ impl NodeStyleExt for NodeBuilder {
         self.mutate(move |node| install_reactive(node, f))
     }
 
+    fn presence(self, shown: Signal<bool>, config: AnimationConfig) -> Self {
+        self.mutate(move |node| install_presence(node, shown, config))
+    }
+
+    fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self {
+        self.mutate(move |node| install_animation(node, kind, value))
+    }
+
     fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
         self.mutate(move |node| install_state_overlay(node, overlay, slot))
     }
@@ -165,6 +181,14 @@ impl NodeStyleExt for TextBuilder {
         self.mutate(move |node| install_reactive(node, f))
     }
 
+    fn presence(self, shown: Signal<bool>, config: AnimationConfig) -> Self {
+        self.mutate(move |node| install_presence(node, shown, config))
+    }
+
+    fn animate(self, kind: NumericAtomKind, value: Signal<f32>) -> Self {
+        self.mutate(move |node| install_animation(node, kind, value))
+    }
+
     fn state_overlay(self, overlay: StyleOverlay, slot: ReactiveStateSlot) -> Self {
         self.mutate(move |node| install_state_overlay(node, overlay, slot))
     }
@@ -172,6 +196,23 @@ impl NodeStyleExt for TextBuilder {
     fn tone(self, tone: Tone) -> Self {
         self.mutate(move |node| install_tone(node, tone))
     }
+}
+
+pub(super) fn install_animation(node: &mut Node, kind: NumericAtomKind, value: Signal<f32>) {
+    if let Some(binding) = node.get_extension_mut::<StyleBinding>() {
+        binding.bind_animation(kind, value);
+    } else {
+        let mut binding = StyleBinding::default();
+        binding.bind_animation(kind, value);
+        let _previous = node.attach(binding);
+    }
+    effect_named("sigil-style::animation", move || {
+        assert!(
+            value.get().is_finite(),
+            "animated style values must be finite"
+        );
+        Runtime::mark_frame_dirty();
+    });
 }
 
 fn install_tone(node: &mut Node, tone: Tone) {
@@ -220,7 +261,7 @@ fn install_focus_ring(node: &mut Node, ring: FocusRing) {
     let _previous = node.attach(ring);
 }
 
-fn install_reactive<F>(node: &mut Node, f: F)
+pub(super) fn install_reactive<F>(node: &mut Node, f: F)
 where
     F: Fn() -> &'static [StyleAtom] + 'static,
 {

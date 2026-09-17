@@ -9,7 +9,8 @@ use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use crate::events::handlers::dispatch;
-use crate::events::hit_test::NodePath;
+use crate::events::hit_test::{NodePath, local_position};
+use crate::style::StyleBinding;
 
 pub(crate) type PointerTargets = SmallVec<[PointerTarget; 64]>;
 
@@ -18,6 +19,7 @@ pub(crate) struct PointerTarget {
     pub(crate) id: NodeId,
     pub(crate) origin: Point,
     pub(crate) size: LogicalSize,
+    transformed: bool,
 }
 
 pub(crate) fn dispatch_pointer_path(
@@ -79,21 +81,40 @@ pub(crate) const fn synthetic_leave_source() -> PointerEvent {
     })
 }
 
-pub(crate) fn pointer_targets(layout: &LayoutEngine, path: &NodePath) -> PointerTargets {
+pub(crate) fn pointer_targets(
+    cx: &Cx,
+    layout: &LayoutEngine,
+    path: &NodePath,
+    visual_transforms: bool,
+) -> PointerTargets {
     let mut targets = PointerTargets::new();
+    let mut transformed = false;
     for id in path.iter().copied() {
+        if visual_transforms && let Some(node) = cx.get(id) {
+            if node.get_extension::<crate::kernel::TopLayer>().is_some() {
+                transformed = false;
+            }
+            transformed |= node
+                .get_extension::<StyleBinding>()
+                .is_some_and(StyleBinding::may_transform);
+        }
         let rect = layout.result(id).map(|result| result.rect());
         let origin = rect.map_or(Point::new(0.0, 0.0), |r| r.origin);
         let size = rect.map_or(LogicalSize::new(0.0, 0.0), |r| {
             LogicalSize::new(r.width, r.height)
         });
-        targets.push(PointerTarget { id, origin, size });
+        targets.push(PointerTarget {
+            id,
+            origin,
+            size,
+            transformed,
+        });
     }
     targets
 }
 
 pub(crate) fn invoke_node(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
-    let target = pointer_target_for_node(cx, layout, target);
+    let target = pointer_target_for_node(cx, layout, target, false);
     for phase in [
         PointerPhase::Enter,
         PointerPhase::Down,
@@ -119,14 +140,16 @@ pub(crate) fn pointer_target_for_node(
     cx: &Cx,
     layout: &LayoutEngine,
     target: NodeId,
+    visual_transforms: bool,
 ) -> PointerTarget {
-    pointer_targets(layout, &path_to_node(cx, target))
+    pointer_targets(cx, layout, &path_to_node(cx, target), visual_transforms)
         .last()
         .copied()
         .unwrap_or(PointerTarget {
             id: target,
             origin: Point::new(0.0, 0.0),
             size: LogicalSize::new(0.0, 0.0),
+            transformed: false,
         })
 }
 
@@ -139,10 +162,14 @@ fn invoke_pointer(
 ) -> bool {
     let previous_position = event.position;
     let previous_size = event.target_size;
-    event.position = Point::new(
-        global_position.x - target.origin.x,
-        global_position.y - target.origin.y,
-    );
+    let local = if target.transformed {
+        local_position(cx, target.id, global_position)
+    } else {
+        Some(global_position)
+    };
+    event.position = local.map_or(Point::new(-1.0, -1.0), |position| {
+        Point::new(position.x - target.origin.x, position.y - target.origin.y)
+    });
     event.target_size = target.size;
     let already_requested = event.capture_requested();
     let _ = dispatch(cx, target.id, |handlers| {

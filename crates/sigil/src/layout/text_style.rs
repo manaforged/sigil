@@ -18,6 +18,10 @@ pub(crate) fn apply_text_binding(
     for reactive in binding.reactive_channels() {
         engine.apply_text(reactive, style);
     }
+    engine.apply_text(binding.state_overlay_atoms(), style);
+    if let Some(overlay) = binding.animator_overlay() {
+        StyleEngine::overlay_text(overlay, style);
+    }
 }
 
 #[derive(Clone, Copy)]

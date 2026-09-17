@@ -1,7 +1,8 @@
 use crate::kernel::NodeBuilder;
 
 use super::{StateHost, StyleAccess};
-use crate::style::{ClassSource, NodeStyleExt, Style};
+use crate::style::{ClassSource, NodeStyleExt, StateStyle, Style, StyleVariant};
+use crate::widgets::interaction::InteractionState;
 
 pub struct NodeStyledBuilder {
     inner: NodeBuilder,
@@ -61,18 +62,17 @@ fn attach_style(builder: NodeBuilder, style: Style) -> NodeBuilder {
     let builder = if overlay.is_empty() {
         builder
     } else {
-        builder.state_overlay(overlay, rest_slot_cell())
+        let interaction = InteractionState::new(true);
+        let builder = builder.stateful_style(
+            StyleVariant::new(&[], StateStyle::EMPTY),
+            overlay,
+            move || interaction.style_state(),
+        );
+        interaction.observe_style(builder)
     };
     let base_atoms = style.into_atoms();
     if base_atoms.is_empty() {
         return builder;
     }
     builder.class(ClassSource::Owned(Box::new(base_atoms)))
-}
-
-fn rest_slot_cell() -> crate::style::ReactiveStateSlot {
-    use std::cell::Cell;
-    use std::rc::Rc;
-
-    Rc::new(Cell::new(crate::style::StateSlot::Rest))
 }

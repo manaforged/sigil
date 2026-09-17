@@ -68,6 +68,26 @@ impl InteractionState {
             .pointer_down(move |event| self.pointer_down(event))
     }
 
+    pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {
+        node.focus_in(move || self.on_focus_in())
+            .focus_out(move || self.on_focus_out())
+            .pointer_enter(move |_| self.set_hovered(true))
+            .pointer_leave(move |_| {
+                self.set_hovered(false);
+                self.set_pressed(false);
+            })
+            .pointer_down(move |event| {
+                if event.button == Some(MouseButton::Left) {
+                    self.set_pressed(true);
+                }
+            })
+            .pointer_up(move |event| {
+                if event.button == Some(MouseButton::Left) {
+                    self.set_pressed(false);
+                }
+            })
+    }
+
     pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
         if event.button != Some(MouseButton::Left) {
             return false;

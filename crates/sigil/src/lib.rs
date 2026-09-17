@@ -99,6 +99,10 @@ pub mod render;
 
 pub mod prelude {
     pub use crate::actions::{Action, HandlerKey, Propagate};
+    pub use crate::animation::{
+        AnimationDirection, AnimationFill, CubicBezier, Easing, Keyframe, Keyframes, SpringPreset,
+    };
+    pub use crate::animation_runtime::{AnimationConfig, Animator, MotionPrefs, Playback};
     pub use crate::events::prelude::*;
     pub use crate::kernel::prelude::*;
     pub use crate::layout::prelude::*;
@@ -107,9 +111,9 @@ pub mod prelude {
     };
     pub use crate::style::{
         ColorAtom, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing, Geometry,
-        NodeStyleExt, Px, Rgba8, Sizing, Spacing, StateStyle, StateVariants, Style, StyleAccess,
-        StyleAtom, StyleState, StyleVariant, Styleable, Styled, Theme, ThemeValue, Tone,
-        Transitions, Typography, Visual, classes,
+        NodeStyleExt, NumericAtomKind, Px, Rgba8, Sizing, Spacing, StateStyle, StateVariants,
+        Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled, Theme,
+        ThemeValue, Tone, Transitions, Typography, Visual, classes,
     };
     pub use crate::tasks::{
         OwnerHandle, SignalWriter, Status, dispatch_to_owner, dispatcher, post, signal_writer,

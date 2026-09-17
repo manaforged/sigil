@@ -12,11 +12,9 @@ use crate::style::{
 use crate::widgets::interaction::InteractionState;
 
 use super::super::shared::binary_style_state;
-use super::super::transition_seam::install_transition_animators;
 use super::builder::{Orientation, SliderRuntime};
 
 const SLIDER_TRANSITION: TransitionId = presets::SMOOTH;
-const SLIDER_COMPONENT_ID: u64 = 0x5110_E000;
 static SLIDER_THUMB_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(SLIDER_TRANSITION)];
 
 const THUMB_SIZE: f32 = 16.0;
@@ -119,32 +117,14 @@ pub(super) fn slider_thumb(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
 ) -> NodeBuilder {
-    let state_style = slider_thumb_state_style();
-    let node = container()
+    container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(THUMB_SIZE, THUMB_SIZE))
         .style(Style::new().radius(8))
         .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
             slider_thumb_variant().state(binary_style_state(interaction, disabled))
-        });
-    install_transition_animators(
-        node,
-        SLIDER_THUMB_ANIM_BASE,
-        state_style,
-        SLIDER_COMPONENT_ID,
-        interaction,
-    )
-}
-
-const fn slider_thumb_state_style() -> StateStyle {
-    StateStyle::new(
-        THUMB_REST,
-        THUMB_HOVER,
-        THUMB_HOVER,
-        THUMB_DOWN,
-        THUMB_DISABLED,
-    )
+        })
 }
 
 pub(super) const fn slider_root_variant() -> StyleVariant {

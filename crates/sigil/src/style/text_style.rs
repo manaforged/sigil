@@ -63,7 +63,21 @@ impl TextStyle {
         let reactive_has = binding
             .reactive_channels()
             .any(|slice| slice.iter().any(|atom| is_typography_atom(*atom)));
-        if !(base_has || reactive_has) {
+        if !(base_has
+            || reactive_has
+            || binding.animator_overlay().is_some_and(|overlay| {
+                overlay
+                    .value_for(crate::style::NumericAtomKind::FontSize)
+                    .is_some()
+                    || overlay
+                        .value_for(crate::style::NumericAtomKind::LineHeight)
+                        .is_some()
+            })
+            || binding
+                .state_overlay_atoms()
+                .iter()
+                .any(|atom| is_typography_atom(*atom)))
+        {
             return None;
         }
         let mut layered = base.clone();
@@ -71,6 +85,10 @@ impl TextStyle {
         crate::style::engine::apply_text_atoms(binding.dynamic_slice(), &mut layered);
         for reactive in binding.reactive_channels() {
             crate::style::engine::apply_text_atoms(reactive, &mut layered);
+        }
+        crate::style::engine::apply_text_atoms(binding.state_overlay_atoms(), &mut layered);
+        if let Some(overlay) = binding.animator_overlay() {
+            crate::style::StyleEngine::overlay_text(overlay, &mut layered);
         }
         Some(layered)
     }

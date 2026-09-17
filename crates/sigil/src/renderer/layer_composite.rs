@@ -8,12 +8,12 @@ use wgpu::util::DeviceExt as _;
 mod shader;
 
 use crate::hal::Rect;
-use crate::profile::count;
-use crate::renderer::CornerRadii;
+use crate::profile::{count, span};
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::scissor::apply;
+use crate::renderer::{CornerRadii, Transform};
 use shader::LAYER_SHADER;
 
 #[repr(C)]
@@ -30,7 +30,8 @@ pub(crate) struct LayerInstance {
     clip_radii: [f32; 4],
     uv_max: [f32; 2],
     opacity: f32,
-    _pad: f32,
+    transform_x: [f32; 3],
+    transform_y: [f32; 3],
 }
 
 pub(crate) struct LayerCompositePipeline {
@@ -45,6 +46,25 @@ pub(crate) struct LayerCompositePipeline {
 }
 
 impl LayerCompositePipeline {
+    pub(crate) fn for_format<'a>(
+        pipelines: &'a mut Vec<Self>,
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+    ) -> &'a mut Self {
+        let idx = pipelines
+            .iter()
+            .position(|p| p.format() == format)
+            .unwrap_or_else(|| {
+                let _span = span("render.pipeline.composite");
+                count("gpu.pipeline.composite.created");
+                pipelines.push(Self::new(device, format));
+                pipelines.len() - 1
+            });
+        pipelines
+            .get_mut(idx)
+            .expect("layer pipeline index was just constructed from the vec")
+    }
+
     pub(crate) fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("sigil-renderer layer composite shader"),
@@ -96,7 +116,8 @@ impl LayerCompositePipeline {
                 request.source_extent.1 as f32 / request.texture_size.1.max(1) as f32,
             ],
             opacity: request.opacity.clamp(0.0, 1.0),
-            _pad: 0.0,
+            transform_x: request.transform[0],
+            transform_y: request.transform[1],
         };
         let offset = self.uniform(&mut ctx);
         let instances = ctx.encoder.upload(from_ref(&instance));
@@ -140,6 +161,7 @@ pub(crate) struct CompositeRequest<'a> {
     pub(crate) source_extent: (u32, u32),
     pub(crate) opacity: f32,
     pub(crate) clip_radii: CornerRadii,
+    pub(crate) transform: Transform,
 }
 
 fn draw(
@@ -338,5 +360,7 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         2 => Float32x4,
         3 => Float32x2,
         4 => Float32,
+        5 => Float32x3,
+        6 => Float32x3,
     ],
 };

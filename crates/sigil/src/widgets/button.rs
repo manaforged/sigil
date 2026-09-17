@@ -13,9 +13,6 @@ use super::shared::{
     Activate, BuilderMutator, activate_key_reactive, activate_pointer_reactive, noop_activate,
     or_disabled, reactive_style_state,
 };
-use super::transition_seam::install_transition_animators;
-
-const BUTTON_COMPONENT_ID: u64 = 0xB117_7000;
 
 pub struct ButtonBuilder {
     label: TextContent,
@@ -220,7 +217,6 @@ impl ButtonBuilder {
         user_overlay: crate::style::StyleOverlay,
     ) -> NodeBuilder {
         let variant = self.variant;
-        let state_style = variant.states();
         let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
         let key_activate = Rc::clone(&activate);
@@ -261,13 +257,6 @@ impl ButtonBuilder {
                 activate_key_reactive(event, interaction, disabled, &activate);
             })
             .child(self.label_node());
-        let node = install_transition_animators(
-            node,
-            variant.base(),
-            state_style,
-            BUTTON_COMPONENT_ID,
-            interaction,
-        );
         interaction.install(node)
     }
 

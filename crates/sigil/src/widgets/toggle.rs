@@ -17,10 +17,8 @@ use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
     disabled_now, label, noop_bool_change,
 };
-use super::transition_seam::install_transition_animators;
 
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
-const TOGGLE_COMPONENT_ID: u64 = 0x7066_1000;
 
 pub struct ToggleBuilder {
     on: Signal<bool>,
@@ -194,8 +192,7 @@ fn toggle_track(
     disabled: Option<Signal<bool>>,
     interaction: InteractionState,
 ) -> NodeBuilder {
-    let state_style = toggle_state_style(false);
-    let node = container()
+    container()
         .layout(
             LayoutStyle::flex_row()
                 .fixed_size(36.0, 20.0)
@@ -207,34 +204,7 @@ fn toggle_track(
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(toggle_thumb());
-    install_transition_animators(
-        node,
-        TOGGLE_ANIM_BASE,
-        state_style,
-        TOGGLE_COMPONENT_ID,
-        interaction,
-    )
-}
-
-const fn toggle_state_style(on: bool) -> StateStyle {
-    if on {
-        StateStyle::new(
-            TOGGLE_ON,
-            TOGGLE_ON_HOVER,
-            TOGGLE_ON_HOVER,
-            TOGGLE_ON_DOWN,
-            TOGGLE_DISABLED,
-        )
-    } else {
-        StateStyle::new(
-            TOGGLE_OFF,
-            TOGGLE_OFF_HOVER,
-            TOGGLE_OFF_HOVER,
-            TOGGLE_OFF_DOWN,
-            TOGGLE_DISABLED,
-        )
-    }
+        .child(toggle_thumb())
 }
 
 fn toggle_thumb() -> NodeBuilder {

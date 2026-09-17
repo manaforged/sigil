@@ -17,10 +17,8 @@ use crate::widgets::interaction::InteractionState;
 use super::handlers::TextFieldRuntime;
 
 use super::super::shared::binary_style_state;
-use super::super::transition_seam::install_transition_animators;
 
 const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
-const TEXT_FIELD_COMPONENT_ID: u64 = 0x7E47_F000;
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
 static FIELD_BASE: &[StyleAtom] = &[
@@ -66,7 +64,6 @@ pub(super) fn build_base_node(
     } = inputs;
     let placeholder_str = text_content_untracked(placeholder);
     let displayed = displayed_text(value, placeholder.clone(), &runtime);
-    let state_style = field_state_style();
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
     let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
     let text_style = runtime.text_style;
@@ -83,8 +80,7 @@ pub(super) fn build_base_node(
     if !runtime.password {
         node = node.text_value(value);
     }
-    let node = node
-        .placeholder(placeholder_str)
+    node.placeholder(placeholder_str)
         .layout(field_layout())
         .class("rounded-md")
         .class(FIELD_BASE)
@@ -92,14 +88,7 @@ pub(super) fn build_base_node(
         .style_reactive(channel)
         .state_overlay(overlay, slot_cell)
         .pointer_up(move |event| pointer_up(event, interaction))
-        .child(field_inner(runtime, interaction, displayed, width, height));
-    install_transition_animators(
-        node,
-        TEXT_FIELD_ANIM_BASE,
-        state_style,
-        TEXT_FIELD_COMPONENT_ID,
-        interaction,
-    )
+        .child(field_inner(runtime, interaction, displayed, width, height))
 }
 
 fn field_style_channel(
@@ -117,16 +106,6 @@ fn field_style_channel(
             field_variant().state(state)
         }
     }
-}
-
-const fn field_state_style() -> StateStyle {
-    StateStyle::new(
-        FIELD_REST,
-        FIELD_FOCUS,
-        FIELD_HOVER,
-        FIELD_DOWN,
-        FIELD_DISABLED,
-    )
 }
 
 pub(super) fn field_layout() -> LayoutStyle {

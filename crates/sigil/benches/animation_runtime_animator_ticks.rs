@@ -40,7 +40,7 @@ fn bench_animator_ticks(c: &mut Criterion) {
                 b.iter(|| {
                     for a in &mut animators {
                         if a.settled() {
-                            a.target(black_box(1.0));
+                            a.target(black_box(if a.value() > 0.5 { 0.0 } else { 1.0 }));
                         }
                     }
                     tick(black_box(DT_60HZ));

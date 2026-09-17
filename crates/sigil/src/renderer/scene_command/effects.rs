@@ -36,5 +36,6 @@ pub struct LayerScope {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LayerEffect {
     Identity,
+    Transform(Transform),
     LayerBlur { sigma: f32 },
 }

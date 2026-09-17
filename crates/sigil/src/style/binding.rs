@@ -1,9 +1,14 @@
-use std::cell::Cell;
+use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
 
 use smallvec::SmallVec;
 
-use crate::style::{AnimatorOverlay, StateSlot, StyleAtom, StyleOverlay};
+use crate::animation_runtime::style::StyleAnimator;
+use crate::reactive::Signal;
+use crate::style::{
+    AnimatorOverlay, ColorAtomKind, NumericAtomKind, Rgba8, StateSlot, StyleAtom, StyleOverlay,
+    Theme, Tone,
+};
 
 pub type ReactiveStateSlot = Rc<Cell<StateSlot>>;
 
@@ -13,8 +18,9 @@ pub struct StyleBinding {
     static_atoms: &'static [StyleAtom],
     dynamic_atoms: SmallVec<[StyleAtom; 16]>,
     reactive_channels: SmallVec<[ReactiveStyleAtoms; 2]>,
-    attached_animators: Option<Box<dyn AnimatorOverlay>>,
+    attached_animators: OnceCell<Box<dyn AnimatorOverlay>>,
     state_overlay: Option<Box<StyleOverlay>>,
+    animated_values: SmallVec<[(NumericAtomKind, Signal<f32>); 2]>,
     state_overlay_slot: Option<ReactiveStateSlot>,
 }
 
@@ -24,7 +30,11 @@ impl core::fmt::Debug for StyleBinding {
             .field("static_atoms", &self.static_atoms)
             .field("dynamic_atoms", &self.dynamic_atoms)
             .field("reactive_channels", &self.reactive_channels.len())
-            .field("attached_animators", &self.attached_animators.is_some())
+            .field(
+                "attached_animators",
+                &self.attached_animators.get().is_some(),
+            )
+            .field("animated_values", &self.animated_values)
             .field("state_overlay", &self.state_overlay.is_some())
             .field("state_overlay_slot", &self.state_overlay_slot.is_some())
             .finish()
@@ -37,8 +47,9 @@ impl Default for StyleBinding {
             static_atoms: &[],
             dynamic_atoms: SmallVec::new(),
             reactive_channels: SmallVec::new(),
-            attached_animators: None,
+            attached_animators: OnceCell::new(),
             state_overlay: None,
+            animated_values: SmallVec::new(),
             state_overlay_slot: None,
         }
     }
@@ -90,6 +101,29 @@ impl StyleBinding {
     #[must_use]
     pub fn has_reactive(&self) -> bool {
         !self.reactive_channels.is_empty()
+            || self.state_overlay_slot.is_some()
+            || self.attached_animators.get().is_some()
+            || !self.animated_values.is_empty()
+            || self.has_transition()
+    }
+
+    pub(crate) fn may_transform(&self) -> bool {
+        self.has_reactive()
+            || self
+                .static_atoms
+                .iter()
+                .chain(&self.dynamic_atoms)
+                .any(|atom| matches!(atom, StyleAtom::Transform(_)))
+    }
+
+    pub(crate) fn has_transition(&self) -> bool {
+        self.static_atoms
+            .iter()
+            .chain(&self.dynamic_atoms)
+            .chain(self.state_overlay_atoms())
+            .copied()
+            .chain(self.reactive_channels().flatten().copied())
+            .any(|atom| matches!(atom, StyleAtom::Transition(_)))
     }
 
     #[must_use]
@@ -101,20 +135,49 @@ impl StyleBinding {
     }
 
     #[must_use]
-    pub fn animator_overlay(&self) -> Option<&dyn crate::style::AnimatorOverlay> {
-        self.attached_animators.as_deref()
+    pub fn animator_overlay(&self) -> Option<&dyn AnimatorOverlay> {
+        if self.animated_values.is_empty() {
+            self.attached_animators.get().map(Box::as_ref)
+        } else {
+            Some(self)
+        }
     }
 
-    pub fn set_animator_overlay(
-        &mut self,
-        overlay: Option<Box<dyn crate::style::AnimatorOverlay>>,
-    ) {
-        self.attached_animators = overlay;
+    pub(crate) fn bind_animation(&mut self, kind: NumericAtomKind, value: Signal<f32>) {
+        if let Some(entry) = self
+            .animated_values
+            .iter_mut()
+            .find(|entry| entry.0 == kind)
+        {
+            entry.1 = value;
+        } else {
+            self.animated_values.push((kind, value));
+        }
     }
 
-    pub fn retarget_animators(&mut self, slot: crate::style::StateSlot, base: &[StyleAtom]) {
-        if let Some(overlay) = self.attached_animators.as_deref_mut() {
+    pub fn set_animator_overlay(&mut self, overlay: Option<Box<dyn AnimatorOverlay>>) {
+        self.attached_animators = overlay.map_or_else(OnceCell::new, OnceCell::from);
+    }
+
+    pub fn retarget_animators(&mut self, slot: StateSlot, base: &[StyleAtom]) {
+        if let Some(overlay) = self.attached_animators.get_mut() {
             overlay.retarget_to_slot(slot, base);
+        }
+    }
+
+    pub(crate) fn update_animations(&self, theme: &Theme, tone: Tone, inherited_text: Rgba8) {
+        let mut atoms = self.all_atoms();
+        for channel in self.reactive_channels() {
+            atoms.extend_from_slice(channel);
+        }
+        atoms.extend_from_slice(self.state_overlay_atoms());
+        if self.attached_animators.get().is_none()
+            && let Some(animator) = StyleAnimator::new(&atoms)
+        {
+            let _ = self.attached_animators.set(Box::new(animator));
+        }
+        if let Some(overlay) = self.attached_animators.get() {
+            overlay.update(&atoms, theme, tone, inherited_text);
         }
     }
 
@@ -178,3 +241,27 @@ impl PartialEq for StyleBinding {
 }
 
 impl Eq for StyleBinding {}
+
+impl AnimatorOverlay for StyleBinding {
+    fn value_for(&self, kind: NumericAtomKind) -> Option<f32> {
+        self.animated_values
+            .iter()
+            .find(|entry| entry.0 == kind)
+            .map(|entry| entry.1.peek())
+            .or_else(|| {
+                self.attached_animators
+                    .get()
+                    .and_then(|overlay| overlay.value_for(kind))
+            })
+    }
+
+    fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
+        self.attached_animators
+            .get()
+            .and_then(|overlay| overlay.value_for_color(kind))
+    }
+
+    fn retarget_to_slot(&mut self, slot: StateSlot, base: &[StyleAtom]) {
+        self.retarget_animators(slot, base);
+    }
+}

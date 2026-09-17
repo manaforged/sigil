@@ -1,12 +1,16 @@
 use crate::hal::{Point, Rect};
 
-use crate::renderer::blur_paint::{BlurPipeline, PassCtx, PassSrc};
+use crate::renderer::blur_paint::{PassCtx, PassSrc};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_upload::UploadCapacities;
 use crate::renderer::layer_composite::{CompositeRequest, LayerCompositePipeline};
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
-use crate::renderer::scene_command::walk::{Walk, WalkCtx, translation};
-use crate::renderer::scene_command::{CommandScene, LayerEffect, LayerScope, SceneCommand};
+use crate::renderer::scene_command::walk::{
+    IDENTITY, Walk, WalkCtx, compose, transform_rect, translation,
+};
+use crate::renderer::scene_command::{
+    CommandScene, LayerEffect, LayerScope, SceneCommand, Transform,
+};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::sprite_paint::SpritePipeline;
@@ -14,19 +18,51 @@ use crate::renderer::sprite_paint::SpritePipeline;
 #[path = "layer_walk/geometry.rs"]
 mod geometry;
 use geometry::{local_rect, physical_extent};
-
-enum Node<'a> {
-    Command(&'a SceneCommand),
-    Layer {
-        scope: LayerScope,
-        children: Vec<Self>,
-    },
-}
+#[path = "layer_walk/pipelines.rs"]
+mod pipelines;
+use pipelines::blur_pipeline_for;
+#[path = "layer_walk/tree.rs"]
+mod tree;
+use tree::{Node, build_tree, layer_depth};
 
 #[derive(Clone, Copy)]
 struct Target<'a> {
     view: &'a wgpu::TextureView,
     bounds: Rect,
+    clip: Option<Rect>,
+    transform: Transform,
+    opacity: f32,
+}
+
+impl Target<'_> {
+    fn scoped(mut self, command: &SceneCommand) -> Option<Self> {
+        match command {
+            SceneCommand::PushClip(rect) => {
+                let rect = transform_rect(self.transform, *rect);
+                self.clip = Some(
+                    self.clip
+                        .map_or(Some(rect), |outer| outer.intersection(rect))?,
+                );
+            }
+            SceneCommand::PushTransform(transform) => {
+                self.transform = compose(self.transform, *transform);
+            }
+            SceneCommand::SaveLayer { opacity } => self.opacity *= opacity.clamp(0.0, 1.0),
+            _ => unreachable!("scope nodes contain only scope commands"),
+        }
+        Some(self)
+    }
+
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "GPU texture dimensions fit exactly in f32"
+    )]
+    fn viewport(self, scale: f32) -> (f32, f32) {
+        (
+            self.view.texture().width() as f32 / scale,
+            self.view.texture().height() as f32 / scale,
+        )
+    }
 }
 
 struct Layer {
@@ -45,6 +81,9 @@ pub(crate) fn walk_layer_command_scene(
     let target = Target {
         view: ctx.view,
         bounds: Rect::new(Point::new(0.0, 0.0), ctx.viewport.0, ctx.viewport.1),
+        clip: None,
+        transform: IDENTITY,
+        opacity: 1.0,
     };
     let result = render_nodes(&mut ctx, &nodes, target);
     if let Some(pool) = ctx.layer_pool.as_ref() {
@@ -76,30 +115,6 @@ fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
         .get_mut(index)
         .expect("sprite pipeline index was just constructed from the vec")
         .prepare(ctx.device, ctx.queue, commands);
-}
-
-fn build_tree(commands: &[SceneCommand]) -> Vec<Node<'_>> {
-    let mut index = 0;
-    build_until_pop(commands, &mut index)
-}
-
-fn build_until_pop<'a>(commands: &'a [SceneCommand], index: &mut usize) -> Vec<Node<'a>> {
-    let mut nodes = Vec::new();
-    while let Some(command) = commands.get(*index) {
-        *index += 1;
-        match command {
-            SceneCommand::PushLayer(scope) => {
-                let children = build_until_pop(commands, index);
-                nodes.push(Node::Layer {
-                    scope: *scope,
-                    children,
-                });
-            }
-            SceneCommand::PopLayer => break,
-            other => nodes.push(Node::Command(other)),
-        }
-    }
-    nodes
 }
 
 fn render_nodes(
@@ -144,7 +159,7 @@ fn render_batch(
         .iter()
         .filter_map(|node| match node {
             Node::Layer { scope, children } => Some(render_layer(ctx, *scope, children)),
-            Node::Command(_) => None,
+            Node::Command(_) | Node::Scope { .. } => None,
         })
         .collect::<Result<Vec<_>, _>>()?
         .into_iter();
@@ -152,6 +167,12 @@ fn render_batch(
     for node in nodes {
         match node {
             Node::Command(command) => batch.push(command),
+            Node::Scope { command, children } => {
+                flush_command_batch(ctx, &mut batch, target);
+                if let Some(scoped) = target.scoped(command) {
+                    render_nodes(ctx, children, scoped)?;
+                }
+            }
             Node::Layer { .. } => {
                 flush_command_batch(ctx, &mut batch, target);
                 let layer = layers.next().expect("layer prepared for each layer node");
@@ -174,11 +195,15 @@ fn flush_command_batch(ctx: &mut WalkCtx<'_>, batch: &mut Vec<&SceneCommand>, ta
     let capacity = UploadCapacities::from_commands(batch.iter().copied());
     let clip = target.bounds;
     let mut walk = Walk::new(
-        reborrow_ctx(ctx, target.view, (clip.width, clip.height)),
+        reborrow_ctx(ctx, target.view, target.viewport(ctx.scale)),
         capacity,
     );
-    walk.push_clip(Rect::new(Point::new(0.0, 0.0), clip.width, clip.height));
+    walk.push_clip(local_rect(target.clip.unwrap_or(clip), clip.origin));
     walk.push_transform(translation(-clip.origin.x, -clip.origin.y));
+    walk.push_transform(target.transform);
+    walk.handle(&SceneCommand::SaveLayer {
+        opacity: target.opacity,
+    });
     for command in batch.drain(..) {
         walk.handle(command);
     }
@@ -209,13 +234,16 @@ fn render_layer(
         Target {
             view: &handle.view,
             bounds: scope.clip,
+            clip: Some(scope.clip),
+            transform: IDENTITY,
+            opacity: 1.0,
         },
     )?;
     let blurred = match scope.effect {
         LayerEffect::LayerBlur { sigma } if sigma > 0.0 => {
             blurred_view(ctx, &handle, sigma * ctx.scale)?
         }
-        LayerEffect::Identity | LayerEffect::LayerBlur { .. } => None,
+        LayerEffect::Identity | LayerEffect::Transform(_) | LayerEffect::LayerBlur { .. } => None,
     };
     Ok(Layer {
         scope,
@@ -246,15 +274,17 @@ fn blurred_view(
 }
 
 fn composite_layer(ctx: &mut WalkCtx<'_>, target: Target<'_>, layer: &Layer) {
-    let pipeline = layer_pipeline_for(ctx.layer_pipelines, ctx.device, ctx.format);
+    let pipeline = LayerCompositePipeline::for_format(ctx.layer_pipelines, ctx.device, ctx.format);
     pipeline.composite(
         PaintCtx {
             device: ctx.device,
             queue: ctx.queue,
             encoder: &mut *ctx.encoder,
             view: target.view,
-            viewport: (target.bounds.width, target.bounds.height),
-            clip: None,
+            viewport: target.viewport(ctx.scale),
+            clip: target
+                .clip
+                .map(|clip| local_rect(clip, target.bounds.origin)),
             scale: ctx.scale,
         },
         CompositeRequest {
@@ -262,8 +292,21 @@ fn composite_layer(ctx: &mut WalkCtx<'_>, target: Target<'_>, layer: &Layer) {
             dest: local_rect(layer.scope.clip, target.bounds.origin),
             texture_size: (layer.handle.width, layer.handle.height),
             source_extent: layer.extent,
-            opacity: layer.scope.opacity,
+            opacity: layer.scope.opacity * target.opacity,
             clip_radii: layer.scope.clip_radii,
+            transform: compose(
+                translation(-target.bounds.origin.x, -target.bounds.origin.y),
+                compose(
+                    target.transform,
+                    compose(
+                        match layer.scope.effect {
+                            LayerEffect::Transform(transform) => transform,
+                            _ => IDENTITY,
+                        },
+                        translation(target.bounds.origin.x, target.bounds.origin.y),
+                    ),
+                ),
+            ),
         },
     );
 }
@@ -296,40 +339,6 @@ const fn reborrow_ctx<'a>(
     }
 }
 
-fn layer_pipeline_for<'a>(
-    pipelines: &'a mut Vec<LayerCompositePipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut LayerCompositePipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(LayerCompositePipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("layer pipeline index was just constructed from the vec")
-}
-
-fn blur_pipeline_for<'a>(
-    pipelines: &'a mut Vec<BlurPipeline>,
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-) -> &'a mut BlurPipeline {
-    let idx = pipelines
-        .iter()
-        .position(|p| p.format() == format)
-        .unwrap_or_else(|| {
-            pipelines.push(BlurPipeline::new(device, format));
-            pipelines.len() - 1
-        });
-    pipelines
-        .get_mut(idx)
-        .expect("blur pipeline index was just constructed from the vec")
-}
-
 fn clear_view(encoder: &mut SplitEncoder, view: &wgpu::TextureView) {
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer layer clear pass"),
@@ -347,15 +356,4 @@ fn clear_view(encoder: &mut SplitEncoder, view: &wgpu::TextureView) {
         occlusion_query_set: None,
         multiview_mask: None,
     });
-}
-
-fn layer_depth(nodes: &[Node<'_>]) -> usize {
-    nodes
-        .iter()
-        .map(|node| match node {
-            Node::Command(_) => 0,
-            Node::Layer { children, .. } => 1 + layer_depth(children),
-        })
-        .max()
-        .unwrap_or(0)
 }
