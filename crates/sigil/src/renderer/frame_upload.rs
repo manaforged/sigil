@@ -114,6 +114,47 @@ impl FrameUploads {
     }
 }
 
+pub(crate) struct UploadBuffers {
+    pub(crate) vertices: UploadBuffer,
+    pub(crate) uniforms: UploadBuffer,
+    pub(crate) storage: UploadBuffer,
+}
+
+impl Default for UploadBuffers {
+    fn default() -> Self {
+        Self {
+            vertices: UploadBuffer::new_bytes(
+                "sigil draw instances",
+                0,
+                1,
+                wgpu::BufferUsages::VERTEX,
+            ),
+            uniforms: UploadBuffer::new_bytes(
+                "sigil draw uniforms",
+                0,
+                1,
+                wgpu::BufferUsages::UNIFORM,
+            ),
+            storage: UploadBuffer::new_bytes(
+                "sigil gradient stops",
+                0,
+                1,
+                wgpu::BufferUsages::STORAGE,
+            ),
+        }
+    }
+}
+
+impl UploadBuffers {
+    pub(crate) fn reset(&mut self) {
+        for buffer in [&mut self.vertices, &mut self.uniforms, &mut self.storage] {
+            debug_assert!(buffer.pending.is_empty());
+            buffer.written = 0;
+            buffer.pending_offset = 0;
+        }
+    }
+}
+
 pub(crate) struct UploadBuffer {
     label: &'static str,
     usage: wgpu::BufferUsages,

@@ -3,7 +3,7 @@ mod submit;
 pub(crate) use submit::record_clear;
 pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
 
-use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
+use submit::{acquire_frame, render_command_scene_surface, render_frame_surface};
 
 use crate::hal::{Color, PhysicalSize, Renderer};
 #[cfg(not(target_arch = "wasm32"))]
@@ -12,8 +12,8 @@ use crate::profile::gpu::snapshot;
 use crate::renderer::device_state::DeviceState;
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
+use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::scene_command::CommandScene;
-use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::surface::WgpuSurface;
 use crate::renderer::window_handle::WindowHandle;
 
@@ -98,89 +98,13 @@ impl WgpuRenderer {
         self.state.ensure_ready_headless().map(|_| ())
     }
 
-    pub fn submit_screen(
+    pub fn prepare_compositing(
         &mut self,
-        target: &ScreenSubmission<'_>,
-        scene: &CommandScene,
+        format: wgpu::TextureFormat,
     ) -> Result<(), RendererError> {
-        let mut encoder = target
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("sigil-renderer submit_screen encoder"),
-            });
-        let result = self.record_screen(target, scene, &mut encoder);
-        target.queue.submit(core::iter::once(encoder.finish()));
-        result
-    }
-
-    pub fn record_screen(
-        &mut self,
-        target: &ScreenSubmission<'_>,
-        scene: &CommandScene,
-        encoder: &mut wgpu::CommandEncoder,
-    ) -> Result<(), RendererError> {
-        self.last_frame_stats = FrameStats::default();
-        if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
-            return Err(RendererError::InvalidViewport);
-        }
-        if let Some(color) = target.clear {
-            record_clear(encoder, target.view, color);
-        }
-        self.recycle_transients();
-        let real = std::mem::replace(
-            encoder,
-            target
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("sigil-renderer record_screen placeholder"),
-                }),
-        );
-        let mut split = SplitEncoder::new(target.device, target.queue, real);
-        let owns_device = self.device().is_some_and(|device| device == target.device);
-        let result = if owns_device {
-            let ready = self.state.ready_mut()?;
-            walk_screen(
-                ready,
-                target.device,
-                target.queue,
-                &mut split,
-                &mut self.frame_transients,
-                target.view,
-                target.viewport,
-                target.scale,
-                target.format,
-                scene,
-                &mut self.last_frame_stats,
-            )
-        } else {
-            crate::renderer::offscreen::walk_with_temporary_pipelines(
-                &mut split,
-                &mut self.frame_transients,
-                crate::renderer::offscreen::OffscreenTarget::from(target),
-                scene,
-                &mut self.last_frame_stats,
-            )
-        };
-        *encoder = split.into_inner();
-        #[cfg(not(target_arch = "wasm32"))]
-        if owns_device {
-            snapshot(self.instance());
-        }
-        result
-    }
-
-    fn recycle_transients(&mut self) {
-        if let DeviceState::Ready(ready) = &mut self.state {
-            if let Some(pool) = ready.layer_pool.as_mut() {
-                for handle in self.frame_transients.drain(..) {
-                    pool.release(handle);
-                }
-            } else {
-                self.frame_transients.clear();
-            }
-        } else {
-            self.frame_transients.clear();
-        }
+        let ready = self.state.ready_mut()?;
+        LayerCompositePipeline::for_format(&mut ready.layer_pipelines, &ready.device, format);
+        Ok(())
     }
 
     pub fn submit_world(
@@ -276,6 +200,7 @@ impl Renderer for WgpuRenderer {
             view_formats: vec![],
         };
         surface.configure(&ready.device, &config);
+        self.prepare_compositing(format)?;
         Ok(WgpuSurface { surface, config })
     }
 

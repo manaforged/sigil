@@ -2,7 +2,7 @@ use std::mem::replace;
 
 use crate::profile::count;
 use crate::renderer::decoration_paint::DecorationInstance;
-use crate::renderer::frame_upload::{UploadBuffer, UploadedRange};
+use crate::renderer::frame_upload::{UploadBuffers, UploadedRange};
 use crate::renderer::layer_composite::LayerInstance;
 use crate::renderer::raster_paint::RasterInstance;
 use crate::renderer::scene_command::SceneCommand;
@@ -21,9 +21,7 @@ pub(crate) struct SplitEncoder {
     target: Option<wgpu::TextureView>,
     encoder: wgpu::CommandEncoder,
     passes: u32,
-    vertices: UploadBuffer,
-    uniforms: UploadBuffer,
-    storage: UploadBuffer,
+    uploads: UploadBuffers,
     uniform_alignment: u64,
     storage_alignment: u64,
 }
@@ -41,26 +39,15 @@ impl SplitEncoder {
             target: None,
             encoder,
             passes: 0,
-            vertices: UploadBuffer::new_bytes(
-                "sigil draw instances",
-                0,
-                1,
-                wgpu::BufferUsages::VERTEX,
-            ),
-            uniforms: UploadBuffer::new_bytes(
-                "sigil draw uniforms",
-                0,
-                1,
-                wgpu::BufferUsages::UNIFORM,
-            ),
-            storage: UploadBuffer::new_bytes(
-                "sigil gradient stops",
-                0,
-                1,
-                wgpu::BufferUsages::STORAGE,
-            ),
+            uploads: UploadBuffers::default(),
             uniform_alignment: u64::from(device.limits().min_uniform_buffer_offset_alignment),
             storage_alignment: u64::from(device.limits().min_storage_buffer_offset_alignment),
+        }
+    }
+
+    pub(crate) fn reuse_uploads(&mut self, uploads: &mut Option<UploadBuffers>) {
+        if let Some(uploads) = uploads.take() {
+            self.uploads = uploads;
         }
     }
 
@@ -99,13 +86,13 @@ impl SplitEncoder {
                 _ => {}
             }
         }
-        self.vertices.reserve(vertices);
-        self.uniforms.reserve(uniforms);
-        self.storage.reserve(storage);
+        self.uploads.vertices.reserve(vertices);
+        self.uploads.uniforms.reserve(uniforms);
+        self.uploads.storage.reserve(storage);
     }
 
     pub(crate) fn upload<T: bytemuck::Pod>(&mut self, values: &[T]) -> UploadedRange {
-        let (buffer, bytes, allocated_bytes) = self.vertices.write(
+        let (buffer, bytes, allocated_bytes) = self.uploads.vertices.write(
             &self.device,
             &self.queue,
             bytemuck::cast_slice(values),
@@ -120,7 +107,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn uniform<T: bytemuck::Pod>(&mut self, value: &T) -> (wgpu::Buffer, u32, u64) {
-        let (buffer, bytes, allocated_bytes) = self.uniforms.write(
+        let (buffer, bytes, allocated_bytes) = self.uploads.uniforms.write(
             &self.device,
             &self.queue,
             bytemuck::bytes_of(value),
@@ -134,7 +121,7 @@ impl SplitEncoder {
     }
 
     pub(crate) fn storage<T: bytemuck::Pod>(&mut self, values: &[T]) -> UploadedRange {
-        let (buffer, bytes, allocated_bytes) = self.storage.write(
+        let (buffer, bytes, allocated_bytes) = self.uploads.storage.write(
             &self.device,
             &self.queue,
             bytemuck::cast_slice(values),
@@ -188,6 +175,14 @@ impl SplitEncoder {
         self.pass.as_mut().expect("render pass just started")
     }
 
+    pub(crate) fn submit(mut self) -> UploadBuffers {
+        drop(self.pass.take());
+        self.flush();
+        self.queue.submit(core::iter::once(self.encoder.finish()));
+        self.uploads.reset();
+        self.uploads
+    }
+
     pub(crate) fn into_inner(mut self) -> wgpu::CommandEncoder {
         drop(self.pass.take());
         self.flush();
@@ -195,9 +190,9 @@ impl SplitEncoder {
     }
 
     fn flush(&mut self) {
-        self.vertices.flush(&self.queue);
-        self.uniforms.flush(&self.queue);
-        self.storage.flush(&self.queue);
+        self.uploads.vertices.flush(&self.queue);
+        self.uploads.uniforms.flush(&self.queue);
+        self.uploads.storage.flush(&self.queue);
     }
 }
 

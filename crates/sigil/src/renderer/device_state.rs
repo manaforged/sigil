@@ -4,6 +4,7 @@ use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::error::RendererError;
 use crate::renderer::fill_paint::FillPipeline;
+use crate::renderer::frame_upload::UploadBuffers;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::raster_paint::RasterTextPipeline;
@@ -33,6 +34,7 @@ pub(crate) struct ReadyState {
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
+    pub(crate) uploads: Option<UploadBuffers>,
 }
 
 impl ReadyState {
@@ -115,6 +117,7 @@ impl DeviceState {
                         layer_pipelines: Vec::new(),
                         blur_pipelines: Vec::new(),
                         layer_pool: Some(LayerPool::new()),
+                        uploads: None,
                     }));
                 }
                 Err(err) => {

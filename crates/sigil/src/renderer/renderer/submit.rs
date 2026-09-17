@@ -1,7 +1,10 @@
 use crate::hal::Color;
 use crate::profile::count;
 
-use crate::renderer::device_state::ReadyState;
+use super::WgpuRenderer;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::profile::gpu::snapshot;
+use crate::renderer::device_state::{DeviceState, ReadyState};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_pool::LayerHandle;
@@ -204,6 +207,7 @@ pub(super) fn render_command_scene_surface(
     let scale = surface_text_scale(surface, viewport);
     let format = surface.config.format;
     let mut encoder = SplitEncoder::new(&device, &queue, encoder);
+    encoder.reuse_uploads(&mut ready.uploads);
     walk_screen(
         ready,
         &device,
@@ -217,7 +221,7 @@ pub(super) fn render_command_scene_surface(
         scene,
         stats,
     )?;
-    queue.submit(core::iter::once(encoder.into_inner().finish()));
+    ready.uploads = Some(encoder.submit());
     queue.present(frame);
     if let Some(pool) = ready.layer_pool.as_mut() {
         for handle in retained {
@@ -225,4 +229,126 @@ pub(super) fn render_command_scene_surface(
         }
     }
     Ok(())
+}
+
+impl WgpuRenderer {
+    pub fn submit_screen(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+    ) -> Result<(), RendererError> {
+        let mut encoder = target
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("sigil-renderer submit_screen encoder"),
+            });
+        if let Err(error) = self.prepare_screen(target, &mut encoder) {
+            target.queue.submit(core::iter::once(encoder.finish()));
+            return Err(error);
+        }
+        let mut split = SplitEncoder::new(target.device, target.queue, encoder);
+        if let DeviceState::Ready(ready) = &mut self.state
+            && ready.device == *target.device
+        {
+            split.reuse_uploads(&mut ready.uploads);
+        }
+        let result = self.walk_screen_commands(target, scene, &mut split);
+        let uploads = split.submit();
+        if let DeviceState::Ready(ready) = &mut self.state
+            && ready.device == *target.device
+        {
+            ready.uploads = Some(uploads);
+            #[cfg(not(target_arch = "wasm32"))]
+            snapshot(&ready.instance);
+        }
+        result
+    }
+
+    pub fn record_screen(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), RendererError> {
+        self.prepare_screen(target, encoder)?;
+        let real = std::mem::replace(
+            encoder,
+            target
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("sigil-renderer record_screen placeholder"),
+                }),
+        );
+        let mut split = SplitEncoder::new(target.device, target.queue, real);
+        let result = self.walk_screen_commands(target, scene, &mut split);
+        *encoder = split.into_inner();
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.device().is_some_and(|device| device == target.device) {
+            snapshot(self.instance());
+        }
+        result
+    }
+
+    fn prepare_screen(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), RendererError> {
+        self.last_frame_stats = FrameStats::default();
+        if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
+            return Err(RendererError::InvalidViewport);
+        }
+        if let Some(color) = target.clear {
+            record_clear(encoder, target.view, color);
+        }
+        self.recycle_transients();
+        Ok(())
+    }
+
+    fn walk_screen_commands(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+        encoder: &mut SplitEncoder,
+    ) -> Result<(), RendererError> {
+        let owns_device = self.device().is_some_and(|device| device == target.device);
+        if owns_device {
+            let ready = self.state.ready_mut()?;
+            walk_screen(
+                ready,
+                target.device,
+                target.queue,
+                encoder,
+                &mut self.frame_transients,
+                target.view,
+                target.viewport,
+                target.scale,
+                target.format,
+                scene,
+                &mut self.last_frame_stats,
+            )
+        } else {
+            crate::renderer::offscreen::walk_with_temporary_pipelines(
+                encoder,
+                &mut self.frame_transients,
+                crate::renderer::offscreen::OffscreenTarget::from(target),
+                scene,
+                &mut self.last_frame_stats,
+            )
+        }
+    }
+
+    fn recycle_transients(&mut self) {
+        if let DeviceState::Ready(ready) = &mut self.state {
+            if let Some(pool) = ready.layer_pool.as_mut() {
+                for handle in self.frame_transients.drain(..) {
+                    pool.release(handle);
+                }
+            } else {
+                self.frame_transients.clear();
+            }
+        } else {
+            self.frame_transients.clear();
+        }
+    }
 }
