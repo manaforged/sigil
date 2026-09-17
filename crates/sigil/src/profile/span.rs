@@ -52,8 +52,8 @@ fn category(name: &str) -> &'static str {
         "layout"
     } else if name == "emit" || name == "paint" {
         "paint"
-    } else if name == "gpu" {
-        "gpu"
+    } else if name.starts_with("render") {
+        "render"
     } else if name == "a11y" {
         "a11y"
     } else if name == "effect" {

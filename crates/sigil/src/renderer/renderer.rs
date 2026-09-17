@@ -6,6 +6,8 @@ pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
 use submit::{acquire_frame, render_command_scene_surface, render_frame_surface, walk_screen};
 
 use crate::hal::{Color, PhysicalSize, Renderer};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::profile::gpu::snapshot;
 
 use crate::renderer::device_state::DeviceState;
 use crate::renderer::error::RendererError;
@@ -134,11 +136,8 @@ impl WgpuRenderer {
                 }),
         );
         let mut split = SplitEncoder::new(target.device, target.queue, real);
-        let result = if self
-            .state
-            .ready()
-            .is_ok_and(|ready| ready.device == *target.device)
-        {
+        let owns_device = self.device().is_some_and(|device| device == target.device);
+        let result = if owns_device {
             let ready = self.state.ready_mut()?;
             walk_screen(
                 ready,
@@ -163,6 +162,10 @@ impl WgpuRenderer {
             )
         };
         *encoder = split.into_inner();
+        #[cfg(not(target_arch = "wasm32"))]
+        if owns_device {
+            snapshot(self.instance());
+        }
         result
     }
 
@@ -221,14 +224,17 @@ impl WgpuRenderer {
             ..
         } = self;
         let ready = state.ready_mut()?;
-        render_command_scene_surface(
+        let result = render_command_scene_surface(
             ready,
             surface,
             scene,
             clear_color,
             viewport,
             last_frame_stats,
-        )
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        snapshot(&ready.instance);
+        result
     }
 }
 
@@ -265,7 +271,7 @@ impl Renderer for WgpuRenderer {
             width,
             height,
             present_mode: wgpu::PresentMode::AutoVsync,
-            desired_maximum_frame_latency: 2,
+            desired_maximum_frame_latency: 1,
             alpha_mode,
             view_formats: vec![],
         };

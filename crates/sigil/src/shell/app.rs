@@ -16,7 +16,7 @@ use crate::shell::{shell::WinitShell, waker::WakeEvent};
 pub(crate) struct WinitApp<F> {
     pub(crate) shell: WinitShell,
     pub(crate) frame: F,
-    pub(crate) input_redraw_pending: bool,
+    pub(crate) app_redraw_pending: bool,
 }
 
 impl<F> ApplicationHandler<WakeEvent> for WinitApp<F>
@@ -39,6 +39,7 @@ where
 
         self.shell.pending_wake().store(false, Ordering::Release);
 
+        self.app_redraw_pending = true;
         for (_, window) in self.shell.windows() {
             window.request_redraw();
         }
@@ -46,6 +47,7 @@ where
 
     fn new_events(&mut self, _event_loop: &ActiveEventLoop, cause: StartCause) {
         if matches!(cause, StartCause::ResumeTimeReached { .. }) {
+            self.app_redraw_pending = true;
             self.shell.request_redraws();
         }
     }
@@ -73,10 +75,10 @@ where
             }
             WinitWindowEvent::RedrawRequested => {
                 self.shell.materialise_pending(event_loop);
-                if !self.input_redraw_pending {
+                if !self.app_redraw_pending {
                     self.shell.set_force_paint();
                 }
-                self.input_redraw_pending = false;
+                self.app_redraw_pending = false;
                 (self.frame)(&mut self.shell);
                 if self.shell.exit_requested() {
                     event_loop.exit();
@@ -84,7 +86,7 @@ where
             }
             event => {
                 if self.shell.buffer_window_event(window_id, event) {
-                    self.input_redraw_pending = true;
+                    self.app_redraw_pending = true;
                     self.shell.request_redraws();
                 }
             }

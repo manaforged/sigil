@@ -216,7 +216,7 @@ impl BlurPipeline {
         let instance_buf = make_instance_buffer(ctx.device, &instance);
         let tex_bg =
             make_texture_bind_group(ctx.device, &self.texture_layout, src.view, &self.sampler);
-        let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer blur pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: dst.view,

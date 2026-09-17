@@ -12,8 +12,8 @@ pub use atlas::set_test_atlas_size_override;
 pub(crate) use atlas::test_atlas_size_override;
 use atlas::{Placement, RasterAtlas};
 use setup::{
-    UNIT_QUAD_VERTEX_COUNT, bind_group, bind_group_layout, instance_buffer, pipeline, sampler,
-    uniform_buffer, unit_quad,
+    SurfaceParams, UNIT_QUAD_VERTEX_COUNT, bind_group, bind_group_layout, pipeline, sampler,
+    unit_quad,
 };
 
 pub(crate) struct RasterDrawParams<'a> {
@@ -32,7 +32,7 @@ pub(crate) struct RasterDrawParams<'a> {
 
 #[repr(C)]
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
-struct RasterInstance {
+pub(crate) struct RasterInstance {
     quad_rect: [f32; 4],
     uv_rect: [f32; 4],
     color: [f32; 4],
@@ -48,6 +48,7 @@ pub(crate) struct RasterTextPipeline {
     quad_vb: wgpu::Buffer,
     atlas: RasterAtlas,
     hinters: Hinters,
+    uniforms: Option<(wgpu::Buffer, wgpu::TextureView, wgpu::BindGroup)>,
 }
 
 impl RasterTextPipeline {
@@ -61,6 +62,7 @@ impl RasterTextPipeline {
             quad_vb: unit_quad(device),
             atlas: RasterAtlas::new(device),
             hinters: Hinters::default(),
+            uniforms: None,
             bgl,
         }
     }
@@ -184,28 +186,22 @@ impl RasterTextPipeline {
     }
 
     fn draw_instances(
-        &self,
+        &mut self,
         encoder: &mut SplitEncoder,
         params: &RasterDrawParams<'_>,
         instances: &[RasterInstance],
     ) {
-        let uniform = uniform_buffer(
-            params.device,
-            [
+        let (uniform, offset, _) = encoder.uniform(&SurfaceParams {
+            surface_size: [
                 params.surface_width.max(1.0),
                 params.surface_height.max(1.0),
             ],
-        );
-        let bg = bind_group(
-            params.device,
-            &self.bgl,
-            &uniform,
-            self.atlas.view(),
-            &self.sampler,
-        );
-        let instance_buf = instance_buffer(params.device, instances);
-        let count = u32::try_from(instances.len()).unwrap_or(u32::MAX);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            _pad: [0.0, 0.0],
+        });
+        self.prepare_uniforms(params.device, uniform);
+        let (_, _, bg) = self.uniforms.as_ref().expect("raster uniforms initialized");
+        let instances = encoder.upload(instances);
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("raster-text-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: params.view,
@@ -221,14 +217,26 @@ impl RasterTextPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !apply_clip_scissor(&mut pass, params) {
+        if !apply_clip_scissor(pass, params) {
             return;
         }
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, &bg, &[]);
+        pass.set_bind_group(0, bg, &[offset]);
         pass.set_vertex_buffer(0, self.quad_vb.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
-        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..count);
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes));
+        pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..instances.count);
+    }
+
+    fn prepare_uniforms(&mut self, device: &wgpu::Device, uniform: wgpu::Buffer) {
+        let view = self.atlas.view();
+        if self
+            .uniforms
+            .as_ref()
+            .is_none_or(|(buffer, atlas, _)| *buffer != uniform || atlas != view)
+        {
+            let group = bind_group(device, &self.bgl, &uniform, view, &self.sampler);
+            self.uniforms = Some((uniform, view.clone(), group));
+        }
     }
 }
 

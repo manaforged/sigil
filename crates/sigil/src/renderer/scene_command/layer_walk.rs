@@ -1,50 +1,89 @@
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_precision_loss,
-    clippy::cast_sign_loss,
-    clippy::missing_const_for_fn,
-    clippy::too_many_arguments
-)]
-
 use crate::hal::{Point, Rect};
 
-use crate::renderer::blur_paint::{BlurPipeline, PassCtx};
+use crate::renderer::blur_paint::{BlurPipeline, PassCtx, PassSrc};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_upload::UploadCapacities;
 use crate::renderer::layer_composite::{CompositeRequest, LayerCompositePipeline};
+use crate::renderer::layer_pool::{LayerHandle, LayerPool};
 use crate::renderer::scene_command::walk::{Walk, WalkCtx, translation};
 use crate::renderer::scene_command::{CommandScene, LayerEffect, LayerScope, SceneCommand};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::split_encoder::SplitEncoder;
+use crate::renderer::sprite_paint::SpritePipeline;
 
 #[path = "layer_walk/geometry.rs"]
 mod geometry;
 use geometry::{local_rect, physical_extent};
 
-enum Node {
-    Command(SceneCommand),
+enum Node<'a> {
+    Command(&'a SceneCommand),
     Layer {
         scope: LayerScope,
         children: Vec<Self>,
     },
 }
 
+#[derive(Clone, Copy)]
+struct Target<'a> {
+    view: &'a wgpu::TextureView,
+    bounds: Rect,
+}
+
+struct Layer {
+    scope: LayerScope,
+    handle: LayerHandle,
+    view: wgpu::TextureView,
+    extent: (u32, u32),
+}
+
 pub(crate) fn walk_layer_command_scene(
     mut ctx: WalkCtx<'_>,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
+    prepare_sprites(&mut ctx, &scene.commands);
     let nodes = build_tree(&scene.commands);
-    let view = ctx.view;
-    let viewport = ctx.viewport;
-    render_nodes(&mut ctx, &nodes, view, viewport)
+    let target = Target {
+        view: ctx.view,
+        bounds: Rect::new(Point::new(0.0, 0.0), ctx.viewport.0, ctx.viewport.1),
+    };
+    let result = render_nodes(&mut ctx, &nodes, target);
+    if let Some(pool) = ctx.layer_pool.as_ref() {
+        for pipeline in &mut *ctx.layer_pipelines {
+            pipeline.retain(pool);
+        }
+        pool.record_profile();
+    }
+    result
 }
 
-fn build_tree(commands: &[SceneCommand]) -> Vec<Node> {
+fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
+    if !commands
+        .iter()
+        .any(|command| matches!(command, SceneCommand::Image(_) | SceneCommand::Sprite(_)))
+    {
+        return;
+    }
+    let index = ctx
+        .sprite_pipelines
+        .iter()
+        .position(|pipeline| pipeline.format() == ctx.format)
+        .unwrap_or_else(|| {
+            ctx.sprite_pipelines
+                .push(SpritePipeline::new(ctx.device, ctx.format));
+            ctx.sprite_pipelines.len() - 1
+        });
+    ctx.sprite_pipelines
+        .get_mut(index)
+        .expect("sprite pipeline index was just constructed from the vec")
+        .prepare(ctx.device, ctx.queue, commands);
+}
+
+fn build_tree(commands: &[SceneCommand]) -> Vec<Node<'_>> {
     let mut index = 0;
     build_until_pop(commands, &mut index)
 }
 
-fn build_until_pop(commands: &[SceneCommand], index: &mut usize) -> Vec<Node> {
+fn build_until_pop<'a>(commands: &'a [SceneCommand], index: &mut usize) -> Vec<Node<'a>> {
     let mut nodes = Vec::new();
     while let Some(command) = commands.get(*index) {
         *index += 1;
@@ -57,7 +96,7 @@ fn build_until_pop(commands: &[SceneCommand], index: &mut usize) -> Vec<Node> {
                 });
             }
             SceneCommand::PopLayer => break,
-            other => nodes.push(Node::Command(other.clone())),
+            other => nodes.push(Node::Command(other)),
         }
     }
     nodes
@@ -65,35 +104,81 @@ fn build_until_pop(commands: &[SceneCommand], index: &mut usize) -> Vec<Node> {
 
 fn render_nodes(
     ctx: &mut WalkCtx<'_>,
-    nodes: &[Node],
-    view: &wgpu::TextureView,
-    viewport: (f32, f32),
+    mut nodes: &[Node<'_>],
+    target: Target<'_>,
 ) -> Result<(), RendererError> {
+    while !nodes.is_empty() {
+        let end = batch_len(nodes, target.bounds, ctx.scale, ctx.format);
+        let (batch, remaining) = nodes.split_at(end);
+        render_batch(ctx, batch, target)?;
+        nodes = remaining;
+    }
+    Ok(())
+}
+
+fn batch_len(nodes: &[Node<'_>], bounds: Rect, scale: f32, format: wgpu::TextureFormat) -> usize {
+    let budget = LayerPool::bytes(physical_extent(bounds, scale), format);
+    let mut bytes = 0_u64;
+    nodes
+        .iter()
+        .position(|node| {
+            let Node::Layer { scope, .. } = node else {
+                return false;
+            };
+            let next = LayerPool::bytes(physical_extent(scope.clip, scale), format);
+            if bytes > 0 && bytes.saturating_add(next) > budget {
+                return true;
+            }
+            bytes += next;
+            false
+        })
+        .unwrap_or(nodes.len())
+}
+
+fn render_batch(
+    ctx: &mut WalkCtx<'_>,
+    nodes: &[Node<'_>],
+    target: Target<'_>,
+) -> Result<(), RendererError> {
+    let mut layers = nodes
+        .iter()
+        .filter_map(|node| match node {
+            Node::Layer { scope, children } => Some(render_layer(ctx, *scope, children)),
+            Node::Command(_) => None,
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter();
     let mut batch: Vec<&SceneCommand> = Vec::new();
     for node in nodes {
         match node {
             Node::Command(command) => batch.push(command),
-            Node::Layer { scope, children } => {
-                flush_command_batch(ctx, &mut batch, view, viewport);
-                render_layer(ctx, *scope, children, view, viewport, Point::new(0.0, 0.0))?;
+            Node::Layer { .. } => {
+                flush_command_batch(ctx, &mut batch, target);
+                let layer = layers.next().expect("layer prepared for each layer node");
+                composite_layer(ctx, target, &layer);
+                ctx.layer_pool
+                    .as_mut()
+                    .expect("layer pool acquired the texture")
+                    .release(layer.handle);
             }
         }
     }
-    flush_command_batch(ctx, &mut batch, view, viewport);
+    flush_command_batch(ctx, &mut batch, target);
     Ok(())
 }
 
-fn flush_command_batch(
-    ctx: &mut WalkCtx<'_>,
-    batch: &mut Vec<&SceneCommand>,
-    view: &wgpu::TextureView,
-    viewport: (f32, f32),
-) {
+fn flush_command_batch(ctx: &mut WalkCtx<'_>, batch: &mut Vec<&SceneCommand>, target: Target<'_>) {
     if batch.is_empty() {
         return;
     }
     let capacity = UploadCapacities::from_commands(batch.iter().copied());
-    let mut walk = Walk::new(reborrow_ctx(ctx, view, viewport), capacity);
+    let clip = target.bounds;
+    let mut walk = Walk::new(
+        reborrow_ctx(ctx, target.view, (clip.width, clip.height)),
+        capacity,
+    );
+    walk.push_clip(Rect::new(Point::new(0.0, 0.0), clip.width, clip.height));
+    walk.push_transform(translation(-clip.origin.x, -clip.origin.y));
     for command in batch.drain(..) {
         walk.handle(command);
     }
@@ -103,11 +188,8 @@ fn flush_command_batch(
 fn render_layer(
     ctx: &mut WalkCtx<'_>,
     scope: LayerScope,
-    children: &[Node],
-    parent_view: &wgpu::TextureView,
-    parent_viewport: (f32, f32),
-    parent_origin: Point,
-) -> Result<(), RendererError> {
+    children: &[Node<'_>],
+) -> Result<Layer, RendererError> {
     debug_assert!(
         layer_depth(children) < 8,
         "SceneCommand layer nesting exceeds maximum depth 8"
@@ -121,52 +203,31 @@ fn render_layer(
     ctx.stats
         .record_offscreen(content_extent.0, content_extent.1);
     clear_view(ctx.encoder, &handle.view);
-    render_layer_children(ctx, children, scope.clip, &handle.view)?;
-    apply_effect_and_composite(
+    render_nodes(
         ctx,
-        parent_view,
-        parent_viewport,
-        parent_origin,
-        scope,
-        &handle,
-        content_extent,
+        children,
+        Target {
+            view: &handle.view,
+            bounds: scope.clip,
+        },
     )?;
-    ctx.retained.push(handle);
-    Ok(())
-}
-
-fn apply_effect_and_composite(
-    ctx: &mut WalkCtx<'_>,
-    parent_view: &wgpu::TextureView,
-    parent_viewport: (f32, f32),
-    parent_origin: Point,
-    scope: LayerScope,
-    handle: &crate::renderer::layer_pool::LayerHandle,
-    content_extent: (u32, u32),
-) -> Result<(), RendererError> {
     let blurred = match scope.effect {
         LayerEffect::LayerBlur { sigma } if sigma > 0.0 => {
-            blurred_view(ctx, handle, sigma * ctx.scale)?
+            blurred_view(ctx, &handle, sigma * ctx.scale)?
         }
         LayerEffect::Identity | LayerEffect::LayerBlur { .. } => None,
     };
-    let view = blurred.as_ref().unwrap_or(&handle.view);
-    composite_layer(
-        ctx,
-        parent_view,
-        parent_viewport,
-        parent_origin,
+    Ok(Layer {
         scope,
-        view,
-        handle_size(handle),
-        content_extent,
-    );
-    Ok(())
+        view: blurred.unwrap_or_else(|| handle.view.clone()),
+        handle,
+        extent: content_extent,
+    })
 }
 
 fn blurred_view(
     ctx: &mut WalkCtx<'_>,
-    handle: &crate::renderer::layer_pool::LayerHandle,
+    handle: &LayerHandle,
     sigma: f32,
 ) -> Result<Option<wgpu::TextureView>, RendererError> {
     let mut pass = PassCtx {
@@ -176,7 +237,7 @@ fn blurred_view(
     };
     let pool = ctx.layer_pool.get_or_insert_with(Default::default);
     let blur = blur_pipeline_for(ctx.blur_pipelines, ctx.device, ctx.format);
-    let src = crate::renderer::blur_paint::PassSrc {
+    let src = PassSrc {
         view: &handle.view,
         w: handle.width,
         h: handle.height,
@@ -184,88 +245,30 @@ fn blurred_view(
     blur.apply(&mut pass, pool, src, sigma)
 }
 
-fn render_layer_children(
-    ctx: &mut WalkCtx<'_>,
-    children: &[Node],
-    clip: Rect,
-    view: &wgpu::TextureView,
-) -> Result<(), RendererError> {
-    let mut batch: Vec<&SceneCommand> = Vec::new();
-    for node in children {
-        match node {
-            Node::Command(command) => batch.push(command),
-            Node::Layer {
-                scope,
-                children: nested,
-            } => {
-                flush_layer_batch(ctx, &mut batch, clip, view);
-                render_layer(
-                    ctx,
-                    *scope,
-                    nested,
-                    view,
-                    (clip.width, clip.height),
-                    clip.origin,
-                )?;
-            }
-        }
-    }
-    flush_layer_batch(ctx, &mut batch, clip, view);
-    Ok(())
-}
-
-fn flush_layer_batch(
-    ctx: &mut WalkCtx<'_>,
-    batch: &mut Vec<&SceneCommand>,
-    clip: Rect,
-    view: &wgpu::TextureView,
-) {
-    if batch.is_empty() {
-        return;
-    }
-    let capacity = UploadCapacities::from_commands(batch.iter().copied());
-    let mut walk = Walk::new(reborrow_ctx(ctx, view, (clip.width, clip.height)), capacity);
-    walk.push_clip(Rect::new(Point::new(0.0, 0.0), clip.width, clip.height));
-    walk.push_transform(translation(-clip.origin.x, -clip.origin.y));
-    for command in batch.drain(..) {
-        walk.handle(command);
-    }
-    walk.finish();
-}
-
-fn composite_layer(
-    ctx: &mut WalkCtx<'_>,
-    parent_view: &wgpu::TextureView,
-    parent_viewport: (f32, f32),
-    parent_origin: Point,
-    scope: LayerScope,
-    layer_view: &wgpu::TextureView,
-    texture_size: (u32, u32),
-    content_extent: (u32, u32),
-) {
+fn composite_layer(ctx: &mut WalkCtx<'_>, target: Target<'_>, layer: &Layer) {
     let pipeline = layer_pipeline_for(ctx.layer_pipelines, ctx.device, ctx.format);
     pipeline.composite(
         PaintCtx {
             device: ctx.device,
             queue: ctx.queue,
             encoder: &mut *ctx.encoder,
-            view: parent_view,
-            viewport: parent_viewport,
+            view: target.view,
+            viewport: (target.bounds.width, target.bounds.height),
             clip: None,
             scale: ctx.scale,
         },
         CompositeRequest {
-            layer_view,
-            dest: local_rect(scope.clip, parent_origin),
-            texture_size,
-            source_extent: content_extent,
-            opacity: scope.opacity,
-            clip_radii: scope.clip_radii,
+            layer_view: &layer.view,
+            dest: local_rect(layer.scope.clip, target.bounds.origin),
+            texture_size: (layer.handle.width, layer.handle.height),
+            source_extent: layer.extent,
+            opacity: layer.scope.opacity,
+            clip_radii: layer.scope.clip_radii,
         },
     );
 }
 
-fn reborrow_ctx<'a>(
+const fn reborrow_ctx<'a>(
     ctx: &'a mut WalkCtx<'_>,
     view: &'a wgpu::TextureView,
     viewport: (f32, f32),
@@ -346,7 +349,7 @@ fn clear_view(encoder: &mut SplitEncoder, view: &wgpu::TextureView) {
     });
 }
 
-fn layer_depth(nodes: &[Node]) -> usize {
+fn layer_depth(nodes: &[Node<'_>]) -> usize {
     nodes
         .iter()
         .map(|node| match node {
@@ -355,8 +358,4 @@ fn layer_depth(nodes: &[Node]) -> usize {
         })
         .max()
         .unwrap_or(0)
-}
-
-fn handle_size(handle: &crate::renderer::layer_pool::LayerHandle) -> (u32, u32) {
-    (handle.width, handle.height)
 }

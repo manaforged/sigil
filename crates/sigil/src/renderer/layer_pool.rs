@@ -1,5 +1,7 @@
 use wgpu::TextureUsages;
 
+use crate::profile::{count, count_add, enabled, gauge};
+
 const DIM_ALIGN: u32 = 16;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +20,7 @@ pub struct LayerHandle {
 
 pub struct LayerPool {
     free: Vec<LayerHandle>,
+    budget: Option<u64>,
 }
 
 impl LayerPool {
@@ -25,7 +28,25 @@ impl LayerPool {
 
     #[must_use]
     pub const fn new() -> Self {
-        Self { free: Vec::new() }
+        Self {
+            free: Vec::new(),
+            budget: None,
+        }
+    }
+
+    pub(crate) fn prepare(&mut self, texture: &wgpu::Texture) {
+        let budget = Self::bytes((texture.width(), texture.height()), texture.format());
+        self.budget = Some(budget);
+        self.trim(budget);
+        gauge("gpu.layer_cache_budget_bytes", budget);
+        self.record_profile();
+    }
+
+    pub(crate) fn bytes(extent: (u32, u32), format: wgpu::TextureFormat) -> u64 {
+        let (block_width, block_height) = format.block_dimensions();
+        let width = round_up(extent.0, DIM_ALIGN).div_ceil(block_width);
+        let height = round_up(extent.1, DIM_ALIGN).div_ceil(block_height);
+        u64::from(width) * u64::from(height) * u64::from(format.block_copy_size(None).unwrap_or(0))
     }
 
     pub fn acquire(
@@ -52,16 +73,57 @@ impl LayerPool {
             .iter()
             .position(|slot| slot.width == w && slot.height == h && slot.format == format)
         {
-            return Ok(self.free.swap_remove(index));
+            count("gpu.layer_reuses");
+            return Ok(self.free.remove(index));
+        }
+        count("alloc.layer.textures");
+        if let Some(bytes) = format.block_copy_size(None) {
+            count_add(
+                "alloc.layer.bytes",
+                u64::from(w) * u64::from(h) * u64::from(bytes),
+            );
         }
         Ok(alloc_layer_texture(device, w, h, format))
     }
 
     pub fn release(&mut self, handle: LayerHandle) {
-        if self.free.len() >= Self::MAX_ENTRIES {
-            return;
+        if let Some(budget) = self.budget {
+            let bytes = Self::bytes((handle.width, handle.height), handle.format);
+            if bytes > budget {
+                return;
+            }
+            self.trim(budget - bytes);
+        } else if self.free.len() >= Self::MAX_ENTRIES {
+            drop(self.free.remove(0));
         }
         self.free.push(handle);
+    }
+
+    fn trim(&mut self, budget: u64) {
+        let mut bytes = self.retained_bytes();
+        while bytes > budget {
+            let handle = self.free.remove(0);
+            bytes -= Self::bytes((handle.width, handle.height), handle.format);
+        }
+    }
+
+    fn retained_bytes(&self) -> u64 {
+        self.free
+            .iter()
+            .map(|handle| Self::bytes((handle.width, handle.height), handle.format))
+            .sum()
+    }
+
+    pub(crate) fn record_profile(&self) {
+        if !enabled() {
+            return;
+        }
+        gauge("gpu.layer_cache_bytes", self.retained_bytes());
+        gauge("gpu.layer_cache_textures", self.free.len() as u64);
+    }
+
+    pub(crate) fn contains(&self, view: &wgpu::TextureView) -> bool {
+        self.free.iter().any(|handle| handle.view == *view)
     }
 
     pub fn clear(&mut self) {

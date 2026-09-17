@@ -79,12 +79,12 @@ impl SceneCache {
         } else {
             Color::rgba(0.03, 0.04, 0.05, 1.0)
         };
-        let _gpu = crate::profile::span("gpu");
+        let _render = crate::profile::span("render.cpu");
         if let Err(err) = renderer.render(surface, scene, clear, viewport) {
             tracing::warn!("sigil-app: render_command_scene failed: {err}");
             Runtime::mark_frame_dirty();
         }
-        note_gpu(renderer.last_frame_stats());
+        renderer.last_frame_stats().record_profile();
     }
 }
 
@@ -92,7 +92,6 @@ fn note_scene(scene: &CommandScene) {
     if !crate::profile::enabled() {
         return;
     }
-    crate::profile::count_add("scene.cmds", scene.commands.len() as u64);
     let mut glyphs = 0_u64;
     let mut rects = 0_u64;
     let mut images = 0_u64;
@@ -109,16 +108,6 @@ fn note_scene(scene: &CommandScene) {
     crate::profile::count_add("scene.glyphs", glyphs);
     crate::profile::count_add("scene.rects", rects);
     crate::profile::count_add("scene.images", images);
-}
-
-fn note_gpu(stats: crate::renderer::FrameStats) {
-    if !crate::profile::enabled() {
-        return;
-    }
-    crate::profile::count_add("gpu.rects", stats.rectangle_instances as u64);
-    crate::profile::count_add("gpu.glyphs", stats.glyph_runs as u64);
-    crate::profile::count_add("gpu.sprites", stats.sprite_draws as u64);
-    crate::profile::count_add("gpu.layers", stats.offscreen_layers as u64);
 }
 
 pub(super) struct PaintRequest<'a> {

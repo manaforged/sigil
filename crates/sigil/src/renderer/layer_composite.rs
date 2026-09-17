@@ -1,13 +1,19 @@
 #![allow(clippy::cast_precision_loss, clippy::redundant_pub_crate)]
 
 use bytemuck::{Pod, Zeroable};
+use std::slice::from_ref;
 use wgpu::util::DeviceExt as _;
 
 #[path = "layer_composite/shader.rs"]
 mod shader;
 
+use crate::hal::Rect;
+use crate::profile::count;
 use crate::renderer::CornerRadii;
+use crate::renderer::frame_upload::UploadedRange;
+use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::scene_paint::PaintCtx;
+use crate::renderer::scissor::apply;
 use shader::LAYER_SHADER;
 
 #[repr(C)]
@@ -19,7 +25,7 @@ struct LayerUniforms {
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
-struct LayerInstance {
+pub(crate) struct LayerInstance {
     dest: [f32; 4],
     clip_radii: [f32; 4],
     uv_max: [f32; 2],
@@ -31,7 +37,9 @@ pub(crate) struct LayerCompositePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
     uniform_layout: wgpu::BindGroupLayout,
+    uniforms: Option<(wgpu::Buffer, wgpu::BindGroup)>,
     texture_layout: wgpu::BindGroupLayout,
+    textures: Vec<(wgpu::TextureView, wgpu::BindGroup)>,
     sampler: wgpu::Sampler,
     unit_quad: wgpu::Buffer,
 }
@@ -56,7 +64,9 @@ impl LayerCompositePipeline {
             format,
             pipeline: pipeline(device, format, &shader, &uniform_layout, &texture_layout),
             uniform_layout,
+            uniforms: None,
             texture_layout,
+            textures: Vec::new(),
             sampler,
             unit_quad: unit_quad(device),
         }
@@ -66,7 +76,11 @@ impl LayerCompositePipeline {
         self.format
     }
 
-    pub(crate) fn composite(&self, mut ctx: PaintCtx<'_>, request: CompositeRequest<'_>) {
+    pub(crate) fn retain(&mut self, pool: &LayerPool) {
+        self.textures.retain(|(view, _)| pool.contains(view));
+    }
+
+    pub(crate) fn composite(&mut self, mut ctx: PaintCtx<'_>, request: CompositeRequest<'_>) {
         let instance = LayerInstance {
             dest: [
                 request.dest.origin.x,
@@ -84,29 +98,44 @@ impl LayerCompositePipeline {
             opacity: request.opacity.clamp(0.0, 1.0),
             _pad: 0.0,
         };
-        let uniform_buf = uniform_buffer(
-            ctx.device,
-            &LayerUniforms {
-                viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
-                _pad: [0.0, 0.0],
-            },
-        );
-        let uniform_bg = uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
-        let instance_buf = instance_buffer(ctx.device, &instance);
-        let texture_bg = texture_bind_group(
-            ctx.device,
-            &self.texture_layout,
-            request.layer_view,
-            &self.sampler,
-        );
-        draw(self, &mut ctx, &uniform_bg, &instance_buf, &texture_bg);
+        let offset = self.uniform(&mut ctx);
+        let instances = ctx.encoder.upload(from_ref(&instance));
+        let texture = self.texture(ctx.device, request.layer_view);
+        draw(self, &mut ctx, &instances, offset, texture);
+    }
+
+    fn uniform(&mut self, ctx: &mut PaintCtx<'_>) -> u32 {
+        let (buffer, offset, _) = ctx.encoder.uniform(&LayerUniforms {
+            viewport: [ctx.viewport.0.max(1.0), ctx.viewport.1.max(1.0)],
+            _pad: [0.0, 0.0],
+        });
+        if self
+            .uniforms
+            .as_ref()
+            .is_none_or(|(cached, _)| *cached != buffer)
+        {
+            let group = uniform_bind_group(ctx.device, &self.uniform_layout, &buffer);
+            self.uniforms = Some((buffer, group));
+        }
+        offset
+    }
+
+    fn texture(&mut self, device: &wgpu::Device, view: &wgpu::TextureView) -> usize {
+        self.textures
+            .iter()
+            .position(|(cached, _)| cached == view)
+            .unwrap_or_else(|| {
+                let group = texture_bind_group(device, &self.texture_layout, view, &self.sampler);
+                self.textures.push((view.clone(), group));
+                self.textures.len() - 1
+            })
     }
 }
 
 #[derive(Clone, Copy)]
 pub(crate) struct CompositeRequest<'a> {
     pub(crate) layer_view: &'a wgpu::TextureView,
-    pub(crate) dest: crate::hal::Rect,
+    pub(crate) dest: Rect,
     pub(crate) texture_size: (u32, u32),
     pub(crate) source_extent: (u32, u32),
     pub(crate) opacity: f32,
@@ -116,11 +145,19 @@ pub(crate) struct CompositeRequest<'a> {
 fn draw(
     pipeline: &LayerCompositePipeline,
     ctx: &mut PaintCtx<'_>,
-    uniform_bg: &wgpu::BindGroup,
-    instance_buf: &wgpu::Buffer,
-    texture_bg: &wgpu::BindGroup,
+    instances: &UploadedRange,
+    uniform_offset: u32,
+    texture: usize,
 ) {
-    let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+    let (_, uniform_bg) = pipeline
+        .uniforms
+        .as_ref()
+        .expect("layer uniforms initialized");
+    let (_, texture_bg) = pipeline
+        .textures
+        .get(texture)
+        .expect("layer texture initialized");
+    let pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer layer composite pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: ctx.view,
@@ -136,14 +173,14 @@ fn draw(
         occlusion_query_set: None,
         multiview_mask: None,
     });
-    if !crate::renderer::scissor::apply(&mut pass, ctx.clip, ctx.scale, ctx.viewport) {
+    if !apply(pass, ctx.clip, ctx.scale, ctx.viewport) {
         return;
     }
     pass.set_pipeline(&pipeline.pipeline);
-    pass.set_bind_group(0, uniform_bg, &[]);
+    pass.set_bind_group(0, uniform_bg, &[uniform_offset]);
     pass.set_bind_group(1, texture_bg, &[]);
     pass.set_vertex_buffer(0, pipeline.unit_quad.slice(..));
-    pass.set_vertex_buffer(1, instance_buf.slice(..));
+    pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes.clone()));
     pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
 }
 
@@ -194,8 +231,8 @@ fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             visibility: wgpu::ShaderStages::VERTEX,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
+                has_dynamic_offset: true,
+                min_binding_size: wgpu::BufferSize::new(size_of::<LayerUniforms>() as u64),
             },
             count: None,
         }],
@@ -226,25 +263,22 @@ fn texture_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-fn uniform_buffer(device: &wgpu::Device, uniforms: &LayerUniforms) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer layer uniforms"),
-        contents: bytemuck::bytes_of(uniforms),
-        usage: wgpu::BufferUsages::UNIFORM,
-    })
-}
-
 fn uniform_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
+    count("alloc.composite.uniform_bind_groups");
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer layer uniforms bind group"),
         layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer,
+                offset: 0,
+                size: wgpu::BufferSize::new(size_of::<LayerUniforms>() as u64),
+            }),
         }],
     })
 }
@@ -255,6 +289,7 @@ fn texture_bind_group(
     view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
 ) -> wgpu::BindGroup {
+    count("alloc.composite.texture_bind_groups");
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer layer texture bind group"),
         layout,
@@ -275,14 +310,6 @@ fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer layer unit quad"),
         contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-fn instance_buffer(device: &wgpu::Device, instance: &LayerInstance) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer layer instance buffer"),
-        contents: bytemuck::bytes_of(instance),
         usage: wgpu::BufferUsages::VERTEX,
     })
 }

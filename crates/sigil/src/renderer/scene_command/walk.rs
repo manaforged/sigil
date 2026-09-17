@@ -1,3 +1,5 @@
+use smallvec::{SmallVec, smallvec};
+
 use crate::hal::{Point, Rect};
 
 use crate::renderer::blur_paint::BlurPipeline;
@@ -45,10 +47,17 @@ pub(crate) fn walk_command_scene(
     ctx: WalkCtx<'_>,
     scene: &CommandScene,
 ) -> Result<(), RendererError> {
+    ctx.encoder.reserve_draws(&scene.commands);
     *ctx.stats = FrameStats {
         scene_commands: scene.commands.len(),
         ..FrameStats::default()
     };
+    if let Some(pool) = ctx.layer_pool.as_mut() {
+        pool.prepare(ctx.view.texture());
+        for pipeline in &mut *ctx.layer_pipelines {
+            pipeline.retain(pool);
+        }
+    }
     if scene
         .commands
         .iter()
@@ -63,9 +72,9 @@ pub(crate) fn walk_command_scene(
 
 pub(super) struct Walk<'a> {
     pub(super) ctx: WalkCtx<'a>,
-    clips: Vec<Rect>,
-    transforms: Vec<Transform>,
-    layers: Vec<f32>,
+    clips: SmallVec<[Rect; 4]>,
+    transforms: SmallVec<[Transform; 4]>,
+    layers: SmallVec<[f32; 4]>,
     pub(super) uploads: FrameUploads,
     pub(super) pending_rects: Vec<RectInstance>,
     pub(super) pending_fills: Vec<FillInstance>,
@@ -90,18 +99,12 @@ pub(super) struct QueuedGlyphs {
 
 impl<'a> Walk<'a> {
     pub(super) fn new(ctx: WalkCtx<'a>, capacity: UploadCapacities) -> Self {
-        let uploads = FrameUploads::new(
-            ctx.device,
-            ctx.queue,
-            ctx.viewport,
-            capacity,
-            &mut *ctx.stats,
-        );
+        let uploads = FrameUploads::new(ctx.encoder, ctx.viewport, capacity, &mut *ctx.stats);
         Self {
             ctx,
-            clips: Vec::new(),
-            transforms: vec![IDENTITY],
-            layers: vec![1.0],
+            clips: SmallVec::new(),
+            transforms: smallvec![IDENTITY],
+            layers: smallvec![1.0],
             uploads,
             pending_rects: Vec::new(),
             pending_fills: Vec::new(),

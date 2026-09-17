@@ -304,7 +304,7 @@ impl Shell for WinitShell {
         let mut app = WinitApp {
             shell: self,
             frame,
-            input_redraw_pending: false,
+            app_redraw_pending: false,
         };
         event_loop.run_app(&mut app)?;
         Ok(())

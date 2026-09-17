@@ -1,5 +1,7 @@
 use wgpu::util::DeviceExt as _;
 
+use crate::profile::count;
+
 use super::{SPRITE_SHADER, SpriteInstance, SpriteUniforms};
 
 pub(super) fn shader(device: &wgpu::Device) -> wgpu::ShaderModule {
@@ -61,8 +63,8 @@ pub(super) fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
+                has_dynamic_offset: true,
+                min_binding_size: wgpu::BufferSize::new(size_of::<SpriteUniforms>() as u64),
             },
             count: None,
         }],
@@ -93,25 +95,22 @@ pub(super) fn atlas_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
     })
 }
 
-pub(super) fn uniform_buffer(device: &wgpu::Device, uniforms: &SpriteUniforms) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer sprite uniforms"),
-        contents: bytemuck::bytes_of(uniforms),
-        usage: wgpu::BufferUsages::UNIFORM,
-    })
-}
-
 pub(super) fn uniform_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
+    count("alloc.sprite.bind_groups");
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer sprite uniforms bind group"),
         layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer,
+                offset: 0,
+                size: wgpu::BufferSize::new(size_of::<SpriteUniforms>() as u64),
+            }),
         }],
     })
 }
@@ -142,14 +141,6 @@ pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("sigil-renderer sprite unit quad"),
         contents: bytemuck::cast_slice(&UNIT_QUAD_VERTICES),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-pub(super) fn instance_buffer(device: &wgpu::Device, instance: &SpriteInstance) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer sprite instance buffer"),
-        contents: bytemuck::bytes_of(instance),
         usage: wgpu::BufferUsages::VERTEX,
     })
 }

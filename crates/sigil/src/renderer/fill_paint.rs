@@ -42,8 +42,8 @@ impl FillPipeline {
         &self,
         ctx: PaintCtx<'_>,
         instances: UploadedRange,
-        stops: &wgpu::Buffer,
-        uniform: &wgpu::Buffer,
+        stops: &UploadedRange,
+        uniform: wgpu::BufferBinding<'_>,
     ) {
         let PaintCtx {
             device,
@@ -57,7 +57,7 @@ impl FillPipeline {
         let uniform_bg = uniform_bind_group(device, &self.uniform_layout, uniform);
         let stops_bg = stops_bind_group(device, &self.stops_layout, stops);
 
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer fill paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
@@ -73,7 +73,7 @@ impl FillPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !crate::renderer::scissor::apply(&mut pass, clip, scale, viewport) {
+        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
             return;
         }
         pass.set_pipeline(&self.pipeline);

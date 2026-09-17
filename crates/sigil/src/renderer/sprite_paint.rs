@@ -7,13 +7,15 @@
 )]
 
 use bytemuck::{Pod, Zeroable};
+use std::slice::from_ref;
 
 mod atlas;
 mod builder;
 mod icon;
 mod image_pack;
 
-use crate::renderer::scene_command::{DrawSprite, SpriteKind};
+use crate::renderer::frame_upload::UploadedRange;
+use crate::renderer::scene_command::{DrawSprite, SceneCommand, SpriteKind};
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::sprite_atlas::{
@@ -22,8 +24,8 @@ use crate::renderer::sprite_atlas::{
 
 use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, push_atlas, valid_atlas_desc};
 use self::builder::{
-    UNIT_QUAD_VERTEX_COUNT, atlas_layout, instance_buffer, pipeline, shader, uniform_bind_group,
-    uniform_buffer, uniform_layout, unit_quad,
+    UNIT_QUAD_VERTEX_COUNT, atlas_layout, pipeline, shader, uniform_bind_group, uniform_layout,
+    unit_quad,
 };
 use self::icon::is_builtin_icon_atlas;
 use self::image_pack::ImagePack;
@@ -52,6 +54,7 @@ pub(crate) struct SpritePipeline {
     format: wgpu::TextureFormat,
     pipeline: wgpu::RenderPipeline,
     uniform_layout: wgpu::BindGroupLayout,
+    uniforms: Option<(wgpu::Buffer, wgpu::BindGroup)>,
     atlas_layout: wgpu::BindGroupLayout,
     unit_quad: wgpu::Buffer,
     pub(super) atlases: Vec<AtlasEntry>,
@@ -82,6 +85,7 @@ impl SpritePipeline {
             format,
             pipeline,
             uniform_layout,
+            uniforms: None,
             atlas_layout,
             unit_quad,
             atlases: Vec::new(),
@@ -96,6 +100,25 @@ impl SpritePipeline {
 
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
         self.format
+    }
+
+    pub(crate) fn prepare(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        commands: &[SceneCommand],
+    ) {
+        for command in commands {
+            match command {
+                SceneCommand::Image(draw) => {
+                    self.register_image(device, queue, &draw.source);
+                }
+                SceneCommand::Sprite(draw) => {
+                    let _ = self.resolve_atlas(device, queue, draw.source.atlas);
+                }
+                _ => {}
+            }
+        }
     }
 
     pub(crate) fn register_atlas(
@@ -149,10 +172,17 @@ impl SpritePipeline {
         let Some(bind_group) = self.atlas_bind_groups.get(atlas_id).cloned() else {
             return;
         };
-        let instance_buf = instance_buffer(ctx.device, &instance);
-        let uniform_buf = uniform_buffer(ctx.device, &sprite_uniforms(ctx.viewport, aw, ah));
-        let uniform_bg = uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
-        self.encode_pass(ctx, &uniform_bg, &instance_buf, &bind_group);
+        let instances = ctx.encoder.upload(from_ref(&instance));
+        let (uniform, offset, _) = ctx.encoder.uniform(&sprite_uniforms(ctx.viewport, aw, ah));
+        if self
+            .uniforms
+            .as_ref()
+            .is_none_or(|(buffer, _)| *buffer != uniform)
+        {
+            let group = uniform_bind_group(ctx.device, &self.uniform_layout, &uniform);
+            self.uniforms = Some((uniform, group));
+        }
+        self.encode_pass(ctx, &instances, &bind_group, offset);
     }
 
     fn resolve_atlas(
@@ -228,11 +258,12 @@ impl SpritePipeline {
     fn encode_pass(
         &self,
         ctx: &mut PaintCtx<'_>,
-        uniform_bg: &wgpu::BindGroup,
-        instance_buf: &wgpu::Buffer,
+        instances: &UploadedRange,
         atlas_bg: &wgpu::BindGroup,
+        uniform_offset: u32,
     ) {
-        let mut pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let (_, uniform_bg) = self.uniforms.as_ref().expect("sprite uniforms initialized");
+        let pass = ctx.encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer sprite pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: ctx.view,
@@ -248,14 +279,14 @@ impl SpritePipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !crate::renderer::scissor::apply(&mut pass, ctx.clip, ctx.scale, ctx.viewport) {
+        if !crate::renderer::scissor::apply(pass, ctx.clip, ctx.scale, ctx.viewport) {
             return;
         }
         pass.set_pipeline(&self.pipeline);
-        pass.set_bind_group(0, uniform_bg, &[]);
+        pass.set_bind_group(0, uniform_bg, &[uniform_offset]);
         pass.set_bind_group(1, atlas_bg, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));
-        pass.set_vertex_buffer(1, instance_buf.slice(..));
+        pass.set_vertex_buffer(1, instances.buffer.slice(instances.bytes.clone()));
         pass.draw(0..UNIT_QUAD_VERTEX_COUNT, 0..1);
     }
 }

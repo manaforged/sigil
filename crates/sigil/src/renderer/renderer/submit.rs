@@ -1,4 +1,5 @@
 use crate::hal::Color;
+use crate::profile::count;
 
 use crate::renderer::device_state::ReadyState;
 use crate::renderer::error::RendererError;
@@ -59,6 +60,7 @@ pub(crate) fn record_clear(
     view: &wgpu::TextureView,
     color: Color,
 ) {
+    count("gpu.render_passes");
     let _p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer clear pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {

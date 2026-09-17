@@ -17,6 +17,7 @@ autobenches = false
 name = "sigil"
 
 [dependencies]
+serde_json = { workspace = true }
 accesskit = { workspace = true }
 ahash = { workspace = true }
 crossbeam-channel = { workspace = true }
@@ -129,7 +130,7 @@ harness = false
 
 [[example]]
 name = "profile_frame"
-required-features = ["render"]
+required-features = ["capture"]
 
 [[example]]
 name = "perf_100k_breakdown"

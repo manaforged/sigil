@@ -1,53 +1,64 @@
-use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::fs::{File, create_dir_all};
+use std::io::{self, BufWriter, Write};
 use std::path::Path;
+
+use serde_json::{Value, json, to_writer};
 
 use crate::profile::event::Event;
 use crate::profile::store;
 
-pub(crate) fn write(path: &Path) -> std::io::Result<()> {
-    let events = store::events();
+pub(crate) fn write(path: &Path) -> io::Result<()> {
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
-        std::fs::create_dir_all(parent)?;
+        create_dir_all(parent)?;
     }
     let mut out = BufWriter::new(File::create(path)?);
-    writeln!(out, "{{\"displayTimeUnit\":\"ms\",\"traceEvents\":[")?;
-    write_meta(&mut out, events.is_empty())?;
-    for (i, event) in events.iter().enumerate() {
-        write_event(&mut out, *event)?;
-        if i + 1 < events.len() {
-            writeln!(out, ",")?;
-        } else {
-            writeln!(out)?;
+    write!(out, "{{\"displayTimeUnit\":\"ms\",\"metadata\":")?;
+    value(&mut out, &store::metadata())?;
+    write!(out, ",\"frames\":[")?;
+    for (index, frame) in store::frames().iter().enumerate() {
+        if index > 0 {
+            write!(out, ",")?;
         }
+        value(
+            &mut out,
+            &json!({
+                "index": frame.index, "cause": frame.cause,
+                "wall_ns": frame.total_ns(), "phases_ns": frame.phases,
+                "counts": frame.counts
+            }),
+        )?;
+    }
+    write!(out, "],\"traceEvents\":[")?;
+    value(
+        &mut out,
+        &json!({
+            "name": "process_name", "ph": "M", "pid": 1,
+            "args": {"name": "sigil"}
+        }),
+    )?;
+    write!(out, ",")?;
+    value(
+        &mut out,
+        &json!({
+            "name": "thread_name", "ph": "M", "pid": 1, "tid": 1,
+            "args": {"name": "UI CPU (includes render submission)"}
+        }),
+    )?;
+    for event in store::events() {
+        write!(out, ",")?;
+        value(&mut out, &event_value(event))?;
     }
     writeln!(out, "]}}")?;
     out.flush()
 }
 
-fn write_meta(out: &mut BufWriter<File>, last: bool) -> std::io::Result<()> {
-    writeln!(
-        out,
-        "{{\"name\":\"process_name\",\"ph\":\"M\",\"pid\":1,\"args\":{{\"name\":\"sigil\"}}}},"
-    )?;
-    writeln!(
-        out,
-        "{{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":1,\"tid\":1,\"args\":{{\"name\":\"ui\"}}}},"
-    )?;
-    write!(
-        out,
-        "{{\"name\":\"thread_name\",\"ph\":\"M\",\"pid\":1,\"tid\":2,\"args\":{{\"name\":\"gpu\"}}}}"
-    )?;
-    if last {
-        writeln!(out)
-    } else {
-        writeln!(out, ",")
-    }
+fn value(out: &mut BufWriter<File>, value: &Value) -> io::Result<()> {
+    to_writer(out, value).map_err(io::Error::other)
 }
 
-fn write_event(out: &mut BufWriter<File>, event: Event) -> std::io::Result<()> {
+fn event_value(event: Event) -> Value {
     match event {
         Event::Complete {
             name,
@@ -55,25 +66,25 @@ fn write_event(out: &mut BufWriter<File>, event: Event) -> std::io::Result<()> {
             tid,
             start_us,
             dur_us,
-        } => write!(
-            out,
-            "{{\"name\":\"{name}\",\"cat\":\"{cat}\",\"ph\":\"X\",\"ts\":{start_us},\"dur\":{dur_us},\"pid\":1,\"tid\":{tid}}}"
-        ),
-        Event::Instant { name, cat, ts_us } => write!(
-            out,
-            "{{\"name\":\"{name}\",\"cat\":\"{cat}\",\"ph\":\"i\",\"s\":\"t\",\"ts\":{ts_us},\"pid\":1,\"tid\":1}}"
-        ),
-        Event::Counter { name, ts_us, value } => write!(
-            out,
-            "{{\"name\":\"{name}\",\"ph\":\"C\",\"ts\":{ts_us},\"pid\":1,\"tid\":1,\"args\":{{\"value\":{value}}}}}"
-        ),
-        Event::FlowStart { name, id, ts_us } => write!(
-            out,
-            "{{\"name\":\"{name}\",\"cat\":\"input\",\"ph\":\"s\",\"id\":{id},\"ts\":{ts_us},\"pid\":1,\"tid\":1}}"
-        ),
-        Event::FlowFinish { name, id, ts_us } => write!(
-            out,
-            "{{\"name\":\"{name}\",\"cat\":\"input\",\"ph\":\"f\",\"bp\":\"e\",\"id\":{id},\"ts\":{ts_us},\"pid\":1,\"tid\":1}}"
-        ),
+        } => json!({
+            "name": name, "cat": cat, "ph": "X", "ts": start_us,
+            "dur": dur_us, "pid": 1, "tid": tid
+        }),
+        Event::Instant { name, cat, ts_us } => json!({
+            "name": name, "cat": cat, "ph": "i", "s": "t",
+            "ts": ts_us, "pid": 1, "tid": 1
+        }),
+        Event::Counter { name, ts_us, value } => json!({
+            "name": name, "ph": "C", "ts": ts_us,
+            "pid": 1, "tid": 1, "args": {"value": value}
+        }),
+        Event::FlowStart { name, id, ts_us } => json!({
+            "name": name, "cat": "input", "ph": "s", "id": id,
+            "ts": ts_us, "pid": 1, "tid": 1
+        }),
+        Event::FlowFinish { name, id, ts_us } => json!({
+            "name": name, "cat": "input", "ph": "f", "bp": "e",
+            "id": id, "ts": ts_us, "pid": 1, "tid": 1
+        }),
     }
 }

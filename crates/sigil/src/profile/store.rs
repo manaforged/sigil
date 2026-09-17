@@ -1,13 +1,17 @@
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::env;
 use std::path::PathBuf;
+use std::process::id;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::time::Instant;
 
+use serde_json::{Value, json};
+
 use crate::profile::event::Event;
 
-const MAX_EVENTS: usize = 8_192;
-const MAX_FRAMES: usize = 240;
+const MAX_EVENTS: usize = 65_536;
+const MAX_FRAMES: usize = 4_096;
 const ENV_UNSET: u8 = 0;
 const ENV_OFF: u8 = 1;
 const ENV_ON: u8 = 2;
@@ -77,8 +81,9 @@ impl Frame {
 
 struct Store {
     origin: Instant,
-    events: Vec<Event>,
-    frames: Vec<Frame>,
+    events: VecDeque<Event>,
+    frames: VecDeque<Frame>,
+    dropped_events: u64,
     open: Frame,
     next_index: u32,
     open_start: Option<Instant>,
@@ -91,8 +96,9 @@ impl Store {
     fn new() -> Self {
         Self {
             origin: Instant::now(),
-            events: Vec::with_capacity(1024),
-            frames: Vec::with_capacity(64),
+            events: VecDeque::with_capacity(1024),
+            frames: VecDeque::with_capacity(64),
+            dropped_events: 0,
             open: Frame::default(),
             next_index: 0,
             open_start: None,
@@ -185,7 +191,7 @@ pub(crate) fn complete(name: &'static str, cat: &'static str, start_us: u64, dur
             Event::Complete {
                 name,
                 cat,
-                tid: if cat == "gpu" { 2 } else { 1 },
+                tid: 1,
                 start_us,
                 dur_us: micros,
             },
@@ -195,11 +201,25 @@ pub(crate) fn complete(name: &'static str, cat: &'static str, start_us: u64, dur
 }
 
 pub(crate) fn count_add(name: &'static str, n: u64) {
-    if !enabled() || n == 0 {
+    if !enabled() {
         return;
     }
     STORE.with(|cell| {
         push_phase(&mut cell.borrow_mut().open.counts, name, n);
+    });
+}
+
+pub(crate) fn gauge(name: &'static str, value: u64) {
+    if !enabled() {
+        return;
+    }
+    STORE.with(|cell| {
+        let mut store = cell.borrow_mut();
+        if let Some((_, previous)) = store.open.counts.iter_mut().find(|(key, _)| *key == name) {
+            *previous = value;
+        } else {
+            store.open.counts.push((name, value));
+        }
     });
 }
 
@@ -271,8 +291,8 @@ fn close_open_inner(store: &mut Store, warn: bool) {
             },
         );
     }
-    let counts = store.open.counts.clone();
-    for &(name, value) in &counts {
+    let mut frame = std::mem::take(&mut store.open);
+    for &(name, value) in &frame.counts {
         push_event(
             store,
             Event::Counter {
@@ -282,7 +302,6 @@ fn close_open_inner(store: &mut Store, warn: bool) {
             },
         );
     }
-    let mut frame = std::mem::take(&mut store.open);
     frame.index = store.next_index;
     frame.wall_ns = store.open_start.take().map_or(0, |start| {
         u64::try_from(start.elapsed().as_nanos()).unwrap_or(0)
@@ -292,9 +311,9 @@ fn close_open_inner(store: &mut Store, warn: bool) {
         warn_slow(&frame);
     }
     if store.frames.len() >= MAX_FRAMES {
-        store.frames.remove(0);
+        store.frames.pop_front();
     }
-    store.frames.push(frame);
+    store.frames.push_back(frame);
     store.cause_rank = 0;
 }
 
@@ -331,9 +350,10 @@ fn cause_rank(name: &str) -> u8 {
 
 fn push_event(store: &mut Store, event: Event) {
     if store.events.len() >= MAX_EVENTS {
-        store.events.remove(0);
+        store.events.pop_front();
+        store.dropped_events += 1;
     }
-    store.events.push(event);
+    store.events.push_back(event);
 }
 
 fn push_phase(list: &mut Vec<Phase>, name: &'static str, add: u64) {
@@ -345,9 +365,29 @@ fn push_phase(list: &mut Vec<Phase>, name: &'static str, add: u64) {
 }
 
 pub(crate) fn frames() -> Vec<Frame> {
-    STORE.with(|cell| cell.borrow().frames.clone())
+    STORE.with(|cell| cell.borrow().frames.iter().cloned().collect())
 }
 
 pub(crate) fn events() -> Vec<Event> {
-    STORE.with(|cell| cell.borrow().events.clone())
+    STORE.with(|cell| cell.borrow().events.iter().copied().collect())
+}
+
+pub(crate) fn metadata() -> Value {
+    STORE.with(|cell| {
+        let store = cell.borrow();
+        json!({
+            "schema": 1,
+            "pid": id(),
+            "os": env::consts::OS,
+            "arch": env::consts::ARCH,
+            "debug_assertions": cfg!(debug_assertions),
+            "duration_us": store.now_us(),
+            "total_frames": store.next_index,
+            "dropped_frames": u64::from(store.next_index).saturating_sub(store.frames.len() as u64),
+            "dropped_events": store.dropped_events,
+            "frame_capacity": MAX_FRAMES,
+            "event_capacity": MAX_EVENTS,
+            "timing": "CPU wall time; GPU execution is not measured"
+        })
+    })
 }

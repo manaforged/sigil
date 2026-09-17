@@ -16,6 +16,25 @@ impl WinitShell {
             return;
         };
         match command {
+            WindowCommand::SetZoom(percent) if percent > 0 => {
+                let id = window.id();
+                let factor = window.scale_factor();
+                let size = window.inner_size();
+                let zoom = f32::from(percent) / 100.0;
+                if let Some((_, stored)) = self
+                    .window_zooms
+                    .iter_mut()
+                    .find(|(stored, _)| *stored == handle)
+                {
+                    *stored = zoom;
+                }
+                self.push_scale_factor_changed(id, factor);
+                self.push_event(ShellEvent::Window(SigilWindowEvent::Resized(
+                    crate::hal::PhysicalSize::new(size.width, size.height),
+                )));
+                self.request_redraws();
+            }
+            WindowCommand::SetZoom(_) | WindowCommand::Close => {}
             WindowCommand::Minimize => window.set_minimized(true),
             WindowCommand::ToggleMaximize => window.set_maximized(!window.is_maximized()),
             WindowCommand::Drag => {
@@ -24,7 +43,6 @@ impl WinitShell {
             WindowCommand::DragResize(direction) => {
                 let _ = window.drag_resize_window(winit_direction(direction));
             }
-            WindowCommand::Close => {}
         }
     }
 }

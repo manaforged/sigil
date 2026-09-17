@@ -1,6 +1,7 @@
 use crate::hal::{Point, Rect};
 use crate::kernel::{Cx, NodeId, TopLayer};
 use crate::layout::LayoutEngine;
+use crate::style::StyleBinding;
 use smallvec::SmallVec;
 
 pub(crate) type NodePath = SmallVec<[NodeId; 64]>;
@@ -40,7 +41,7 @@ impl HitTestCache {
         position: Point,
     ) -> Option<NodePath> {
         self.refresh(cx, layout);
-        let hit = self.hit(position)?;
+        let hit = self.hit(cx, position)?;
         Some(build_path(cx, hit))
     }
 
@@ -65,14 +66,35 @@ impl HitTestCache {
         self.layout_generation = layout_generation;
     }
 
-    fn hit(&self, position: Point) -> Option<NodeId> {
+    fn hit(&self, cx: &Cx, position: Point) -> Option<NodeId> {
         for item in self.items.iter().rev() {
-            if item.has_rect && item.hittable && contains(item.rect, position) {
+            if item.has_rect
+                && item.hittable
+                && contains(item.rect, position)
+                && visible(cx, item.id)
+            {
                 return Some(item.id);
             }
         }
         None
     }
+}
+
+pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
+    let mut current = Some(target);
+    while let Some(id) = current {
+        let Some(node) = cx.get(id) else {
+            return false;
+        };
+        if node
+            .get_extension::<StyleBinding>()
+            .is_some_and(StyleBinding::hides)
+        {
+            return false;
+        }
+        current = cx.parent(id);
+    }
+    true
 }
 
 fn build_path(cx: &Cx, target: NodeId) -> NodePath {

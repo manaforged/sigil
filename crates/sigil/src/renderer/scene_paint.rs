@@ -105,14 +105,14 @@ impl ScenePipeline {
     fn uniforms_bind_group(
         &self,
         device: &wgpu::Device,
-        uniform_buffer: &wgpu::Buffer,
+        uniform_buffer: wgpu::BufferBinding<'_>,
     ) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("sigil-renderer scene uniforms bind group"),
             layout: &self.bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(uniform_buffer),
             }],
         })
     }
@@ -121,7 +121,7 @@ impl ScenePipeline {
         &self,
         ctx: PaintCtx<'_>,
         instances: UploadedRange,
-        uniform: &wgpu::Buffer,
+        uniform: wgpu::BufferBinding<'_>,
     ) {
         let PaintCtx {
             device,
@@ -134,7 +134,7 @@ impl ScenePipeline {
         } = ctx;
         let bind_group = self.uniforms_bind_group(device, uniform);
 
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer scene paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
@@ -150,7 +150,7 @@ impl ScenePipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !crate::renderer::scissor::apply(&mut pass, clip, scale, viewport) {
+        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
             return;
         }
         pass.set_pipeline(&self.pipeline);

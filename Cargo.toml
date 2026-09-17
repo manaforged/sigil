@@ -70,6 +70,7 @@ redundant_clone = "deny"
 # legitimately dedupe its own tree.
 
 [workspace.dependencies]
+serde_json = "1"
 winit = "0.30"
 wgpu = "30"
 pollster = "1"

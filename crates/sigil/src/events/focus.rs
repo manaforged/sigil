@@ -6,7 +6,8 @@ use crate::layout::LayoutEngine;
 use accesskit::{NodeId as AccessNodeId, TreeId, TreeUpdate};
 use smallvec::{SmallVec, smallvec};
 
-use crate::events::EventHandlers;
+use crate::events::handlers::{EventHandlers, dispatch};
+use crate::events::hit_test::visible;
 
 mod scope;
 mod targets;
@@ -134,6 +135,7 @@ impl FocusManager {
         let mut best: Option<(f32, NodeId)> = None;
         for &candidate in &self.ring {
             if candidate == focused
+                || !visible(cx, candidate)
                 || !cx
                     .get(candidate)
                     .is_some_and(|node| node.a11y.is_focusable())
@@ -167,7 +169,9 @@ impl FocusManager {
         self.ring
             .iter()
             .copied()
-            .filter(|id| cx.get(*id).is_some_and(|node| node.a11y.is_focusable()))
+            .filter(|id| {
+                visible(cx, *id) && cx.get(*id).is_some_and(|node| node.a11y.is_focusable())
+            })
             .collect()
     }
 
@@ -210,21 +214,11 @@ impl FocusManager {
 }
 
 fn fire_focus_in(cx: &Cx, id: NodeId) {
-    if let Some(handlers) = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<EventHandlers>())
-    {
-        handlers.invoke_focus_in();
-    }
+    let _ = dispatch(cx, id, EventHandlers::invoke_focus_in);
 }
 
 fn fire_focus_out(cx: &Cx, id: NodeId) {
-    if let Some(handlers) = cx
-        .get(id)
-        .and_then(|node| node.get_extension::<EventHandlers>())
-    {
-        handlers.invoke_focus_out();
-    }
+    let _ = dispatch(cx, id, EventHandlers::invoke_focus_out);
 }
 
 fn node_center(cx: &Cx, layout: &LayoutEngine, id: NodeId) -> Option<Point> {
@@ -253,6 +247,9 @@ fn collect_focusable(
     explicit: &mut Vec<FocusCandidate>,
     implicit: &mut Vec<FocusCandidate>,
 ) {
+    if !visible(cx, id) {
+        return;
+    }
     let Some(node) = cx.get(id) else {
         return;
     };

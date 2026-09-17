@@ -169,36 +169,29 @@ impl SpritePipeline {
         let Some(entry) = self.atlases.get(packed.atlas as usize) else {
             return;
         };
-        let row_bytes = packed.w as usize * 4;
-        for row in 0..packed.h {
-            let start = row as usize * row_bytes;
-            let Some(row_data) = rgba.get(start..start + row_bytes) else {
-                break;
-            };
-            queue.write_texture(
-                wgpu::TexelCopyTextureInfo {
-                    texture: &entry.texture,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: packed.x,
-                        y: packed.y + row,
-                        z: 0,
-                    },
-                    aspect: wgpu::TextureAspect::All,
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &entry.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: packed.x,
+                    y: packed.y,
+                    z: 0,
                 },
-                row_data,
-                wgpu::TexelCopyBufferLayout {
-                    offset: 0,
-                    bytes_per_row: Some(u32::try_from(row_bytes).unwrap_or(0)),
-                    rows_per_image: Some(1),
-                },
-                wgpu::Extent3d {
-                    width: packed.w,
-                    height: 1,
-                    depth_or_array_layers: 1,
-                },
-            );
-        }
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(packed.w * 4),
+                rows_per_image: Some(packed.h),
+            },
+            wgpu::Extent3d {
+                width: packed.w,
+                height: packed.h,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 }
 

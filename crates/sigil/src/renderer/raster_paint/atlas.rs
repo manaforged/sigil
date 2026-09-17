@@ -106,7 +106,7 @@ impl RasterAtlas {
         mask: GlyphMask,
     ) -> Option<Placement> {
         let rect = self.alloc_or_grow(device, queue, mask.width, mask.height)?;
-        upload_rows(queue, &self.texture, rect, &mask.data);
+        upload(queue, &self.texture, rect, &mask.data);
         let cached = CachedMask {
             rect,
             left: mask.left,
@@ -188,7 +188,7 @@ impl RasterAtlas {
         let new_size = (self.size * 2).min(max_atlas_size());
         let (texture, view) = create_texture(device, new_size);
         for cached in self.cache.values() {
-            upload_rows(queue, &texture, cached.rect, &cached.data);
+            upload(queue, &texture, cached.rect, &cached.data);
         }
         self.texture = texture;
         self.view = view;
@@ -201,37 +201,30 @@ const fn f32_from_u32(v: u32) -> f32 {
     v as f32
 }
 
-fn upload_rows(queue: &wgpu::Queue, texture: &wgpu::Texture, rect: AtlasRect, data: &[u8]) {
-    let row_bytes = rect.w as usize;
-    for row in 0..rect.h {
-        let start = row as usize * row_bytes;
-        let Some(row_data) = data.get(start..start + row_bytes) else {
-            break;
-        };
-        queue.write_texture(
-            wgpu::TexelCopyTextureInfo {
-                texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d {
-                    x: rect.x,
-                    y: rect.y + row,
-                    z: 0,
-                },
-                aspect: wgpu::TextureAspect::All,
+fn upload(queue: &wgpu::Queue, texture: &wgpu::Texture, rect: AtlasRect, data: &[u8]) {
+    queue.write_texture(
+        wgpu::TexelCopyTextureInfo {
+            texture,
+            mip_level: 0,
+            origin: wgpu::Origin3d {
+                x: rect.x,
+                y: rect.y,
+                z: 0,
             },
-            row_data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(rect.w),
-                rows_per_image: Some(1),
-            },
-            wgpu::Extent3d {
-                width: rect.w,
-                height: 1,
-                depth_or_array_layers: 1,
-            },
-        );
-    }
+            aspect: wgpu::TextureAspect::All,
+        },
+        data,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(rect.w),
+            rows_per_image: Some(rect.h),
+        },
+        wgpu::Extent3d {
+            width: rect.w,
+            height: rect.h,
+            depth_or_array_layers: 1,
+        },
+    );
 }
 
 fn create_texture(device: &wgpu::Device, size: u32) -> (wgpu::Texture, wgpu::TextureView) {

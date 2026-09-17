@@ -96,7 +96,7 @@ impl ShadowPipeline {
         &self,
         ctx: PaintCtx<'_>,
         instances: UploadedRange,
-        uniform: &wgpu::Buffer,
+        uniform: wgpu::BufferBinding<'_>,
     ) {
         let PaintCtx {
             device,
@@ -108,7 +108,7 @@ impl ShadowPipeline {
             ..
         } = ctx;
         let bind_group = bind_group(device, &self.uniform_layout, uniform);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("sigil-renderer shadow paint pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view,
@@ -124,7 +124,7 @@ impl ShadowPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        if !crate::renderer::scissor::apply(&mut pass, clip, scale, viewport) {
+        if !crate::renderer::scissor::apply(pass, clip, scale, viewport) {
             return;
         }
         pass.set_pipeline(&self.pipeline);
@@ -204,14 +204,14 @@ fn uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 fn bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    buffer: &wgpu::Buffer,
+    buffer: wgpu::BufferBinding<'_>,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer shadow uniforms bind group"),
         layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(buffer),
         }],
     })
 }

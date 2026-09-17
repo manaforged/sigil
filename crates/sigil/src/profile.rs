@@ -1,5 +1,7 @@
 mod chrome;
 mod event;
+#[cfg(all(feature = "scene", not(target_arch = "wasm32")))]
+pub(crate) mod gpu;
 mod report;
 mod span;
 mod store;
@@ -39,6 +41,10 @@ pub fn count(name: &'static str) {
 
 pub fn count_add(name: &'static str, n: u64) {
     store::count_add(name, n);
+}
+
+pub fn gauge(name: &'static str, value: u64) {
+    store::gauge(name, value);
 }
 
 pub fn interact(name: &'static str) {

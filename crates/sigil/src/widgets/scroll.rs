@@ -24,7 +24,7 @@ pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("b
 
 pub struct ScrollBuilder {
     content: NodeBuilder,
-    extent: Signal<f32>,
+    extent: Option<Signal<f32>>,
     height: f32,
     width: Option<f32>,
     fill: bool,
@@ -55,7 +55,7 @@ impl IntoScrollExtent for Signal<f32> {
 pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuilder {
     ScrollBuilder {
         content,
-        extent: extent.into_extent(),
+        extent: Some(extent.into_extent()),
         height: VIEWPORT_HEIGHT,
         width: None,
         fill: false,
@@ -65,6 +65,13 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
         extra: None,
         style_accumulator: Style::new(),
     }
+}
+
+#[must_use]
+pub fn scroll_auto(content: NodeBuilder) -> ScrollBuilder {
+    let mut builder = scroll(content, 0.0);
+    builder.extent = None;
+    builder
 }
 
 impl ScrollBuilder {
@@ -112,11 +119,18 @@ impl ScrollBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
-        let extent = self.extent;
+        let (content, extent) = if let Some(extent) = self.extent {
+            (self.content, extent)
+        } else {
+            let measured = signal((0.0_f32, 0.0_f32));
+            (
+                self.content.size_reactive(measured),
+                derived_eq(move || measured.get().1.max(0.0)),
+            )
+        };
         let height = self.height;
         let width = self.width;
         let fill = self.fill;
-        let content = self.content;
         let (viewport, viewport_height) = viewport_signals(width, height, fill);
 
         let max_scroll = derived_eq(move || (extent.get() - viewport_height.get()).max(0.0));

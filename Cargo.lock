@@ -3904,6 +3904,7 @@ dependencies = [
  "rayon",
  "rfd",
  "rodio",
+ "serde_json",
  "skrifa",
  "slotmap",
  "smallvec",

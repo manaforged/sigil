@@ -7,7 +7,7 @@ use wgpu::util::DeviceExt as _;
 
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
-use crate::renderer::frame_upload::{FrameUploads, UploadedRange};
+use crate::renderer::frame_upload::FrameUploads;
 use crate::renderer::slug::{
     atlas::GlyphAtlas,
     bands::preprocess_glyph,
@@ -60,7 +60,6 @@ pub(crate) struct QueuedRun {
 
 pub(crate) struct RunFrame<'a> {
     pub(crate) device: &'a wgpu::Device,
-    pub(crate) queue: &'a wgpu::Queue,
     pub(crate) view: &'a wgpu::TextureView,
     pub(crate) surface_width: f32,
     pub(crate) surface_height: f32,
@@ -141,7 +140,7 @@ impl SlugTextPipeline {
         &mut self,
         encoder: &mut SplitEncoder,
         params: &DrawParams<'_>,
-        frame: Option<(&mut FrameUploads, &mut FrameStats)>,
+        frame: Option<&mut FrameStats>,
     ) {
         let owned_glyphs;
         let glyphs = if let Some(glyphs) = params.glyphs {
@@ -157,7 +156,6 @@ impl SlugTextPipeline {
         };
         let frame_params = RunFrame {
             device: params.device,
-            queue: params.queue,
             view: params.view,
             surface_width: params.surface_width,
             surface_height: params.surface_height,
@@ -184,7 +182,7 @@ impl SlugTextPipeline {
         encoder: &mut SplitEncoder,
         frame: &RunFrame<'_>,
         runs: &[QueuedRun],
-        uploads: Option<(&mut FrameUploads, &mut FrameStats)>,
+        stats: Option<&mut FrameStats>,
     ) {
         let all: Vec<GlyphInstance> = runs
             .iter()
@@ -193,15 +191,10 @@ impl SlugTextPipeline {
         if all.is_empty() {
             return;
         }
-        let uploaded =
-            uploads.and_then(|(uploads, stats)| uploads.upload_slug(frame.queue, &all, stats));
-        let range = uploaded.unwrap_or_else(|| UploadedRange {
-            buffer: upload_instances(frame.device, &all),
-            bytes: 0..u64::try_from(all.len() * SLUG_INSTANCE_BYTES).unwrap_or(u64::MAX),
-            count: u32::try_from(all.len()).expect("frame glyph count overflows u32"),
-        });
-        let bind_group = make_bind_group(frame, &self.bgl, self.atlas.buffer());
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let uploaded = stats.and_then(|stats| FrameUploads::upload(encoder, &all, stats));
+        let range = uploaded.unwrap_or_else(|| encoder.upload(&all));
+        let bind_group = make_bind_group(encoder, frame, &self.bgl, self.atlas.buffer());
+        let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("slug-pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: frame.view,
@@ -227,8 +220,7 @@ impl SlugTextPipeline {
             let count = u32::try_from(run.instances.len()).unwrap_or(u32::MAX);
             let slice = first..first.saturating_add(count);
             first = slice.end;
-            if count == 0
-                || !crate::renderer::scissor::apply(&mut pass, run.clip, frame.scale, viewport)
+            if count == 0 || !crate::renderer::scissor::apply(pass, run.clip, frame.scale, viewport)
             {
                 continue;
             }
@@ -336,14 +328,6 @@ impl SlugTextPipeline {
     }
 }
 
-fn upload_instances(device: &wgpu::Device, instances: &[GlyphInstance]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("slug-instances"),
-        contents: bytemuck::cast_slice(instances),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
 fn snap_to_physical_grid(logical: f32, scale: f32) -> f32 {
     if scale <= 0.0 {
         return logical;
@@ -357,6 +341,7 @@ fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
 }
 
 fn make_bind_group(
+    encoder: &mut SplitEncoder,
     params: &RunFrame<'_>,
     bgl: &wgpu::BindGroupLayout,
     atlas_buf: &wgpu::Buffer,
@@ -374,20 +359,18 @@ fn make_bind_group(
         gamma_dol: tuning.gamma_dark_on_light,
         enabled: f32::from(u8::from(tuning.enabled)),
     };
-    let ubuf = params
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("slug-surface-uniform"),
-            contents: bytemuck::bytes_of(&surface_uniform),
-            usage: wgpu::BufferUsages::UNIFORM,
-        });
+    let (ubuf, offset, _) = encoder.uniform(&surface_uniform);
     params.device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("slug-bg"),
         layout: bgl,
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: ubuf.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: &ubuf,
+                    offset: u64::from(offset),
+                    size: wgpu::BufferSize::new(size_of::<SurfaceUniform>() as u64),
+                }),
             },
             wgpu::BindGroupEntry {
                 binding: 1,

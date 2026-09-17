@@ -9,6 +9,7 @@ pub(crate) mod fills;
 mod glyph;
 mod layer_walk;
 pub(crate) mod payloads;
+mod primitive;
 pub(crate) mod walk;
 
 pub use effects::{DecorationKind, LayerEffect, LayerScope, SpriteKind, SpriteSource, Transform};

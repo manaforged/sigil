@@ -1,5 +1,7 @@
 use wgpu::util::DeviceExt as _;
 
+use crate::profile::count;
+
 use super::RasterInstance;
 
 pub(super) const RASTER_SHADER: &str = include_str!("../raster_paint.wgsl");
@@ -47,8 +49,8 @@ pub(super) fn bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout 
                 visibility: wgpu::ShaderStages::VERTEX,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+                    has_dynamic_offset: true,
+                    min_binding_size: wgpu::BufferSize::new(size_of::<SurfaceParams>() as u64),
                 },
                 count: None,
             },
@@ -132,25 +134,6 @@ pub(super) fn unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
     })
 }
 
-pub(super) fn instance_buffer(device: &wgpu::Device, instances: &[RasterInstance]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer raster text instances"),
-        contents: bytemuck::cast_slice(instances),
-        usage: wgpu::BufferUsages::VERTEX,
-    })
-}
-
-pub(super) fn uniform_buffer(device: &wgpu::Device, surface_size: [f32; 2]) -> wgpu::Buffer {
-    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("sigil-renderer raster text surface uniform"),
-        contents: bytemuck::bytes_of(&SurfaceParams {
-            surface_size,
-            _pad: [0.0, 0.0],
-        }),
-        usage: wgpu::BufferUsages::UNIFORM,
-    })
-}
-
 pub(super) fn bind_group(
     device: &wgpu::Device,
     bgl: &wgpu::BindGroupLayout,
@@ -158,13 +141,18 @@ pub(super) fn bind_group(
     atlas_view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
 ) -> wgpu::BindGroup {
+    count("alloc.raster.bind_groups");
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer raster text bind group"),
         layout: bgl,
         entries: &[
             wgpu::BindGroupEntry {
                 binding: 0,
-                resource: uniform.as_entire_binding(),
+                resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                    buffer: uniform,
+                    offset: 0,
+                    size: wgpu::BufferSize::new(size_of::<SurfaceParams>() as u64),
+                }),
             },
             wgpu::BindGroupEntry {
                 binding: 1,

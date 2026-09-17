@@ -1,3 +1,4 @@
+use crate::renderer::frame_upload::UploadedRange;
 use wgpu::util::DeviceExt as _;
 
 pub(super) const FILL_SHADER: &str = include_str!("../fill_paint.wgsl");
@@ -120,14 +121,14 @@ pub(super) fn stops_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
 pub(super) fn uniform_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    buffer: &wgpu::Buffer,
+    buffer: wgpu::BufferBinding<'_>,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer fill paint uniform bind group"),
         layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(buffer),
         }],
     })
 }
@@ -135,14 +136,18 @@ pub(super) fn uniform_bind_group(
 pub(super) fn stops_bind_group(
     device: &wgpu::Device,
     layout: &wgpu::BindGroupLayout,
-    buffer: &wgpu::Buffer,
+    uploaded: &UploadedRange,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer fill paint stops bind group"),
         layout,
         entries: &[wgpu::BindGroupEntry {
             binding: 0,
-            resource: buffer.as_entire_binding(),
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: &uploaded.buffer,
+                offset: uploaded.bytes.start,
+                size: wgpu::BufferSize::new(uploaded.bytes.end - uploaded.bytes.start),
+            }),
         }],
     })
 }
