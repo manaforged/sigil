@@ -213,9 +213,12 @@ fn allocations(_c: &mut Criterion) {
         let mut router = EventRouter::new();
         let mut screen = sigil_tui::Screen::new(COLS, ROWS);
         mount(&mut host, 200);
-        screen
-            .frame(&mut host, &mut router, [], (COLS, ROWS))
-            .expect("layout");
+        for _ in 0..10 {
+            screen
+                .frame(&mut host, &mut router, [], (COLS, ROWS))
+                .expect("layout");
+            screen.flush(&mut io::sink()).expect("flush");
+        }
 
         let mut nodes = Vec::new();
         host.paint_into(&mut nodes);
@@ -229,17 +232,26 @@ fn allocations(_c: &mut Criterion) {
         let raster = allocation_counter::measure(|| {
             sigil_tui::raster_into(&mut cells, &nodes, CELL);
         });
+        let layout = allocation_counter::measure(|| {
+            host.layout((f32::from(COLS) * CELL, f32::from(ROWS) * CELL))
+                .expect("layout");
+        });
+        let focus = allocation_counter::measure(|| host.repair_focus(&mut router));
         let frame = allocation_counter::measure(|| {
             screen
                 .frame(&mut host, &mut router, [], (COLS, ROWS))
                 .expect("layout");
         });
         println!(
-            "\nnodes={node_count} text={text_count}\n  paint_into  allocs={} bytes={}\n  raster_into allocs={} bytes={}\n  screen.frame allocs={} bytes={}\n",
+            "\nnodes={node_count} text={text_count}\n  paint_into  allocs={} bytes={}\n  raster_into allocs={} bytes={}\n  layout allocs={} bytes={}\n  focus allocs={} bytes={}\n  screen.frame allocs={} bytes={}\n",
             paint.count_total,
             paint.bytes_total,
             raster.count_total,
             raster.bytes_total,
+            layout.count_total,
+            layout.bytes_total,
+            focus.count_total,
+            focus.bytes_total,
             frame.count_total,
             frame.bytes_total,
         );

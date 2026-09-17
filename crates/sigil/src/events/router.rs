@@ -6,9 +6,9 @@ use crate::layout::LayoutEngine;
 use accesskit::TreeUpdate;
 use smallvec::SmallVec;
 
-use crate::events::EventHandlers;
 use crate::events::focus::{FocusIntent, FocusManager};
-use crate::events::hit_test::{HitTestCache, NodePath};
+use crate::events::handlers::dispatch;
+use crate::events::hit_test::{HitTestCache, NodePath, visible};
 use crate::events::pointer_dispatch::{
     PointerTargets, dispatch_pointer_path, dispatch_pointer_target, dispatch_synthetic_target,
     pointer_target_for_node, pointer_targets, synthetic_leave_source,
@@ -60,9 +60,7 @@ impl EventRouter {
             let Some(node) = cx.get(id) else {
                 continue;
             };
-            if let Some(handlers) = node.get_extension::<EventHandlers>() {
-                handlers.invoke_file_drop(event);
-            }
+            let _ = dispatch(cx, id, |handlers| handlers.invoke_file_drop(event));
             stack.extend(node.children().iter().copied());
         }
     }
@@ -72,13 +70,7 @@ impl EventRouter {
             return;
         };
         for id in path.iter().rev().copied() {
-            let Some(node) = cx.get(id) else {
-                continue;
-            };
-            let Some(handlers) = node.get_extension::<EventHandlers>() else {
-                continue;
-            };
-            handlers.invoke_scroll(&mut event);
+            let _ = dispatch(cx, id, |handlers| handlers.invoke_scroll(&mut event));
             if event.propagation_stopped() {
                 return;
             }
@@ -191,7 +183,7 @@ impl EventRouter {
         event: &mut PointerEvent,
         global_position: Point,
     ) -> bool {
-        let Some(captured) = self.pointer_capture.filter(|id| cx.get(*id).is_some()) else {
+        let Some(captured) = self.pointer_capture.filter(|id| visible(cx, *id)) else {
             self.pointer_capture = None;
             return false;
         };

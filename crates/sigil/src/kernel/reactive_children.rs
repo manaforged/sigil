@@ -137,12 +137,6 @@ fn apply_keyed<K: Clone + Eq + Hash>(
         return;
     }
     let old = std::mem::take(&mut *prior.borrow_mut());
-    if old.is_empty() {
-        let (next, order) = mount_first(cx, parent, incoming);
-        cx.replace_children(parent, order);
-        *prior.borrow_mut() = next;
-        return;
-    }
     let mut live: AHashMap<K, NodeId> = old.into_iter().collect();
     let kept: AHashSet<NodeId> = live.values().copied().collect();
     let prefix = static_prefix(cx, parent, &kept);
@@ -152,25 +146,6 @@ fn apply_keyed<K: Clone + Eq + Hash>(
     }
     cx.replace_children(parent, keyed_children(&prefix, &order));
     *prior.borrow_mut() = next;
-}
-
-fn mount_first<K: Clone + Eq + Hash>(
-    cx: &mut Cx,
-    parent: NodeId,
-    incoming: Vec<(K, Box<dyn ErasedComponent>)>,
-) -> KeyedMount<K> {
-    let mut seen = AHashSet::new();
-    let mut next = Vec::with_capacity(incoming.len());
-    let mut order = SmallVec::<[NodeId; 4]>::new();
-    for (key, builder) in incoming {
-        if !seen.insert(key.clone()) {
-            continue;
-        }
-        let id = cx.add_boxed_child(parent, builder);
-        order.push(id);
-        next.push((key, id));
-    }
-    (next, order)
 }
 
 fn static_prefix(cx: &Cx, parent: NodeId, keyed: &AHashSet<NodeId>) -> SmallVec<[NodeId; 4]> {

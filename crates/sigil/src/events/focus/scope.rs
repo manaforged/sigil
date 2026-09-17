@@ -2,6 +2,8 @@ use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
+use crate::events::hit_test::visible;
+
 use super::{FocusManager, FocusScopeEntry};
 
 impl FocusManager {
@@ -25,9 +27,10 @@ impl FocusManager {
                 break;
             }
             self.scope_stack.pop();
+            self.ring_generation = u64::MAX;
             self.focused = top
                 .restore_to
-                .filter(|id| cx.get(*id).is_some())
+                .filter(|id| visible(cx, *id))
                 .or_else(|| first_focusable_in_document_order(cx));
         }
 
@@ -44,11 +47,15 @@ impl FocusManager {
                 scope_root,
                 restore_to: self.focused,
             });
+            self.ring_generation = u64::MAX;
         }
     }
 }
 
 fn collect_scope_roots(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
+    if !visible(cx, id) {
+        return;
+    }
     let Some(node) = cx.get(id) else {
         return;
     };
@@ -70,6 +77,9 @@ fn first_focusable_in_document_order(cx: &Cx) -> Option<NodeId> {
 }
 
 fn first_focusable_in_subtree(cx: &Cx, id: NodeId) -> Option<NodeId> {
+    if !visible(cx, id) {
+        return None;
+    }
     let node = cx.get(id)?;
     if node.a11y.is_focusable() {
         return Some(id);

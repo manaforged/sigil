@@ -2,6 +2,8 @@ use crate::hal::Rect;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 
+use crate::events::hit_test::visible;
+
 use super::FocusManager;
 
 impl FocusManager {
@@ -12,12 +14,14 @@ impl FocusManager {
         id: NodeId,
     ) -> bool {
         self.ensure_ring(cx, Some(layout));
-        self.ring.contains(&id) && cx.get(id).is_some_and(|node| node.a11y.is_focusable())
+        self.ring.contains(&id)
+            && visible(cx, id)
+            && cx.get(id).is_some_and(|node| node.a11y.is_focusable())
     }
 
     pub(crate) fn is_hittable_target(&self, cx: &Cx, layout: &LayoutEngine, id: NodeId) -> bool {
         let Some(node) = cx.get(id) else { return false };
-        if !node.a11y.hittable || node.a11y.is_disabled() {
+        if !node.a11y.hittable || node.a11y.is_disabled() || !visible(cx, id) {
             return false;
         }
         let Some(rect) = layout.result(id).map(|result| result.rect()) else {

@@ -340,22 +340,14 @@ fn action_rejected_when_target_hidden_via_signal_before_the_validating_recompute
 }
 
 #[test]
-fn stale_pre_recompute_layout_would_have_wrongly_allowed_the_now_hidden_target() {
-    Runtime::scope("sigil_a11y::stale_layout_control", || {
+fn hidden_target_is_rejected_before_layout_recomputes() {
+    Runtime::scope("sigil_a11y::hidden_before_recompute", || {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let (root, child) = hideable_child_tree(&mut cx, show);
         let layout = compute_layout(&mut cx, root, 200.0, 200.0);
-        let mut router = EventRouter::new();
-
         show.set(false);
-
-        assert!(
-            router.is_focus_target(&cx, &layout, child),
-            "control case: validating against a not-yet-recomputed layout \
-             still sees the just-hidden target as valid — this is exactly \
-             what moving the drain after recompute_layout fixes"
-        );
+        assert!(!EventRouter::new().is_focus_target(&cx, &layout, child));
     });
 }
 

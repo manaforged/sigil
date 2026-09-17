@@ -4,8 +4,9 @@ use crate::layout::LayoutEngine;
 use smallvec::SmallVec;
 
 use super::{EventRouter, ShortcutIndex};
-use crate::events::EventHandlers;
 use crate::events::focus::FocusManager;
+use crate::events::handlers::dispatch;
+use crate::events::hit_test::visible;
 
 impl EventRouter {
     pub(crate) fn route_key(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: KeyEvent) {
@@ -28,7 +29,7 @@ impl EventRouter {
     }
 
     fn dispatch_focused_key(&mut self, cx: &mut Cx, event: &mut KeyEvent) {
-        let Some(focused) = self.focus.focus().filter(|id| cx.get(*id).is_some()) else {
+        let Some(focused) = self.focus.focus().filter(|id| visible(cx, *id)) else {
             self.focus.set_focus(cx, None);
             return;
         };
@@ -39,6 +40,7 @@ impl EventRouter {
     fn focused_accepts_text(&self, cx: &Cx) -> bool {
         self.focus
             .focus()
+            .filter(|id| visible(cx, *id))
             .and_then(|id| cx.get(id))
             .is_some_and(|node| node.a11y.role == Role::TextInput)
     }
@@ -60,9 +62,7 @@ fn dispatch_key_path(cx: &Cx, path: &[NodeId], event: &mut KeyEvent) {
 }
 
 fn invoke_key(cx: &Cx, id: NodeId, event: &mut KeyEvent, capture: bool) -> bool {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<EventHandlers>())
-        .is_some_and(|handlers| handlers.invoke_key(event, capture))
+    dispatch(cx, id, |handlers| handlers.invoke_key(event, capture)).unwrap_or(false)
 }
 
 impl Default for ShortcutIndex {
@@ -89,6 +89,9 @@ impl ShortcutIndex {
 
     fn dispatch(&self, cx: &Cx, event: &mut KeyEvent, text_focused: bool) -> bool {
         for (shortcut, id) in &self.entries {
+            if !visible(cx, *id) {
+                continue;
+            }
             if text_focused && is_plain_char(shortcut) {
                 continue;
             }
