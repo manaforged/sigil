@@ -40,6 +40,7 @@ pub enum WindowCommand {
     ToggleMaximize,
     Drag,
     DragResize(ResizeDirection),
+    SetZoom(u16),
 }
 
 pub trait Shell: Sized {

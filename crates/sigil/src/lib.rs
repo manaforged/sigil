@@ -75,6 +75,8 @@ pub use crate::app::{
 pub use crate::app::{
     DefaultFonts, TextTuning, set_default_fonts, set_text_tuning, text_tuning, use_system_fonts,
 };
+#[cfg(feature = "desktop")]
+pub use crate::app::{parse_theme, set_theme};
 
 #[cfg(feature = "desktop")]
 pub fn launch<C, T>(config: C, tree: T) -> AppResult<()>
@@ -147,10 +149,12 @@ pub mod prelude {
         code_edit, color_field, combobox, command_menu, date_field, divider_horizontal,
         divider_vertical, dot, drag_ghost, dropdown, field, floating_text, gauge, heatmap, html,
         icon, icon_button, image_rgba, interactive, kv_row, label, markdown, markdown_edit, menu,
-        menu_bar, mermaid, modal, number_field, panel, path, progress, radio_group, scroll, sheet,
-        sidebar, sidebar_width, slider, splitter, status_bar, surface, table, tabs, terminal,
-        text_edit, text_field, toast, toast_queue, toggle, tooltip, transport, turn_strip,
-        validated_field, virtual_list,
+        menu_bar, mermaid, modal, number_field, panel, path, progress, radio_group, scroll,
+        scroll_auto, sheet, sidebar, sidebar_width, slider, splitter, status_bar, surface, table,
+        tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip, transport,
+        turn_strip, validated_field, virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, Host, Painted, TreeRoot};
+    #[cfg(feature = "desktop")]
+    pub use crate::{parse_theme, set_theme};
 }

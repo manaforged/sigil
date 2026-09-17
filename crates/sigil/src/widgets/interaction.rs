@@ -1,4 +1,5 @@
 use crate::events::prelude::{KeyEvent, NodeEventsExt, PointerEvent};
+use crate::hal::MouseButton;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::style::{FocusRing, NodeStyleExt, StyleState};
@@ -68,6 +69,9 @@ impl InteractionState {
     }
 
     pub fn release_pointer(self, event: &mut PointerEvent) -> bool {
+        if event.button != Some(MouseButton::Left) {
+            return false;
+        }
         let was_pressed = self.pressed.peek();
         self.set_pressed(false);
         if self.enabled {
@@ -103,7 +107,7 @@ impl InteractionState {
     }
 
     fn pointer_down(self, event: &mut PointerEvent) {
-        if self.enabled {
+        if self.enabled && event.button == Some(MouseButton::Left) {
             self.set_pressed(true);
             event.stop_propagation();
         }

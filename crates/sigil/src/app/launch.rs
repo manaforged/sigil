@@ -38,7 +38,7 @@ where
 
 #[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
 fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
-    let config = AppConfig {
+    let mut config = AppConfig {
         user_zoom: if config.user_zoom > 0.0 {
             config.user_zoom
         } else {
@@ -86,7 +86,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
         shell
             .run(move |shell| {
                 let frame = FrameCtx {
-                    config: &config,
+                    config: &mut config,
                     shell,
                     window_handle,
                     host: &mut host,
@@ -169,7 +169,7 @@ where
 }
 
 struct FrameCtx<'a> {
-    config: &'a AppConfig,
+    config: &'a mut AppConfig,
     shell: &'a mut WinitShell,
     window_handle: WinitWindowHandle,
     host: &'a mut Host,
@@ -289,6 +289,14 @@ fn frame_once(ctx: FrameCtx<'_>) {
         && let Some(root) = host.root()
         && crate::app::theme_file::drain(host.cx(), root, watch)
     {
+        Runtime::mark_frame_dirty();
+    }
+
+    if let Some(theme) = crate::app::appearance::take()
+        && let Some(root) = host.root()
+        && let Some(node) = host.cx().get_mut(root)
+    {
+        node.attach(theme);
         Runtime::mark_frame_dirty();
     }
 

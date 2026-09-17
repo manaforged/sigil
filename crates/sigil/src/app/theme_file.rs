@@ -7,7 +7,7 @@ pub(super) fn load(path: &std::path::Path) -> Option<Theme> {
     parse(&input)
 }
 
-fn parse(input: &str) -> Option<Theme> {
+pub fn parse(input: &str) -> Option<Theme> {
     let doc = input.parse::<toml::Table>().ok()?;
     let mut theme = match doc.get("base").and_then(toml::Value::as_str) {
         Some("dark") => Theme::dark(),

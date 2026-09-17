@@ -97,7 +97,7 @@ pub(super) fn context_overlay<Row: 'static>(
             for item in items {
                 panel = panel.item(item);
             }
-            vec![panel.into_node_builder()]
+            vec![panel]
         })
 }
 

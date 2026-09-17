@@ -1,3 +1,4 @@
+use crate::hal::LogicalKey;
 use std::rc::Rc;
 
 use crate::kernel::{AccessibleName, TextContent};
@@ -222,7 +223,7 @@ impl ButtonBuilder {
         let state_style = variant.states();
         let disabled = self.disabled;
         let pointer_activate = Rc::clone(&activate);
-        let key_activate = activate;
+        let key_activate = Rc::clone(&activate);
         let name = self
             .accessible
             .clone()
@@ -255,6 +256,9 @@ impl ButtonBuilder {
             })
             .key(Key::Enter, move |event| {
                 activate_key_reactive(event, interaction, disabled, &key_activate);
+            })
+            .key(LogicalKey::character(" "), move |event| {
+                activate_key_reactive(event, interaction, disabled, &activate);
             })
             .child(self.label_node());
         let node = install_transition_animators(

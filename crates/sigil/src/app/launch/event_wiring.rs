@@ -24,7 +24,7 @@ pub(super) struct DrainCtx<'a> {
     pub(super) surface: &'a mut Option<Surface>,
     pub(super) renderer: &'a mut Backend,
     pub(super) viewport: &'a mut (f32, f32),
-    pub(super) config: &'a AppConfig,
+    pub(super) config: &'a mut AppConfig,
     pub(super) exit_requested: &'a mut bool,
 }
 
@@ -120,6 +120,11 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         router.route(cx, layout, event);
     }
     for command in crate::events::take_window_commands() {
+        if let crate::hal::WindowCommand::SetZoom(percent) = command
+            && percent > 0
+        {
+            config.user_zoom = f32::from(percent) / 100.0;
+        }
         let _ = shell.window_command(&window_handle, command);
     }
     if *exit_requested {

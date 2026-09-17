@@ -1,4 +1,18 @@
 use crate::hal::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use crate::kernel::{Cx, NodeId};
+use crate::reactive::owner_by_id;
+
+pub(crate) fn dispatch<T>(
+    cx: &Cx,
+    id: NodeId,
+    invoke: impl FnOnce(&EventHandlers) -> T,
+) -> Option<T> {
+    let node = cx.get(id)?;
+    let handlers = node.get_extension::<EventHandlers>()?;
+    let mut result = None;
+    owner_by_id(node.owner, || result = Some(invoke(handlers)));
+    result
+}
 
 type PointerHandler = Box<dyn Fn(&mut PointerEvent) + 'static>;
 type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;

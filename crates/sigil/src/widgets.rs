@@ -105,7 +105,7 @@ pub use patterns::{
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
-pub use scroll::{ScrollBuilder, scroll};
+pub use scroll::{ScrollBuilder, scroll, scroll_auto};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};

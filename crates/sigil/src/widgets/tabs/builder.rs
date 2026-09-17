@@ -1,27 +1,16 @@
 use std::rc::Rc;
 
-use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, NodeEventsExt};
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq};
-use crate::style::{
-    ClassSource, NodeStyleExt, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
-    StyleVariant, Theme, TransitionId,
-};
-
-use crate::widgets::interaction::InteractionState;
+use crate::reactive::Signal;
+use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, StyleOverlay, Theme};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::{Activate, BuilderMutator, activate_key, activate_pointer};
-use super::super::transition_seam::install_transition_animators;
-use super::drag::{DragState, install_label_drag_hooks};
+use super::super::shared::BuilderMutator;
+use super::drag::DragState;
+use super::tab::build_tab;
 
-const TABS_TRANSITION: TransitionId = presets::SMOOTH;
-const TABS_COMPONENT_ID: u64 = 0x7AB5_0000;
 pub(super) const TAB_HEIGHT: f32 = 30.0;
-const TAB_PADDING_X: f32 = 12.0;
-const CLOSE_AFFORDANCE_WIDTH: f32 = 16.0;
 const STRIP_HEIGHT: f32 = 36.0;
 
 #[derive(Clone, Copy, Default)]
@@ -31,44 +20,6 @@ enum StripChrome {
     Line,
     Pill,
 }
-
-static TAB_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::Transition(TABS_TRANSITION),
-];
-static TAB_REST: &[StyleAtom] = &[];
-static TAB_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static TAB_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static TAB_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-static TAB_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(5_000),
-];
-
-static TAB_ACTIVE_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-pressed"),
-    StyleAtom::Transition(TABS_TRANSITION),
-];
-static TAB_ACTIVE_REST: &[StyleAtom] = &[];
-static TAB_ACTIVE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-static TAB_ACTIVE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-static TAB_ACTIVE_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-
-static TAB_VARIANT: StyleVariant = StyleVariant::new(
-    TAB_BASE,
-    StateStyle::new(TAB_REST, TAB_FOCUS, TAB_HOVER, TAB_DOWN, TAB_DISABLED),
-);
-
-static TAB_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
-    TAB_ACTIVE_BASE,
-    StateStyle::new(
-        TAB_ACTIVE_REST,
-        TAB_ACTIVE_FOCUS,
-        TAB_ACTIVE_HOVER,
-        TAB_ACTIVE_DOWN,
-        TAB_DISABLED,
-    ),
-);
 
 pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
 
@@ -230,11 +181,7 @@ impl TabsBuilder {
         let count = self.labels.len();
         let has_content = self.contents.iter().any(Option::is_some);
         let order_signal = self.order;
-        let drag = if self.reorderable {
-            Some(DragState::new())
-        } else {
-            None
-        };
+        let drag = self.reorderable.then(DragState::new);
         let user_overlay = self.style_accumulator.take_state_overlay();
         let tab_list = apply_chrome(self.chrome, {
             let list = build_tab_list(
@@ -273,12 +220,13 @@ impl TabsBuilder {
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
         }
-        let base = if has_content {
-            LayoutStyle::flex_column().align_items(AlignItems::Stretch)
-        } else {
-            tab_list_layout()
-        };
-        root.layout(self.layout_overrides.apply(base))
+        root.mutate(move |node| {
+            let base = node
+                .get_extension::<LayoutStyle>()
+                .cloned()
+                .unwrap_or_default();
+            node.attach(self.layout_overrides.apply(base));
+        })
     }
 }
 
@@ -422,139 +370,6 @@ fn build_tab_list(
 
 fn identity_order(count: usize) -> Vec<usize> {
     (0..count).collect()
-}
-
-fn tab_layout() -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .height(TAB_HEIGHT)
-        .padding_x(TAB_PADDING_X)
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::Center)
-}
-
-fn tab_label(label: String) -> impl IntoNode {
-    text(label)
-        .layout(LayoutStyle::block())
-        .class("text-on-surface")
-        .hittable(false)
-}
-
-fn close_button(index: usize, handler: Option<CloseHandler>) -> impl IntoNode {
-    let interaction = InteractionState::new(true);
-    let activate: Activate = Rc::new(move || {
-        if let Some(cb) = handler.as_ref() {
-            cb(index);
-        }
-    });
-    let pointer_activate = Rc::clone(&activate);
-    let node = interaction.install(
-        container()
-            .role(Role::Button)
-            .label(AccessibleName::Static(String::from("Close tab")))
-            .layout(LayoutStyle::block().fixed_size(CLOSE_AFFORDANCE_WIDTH, CLOSE_AFFORDANCE_WIDTH))
-            .class("rounded-sm")
-            .child(close_glyph()),
-    );
-    node.pointer_down(move |event| {
-        event.stop_propagation();
-    })
-    .pointer_up(move |event| {
-        event.stop_propagation();
-        activate_pointer(event, interaction, &pointer_activate);
-    })
-}
-
-fn close_glyph() -> impl IntoNode {
-    text("\u{00D7}")
-        .layout(LayoutStyle::block().width(CLOSE_AFFORDANCE_WIDTH))
-        .class("text-on-surface")
-}
-
-const fn tab_state_style() -> StateStyle {
-    StateStyle::new(TAB_REST, TAB_FOCUS, TAB_HOVER, TAB_DOWN, TAB_DISABLED)
-}
-
-const fn tab_active_state_style() -> StateStyle {
-    StateStyle::new(
-        TAB_ACTIVE_REST,
-        TAB_ACTIVE_FOCUS,
-        TAB_ACTIVE_HOVER,
-        TAB_ACTIVE_DOWN,
-        TAB_DISABLED,
-    )
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    clippy::needless_pass_by_value,
-    reason = "the argument list mirrors the upstream API contract"
-)]
-pub(super) fn build_tab(
-    index: usize,
-    visual_index: usize,
-    label: String,
-    active: Signal<usize>,
-    disabled: &Rc<Vec<usize>>,
-    drag: Option<DragState>,
-    closeable: bool,
-    close_handler: Option<CloseHandler>,
-    user_overlay: StyleOverlay,
-) -> NodeBuilder {
-    let is_disabled = disabled.contains(&index);
-    let interaction = InteractionState::new(!is_disabled);
-    let component_id = TABS_COMPONENT_ID | (index as u64);
-    let selected = derived_eq(move || active.get() == index);
-
-    let variant = if active.peek() == index {
-        TAB_ACTIVE_VARIANT
-    } else {
-        TAB_VARIANT
-    };
-    let base_atoms: &'static [StyleAtom] = variant.base();
-    let state_style: StateStyle = if active.peek() == index {
-        tab_active_state_style()
-    } else {
-        tab_state_style()
-    };
-
-    let drag_for_activate = drag;
-    let activate: Activate = Rc::new(move || {
-        if is_disabled {
-            return;
-        }
-        if drag_for_activate.is_some_and(DragState::consume_just_dragged) {
-            return;
-        }
-        active.set(index);
-    });
-    let pointer_activate = Rc::clone(&activate);
-    let key_activate = activate;
-
-    let mut node = container()
-        .role(Role::Tab)
-        .label(label.clone())
-        .checked(selected)
-        .layout(tab_layout())
-        .class("rounded-md")
-        .class(base_atoms)
-        .stateful_style(variant, user_overlay, move || interaction.style_state())
-        .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
-        .key(Key::Enter, move |event| {
-            activate_key(event, interaction, &key_activate);
-        });
-
-    if let Some(drag_state) = drag {
-        node = install_label_drag_hooks(node, drag_state, visual_index);
-    }
-
-    node = node.child(tab_label(label));
-
-    if closeable {
-        node = node.child(close_button(index, close_handler.as_ref().map(Rc::clone)));
-    }
-
-    node = install_transition_animators(node, base_atoms, state_style, component_id, interaction);
-    interaction.install(node)
 }
 
 use super::content::wrap_with_content;
