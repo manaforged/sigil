@@ -5,9 +5,10 @@ It does not build wgpu or winit.
 
 ## Install
 
-```bash
-cargo add sigil-tui
-cargo add sigil-gui --no-default-features
+```toml
+[dependencies]
+sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
 ```
 
 `sigil-gui` with `--no-default-features` provides `sigil::prelude` and

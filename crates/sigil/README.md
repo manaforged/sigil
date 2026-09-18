@@ -21,15 +21,17 @@ Rust 1.90. A GPU for `launch`. A terminal for the `sigil-tui` crate.
 
 ## Install
 
-```bash
-cargo add sigil-gui
+```toml
+[dependencies]
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
 ```
 
 For the terminal host:
 
-```bash
-cargo add sigil-tui
-cargo add sigil-gui --no-default-features
+```toml
+[dependencies]
+sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
 ```
 
 ## Usage

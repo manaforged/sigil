@@ -5,9 +5,10 @@ host onto a character grid. It does not add a second widget catalog.
 
 ## Install
 
-```bash
-cargo add sigil-tui
-cargo add sigil-gui --no-default-features
+```toml
+[dependencies]
+sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
 ```
 
 The second line provides `sigil::prelude`. Keep `--no-default-features`;

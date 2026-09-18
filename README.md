@@ -10,7 +10,8 @@ Version 0.1.0. The API can change between 0.x releases.
 
 ## Requirements
 
-- Rust 1.90 or newer. `rust-toolchain.toml` selects stable.
+- Rust 1.90 or newer. `rust-toolchain.toml` pins 1.98.1 for development;
+  CI compile-checks the 1.90 floor.
 - A wgpu-capable GPU for the windowed hosts. The terminal host needs none.
 
 | Platform | CI | GPU tier |
@@ -21,8 +22,11 @@ Version 0.1.0. The API can change between 0.x releases.
 
 ## Install
 
-```bash
-cargo add sigil-gui
+Until 0.1.0 is on crates.io, depend on the repository:
+
+```toml
+[dependencies]
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
 ```
 
 The package is `sigil-gui` because the `sigil` name is taken on
@@ -31,9 +35,10 @@ build compiles the wgpu stack; it can take a few minutes.
 
 For a terminal-only program:
 
-```bash
-cargo add sigil-tui
-cargo add sigil-gui --no-default-features
+```toml
+[dependencies]
+sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
 ```
 
 ## Usage

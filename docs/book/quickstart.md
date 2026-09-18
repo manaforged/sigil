@@ -16,13 +16,13 @@ use sigil::prelude::*;
 
 ```toml
 [dependencies]
-sigil-gui = "0.1.0"
+sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
 ```
 
 The package is `sigil-gui` because the `sigil` name is taken on
 crates.io. The library is `sigil`, so imports read `sigil::`. For a
-terminal-only program, add `sigil-tui = "0.1.0"` and set
-`default-features = false` on `sigil-gui`.
+terminal-only program, add `sigil-tui` from the same repository and tag,
+and set `default-features = false` on `sigil-gui`.
 
 ## The smallest app
 
