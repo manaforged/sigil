@@ -15,9 +15,13 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
         id,
         rect: Rect::new(Point::new(0.0, 0.0), 8.0 * 8.0, 8.0),
         text: (!bare).then(|| label.to_owned()),
+        wrap: true,
         tone,
         fill: None,
         ink: None,
+        border_widths: [0.0; 4],
+        border_color: None,
+        border_radius: 0.0,
         weight: 400,
         italic: false,
         bare,
@@ -248,6 +252,31 @@ fn a_full_block_fills_font_seams_with_its_ink() {
     let cell = grid.get(0, 0).expect("full-block cell");
     assert_ne!(cell.fg, cell.bg, "the grid must preserve authored colours");
     assert_eq!(terminal_inks(&cell), (cell.fg, cell.fg));
+}
+
+#[test]
+fn a_fill_over_a_bare_block_drops_the_block_glyph() {
+    let scrim = Rgba8 {
+        r: 0,
+        g: 0,
+        b: 0,
+        a: 153,
+    };
+    let field = Rgba8 {
+        r: 33,
+        g: 34,
+        b: 37,
+        a: 255,
+    };
+    let mut backdrop = painted("", None, true);
+    backdrop.fill = Some(scrim);
+    let mut dialog = painted("", None, false);
+    dialog.text = None;
+    dialog.fill = Some(field);
+    let grid = raster(&[backdrop, dialog], 4, 1, 8.0);
+    let cell = grid.get(0, 0).expect("covered cell");
+    assert_eq!(cell.text, " ");
+    assert_eq!(cell.bg, Ink::Exact(field));
 }
 
 #[test]

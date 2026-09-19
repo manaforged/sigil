@@ -1,4 +1,5 @@
 use crate::events::prelude::{NodeEventsExt, PointerEvent};
+use crate::hal::{HitPosition, Point, TextAffinity};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::prelude::{
     LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
@@ -66,10 +67,14 @@ pub(super) fn column_width(width: Option<f32>) -> f32 {
     width.map_or(156.0, |w| (w - 26.0).max(0.0))
 }
 
-fn line_height() -> f32 {
-    with_text_geometry(|engine| engine.caret("", &TextStyle::default(), 0).height)
-        .filter(|height| *height > 0.0)
-        .unwrap_or(FALLBACK_LINE_H)
+pub(super) fn line_height() -> f32 {
+    with_text_geometry(|engine| {
+        engine
+            .caret("", &TextStyle::default(), None, downstream(0))
+            .height
+    })
+    .filter(|height| *height > 0.0)
+    .unwrap_or(FALLBACK_LINE_H)
 }
 
 fn field_text(displayed: Signal<String>, placeholder_visible: Signal<bool>) -> TextBuilder {
@@ -116,8 +121,8 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
     let (layout, lo, hi) = layout_span(runtime, &value, lo, hi);
     let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let start = engine.caret(&layout, &style, lo);
-        let end = engine.caret(&layout, &style, hi);
+        let start = engine.caret(&layout, &style, None, downstream(lo));
+        let end = engine.caret(&layout, &style, None, downstream(hi));
         (start.x, end.x, start.top, start.height)
     });
     let Some((x0, x1, top, height)) = geom else {
@@ -139,7 +144,7 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
     let (layout, caret, _) = layout_span(runtime, &value, caret, caret);
     let style = runtime.text_style.get();
     let geom = with_text_geometry(|engine| {
-        let pos = engine.caret(&layout, &style, caret);
+        let pos = engine.caret(&layout, &style, None, downstream(caret));
         (pos.x, pos.top, pos.height)
     });
     let Some((x, top, height)) = geom else {
@@ -157,6 +162,13 @@ fn rect(x: f32, top: f32, width: f32, height: f32) -> NodeBuilder {
             .width(width)
             .height(height),
     )
+}
+
+const fn downstream(byte: usize) -> HitPosition {
+    HitPosition {
+        byte_index: byte,
+        affinity: TextAffinity::Downstream,
+    }
 }
 
 fn attach_pointer(
@@ -209,10 +221,12 @@ fn hit(runtime: &TextFieldRuntime, x: f32) -> usize {
     if hiding {
         let layout = super::mask::mask_chars(&value);
         let mask_byte =
-            with_text_geometry(|engine| engine.hit(&layout, &style, text_x)).unwrap_or(0);
+            with_text_geometry(|engine| engine.hit(&layout, &style, None, Point::new(text_x, 0.0)))
+                .map_or(0, |hit| hit.byte_index);
         super::mask::unmask_byte(&value, mask_byte)
     } else {
-        with_text_geometry(|engine| engine.hit(&value, &style, text_x)).unwrap_or(0)
+        with_text_geometry(|engine| engine.hit(&value, &style, None, Point::new(text_x, 0.0)))
+            .map_or(0, |hit| hit.byte_index)
     }
 }
 

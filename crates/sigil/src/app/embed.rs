@@ -1,15 +1,16 @@
 use crate::events::{EventRouter, FocusIntent};
 #[cfg(feature = "scene")]
 use crate::hal::Point;
-use crate::hal::{LogicalSize, Rect, ShellEvent, Size};
+use crate::hal::{Rect, ShellEvent, Size};
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, ImageCrop, ImageSource, NodeId, Surface, TextContent};
+use crate::kernel::{Cx, ImageCrop, ImageSource, NodeId, Surface};
 use crate::layout::{LayoutEngine, LayoutError, LayoutResult, TextMeasure};
 use crate::style::{Rgba8, TextStyle, Theme, Tone, grid};
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+use super::cell_text::CellGeometry;
 #[cfg(feature = "scene")]
 use crate::renderer::{CommandScene, emit_scene_clipped};
 
@@ -22,9 +23,13 @@ pub struct Painted {
     pub id: NodeId,
     pub rect: Rect,
     pub text: Option<String>,
+    pub wrap: bool,
     pub tone: Option<Tone>,
     pub fill: Option<Rgba8>,
     pub ink: Option<Rgba8>,
+    pub border_widths: [f32; 4],
+    pub border_color: Option<Rgba8>,
+    pub border_radius: f32,
     pub weight: u16,
     pub italic: bool,
     pub bare: bool,
@@ -72,6 +77,8 @@ impl Host {
         {
             crate::layout::set_text_geometry(std::rc::Rc::new(crate::app::EngineGeometry::new()));
         }
+        #[cfg(not(feature = "scene"))]
+        crate::layout::set_text_geometry(Rc::new(CellGeometry::new(Self::CELL)));
         Self {
             cx: Cx::new_root(),
             layout: LayoutEngine::with_text_measure(Box::new(host_measure())),
@@ -88,9 +95,10 @@ impl Host {
     #[must_use]
     pub fn cells() -> Self {
         grid(Self::CELL);
+        crate::layout::set_text_geometry(Rc::new(CellGeometry::new(Self::CELL)));
         Self {
             cx: Cx::new_root(),
-            layout: LayoutEngine::with_text_measure(Box::new(CellMeasure { px: Self::CELL })),
+            layout: LayoutEngine::with_text_measure(Box::new(CellGeometry::new(Self::CELL))),
             root: None,
             theme: Theme::default(),
             resolved: Vec::new(),
@@ -224,10 +232,6 @@ pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -
     )
 }
 
-struct CellMeasure {
-    px: f32,
-}
-
 #[derive(Clone, Copy, Default)]
 pub enum CellWidth {
     #[default]
@@ -267,17 +271,6 @@ pub fn cell_width(text: &str) -> usize {
     }
 }
 
-impl TextMeasure for CellMeasure {
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    fn measure(&self, content: &TextContent, _space: Size) -> LogicalSize {
-        let cells = cell_width(content.resolve().as_str()) as f32;
-        LogicalSize::new(cells * self.px, self.px)
-    }
-}
-
 #[cfg(feature = "scene")]
 fn host_measure() -> impl TextMeasure {
     DefaultTextMeasure::new()
@@ -285,5 +278,5 @@ fn host_measure() -> impl TextMeasure {
 
 #[cfg(not(feature = "scene"))]
 fn host_measure() -> impl TextMeasure {
-    CellMeasure { px: Host::CELL }
+    CellGeometry::new(Host::CELL)
 }

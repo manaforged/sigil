@@ -132,6 +132,9 @@ fn field_inner(
 }
 
 fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
+    let padding_y = height.map_or(6.0, |height| {
+        ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
+    });
     let base = width.map_or_else(
         || LayoutStyle::flex_row().fill_width().grow(1.0),
         |w| LayoutStyle::flex_row().width((w - 2.0).max(0.0)),
@@ -142,7 +145,7 @@ fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
     };
     base.align_items(AlignItems::Center)
         .padding_x(12.0)
-        .padding_y(6.0)
+        .padding_y(padding_y)
 }
 
 fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {

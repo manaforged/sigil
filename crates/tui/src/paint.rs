@@ -1,10 +1,15 @@
 use sigil::app::{Painted, cell_width};
 use sigil::kernel::ImageSource;
 
+use self::paint_clip::{image_crop, paint_text};
 use crate::graphics::{Placement, blocks_window, protocol};
 use sigil::style::{Rgba8, Tone};
 use smol_str::SmolStr;
 use unicode_segmentation::UnicodeSegmentation;
+
+mod decoration;
+#[path = "paint_clip.rs"]
+mod paint_clip;
 
 pub const CONTINUES: &str = "";
 
@@ -234,7 +239,13 @@ impl Grid {
         }
     }
 
-    fn fill(&mut self, (col, row): (usize, usize), (width, height): (usize, usize), bg: Ink) {
+    fn fill(
+        &mut self,
+        (col, row): (usize, usize),
+        (width, height): (usize, usize),
+        bg: Ink,
+        bare: bool,
+    ) {
         if !bg.set() {
             return;
         }
@@ -243,7 +254,7 @@ impl Grid {
             let line = self.row_mut(y);
             let span = col.min(line.len())..end.min(line.len());
             for cell in line.get_mut(span).unwrap_or_default() {
-                cell.bg = bg;
+                decoration::background(cell, bg, bare);
             }
         }
     }
@@ -308,46 +319,30 @@ pub fn raster_into(grid: &mut Grid, nodes: &[Painted], cell: f32) {
             };
             rect = c;
         }
-        let col = floor_cell(rect.origin.x / cell);
-        let row = floor_cell(rect.origin.y / cell);
-        let width = floor_cell(rect.width / cell).max(1);
-        let height = floor_cell(rect.height / cell).max(1);
+        let col = cell_edge(rect.origin.x / cell);
+        let row = cell_edge(rect.origin.y / cell);
+        let width = cell_edge((rect.origin.x + rect.width) / cell)
+            .saturating_sub(col)
+            .max(1);
+        let height = cell_edge((rect.origin.y + rect.height) / cell)
+            .saturating_sub(row)
+            .max(1);
         if let Some(source) = &node.image {
-            let crop = node.crop.map(|crop| (crop.top, crop.height));
+            let crop = image_crop(node, rect, source);
             grid.place(source, crop, (col, row), (width, height));
             continue;
         }
         let surface = Ink::pick(node.fill, node.tone);
-        let ink = Ink::pick(node.ink, node.tone);
         if node.text.is_none() && surface.set() {
-            grid.fill((col, row), (width, height), surface);
-            if node.bare {
-                for y in row..row.saturating_add(height) {
-                    for x in col..col.saturating_add(width) {
-                        grid.put(x, y, "█", surface);
-                    }
-                }
-            }
+            grid.fill((col, row), (width, height), surface, node.bare);
         }
-        if let Some(text) = node.text.as_deref() {
-            let line = match node.clip {
-                Some(clip) if clip.height <= cell => floor_cell(clip.origin.y / cell + 0.5),
-                _ => floor_cell((node.rect.origin.y + node.rect.height / 2.0) / cell),
-            };
-            let last = node.clip.map_or(usize::MAX, |clip| {
-                floor_cell((clip.origin.x + clip.width) / cell)
-            });
-            grid.run(&Run {
-                col,
-                row: line,
-                last,
-                text,
-                fg: ink,
-                bold: node.weight >= 700,
-                italic: node.italic,
-            });
-        }
+        decoration::border(grid, node, cell);
+        paint_text(grid, node, rect, cell);
     }
+}
+
+fn cell_edge(value: f32) -> usize {
+    floor_cell(value + 0.5)
 }
 
 #[allow(

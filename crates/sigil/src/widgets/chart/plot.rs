@@ -1,5 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::prelude::{
+    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle,
+};
 use crate::style::NodeStyleExt;
 
 use super::super::shared::label;
@@ -27,11 +29,22 @@ pub(super) fn draw(
     };
     let mut node = root.child(
         container()
-            .layout(LayoutStyle::flex_row().fill().gap(8.0))
+            .layout(
+                LayoutStyle::flex_row()
+                    .fill_width()
+                    .grow(1.0)
+                    .min_size(0.0, 0.0)
+                    .gap(8.0),
+            )
             .child(y_axis(max))
             .child(
                 container()
-                    .layout(LayoutStyle::flex_column().grow(1.0).fill_height())
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .grow(1.0)
+                            .min_size(0.0, 0.0)
+                            .fill_height(),
+                    )
                     .child(plot)
                     .child(x_axis(labels, count)),
             ),
@@ -56,7 +69,13 @@ fn y_axis(max: f32) -> NodeBuilder {
 }
 
 fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
-    let mut row = container().layout(LayoutStyle::flex_row().fill_width().height(18.0).gap(4.0));
+    let mut row = container().layout(
+        LayoutStyle::flex_row()
+            .fill_width()
+            .height(18.0)
+            .shrink(0.0)
+            .gap(4.0),
+    );
     for index in 0..count {
         let text = labels
             .get(index)
@@ -76,7 +95,9 @@ fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
     let mut row = container()
         .layout(
             LayoutStyle::flex_row()
-                .fill()
+                .fill_width()
+                .grow(1.0)
+                .min_size(0.0, 0.0)
                 .gap(6.0)
                 .align_items(AlignItems::End)
                 .padding(PLOT_PAD),
@@ -86,6 +107,8 @@ fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
         let mut group = container().layout(
             LayoutStyle::flex_row()
                 .grow(1.0)
+                .flex_basis(Dimension::Px(0.0))
+                .min_size(0.0, 0.0)
                 .fill_height()
                 .gap(2.0)
                 .align_items(AlignItems::End),
@@ -101,6 +124,9 @@ fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
 }
 
 fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
+    if value <= 0.0 {
+        return container().layout(LayoutStyle::block().grow(1.0).fill_height());
+    }
     let caption = if name.is_empty() {
         format!("{value:.0}")
     } else {
@@ -109,7 +135,13 @@ fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
     let fill = pct.max(1.0);
     let rest = (100.0 - fill).max(0.01);
     container()
-        .layout(LayoutStyle::flex_column().grow(1.0).fill_height())
+        .layout(
+            LayoutStyle::flex_column()
+                .grow(1.0)
+                .flex_basis(Dimension::Px(0.0))
+                .min_size(0.0, 0.0)
+                .fill_height(),
+        )
         .child(container().layout(LayoutStyle::block().fill_width().grow(rest)))
         .child(
             container()

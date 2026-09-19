@@ -22,6 +22,9 @@ pub(crate) struct Resolved {
     animation: Option<u64>,
     fill: Option<Rgba8>,
     ink: Option<Rgba8>,
+    border_widths: [f32; 4],
+    border_color: Option<Rgba8>,
+    border_radius: f32,
     text: Rc<TextStyle>,
 }
 
@@ -61,6 +64,7 @@ fn store(
         && slot.id == node.id
         && slot.rect == node.rect
         && slot.clip == node.clip
+        && slot.wrap == node.wrap
         && slot.image.as_ref().map(ImageSource::id) == node.image.as_ref().map(ImageSource::id)
         && slot.crop == node.crop;
     let mut node = node;
@@ -121,6 +125,7 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
     let rect = result.rect();
     *walk.next = walk.next.saturating_add(1);
     let mut painted = mark(id, rect, tone, &style, inherited.clip);
+    painted.wrap = matches!(node.kind, NodeType::Text { wrap: true, .. });
     painted.image = image_of(node);
     painted.crop = node.get_extension::<ImageCrop>().copied();
     if store(walk.out, slot, painted, text_of(node), kept) {
@@ -175,9 +180,13 @@ fn mark(
         id,
         rect,
         text: None,
+        wrap: false,
         tone,
         fill: style.fill,
         ink: style.ink,
+        border_widths: style.border_widths,
+        border_color: style.border_color,
+        border_radius: style.border_radius,
         weight: style.text.font_weight,
         italic: style.text.italic,
         bare: true,
@@ -328,6 +337,25 @@ fn compute(node: &Node, ask: &Ask<'_>, version: u32, state: StateSlot, slices: S
             .map(AnimatorOverlay::cache_key),
         fill: style.background_color,
         ink: style.text_color,
+        border_widths: [
+            style.border_top,
+            style.border_right,
+            style.border_bottom,
+            style.border_left,
+        ]
+        .map(|edge| {
+            edge.or(style.border_width)
+                .map_or(0.0, |width| f32::from(width.0).max(0.0))
+        }),
+        border_color: Some(
+            style
+                .border_color
+                .or(style.text_color)
+                .unwrap_or(ask.theme.on_surface),
+        ),
+        border_radius: style
+            .border_radius
+            .map_or(0.0, |radius| f32::from(radius.0)),
         text: layered.map_or_else(|| Rc::clone(ask.text), Rc::new),
     }
 }
