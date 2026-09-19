@@ -1,7 +1,7 @@
 # Quickstart
 
-> Book status: written for `sigil-gui 0.1.0`. The examples on this page
-> ship with the crates.
+> Sigil is unreleased. The examples on this page are included in the
+> framework repository.
 
 Sigil is a desktop UI library in Rust. State is a signal graph. Layout,
 text shaping, and the wgpu renderer are owned code. AccessKit, IME,
@@ -14,15 +14,18 @@ use sigil::prelude::*;
 
 ## Install
 
+Sigil is not published on crates.io. The repository is currently private;
+you need GitHub access and Git authentication to use this dependency.
+
 ```toml
 [dependencies]
 sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
 ```
 
 The package is `sigil-gui` because the `sigil` name is taken on
-crates.io. The library is `sigil`, so imports read `sigil::`. For a
-terminal-only program, add `sigil-tui` from the same repository and tag,
-and set `default-features = false` on `sigil-gui`.
+crates.io. The library is `sigil`, so imports read `sigil::`.
+`Cargo.lock` records the selected Git commit. For a terminal-only
+program, use the dependencies in [Terminal host](terminal.md).
 
 ## The smallest app
 
@@ -98,8 +101,7 @@ a restyle.
 
 Static styling works on any node. Interaction styling goes through
 `interactive()`, the opt-in wrapper that gives plain containers hover,
-press, focus, and disabled semantics (the `hello-style` app in
-`sigil-examples`):
+press, focus, and disabled semantics:
 
 ```rust,ignore
 interactive(
@@ -123,7 +125,7 @@ out of the box.
 - Architecture: [Overview](arch/overview.md),
   [State](arch/state.md), [Painting](arch/painting.md),
   [Platform](arch/platform.md), [Modules](arch/modules.md).
-- The catalog in one window: `widget-playground` in `sigil-examples`.
+- The runnable widget demos: `crates/sigil/examples`.
 - The terminal host: the `sigil-tui` crate.
 
 Build the book with `mdbook serve docs/book`.

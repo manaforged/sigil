@@ -6,39 +6,36 @@ separate `sigil-tui` crate paints it on a character grid.
 
 ![The workbench example application](docs/workbench.png)
 
-Version 0.1.0. The API can change between 0.x releases.
+Unreleased. The API can change between 0.x releases.
 
 ## Requirements
 
-- Rust 1.90 or newer. `rust-toolchain.toml` pins 1.98.1 for development;
-  CI compile-checks the 1.90 floor.
-- A wgpu-capable GPU for the windowed hosts. The terminal host needs none.
+- Rust 1.90 or newer. This checkout pins Rust 1.98.1 in `rust-toolchain.toml`.
+- A wgpu-capable GPU for the default desktop renderer.
+  Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
-| Platform | CI | GPU tier |
-| --- | --- | --- |
-| macOS | local gate | runs before a release |
-| Windows | local gate | runs before a release |
-| Linux | full CI | hosted runners have no adapter |
+Hosted Linux CI uses Mesa software Vulkan for renderer checks. macOS and
+Windows require separate platform checks.
 
 ## Install
 
-Until 0.1.0 is on crates.io, depend on the repository:
+Sigil is not published on crates.io. The repository is currently private;
+you need GitHub access and Git authentication to use this dependency.
 
-```toml
-[dependencies]
-sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+```bash
+cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main
 ```
 
 The package is `sigil-gui` because the `sigil` name is taken on
 crates.io. The library is `sigil`, so imports read `sigil::`. The first
-build compiles the wgpu stack; it can take a few minutes.
+build compiles the wgpu stack; it can take a few minutes. `Cargo.lock`
+records the selected Git commit.
 
 For a terminal-only program:
 
-```toml
-[dependencies]
-sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
-sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
+```bash
+cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
+cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
 ```
 
 ## Usage
@@ -68,7 +65,7 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 
 `sigil::launch` opens the window and drives the frame loop. An embed
 host pumps `Host` inside `Runtime::scope`. The terminal entry point is
-`sigil_tui::run`. Runnable examples ship with the crates:
+`sigil_tui::run`. Run these examples from a clone of this repository:
 
 ```bash
 cargo run -p sigil-gui --example hello-counter   # the app above
@@ -77,15 +74,13 @@ cargo run -p sigil-tui --example hello-tui      # terminal host
 mdbook serve docs/book                          # the guide and architecture
 ```
 
-The larger apps live in the `sigil-examples` checkout.
-
 ## Limits
 
 - Headless machines run the terminal host and the test suite. The
   windowed hosts need a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
   the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
-- No supported web or mobile host. The wasm renderer proof lives in
-  `sigil-examples`.
+- No supported web or mobile host. A wasm renderer proof exists but is
+  not in this repository.
 - The terminal host has no IME, no rounded corners, and no shadows.
   Images render through the terminal graphics protocol on Kitty,
   Ghostty, WezTerm, Konsole, iTerm2, and Warp. Other terminals show
@@ -95,8 +90,9 @@ The larger apps live in the `sigil-examples` checkout.
 
 ## Security
 
-Report a vulnerability through GitHub's private reporting on this
-repository, never as a public issue. See [SECURITY.md](SECURITY.md).
+Report vulnerabilities privately to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
+GitHub private reporting is also an option when it is available on the
+repository. See [SECURITY.md](SECURITY.md).
 The workspace denies `unsafe`, with one exception in the native menu
 path (`crates/sigil/src/app/menu.rs`). `cargo deny check` gates
 advisories.

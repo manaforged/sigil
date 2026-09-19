@@ -20,8 +20,7 @@ targets = [
 all-features = false
 no-default-features = false
 # The checks govern what we SHIP. publish = false crates and examples
-# (the bench harnesses and apps live in sigil-examples) are not shipping
-# code, and their
+# are not shipping code, and their
 # unique transitive deps are excluded recursively.
 exclude-unpublished = true
 

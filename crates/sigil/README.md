@@ -17,21 +17,24 @@ crate, entered with `sigil_tui::run`.
 
 ## Requirements
 
-Rust 1.90. A GPU for `launch`. A terminal for the `sigil-tui` crate.
+Rust 1.90 or newer. The repository pins Rust 1.98.1 for development.
+The desktop host uses wgpu by default; `SIGIL_BACKEND=cpu` selects the
+CPU renderer. The terminal host needs a terminal.
 
 ## Install
 
-```toml
-[dependencies]
-sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main" }
+Sigil is not published on crates.io. The repository is currently private;
+you need GitHub access and Git authentication to use this dependency.
+
+```bash
+cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main
 ```
 
 For the terminal host:
 
-```toml
-[dependencies]
-sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
-sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
+```bash
+cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
+cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
 ```
 
 ## Usage
@@ -103,7 +106,7 @@ With the `desktop` feature, open a URL or path with the OS handler:
 - A `pty` session opens at 24x80. There is no resize path yet.
 - Modules marked `#[doc(hidden)]` are used by tests and macro expansion.
   They are not API and can change in any 0.1.x release.
-- The crate is `0.1.0`. Names can still move.
+- The crate is unreleased. Names can still move.
 
 ## Features
 
@@ -123,10 +126,9 @@ With the `desktop` feature, open a URL or path with the OS handler:
 
 ## Docs
 
-- Book: `mdbook serve docs/book`
-- Examples: `cargo run -p sigil-gui --example hello-counter` and
-  `cargo run -p sigil-gui --example hello-host`. The larger apps live in
-  the `sigil-examples` checkout.
+- From the framework checkout, serve the book with `mdbook serve docs/book`.
+- From the framework checkout, run `cargo run -p sigil-gui --example hello-counter`
+  or `cargo run -p sigil-gui --example hello-host`.
 
 ## Macro note
 

@@ -13,8 +13,7 @@ The server opens the book at `http://localhost:3000`. Build a static
 site with `mdbook build docs/book`. The output goes to
 `docs/book/book/` and is not committed.
 
-Companion material: the `sigil-examples` checkout (compile-checked apps,
-including `workbench`) and the rustdoc on `sigil-gui`.
+The framework repository includes the small examples used in this guide.
 
 ## Guide
 
