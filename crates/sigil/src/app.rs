@@ -4,6 +4,7 @@ use windows_core as _;
 #[cfg(feature = "desktop")]
 mod appearance;
 pub mod audio;
+mod cell_text;
 mod config;
 #[cfg(feature = "dialog")]
 pub mod dialog;
@@ -38,6 +39,7 @@ pub use crate::text::{DefaultFonts, set_default_fonts, use_system_fonts};
 #[cfg(feature = "desktop")]
 pub use appearance::set_theme;
 pub use audio::Player;
+pub use cell_text::cell_text_lines;
 pub use config::{AppConfig, PanicPolicy};
 pub use embed::{AccessibilityTree, CellWidth, Host, Painted, cell_width, set_cell_width};
 pub use error::{AppResult, Error};

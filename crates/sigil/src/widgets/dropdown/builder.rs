@@ -187,6 +187,7 @@ fn dropdown_root(
     key_bindings(
         container()
             .role(Role::ComboBox)
+            .focus_out(move || ctx.open.set(false))
             .label(label)
             .layout(root_layout),
         ctx,

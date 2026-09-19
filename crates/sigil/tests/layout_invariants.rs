@@ -24,21 +24,41 @@ impl TextMeasure for ProportionalText {
 struct NativeLineGeometry;
 
 impl sigil::layout::TextGeometry for NativeLineGeometry {
-    fn hit(&self, _text: &str, _style: &sigil::style::TextStyle, _x: f32) -> usize {
-        0
+    fn hit(
+        &self,
+        _text: &str,
+        _style: &sigil::style::TextStyle,
+        _width: Option<f32>,
+        _point: sigil::hal::Point,
+    ) -> sigil::hal::HitPosition {
+        sigil::hal::HitPosition {
+            byte_index: 0,
+            affinity: sigil::hal::TextAffinity::Downstream,
+        }
     }
 
     fn caret(
         &self,
         _text: &str,
         _style: &sigil::style::TextStyle,
-        _byte: usize,
+        _width: Option<f32>,
+        _position: sigil::hal::HitPosition,
     ) -> sigil::layout::CaretGeometry {
         sigil::layout::CaretGeometry {
             x: 0.0,
             top: 0.0,
             height: 19.2,
         }
+    }
+
+    fn selection_rects(
+        &self,
+        _text: &str,
+        _style: &sigil::style::TextStyle,
+        _width: Option<f32>,
+        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
+    ) -> Vec<sigil::hal::Rect> {
+        Vec::new()
     }
 }
 

@@ -48,6 +48,12 @@ impl FocusManager {
                 scope_root,
                 restore_to: self.focused,
             });
+            if cx
+                .get(scope_root)
+                .is_some_and(|node| node.a11y.is_focusable())
+            {
+                self.set_focus(cx, Some(scope_root));
+            }
             self.ring_generation = u64::MAX;
         }
     }

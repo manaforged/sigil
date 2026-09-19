@@ -52,3 +52,7 @@ impl Drop for Playback {
         state::deregister(self.id);
     }
 }
+
+#[cfg(test)]
+#[path = "playback_tests.rs"]
+mod tests;

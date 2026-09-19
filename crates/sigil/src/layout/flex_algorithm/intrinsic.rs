@@ -1,8 +1,9 @@
-use crate::layout::flex::Position2;
+use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::NodeRef;
-use crate::layout::resolve::{NodeEdges, dim_to_border_box};
+use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
 use crate::layout::style_data::{Display, FlexWrap, Position, StyleData};
 
+use super::sizing::{container_inner_size, item_min_max_main};
 use super::{Axis2, FlexCtx, item_main_basis, layout_item_subtree, main_gap};
 
 pub(super) fn container_intrinsic_cross(
@@ -91,8 +92,10 @@ fn content_main_from_children(
     } else {
         edges.block_chrome()
     };
-    let forest = ctx.solver.scope().forest();
-    let cb_inline = if axes.row { cb_main } else { cb_cross };
+    let measured = inner_context(ctx, style, axes, cb_main, cb_cross);
+    let (inner_main, inner_cross) = measured.cb.along(axes);
+    let forest = measured.solver.scope().forest();
+    let cb_inline = if axes.row { inner_main } else { inner_cross };
     let mut count = 0usize;
     let mut bases = 0.0_f32;
     for child_id in node.children() {
@@ -104,18 +107,52 @@ fn content_main_from_children(
             continue;
         }
         let child_edges = NodeEdges::build(child_style, cb_inline);
-        let inner = item_main_basis(ctx, child, child_style, axes, cb_main, &child_edges);
+        let inner = item_main_basis(
+            &measured,
+            child,
+            child_style,
+            axes,
+            inner_main,
+            &child_edges,
+        );
         let m = child_edges.margin.or_zero();
         let margin_main = if axes.row {
             m.left + m.right
         } else {
             m.top + m.bottom
         };
-        bases += inner + margin_main;
+        let (min, max) = item_min_max_main(child_style, axes, inner_main, &child_edges);
+        bases += clamp(inner, min, max) + margin_main;
         count += 1;
     }
-    let gap = main_gap(ctx, style, count);
+    let gap = main_gap(&measured, style, count);
     Some(bases + gap * (count.saturating_sub(1) as f32) + chrome_main)
+}
+
+fn inner_context<'s, 'a>(
+    ctx: &FlexCtx<'s, 'a>,
+    style: &StyleData,
+    axes: Axis2,
+    main: f32,
+    cross: f32,
+) -> FlexCtx<'s, 'a> {
+    let mut measured = FlexCtx {
+        axes,
+        cb: CbSize {
+            w: if axes.row { main } else { cross },
+            h: if axes.row { cross } else { main },
+        },
+        assigned_w: None,
+        assigned_h: None,
+        ..*ctx
+    };
+    let edges = NodeEdges::build(style, measured.cb.w);
+    let (inner_main, inner_cross) = container_inner_size(&measured, style, &edges);
+    measured.cb = CbSize {
+        w: if axes.row { inner_main } else { inner_cross },
+        h: if axes.row { inner_cross } else { inner_main },
+    };
+    measured
 }
 
 pub(super) fn probed_content_extent(
@@ -139,6 +176,11 @@ pub(super) fn probed_content_extent(
     let far_edge = node
         .children()
         .iter()
+        .filter(|child_id| {
+            forest.style_for(**child_id).is_some_and(|child_style| {
+                child_style.display != Display::None && child_style.position != Position::Absolute
+            })
+        })
         .filter_map(|child_id| forest.boxed(*child_id))
         .map(|cb| if horizontal { cb.x + cb.w } else { cb.y + cb.h })
         .fold(0.0_f32, f32::max);
@@ -149,24 +191,13 @@ pub(super) fn text_intrinsic(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
     style: &StyleData,
-    axes: Axis2,
 ) -> Option<crate::layout::style_data::Size<f32>> {
     if !node.children().is_empty() {
         return None;
     }
     let known = crate::layout::style_data::Size {
-        width: dim_to_border_box(
-            style.size.width,
-            if axes.row { ctx.cb.w } else { ctx.cb.h },
-            0.0,
-            style.box_sizing,
-        ),
-        height: dim_to_border_box(
-            style.size.height,
-            if axes.row { ctx.cb.h } else { ctx.cb.w },
-            0.0,
-            style.box_sizing,
-        ),
+        width: dim_to_border_box(style.size.width, ctx.cb.w, 0.0, style.box_sizing),
+        height: dim_to_border_box(style.size.height, ctx.cb.h, 0.0, style.box_sizing),
     };
     ctx.solver.scope().measure_text(node, known, Some(ctx.cb.w))
 }

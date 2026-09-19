@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::hal::{HitPosition, TextAffinity};
+use crate::hal::{HitPosition, Point, Rect, TextAffinity};
 use crate::layout::{CaretGeometry, TextGeometry};
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
@@ -25,24 +25,32 @@ impl EngineGeometry {
 }
 
 impl TextGeometry for EngineGeometry {
-    fn hit(&self, text: &str, style: &TextStyle, x: f32) -> usize {
+    fn hit(&self, text: &str, style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition {
         self.engine
-            .layout_paragraph_styled(text, None, style)
-            .map_or(0, |para| para.hit_test(x, 0.0).byte_index)
+            .layout_paragraph_styled(text, width, style)
+            .map_or(
+                HitPosition {
+                    byte_index: 0,
+                    affinity: TextAffinity::Downstream,
+                },
+                |para| para.hit_test(point.x, point.y),
+            )
     }
 
-    fn caret(&self, text: &str, style: &TextStyle, byte: usize) -> CaretGeometry {
-        let byte = clamp_to_boundary(text, byte);
+    fn caret(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        mut position: HitPosition,
+    ) -> CaretGeometry {
+        position.byte_index = clamp_to_boundary(text, position.byte_index);
         self.engine
-            .layout_paragraph_styled(text, None, style)
+            .layout_paragraph_styled(text, width, style)
             .map_or_else(
                 |_| CaretGeometry::default(),
                 |para| {
-                    let pos = HitPosition {
-                        byte_index: byte,
-                        affinity: TextAffinity::Downstream,
-                    };
-                    let rect = para.caret_rect(pos, 1.0);
+                    let rect = para.caret_rect(position, 1.0);
                     CaretGeometry {
                         x: rect.origin.x,
                         top: rect.origin.y,
@@ -50,6 +58,26 @@ impl TextGeometry for EngineGeometry {
                     }
                 },
             )
+    }
+
+    fn selection_rects(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        (anchor, focus): (HitPosition, HitPosition),
+    ) -> Vec<Rect> {
+        let anchor = HitPosition {
+            byte_index: clamp_to_boundary(text, anchor.byte_index),
+            ..anchor
+        };
+        let focus = HitPosition {
+            byte_index: clamp_to_boundary(text, focus.byte_index),
+            ..focus
+        };
+        self.engine
+            .layout_paragraph_styled(text, width, style)
+            .map_or_else(|_| Vec::new(), |para| para.selection_rects(anchor, focus))
     }
 }
 

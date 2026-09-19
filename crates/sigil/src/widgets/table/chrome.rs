@@ -6,6 +6,7 @@ use crate::reactive::{Signal, signal};
 use crate::style::{NodeStyleExt, Size, Theme};
 
 use super::super::layout_ext::WidgetLayoutExt;
+use super::super::menu::PANEL_INSET;
 use super::super::menu::{MenuItem, menu};
 use super::state::{SortDir, TableState};
 
@@ -87,7 +88,9 @@ pub(super) fn context_overlay<Row: 'static>(
             let (left, top, width, height) = chrome.bounds.get();
             let menu_width = width.min(200.0);
             let item_height = Theme::default().control_height(Size::Default).px_or_zero();
-            let menu_height = items.iter().fold(0.0, |total, _| total + item_height);
+            let menu_height = items
+                .iter()
+                .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
             let x = (x - left).clamp(0.0, (width - menu_width).max(0.0));
             let y = (y - top).clamp(0.0, (height - menu_height).max(0.0));
             let mut panel = menu(chrome.open)

@@ -14,6 +14,14 @@ use smallvec::SmallVec;
 use crate::text::Font;
 use crate::text::glyph::GlyphRun;
 
+#[path = "paragraph_geometry.rs"]
+mod geometry;
+
+use geometry::{
+    caret_x_in_line, hit_test_line, locate_line_for_position, order_positions, pick_line,
+    select_line,
+};
+
 #[derive(Debug, Clone)]
 pub(crate) struct LayoutLine {
     glyphs: SmallVec<[LineGlyph; 32]>,
@@ -260,7 +268,7 @@ impl Paragraph {
 
     #[must_use]
     pub fn caret_rect(&self, pos: HitPosition, caret_width: f32) -> Rect {
-        let line = locate_line_for_byte(&self.inner.lines, pos.byte_index);
+        let line = locate_line_for_position(&self.inner.lines, pos);
         let Some(line) = line else {
             return Rect::new(
                 Point::new(0.0, 0.0),
@@ -287,17 +295,14 @@ impl Paragraph {
             return;
         }
         let (lo_b, hi_b) = (u32_clamp(lo.byte_index), u32_clamp(hi.byte_index));
-        for line in &self.inner.lines {
-            let mut span: Option<(f32, f32)> = None;
-            for g in &line.glyphs {
-                if g.cluster >= lo_b && g.cluster < hi_b {
-                    let (gl, gr) = (g.x, g.x + g.advance);
-                    span = Some(span.map_or((gl, gr), |(l, r)| (l.min(gl), r.max(gr))));
-                } else {
-                    emit_span(span.take(), line, &mut f);
-                }
-            }
-            emit_span(span.take(), line, &mut f);
+        for (index, line) in self.inner.lines.iter().enumerate() {
+            select_line(
+                line,
+                self.inner.lines.get(index + 1),
+                (lo_b, hi_b),
+                (self.inner.font_size * 0.5).max(1.0),
+                &mut f,
+            );
         }
     }
 
@@ -347,167 +352,6 @@ impl Paragraph {
         for face in &self.inner.fonts {
             f(face.id, face.bytes.as_slice(), face.index);
         }
-    }
-}
-
-fn pick_line(lines: &[LayoutLine], y: f32) -> &LayoutLine {
-    for l in lines {
-        if l.contains_y(y) {
-            return l;
-        }
-    }
-    if y < 0.0 {
-        lines.first().expect("non-empty (caller guards)")
-    } else {
-        lines.last().expect("non-empty (caller guards)")
-    }
-}
-
-fn locate_line_for_byte(lines: &[LayoutLine], byte_index: usize) -> Option<&LayoutLine> {
-    for l in lines {
-        if l.byte_range_contains(byte_index) {
-            return Some(l);
-        }
-    }
-    lines.last()
-}
-
-fn hit_test_line(line: &LayoutLine, x: f32) -> HitPosition {
-    if line.glyphs.is_empty() {
-        return HitPosition {
-            byte_index: line.byte_start.min(line.byte_end) as usize,
-            affinity: TextAffinity::Downstream,
-        };
-    }
-    if x <= 0.0
-        && let Some(g) = line.glyphs.first()
-    {
-        return edge_hit(line, g, true);
-    }
-    if x >= line.width
-        && let Some(g) = line.glyphs.last()
-    {
-        return edge_hit(line, g, false);
-    }
-    let Some(best) = pick_nearest_glyph(&line.glyphs, x) else {
-        return HitPosition {
-            byte_index: line.byte_start as usize,
-            affinity: TextAffinity::Downstream,
-        };
-    };
-    let mid = best.advance.mul_add(0.5, best.x);
-    let near_leading = if best.is_rtl() { x >= mid } else { x < mid };
-    let (byte_index, affinity) = if near_leading {
-        (best.cluster as usize, TextAffinity::Downstream)
-    } else {
-        (
-            next_cluster_after(line, best.cluster) as usize,
-            TextAffinity::Upstream,
-        )
-    };
-    HitPosition {
-        byte_index,
-        affinity,
-    }
-}
-
-fn edge_hit(line: &LayoutLine, g: &LineGlyph, visual_left: bool) -> HitPosition {
-    let leading_is_left = !g.is_rtl();
-    if visual_left == leading_is_left {
-        HitPosition {
-            byte_index: g.cluster as usize,
-            affinity: TextAffinity::Downstream,
-        }
-    } else {
-        HitPosition {
-            byte_index: next_cluster_after(line, g.cluster) as usize,
-            affinity: TextAffinity::Upstream,
-        }
-    }
-}
-
-fn pick_nearest_glyph(glyphs: &[LineGlyph], x: f32) -> Option<&LineGlyph> {
-    let mut iter = glyphs.iter();
-    let mut best = iter.next()?;
-    let mut best_dx = (best.x - x).abs();
-    for g in iter {
-        let dx = (g.x - x).abs();
-        if dx < best_dx {
-            best_dx = dx;
-            best = g;
-        }
-    }
-    Some(best)
-}
-
-fn next_cluster_after(line: &LayoutLine, cluster: u32) -> u32 {
-    line.glyphs
-        .iter()
-        .map(|glyph| glyph.cluster)
-        .filter(|&candidate| candidate > cluster)
-        .min()
-        .unwrap_or(line.byte_end)
-}
-
-fn emit_span(span: Option<(f32, f32)>, line: &LayoutLine, f: &mut impl FnMut(Rect)) {
-    if let Some((l, r)) = span
-        && r > l
-    {
-        f(Rect::new(
-            Point::new(l, line.line_top()),
-            r - l,
-            line.height,
-        ));
-    }
-}
-
-fn caret_x_in_line(line: &LayoutLine, pos: HitPosition) -> f32 {
-    if line.glyphs.is_empty() {
-        return 0.0;
-    }
-    let target = u32_clamp(pos.byte_index);
-    match pos.affinity {
-        TextAffinity::Downstream => line
-            .glyphs
-            .iter()
-            .find(|g| g.cluster == target)
-            .or_else(|| {
-                line.glyphs
-                    .iter()
-                    .filter(|g| g.cluster > target)
-                    .min_by_key(|g| g.cluster)
-            })
-            .map_or_else(
-                || {
-                    line.glyphs
-                        .iter()
-                        .max_by_key(|g| g.cluster)
-                        .map_or(line.width, LineGlyph::trailing_edge)
-                },
-                LineGlyph::leading_edge,
-            ),
-        TextAffinity::Upstream => line
-            .glyphs
-            .iter()
-            .filter(|g| g.cluster < target)
-            .max_by_key(|g| g.cluster)
-            .map_or_else(
-                || {
-                    line.glyphs
-                        .iter()
-                        .min_by_key(|g| g.cluster)
-                        .map_or(0.0, LineGlyph::leading_edge)
-                },
-                LineGlyph::trailing_edge,
-            ),
-    }
-}
-
-const fn order_positions(a: HitPosition, b: HitPosition) -> (HitPosition, HitPosition) {
-    if a.byte_index <= b.byte_index {
-        (a, b)
-    } else {
-        (b, a)
     }
 }
 

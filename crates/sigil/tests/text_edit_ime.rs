@@ -28,11 +28,27 @@ impl TextMeasure for StubMeasure {
 struct StubGeometry;
 
 impl TextGeometry for StubGeometry {
-    fn hit(&self, text: &str, _style: &TextStyle, x: f32) -> usize {
-        ((x / 10.0).round().max(0.0) as usize).min(text.len())
+    fn hit(
+        &self,
+        text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        point: sigil::hal::Point,
+    ) -> sigil::hal::HitPosition {
+        sigil::hal::HitPosition {
+            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
+            affinity: sigil::hal::TextAffinity::Downstream,
+        }
     }
 
-    fn caret(&self, text: &str, _style: &TextStyle, byte: usize) -> CaretGeometry {
+    fn caret(
+        &self,
+        text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        position: sigil::hal::HitPosition,
+    ) -> CaretGeometry {
+        let byte = position.byte_index;
         let byte = byte.min(text.len());
         let prefix = &text[..byte];
         let line = prefix.matches('\n').count();
@@ -42,6 +58,16 @@ impl TextGeometry for StubGeometry {
             top: line as f32 * 16.0,
             height: 16.0,
         }
+    }
+
+    fn selection_rects(
+        &self,
+        _text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
+    ) -> Vec<sigil::hal::Rect> {
+        Vec::new()
     }
 }
 
@@ -53,7 +79,6 @@ fn text_edit_preedit_displays_inline() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -61,7 +86,6 @@ fn text_edit_preedit_displays_inline() {
             &layout,
             ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
-
         assert_eq!(displayed_text(&mut cx, root), "か");
         assert_eq!(
             value.get(),
@@ -79,14 +103,11 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-
         for _ in 0..7 {
             router.route(&mut cx, &layout, arrow_left());
         }
-
         router.route(
             &mut cx,
             &layout,
@@ -100,9 +121,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
             "caret on line 2 (0-indexed line 1) must anchor at top=16.0+8.0 padding, got {}",
             anchor.origin.y
         );
-
         router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("X".into())));
-
         assert_eq!(
             value.get(),
             "aaa\nXbbb\nccc",
@@ -119,10 +138,8 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
-
         router.route(
             &mut cx,
             &layout,
@@ -131,7 +148,6 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         let mid_cursor = router
             .ime_caret_rect(&cx, &layout)
             .expect("anchor published while composing");
-
         router.route(
             &mut cx,
             &layout,
@@ -140,7 +156,6 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         let end_cursor = router
             .ime_caret_rect(&cx, &layout)
             .expect("anchor published while composing");
-
         assert!(
             (mid_cursor.origin.x - 22.0).abs() < 0.01,
             "cursor after 'a' (byte 1) must anchor at x=1*10+12px padding=22, got {}",
@@ -166,19 +181,15 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, arrow_left());
-
         router.route(
             &mut cx,
             &layout,
             ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
-
         router.route(&mut cx, &layout, backspace());
-
         assert_eq!(value.get(), "é", "backspace must land on the shrunk buffer");
     });
 }
@@ -191,19 +202,15 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, ctrl_a());
-
         router.route(
             &mut cx,
             &layout,
             ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
-
         router.route(&mut cx, &layout, type_char("z"));
-
         let result = value.get();
         assert!(
             result.contains('z'),
@@ -224,9 +231,7 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
-
         value.set(String::from("replaced by app"));
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -235,7 +240,6 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
             ime_event(ImeEvent::Preedit("!".into(), Some((0, 1)))),
         );
         router.route(&mut cx, &layout, ime_event(ImeEvent::Commit("!".into())));
-
         let result = value.get();
         assert!(
             !result.contains("initial"),
@@ -268,7 +272,6 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
         let root = cx.add(text_edit(value));
         let layout = compute(&mut cx, root);
         let _ = compute(&mut cx, other);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -277,9 +280,7 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
             ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
-
         router.set_focus(&mut cx, Some(other));
-
         assert_eq!(
             displayed_text(&mut cx, root),
             "",
@@ -298,7 +299,6 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value).disabled(disabled));
         let layout = compute(&mut cx, root);
-
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -307,9 +307,7 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
             ime_event(ImeEvent::Preedit("か".into(), Some((0, 3)))),
         );
         assert_eq!(displayed_text(&mut cx, root), "か");
-
         disabled.set(true);
-
         assert_eq!(
             displayed_text(&mut cx, root),
             "",
@@ -317,11 +315,9 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         );
     });
 }
-
 const fn ime_event(event: ImeEvent) -> ShellEvent {
     ShellEvent::Ime(event)
 }
-
 fn arrow_left() -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: Key::ArrowLeft.into(),
@@ -332,7 +328,6 @@ fn arrow_left() -> ShellEvent {
         text: None,
     }))
 }
-
 fn backspace() -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: Key::Backspace.into(),
@@ -343,7 +338,6 @@ fn backspace() -> ShellEvent {
         text: None,
     }))
 }
-
 fn ctrl_a() -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: LogicalKey::character("a"),
@@ -354,7 +348,6 @@ fn ctrl_a() -> ShellEvent {
         text: None,
     }))
 }
-
 fn type_char(ch: &str) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: LogicalKey::character(ch),
@@ -365,7 +358,6 @@ fn type_char(ch: &str) -> ShellEvent {
         text: Some(ch.to_string().into()),
     }))
 }
-
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     layout
@@ -373,7 +365,6 @@ fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
         .expect("layout computes");
     layout
 }
-
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();
     let text_node = find_text_node(cx, root).expect("editor has a text node");
@@ -392,7 +383,6 @@ fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
         _ => String::new(),
     }
 }
-
 fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
     let mut found = None;
     cx.visit_preorder(root, |id, node| {

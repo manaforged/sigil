@@ -5,8 +5,9 @@ first, and send a patch only when asked.
 
 ## Build
 
-Rust 1.90 or newer. On Linux, install the libraries that the desktop
-host links against:
+Use the Rust 1.98.1 toolchain pinned in `rust-toolchain.toml`. The
+declared minimum supported Rust version is 1.90. On Linux, install the
+libraries that the desktop host links against:
 
 ```bash
 sudo apt-get install libgtk-3-dev libudev-dev libasound2-dev \

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use crate::style::{NodeStyleExt, Px, StyleAtom};
 
 use super::super::shared::disabled_now;
@@ -80,7 +80,7 @@ pub(super) fn build_popup(
         open,
         cursor,
         disabled,
-        width,
+        width: width.map(|width| 2.0f32.mul_add(-(POPUP_PAD + 1.0), width).max(0.0)),
         trigger_height,
     };
     attach_options(popup, options, item_ctx, on_change, popup_h)
@@ -126,7 +126,8 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChang
         .label(label.clone())
         .layout(
             sized(LayoutStyle::flex_row(), ctx.width, OPTION_HEIGHT)
-                .padding(8.0)
+                .padding_x(8.0)
+                .align_items(AlignItems::Center)
                 .overflow_x(Overflow::Hidden),
         )
         .class("rounded-sm")
@@ -149,7 +150,13 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChang
         .child(
             text(label)
                 .layout(LayoutStyle::block().fill_width())
-                .class("text-on-surface"),
+                .style_reactive(move || {
+                    if ctx.selected.get() == idx {
+                        &[StyleAtom::TextThemeRef("on-accent")][..]
+                    } else {
+                        &[StyleAtom::TextThemeRef("on-surface")][..]
+                    }
+                }),
         )
 }
 

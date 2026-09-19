@@ -69,7 +69,7 @@ where
     );
     let mut visible = container().layout(
         spec.width.apply(
-            LayoutStyle::flex_column()
+            LayoutStyle::block()
                 .position(Position::Absolute)
                 .inset_top(top)
                 .inset_left(0.0)
@@ -197,7 +197,7 @@ where
     let mut strip = container()
         .layout(
             spec.width.apply(
-                LayoutStyle::flex_column()
+                LayoutStyle::block()
                     .position(Position::Absolute)
                     .inset_left(0.0)
                     .height(height),

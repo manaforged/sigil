@@ -93,7 +93,7 @@ fn spawn_pty_inner(program: &str) -> AppResult<Session> {
     use std::thread;
 
     use crate::tasks::{OwnerHandle, dispatcher};
-    use portable_pty::{Child, CommandBuilder, PtySize, native_pty_system};
+    use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
     let owner = OwnerHandle::current().ok_or_else(|| Error::new(NoOwner))?;
     let dispatcher = dispatcher();

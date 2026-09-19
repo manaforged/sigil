@@ -13,7 +13,12 @@ pub fn sidebar(child: impl IntoNode + 'static) -> NodeBuilder {
 pub fn sidebar_width(width: f32, child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::Navigation)
-        .layout(LayoutStyle::flex_column().width(width).fill())
+        .layout(
+            LayoutStyle::flex_column()
+                .width(width)
+                .fill_height()
+                .shrink(0.0),
+        )
         .class("bg-surface-hover")
         .child(child)
 }

@@ -227,3 +227,45 @@ fn overflow_hidden_scissors_image_pixels() {
         "{outside:?}"
     );
 }
+
+#[test]
+fn image_alpha_blends_color_and_coverage() {
+    let img = capture(
+        |cx| {
+            let mut row = container()
+                .layout(LayoutStyle::flex_row().fixed_size(40.0, 8.0))
+                .style(Style::new().bg(sigil::style::Rgba8 {
+                    r: 0,
+                    g: 0,
+                    b: 255,
+                    a: 255,
+                }));
+            for alpha in [0, 64, 128, 192, 255] {
+                let source = ImageSource::from_rgba8(8, 8, [255, 0, 0, alpha].repeat(64)).unwrap();
+                row = row.child(
+                    image(source).layout(LayoutStyle::block().fixed_size(8.0, 8.0).shrink(0.0)),
+                );
+            }
+            cx.add(row)
+        },
+        [40, 8],
+    );
+    for (index, expected) in [
+        [0, 0, 255, 255],
+        [137, 0, 224, 255],
+        [188, 0, 187, 255],
+        [225, 0, 136, 255],
+        [255, 0, 0, 255],
+    ]
+    .iter()
+    .enumerate()
+    {
+        let pixel = img.get_pixel(u32::try_from(index).unwrap() * 8 + 4, 4).0;
+        for (actual, channel) in pixel.into_iter().zip(expected) {
+            assert!(
+                actual.abs_diff(*channel) <= 2,
+                "alpha swatch {index}: {pixel:?}, expected {expected:?}"
+            );
+        }
+    }
+}

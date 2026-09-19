@@ -6,10 +6,8 @@ use crate::{AppResult, Error};
 
 pub use crate::widgets::{Clipboard, install};
 
-#[cfg(feature = "desktop")]
 pub struct OsClipboard;
 
-#[cfg(feature = "desktop")]
 impl Clipboard for OsClipboard {
     fn set(&self, text: &str) -> Result<(), crate::widgets::ClipError> {
         os_copy(text).map_err(crate::widgets::ClipError::new)
@@ -51,17 +49,14 @@ pub fn image() -> AppResult<Option<ImageSource>> {
     })
 }
 
-#[cfg(feature = "desktop")]
 fn os_copy(text: &str) -> AppResult<()> {
     with_handle(|clip| clip.set_text(text.to_owned()).map_err(Error::new))
 }
 
-#[cfg(feature = "desktop")]
 fn os_paste() -> AppResult<String> {
     with_handle(|clip| clip.get_text().map_err(Error::new))
 }
 
-#[cfg(any(feature = "desktop", feature = "clipboard-image"))]
 fn with_handle<R>(f: impl FnOnce(&mut arboard::Clipboard) -> AppResult<R>) -> AppResult<R> {
     use std::cell::RefCell;
 

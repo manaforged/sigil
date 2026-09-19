@@ -120,13 +120,18 @@ impl LayoutEngine {
             .cached_key
             .is_none_or(|key| key.cx_generation != cx.mutation_generation());
 
+        let resized = self.cached_key.is_some_and(|key| {
+            key.available != cache_key.available || key.scale_bits != cache_key.scale_bits
+        });
         let mirror_current = dirty.is_empty() && self.same_inputs(cache_key);
         self.seed_reactive_dirty(cx, &mut dirty, mirrored, mirror_current);
-        if mirrored && self.translate_moved(cx, &mut dirty)? > 0 && dirty.is_empty() {
+        if !resized && mirrored && self.translate_moved(cx, &mut dirty)? > 0 && dirty.is_empty() {
+            self.measure_viewport_overlays(cx, root, available)?;
             self.finish(cx, cache_key);
             return Ok(());
         }
-        let broadcast = !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
+        let broadcast =
+            resized || !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         if mirror_current {
             crate::profile::count("layout.resize");
             self.remeasure_and_publish(cx, root, available)?;
@@ -138,6 +143,7 @@ impl LayoutEngine {
             self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
         }
 
+        self.measure_viewport_overlays(cx, root, available)?;
         self.finish(cx, cache_key);
         Ok(())
     }
@@ -325,6 +331,9 @@ mod incremental;
 mod measure;
 mod overlays;
 mod sync;
+mod viewport;
+
+pub(crate) use viewport::ViewportOverlay;
 
 fn animated(node: &crate::kernel::Node) -> bool {
     node.get_extension::<StyleBinding>().is_some_and(|binding| {

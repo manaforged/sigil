@@ -1,3 +1,5 @@
+use std::cell::Cell;
+use std::rc::Rc;
 use std::time::Instant;
 
 use crate::animation_runtime::{active_count as active_animation_count, tick as tick_animations};
@@ -8,24 +10,27 @@ use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
 #[cfg(test)]
 use crate::layout::prelude::Size;
-use crate::reactive::{Runtime, next_interval_deadline, tick_intervals};
+use crate::reactive::{Runtime, next_interval_deadline};
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
 use crate::app::config::{AppConfig, PanicPolicy};
 use crate::app::embed::Host;
 use crate::app::error::{AppResult, Error};
-use crate::app::exit::{clear_exit, take_exit};
+use crate::app::exit::clear_exit;
 use crate::app::tree_root::TreeRoot;
 
 mod backend;
 mod event_wiring;
+mod frame;
 #[path = "scene_cache.rs"]
 mod scene_cache;
 
 use backend::{Backend, Surface};
-use event_wiring::{DrainCtx, EnsureSurfaceCtx, drain_events, ensure_surface, sync_ime};
-use scene_cache::{PaintRequest, SceneCache};
+use frame::frame_once;
+#[cfg(test)]
+use frame::{begin_effect, run_layout_if_dirty};
+use scene_cache::SceneCache;
 
 pub fn launch<C, T>(config: C, tree: T) -> AppResult<()>
 where
@@ -82,6 +87,8 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     shell.on_idle_deadline(next_interval_deadline);
 
     let panic_policy = config.panic_policy;
+    let failure = Rc::new(Cell::new(None));
+    let launch_failure = Rc::clone(&failure);
     finish(
         shell
             .run(move |shell| {
@@ -100,10 +107,16 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                     theme_watch: &theme_watch,
                     frame_state: &mut frame_state,
                 };
-                run_frame(panic_policy, frame);
+                if let Err(error) = run_frame(panic_policy, frame) {
+                    Runtime::recover_from_panic();
+                    launch_failure.set(Some(error));
+                    shell.request_exit();
+                    return;
+                }
                 request_animation_frame(shell, window_handle);
             })
-            .map_err(Error::new),
+            .map_err(Error::new)
+            .and_then(|()| failure.take().map_or(Ok(()), Err)),
     )
 }
 
@@ -235,16 +248,17 @@ const fn menu_hwnd(_shell: &WinitShell, _handle: WinitWindowHandle) -> Option<is
     None
 }
 
-fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) {
+fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) -> AppResult<()> {
     match policy {
         PanicPolicy::Abort => frame_once(ctx),
         PanicPolicy::Isolate => {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame_once(ctx)));
-            if let Err(payload) = result {
+            result.unwrap_or_else(|payload| {
                 let detail = panic_message(&*payload);
                 tracing::error!("sigil-app: frame isolated after panic: {detail}");
                 Runtime::recover_from_panic();
-            }
+                Ok(())
+            })
         }
     }
 }
@@ -258,160 +272,6 @@ fn panic_message(payload: &(dyn std::any::Any + Send)) -> &str {
         },
         |s| s,
     )
-}
-
-#[allow(
-    clippy::too_many_lines,
-    reason = "one sequential pass; splitting would scatter the ordering it documents"
-)]
-fn frame_once(ctx: FrameCtx<'_>) {
-    let FrameCtx {
-        config,
-        shell,
-        window_handle,
-        host,
-        router,
-        renderer,
-        surface,
-        viewport,
-        exit_requested,
-        async_rt,
-        a11y_action_rx,
-        theme_watch,
-        frame_state,
-    } = ctx;
-
-    crate::profile::begin_frame();
-    let effect = crate::profile::span("effect");
-    begin_effect(async_rt);
-
-    if let Some(watch) = theme_watch
-        && let Some(root) = host.root()
-        && crate::app::theme_file::drain(host.cx(), root, watch)
-    {
-        Runtime::mark_frame_dirty();
-    }
-
-    if let Some(theme) = crate::app::appearance::take()
-        && let Some(root) = host.root()
-        && let Some(node) = host.cx().get_mut(root)
-    {
-        node.attach(theme);
-        Runtime::mark_frame_dirty();
-    }
-
-    #[cfg(feature = "menu")]
-    if crate::app::menu::has_pending() {
-        let waker = shell.waker();
-        if let Err(error) = crate::app::menu::install(menu_hwnd(shell, window_handle), move || {
-            let _ = waker.wake();
-        }) {
-            tracing::error!("sigil-app: cannot install native menu: {error}");
-        }
-    }
-    #[cfg(feature = "tray")]
-    if crate::app::tray::has_pending() {
-        let waker = shell.waker();
-        crate::app::tray::install(move || {
-            let _ = waker.wake();
-        });
-    }
-
-    if tick_intervals() > 0 {
-        crate::profile::interact("interval");
-    }
-    ensure_surface(EnsureSurfaceCtx {
-        shell,
-        window_handle,
-        cx: host.cx(),
-        renderer,
-        surface,
-        viewport,
-        user_zoom: config.user_zoom,
-    });
-    #[cfg(feature = "menu")]
-    crate::app::menu::pump();
-    #[cfg(feature = "tray")]
-    crate::app::tray::pump();
-    if let Some((cx, layout, _)) = host.tree() {
-        drain_events(DrainCtx {
-            shell,
-            window_handle,
-            cx,
-            layout,
-            router,
-            surface,
-            renderer,
-            viewport,
-            config,
-            exit_requested,
-        });
-        event_wiring::drain_a11y_actions(a11y_action_rx, cx, router, layout);
-    }
-    if take_exit() {
-        *exit_requested = true;
-    }
-    let animation_advanced = frame_state.animation_clock.tick_active(Instant::now());
-    if animation_advanced {
-        crate::profile::interact("animation");
-    }
-    drop(effect);
-    Runtime::begin_layout();
-    let force_paint = shell.take_force_paint();
-    let layout_dirty = Runtime::frame_dirty();
-    {
-        let _layout = crate::profile::span("layout");
-        run_layout_if_dirty(layout_dirty, || {
-            if let Err(err) = host.layout(*viewport) {
-                tracing::warn!("sigil-app: layout recompute failed: {err}");
-            }
-        });
-    }
-    if let Some((cx, layout, _)) = host.tree() {
-        sync_ime(shell, window_handle, cx, layout, router);
-    }
-    Runtime::begin_paint();
-    let paint_dirty = Runtime::frame_dirty();
-    let paint_needed = force_paint || paint_dirty;
-    let allow_scene_replay = force_paint && !paint_dirty && !animation_advanced;
-    if allow_scene_replay {
-        crate::profile::interact("expose");
-    }
-    {
-        let _paint = crate::profile::span("paint");
-        let _ = paint_needed.then(|| {
-            if let Some((cx, _, root)) = host.tree() {
-                frame_state.scene_cache.paint(PaintRequest {
-                    cx,
-                    root,
-                    renderer,
-                    surface,
-                    viewport: *viewport,
-                    allow_replay: allow_scene_replay,
-                });
-            }
-        });
-    }
-    {
-        let _a11y = crate::profile::span("a11y");
-        if let Some((cx, layout, _)) = host.tree() {
-            event_wiring::publish_a11y(shell, cx, router, layout, paint_needed);
-        }
-    }
-    Runtime::end_frame();
-    crate::profile::tick_frame();
-}
-
-fn begin_effect(async_rt: &mut AsyncRuntime) {
-    Runtime::begin_effect();
-    let _drained = async_rt.pump();
-}
-
-fn run_layout_if_dirty(dirty: bool, layout_pass: impl FnOnce()) -> bool {
-    if dirty {
-        layout_pass();
-    }
-    dirty
 }
 
 #[doc(hidden)]

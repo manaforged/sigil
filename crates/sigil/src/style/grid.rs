@@ -10,11 +10,14 @@ pub fn grid(cell: f32) {
     CELL.with(|active| active.set(if cell > 0.0 { cell } else { 0.0 }));
 }
 
+pub(crate) fn cell_size() -> Option<f32> {
+    CELL.with(|active| (active.get() > 0.0).then_some(active.get()))
+}
+
 pub(crate) fn tokens() -> HashMap<String, ThemeValue> {
-    let cell = CELL.with(core::cell::Cell::get);
-    if cell <= 0.0 {
+    let Some(cell) = cell_size() else {
         return HashMap::new();
-    }
+    };
     let mut tokens = HashMap::new();
     for token in [
         "control-height-compact",

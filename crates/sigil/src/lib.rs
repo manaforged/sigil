@@ -125,7 +125,7 @@ pub mod prelude {
     #[cfg(feature = "pty")]
     pub use crate::Session;
     #[cfg(feature = "clipboard")]
-    pub use crate::clipboard::{copy, install, paste};
+    pub use crate::clipboard::{OsClipboard, copy, install, paste};
     pub use crate::interaction::InteractionState;
     #[cfg(feature = "desktop")]
     pub use crate::launch;
@@ -147,8 +147,8 @@ pub mod prelude {
         Orientation, PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
         ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, Side, SliderBuilder,
         SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn,
-        TableState, TabsBuilder, TextEditBuilder, TextFieldBuilder, ToastEntry, ToastLevel,
-        ToastQueue, ToggleBuilder, TooltipBuilder, TransportBuilder, TurnStripBuilder,
+        TableState, TabsBuilder, TextEditBuilder, TextEditState, TextFieldBuilder, ToastEntry,
+        ToastLevel, ToastQueue, ToggleBuilder, TooltipBuilder, TransportBuilder, TurnStripBuilder,
         VirtualListBuilder, avatar, axis_drag, badge, button, card, chart, checkbox, chip,
         code_edit, color_field, combobox, command_menu, date_field, divider_horizontal,
         divider_vertical, dot, drag_ghost, dropdown, field, floating_text, gauge, heatmap, html,

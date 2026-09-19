@@ -135,10 +135,7 @@ impl TextEditBuilder {
             TextEditRuntime::new(state, disabled, change, submit, clipboard, caret_visible);
 
         let user_overlay = style_accumulator.take_state_overlay();
-        let frame_h = layout_overrides
-            .height_hint()
-            .unwrap_or(super::render::DEFAULT_HEIGHT);
-        let node = build_base_node(&runtime, &placeholder, interaction, user_overlay, frame_h);
+        let node = build_base_node(&runtime, &placeholder, interaction, user_overlay);
         let node = interaction.install(attach_key_handlers(node, runtime.clone()));
         let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {

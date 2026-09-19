@@ -2,9 +2,9 @@ use std::rc::Rc;
 
 use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, LogicalKey, NodeEventsExt};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::Signal;
+use crate::reactive::{Signal, derived};
 use crate::style::{
     ClassSource, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
     StyleOverlay, StyleVariant, Theme, Tone, TransitionId,
@@ -228,6 +228,25 @@ fn checkbox_indicator(
     tone: Tone,
     interaction: InteractionState,
 ) -> NodeBuilder {
+    if let Some(cell) = crate::style::cell_size() {
+        return container()
+            .layout(LayoutStyle::block().fixed_size(cell * 4.0, cell))
+            .style_reactive(move || {
+                if disabled_now(disabled) {
+                    &[StyleAtom::Opacity(5_000)]
+                } else if interaction.focus_visible().get() {
+                    &[
+                        StyleAtom::BackgroundThemeRef("accent"),
+                        StyleAtom::TextThemeRef("on-accent"),
+                    ]
+                } else {
+                    &[]
+                }
+            })
+            .child(text(derived(move || {
+                if checked.get() { "[x]" } else { "[ ]" }.to_owned()
+            })));
+    }
     container()
         .layout(
             LayoutStyle::flex_row()

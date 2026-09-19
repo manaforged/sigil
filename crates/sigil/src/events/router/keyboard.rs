@@ -25,6 +25,7 @@ impl EventRouter {
         if route_tab_key(&mut self.focus, cx, layout, &event) {
             return;
         }
+        self.focus.focus_active_scope(cx, layout);
         self.dispatch_focused_key(cx, &mut event);
     }
 
@@ -42,7 +43,7 @@ impl EventRouter {
             .focus()
             .filter(|id| visible(cx, *id))
             .and_then(|id| cx.get(id))
-            .is_some_and(|node| node.a11y.role == Role::TextInput)
+            .is_some_and(|node| matches!(node.a11y.role, Role::TextInput | Role::PasswordInput))
     }
 }
 

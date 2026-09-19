@@ -16,7 +16,11 @@ use sigil::hal::{
 };
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
+use std::{env::temp_dir, process};
 use wgpu::TextureFormat;
+
+mod golden_support;
+use golden_support::gpu::read_pixels;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 
@@ -110,56 +114,10 @@ fn render(
         )
         .expect("render_command_scene_offscreen");
 
-    let raw = read_pixels(device, queue, &texture);
+    let raw = read_pixels(device, queue, &texture, W, H);
     let img = image::RgbaImage::from_raw(W, H, raw).expect("rgba");
-    img.save(format!("/tmp/swap_{label}.png")).expect("save");
-}
-
-fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture) -> Vec<u8> {
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let unpadded = W * 4;
-    let padded = unpadded.div_ceil(align) * align;
-    let buf = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("readback"),
-        size: u64::from(padded) * u64::from(H),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buf,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded),
-                rows_per_image: Some(H),
-            },
-        },
-        wgpu::Extent3d {
-            width: W,
-            height: H,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-    let slice = buf.slice(..);
-    slice.map_async(wgpu::MapMode::Read, |_| {});
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("poll");
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let mut out = Vec::with_capacity((unpadded * H) as usize);
-    for row in 0..H {
-        let start = (row * padded) as usize;
-        out.extend_from_slice(&mapped[start..start + unpadded as usize]);
-    }
-    out
+    img.save(temp_dir().join(format!("swap_{}_{label}.png", process::id())))
+        .expect("save");
 }
 
 #[test]

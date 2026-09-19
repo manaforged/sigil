@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use crate::hal::{HitPosition, Point, Rect};
 use crate::reactive::Signal;
 use crate::style::TextStyle;
 
@@ -29,9 +30,23 @@ pub struct CaretGeometry {
 }
 
 pub trait TextGeometry {
-    fn hit(&self, text: &str, style: &TextStyle, x: f32) -> usize;
+    fn hit(&self, text: &str, style: &TextStyle, width: Option<f32>, point: Point) -> HitPosition;
 
-    fn caret(&self, text: &str, style: &TextStyle, byte: usize) -> CaretGeometry;
+    fn caret(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        position: HitPosition,
+    ) -> CaretGeometry;
+
+    fn selection_rects(
+        &self,
+        text: &str,
+        style: &TextStyle,
+        width: Option<f32>,
+        selection: (HitPosition, HitPosition),
+    ) -> Vec<Rect>;
 }
 
 thread_local! {

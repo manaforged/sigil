@@ -45,7 +45,8 @@ impl ReadyState {
 
 impl DeviceState {
     pub(crate) fn new() -> Self {
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+        let instance =
+            wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
         Self::Uninitialized(instance)
     }
 
@@ -94,8 +95,9 @@ impl DeviceState {
         surface: Option<&wgpu::Surface<'_>>,
     ) -> Result<(), RendererError> {
         if matches!(self, Self::Uninitialized(_)) {
-            let placeholder =
-                wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+            let placeholder = wgpu::Instance::new(
+                wgpu::InstanceDescriptor::new_without_display_handle_from_env(),
+            );
             let instance = match core::mem::replace(self, Self::Uninitialized(placeholder)) {
                 Self::Uninitialized(i) => i,
                 Self::Ready(_) => unreachable!(),

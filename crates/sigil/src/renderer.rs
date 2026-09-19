@@ -1,10 +1,3 @@
-#![cfg_attr(
-    feature = "windowed",
-    allow(
-        unused_crate_dependencies,
-        reason = "the feature supplies dependencies to windowed examples"
-    )
-)]
 #[cfg(windows)]
 use windows_core as _;
 

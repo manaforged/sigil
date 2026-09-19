@@ -3,3 +3,5 @@ mod builder;
 
 pub use bar::{MenuBarBuilder, menu_bar};
 pub use builder::{MenuBuilder, MenuItem, menu};
+
+pub(crate) use builder::PANEL_INSET;

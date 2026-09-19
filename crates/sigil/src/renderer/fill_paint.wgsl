@@ -161,14 +161,14 @@ fn dash_mask(local: vec2<f32>, width: f32, style: f32, dash_gap: f32) -> f32 {
     return select(0.0, 1.0, arc - floor(arc / period) * period < dash_len);
 }
 
-fn stroke_mask(d: f32, local: vec2<f32>, stroke_data: vec4<f32>) -> f32 {
+fn stroke_mask(d: f32, local: vec2<f32>, stroke_data: vec4<f32>, aa: f32) -> f32 {
     let width = stroke_data.x;
     if width <= 0.0 {
         return 0.0;
     }
     let offset = stroke_offset(width, stroke_data.z);
     let stroke_d = abs(d - offset) - width * 0.5;
-    let alpha = 1.0 - smoothstep(-0.5, 0.5, stroke_d);
+    let alpha = 1.0 - smoothstep(-aa, aa, stroke_d);
     return alpha * dash_mask(local, width, stroke_data.y, stroke_data.w);
 }
 
@@ -208,7 +208,8 @@ fn checker_color(local: vec2<f32>, pa: vec4<f32>, pb: vec4<f32>) -> vec4<f32> {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let d = rounded_rect_sdf(in.local, in.half_size, in.corner_radii);
-    let coverage = 1.0 - smoothstep(-0.5, 0.5, d);
+    let aa = max(fwidth(d) * 0.5, 0.0001);
+    let coverage = 1.0 - smoothstep(-aa, aa, d);
 
     var color: vec4<f32>;
     if in.fill_kind == FILL_KIND_SLASH {
@@ -227,7 +228,7 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let dither = hash_xy(in.clip.xy) * (2.0 / 255.0) - (1.0 / 255.0);
     let rgb = clamp(color.rgb * scale + vec3<f32>(dither * alpha), vec3<f32>(0.0), vec3<f32>(1.0));
     let fill = vec4<f32>(rgb, alpha);
-    let amount = stroke_mask(d, in.local, in.stroke_meta);
+    let amount = stroke_mask(d, in.local, in.stroke_meta, aa);
     let stroke = vec4<f32>(in.stroke_params.rgb, in.stroke_params.a * in.opacity);
     return overlay_stroke(fill, stroke, amount);
 }

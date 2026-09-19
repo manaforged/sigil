@@ -7,7 +7,7 @@
 
 use std::rc::Rc;
 
-use sigil::hal::Rect;
+use sigil::hal::{HitPosition, Rect, TextAffinity};
 use sigil::layout::{TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::renderer::{CommandScene, SceneCommand, emit_scene};
@@ -24,7 +24,15 @@ fn caret_uses_the_fields_resolved_typography() {
             "text-sm must paint at 14px (Tailwind scale)",
         );
 
-        let expected = sigil::app::EngineGeometry::new().caret(VALUE, &text.run.style, VALUE.len());
+        let expected = sigil::app::EngineGeometry::new().caret(
+            VALUE,
+            &text.run.style,
+            None,
+            HitPosition {
+                byte_index: VALUE.len(),
+                affinity: TextAffinity::Downstream,
+            },
+        );
         let expected_x = text.run.rect.origin.x + expected.x;
         let caret = nearest_caret(&scene, expected_x);
 

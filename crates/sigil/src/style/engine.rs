@@ -1,6 +1,7 @@
+use crate::style::scale::ScaleRole;
 use crate::style::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
-    TextLineHeight, TextStyle, Theme, Tone,
+    TextLineHeight, TextStyle, Theme, ThemeValue, Tone,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -71,8 +72,20 @@ impl<'theme> StyleEngine<'theme> {
     }
 
     #[must_use]
-    const fn tone_step(&self, step: u8) -> Rgba8 {
-        self.theme.scale(self.tone.scale_role()).step(step)
+    fn tone_step(&self, step: u8) -> Rgba8 {
+        let role = self.tone.scale_role();
+        let prefix = match role {
+            ScaleRole::Gray => "gray",
+            ScaleRole::Accent => "accent",
+            ScaleRole::Success => "success",
+            ScaleRole::Warn => "warn",
+            ScaleRole::Error => "error",
+            ScaleRole::Info => "info",
+        };
+        match self.theme.runtime_tokens.get(&format!("{prefix}-{step}")) {
+            Some(ThemeValue::Color(color)) => *color,
+            _ => self.theme.scale(role).step(step),
+        }
     }
 
     #[must_use]

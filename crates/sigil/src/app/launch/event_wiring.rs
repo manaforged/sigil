@@ -1,4 +1,4 @@
-use crate::events::EventRouter;
+use crate::events::{EventRouter, dispatch};
 use crate::hal::{
     Key, KeyPhase, PhysicalSize, PointerPhase, Scale, Shell as _, ShellEvent, WindowEvent,
 };
@@ -8,6 +8,7 @@ use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
 use crate::app::config::AppConfig;
+use crate::app::error::AppResult;
 use std::sync::Arc;
 
 use super::backend::{Backend, Surface};
@@ -38,7 +39,7 @@ pub(super) struct EnsureSurfaceCtx<'a> {
     pub(super) user_zoom: f32,
 }
 
-pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
+pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     let EnsureSurfaceCtx {
         shell,
         window_handle,
@@ -49,24 +50,21 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) {
         user_zoom,
     } = ctx;
     if surface.is_some() {
-        return;
+        return Ok(());
     }
     let Some(window) = shell.window_for(window_handle) else {
-        return;
+        return Ok(());
     };
 
     let scale = scale_from_f64(window.scale_factor() * f64::from(user_zoom));
     cx.set_scale(scale);
     let logical = logical_size_from_viewport(*viewport);
 
-    match renderer.create_surface(Arc::clone(window), scale.to_physical(logical)) {
-        Ok(new_surface) => {
-            tracing::info!("sigil-app: rendering with the {} backend", renderer.name());
-            *surface = Some(new_surface);
-            Runtime::mark_frame_dirty();
-        }
-        Err(err) => tracing::warn!("sigil-app: create_surface failed: {err}"),
-    }
+    let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;
+    tracing::info!("sigil-app: rendering with the {} backend", renderer.name());
+    *surface = Some(new_surface);
+    Runtime::mark_frame_dirty();
+    Ok(())
 }
 
 pub(super) fn sync_ime(
@@ -203,6 +201,12 @@ pub(super) fn drain_a11y_actions(
 }
 
 fn adjust_value(cx: &Cx, target: crate::kernel::NodeId, increase: bool) {
+    if dispatch(cx, target, |handlers| {
+        handlers.invoke_value_adjustment(increase)
+    }) == Some(true)
+    {
+        return;
+    }
     let Some(node) = cx.get(target) else {
         return;
     };

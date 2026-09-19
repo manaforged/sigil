@@ -11,7 +11,7 @@ use sigil::prelude::*;
 use sigil::renderer::emit_scene;
 use std::path::{Path, PathBuf};
 
-mod gpu;
+pub(crate) mod gpu;
 use gpu::{render_scene_to_image, request_device};
 mod interaction;
 use interaction::drive_state;

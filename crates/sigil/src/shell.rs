@@ -31,6 +31,7 @@ pub enum ShellError {
     EventLoopClosed,
     WakerPoisoned,
     AlreadyRun,
+    Window(String),
 }
 
 impl core::fmt::Display for ShellError {
@@ -40,6 +41,7 @@ impl core::fmt::Display for ShellError {
             Self::EventLoopClosed => f.write_str("event loop already exited"),
             Self::WakerPoisoned => f.write_str("waker mutex poisoned"),
             Self::AlreadyRun => f.write_str("shell run called twice"),
+            Self::Window(err) => write!(f, "window creation failed: {err}"),
         }
     }
 }

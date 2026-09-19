@@ -2,13 +2,13 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::events::prelude::{ImeEvent, NodeEventsExt};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
-use crate::style::TextStyle;
 
 use super::handlers::{TextEditRuntime, commit, write_value};
-use super::render::{CONTENT_PADDING_X, CONTENT_PADDING_Y, floor_char_boundary, splice_preedit};
+use super::render::{content_padding, floor_char_boundary, splice_preedit};
 
 #[derive(Clone)]
 pub(super) struct ImeState {
@@ -101,7 +101,11 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let disabled = runtime.disabled;
     let value = runtime.value;
     let caret = runtime.caret;
+    let text_style = runtime.text_style;
+    let content_size = runtime.content_size;
+    let scroll_y = runtime.scroll_y;
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
+    let (padding_x, padding_y) = content_padding();
     effect(move || {
         let preedit_text = preedit.get();
         let composing = !preedit_text.is_empty();
@@ -117,11 +121,21 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
             floor_char_boundary(&preedit_text, end)
         });
         let effective_cursor = base_caret + cursor_in_preedit;
+        let width = (content_size.get().0 > 0.0).then_some(content_size.peek().0);
+        let style = text_style.get();
         let rect = with_text_geometry(|engine| {
-            let pos = engine.caret(&composed, &TextStyle::default(), effective_cursor);
+            let pos = engine.caret(
+                &composed,
+                &style,
+                width,
+                HitPosition {
+                    byte_index: effective_cursor,
+                    affinity: TextAffinity::Downstream,
+                },
+            );
             CaretGeometry {
-                x: (pos.x + CONTENT_PADDING_X).max(0.0),
-                top: pos.top + CONTENT_PADDING_Y,
+                x: (pos.x + padding_x).max(0.0),
+                top: pos.top + padding_y - scroll_y.get(),
                 height: pos.height,
             }
         });

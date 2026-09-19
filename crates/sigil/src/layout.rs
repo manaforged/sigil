@@ -30,6 +30,7 @@ mod text_style;
 
 pub use builder_ext::LayoutBuilderExt;
 pub use engine::LayoutEngine;
+pub(crate) use engine::ViewportOverlay;
 pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use error::LayoutError;
 pub use intent::LayoutStyle;

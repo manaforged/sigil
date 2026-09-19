@@ -217,7 +217,7 @@ pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {
                 .gap(8.0)
                 .fill_width(),
         )
-        .class("rounded-md bg-surface")
+        .class("rounded-md bg-surface border border-gray-6")
         .child(child)
 }
 
@@ -239,7 +239,11 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
                 .shrink(0.0),
         )
         .class("rounded-full bg-accent-9")
-        .child(text(content).class("text-xs font-medium").hittable(false))
+        .child(
+            text(content)
+                .class("text-xs font-medium text-on-accent")
+                .hittable(false),
+        )
 }
 
 mod sidebar;

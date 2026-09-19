@@ -101,8 +101,9 @@ impl Spring {
 
     #[must_use]
     pub fn is_settled(&self) -> bool {
-        (self.value - self.target).abs() < self.value_epsilon
-            && self.velocity.abs() < self.velocity_epsilon
+        let precision = f32::EPSILON * self.value.abs().max(self.target.abs());
+        (self.value - self.target).abs() < self.value_epsilon.max(precision)
+            && self.velocity.abs() < self.velocity_epsilon.max(precision / Self::MAX_SUBSTEP_DT)
     }
 
     const MAX_SUBSTEP_DT: f32 = 1.0 / 120.0;

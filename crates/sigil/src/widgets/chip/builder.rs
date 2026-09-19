@@ -81,7 +81,7 @@ impl ChipBuilder {
                 "rounded-sm text-xs"
             })
             .class(chip_class(self.tone))
-            .child(crate::kernel::text(self.label));
+            .child(crate::kernel::text(self.label).nowrap());
         if let Some(activate) = activate {
             let interaction = InteractionState::new(true);
             let pointer_activate = Rc::clone(&activate);

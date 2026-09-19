@@ -5,10 +5,12 @@ It does not build wgpu or winit.
 
 ## Install
 
-```toml
-[dependencies]
-sigil-tui = { git = "https://github.com/manaforged/sigil", branch = "main" }
-sigil-gui = { git = "https://github.com/manaforged/sigil", branch = "main", default-features = false }
+Sigil is not published on crates.io. The repository is currently private;
+you need GitHub access and Git authentication to use this dependency.
+
+```bash
+cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
+cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
 ```
 
 `sigil-gui` with `--no-default-features` provides `sigil::prelude` and

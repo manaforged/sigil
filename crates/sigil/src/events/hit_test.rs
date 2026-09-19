@@ -1,8 +1,12 @@
 use crate::hal::{Point, Rect};
 use crate::kernel::{Cx, NodeId, TopLayer};
-use crate::layout::LayoutEngine;
+use crate::layout::{LayoutEngine, LayoutResult};
 use crate::style::{StyleBinding, Transform2D};
 use smallvec::SmallVec;
+
+#[cfg(test)]
+#[path = "hit_test_tests.rs"]
+mod tests;
 
 pub(crate) type NodePath = SmallVec<[NodeId; 64]>;
 
@@ -94,7 +98,8 @@ impl HitTestCache {
                 (item.has_rect
                     && item.hittable
                     && contains(item.rect, position)
-                    && visible(cx, item.id))
+                    && visible(cx, item.id)
+                    && inside_clips(cx, item.id, position))
                 .then_some(item.id)
             });
         }
@@ -114,7 +119,10 @@ impl HitTestCache {
                 continue;
             }
             let local = self.position_at(cx, index, position);
-            if local.is_some_and(|point| contains(item.rect, point)) && visible(cx, item.id) {
+            if local.is_some_and(|point| contains(item.rect, point))
+                && visible(cx, item.id)
+                && inside_clips(cx, item.id, position)
+            {
                 return Some(item.id);
             }
         }
@@ -177,6 +185,29 @@ pub(crate) fn visible(cx: &Cx, target: NodeId) -> bool {
             return false;
         }
         current = cx.parent(id);
+    }
+    true
+}
+
+fn inside_clips(cx: &Cx, target: NodeId, position: Point) -> bool {
+    let mut current = target;
+    while let Some(node) = cx.get(current) {
+        if node.get_extension::<TopLayer>().is_some() {
+            break;
+        }
+        let Some(parent) = cx.parent(current) else {
+            break;
+        };
+        if let Some(bounds) = cx
+            .get(parent)
+            .and_then(|ancestor| ancestor.get_extension::<LayoutResult>())
+            && bounds.clips()
+            && !local_position(cx, parent, position)
+                .is_some_and(|point| contains(bounds.rect(), point))
+        {
+            return false;
+        }
+        current = parent;
     }
     true
 }

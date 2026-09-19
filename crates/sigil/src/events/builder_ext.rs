@@ -266,7 +266,7 @@ fn with_ime_handlers(
     })
 }
 
-fn with_handlers(
+pub(crate) fn with_handlers(
     builder: NodeBuilder,
     mutate: impl FnOnce(&mut EventHandlers) + 'static,
 ) -> NodeBuilder {

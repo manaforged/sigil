@@ -6,10 +6,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{
-    AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, container,
-    queue_announcement, text,
+    AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, TopLayer,
+    container, queue_announcement, text,
 };
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::ViewportOverlay;
+use crate::layout::prelude::{
+    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Position,
+};
 use crate::reactive::{Signal, effect_named, on_cleanup, signal};
 use crate::style::{
     DisplayKind, FocusRing, NodeStyleExt, Style, StyleAccess, StyleAtom, TransitionId,
@@ -23,7 +26,6 @@ const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
 const DIALOG_PADDING: f32 = 16.0;
 const TITLE_HEIGHT: f32 = 24.0;
-const BACKDROP_SIZE: f32 = 4_096.0;
 
 static BACKDROP_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("scrim"),
@@ -31,7 +33,7 @@ static BACKDROP_BASE: &[StyleAtom] = &[
 ];
 
 static DIALOG_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::BackgroundThemeRef("field"),
     StyleAtom::Transition(MODAL_TRANSITION),
 ];
 
@@ -149,6 +151,8 @@ impl ModalBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
             .label(root_name)
+            .with(TopLayer)
+            .with(ViewportOverlay)
             .layout(root_layout(self.side))
             .style_reactive(move || show_display(show))
             .child(backdrop)
@@ -250,18 +254,25 @@ fn root_layout(side: Option<Side>) -> LayoutStyle {
         Some(Side::Left) => (AlignItems::Stretch, JustifyContent::Start),
         Some(Side::Right | Side::Bottom) => (AlignItems::Stretch, JustifyContent::End),
     };
-    root.fill().align_items(align).justify_content(justify)
+    root.fill()
+        .position(Position::Absolute)
+        .inset(0.0)
+        .padding(DIALOG_PADDING)
+        .align_items(align)
+        .justify_content(justify)
 }
 
 fn build_backdrop(show: Signal<bool>, dismiss_on_backdrop: bool) -> NodeBuilder {
     let mut backdrop = container()
         .role(Role::GenericContainer)
+        .hittable(true)
+        .with(ViewportOverlay)
         .layout(
             LayoutStyle::block()
                 .position(Position::Absolute)
                 .inset_top(0.0)
                 .inset_left(0.0)
-                .fixed_size(BACKDROP_SIZE, BACKDROP_SIZE),
+                .fill(),
         )
         .class(BACKDROP_BASE)
         .style_reactive(move || show_display(show));
@@ -339,7 +350,8 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .gap(8.0)
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
-        .shrink(0.0);
+        .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
+        .shrink(1.0);
     match side {
         None => base,
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
@@ -349,8 +361,8 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
 
 fn dialog_title(title: TextContent) -> impl IntoNode {
     text(title)
-        .layout(LayoutStyle::block().height(TITLE_HEIGHT))
-        .class("text-on-surface")
+        .layout(LayoutStyle::block().fill_width().height(TITLE_HEIGHT))
+        .class("text-lg font-medium text-on-surface")
 }
 
 fn accessible_name(title: Option<&TextContent>) -> AccessibleName {

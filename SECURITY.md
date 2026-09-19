@@ -1,8 +1,9 @@
 # Security
 
-Report a vulnerability through GitHub's private vulnerability reporting
-on this repository (Security tab, "Report a vulnerability"). Do not
-open a public issue.
+Report vulnerabilities privately to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
+When GitHub private reporting is available, you can also use the
+repository's Security tab and select "Report a vulnerability".
+Do not open a public issue.
 
 ## Supported versions
 

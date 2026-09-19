@@ -43,14 +43,7 @@ fn joining_lines_and_inserting_before_marks_keeps_a_grapheme_boundary() {
 }
 
 #[test]
-fn vertical_and_word_movement_preserve_combining_characters() {
-    let mut edit = TextEdit::new("A👍🏽B\nAe\u{301}B".to_string());
-    edit.move_left();
-    edit.move_up();
-    assert_eq!(edit.caret(), "A👍🏽".len());
-    edit.move_down();
-    edit.backspace();
-    assert_eq!(edit.as_str(), "A👍🏽B\nAB");
+fn word_movement_preserves_combining_characters() {
     let mut words = TextEdit::new_at("e\u{301} next".to_string(), 0);
     words.move_word_right();
     assert_eq!(words.caret(), "e\u{301}".len());
@@ -134,79 +127,6 @@ fn sync_external_is_a_no_op_when_buffer_already_matches() {
         edit.selection(),
         Some(3),
         "matching external value must not disturb selection"
-    );
-}
-
-#[test]
-fn move_up_down_keeps_byte_column_across_lines() {
-    let mut edit = TextEdit::new("abc\nde\nfghi".to_owned());
-    edit.place_caret(6);
-    edit.move_up();
-    assert_eq!(edit.caret(), 2, "up keeps column 2 on line 0");
-    edit.move_down();
-    assert_eq!(edit.caret(), 6, "down returns to line 1 column 2");
-    edit.move_down();
-    assert_eq!(edit.caret(), 9, "down to line 2 column 2");
-    edit.move_down();
-    assert_eq!(edit.caret(), edit.len(), "past last line clamps to end");
-}
-
-#[test]
-fn move_up_clamps_column_to_shorter_line_end() {
-    let mut edit = TextEdit::new("a\nlongline".to_owned());
-    edit.place_caret(6);
-    edit.move_up();
-    assert_eq!(edit.caret(), 1, "column clamps to the shorter line's end");
-}
-
-#[test]
-fn page_up_down_jumps_ten_lines() {
-    let buffer = (0..25)
-        .map(|i| format!("l{i:02}"))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let mut edit = TextEdit::new(buffer);
-    edit.place_caret(edit.len());
-    edit.move_page_up();
-    assert_eq!(edit.caret(), 59, "page up lands ten lines earlier");
-    edit.move_page_down();
-    assert_eq!(edit.caret(), edit.len(), "page down returns to the end");
-    edit.place_caret(0);
-    edit.move_page_up();
-    assert_eq!(edit.caret(), 0, "page up from the first line stays at 0");
-}
-
-#[test]
-fn move_up_from_first_line_goes_to_start() {
-    let mut edit = TextEdit::new("abc\ndef".to_owned());
-    edit.place_caret(2);
-    edit.move_up();
-    assert_eq!(edit.caret(), 0, "above the first line is byte 0");
-}
-
-#[test]
-fn vertical_moves_never_split_multibyte_graphemes() {
-    let mut edit = TextEdit::new("é\nab".to_owned());
-    edit.place_caret(4);
-    edit.move_up();
-    let caret = edit.caret();
-    assert!(
-        caret == 0 || caret == 2,
-        "target floors to a boundary, got {caret}"
-    );
-    assert!(edit.as_str().is_char_boundary(caret));
-}
-
-#[test]
-fn shift_down_extends_selection_to_next_line() {
-    let mut edit = TextEdit::new("ab\ncd".to_owned());
-    edit.place_caret(1);
-    edit.shift_down();
-    assert_eq!(edit.caret(), 4, "caret lands same column on next line");
-    assert_eq!(
-        edit.selected_text(),
-        Some("b\nc"),
-        "selection spans the line break"
     );
 }
 

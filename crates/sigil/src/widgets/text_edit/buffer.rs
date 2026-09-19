@@ -2,8 +2,16 @@
 
 use unicode_segmentation::UnicodeSegmentation;
 
+#[path = "buffer_helpers.rs"]
+mod helpers;
+
+use helpers::{
+    clamp_to_len_boundary, line_end, line_start, next_boundary, previous_boundary, selection_range,
+    word_end_after, word_start_before,
+};
+
 const MAX_HISTORY: usize = 100;
-const PAGE_LINES: isize = 10;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) struct TextEdit {
     buffer: String,
@@ -211,54 +219,6 @@ impl TextEdit {
         self.debug_assert_invariants();
     }
 
-    pub(crate) fn move_up(&mut self) {
-        self.selection = None;
-        self.caret = vertical_target(&self.buffer, self.caret, -1);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn move_down(&mut self) {
-        self.selection = None;
-        self.caret = vertical_target(&self.buffer, self.caret, 1);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_up(&mut self) {
-        self.selection.get_or_insert(self.caret);
-        self.caret = vertical_target(&self.buffer, self.caret, -1);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_down(&mut self) {
-        self.selection.get_or_insert(self.caret);
-        self.caret = vertical_target(&self.buffer, self.caret, 1);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn move_page_up(&mut self) {
-        self.selection = None;
-        self.caret = vertical_target(&self.buffer, self.caret, -PAGE_LINES);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn move_page_down(&mut self) {
-        self.selection = None;
-        self.caret = vertical_target(&self.buffer, self.caret, PAGE_LINES);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_page_up(&mut self) {
-        self.selection.get_or_insert(self.caret);
-        self.caret = vertical_target(&self.buffer, self.caret, -PAGE_LINES);
-        self.debug_assert_invariants();
-    }
-
-    pub(crate) fn shift_page_down(&mut self) {
-        self.selection.get_or_insert(self.caret);
-        self.caret = vertical_target(&self.buffer, self.caret, PAGE_LINES);
-        self.debug_assert_invariants();
-    }
-
     pub(crate) fn shift_home(&mut self) {
         if self.caret == 0 {
             return;
@@ -416,126 +376,4 @@ impl TextEdit {
             debug_assert!(self.buffer.is_char_boundary(anchor));
         }
     }
-}
-
-fn clamp_to_len_boundary(text: &str, byte: usize) -> usize {
-    if byte >= text.len() {
-        return text.len();
-    }
-    text.grapheme_indices(true)
-        .map(|(index, _)| index)
-        .rfind(|index| *index <= byte)
-        .unwrap_or(0)
-}
-
-const fn selection_range(anchor: usize, caret: usize) -> (usize, usize) {
-    if anchor < caret {
-        (anchor, caret)
-    } else {
-        (caret, anchor)
-    }
-}
-
-fn previous_boundary(buffer: &str, caret: usize) -> Option<usize> {
-    if caret == 0 {
-        return None;
-    }
-    buffer[..caret]
-        .grapheme_indices(true)
-        .next_back()
-        .map(|(index, _)| index)
-}
-
-fn next_boundary(buffer: &str, caret: usize) -> Option<usize> {
-    if caret >= buffer.len() {
-        return None;
-    }
-    buffer[caret..]
-        .grapheme_indices(true)
-        .nth(1)
-        .map_or(Some(buffer.len()), |(index, _)| Some(caret + index))
-}
-
-fn line_start(buffer: &str, caret: usize) -> usize {
-    buffer[..caret].rfind('\n').map_or(0, |index| index + 1)
-}
-
-fn line_end(buffer: &str, caret: usize) -> usize {
-    buffer[caret..]
-        .find('\n')
-        .map_or(buffer.len(), |index| caret + index)
-}
-
-fn word_start_before(buffer: &str, caret: usize) -> usize {
-    let mut chars = buffer[..caret].grapheme_indices(true).rev().peekable();
-    let mut start = caret;
-    while let Some((index, ch)) = chars.peek().copied() {
-        if word(ch) {
-            break;
-        }
-        start = index;
-        chars.next();
-    }
-    while let Some((index, ch)) = chars.peek().copied() {
-        if !word(ch) {
-            break;
-        }
-        start = index;
-        chars.next();
-    }
-    start
-}
-
-fn word_end_after(buffer: &str, caret: usize) -> usize {
-    let mut end = caret;
-    let mut chars = buffer[caret..].grapheme_indices(true).peekable();
-    while let Some((index, ch)) = chars.peek().copied() {
-        if word(ch) {
-            break;
-        }
-        end = caret + index + ch.len();
-        chars.next();
-    }
-    while let Some((index, ch)) = chars.peek().copied() {
-        if !word(ch) {
-            break;
-        }
-        end = caret + index + ch.len();
-        chars.next();
-    }
-    end
-}
-
-fn word(text: &str) -> bool {
-    text.chars().any(|ch| ch.is_alphanumeric() || ch == '_')
-}
-
-fn vertical_target(buffer: &str, caret: usize, dir: isize) -> usize {
-    let mut starts = vec![0_usize];
-    for (index, byte) in buffer.bytes().enumerate() {
-        if byte == b'\n' {
-            starts.push(index + 1);
-        }
-    }
-    let line_index = starts.partition_point(|start| *start <= caret) - 1;
-    let target_index = line_index.cast_signed() + dir;
-    if target_index < 0 {
-        return 0;
-    }
-    let Ok(target_index) = usize::try_from(target_index) else {
-        return 0;
-    };
-    let Some(&target_start) = starts.get(target_index) else {
-        return buffer.len();
-    };
-    let column = buffer[line_start(buffer, caret)..caret]
-        .graphemes(true)
-        .count();
-    let line_end = starts
-        .get(target_index + 1)
-        .map_or(buffer.len(), |end| end.saturating_sub(1));
-    buffer[target_start..line_end]
-        .grapheme_indices(true)
-        .nth(column)
-        .map_or(line_end, |(index, _)| target_start + index)
 }

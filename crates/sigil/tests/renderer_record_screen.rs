@@ -16,7 +16,8 @@ use std::sync::mpsc;
 use pollster::FutureExt;
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
-    CommandScene, CornerRadii, SceneBuilder, SceneRectStyle, ScreenSubmission, WgpuRenderer,
+    CommandScene, CornerRadii, OffscreenTarget, SceneBuilder, SceneRectStyle, ScreenSubmission,
+    WgpuRenderer,
 };
 use sigil::style::Rgba8;
 
@@ -41,10 +42,7 @@ fn ordering_scene() -> CommandScene {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn record_screen_orders_draws_and_matches_submit_screen() {
-    let Some((device, queue)) = try_device() else {
-        println!("no adapter — skipping record_screen test");
-        return;
-    };
+    let (device, queue) = try_device().expect("GPU device required");
     let scene = ordering_scene();
 
     let recorded = {
@@ -98,10 +96,7 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn caller_owned_device_does_not_initialize_a_second_device() {
-    let Some((device, queue)) = try_device() else {
-        println!("no adapter — skipping caller-owned-device test");
-        return;
-    };
+    let (device, queue) = try_device().expect("GPU device required");
     let texture = capture_texture(&device);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let mut renderer = WgpuRenderer::new().expect("renderer");
@@ -114,6 +109,30 @@ fn caller_owned_device_does_not_initialize_a_second_device() {
         renderer.device().is_none(),
         "a caller-owned device must not initialize a redundant renderer device"
     );
+}
+
+#[test]
+#[ignore = "requires a GPU adapter"]
+fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
+    let (device, queue) = try_device().expect("GPU device required");
+    let texture = capture_texture(&device);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let mut renderer = WgpuRenderer::new().expect("renderer");
+    let target = submission(&device, &queue, &view);
+    renderer
+        .render_command_scene_offscreen(
+            OffscreenTarget::from(&target),
+            &ordering_scene(),
+            Color::BLACK,
+        )
+        .expect("offscreen capture");
+    assert!(
+        renderer.device().is_none(),
+        "capture allocated a second device"
+    );
+    let pixels = read_pixels(&device, &queue, &texture);
+    assert_eq!(px(&pixels, W / 2, H / 4), [30, 30, 220, 255]);
+    assert_eq!(px(&pixels, W / 2, 3 * H / 4), [220, 30, 30, 255]);
 }
 
 const fn solid(r: u8, g: u8, b: u8) -> SceneRectStyle {
@@ -137,7 +156,8 @@ fn submission<'a>(
 }
 
 fn try_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+    let instance =
+        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,

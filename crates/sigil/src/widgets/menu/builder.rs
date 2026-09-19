@@ -2,11 +2,11 @@ use std::rc::Rc;
 
 use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, MouseButton, NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TopLayer, container, text};
+use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, Role, TopLayer, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
 use crate::style::{
-    DisplayKind, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme, TransitionId,
+    DisplayKind, NodeStyleExt, Px, Size, Style, StyleAccess, StyleAtom, Theme, TransitionId,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -14,12 +14,14 @@ use super::super::shared::BuilderMutator;
 
 const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 
+pub(crate) const PANEL_INSET: f32 = 5.0;
+
 const SEPARATOR_HEIGHT: f32 = 1.0;
-const GOLDEN_VIEWPORT_W: f32 = 240.0;
-const GOLDEN_VIEWPORT_H: f32 = 280.0;
 
 pub(super) static MENU_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("surface"),
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderThemeRef("border"),
     StyleAtom::Transition(MENU_TRANSITION),
 ];
 
@@ -157,6 +159,8 @@ impl MenuBuilder {
 
         let mut panel = container()
             .role(Role::Menu)
+            .focusable(true)
+            .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .with(TopLayer)
             .label(menu_label)
             .layout(self.layout_overrides.apply(placement))
@@ -185,6 +189,10 @@ impl MenuBuilder {
                 open.set(false);
                 event.stop_propagation();
             })
+            .key(Key::Escape, move |event| {
+                open.set(false);
+                event.stop_propagation();
+            })
             .child(panel);
 
         for mutate in self.mutators {
@@ -210,17 +218,12 @@ fn placement(
             panel_layout(y, x, height),
         );
     }
-    let (left, top) = width.map_or((0.0, 0.0), |width| {
-        (
-            (GOLDEN_VIEWPORT_W - width).max(0.0) / 2.0,
-            (GOLDEN_VIEWPORT_H - height).max(0.0) / 2.0,
-        )
-    });
-    let extent = GOLDEN_VIEWPORT_W.max(GOLDEN_VIEWPORT_H);
-    (
-        LayoutStyle::block().fixed_size(extent, extent),
-        panel_layout(top, left, height),
-    )
+    let root = LayoutStyle::block().height(height);
+    let root = match width {
+        Some(width) => root.width(width),
+        None => root.fill_width(),
+    };
+    (root, panel_layout(0.0, 0.0, height))
 }
 
 impl WidgetLayoutExt for MenuBuilder {
@@ -242,15 +245,16 @@ impl IntoNode for MenuBuilder {
 }
 
 pub(super) fn panel_height(rows: &[Row]) -> f32 {
-    let theme = Theme::default();
-    let item_height = theme.control_height(Size::Default).px_or_zero();
-    rows.iter()
+    let item_height = Theme::default().control_height(Size::Default).px_or_zero();
+    let height = rows
+        .iter()
         .map(|row| match row {
             Row::Item(_) => item_height,
             Row::Separator => SEPARATOR_HEIGHT,
         })
         .sum::<f32>()
-        .max(item_height)
+        .max(item_height);
+    PANEL_INSET.mul_add(2.0, height)
 }
 
 fn panel_layout(top: f32, left: f32, height: f32) -> LayoutStyle {
@@ -259,6 +263,7 @@ fn panel_layout(top: f32, left: f32, height: f32) -> LayoutStyle {
         .inset_top(top)
         .inset_left(left)
         .height(height)
+        .padding(PANEL_INSET - 1.0)
         .shrink(0.0)
         .align_items(AlignItems::Stretch)
         .justify_content(JustifyContent::Start)
@@ -326,7 +331,7 @@ pub(super) fn build_item(item: MenuItem, close: Rc<dyn Fn()>) -> NodeBuilder {
     );
 
     if let Some(hint) = shortcut {
-        node = node.child(text(hint).class("text-on-surface"));
+        node = node.child(text(hint).class("text-sm text-gray-11"));
     }
 
     if submenu_indicator {
@@ -342,9 +347,10 @@ fn item_layout() -> LayoutStyle {
     let row_padding_x = theme.padding(Size::Default).px_or_zero();
     let row_gap = theme.gap(Size::Default).px_or_zero();
     LayoutStyle::flex_row()
+        .fill_width()
         .height(item_height)
         .shrink(0.0)
-        .padding(row_padding_x)
+        .padding_x(row_padding_x)
         .gap(row_gap)
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)

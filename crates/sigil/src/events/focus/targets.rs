@@ -7,6 +7,16 @@ use crate::events::hit_test::visible;
 use super::FocusManager;
 
 impl FocusManager {
+    pub(crate) fn focus_active_scope(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+        if !self.scope_stack.is_empty()
+            && self
+                .focused
+                .is_none_or(|id| !self.is_within_active_scope(cx, id))
+        {
+            self.focus_next(cx, Some(layout));
+        }
+    }
+
     pub(crate) fn is_focusable_target(
         &mut self,
         cx: &Cx,

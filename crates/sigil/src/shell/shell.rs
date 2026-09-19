@@ -162,6 +162,10 @@ impl WinitShell {
         std::mem::take(&mut self.failed)
     }
 
+    pub(crate) const fn has_failed_windows(&self) -> bool {
+        !self.failed.is_empty()
+    }
+
     pub(crate) fn wake_hook(&self) -> Option<&WakeHook> {
         self.wake_hook.as_ref()
     }
@@ -307,6 +311,9 @@ impl Shell for WinitShell {
             app_redraw_pending: false,
         };
         event_loop.run_app(&mut app)?;
-        Ok(())
+        match app.shell.take_failed_windows().into_iter().next() {
+            Some((_, error)) => Err(ShellError::Window(error)),
+            None => Ok(()),
+        }
     }
 }

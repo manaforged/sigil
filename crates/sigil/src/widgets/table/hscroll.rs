@@ -72,12 +72,14 @@ impl HScroll {
 
     pub(super) fn scrollbar(&self) -> NodeBuilder {
         let hs = *self;
-        container().children_reactive(move || {
-            if hs.max.get() <= 0.0 {
-                return Vec::new();
-            }
-            vec![move |cx: &mut Cx| track(hs).build(cx)]
-        })
+        container()
+            .layout(LayoutStyle::block().fill_width().shrink(0.0))
+            .children_reactive(move || {
+                if hs.max.get() <= 0.0 {
+                    return Vec::new();
+                }
+                vec![move |cx: &mut Cx| track(hs).build(cx)]
+            })
     }
 }
 

@@ -1,3 +1,4 @@
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::OnceLock;
 
 use crate::text::font_family::FontFamily;

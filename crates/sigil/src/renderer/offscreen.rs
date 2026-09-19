@@ -54,7 +54,6 @@ impl WgpuRenderer {
             last_frame_stats,
             ..
         } = self;
-        let ready = state.ensure_ready_headless()?;
         let mut encoder = target
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -63,7 +62,9 @@ impl WgpuRenderer {
         record_clear(&mut encoder, target.view, clear_color);
         let mut retained = Vec::new();
         let mut encoder = SplitEncoder::new(target.device, target.queue, encoder);
-        let result = if ready.device == *target.device {
+        let result = if let Ok(ready) = state.ready_mut()
+            && ready.device == *target.device
+        {
             walk_with_ready(
                 ready,
                 &mut encoder,

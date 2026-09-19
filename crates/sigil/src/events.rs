@@ -14,8 +14,11 @@ mod router;
 mod window_command;
 
 pub use builder_ext::NodeEventsExt;
+pub(crate) use builder_ext::with_handlers;
 pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source, request_focus};
 pub use handlers::EventHandlers;
+#[cfg(feature = "desktop")]
+pub(crate) use handlers::dispatch;
 pub use router::EventRouter;
 pub use window_command::{request_window_command, take_window_commands};
 

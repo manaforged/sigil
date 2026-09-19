@@ -1,6 +1,8 @@
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
+use accesskit::Action;
+
 use crate::events::prelude::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
@@ -167,13 +169,18 @@ impl SliderBuilder {
         user_overlay: StyleOverlay,
     ) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
-        let node = slider_root(runtime, interaction, user_overlay)
-            .pointer_down(move |event| pointer_down(event, interaction, runtime))
-            .pointer_move(move |event| pointer_move(event, interaction, runtime))
-            .pointer_up(move |event| {
-                pointer_up(event, interaction, runtime.value, &on_change);
-            });
-        interaction.install(attach_key_handlers(node, interaction, runtime))
+        let node = attach_key_handlers(
+            slider_root(runtime, interaction, user_overlay),
+            interaction,
+            runtime,
+            Rc::clone(&on_change),
+        )
+        .pointer_down(move |event| pointer_down(event, interaction, runtime))
+        .pointer_move(move |event| pointer_move(event, interaction, runtime))
+        .pointer_up(move |event| {
+            pointer_up(event, interaction, runtime.value, &on_change);
+        });
+        interaction.install(node)
     }
 }
 
@@ -261,6 +268,8 @@ fn slider_root(
     let root = container()
         .role(Role::Slider)
         .label("Slider")
+        .action(Action::Increment)
+        .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
         .layout(slider_layout(runtime.orientation, runtime.length))

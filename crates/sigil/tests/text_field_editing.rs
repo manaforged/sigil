@@ -29,16 +29,42 @@ impl TextMeasure for StubMeasure {
 struct StubGeometry;
 
 impl TextGeometry for StubGeometry {
-    fn hit(&self, text: &str, _style: &TextStyle, x: f32) -> usize {
-        ((x / 10.0).round().max(0.0) as usize).min(text.len())
+    fn hit(
+        &self,
+        text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        point: sigil::hal::Point,
+    ) -> sigil::hal::HitPosition {
+        sigil::hal::HitPosition {
+            byte_index: ((point.x / 10.0).round().max(0.0) as usize).min(text.len()),
+            affinity: sigil::hal::TextAffinity::Downstream,
+        }
     }
 
-    fn caret(&self, _text: &str, _style: &TextStyle, byte: usize) -> CaretGeometry {
+    fn caret(
+        &self,
+        _text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        position: sigil::hal::HitPosition,
+    ) -> CaretGeometry {
+        let byte = position.byte_index;
         CaretGeometry {
             x: byte as f32 * 10.0,
             top: 0.0,
             height: 16.0,
         }
+    }
+
+    fn selection_rects(
+        &self,
+        _text: &str,
+        _style: &TextStyle,
+        _width: Option<f32>,
+        _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
+    ) -> Vec<sigil::hal::Rect> {
+        Vec::new()
     }
 }
 

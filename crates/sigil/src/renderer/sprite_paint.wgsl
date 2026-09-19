@@ -69,20 +69,21 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
 @fragment
 fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     if in.sprite_kind == SPRITE_KIND_MONO {
-        let coverage = textureSample(atlas_tex, atlas_sampler, in.uv).a;
+        let coverage = textureSampleLevel(atlas_tex, atlas_sampler, in.uv, 0.0).a;
         let a = in.color.a * coverage * in.opacity;
         return vec4<f32>(in.color.rgb * a, a);
     }
     if in.sprite_kind == SPRITE_KIND_SUBPIXEL {
         let dx = 1.0 / u.atlas_size.x;
-        let cr = textureSample(atlas_tex, atlas_sampler, in.uv - vec2<f32>(dx / 3.0, 0.0)).a;
-        let cg = textureSample(atlas_tex, atlas_sampler, in.uv).a;
-        let cb = textureSample(atlas_tex, atlas_sampler, in.uv + vec2<f32>(dx / 3.0, 0.0)).a;
+        let cr = textureSampleLevel(atlas_tex, atlas_sampler, in.uv - vec2<f32>(dx / 3.0, 0.0), 0.0).a;
+        let cg = textureSampleLevel(atlas_tex, atlas_sampler, in.uv, 0.0).a;
+        let cb = textureSampleLevel(atlas_tex, atlas_sampler, in.uv + vec2<f32>(dx / 3.0, 0.0), 0.0).a;
         let rgb = in.color.rgb * vec3<f32>(cr, cg, cb);
         let a = in.color.a * max(cr, max(cg, cb)) * in.opacity;
         return vec4<f32>(rgb * a, a);
     }
     // SPRITE_KIND_POLY — atlas RGBA, tint ignored, premultiplied by opacity
-    let texel = textureSample(atlas_tex, atlas_sampler, in.uv);
-    return vec4<f32>(texel.rgb * in.opacity, texel.a * in.opacity);
+    let texel = textureSampleLevel(atlas_tex, atlas_sampler, in.uv, 0.0);
+    let alpha = texel.a * in.opacity;
+    return vec4<f32>(texel.rgb * alpha, alpha);
 }

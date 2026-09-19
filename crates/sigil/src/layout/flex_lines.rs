@@ -1,11 +1,12 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use crate::layout::flex::CbSize;
 use crate::layout::flex_algorithm::{
-    FlexCtx, align_self_of, automatic_min_main, item_cross_basis, item_main_basis,
+    Axis2, FlexCtx, align_self_of, automatic_min_main, item_cross_basis, item_main_basis,
     item_min_max_main,
 };
 use crate::layout::forest::{LocalId, NodeRef};
-use crate::layout::resolve::{NodeEdges, resolve_lp};
+use crate::layout::resolve::{NodeEdges, clamp, resolve_lp};
 use crate::layout::style_data::{AlignSelf, FlexWrap, StyleData};
 
 #[derive(Clone, Copy, Debug)]
@@ -20,6 +21,8 @@ pub(crate) struct FlexItem {
     pub(crate) cross_size_was_auto: bool,
     pub(crate) min_main: Option<f32>,
     pub(crate) max_main: Option<f32>,
+    pub(crate) min_cross: Option<f32>,
+    pub(crate) max_cross: Option<f32>,
     pub(crate) margin: ItemMargin,
     pub(crate) align_self: Option<AlignSelf>,
     pub(crate) axes_row: bool,
@@ -40,13 +43,25 @@ impl FlexItem {
         cb_main: f32,
         cb_cross: f32,
     ) -> Self {
+        let measured = FlexCtx {
+            cb: CbSize {
+                w: if ctx.axes.row { cb_main } else { cb_cross },
+                h: if ctx.axes.row { cb_cross } else { cb_main },
+            },
+            ..*ctx
+        };
         let style = node.style();
         let cb_inline = if ctx.axes.row { cb_main } else { cb_cross };
         let edges = NodeEdges::build(style, cb_inline);
-        let basis = item_main_basis(ctx, node, style, ctx.axes, cb_main, &edges);
+        let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges);
         let (cross_resolved, was_auto) =
-            item_cross_basis(ctx, node, style, ctx.axes, cb_main, cb_cross, &edges);
+            item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges);
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
+        let cross_axes = Axis2 {
+            row: !ctx.axes.row,
+            reversed_main: false,
+        };
+        let (min_cross, max_cross) = item_min_max_main(style, cross_axes, cb_cross, &edges);
         let min_main = min_main.or_else(|| {
             let ellipsizes = node.text().is_some_and(|text| text.ellipsis);
             (node.children().is_empty() && !ellipsizes)
@@ -61,10 +76,12 @@ impl FlexItem {
             flex_shrink: style.flex_shrink,
             flex_basis_resolved: basis,
             main_size: basis,
-            cross_size: cross_resolved.unwrap_or(0.0),
+            cross_size: clamp(cross_resolved.unwrap_or(0.0), min_cross, max_cross).max(0.0),
             cross_size_was_auto: was_auto,
             min_main,
             max_main,
+            min_cross,
+            max_cross,
             margin: ItemMargin {
                 left: m.left,
                 right: m.right,
@@ -157,7 +174,9 @@ pub(crate) fn collect_lines(
     let mut current = FlexLine::new(gap);
     let mut used = 0.0_f32;
     for item in items {
-        let outer = item.outer_main_basis();
+        let outer = clamp(item.flex_basis_resolved, item.min_main, item.max_main).max(0.0)
+            + item.margin_main_start()
+            + item.margin_main_end();
         let add_gap = if current.items.is_empty() { 0.0 } else { gap };
         let next = used + add_gap + outer;
         if !current.items.is_empty() && next > container_main + f32::EPSILON {

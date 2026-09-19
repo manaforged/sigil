@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::events::prelude::{ImeEvent, NodeEventsExt};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, effect, signal};
@@ -95,7 +96,15 @@ fn install_caret_anchor_sync(runtime: &TextFieldRuntime) {
         let scroll_px = scroll.get();
         let style = text_style.get();
         let rect = with_text_geometry(|engine| {
-            let pos = engine.caret(&text, &style, caret_byte);
+            let pos = engine.caret(
+                &text,
+                &style,
+                None,
+                HitPosition {
+                    byte_index: caret_byte,
+                    affinity: TextAffinity::Downstream,
+                },
+            );
             CaretGeometry {
                 x: (pos.x - scroll_px).max(0.0),
                 top: pos.top,

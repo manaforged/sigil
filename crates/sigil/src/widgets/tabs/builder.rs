@@ -11,10 +11,10 @@ use super::drag::DragState;
 use super::tab::build_tab;
 
 pub(super) const TAB_HEIGHT: f32 = 30.0;
-const STRIP_HEIGHT: f32 = 36.0;
+pub(super) const STRIP_HEIGHT: f32 = 36.0;
 
 #[derive(Clone, Copy, Default)]
-enum StripChrome {
+pub(super) enum StripChrome {
     #[default]
     Bare,
     Line,
@@ -42,7 +42,7 @@ pub struct TabsBuilder {
     order: Option<Signal<Vec<usize>>>,
     closeable: bool,
     close_handler: Option<CloseHandler>,
-    list_justify: JustifyContent,
+    list_justify: Option<JustifyContent>,
     chrome: StripChrome,
     layout_overrides: LayoutOverrides,
 }
@@ -72,7 +72,7 @@ impl TabsBuilder {
             order: None,
             closeable: false,
             close_handler: None,
-            list_justify: JustifyContent::Start,
+            list_justify: None,
             chrome: StripChrome::Bare,
             layout_overrides: LayoutOverrides::new(),
         }
@@ -92,7 +92,7 @@ impl TabsBuilder {
 
     #[must_use]
     pub const fn justify_list(mut self, justify: JustifyContent) -> Self {
-        self.list_justify = justify;
+        self.list_justify = Some(justify);
         self
     }
 
@@ -183,8 +183,10 @@ impl TabsBuilder {
         let order_signal = self.order;
         let drag = self.reorderable.then(DragState::new);
         let user_overlay = self.style_accumulator.take_state_overlay();
-        let tab_list = apply_chrome(self.chrome, {
-            let list = build_tab_list(
+        let tab_list = apply_chrome(
+            self.chrome,
+            self.list_justify,
+            build_tab_list(
                 self.active,
                 self.labels,
                 &self.disabled,
@@ -194,19 +196,9 @@ impl TabsBuilder {
                 self.closeable,
                 self.close_handler.as_ref().map(Rc::clone),
                 user_overlay,
-            );
-            if matches!(self.list_justify, JustifyContent::Start) {
-                list
-            } else {
-                container()
-                    .layout(
-                        LayoutStyle::flex_row()
-                            .fill_width()
-                            .justify_content(self.list_justify),
-                    )
-                    .child(list)
-            }
-        });
+                self.chrome,
+            ),
+        );
         let mut root = if has_content {
             wrap_with_content(tab_list, self.active, self.contents, count)
         } else {
@@ -258,43 +250,64 @@ fn accessible_label(label: &str) -> AccessibleName {
     }
 }
 
-fn tab_list_layout() -> LayoutStyle {
+fn tab_list_layout(chrome: StripChrome) -> LayoutStyle {
     LayoutStyle::flex_row()
-        .height(TAB_HEIGHT)
+        .height(if matches!(chrome, StripChrome::Line) {
+            STRIP_HEIGHT
+        } else {
+            TAB_HEIGHT
+        })
+        .gap(if matches!(chrome, StripChrome::Line) {
+            4.0
+        } else {
+            0.0
+        })
         .align_items(AlignItems::Center)
 }
 
-fn apply_chrome(chrome: StripChrome, strip: NodeBuilder) -> NodeBuilder {
+fn apply_chrome(
+    chrome: StripChrome,
+    justify: Option<JustifyContent>,
+    strip: NodeBuilder,
+) -> NodeBuilder {
     match chrome {
-        StripChrome::Bare => strip,
-        StripChrome::Line => wrap_line(strip),
-        StripChrome::Pill => wrap_pill(strip),
+        StripChrome::Bare => match justify {
+            None | Some(JustifyContent::Start) => strip,
+            Some(justify) => container()
+                .layout(
+                    LayoutStyle::flex_row()
+                        .fill_width()
+                        .justify_content(justify),
+                )
+                .child(strip),
+        },
+        StripChrome::Line => wrap_line(strip, justify.unwrap_or(JustifyContent::Center)),
+        StripChrome::Pill => wrap_pill(strip, justify.unwrap_or(JustifyContent::Center)),
     }
 }
 
-fn wrap_line(strip: NodeBuilder) -> NodeBuilder {
+fn wrap_line(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(STRIP_HEIGHT)
                 .shrink(0.0)
-                .padding_x(16.0)
-                .justify_content(JustifyContent::Center)
+                .justify_content(justify)
                 .align_items(AlignItems::Center),
         )
-        .class("border-b bg-surface-0")
+        .class("border-b border-line")
         .child(strip)
 }
 
-fn wrap_pill(strip: NodeBuilder) -> NodeBuilder {
+fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
                 .shrink(0.0)
                 .padding_y(24.0)
-                .justify_content(JustifyContent::Center),
+                .justify_content(justify),
         )
         .child(
             container()
@@ -324,6 +337,7 @@ fn build_tab_list(
     closeable: bool,
     close_handler: Option<CloseHandler>,
     user_overlay: StyleOverlay,
+    chrome: StripChrome,
 ) -> NodeBuilder {
     let count = labels.len();
     let disabled = Rc::new(disabled.to_vec());
@@ -331,7 +345,7 @@ fn build_tab_list(
     let mut root = container()
         .role(Role::TabList)
         .label(accessible_label(aria_label))
-        .layout(tab_list_layout());
+        .layout(tab_list_layout(chrome));
 
     let visual_order: Vec<usize> = order.map_or_else(
         || identity_order(count),
@@ -357,6 +371,7 @@ fn build_tab_list(
             closeable,
             close_handler.as_ref().map(Rc::clone),
             user_overlay.clone(),
+            chrome,
         );
         root = root.child(tab);
     }

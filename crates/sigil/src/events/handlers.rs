@@ -19,6 +19,7 @@ type KeyHandler = Box<dyn Fn(&mut KeyEvent) + 'static>;
 type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
+type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
 
 struct KeyBinding {
     shortcut: Shortcut,
@@ -42,9 +43,23 @@ pub struct EventHandlers {
     focus_in: Vec<FocusHandler>,
     focus_out: Vec<FocusHandler>,
     file_drop: Vec<FileDropHandler>,
+    value_adjustment: Option<ValueAdjustment>,
 }
 
 impl EventHandlers {
+    pub(crate) fn set_value_adjustment(&mut self, handler: ValueAdjustment) {
+        self.value_adjustment = Some(handler);
+    }
+
+    #[cfg(feature = "desktop")]
+    pub(crate) fn invoke_value_adjustment(&self, increase: bool) -> bool {
+        let Some(handler) = &self.value_adjustment else {
+            return false;
+        };
+        handler(increase);
+        true
+    }
+
     pub(crate) fn add_pointer_down_capture(&mut self, handler: PointerHandler) {
         self.pointer_down_capture.push(handler);
     }

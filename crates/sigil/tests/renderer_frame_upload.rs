@@ -15,10 +15,9 @@ const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn ordered_batches_share_one_rect_upload_buffer() {
     let mut renderer = WgpuRenderer::new().expect("renderer");
-    if let Err(error) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping frame upload test: {error}");
-        return;
-    }
+    renderer
+        .ensure_headless_for_tests()
+        .expect("GPU device required");
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
     let texture = device.create_texture(&wgpu::TextureDescriptor {

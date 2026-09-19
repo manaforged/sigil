@@ -3,6 +3,7 @@ use std::iter::once;
 use std::rc::Rc;
 
 use crate::events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::with_text_geometry;
 use crate::reactive::{Signal, batch, signal};
@@ -345,9 +346,19 @@ pub(super) fn commit(runtime: &TextFieldRuntime, state: &TextEdit) {
 
 pub(super) fn update_scroll(edit: &TextEdit, runtime: &TextFieldRuntime) {
     let style = runtime.text_style.peek();
-    let Some(caret_x) =
-        with_text_geometry(|engine| engine.caret(edit.as_str(), &style, edit.caret()).x)
-    else {
+    let Some(caret_x) = with_text_geometry(|engine| {
+        engine
+            .caret(
+                edit.as_str(),
+                &style,
+                None,
+                HitPosition {
+                    byte_index: edit.caret(),
+                    affinity: TextAffinity::Downstream,
+                },
+            )
+            .x
+    }) else {
         return;
     };
     let mut offset = runtime.scroll.peek();

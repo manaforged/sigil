@@ -24,10 +24,9 @@ const DRAWS: u32 = 2_100;
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pass_heavy_scene_keeps_device_alive() {
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping tall scene test: {err}");
-        return;
-    }
+    renderer
+        .ensure_headless_for_tests()
+        .expect("headless device");
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
 
@@ -35,11 +34,16 @@ fn pass_heavy_scene_keeps_device_alive() {
     let pixels = render_offscreen(&mut renderer, &device, &queue, &scene);
 
     assert_eq!(pixel(&pixels, 128, 150), [240, 30, 30, 255], "red row lost");
-    assert_eq!(
-        pixel(&pixels, 128, 151),
-        [30, 30, 240, 255],
-        "blue row lost"
-    );
+    for x in 1..255 {
+        let [r, g, b, a] = pixel(&pixels, x, 151);
+        assert!(
+            (24..=35).contains(&r),
+            "red channel outside gradient dither bounds: {r}"
+        );
+        assert_eq!(g, r, "equal gradient channels diverged");
+        assert!((239..=241).contains(&b), "blue row lost: {b}");
+        assert_eq!(a, 255, "blue row lost opacity");
+    }
 }
 
 fn pass_heavy_scene() -> CommandScene {

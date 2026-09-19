@@ -19,19 +19,34 @@ pub(crate) struct WinitApp<F> {
     pub(crate) app_redraw_pending: bool,
 }
 
+impl<F> WinitApp<F> {
+    fn materialise_pending(&mut self, event_loop: &ActiveEventLoop) -> bool {
+        self.shell.materialise_pending(event_loop);
+        if self.shell.has_failed_windows() {
+            event_loop.exit();
+            return false;
+        }
+        true
+    }
+}
+
 impl<F> ApplicationHandler<WakeEvent> for WinitApp<F>
 where
     F: FnMut(&mut WinitShell),
 {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        self.shell.materialise_pending(event_loop);
+        if !self.materialise_pending(event_loop) {
+            return;
+        }
         for (_, window) in self.shell.windows() {
             window.request_redraw();
         }
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, _event: WakeEvent) {
-        self.shell.materialise_pending(event_loop);
+        if !self.materialise_pending(event_loop) {
+            return;
+        }
 
         if let Some(hook) = self.shell.wake_hook() {
             hook();
@@ -74,7 +89,9 @@ where
                 self.shell.request_redraws();
             }
             WinitWindowEvent::RedrawRequested => {
-                self.shell.materialise_pending(event_loop);
+                if !self.materialise_pending(event_loop) {
+                    return;
+                }
                 if !self.app_redraw_pending {
                     self.shell.set_force_paint();
                 }
