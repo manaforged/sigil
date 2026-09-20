@@ -7,6 +7,8 @@
 - [Quickstart](quickstart.md)
 - [Widgets](widgets.md)
 - [Terminal host](terminal.md)
+- [Signing](signing.md)
+- [Packing](packing.md)
 
 # Architecture
 

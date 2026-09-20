@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The workspace publishes in lockstep: every published `sigil-*` crate shares one version.
 
+## [Unreleased]
+
+### Added
+
+- `sigil-sign` signs release packages with minisign. `sign_file` returns
+  the envelope as text. The caller writes it. A standard `.sig` file holds
+  the plain envelope. A transport that needs an ASCII-safe payload
+  base64-encodes it.
+- `sigil-pack` writes a macOS `.app` or a Windows app directory and can
+  sign a file. Extra files use `--resource SRC:DST`.
+
 ## [0.1.0] — 2026-09-17
 
 First public release. The facade publishes as `sigil-gui` (the `sigil` name was

@@ -1,0 +1,26 @@
+[package]
+name = "sigil-sign"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "App bundle and minisign signing for Sigil release packages."
+readme = "README.md"
+keywords = ["minisign", "signing", "release", "updates"]
+categories = ["cryptography"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "/Cargo.toml", "/README.md", "/LICENSE-MIT"]
+
+[lib]
+name = "sigil_sign"
+
+[[bin]]
+name = "sigil-pack"
+path = "src/bin/sigil-pack.rs"
+
+[dependencies]
+minisign = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
-members = ["crates/sigil", "crates/tui"]
-default-members = ["crates/sigil", "crates/tui"]
+members = ["crates/sigil", "crates/sign", "crates/tui"]
+default-members = ["crates/sigil", "crates/sign", "crates/tui"]
 
 [workspace.package]
 version = "0.1.0"
@@ -135,7 +135,9 @@ arboard = { version = "3", default-features = false }
 # crates.io) with the library still named `sigil`, so `use sigil::prelude::*`
 # stays the single import user code needs.
 sigil-gui = { path = "crates/sigil", version = "0.1.0" }
+sigil-sign = { path = "crates/sign", version = "0.1.0" }
 sigil-tui = { path = "crates/tui", version = "0.1.0" }
+minisign = "0.7"
 unicode-width = "0.2"
 usvg = { version = "0.48", default-features = false }
 lyon_geom = "1.0"
