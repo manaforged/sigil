@@ -39,6 +39,7 @@ pub(super) struct TextEditRuntime {
     pub(super) content_size: Signal<(f32, f32)>,
     pub(super) viewport_size: Signal<(f32, f32)>,
     pub(super) scroll_y: Signal<f32>,
+    pub(super) content_padding: (f32, f32),
     pub(super) preferred_x: Rc<Cell<Option<f32>>>,
     pub(super) caret_affinity: Signal<TextAffinity>,
     pub(super) anchor_affinity: Signal<TextAffinity>,
@@ -56,6 +57,7 @@ impl TextEditRuntime {
         submit: TextChange,
         clipboard: Rc<dyn Clipboard>,
         caret_visible: Signal<bool>,
+        content_padding: (f32, f32),
     ) -> Self {
         Self {
             value: state.value,
@@ -72,6 +74,7 @@ impl TextEditRuntime {
             content_size: signal((0.0, 0.0)),
             viewport_size: signal((0.0, 0.0)),
             scroll_y: signal(0.0),
+            content_padding,
             preferred_x: Rc::new(Cell::new(None)),
             caret_affinity: signal(TextAffinity::Downstream),
             anchor_affinity: signal(TextAffinity::Downstream),

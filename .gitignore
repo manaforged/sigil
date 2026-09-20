@@ -1,6 +1,6 @@
 **/target
 off/
-docs/book/book/
+docs/book/
 **/*.rs.bk
 Cargo.lock.bak
 .vscode/
@@ -8,6 +8,12 @@ Cargo.lock.bak
 *.swp
 *.swo
 .DS_Store
+.env
+*.env
+!.env.example
+!*.example.env
+*.log
+coverage/
 .worktrees
 mutants.out/
 mutants.out.old/
@@ -16,8 +22,8 @@ marketing/
 docs/reviews/
 
 # Internal working docs — local only, never pushed. The public doc
-# surface is docs/book/ plus rustdoc plus docs/decisions/ (decision
-# records are committed — see docs/decisions/README.md); everything
+# surface is docs/api.md plus docs/guide/ plus rustdoc (decision
+# records are committed — see docs/guide/decisions/README.md); everything
 # else under docs/ stays out of the index (untracked 2026-08-19).
 docs/audits/
 docs/benchmarks/

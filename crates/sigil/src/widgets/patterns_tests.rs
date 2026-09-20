@@ -5,6 +5,17 @@ use crate::kernel::container as kernel_container;
 use crate::reactive::Runtime;
 
 #[test]
+fn empty_state_has_title_and_body() {
+    Runtime::scope("empty-state", || {
+        let mut cx = Cx::new_root();
+        let id = empty_state("Summonr", "Message the agent.").build(&mut cx);
+        let node = cx.get(id).expect("empty");
+        assert_eq!(node.a11y.role, Role::Status);
+        assert_eq!(node.children().len(), 2);
+    });
+}
+
+#[test]
 fn card_wraps_one_child() {
     Runtime::scope("card-one-child", || {
         let mut cx = Cx::new_root();

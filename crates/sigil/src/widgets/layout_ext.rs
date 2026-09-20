@@ -56,6 +56,12 @@ impl LayoutOverrides {
         let mut style = self.full.unwrap_or(base);
         if let Some(width) = self.width {
             style = style.width(width);
+            if let crate::layout::Dimension::Px(floor) = style.0.min_size.width
+                && floor > width
+            {
+                let height = style.0.min_size.height;
+                style = style.min_size(width, height);
+            }
         }
         if let Some(height) = self.height {
             style = style.height(height);

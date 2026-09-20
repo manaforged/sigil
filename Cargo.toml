@@ -15,15 +15,7 @@ authors = ["Thomas Gardiner"]
 [workspace.lints.rust]
 unsafe_code = "deny"
 unsafe_op_in_unsafe_fn = "deny"
-# NOTE: Cargo does NOT allow member crates to override workspace lints while
-# `[lints] workspace = true` is set (the manifest fails to parse).
-# Per-crate strictness therefore lives in crate-root
-# attributes instead — library crates that contract on full rustdoc coverage
-# use `#![deny(missing_docs)]` in their lib.rs. Binary / example crates only
-# have bin targets, where missing_docs does not fire.
 unreachable_pub = "warn"
-# Dropped after the crate collapse: one package now has one dependency list,
-# so every integration-test target would warn about every dep it does not use.
 rust_2018_idioms = { level = "warn", priority = -1 }
 
 [workspace.lints.clippy]
@@ -32,42 +24,24 @@ pedantic = { level = "warn", priority = -1 }
 nursery = { level = "warn", priority = -1 }
 module_name_repetitions = "allow"
 missing_errors_doc = "allow"
-# Doc comments are stripped pending the freeze-time docs rewrite.
 missing_panics_doc = "allow"
 missing_safety_doc = "allow"
-# Rust hygiene restrictions for production code.
-# Tests / benches / examples may bend `panic` or
-# `indexing_slicing` via a crate-root #![allow] with a comment
-# giving the reason.
 unwrap_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
 mod_module_files = "deny"
-# Conflicts with rustc `unreachable_pub` for `[[bin]]` crates that have
-# internal sub-modules: clippy wants `pub(crate)`, rustc wants `pub`.
-# Allow workspace-wide; library crates that genuinely want the lint can
-# re-enable it per-crate.
 redundant_pub_crate = "allow"
-# Threshold lints — actual thresholds configured in clippy.toml.
-# Clippy defaults (100 lines, 7 args, complexity 25) are too permissive
-# for the clean-lean-Rust contract (50 lines, 5 args, complexity 15).
 too_many_arguments = "deny"
 too_many_lines = "deny"
 cognitive_complexity = "warn"
-# Restriction lints — production-code hygiene.
 todo = "deny"
 unimplemented = "deny"
 dbg_macro = "deny"
 print_stdout = "warn"
 wildcard_imports = "warn"
 shadow_unrelated = "warn"
-# Pedantic upgrades — in pedantic="warn" by default, explicitly promoted to deny.
 manual_async_fn = "deny"
 redundant_clone = "deny"
-# `clippy::cargo` is deliberately not enabled at the workspace level.
-# Transitive multi-version dependencies come from wgpu and winit and are
-# not under our control; treat at crate level if a specific crate can
-# legitimately dedupe its own tree.
 
 [workspace.dependencies]
 serde_json = "1"
@@ -138,6 +112,7 @@ sigil-gui = { path = "crates/sigil", version = "0.1.0" }
 sigil-sign = { path = "crates/sign", version = "0.1.0" }
 sigil-tui = { path = "crates/tui", version = "0.1.0" }
 minisign = "0.7"
+base64 = "0.22"
 unicode-width = "0.2"
 usvg = { version = "0.48", default-features = false }
 lyon_geom = "1.0"

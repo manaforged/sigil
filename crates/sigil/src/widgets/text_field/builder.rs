@@ -213,6 +213,9 @@ impl IntoNode for TextFieldBuilder {
         let (node, _runtime) = self.into_node_builder();
         let id = node.build(cx);
         if let Some(trigger) = focus_trigger {
+            if trigger.peek() > 0 {
+                crate::events::request_focus(id);
+            }
             install_focus_trigger(id, trigger);
         }
         id

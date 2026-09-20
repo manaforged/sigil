@@ -353,7 +353,7 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
         .shrink(1.0);
     match side {
-        None => base,
+        None => base.min_size(420.0, 0.0),
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
         Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
     }

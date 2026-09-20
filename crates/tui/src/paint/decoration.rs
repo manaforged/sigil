@@ -44,6 +44,32 @@ fn blend(ink: Ink, over: Rgba8, foreground: bool) -> Ink {
     })
 }
 
+pub(super) fn surface(
+    grid: &mut Grid,
+    node: &Painted,
+    area: ((usize, usize), (usize, usize)),
+    ink: Ink,
+    cell: f32,
+) {
+    let (origin, size) = area;
+    if let Some(glyph) = hairline(node, cell) {
+        grid.rule(origin, size, glyph, ink);
+        return;
+    }
+    grid.fill(origin, size, ink, node.bare);
+}
+
+fn hairline(node: &Painted, cell: f32) -> Option<&'static str> {
+    let rect = node.rect;
+    if rect.height > 0.0 && rect.height < cell {
+        return Some("─");
+    }
+    if rect.width > 0.0 && rect.width < cell {
+        return Some("│");
+    }
+    None
+}
+
 pub(super) fn border(grid: &mut Grid, node: &Painted, cell: f32) {
     let Some(color) = node.border_color.filter(|color| color.a > 0) else {
         return;
@@ -60,10 +86,22 @@ pub(super) fn border(grid: &mut Grid, node: &Painted, cell: f32) {
     let right = cell_edge((rect.origin.x + rect.width) / cell).saturating_sub(1);
     let bottom = cell_edge((rect.origin.y + rect.height) / cell).saturating_sub(1);
     let [north, east, south, west] = node.border_widths.map(|width| width > 0.0);
-    let end_x = cell_edge((clip.origin.x + clip.width) / cell).min(grid.cols());
-    let end_y = cell_edge((clip.origin.y + clip.height) / cell).min(grid.rows());
-    for y in cell_edge(clip.origin.y / cell)..end_y {
-        for x in cell_edge(clip.origin.x / cell)..end_x {
+    let start_x = cell_edge(clip.origin.x / cell);
+    let start_y = cell_edge(clip.origin.y / cell);
+    let end_x = span(
+        start_x,
+        (clip.origin.x + clip.width) / cell,
+        clip.width,
+        grid.cols(),
+    );
+    let end_y = span(
+        start_y,
+        (clip.origin.y + clip.height) / cell,
+        clip.height,
+        grid.rows(),
+    );
+    for y in start_y..end_y {
+        for x in start_x..end_x {
             let edges = [
                 north && y == top && rect.origin.y >= 0.0,
                 east && x == right,
@@ -76,6 +114,16 @@ pub(super) fn border(grid: &mut Grid, node: &Painted, cell: f32) {
             }
         }
     }
+}
+
+fn span(start: usize, edge: f32, extent: f32, limit: usize) -> usize {
+    let end = cell_edge(edge);
+    let end = if extent > 0.0 {
+        end.max(start + 1)
+    } else {
+        end
+    };
+    end.min(limit)
 }
 
 const fn glyph(edges: [bool; 4], rounded: bool) -> Option<&'static str> {

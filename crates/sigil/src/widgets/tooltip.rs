@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use crate::animation_runtime::presets;
 use crate::events::prelude::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TopLayer, container, text};
+use crate::layout::ViewportOverlay;
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
 use crate::style::{
@@ -178,6 +179,7 @@ fn wrapper_root(description: &str) -> NodeBuilder {
         .description(description.to_owned())
         .layout(
             LayoutStyle::flex_column()
+                .position(Position::Relative)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
@@ -200,6 +202,8 @@ fn build_bubble(
     let mut bubble = container()
         .role(Role::Tooltip)
         .label(aria_label)
+        .with(TopLayer)
+        .with(ViewportOverlay)
         .layout(bubble_layout(top_px, shortcut.is_some()))
         .class("rounded-sm")
         .class("shadow-md")

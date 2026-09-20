@@ -259,6 +259,26 @@ impl Grid {
         }
     }
 
+    fn rule(
+        &mut self,
+        (col, row): (usize, usize),
+        (width, height): (usize, usize),
+        glyph: &str,
+        ink: Ink,
+    ) {
+        let end = col.saturating_add(width);
+        for y in row..row.saturating_add(height) {
+            let line = self.row_mut(y);
+            let span = col.min(line.len())..end.min(line.len());
+            for cell in line.get_mut(span).unwrap_or_default() {
+                cell.text = glyph.into();
+                if ink.set() {
+                    cell.fg = ink;
+                }
+            }
+        }
+    }
+
     fn run(&mut self, run: &Run<'_>) {
         let line = self.row_mut(run.row);
         let last = run.last.min(line.len());
@@ -334,7 +354,7 @@ pub fn raster_into(grid: &mut Grid, nodes: &[Painted], cell: f32) {
         }
         let surface = Ink::pick(node.fill, node.tone);
         if node.text.is_none() && surface.set() {
-            grid.fill((col, row), (width, height), surface, node.bare);
+            decoration::surface(grid, node, ((col, row), (width, height)), surface, cell);
         }
         decoration::border(grid, node, cell);
         paint_text(grid, node, rect, cell);

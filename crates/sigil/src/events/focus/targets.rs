@@ -57,7 +57,7 @@ impl FocusManager {
     }
 }
 
-fn is_self_or_ancestor(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
+pub(crate) fn is_self_or_ancestor(cx: &Cx, ancestor: NodeId, id: NodeId) -> bool {
     let mut current = Some(id);
     while let Some(node_id) = current {
         if node_id == ancestor {

@@ -1,5 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
+use crate::layout::snap;
 use crate::layout::style_data::{
     BoxSizing, Dimension, LengthPercentage, LengthPercentageAuto, Rect, StyleData,
 };
@@ -43,9 +44,9 @@ pub(crate) struct NodeEdges {
 impl NodeEdges {
     pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
         Self {
-            padding: edges_lp(style.padding, cb_inline),
-            border: edges_lp(style.border, cb_inline),
-            margin: edges_lp_auto(style.margin, cb_inline),
+            padding: snap::gap_edges(edges_lp(style.padding, cb_inline)),
+            border: snap::rule_edges(edges_lp(style.border, cb_inline)),
+            margin: snap::gap_auto_edges(edges_lp_auto(style.margin, cb_inline)),
         }
     }
 
@@ -67,12 +68,12 @@ impl NodeEdges {
 }
 
 pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
-    match dim {
+    snap::size(match dim {
         Dimension::Px(v) => Some(v),
         Dimension::Percent(p) => Some(p * cb),
         Dimension::Fill => Some(cb),
         Dimension::Auto => None,
-    }
+    })
 }
 
 pub(crate) fn resolve_lp(lp: LengthPercentage, cb: f32) -> f32 {

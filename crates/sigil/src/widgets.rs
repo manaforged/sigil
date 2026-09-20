@@ -24,6 +24,7 @@ mod combobox;
 mod command_menu;
 mod composition;
 mod date_field;
+mod diff;
 mod divider;
 mod dot;
 mod drag;
@@ -76,6 +77,7 @@ pub use combobox::{Combobox, combobox};
 pub use command_menu::{CommandMenuBuilder, SubmenuBuilder, command_menu};
 pub use composition::{kv_row, status_bar};
 pub use date_field::{Date, DateFieldBuilder, date_field};
+pub use diff::{DiffBuilder, DiffLayout, diff};
 pub use divider::{horizontal as divider_horizontal, vertical as divider_vertical};
 pub use dot::{DotBuilder, dot};
 pub use drag::{Axis, axis_drag};
@@ -100,7 +102,9 @@ pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    HintOverlayBuilder, avatar, card, field, sidebar, sidebar_width, validated_field,
+    HintOverlayBuilder, app_shell, avatar, card, empty_state, field, hairline, hint_bar,
+    hint_overlay, kv_grid, list_row, notice_band, section_label, sidebar, sidebar_width, spacer,
+    validated_field,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};

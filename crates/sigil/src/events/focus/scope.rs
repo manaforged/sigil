@@ -3,6 +3,7 @@ use crate::layout::LayoutEngine;
 use crate::style::StyleBinding;
 use smallvec::SmallVec;
 
+use crate::events::focus::targets::is_self_or_ancestor;
 use crate::events::hit_test::visible;
 
 use super::{FocusManager, FocusScopeEntry};
@@ -44,13 +45,17 @@ impl FocusManager {
             if stack_roots.iter().any(|id| *id == scope_root) {
                 continue;
             }
+            let focused_inside = self
+                .focused
+                .is_some_and(|id| is_self_or_ancestor(cx, scope_root, id));
             self.scope_stack.push(FocusScopeEntry {
                 scope_root,
                 restore_to: self.focused,
             });
-            if cx
-                .get(scope_root)
-                .is_some_and(|node| node.a11y.is_focusable())
+            if !focused_inside
+                && cx
+                    .get(scope_root)
+                    .is_some_and(|node| node.a11y.is_focusable())
             {
                 self.set_focus(cx, Some(scope_root));
             }

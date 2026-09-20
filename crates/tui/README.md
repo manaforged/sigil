@@ -9,8 +9,8 @@ Sigil is not published on crates.io. The repository is currently private;
 you need GitHub access and Git authentication to use this dependency.
 
 ```bash
-cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
-cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
+cargo add sigil-tui --git https://github.com/manaforged/sigil --rev <sha>
+cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha> --no-default-features
 ```
 
 The second line provides `sigil::prelude`. Keep `--no-default-features`;

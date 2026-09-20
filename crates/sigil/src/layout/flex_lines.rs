@@ -53,7 +53,7 @@ impl FlexItem {
         let style = node.style();
         let cb_inline = if ctx.axes.row { cb_main } else { cb_cross };
         let edges = NodeEdges::build(style, cb_inline);
-        let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges);
+        let basis = item_main_basis(&measured, node, style, ctx.axes, cb_main, &edges, false);
         let (cross_resolved, was_auto) =
             item_cross_basis(&measured, node, style, ctx.axes, cb_main, cb_cross, &edges);
         let (min_main, max_main) = item_min_max_main(style, ctx.axes, cb_main, &edges);
@@ -195,8 +195,8 @@ pub(crate) fn collect_lines(
 
 fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> f32 {
     if ctx.axes.row {
-        resolve_lp(style.gap.width, ctx.cb.w)
+        crate::layout::snap::gap(resolve_lp(style.gap.width, ctx.cb.w))
     } else {
-        resolve_lp(style.gap.height, ctx.cb.h)
+        crate::layout::snap::gap(resolve_lp(style.gap.height, ctx.cb.h))
     }
 }

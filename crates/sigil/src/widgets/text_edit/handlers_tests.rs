@@ -26,6 +26,7 @@ fn external_caret_controls_the_next_edit() {
             noop_change(),
             clipboard(),
             signal(true),
+            crate::widgets::text_edit::render::content_padding(),
         );
         value.set("café".to_string());
         caret.set("café".len());

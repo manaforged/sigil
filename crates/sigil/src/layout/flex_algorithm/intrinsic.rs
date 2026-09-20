@@ -114,6 +114,7 @@ fn content_main_from_children(
             axes,
             inner_main,
             &child_edges,
+            true,
         );
         let m = child_edges.margin.or_zero();
         let margin_main = if axes.row {

@@ -27,14 +27,14 @@ Sigil is not published on crates.io. The repository is currently private;
 you need GitHub access and Git authentication to use this dependency.
 
 ```bash
-cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main
+cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha>
 ```
 
 For the terminal host:
 
 ```bash
-cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
-cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
+cargo add sigil-tui --git https://github.com/manaforged/sigil --rev <sha>
+cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha> --no-default-features
 ```
 
 ## Usage
@@ -126,7 +126,7 @@ With the `desktop` feature, open a URL or path with the OS handler:
 
 ## Docs
 
-- From the framework checkout, serve the book with `mdbook serve docs/book`.
+- From the framework checkout, serve the book with `mdbook serve docs`.
 - From the framework checkout, run `cargo run -p sigil-gui --example hello-counter`
   or `cargo run -p sigil-gui --example hello-host`.
 

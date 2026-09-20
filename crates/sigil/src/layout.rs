@@ -22,6 +22,7 @@ pub mod prelude;
 pub mod reactive_position;
 mod resolve;
 mod result;
+mod snap;
 pub mod style_adapter;
 mod style_data;
 mod text_adapter;

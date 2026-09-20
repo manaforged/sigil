@@ -35,8 +35,8 @@ static EDIT_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(8), StyleAtom::
 
 pub(super) const DEFAULT_HEIGHT: f32 = 160.0;
 
-pub(super) fn content_padding() -> (f32, f32) {
-    crate::style::cell_size().map_or((12.0, 8.0), |cell| (cell, 0.0))
+pub(super) const fn content_padding() -> (f32, f32) {
+    (12.0, 8.0)
 }
 
 pub(super) fn build_base_node(
@@ -80,7 +80,7 @@ pub(super) fn edit_layout() -> LayoutStyle {
         .fill_width()
         .height(DEFAULT_HEIGHT)
         .min_size(0.0, 0.0)
-        .padding(crate::style::cell_size().map_or(1.0, |_| 0.0))
+        .padding(1.0)
 }
 
 fn edit_inner(
@@ -91,7 +91,7 @@ fn edit_inner(
     let down = runtime.clone();
     let moved = runtime.clone();
     let scroll_y = scroll_into_view(runtime);
-    let (padding_x, padding_y) = content_padding();
+    let (padding_x, padding_y) = runtime.content_padding;
     let offset = derived_eq(move || (0.0, padding_y - scroll_y.get()));
     let text_box = container()
         .hittable(false)
@@ -131,7 +131,7 @@ fn scroll_into_view(runtime: &TextEditRuntime) -> Signal<f32> {
     let caret_affinity = runtime.caret_affinity;
     let content_size = runtime.content_size;
     let viewport_size = runtime.viewport_size;
-    let (_, padding_y) = content_padding();
+    let (_, padding_y) = runtime.content_padding;
     effect(move || {
         let buffer = value.get();
         let byte = caret.get().min(buffer.len());
@@ -278,7 +278,7 @@ fn pointer_drag_move(event: &PointerEvent, runtime: &TextEditRuntime, scroll_y: 
 
 fn offset_at_point(runtime: &TextEditRuntime, x: f32, y: f32, scroll_y: f32) -> HitPosition {
     let buffer = runtime.value.peek();
-    let (padding_x, padding_y) = content_padding();
+    let (padding_x, padding_y) = runtime.content_padding;
     let content_y = y - padding_y + scroll_y;
     let content_x = x - padding_x;
     let style = runtime.text_style.peek();

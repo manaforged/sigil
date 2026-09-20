@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom};
+use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, Tone};
 
 use super::shared::label;
 use super::text_field::TextFieldBuilder;
@@ -206,6 +206,119 @@ pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
 }
 
 const AVATAR_PX: f32 = 28.0;
+
+#[must_use]
+pub fn spacer() -> NodeBuilder {
+    container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
+}
+
+#[must_use]
+pub fn hairline() -> NodeBuilder {
+    container()
+        .role(Role::GenericContainer)
+        .layout(LayoutStyle::block().fixed_size(1.0, 16.0).shrink(0.0))
+        .class("bg-gray-6")
+}
+
+#[must_use]
+pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
+    container()
+        .role(Role::Status)
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .padding(48.0)
+                .gap(10.0)
+                .align_items(AlignItems::Center),
+        )
+        .child(text(title).class("text-lg font-medium text-on-surface"))
+        .child(text(body).class("text-sm text-gray-11"))
+}
+
+const LIST_ROW_HEIGHT: f32 = 24.0;
+
+#[must_use]
+pub fn list_row(
+    selected: bool,
+    title: impl Into<TextContent>,
+    detail: impl Into<TextContent>,
+) -> NodeBuilder {
+    let title = title.into();
+    let mut row = container()
+        .role(Role::GenericContainer)
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(LIST_ROW_HEIGHT)
+                .padding_x(8.0)
+                .gap(8.0)
+                .align_items(AlignItems::Center),
+        )
+        .class("rounded-md")
+        .child(
+            text(title)
+                .ellipsize()
+                .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
+                .class("text-sm text-on-surface"),
+        );
+    let detail: TextContent = detail.into();
+    let empty = matches!(&detail, TextContent::Static(value) if value.is_empty());
+    if !empty {
+        row = row.child(text(detail).ellipsize().class("text-xs text-gray-11"));
+    }
+    if selected {
+        row = row.class("bg-gray-5");
+    }
+    row
+}
+
+#[must_use]
+pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(LIST_ROW_HEIGHT)
+                .padding_x(8.0),
+        )
+        .child(text(title).class("text-xs text-gray-11"))
+}
+
+#[must_use]
+pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> NodeBuilder {
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .height(LIST_ROW_HEIGHT)
+                .padding_x(16.0)
+                .align_items(AlignItems::Center),
+        )
+        .child(text(keys).class("text-xs text-gray-11"))
+        .child(spacer())
+        .child(text(right).class("text-xs text-accent-11"))
+}
+
+#[must_use]
+pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
+    let class = match tone {
+        Tone::Error => "text-error-11",
+        Tone::Warn => "text-warning-11",
+        Tone::Success => "text-success-11",
+        Tone::Info | Tone::Primary | Tone::Neutral => "text-gray-11",
+    };
+    container()
+        .role(Role::Status)
+        .layout(
+            LayoutStyle::flex_row()
+                .fill_width()
+                .padding_x(8.0)
+                .padding_y(4.0),
+        )
+        .child(text(body).ellipsize().class(class))
+}
 
 #[must_use]
 pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {

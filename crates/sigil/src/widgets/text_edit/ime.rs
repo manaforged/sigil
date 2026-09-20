@@ -8,7 +8,7 @@ use crate::layout::{CaretGeometry, with_text_geometry};
 use crate::reactive::{Signal, batch, effect, signal};
 
 use super::handlers::{TextEditRuntime, commit, write_value};
-use super::render::{content_padding, floor_char_boundary, splice_preedit};
+use super::render::{floor_char_boundary, splice_preedit};
 
 #[derive(Clone)]
 pub(super) struct ImeState {
@@ -105,7 +105,7 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let content_size = runtime.content_size;
     let scroll_y = runtime.scroll_y;
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
-    let (padding_x, padding_y) = content_padding();
+    let (padding_x, padding_y) = runtime.content_padding;
     effect(move || {
         let preedit_text = preedit.get();
         let composing = !preedit_text.is_empty();

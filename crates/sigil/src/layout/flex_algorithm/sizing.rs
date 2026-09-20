@@ -112,6 +112,7 @@ pub(crate) fn item_main_basis(
     axes: Axis2,
     cb_main: f32,
     edges: &NodeEdges,
+    intrinsic: bool,
 ) -> f32 {
     let chrome_main = if axes.row {
         edges.inline_chrome()
@@ -126,7 +127,8 @@ pub(crate) fn item_main_basis(
     } else {
         style.size.height
     };
-    if let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
+    let sized = !(intrinsic && matches!(dim, Dimension::Fill | Dimension::Percent(_)));
+    if sized && let Some(size) = dim_to_border_box(dim, cb_main, chrome_main, style.box_sizing) {
         return size.max(0.0);
     }
     if node.children().is_empty() {

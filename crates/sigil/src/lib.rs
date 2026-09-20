@@ -97,6 +97,9 @@ pub use crate::widgets::{interaction, widget_dev};
 #[cfg(feature = "render")]
 pub mod render;
 
+/// Application import surface. Product code uses `use sigil::prelude::*`.
+///
+/// Modules marked `#[doc(hidden)]` are not a stable API.
 pub mod prelude {
     pub use crate::actions::{Action, HandlerKey, Propagate};
     pub use crate::animation::{
@@ -140,23 +143,25 @@ pub mod prelude {
     pub use crate::widgets::{
         ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, ClipError, Clipboard,
         CodeEditBuilder, ColAlign, ColWidth, Combobox, CommandMenuBuilder, DRAG_THRESHOLD_PX,
-        DROP_TARGET_CLASS, Date, DateFieldBuilder, Density, DotBuilder, DragDropExt, DragState,
-        DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder, GaugeBuilder,
-        HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder, InteractiveBuilder,
-        MenuBarBuilder, MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind,
-        Orientation, PanelBuilder, PathCmd, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
-        ScrollAnchor, ScrollBuilder, SelectionMode, SelectionState, Side, SliderBuilder,
-        SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder, TableColumn,
-        TableState, TabsBuilder, TextEditBuilder, TextEditState, TextFieldBuilder, ToastEntry,
-        ToastLevel, ToastQueue, ToggleBuilder, TooltipBuilder, TransportBuilder, TurnStripBuilder,
-        VirtualListBuilder, avatar, axis_drag, badge, button, card, chart, checkbox, chip,
-        code_edit, color_field, combobox, command_menu, date_field, divider_horizontal,
-        divider_vertical, dot, drag_ghost, dropdown, field, floating_text, gauge, heatmap, html,
-        icon, icon_button, image_rgba, interactive, kv_row, label, markdown, markdown_edit, menu,
-        menu_bar, mermaid, modal, number_field, panel, path, progress, radio_group, scroll,
-        scroll_auto, sheet, sidebar, sidebar_width, slider, splitter, status_bar, surface, table,
-        tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip, transport,
-        turn_strip, validated_field, virtual_list,
+        DROP_TARGET_CLASS, Date, DateFieldBuilder, Density, DiffBuilder, DiffLayout, DotBuilder,
+        DragDropExt, DragState, DropdownBuilder, FctSpawn, FloaterStyle, FloatingTextBuilder,
+        GaugeBuilder, HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder,
+        InteractiveBuilder, MenuBarBuilder, MenuBuilder, MenuItem, ModalBuilder,
+        NumberFieldBuilder, NumericKind, Orientation, PanelBuilder, PathCmd, PathFill, PathNode,
+        ProgressBuilder, RadioGroupBuilder, ScrollAnchor, ScrollBuilder, SelectionMode,
+        SelectionState, Side, SliderBuilder, SplitterBuilder, SplitterOrientation, SubmenuBuilder,
+        TableBuilder, TableColumn, TableState, TabsBuilder, TextEditBuilder, TextEditState,
+        TextFieldBuilder, ToastEntry, ToastLevel, ToastQueue, ToggleBuilder, TooltipBuilder,
+        TransportBuilder, TurnStripBuilder, VirtualListBuilder, app_shell, avatar, axis_drag,
+        badge, button, card, chart, checkbox, chip, code_edit, color_field, combobox, command_menu,
+        date_field, diff, divider_horizontal, divider_vertical, dot, drag_ghost, dropdown,
+        empty_state, field, floating_text, gauge, hairline, heatmap, hint_bar, hint_overlay, html,
+        icon, icon_button, image_rgba, interactive, kv_grid, kv_row, label, list_row, markdown,
+        markdown_edit, menu, menu_bar, mermaid, modal, notice_band, number_field, panel, path,
+        progress, radio_group, scroll, scroll_auto, section_label, sheet, sidebar, sidebar_width,
+        slider, spacer, splitter, status_bar, surface, table, tabs, terminal, text_edit,
+        text_field, toast, toast_queue, toggle, tooltip, transport, turn_strip, validated_field,
+        virtual_list,
     };
     pub use crate::{AppConfig, AppResult, Error, Host, Painted, TreeRoot};
     #[cfg(feature = "desktop")]

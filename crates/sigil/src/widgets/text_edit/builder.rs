@@ -12,7 +12,7 @@ use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
-use super::render::{build_base_node, edit_layout};
+use super::render::{build_base_node, content_padding, edit_layout};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
@@ -25,6 +25,7 @@ pub struct TextEditBuilder {
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
+    pub(super) content_padding: (f32, f32),
     state: Option<TextEditState>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
@@ -48,6 +49,7 @@ impl TextEditBuilder {
             clipboard: None,
             caret_visible: None,
             caret_position: None,
+            content_padding: content_padding(),
             state: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
@@ -69,6 +71,12 @@ impl TextEditBuilder {
     #[must_use]
     pub const fn caret_position(mut self, position: Signal<usize>) -> Self {
         self.caret_position = Some(position);
+        self
+    }
+
+    #[must_use]
+    pub const fn content_padding(mut self, horizontal: f32, vertical: f32) -> Self {
+        self.content_padding = (horizontal, vertical);
         self
     }
 
@@ -131,8 +139,15 @@ impl TextEditBuilder {
                     .unwrap_or_else(|| signal(value.peek().len())),
             )
         });
-        let runtime =
-            TextEditRuntime::new(state, disabled, change, submit, clipboard, caret_visible);
+        let runtime = TextEditRuntime::new(
+            state,
+            disabled,
+            change,
+            submit,
+            clipboard,
+            caret_visible,
+            self.content_padding,
+        );
 
         let user_overlay = style_accumulator.take_state_overlay();
         let node = build_base_node(&runtime, &placeholder, interaction, user_overlay);

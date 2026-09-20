@@ -67,6 +67,63 @@ fn focus_when_bump_focuses_the_field() {
 }
 
 #[test]
+fn focus_when_mounts_with_a_set_trigger_take_focus() {
+    sigil::reactive::Runtime::scope("text-field-focus-mount", || {
+        let value = signal(String::new());
+        let trigger = signal(0_u64);
+        trigger.set(1);
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value).focus_when(trigger));
+        let layout = compute(&mut cx, root);
+        let mut router = EventRouter::new();
+
+        router.flush_focus_requests(&mut cx, &layout);
+        assert_eq!(
+            router.focus(),
+            Some(root),
+            "a field mounted after the bump takes focus without a new bump"
+        );
+    });
+}
+
+#[test]
+fn focus_when_mount_inside_trapped_modal_takes_typing() {
+    sigil::reactive::Runtime::scope("text-field-focus-modal", || {
+        let value = signal(String::new());
+        let trigger = signal(0_u64);
+        trigger.set(1);
+        let open = signal(true);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container().child(
+                modal(open)
+                    .title("authentication")
+                    .trap(true)
+                    .child(text_field(value).focus_when(trigger)),
+            ),
+        );
+        let layout = compute(&mut cx, root);
+        let field = field_node(&cx, root);
+        let mut router = EventRouter::new();
+
+        router.flush_focus_requests(&mut cx, &layout);
+        assert_eq!(
+            router.focus(),
+            Some(field),
+            "the mounted field holds focus inside the trapped modal"
+        );
+
+        router.route(
+            &mut cx,
+            &layout,
+            key("a", PhysicalKey::KeyA, KeyPhase::Down),
+        );
+        router.route(&mut cx, &layout, key("a", PhysicalKey::KeyA, KeyPhase::Up));
+        assert_eq!(value.get(), "a", "typing reaches the mounted field");
+    });
+}
+
+#[test]
 fn slash_shortcut_focuses_field_then_typing_reaches_it() {
     sigil::reactive::Runtime::scope("text-field-slash-e2e", || {
         let value = signal(String::new());

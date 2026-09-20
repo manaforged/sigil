@@ -1009,3 +1009,47 @@ fn nested_auto_height_columns_probe_once_per_node() {
     let box_ = s.boxed(leaf).unwrap();
     assert!(near(box_.h, 16.0), "leaf h={}", box_.h);
 }
+
+#[test]
+fn fill_child_inside_grow_item_does_not_shrink_siblings() {
+    let mut f = LayoutForest::new();
+    let parent = f.insert(
+        None,
+        StyleData {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            box_sizing: BoxSizing::BorderBox,
+            size: StyleSize::new(Dimension::Px(272.0), Dimension::Px(40.0)),
+            ..StyleData::default()
+        },
+    );
+    let fixed_leaf = add_child(&mut f, parent, fixed(56.0, 8.0));
+    let wrapper = add_child(
+        &mut f,
+        parent,
+        StyleData {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Row,
+            box_sizing: BoxSizing::BorderBox,
+            flex_grow: 1.0,
+            min_size: StyleSize::new(Dimension::Px(0.0), Dimension::Px(0.0)),
+            ..StyleData::default()
+        },
+    );
+    add_child(
+        &mut f,
+        wrapper,
+        StyleData {
+            display: Display::Block,
+            box_sizing: BoxSizing::BorderBox,
+            size: StyleSize::new(Dimension::Fill, Dimension::Px(1.0)),
+            ..StyleData::default()
+        },
+    );
+    let s = run(&f, parent, 400.0, 400.0);
+    let leaf = s.boxed(fixed_leaf).unwrap();
+    let wrap = s.boxed(wrapper).unwrap();
+    assert!(near(leaf.w, 56.0), "sibling shrank: leaf.w={}", leaf.w);
+    assert!(near(wrap.x, 56.0), "wrap.x={}", wrap.x);
+    assert!(near(wrap.w, 216.0), "wrap.w={}", wrap.w);
+}

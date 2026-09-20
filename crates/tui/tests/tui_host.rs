@@ -12,6 +12,7 @@
 
 use sigil::hal::{Key, ShellEvent};
 use sigil::kernel::{Cx, NodeId, container, text};
+use sigil::prelude::{LayoutBuilderExt, NodeStyleExt};
 use sigil::reactive::{derived, signal};
 use sigil::widgets::button;
 
@@ -932,4 +933,138 @@ fn paste_inserts_whole() {
         drop(step(&mut host, &mut router, [paste("hello world")], 40, 6));
         assert_eq!(value.peek(), "hello world");
     });
+}
+
+#[test]
+fn wrapped_label_fills_the_container_width() {
+    use sigil::layout::prelude::LayoutStyle;
+    let body = "x".repeat(80);
+    let out = present(
+        container()
+            .layout(LayoutStyle::block().fill_width())
+            .child(text(body).wrap().layout(LayoutStyle::block().fill_width())),
+        60,
+        10,
+        &[],
+    );
+    let count = out.lines().filter(|l| l.contains('x')).count();
+    assert!(
+        count >= 2,
+        "80 x's in a 52-column container must wrap to two lines, got:\n{out}"
+    );
+}
+
+#[test]
+fn wrapped_label_inside_modal_band_wraps() {
+    use sigil::layout::prelude::LayoutStyle;
+    use sigil::reactive::signal;
+    use sigil::widgets::modal;
+    sigil::reactive::Runtime::scope("tui-modal-wrap", || {
+        let body = "x".repeat(80);
+        let open = signal(true);
+        let out = present(
+            container().child(
+                modal(open).title("models").trap(true).child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fill_width())
+                        .child(
+                            container()
+                                .layout(
+                                    LayoutStyle::flex_row()
+                                        .fill_width()
+                                        .min_size(0.0, 0.0)
+                                        .padding_x(8.0),
+                                )
+                                .child(
+                                    text(body)
+                                        .wrap()
+                                        .class(sigil::classes!("text-xs"))
+                                        .layout(LayoutStyle::block().fill_width()),
+                                ),
+                        ),
+                ),
+            ),
+            60,
+            10,
+            &[],
+        );
+        let count = out.lines().filter(|l| l.contains('x')).count();
+        assert!(count >= 2, "modal band must wrap the label, got:\n{out}");
+    });
+}
+
+#[test]
+fn wrapped_label_inside_flex_row_band_wraps() {
+    use sigil::layout::prelude::LayoutStyle;
+    let body = "x".repeat(80);
+    let out = present(
+        container().layout(LayoutStyle::block().fill_width()).child(
+            container()
+                .layout(
+                    LayoutStyle::flex_row()
+                        .fill_width()
+                        .min_size(0.0, 0.0)
+                        .padding_x(8.0),
+                )
+                .child(text(body).wrap().layout(LayoutStyle::block().fill_width())),
+        ),
+        60,
+        10,
+        &[],
+    );
+    let count = out.lines().filter(|l| l.contains('x')).count();
+    assert!(count >= 2, "flex_row band must wrap the label, got:\n{out}");
+}
+
+#[test]
+fn grow_fill_does_not_clip_row_labels() {
+    use sigil::kernel::{container, node};
+    use sigil::prelude::{AlignItems, LayoutStyle, divider_horizontal, label};
+    let grid = present(
+        |cx: &mut Cx| {
+            cx.add(
+                container()
+                    .layout(
+                        LayoutStyle::flex_column()
+                            .fill_width()
+                            .min_size(0.0, 0.0)
+                            .padding_x(24.0)
+                            .gap(0.0),
+                    )
+                    .child(
+                        container()
+                            .layout(
+                                LayoutStyle::flex_row()
+                                    .fill_width()
+                                    .shrink(0.0)
+                                    .align_items(AlignItems::Center)
+                                    .gap(8.0),
+                            )
+                            .children_reactive(|| {
+                                vec![
+                                    node(container().child(label("L_L_L_L"))),
+                                    node(
+                                        container()
+                                            .layout(
+                                                LayoutStyle::flex_row()
+                                                    .grow(1.0)
+                                                    .min_size(0.0, 0.0),
+                                            )
+                                            .child(divider_horizontal()),
+                                    ),
+                                    node(container().child(label("RRRRRRRRRRRRRRRR"))),
+                                ]
+                            }),
+                    ),
+            )
+        },
+        40,
+        8,
+        &[],
+    );
+    assert!(grid.contains("L_L_L_L"), "left label clipped in:\n{grid}");
+    assert!(
+        grid.contains("RRRRRRRRRRRRRRRR"),
+        "right label clipped in:\n{grid}"
+    );
 }
