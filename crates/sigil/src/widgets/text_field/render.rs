@@ -132,15 +132,20 @@ fn field_inner(
 }
 
 fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
-    let padding_y = height.map_or(6.0, |height| {
-        ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
-    });
+    let cell = crate::style::cell_size();
+    let inset = cell.unwrap_or(1.0);
+    let padding_y = match cell {
+        Some(_) => 0.0,
+        None => height.map_or(6.0, |height| {
+            ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
+        }),
+    };
     let base = width.map_or_else(
         || LayoutStyle::flex_row().fill_width().grow(1.0),
-        |w| LayoutStyle::flex_row().width((w - 2.0).max(0.0)),
+        |w| LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
     );
     let base = match height {
-        Some(h) => base.height((h - 2.0).max(0.0)),
+        Some(h) => base.height(2.0f32.mul_add(-inset, h).max(0.0)),
         None => base,
     };
     base.align_items(AlignItems::Center)

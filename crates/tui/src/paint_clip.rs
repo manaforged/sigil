@@ -89,13 +89,14 @@ pub(super) fn paint_text(grid: &mut Grid, node: &Painted, rect: Rect, cell: f32)
     let clip_top = signed_cell(rect.origin.y / cell);
     let clip_bottom = signed_cell(((rect.origin.y + rect.height) / cell).ceil()).max(clip_top);
     let top = signed_cell(node.rect.origin.y / cell);
+    let single = lines.len() == 1;
     for (offset, (start, end)) in lines.into_iter().enumerate() {
         let Some(line_text) = text.get(start..end) else {
             continue;
         };
         let skipped = floor_cell((rect.origin.x - node.rect.origin.x) / cell);
         let (line_text, consumed) = skip_cells(line_text, skipped);
-        let row = if !node.wrap && offset == 0 {
+        let row = if single {
             centered_line
         } else {
             top.saturating_add(isize::try_from(offset).unwrap_or(isize::MAX))
