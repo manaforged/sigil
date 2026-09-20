@@ -1,0 +1,57 @@
+name: PR
+
+on:
+  pull_request:
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+  CARGO_PROFILE_DEV_DEBUG: '0'
+
+jobs:
+  pr:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Rust toolchain
+        run: rustup show active-toolchain
+      - name: cargo fmt
+        run: cargo fmt --all -- --check
+      - name: Select affected packages
+        id: scope
+        run: |
+          pkgs=$(node scripts/affected-packages.mjs \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --head "${{ github.event.pull_request.head.sha }}" \
+            --explain)
+          args=""
+          for p in $pkgs; do args="$args -p $p"; done
+          echo "args=$args" >> "$GITHUB_OUTPUT"
+          echo "scope: ${args:-none (docs or non-Rust change)}" >> "$GITHUB_STEP_SUMMARY"
+      - name: linux system libs
+        if: steps.scope.outputs.args != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgtk-3-dev libudev-dev libasound2-dev libxkbcommon-dev libxkbcommon-x11-dev libxdo-dev
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        if: steps.scope.outputs.args != ''
+        with:
+          save-if: 'false'
+      - name: cargo clippy
+        if: steps.scope.outputs.args != ''
+        run: cargo clippy ${{ steps.scope.outputs.args }} --all-targets --locked --no-deps -- -D warnings
+      - name: cargo test
+        if: steps.scope.outputs.args != ''
+        run: cargo test ${{ steps.scope.outputs.args }} --locked

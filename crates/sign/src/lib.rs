@@ -15,7 +15,7 @@ mod cli;
 mod pack;
 
 pub use cli::pack_cli;
-pub use pack::{AppBundle, PackError, ResourceCopy, macos_app, windows_dir};
+pub use pack::{AppBundle, CodeSign, PackError, ResourceCopy, macos_app, windows_dir};
 
 use minisign::{PError, SecretKey};
 
