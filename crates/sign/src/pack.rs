@@ -298,7 +298,6 @@ pub fn macos_app(
     for copy in resources {
         copy_tree(copy.from, &relative_inside(&resources_dir, copy.to)?)?;
     }
-    mark_bundle(dest)?;
     codesign(dest, sign)
 }
 
