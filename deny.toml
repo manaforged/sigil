@@ -176,6 +176,7 @@ skip = [
     { crate = "linux-raw-sys@0.4.15", reason = "follows rustix 0.38.44" },
     { crate = "linux-raw-sys@0.9.4", reason = "drm-sys via softbuffer 0.4; rustix uses 0.12" },
     { crate = "getrandom@0.3.4",     reason = "ahash 0.8.12 + rand_core 0.9.5 pin; tempfile 3.27 uses 0.4.2" },
+    { crate = "getrandom@0.2.17",    reason = "minisign 0.7.9 pin; tempfile uses 0.4" },
 
     # --- windows-* target crates -------------------------------------------
     # Target-specific support crates version-locked to their windows-sys

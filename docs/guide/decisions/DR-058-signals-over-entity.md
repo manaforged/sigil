@@ -4,7 +4,7 @@ status: accepted
 date: 2026-08-19
 covers: Signals as the product surface — Entity/notify demoted to shared machinery
 supersedes: DR-045 (unavailable — local-only era, see README)
-relates: [DR-040, DR-046, docs/book/arch/state.md]
+relates: [DR-040, DR-046, docs/guide/arch/state.md]
 ---
 
 # DR-058 — Signals over entities

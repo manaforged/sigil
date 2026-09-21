@@ -8,19 +8,25 @@ The workspace publishes in lockstep: every published `sigil-*` crate shares one 
 
 ## [Unreleased]
 
+Not tagged. Not on crates.io. The repository is still private.
+
 ### Added
 
-- `sigil-sign` signs release packages with minisign. `sign_file` returns
-  the envelope as text. The caller writes it. A standard `.sig` file holds
-  the plain envelope. A transport that needs an ASCII-safe payload
-  base64-encodes it.
-- `sigil-pack` writes a macOS `.app` or a Windows app directory and can
-  sign a file. Extra files use `--resource SRC:DST`.
+- `sigil-sign` and `sigil-pack`: macOS `.app` and Windows app directory,
+  minisign signing. Extra files use `--resource-from` / `--resource-to`.
+  Paths must stay inside the bundle. Symlinks and Windows reparse points
+  are refused. `sigil-pack sign` writes a base64 minisign `.sig`. Password
+  is `SIGIL_PACK_PASSWORD`. Ad-hoc `codesign --sign -` is not notarization.
+
+### Known issues
+
+- Intermittent doubled label after save and reopen in a form (issue #5).
 
 ## [0.1.0] — 2026-09-17
 
-First public release. The facade publishes as `sigil-gui` (the `sigil` name was
-already taken on crates.io); its library is still named `sigil`, so
+Library contents for the first public tag. That tag is not cut yet. The
+facade publishes as `sigil-gui` (the `sigil` name was already taken on
+crates.io); its library is still named `sigil`, so
 `use sigil::prelude::*;` remains the single import user code needs.
 
 ### Added

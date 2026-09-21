@@ -6,7 +6,11 @@ separate `sigil-tui` crate paints it on a character grid.
 
 ![The workbench example application](docs/workbench.png)
 
-Unreleased. The API can change between 0.x releases.
+Using a coding agent with Sigil? Give it
+[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md).
+
+Unreleased. The API can change between 0.x releases. Pin a git **rev**,
+not `main`, from a product until `v0.1.0` exists.
 
 ## Requirements
 
@@ -14,8 +18,14 @@ Unreleased. The API can change between 0.x releases.
 - A wgpu-capable GPU for the default desktop renderer.
   Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
-Hosted Linux CI uses Mesa software Vulkan for renderer checks. macOS and
-Windows require separate platform checks.
+## Platforms
+
+| Host | Linux | macOS | Windows |
+| --- | --- | --- | --- |
+| Desktop `launch` | yes (wgpu or `SIGIL_BACKEND=cpu`) | yes | yes |
+| Embed `Host` | yes | yes | yes |
+| Terminal `sigil-tui` | yes | yes | yes |
+| Web / mobile | no | no | no |
 
 ## Install
 
@@ -23,19 +33,21 @@ Sigil is not published on crates.io. The repository is currently private;
 you need GitHub access and Git authentication to use this dependency.
 
 ```bash
-cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main
+cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha>
+cargo add sigil-sign --git https://github.com/manaforged/sigil --rev <sha>
 ```
 
-The package is `sigil-gui` because the `sigil` name is taken on
-crates.io. The library is `sigil`, so imports read `sigil::`. The first
-build compiles the wgpu stack; it can take a few minutes. `Cargo.lock`
-records the selected Git commit.
+Replace `<sha>` with a commit from this repository. The package is
+`sigil-gui` because the `sigil` name is taken on crates.io. The library
+is `sigil`, so imports read `sigil::`. The first build compiles the wgpu
+stack; it can take a few minutes. `Cargo.lock` records the selected
+commit.
 
 For a terminal-only program:
 
 ```bash
-cargo add sigil-tui --git https://github.com/manaforged/sigil --branch main
-cargo add sigil-gui --git https://github.com/manaforged/sigil --branch main --no-default-features
+cargo add sigil-tui --git https://github.com/manaforged/sigil --rev <sha>
+cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha> --no-default-features
 ```
 
 ## Usage
@@ -71,8 +83,24 @@ host pumps `Host` inside `Runtime::scope`. The terminal entry point is
 cargo run -p sigil-gui --example hello-counter   # the app above
 cargo run -p sigil-gui --example hello-host      # embed the tree
 cargo run -p sigil-tui --example hello-tui      # terminal host
-mdbook serve docs/book                          # the guide and architecture
 ```
+
+## Cargo features
+
+| Feature | Default | Role |
+| --- | --- | --- |
+| `desktop` | yes | Windowed host (`launch`) |
+| `scene` | via desktop | Layout, text, widgets, renderer |
+| `shell` | via desktop | winit + AccessKit |
+| `cpu` | no | `SIGIL_BACKEND=cpu` software renderer |
+| `clipboard` | via desktop | OS clipboard |
+| `dialog` / `menu` / `tray` | no | Native dialogs, menus, tray |
+| `audio` / `pty` | no | Playback and terminal sessions |
+| `image-decode` | no | Image file decode |
+| `render` | no | Scene without a window |
+
+The table lists the features of `sigil-gui`. `sigil-tui` is a separate
+crate. `sigil-sign` packs and signs.
 
 ## Limits
 
@@ -87,12 +115,24 @@ mdbook serve docs/book                          # the guide and architecture
   half-block cells.
 - No fuzz targets. Do not feed untrusted documents to the markdown,
   HTML, or SVG parsers.
+- Intermittent doubled label after save and reopen in a form (issue #5).
+- `sigil-pack macos` ad-hoc codesigns. That is not Developer ID or
+  notarization.
+
+## Docs
+
+| Read | For |
+| --- | --- |
+| [User guide](docs/guide/README.md) | Task pages in reading order. Build the book with `mdbook serve docs`. |
+| [API map](docs/api.md) | For agents and tools: each job mapped to its symbol or command, the error model, and what is off-limits. |
+| [Architecture](docs/guide/arch/overview.md) | How it works inside. |
+
+The [changelog](CHANGELOG.md) states the version policy.
 
 ## Security
 
 Report vulnerabilities privately to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
-GitHub private reporting is also an option when it is available on the
-repository. See [SECURITY.md](SECURITY.md).
+See [SECURITY.md](SECURITY.md) for the other reporting channel.
 The workspace denies `unsafe`, with one exception in the native menu
 path (`crates/sigil/src/app/menu.rs`). `cargo deny check` gates
 advisories.

@@ -6,12 +6,12 @@ The widget catalog ships in the crate. You do not add a second
 component package.
 
 ```text
-mdbook serve docs/book
+mdbook serve docs
 ```
 
 The server opens the book at `http://localhost:3000`. Build a static
-site with `mdbook build docs/book`. The output goes to
-`docs/book/book/` and is not committed.
+site with `mdbook build docs`. The output goes to
+`docs/book/` and is not committed.
 
 The framework repository includes the small examples used in this guide.
 
@@ -20,6 +20,9 @@ The framework repository includes the small examples used in this guide.
 - [Quickstart](quickstart.md) — install, first app, three hosts
 - [Widgets](widgets.md) — the widget set
 - [Terminal host](terminal.md) — the character-grid host
+- [Signing](signing.md) — sign an update package
+- [Packing](packing.md) — build a macOS or Windows app bundle
+- [API map](../api.md) — each job mapped to its symbol
 
 ## Architecture
 
@@ -28,3 +31,7 @@ The framework repository includes the small examples used in this guide.
 - [Painting](arch/painting.md) — tree, layout, text, renderer
 - [Platform](arch/platform.md) — shell, input, accessibility
 - [Modules](arch/modules.md) — the module map
+
+## Decisions
+
+- [Decision records](decisions/README.md) — accepted architectural decisions

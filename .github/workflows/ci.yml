@@ -128,4 +128,4 @@ jobs:
         with:
           mdbook-version: "0.4.40"
       - name: book builds
-        run: mdbook build docs/book
+        run: mdbook build docs

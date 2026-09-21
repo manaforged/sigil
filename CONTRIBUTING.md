@@ -1,7 +1,7 @@
 # Contributing
 
 Issues are welcome. Pull requests are by invitation: open an issue
-first, and send a patch only when asked.
+first, and send a patch only when asked. Coding agents: [AGENTS.md](AGENTS.md).
 
 ## Build
 
@@ -42,7 +42,7 @@ cargo test --workspace -- --ignored
 
 - Keep functions under 50 lines. Clippy enforces this.
 - Do not add code comments. User docs live in `README.md`,
-  `crates/sigil/README.md`, and `docs/book/`.
+  `crates/sigil/README.md`, `docs/api.md`, and `docs/guide/`.
 - Put tests beside the code under test. Do not inline tests in
   production modules.
 - User code imports `sigil::prelude::*` and nothing else from this

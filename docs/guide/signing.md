@@ -7,11 +7,11 @@ A Sigil application ships signed release packages. The signer lives in the
 
 ```rust,no_run
 let envelope = sigil_sign::sign_file(
-    std::path::Path::new("App-0.5.0-full.nupkg"),
+    std::path::Path::new("MyApp-0.1.0-full.nupkg"),
     std::path::Path::new("/secure/updater.key"),
     "key password",
 )?;
-std::fs::write("App-0.5.0-full.nupkg.sig", envelope)?;
+std::fs::write("MyApp-0.1.0-full.nupkg.sig", envelope)?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
