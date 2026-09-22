@@ -3,7 +3,6 @@ use std::rc::Rc;
 use crate::hal::Rect;
 use crate::kernel::{Cx, Node, NodeId, Surface};
 use crate::layout::LayoutResult;
-use crate::layout::ViewportOverlay;
 use crate::style::{RenderStyle, Rgba8, StyleBinding, TextStyle, Theme};
 
 use crate::renderer::emit_cache;
@@ -204,12 +203,7 @@ fn push_children<'t>(
             .get(child)
             .is_some_and(|n| n.get_extension::<crate::kernel::TopLayer>().is_some());
         if is_top_layer {
-            let clip = walk
-                .cx
-                .get(child)
-                .filter(|child_node| child_node.get_extension::<ViewportOverlay>().is_some())
-                .map_or(clip, |_| None);
-            walk.deferred.push((child, inherited.clone(), clip));
+            walk.deferred.push((child, inherited.clone(), None));
         } else {
             push_subtree(walk, child, inherited, clip);
         }
