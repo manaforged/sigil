@@ -5,7 +5,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{
     LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
 };
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived_eq, effect_named, signal};
 use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess, StyleAtom};
 
 pub(crate) mod geometry;
@@ -147,7 +147,12 @@ impl ScrollBuilder {
         let root = viewport_container(width, height, fill)
             .child(body)
             .child(track);
-        let mut root = input::bind(root, scroll_y, max_scroll, viewport_height);
+        let mut root = input::bind(root, scroll_y, max_scroll, viewport_height).with(
+            crate::events::ScrollReveal {
+                scroll_y,
+                max: max_scroll,
+            },
+        );
         if fill {
             root = root.size_reactive(viewport);
         }
@@ -159,6 +164,18 @@ impl ScrollBuilder {
         }
         root
     }
+}
+
+pub(crate) fn reveal_row(scroll_y: Signal<f32>, row: Signal<usize>, height: f32, viewport: f32) {
+    effect_named("sigil::scroll::reveal_row", move || {
+        let top = f32::from(u16::try_from(row.get()).unwrap_or(u16::MAX)) * height;
+        let offset = scroll_y.peek();
+        if top < offset {
+            scroll_y.set(top);
+        } else if top + height > offset + viewport {
+            scroll_y.set(top + height - viewport);
+        }
+    });
 }
 
 fn viewport_signals(

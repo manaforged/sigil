@@ -2,7 +2,9 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use crate::reactive::{derived_eq, signal};
 use crate::style::{NodeStyleExt, Px, StyleAtom};
+use crate::widgets::scroll::{reveal_row, scroll};
 
 use super::super::shared::disabled_now;
 use super::builder::IndexChange;
@@ -109,10 +111,13 @@ fn attach_options(
         ));
     }
     if n > POPUP_MAX_VISIBLE {
+        let scroll_y = signal(0.0_f32);
+        reveal_row(scroll_y, item_ctx.cursor, OPTION_HEIGHT, popup_h);
         popup.child(
-            super::super::scroll::scroll(list, extent)
+            scroll(list, extent)
                 .height(popup_h)
-                .width(item_ctx.width.unwrap_or(200.0)),
+                .width(item_ctx.width.unwrap_or(200.0))
+                .scroll_bind(scroll_y),
         )
     } else {
         popup.child(list)
@@ -124,6 +129,7 @@ fn build_option(idx: usize, label: String, ctx: OptionCtx, on_change: IndexChang
     container()
         .role(Role::ListBoxOption)
         .label(label.clone())
+        .selected(derived_eq(move || ctx.selected.get() == idx))
         .layout(
             sized(LayoutStyle::flex_row(), ctx.width, OPTION_HEIGHT)
                 .padding_x(8.0)
