@@ -55,6 +55,7 @@ pub use frame::{
 pub use launch::launch;
 #[cfg(feature = "desktop")]
 pub use open::open;
+pub use paint::TextFlow;
 pub use pty::Session;
 #[cfg(feature = "scene")]
 pub use text_geometry::EngineGeometry;

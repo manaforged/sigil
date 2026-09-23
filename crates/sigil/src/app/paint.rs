@@ -11,6 +11,14 @@ use crate::style::{
 
 use crate::app::Painted;
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub enum TextFlow {
+    #[default]
+    Line,
+    Wrap,
+    Ellipsis,
+}
+
 #[derive(Clone)]
 pub(crate) struct Resolved {
     id: NodeId,
@@ -65,7 +73,7 @@ fn store(
         && slot.id == node.id
         && slot.rect == node.rect
         && slot.clip == node.clip
-        && slot.wrap == node.wrap
+        && slot.flow == node.flow
         && slot.image.as_ref().map(ImageSource::id) == node.image.as_ref().map(ImageSource::id)
         && slot.crop == node.crop;
     let mut node = node;
@@ -125,7 +133,11 @@ pub(crate) fn fill_painted<'a>(walk: &mut Walk<'a>, id: NodeId, inherited: &Casc
     let rect = result.rect();
     *walk.next = walk.next.saturating_add(1);
     let mut painted = mark(id, rect, tone, &style, inherited.clip);
-    painted.wrap = matches!(node.kind, NodeType::Text { wrap: true, .. });
+    painted.flow = match node.kind {
+        NodeType::Text { wrap: true, .. } => TextFlow::Wrap,
+        NodeType::Text { ellipsis: true, .. } => TextFlow::Ellipsis,
+        _ => TextFlow::Line,
+    };
     painted.image = image_of(node);
     painted.crop = node.get_extension::<ImageCrop>().copied();
     if store(walk.out, slot, painted, text_of(node), kept) {
@@ -198,7 +210,7 @@ fn mark(
         id,
         rect,
         text: None,
-        wrap: false,
+        flow: TextFlow::Line,
         tone,
         fill: style.fill,
         ink: style.ink,

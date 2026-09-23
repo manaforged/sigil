@@ -121,6 +121,9 @@ lives in `sigil::widgets::composition`; all are also re-exported at
 - `list_row(selected, title, detail)` — a 24 px row with an ellipsized
   title, optional right-aligned detail, and a `bg-gray-5` wash when
   `selected`.
+- `list_row_with(selected, title, ListRowSlots { marker, status, columns })`
+  — `list_row` with an optional leading marker glyph and fixed-width,
+  right-aligned `(text, width_px)` columns.
 - `section_label(title)` — a small muted heading for groups.
 - `empty_state(title, body)` — centered `Role::Status` placeholder.
 - `notice_band(body, tone)` — a full-width tinted status strip.

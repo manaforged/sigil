@@ -15,7 +15,7 @@ fn painted(label: &str, tone: Option<Tone>, bare: bool) -> Painted {
         id,
         rect: Rect::new(Point::new(0.0, 0.0), 8.0 * 8.0, 8.0),
         text: (!bare).then(|| label.to_owned()),
-        wrap: true,
+        flow: sigil::app::TextFlow::Wrap,
         tone,
         fill: None,
         ink: None,

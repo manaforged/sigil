@@ -100,8 +100,8 @@ fn edit_inner(
         .size_reactive(runtime.content_size)
         .position_reactive(offset)
         .child(selection_layer(runtime))
-        .child(edit_lines(displayed, runtime.text_style))
-        .child(caret_layer(runtime, interaction));
+        .child(caret_layer(runtime, interaction))
+        .child(edit_lines(displayed, runtime.text_style));
     let content_size = runtime.content_size;
     let extent = derived_eq(move || padding_y.mul_add(2.0, content_size.get().1));
     let body = container()

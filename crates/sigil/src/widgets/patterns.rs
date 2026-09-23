@@ -246,50 +246,13 @@ pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) 
         .child(text(body).class("text-sm text-gray-11"))
 }
 
-const LIST_ROW_HEIGHT: f32 = 24.0;
-
-#[must_use]
-pub fn list_row(
-    selected: bool,
-    title: impl Into<TextContent>,
-    detail: impl Into<TextContent>,
-) -> NodeBuilder {
-    let title = title.into();
-    let mut row = container()
-        .role(Role::GenericContainer)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(LIST_ROW_HEIGHT)
-                .padding_x(8.0)
-                .gap(8.0)
-                .align_items(AlignItems::Center),
-        )
-        .class("rounded-md")
-        .child(
-            text(title)
-                .ellipsize()
-                .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
-                .class("text-sm text-on-surface"),
-        );
-    let detail: TextContent = detail.into();
-    let empty = matches!(&detail, TextContent::Static(value) if value.is_empty());
-    if !empty {
-        row = row.child(text(detail).ellipsize().class("text-xs text-gray-11"));
-    }
-    if selected {
-        row = row.class("bg-gray-5");
-    }
-    row
-}
-
 #[must_use]
 pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(LIST_ROW_HEIGHT)
+                .height(row_height())
                 .padding_x(8.0),
         )
         .child(text(title).class("text-xs text-gray-11"))
@@ -301,7 +264,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(LIST_ROW_HEIGHT)
+                .height(row_height())
                 .padding_x(16.0)
                 .align_items(AlignItems::Center),
         )
@@ -368,8 +331,11 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
         )
 }
 
+mod list_row;
 mod sidebar;
 
+use list_row::row_height;
+pub use list_row::{ListRowSlots, list_row, list_row_with};
 pub use sidebar::{sidebar, sidebar_width};
 
 #[cfg(test)]

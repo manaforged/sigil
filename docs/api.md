@@ -119,7 +119,9 @@ shell first.
 | Text and value input | `text_field`, `text_edit`, `number_field`, `date_field`, `color_field`, `slider`, `validated_field`, `field` |
 | Code and documents | `code_edit`, `markdown`, `markdown_edit`, `html`, `mermaid`, `diff`, `terminal` |
 | Choice lists | `dropdown`, `combobox`, `menu`, `menu_bar`, `command_menu` |
-| Collections | `table`, `virtual_list`, `list_row`, `kv_grid`, `kv_row`, `tabs` |
+| Collections | `table`, `virtual_list`, `list_row`, `list_row_with`, `ListRowSlots`, `kv_grid`, `kv_row`, `tabs` |
+| Rank text against a search query | `fuzzy_score(query, text) -> Option<FuzzyMatch>` |
+| Show a busy indicator | `spinner()`, `spinner_frame(tick) -> &'static str` |
 | Application frame | `app_shell`, `sidebar`, `status_bar`, `panel`, `card`, `sheet`, `splitter`, `scroll`, `scroll_auto` |
 | Overlays | `modal`, `tooltip`, `toast`, `toast_queue`, `hint_overlay`, `floating_text` |
 | Data display | `chart`, `gauge`, `heatmap`, `progress`, `badge`, `dot`, `avatar` |
@@ -136,6 +138,36 @@ shell first.
 | Build a macOS `.app` | `sigil_sign::macos_app`, or `sigil-pack macos` |
 | Build a Windows app directory | `sigil_sign::windows_dir`, or `sigil-pack windows` |
 | Sign an update package with minisign | `sigil_sign::sign_file`, or `sigil-pack sign` |
+
+`list_row_with(selected, title, ListRowSlots)` adds three optional
+slots to `list_row`. `marker` is a 16 px accent glyph before the title,
+for example a cursor, current, or pin glyph. In a terminal host the
+marker is two cells wide, so it fits two one-cell glyphs such as a
+cursor and a mark. `status` is ellipsized detail after the title.
+`columns` is a list of `(text, width_px)` cells, each right-aligned in
+a fixed width. The title shrinks and ellipsizes first. If
+`shrink` is `true`, `status` and `columns` shrink and ellipsize
+before the title instead. `list_row(selected, title, detail)` is
+`list_row_with` with `status` set to `detail`. Slot fields take
+`TextContent` from `sigil::prelude`.
+
+A list row is 24 px tall with 8 px padding and gap. In a terminal
+host (`sigil::style::grid` set), the row is one cell tall and the
+padding and gap are one cell. `section_label` and `hint_bar` use the
+same height. A selected row uses the `accent-5` theme token, the same
+token as a selected `table` row. Register `accent-5` on the `Theme`
+to set the selection color.
+
+`fuzzy_score` ignores case. A lower `FuzzyMatch::score` is a better
+match: 0 exact, 10 prefix, 20 word boundary, 30 substring, and
+40 plus the gap count for a gapped subsequence. A subsequence that
+spans more than three times the query length does not match.
+`FuzzyMatch::positions` holds the matched char indices of the
+lowercased text.
+
+`spinner()` is a text node that advances one frame every 80 ms through
+the interval registry. `spinner_frame(tick)` returns the frame for a
+tick count that the app already keeps.
 
 The [widgets page](guide/widgets.md) describes each widget. The
 [signing](guide/signing.md) and [packing](guide/packing.md) pages give

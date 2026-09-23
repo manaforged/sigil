@@ -15,14 +15,14 @@ use crate::renderer::{CommandScene, emit_scene_clipped};
 
 #[cfg(feature = "scene")]
 use crate::app::DefaultTextMeasure;
-use crate::app::paint::{Cascade, Resolved, Walk, fill_painted};
+use crate::app::paint::{Cascade, Resolved, TextFlow, Walk, fill_painted};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Painted {
     pub id: NodeId,
     pub rect: Rect,
     pub text: Option<String>,
-    pub wrap: bool,
+    pub flow: TextFlow,
     pub tone: Option<Tone>,
     pub fill: Option<Rgba8>,
     pub ink: Option<Rgba8>,

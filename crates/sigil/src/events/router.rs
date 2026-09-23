@@ -96,6 +96,7 @@ impl EventRouter {
             return;
         }
         crate::events::note_focus_source(true);
+        self.focus.sync_scopes(cx, Some(layout));
         for id in pending {
             if self.focus.is_focusable_target(cx, layout, id) {
                 self.focus.set_focus(cx, Some(id));

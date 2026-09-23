@@ -1,4 +1,4 @@
-use sigil::app::{Painted, cell_text_lines, cell_width};
+use sigil::app::{Painted, TextFlow, cell_text_lines, cell_width};
 use sigil::hal::Rect;
 use sigil::kernel::ImageSource;
 use unicode_segmentation::UnicodeSegmentation;
@@ -67,8 +67,26 @@ pub(super) const fn signed_cell(value: f32) -> isize {
     value.floor() as isize
 }
 
+fn fit(text: &str, cells: usize, ellipsis: bool) -> String {
+    if !ellipsis || cell_width(text) <= cells {
+        return text.to_owned();
+    }
+    let mut out = String::new();
+    let mut used = 0;
+    for grapheme in text.graphemes(true) {
+        let step = cell_width(grapheme);
+        if used + step >= cells {
+            break;
+        }
+        used += step;
+        out.push_str(grapheme);
+    }
+    out.push('\u{2026}');
+    out
+}
+
 pub(super) fn paint_text(grid: &mut Grid, node: &Painted, rect: Rect, cell: f32) {
-    let Some(text) = node.text.as_deref() else {
+    let Some(raw) = node.text.as_deref() else {
         return;
     };
     let col = floor_cell(rect.origin.x / cell);
@@ -81,8 +99,9 @@ pub(super) fn paint_text(grid: &mut Grid, node: &Painted, rect: Rect, cell: f32)
     let last = node.clip.map_or(usize::MAX, |clip| {
         floor_cell((clip.origin.x + clip.width) / cell)
     });
-    let lines = if node.wrap {
-        cell_text_lines(text, text_width)
+    let text = fit(raw, text_width, node.flow == TextFlow::Ellipsis);
+    let lines = if node.flow == TextFlow::Wrap {
+        cell_text_lines(&text, text_width)
     } else {
         vec![(0, text.len())]
     };

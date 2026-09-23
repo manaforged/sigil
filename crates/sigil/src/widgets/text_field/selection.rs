@@ -59,8 +59,8 @@ fn track(
         .layout(LayoutStyle::block())
         .position_reactive(track_pos)
         .child(selection_layer(runtime.clone()))
-        .child(field_text(displayed, placeholder_visible))
         .child(caret_layer(runtime, interaction))
+        .child(field_text(displayed, placeholder_visible))
 }
 
 pub(super) fn column_width(width: Option<f32>) -> f32 {

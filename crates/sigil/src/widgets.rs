@@ -32,6 +32,7 @@ mod drag;
 mod drag_drop;
 mod dropdown;
 mod floating_text;
+mod fuzzy;
 mod gauge;
 mod html;
 mod icon;
@@ -51,6 +52,7 @@ mod radio_group;
 mod scroll;
 mod shared;
 mod slider;
+mod spinner;
 mod splitter;
 mod surface;
 mod table;
@@ -88,6 +90,7 @@ pub use floating_text::{
     FCT_POOL_CAPACITY, FctNode, FctSpawn, FctState, FloaterStyle, FloatingTextBuilder, Particle,
     floating_text,
 };
+pub use fuzzy::{FuzzyMatch, fuzzy_score};
 pub use gauge::{GaugeBuilder, gauge};
 pub use html::html;
 pub use icon::{IconBuilder, icon};
@@ -103,15 +106,16 @@ pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    HintOverlayBuilder, app_shell, avatar, card, empty_state, field, hairline, hint_bar,
-    hint_overlay, kv_grid, list_row, notice_band, section_label, sidebar, sidebar_width, spacer,
-    validated_field,
+    HintOverlayBuilder, ListRowSlots, app_shell, avatar, card, empty_state, field, hairline,
+    hint_bar, hint_overlay, kv_grid, list_row, list_row_with, notice_band, section_label, sidebar,
+    sidebar_width, spacer, validated_field,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll, scroll_auto};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
+pub use spinner::{spinner, spinner_frame};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
 pub use surface::surface;
 pub use table::{
