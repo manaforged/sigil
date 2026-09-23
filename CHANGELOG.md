@@ -12,11 +12,56 @@ Not tagged. Not on crates.io. The repository is still private.
 
 ### Added
 
+- `sigil-kittest`: the visual-golden PNG harness is now a crate
+  dependents can use as a dev-dependency. Same API as the old
+  `tests/golden_support` module: `render_widget_to_png`,
+  `assert_png_matches_golden`, `golden_path!`, `assert_goldens_differ!`,
+  `InteractionMode`. `golden_path!` resolves `tests/goldens/` under the
+  caller's manifest dir.
+- `agent_driver` example: mounts a `Host` headless, reads the AccessKit
+  tree, finds a button by name, and clicks it through `EventRouter`.
+- Book chapter "Driving Sigil from an agent" covering `Host`,
+  `EventRouter`, `accessibility_tree`, `sigil_tui::present`/`step`, and
+  `sigil-kittest`.
+- All `sigil` modules are now visible in rustdoc; nothing is
+  `#[doc(hidden)]` except `__drive_test_frame`.
 - `sigil-sign` and `sigil-pack`: macOS `.app` and Windows app directory,
   minisign signing. Extra files use `--resource-from` / `--resource-to`.
   Paths must stay inside the bundle. Symlinks and Windows reparse points
   are refused. `sigil-pack sign` writes a base64 minisign `.sig`. Password
   is `SIGIL_PACK_PASSWORD`. Ad-hoc `codesign --sign -` is not notarization.
+- `sigil-pack recipe` validates a module recipe against the client schema,
+  signs it, and writes the staging `manifest.json` the release host consumes.
+  `genkey` writes a development keypair and refuses to overwrite one.
+
+### Changed
+
+- `markdown` images load only from `data:` base64 URIs. The widget no
+  longer reads a local file path, so untrusted text cannot make it read
+  a file. Each image decodes once.
+- `AppConfig::esc_exits` defaults to `false`. Escape reaches widgets
+  (modal, menu, dropdown) instead of quitting the app. Call
+  `.esc_exits(true)` to restore the old behaviour.
+- `sigil-pack` replaces an existing output bundle only when it wrote
+  that bundle. A macOS bundle now carries a `SigilPack` key in
+  `Info.plist`. Repack over an older bundle by deleting it first.
+- `genkey` creates the secret key with mode 0600. `sigil-pack sign`
+  refuses to write the `.sig` through a symlink.
+
+### Removed
+
+- `sigil-pack recipe` and the recipe schema: module-recipe policy is
+  product-owned, not library API. The same minisign `.sig` flow stays
+  under `sigil-pack sign`.
+
+### Fixed
+
+- `text_field` shows a value that the app sets, for example a field
+  cleared after save. The next keystroke no longer restores the old
+  text.
+- `notice_band(Tone::Warn)`, the empty `chart`, and `code_edit` used
+  theme tokens that the default theme does not define. They panicked
+  in a debug build.
 
 ### Known issues
 

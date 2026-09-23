@@ -77,8 +77,7 @@ fn install_native(menu: &Menu, _hwnd: Option<isize>) -> Result<(), String> {
 )]
 fn install_native(menu: &Menu, hwnd: Option<isize>) -> Result<(), String> {
     let hwnd = hwnd.ok_or_else(|| "main window has no Win32 handle".to_string())?;
-    // SAFETY: `hwnd` comes from the live winit window while the shell still
-    // owns that window. `INSTALLED` keeps `menu` alive after this call.
+    // SAFETY: `hwnd` comes from the live winit window the shell still owns; `INSTALLED` keeps `menu` alive after this call.
     unsafe { menu.init_for_hwnd(hwnd) }.map_err(|error| error.to_string())
 }
 

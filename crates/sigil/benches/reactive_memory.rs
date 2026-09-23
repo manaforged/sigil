@@ -30,14 +30,10 @@ static ALLOCATED: AtomicUsize = AtomicUsize::new(0);
 
 struct CountingAllocator;
 
-// SAFETY: `CountingAllocator` forwards every call to `std::alloc::System`,
-// which is the platform's well-formed allocator. The only added work is
-// a `fetch_add`/`fetch_sub` on a `static AtomicUsize`. We never alias
-// pointers and we never invent layouts.
+// SAFETY: `CountingAllocator` forwards every call to `std::alloc::System` unchanged; added work is atomic and no pointers or layouts are invented.
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: forwarding to the platform allocator with the same
-        // layout the caller supplied; no aliasing or layout invention.
+        // SAFETY: forwards to `System.alloc` with the caller's `layout` unchanged.
         let p = unsafe { System.alloc(layout) };
         if !p.is_null() {
             ALLOCATED.fetch_add(layout.size(), Ordering::Relaxed);
@@ -47,16 +43,13 @@ unsafe impl GlobalAlloc for CountingAllocator {
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         ALLOCATED.fetch_sub(layout.size(), Ordering::Relaxed);
-        // SAFETY: caller's contract on `dealloc` — the pointer was
-        // returned by `alloc` with this exact `layout` and is still
-        // live. We forward those guarantees verbatim to `System`.
+        // SAFETY: caller guarantees `ptr` came from `alloc` with this `layout` and is live; forwarded verbatim to `System`.
         unsafe { System.dealloc(ptr, layout) };
     }
 
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         let old_size = layout.size();
-        // SAFETY: forwarding `ptr`/`layout`/`new_size` to `System`
-        // unchanged. Caller's `realloc` contract carries through.
+        // SAFETY: forwards `ptr`/`layout`/`new_size` to `System` unchanged; the caller's `realloc` contract carries through.
         let p = unsafe { System.realloc(ptr, layout, new_size) };
         if !p.is_null() {
             if new_size > old_size {

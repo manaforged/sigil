@@ -21,13 +21,12 @@ use tracing as _;
 use windows_core as _;
 use zeno as _;
 
-use std::sync::mpsc;
-
 use sigil::renderer::{
     CommandScene, OffscreenTarget, SceneBuilder, TextTuning, WgpuRenderer, set_text_tuning,
     shape_glyph_run,
 };
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
+use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -224,69 +223,4 @@ fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgp
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     })
-}
-
-fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let unpadded_bpr = width * BYTES_PER_PIXEL;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded_bpr = unpadded_bpr.div_ceil(align) * align;
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("raster-text-pixel-check readback"),
-        size: u64::from(padded_bpr) * u64::from(height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("raster-text-pixel-check copy encoder"),
-    });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bpr),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("device poll");
-    rx.recv().expect("map callback").expect("map result");
-
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let un = unpadded_bpr as usize;
-    let pad = padded_bpr as usize;
-    let h = height as usize;
-    let mut out = vec![0u8; un * h];
-    for row in 0..h {
-        out[row * un..row * un + un].copy_from_slice(&mapped[row * pad..row * pad + un]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    out
 }

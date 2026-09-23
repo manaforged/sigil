@@ -2,6 +2,8 @@
 #![allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
 #![allow(clippy::unwrap_used)]
 
+pub(super) use sigil_kittest::gpu::read_pixels;
+
 use pollster::FutureExt as _;
 
 use sigil::hal::Size;
@@ -96,7 +98,6 @@ fn request_device() -> (wgpu::Device, wgpu::Queue) {
 }
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
 
 fn render_to_image(
     device: &wgpu::Device,
@@ -145,91 +146,4 @@ fn render_to_image(
 
     let raw = read_pixels(device, queue, &texture, size_px[0], size_px[1]);
     image::RgbaImage::from_raw(size_px[0], size_px[1], raw).expect("rgba image from raw")
-}
-
-const fn padded_bytes_per_row(unpadded_bpr: u32) -> u32 {
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let remainder = unpadded_bpr % align;
-    if remainder == 0 {
-        unpadded_bpr
-    } else {
-        unpadded_bpr + align - remainder
-    }
-}
-
-fn copy_texture_to_readback_buffer(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    size_px: [u32; 2],
-    padded_bpr: u32,
-) -> wgpu::Buffer {
-    let [width, height] = size_px;
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("child-paint-repro readback"),
-        size: u64::from(padded_bpr) * u64::from(height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("child-paint-repro copy"),
-    });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bpr),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-    buffer
-}
-
-fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let unpadded_bpr = width * BYTES_PER_PIXEL;
-    let padded_bpr = padded_bytes_per_row(unpadded_bpr);
-    let buffer =
-        copy_texture_to_readback_buffer(device, queue, texture, [width, height], padded_bpr);
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("device poll");
-    rx.recv().expect("map callback").expect("map result");
-
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let un = unpadded_bpr as usize;
-    let pad = padded_bpr as usize;
-    let h = height as usize;
-    let mut out = vec![0u8; un * h];
-    for row in 0..h {
-        out[row * un..row * un + un].copy_from_slice(&mapped[row * pad..row * pad + un]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    out
 }

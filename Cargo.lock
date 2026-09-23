@@ -4050,6 +4050,7 @@ dependencies = [
  "ahash",
  "allocation-counter",
  "arboard",
+ "base64",
  "bytemuck",
  "core-text",
  "criterion",
@@ -4070,6 +4071,7 @@ dependencies = [
  "rfd",
  "rodio",
  "serde_json",
+ "sigil-kittest",
  "skrifa",
  "slotmap",
  "smallvec",
@@ -4097,11 +4099,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "sigil-kittest"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "pollster 1.0.1",
+ "sigil-gui",
+ "wgpu",
+]
+
+[[package]]
 name = "sigil-sign"
 version = "0.1.0"
 dependencies = [
  "base64",
  "minisign",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

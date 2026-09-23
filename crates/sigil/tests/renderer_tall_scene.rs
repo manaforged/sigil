@@ -7,14 +7,13 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
 
-use std::sync::mpsc;
-
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
     CommandScene, CornerRadii, GradientStop, LinearGradient, OffscreenTarget, SceneBuilder,
     SceneGradientStyle, SceneRectStyle, WgpuRenderer,
 };
 use sigil::style::Rgba8;
+use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (256.0, 256.0);
@@ -111,48 +110,13 @@ fn render_offscreen(
             Color::BLACK,
         )
         .expect("offscreen render");
-    read_pixels(device, queue, &texture)
-}
-
-fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture) -> Vec<u8> {
-    let width = VIEWPORT.0 as u32;
-    let height = VIEWPORT.1 as u32;
-    let bytes_per_row = width * 4;
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("capture readback"),
-        size: u64::from(bytes_per_row) * u64::from(height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
-    encoder.copy_texture_to_buffer(
-        texture.as_image_copy(),
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(bytes_per_row),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(encoder.finish()));
-    let slice = buffer.slice(..);
-    let (sender, receiver) = mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |result| {
-        let _ = sender.send(result);
-    });
-    let _ = device.poll(wgpu::PollType::wait_indefinitely());
-    receiver
-        .recv()
-        .expect("map callback")
-        .expect("readback map — device lost");
-    slice.get_mapped_range().expect("mapped range").to_vec()
+    read_pixels(
+        device,
+        queue,
+        &texture,
+        VIEWPORT.0 as u32,
+        VIEWPORT.1 as u32,
+    )
 }
 
 const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {

@@ -9,35 +9,11 @@
 
 use std::sync::mpsc;
 
-use pollster::FutureExt as _;
 use sigil::hal::Color;
+pub(super) use sigil_kittest::gpu::{read_pixels, request_device};
 
 pub(super) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub(super) const BYTES_PER_PIXEL: u32 = 4;
-
-pub(super) fn try_request_device(label: &str) -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some(label),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
-}
 
 pub(super) fn create_capture_texture(
     device: &wgpu::Device,
@@ -115,20 +91,6 @@ pub(super) fn pre_clear_texture(
         });
     }
     queue.submit(core::iter::once(enc.finish()));
-}
-
-pub(super) fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let unpadded_bpr = width * BYTES_PER_PIXEL;
-    let padded_bpr = padded_bytes_per_row(unpadded_bpr);
-    let buffer = readback_buffer(device, padded_bpr, height);
-    copy_texture_to_buffer(device, queue, texture, &buffer, width, height, padded_bpr);
-    map_readback(device, &buffer, unpadded_bpr, padded_bpr, height)
 }
 
 pub(super) fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {

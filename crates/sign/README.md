@@ -29,6 +29,10 @@ envelope as text. The caller decides where to write it. Use the plain
 envelope for a standard `.sig` file. Base64-encode it when the transport
 requires an ASCII-safe payload.
 
+`sign_file` reads a standard minisign key file. When the key arrives as text
+instead, call `sign_file_with_key`. Decode the transport encoding first; that
+function takes the key box itself.
+
 ## License
 
 [MIT](../../LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.

@@ -6,15 +6,15 @@
     reason = "target does not use every package dependency"
 )]
 
-use pollster::FutureExt;
 use sigil::renderer::{LayerError, LayerPool};
+use sigil_kittest::gpu::request_device;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn acquire_returns_rounded_dims() {
-    let Some(device) = try_request_device() else {
+    let Some((device, _queue)) = request_device() else {
         eprintln!("no adapter - skipping acquire_returns_rounded_dims");
         return;
     };
@@ -32,7 +32,7 @@ fn acquire_returns_rounded_dims() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn release_then_acquire_reuses_same_size() {
-    let Some(device) = try_request_device() else {
+    let Some((device, _queue)) = request_device() else {
         eprintln!("no adapter - skipping release_then_acquire_reuses_same_size");
         return;
     };
@@ -54,7 +54,7 @@ fn release_then_acquire_reuses_same_size() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn free_list_caps_at_max_entries() {
-    let Some(device) = try_request_device() else {
+    let Some((device, _queue)) = request_device() else {
         eprintln!("no adapter - skipping free_list_caps_at_max_entries");
         return;
     };
@@ -69,7 +69,7 @@ fn free_list_caps_at_max_entries() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn oversized_returns_err() {
-    let Some(device) = try_request_device() else {
+    let Some((device, _queue)) = request_device() else {
         eprintln!("no adapter - skipping oversized_returns_err");
         return;
     };
@@ -91,7 +91,7 @@ fn oversized_returns_err() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn zero_extent_returns_empty() {
     let mut pool = LayerPool::new();
-    let Some(device) = try_request_device() else {
+    let Some((device, _queue)) = request_device() else {
         eprintln!("no adapter - skipping zero_extent_returns_empty");
         return;
     };
@@ -99,31 +99,6 @@ fn zero_extent_returns_empty() {
         pool.acquire(&device, 0, 16, FORMAT),
         Err(LayerError::Empty)
     ));
-}
-
-fn try_request_device() -> Option<wgpu::Device> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("layer-pool-properties test device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
-        .map(|(device, _queue)| device)
 }
 
 #[allow(clippy::manual_div_ceil)]

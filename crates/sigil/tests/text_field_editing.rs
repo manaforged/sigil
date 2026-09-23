@@ -149,6 +149,42 @@ fn text_field_pointer_drag_selects_then_type_replaces() {
     });
 }
 
+#[test]
+fn text_field_external_write_resyncs_edit_buffer() {
+    sigil::reactive::Runtime::scope("text-field-editing-external-write", || {
+        let value = signal(String::new());
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let layout = compute(&mut cx, root);
+
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        router.route(&mut cx, &layout, type_char("a", PhysicalKey::KeyA));
+        router.route(&mut cx, &layout, type_char("b", PhysicalKey::KeyB));
+        assert_eq!(value.get(), "ab");
+
+        value.set(String::from("cleared"));
+        router.route(
+            &mut cx,
+            &layout,
+            ShellEvent::Key(KeyEvent::new(KeyEventInit {
+                key: Key::Backspace.into(),
+                physical: PhysicalKey::Backspace,
+                modifiers: ModifiersState::empty(),
+                repeat: false,
+                phase: KeyPhase::Down,
+                text: None,
+            })),
+        );
+
+        assert_eq!(
+            value.get(),
+            "ceared",
+            "backspace must edit the externally-written buffer, not the stale 'ab'"
+        );
+    });
+}
+
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     layout

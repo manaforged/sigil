@@ -7,8 +7,8 @@
 #![allow(clippy::missing_const_for_fn, clippy::shadow_unrelated)]
 #![allow(dead_code, unused_crate_dependencies)]
 
-use pollster::FutureExt;
 use proptest::prelude::*;
+use sigil_kittest::gpu::request_device;
 
 const MAX_TEXTURE_DIM: u32 = 4096;
 
@@ -17,7 +17,7 @@ const MAX_ATLASES: usize = 16;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_atlas_validation_rejects_invalid_inputs() {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         println!(
             "no adapter — skipping sprite_atlas_properties::prop_atlas_validation_rejects_invalid_inputs"
         );
@@ -40,7 +40,7 @@ fn prop_atlas_validation_rejects_invalid_inputs() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_valid_params_pass_validation() {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         println!(
             "no adapter — skipping sprite_atlas_properties::prop_valid_params_pass_validation"
         );
@@ -62,7 +62,7 @@ fn prop_valid_params_pass_validation() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_zero_dimensions_rejected() {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_zero_dimensions_rejected");
         return;
     };
@@ -85,7 +85,7 @@ fn prop_zero_dimensions_rejected() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_empty_bytes_rejected() {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_empty_bytes_rejected");
         return;
     };
@@ -97,30 +97,6 @@ fn prop_empty_bytes_rejected() {
         u32::MAX,
         "empty bytes should return sentinel u32::MAX, not panic"
     );
-}
-
-fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("sprite-atlas-properties test device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
 }
 
 fn register_test_atlas(

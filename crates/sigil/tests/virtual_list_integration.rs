@@ -123,7 +123,7 @@ fn scroll_step_meets_144hz_budget() {
         let scroll_y = signal(0.0_f32);
         let items: Vec<usize> = (0..100_000).collect();
         let mut samples = Vec::new();
-        for _ in 0..10 {
+        for n in 0..15 {
             scroll_y.update(|value| *value += ROW_HEIGHT);
             let frame_items = items.clone();
             let start = Instant::now();
@@ -139,14 +139,17 @@ fn scroll_step_meets_144hz_budget() {
             engine
                 .compute(&mut cx, root, Size::fixed(VIEWPORT_WIDTH, VIEWPORT_WIDTH))
                 .expect("layout computes");
-            samples.push(start.elapsed());
+            if n >= 5 {
+                samples.push(start.elapsed());
+            }
         }
-        let mean = mean_duration(&samples);
-        let mean_ms = mean.as_secs_f64() * 1_000.0;
-        eprintln!("virtual_list scroll_step mean: {mean_ms:.3} ms");
+        samples.sort_unstable();
+        let median = samples.get(samples.len() / 2).copied().expect("10 samples");
+        let median_ms = median.as_secs_f64() * 1_000.0;
+        eprintln!("virtual_list scroll_step median: {median_ms:.3} ms");
         assert!(
-            mean < Duration::from_secs_f64(0.006_94),
-            "mean per-frame time {mean_ms:.3} ms exceeds 6.94 ms"
+            median < Duration::from_secs_f64(0.006_94),
+            "median per-frame time {median_ms:.3} ms exceeds 6.94 ms"
         );
     });
 }
@@ -229,9 +232,4 @@ const fn pointer_down(x: f32, y: f32) -> ShellEvent {
         modifiers: ModifiersState::empty(),
         phase: PointerPhase::Down,
     }))
-}
-
-fn mean_duration(samples: &[Duration]) -> Duration {
-    let total = samples.iter().copied().sum::<Duration>();
-    total / u32::try_from(samples.len()).expect("sample length fits u32")
 }

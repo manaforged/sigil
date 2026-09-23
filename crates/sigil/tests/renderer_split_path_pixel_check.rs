@@ -24,7 +24,7 @@ mod support;
 
 use support::{
     FORMAT, create_capture_texture, create_depth_texture, linear_to_srgb_u8, pixel_rgba,
-    pre_clear_texture, read_pixels, try_request_device,
+    pre_clear_texture, read_pixels, request_device,
 };
 
 const PHYS_W: u32 = 1280;
@@ -48,7 +48,7 @@ const fn identity_4x4() -> [[f32; 4]; 4] {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_screen_renders_into_offscreen() {
-    let Some((device, queue)) = try_request_device("split-path-screen") else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -84,7 +84,7 @@ fn assert_submit_screen_renders_into_offscreen() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_renderer_reusable_across_targets() {
-    let Some((device, queue)) = try_request_device("split-path-reuse") else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -139,7 +139,7 @@ fn assert_renderer_reusable_across_targets() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_deprecated_offscreen_forwards() {
-    let Some((device, queue)) = try_request_device("split-path-compat") else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -192,7 +192,7 @@ fn assert_deprecated_offscreen_forwards() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_world_stub_returns_ok() {
-    let Some((device, queue)) = try_request_device("split-path-world") else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };

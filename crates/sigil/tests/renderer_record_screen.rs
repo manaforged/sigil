@@ -11,8 +11,6 @@
     clippy::missing_const_for_fn
 )]
 
-use std::sync::mpsc;
-
 use pollster::FutureExt;
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
@@ -20,6 +18,7 @@ use sigil::renderer::{
     WgpuRenderer,
 };
 use sigil::style::Rgba8;
+use sigil_kittest::gpu::read_pixels;
 
 const W: u32 = 64;
 const H: u32 = 64;
@@ -56,7 +55,7 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
             .record_screen(&submission(&device, &queue, &view), &scene, &mut enc)
             .expect("record_screen");
         queue.submit(core::iter::once(enc.finish()));
-        read_pixels(&device, &queue, &tex)
+        read_pixels(&device, &queue, &tex, W, H)
     };
 
     let top = px(&recorded, W / 2, H / 4);
@@ -77,7 +76,7 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
             .expect("renderer")
             .submit_screen(&submission(&device, &queue, &view), &scene)
             .expect("submit_screen");
-        read_pixels(&device, &queue, &tex)
+        read_pixels(&device, &queue, &tex, W, H)
     };
     for (x, y) in [(W / 2, H / 4), (W / 2, 3 * H / 4), (4, 4)] {
         let a = px(&recorded, x, y);
@@ -130,7 +129,7 @@ fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
         renderer.device().is_none(),
         "capture allocated a second device"
     );
-    let pixels = read_pixels(&device, &queue, &texture);
+    let pixels = read_pixels(&device, &queue, &texture, W, H);
     assert_eq!(px(&pixels, W / 2, H / 4), [30, 30, 220, 255]);
     assert_eq!(px(&pixels, W / 2, 3 * H / 4), [220, 30, 30, 255]);
 }
@@ -200,60 +199,4 @@ fn capture_texture(device: &wgpu::Device) -> wgpu::Texture {
 fn px(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
     [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]
-}
-
-fn align_up(value: u32, align: u32) -> u32 {
-    value.div_ceil(align) * align
-}
-
-fn read_pixels(device: &wgpu::Device, queue: &wgpu::Queue, texture: &wgpu::Texture) -> Vec<u8> {
-    let bpr = align_up(W * 4, wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("record_screen readback"),
-        size: u64::from(bpr) * u64::from(H),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("record_screen copy"),
-    });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(bpr),
-                rows_per_image: Some(H),
-            },
-        },
-        wgpu::Extent3d {
-            width: W,
-            height: H,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("poll");
-    rx.recv().expect("recv").expect("map ok");
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let mut out = Vec::with_capacity((W * H * 4) as usize);
-    for row in 0..H {
-        let off = (row * bpr) as usize;
-        out.extend_from_slice(&mapped[off..off + (W * 4) as usize]);
-    }
-    out
 }

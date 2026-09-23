@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use sigil::hal::{Color, PhysicalSize};
 use sigil::renderer::{CommandScene, CpuRenderer, OffscreenTarget, WgpuRenderer, scenes};
+use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const SCALE: f32 = 2.0;
@@ -136,59 +137,10 @@ fn gpu_pixels(renderer: &mut WgpuRenderer, scene: &Scene) -> (Vec<u8>, PhysicalS
             *clear,
         )
         .expect("gpu render");
-    (read_pixels(&device, &queue, &texture, size), size)
-}
-
-fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    size: PhysicalSize,
-) -> Vec<u8> {
-    let unpadded = size.width * 4;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded = unpadded.div_ceil(align) * align;
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("cpu-parity readback"),
-        size: u64::from(padded) * u64::from(size.height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded),
-                rows_per_image: Some(size.height),
-            },
-        },
-        wgpu::Extent3d {
-            width: size.width,
-            height: size.height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-    let slice = buffer.slice(..);
-    let (tx, rx) = std::sync::mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| tx.send(r).unwrap());
-    device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
-    rx.recv().unwrap().unwrap();
-    let data = slice.get_mapped_range().expect("mapped range");
-    let mut out = Vec::with_capacity((unpadded * size.height) as usize);
-    for row in 0..size.height as usize {
-        let start = row * padded as usize;
-        out.extend_from_slice(&data[start..start + unpadded as usize]);
-    }
-    out
+    (
+        read_pixels(&device, &queue, &texture, size.width, size.height),
+        size,
+    )
 }
 
 struct Diff {

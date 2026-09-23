@@ -42,3 +42,5 @@ docs/r14-simplify-punch-list.md
 
 # Test capture output (golden review, visual audit)
 crates/*/tests/output/
+e2e.key
+e2e.pub

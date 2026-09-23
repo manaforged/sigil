@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-use super::sign_file;
+use super::{sign_file, sign_file_with_key};
 
 const PASSWORD: &str = "sigil-sign-test";
 const FIXTURE: &[u8] = b"sigil signing fixture";
@@ -49,6 +49,16 @@ fn sign_then_verify_round_trips() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("round-trip", FIXTURE)?;
     let envelope = sign_file(&fixture.package, &fixture.key, PASSWORD)?;
     assert!(envelope.starts_with("untrusted comment:"));
+    fixture.verify(&envelope)?;
+    fixture.clean()?;
+    Ok(())
+}
+
+#[test]
+fn a_key_held_as_text_signs_the_same_package() -> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new("key-as-text", FIXTURE)?;
+    let key = fs::read_to_string(&fixture.key)?;
+    let envelope = sign_file_with_key(&fixture.package, &key, PASSWORD)?;
     fixture.verify(&envelope)?;
     fixture.clean()?;
     Ok(())

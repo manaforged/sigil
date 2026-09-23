@@ -1,3 +1,4 @@
+#[cfg(target_os = "macos")]
 use std::ffi::OsString;
 use std::fmt;
 use std::fs;
@@ -83,7 +84,7 @@ fn xml(value: &str) -> String {
         .replace('"', "&quot;")
 }
 
-fn one_component(name: &str) -> Result<&Path, PackError> {
+pub(crate) fn one_component(name: &str) -> Result<&Path, PackError> {
     let path = Path::new(name);
     let mut parts = path.components();
     match (parts.next(), parts.next()) {
@@ -152,8 +153,12 @@ fn copy_tree(from: &Path, to: &Path) -> Result<(), PackError> {
     Ok(())
 }
 
+const PLIST_MARKER: &str = "<key>SigilPack</key><true/>";
+
 fn previous_bundle(dest: &Path) -> bool {
-    dest.join("Contents/Info.plist").is_file() || dest.join(".sigil-pack").is_file()
+    dest.join(".sigil-pack").is_file()
+        || fs::read_to_string(dest.join("Contents/Info.plist"))
+            .is_ok_and(|plist| plist.contains(PLIST_MARKER))
 }
 
 fn mark_bundle(dest: &Path) -> Result<(), PackError> {
@@ -206,6 +211,7 @@ fn info_plist(app: &AppBundle<'_>, with_icon: bool) -> String {
          <key>CFBundleVersion</key><string>{version}</string>\n\
          <key>LSMinimumSystemVersion</key><string>{min}</string>\n\
          <key>NSHighResolutionCapable</key><true/>\n\
+         {PLIST_MARKER}\n\
          </dict>\n</plist>\n"
     )
 }
@@ -224,6 +230,7 @@ pub struct CodeSign<'a> {
 }
 
 impl CodeSign<'_> {
+    #[cfg(target_os = "macos")]
     fn args(&self, app: &Path) -> Vec<OsString> {
         let mut args: Vec<OsString> = vec!["--force".into(), "--sign".into()];
         match self.identity {
@@ -255,11 +262,6 @@ fn codesign(app: &Path, sign: &CodeSign<'_>) -> Result<(), PackError> {
     } else {
         Err(PackError::Codesign(status.to_string()))
     }
-}
-
-#[cfg(not(target_os = "macos"))]
-fn codesign(_app: &Path, _sign: &CodeSign<'_>) -> Result<(), PackError> {
-    Ok(())
 }
 
 /// Write a macOS `.app` at `dest`.
@@ -298,7 +300,11 @@ pub fn macos_app(
     for copy in resources {
         copy_tree(copy.from, &relative_inside(&resources_dir, copy.to)?)?;
     }
-    codesign(dest, sign)
+    #[cfg(target_os = "macos")]
+    codesign(dest, sign)?;
+    #[cfg(not(target_os = "macos"))]
+    let _ = sign;
+    Ok(())
 }
 
 /// Write a Windows application directory at `dest`.

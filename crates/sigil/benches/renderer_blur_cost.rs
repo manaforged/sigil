@@ -11,13 +11,13 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use pollster::FutureExt;
 use sigil::hal::Color;
 use sigil::renderer::{
     CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient,
     OffscreenTarget, SceneBuilder, SceneGradientStyle, SceneRectStyle, WgpuRenderer,
 };
 use sigil::style::Rgba8;
+use sigil_kittest::gpu::request_device;
 use std::hint::black_box;
 use wgpu::TextureFormat;
 
@@ -29,7 +29,7 @@ const FIXED_SIGMA: f32 = 12.0;
 const CLEAR: Color = Color::rgba(0.05, 0.06, 0.09, 1.0);
 
 fn blur_sigma_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };
@@ -70,7 +70,7 @@ fn blur_sigma_sweep(c: &mut Criterion) {
 }
 
 fn blur_count_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };
@@ -111,7 +111,7 @@ fn blur_count_sweep(c: &mut Criterion) {
 }
 
 fn blur_size_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };
@@ -218,30 +218,6 @@ fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, s
 #[allow(clippy::missing_const_for_fn, reason = "bench harness; deliberate")]
 fn blur_effect(_sigma: f32) -> LayerEffect {
     LayerEffect::Identity
-}
-
-fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("blur-cost-bench device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
 }
 
 fn make_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {

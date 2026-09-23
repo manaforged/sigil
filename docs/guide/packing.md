@@ -45,3 +45,6 @@ SIGIL_PACK_PASSWORD='secret' sigil-pack sign --key updater.key --file package.nu
 
 That writes `package.nupkg.sig` as a **base64** minisign envelope. Do
 not put the password on the command line. See [Signing](signing.md).
+
+`genkey DIR` writes a fresh `e2e.key`/`e2e.pub` dev keypair and refuses
+to overwrite existing files.

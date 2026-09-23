@@ -10,10 +10,8 @@
 #![allow(clippy::doc_markdown, clippy::missing_const_for_fn)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use std::sync::mpsc;
-
-use pollster::FutureExt;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_kittest::gpu::{read_pixels, request_device};
 
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -37,7 +35,7 @@ const WAVE_LINE_WIDTH: f32 = 2.5;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn decoration_pixels_match_underline_strikethrough_and_wave_contracts() {
-    let Some((device, queue)) = try_request_device() else {
+    let Some((device, queue)) = request_device() else {
         println!("no adapter — skipping decoration_pixel_check");
         return;
     };
@@ -206,30 +204,6 @@ fn wave_peak_y(pixels: &[u8], width: u32, x: u32) -> u32 {
         .expect("band has rows")
 }
 
-fn try_request_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("decoration-pixel-check device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
-}
-
 fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("decoration-pixel-check capture"),
@@ -245,76 +219,4 @@ fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgp
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     })
-}
-
-fn read_pixels(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    texture: &wgpu::Texture,
-    width: u32,
-    height: u32,
-) -> Vec<u8> {
-    let unpadded_bpr = width * BYTES_PER_PIXEL;
-    let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let padded_bpr = {
-        let r = unpadded_bpr % align;
-        if r == 0 {
-            unpadded_bpr
-        } else {
-            unpadded_bpr + align - r
-        }
-    };
-    let buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: Some("decoration-pixel-check readback"),
-        size: u64::from(padded_bpr) * u64::from(height),
-        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-        mapped_at_creation: false,
-    });
-    let mut enc = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("decoration-pixel-check copy encoder"),
-    });
-    enc.copy_texture_to_buffer(
-        wgpu::TexelCopyTextureInfo {
-            texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        wgpu::TexelCopyBufferInfo {
-            buffer: &buffer,
-            layout: wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(padded_bpr),
-                rows_per_image: Some(height),
-            },
-        },
-        wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-    );
-    queue.submit(core::iter::once(enc.finish()));
-
-    let slice = buffer.slice(..);
-    let (tx, rx) = mpsc::channel();
-    slice.map_async(wgpu::MapMode::Read, move |r| {
-        let _ = tx.send(r);
-    });
-    device
-        .poll(wgpu::PollType::wait_indefinitely())
-        .expect("device poll");
-    rx.recv().expect("map callback").expect("map result");
-
-    let mapped = slice.get_mapped_range().expect("mapped range");
-    let un = unpadded_bpr as usize;
-    let pad = padded_bpr as usize;
-    let h = height as usize;
-    let mut out = vec![0u8; un * h];
-    for row in 0..h {
-        out[row * un..row * un + un].copy_from_slice(&mapped[row * pad..row * pad + un]);
-    }
-    drop(mapped);
-    buffer.unmap();
-    out
 }
