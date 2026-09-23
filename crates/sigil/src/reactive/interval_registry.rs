@@ -4,6 +4,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::time::Instant;
 
 use crate::reactive::owner::{OwnerId, owner_by_id};
+use crate::reactive::runtime::Runtime;
 
 use super::IntervalId;
 
@@ -70,6 +71,7 @@ pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
              slot restored, callback will re-run on next tick",
             id.0
         );
+        Runtime::recover_after_swallowed_panic();
         true
     });
     REGISTRY.with(|r| {

@@ -1,3 +1,4 @@
+//! Scene emission and the wgpu and CPU renderers.
 #[cfg(windows)]
 use windows_core as _;
 

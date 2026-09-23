@@ -1,3 +1,4 @@
+//! Application entry points: `Host`, `AppConfig`, `launch`, and embed support.
 #[cfg(windows)]
 use windows_core as _;
 
@@ -11,6 +12,7 @@ pub mod dialog;
 mod embed;
 mod error;
 mod exit;
+mod frame;
 #[cfg(feature = "desktop")]
 mod launch;
 #[cfg(feature = "menu")]
@@ -25,6 +27,8 @@ mod text_geometry;
 mod text_measure;
 #[cfg(feature = "desktop")]
 mod theme_file;
+#[cfg(feature = "desktop")]
+mod theme_watch;
 #[cfg(feature = "tray")]
 pub mod tray;
 mod tree_root;
@@ -39,11 +43,14 @@ pub use crate::text::{DefaultFonts, set_default_fonts, use_system_fonts};
 #[cfg(feature = "desktop")]
 pub use appearance::set_theme;
 pub use audio::Player;
-pub use cell_text::cell_text_lines;
+pub use cell_text::{CellWidth, cell_text_lines, cell_width, set_cell_width};
 pub use config::{AppConfig, PanicPolicy};
-pub use embed::{AccessibilityTree, CellWidth, Host, Painted, cell_width, set_cell_width};
+pub use embed::{AccessibilityTree, Host, Painted};
 pub use error::{AppResult, Error};
 pub use exit::{clear_exit, request_exit, take_exit};
+pub use frame::{
+    FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
+};
 #[cfg(feature = "desktop")]
 pub use launch::launch;
 #[cfg(feature = "desktop")]
@@ -55,10 +62,9 @@ pub use text_geometry::EngineGeometry;
 pub use text_measure::DefaultTextMeasure;
 #[cfg(feature = "desktop")]
 pub use theme_file::parse as parse_theme;
-pub use tree_root::{TreeRoot, root};
-
 #[cfg(feature = "desktop")]
-pub use launch::install_g5_executor;
+pub use theme_watch::{ThemeWatcher, watch_theme};
+pub use tree_root::{TreeRoot, root};
 
 #[cfg(feature = "desktop")]
 #[doc(hidden)]

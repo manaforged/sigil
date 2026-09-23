@@ -208,7 +208,7 @@ pub(super) fn build_tab(
     let mut node = tab_frame(chrome, interaction, selected, user_overlay)
         .role(Role::Tab)
         .label(label.clone())
-        .checked(selected)
+        .selected(selected)
         .pointer_up(move |event| activate_pointer(event, interaction, &pointer_activate))
         .key(Key::Enter, move |event| {
             activate_key(event, interaction, &key_activate);

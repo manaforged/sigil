@@ -13,8 +13,7 @@ The supported import surface is `sigil::prelude::*`, the items that
 import from them. That list includes `sigil::app`, `sigil::kernel`,
 `sigil::layout`, `sigil::reactive`, `sigil::style`, `sigil::widgets`,
 `sigil::events`, `sigil::hal`, `sigil::renderer`, `sigil::shell`, and
-`sigil::text`. `Entity`, `EntityCx`, `AsyncContext`, and `Task` are
-hidden and carry no stability promise.
+`sigil::text`. Hidden items carry no stability promise.
 
 ## Core types
 
@@ -115,7 +114,7 @@ shell first.
 | Set style with utility classes | `.class(classes!("..."))` |
 | Handle pointer and key events on a node | `NodeEventsExt`, `EventHandlers` |
 | Move keyboard focus | `request_focus`, `FocusIntent` |
-| Bind actions and shortcuts | `Action`, `HandlerKey`, `Propagate`, `Shortcut` |
+| Bind keyboard shortcuts | `Shortcut`, `keyboard_shortcut` |
 | Buttons and toggles | `button`, `icon_button`, `checkbox`, `toggle`, `radio_group`, `chip` |
 | Text and value input | `text_field`, `text_edit`, `number_field`, `date_field`, `color_field`, `slider`, `validated_field`, `field` |
 | Code and documents | `code_edit`, `markdown`, `markdown_edit`, `html`, `mermaid`, `diff`, `terminal` |

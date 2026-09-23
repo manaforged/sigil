@@ -15,12 +15,10 @@ use crate::layout::prelude::{
 };
 use crate::reactive::{Signal, effect_named, on_cleanup, signal};
 use crate::style::{
-    DisplayKind, FocusRing, NodeStyleExt, Style, StyleAccess, StyleAtom, TransitionId,
+    DisplayKind, FocusRing, NodeStyleExt, Px, Style, StyleAccess, StyleAtom, TransitionId,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-
-use super::super::shared::BuilderMutator;
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -34,6 +32,8 @@ static BACKDROP_BASE: &[StyleAtom] = &[
 
 static DIALOG_BASE: &[StyleAtom] = &[
     StyleAtom::BackgroundThemeRef("field"),
+    StyleAtom::BorderWidth(Px(1)),
+    StyleAtom::BorderThemeRef("border"),
     StyleAtom::Transition(MODAL_TRANSITION),
 ];
 
@@ -48,7 +48,6 @@ pub struct ModalBuilder {
     show: Signal<bool>,
     title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     trap: bool,
     escape_closes: bool,
@@ -76,7 +75,6 @@ impl ModalBuilder {
             show,
             title: None,
             children: Vec::new(),
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             trap: true,
             escape_closes: true,
@@ -163,10 +161,6 @@ impl ModalBuilder {
                     ev.stop_propagation();
                 }
             });
-        }
-
-        for mutate in self.mutators {
-            root = mutate(root);
         }
 
         root

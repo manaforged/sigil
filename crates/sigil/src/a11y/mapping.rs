@@ -69,18 +69,18 @@ pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
         ak.set_hidden();
     }
     apply_grid(&mut ak, a11y);
-    apply_bounds(&mut ak, id, bounds);
+    apply_bounds(&mut ak, id, bounds, f64::from(cx.scale().factor()));
     apply_children(cx, kernel_node, &mut ak);
     ak
 }
 
-fn apply_bounds(ak: &mut AkNode, id: NodeId, bounds: BoundsLookup<'_>) {
+fn apply_bounds(ak: &mut AkNode, id: NodeId, bounds: BoundsLookup<'_>, factor: f64) {
     let Some(rect) = bounds(id) else { return };
     ak.set_bounds(accesskit::Rect {
-        x0: f64::from(rect.origin.x),
-        y0: f64::from(rect.origin.y),
-        x1: f64::from(rect.origin.x + rect.width),
-        y1: f64::from(rect.origin.y + rect.height),
+        x0: f64::from(rect.origin.x) * factor,
+        y0: f64::from(rect.origin.y) * factor,
+        x1: f64::from(rect.origin.x + rect.width) * factor,
+        y1: f64::from(rect.origin.y + rect.height) * factor,
     });
 }
 

@@ -75,6 +75,15 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
         .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
         .child(label(label_text))
         .child(control)
+        .on_added(|cx, id| {
+            let Some(node) = cx.get(id) else { return };
+            let [label_id, control_id, ..] = *node.children() else {
+                return;
+            };
+            if let Some(target) = cx.get_mut(control_id) {
+                target.a11y.labelled_by = Some(label_id);
+            }
+        })
 }
 
 #[must_use]
@@ -305,7 +314,7 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
 pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
     let class = match tone {
         Tone::Error => "text-error-11",
-        Tone::Warn => "text-warning-11",
+        Tone::Warn => "text-warn-11",
         Tone::Success => "text-success-11",
         Tone::Info | Tone::Primary | Tone::Neutral => "text-gray-11",
     };

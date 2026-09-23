@@ -35,24 +35,6 @@ feature-depth = 1
 [advisories]
 db-urls = ["https://github.com/rustsec/advisory-db"]
 ignore = [
-    # Linux tray-icon stack (tray-icon -> libappindicator -> gtk3 bindings):
-    # GTK3 bindings are unmaintained, but libappindicator remains the only
-    # freedesktop tray path. No untrusted input — renders our own menu.
-    # Re-check when tray-icon ships a GTK4/libayatana backend.
-    { id = "RUSTSEC-2024-0413", reason = "atk via tray-icon/libappindicator; no maintained tray alternative" },
-    { id = "RUSTSEC-2024-0416", reason = "atk-sys via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0412", reason = "gdk via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0418", reason = "gdk-sys via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0415", reason = "gtk via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0420", reason = "gtk-sys via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0419", reason = "gtk3-macros via tray-icon/libappindicator" },
-    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error via glib-macros (same tray stack)" },
-    # quick-xml is pulled by wayland-scanner, a build-time proc-macro whose
-    # only input is the wayland protocol XML bundled with the crate — the
-    # DoS surface (2026-0194/0195) is unreachable. wayland-scanner pins
-    # 0.39.4 exactly; no compatible fix release exists.
-    { id = "RUSTSEC-2026-0194", reason = "quick-xml via wayland-scanner (build-time, bundled input only)" },
-    { id = "RUSTSEC-2026-0195", reason = "quick-xml via wayland-scanner (build-time, bundled input only)" },
     # ttf-parser via ab_glyph -> sctk-adwaita -> winit (Linux window
     # decorations). winit's transitive tree; we render text with our own
     # skrifa/HarfRust stack and never touch ab_glyph at runtime.
@@ -84,7 +66,6 @@ allow = [
     # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
     "Zlib",
 ]
 confidence-threshold = 0.93
@@ -169,8 +150,6 @@ skip = [
     # read-fonts skip removed).
 
     # --- misc upstream splits ----------------------------------------------
-    { crate = "dirs@5.0.1",          reason = "zed-font-kit 0.14.1-zed pins; tray-icon 0.21.3 uses 6.0" },
-    { crate = "dirs-sys@0.4.1",      reason = "follows dirs 5.0.1 (zed-font-kit)" },
     { crate = "miniz_oxide@0.8.9",   reason = "png 0.18 via image 0.25; flate2 uses 0.9" },
     { crate = "rustix@0.38.44",      reason = "calloop 0.13 + crossterm 0.28.1 (winit/smithay chains); zbus/wayland on 1.x" },
     { crate = "linux-raw-sys@0.4.15", reason = "follows rustix 0.38.44" },

@@ -36,6 +36,27 @@ fn spawn_writes_ok_on_drain() {
 }
 
 #[test]
+fn a_panicked_task_reports_panicked_instead_of_pending_forever() {
+    Runtime::scope("panicked task resolves", || {
+        let mut runtime = AsyncRuntime::new().expect("build tokio runtime");
+        runtime.install_current();
+        let sig = spawn::<u32, &'static str, _>(async { panic!("dispatch boom") });
+        assert!(sig.peek().is_pending());
+        assert!(
+            spin_until(Duration::from_secs(2), || {
+                let _ = runtime.drain();
+                sig.peek().is_panicked()
+            }),
+            "a panicked task must resolve the signal instead of pending forever"
+        );
+        match sig.peek() {
+            Status::Panicked(message) => assert!(message.contains("dispatch boom")),
+            _ => panic!("expected Status::Panicked"),
+        }
+    });
+}
+
+#[test]
 fn signal_writer_streams_updates_through_drain() {
     Runtime::scope("signal_writer_streams_updates_through_drain", || {
         let mut runtime = AsyncRuntime::new().expect("build tokio runtime");

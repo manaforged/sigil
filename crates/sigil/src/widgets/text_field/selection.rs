@@ -188,7 +188,7 @@ fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
         return;
     }
     let byte = hit(runtime, event.position.x);
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     state.place_caret(byte);
     commit(runtime, &state);
     drop(state);
@@ -200,7 +200,7 @@ fn pointer_move(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
         return;
     }
     let byte = hit(runtime, event.position.x);
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     state.extend_to(byte);
     commit(runtime, &state);
     drop(state);

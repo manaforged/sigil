@@ -1,6 +1,5 @@
 use core::fmt::Write as _;
 
-use crate::reactive::entity::{Entity, EntityId};
 use crate::reactive::owner::OwnerId;
 use crate::reactive::runtime::{OwnerKey, OwnerSlot, with_rt};
 
@@ -17,18 +16,6 @@ pub fn dump_owner_tree() -> String {
         write_subtree(&mut out, root, 0);
     }
     out
-}
-
-#[doc(hidden)]
-#[must_use]
-pub fn entity_is_live<T: 'static>(entity: Entity<T>) -> bool {
-    with_rt(|rt| rt.entities.contains(entity.key))
-}
-
-#[doc(hidden)]
-#[must_use]
-pub fn entity_id_is_live(id: EntityId) -> bool {
-    with_rt(|rt| rt.entities.contains(id.0))
 }
 
 #[must_use]

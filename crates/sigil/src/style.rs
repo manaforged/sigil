@@ -1,3 +1,4 @@
+//! Themes, style atoms, and state-driven styling.
 pub(crate) mod presence;
 pub(crate) mod transform;
 use phf as _;
@@ -44,8 +45,8 @@ pub use binding::{ReactiveStateSlot, ReactiveStyleAtoms, StyleBinding};
 pub use builder_ext::{ClassSource, NodeStyleExt, parse_classes};
 pub use engine::StyleEngine;
 pub use focus_ring::FocusRing;
-pub(crate) use grid::cell_size;
 pub use grid::grid;
+pub(crate) use grid::{cell_size, swap_cell};
 pub use merge::{
     ComponentId, bump_unknown_class_count, merge_classes, merge_warning_count,
     merge_warning_count_for_component, unknown_class_warning_count,

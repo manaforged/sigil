@@ -3,7 +3,8 @@ use std::io::Cursor;
 use sigil::kernel::ImageSource;
 
 use super::{
-    Frame, Painter, Placement, Protocol, base64, blocks, blocks_window, detect, png, png_window,
+    Frame, Mux, Painter, Placement, Protocol, base64, blocks, blocks_window, detect, detect_mux,
+    png, png_window,
 };
 
 fn env<'a>(pairs: &'a [(&'a str, &'a str)]) -> impl Fn(&str) -> Option<String> + 'a {
@@ -64,8 +65,14 @@ fn detection_prefers_the_override_then_known_terminals() {
     assert_eq!(detect(env(&[("TERM_PROGRAM", "Apple_Terminal")])), None);
     assert_eq!(
         detect(env(&[("TMUX", "/tmp/x"), ("KITTY_WINDOW_ID", "1")])),
-        None
+        Some(Protocol::Kitty)
     );
+    assert_eq!(
+        detect_mux(env(&[("TMUX", "/tmp/x"), ("STY", "123")])),
+        Some(Mux::Tmux)
+    );
+    assert_eq!(detect_mux(env(&[("STY", "123")])), Some(Mux::Screen));
+    assert_eq!(detect_mux(env(&[("TERM", "xterm")])), None);
 }
 
 #[test]
@@ -172,7 +179,7 @@ fn kitty_replaces_after_a_touched_row_and_deletes_when_gone() {
             redraw: false,
         },
     );
-    assert!(gone.contains("\x1b_Ga=d,d=i,i="), "{gone:?}");
+    assert!(gone.contains("\x1b_Ga=d,d=I,i="), "{gone:?}");
 }
 
 #[test]

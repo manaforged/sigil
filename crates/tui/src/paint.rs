@@ -2,7 +2,7 @@ use sigil::app::{Painted, cell_width};
 use sigil::kernel::ImageSource;
 
 use self::paint_clip::{image_crop, paint_text};
-use crate::graphics::{Placement, blocks_window, protocol};
+use crate::graphics::{Placement, protocol, sextants_window};
 use sigil::style::{Rgba8, Tone};
 use smol_str::SmolStr;
 use unicode_segmentation::UnicodeSegmentation;
@@ -198,19 +198,19 @@ impl Grid {
             return;
         }
         let window = crop.unwrap_or_else(|| (0, source.height()));
-        for (dy, line) in blocks_window(source, window, width, height)
+        for (dy, line) in sextants_window(source, window, width, height)
             .into_iter()
             .enumerate()
         {
-            for (dx, (top, bottom)) in line.into_iter().enumerate() {
+            for (dx, (glyph, fg, bg)) in line.into_iter().enumerate() {
                 if let Some(cell) = self
                     .index(col + dx, row + dy)
                     .and_then(|index| self.cells.get_mut(index))
                 {
                     *cell = Cell {
-                        text: SmolStr::new_inline("▀"),
-                        fg: Ink::Exact(top),
-                        bg: Ink::Exact(bottom),
+                        text: SmolStr::from(glyph.to_string()),
+                        fg: Ink::Exact(fg),
+                        bg: Ink::Exact(bg),
                         bold: false,
                         italic: false,
                     };

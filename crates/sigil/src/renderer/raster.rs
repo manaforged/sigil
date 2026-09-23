@@ -1,8 +1,6 @@
-#![allow(dead_code)]
-
 use std::collections::HashMap;
 
-use skrifa::instance::{LocationRef, Size};
+use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{
     DrawSettings, HintingInstance, HintingOptions, OutlineGlyphCollection, OutlinePen,
 };
@@ -28,6 +26,7 @@ pub(crate) struct RasterKey {
     pub glyph_id: u32,
     pub physical_px_bits: u32,
     pub bin: u8,
+    pub coords: u64,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -35,6 +34,7 @@ pub(crate) struct HintKey {
     pub font_id: u64,
     pub font_index: u32,
     pub physical_px_bits: u32,
+    pub coords: u64,
 }
 
 const HINTER_LIMIT: usize = 48;
@@ -50,6 +50,7 @@ impl Hinters {
         key: HintKey,
         outlines: &OutlineGlyphCollection<'_>,
         size: Size,
+        coords: &[NormalizedCoord],
     ) -> Option<&HintingInstance> {
         if self.map.len() >= HINTER_LIMIT
             && !self.map.contains_key(&key)
@@ -63,7 +64,7 @@ impl Hinters {
                 HintingInstance::new(
                     outlines,
                     size,
-                    LocationRef::default(),
+                    LocationRef::new(coords),
                     HintingOptions::default(),
                 )
                 .ok()
@@ -71,23 +72,33 @@ impl Hinters {
             .as_ref()
     }
 
-    pub(crate) fn rasterize(&mut self, font_bytes: &[u8], key: &RasterKey) -> Option<GlyphMask> {
+    pub(crate) fn rasterize(
+        &mut self,
+        font_bytes: &[u8],
+        key: &RasterKey,
+        variation_coords: &[i16],
+    ) -> Option<GlyphMask> {
         let font = FontRef::from_index(font_bytes, key.font_index).ok()?;
         let outlines = font.outline_glyphs();
         let glyph = outlines.get(GlyphId::new(key.glyph_id))?;
         let physical_px = f32::from_bits(key.physical_px_bits);
         let size = Size::new(physical_px.max(1.0));
+        let coords: Vec<NormalizedCoord> = variation_coords
+            .iter()
+            .map(|&c| NormalizedCoord::from_bits(c))
+            .collect();
 
         let mut pen = ZenoPen::new(f32::from(key.bin % SUBPIXEL_BINS) / f32::from(SUBPIXEL_BINS));
         let hint = HintKey {
             font_id: key.font_id,
             font_index: key.font_index,
             physical_px_bits: key.physical_px_bits,
+            coords: key.coords,
         };
-        let drawn = match self.get(hint, &outlines, size) {
+        let drawn = match self.get(hint, &outlines, size, &coords) {
             Some(instance) => glyph.draw(DrawSettings::hinted(instance, false), &mut pen),
             None => glyph.draw(
-                DrawSettings::unhinted(size, LocationRef::default()),
+                DrawSettings::unhinted(size, LocationRef::new(&coords)),
                 &mut pen,
             ),
         };

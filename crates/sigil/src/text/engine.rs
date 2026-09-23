@@ -88,7 +88,7 @@ impl OwnedTextEngine {
         let budget = max_width - ellipsis.width();
 
         let bounds: Vec<usize> = text
-            .char_indices()
+            .grapheme_indices(true)
             .map(|(i, _)| i)
             .chain(std::iter::once(text.len()))
             .collect();

@@ -12,47 +12,27 @@ use pollster as _;
 #[cfg(test)]
 use wgpu as _;
 
-#[doc(hidden)]
 pub mod a11y;
-#[doc(hidden)]
-pub mod actions;
-#[doc(hidden)]
 pub mod animation;
-#[doc(hidden)]
 pub mod animation_runtime;
-#[doc(hidden)]
 pub mod app;
-#[doc(hidden)]
 pub mod bidi;
-#[doc(hidden)]
 pub mod events;
-#[doc(hidden)]
 pub mod hal;
 #[cfg(feature = "scene")]
-#[doc(hidden)]
 pub mod icons;
-#[doc(hidden)]
 pub mod kernel;
-#[doc(hidden)]
 pub mod layout;
-#[doc(hidden)]
 pub mod profile;
-#[doc(hidden)]
 pub mod reactive;
 #[cfg(feature = "scene")]
-#[doc(hidden)]
 pub mod renderer;
 #[cfg(feature = "shell")]
-#[doc(hidden)]
 pub mod shell;
-#[doc(hidden)]
 pub mod style;
-#[doc(hidden)]
 pub mod tasks;
 #[cfg(feature = "scene")]
-#[doc(hidden)]
 pub mod text;
-#[doc(hidden)]
 pub mod widgets;
 
 #[cfg(feature = "audio")]
@@ -76,7 +56,7 @@ pub use crate::app::{
     DefaultFonts, TextTuning, set_default_fonts, set_text_tuning, text_tuning, use_system_fonts,
 };
 #[cfg(feature = "desktop")]
-pub use crate::app::{parse_theme, set_theme};
+pub use crate::app::{ThemeWatcher, parse_theme, set_theme, watch_theme};
 
 #[cfg(feature = "desktop")]
 pub fn launch<C, T>(config: C, tree: T) -> AppResult<()>
@@ -99,9 +79,8 @@ pub mod render;
 
 /// Application import surface. Product code uses `use sigil::prelude::*`.
 ///
-/// Modules marked `#[doc(hidden)]` are not a stable API.
+/// The modules below it are public but move faster than the prelude.
 pub mod prelude {
-    pub use crate::actions::{Action, HandlerKey, Propagate};
     pub use crate::animation::{
         AnimationDirection, AnimationFill, CubicBezier, Easing, Keyframe, Keyframes, SpringPreset,
     };
@@ -165,5 +144,5 @@ pub mod prelude {
     };
     pub use crate::{AppConfig, AppResult, Error, Host, Painted, TreeRoot};
     #[cfg(feature = "desktop")]
-    pub use crate::{parse_theme, set_theme};
+    pub use crate::{ThemeWatcher, parse_theme, set_theme, watch_theme};
 }

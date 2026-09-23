@@ -1,7 +1,7 @@
 use crate::layout::LayoutError;
 use crate::layout::flex::Position2;
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::{NodeEdges, dim_to_border_box};
+use crate::layout::resolve::{InsetAxis, NodeEdges, dim_to_border_box, resolve_inset_axis};
 use crate::layout::style_data::{LengthPercentageAuto, StyleData};
 
 use super::intrinsic::{probed_content_extent, text_intrinsic};
@@ -138,33 +138,4 @@ fn shrink_fit(
         probed_content_extent(ctx, child, ctx.axes.row, ctx.axes),
         probed_content_extent(ctx, child, !ctx.axes.row, ctx.axes),
     ))
-}
-
-#[derive(Clone, Copy)]
-struct InsetAxis {
-    leading: LengthPercentageAuto,
-    trailing: LengthPercentageAuto,
-    origin: f32,
-    cb_dim: f32,
-    box_dim: f32,
-    margin_leading: f32,
-    margin_trailing: f32,
-}
-
-fn resolve_inset_axis(a: InsetAxis) -> f32 {
-    match (a.leading, a.trailing) {
-        (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
-            let off = inset_px(t, a.cb_dim);
-            a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
-        }
-        (l, _) => a.origin + inset_px(l, a.cb_dim) + a.margin_leading,
-    }
-}
-
-fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
-    match value {
-        LengthPercentageAuto::Auto => 0.0,
-        LengthPercentageAuto::Px(v) => v,
-        LengthPercentageAuto::Percent(p) => p * basis,
-    }
 }

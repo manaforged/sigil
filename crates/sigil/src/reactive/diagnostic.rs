@@ -16,22 +16,6 @@ pub(crate) fn disposed_signal(op: &'static str, caller: &'static Location<'stati
 
 #[cold]
 #[track_caller]
-pub(crate) fn disposed_entity(op: &'static str, caller: &'static Location<'static>) -> ! {
-    panic!("Entity::{op} on a disposed entity — EntityGone (at {caller})")
-}
-
-#[cold]
-#[track_caller]
-pub(crate) fn missing_global(
-    op: &'static str,
-    type_name: &'static str,
-    caller: &'static Location<'static>,
-) -> ! {
-    panic!("{op}::<{type_name}> not installed in current runtime (at {caller})")
-}
-
-#[cold]
-#[track_caller]
 pub(crate) fn reactive_cycle(loc: Option<&'static Location<'static>>) {
     #[cfg(debug_assertions)]
     panic!("reactive cycle detected: effect at {loc:?} would re-enter itself");

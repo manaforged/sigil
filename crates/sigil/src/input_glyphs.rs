@@ -1,3 +1,4 @@
+//! Glyph helpers for key and input rendering.
 use std::cell::Cell;
 
 use crate::kernel::{NodeBuilder, TextContent, fragment, text};

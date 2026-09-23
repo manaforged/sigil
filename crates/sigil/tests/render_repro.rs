@@ -9,9 +9,7 @@
 
 use sigil::prelude::*;
 
-mod golden_support;
-
-use golden_support::{InteractionMode, render_widget_to_png};
+use sigil_kittest::{InteractionMode, render_widget_to_png};
 
 #[test]
 fn position_relative_child_paints() {

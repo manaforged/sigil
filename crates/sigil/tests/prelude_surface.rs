@@ -1,35 +1,6 @@
 #![allow(dead_code, unused_imports, unused_crate_dependencies)]
 
-use std::any::Any;
-
 use sigil::prelude::*;
-
-#[derive(Clone)]
-struct PreludeProbeAction;
-
-impl Action for PreludeProbeAction {
-    fn debug_name(&self) -> &'static str {
-        "PreludeProbeAction"
-    }
-    fn boxed_clone(&self) -> Box<dyn Action> {
-        Box::new(self.clone())
-    }
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-fn _action_in_prelude() -> Box<dyn Action> {
-    Box::new(PreludeProbeAction)
-}
-
-const fn _propagate_in_prelude(flag: &mut Propagate) {
-    flag.propagate();
-}
-
-const fn _handler_key_in_prelude() -> HandlerKey {
-    HandlerKey::from_raw(1)
-}
 
 #[test]
 fn dispatch_to_owner_resolves_through_prelude() {

@@ -21,6 +21,8 @@ use super::shapes::{Brush, rounded_rect, ts_transform};
 
 pub(super) type ClipMask = Option<(Rect, Mask)>;
 
+const LAYER_POOL_CAP: usize = 8;
+
 pub(super) struct Painter<'a> {
     pub(super) target: &'a mut Pixmap,
     pub(super) scale: f32,
@@ -32,6 +34,14 @@ pub(super) struct Painter<'a> {
     pub(super) glyphs: &'a mut GlyphCache,
     pub(super) raster: &'a mut RasterCache,
     pub(super) stats: &'a mut FrameStats,
+    pub(super) pool: &'a mut Vec<Pixmap>,
+}
+
+pub(super) struct Scratch<'a> {
+    pub(super) glyphs: &'a mut GlyphCache,
+    pub(super) raster: &'a mut RasterCache,
+    pub(super) stats: &'a mut FrameStats,
+    pub(super) pool: &'a mut Vec<Pixmap>,
 }
 
 pub(super) struct Ctx {
@@ -44,13 +54,7 @@ pub(super) struct Ctx {
 }
 
 impl<'a> Painter<'a> {
-    pub(super) fn new(
-        target: &'a mut Pixmap,
-        scale: f32,
-        glyphs: &'a mut GlyphCache,
-        raster: &'a mut RasterCache,
-        stats: &'a mut FrameStats,
-    ) -> Self {
+    pub(super) fn new(target: &'a mut Pixmap, scale: f32, scratch: &'a mut Scratch<'a>) -> Self {
         Self {
             target,
             scale,
@@ -59,9 +63,32 @@ impl<'a> Painter<'a> {
             transforms: vec![IDENTITY],
             opacities: vec![1.0],
             mask: None,
-            glyphs,
-            raster,
-            stats,
+            glyphs: &mut *scratch.glyphs,
+            raster: &mut *scratch.raster,
+            stats: &mut *scratch.stats,
+            pool: &mut *scratch.pool,
+        }
+    }
+
+    fn spawn<'b>(
+        &'b mut self,
+        target: &'b mut Pixmap,
+        origin: Point,
+        clips: Vec<Rect>,
+        transforms: Vec<Transform>,
+    ) -> Painter<'b> {
+        Painter {
+            target,
+            scale: self.scale,
+            origin,
+            clips,
+            transforms,
+            opacities: vec![1.0],
+            mask: None,
+            glyphs: &mut *self.glyphs,
+            raster: &mut *self.raster,
+            stats: &mut *self.stats,
+            pool: &mut *self.pool,
         }
     }
 
@@ -145,6 +172,25 @@ impl<'a> Painter<'a> {
         }
     }
 
+    fn take_pixmap(&mut self, width: u32, height: u32) -> Option<Pixmap> {
+        if let Some(at) = self
+            .pool
+            .iter()
+            .position(|p| p.width() == width && p.height() == height)
+        {
+            let mut reused = self.pool.swap_remove(at);
+            reused.fill(tiny_skia::Color::TRANSPARENT);
+            return Some(reused);
+        }
+        Pixmap::new(width, height)
+    }
+
+    fn release_pixmap(&mut self, layer: Pixmap) {
+        if self.pool.len() < LAYER_POOL_CAP {
+            self.pool.push(layer);
+        }
+    }
+
     fn layer(&mut self, scope: LayerScope, children: &[SceneCommand]) {
         if let LayerEffect::Transform(transform) = scope.effect {
             self.transformed_layer(scope, transform, children);
@@ -169,22 +215,17 @@ impl<'a> Painter<'a> {
         let y1 = (bounds.origin.y + bounds.height)
             .mul_add(self.scale, -self.origin.y)
             .ceil();
-        let Some(mut layer) = Pixmap::new((x1 - x0).max(1.0) as u32, (y1 - y0).max(1.0) as u32)
+        let Some(mut layer) =
+            self.take_pixmap((x1 - x0).max(1.0) as u32, (y1 - y0).max(1.0) as u32)
         else {
             return;
         };
-        Painter {
-            target: &mut layer,
-            scale: self.scale,
-            origin: Point::new(self.origin.x + x0, self.origin.y + y0),
-            clips: vec![bounds],
-            transforms: vec![self.transform()],
-            opacities: vec![1.0],
-            mask: None,
-            glyphs: &mut *self.glyphs,
-            raster: &mut *self.raster,
-            stats: &mut *self.stats,
-        }
+        self.spawn(
+            &mut layer,
+            Point::new(self.origin.x + x0, self.origin.y + y0),
+            vec![bounds],
+            vec![self.transform()],
+        )
         .walk(children);
         if let LayerEffect::LayerBlur { sigma } = scope.effect {
             blur(&mut layer, sigma * self.scale);
@@ -202,6 +243,7 @@ impl<'a> Painter<'a> {
             TsTransform::identity(),
             mask.as_ref(),
         );
+        self.release_pixmap(layer);
         self.stats.offscreen_layers += 1;
     }
 
@@ -213,24 +255,18 @@ impl<'a> Painter<'a> {
     ) {
         let width = (scope.clip.width * self.scale).ceil().max(1.0) as u32;
         let height = (scope.clip.height * self.scale).ceil().max(1.0) as u32;
-        let Some(mut layer) = Pixmap::new(width, height) else {
+        let Some(mut layer) = self.take_pixmap(width, height) else {
             return;
         };
-        Painter {
-            target: &mut layer,
-            scale: self.scale,
-            origin: Point::new(
+        self.spawn(
+            &mut layer,
+            Point::new(
                 scope.clip.origin.x * self.scale,
                 scope.clip.origin.y * self.scale,
             ),
-            clips: vec![scope.clip],
-            transforms: vec![IDENTITY],
-            opacities: vec![1.0],
-            mask: None,
-            glyphs: &mut *self.glyphs,
-            raster: &mut *self.raster,
-            stats: &mut *self.stats,
-        }
+            vec![scope.clip],
+            vec![IDENTITY],
+        )
         .walk(children);
         if let Some(mask) = source_mask(scope, width, height, self.scale) {
             layer.apply_mask(&mask);
@@ -259,6 +295,7 @@ impl<'a> Painter<'a> {
         });
         self.target
             .draw_pixmap(0, 0, layer.as_ref(), &paint, transform, mask.as_ref());
+        self.release_pixmap(layer);
         self.stats.offscreen_layers += 1;
     }
 

@@ -1,0 +1,26 @@
+[package]
+name = "sigil-kittest"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Headless test harness for Sigil: drive widgets through EventRouter and render them to PNG goldens offscreen."
+readme = "README.md"
+keywords = ["gui", "testing", "golden", "sigil"]
+categories = ["development-tools::testing"]
+
+[lib]
+name = "sigil_kittest"
+
+[dependencies]
+sigil-gui = { path = "../sigil", version = "0.1.0", default-features = false, features = [
+    "scene",
+] }
+image = { workspace = true }
+pollster = { workspace = true }
+wgpu = { workspace = true }
+
+[lints]
+workspace = true

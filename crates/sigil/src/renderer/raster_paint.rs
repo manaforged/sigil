@@ -164,11 +164,15 @@ impl RasterTextPipeline {
             glyph_id: g.glyph_id,
             physical_px_bits: physical_px.to_bits(),
             bin,
+            coords: ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(&g.variation_coords),
         };
         let placement = if let Some(p) = self.atlas.get(&key) {
             p
         } else {
-            let Some(mask) = self.hinters.rasterize(font_bytes, &key) else {
+            let Some(mask) = self
+                .hinters
+                .rasterize(font_bytes, &key, &g.variation_coords)
+            else {
                 return GlyphOutcome::Blank;
             };
             let Some(p) = self.atlas.insert(params.device, params.queue, key, mask) else {

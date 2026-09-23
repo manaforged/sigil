@@ -1,3 +1,4 @@
+use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
 use sigil::hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
@@ -18,47 +19,30 @@ pub fn key_down(key: impl Into<LogicalKey>) -> ShellEvent {
 
 #[must_use]
 pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
-    if event.kind != crossterm::event::KeyEventKind::Press {
-        return None;
-    }
+    let (phase, repeat) = match event.kind {
+        KeyEventKind::Press => (KeyPhase::Down, false),
+        KeyEventKind::Repeat => (KeyPhase::Down, true),
+        KeyEventKind::Release => (KeyPhase::Up, false),
+    };
     let code = shifted(event);
     let key = logical(code)?;
-    let mut modifiers = ModifiersState::empty();
     let text = match code {
-        crossterm::event::KeyCode::Char(ch)
-            if !event.modifiers.intersects(
-                crossterm::event::KeyModifiers::CONTROL | crossterm::event::KeyModifiers::ALT,
-            ) =>
+        KeyCode::Char(ch)
+            if phase == KeyPhase::Down
+                && !event
+                    .modifiers
+                    .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
         {
             Some(SmolStr::from(ch.to_string()))
         }
         _ => None,
     };
-    if event
-        .modifiers
-        .contains(crossterm::event::KeyModifiers::SHIFT)
-        || event.code == crossterm::event::KeyCode::BackTab
-    {
-        modifiers |= ModifiersState::SHIFT;
-    }
-    if event
-        .modifiers
-        .contains(crossterm::event::KeyModifiers::CONTROL)
-    {
-        modifiers |= ModifiersState::CONTROL;
-    }
-    if event
-        .modifiers
-        .contains(crossterm::event::KeyModifiers::ALT)
-    {
-        modifiers |= ModifiersState::ALT;
-    }
     Some(ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key,
         physical: PhysicalKey::Unidentified,
-        modifiers,
-        repeat: false,
-        phase: KeyPhase::Down,
+        modifiers: modifiers(event),
+        repeat,
+        phase,
         text,
     })))
 }
@@ -75,22 +59,42 @@ pub fn paste(text: &str) -> ShellEvent {
     }))
 }
 
-const fn shifted(event: &crossterm::event::KeyEvent) -> crossterm::event::KeyCode {
+const fn shifted(event: &crossterm::event::KeyEvent) -> KeyCode {
     match event.code {
-        crossterm::event::KeyCode::Char(ch)
-            if ch.is_ascii_lowercase()
-                && event
-                    .modifiers
-                    .contains(crossterm::event::KeyModifiers::SHIFT) =>
+        KeyCode::Char(ch)
+            if ch.is_ascii_lowercase() && event.modifiers.contains(KeyModifiers::SHIFT) =>
         {
-            crossterm::event::KeyCode::Char(ch.to_ascii_uppercase())
+            KeyCode::Char(ch.to_ascii_uppercase())
         }
         code => code,
     }
 }
 
-fn logical(code: crossterm::event::KeyCode) -> Option<LogicalKey> {
-    use crossterm::event::KeyCode;
+fn modifiers(event: &crossterm::event::KeyEvent) -> ModifiersState {
+    let mut state = ModifiersState::empty();
+    let shifted_char = matches!(event.code, KeyCode::Char(ch) if ch.is_uppercase());
+    if event.modifiers.contains(KeyModifiers::SHIFT)
+        || event.code == KeyCode::BackTab
+        || shifted_char
+    {
+        state |= ModifiersState::SHIFT;
+    }
+    if event.modifiers.contains(KeyModifiers::CONTROL) {
+        state |= ModifiersState::CONTROL;
+    }
+    if event.modifiers.contains(KeyModifiers::ALT) {
+        state |= ModifiersState::ALT;
+    }
+    if event
+        .modifiers
+        .intersects(KeyModifiers::SUPER | KeyModifiers::HYPER | KeyModifiers::META)
+    {
+        state |= ModifiersState::META;
+    }
+    state
+}
+
+fn logical(code: KeyCode) -> Option<LogicalKey> {
     Some(match code {
         KeyCode::Enter => LogicalKey::Named(Key::Enter),
         KeyCode::Esc => LogicalKey::Named(Key::Escape),

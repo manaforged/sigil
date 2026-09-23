@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::iter::once;
 use std::rc::Rc;
 
@@ -74,6 +74,12 @@ impl TextFieldRuntime {
             password,
             reveal,
         }
+    }
+
+    pub(super) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
+        let mut edit = self.edit.borrow_mut();
+        edit.sync_external(self.value.peek());
+        edit
     }
 
     pub(super) fn disabled(&self) -> bool {
@@ -200,7 +206,7 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     let Some(text) = event.text.as_deref().filter(|text| insertable(text)) else {
         return;
     };
-    let mut edit = runtime.edit.borrow_mut();
+    let mut edit = runtime.edit_mut();
     edit.insert_str(text);
     publish(runtime, &edit);
     event.stop_propagation();
@@ -211,7 +217,7 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     let before = (state.len(), state.is_empty());
     edit(&mut state);
     batch(|| {
@@ -226,7 +232,7 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnc
 fn move_caret(event: &mut KeyEvent, runtime: &TextFieldRuntime, edit: impl FnOnce(&mut TextEdit)) {
     event.stop_propagation();
     if !runtime.disabled() {
-        let mut state = runtime.edit.borrow_mut();
+        let mut state = runtime.edit_mut();
         edit(&mut state);
         debug_assert!(state.caret() <= state.len());
         commit(runtime, &state);
@@ -238,7 +244,7 @@ fn clipboard_copy(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if runtime.disabled() {
         return;
     }
-    let state = runtime.edit.borrow();
+    let state = runtime.edit_mut();
     if let Some(text) = state.selected_text() {
         runtime
             .clip_fail
@@ -251,11 +257,11 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if runtime.disabled() {
         return;
     }
-    let selected = runtime.edit.borrow().selected_text().map(ToOwned::to_owned);
+    let selected = runtime.edit_mut().selected_text().map(ToOwned::to_owned);
     if let Some(text) = selected {
         if crate::widgets::clipboard::write(&*runtime.clipboard, &text).is_ok() {
             runtime.clip_fail.set(false);
-            let mut state = runtime.edit.borrow_mut();
+            let mut state = runtime.edit_mut();
             state.backspace();
             publish(runtime, &state);
         } else {
@@ -272,7 +278,7 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     let Some(text) = runtime.clipboard.get() else {
         return;
     };
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     let text: String = text.chars().filter(|c| *c != '\n' && *c != '\r').collect();
     state.insert_str(&text);
     publish(runtime, &state);
@@ -281,7 +287,7 @@ fn clipboard_paste(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
 fn select_all_text(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     event.stop_propagation();
     if !runtime.disabled() {
-        let mut state = runtime.edit.borrow_mut();
+        let mut state = runtime.edit_mut();
         state.select_all();
         commit(runtime, &state);
     }
@@ -292,7 +298,7 @@ fn history_undo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     if state.undo() {
         publish(runtime, &state);
     }
@@ -303,7 +309,7 @@ fn history_redo(event: &mut KeyEvent, runtime: &TextFieldRuntime) {
     if runtime.disabled() {
         return;
     }
-    let mut state = runtime.edit.borrow_mut();
+    let mut state = runtime.edit_mut();
     if state.redo() {
         publish(runtime, &state);
     }

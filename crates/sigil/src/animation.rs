@@ -1,3 +1,4 @@
+//! Animation primitives: easings, keyframes, springs, and tweens.
 mod bezier;
 mod easing;
 mod keyframes;

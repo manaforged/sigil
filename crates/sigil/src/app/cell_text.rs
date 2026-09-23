@@ -1,10 +1,59 @@
+use std::cell::Cell;
+
 use crate::hal::{Dim, HitPosition, LogicalSize, Point, Rect, Size, TextAffinity};
 use crate::kernel::TextContent;
 use crate::layout::{CaretGeometry, TextGeometry, TextMeasure};
 use crate::style::TextStyle;
 use unicode_segmentation::UnicodeSegmentation;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use super::embed::cell_width;
+/// How wide terminal-specific glyphs measure; `calibrate` sets this once per
+/// process before the host starts.
+#[derive(Clone, Copy, Default)]
+pub enum CellWidth {
+    /// Unicode-width measurement.
+    #[default]
+    Unicode,
+    /// Per-codepoint widths probed from the terminal.
+    Scalar {
+        /// ZWJ width.
+        joiner: usize,
+        /// ZWNJ width.
+        nonjoiner: usize,
+        /// Keycap combining mark width.
+        keycap: usize,
+    },
+}
+
+thread_local! {
+    static CELL_WIDTH: Cell<CellWidth> = const { Cell::new(CellWidth::Unicode) };
+}
+
+/// Set the terminal cell-width table; process-wide input calibration.
+pub fn set_cell_width(width: CellWidth) {
+    CELL_WIDTH.set(width);
+}
+
+/// Width of `text` in terminal cells under the calibrated table.
+#[must_use]
+pub fn cell_width(text: &str) -> usize {
+    match CELL_WIDTH.get() {
+        CellWidth::Unicode => UnicodeWidthStr::width(text),
+        CellWidth::Scalar {
+            joiner,
+            nonjoiner,
+            keycap,
+        } => text
+            .chars()
+            .map(|ch| match ch {
+                '\u{200d}' => joiner,
+                '\u{200c}' => nonjoiner,
+                '\u{20e3}' => keycap,
+                _ => UnicodeWidthChar::width(ch).unwrap_or(0),
+            })
+            .sum(),
+    }
+}
 
 pub(super) struct CellGeometry {
     px: f32,

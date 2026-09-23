@@ -1,3 +1,4 @@
+//! Clipboard access and the OS clipboard installer.
 #[cfg(feature = "clipboard-image")]
 use crate::kernel::ImageSource;
 #[cfg(feature = "clipboard-image")]
@@ -14,7 +15,18 @@ impl Clipboard for OsClipboard {
     }
 
     fn get(&self) -> Option<String> {
-        os_paste().ok()
+        match os_paste() {
+            Ok(text) => Some(text),
+            Err(err) => {
+                tracing::warn!(target: "sigil::clipboard", error = %err, "clipboard read failed");
+                None
+            }
+        }
+    }
+
+    #[cfg(feature = "clipboard-image")]
+    fn image(&self) -> Result<Option<ImageSource>, ClipError> {
+        os_image().map_err(ClipError::new)
     }
 }
 
@@ -35,6 +47,11 @@ pub fn paste() -> AppResult<String> {
 
 #[cfg(feature = "clipboard-image")]
 pub fn image() -> AppResult<Option<ImageSource>> {
+    crate::widgets::clipboard().image().map_err(Error::new)
+}
+
+#[cfg(feature = "clipboard-image")]
+fn os_image() -> AppResult<Option<ImageSource>> {
     with_handle(|clip| {
         let pixels = match clip.get_image() {
             Ok(pixels) => pixels,

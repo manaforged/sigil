@@ -24,7 +24,7 @@ impl AppConfig {
         Self {
             title: title.into(),
             size: (720, 480),
-            esc_exits: true,
+            esc_exits: false,
             panic_policy: PanicPolicy::default(),
             overlay: false,
             frameless: false,

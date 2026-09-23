@@ -2,7 +2,9 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::time::Instant;
 
-use crate::animation_runtime::{active_count as active_animation_count, tick as tick_animations};
+use crate::animation_runtime::active_count as active_animation_count;
+#[cfg(test)]
+use crate::animation_runtime::tick as tick_animations;
 use crate::events::EventRouter;
 use crate::hal::{LogicalSize, PhysicalSize, Scale, Shell};
 use crate::kernel::Cx;
@@ -140,12 +142,7 @@ fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
         let _ = WinitShell::wake(&waker);
     });
     async_rt.install_current();
-    install_g5_executor(&async_rt);
     Ok(async_rt)
-}
-
-pub fn install_g5_executor(async_rt: &AsyncRuntime) {
-    async_rt.install_executor();
 }
 
 fn start_theme_watch(
@@ -212,19 +209,27 @@ struct AnimationClock {
 }
 
 impl AnimationClock {
-    fn tick_active(&mut self, now: Instant) -> bool {
+    fn elapsed(&mut self, now: Instant) -> f32 {
         if active_animation_count() == 0 {
             self.previous = None;
-            return false;
+            return NOMINAL_FRAME_SECS;
         }
-        let dt = self
-            .previous
+        self.previous
             .replace(now)
             .map_or(NOMINAL_FRAME_SECS, |previous| {
                 now.saturating_duration_since(previous)
                     .as_secs_f32()
                     .min(MAX_ANIMATION_FRAME_SECS)
-            });
+            })
+    }
+
+    #[cfg(test)]
+    fn tick_active(&mut self, now: Instant) -> bool {
+        if active_animation_count() == 0 {
+            self.previous = None;
+            return false;
+        }
+        let dt = self.elapsed(now);
         tick_animations(dt);
         if active_animation_count() == 0 {
             self.previous = None;
@@ -254,24 +259,17 @@ fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) -> AppResult<()> {
         PanicPolicy::Isolate => {
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| frame_once(ctx)));
             result.unwrap_or_else(|payload| {
-                let detail = panic_message(&*payload);
-                tracing::error!("sigil-app: frame isolated after panic: {detail}");
+                let detail = crate::tasks::panic_message(&*payload);
+                let origin = Runtime::panic_origin_info()
+                    .map_or_else(String::new, |(name, location)| {
+                        format!(" [effect {name} {location}]")
+                    });
+                tracing::error!("sigil-app: frame isolated after panic: {detail}{origin}");
                 Runtime::recover_from_panic();
                 Ok(())
             })
         }
     }
-}
-
-fn panic_message(payload: &(dyn std::any::Any + Send)) -> &str {
-    payload.downcast_ref::<&'static str>().map_or_else(
-        || {
-            payload
-                .downcast_ref::<String>()
-                .map_or("<non-string panic payload>", String::as_str)
-        },
-        |s| s,
-    )
 }
 
 #[doc(hidden)]

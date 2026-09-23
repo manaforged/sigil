@@ -1,7 +1,7 @@
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, TopLayer, container, text};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Signal, derived_eq, signal};
 use crate::style::{NodeStyleExt, StyleAtom};
 
 use super::layout_ext::WidgetLayoutExt;
@@ -165,6 +165,7 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
     container()
         .role(Role::ComboBox)
         .label(label)
+        .expanded(state.open)
         .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT))
         .key(Key::Escape, move |ev| {
             ev.stop_propagation();
@@ -261,6 +262,7 @@ fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBu
     container()
         .role(Role::ListBoxOption)
         .label(label.clone())
+        .selected(derived_eq(move || state.selected.get() == Some(index)))
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()

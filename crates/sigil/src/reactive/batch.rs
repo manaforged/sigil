@@ -5,16 +5,18 @@ struct BatchGuard;
 
 impl Drop for BatchGuard {
     fn drop(&mut self) {
-        with_rt(|rt| rt.batch_depth -= 1);
+        with_rt(|rt| rt.batch_depth = rt.batch_depth.saturating_sub(1));
     }
 }
 
 pub fn batch<R>(f: impl FnOnce() -> R) -> R {
-    with_rt(|rt| rt.batch_depth += 1);
+    let depth = with_rt(|rt| {
+        rt.batch_depth += 1;
+        rt.batch_depth
+    });
     let guard = BatchGuard;
     let result = f();
-    let is_outermost = with_rt(|rt| rt.batch_depth == 1);
-    if is_outermost {
+    if depth == 1 {
         drain_pending();
     }
     drop(guard);

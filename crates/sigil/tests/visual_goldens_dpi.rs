@@ -11,9 +11,7 @@
 use sigil::app::DefaultTextMeasure;
 use sigil::prelude::*;
 
-mod golden_support;
-
-use golden_support::{
+use sigil_kittest::{
     InteractionMode, assert_goldens_differ, assert_png_matches_golden, golden_path,
     render_widget_to_png_scaled,
 };
@@ -46,7 +44,7 @@ fn capture_at_scale(stem: &str, scale: f32) {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
-    assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
+    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
 }
 
 #[test]
@@ -73,7 +71,7 @@ fn button_label_dpi_scale_200() {
 fn button_label_dpi_scales_are_pairwise_distinct() {
     for (i, (stem_a, _)) in SCALE_STEMS.iter().enumerate() {
         for (stem_b, _) in &SCALE_STEMS[i + 1..] {
-            assert_goldens_differ(stem_a, stem_b);
+            assert_goldens_differ!(stem_a, stem_b);
         }
     }
 }

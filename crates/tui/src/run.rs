@@ -1,18 +1,19 @@
 use std::io::{self, BufWriter, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crossterm::event::{
     self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
-    Event,
+    Event, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::style::Print;
 use crossterm::terminal::{
     Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use crossterm::{cursor, execute, queue};
-use sigil::animation_runtime::tick as tick_animations;
 use sigil::app::{
-    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, TreeRoot, set_cell_width,
+    AppConfig, AppResult, CellWidth, Error, FrameHooks, Host, LayoutError, PanicPolicy, TreeRoot,
+    set_cell_width,
 };
 use sigil::events::EventRouter;
 use sigil::hal::ShellEvent;
@@ -62,13 +63,37 @@ fn probe(out: &mut impl Write, text: &str) -> io::Result<usize> {
     Ok(usize::from(col))
 }
 
+/// Called each loop turn to push externally sourced shell events.
+pub type EventPump<'a> = Box<dyn FnMut(&mut Vec<ShellEvent>) + 'a>;
+
+/// Called after each `Host::frame`, before the frame is presented.
+pub type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &mut EventRouter, &Screen) + 'a>;
+
+/// Loop-level hooks for hosts embedding `run`: an external message pump and a
+/// post-frame callback. `run` is `run_with` with default hooks.
+#[derive(Default)]
+pub struct Hooks<'a> {
+    /// External message pump; see `EventPump`.
+    pub external_events: Option<EventPump<'a>>,
+    /// Post-frame callback; see `AfterFrame`.
+    pub after_frame: Option<AfterFrame<'a>>,
+}
+
 pub fn run<C, T>(config: C, tree: T) -> AppResult<()>
 where
     C: Into<AppConfig>,
     T: TreeRoot,
 {
+    run_with(config, tree, &mut Hooks::default())
+}
+
+pub fn run_with<C, T>(config: C, tree: T, hooks: &mut Hooks<'_>) -> AppResult<()>
+where
+    C: Into<AppConfig>,
+    T: TreeRoot,
+{
     let config = config.into();
-    let result = Runtime::scope("sigil-tui", || live(&config, tree));
+    let result = Runtime::scope("sigil-tui", || live(&config, tree, hooks));
     profile::dump_if_enabled();
     result
 }
@@ -95,25 +120,30 @@ pub fn step(
     cols: u16,
     rows: u16,
 ) -> Result<Grid, LayoutError> {
-    Runtime::begin_effect();
-    for event in events {
-        host.route(router, event);
+    let mut grid = None;
+    let hooks = step_hooks(events, &mut grid, cols, rows);
+    let out = host.frame(router, view(cols, rows), TICK.as_secs_f32(), hooks);
+    out.layout?;
+    Ok(grid.expect("paint runs after a successful layout"))
+}
+
+fn step_hooks<'e>(
+    events: impl IntoIterator<Item = ShellEvent> + 'e,
+    grid_slot: &'e mut Option<Grid>,
+    cols: u16,
+    rows: u16,
+) -> FrameHooks<'e> {
+    FrameHooks {
+        input: Some(Box::new(move |host, router| {
+            host.route_all(router, events);
+        })),
+        paint: Some(Box::new(move |host, _router, info| {
+            if info.layout_ok {
+                *grid_slot = Some(raster(&host.painted(), cols, rows, CELL));
+            }
+        })),
+        ..FrameHooks::default()
     }
-    tick_animations(TICK.as_secs_f32());
-    crate::timer::advance(TICK.as_secs_f32());
-    crate::work::collect_work();
-    Runtime::begin_layout();
-    let layout = host.layout(view(cols, rows));
-    if layout.is_ok() {
-        host.repair_focus(router);
-    }
-    Runtime::begin_paint();
-    let painted = layout
-        .is_ok()
-        .then(|| raster(&host.painted(), cols, rows, CELL));
-    Runtime::end_frame();
-    layout?;
-    Ok(painted.expect("paint runs after a successful layout"))
 }
 
 fn prime(
@@ -135,11 +165,10 @@ fn prepare() -> AppResult<sigil::tasks::AsyncRuntime> {
     sigil::app::clear_exit();
     let async_rt = sigil::tasks::AsyncRuntime::new().map_err(Error::new)?;
     async_rt.install_current();
-    async_rt.install_executor();
     Ok(async_rt)
 }
 
-fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
+fn live<T: TreeRoot>(config: &AppConfig, tree: T, hooks: &mut Hooks<'_>) -> AppResult<()> {
     let mut async_rt = prepare()?;
     let mut term = Term::enter().map_err(Error::new)?;
     let _hooks = HookGuard::install();
@@ -147,6 +176,7 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
     limit(config, &mut cols, &mut rows);
     let mut host = Host::cells();
     let mut router = EventRouter::new();
+    crate::clipboard::install_clipboard();
     host.mount(tree);
     prime(&mut host, &mut router, cols, rows).map_err(Error::new)?;
     let mut screen = Screen::new(cols, rows);
@@ -158,36 +188,127 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
         last = std::time::Instant::now();
         screen.set_dt(dt);
         let _ = async_rt.pump();
-        let mut incoming = Vec::new();
-        if first {
-            first = false;
-        } else if event::poll(TICK).map_err(Error::new)? {
-            match map_input(event::read().map_err(Error::new)?, config, &mut pointer) {
-                Input::Quit => break,
-                Input::Event(mapped) => incoming.push(mapped),
-                Input::Resize(next_cols, next_rows) => {
-                    cols = next_cols;
-                    rows = next_rows;
-                    screen.invalidate();
-                    term.redraw = true;
-                }
-                Input::None => {}
+        let incoming = match gather_input(&mut first, config, &mut pointer, hooks)? {
+            Incoming::Quit => break,
+            Incoming::Events(events) => events,
+            Incoming::Resized(next_cols, next_rows, events) => {
+                cols = next_cols;
+                rows = next_rows;
+                screen.invalidate();
+                term.redraw = true;
+                events
             }
-        }
+        };
         profile::begin_frame();
-        screen
-            .frame(&mut host, &mut router, incoming, (cols, rows))
-            .map_err(Error::new)?;
-        {
-            let _phase = profile::span("tui.present");
-            term.paint(&mut screen).map_err(Error::new)?;
-        }
-        profile::tick_frame();
-        if sigil::app::take_exit() {
+        let mut turn = Turn {
+            screen: &mut screen,
+            host: &mut host,
+            router: &mut router,
+            term: &mut term,
+        };
+        turn.frame_and_present(config.panic_policy, incoming, (cols, rows), hooks)?;
+        if turn.screen.exited() {
             break;
         }
     }
     Ok(())
+}
+
+struct Turn<'a> {
+    screen: &'a mut Screen,
+    host: &'a mut Host,
+    router: &'a mut EventRouter,
+    term: &'a mut Term,
+}
+
+impl Turn<'_> {
+    fn frame_and_present(
+        &mut self,
+        policy: PanicPolicy,
+        incoming: Vec<ShellEvent>,
+        size: (u16, u16),
+        hooks: &mut Hooks<'_>,
+    ) -> AppResult<()> {
+        frame_isolated(
+            policy,
+            self.screen,
+            self.host,
+            self.router,
+            incoming,
+            size,
+            self.term,
+        )
+        .map_err(Error::new)?;
+        if let Some(after) = hooks.after_frame.as_mut() {
+            after(self.host, self.router, self.screen);
+        }
+        {
+            let _phase = profile::span("tui.present");
+            self.term.paint(self.screen).map_err(Error::new)?;
+        }
+        profile::tick_frame();
+        Ok(())
+    }
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "frame needs the screen, host, router, decoded input, size, and terminal"
+)]
+fn frame_isolated(
+    policy: PanicPolicy,
+    screen: &mut Screen,
+    host: &mut Host,
+    router: &mut EventRouter,
+    incoming: Vec<ShellEvent>,
+    size: (u16, u16),
+    term: &mut Term,
+) -> Result<(), LayoutError> {
+    match policy {
+        PanicPolicy::Abort => screen.frame(host, router, incoming, size).map(|_| ()),
+        PanicPolicy::Isolate => std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            screen.frame(host, router, incoming, size).map(|_| ())
+        }))
+        .unwrap_or_else(|payload| {
+            let detail = sigil::tasks::panic_message(&*payload);
+            eprintln!("sigil-tui: frame isolated after panic: {detail}");
+            Runtime::recover_from_panic();
+            restore();
+            term.redraw = true;
+            Ok(())
+        }),
+    }
+}
+
+enum Incoming {
+    Quit,
+    Events(Vec<ShellEvent>),
+    Resized(u16, u16, Vec<ShellEvent>),
+}
+
+fn gather_input(
+    first: &mut bool,
+    config: &AppConfig,
+    pointer: &mut sigil::hal::Point,
+    hooks: &mut Hooks<'_>,
+) -> AppResult<Incoming> {
+    let mut incoming = Vec::new();
+    let mut resize = None;
+    if !core::mem::take(first) {
+        match poll_input(config, pointer)? {
+            Input::Quit => return Ok(Incoming::Quit),
+            Input::Event(mapped) => incoming.push(mapped),
+            Input::Resize(cols, rows) => resize = Some((cols, rows)),
+            Input::None => {}
+        }
+    }
+    if let Some(pump) = hooks.external_events.as_mut() {
+        pump(&mut incoming);
+    }
+    Ok(match resize {
+        Some((cols, rows)) => Incoming::Resized(cols, rows, incoming),
+        None => Incoming::Events(incoming),
+    })
 }
 
 enum Input {
@@ -195,6 +316,17 @@ enum Input {
     Event(ShellEvent),
     Resize(u16, u16),
     None,
+}
+
+fn poll_input(config: &AppConfig, pointer: &mut sigil::hal::Point) -> AppResult<Input> {
+    if !event::poll(TICK).map_err(Error::new)? {
+        return Ok(Input::None);
+    }
+    Ok(map_input(
+        event::read().map_err(Error::new)?,
+        config,
+        pointer,
+    ))
 }
 
 fn map_input(event: Event, config: &AppConfig, pointer: &mut sigil::hal::Point) -> Input {
@@ -225,9 +357,11 @@ fn limit(config: &AppConfig, cols: &mut u16, rows: &mut u16) {
 }
 
 fn quit(key: &crossterm::event::KeyEvent, esc_exits: bool) -> bool {
-    use crossterm::event::{KeyCode, KeyModifiers};
-    if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c' | 'C'))
-    {
+    use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers};
+    if key.kind == KeyEventKind::Release {
+        return false;
+    }
+    if key.modifiers.contains(KeyModifiers::CONTROL) && matches!(key.code, KeyCode::Char('c')) {
         return true;
     }
     esc_exits && key.code == KeyCode::Esc
@@ -240,8 +374,9 @@ struct Term {
 
 impl Term {
     fn enter() -> io::Result<Self> {
+        RESTORED.store(false, Ordering::Relaxed);
+        let guard = EnterGuard;
         enable_raw_mode()?;
-        let raw = RawModeGuard;
         execute!(
             io::stdout(),
             EnterAlternateScreen,
@@ -249,7 +384,15 @@ impl Term {
             EnableBracketedPaste,
             cursor::Hide
         )?;
-        core::mem::forget(raw);
+        let _ = execute!(
+            io::stdout(),
+            PushKeyboardEnhancementFlags(
+                KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES
+                    | KeyboardEnhancementFlags::REPORT_EVENT_TYPES
+                    | KeyboardEnhancementFlags::REPORT_ALTERNATE_KEYS
+            )
+        );
+        core::mem::forget(guard);
         Ok(Self {
             redraw: true,
             out: BufWriter::with_capacity(BUFFER, io::stdout()),
@@ -282,7 +425,13 @@ impl Drop for Term {
     }
 }
 
+static RESTORED: AtomicBool = AtomicBool::new(false);
+
 fn restore() {
+    if RESTORED.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    let _ = execute!(io::stdout(), PopKeyboardEnhancementFlags);
     let _ = execute!(
         io::stdout(),
         DisableBracketedPaste,
@@ -293,11 +442,11 @@ fn restore() {
     let _ = disable_raw_mode();
 }
 
-struct RawModeGuard;
+struct EnterGuard;
 
-impl Drop for RawModeGuard {
+impl Drop for EnterGuard {
     fn drop(&mut self) {
-        let _ = disable_raw_mode();
+        restore();
     }
 }
 

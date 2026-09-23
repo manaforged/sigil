@@ -149,10 +149,11 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
         );
         assert_eq!(trigger.get(), 1, "page '/' shortcut fires");
         router.route(&mut cx, &layout, key("/", PhysicalKey::Slash, KeyPhase::Up));
+        router.flush_focus_requests(&mut cx, &layout);
         assert_eq!(
             router.focus(),
             Some(field),
-            "focus request applies before the next event dispatches"
+            "focus request applies at end of frame"
         );
 
         router.route(

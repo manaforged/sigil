@@ -4,7 +4,7 @@ use allocation_counter as _;
 #[cfg(test)]
 use criterion as _;
 mod builder_ext;
-mod focus;
+pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
 mod ime_handlers;
@@ -15,6 +15,7 @@ mod window_command;
 
 pub use builder_ext::NodeEventsExt;
 pub(crate) use builder_ext::with_handlers;
+pub(crate) use focus::ScrollReveal;
 pub use focus::{FocusIntent, focus_from_keyboard, note_focus_source, request_focus};
 pub use handlers::EventHandlers;
 #[cfg(feature = "desktop")]

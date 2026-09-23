@@ -1,3 +1,4 @@
+//! Widget builders and widget support types.
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 
 pub(crate) const MAX_SOURCE_BYTES: usize = 1 << 20;

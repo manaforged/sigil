@@ -51,10 +51,15 @@ fn parse_hex(hex: &str) -> Option<Rgba8> {
     }
 }
 
-pub(super) fn watch(path: &std::path::Path) -> Option<crossbeam_channel::Receiver<()>> {
+pub(super) fn watcher(
+    path: &std::path::Path,
+) -> Result<(notify::RecommendedWatcher, crossbeam_channel::Receiver<()>), notify::Error> {
     let (tx, rx) = crossbeam_channel::unbounded();
-    let parent = path.parent()?.to_path_buf();
-    let file = path.to_path_buf();
+    let file = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let parent = file
+        .parent()
+        .map(std::path::Path::to_path_buf)
+        .ok_or_else(notify::Error::path_not_found)?;
     let mut watcher =
         notify::recommended_watcher(move |result: Result<notify::Event, notify::Error>| {
             if let Ok(event) = result
@@ -62,20 +67,21 @@ pub(super) fn watch(path: &std::path::Path) -> Option<crossbeam_channel::Receive
                     event.kind,
                     notify::EventKind::Modify(_) | notify::EventKind::Create(_)
                 )
-                && event.paths.iter().any(|p| p == &file)
+                && event.paths.iter().any(|p| {
+                    p == &file || std::fs::canonicalize(p).ok().as_deref() == Some(file.as_path())
+                })
             {
                 let _ = tx.send(());
             }
-        })
-        .ok()?;
-    notify::Watcher::watch(&mut watcher, &parent, notify::RecursiveMode::NonRecursive).ok()?;
-    let _leaked: &'static _ = Box::leak(Box::new(watcher));
-    Some(rx)
+        })?;
+    notify::Watcher::watch(&mut watcher, &parent, notify::RecursiveMode::NonRecursive)?;
+    Ok((watcher, rx))
 }
 
 pub(super) struct ThemeWatch {
     pub(super) path: PathBuf,
-    pub(super) rx: crossbeam_channel::Receiver<()>,
+    rx: Option<crossbeam_channel::Receiver<()>>,
+    _watcher: Option<notify::RecommendedWatcher>,
 }
 
 pub(super) fn attach_current(
@@ -95,20 +101,35 @@ pub(super) fn drain(
     root: crate::kernel::NodeId,
     watch: &ThemeWatch,
 ) -> bool {
+    let Some(rx) = &watch.rx else {
+        return false;
+    };
     let mut changed = false;
-    while watch.rx.try_recv().is_ok() {
-        attach_current(cx, root, watch);
+    while rx.try_recv().is_ok() {
         changed = true;
+    }
+    if changed {
+        attach_current(cx, root, watch);
     }
     changed
 }
 
 pub(super) fn start(configured: Option<&std::path::Path>) -> Option<ThemeWatch> {
     let path = configured?;
-    let rx = watch(path)?;
+    let (watcher, rx) = match watcher(path) {
+        Ok((watcher, rx)) => (Some(watcher), Some(rx)),
+        Err(error) => {
+            tracing::warn!(
+                "sigil-app: cannot watch theme file {}: {error}",
+                path.display()
+            );
+            (None, None)
+        }
+    };
     Some(ThemeWatch {
         path: path.to_path_buf(),
         rx,
+        _watcher: watcher,
     })
 }
 

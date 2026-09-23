@@ -43,8 +43,6 @@ impl Owner {
                 children: Vec::new(),
                 signals: Vec::new(),
                 effects: Vec::new(),
-                entities: Vec::new(),
-                observers: Vec::new(),
                 cleanups: Vec::new(),
                 name,
                 location,

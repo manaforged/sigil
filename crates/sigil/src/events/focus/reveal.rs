@@ -1,0 +1,46 @@
+use crate::kernel::{Cx, NodeId};
+use crate::layout::LayoutEngine;
+use crate::reactive::Signal;
+
+#[derive(Clone, Copy)]
+pub(crate) struct ScrollReveal {
+    pub(crate) scroll_y: Signal<f32>,
+    pub(crate) max: Signal<f32>,
+}
+
+pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
+    let Some(rect) = layout.result(target).map(|result| result.rect()) else {
+        return;
+    };
+    let mut top = rect.origin.y;
+    let mut bottom = top + rect.height;
+    let mut current = cx.parent(target);
+    while let Some(id) = current {
+        if let Some(reveal) = cx
+            .get(id)
+            .and_then(|node| node.get_extension::<ScrollReveal>())
+            .copied()
+            && let Some(view) = layout.result(id).map(|result| result.rect())
+        {
+            let before = reveal.scroll_y.peek();
+            let shift = overflow(top, bottom, view.origin.y, view.origin.y + view.height);
+            let after = (before + shift).clamp(0.0, reveal.max.peek().max(0.0));
+            if (after - before).abs() > f32::EPSILON {
+                reveal.scroll_y.set(after);
+            }
+            top -= after - before;
+            bottom -= after - before;
+        }
+        current = cx.parent(id);
+    }
+}
+
+fn overflow(top: f32, bottom: f32, view_top: f32, view_bottom: f32) -> f32 {
+    if top < view_top {
+        top - view_top
+    } else if bottom > view_bottom {
+        (bottom - view_bottom).min(top - view_top)
+    } else {
+        0.0
+    }
+}

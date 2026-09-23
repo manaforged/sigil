@@ -54,9 +54,11 @@ slot.
 
 `spawn` returns a `Signal<Status<T, E>>`. The signal starts
 `Status::Pending`. The future's output is `Result<T, E>`. On
-completion, the main-thread dispatcher writes `Ok` or `Err`. A
-cancelled task does not write `Err`; the signal stays `Pending` and the
-task drops.
+completion, the main-thread dispatcher writes `Ok` or `Err`. If the
+future panics, the dispatcher writes `Status::Panicked` with the panic
+message. `panic_message(payload)` returns that text for any panic
+payload. A cancelled task does not write `Err`; the signal stays
+`Pending` and the task drops.
 
 Background work must not touch the arena. It holds an `OwnerHandle`,
 which carries identity only and is `Send + Sync`. Completions post a

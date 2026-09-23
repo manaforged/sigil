@@ -50,6 +50,7 @@ zeno = { workspace = true, optional = true }
 half = { workspace = true, optional = true }
 softbuffer = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
+base64 = { workspace = true, optional = true }
 usvg = { workspace = true, optional = true }
 lyon_geom = { workspace = true, optional = true }
 harfrust = { version = "0.13", optional = true }
@@ -104,13 +105,14 @@ clipboard-image = ["clipboard", "arboard/image-data"]
 dialog = ["desktop", "dep:rfd"]
 menu = ["desktop", "dep:muda", "dep:raw-window-handle"]
 tray = ["menu", "dep:tray-icon"]
-image-decode = ["dep:image"]
+image-decode = ["dep:image", "dep:base64"]
 test-support = ["dialog"]
 audio = ["dep:rodio"]
 pty = ["dep:portable-pty", "dep:vt100"]
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
+sigil-kittest = { path = "../kittest" }
 criterion = { version = "0.8", features = ["html_reports"] }
 image = { workspace = true }
 pollster = { workspace = true }
@@ -150,10 +152,6 @@ harness = false
 
 [[bench]]
 name = "widget_render"
-harness = false
-
-[[bench]]
-name = "actions_dispatch"
 harness = false
 
 [[bench]]

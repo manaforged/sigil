@@ -97,6 +97,15 @@ is ignored. Spacing tokens are 4px steps (`p-4` = 16px, `w-4` = 16px).
 `bg-accent`) come from the active theme. Dark mode is a theme swap, not
 a restyle.
 
+A theme can also live in a TOML file: `base = "dark"` (or `"light"`,
+`"console_dark"`) plus a `[tokens]` table of hex colors
+(`accent = "#7c3aed"`). `AppConfig::theme_file(path)` loads it at launch
+and keeps watching it — edits re-apply on the next frame, and writes in
+quick succession coalesce into one reload. For manual control,
+`sigil::watch_theme(path)` returns a `ThemeWatcher` guard that re-parses
+the file and calls `set_theme` on the UI thread until dropped; call it
+inside the app tree so the reload can reach the UI thread.
+
 ## Interaction
 
 Static styling works on any node. Interaction styling goes through

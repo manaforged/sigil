@@ -1,3 +1,4 @@
+//! Re-exports of the render scene types for embedders.
 pub use crate::hal::{Color, PhysicalSize, RenderedGlyph};
 pub use crate::renderer::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,

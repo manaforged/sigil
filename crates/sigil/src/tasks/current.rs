@@ -30,6 +30,11 @@ pub(crate) fn uninstall(dispatcher: &Dispatcher) {
 }
 
 #[must_use]
+pub fn installed() -> bool {
+    HOST.with(|slot| slot.borrow().is_some())
+}
+
+#[must_use]
 pub fn dispatcher() -> Dispatcher {
     HOST.with(|slot| {
         slot.borrow()

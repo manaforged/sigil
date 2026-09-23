@@ -3,7 +3,7 @@ use core::panic::Location;
 use smallvec::SmallVec;
 
 use crate::reactive::effect_run::run_effect;
-use crate::reactive::runtime::{EffectKey, EffectSlot, with_rt};
+use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, with_rt};
 
 #[track_caller]
 pub fn effect<F: FnMut() + 'static>(f: F) {
@@ -46,6 +46,13 @@ fn effect_named_impl<F: FnMut() + 'static>(
         key
     });
     run_effect(key);
+}
+
+pub(crate) fn current_effect_owner() -> Option<OwnerKey> {
+    with_rt(|rt| {
+        rt.current_effect
+            .and_then(|key| rt.effects.get(key).map(|slot| slot.owner))
+    })
 }
 
 pub(crate) fn schedule_effects(effects: SmallVec<[EffectKey; 4]>) {

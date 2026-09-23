@@ -1,3 +1,4 @@
+//! Bidirectional text stepping for caret movement.
 use unicode_bidi::BidiInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

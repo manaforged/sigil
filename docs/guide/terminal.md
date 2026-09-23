@@ -31,16 +31,40 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 ```
 
 `sigil_tui::run` opens the terminal, runs the frame loop, and restores
-the screen on exit. `sigil-tui` has no prelude and does not install the
-OS clipboard.
+the screen on exit. `sigil-tui` has no prelude. `run` installs an OSC
+52 clipboard so widget copy/cut reaches the host terminal's clipboard.
 
 ## Limits
 
 - No IME.
 - No rounded corners and no shadows.
-- Images render through the terminal graphics protocol when the
-  terminal supports it (Kitty, Ghostty, WezTerm, Konsole, iTerm2, or
-  Warp). Other terminals show half-block cells.
+- Images render through the Kitty, iTerm2, or Sixel graphics protocol
+  when the terminal advertises one (`TERM`, `KITTY_WINDOW_ID`, or
+  `TERM_PROGRAM`). Detection order is Kitty, then iTerm2, then Sixel;
+  detected terminals include Kitty, Ghostty, WezTerm, Konsole, iTerm2,
+  Warp, foot, Contour, mlterm, mintty, and yaft. Inside tmux or GNU
+  screen a detected protocol's sequences are wrapped in DCS
+  passthrough instead of disabling images. `SIGIL_GRAPHICS=kitty`,
+  `=iterm2`, or `=sixel` forces a protocol and `SIGIL_GRAPHICS=off`
+  disables images. Other terminals show the image as sextant glyphs —
+  six pixels per cell — with per-cell foreground and background
+  colors. Sixel output is paletted (a bounded 216-color cube plus 24
+  grays) and scaled to the cell box at a nominal 8×16-px cell.
+- Keys come from crossterm: press, release, and repeat events plus
+  modifiers and bracketed paste. `run` pushes the Kitty keyboard
+  enhancement flags (disambiguate escape codes, report event types,
+  report alternate keys) on entry and pops them on exit; terminals
+  without the protocol keep reporting plain presses. Release maps to
+  `KeyPhase::Up` and repeat sets `repeat` on `KeyEvent`.
+- `run` installs an OSC 52 clipboard: copy and cut emit
+  `ESC ] 52 ; c ; <base64> BEL`, wrapped in DCS passthrough under tmux
+  or screen. Clipboard reads are not wired; paste reaches widgets
+  through bracketed paste. The `clipboard` feature of `sigil-gui` and
+  an OS clipboard are not needed.
+- `SIGIL_TUI_TRANSCRIPT=1` turns on a transcript stream on stderr:
+  each flushed frame writes the `sigil::a11y::snapshot` of the
+  accessibility tree when the tree changed, else the text rows that
+  changed. This is the screen-reader and agent-transcript surface.
 - The cell grid changes the paint, not the tree. The widgets, events,
   and signals are the same as the desktop host.
 - Write ordinary pixel geometry. Layout snaps it to the cell grid: a

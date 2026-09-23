@@ -39,7 +39,6 @@ impl EventRouter {
 
     pub fn route(&mut self, cx: &mut Cx, layout: &LayoutEngine, event: ShellEvent) {
         self.focus.sync_scopes(cx, Some(layout));
-        self.flush_focus_requests(cx, layout);
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, layout, event),
@@ -101,6 +100,9 @@ impl EventRouter {
             if self.focus.is_focusable_target(cx, layout, id) {
                 self.focus.set_focus(cx, Some(id));
             }
+        }
+        if let Some(id) = self.focus.focus() {
+            crate::events::focus::reveal_focus(cx, layout, id);
         }
     }
 
@@ -203,6 +205,21 @@ impl EventRouter {
         );
         self.release_capture_on_terminal_phase(event.phase);
         true
+    }
+
+    pub fn reconcile_hover(&mut self, cx: &Cx, layout: &LayoutEngine) {
+        if self.pointer_capture.is_some() {
+            return;
+        }
+        let Some(pointer) = self.last_pointer.clone() else {
+            return;
+        };
+        let Some(path) = self.hit_cache.hit_path(cx, layout, pointer.position) else {
+            self.clear_hover(cx, &pointer);
+            return;
+        };
+        let next_targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
+        self.update_hover(cx, &next_targets, &pointer);
     }
 
     fn update_hover(&mut self, cx: &Cx, next: &PointerTargets, source: &PointerEvent) {

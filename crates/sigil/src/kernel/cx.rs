@@ -1,4 +1,3 @@
-use core::fmt::Write as _;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 use crate::hal::Scale;
@@ -8,7 +7,17 @@ use slotmap::{DefaultKey, SlotMap};
 use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode};
-use crate::kernel::{A11yProps, Node, NodeId, NodeType, TextContent};
+use crate::kernel::{A11yProps, Node, NodeId, NodeType};
+
+/// How the owning `Host` measures space: pixel units or terminal cells.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum HostMode {
+    /// Pixel host (desktop window or embed).
+    #[default]
+    Pixel,
+    /// Cell host (terminal); layout snaps to the cell grid.
+    Cell,
+}
 
 pub struct Cx {
     instance_id: u64,
@@ -20,6 +29,7 @@ pub struct Cx {
     pub(crate) roots: SmallVec<[NodeId; 4]>,
     pub(crate) mutation_generation: u64,
     scale: Scale,
+    host_mode: HostMode,
     pub(crate) live_region: Option<NodeId>,
 }
 
@@ -37,8 +47,19 @@ impl Cx {
             roots: SmallVec::new(),
             mutation_generation: 0,
             scale: Scale::ONE,
+            host_mode: HostMode::default(),
             live_region: None,
         }
+    }
+
+    /// The host mode this tree was built under.
+    #[must_use]
+    pub const fn host_mode(&self) -> HostMode {
+        self.host_mode
+    }
+
+    pub(crate) const fn set_host_mode(&mut self, mode: HostMode) {
+        self.host_mode = mode;
     }
 
     #[must_use]
@@ -98,6 +119,15 @@ impl Cx {
     }
 
     fn link_parent(&mut self, parent: NodeId, child: NodeId) {
+        if self.nodes.get(parent.key()).is_none() || self.nodes.get(child.key()).is_none() {
+            tracing::warn!(
+                ?parent,
+                ?child,
+                "link_parent skipped a dead node; the child stays unattached"
+            );
+            return;
+        }
+        self.detach_from_parent(child);
         if let Some(child_node) = self.nodes.get_mut(child.key()) {
             child_node.parent = Some(parent);
             child_node.bump_version();
@@ -106,7 +136,6 @@ impl Cx {
             parent_node.children.push(child);
             parent_node.bump_version();
         }
-        self.roots.retain(|root| *root != child);
         self.mark_dirty(child);
         self.mark_dirty(parent);
         self.bump_generation();
@@ -118,12 +147,8 @@ impl Cx {
         }
 
         self.bump_generation();
-        let parent = self.nodes.get(id.key()).and_then(|node| node.parent);
         let subtree = self.collect_subtree(id);
         self.detach_from_parent(id);
-        if let Some(parent) = parent {
-            self.mark_dirty(parent);
-        }
         for node_id in &subtree {
             self.dirty.remove(node_id);
         }
@@ -153,14 +178,43 @@ impl Cx {
     }
 
     pub(crate) fn replace_children(&mut self, parent: NodeId, children: SmallVec<[NodeId; 4]>) {
-        let Some(node) = self.nodes.get_mut(parent.key()) else {
+        let children: SmallVec<[NodeId; 4]> = children
+            .into_iter()
+            .filter(|id| self.nodes.get(id.key()).is_some())
+            .collect();
+        let Some(parent_node) = self.nodes.get_mut(parent.key()) else {
             return;
         };
-        if node.children.as_slice() == children.as_slice() {
+        if parent_node.children.as_slice() == children.as_slice() {
             return;
         }
-        node.children = children;
-        node.bump_version();
+        let old = std::mem::take(&mut parent_node.children);
+        for id in &children {
+            let prior = self.nodes.get(id.key()).and_then(|node| node.parent);
+            if prior == Some(parent) {
+                continue;
+            }
+            self.detach_from_parent(*id);
+            if let Some(child) = self.nodes.get_mut(id.key()) {
+                child.parent = Some(parent);
+                child.bump_version();
+            }
+        }
+        for id in &old {
+            if children.contains(id) {
+                continue;
+            }
+            if let Some(dropped) = self.nodes.get_mut(id.key())
+                && dropped.parent == Some(parent)
+            {
+                dropped.parent = None;
+                dropped.bump_version();
+            }
+        }
+        if let Some(target) = self.nodes.get_mut(parent.key()) {
+            target.children = children;
+            target.bump_version();
+        }
         self.mark_dirty(parent);
         self.bump_generation();
     }
@@ -172,6 +226,7 @@ impl Cx {
         {
             parent_node.children.retain(|child| *child != id);
             parent_node.bump_version();
+            self.mark_dirty(parent);
         } else {
             self.roots.retain(|root| *root != id);
         }
@@ -279,13 +334,6 @@ impl Cx {
     }
 
     #[must_use]
-    pub fn dump_tree(&self, root: NodeId) -> String {
-        let mut out = String::new();
-        self.write_dump(root, 0, &mut out);
-        out
-    }
-
-    #[must_use]
     pub fn parent(&self, id: NodeId) -> Option<NodeId> {
         self.nodes.get(id.key()).and_then(|node| node.parent)
     }
@@ -318,43 +366,6 @@ impl Cx {
             .map_or(0, |node| node.children.len())
     }
 
-    fn write_dump(&self, id: NodeId, depth: usize, out: &mut String) {
-        let Some(node) = self.nodes.get(id.key()) else {
-            return;
-        };
-        for _ in 0..depth {
-            out.push_str("  ");
-        }
-        match &node.kind {
-            NodeType::Container => {
-                let _ = writeln!(out, "Container role={:?}", node.a11y.role);
-            }
-            NodeType::Fragment => {
-                let _ = writeln!(out, "Fragment role={:?}", node.a11y.role);
-            }
-            NodeType::Text { content, .. } => {
-                let _ = writeln!(
-                    out,
-                    "Text {} role={:?}",
-                    dump_text_content(content),
-                    node.a11y.role
-                );
-            }
-            NodeType::Image { source, .. } => {
-                let _ = writeln!(
-                    out,
-                    "Image {}x{} role={:?}",
-                    source.width(),
-                    source.height(),
-                    node.a11y.role
-                );
-            }
-        }
-        for child in &node.children {
-            self.write_dump(*child, depth + 1, out);
-        }
-    }
-
     const fn bump_generation(&mut self) {
         self.mutation_generation = self.mutation_generation.wrapping_add(1);
     }
@@ -370,15 +381,14 @@ impl Drop for Cx {
     }
 }
 
-fn dump_text_content(content: &TextContent) -> String {
-    match content {
-        TextContent::Static(value) => format!("{value:?}"),
-        TextContent::Reactive(_) => "<reactive>".to_owned(),
-        TextContent::Compute(_) => "<compute>".to_owned(),
-    }
-}
-
 fn next_instance_id() -> u64 {
     static NEXT: AtomicU64 = AtomicU64::new(1);
     NEXT.fetch_add(1, Ordering::Relaxed)
 }
+
+#[path = "cx_dump.rs"]
+mod dump;
+
+#[cfg(test)]
+#[path = "cx_tests.rs"]
+mod tests;

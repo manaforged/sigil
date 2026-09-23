@@ -1,3 +1,4 @@
+//! Icon path parsing and icon drawing.
 #![allow(clippy::redundant_pub_crate)]
 
 mod bands;

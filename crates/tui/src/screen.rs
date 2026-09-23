@@ -1,14 +1,13 @@
 use std::io::{self, Write};
 
-use sigil::animation_runtime::tick as tick_animations;
-use sigil::app::{Host, LayoutError, Painted};
+use sigil::app::{FrameHooks, Host, LayoutError, Painted};
 use sigil::events::EventRouter;
 use sigil::hal::ShellEvent;
 use sigil::profile;
-use sigil::reactive::Runtime;
 
 use crate::paint::{Grid, raster_into};
 use crate::run::{TICK, view};
+use crate::transcript::Transcript;
 use crate::write::Measured;
 
 const CELL: f32 = Host::CELL;
@@ -19,8 +18,10 @@ pub struct Screen {
     prev: Grid,
     fresh: bool,
     dirty: bool,
+    exited: bool,
     dt: f32,
     painter: crate::graphics::Painter,
+    transcript: Transcript,
 }
 
 impl Screen {
@@ -32,8 +33,10 @@ impl Screen {
             prev: Grid::new(cols, rows),
             fresh: true,
             dirty: true,
+            exited: false,
             dt: TICK.as_secs_f32(),
             painter: crate::graphics::Painter::default(),
+            transcript: Transcript::from_env(),
         }
     }
 
@@ -51,34 +54,35 @@ impl Screen {
         profile::count("tui.frames");
         profile::count_add("workload.cols", u64::from(cols));
         profile::count_add("workload.rows", u64::from(rows));
-        effect(host, router, events, self.dt);
-        let layout_phase = profile::span("layout");
-        Runtime::begin_layout();
-        let layout = host.layout(view(cols, rows));
-        drop(layout_phase);
-        if layout.is_ok() {
-            let _phase = profile::span("focus");
-            host.repair_focus(router);
+        let dt = self.dt;
+        let Self {
+            nodes,
+            grid,
+            fresh,
+            dirty,
+            ..
+        } = self;
+        let cells = Cells {
+            nodes,
+            grid,
+            fresh,
+            dirty,
+        };
+        let hooks = frame_hooks(cells, events, (cols, rows));
+        let out = host.frame(router, view(cols, rows), dt, hooks);
+        self.exited |= out.exit;
+        if self.dirty {
+            self.transcript.emit(host, router, &self.grid);
         }
-        let paint_phase = profile::span("tui.paint");
-        Runtime::begin_paint();
-        self.dirty = false;
-        if layout.is_ok() {
-            let resized = self.grid.cols() != cols as usize || self.grid.rows() != rows as usize;
-            let moved = host.repaint(&mut self.nodes);
-            self.dirty = moved || resized || self.fresh;
-            if self.dirty {
-                let _phase = profile::span("tui.raster");
-                self.grid.resize(cols, rows);
-                raster_into(&mut self.grid, &self.nodes, CELL);
-            }
-        }
-        Runtime::end_frame();
-        drop(paint_phase);
         profile::count_add("tui.dirty", u64::from(self.dirty));
         profile::count_add("tui.nodes", self.nodes.len() as u64);
-        layout?;
+        out.layout?;
         Ok(if self.dirty { &self.grid } else { &self.prev })
+    }
+
+    #[must_use]
+    pub const fn exited(&self) -> bool {
+        self.exited
     }
 
     pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
@@ -141,20 +145,48 @@ impl Screen {
     }
 }
 
-fn effect(
-    host: &mut Host,
-    router: &mut EventRouter,
-    events: impl IntoIterator<Item = ShellEvent>,
-    dt: f32,
-) {
-    let _phase = profile::span("effect");
-    Runtime::begin_effect();
-    for event in events {
-        profile::interact("input");
-        profile::count("tui.events");
-        host.route(router, event);
+struct Cells<'s> {
+    nodes: &'s mut Vec<Painted>,
+    grid: &'s mut Grid,
+    fresh: &'s mut bool,
+    dirty: &'s mut bool,
+}
+
+fn frame_hooks<'s>(
+    cells: Cells<'s>,
+    events: impl IntoIterator<Item = ShellEvent> + 's,
+    size: (u16, u16),
+) -> FrameHooks<'s> {
+    let Cells {
+        nodes,
+        grid,
+        fresh,
+        dirty,
+    } = cells;
+    let (cols, rows) = size;
+    FrameHooks {
+        input: Some(Box::new(move |host, router| {
+            let _phase = profile::span("effect");
+            for event in events {
+                profile::interact("input");
+                profile::count("tui.events");
+                host.route(router, event);
+            }
+        })),
+        paint: Some(Box::new(move |host, _router, info| {
+            let _phase = profile::span("tui.paint");
+            if !info.layout_ok {
+                return;
+            }
+            let resized = grid.cols() != usize::from(cols) || grid.rows() != usize::from(rows);
+            let moved = host.repaint(nodes);
+            *dirty = moved || resized || *fresh;
+            if *dirty {
+                let _raster = profile::span("tui.raster");
+                grid.resize(cols, rows);
+                raster_into(grid, nodes, CELL);
+            }
+        })),
+        ..FrameHooks::default()
     }
-    tick_animations(dt);
-    crate::timer::advance(dt);
-    crate::work::collect_work();
 }

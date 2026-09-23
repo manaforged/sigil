@@ -8,7 +8,6 @@ use crate::style::{NodeStyleExt, Style, StyleAccess};
 
 use super::super::interactive::interactive;
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::BuilderMutator;
 use super::builder::{MENU_BASE, MenuItem, Row, build_item, build_separator, panel_height};
 
 const TRIGGER_H: f32 = 32.0;
@@ -21,7 +20,6 @@ struct Slot {
 
 pub struct MenuBarBuilder {
     slots: Vec<Slot>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -30,7 +28,6 @@ pub struct MenuBarBuilder {
 pub fn menu_bar() -> MenuBarBuilder {
     MenuBarBuilder {
         slots: Vec::new(),
-        mutators: Vec::new(),
         style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -72,11 +69,7 @@ impl MenuBarBuilder {
             bar = bar.child(slot_node(index, slot, open_idx));
         }
 
-        let mut root = bar;
-        for mutate in self.mutators {
-            root = mutate(root);
-        }
-        root
+        bar
     }
 }
 

@@ -1,3 +1,4 @@
+//! Host abstraction layer: events, geometry, layout, and renderer types.
 pub mod a11y;
 pub mod events;
 pub mod geometry;

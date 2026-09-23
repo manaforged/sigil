@@ -57,6 +57,12 @@ pub fn set_text_geometry(geometry: Rc<dyn TextGeometry>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }
 
+pub(crate) fn swap_geometry(
+    geometry: Option<Rc<dyn TextGeometry>>,
+) -> Option<Rc<dyn TextGeometry>> {
+    TEXT_GEOMETRY.with(|cell| core::mem::replace(&mut *cell.borrow_mut(), geometry))
+}
+
 pub fn with_text_geometry<R>(f: impl FnOnce(&dyn TextGeometry) -> R) -> Option<R> {
     let provider = TEXT_GEOMETRY.with(|cell| cell.borrow().clone());
     provider.map(|geometry| f(geometry.as_ref()))

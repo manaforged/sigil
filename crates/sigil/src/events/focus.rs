@@ -1,4 +1,5 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use crate::hal::Point;
 use crate::kernel::{Cx, NodeId};
@@ -13,9 +14,11 @@ mod scope;
 mod targets;
 
 mod request;
+mod reveal;
 
 pub use request::request_focus;
 pub(crate) use request::take_focus_requests;
+pub(crate) use reveal::{ScrollReveal, reveal_focus};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum FocusIntent {
@@ -26,16 +29,28 @@ pub enum FocusIntent {
 }
 
 thread_local! {
-    static FOCUS_FROM_KEYBOARD: Cell<bool> = const { Cell::new(true) };
+    static FOCUS_FROM_KEYBOARD: RefCell<Option<Rc<Cell<bool>>>> = const { RefCell::new(None) };
+    static FALLBACK_FOCUS_SOURCE: Cell<bool> = const { Cell::new(true) };
 }
 
 pub fn note_focus_source(keyboard: bool) {
-    FOCUS_FROM_KEYBOARD.with(|cell| cell.set(keyboard));
+    let target = FOCUS_FROM_KEYBOARD.with(|slot| slot.borrow().clone());
+    if let Some(cell) = target {
+        cell.set(keyboard);
+    } else {
+        FALLBACK_FOCUS_SOURCE.set(keyboard);
+    }
 }
 
 #[must_use]
 pub fn focus_from_keyboard() -> bool {
-    FOCUS_FROM_KEYBOARD.with(Cell::get)
+    FOCUS_FROM_KEYBOARD
+        .with(|slot| slot.borrow().clone())
+        .map_or_else(|| FALLBACK_FOCUS_SOURCE.get(), |cell| cell.get())
+}
+
+pub(crate) fn swap_focus_source(target: Option<Rc<Cell<bool>>>) -> Option<Rc<Cell<bool>>> {
+    FOCUS_FROM_KEYBOARD.with(|slot| core::mem::replace(&mut *slot.borrow_mut(), target))
 }
 
 #[derive(Clone, Copy, Debug)]

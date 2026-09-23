@@ -209,10 +209,6 @@ impl LayoutEngine {
         self.attach_subtree_results(cx, id)
     }
 
-    #[allow(
-        clippy::unused_self,
-        reason = "kept as method for symmetry with sibling helpers; will gain &self use in incremental sync follow-up"
-    )]
     fn containment_roots(
         &self,
         cx: &Cx,
@@ -228,7 +224,7 @@ impl LayoutEngine {
             } else {
                 cx.parent(id).unwrap_or(id)
             };
-            let containment = Self::find_containment_root(cx, start, root);
+            let containment = self.find_containment_root(cx, start, root);
             if seen.insert(containment) {
                 roots.push(containment);
             }
@@ -248,10 +244,13 @@ impl LayoutEngine {
         false
     }
 
-    fn find_containment_root(cx: &Cx, start: NodeId, root: NodeId) -> NodeId {
+    fn find_containment_root(&self, cx: &Cx, start: NodeId, root: NodeId) -> NodeId {
         let mut current = start;
         loop {
-            if current == root || Self::has_definite_size(cx, current) {
+            if current == root
+                || (self.core_to_handle.contains_key(current.key())
+                    && Self::has_definite_size(cx, current))
+            {
                 return current;
             }
             let Some(parent) = cx.parent(current) else {

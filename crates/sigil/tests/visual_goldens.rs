@@ -10,9 +10,7 @@
 
 use sigil::prelude::*;
 
-mod golden_support;
-
-use golden_support::{
+use sigil_kittest::{
     InteractionMode, assert_goldens_differ, assert_png_matches_golden, golden_path,
     render_widget_to_png, render_widget_to_png_focus_descendant,
 };
@@ -24,7 +22,7 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
-    assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
+    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
 }
 
 fn on_panel(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
@@ -555,7 +553,7 @@ fn tabs_focused() {
 
 #[test]
 fn tabs_focused_differs_from_default() {
-    assert_goldens_differ("tabs_focused", "tabs_default");
+    assert_goldens_differ!("tabs_focused", "tabs_default");
 }
 
 #[test]
@@ -652,7 +650,7 @@ fn modal_focused() {
 
 #[test]
 fn modal_focused_differs_from_open() {
-    assert_goldens_differ("modal_focused", "modal_open");
+    assert_goldens_differ!("modal_focused", "modal_open");
 }
 
 #[test]

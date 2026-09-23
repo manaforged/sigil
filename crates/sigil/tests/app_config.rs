@@ -12,7 +12,7 @@ fn from_unit_uses_defaults() {
     let cfg: AppConfig = ().into();
     assert_eq!(cfg.title, "Sigil");
     assert_eq!(cfg.size, (720, 480));
-    assert!(cfg.esc_exits);
+    assert!(!cfg.esc_exits);
     assert_eq!(cfg.panic_policy, PanicPolicy::Isolate);
 }
 

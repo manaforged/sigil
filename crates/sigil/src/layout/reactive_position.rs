@@ -9,7 +9,7 @@ pub struct ReactivePosition {
 impl ReactivePosition {
     #[must_use]
     pub fn get(&self) -> (f32, f32) {
-        self.pos.peek()
+        self.pos.try_peek().unwrap_or_default()
     }
 }
 
@@ -20,7 +20,10 @@ pub struct SizeReactive {
 
 impl SizeReactive {
     pub fn publish(&self, size: (f32, f32)) {
-        if self.size.peek() != size {
+        let Some(current) = self.size.try_peek() else {
+            return;
+        };
+        if current != size {
             self.size.set(size);
         }
     }
@@ -33,7 +36,10 @@ pub struct BoundsReactive {
 
 impl BoundsReactive {
     pub fn publish(&self, bounds: (f32, f32, f32, f32)) {
-        if self.bounds.peek() != bounds {
+        let Some(current) = self.bounds.try_peek() else {
+            return;
+        };
+        if current != bounds {
             self.bounds.set(bounds);
         }
     }

@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 use super::*;
 use crate::reactive::Runtime;
+use crate::reactive::{effect_named, on_cleanup, signal};
 
 #[test]
 fn interval_fires_after_period_elapses() {
@@ -117,6 +118,54 @@ fn cancel_interval_removes_slot_immediately() {
         __test_advance_clock(Duration::from_millis(100));
         assert_eq!(tick_intervals(), 0);
         assert_eq!(count.get(), 0);
+        __test_clear_clock();
+    });
+}
+
+#[test]
+fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
+    Runtime::scope("interval::panic_drain", || {
+        __test_set_clock(Instant::now());
+        let ran = Rc::new(Cell::new(false));
+        let flag = Rc::clone(&ran);
+        let ticks = Rc::new(Cell::new(0_u32));
+        let sig_owner = Owner::new("sig", Owner::current());
+        let mark = sig_owner.with(|| signal(0_u32));
+        let fx_owner = Owner::new("fx", Owner::current());
+        let _id = register_interval(Duration::from_millis(50), move || {
+            if ticks.replace(1) != 0 {
+                return;
+            }
+            sig_owner.dispose();
+            let flag = Rc::clone(&flag);
+            fx_owner.with(move || {
+                effect_named("test::interval_reader", move || {
+                    on_cleanup({
+                        let flag = Rc::clone(&flag);
+                        move || flag.set(true)
+                    });
+                    let _ = mark.get();
+                });
+            });
+        });
+
+        __test_advance_clock(Duration::from_millis(50));
+        assert_eq!(tick_intervals(), 1);
+        assert!(
+            ran.get(),
+            "cleanups deferred during the interval unwind must run at the catch site"
+        );
+        assert!(
+            Runtime::panic_origin_info().is_none(),
+            "the swallowed panic must not leave a stale origin behind"
+        );
+
+        __test_advance_clock(Duration::from_millis(50));
+        assert_eq!(
+            tick_intervals(),
+            1,
+            "the slot survives and ticks cleanly after recovery"
+        );
         __test_clear_clock();
     });
 }

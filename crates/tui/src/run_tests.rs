@@ -5,7 +5,6 @@ fn spawned_task_completes_across_frames() {
     Runtime::scope("tui-spawn", || {
         let mut async_rt = sigil::tasks::AsyncRuntime::new().expect("async runtime");
         async_rt.install_current();
-        async_rt.install_executor();
         let result = sigil::tasks::spawn::<u32, core::convert::Infallible, _>(async { Ok(7) });
         let mut host = Host::cells();
         host.mount(sigil::kernel::text("hello"));

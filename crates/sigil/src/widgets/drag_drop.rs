@@ -78,17 +78,17 @@ impl<T: Clone + 'static> DragState<T> {
 
     #[must_use]
     pub fn is_active(&self) -> bool {
-        self.active.peek()
+        self.active.try_peek().unwrap_or(false)
     }
 
     #[must_use]
     pub fn position(&self) -> (f32, f32) {
-        self.position.peek()
+        self.position.try_peek().unwrap_or_default()
     }
 
     #[must_use]
     pub fn payload(&self) -> Option<T> {
-        self.payload.peek()
+        self.payload.try_peek().flatten()
     }
 
     pub fn cancel(&self) {

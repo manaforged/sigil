@@ -1,10 +1,35 @@
 # Widgets
 
 The catalog ships in `sigil`. Every widget constructs from a lowercase
-function and chains a builder. All widgets take `class`, `style`, and
-fluent styling. They take `WidgetLayoutExt` sizing, and they join focus,
-accessibility, and IME where relevant. See the rustdoc for the full
-builder surface.
+function and chains a builder. Widgets take `class`/`style` styling —
+through `NodeStyleExt` for `NodeBuilder`/`TextBuilder` returns, through
+inherent builder methods, or through `StyleAccess`. `WidgetLayoutExt`
+sizing applies where the builder implements it (containers and most
+controls); `virtual_list`, `table`, `slider`, and `code_edit` size via
+`.viewport_height()`/`.row_height()` or `.layout()` instead. Widgets
+join focus, accessibility, and IME where relevant. See the rustdoc for
+the full builder surface.
+
+The family pages carry signatures, options, and behavior notes:
+
+- [Controls](widgets/controls.md) — button, icon_button, checkbox,
+  toggle, radio_group, slider.
+- [Indicators](widgets/indicators.md) — chip, badge, dot, gauge,
+  progress.
+- [Fields](widgets/fields.md) — text_field, text_edit, number_field,
+  date_field, color_field, combobox, dropdown.
+- [Data](widgets/data.md) — table, virtual_list, turn_strip, heatmap.
+- [Content](widgets/content.md) — text, label, icon, image, path,
+  chart.
+- [Documents](widgets/documents.md) — markdown, markdown_edit, html,
+  code_edit, mermaid, diff.
+- [Chrome](widgets/chrome.md) — app_shell, panel, card, sidebar, tabs,
+  splitter, scroll, dividers, surface, status_bar, and the `patterns`
+  helpers.
+- [Overlays](widgets/overlays.md) — modal, sheet, menu, menu_bar,
+  command_menu, tooltip, toast, toast_queue, hint_overlay.
+- [Plumbing](widgets/plumbing.md) — interactive, axis_drag, drag/drop,
+  clipboard, terminal, transport, floating_text.
 
 ## Inputs
 
@@ -41,7 +66,7 @@ builder surface.
   swatch.
 - **dropdown(Signal\<usize\>, Vec\<String\>)** — chain
   `.change(Fn(usize))` and `.disabled(Signal)`. It is a trigger plus a
-  popup with a focus trap.
+  positioned popup; focus stays on the trigger.
 - **radio_group(Signal\<String\>)** — chain `.option(key, label)`. Arrow
   keys wrap, Home and End jump, and the focus ring sits on the checked
   row.

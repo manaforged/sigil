@@ -145,6 +145,9 @@ fn route_tab_key(
     } else {
         focus.focus_next(cx, Some(layout));
     }
+    if let Some(id) = focus.focus() {
+        crate::events::focus::reveal_focus(cx, layout, id);
+    }
     true
 }
 

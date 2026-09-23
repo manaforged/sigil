@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle};
+use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::style::{NodeStyleExt, Style, StyleAccess};
 
 use super::button::button;
@@ -120,9 +120,9 @@ impl DiffBuilder {
                     .align_items(AlignItems::Center)
                     .gap(6.0),
             )
-            .class("bg-gray-2")
             .child(
                 label(self.path.clone().unwrap_or_default())
+                    .ellipsize()
                     .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
                     .class("text-xs font-mono font-bold text-gray-12"),
             )
@@ -153,7 +153,6 @@ impl DiffBuilder {
                     .min_size(0.0, 0.0)
                     .gap(0.0),
             )
-            .class("bg-gray-2")
             .child(
                 label("Before")
                     .layout(
@@ -242,9 +241,10 @@ impl DiffBuilder {
                 LayoutStyle::flex_column()
                     .fill_width()
                     .min_size(0.0, 0.0)
+                    .overflow_x(Overflow::Hidden)
                     .gap(0.0),
             )
-            .class("rounded bg-surface")
+            .class("rounded bg-field")
             .style(Style::new().border_width(1).border_theme("border"))
             .child(self.header(added, removed));
         if self.layout == DiffLayout::Split {
@@ -260,7 +260,7 @@ impl DiffBuilder {
                             .padding_x(6.0)
                             .min_size(0.0, 0.0),
                     )
-                    .class("text-xs text-gray-10 bg-gray-2"),
+                    .class("text-xs text-gray-10"),
             );
         }
         if !self.style_accumulator.is_empty() {

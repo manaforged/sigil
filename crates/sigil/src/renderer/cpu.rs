@@ -25,6 +25,7 @@ type Shared = Arc<Box<dyn DisplayAndWindow>>;
 pub struct CpuRenderer {
     glyphs: GlyphCache,
     raster: RasterCache,
+    layers: Vec<Pixmap>,
     transparent: bool,
     stats: FrameStats,
 }
@@ -54,6 +55,7 @@ impl CpuRenderer {
         Self {
             glyphs: GlyphCache::default(),
             raster: RasterCache::default(),
+            layers: Vec::new(),
             transparent: false,
             stats: FrameStats::default(),
         }
@@ -89,9 +91,12 @@ impl CpuRenderer {
         Painter::new(
             &mut target,
             scale,
-            &mut self.glyphs,
-            &mut self.raster,
-            &mut self.stats,
+            &mut paint::Scratch {
+                glyphs: &mut self.glyphs,
+                raster: &mut self.raster,
+                stats: &mut self.stats,
+                pool: &mut self.layers,
+            },
         )
         .walk(&scene.commands);
         Ok(target)

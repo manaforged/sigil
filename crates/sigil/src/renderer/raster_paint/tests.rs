@@ -159,6 +159,8 @@ fn fallback_face_glyph_lands_in_atlas_not_leftover() {
         glyph_id: fallback_glyph.glyph_id,
         physical_px_bits: (fallback_glyph.size * params.scale).to_bits(),
         bin,
+        coords: ahash::RandomState::with_seeds(1, 2, 3, 4)
+            .hash_one(&fallback_glyph.variation_coords),
     };
     assert!(
         pipeline.atlas.get(&key).is_some(),

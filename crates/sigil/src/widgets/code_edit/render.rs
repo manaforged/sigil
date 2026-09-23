@@ -220,7 +220,7 @@ fn number_text(number: usize, row_h: f32) -> NodeBuilder {
         )
         .child(
             text(number.to_string())
-                .class("text-sm font-mono text-muted-foreground")
+                .class("text-sm font-mono text-on-surface-muted")
                 .layout(LayoutStyle::block().shrink(0.0)),
         )
 }
@@ -265,7 +265,7 @@ fn selected_run(seg: String, token: Option<&'static str>, row_h: f32) -> NodeBui
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .class(RUN_CLASS)
-        .style(Style::new().text_theme(token.unwrap_or("foreground")))
+        .style(Style::new().text_theme(token.unwrap_or("on-surface")))
         .layout(LayoutStyle::block().shrink(0.0))
 }
 
@@ -281,5 +281,5 @@ fn row_container(row_h: f32) -> NodeBuilder {
 fn caret_block(row_h: f32) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().width(CARET_W).height(row_h * 0.8))
-        .class("bg-foreground")
+        .class("bg-on-surface")
 }

@@ -10,9 +10,7 @@
 use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
 
-mod golden_support;
-
-use golden_support::{
+use sigil_kittest::{
     InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
 };
 
@@ -241,7 +239,7 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
-    assert_png_matches_golden(&img, &golden_path(stem), DELTA_PCT);
+    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
 }
 
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {

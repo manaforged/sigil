@@ -10,7 +10,6 @@ use crate::style::{
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::super::shared::BuilderMutator;
 
 const MENU_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -102,7 +101,6 @@ pub struct MenuBuilder {
     rows: Vec<Row>,
     label: Option<String>,
     anchor: Option<(f32, f32)>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
@@ -120,7 +118,6 @@ impl MenuBuilder {
             rows: Vec::new(),
             label: None,
             anchor: None,
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             layout_overrides: LayoutOverrides::new(),
         }
@@ -182,7 +179,7 @@ impl MenuBuilder {
             panel = panel.style(self.style_accumulator);
         }
 
-        let mut root = container()
+        container()
             .layout(layout)
             .style_reactive(move || open_display(open))
             .pointer_down(move |event| {
@@ -193,12 +190,7 @@ impl MenuBuilder {
                 open.set(false);
                 event.stop_propagation();
             })
-            .child(panel);
-
-        for mutate in self.mutators {
-            root = mutate(root);
-        }
-        root
+            .child(panel)
     }
 }
 

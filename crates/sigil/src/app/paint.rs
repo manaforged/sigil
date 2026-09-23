@@ -28,6 +28,7 @@ pub(crate) struct Resolved {
     text: Rc<TextStyle>,
 }
 
+#[derive(Clone)]
 pub(crate) struct Cascade<'a> {
     theme: &'a Theme,
     clip: Option<Rect>,
@@ -88,9 +89,10 @@ pub(crate) struct Walk<'a> {
     pub(crate) out: &'a mut Vec<Painted>,
     pub(crate) next: &'a mut usize,
     pub(crate) moved: &'a mut bool,
+    pub(crate) deferred: Vec<(NodeId, Cascade<'a>)>,
 }
 
-pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<'_>) {
+pub(crate) fn fill_painted<'a>(walk: &mut Walk<'a>, id: NodeId, inherited: &Cascade<'a>) {
     let Some(node) = walk.cx.get(id) else {
         return;
     };
@@ -117,9 +119,7 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
         text: Rc::clone(&style.text),
     };
     let Some(result) = laid else {
-        for child in node.children() {
-            fill_painted(walk, *child, &down);
-        }
+        walk_children(walk, node, &down);
         return;
     };
     let rect = result.rect();
@@ -141,11 +141,29 @@ pub(crate) fn fill_painted(walk: &mut Walk<'_>, id: NodeId, inherited: &Cascade<
     descend(walk, node, slot, &down);
 }
 
-fn descend(walk: &mut Walk<'_>, node: &Node, slot: usize, down: &Cascade<'_>) {
-    let before = *walk.next;
+fn walk_children<'a>(walk: &mut Walk<'a>, node: &'a Node, down: &Cascade<'a>) {
     for child in node.children() {
-        fill_painted(walk, *child, down);
+        let top_layer = walk
+            .cx
+            .get(*child)
+            .is_some_and(|n| n.get_extension::<crate::kernel::TopLayer>().is_some());
+        if top_layer {
+            walk.deferred.push((
+                *child,
+                Cascade {
+                    clip: None,
+                    ..down.clone()
+                },
+            ));
+        } else {
+            fill_painted(walk, *child, down);
+        }
     }
+}
+
+fn descend<'a>(walk: &mut Walk<'a>, node: &'a Node, slot: usize, down: &Cascade<'a>) {
+    let before = *walk.next;
+    walk_children(walk, node, down);
     let bare = *walk.next == before;
     if let Some(painted) = walk.out.get_mut(slot)
         && painted.bare != bare

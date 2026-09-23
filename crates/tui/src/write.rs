@@ -125,7 +125,7 @@ fn supports_truecolor(_program: Option<&str>, color: Option<&str>) -> bool {
     color.is_some_and(|value| value.contains("truecolor") || value.contains("24bit"))
 }
 
-fn cube(colour: Rgba8) -> u8 {
+pub(crate) fn cube(colour: Rgba8) -> u8 {
     let (red, r) = nearest_level(colour.r);
     let (green, g) = nearest_level(colour.g);
     let (blue, b) = nearest_level(colour.b);

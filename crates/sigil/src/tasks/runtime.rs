@@ -4,15 +4,12 @@ use std::future::Future;
 use std::sync::{Arc, Mutex};
 
 use crate::hal::Scheduler;
-use crate::reactive::{BoxMainCallback, OwnerId};
+use crate::reactive::OwnerId;
 use tokio::runtime::{Builder, Handle, Runtime, RuntimeFlavor};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio::task::{AbortHandle, JoinHandle};
 
 use crate::tasks::handle::OwnerHandle;
-use crate::tasks::reactive_bridge::{
-    ReactiveBridge, build_bridge, drain_into_reactive, replace_bridge_waker,
-};
 use crate::tasks::schedule_error::ScheduleError;
 
 pub(crate) struct DispatchMessage {
@@ -51,8 +48,6 @@ pub struct AsyncRuntime {
     sender: Dispatcher,
     rx: UnboundedReceiver<DispatchMessage>,
     owner_tasks: Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>>,
-    bridge: ReactiveBridge,
-    bridge_rx: UnboundedReceiver<(OwnerId, BoxMainCallback)>,
 }
 
 impl fmt::Debug for AsyncRuntime {
@@ -101,7 +96,6 @@ impl AsyncRuntime {
             }
         };
         let (tx, rx) = unbounded_channel();
-        let (bridge, bridge_rx) = build_bridge();
         Ok(Self {
             rt,
             _owned: owned,
@@ -111,8 +105,6 @@ impl AsyncRuntime {
             },
             rx,
             owner_tasks: Arc::new(Mutex::new(HashMap::new())),
-            bridge,
-            bridge_rx,
         })
     }
 
@@ -120,24 +112,11 @@ impl AsyncRuntime {
     where
         F: Fn() + Send + Sync + 'static,
     {
-        let waker: Arc<dyn Fn() + Send + Sync + 'static> = Arc::new(waker);
-        self.sender.waker = Arc::clone(&waker);
-        replace_bridge_waker(&mut self.bridge, waker);
-    }
-
-    #[must_use]
-    pub fn reactive_bridge(&self) -> ReactiveBridge {
-        self.bridge.clone()
-    }
-
-    #[must_use]
-    pub fn tokio_executor(&self) -> crate::tasks::TokioExecutor {
-        crate::tasks::TokioExecutor::new(self.rt.clone())
+        self.sender.waker = Arc::new(waker);
     }
 
     pub fn pump(&mut self) -> usize {
-        let scheduled = Scheduler::drain(self);
-        scheduled + drain_into_reactive(&mut self.bridge_rx)
+        Scheduler::drain(self)
     }
 
     #[must_use]
@@ -163,13 +142,6 @@ impl AsyncRuntime {
 
     pub fn install_current(&self) {
         crate::tasks::current::install(self.spawn_parts());
-    }
-
-    pub fn install_executor(&self) {
-        let executor: Arc<dyn crate::reactive::TaskExecutor> = Arc::new(self.tokio_executor());
-        let dispatcher: Arc<dyn crate::reactive::MainThreadDispatcher> =
-            Arc::new(self.reactive_bridge());
-        crate::reactive::Runtime::install_executor(executor, dispatcher);
     }
 
     #[must_use]
@@ -238,7 +210,9 @@ impl Scheduler for AsyncRuntime {
                 abort.abort();
             });
         });
-        let _ = registered;
+        if !registered {
+            tracing::warn!(owner = ?owner.id(), "task cleanup could not attach to a live owner");
+        }
 
         join
     }

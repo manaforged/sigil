@@ -10,14 +10,12 @@ use sigil::animation_runtime::{AnimationConfig, Animator, MotionPrefs, active_co
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
 
-mod golden_support;
-
-use golden_support::{InteractionMode, SETTLE_SAFETY_CAP};
+use sigil_kittest::{InteractionMode, SETTLE_SAFETY_CAP};
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 
 fn drive_in_harness(mode: InteractionMode) {
-    let _ = golden_support::render_widget_to_png(
+    let _ = sigil_kittest::render_widget_to_png(
         |cx| cx.add(button("tick")),
         mode,
         [64, 64],

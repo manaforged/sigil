@@ -12,7 +12,7 @@ const fn tones(mark: char) -> (&'static str, &'static str, &'static str) {
     match mark {
         '-' => ("bg-error-3", "text-error-11", "bg-error-5"),
         '+' => ("bg-success-3", "text-success-11", "bg-success-5"),
-        _ => ("bg-surface", "text-gray-11", "bg-surface"),
+        _ => ("", "text-gray-11", ""),
     }
 }
 

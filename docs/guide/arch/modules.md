@@ -20,7 +20,6 @@ directly. The terminal host depends on `sigil-gui` and adds crossterm.
 | `renderer` | wgpu, `CommandScene`, emit cache, layer pool. |
 | `shell` | winit window and event loop. |
 | `a11y` | AccessKit projection. |
-| `actions` | Typed actions and `ActionRegistry`. |
 | `tasks` | Tokio runtime, `spawn`, `dispatch_to_owner`, `Status`. |
 | `animation` and `animation_runtime` | Transitions; `config(id)` for presets. |
 | `app` | `launch`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |

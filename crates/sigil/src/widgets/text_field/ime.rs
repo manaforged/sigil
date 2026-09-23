@@ -57,7 +57,7 @@ fn apply_commit(runtime: &TextFieldRuntime, text: &str) {
     if text.is_empty() {
         return;
     }
-    let mut edit = runtime.edit.borrow_mut();
+    let mut edit = runtime.edit_mut();
     edit.insert_str(text);
     write_value(runtime.value, edit.as_str());
     (runtime.change)(edit.as_str());

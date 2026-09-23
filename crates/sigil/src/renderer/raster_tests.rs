@@ -11,7 +11,9 @@ fn mask(glyph_id: u32, physical_px: f32, bin: u8) -> Option<GlyphMask> {
             glyph_id,
             physical_px_bits: physical_px.to_bits(),
             bin,
+            coords: 0,
         },
+        &[],
     )
 }
 

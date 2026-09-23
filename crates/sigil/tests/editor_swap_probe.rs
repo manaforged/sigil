@@ -19,8 +19,7 @@ use sigil::renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
 use std::{env::temp_dir, process};
 use wgpu::TextureFormat;
 
-mod golden_support;
-use golden_support::gpu::read_pixels;
+use sigil_kittest::gpu::read_pixels;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 

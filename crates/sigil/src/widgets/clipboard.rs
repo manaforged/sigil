@@ -22,6 +22,11 @@ impl std::error::Error for ClipError {}
 pub trait Clipboard {
     fn set(&self, text: &str) -> Result<(), ClipError>;
     fn get(&self) -> Option<String>;
+
+    #[cfg(feature = "clipboard-image")]
+    fn image(&self) -> Result<Option<crate::kernel::ImageSource>, ClipError> {
+        Ok(None)
+    }
 }
 
 pub struct NoopClipboard;

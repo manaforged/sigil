@@ -127,7 +127,7 @@ impl ChartBuilder {
                         .align_items(AlignItems::Center)
                         .justify_content(JustifyContent::Center),
                 )
-                .child(label("No data").class("text-sm text-fg-muted"));
+                .child(label("No data").class("text-sm text-on-surface-muted"));
         }
         plot::draw(root, &self.series, &self.labels, self.mark, count)
     }

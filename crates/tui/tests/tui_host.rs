@@ -317,26 +317,27 @@ fn a_filled_table_keeps_its_header_off_row_one() {
 fn a_timer_comes_due_on_the_frame_clock() {
     use std::cell::Cell as StdCell;
     use std::rc::Rc;
-    use std::time::Duration;
+    use std::time::{Duration, Instant};
 
     use sigil_tui::{EventRouter, Host};
 
-    sigil_tui::clear();
     let ticks = Rc::new(StdCell::new(0_u32));
     let counter = Rc::clone(&ticks);
     sigil::reactive::Runtime::scope("timer", || {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         host.mount(|cx: &mut Cx| cx.add(text("tick")));
-        sigil_tui::every(Duration::from_millis(99), move || {
+        sigil::reactive::__test_set_clock(Instant::now());
+        sigil::reactive::register_interval(Duration::from_millis(99), move || {
             counter.set(counter.get() + 1);
         });
         for _ in 0..9 {
+            sigil::reactive::__test_advance_clock(Duration::from_millis(33));
             drop(step(&mut host, &mut router, [], 20, 4));
         }
     });
-    sigil_tui::clear();
-    assert_eq!(ticks.get(), 3, "a 99 ms timer fires 3 times in 9 frames");
+    sigil::reactive::__test_clear_clock();
+    assert_eq!(ticks.get(), 3, "a 99 ms interval fires 3 times in 9 frames");
 }
 
 #[test]
@@ -803,67 +804,6 @@ fn a_combining_mark_keeps_its_base() {
         bar(&plain),
         "a combining mark must not take a column of its own:\n{marked}"
     );
-}
-
-#[test]
-fn work_lands_on_the_frame_clock() {
-    use sigil::tasks::Status;
-    use sigil_tui::{EventRouter, Host, abandon, work};
-
-    sigil::reactive::Runtime::scope("work", || {
-        abandon();
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
-        host.mount(|cx: &mut Cx| cx.add(text("host")));
-
-        let done = work(|| {
-            std::thread::sleep(std::time::Duration::from_millis(20));
-            41 + 1_i32
-        });
-        assert!(
-            matches!(done.try_peek(), Some(Status::Pending)),
-            "a job in flight reports pending"
-        );
-
-        for _ in 0..200 {
-            std::thread::sleep(std::time::Duration::from_millis(2));
-            drop(step(&mut host, &mut router, [], 20, 4));
-            if matches!(done.try_peek(), Some(Status::Ok(_))) {
-                break;
-            }
-        }
-        assert!(
-            matches!(done.try_peek(), Some(Status::Ok(42))),
-            "the job's value must reach the tree"
-        );
-        abandon();
-    });
-}
-
-#[test]
-fn a_panicking_job_reports_why() {
-    use sigil::tasks::Status;
-    use sigil_tui::{EventRouter, Host, abandon, work};
-
-    sigil::reactive::Runtime::scope("work-panic", || {
-        abandon();
-        let mut host = Host::cells();
-        let mut router = EventRouter::new();
-        host.mount(|cx: &mut Cx| cx.add(text("host")));
-
-        let done = work(|| -> i32 { panic!("the disk fell over") });
-        let mut reported = None;
-        for _ in 0..200 {
-            std::thread::sleep(std::time::Duration::from_millis(2));
-            drop(step(&mut host, &mut router, [], 20, 4));
-            if let Some(Status::Err(why)) = done.try_peek() {
-                reported = Some(why);
-                break;
-            }
-        }
-        assert_eq!(reported.as_deref(), Some("the disk fell over"));
-        abandon();
-    });
 }
 
 #[test]

@@ -10,27 +10,10 @@
     clippy::ignored_unit_patterns
 )]
 
-use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::actions::Action;
-use sigil::reactive::{DrawPhase, Entity, Runtime};
-
-#[derive(Clone)]
-struct Tick;
-
-impl Action for Tick {
-    fn debug_name(&self) -> &'static str {
-        "Tick"
-    }
-    fn boxed_clone(&self) -> Box<dyn Action> {
-        Box::new(self.clone())
-    }
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
+use sigil::reactive::{DrawPhase, Runtime};
 
 #[test]
 fn frame_driver_walks_idle_to_idle_through_all_phases() {
@@ -58,84 +41,6 @@ fn frame_driver_walks_idle_to_idle_through_all_phases() {
             ],
             "frame driver observes Layout inside layout pass, Paint inside paint pass, \
              and returns to Idle on exit",
-        );
-    });
-}
-
-#[test]
-fn action_registration_survives_frame_cycle() {
-    let fired = Rc::new(Cell::new(0_u32));
-    let fired_clone = Rc::clone(&fired);
-
-    Runtime::scope("frame_driver::action_survives_frame", || {
-        let host = Entity::<()>::new("host", |_| ());
-        host.update(|_, cx| {
-            let handle = cx.focus_handle();
-            cx.action::<Tick>(&handle, move |_a, _dcx| {
-                fired_clone.set(fired_clone.get() + 1);
-            });
-            cx.focus(&handle);
-        });
-
-        sigil::app::__drive_test_frame(|| {}, || {});
-
-        Runtime::begin_effect();
-        host.update(|_, cx| cx.dispatch(&Tick));
-        assert_eq!(
-            fired.get(),
-            1,
-            "handler registered before frame N fires on Effect-phase dispatch in frame N+1",
-        );
-        Runtime::begin_layout();
-        Runtime::begin_paint();
-        Runtime::end_frame();
-
-        assert_eq!(
-            Runtime::current_phase(),
-            DrawPhase::Idle,
-            "`end_frame` returns to Idle after second frame",
-        );
-    });
-}
-
-#[cfg(not(debug_assertions))]
-#[test]
-fn g3_deferred_action_fires_at_end_of_frame() {
-    let fired = Rc::new(Cell::new(0_u32));
-    let fired_clone = Rc::clone(&fired);
-
-    Runtime::scope("frame_driver::deferred_action", || {
-        let host = Entity::<()>::new("host", |_| ());
-        host.update(|_, cx| {
-            let handle = cx.focus_handle();
-            cx.action::<Tick>(&handle, move |_a, _dcx| {
-                fired_clone.set(fired_clone.get() + 1);
-            });
-            cx.focus(&handle);
-        });
-
-        let saw_during_paint = Rc::new(Cell::new(0_u32));
-        let saw_clone = Rc::clone(&saw_during_paint);
-        let fired_during = Rc::clone(&fired);
-        let host_for_paint = host.clone();
-
-        sigil::app::__drive_test_frame(
-            || {},
-            move || {
-                host_for_paint.update(|_, cx| cx.dispatch(&Tick));
-                saw_clone.set(fired_during.get());
-            },
-        );
-
-        assert_eq!(
-            saw_during_paint.get(),
-            0,
-            "handler does not fire mid-Paint (defer path)",
-        );
-        assert_eq!(
-            fired.get(),
-            1,
-            "deferred handler fires exactly once at `end_frame`",
         );
     });
 }
@@ -173,23 +78,6 @@ fn begin_effect_runs_before_layout_pass() {
 
 #[cfg(debug_assertions)]
 #[test]
-#[should_panic(expected = "DrawPhase::Paint")]
-fn paint_phase_write_panics_in_debug() {
-    Runtime::scope("frame_driver::paint_write_panics", || {
-        let counter = Entity::<u32>::new("counter", |_| 0_u32);
-        sigil::app::__drive_test_frame(
-            || {},
-            move || {
-                counter.update(|n, _cx| {
-                    *n += 1;
-                });
-            },
-        );
-    });
-}
-
-#[cfg(debug_assertions)]
-#[test]
 #[should_panic(expected = "Signal::set")]
 fn paint_phase_signal_set_panics_in_debug() {
     Runtime::scope("frame_driver::paint_signal_set_panics", || {
@@ -207,22 +95,19 @@ fn paint_phase_signal_set_panics_in_debug() {
 fn read_paths_in_paint_pass_are_legal() {
     Runtime::scope("frame_driver::read_in_paint", || {
         let s = sigil::reactive::signal(42_i32);
-        let e = Entity::<u32>::new("e", |_| 99_u32);
-        let observed = Rc::new(Cell::new((0_i32, 0_u32, DrawPhase::Idle)));
+        let observed = Rc::new(Cell::new((0_i32, DrawPhase::Idle)));
         let writer = Rc::clone(&observed);
 
         sigil::app::__drive_test_frame(
             || {},
             move || {
                 let s_val = s.get();
-                let e_val = e.read(|n| *n);
-                writer.set((s_val, e_val, Runtime::current_phase()));
+                writer.set((s_val, Runtime::current_phase()));
             },
         );
 
-        let (s_val, e_val, phase) = observed.get();
+        let (s_val, phase) = observed.get();
         assert_eq!(s_val, 42, "Signal::get reads through during Paint");
-        assert_eq!(e_val, 99, "Entity::read reads through during Paint");
         assert_eq!(phase, DrawPhase::Paint, "paint pass observed phase Paint");
     });
 }

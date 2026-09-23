@@ -21,7 +21,7 @@ pub(crate) fn gap(value: f32) -> f32 {
     if value <= 0.0 {
         return value;
     }
-    (value / cell).round().max(1.0) * cell
+    (value / cell).round() * cell
 }
 
 pub(crate) fn size(value: Option<f32>) -> Option<f32> {

@@ -2,8 +2,8 @@ use super::{BlockSolver, Position2, layout_children, solve_flex_child, solve_gri
 use crate::layout::LayoutError;
 use crate::layout::block_size::SizeIntent;
 use crate::layout::forest::{ComputedBox, NodeRef};
-use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Display, LengthPercentageAuto, Size, StyleData};
+use crate::layout::resolve::{InsetAxis, NodeEdges, resolve_inset_axis};
+use crate::layout::style_data::{Display, Size, StyleData};
 
 pub(super) fn place_absolute(
     solver: &BlockSolver<'_>,
@@ -117,35 +117,6 @@ fn resolve_absolute_xy(
         margin_trailing: edges.margin.bottom.unwrap_or(0.0),
     });
     (x, y)
-}
-
-#[derive(Clone, Copy)]
-struct InsetAxis {
-    leading: LengthPercentageAuto,
-    trailing: LengthPercentageAuto,
-    origin: f32,
-    cb_dim: f32,
-    box_dim: f32,
-    margin_leading: f32,
-    margin_trailing: f32,
-}
-
-fn resolve_inset_axis(a: InsetAxis) -> f32 {
-    match (a.leading, a.trailing) {
-        (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
-            let off = inset_px(t, a.cb_dim);
-            a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
-        }
-        (l, _) => a.origin + inset_px(l, a.cb_dim) + a.margin_leading,
-    }
-}
-
-fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
-    match value {
-        LengthPercentageAuto::Auto => 0.0,
-        LengthPercentageAuto::Px(v) => v,
-        LengthPercentageAuto::Percent(p) => p * basis,
-    }
 }
 
 fn shift_subtree(solver: &BlockSolver<'_>, node: NodeRef<'_>, dx: f32, dy: f32) {

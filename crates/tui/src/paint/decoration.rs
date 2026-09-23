@@ -24,12 +24,17 @@ pub(super) fn background(cell: &mut Cell, ink: Ink, bare: bool) {
     };
 }
 
+fn default_theme() -> &'static Theme {
+    static DEFAULT: std::sync::OnceLock<Theme> = std::sync::OnceLock::new();
+    DEFAULT.get_or_init(Theme::default)
+}
+
 fn blend(ink: Ink, over: Rgba8, foreground: bool) -> Ink {
     let under = match ink {
         Ink::Exact(color) => color,
-        Ink::Of(tone) => Theme::default().scale(tone.scale_role()).step(11),
-        Ink::Bare if foreground => Theme::default().on_surface,
-        Ink::Bare => Theme::default().surface,
+        Ink::Of(tone) => default_theme().scale(tone.scale_role()).step(11),
+        Ink::Bare if foreground => default_theme().on_surface,
+        Ink::Bare => default_theme().surface,
     };
     let alpha = u16::from(over.a);
     let channel = |top: u8, bottom: u8| {

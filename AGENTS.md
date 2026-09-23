@@ -13,6 +13,7 @@ Humans: [README](README.md). Patching this repo: [CONTRIBUTING.md](CONTRIBUTING.
 - `crates/sigil` — package `sigil-gui`, library `sigil`
 - `crates/tui` — package `sigil-tui`
 - `crates/sign` — package `sigil-sign`, binary `sigil-pack`
+- `crates/kittest` — package `sigil-kittest`, PNG golden harness for dependents
 - `crates/sigil/examples` — hello-counter, hello-host, widget demos
 - `docs` — the book (`mdbook serve docs`): `docs/api.md`, `docs/guide`, `docs/guide/arch`, `docs/guide/decisions`
 

@@ -125,6 +125,12 @@ impl NodeBuilder {
     }
 
     #[must_use]
+    pub const fn expanded(mut self, signal: Signal<bool>) -> Self {
+        self.a11y.expanded = Some(signal);
+        self
+    }
+
+    #[must_use]
     pub const fn sort_direction(mut self, signal: Signal<Option<SortDirection>>) -> Self {
         self.a11y.sort_direction = Some(signal);
         self

@@ -8,8 +8,8 @@ use super::super::shared::label;
 use super::super::vector::path;
 use super::{ChartMark, ChartSeries, nice_max, tone_fill, tone_solid};
 
-const AXIS: f32 = 28.0;
-const PLOT_PAD: f32 = 4.0;
+const AXIS: f32 = 32.0;
+const PLOT_PAD: f32 = 8.0;
 
 pub(super) fn draw(
     root: NodeBuilder,
@@ -72,9 +72,9 @@ fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
-            .height(18.0)
+            .height(16.0)
             .shrink(0.0)
-            .gap(4.0),
+            .gap(8.0),
     );
     for index in 0..count {
         let text = labels

@@ -1,3 +1,4 @@
+//! Text engines, shaping, and font management.
 #[cfg(test)]
 #[path = "text/lib_tests.rs"]
 mod tests;

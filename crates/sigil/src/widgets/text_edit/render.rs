@@ -44,6 +44,7 @@ pub(super) fn build_base_node(
     placeholder: &TextContent,
     interaction: InteractionState,
     user_overlay: StyleOverlay,
+    chrome: bool,
 ) -> NodeBuilder {
     let value = runtime.value;
     let disabled = runtime.disabled;
@@ -69,7 +70,7 @@ pub(super) fn build_base_node(
         .layout(edit_layout())
         .class("rounded-md")
         .class(TEXT_EDIT_ANIM_BASE)
-        .stateful_style(edit_variant(), user_overlay, move || {
+        .stateful_style(edit_variant(chrome), user_overlay, move || {
             edit_state(interaction, disabled)
         })
         .child(edit_inner(displayed, runtime, interaction))
@@ -347,11 +348,14 @@ fn edit_state(
     binary_style_state(interaction, disabled)
 }
 
-fn edit_variant() -> StyleVariant {
+fn edit_variant(chrome: bool) -> StyleVariant {
     const CELL_BASE: &[StyleAtom] = &[
         StyleAtom::BackgroundThemeRef("surface-inset"),
         StyleAtom::BorderWidth(Px(0)),
     ];
+    if !chrome {
+        return StyleVariant::new(&[], StateStyle::EMPTY);
+    }
     StyleVariant::new(
         crate::style::cell_size().map_or(EDIT_BASE, |_| CELL_BASE),
         StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED),

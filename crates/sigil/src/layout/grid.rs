@@ -483,10 +483,11 @@ fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
 }
 
 fn resolve_gap(gap: LengthPercentage, inner_w: f32) -> f32 {
-    match gap {
+    let resolved = match gap {
         LengthPercentage::Px(px) => px.max(0.0),
         LengthPercentage::Percent(pct) => (pct * inner_w).max(0.0),
-    }
+    };
+    crate::layout::snap::gap(resolved)
 }
 
 const fn definite(c: SpaceConstraint) -> f32 {

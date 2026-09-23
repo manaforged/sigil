@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::reactive::entity_observer::Subscription;
 use crate::reactive::owner::on_cleanup;
 use crate::reactive::runtime::with_rt;
 
@@ -55,7 +54,36 @@ impl<T: Clone + 'static> EventChannel<T> {
             on_cleanup(move || remove_sub(&inner, id));
         }
         let inner = Rc::clone(&self.inner);
-        Subscription::cleanup(move || remove_sub(&inner, id))
+        Subscription::new(move || remove_sub(&inner, id))
+    }
+}
+
+#[must_use = "subscriptions unsubscribe on drop; bind the handle to keep it alive"]
+pub struct Subscription {
+    cleanup: Option<Box<dyn FnOnce()>>,
+    _not_send: core::marker::PhantomData<*const ()>,
+}
+
+impl Subscription {
+    fn new(cleanup: impl FnOnce() + 'static) -> Self {
+        Self {
+            cleanup: Some(Box::new(cleanup)),
+            _not_send: core::marker::PhantomData,
+        }
+    }
+}
+
+impl core::fmt::Debug for Subscription {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("Subscription(<cleanup>)")
+    }
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        if let Some(cleanup) = self.cleanup.take() {
+            cleanup();
+        }
     }
 }
 

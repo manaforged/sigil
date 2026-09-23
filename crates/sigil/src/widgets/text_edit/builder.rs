@@ -26,6 +26,7 @@ pub struct TextEditBuilder {
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) caret_position: Option<Signal<usize>>,
     pub(super) content_padding: (f32, f32),
+    pub(super) chrome: bool,
     state: Option<TextEditState>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
@@ -50,6 +51,7 @@ impl TextEditBuilder {
             caret_visible: None,
             caret_position: None,
             content_padding: content_padding(),
+            chrome: true,
             state: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
@@ -77,6 +79,12 @@ impl TextEditBuilder {
     #[must_use]
     pub const fn content_padding(mut self, horizontal: f32, vertical: f32) -> Self {
         self.content_padding = (horizontal, vertical);
+        self
+    }
+
+    #[must_use]
+    pub const fn chrome(mut self, enabled: bool) -> Self {
+        self.chrome = enabled;
         self
     }
 
@@ -150,7 +158,13 @@ impl TextEditBuilder {
         );
 
         let user_overlay = style_accumulator.take_state_overlay();
-        let node = build_base_node(&runtime, &placeholder, interaction, user_overlay);
+        let node = build_base_node(
+            &runtime,
+            &placeholder,
+            interaction,
+            user_overlay,
+            self.chrome,
+        );
         let node = interaction.install(attach_key_handlers(node, runtime.clone()));
         let mut node = attach_ime_handlers(node, &runtime);
         for mutate in mutators {

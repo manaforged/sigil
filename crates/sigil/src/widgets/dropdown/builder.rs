@@ -14,7 +14,7 @@ use crate::widgets::interaction::InteractionState;
 
 use super::super::chart::tone_solid;
 use super::super::shared::{
-    Activate, BuilderMutator, activate_pointer_reactive, disabled_now, reactive_style_state,
+    Activate, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
 use super::super::vector::path;
 use super::popup::{OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
@@ -53,7 +53,6 @@ pub struct DropdownBuilder {
     label: String,
     disabled: Option<Signal<bool>>,
     on_change: Option<IndexChange>,
-    mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
     width: Option<f32>,
     height: f32,
@@ -73,7 +72,6 @@ impl DropdownBuilder {
             label: "Dropdown".to_owned(),
             disabled: None,
             on_change: None,
-            mutators: Vec::new(),
             style_accumulator: Style::new(),
             width: None,
             height: TRIGGER_HEIGHT,
@@ -142,7 +140,7 @@ impl DropdownBuilder {
         );
         let popup_options = Rc::clone(&options);
         let popup_on_change = Rc::clone(&on_change);
-        let mut root = dropdown_root(ctx, options.len(), self.label, on_change)
+        let root = dropdown_root(ctx, options.len(), self.label, on_change)
             .child(trigger)
             .children_reactive(move || {
                 if ctx.open.get() {
@@ -151,10 +149,6 @@ impl DropdownBuilder {
                     Vec::new()
                 }
             });
-
-        for mutate in self.mutators {
-            root = mutate(root);
-        }
 
         interaction.install(root)
     }
@@ -187,6 +181,7 @@ fn dropdown_root(
     key_bindings(
         container()
             .role(Role::ComboBox)
+            .expanded(ctx.open)
             .focus_out(move || ctx.open.set(false))
             .label(label)
             .layout(root_layout),

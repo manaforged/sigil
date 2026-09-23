@@ -1,28 +1,13 @@
-#![allow(
-    dead_code,
-    reason = "entity / observer plumbing consumed by sibling modules in this G2 landing"
-)]
-
-use core::any::TypeId;
 use core::cell::RefCell;
+use core::panic::Location;
 use core::sync::atomic::{AtomicU64, Ordering};
 use std::collections::{BTreeSet, VecDeque};
-use std::sync::Arc;
-
-use crate::actions::ActionRegistry;
 
 use crate::reactive::arena::Arena;
-use crate::reactive::async_cx::{MainThreadDispatcher, TaskExecutor};
-use crate::reactive::focus::FocusHandleId;
-use crate::reactive::local_executor::LocalTaskExecutor;
-use crate::reactive::phase::{DeferredWrite, DrawPhase};
+use crate::reactive::phase::DrawPhase;
 pub(crate) use crate::reactive::runtime_slots::{
-    EffectKey, EffectSlot, EntityKey, EntitySlot, ObserveBareFn, ObserveFn, ObserverKey,
-    ObserverKind, ObserverSlot, OwnerKey, OwnerSlot, PendingCompletion, PendingObserver, SignalKey,
-    SignalSlot, SubscribeFn,
+    EffectKey, EffectSlot, OwnerKey, OwnerSlot, SignalKey, SignalSlot,
 };
-
-pub(crate) const MAX_QUIESCENCE_PASSES: u32 = 64;
 
 static RUNTIME_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -30,26 +15,16 @@ pub(crate) struct RuntimeState {
     pub(crate) owners: Arena<OwnerSlot>,
     pub(crate) signals: Arena<SignalSlot>,
     pub(crate) effects: Arena<EffectSlot>,
-    pub(crate) entities: Arena<EntitySlot>,
-    pub(crate) observers: Arena<ObserverSlot>,
-    pub(crate) pending_observers: VecDeque<PendingObserver>,
-    pub(crate) update_depth: u32,
-    pub(crate) globals: Vec<(TypeId, EntityKey)>,
     pub(crate) current_owner: Option<OwnerKey>,
     pub(crate) current_effect: Option<EffectKey>,
-    pub(crate) current_entity: Option<EntityKey>,
     pub(crate) batch_depth: u32,
     pub(crate) pending: VecDeque<EffectKey>,
     pub(crate) pending_set: BTreeSet<EffectKey>,
     pub(crate) running: BTreeSet<EffectKey>,
-    pub(crate) focus_stack: Vec<FocusHandleId>,
-    pub(crate) action_registry: Option<ActionRegistry>,
+    pub(crate) dispose_after_run: Vec<EffectKey>,
+    pub(crate) deferred_cleanups: Vec<Box<dyn FnOnce()>>,
+    pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
-    pub(crate) deferred_writes: Vec<DeferredWrite>,
-    pub(crate) pending_completions: Vec<PendingCompletion>,
-    pub(crate) executor: Option<Arc<dyn TaskExecutor>>,
-    pub(crate) dispatcher: Option<Arc<dyn MainThreadDispatcher>>,
-    pub(crate) local_executor: Option<Arc<dyn LocalTaskExecutor>>,
     pub(crate) frame_dirty: bool,
     pub(crate) runtime_id: u64,
 }
@@ -60,26 +35,16 @@ impl RuntimeState {
             owners: Arena::new(),
             signals: Arena::new(),
             effects: Arena::new(),
-            entities: Arena::new(),
-            observers: Arena::new(),
-            pending_observers: VecDeque::new(),
-            update_depth: 0,
-            globals: Vec::new(),
             current_owner: None,
             current_effect: None,
-            current_entity: None,
             batch_depth: 0,
             pending: VecDeque::new(),
             pending_set: BTreeSet::new(),
             running: BTreeSet::new(),
-            focus_stack: Vec::new(),
-            action_registry: None,
+            dispose_after_run: Vec::new(),
+            deferred_cleanups: Vec::new(),
+            panic_origin: None,
             phase: DrawPhase::Idle,
-            deferred_writes: Vec::new(),
-            pending_completions: Vec::new(),
-            executor: None,
-            dispatcher: None,
-            local_executor: None,
             frame_dirty: true,
             runtime_id: 0,
         }

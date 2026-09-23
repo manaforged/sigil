@@ -127,6 +127,35 @@ pub(crate) fn dim_to_border_box(
     }
 }
 
+#[derive(Clone, Copy)]
+pub(crate) struct InsetAxis {
+    pub(crate) leading: LengthPercentageAuto,
+    pub(crate) trailing: LengthPercentageAuto,
+    pub(crate) origin: f32,
+    pub(crate) cb_dim: f32,
+    pub(crate) box_dim: f32,
+    pub(crate) margin_leading: f32,
+    pub(crate) margin_trailing: f32,
+}
+
+pub(crate) fn resolve_inset_axis(a: InsetAxis) -> f32 {
+    match (a.leading, a.trailing) {
+        (LengthPercentageAuto::Auto, t) if !matches!(t, LengthPercentageAuto::Auto) => {
+            let off = inset_px(t, a.cb_dim);
+            a.origin + a.cb_dim - a.box_dim - off - a.margin_trailing
+        }
+        (l, _) => a.origin + inset_px(l, a.cb_dim) + a.margin_leading,
+    }
+}
+
+fn inset_px(value: LengthPercentageAuto, basis: f32) -> f32 {
+    match value {
+        LengthPercentageAuto::Auto => 0.0,
+        LengthPercentageAuto::Px(v) => v,
+        LengthPercentageAuto::Percent(p) => p * basis,
+    }
+}
+
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,

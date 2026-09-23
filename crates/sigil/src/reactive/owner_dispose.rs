@@ -1,6 +1,4 @@
-use crate::reactive::runtime::{
-    EffectKey, EntityKey, ObserverKey, OwnerKey, RuntimeState, SignalKey, with_rt,
-};
+use crate::reactive::runtime::{EffectKey, OwnerKey, RuntimeState, SignalKey, with_rt};
 
 fn take_owner_resources(key: OwnerKey) -> (Vec<SignalKey>, Vec<EffectKey>) {
     with_rt(|rt| {
@@ -16,71 +14,92 @@ fn take_owner_resources(key: OwnerKey) -> (Vec<SignalKey>, Vec<EffectKey>) {
     })
 }
 
-fn take_effect_run_owners(effects: &[EffectKey]) -> Vec<OwnerKey> {
-    with_rt(|rt| {
-        effects
-            .iter()
-            .filter_map(|&k| rt.effects.get_mut(k).and_then(|e| e.run_owner.take()))
-            .collect()
+pub(crate) fn take_deferred_dispose(rt: &mut RuntimeState, eff_key: EffectKey) -> bool {
+    if let Some(pos) = rt.dispose_after_run.iter().position(|k| *k == eff_key) {
+        rt.dispose_after_run.swap_remove(pos);
+        true
+    } else {
+        false
+    }
+}
+
+fn defer_until_run_ends(rt: &mut RuntimeState, eff_key: EffectKey) {
+    if !rt.dispose_after_run.contains(&eff_key) {
+        rt.dispose_after_run.push(eff_key);
+    }
+}
+
+fn running_effect_for_run_owner(rt: &RuntimeState, key: OwnerKey) -> Option<EffectKey> {
+    rt.running.iter().copied().find(|eff| {
+        rt.effects
+            .get(*eff)
+            .is_some_and(|slot| slot.run_owner == Some(key))
     })
+}
+
+pub(crate) fn remove_effect(rt: &mut RuntimeState, eff_key: EffectKey) -> Option<OwnerKey> {
+    let eff = rt.effects.get_mut(eff_key)?;
+    let run_owner = eff.run_owner.take();
+    let mut deps = eff.deps.clone();
+    for dep in &eff.prev_deps {
+        if !deps.contains(dep) {
+            deps.push(*dep);
+        }
+    }
+    for dep in deps {
+        if let Some(sig) = rt.signals.get_mut(dep)
+            && let Some(pos) = sig.subscribers.iter().position(|k| *k == eff_key)
+        {
+            sig.subscribers.swap_remove(pos);
+        }
+    }
+    rt.effects.remove(eff_key);
+    rt.pending.retain(|p| *p != eff_key);
+    rt.pending_set.remove(&eff_key);
+    rt.running.remove(&eff_key);
+    run_owner
 }
 
 fn remove_effects_and_signals(
     rt: &mut RuntimeState,
     signals: Vec<SignalKey>,
     effects: Vec<EffectKey>,
-) {
+) -> Vec<OwnerKey> {
     for sig_key in signals {
         rt.signals.remove(sig_key);
     }
+    let mut run_owners = Vec::new();
     for eff_key in effects {
-        let deps = rt
-            .effects
-            .get(eff_key)
-            .map(|e| {
-                let mut deps = e.deps.clone();
-                for dep in &e.prev_deps {
-                    if !deps.contains(dep) {
-                        deps.push(*dep);
-                    }
-                }
-                deps
-            })
-            .unwrap_or_default();
-        for dep in deps {
-            if let Some(sig) = rt.signals.get_mut(dep)
-                && let Some(pos) = sig.subscribers.iter().position(|k| *k == eff_key)
-            {
-                sig.subscribers.swap_remove(pos);
-            }
+        if rt.running.contains(&eff_key) {
+            defer_until_run_ends(rt, eff_key);
+            continue;
         }
-        rt.effects.remove(eff_key);
-        rt.pending.retain(|p| *p != eff_key);
-        rt.pending_set.remove(&eff_key);
-        rt.running.remove(&eff_key);
+        if let Some(run_owner) = remove_effect(rt, eff_key) {
+            run_owners.push(run_owner);
+        }
     }
+    run_owners
 }
 
-fn evict_owner_entities(rt: &mut RuntimeState, entities: Vec<EntityKey>) {
-    for entity_key in entities {
-        let observers: Vec<ObserverKey> = rt
-            .entities
-            .get(entity_key)
-            .map(|slot| {
-                slot.subscribers
-                    .iter()
-                    .copied()
-                    .chain(slot.event_subs.iter().map(|(_, k)| *k))
-                    .collect()
-            })
-            .unwrap_or_default();
-        for obs_key in observers {
-            rt.observers.remove(obs_key);
-            rt.pending_observers.retain(|p| p.observer != obs_key);
+fn collect_plain_subtree(rt: &RuntimeState, key: OwnerKey) -> Option<Vec<OwnerKey>> {
+    let mut stack = vec![key];
+    let mut owners = Vec::new();
+    while let Some(current) = stack.pop() {
+        if running_effect_for_run_owner(rt, current).is_some() {
+            return None;
         }
-        rt.globals.retain(|(_, k)| *k != entity_key);
-        rt.entities.remove(entity_key);
+        let Some(owner) = rt.owners.get(current) else {
+            continue;
+        };
+        if !owner.cleanups.is_empty() || !owner.signals.is_empty() || !owner.effects.is_empty() {
+            return None;
+        }
+        owners.push(current);
+        for &child in &owner.children {
+            stack.push(child);
+        }
     }
+    Some(owners)
 }
 
 pub(crate) fn try_dispose_plain_subtree(key: OwnerKey) -> bool {
@@ -94,7 +113,6 @@ pub(crate) fn try_dispose_plain_subtree(key: OwnerKey) -> bool {
             && root.cleanups.is_empty()
             && root.signals.is_empty()
             && root.effects.is_empty()
-            && root.entities.is_empty()
         {
             if let Some((parent, index_in_parent)) = parent {
                 detach_from_parent(rt, key, parent, index_in_parent);
@@ -103,33 +121,13 @@ pub(crate) fn try_dispose_plain_subtree(key: OwnerKey) -> bool {
             return true;
         }
 
-        if !root.cleanups.is_empty()
-            || !root.signals.is_empty()
-            || !root.effects.is_empty()
-            || !root.entities.is_empty()
-        {
+        if !root.cleanups.is_empty() || !root.signals.is_empty() || !root.effects.is_empty() {
             return false;
         }
 
-        let mut stack = vec![key];
-        let mut owners = Vec::new();
-
-        while let Some(current) = stack.pop() {
-            let Some(owner) = rt.owners.get(current) else {
-                continue;
-            };
-            if !owner.cleanups.is_empty()
-                || !owner.signals.is_empty()
-                || !owner.effects.is_empty()
-                || !owner.entities.is_empty()
-            {
-                return false;
-            }
-            owners.push(current);
-            for &child in &owner.children {
-                stack.push(child);
-            }
-        }
+        let Some(owners) = collect_plain_subtree(rt, key) else {
+            return false;
+        };
 
         if let Some((parent, index_in_parent)) = parent {
             detach_from_parent(rt, key, parent, index_in_parent);
@@ -187,7 +185,45 @@ pub(crate) fn detach_from_parent(
     }
 }
 
+fn run_owner_cleanups(key: OwnerKey) {
+    let cleanups = with_rt(|rt| {
+        rt.owners
+            .get_mut(key)
+            .map(|o| core::mem::take(&mut o.cleanups))
+            .unwrap_or_default()
+    });
+    if cleanups.is_empty() {
+        return;
+    }
+    if std::thread::panicking() {
+        let deferred = cleanups.len();
+        with_rt(|rt| rt.deferred_cleanups.extend(cleanups));
+        tracing::debug!(
+            target: "sigil::reactive",
+            deferred,
+            "owner cleanups deferred until panic recovery"
+        );
+        return;
+    }
+    for cleanup in cleanups.into_iter().rev() {
+        cleanup();
+    }
+}
+
+fn defer_running_run_owner(key: OwnerKey) -> bool {
+    with_rt(|rt| {
+        let Some(eff_key) = running_effect_for_run_owner(rt, key) else {
+            return false;
+        };
+        defer_until_run_ends(rt, eff_key);
+        true
+    })
+}
+
 pub(crate) fn dispose_owner(key: OwnerKey) {
+    if defer_running_run_owner(key) {
+        return;
+    }
     if try_dispose_plain_subtree(key) {
         return;
     }
@@ -202,29 +238,13 @@ pub(crate) fn dispose_owner(key: OwnerKey) {
         dispose_owner(child);
     }
 
-    let cleanups = with_rt(|rt| {
-        rt.owners
-            .get_mut(key)
-            .map(|o| core::mem::take(&mut o.cleanups))
-            .unwrap_or_default()
-    });
-    for cleanup in cleanups.into_iter().rev() {
-        cleanup();
-    }
+    run_owner_cleanups(key);
 
     let (signals, effects) = take_owner_resources(key);
-    for run_owner in take_effect_run_owners(&effects) {
+    let orphan_run_owners = with_rt(|rt| remove_effects_and_signals(rt, signals, effects));
+    for run_owner in orphan_run_owners {
         dispose_owner(run_owner);
     }
-    with_rt(|rt| remove_effects_and_signals(rt, signals, effects));
-
-    let entities = with_rt(|rt| {
-        rt.owners
-            .get_mut(key)
-            .map(|o| core::mem::take(&mut o.entities))
-            .unwrap_or_default()
-    });
-    with_rt(|rt| evict_owner_entities(rt, entities));
 
     with_rt(|rt| {
         let parent = rt
@@ -237,3 +257,7 @@ pub(crate) fn dispose_owner(key: OwnerKey) {
         rt.owners.remove(key);
     });
 }
+
+#[cfg(test)]
+#[path = "owner_dispose_tests.rs"]
+mod tests;

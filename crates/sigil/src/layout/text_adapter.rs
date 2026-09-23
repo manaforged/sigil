@@ -31,8 +31,12 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
             Dim::MinContent | Dim::MaxContent => None,
         };
 
-        let Ok(para) = self.engine.layout_paragraph_styled(&text, max_width, style) else {
-            return LogicalSize::default();
+        let para = match self.engine.layout_paragraph_styled(&text, max_width, style) {
+            Ok(para) => para,
+            Err(err) => {
+                tracing::warn!(target: "sigil::text", error = %err, "text measure failed; reporting zero size");
+                return LogicalSize::default();
+            }
         };
 
         let width = match space.width {
