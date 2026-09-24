@@ -1,9 +1,4 @@
-#![allow(
-    clippy::indexing_slicing,
-    clippy::panic,
-    clippy::unwrap_used,
-    missing_docs
-)]
+#![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 use super::*;
 use crate::layout::LayoutStyle;

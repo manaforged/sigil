@@ -43,7 +43,7 @@ pub(crate) fn trace_effect_fire(
     test_hook::maybe_record(name, location, reads_count, writes_pending_count);
 }
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub mod test_hook {
     use std::cell::{Cell, RefCell};
 
@@ -52,6 +52,7 @@ pub mod test_hook {
         static CAPTURE_ENABLED: Cell<bool> = const { Cell::new(false) };
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn enable_capture() {
         CAPTURE_ENABLED.with(|cell| cell.set(true));
     }
@@ -60,16 +61,19 @@ pub mod test_hook {
         CAPTURE_ENABLED.with(Cell::get)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn disable_capture() {
         CAPTURE_ENABLED.with(|cell| cell.set(false));
         reset_last_line();
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn take_last_line() -> Option<String> {
         LAST_TRACE.with(|slot| slot.borrow_mut().take())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn reset_last_line() {
         LAST_TRACE.with(|slot| *slot.borrow_mut() = None);
     }
@@ -89,5 +93,20 @@ pub mod test_hook {
             line = location.line(),
         );
         LAST_TRACE.with(|slot| *slot.borrow_mut() = Some(line));
+    }
+}
+
+#[cfg(not(any(test, feature = "kittest")))]
+mod test_hook {
+    pub(crate) const fn capture_enabled() -> bool {
+        false
+    }
+
+    pub(crate) const fn maybe_record(
+        _: &'static str,
+        _: &'static core::panic::Location<'static>,
+        _: usize,
+        _: usize,
+    ) {
     }
 }

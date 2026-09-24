@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::{AppBundle, CodeSign, ResourceCopy, macos_app, sign_file, windows_dir};
+use crate::files::{replace, write_new};
+use crate::{AppBundle, CodeSign, ResourceCopy, macos_app, sign_file, verify_file, windows_dir};
 
 fn flag(args: &[String], name: &str) -> Result<Option<String>, String> {
     let mut rest = args.iter();
@@ -68,24 +69,16 @@ fn resources(pairs: &[(PathBuf, PathBuf)]) -> Vec<ResourceCopy<'_>> {
         .collect()
 }
 
-/// Run `sigil-pack` from already-parsed argv (no program name).
-///
-/// Commands: `macos`, `windows`, `sign`.
-/// Sign password is `SIGIL_PACK_PASSWORD`. The on-disk `.sig` is a base64
-/// minisign envelope.
-///
-/// # Errors
-///
-/// Returns a user-facing message when arguments are missing or a pack step
-/// fails.
 pub fn pack_cli(argv: &[String]) -> Result<(), String> {
     let (cmd, rest) = argv
         .split_first()
-        .ok_or("usage: sigil-pack <macos|windows|sign>")?;
+        .ok_or("usage: sigil-pack <macos|windows|sign|verify|genkey>")?;
     match cmd.as_str() {
         "macos" => pack_macos(rest),
         "windows" => pack_windows(rest),
         "sign" => pack_sign(rest),
+        "verify" => pack_verify(rest),
+        "genkey" => pack_genkey(rest),
         other => Err(format!("unknown command: {other}")),
     }
 }
@@ -141,6 +134,32 @@ fn signing_password() -> Result<String, String> {
     std::env::var("SIGIL_PACK_PASSWORD").map_err(|_| "set SIGIL_PACK_PASSWORD".to_string())
 }
 
+fn pack_genkey(argv: &[String]) -> Result<(), String> {
+    refuse_password_flag(argv)?;
+    let dir = match argv {
+        [dir] => Path::new(dir),
+        _ => return Err("usage: sigil-pack genkey DIR".into()),
+    };
+    let key_path = dir.join("e2e.key");
+    let pub_path = dir.join("e2e.pub");
+    if key_path.symlink_metadata().is_ok() || pub_path.symlink_metadata().is_ok() {
+        return Err(format!(
+            "{} already holds e2e.key/e2e.pub; refusing to overwrite",
+            dir.display()
+        ));
+    }
+    let pair = minisign::KeyPair::generate_encrypted_keypair(Some(signing_password()?))
+        .map_err(|e| e.to_string())?;
+    let secret = pair.sk.to_box(None).map_err(|e| e.to_string())?;
+    let public = pair.pk.to_box().map_err(|e| e.to_string())?;
+    write_new(&key_path, secret.into_string().as_bytes(), 0o600)
+        .map_err(|e| format!("write {}: {e}", key_path.display()))?;
+    write_new(&pub_path, public.into_string().as_bytes(), 0o644)
+        .map_err(|e| format!("write {}: {e}", pub_path.display()))?;
+    eprintln!("wrote {} and {}", key_path.display(), pub_path.display());
+    Ok(())
+}
+
 fn refuse_password_flag(argv: &[String]) -> Result<(), String> {
     if argv
         .iter()
@@ -155,21 +174,31 @@ fn pack_sign(argv: &[String]) -> Result<(), String> {
     refuse_password_flag(argv)?;
     let key = flag(argv, "--key")?.ok_or("missing --key")?;
     let file = flag(argv, "--file")?.ok_or("missing --file")?;
-    let password = signing_password()?;
-    let envelope =
-        sign_file(Path::new(&file), Path::new(&key), &password).map_err(|e| e.to_string())?;
-    let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, envelope);
+    let version = flag(argv, "--version")?.ok_or("missing --version")?;
+    let password = std::env::var("SIGIL_PACK_PASSWORD").ok();
+    let envelope = sign_file(
+        Path::new(&file),
+        Path::new(&key),
+        password.as_deref(),
+        &version,
+    )
+    .map_err(|e| e.to_string())?;
     let sig_path = PathBuf::from(format!("{file}.sig"));
-    refuse_symlink(&sig_path)?;
-    std::fs::write(sig_path, encoded).map_err(|e| e.to_string())
+    replace(&sig_path, envelope.as_bytes()).map_err(|e| e.to_string())
 }
 
-fn refuse_symlink(path: &Path) -> Result<(), String> {
-    if std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink()) {
-        return Err(format!(
-            "{} is a symlink; refusing to overwrite",
-            path.display()
-        ));
-    }
+fn pack_verify(argv: &[String]) -> Result<(), String> {
+    let key = flag(argv, "--pub")?.ok_or("missing --pub")?;
+    let file = flag(argv, "--file")?.ok_or("missing --file")?;
+    let sig = flag(argv, "--sig")?.unwrap_or_else(|| format!("{file}.sig"));
+    let expected = flag(argv, "--version")?;
+    let version = verify_file(
+        Path::new(&key),
+        Path::new(&file),
+        Path::new(&sig),
+        expected.as_deref(),
+    )
+    .map_err(|e| e.to_string())?;
+    eprintln!("verified {file} version {version}");
     Ok(())
 }

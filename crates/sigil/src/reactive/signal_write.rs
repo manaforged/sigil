@@ -131,6 +131,36 @@ impl<T: PartialEq + 'static> Signal<T> {
     }
 }
 
+impl<T: PartialEq + 'static> Signal<T> {
+    #[track_caller]
+    pub fn try_set(self, value: T) -> bool {
+        let writable = self.is_writable();
+        if writable {
+            self.set(value);
+        }
+        writable
+    }
+}
+
+impl<T: 'static> Signal<T> {
+    #[track_caller]
+    pub fn try_set_always(self, value: T) -> bool {
+        let writable = self.is_writable();
+        if writable {
+            self.set_always(value);
+        }
+        writable
+    }
+
+    fn is_writable(self) -> bool {
+        with_rt(|rt| {
+            rt.signals
+                .get(self.key)
+                .is_some_and(|slot| !slot.value.is::<UpdateInProgress>() && slot.value.is::<T>())
+        })
+    }
+}
+
 impl<T: 'static> Signal<T> {
     #[inline]
     #[track_caller]
@@ -220,9 +250,26 @@ impl<T: 'static> Signal<T> {
     }
 }
 
-struct UpdateGuard {
+pub(crate) struct UpdateGuard {
     key: SignalKey,
     value: Option<Box<dyn core::any::Any>>,
+}
+
+impl UpdateGuard {
+    pub(crate) const fn new(key: SignalKey, value: Box<dyn core::any::Any>) -> Self {
+        Self {
+            key,
+            value: Some(value),
+        }
+    }
+
+    pub(crate) fn value_ref<T: 'static>(&self) -> &T {
+        self.value
+            .as_ref()
+            .expect("value populated by guard ctor")
+            .downcast_ref::<T>()
+            .expect("signal type mismatch")
+    }
 }
 
 impl Drop for UpdateGuard {

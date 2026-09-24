@@ -1,4 +1,3 @@
-#[cfg(feature = "audio")]
 use crate::reactive::{IntervalId, cancel_interval, register_interval};
 use crate::reactive::{Signal, signal};
 
@@ -6,11 +5,9 @@ use crate::reactive::{Signal, signal};
 pub struct Player {
     pub playing: Signal<bool>,
     pub progress: Signal<f32>,
-    #[cfg(feature = "audio")]
     device: std::rc::Rc<std::cell::RefCell<Option<Device>>>,
 }
 
-#[cfg(feature = "audio")]
 struct Device {
     _stream: rodio::MixerDeviceSink,
     sink: rodio::Player,
@@ -18,7 +15,6 @@ struct Device {
     interval: Option<IntervalId>,
 }
 
-#[cfg(feature = "audio")]
 impl Drop for Device {
     fn drop(&mut self) {
         if let Some(id) = self.interval.take() {
@@ -33,64 +29,33 @@ impl Player {
         Self {
             playing: signal(false),
             progress: signal(0.0_f32),
-            #[cfg(feature = "audio")]
             device: std::rc::Rc::new(std::cell::RefCell::new(None)),
         }
     }
 
-    #[allow(
-        clippy::missing_const_for_fn,
-        reason = "no-op body without feature `audio` is trivially const-able; the real body is not"
-    )]
     pub fn toggle(&self) {
-        #[cfg(feature = "audio")]
-        {
-            let device = self.device.borrow();
-            if let Some(device) = device.as_ref() {
-                if device.sink.is_paused() {
-                    device.sink.play();
-                    self.playing.set(true);
-                } else {
-                    device.sink.pause();
-                    self.playing.set(false);
-                }
+        let device = self.device.borrow();
+        if let Some(device) = device.as_ref() {
+            if device.sink.is_paused() {
+                device.sink.play();
+                self.playing.set(true);
+            } else {
+                device.sink.pause();
+                self.playing.set(false);
             }
         }
     }
 
-    #[allow(
-        clippy::missing_const_for_fn,
-        reason = "const-eligible only under one cfg configuration"
-    )]
     pub fn tick(&self) {
-        #[cfg(feature = "audio")]
-        {
-            sync(self);
-        }
+        sync(self);
     }
 
     pub fn seek(&self, ratio: f32) -> crate::app::AppResult<()> {
-        #[cfg(feature = "audio")]
-        {
-            seek_rodio(self, ratio)
-        }
-        #[cfg(not(feature = "audio"))]
-        {
-            let _ = ratio;
-            Err(crate::app::Error::new(Disabled { feature: "audio" }))
-        }
+        seek_rodio(self, ratio)
     }
 
     pub fn play_path(&self, path: &std::path::Path) -> crate::app::AppResult<()> {
-        #[cfg(feature = "audio")]
-        {
-            play_rodio(self, path)
-        }
-        #[cfg(not(feature = "audio"))]
-        {
-            let _ = path;
-            Err(crate::app::Error::new(Disabled { feature: "audio" }))
-        }
+        play_rodio(self, path)
     }
 }
 
@@ -100,23 +65,6 @@ impl Default for Player {
     }
 }
 
-#[cfg(not(feature = "audio"))]
-#[derive(Debug)]
-struct Disabled {
-    feature: &'static str,
-}
-
-#[cfg(not(feature = "audio"))]
-impl std::fmt::Display for Disabled {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "enable feature `{}`", self.feature)
-    }
-}
-
-#[cfg(not(feature = "audio"))]
-impl std::error::Error for Disabled {}
-
-#[cfg(any(test, feature = "audio"))]
 pub(crate) fn progress_ratio(pos: std::time::Duration, total: std::time::Duration) -> f32 {
     if total.is_zero() {
         return 0.0;
@@ -124,16 +72,15 @@ pub(crate) fn progress_ratio(pos: std::time::Duration, total: std::time::Duratio
     (pos.as_secs_f32() / total.as_secs_f32()).clamp(0.0, 1.0)
 }
 
-#[cfg(feature = "audio")]
 fn sync(player: &Player) {
     let mut slot = player.device.borrow_mut();
     let Some(device) = slot.as_mut() else {
         return;
     };
     if device.sink.empty() {
-        player.playing.set(false);
+        player.playing.try_set(false);
         if let Some(total) = device.duration.filter(|total| !total.is_zero()) {
-            player.progress.set(progress_ratio(total, total));
+            player.progress.try_set(progress_ratio(total, total));
         }
         if let Some(id) = device.interval.take() {
             cancel_interval(id);
@@ -144,60 +91,54 @@ fn sync(player: &Player) {
         return;
     };
     let next = progress_ratio(device.sink.get_pos(), total);
-    if (player.progress.peek() - next).abs() > 0.001 {
-        player.progress.set(next);
+    if player
+        .progress
+        .try_peek()
+        .is_some_and(|current| (current - next).abs() > 0.001)
+    {
+        player.progress.try_set(next);
     }
 }
 
-#[cfg(feature = "audio")]
 #[derive(Debug)]
 struct NoSink;
 
-#[cfg(feature = "audio")]
 impl std::fmt::Display for NoSink {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Player::seek needs Player::play_path")
     }
 }
 
-#[cfg(feature = "audio")]
 impl std::error::Error for NoSink {}
 
-#[cfg(feature = "audio")]
 #[derive(Debug)]
 struct NoDuration;
 
-#[cfg(feature = "audio")]
 impl std::fmt::Display for NoDuration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Player::seek needs a known duration")
     }
 }
 
-#[cfg(feature = "audio")]
 impl std::error::Error for NoDuration {}
 
-#[cfg(feature = "audio")]
 fn seek_rodio(player: &Player, ratio: f32) -> crate::app::AppResult<()> {
     let ratio = ratio.clamp(0.0, 1.0);
     let mut slot = player.device.borrow_mut();
-    let device = slot
-        .as_mut()
-        .ok_or_else(|| crate::app::Error::new(NoSink))?;
+    let device = slot.as_mut().ok_or_else(|| crate::app::Error::io(NoSink))?;
     let total = device
         .duration
         .filter(|total| !total.is_zero())
-        .ok_or_else(|| crate::app::Error::new(NoDuration))?;
+        .ok_or_else(|| crate::app::Error::io(NoDuration))?;
     let pos = total.mul_f32(ratio);
     device
         .sink
         .try_seek(pos)
-        .map_err(|err| crate::app::Error::new(std::io::Error::other(err.to_string())))?;
+        .map_err(|err| crate::app::Error::io(std::io::Error::other(err.to_string())))?;
     player.progress.set(ratio);
     Ok(())
 }
 
-#[cfg(feature = "audio")]
 fn play_rodio(player: &Player, path: &std::path::Path) -> crate::app::AppResult<()> {
     use std::fs::File;
     use std::io::BufReader;
@@ -205,10 +146,10 @@ fn play_rodio(player: &Player, path: &std::path::Path) -> crate::app::AppResult<
 
     use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer, Source};
 
-    let file = File::open(path).map_err(crate::app::Error::new)?;
-    let decoder = Decoder::new(BufReader::new(file)).map_err(crate::app::Error::new)?;
+    let file = File::open(path).map_err(crate::app::Error::io)?;
+    let decoder = Decoder::new(BufReader::new(file)).map_err(crate::app::Error::io)?;
     let duration = decoder.total_duration();
-    let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::app::Error::new)?;
+    let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::app::Error::io)?;
     let sink = RodioPlayer::connect_new(stream.mixer());
     sink.append(decoder);
     sink.play();

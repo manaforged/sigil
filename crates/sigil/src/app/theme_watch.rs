@@ -12,13 +12,13 @@ const MAX_DEBOUNCE: Duration = Duration::from_secs(1);
 
 pub fn watch_theme(path: impl Into<PathBuf>) -> AppResult<ThemeWatcher> {
     if !crate::tasks::installed() {
-        return Err(Error::new(NoRuntime));
+        return Err(Error::task(NoRuntime));
     }
     let dispatcher = crate::tasks::dispatcher();
     let owner = Owner::new("sigil::watch_theme", None);
     let target = OwnerHandle::from_id(owner.id());
     let path = path.into();
-    let (watcher, rx) = crate::app::theme_file::watcher(&path).map_err(Error::new)?;
+    let (watcher, rx) = crate::app::theme_file::watcher(&path).map_err(Error::io)?;
     let reloader = std::thread::spawn(move || reload(path, rx, dispatcher, target));
     Ok(ThemeWatcher {
         watcher: Some(watcher),
@@ -37,8 +37,10 @@ pub struct ThemeWatcher {
 impl Drop for ThemeWatcher {
     fn drop(&mut self) {
         drop(self.watcher.take());
-        if let Some(reloader) = self.reloader.take() {
-            let _ = reloader.join();
+        if let Some(reloader) = self.reloader.take()
+            && reloader.join().is_err()
+        {
+            tracing::warn!(target: "sigil::theme", "theme reloader thread panicked");
         }
         self.owner.dispose();
     }

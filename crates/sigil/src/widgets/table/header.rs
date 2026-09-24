@@ -5,10 +5,11 @@ use crate::events::prelude::{Key, LogicalKey, MouseButton, NodeEventsExt, Shortc
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{Fill, NodeStyleExt, StateVariants};
+use crate::style::{FocusRing, NodeStyleExt, StyleAtom, Token, space};
 
 use super::super::drag::{Axis, axis_drag};
-use super::super::interactive::interactive;
+use super::super::interaction::InteractionState;
+use super::super::patterns::row_states;
 use super::super::shared::label;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, ColAlign, TableColumn, flex_cell};
@@ -16,7 +17,14 @@ use super::hscroll::HScroll;
 use super::select;
 use super::state::{SortDir, TableState};
 
-const RESIZE_HANDLE: f32 = 8.0;
+const RESIZE_HANDLE: f32 = space(2);
+const RING_INSET: f32 = -space(1);
+const HEADER_WEIGHT: u16 = 600;
+
+static HEADER_TEXT: &[StyleAtom] = &[
+    StyleAtom::FontWeight(HEADER_WEIGHT),
+    Token::OnSurfaceMuted.text(),
+];
 const REORDER_THRESHOLD: f32 = 12.0;
 const REORDER_STEP: f32 = 80.0;
 
@@ -53,6 +61,7 @@ pub(super) struct HeaderSpec {
     pub height: f32,
     pub select: bool,
     pub pad_x: f32,
+    pub disabled: Option<Signal<bool>>,
 }
 
 pub(super) fn header_row<Row: 'static>(
@@ -67,6 +76,7 @@ pub(super) fn header_row<Row: 'static>(
         height,
         select,
         pad_x,
+        disabled,
     } = spec;
     let track = container()
         .layout(track_layout(height))
@@ -77,6 +87,7 @@ pub(super) fn header_row<Row: 'static>(
                 chrome: &chrome,
                 select,
                 pad_x,
+                disabled,
             };
             let mut cells = Vec::new();
             if select {
@@ -92,8 +103,9 @@ pub(super) fn header_row<Row: 'static>(
     container()
         .role(Role::Row)
         .row_index(1)
-        .layout(header_layout(height, pad_x))
-        .class("bg-surface-0 border-b border-border-strong")
+        .layout(header_layout(crate::layout::snap::ruled(height), pad_x))
+        .class("border-b")
+        .class([Token::SurfaceInset.bg(), Token::BorderStrong.border()])
         .child(hscroll.shifted(track))
 }
 
@@ -118,6 +130,14 @@ struct HeaderCtx<'a, Row: 'static> {
     chrome: &'a TableChrome<Row>,
     select: bool,
     pad_x: f32,
+    disabled: Option<Signal<bool>>,
+}
+
+fn cell_states(cell: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
+    let interaction = InteractionState::new(true);
+    interaction
+        .observe_style(row_states(cell, disabled))
+        .focus_ring(FocusRing::new(interaction.focus_visible()).offset(RING_INSET))
 }
 
 fn header_cell<Row: 'static>(
@@ -130,23 +150,7 @@ fn header_cell<Row: 'static>(
     let layout = ctx.state.column_layout().peek();
     let override_px = layout.widths.get(column.id()).copied();
     let id = column.id();
-    let title = label(column.title().to_owned())
-        .ellipsize()
-        .class("text-xs font-medium text-gray-11");
-    let title = if column.alignment() == ColAlign::End {
-        container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .grow(1.0)
-                    .padding_x(ctx.pad_x)
-                    .justify_content(JustifyContent::End),
-            )
-            .child(title)
-    } else {
-        container()
-            .layout(LayoutStyle::block().grow(1.0).padding_x(ctx.pad_x))
-            .child(title)
-    };
+    let title = header_title(column, ctx.pad_x);
     let cell = container()
         .role(Role::ColumnHeader)
         .label(column.title().to_owned())
@@ -162,12 +166,38 @@ fn header_cell<Row: 'static>(
             pad_x: ctx.pad_x,
         }))
         .child(title)
-        .child(text(sort_indicator(ctx.state, id)).class("text-xs text-gray-11"))
+        .child(
+            text(sort_indicator(ctx.state, id))
+                .class("text-xs")
+                .class(HEADER_TEXT),
+        )
         .child(resize_handle(ctx.state.clone(), id, height));
+    let cell = cell_states(cell, ctx.disabled);
     if column.is_sortable() {
         sortable_cell(ctx.state, id, visual, cell, ctx.chrome.clone())
     } else {
         reorder_only(ctx.state.clone(), id, visual, cell, ctx.chrome.clone())
+    }
+}
+
+fn header_title<Row: 'static>(column: &TableColumn<Row>, pad_x: f32) -> NodeBuilder {
+    let title = label(column.title().to_owned())
+        .ellipsize()
+        .class("text-xs")
+        .class(HEADER_TEXT);
+    if column.alignment() == ColAlign::End {
+        container()
+            .layout(
+                LayoutStyle::flex_row()
+                    .grow(1.0)
+                    .padding_x(pad_x)
+                    .justify_content(JustifyContent::End),
+            )
+            .child(title)
+    } else {
+        container()
+            .layout(LayoutStyle::block().grow(1.0).padding_x(pad_x))
+            .child(title)
     }
 }
 
@@ -184,9 +214,7 @@ fn sortable_cell<Row: 'static>(
     let up = Rc::clone(&session);
     let sort_state = state.clone();
     let move_state = state.clone();
-    let node = interactive(cell)
-        .hover(|s| s.bg("surface-pressed"))
-        .into_node_builder()
+    let node = cell
         .sort_direction(direction)
         .focusable(true)
         .hittable(true)
@@ -255,42 +283,39 @@ fn reorder_only<Row: 'static>(
 ) -> NodeBuilder {
     let session = Rc::new(RefCell::new(None::<(f32, usize)>));
     let down = Rc::clone(&session);
-    interactive(cell)
-        .hover(|s| s.bg("surface-pressed"))
-        .into_node_builder()
-        .pointer_down(move |event| {
-            if event.button == Some(MouseButton::Right) {
-                chrome.open(
-                    ContextKind::Header(column),
-                    (event.window_position.x, event.window_position.y),
-                );
-                event.stop_propagation();
-                return;
-            }
-            if event
-                .button
-                .is_some_and(|button| button != MouseButton::Left)
-            {
-                return;
-            }
-            *down.borrow_mut() = Some((event.position.x, visual));
-            event.capture_pointer();
-        })
-        .pointer_up(move |event| {
-            let Some((start_x, from)) = session.borrow_mut().take() else {
-                return;
-            };
-            let delta = event.position.x - start_x;
-            if delta.abs() >= REORDER_THRESHOLD {
-                #[allow(
-                    clippy::cast_possible_truncation,
-                    reason = "values are bounded to the target range before the cast"
-                )]
-                let steps = (delta / REORDER_STEP).round() as i32;
-                state.move_column(from, from.saturating_add_signed(steps as isize));
-            }
+    cell.pointer_down(move |event| {
+        if event.button == Some(MouseButton::Right) {
+            chrome.open(
+                ContextKind::Header(column),
+                (event.window_position.x, event.window_position.y),
+            );
             event.stop_propagation();
-        })
+            return;
+        }
+        if event
+            .button
+            .is_some_and(|button| button != MouseButton::Left)
+        {
+            return;
+        }
+        *down.borrow_mut() = Some((event.position.x, visual));
+        event.capture_pointer();
+    })
+    .pointer_up(move |event| {
+        let Some((start_x, from)) = session.borrow_mut().take() else {
+            return;
+        };
+        let delta = event.position.x - start_x;
+        if delta.abs() >= REORDER_THRESHOLD {
+            #[allow(
+                clippy::cast_possible_truncation,
+                reason = "values are bounded to the target range before the cast"
+            )]
+            let steps = (delta / REORDER_STEP).round() as i32;
+            state.move_column(from, from.saturating_add_signed(steps as isize));
+        }
+        event.stop_propagation();
+    })
 }
 
 fn sort_indicator<Row: 'static>(state: &TableState<Row>, column: &'static str) -> Signal<String> {

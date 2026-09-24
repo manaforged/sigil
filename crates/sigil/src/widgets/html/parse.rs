@@ -1,6 +1,7 @@
 use std::fmt::Write as _;
 
-use crate::widgets::markdown::parse::Block;
+use crate::widgets::markdown::parse::{Block, List};
+use crate::widgets::text_search::{CloseTags, find_ci, starts_ci};
 
 pub(crate) fn parse_html(source: &str) -> Vec<Block> {
     if crate::widgets::source_too_large(source) {
@@ -11,12 +12,13 @@ pub(crate) fn parse_html(source: &str) -> Vec<Block> {
     let body = strip_noise(source);
     let mut out = Vec::new();
     let mut rest = body.as_str();
+    let mut tags = CloseTags::default();
     while !rest.is_empty() {
         rest = rest.trim_start();
         if rest.is_empty() {
             break;
         }
-        if let Some((block, eaten)) = next_block(rest) {
+        if let Some((block, eaten)) = next_block(rest, &mut tags) {
             out.push(block);
             rest = &rest[eaten..];
             continue;
@@ -39,15 +41,11 @@ fn strip_noise(source: &str) -> String {
         let Some(end) = after.find('>') else {
             break;
         };
-        let tag = after[..=end].to_ascii_lowercase();
-        if tag.starts_with("<script") || tag.starts_with("<style") {
-            let close = if tag.starts_with("<script") {
-                "</script>"
-            } else {
-                "</style>"
-            };
+        let script = starts_ci(after, "<script");
+        if script || starts_ci(after, "<style") {
+            let close = if script { "</script>" } else { "</style>" };
             rest = after.get(end + 1..).unwrap_or("");
-            if let Some(idx) = rest.to_ascii_lowercase().find(close) {
+            if let Some(idx) = find_ci(rest, close) {
                 rest = rest.get(idx + close.len()..).unwrap_or("");
             } else {
                 rest = "";
@@ -61,20 +59,20 @@ fn strip_noise(source: &str) -> String {
     out
 }
 
-fn next_block(rest: &str) -> Option<(Block, usize)> {
-    heading(rest)
-        .or_else(|| list(rest, "ul"))
-        .or_else(|| list(rest, "ol"))
-        .or_else(|| pre(rest))
-        .or_else(|| table(rest))
-        .or_else(|| paragraph(rest))
+fn next_block(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
+    heading(rest, tags)
+        .or_else(|| list(rest, "ul", tags))
+        .or_else(|| list(rest, "ol", tags))
+        .or_else(|| pre(rest, tags))
+        .or_else(|| table(rest, tags))
+        .or_else(|| paragraph(rest, tags))
 }
 
-fn heading(rest: &str) -> Option<(Block, usize)> {
+fn heading(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     for level in 1..=3_u8 {
         let open = format!("<h{level}>");
         let close = format!("</h{level}>");
-        if let Some((inner, eaten)) = tagged(rest, &open, &close) {
+        if let Some((inner, eaten)) = tagged(rest, (&open, &close), tags) {
             return Some((
                 Block::Heading {
                     level,
@@ -87,37 +85,50 @@ fn heading(rest: &str) -> Option<(Block, usize)> {
     None
 }
 
-fn paragraph(rest: &str) -> Option<(Block, usize)> {
-    let (inner, eaten) = tagged(rest, "<p>", "</p>")?;
+fn paragraph(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
+    let (inner, eaten) = tagged(rest, ("<p>", "</p>"), tags)?;
     Some((Block::Paragraph(inner_text(&inner)), eaten))
 }
 
-fn pre(rest: &str) -> Option<(Block, usize)> {
-    let (inner, eaten) = tagged(rest, "<pre>", "</pre>")?;
-    let text = tagged(&inner, "<code>", "</code>")
+fn pre(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
+    let (inner, eaten) = tagged(rest, ("<pre>", "</pre>"), tags)?;
+    let text = tagged(&inner, ("<code>", "</code>"), &mut CloseTags::default())
         .map_or_else(|| decode(&inner), |(code, _)| decode(&code));
-    Some((Block::Code(text), eaten))
+    Some((
+        Block::Code {
+            lang: String::new(),
+            body: text,
+        },
+        eaten,
+    ))
 }
 
-fn list(rest: &str, tag: &str) -> Option<(Block, usize)> {
+fn list(rest: &str, tag: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
     let open = format!("<{tag}>");
     let close = format!("</{tag}>");
-    let (inner, eaten) = tagged(rest, &open, &close)?;
+    let (inner, eaten) = tagged(rest, (&open, &close), tags)?;
     let mut items = Vec::new();
     let mut cursor = inner.as_str();
-    while let Some((item, used)) = tagged(cursor.trim_start(), "<li>", "</li>") {
+    let mut inner_tags = CloseTags::default();
+    while let Some((item, used)) = tagged(cursor.trim_start(), ("<li>", "</li>"), &mut inner_tags) {
         items.push(inner_text(&item));
         let skip = cursor.len() - cursor.trim_start().len();
         cursor = cursor.get(skip + used..).unwrap_or("");
     }
-    Some((Block::List(items), eaten))
+    let items = items
+        .into_iter()
+        .map(|item| vec![Block::Paragraph(item)])
+        .collect();
+    let start = (tag == "ol").then_some(1);
+    Some((Block::List(List { start, items }), eaten))
 }
 
-fn table(rest: &str) -> Option<(Block, usize)> {
-    let (inner, eaten) = tagged(rest, "<table>", "</table>")?;
+fn table(rest: &str, tags: &mut CloseTags) -> Option<(Block, usize)> {
+    let (inner, eaten) = tagged(rest, ("<table>", "</table>"), tags)?;
     let mut rows = Vec::new();
     let mut cursor = inner.as_str();
-    while let Some((row, used)) = tagged(cursor.trim_start(), "<tr>", "</tr>") {
+    let mut inner_tags = CloseTags::default();
+    while let Some((row, used)) = tagged(cursor.trim_start(), ("<tr>", "</tr>"), &mut inner_tags) {
         rows.push(row_cells(&row));
         let skip = cursor.len() - cursor.trim_start().len();
         cursor = cursor.get(skip + used..).unwrap_or("");
@@ -128,9 +139,11 @@ fn table(rest: &str) -> Option<(Block, usize)> {
 fn row_cells(row: &str) -> Vec<String> {
     let mut cells = Vec::new();
     let mut cursor = row;
+    let mut tags = CloseTags::default();
     loop {
         cursor = cursor.trim_start();
-        let next = tagged(cursor, "<th>", "</th>").or_else(|| tagged(cursor, "<td>", "</td>"));
+        let next = tagged(cursor, ("<th>", "</th>"), &mut tags)
+            .or_else(|| tagged(cursor, ("<td>", "</td>"), &mut tags));
         let Some((cell, used)) = next else {
             break;
         };
@@ -140,13 +153,13 @@ fn row_cells(row: &str) -> Vec<String> {
     cells
 }
 
-fn tagged(rest: &str, open: &str, close: &str) -> Option<(String, usize)> {
-    let lower = rest.to_ascii_lowercase();
-    if !lower.starts_with(open) {
+fn tagged(rest: &str, pair: (&str, &str), tags: &mut CloseTags) -> Option<(String, usize)> {
+    let (open, close) = pair;
+    if !starts_ci(rest, open) {
         return None;
     }
     let inner_at = open.len();
-    let rel = lower.get(inner_at..)?.find(close)?;
+    let rel = tags.find(rest.get(inner_at..)?, close)?;
     let inner = rest.get(inner_at..inner_at + rel)?.to_string();
     Some((inner, inner_at + rel + close.len()))
 }
@@ -165,9 +178,10 @@ fn take_text(rest: &str) -> (String, usize) {
 fn inner_text(source: &str) -> String {
     let mut out = String::new();
     let mut rest = source;
+    let mut tags = CloseTags::default();
     while !rest.is_empty() {
         if rest.starts_with('<') {
-            if let Some((inner, eaten, kind)) = inline_tag(rest) {
+            if let Some((inner, eaten, kind)) = inline_tag(rest, &mut tags) {
                 let body = inner_text(&inner);
                 match kind {
                     Inline::Strong => drop(write!(out, "**{body}**")),
@@ -196,7 +210,7 @@ enum Inline {
     Link(String),
 }
 
-fn inline_tag(rest: &str) -> Option<(String, usize, Inline)> {
+fn inline_tag(rest: &str, tags: &mut CloseTags) -> Option<(String, usize, Inline)> {
     let pairs = [
         ("<strong>", "</strong>", Inline::Strong),
         ("<b>", "</b>", Inline::Strong),
@@ -205,17 +219,16 @@ fn inline_tag(rest: &str) -> Option<(String, usize, Inline)> {
         ("<code>", "</code>", Inline::Code),
     ];
     for (open, close, kind) in pairs {
-        if let Some((inner, eaten)) = tagged(rest, open, close) {
+        if let Some((inner, eaten)) = tagged(rest, (open, close), tags) {
             return Some((inner, eaten, kind));
         }
     }
-    let lower = rest.to_ascii_lowercase();
-    if lower.starts_with("<a ") || lower.starts_with("<a>") {
+    if starts_ci(rest, "<a ") || starts_ci(rest, "<a>") {
         let gt = rest.find('>')?;
         let open = &rest[..=gt];
         let href = attr(open, "href").unwrap_or_default();
         let close = "</a>";
-        let rel = lower.get(gt + 1..)?.find(close)?;
+        let rel = tags.find(rest.get(gt + 1..)?, close)?;
         let inner = rest.get(gt + 1..gt + 1 + rel)?.to_string();
         Some((inner, gt + 1 + rel + close.len(), Inline::Link(href)))
     } else {
@@ -225,8 +238,7 @@ fn inline_tag(rest: &str) -> Option<(String, usize, Inline)> {
 
 fn attr(tag: &str, name: &str) -> Option<String> {
     let needle = format!("{name}=");
-    let lower = tag.to_ascii_lowercase();
-    let at = lower.find(&needle)?;
+    let at = find_ci(tag, &needle)?;
     let after = tag.get(at + needle.len()..)?;
     let quote = after.chars().next()?;
     if quote != '"' && quote != '\'' {

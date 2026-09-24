@@ -72,6 +72,7 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
+        | StyleAtom::Radius(_)
         | StyleAtom::Shadow(_)
         | StyleAtom::Transform(_)
         | StyleAtom::Opacity(_)

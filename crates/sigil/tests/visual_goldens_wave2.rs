@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
@@ -12,13 +11,13 @@ use sigil::prelude::*;
 use sigil::style::Size as ControlSize;
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
+    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
 };
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: Option<image::RgbaImage>) {
-    let Some(img) = img else {
+fn check(stem: &str, img: sigil_kittest::Rendered) {
+    let Some(img) = img.expect("sigil-kittest") else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
@@ -27,7 +26,7 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
 
 #[test]
 fn icon_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -45,7 +44,7 @@ fn icon_default() {
 
 #[test]
 fn icon_primary_tone() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -63,7 +62,7 @@ fn icon_primary_tone() {
 
 #[test]
 fn icon_error_tone() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -81,7 +80,7 @@ fn icon_error_tone() {
 
 #[test]
 fn dot_success() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -99,7 +98,7 @@ fn dot_success() {
 
 #[test]
 fn dot_warn_default_size() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -117,7 +116,7 @@ fn dot_warn_default_size() {
 
 #[test]
 fn dot_error_wide() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -135,7 +134,7 @@ fn dot_error_wide() {
 
 #[test]
 fn radio_group_three_options_first_selected() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let selected = signal(String::from("light"));
             cx.add(
@@ -159,7 +158,7 @@ fn radio_group_three_options_first_selected() {
 
 #[test]
 fn radio_group_middle_selected() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let selected = signal(String::from("dark"));
             cx.add(
@@ -183,7 +182,7 @@ fn radio_group_middle_selected() {
 
 #[test]
 fn validated_field_no_error() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let error: Signal<Option<String>> = signal(None);
             cx.add(
@@ -206,7 +205,7 @@ fn validated_field_no_error() {
 
 #[test]
 fn validated_field_with_error() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let error: Signal<Option<String>> = signal(Some(String::from("Email must contain @")));
             cx.add(

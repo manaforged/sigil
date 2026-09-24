@@ -3,9 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(
-    missing_docs,
     dead_code,
-    clippy::missing_docs_in_private_items,
     clippy::unwrap_used,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,

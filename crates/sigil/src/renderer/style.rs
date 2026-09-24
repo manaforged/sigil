@@ -1,5 +1,5 @@
-pub use crate::renderer::scene_command::SceneDecorationStyle as Decoration;
-pub use crate::renderer::scene_command::SceneGradientStyle as Gradient;
-pub use crate::renderer::scene_command::ScenePatternStyle as Pattern;
-pub use crate::renderer::scene_command::SceneRectStyle as Rect;
-pub use crate::renderer::scene_command::SceneSpriteStyle as Sprite;
+pub use crate::scene::SceneDecorationStyle as Decoration;
+pub use crate::scene::SceneGradientStyle as Gradient;
+pub use crate::scene::ScenePatternStyle as Pattern;
+pub use crate::scene::SceneRectStyle as Rect;
+pub use crate::scene::SceneSpriteStyle as Sprite;

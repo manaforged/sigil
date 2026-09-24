@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
@@ -109,11 +108,11 @@ fn items_bind_via_effect_chain_still_paints_rows() {
             .unwrap();
         assert_eq!(
             glyph_runs(&cx, root),
-            13,
+            11,
             "window of unfiltered rows paints"
         );
 
-        for (typed, expect) in [("t", 13_usize), ("to", 13), ("tok", 13), ("token1", 11)] {
+        for (typed, expect) in [("t", 11_usize), ("to", 11), ("tok", 11), ("token1", 11)] {
             search.set(typed.to_string());
             layout
                 .compute(&mut cx, root, Size::fixed(640.0, 480.0))
@@ -169,8 +168,8 @@ fn items_bind_shrink_paints_under_frame_phases() {
             runs
         };
 
-        assert_eq!(frame(&mut cx, None), 13, "unfiltered frame paints window");
-        assert_eq!(frame(&mut cx, Some("t")), 13, "'t' frame paints window");
+        assert_eq!(frame(&mut cx, None), 11, "unfiltered frame paints window");
+        assert_eq!(frame(&mut cx, Some("t")), 11, "'t' frame paints window");
         assert_eq!(frame(&mut cx, Some("token1")), 11, "'token1' frame paints");
         assert_eq!(frame(&mut cx, None), 11, "idle follow-up frame keeps rows");
     });
@@ -310,7 +309,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
         let ballast_runs = 600;
         assert_eq!(
             frame(&mut cx, None),
-            ballast_runs + 19,
+            ballast_runs + 16,
             "window of all rows paints next to ballast"
         );
         let after = frame(&mut cx, Some("token"));

@@ -6,6 +6,7 @@ use core::error::Error;
 use crate::hal::geometry::Color;
 
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct RenderedGlyph {
     pub font_id: u64,
     pub font_index: u32,
@@ -15,9 +16,11 @@ pub struct RenderedGlyph {
     pub size: f32,
     pub color: Color,
     pub variation_coords: Box<[i16]>,
+    pub skew: f32,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[non_exhaustive]
 pub enum TextAffinity {
     #[default]
     Downstream,

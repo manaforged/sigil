@@ -35,10 +35,17 @@ raw node edits. Font size and color come from `.class()` / `.style()`
 - `.label(name)` — assistive name; always set it when the icon stands
   alone.
 
+`icon_svg(svg) -> IconBuilder` draws an SVG path instead of a glyph.
+The icon takes its colour from `.tone(Tone)` at paint time, so a
+theme switch recolours it. Dark themes draw it light.
+
 `icon_button(glyph, activate)` (see [Controls](controls.md)) is the
 interactive counterpart.
 
 ## image
+
+`image(source: ImageSource) -> ImageBuilder` builds an image node.
+`image_rgba` and `image_bytes` return the same `ImageBuilder`.
 
 `image_rgba(width, height, rgba: Vec<u8>) -> Option<ImageBuilder>` —
 decodes raw RGBA8 into an `ImageSource`; returns `None` on bad input.
@@ -63,8 +70,10 @@ path(16, 16)
 ```
 
 Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`.
-Paint with `.fill(Rgba8)`, `.fill_linear(start, end, stops)`,
+Paint with `.fill(color)`, `.fill_linear(start, end, stops)`,
 `.fill_radial(center, radius, stops)`, and `.stroke(color, width)`.
+`fill` and `stroke` take an `Rgba8` or a theme `Token`. A `Token`
+resolves against the active theme at paint time.
 `.layout(LayoutStyle)` overrides layout; `.fit()` / `.fit_size(px)`
 fix the node to a logical size and rasterize at 2× for crispness.
 Finished paths are interned in a thread-local raster cache (256
@@ -84,3 +93,49 @@ framed 280×180 bar chart by default.
 
 Values are a static `Vec<f32>` taken at build time — rebuild the widget
 to update data. The node is `Role::GenericContainer` labeled "Chart".
+
+## Small content helpers
+
+These helpers from `sigil::widgets::patterns` paint fixed content:
+`section_label(title)`, `empty_state(title, body)`,
+`notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`,
+`hairline()`, and `spacer()`. [Chrome](chrome.md#patterns) describes
+each one. `divider_horizontal()` and `divider_vertical()` draw 1 px
+rules in the border colour.
+
+## States, keys, and accessibility
+
+Content nodes have one visual state: the visual catalog captures only
+the default state. They take no keys unless you add a handler, for
+example `.focusable(true)` and `.key(...)` on a `text` node.
+
+| Widget | Role | Name source |
+| --- | --- | --- |
+| `text`, `label` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
+| `icon` | `Image` with `.label()`, else `GenericContainer` | `.label(name)` |
+| `image_rgba`, `image_bytes` | Image node | `.alt(text)` |
+| `path` | Image node | None |
+| `chart` | `Figure` | "Chart" |
+| `avatar` | `Image` | The initials |
+| `empty_state` | `Status` | The title and body text |
+| `notice_band` | `Alert` for the error and warn tones, else `Status` | "Error", "Warning", "Success", or "Notice"; the body is the text child |
+
+## Terminal notes
+
+- Text keeps bold, dim, italic, underline, and strikethrough when the
+  terminal supports them. Font size classes do not change the cell
+  size.
+- Images use the Kitty, iTerm2, or Sixel protocol when the terminal
+  has one. Other terminals get sextant glyphs. See
+  [Terminal host](../terminal.md).
+- A `path` rasterises to an image, so it follows the image rules.
+- A chart paints bars as cell fills. Keep labels short.
+- A 1 px divider paints as a rule glyph, not a full cell block.
+
+## Example
+
+Run it with `cargo run -p sigil-ui --example widget_content`.
+
+```rust
+{{#include ../../../crates/sigil/examples/widget_content.rs}}
+```

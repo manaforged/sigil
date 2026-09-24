@@ -83,28 +83,30 @@ fn collect_scope_roots(cx: &Cx, id: NodeId, out: &mut Vec<NodeId>) {
 }
 
 fn first_focusable_in_document_order(cx: &Cx) -> Option<NodeId> {
-    for root in cx.roots().iter().copied() {
-        if let Some(id) = first_focusable_in_subtree(cx, root) {
-            return Some(id);
-        }
-    }
-    None
+    first_in_document_order(cx, |id| {
+        cx.get(id).is_some_and(|node| node.a11y.is_focusable())
+    })
 }
 
-fn first_focusable_in_subtree(cx: &Cx, id: NodeId) -> Option<NodeId> {
+pub(super) fn first_in_document_order(cx: &Cx, accept: impl Fn(NodeId) -> bool) -> Option<NodeId> {
+    cx.roots()
+        .iter()
+        .copied()
+        .find_map(|root| first_in_subtree(cx, root, &accept))
+}
+
+fn first_in_subtree(cx: &Cx, id: NodeId, accept: &impl Fn(NodeId) -> bool) -> Option<NodeId> {
     if !visible(cx, id) {
         return None;
     }
-    let node = cx.get(id)?;
-    if node.a11y.is_focusable() {
+    if accept(id) {
         return Some(id);
     }
-    for child in node.children().iter().copied() {
-        if let Some(found) = first_focusable_in_subtree(cx, child) {
-            return Some(found);
-        }
-    }
-    None
+    cx.get(id)?
+        .children()
+        .iter()
+        .copied()
+        .find_map(|child| first_in_subtree(cx, child, accept))
 }
 
 #[cfg(test)]

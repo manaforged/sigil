@@ -1,4 +1,4 @@
-use super::{diagram, draw};
+use super::draw;
 
 fn joined(source: &str) -> String {
     draw(source).join("\n")
@@ -97,15 +97,13 @@ fn pie_renders_shares_as_bars() {
 fn unknown_kinds_are_framed_verbatim() {
     let body = joined("gantt\n    title Plan\n");
     assert!(body.contains("gantt") && body.contains('┌'), "{body}");
-    assert!(!diagram("gantt\n"));
-    assert!(diagram("  %% note\n  graph LR\n"));
 }
 
 #[test]
 fn pathological_source_stays_bounded() {
     let line = "a".repeat(32_768);
     let source = format!("{line}\n{}", "\n".repeat(32_768));
-    let lines = crate::widgets::mermaid::draw(&source);
+    let lines = draw(&source);
     assert!(lines.len() <= 600, "{} rendered lines", lines.len());
     let widest = lines.iter().map(|rendered| rendered.chars().count()).max();
     assert!(widest.is_some_and(|width| width <= 1200), "{widest:?}");

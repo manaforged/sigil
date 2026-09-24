@@ -24,8 +24,8 @@ Run the same checks that CI runs before you push:
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --no-fail-fast
+cargo clippy --workspace --all-targets --features sigil-ui/terminal -- -D warnings
+cargo test --workspace --features sigil-ui/terminal --no-fail-fast
 cargo deny check
 ```
 

@@ -8,7 +8,7 @@ use crate::layout::style_data::{
 
 use super::FlexCtx;
 use super::flexible::resolve_flexible;
-use super::sizing::{item_cross_basis, main_cross_size};
+use super::sizing::{container_cross_bounds, item_cross_basis, main_cross_size};
 
 pub(super) fn place_lines(
     ctx: &FlexCtx<'_, '_>,
@@ -23,6 +23,9 @@ pub(super) fn place_lines(
         resolve_flexible(line, container_main);
         resolve_cross_sizes(ctx, line, container_cross)?;
         line.cross = line_cross_size(line);
+    }
+    if !cross_definite {
+        clamp_single_line(ctx, style, &mut lines);
     }
     let total_lines_cross: f32 = lines.iter().map(|l| l.cross).sum();
     let gap = cross_gap(ctx, style);
@@ -63,6 +66,15 @@ pub(super) fn place_lines(
         cursor_cross += line_cross + gap + lines_gap;
     }
     Ok(placed)
+}
+
+fn clamp_single_line(ctx: &FlexCtx<'_, '_>, style: &StyleData, lines: &mut [FlexLine]) {
+    if let [line] = lines
+        && matches!(style.flex_wrap, FlexWrap::NoWrap)
+    {
+        let (min, max) = container_cross_bounds(ctx, style);
+        line.cross = clamp(line.cross, min, max);
+    }
 }
 
 fn resolve_cross_sizes(
@@ -163,9 +175,9 @@ pub(crate) fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData, count: usize) -
     }
     let (cb_w, cb_h) = (ctx.cb.w, ctx.cb.h);
     if ctx.axes.row {
-        resolve_lp(style.gap.width, cb_w)
+        crate::layout::snap::gap(resolve_lp(style.gap.width, cb_w))
     } else {
-        resolve_lp(style.gap.height, cb_h)
+        crate::layout::snap::row_gap(resolve_lp(style.gap.height, cb_h))
     }
 }
 
@@ -275,9 +287,9 @@ fn cross_size_for(
 
 fn cross_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> f32 {
     if ctx.axes.row {
-        resolve_lp(style.gap.height, ctx.cb.h)
+        crate::layout::snap::row_gap(resolve_lp(style.gap.height, ctx.cb.h))
     } else {
-        resolve_lp(style.gap.width, ctx.cb.w)
+        crate::layout::snap::gap(resolve_lp(style.gap.width, ctx.cb.w))
     }
 }
 

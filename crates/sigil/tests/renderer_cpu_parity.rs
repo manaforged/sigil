@@ -138,7 +138,7 @@ fn gpu_pixels(renderer: &mut WgpuRenderer, scene: &Scene) -> (Vec<u8>, PhysicalS
         )
         .expect("gpu render");
     (
-        read_pixels(&device, &queue, &texture, size.width, size.height),
+        read_pixels(&device, &queue, &texture, size.width, size.height).expect("sigil-kittest"),
         size,
     )
 }
@@ -170,11 +170,10 @@ fn diff(a: &[u8], b: &[u8]) -> Diff {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware"]
 fn cpu_matches_gpu_on_catalog_scenes() {
-    let mut renderer = WgpuRenderer::new().expect("renderer");
-    if renderer.ensure_headless_for_tests().is_err() {
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         println!("no adapter; skipping cpu parity");
         return;
-    }
+    };
     let dir = out_dir();
     let mut failures = Vec::new();
     for (name, scene) in catalog() {

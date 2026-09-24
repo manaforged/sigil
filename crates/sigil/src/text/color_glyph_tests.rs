@@ -6,7 +6,7 @@ const EMOJI: &[u8] = include_bytes!("../../assets/text/fonts/NotoColorEmoji-subs
 fn detects_color_bitmap_font() {
     let font = FontRef::new(EMOJI).unwrap();
     assert!(
-        has_color_bitmaps(&font),
+        has_color_glyphs(&font),
         "Noto Color Emoji carries CBDT strikes"
     );
 }
@@ -15,7 +15,7 @@ fn detects_color_bitmap_font() {
 fn rasterizes_check_mark_in_color() {
     let font = FontRef::new(EMOJI).unwrap();
     let gid = glyph_for_char(&font, '\u{2705}').expect("cmap has ✅");
-    let raster = rasterize(&font, gid, 128.0).expect("color raster");
+    let raster = rasterize(&font, gid, 128.0, crate::hal::Color::default()).expect("color raster");
 
     assert!(
         raster.width > 8 && raster.height > 8,
@@ -44,5 +44,13 @@ fn rasterizes_check_mark_in_color() {
 #[test]
 fn non_emoji_glyph_has_no_color_raster() {
     let font = FontRef::new(EMOJI).unwrap();
-    assert!(rasterize(&font, GlyphId::new(9_999), 128.0).is_none());
+    assert!(
+        rasterize(
+            &font,
+            GlyphId::new(9_999),
+            128.0,
+            crate::hal::Color::default()
+        )
+        .is_none()
+    );
 }

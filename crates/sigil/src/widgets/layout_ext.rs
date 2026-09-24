@@ -1,4 +1,4 @@
-use crate::layout::LayoutStyle;
+use crate::layout::{IntoPx, LayoutStyle};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LayoutOverrides {
@@ -86,14 +86,14 @@ pub trait WidgetLayoutExt: Sized {
     }
 
     #[must_use]
-    fn width(mut self, px: f32) -> Self {
-        LayoutOverrides::width(self.layout_overrides_mut(), px);
+    fn width(mut self, width: impl IntoPx) -> Self {
+        LayoutOverrides::width(self.layout_overrides_mut(), width.into_px());
         self
     }
 
     #[must_use]
-    fn height(mut self, px: f32) -> Self {
-        LayoutOverrides::height(self.layout_overrides_mut(), px);
+    fn height(mut self, height: impl IntoPx) -> Self {
+        LayoutOverrides::height(self.layout_overrides_mut(), height.into_px());
         self
     }
 

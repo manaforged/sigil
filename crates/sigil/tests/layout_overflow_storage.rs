@@ -2,11 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(
-    clippy::unwrap_used,
-    clippy::missing_docs_in_private_items,
-    missing_docs
-)]
+#![allow(clippy::unwrap_used)]
 
 use sigil::layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
 use sigil::style::{OverflowKind, StyleAtom};

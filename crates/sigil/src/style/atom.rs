@@ -178,6 +178,7 @@ pub enum StyleAtom {
     FgToneStep(u8),
     FgOnSolid,
     BorderRadius(Px),
+    Radius(super::Radius),
     BorderWidth(Px),
     BorderTop(Px),
     BorderRight(Px),

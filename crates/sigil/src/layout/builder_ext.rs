@@ -1,4 +1,4 @@
-use crate::kernel::{ImageBuilder, NodeBuilder, TextBuilder};
+use crate::kernel::{NodeBuilder, TextBuilder};
 
 use crate::layout::LayoutStyle;
 
@@ -14,14 +14,6 @@ impl LayoutBuilderExt for NodeBuilder {
 }
 
 impl LayoutBuilderExt for TextBuilder {
-    fn layout(self, style: LayoutStyle) -> Self {
-        self.mutate(move |node| {
-            let _ = node.attach(style);
-        })
-    }
-}
-
-impl LayoutBuilderExt for ImageBuilder {
     fn layout(self, style: LayoutStyle) -> Self {
         self.mutate(move |node| {
             let _ = node.attach(style);

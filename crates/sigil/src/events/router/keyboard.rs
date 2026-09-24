@@ -5,7 +5,7 @@ use smallvec::SmallVec;
 
 use super::{EventRouter, ShortcutIndex};
 use crate::events::focus::FocusManager;
-use crate::events::handlers::dispatch;
+use crate::events::handlers::{EventHandlers, dispatch};
 use crate::events::hit_test::visible;
 
 impl EventRouter {
@@ -96,12 +96,19 @@ impl ShortcutIndex {
             if text_focused && is_plain_char(shortcut) {
                 continue;
             }
-            if shortcut.matches(event) && invoke_key(cx, *id, event, false) {
+            if shortcut.matches(event) && invoke_shortcut(cx, *id, event) {
                 return true;
             }
         }
         false
     }
+}
+
+fn invoke_shortcut(cx: &Cx, id: NodeId, event: &mut KeyEvent) -> bool {
+    dispatch(cx, id, |handlers| {
+        handlers.invoke_shortcut(event) || handlers.invoke_key(event, false)
+    })
+    .unwrap_or(false)
 }
 
 const fn is_plain_char(shortcut: &Shortcut) -> bool {
@@ -123,6 +130,9 @@ fn collect_shortcuts(cx: &Cx, id: NodeId, entries: &mut SmallVec<[(Shortcut, Nod
     };
     if let Some(shortcut) = node.a11y.keyboard_shortcut.as_ref() {
         entries.push((shortcut.clone(), id));
+    }
+    if let Some(handlers) = node.get_extension::<EventHandlers>() {
+        entries.extend(handlers.shortcuts().map(|shortcut| (shortcut.clone(), id)));
     }
     for child in node.children().iter().copied() {
         collect_shortcuts(cx, child, entries);

@@ -48,6 +48,63 @@ fn effect_named_impl<F: FnMut() + 'static>(
     run_effect(key);
 }
 
+pub fn untrack<R>(f: impl FnOnce() -> R) -> R {
+    struct Restore(Option<EffectKey>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let prev = self.0.take();
+            with_rt(|rt| rt.current_effect = prev);
+        }
+    }
+    let _restore = Restore(with_rt(|rt| rt.current_effect.take()));
+    f()
+}
+
+pub fn defer(f: impl FnOnce() + 'static) {
+    let f: Box<dyn FnOnce()> = Box::new(f);
+    with_rt(|rt| {
+        let key = rt.current_effect;
+        rt.after_run.push((key, f));
+    });
+}
+
+pub(crate) fn run_deferred(key: EffectKey) {
+    let queued = with_rt(|rt| {
+        let start = rt
+            .after_run
+            .iter()
+            .rposition(|(owner, _)| *owner != Some(key))
+            .map_or(0, |index| index + 1);
+        rt.after_run.split_off(start)
+    });
+    for (_, f) in queued {
+        f();
+    }
+}
+
+pub(crate) fn run_dispatch_deferred() {
+    loop {
+        let queued = with_rt(|rt| {
+            if rt.current_effect.is_some() {
+                return Vec::new();
+            }
+            let (queued, kept) = core::mem::take(&mut rt.after_run)
+                .into_iter()
+                .partition(|(owner, _)| owner.is_none());
+            rt.after_run = kept;
+            queued
+        });
+        if queued.is_empty() {
+            return;
+        }
+        crate::reactive::batch(|| {
+            for (_, f) in queued {
+                f();
+            }
+        });
+    }
+}
+
 pub(crate) fn current_effect_owner() -> Option<OwnerKey> {
     with_rt(|rt| {
         rt.current_effect

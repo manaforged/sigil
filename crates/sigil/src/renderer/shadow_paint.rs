@@ -6,17 +6,11 @@ use wgpu::util::DeviceExt as _;
 mod shadow_shader;
 
 use crate::renderer::frame_upload::UploadedRange;
-use crate::renderer::scene_instance::{ShadowInstance, srgb_channel_to_linear};
+use crate::renderer::scene_instance::ShadowInstance;
 use crate::renderer::scene_paint::PaintCtx;
 use shadow_shader::SHADOW_SHADER;
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum ShadowKind {
-    #[default]
-    Outer,
-    Inner,
-    Glow,
-}
+pub(crate) use crate::scene::shadow::{Shadow, ShadowKind};
 
 impl ShadowKind {
     pub(crate) const fn as_f32(self) -> f32 {
@@ -25,45 +19,6 @@ impl ShadowKind {
             Self::Inner => 1.0,
             Self::Glow => 2.0,
         }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Shadow {
-    pub color: [f32; 4],
-    pub offset: [f32; 2],
-    pub blur: f32,
-    pub spread: f32,
-    pub kind: ShadowKind,
-}
-
-impl Shadow {
-    #[must_use]
-    pub const fn new(offset: [f32; 2], blur: f32, spread: f32, color: [f32; 4]) -> Self {
-        Self {
-            color,
-            offset,
-            blur,
-            spread,
-            kind: ShadowKind::Outer,
-        }
-    }
-
-    #[must_use]
-    pub fn glow(color: crate::style::Rgba8, spread: f32, blur: f32) -> Self {
-        let c = [
-            srgb_channel_to_linear(color.r),
-            srgb_channel_to_linear(color.g),
-            srgb_channel_to_linear(color.b),
-            f32::from(color.a) / 255.0,
-        ];
-        Self::new([0.0, 0.0], blur, spread, c).with_kind(ShadowKind::Glow)
-    }
-
-    #[must_use]
-    pub const fn with_kind(mut self, kind: ShadowKind) -> Self {
-        self.kind = kind;
-        self
     }
 }
 

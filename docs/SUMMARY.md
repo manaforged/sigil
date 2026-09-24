@@ -15,10 +15,13 @@
   - [Chrome](guide/widgets/chrome.md)
   - [Overlays](guide/widgets/overlays.md)
   - [Plumbing](guide/widgets/plumbing.md)
+- [Units](guide/units.md)
+- [Recipes](guide/recipes.md)
 - [Terminal host](guide/terminal.md)
 - [Driving Sigil from an agent](guide/agents.md)
 - [Signing](guide/signing.md)
 - [Packing](guide/packing.md)
+- [Troubleshooting](guide/troubleshooting.md)
 - [API map](api.md)
 
 # Architecture

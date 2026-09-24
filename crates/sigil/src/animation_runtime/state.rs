@@ -23,17 +23,27 @@ thread_local! {
 }
 
 pub(crate) fn register_spring(signal: Signal<f32>, preset: SpringPreset) -> AnimatorId {
-    let motion = Motion::Spring(SpringMotion::from_preset(signal.peek(), preset));
+    let motion = Motion::Spring(SpringMotion::from_preset(
+        signal.try_peek().unwrap_or_default(),
+        preset,
+    ));
     register(signal, motion)
 }
 
 pub(crate) fn register_tween(signal: Signal<f32>, ms: u16, easing: Easing) -> AnimatorId {
-    let motion = Motion::Tween(TweenMotion::new(signal.peek(), ms, easing));
+    let motion = Motion::Tween(TweenMotion::new(
+        signal.try_peek().unwrap_or_default(),
+        ms,
+        easing,
+    ));
     register(signal, motion)
 }
 
 pub(crate) fn register(signal: Signal<f32>, motion: Motion) -> AnimatorId {
-    assert!(signal.peek().is_finite(), "animation value must be finite");
+    assert!(
+        signal.try_peek().is_none_or(f32::is_finite),
+        "animation value must be finite"
+    );
     ENTRIES.with(|cell| {
         cell.borrow_mut().insert(Entry {
             signal,
@@ -70,14 +80,18 @@ pub(crate) fn cancel(id: AnimatorId) {
 fn update(id: AnimatorId, change: impl FnOnce(&mut Entry)) {
     batch(|| {
         ENTRIES.with(|cell| {
-            if let Some(entry) = cell.borrow_mut().get_mut(id) {
-                change(entry);
-                if MotionPrefs::reduced() && !entry.motion.is_settled() {
-                    entry.motion.finish();
-                }
-                entry.signal.set(entry.motion.value());
-                Runtime::mark_frame_dirty();
+            let mut entries = cell.borrow_mut();
+            let Some(entry) = entries.get_mut(id) else {
+                return;
+            };
+            change(entry);
+            if MotionPrefs::reduced() && !entry.motion.is_settled() {
+                entry.motion.finish();
             }
+            if !entry.signal.try_set(entry.motion.value()) {
+                entries.remove(id);
+            }
+            Runtime::mark_frame_dirty();
         });
     });
 }
@@ -96,9 +110,8 @@ pub(crate) fn retarget(id: AnimatorId, value: f32) {
                 entry.motion.retarget(value);
                 entry.paused = false;
                 Runtime::mark_frame_dirty();
-                if entry.motion.is_settled() {
-                    entry.signal.set(entry.motion.value());
-                    Runtime::mark_frame_dirty();
+                if entry.motion.is_settled() && !entry.signal.try_set(entry.motion.value()) {
+                    entries.remove(id);
                 }
             }
         });
@@ -108,10 +121,10 @@ pub(crate) fn retarget(id: AnimatorId, value: f32) {
 pub(crate) fn finish_all() {
     batch(|| {
         ENTRIES.with(|cell| {
-            for entry in cell.borrow_mut().values_mut() {
+            cell.borrow_mut().retain(|_, entry| {
                 entry.motion.finish();
-                entry.signal.set(entry.motion.value());
-            }
+                entry.signal.try_set(entry.motion.value())
+            });
             Runtime::mark_frame_dirty();
         });
     });
@@ -136,13 +149,14 @@ pub fn tick(dt: f32) {
     }
     batch(|| {
         ENTRIES.with(|cell| {
-            for entry in cell.borrow_mut().values_mut() {
-                if !entry.paused && !entry.motion.is_settled() {
-                    let _ = entry.motion.tick(dt);
-                    entry.signal.set(entry.motion.value());
-                    Runtime::mark_frame_dirty();
+            cell.borrow_mut().retain(|_, entry| {
+                if entry.paused || entry.motion.is_settled() {
+                    return true;
                 }
-            }
+                let _ = entry.motion.tick(dt);
+                Runtime::mark_frame_dirty();
+                entry.signal.try_set(entry.motion.value())
+            });
         });
     });
 }

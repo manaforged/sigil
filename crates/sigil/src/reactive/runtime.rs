@@ -9,6 +9,8 @@ pub(crate) use crate::reactive::runtime_slots::{
     EffectKey, EffectSlot, OwnerKey, OwnerSlot, SignalKey, SignalSlot,
 };
 
+pub(crate) type AfterRun = (Option<EffectKey>, Box<dyn FnOnce()>);
+
 static RUNTIME_ID_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) struct RuntimeState {
@@ -23,6 +25,7 @@ pub(crate) struct RuntimeState {
     pub(crate) running: BTreeSet<EffectKey>,
     pub(crate) dispose_after_run: Vec<EffectKey>,
     pub(crate) deferred_cleanups: Vec<Box<dyn FnOnce()>>,
+    pub(crate) after_run: Vec<AfterRun>,
     pub(crate) panic_origin: Option<(EffectKey, &'static str, &'static Location<'static>)>,
     pub(crate) phase: DrawPhase,
     pub(crate) frame_dirty: bool,
@@ -43,6 +46,7 @@ impl RuntimeState {
             running: BTreeSet::new(),
             dispose_after_run: Vec::new(),
             deferred_cleanups: Vec::new(),
+            after_run: Vec::new(),
             panic_origin: None,
             phase: DrawPhase::Idle,
             frame_dirty: true,

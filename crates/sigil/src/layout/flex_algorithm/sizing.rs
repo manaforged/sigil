@@ -43,6 +43,25 @@ pub(super) fn container_inner_size(
     (inner_main.max(0.0), inner_cross.max(0.0))
 }
 
+pub(super) fn container_cross_bounds(
+    ctx: &FlexCtx<'_, '_>,
+    style: &StyleData,
+) -> (Option<f32>, Option<f32>) {
+    let edges = NodeEdges::build(style, ctx.cb.w);
+    let (_, cb_cross) = ctx.cb.along(ctx.axes);
+    let chrome = if ctx.axes.row {
+        edges.block_chrome()
+    } else {
+        edges.inline_chrome()
+    };
+    let axes = Axis2 {
+        row: !ctx.axes.row,
+        reversed_main: false,
+    };
+    let (min, max) = item_min_max_main(style, axes, cb_cross, &edges);
+    (min.map(|v| v - chrome), max.map(|v| v - chrome))
+}
+
 fn margin_lateral(edges: &NodeEdges, axes: Axis2) -> f32 {
     let m = edges.margin.or_zero();
     if axes.row {

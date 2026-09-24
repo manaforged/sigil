@@ -81,7 +81,7 @@ fn every_tone_clears_wcag_aa_contrast() {
         0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
     }
 
-    let theme = Theme::default();
+    let theme = Theme::light();
     let cases = [
         (Tone::Neutral, ScaleRole::Gray, 12),
         (Tone::Primary, ScaleRole::Accent, 12),

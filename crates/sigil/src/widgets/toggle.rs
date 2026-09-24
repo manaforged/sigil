@@ -6,16 +6,16 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Theme,
-    TransitionId,
+    ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleOverlay,
+    StyleVariant, Theme, Token, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
-    BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
-    disabled_now, label, noop_bool_change,
+    BoolChange, BuilderMutator, CONTROL_INSET, activate_binary_key, activate_binary_pointer,
+    binary_style_state, control_row, control_surface, disabled_now, label, noop_bool_change,
 };
 
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
@@ -38,36 +38,40 @@ impl WidgetLayoutExt for ToggleBuilder {
 static EMPTY_BASE: &[StyleAtom] = &[];
 static TOGGLE_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOGGLE_TRANSITION)];
 static TOGGLE_ON: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
+    Token::Accent.bg(),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
+    Token::AccentHover.bg(),
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_ON_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
+    Token::AccentHover.bg(),
     StyleAtom::JustifyContent(JustifyKind::End),
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
+    Token::SurfaceHover.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
 ];
 static TOGGLE_OFF_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
+    Token::Surface.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
 ];
 static TOGGLE_OFF_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
+    Token::Surface.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
     StyleAtom::Opacity(8_800),
 ];
-static TOGGLE_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
-    StyleAtom::Opacity(5_000),
+static TOGGLE_ON_DISABLED: &[StyleAtom] = &[
+    Token::Accent.bg(),
+    StyleAtom::JustifyContent(JustifyKind::End),
 ];
-static TOGGLE_THUMB: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-accent")];
+static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
+    Token::SurfaceHover.bg(),
+    StyleAtom::JustifyContent(JustifyKind::Start),
+];
+static TOGGLE_THUMB: &[StyleAtom] = &[Token::OnAccent.bg()];
 
 #[must_use]
 pub const fn toggle(on: Signal<bool>) -> ToggleBuilder {
@@ -164,7 +168,12 @@ impl ToggleBuilder {
         if let Some(label_source) = self.label.clone() {
             node = node.child(toggle_label(label_source));
         }
-        interaction.install(node)
+        interaction.install(control_surface(
+            node,
+            interaction,
+            disabled,
+            StyleOverlay::default(),
+        ))
     }
 }
 
@@ -175,15 +184,15 @@ impl IntoNode for ToggleBuilder {
 }
 
 fn toggle_layout(has_label: bool) -> LayoutStyle {
-    let layout = LayoutStyle::flex_row()
-        .height(28.0)
+    let layout = control_row(LayoutStyle::flex_row())
+        .height(space(7))
         .shrink(0.0)
-        .gap(8.0)
+        .gap(space(2))
         .align_items(AlignItems::Center);
     if has_label {
         layout
     } else {
-        layout.fixed_size(36.0, 28.0)
+        layout.fixed_size(CONTROL_INSET.mul_add(2.0, space(9)), space(7))
     }
 }
 
@@ -195,7 +204,7 @@ fn toggle_track(
     container()
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(36.0, 20.0)
+                .fixed_size(space(9), space(5))
                 .padding(3.0)
                 .align_items(AlignItems::Center),
         )
@@ -233,7 +242,7 @@ const fn toggle_variant(on: bool) -> StyleVariant {
                 TOGGLE_ON_HOVER,
                 TOGGLE_ON_HOVER,
                 TOGGLE_ON_DOWN,
-                TOGGLE_DISABLED,
+                TOGGLE_ON_DISABLED,
             ),
         )
     } else {
@@ -244,7 +253,7 @@ const fn toggle_variant(on: bool) -> StyleVariant {
                 TOGGLE_OFF_HOVER,
                 TOGGLE_OFF_HOVER,
                 TOGGLE_OFF_DOWN,
-                TOGGLE_DISABLED,
+                TOGGLE_OFF_DISABLED,
             ),
         )
     }

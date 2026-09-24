@@ -4,13 +4,15 @@ use std::sync::{Mutex, OnceLock};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{Dimension, NodeStyleExt, Px, Style, StyleAccess, StyleAtom};
+use crate::style::{
+    Dimension, NodeStyleExt, Px, Radius, Style, StyleAccess, StyleAtom, Token, space,
+};
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
-const GAUGE_GAP: f32 = 8.0;
+const GAUGE_GAP: f32 = space(2);
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
+static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
 
 type FillAtomCache = HashMap<(i16, bool), &'static [StyleAtom]>;
 
@@ -100,7 +102,7 @@ impl IntoNode for GaugeBuilder {
 }
 
 fn label_node(label: TextContent) -> impl IntoNode {
-    text(label).class("text-on-surface")
+    text(label).class(Token::OnSurface.text())
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {
@@ -113,7 +115,6 @@ fn track(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> NodeBuild
     container()
         .role(Role::GenericContainer)
         .layout(track_layout())
-        .class("rounded-md")
         .class(TRACK)
         .child(fill(value, max, warn_threshold))
 }
@@ -128,7 +129,7 @@ fn fill(value: Signal<f32>, max: f32, warn_threshold: Option<f32>) -> NodeBuilde
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::block().height(TRACK_HEIGHT))
-        .class("rounded-md")
+        .class(Radius::Md.atom())
         .style_reactive(move || fill_atoms(value, max, warn_threshold))
 }
 
@@ -160,9 +161,10 @@ fn cached_fill_atoms(px: i16, is_warn: bool) -> &'static [StyleAtom] {
 }
 
 fn build_fill_atoms(px: i16, is_warn: bool) -> Vec<StyleAtom> {
-    let tone = if is_warn { "warn-9" } else { "accent-8" };
-    vec![
-        StyleAtom::Width(Dimension::Px(Px(px))),
-        StyleAtom::BackgroundThemeRef(tone),
-    ]
+    let tone = if is_warn {
+        Token::Warn9
+    } else {
+        Token::Accent8
+    };
+    vec![StyleAtom::Width(Dimension::Px(Px(px))), tone.bg()]
 }

@@ -16,8 +16,12 @@ impl TextStyleCapture {
     }
 
     pub(crate) fn publish(&self, style: &TextStyle) {
-        if self.target.peek() != *style {
-            self.target.set(style.clone());
+        if self
+            .target
+            .try_peek()
+            .is_some_and(|current| current != *style)
+        {
+            self.target.try_set(style.clone());
         }
     }
 }

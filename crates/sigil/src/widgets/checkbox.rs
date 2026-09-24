@@ -3,11 +3,14 @@ use std::rc::Rc;
 use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, LogicalKey, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::prelude::{
+    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
+};
+use crate::layout::snap::CellForm;
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    ClassSource, NodeStyleExt, Size, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleOverlay, StyleVariant, Theme, Tone, TransitionId,
+    BORDER_WIDTH, ClassSource, Metrics, NodeStyleExt, Px, Size, StateHost, StateStyle, Style,
+    StyleAccess, StyleAtom, StyleOverlay, StyleVariant, Theme, Token, Tone, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -15,7 +18,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
-    disabled_now, label, noop_bool_change, reactive_style_state,
+    control_row, control_surface, disabled_now, label, noop_bool_change,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -34,36 +37,35 @@ pub struct CheckboxBuilder {
 }
 
 static EMPTY_BASE: &[StyleAtom] = &[];
-static CHECKBOX_ROOT_VARIANT: StyleVariant = StyleVariant::new(EMPTY_BASE, StateStyle::EMPTY);
-static CHECKBOX_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(CHECKBOX_TRANSITION)];
-static PRIMARY_CHECKED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
-    StyleAtom::BorderThemeRef("accent"),
+static PRIMARY_CHECKED: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
+static PRIMARY_CHECKED_HOVER: &[StyleAtom] =
+    &[Token::AccentHover.bg(), Token::AccentHover.border()];
+static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[Token::Accent.bg(), Token::Accent.border()];
+static NEUTRAL_CHECKED: &[StyleAtom] = &[Token::Gray9.bg(), Token::Gray9.border()];
+static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
+static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[Token::Gray10.bg(), Token::Gray10.border()];
+static UNCHECKED: &[StyleAtom] = &[Token::Field.bg()];
+static UNCHECKED_HOVER: &[StyleAtom] = &[Token::SurfacePressed.bg()];
+static UNCHECKED_DOWN: &[StyleAtom] = &[Token::SurfacePressedStrong.bg()];
+static CHECKBOX_DISABLED: &[StyleAtom] = &[Token::SurfaceHover.bg()];
+static BOX_BASE: &[StyleAtom] = &[
+    StyleAtom::BorderRadius(Px(4)),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Border.border(),
+    StyleAtom::Transition(CHECKBOX_TRANSITION),
 ];
-static PRIMARY_CHECKED_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent-hover"),
-    StyleAtom::BorderThemeRef("accent-hover"),
-];
-static PRIMARY_CHECKED_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
-    StyleAtom::BorderThemeRef("accent"),
-];
-static NEUTRAL_CHECKED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("gray-9"),
-    StyleAtom::BorderThemeRef("gray-9"),
-];
-static NEUTRAL_CHECKED_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("gray-10"),
-    StyleAtom::BorderThemeRef("gray-10"),
-];
-static NEUTRAL_CHECKED_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("gray-10"),
-    StyleAtom::BorderThemeRef("gray-10"),
-];
-static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("field")];
-static UNCHECKED_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-static UNCHECKED_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-static CHECKBOX_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static CELL_FOCUS: &[StyleAtom] = &[Token::Accent.bg(), Token::OnAccent.text()];
+static CELL_DISABLED: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
+static CELL_VARIANT: StyleVariant = StyleVariant::new(
+    EMPTY_BASE,
+    StateStyle::new(
+        EMPTY_BASE,
+        CELL_FOCUS,
+        EMPTY_BASE,
+        EMPTY_BASE,
+        CELL_DISABLED,
+    ),
+);
 static MARK_VISIBLE: &[StyleAtom] = &[StyleAtom::Opacity(10_000)];
 static MARK_HIDDEN: &[StyleAtom] = &[StyleAtom::Opacity(0)];
 
@@ -162,14 +164,12 @@ impl CheckboxBuilder {
         let pointer_change = Rc::clone(&on_change);
         let enter_change = Rc::clone(&on_change);
         let space_change = on_change;
-        let mut node = container()
+        let root = container()
             .role(Role::CheckBox)
             .label(accessible_label(self.label.as_ref()))
             .checked(checked)
-            .layout(checkbox_layout(self.label.is_some()))
-            .stateful_style(CHECKBOX_ROOT_VARIANT, user_overlay, move || {
-                reactive_style_state(interaction, disabled)
-            })
+            .layout(checkbox_layout(self.label.is_some()));
+        let mut node = control_surface(root, interaction, disabled, user_overlay)
             .pointer_up(move |event| {
                 activate_binary_pointer(event, interaction, disabled, checked, &pointer_change);
             })
@@ -208,10 +208,10 @@ impl IntoNode for CheckboxBuilder {
 }
 
 fn checkbox_layout(has_label: bool) -> LayoutStyle {
-    let theme = Theme::default();
-    let root_size = theme.control_height(Size::Default).px_or_zero();
-    let gap = theme.gap(Size::Default).px_or_zero();
-    let row = LayoutStyle::flex_row()
+    let metrics = Metrics::current();
+    let root_size = metrics.control_height(Size::Default);
+    let gap = metrics.gap(Size::Default);
+    let row = control_row(LayoutStyle::flex_row())
         .height(root_size)
         .gap(gap)
         .align_items(AlignItems::Center);
@@ -228,40 +228,44 @@ fn checkbox_indicator(
     tone: Tone,
     interaction: InteractionState,
 ) -> NodeBuilder {
-    if let Some(cell) = crate::style::cell_size() {
-        return container()
-            .layout(LayoutStyle::block().fixed_size(cell * 4.0, cell))
-            .style_reactive(move || {
-                if disabled_now(disabled) {
-                    &[StyleAtom::Opacity(5_000)]
-                } else if interaction.focus_visible().get() {
-                    &[
-                        StyleAtom::BackgroundThemeRef("accent"),
-                        StyleAtom::TextThemeRef("on-accent"),
-                    ]
-                } else {
-                    &[]
-                }
-            })
-            .child(text(derived(move || {
-                if checked.get() { "[x]" } else { "[ ]" }.to_owned()
-            })));
-    }
+    let form =
+        CellForm::<fn(Tone, bool) -> StyleVariant>::new(checkbox_variant, cell_variant).pick();
     container()
-        .layout(
-            LayoutStyle::flex_row()
-                .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
-                .align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Center),
+        .layout(CellForm::<fn() -> LayoutStyle>::new(
+            box_layout,
+            cell_layout,
         )
-        .class("rounded")
-        .class("border")
-        .class("border-border")
-        .class(CHECKBOX_ANIM_BASE)
+        .pick()())
+        .class(CellForm::new(BOX_BASE, EMPTY_BASE).pick())
         .style_reactive(move || {
-            checkbox_variant(tone, checked.get()).state(binary_style_state(interaction, disabled))
+            form(tone, checked.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(checkbox_mark(checked))
+        .child(CellForm::<fn(Signal<bool>) -> NodeBuilder>::new(
+            checkbox_mark,
+            cell_mark,
+        )
+        .pick()(checked))
+}
+
+fn box_layout() -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fixed_size(CHECKBOX_BOX_SIZE, CHECKBOX_BOX_SIZE)
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::Center)
+}
+
+fn cell_layout() -> LayoutStyle {
+    LayoutStyle::block().width(cols(4.0)).height(rows(1.0))
+}
+
+const fn cell_variant(_tone: Tone, _checked: bool) -> StyleVariant {
+    CELL_VARIANT
+}
+
+fn cell_mark(checked: Signal<bool>) -> NodeBuilder {
+    container().child(text(derived(move || {
+        if checked.get() { "[x]" } else { "[ ]" }.to_owned()
+    })))
 }
 
 fn checkbox_mark(checked: Signal<bool>) -> NodeBuilder {
@@ -314,7 +318,7 @@ const fn checkbox_variant(tone: Tone, checked: bool) -> StyleVariant {
                 NEUTRAL_CHECKED_HOVER,
                 NEUTRAL_CHECKED_HOVER,
                 NEUTRAL_CHECKED_DOWN,
-                CHECKBOX_DISABLED,
+                NEUTRAL_CHECKED,
             ),
         ),
         (_, true) => StyleVariant::new(
@@ -324,7 +328,7 @@ const fn checkbox_variant(tone: Tone, checked: bool) -> StyleVariant {
                 PRIMARY_CHECKED_HOVER,
                 PRIMARY_CHECKED_HOVER,
                 PRIMARY_CHECKED_DOWN,
-                CHECKBOX_DISABLED,
+                PRIMARY_CHECKED,
             ),
         ),
         (_, false) => StyleVariant::new(

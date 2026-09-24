@@ -3,10 +3,10 @@ resolver = "3"
 members = [
     "crates/sigil",
     "crates/sign",
-    "crates/tui",
     "crates/kittest",
 ]
-default-members = ["crates/sigil", "crates/sign", "crates/tui"]
+exclude = ["fuzz"]
+default-members = ["crates/sigil", "crates/sign"]
 
 [workspace.package]
 version = "0.1.0"
@@ -96,7 +96,7 @@ accesskit_winit = { version = "0.34", default-features = false, features = [
 ] }
 keyboard-types = { version = "0.8.3", default-features = false }
 smol_str = { version = "0.3.6", default-features = false }
-tokio = { version = "1", default-features = false, features = ["sync", "macros"] }
+tokio = { version = "1", default-features = false, features = ["sync", "macros", "time"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 # Workspace and file-watch primitives: `notify` is the
 # de-facto cross-platform fs-watcher. `crossbeam-channel` carries fs
@@ -110,12 +110,8 @@ toml = { version = "1", default-features = false, features = ["parse", "serde"] 
 # image-encoding path we do not need, so depend with `default-features = false`
 # to keep the transitive surface narrow.
 arboard = { version = "3", default-features = false }
-# The package publishes as `sigil-gui` (the bare `sigil` name was taken on
-# crates.io) with the library still named `sigil`, so `use sigil::prelude::*`
-# stays the single import user code needs.
-sigil-gui = { path = "crates/sigil", version = "0.1.0" }
+sigil-ui = { path = "crates/sigil", version = "0.1.0" }
 sigil-sign = { path = "crates/sign", version = "0.1.0" }
-sigil-tui = { path = "crates/tui", version = "0.1.0" }
 minisign = "0.7"
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock", "serde"] }

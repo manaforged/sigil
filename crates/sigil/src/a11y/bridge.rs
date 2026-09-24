@@ -5,7 +5,6 @@ use crate::hal::A11yBridge;
 use crate::kernel::NodeId;
 use accesskit::{ActionRequest, TreeUpdate};
 
-#[doc(hidden)]
 #[derive(Debug, Default)]
 pub struct RecordingBridge {
     pub(crate) published: Vec<TreeUpdate>,

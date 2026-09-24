@@ -29,11 +29,8 @@ fn dropdown_selection_wins_over_controls_beneath_the_popup() {
         let mut router = EventRouter::new();
         click(&mut host, &mut router, Point::new(20.0, 16.0));
         host.layout((400.0, 300.0)).unwrap();
-        let option = host
-            .painted()
-            .into_iter()
-            .find(|node| node.text.as_deref() == Some("Second"))
-            .expect("open option");
+        let scene = host.scene((400.0, 300.0)).unwrap();
+        let option = &scene.find_text("Second").expect("open option").run;
         click(
             &mut host,
             &mut router,

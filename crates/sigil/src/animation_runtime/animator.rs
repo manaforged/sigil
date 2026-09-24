@@ -49,12 +49,15 @@ impl Animator {
     }
 
     pub fn target(&mut self, value: f32) {
-        assert!(value.is_finite(), "animation target must be finite");
+        if !value.is_finite() {
+            tracing::warn!(target: "sigil::animation", value, "ignored a non-finite animation target");
+            return;
+        }
         if MotionPrefs::reduced() {
             if let Some(id) = self.id.take() {
                 state::deregister(id);
             }
-            self.signal.set(value);
+            self.signal.try_set(value);
             Runtime::mark_frame_dirty();
             return;
         }
@@ -91,8 +94,10 @@ impl Animator {
 
     #[must_use]
     pub fn value(&self) -> f32 {
-        let fallback = self.signal.peek();
-        self.id.and_then(state::peek_value).unwrap_or(fallback)
+        self.id
+            .and_then(state::peek_value)
+            .or_else(|| self.signal.try_peek())
+            .unwrap_or_default()
     }
 
     #[must_use]
@@ -130,7 +135,11 @@ impl SpringMotion {
         if self.spring.is_settled() {
             return AnimatorStatus::Settled;
         }
+        let before = self.spring.value();
         self.spring.step(dt);
+        if self.spring.value().to_bits() == before.to_bits() {
+            self.finish();
+        }
         if self.spring.is_settled() {
             AnimatorStatus::Settled
         } else {

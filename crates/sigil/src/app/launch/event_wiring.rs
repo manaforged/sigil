@@ -1,4 +1,4 @@
-use crate::events::{EventRouter, dispatch};
+use crate::events::EventRouter;
 use crate::hal::{
     Key, KeyPhase, PhysicalSize, PointerPhase, Scale, Shell as _, ShellEvent, WindowEvent,
 };
@@ -74,9 +74,13 @@ pub(super) fn sync_ime(
     layout: &LayoutEngine,
     router: &EventRouter,
 ) {
-    let _ = shell.set_ime_allowed(&window_handle, router.focus_wants_ime(cx));
-    if let Some(rect) = router.ime_caret_rect(cx, layout) {
-        let _ = shell.set_ime_cursor_area(&window_handle, rect);
+    if let Err(err) = shell.set_ime_allowed(&window_handle, router.focus_wants_ime(cx)) {
+        tracing::warn!(target: "sigil::ime", error = %err, "IME enable update failed");
+    }
+    if let Some(rect) = router.ime_caret_rect(cx, layout)
+        && let Err(err) = shell.set_ime_cursor_area(&window_handle, rect)
+    {
+        tracing::warn!(target: "sigil::ime", error = %err, "IME cursor area update failed");
     }
 }
 
@@ -107,7 +111,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         }
         match &event {
             ShellEvent::Key(key_event)
-                if config.esc_exits
+                if config.quit.esc
                     && key_event.key == Key::Escape.into()
                     && key_event.phase == KeyPhase::Down =>
             {
@@ -123,7 +127,9 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         {
             config.user_zoom = f32::from(percent) / 100.0;
         }
-        let _ = shell.window_command(&window_handle, command);
+        if let Err(err) = shell.window_command(&window_handle, command) {
+            tracing::warn!(target: "sigil::shell", error = %err, "window command failed");
+        }
     }
     if *exit_requested {
         shell.request_exit();
@@ -168,7 +174,9 @@ pub(super) fn publish_a11y(
     let mut bridge = crate::a11y::AccessKitBridge::new(action_rx, |tree_update| {
         shell.publish_a11y_update(&tree_update);
     });
-    let _ = crate::hal::A11yBridge::publish(&mut bridge, update);
+    if let Err(err) = crate::hal::A11yBridge::publish(&mut bridge, update) {
+        tracing::warn!(target: "sigil::a11y", error = ?err, "accessibility update publish failed");
+    }
 }
 
 pub(super) fn drain_a11y_actions(
@@ -181,49 +189,8 @@ pub(super) fn drain_a11y_actions(
         crate::a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
     while let Some((target, request)) = crate::hal::A11yBridge::take_action(&mut bridge) {
         crate::profile::interact("a11y");
-        router.focus_if_needed(cx, layout);
-        match request.action {
-            accesskit::Action::Focus if router.is_focus_target(cx, layout, target) => {
-                router.set_focus(cx, Some(target));
-            }
-            accesskit::Action::Click if router.is_click_target(cx, layout, target) => {
-                crate::events::invoke_node(cx, layout, target);
-            }
-            accesskit::Action::Increment if router.is_focus_target(cx, layout, target) => {
-                adjust_value(cx, target, true);
-            }
-            accesskit::Action::Decrement if router.is_focus_target(cx, layout, target) => {
-                adjust_value(cx, target, false);
-            }
-            _ => {}
-        }
+        crate::a11y::actions::apply(cx, router, layout, target, &request);
     }
-}
-
-fn adjust_value(cx: &Cx, target: crate::kernel::NodeId, increase: bool) {
-    if dispatch(cx, target, |handlers| {
-        handlers.invoke_value_adjustment(increase)
-    }) == Some(true)
-    {
-        return;
-    }
-    let Some(node) = cx.get(target) else {
-        return;
-    };
-    let (Some(value), Some(min), Some(max)) = (
-        node.a11y.value_now,
-        node.a11y.value_min,
-        node.a11y.value_max,
-    ) else {
-        return;
-    };
-    let step = node.a11y.step.unwrap_or(1.0);
-    let next = if increase {
-        value.peek() + step
-    } else {
-        value.peek() - step
-    };
-    value.set(next.clamp(min, max));
 }
 
 struct WindowEventCtx<'a> {

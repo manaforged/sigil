@@ -8,28 +8,19 @@ use crate::layout::TextStyleCapture;
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived_eq};
 use crate::style::{
-    ColorAtom, NodeStyleExt, Px, ReactiveStateSlot, Rgba8, StateSlot, StateStyle, StyleAtom,
-    StyleOverlay, StyleVariant, TransitionId,
+    ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay,
+    TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
 
 use super::handlers::TextFieldRuntime;
 
-use super::super::shared::binary_style_state;
+use super::super::shared::{FIELD_VARIANT, binary_style_state};
 
 const TEXT_FIELD_TRANSITION: TransitionId = presets::SMOOTH;
 static TEXT_FIELD_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_FIELD_TRANSITION)];
 
-static FIELD_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("field"),
-    StyleAtom::BorderWidth(Px(1)),
-];
-static FIELD_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(7)];
-static FIELD_FOCUS: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
-static FIELD_HOVER: &[StyleAtom] = &[StyleAtom::BorderToneStep(8)];
-static FIELD_DOWN: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
-static FIELD_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(6), StyleAtom::Opacity(5_000)];
 pub(super) static FIELD_INVALID: &[StyleAtom] =
     &[StyleAtom::BorderColor(ColorAtom::Rgba8(Rgba8 {
         r: 211,
@@ -66,7 +57,7 @@ pub(super) fn build_base_node(
     let displayed = displayed_text(value, placeholder.clone(), &runtime);
     let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
     let channel = field_style_channel(interaction, disabled, invalid, Rc::clone(&slot_cell));
-    let text_style = runtime.text_style;
+    let text_style = runtime.input.text_style;
     let mut node = container()
         .mutate(move |node| {
             let _ = node.attach(TextStyleCapture::new(text_style));
@@ -78,12 +69,13 @@ pub(super) fn build_base_node(
         })
         .label(accessible_label(placeholder_str.as_str()));
     if !runtime.password {
-        node = node.text_value(value);
+        node = node
+            .text_value(value)
+            .text_cursor(runtime.input.caret, runtime.input.selection);
     }
     node.placeholder(placeholder_str)
         .layout(field_layout())
-        .class("rounded-md")
-        .class(FIELD_BASE)
+        .class(FIELD_VARIANT.base())
         .class(TEXT_FIELD_ANIM_BASE)
         .style_reactive(channel)
         .state_overlay(overlay, slot_cell)
@@ -103,7 +95,7 @@ fn field_style_channel(
         if invalid.is_some_and(Signal::get) {
             FIELD_INVALID
         } else {
-            field_variant().state(state)
+            FIELD_VARIANT.state(state)
         }
     }
 }
@@ -132,14 +124,10 @@ fn field_inner(
 }
 
 fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
-    let cell = crate::style::cell_size();
-    let inset = cell.unwrap_or(1.0);
-    let padding_y = match cell {
-        Some(_) => 0.0,
-        None => height.map_or(6.0, |height| {
-            ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
-        }),
-    };
+    let inset = crate::layout::snap::line(1.0);
+    let padding_y = crate::layout::snap::detail(height.map_or(6.0, |height| {
+        ((height - 2.0 - super::selection::line_height()) * 0.5).clamp(0.0, 6.0)
+    }));
     let base = width.map_or_else(
         || LayoutStyle::flex_row().fill_width().grow(1.0),
         |w| LayoutStyle::flex_row().width(2.0f32.mul_add(-inset, w).max(0.0)),
@@ -149,7 +137,7 @@ fn field_inner_layout(width: Option<f32>, height: Option<f32>) -> LayoutStyle {
         None => base,
     };
     base.align_items(AlignItems::Center)
-        .padding_x(12.0)
+        .padding_x(space(3))
         .padding_y(padding_y)
 }
 
@@ -162,8 +150,8 @@ fn displayed_text(
     placeholder: TextContent,
     runtime: &TextFieldRuntime,
 ) -> Signal<String> {
-    let preedit = runtime.ime.preedit;
-    let caret = runtime.caret;
+    let preedit = runtime.input.ime.preedit;
+    let caret = runtime.input.caret;
     let password = runtime.password;
     let reveal = runtime.reveal;
     derived_eq(move || {
@@ -171,7 +159,8 @@ fn displayed_text(
         let composing = preedit.get();
         let hiding = super::mask::hiding(password, reveal);
         if !composing.is_empty() {
-            let spliced = splice_preedit(&current, caret.get(), &composing);
+            let spliced =
+                crate::widgets::text_edit::splice_preedit(&current, caret.get(), &composing);
             if hiding {
                 super::mask::mask_chars(&spliced)
             } else {
@@ -185,15 +174,6 @@ fn displayed_text(
             current
         }
     })
-}
-
-fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
-    let caret = crate::widgets::text_edit::floor_char_boundary(value, caret.min(value.len()));
-    let mut out = String::with_capacity(value.len() + preedit.len());
-    out.push_str(&value[..caret]);
-    out.push_str(preedit);
-    out.push_str(&value[caret..]);
-    out
 }
 
 fn text_content(content: &TextContent) -> String {
@@ -216,17 +196,4 @@ fn field_state(
     disabled: Option<Signal<bool>>,
 ) -> crate::style::StyleState {
     binary_style_state(interaction, disabled)
-}
-
-const fn field_variant() -> StyleVariant {
-    StyleVariant::new(
-        FIELD_BASE,
-        StateStyle::new(
-            FIELD_REST,
-            FIELD_FOCUS,
-            FIELD_HOVER,
-            FIELD_DOWN,
-            FIELD_DISABLED,
-        ),
-    )
 }

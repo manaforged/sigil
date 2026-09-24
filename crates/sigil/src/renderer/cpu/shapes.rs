@@ -16,10 +16,10 @@ use tiny_skia::{
     StrokeDash, Transform as TsTransform,
 };
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::scene_command::{
     DecorationKind, DrawDecoration, LinearGradient, Stroke, StrokeAlign, StrokeStyle, Transform,
 };
+use crate::scene::corner_radii::CornerRadii;
 
 const KAPPA: f32 = 0.552_284_8;
 const WAVE_STEP: f32 = 1.0;

@@ -5,11 +5,12 @@ use crate::style::Rgba8;
 use bytemuck::{Pod, Zeroable};
 use half::f16;
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::scene_command::{
     DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind,
 };
-use crate::renderer::shadow_paint::{Shadow, ShadowKind};
+use crate::renderer::shadow_paint::Shadow;
+use crate::scene::corner_radii::CornerRadii;
+pub(crate) use crate::scene::shadow::{expanded_shadow_rect, srgb_channel_to_linear};
 
 mod helpers;
 
@@ -255,22 +256,6 @@ pub(crate) fn draw_shadow_instance(
     }
 }
 
-pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
-    if shadow.kind == ShadowKind::Inner {
-        return surface;
-    }
-    let [offset_x, offset_y] = shadow.offset;
-    let outset = shadow.blur.mul_add(3.0, shadow.spread.abs());
-    Rect::new(
-        crate::hal::Point::new(
-            surface.origin.x - outset + offset_x,
-            surface.origin.y - outset + offset_y,
-        ),
-        surface.width + outset * 2.0,
-        surface.height + outset * 2.0,
-    )
-}
-
 pub(crate) fn gradient_stop_records(stops: &[GradientStop], space: BlendSpace) -> Vec<GpuStop> {
     let mut records = Vec::with_capacity(stops.len().clamp(1, MAX_GRADIENT_STOPS));
     for stop in stops.iter().take(MAX_GRADIENT_STOPS) {
@@ -305,15 +290,6 @@ fn gpu_stop(stop: GradientStop, space: BlendSpace) -> GpuStop {
 
 fn pack_f16_pair(first: f16, second: f16) -> u32 {
     u32::from(first.to_bits()) | (u32::from(second.to_bits()) << 16)
-}
-
-pub(crate) fn srgb_channel_to_linear(channel: u8) -> f32 {
-    let value = f32::from(channel) / 255.0;
-    if value <= 0.040_45 {
-        value / 12.92
-    } else {
-        ((value + 0.055) / 1.055).powf(2.4)
-    }
 }
 
 #[cfg(test)]

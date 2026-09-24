@@ -1,4 +1,3 @@
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
@@ -8,7 +7,7 @@
 #![allow(dead_code, unused_crate_dependencies)]
 
 use proptest::prelude::*;
-use sigil_kittest::gpu::request_device;
+use sigil_kittest::gpu::shared_device;
 
 const MAX_TEXTURE_DIM: u32 = 4096;
 
@@ -17,7 +16,7 @@ const MAX_ATLASES: usize = 16;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_atlas_validation_rejects_invalid_inputs() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!(
             "no adapter — skipping sprite_atlas_properties::prop_atlas_validation_rejects_invalid_inputs"
         );
@@ -40,7 +39,7 @@ fn prop_atlas_validation_rejects_invalid_inputs() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_valid_params_pass_validation() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!(
             "no adapter — skipping sprite_atlas_properties::prop_valid_params_pass_validation"
         );
@@ -62,7 +61,7 @@ fn prop_valid_params_pass_validation() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_zero_dimensions_rejected() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_zero_dimensions_rejected");
         return;
     };
@@ -85,7 +84,7 @@ fn prop_zero_dimensions_rejected() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn prop_empty_bytes_rejected() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping sprite_atlas_properties::prop_empty_bytes_rejected");
         return;
     };

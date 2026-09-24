@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::hal::{Color, Point, Rect};
@@ -21,11 +20,9 @@ fn blur_sigma_zero_is_identity() {
     let scene = blur_scene(0.0);
     assert_blur_command_shape(&scene, 0.0);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device — skipping: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
@@ -38,11 +35,9 @@ fn blur_sigma_nonzero_renders_without_panic() {
     let scene = blur_scene(6.0);
     assert_blur_command_shape(&scene, 6.0);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device — skipping: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
@@ -54,11 +49,9 @@ fn blur_sigma_nonzero_renders_without_panic() {
 fn blur_sigma_strong_renders_without_panic() {
     let scene = blur_scene(18.0);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device — skipping: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();

@@ -2,7 +2,7 @@ use std::cell::{Cell, RefCell};
 
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::NodeBuilder;
-use crate::reactive::Signal;
+use crate::reactive::{Signal, signal};
 
 use super::builder::SplitterOrientation;
 
@@ -21,6 +21,7 @@ struct SplitterStateInner {
     snap_threshold: Cell<f32>,
     sizes_bind: Cell<Option<Signal<Vec<f32>>>>,
     drag_anchor: RefCell<Option<DragAnchor>>,
+    revision: Signal<u64>,
 }
 
 struct DragAnchor {
@@ -49,6 +50,7 @@ impl SplitterState {
             snap_threshold: Cell::new(8.0),
             sizes_bind: Cell::new(None),
             drag_anchor: RefCell::new(None),
+            revision: signal(0),
         }));
         Self { inner }
     }
@@ -76,7 +78,34 @@ impl SplitterState {
         self.inner.sizes_bind.set(Some(signal));
     }
 
+    pub(super) fn tracked_size(self, pane: usize) -> f32 {
+        self.inner.revision.track();
+        self.size_at(pane)
+    }
+
+    pub(super) fn bounds(self, handle: usize) -> (f32, f32) {
+        let min = self.inner.mins.borrow().get(handle).copied().unwrap_or(0.0);
+        let max = self
+            .inner
+            .maxs
+            .borrow()
+            .get(handle)
+            .copied()
+            .unwrap_or(f32::INFINITY);
+        let span = self.size_at(handle) + self.size_at(handle + 1);
+        (min, if max.is_finite() { max } else { span.max(min) })
+    }
+
+    pub(super) fn nudge(self, handle: usize, delta: f32) {
+        self.begin(handle, 0.0);
+        self.apply_delta(handle, delta);
+        self.inner.drag_anchor.borrow_mut().take();
+    }
+
     fn publish(self) {
+        self.inner
+            .revision
+            .update(|value| *value = value.wrapping_add(1));
         if let Some(signal) = self.inner.sizes_bind.get() {
             signal.set(self.inner.sizes.borrow().clone());
         }

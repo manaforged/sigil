@@ -3,6 +3,8 @@ use crate::text::font_family::FontFamily;
 use crate::text::fonts::DefaultFontSource;
 use crate::text::shaper::{Font, Script};
 
+const OBLIQUE_SKEW: f32 = 0.2;
+
 pub struct FontCollection {
     sans: FontFamily,
     mono: FontFamily,
@@ -99,6 +101,12 @@ impl FontCollection {
         }
     }
 
+    #[must_use]
+    pub(crate) fn select_face(&self, family: &str, weight: u16, italic: bool) -> (&Font, f32) {
+        let font = self.select_weight(family, weight);
+        (font, if italic { OBLIQUE_SKEW } else { 0.0 })
+    }
+
     pub fn register(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
         let font = Font::from_bytes(bytes, face_index).map_err(|_| TextError::InvalidFont)?;
         self.sans.replace(font);
@@ -180,6 +188,12 @@ fn load_sans_medium_font() -> Font {
         .expect("bundled FiraSans-Medium.ttf must parse — fixture validated with Regular")
 }
 
+fn load_sans_semibold_font() -> Font {
+    const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/FiraSans-SemiBold.ttf");
+    Font::from_bytes(BYTES.to_vec(), 0)
+        .expect("bundled FiraSans-SemiBold.ttf must parse — fixture validated with Regular")
+}
+
 fn load_emoji_font() -> Font {
     const BYTES: &[u8] = include_bytes!("../../../assets/text/fonts/NotoColorEmoji-subset.ttf");
     Font::from_bytes(BYTES.to_vec(), 0)
@@ -201,6 +215,7 @@ fn sans_family(over: Option<&crate::text::fonts::DefaultFonts>) -> FontFamily {
     } else {
         faces.push((400, load_sans_font()));
         faces.push((500, load_sans_medium_font()));
+        faces.push((600, load_sans_semibold_font()));
     }
     if let Some(fonts) = over {
         for (weight, bytes, index) in &fonts.sans_weights {

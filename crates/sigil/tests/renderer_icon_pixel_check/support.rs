@@ -6,7 +6,7 @@
 #![allow(clippy::redundant_pub_crate)]
 #![allow(clippy::too_many_arguments)]
 
-pub(super) use sigil_kittest::gpu::{read_pixels, request_device as try_request_device};
+pub(super) use sigil_kittest::gpu::{read_pixels, shared_device as try_request_device};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;

@@ -45,7 +45,10 @@ impl NodeEdges {
     pub(crate) fn build(style: &StyleData, cb_inline: f32) -> Self {
         Self {
             padding: snap::gap_edges(edges_lp(style.padding, cb_inline)),
-            border: snap::rule_edges(edges_lp(style.border, cb_inline)),
+            border: snap::rule_edges(
+                edges_lp(style.border, cb_inline),
+                fixed_px(style.size.height),
+            ),
             margin: snap::gap_auto_edges(edges_lp_auto(style.margin, cb_inline)),
         }
     }
@@ -67,12 +70,21 @@ impl NodeEdges {
     }
 }
 
+fn fixed_px(dim: Dimension) -> Option<f32> {
+    match dim {
+        Dimension::Px(value) => Some(value),
+        Dimension::Text(length) => Some(length.px()),
+        _ => None,
+    }
+}
+
 pub(crate) fn resolve_dim(dim: Dimension, cb: f32) -> Option<f32> {
     snap::size(match dim {
         Dimension::Px(v) => Some(v),
         Dimension::Percent(p) => Some(p * cb),
         Dimension::Fill => Some(cb),
         Dimension::Auto => None,
+        Dimension::Text(length) => Some(length.px()),
     })
 }
 
@@ -80,6 +92,7 @@ pub(crate) fn resolve_lp(lp: LengthPercentage, cb: f32) -> f32 {
     match lp {
         LengthPercentage::Px(v) => v,
         LengthPercentage::Percent(p) => p * cb,
+        LengthPercentage::Text(length) => length.px(),
     }
 }
 

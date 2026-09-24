@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
@@ -10,7 +9,7 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
-use sigil_kittest::gpu::{read_pixels, request_device};
+use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -27,7 +26,7 @@ const SPRITE_SIDE: f32 = 200.0;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn sprite_pixels_match_mono_subpixel_poly_contracts() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping sprite_pixel_check");
         return;
     };
@@ -70,7 +69,7 @@ fn render_sprite_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
         )
         .expect("render_command_scene_offscreen");
 
-    read_pixels(device, queue, &texture, phys_w, phys_h)
+    read_pixels(device, queue, &texture, phys_w, phys_h).expect("sigil-kittest")
 }
 
 fn assert_mono_tint_is_red(pixels: &[u8], phys_w: u32) {

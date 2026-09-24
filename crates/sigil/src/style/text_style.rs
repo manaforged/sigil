@@ -22,6 +22,46 @@ pub struct TextStyle {
     pub letter_spacing_em: f32,
     pub tabular_nums: bool,
     pub decoration: crate::style::TextDecoration,
+    pub runs: Option<TextRuns>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct TextFace {
+    pub bold: bool,
+    pub italic: bool,
+    pub mono: bool,
+    pub color: Option<crate::style::Token>,
+    pub background: Option<crate::style::Token>,
+    pub link: Option<std::sync::Arc<str>>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TextRun {
+    pub start: usize,
+    pub end: usize,
+    pub face: TextFace,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TextRuns(pub std::sync::Arc<[TextRun]>);
+
+impl TextRuns {
+    #[must_use]
+    pub fn at(&self, byte: usize) -> Option<&TextRun> {
+        self.0
+            .iter()
+            .find(|run| run.start <= byte && byte < run.end)
+    }
+
+    #[must_use]
+    pub const fn family<'a>(face: &TextFace, base: &'a str) -> &'a str {
+        if face.mono { "mono" } else { base }
+    }
+
+    #[must_use]
+    pub const fn weight(face: &TextFace, base: u16) -> u16 {
+        if face.bold && base < 700 { 700 } else { base }
+    }
 }
 
 impl Default for TextStyle {
@@ -35,6 +75,7 @@ impl Default for TextStyle {
             letter_spacing_em: 0.0,
             tabular_nums: false,
             decoration: crate::style::TextDecoration::None,
+            runs: None,
         }
     }
 }

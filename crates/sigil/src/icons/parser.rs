@@ -14,13 +14,28 @@ pub(crate) struct ViewBox {
     pub(crate) height: f32,
 }
 
+pub(crate) fn svg_options() -> usvg::Options<'static> {
+    usvg::Options {
+        image_href_resolver: usvg::ImageHrefResolver {
+            resolve_data: Box::new(|_, _, _| None),
+            resolve_string: Box::new(|_, _| None),
+        },
+        ..usvg::Options::default()
+    }
+}
+
 pub(crate) fn parse(svg_source: &str) -> Result<(Vec<SvgPath>, ViewBox), BakeError> {
     if svg_source.len() > crate::widgets::MAX_SOURCE_BYTES {
         return Err(BakeError::SvgParseError(String::from(
             "SVG source is larger than the 1 MiB limit",
         )));
     }
-    let opts = usvg::Options::default();
+    if nesting_depth(svg_source.as_bytes()) > MAX_ELEMENT_DEPTH {
+        return Err(BakeError::SvgParseError(String::from(
+            "SVG element nesting is deeper than the 128 limit",
+        )));
+    }
+    let opts = svg_options();
     let tree = usvg::Tree::from_str(svg_source, &opts)
         .map_err(|e| BakeError::SvgParseError(e.to_string()))?;
 
@@ -39,6 +54,66 @@ pub(crate) fn parse(svg_source: &str) -> Result<(Vec<SvgPath>, ViewBox), BakeErr
     let mut paths = Vec::new();
     collect_paths(tree.root(), &mut paths);
     Ok((paths, view_box))
+}
+
+const MAX_ELEMENT_DEPTH: usize = 128;
+
+fn nesting_depth(source: &[u8]) -> usize {
+    let mut depth = 0_usize;
+    let mut max_depth = 0_usize;
+    let mut index = 0;
+    while let Some(offset) = source
+        .get(index..)
+        .and_then(|rest| rest.iter().position(|&b| b == b'<'))
+    {
+        let start = index + offset;
+        let rest = source.get(start..).unwrap_or_default();
+        if rest.starts_with(b"<!--") {
+            index = skip_past(source, start, b"-->");
+        } else if rest.starts_with(b"<![CDATA[") {
+            index = skip_past(source, start, b"]]>");
+        } else if rest.starts_with(b"<?") {
+            index = skip_past(source, start, b"?>");
+        } else if rest.starts_with(b"</") {
+            depth = depth.saturating_sub(1);
+            index = tag_end(source, start).0;
+        } else if rest.starts_with(b"<!") {
+            index = tag_end(source, start).0;
+        } else {
+            let (end, self_closing) = tag_end(source, start);
+            if !self_closing {
+                depth += 1;
+                max_depth = max_depth.max(depth);
+            }
+            index = end;
+        }
+    }
+    max_depth
+}
+
+fn skip_past(source: &[u8], start: usize, marker: &[u8]) -> usize {
+    source
+        .get(start..)
+        .and_then(|rest| {
+            rest.windows(marker.len())
+                .position(|window| window == marker)
+        })
+        .map_or(source.len(), |offset| start + offset + marker.len())
+}
+
+fn tag_end(source: &[u8], start: usize) -> (usize, bool) {
+    let mut quote = None;
+    let mut previous = 0_u8;
+    for (offset, &byte) in source.iter().enumerate().skip(start + 1) {
+        match quote {
+            Some(open) if byte == open => quote = None,
+            None if byte == b'"' || byte == b'\'' => quote = Some(byte),
+            None if byte == b'>' => return (offset + 1, previous == b'/'),
+            _ => {}
+        }
+        previous = byte;
+    }
+    (source.len(), false)
 }
 
 fn collect_paths(parent: &usvg::Group, out: &mut Vec<SvgPath>) {

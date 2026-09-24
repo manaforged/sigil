@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::renderer::oblique::Oblique;
+
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{
     DrawSettings, HintingInstance, HintingOptions, OutlineGlyphCollection, OutlinePen,
@@ -77,6 +79,7 @@ impl Hinters {
         font_bytes: &[u8],
         key: &RasterKey,
         variation_coords: &[i16],
+        skew: f32,
     ) -> Option<GlyphMask> {
         let font = FontRef::from_index(font_bytes, key.font_index).ok()?;
         let outlines = font.outline_glyphs();
@@ -95,11 +98,12 @@ impl Hinters {
             physical_px_bits: key.physical_px_bits,
             coords: key.coords,
         };
+        let mut sheared = Oblique::new(&mut pen, skew);
         let drawn = match self.get(hint, &outlines, size, &coords) {
-            Some(instance) => glyph.draw(DrawSettings::hinted(instance, false), &mut pen),
+            Some(instance) => glyph.draw(DrawSettings::hinted(instance, false), &mut sheared),
             None => glyph.draw(
                 DrawSettings::unhinted(size, LocationRef::new(&coords)),
-                &mut pen,
+                &mut sheared,
             ),
         };
         drawn.ok()?;

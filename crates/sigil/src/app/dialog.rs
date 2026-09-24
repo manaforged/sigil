@@ -31,7 +31,7 @@ impl FileDialog {
 
     #[must_use]
     pub fn open_file(self) -> Option<PathBuf> {
-        #[cfg(any(test, feature = "test-support"))]
+        #[cfg(any(test, feature = "kittest"))]
         if let Some(response) = mock::take_path() {
             return response;
         }
@@ -40,7 +40,7 @@ impl FileDialog {
 
     #[must_use]
     pub fn open_files(self) -> Option<Vec<PathBuf>> {
-        #[cfg(any(test, feature = "test-support"))]
+        #[cfg(any(test, feature = "kittest"))]
         if let Some(response) = mock::take_paths() {
             return response;
         }
@@ -49,7 +49,7 @@ impl FileDialog {
 
     #[must_use]
     pub fn pick_folder(self) -> Option<PathBuf> {
-        #[cfg(any(test, feature = "test-support"))]
+        #[cfg(any(test, feature = "kittest"))]
         if let Some(response) = mock::take_path() {
             return response;
         }
@@ -58,7 +58,7 @@ impl FileDialog {
 
     #[must_use]
     pub fn save_file(self) -> Option<PathBuf> {
-        #[cfg(any(test, feature = "test-support"))]
+        #[cfg(any(test, feature = "kittest"))]
         if let Some(response) = mock::take_path() {
             return response;
         }
@@ -66,7 +66,7 @@ impl FileDialog {
     }
 }
 
-#[cfg(any(test, feature = "test-support"))]
+#[cfg(any(test, feature = "kittest"))]
 pub mod mock {
     use std::cell::RefCell;
     use std::collections::VecDeque;
@@ -135,7 +135,7 @@ pub fn pick_folder() -> Option<PathBuf> {
 
 #[must_use]
 pub fn message(title: impl Into<String>, body: impl Into<String>) -> bool {
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(any(test, feature = "kittest"))]
     if let Some(ok) = mock::take_alert() {
         return ok;
     }
@@ -151,7 +151,7 @@ pub fn message(title: impl Into<String>, body: impl Into<String>) -> bool {
 
 #[must_use]
 pub fn confirm(title: impl Into<String>, body: impl Into<String>) -> bool {
-    #[cfg(any(test, feature = "test-support"))]
+    #[cfg(any(test, feature = "kittest"))]
     if let Some(ok) = mock::take_alert() {
         return ok;
     }

@@ -50,7 +50,7 @@ free list of offscreen textures. `acquire` reuses or allocates;
 `release` returns the texture after submit. A failed acquire is
 fail-closed (`LayerError::Empty` or `TooLarge`), never a silent skip.
 
-`launch` paints when the frame is dirty or the shell forces a paint. A
+`run` paints when the frame is dirty or the shell forces a paint. A
 forced paint on a clean tree can replay the cached scene.
 
 ## Goldens

@@ -2,14 +2,13 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::indexing_slicing, clippy::cast_lossless)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::print_stdout, clippy::doc_markdown, clippy::too_many_lines)]
 
 use sigil::prelude::*;
 
-use sigil_kittest::{InteractionMode, render_widget_to_png};
+use sigil_kittest::{InteractionMode, render_widget_to_png_stub};
 
 #[test]
 fn position_relative_child_paints() {
@@ -17,7 +16,7 @@ fn position_relative_child_paints() {
     const SAMPLE_X: u32 = 64;
     const SAMPLE_Y: u32 = 64;
 
-    let Some(img) = render_widget_to_png(
+    let Some(img) = render_widget_to_png_stub(
         |cx| {
             let inner = container()
                 .layout(
@@ -49,7 +48,8 @@ fn position_relative_child_paints() {
         InteractionMode::Default,
         [150, 150],
         (0.0, 0.0),
-    ) else {
+    )
+    .expect("sigil-kittest") else {
         println!("no GPU adapter — skipping position_relative_child_paints");
         return;
     };
@@ -76,7 +76,7 @@ fn narrow_text_renders_glyph() {
     const WIN_W: u32 = 14;
     const WIN_H: u32 = 16;
 
-    let Some(img) = render_widget_to_png(
+    let Some(img) = render_widget_to_png_stub(
         |cx| {
             let glyph = text("v")
                 .layout(LayoutStyle::block().width(WIN_W as f32))
@@ -98,7 +98,8 @@ fn narrow_text_renders_glyph() {
         InteractionMode::Default,
         [200, 80],
         (0.0, 0.0),
-    ) else {
+    )
+    .expect("sigil-kittest") else {
         println!("no GPU adapter — skipping narrow_text_renders_glyph");
         return;
     };

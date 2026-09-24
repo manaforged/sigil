@@ -3,6 +3,7 @@ use std::rc::Rc;
 use accesskit::Role;
 
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
+use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 #[derive(Clone)]
 pub struct ImageSource {
@@ -92,6 +93,22 @@ fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
     hash
 }
 
+type ThemedSource = Box<dyn Fn(&crate::style::Theme) -> Option<ImageSource>>;
+
+pub(crate) struct ThemedImage(ThemedSource);
+
+impl ThemedImage {
+    pub(crate) fn new(
+        source: impl Fn(&crate::style::Theme) -> Option<ImageSource> + 'static,
+    ) -> Self {
+        Self(Box::new(source))
+    }
+
+    pub(crate) fn resolve(&self, theme: &crate::style::Theme) -> Option<ImageSource> {
+        (self.0)(theme)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ObjectFit {
     #[default]
@@ -107,6 +124,7 @@ pub struct ImageBuilder {
     fit: ObjectFit,
     a11y: A11yProps,
     pre_extensions: Vec<NodeExt>,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -119,6 +137,7 @@ pub fn image(source: ImageSource) -> ImageBuilder {
             ..A11yProps::default()
         },
         pre_extensions: Vec::new(),
+        layout_overrides: LayoutOverrides::new(),
     }
 }
 
@@ -149,6 +168,12 @@ impl ImageBuilder {
     }
 }
 
+impl WidgetLayoutExt for ImageBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
 impl IntoNode for ImageBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
         let id = cx.new_node(
@@ -161,6 +186,12 @@ impl IntoNode for ImageBuilder {
         if let Some(node) = cx.get_mut(id) {
             for apply in self.pre_extensions {
                 apply(node);
+            }
+            if self.layout_overrides != LayoutOverrides::new() {
+                node.attach(
+                    self.layout_overrides
+                        .apply(crate::layout::LayoutStyle::default()),
+                );
             }
         }
         id

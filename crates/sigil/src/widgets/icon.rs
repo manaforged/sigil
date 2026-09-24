@@ -1,13 +1,32 @@
+#[cfg(feature = "scene")]
+use std::rc::Rc;
+
 use crate::kernel::TextContent;
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
+use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+#[cfg(feature = "scene")]
+use crate::style::Token;
 use crate::style::Tone;
-use crate::widgets::widget_dev::*;
+use crate::style::{NodeStyleExt, Size, StyleAccess, StyleAtom};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
+#[cfg(feature = "scene")]
+mod svg;
+
+#[cfg(feature = "scene")]
+use svg::SvgGlyph;
+
 static ICON_GLYPH_COLOR: &[StyleAtom] = &[StyleAtom::FgToneStep(11)];
 
+enum Glyph {
+    Text(TextContent),
+    #[cfg(feature = "scene")]
+    Svg(Rc<str>),
+}
+
 pub struct IconBuilder {
-    glyph: TextContent,
+    glyph: Glyph,
     tone: Tone,
     size: Size,
     label: Option<String>,
@@ -20,11 +39,19 @@ pub fn icon(glyph: impl Into<TextContent>) -> IconBuilder {
     IconBuilder::new(glyph)
 }
 
+#[cfg(feature = "scene")]
+#[must_use]
+pub fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder {
+    let mut builder = IconBuilder::new("");
+    builder.glyph = Glyph::Svg(svg.into());
+    builder
+}
+
 impl IconBuilder {
     #[must_use]
     pub fn new(glyph: impl Into<TextContent>) -> Self {
         Self {
-            glyph: glyph.into(),
+            glyph: Glyph::Text(glyph.into()),
             tone: Tone::Neutral,
             size: Size::Default,
             label: None,
@@ -66,17 +93,26 @@ impl IconBuilder {
             .label
             .as_ref()
             .map_or(Role::GenericContainer, |_| Role::Image);
-        let mut container_node = container()
+        let container_node = container()
             .role(role)
             .layout(self.layout_overrides.apply(icon_layout(extent)))
-            .tone(self.tone)
-            .child(
-                text(self.glyph)
+            .tone(self.tone);
+        let mut container_node = match self.glyph {
+            Glyph::Text(glyph) => container_node.child(
+                text(glyph)
                     .class(glyph_class)
                     .class(ICON_GLYPH_COLOR)
                     .tone(self.tone)
                     .hittable(false),
-            );
+            ),
+            #[cfg(feature = "scene")]
+            Glyph::Svg(svg) => container_node.child(SvgGlyph {
+                svg,
+                pixels: svg_pixels(extent * 0.8),
+                token: Token::scale(self.tone.scale_role(), 11).unwrap_or(Token::Gray11),
+                extent: extent * 0.8,
+            }),
+        };
         if let Some(label) = self.label {
             container_node = container_node.label(label);
         }
@@ -85,6 +121,16 @@ impl IconBuilder {
         }
         container_node
     }
+}
+
+#[cfg(feature = "scene")]
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "icon extents are small positive constants"
+)]
+fn svg_pixels(extent: f32) -> u32 {
+    (extent * 2.0).round() as u32
 }
 
 fn icon_layout(extent: f32) -> LayoutStyle {

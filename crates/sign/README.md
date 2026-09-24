@@ -2,14 +2,21 @@
 
 App bundles and minisign signing for Sigil release packages.
 
-A release pipeline signs each update package and ships the signature beside
-it. This crate writes that signature. The envelope is the reference minisign
-format, so any standard minisign reader verifies it.
+The crate builds a macOS `.app` bundle or a Windows app directory, and
+signs update packages with minisign. The signature is the reference
+minisign format, so any standard minisign tool verifies it. The crate
+also installs the `sigil-pack` command.
 
 ## Install
 
 ```bash
 cargo add sigil-sign
+```
+
+To install the command:
+
+```bash
+cargo install sigil-sign
 ```
 
 ## Usage
@@ -18,20 +25,31 @@ cargo add sigil-sign
 let envelope = sigil_sign::sign_file(
     std::path::Path::new("MyApp-0.1.0-full.nupkg"),
     std::path::Path::new("/secure/updater.key"),
-    "key password",
+    Some("key password"),
+    "0.1.0",
 )?;
 std::fs::write("MyApp-0.1.0-full.nupkg.sig", envelope)?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Pass an empty password for an unencrypted key. `sign_file` returns the
-envelope as text. The caller decides where to write it. Use the plain
-envelope for a standard `.sig` file. Base64-encode it when the transport
-requires an ASCII-safe payload.
+Pass `None` for an unencrypted key. `sign_file` returns the signature
+as text. You decide where to write it. The trusted comment is
+`file:<name>\tversion:<version>`.
 
-`sign_file` reads a standard minisign key file. When the key arrives as text
-instead, call `sign_file_with_key`. Decode the transport encoding first; that
-function takes the key box itself.
+`sign_file` reads a standard minisign secret key file. If the key
+arrives as text, call `sign_file_with_key`. Decode any transport
+encoding first; that function takes the key box itself.
+
+`verify_file(public_key, file, sig, expected_version)` checks the
+signature, the file name in the trusted comment, and, when given, the
+version. It returns the signed version.
+
+`macos_app` and `windows_dir` build the bundles. `sigil-pack macos`,
+`sigil-pack windows`, `sigil-pack sign`, and `sigil-pack verify` run the
+same steps from the command line. `sigil-pack genkey DIR` writes a new
+key pair. `sigil-pack sign` and `sigil-pack genkey` read the key
+password from `SIGIL_PACK_PASSWORD`. `sigil-pack sign` writes the plain
+minisign envelope to `<file>.sig`; `minisign -V` accepts it.
 
 ## License
 

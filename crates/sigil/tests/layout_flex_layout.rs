@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs, clippy::doc_markdown)]
+#![allow(clippy::doc_markdown)]
 
 use sigil::layout::{
     BoxSizing, Dimension, Rect, Size, StyleAlignItems, StyleAlignSelf, StyleData, StyleDisplay,

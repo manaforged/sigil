@@ -64,7 +64,7 @@ impl FlexItem {
         let (min_cross, max_cross) = item_min_max_main(style, cross_axes, cb_cross, &edges);
         let min_main = min_main.or_else(|| {
             let ellipsizes = node.text().is_some_and(|text| text.ellipsis);
-            (node.children().is_empty() && !ellipsizes)
+            ((node.children().is_empty() || !ctx.axes.row) && !ellipsizes)
                 .then(|| automatic_min_main(style, ctx.axes, basis))
                 .flatten()
         });
@@ -197,6 +197,6 @@ fn main_gap(ctx: &FlexCtx<'_, '_>, style: &StyleData) -> f32 {
     if ctx.axes.row {
         crate::layout::snap::gap(resolve_lp(style.gap.width, ctx.cb.w))
     } else {
-        crate::layout::snap::gap(resolve_lp(style.gap.height, ctx.cb.h))
+        crate::layout::snap::row_gap(resolve_lp(style.gap.height, ctx.cb.h))
     }
 }

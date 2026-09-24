@@ -1,6 +1,7 @@
 use crate::hal::{LogicalSize, ModifiersState, Point};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum PointerKind {
     #[default]
     Mouse,
@@ -9,6 +10,7 @@ pub enum PointerKind {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum MouseButton {
     Left,
     Right,
@@ -49,6 +51,7 @@ impl MouseButtons {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum PointerPhase {
     Down,
     Move,
@@ -59,6 +62,7 @@ pub enum PointerPhase {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct PointerEvent {
     pub position: Point,
     pub window_position: Point,
@@ -127,7 +131,6 @@ impl PointerEvent {
         self.capture_requested
     }
 
-    #[doc(hidden)]
     pub const fn set_captured(&mut self, captured: bool) {
         self.captured = captured;
     }

@@ -1,7 +1,7 @@
 use crate::animation_runtime::presets;
 use crate::kernel::{AccessibleName, TextContent};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{Elevation, Px, StyleAtom, TransitionId};
+use crate::style::{BORDER_WIDTH, Elevation, StyleAtom, TransitionId};
 
 pub(super) const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
 
@@ -36,8 +36,10 @@ pub(super) fn button_layout(width: ButtonWidth, height: f32, padding_x: f32) -> 
 pub(super) static BUTTON_TRANSITION_ATOMS: &[StyleAtom] =
     &[StyleAtom::Transition(BUTTON_TRANSITION)];
 
-pub(super) static BUTTON_FRAME: &[StyleAtom] =
-    &[StyleAtom::BorderWidth(Px(1)), StyleAtom::BorderToneStep(6)];
+pub(super) static BUTTON_FRAME: &[StyleAtom] = &[
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    StyleAtom::BorderToneStep(6),
+];
 
 pub(super) static SOLID_FRAME: &[StyleAtom] = &[StyleAtom::Shadow(Elevation::Sm)];
 

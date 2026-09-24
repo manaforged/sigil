@@ -16,22 +16,24 @@ mod flex_lines;
 mod flex_pack;
 mod forest;
 mod grid;
+mod grid_tracks;
 mod intent;
 mod measure;
 pub mod prelude;
 pub mod reactive_position;
 mod resolve;
 mod result;
-mod snap;
+pub(crate) mod snap;
 pub mod style_adapter;
 mod style_data;
 mod text_adapter;
 pub mod text_geometry;
 mod text_style;
+mod units;
 
 pub use builder_ext::LayoutBuilderExt;
 pub use engine::LayoutEngine;
-pub(crate) use engine::ViewportOverlay;
+pub(crate) use engine::{Popup, PopupSide, ViewportOverlay};
 pub use engine_drive::{LayoutDrive, NodeHandle, ResolvedBox};
 pub use error::LayoutError;
 pub use intent::LayoutStyle;
@@ -50,3 +52,4 @@ pub use text_adapter::TextEngineMeasure;
 pub use text_geometry::{
     CaretGeometry, TextGeometry, TextStyleCapture, set_text_geometry, with_text_geometry,
 };
+pub use units::{IntoPx, TextLength, cols, em, rows};

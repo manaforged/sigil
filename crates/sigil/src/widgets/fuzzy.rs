@@ -6,6 +6,7 @@ const GAPPED: usize = 40;
 const MAX_SPREAD: usize = 3;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct FuzzyMatch {
     pub score: usize,
     pub positions: Vec<usize>,

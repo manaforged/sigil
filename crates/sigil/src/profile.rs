@@ -1,4 +1,3 @@
-//! Frame profiling spans, budgets, and reports.
 mod chrome;
 mod event;
 #[cfg(all(feature = "scene", not(target_arch = "wasm32")))]

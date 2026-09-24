@@ -1,4 +1,3 @@
-//! Test helpers for driving a tree without a window.
 use crate::prelude::{Cx, NodeId};
 use crate::reactive::Runtime;
 

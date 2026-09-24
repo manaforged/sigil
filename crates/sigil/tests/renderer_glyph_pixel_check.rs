@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
@@ -11,12 +10,11 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::renderer::{
-    CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, WgpuRenderer,
-    shape_glyph_run,
+    CommandScene, DrawParams, SceneBuilder, ScreenSubmission, SlugTextPipeline, shape_glyph_run,
 };
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 use sigil::text::{OwnedTextEngine, TextConfig};
-use sigil_kittest::gpu::{read_pixels, request_device};
+use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
@@ -51,7 +49,7 @@ fn glyph_edges_sharp_at_scale_2_0() {
 }
 
 fn assert_direct_path_is_sharp(scale: f32) {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping glyph_pixel_check at scale {scale}");
         return;
     };
@@ -86,10 +84,9 @@ fn embed_path_glyph_edges_are_soft_with_mismatched_scale() {
 }
 
 fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    renderer
-        .ensure_headless_for_tests()
-        .expect("headless renderer device — no adapter available for glyph_pixel_check");
+    let mut renderer = sigil_kittest::gpu::headless_renderer()
+        .expect("sigil-kittest")
+        .expect("the glyph pixel check needs a GPU");
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
 
@@ -114,7 +111,7 @@ fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
         )
         .expect("submit_screen");
 
-    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h);
+    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h).expect("sigil-kittest");
     (pixels, phys_w, phys_h)
 }
 
@@ -215,7 +212,7 @@ fn polarity_stroke_weight_parity_scale_2_0() {
 }
 
 fn assert_polarity_parity(scale: f32) {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping polarity parity at scale {scale}");
         return;
     };
@@ -377,7 +374,7 @@ fn render_text_inner(
         .expect("record_paragraph");
     queue.submit(core::iter::once(encoder.finish()));
 
-    let pixels = read_pixels(device, queue, &texture, phys_w, phys_h);
+    let pixels = read_pixels(device, queue, &texture, phys_w, phys_h).expect("sigil-kittest");
     (pixels, phys_w, phys_h)
 }
 

@@ -1,35 +1,13 @@
-use super::*;
-use std::cell::RefCell;
+#![allow(clippy::unwrap_used)]
 
-struct Memory(RefCell<Option<String>>);
+use super::{Clipboard, NoopClipboard, clipboard, install};
 
-#[cfg(feature = "clipboard-image")]
-#[test]
-#[ignore = "requires a native clipboard containing the 2x2 RGBA fixture"]
-fn native_image_reads_pixels() {
-    let source = image()
-        .expect("native clipboard read")
-        .expect("image present");
-    assert_eq!((source.width(), source.height()), (2, 2));
-    assert_eq!(
-        source.rgba(),
-        [
-            255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255, 255, 255, 255, 255
-        ]
-    );
-}
-
-#[cfg(feature = "clipboard-image")]
-#[test]
-#[ignore = "requires a native clipboard containing only text"]
-fn native_image_without_pixels() {
-    assert_eq!(image().expect("native clipboard read"), None);
-}
+struct Memory(std::cell::RefCell<Option<String>>);
 
 impl Clipboard for Memory {
-    fn set(&self, text: &str) -> Result<(), crate::widgets::ClipError> {
+    fn set(&self, text: &str) -> Result<super::Delivery, super::ClipError> {
         *self.0.borrow_mut() = Some(text.to_owned());
-        Ok(())
+        Ok(super::Delivery::Confirmed)
     }
 
     fn get(&self) -> Option<String> {
@@ -37,38 +15,23 @@ impl Clipboard for Memory {
     }
 }
 
-#[cfg(feature = "desktop")]
 #[test]
-fn copy_paste_roundtrip_when_platform_clipboard_available() {
-    install_os();
-    let probe = copy("");
-    if probe.is_err() {
-        eprintln!(
-            "skipping clipboard roundtrip — platform clipboard unavailable: {:?}",
-            probe.err()
-        );
-        return;
-    }
-    let payload = "sigil clipboard test \u{1f5d2}";
-    copy(payload).expect("copy succeeds after probe");
-    let read_back = paste().expect("paste succeeds after copy");
-    assert_eq!(read_back, payload);
+fn default_is_noop() {
+    let clip = clipboard();
+    assert!(clip.set("x").is_err());
+    assert!(clip.get().is_none());
 }
 
 #[test]
-fn copy_uses_the_installed_handle() {
-    install(Memory(RefCell::new(None)));
-    copy("x").expect("memory stores");
-    assert_eq!(paste().expect("memory reads"), "x");
-    install(crate::widgets::NoopClipboard);
+fn install_is_what_fields_read() {
+    install(Memory(std::cell::RefCell::new(None)));
+    clipboard().set("hi").expect("memory stores");
+    assert_eq!(clipboard().get().as_deref(), Some("hi"));
+    install(NoopClipboard);
 }
 
 #[test]
-fn copy_without_handle_errors() {
-    install(crate::widgets::NoopClipboard);
-    let err = copy("x").unwrap_err();
-    assert!(
-        err.to_string().contains("installed"),
-        "expected install error, got {err}"
-    );
+fn write_on_noop_returns_err() {
+    let err = super::write(&NoopClipboard, "x").expect_err("noop cannot store");
+    assert!(err.to_string().contains("installed"));
 }

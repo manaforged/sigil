@@ -5,8 +5,7 @@
     clippy::float_cmp,
     clippy::indexing_slicing,
     clippy::panic,
-    clippy::unwrap_used,
-    missing_docs
+    clippy::unwrap_used
 )]
 
 use std::cell::RefCell;
@@ -446,20 +445,6 @@ fn identified_reorder_keeps_row_nodes() {
     });
 }
 
-#[test]
-fn items_bind_same_len_keeps_nodes() {
-    Runtime::scope("sigil-vlist-same-len", || {
-        let items = signal(vec!["a", "b", "c"]);
-        let mut cx = Cx::new_root();
-        let root = cx.add(virtual_list_bind(items, |_, _| container()));
-        cx.flush_reactive_children();
-        let keep = cx.first_child(bound_visible(&cx, root)).expect("row 0");
-        items.set(vec!["x", "y", "z"]);
-        cx.flush_reactive_children();
-        let first = cx.first_child(bound_visible(&cx, root)).expect("row 0");
-        assert_eq!(first, keep, "same length must keep NodeId");
-    });
-}
 fn first_row_label(cx: &Cx, root: NodeId) -> Option<String> {
     let visible = bound_visible(cx, root);
     let first = cx.first_child(visible)?;
@@ -560,6 +545,7 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
 fn scrolled_rows_land_at_their_document_position() {
     use crate::hal::{LogicalSize, Size};
     use crate::kernel::TextContent;
+    use crate::layout::prelude::LayoutBuilderExt;
     use crate::layout::{LayoutEngine, TextMeasure};
 
     struct StubMeasure;

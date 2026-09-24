@@ -1,3 +1,5 @@
+mod a11y;
+mod editing;
 mod render;
 mod scroll;
 
@@ -7,17 +9,20 @@ use crate::events::prelude::{KeyEvent, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::snap::{CellForm, line};
 use crate::reactive::{Signal, derived_eq, effect, signal};
-use crate::style::NodeStyleExt;
+use crate::style::{NodeStyleExt, StyleOverlay, Token, space};
 
+use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_state};
+use crate::widgets::interaction::InteractionState;
 use scroll::{first_row, follow_caret, scroll_body, wheel};
 
 const ROW_H: f32 = 18.0;
 const CARET_W: f32 = 2.0;
 const CHANGE_BAR_W: f32 = 2.0;
 const DIGIT_W: f32 = 7.0;
-const GUTTER_PAD: f32 = 8.0;
-const SELECTION_CLASS: &str = "bg-accent";
+const GUTTER_PAD: f32 = space(2);
+const SELECTION: Token = Token::Accent;
 const RUN_CLASS: &str = "text-sm font-mono";
 const ROW_BUFFER: usize = 6;
 const DEFAULT_VIEWPORT_H: f32 = 1600.0;
@@ -37,11 +42,11 @@ pub enum ChangeKind {
 }
 
 impl ChangeKind {
-    const fn bar_class(self) -> &'static str {
+    const fn bar_token(self) -> Token {
         match self {
-            Self::Added => "bg-success-9",
-            Self::Modified => "bg-info-9",
-            Self::Deleted => "bg-error-9",
+            Self::Added => Token::Success9,
+            Self::Modified => Token::Info9,
+            Self::Deleted => Token::Error9,
         }
     }
 }
@@ -62,11 +67,11 @@ pub enum DiagSeverity {
 }
 
 impl DiagSeverity {
-    const fn tint_class(self) -> &'static str {
+    const fn tint_token(self) -> Token {
         match self {
-            Self::Error => "bg-error-3",
-            Self::Warning => "bg-warn-3",
-            Self::Info | Self::Hint => "bg-info-3",
+            Self::Error => Token::Error3,
+            Self::Warning => Token::Warn3,
+            Self::Info | Self::Hint => Token::Info3,
         }
     }
 }
@@ -89,7 +94,8 @@ pub struct CodeEditBuilder {
     gutter: Option<GutterMarks>,
     diagnostics: Option<DiagSpans>,
     on_key: Option<KeyHandler>,
-    row_h: f32,
+    disabled: Option<Signal<bool>>,
+    row_h: Option<f32>,
 }
 
 #[must_use]
@@ -102,7 +108,8 @@ pub fn code_edit(lines: Signal<Vec<String>>, caret: Signal<(usize, usize)>) -> C
         gutter: None,
         diagnostics: None,
         on_key: None,
-        row_h: ROW_H,
+        disabled: None,
+        row_h: None,
     }
 }
 
@@ -120,6 +127,12 @@ impl CodeEditBuilder {
     }
 
     #[must_use]
+    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.disabled = Some(disabled);
+        self
+    }
+
+    #[must_use]
     pub const fn highlights(mut self, spans: Signal<Vec<Vec<HlSpan>>>) -> Self {
         self.highlights = Some(spans);
         self
@@ -127,7 +140,7 @@ impl CodeEditBuilder {
 
     #[must_use]
     pub const fn row_height(mut self, h: f32) -> Self {
-        self.row_h = h;
+        self.row_h = Some(h);
         self
     }
 
@@ -144,20 +157,23 @@ impl CodeEditBuilder {
     }
 
     fn into_node(self) -> NodeBuilder {
+        let model = editing::Model {
+            lines: self.lines,
+            caret: self.caret,
+            selection: self.selection,
+        };
         let lines = self.lines;
-        let caret = self.caret;
-        let highlights = self.highlights;
-        let selection = self.selection;
-        let gutter = self.gutter;
-        let diagnostics = self.diagnostics;
-        let row_h = self.row_h;
+        let row_h = self.row_h.unwrap_or_else(|| line(ROW_H));
         let traps_tab = self.on_key.is_some();
         let on_key = self.on_key.unwrap_or_else(|| Rc::new(|_| {}));
         let scroll_y = signal(0.0_f32);
         let viewport = signal((0.0_f32, DEFAULT_VIEWPORT_H));
+        let interaction = InteractionState::new(true);
+        let disabled = self.disabled;
         let start = derived_eq(move || first_row(scroll_y.get(), lines.get().len(), row_h));
-        effect(move || follow_caret(scroll_y, caret, lines, viewport, row_h));
-        container()
+        effect(move || follow_caret(scroll_y, self.caret, lines, viewport, row_h));
+        let runtime = editing::runtime(model, self.disabled);
+        let node = field_chrome(container(), interaction, disabled)
             .role(Role::TextInput)
             .label("Code editor")
             .focusable(true)
@@ -165,25 +181,53 @@ impl CodeEditBuilder {
             .class("w-full h-full")
             .layout(
                 LayoutStyle::flex_column()
+                    .padding(CellForm::new(space(1), 0.0).pick())
                     .overflow_x(Overflow::Hidden)
                     .overflow_y(Overflow::Hidden),
             )
             .size_reactive(viewport)
             .on_scroll(move |ev| wheel(ev, scroll_y, lines, viewport, row_h))
-            .key_any(move |event| on_key(event))
+            .key_capture_any(gated(on_key, self.disabled))
             .child(scroll_body(
                 Surface {
                     lines,
-                    caret,
-                    highlights,
-                    selection,
-                    gutter,
-                    diagnostics,
+                    caret: self.caret,
+                    highlights: self.highlights,
+                    selection: self.selection,
+                    gutter: self.gutter,
+                    diagnostics: self.diagnostics,
                     start,
                     viewport,
+                    caret_shown: caret_shown(interaction.focus_visible()),
                 },
                 row_h,
-            ))
+            ));
+        let node = editing::attach(a11y::expose(node, &runtime), &runtime);
+        interaction.observe_style(disabled_a11y(node, disabled))
+    }
+}
+
+fn field_chrome(
+    node: NodeBuilder,
+    interaction: InteractionState,
+    disabled: Option<Signal<bool>>,
+) -> NodeBuilder {
+    node.stateful_style(FIELD_VARIANT, StyleOverlay::default(), move || {
+        reactive_style_state(interaction, disabled)
+    })
+    .focus_ring(interaction.focus_ring())
+}
+
+fn caret_shown(focused: Signal<bool>) -> Signal<bool> {
+    let always = CellForm::new(true, false).pick();
+    derived_eq(move || always || focused.get())
+}
+
+fn gated(on_key: KeyHandler, disabled: Option<Signal<bool>>) -> impl Fn(&mut KeyEvent) + 'static {
+    move |event| {
+        if !disabled_now(disabled) {
+            on_key(event);
+        }
     }
 }
 
@@ -197,6 +241,7 @@ struct Surface {
     diagnostics: Option<DiagSpans>,
     start: Signal<usize>,
     viewport: Signal<(f32, f32)>,
+    caret_shown: Signal<bool>,
 }
 
 #[derive(Clone, Copy)]

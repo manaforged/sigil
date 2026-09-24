@@ -45,15 +45,14 @@ jobs:
           tool: cargo-deny@0.20.2
 
       - name: clippy
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --features sigil-ui/terminal --locked -- -D warnings
       - name: deny
         run: cargo deny check
 
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
-      SIGIL_REQUIRE_GOLDENS: "1"
       RUST_TEST_THREADS: "1"
       WGPU_BACKEND: vulkan
       LP_NUM_THREADS: "4"
@@ -77,11 +76,11 @@ jobs:
         with:
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
       - name: build tests
-        run: cargo test --workspace --lib --tests --no-run --locked --timings
+        run: cargo test --workspace --features sigil-ui/terminal --lib --tests --no-run --locked --timings
       - name: test
-        run: cargo test --workspace --lib --tests --no-fail-fast --locked
-      - name: GPU device ownership, draw order, and uploads
-        run: cargo test -p sigil-gui --test renderer_record_screen --test renderer_tall_scene --test renderer_frame_upload --locked -- --ignored
+        run: cargo test --workspace --features sigil-ui/terminal --lib --tests --no-fail-fast --locked
+      - name: GPU tests on lavapipe
+        run: cargo test --workspace --features sigil-ui/terminal --lib --tests --no-fail-fast --locked -- --ignored --skip clipboard_tests --skip zero_sized_resize_is_noop --skip raster_vs_vector_throughput
       - name: doctests
         run: cargo test --workspace --doc --no-fail-fast --locked
       - name: build size

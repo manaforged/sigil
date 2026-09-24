@@ -2,6 +2,8 @@ pub(super) const UP: u8 = 1;
 pub(super) const DOWN: u8 = 2;
 pub(super) const LEFT: u8 = 4;
 pub(super) const RIGHT: u8 = 8;
+const MAX_COLS: usize = 1024;
+const MAX_AREA: usize = 1024 * 512;
 
 pub(super) struct Canvas {
     cols: usize,
@@ -11,6 +13,8 @@ pub(super) struct Canvas {
 
 impl Canvas {
     pub(super) fn new(cols: usize, rows: usize) -> Self {
+        let cols = cols.min(MAX_COLS);
+        let rows = rows.min(MAX_AREA / cols.max(1));
         Self {
             cols,
             rows,

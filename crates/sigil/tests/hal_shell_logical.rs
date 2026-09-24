@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 use std::fmt;
 
@@ -90,6 +89,7 @@ fn default_create_window_with_ignores_opts_and_delegates() {
                 frameless: false,
                 anchor: Some(sigil::hal::Anchor::BottomCenter { margin: 64.0 }),
                 user_zoom: None,
+                ..sigil::hal::WindowOpts::default()
             },
         )
         .expect("default opts create should delegate");

@@ -1,6 +1,7 @@
-#![allow(missing_docs, clippy::print_stdout)]
+#![allow(clippy::print_stdout)]
 
 use sigil::prelude::*;
+use sigil::scene::SceneCommand;
 
 fn main() {
     Runtime::scope("hello-host", || {
@@ -23,15 +24,19 @@ fn main() {
             )
         });
         count.set(1);
-        if let Err(err) = host.layout((480.0, 240.0)) {
-            eprintln!("{err}");
-            return;
-        }
-        for node in host.painted() {
-            if let Some(text) = &node.text {
+        let scene = match host.scene((480.0, 240.0)) {
+            Ok(scene) => scene,
+            Err(err) => {
+                eprintln!("{err}");
+                return;
+            }
+        };
+        for command in &scene.commands {
+            if let SceneCommand::GlyphRun(draw) = command {
+                let rect = draw.run.rect;
                 println!(
-                    "{text} @ ({:.0},{:.0}) {}x{}",
-                    node.rect.origin.x, node.rect.origin.y, node.rect.width, node.rect.height
+                    "{} @ ({:.0},{:.0}) {}x{}",
+                    draw.run.text, rect.origin.x, rect.origin.y, rect.width, rect.height
                 );
             }
         }

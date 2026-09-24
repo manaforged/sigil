@@ -3,7 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(unsafe_code)]
-#![allow(missing_docs, clippy::missing_docs_in_private_items)]
 #![allow(clippy::panic, clippy::unwrap_used, clippy::indexing_slicing)]
 #![allow(clippy::print_stdout)]
 #![allow(

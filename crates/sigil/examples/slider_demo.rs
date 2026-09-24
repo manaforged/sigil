@@ -2,12 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - slider demo", 400, 300), build)
+    sigil::run(("Sigil - slider demo", 400, 300), build)
 }
 
 fn build(cx: &mut Cx) -> NodeId {

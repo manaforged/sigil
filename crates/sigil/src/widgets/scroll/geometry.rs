@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::style::{Dimension, Px, StyleAtom};
 
-use super::THUMB_MIN_HEIGHT;
+use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, to_i16};
 
 const CACHE_CAP: usize = 256;
 
@@ -33,12 +33,20 @@ pub(super) fn content_atoms((offset, height): (i16, i16)) -> &'static [StyleAtom
     })
 }
 
-pub(super) fn thumb_atoms((height, offset): (i16, i16)) -> &'static [StyleAtom] {
-    static CACHE: Cache = OnceLock::new();
-    atoms(&CACHE, (height, offset), || {
+pub(super) fn thumb_atoms((height, offset): (i16, i16), thick: bool) -> &'static [StyleAtom] {
+    static THIN: Cache = OnceLock::new();
+    static THICK: Cache = OnceLock::new();
+    let (cache, width) = if thick {
+        (&THICK, SCROLLBAR_WIDTH)
+    } else {
+        (&THIN, THUMB_REST_WIDTH)
+    };
+    atoms(cache, (height, offset), || {
         vec![
             StyleAtom::Height(Dimension::Px(Px(height))),
             StyleAtom::MarginTop(Px(offset)),
+            StyleAtom::Width(Dimension::Px(Px(to_i16(width)))),
+            StyleAtom::MarginLeft(Px(to_i16((SCROLLBAR_WIDTH - width) / 2.0))),
         ]
     })
 }

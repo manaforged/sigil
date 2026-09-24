@@ -87,10 +87,12 @@ pub(super) fn invoke_by_id(id: IntervalId, owner: OwnerId) -> bool {
     ran
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub(super) fn test_set_clock(clock: Instant) {
     REGISTRY.with(|r| r.borrow_mut().test_clock = Some(clock));
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub(super) fn test_advance_clock(delta: Duration) {
     REGISTRY.with(|r| {
         let mut reg = r.borrow_mut();
@@ -99,6 +101,7 @@ pub(super) fn test_advance_clock(delta: Duration) {
     });
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub(super) fn test_clear_clock() {
     REGISTRY.with(|r| r.borrow_mut().test_clock = None);
 }

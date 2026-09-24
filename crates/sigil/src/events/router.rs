@@ -91,6 +91,9 @@ impl EventRouter {
     }
 
     pub fn flush_focus_requests(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+        for id in crate::events::focus::take_reveal_requests() {
+            crate::events::focus::reveal_focus(cx, layout, id);
+        }
         let pending = crate::events::focus::take_focus_requests();
         if pending.is_empty() {
             return;
@@ -119,15 +122,11 @@ impl EventRouter {
 
     pub fn focus_if_needed(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
         self.focus.sync_scopes(cx, Some(layout));
-        if self
-            .focus
-            .focus()
-            .is_some_and(|id| self.focus.is_focusable_target(cx, layout, id))
-        {
+        if self.focus.holds_live_focus(cx) {
             return;
         }
         crate::events::note_focus_source(true);
-        self.focus.focus_next(cx, Some(layout));
+        self.focus.focus_first(cx, layout);
     }
 
     pub fn focus_intent(&mut self, cx: &mut Cx, layout: &LayoutEngine, intent: FocusIntent) {

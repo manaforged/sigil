@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
@@ -12,14 +11,14 @@ use sigil::prelude::*;
 
 use sigil_kittest::{
     InteractionMode, assert_png_matches_golden, capture_filmstrip, golden_path,
-    render_widget_to_png,
+    render_widget_to_png_stub,
 };
 
 const DELTA_PCT: f32 = 0.5;
 const DT: f32 = 1.0 / 60.0;
 
-fn check(stem: &str, img: Option<image::RgbaImage>) {
-    let Some(img) = img else {
+fn check(stem: &str, img: sigil_kittest::Rendered) {
+    let Some(img) = img.expect("sigil-kittest") else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
@@ -28,7 +27,7 @@ fn check(stem: &str, img: Option<image::RgbaImage>) {
 
 #[test]
 fn button_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -42,7 +41,7 @@ fn button_hover_settled() {
 
 #[test]
 fn button_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [160, 56],
@@ -53,7 +52,14 @@ fn button_hover_midflight() {
 
 #[test]
 fn button_hover_filmstrip() {
-    let img = capture_filmstrip(|cx| cx.add(button("Save")), [160, 56], (24.0, 16.0), 6, DT);
+    let img = capture_filmstrip(
+        |cx| cx.add(button("Save")),
+        [160, 56],
+        (24.0, 16.0),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("button_hover_filmstrip", img);
 }
 
@@ -64,7 +70,7 @@ fn checkbox_widget(cx: &mut Cx) -> NodeId {
 
 #[test]
 fn checkbox_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         checkbox_widget,
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -78,7 +84,7 @@ fn checkbox_hover_settled() {
 
 #[test]
 fn checkbox_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         checkbox_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [36, 36],
@@ -89,7 +95,14 @@ fn checkbox_hover_midflight() {
 
 #[test]
 fn checkbox_hover_filmstrip() {
-    let img = capture_filmstrip(checkbox_widget, [36, 36], (16.0, 16.0), 6, DT);
+    let img = capture_filmstrip(
+        checkbox_widget,
+        [36, 36],
+        (16.0, 16.0),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("checkbox_hover_filmstrip", img);
 }
 
@@ -100,7 +113,7 @@ fn slider_widget(cx: &mut Cx) -> NodeId {
 
 #[test]
 fn slider_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         slider_widget,
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -114,7 +127,7 @@ fn slider_hover_settled() {
 
 #[test]
 fn slider_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         slider_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [192, 36],
@@ -125,7 +138,14 @@ fn slider_hover_midflight() {
 
 #[test]
 fn slider_hover_filmstrip() {
-    let img = capture_filmstrip(slider_widget, [192, 36], (90.0, 14.0), 6, DT);
+    let img = capture_filmstrip(
+        slider_widget,
+        [192, 36],
+        (90.0, 14.0),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("slider_hover_filmstrip", img);
 }
 
@@ -140,7 +160,7 @@ fn dropdown_widget(cx: &mut Cx) -> NodeId {
 
 #[test]
 fn dropdown_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         dropdown_widget,
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -154,7 +174,7 @@ fn dropdown_hover_settled() {
 
 #[test]
 fn dropdown_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         dropdown_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [212, 52],
@@ -165,7 +185,14 @@ fn dropdown_hover_midflight() {
 
 #[test]
 fn dropdown_hover_filmstrip() {
-    let img = capture_filmstrip(dropdown_widget, [212, 52], (90.0, 22.0), 6, DT);
+    let img = capture_filmstrip(
+        dropdown_widget,
+        [212, 52],
+        (90.0, 22.0),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("dropdown_hover_filmstrip", img);
 }
 
@@ -176,7 +203,7 @@ fn text_field_widget(cx: &mut Cx) -> NodeId {
 
 #[test]
 fn text_field_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         text_field_widget,
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -190,7 +217,7 @@ fn text_field_hover_settled() {
 
 #[test]
 fn text_field_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         text_field_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [192, 44],
@@ -201,7 +228,14 @@ fn text_field_hover_midflight() {
 
 #[test]
 fn text_field_hover_filmstrip() {
-    let img = capture_filmstrip(text_field_widget, [192, 44], (40.0, 22.0), 6, DT);
+    let img = capture_filmstrip(
+        text_field_widget,
+        [192, 44],
+        (40.0, 22.0),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("text_field_hover_filmstrip", img);
 }
 
@@ -212,7 +246,7 @@ fn toggle_widget(cx: &mut Cx) -> NodeId {
 
 #[test]
 fn toggle_hover_settled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         toggle_widget,
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
@@ -226,7 +260,7 @@ fn toggle_hover_settled() {
 
 #[test]
 fn toggle_hover_midflight() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         toggle_widget,
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [50, 32],
@@ -237,6 +271,13 @@ fn toggle_hover_midflight() {
 
 #[test]
 fn toggle_hover_filmstrip() {
-    let img = capture_filmstrip(toggle_widget, [50, 32], (35.0, 22.4), 6, DT);
+    let img = capture_filmstrip(
+        toggle_widget,
+        [50, 32],
+        (35.0, 22.4),
+        6,
+        DT,
+        sigil_kittest::stub_text_measure,
+    );
     check("toggle_hover_filmstrip", img);
 }

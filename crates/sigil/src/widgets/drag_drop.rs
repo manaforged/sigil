@@ -5,13 +5,12 @@ use crate::events::prelude::{MouseButton, MouseButtons, NodeEventsExt, PointerEv
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::reactive::{Signal, derived, signal};
-use crate::style::NodeStyleExt;
+use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token};
 
 pub const DRAG_THRESHOLD_PX: f32 = 4.0;
 
 pub const DROP_TARGET_CLASS: &str = "bg-accent-4";
 
-const GHOST_CLASS: &str = "rounded-md px-2 py-1 bg-accent-3 text-accent-12 border border-accent-6";
 const GHOST_OFFSET: (f32, f32) = (12.0, 10.0);
 
 type Armed = Rc<Cell<Option<(f32, f32)>>>;
@@ -243,7 +242,18 @@ where
     let Some(payload) = state.payload.get() else {
         return Vec::new();
     };
-    vec![container().class(GHOST_CLASS).child(render(&payload))]
+    vec![
+        container()
+            .class("px-2 py-1")
+            .class([
+                Radius::Md.atom(),
+                Token::Accent3.bg(),
+                Token::Accent12.text(),
+                StyleAtom::BorderWidth(BORDER_WIDTH),
+                Token::Accent6.border(),
+            ])
+            .child(render(&payload)),
+    ]
 }
 
 fn arm(armed: Armed) -> impl Fn(&mut PointerEvent) + 'static {

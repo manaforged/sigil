@@ -38,7 +38,6 @@ pub fn use_system_fonts() {
     }
 }
 
-#[doc(hidden)]
 pub fn prefer_system_fonts() {
     if let Ok(mut guard) = DEFAULT_FONTS.write()
         && matches!(*guard, DefaultFontSource::Bundled)

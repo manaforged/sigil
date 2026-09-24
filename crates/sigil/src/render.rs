@@ -1,9 +1,8 @@
-//! Re-exports of the render scene types for embedders.
 pub use crate::hal::{Color, PhysicalSize, RenderedGlyph};
 pub use crate::renderer::{
     CommandScene, CornerRadii, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,
-    DrawParams, DrawPattern, DrawRect, DrawSprite, Fill, GlyphRun, GradientStop, LayerEffect,
-    LayerScope, LinearGradient, OffscreenTarget, PatternKind, RendererError, SceneBuilder,
+    DrawParams, DrawPattern, DrawRect, DrawSprite, GlyphRun, GradientStop, LayerEffect, LayerScope,
+    LinearGradient, OffscreenTarget, PaintFill, PatternKind, RendererError, SceneBuilder,
     SceneCommand, SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle,
     SceneSpriteStyle, ScreenSubmission, Shadow, ShadowKind, SlugTextPipeline, SpriteKind,
     SpriteSource, Stroke, StrokeAlign, StrokeStyle, Transform, WgpuRenderer, WgpuSurface,

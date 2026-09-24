@@ -1,10 +1,12 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Style, StyleAccess, StyleAtom};
+use crate::style::{
+    BORDER_WIDTH, NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, space,
+};
 
-const PANEL_MIN_HEIGHT: f32 = 48.0;
-const DEFAULT_PADDING: f32 = 16.0;
-const TITLE_HEIGHT: f32 = 40.0;
+const PANEL_MIN_HEIGHT: f32 = space(12);
+const DEFAULT_PADDING: f32 = space(4);
+const TITLE_GAP: f32 = space(2);
 
 pub struct PanelBuilder {
     pub title: Option<String>,
@@ -69,7 +71,7 @@ impl PanelBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
             .layout(panel_layout(self.padding, self.width))
-            .class("rounded-md")
+            .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
 
         if let Some(title) = self.title {
@@ -107,7 +109,7 @@ impl IntoNode for PanelBuilder {
 }
 
 fn panel_layout(padding: f32, width: Option<f32>) -> LayoutStyle {
-    let base = LayoutStyle::flex_column().padding(padding);
+    let base = LayoutStyle::flex_column().padding(padding).gap(TITLE_GAP);
     let base = match width {
         Some(px) => base.width(px),
         None => base.fill_width(),
@@ -117,13 +119,21 @@ fn panel_layout(padding: f32, width: Option<f32>) -> LayoutStyle {
 
 fn panel_title(title: String) -> impl IntoNode {
     text(title)
-        .layout(LayoutStyle::block().height(TITLE_HEIGHT))
-        .class("text-on-surface")
+        .class("text-sm font-medium")
+        .class(Token::OnSurface.text())
 }
 
 const fn surface_atoms(elevation: u32) -> &'static [StyleAtom] {
     match elevation {
-        0 => &[StyleAtom::BackgroundThemeRef("surface")],
-        _ => &[StyleAtom::BackgroundThemeRef("surface-hover")],
+        0 => const { &[Token::Surface.bg()] },
+        _ => {
+            const {
+                &[
+                    Token::SurfaceHover.bg(),
+                    StyleAtom::BorderWidth(BORDER_WIDTH),
+                    Token::Border.border(),
+                ]
+            }
+        }
     }
 }

@@ -3,7 +3,10 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
-use crate::reactive::runtime::{EffectKey, SignalKey, SignalSlot, runtime_id, with_rt};
+use crate::reactive::runtime::{
+    EffectKey, RuntimeState, SignalKey, SignalSlot, runtime_id, with_rt,
+};
+use crate::reactive::signal_write::{UpdateGuard, UpdateInProgress};
 
 pub struct Signal<T: 'static> {
     pub(crate) key: SignalKey,
@@ -29,7 +32,6 @@ impl<T: 'static> Signal<T> {
         self.key
     }
 
-    #[doc(hidden)]
     #[must_use]
     pub fn into_sendable(self) -> SendableSignal<T> {
         SendableSignal {
@@ -41,7 +43,6 @@ impl<T: 'static> Signal<T> {
     }
 }
 
-#[doc(hidden)]
 pub struct SendableSignal<T: 'static> {
     index: u32,
     generation: u32,
@@ -70,7 +71,6 @@ impl<T: 'static> core::fmt::Debug for SendableSignal<T> {
 }
 
 impl<T: 'static> SendableSignal<T> {
-    #[doc(hidden)]
     #[must_use]
     #[track_caller]
     pub fn into_signal(self) -> Signal<T> {
@@ -146,32 +146,7 @@ impl<T: Clone + 'static> Signal<T> {
                 .downcast_ref::<T>()
                 .expect("signal type mismatch")
                 .clone();
-            if let Some(effect) = rt.current_effect {
-                let should_subscribe = if let Some(eff) = rt.effects.get_mut(effect) {
-                    if eff
-                        .prev_deps
-                        .get(eff.prev_dep_cursor)
-                        .is_some_and(|&dep| dep == self.key)
-                    {
-                        eff.prev_dep_cursor += 1;
-                        eff.deps.push(self.key);
-                        false
-                    } else if eff.deps.last().is_some_and(|&dep| dep == self.key)
-                        || eff.deps.contains(&self.key)
-                    {
-                        false
-                    } else {
-                        let already_subscribed = eff.prev_deps.contains(&self.key);
-                        eff.deps.push(self.key);
-                        !already_subscribed
-                    }
-                } else {
-                    false
-                };
-                if should_subscribe && let Some(sub_slot) = rt.signals.get_mut(self.key) {
-                    sub_slot.subscribers.push(effect);
-                }
-            }
+            track_key(rt, self.key);
             value
         })
     }
@@ -211,6 +186,67 @@ impl<T: Clone + 'static> Signal<T> {
             }
             slot.value.downcast_ref::<T>().cloned()
         })
+    }
+}
+
+fn track_key(rt: &mut RuntimeState, key: SignalKey) {
+    if let Some(effect) = rt.current_effect {
+        let should_subscribe = if let Some(eff) = rt.effects.get_mut(effect) {
+            if eff
+                .prev_deps
+                .get(eff.prev_dep_cursor)
+                .is_some_and(|&dep| dep == key)
+            {
+                eff.prev_dep_cursor += 1;
+                eff.deps.push(key);
+                false
+            } else if eff.deps.last().is_some_and(|&dep| dep == key) || eff.deps.contains(&key) {
+                false
+            } else {
+                let already_subscribed = eff.prev_deps.contains(&key);
+                eff.deps.push(key);
+                !already_subscribed
+            }
+        } else {
+            false
+        };
+        if should_subscribe && let Some(sub_slot) = rt.signals.get_mut(key) {
+            sub_slot.subscribers.push(effect);
+        }
+    }
+}
+
+impl<T: 'static> Signal<T> {
+    #[track_caller]
+    pub fn track(self) {
+        let caller = Location::caller();
+        with_rt(|rt| {
+            if rt.signals.get(self.key).is_none() {
+                crate::reactive::diagnostic::disposed_signal("track", caller);
+            }
+            track_key(rt, self.key);
+        });
+    }
+
+    #[track_caller]
+    pub fn with<R>(self, f: impl FnOnce(&T) -> R) -> R {
+        let caller = Location::caller();
+        let taken = with_rt(|rt| {
+            let Some(slot) = rt.signals.get_mut(self.key) else {
+                crate::reactive::diagnostic::disposed_signal("with", caller);
+            };
+            assert!(
+                !slot.value.is::<UpdateInProgress>(),
+                "Signal::with on a signal whose own update or with closure is still running (at {caller})"
+            );
+            let taken = core::mem::replace(&mut slot.value, Box::new(UpdateInProgress));
+            track_key(rt, self.key);
+            taken
+        });
+        let guard = UpdateGuard::new(self.key, taken);
+        let out = f(guard.value_ref::<T>());
+        drop(guard);
+        out
     }
 }
 

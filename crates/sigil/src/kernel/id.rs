@@ -15,12 +15,12 @@ impl NodeId {
     }
 
     #[must_use]
-    pub const fn key(self) -> DefaultKey {
+    pub(crate) const fn key(self) -> DefaultKey {
         self.0
     }
 
     #[must_use]
-    pub const fn from_key(key: DefaultKey) -> Self {
+    pub(crate) const fn from_key(key: DefaultKey) -> Self {
         Self(key)
     }
 }

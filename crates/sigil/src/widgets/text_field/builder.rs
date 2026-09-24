@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::layout::prelude::LayoutBuilderExt;
 use crate::reactive::{Signal, derived, signal};
@@ -7,12 +8,12 @@ use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::clipboard::{Clipboard, clipboard};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
-use super::handlers::{TextFieldRuntime, attach_key_handlers, noop_change};
-use super::ime::attach_ime_handlers;
+use super::super::text_edit::{FocusCaret, noop_change};
+use super::handlers::{FieldConfig, TextFieldRuntime, attach_key_handlers};
 use super::render::{FieldInputs, build_base_node, field_layout};
+use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 
@@ -23,10 +24,12 @@ pub struct TextFieldBuilder {
     pub(super) invalid: Option<Signal<bool>>,
     pub(super) change: Option<TextChange>,
     pub(super) submit: Option<TextChange>,
+    blur: Option<Rc<dyn Fn() + 'static>>,
     pub(super) clipboard: Option<Rc<dyn Clipboard>>,
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
     focus_trigger: Option<Signal<u64>>,
+    focus_caret: FocusCaret,
     pub(super) password: bool,
     pub(super) reveal: Option<Signal<bool>>,
     pub(super) style_accumulator: Style,
@@ -49,10 +52,12 @@ impl TextFieldBuilder {
             invalid: None,
             change: None,
             submit: None,
+            blur: None,
             clipboard: None,
             caret_visible: None,
             scroll_offset: None,
             focus_trigger: None,
+            focus_caret: FocusCaret::Keep,
             password: false,
             reveal: None,
             style_accumulator: Style::new(),
@@ -107,6 +112,12 @@ impl TextFieldBuilder {
     }
 
     #[must_use]
+    pub fn blur(mut self, f: impl Fn() + 'static) -> Self {
+        self.blur = Some(Rc::new(f));
+        self
+    }
+
+    #[must_use]
     pub fn clipboard(mut self, clipboard: impl Clipboard + 'static) -> Self {
         self.clipboard = Some(Rc::new(clipboard));
         self
@@ -115,6 +126,12 @@ impl TextFieldBuilder {
     #[must_use]
     pub const fn focus_when(mut self, trigger: Signal<u64>) -> Self {
         self.focus_trigger = Some(trigger);
+        self
+    }
+
+    #[must_use]
+    pub const fn focus_caret(mut self, at: FocusCaret) -> Self {
+        self.focus_caret = at;
         self
     }
 
@@ -130,65 +147,52 @@ impl TextFieldBuilder {
         self
     }
 
-    #[allow(
-        clippy::too_many_lines,
-        reason = "one assembly path: inputs, runtime, base node, mutators"
-    )]
-    pub(super) fn into_node_builder(self) -> (NodeBuilder, TextFieldRuntime) {
-        let value = self.value;
-        let disabled = self.disabled;
-        let invalid = self.invalid;
-        let placeholder = self.placeholder;
-        let mut style_accumulator = self.style_accumulator;
-        let mutators = self.mutators;
-        let layout_overrides = self.layout_overrides;
-        let change = self.change.unwrap_or_else(noop_change);
-        let submit = self.submit.unwrap_or_else(noop_change);
-        let clipboard = self.clipboard.unwrap_or_else(clipboard);
-
-        let enabled = !disabled_now(disabled);
-        let interaction = InteractionState::new(enabled);
-        let caret_visible = self.caret_visible.unwrap_or_else(|| signal(true));
-        let scroll = self.scroll_offset.unwrap_or_else(|| signal(0.0_f32));
-
-        let width = layout_overrides.width_hint();
-        let height = layout_overrides.height_hint();
-        let column = super::selection::column_width(width);
-        let reveal = self.reveal.unwrap_or_else(|| signal(false));
-        let runtime = TextFieldRuntime::new(
-            value,
-            disabled,
-            change,
-            submit,
-            clipboard,
-            caret_visible,
-            scroll,
+    fn runtime(&mut self, column: f32) -> TextFieldRuntime {
+        TextFieldRuntime::new(FieldConfig {
+            value: self.value,
+            disabled: self.disabled,
+            change: self.change.take().unwrap_or_else(noop_change),
+            submit: self.submit.take().unwrap_or_else(noop_change),
+            clipboard: self.clipboard.take().unwrap_or_else(clipboard),
+            caret_visible: self.caret_visible.unwrap_or_else(|| signal(true)),
+            scroll: self.scroll_offset.unwrap_or_else(|| signal(0.0_f32)),
             column,
-            self.password,
-            reveal,
-        );
-        let clip_fail = runtime.clip_fail;
-        let invalid = Some(derived(move || {
-            invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
-        }));
+            password: self.password,
+            reveal: self.reveal.unwrap_or_else(|| signal(false)),
+        })
+    }
 
-        let user_overlay = style_accumulator.take_state_overlay();
+    pub(super) fn into_node_builder(mut self) -> (NodeBuilder, TextFieldRuntime) {
+        let width = self.layout_overrides.width_hint();
+        let height = self.layout_overrides.height_hint();
+        let runtime = self.runtime(super::selection::column_width(width));
+        let interaction = InteractionState::new(!disabled_now(self.disabled));
+        let clip_fail = runtime.input.clip_fail;
+        let invalid = self.invalid;
         let inputs = FieldInputs {
-            value,
-            disabled,
-            invalid,
-            overlay: user_overlay,
+            value: self.value,
+            disabled: self.disabled,
+            invalid: Some(derived(move || {
+                invalid.is_some_and(|flag| flag.get()) || clip_fail.get()
+            })),
+            overlay: self.style_accumulator.take_state_overlay(),
             width,
             height,
         };
-        let node = build_base_node(inputs, &placeholder, interaction, runtime.clone());
-        let node = interaction.install(attach_key_handlers(node, runtime.clone()));
-        let node = attach_ime_handlers(node, &runtime);
-        let mut node = mutators.into_iter().fold(node, |node, mutate| mutate(node));
-        if !style_accumulator.is_empty() {
-            node = node.style(style_accumulator);
+        let node = build_base_node(inputs, &self.placeholder, interaction, runtime.clone());
+        let node = interaction.install(attach_key_handlers(node, &runtime));
+        let node = match self.blur {
+            Some(blur) => node.focus_out(move || blur()),
+            None => node,
+        };
+        let mut node = self
+            .mutators
+            .into_iter()
+            .fold(node, |node, mutate| mutate(node));
+        if !self.style_accumulator.is_empty() {
+            node = node.style(self.style_accumulator);
         }
-        node = node.layout(layout_overrides.apply(field_layout()));
+        let node = node.layout(self.layout_overrides.apply(field_layout()));
         (node, runtime)
     }
 }
@@ -210,24 +214,35 @@ impl WidgetLayoutExt for TextFieldBuilder {
 impl IntoNode for TextFieldBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         let focus_trigger = self.focus_trigger;
-        let (node, _runtime) = self.into_node_builder();
+        let at = self.focus_caret;
+        let (node, runtime) = self.into_node_builder();
         let id = node.build(cx);
         if let Some(trigger) = focus_trigger {
             if trigger.peek() > 0 {
-                crate::events::request_focus(id);
+                focus_field(id, &runtime, at);
             }
-            install_focus_trigger(id, trigger);
+            install_focus_trigger(id, trigger, runtime, at);
         }
         id
     }
 }
 
-fn install_focus_trigger(id: crate::kernel::NodeId, trigger: Signal<u64>) {
+fn focus_field(id: crate::kernel::NodeId, runtime: &TextFieldRuntime, at: FocusCaret) {
+    crate::events::request_focus(id);
+    runtime.input.place_on_focus(at);
+}
+
+fn install_focus_trigger(
+    id: crate::kernel::NodeId,
+    trigger: Signal<u64>,
+    runtime: TextFieldRuntime,
+    at: FocusCaret,
+) {
     let last = std::cell::Cell::new(trigger.peek());
     crate::reactive::effect_named("sigil::text_field::focus_when", move || {
         let generation = trigger.get();
         if generation != last.replace(generation) {
-            crate::events::request_focus(id);
+            focus_field(id, &runtime, at);
         }
     });
 }

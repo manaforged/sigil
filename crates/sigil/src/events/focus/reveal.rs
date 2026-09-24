@@ -22,11 +22,14 @@ pub(crate) fn reveal_focus(cx: &Cx, layout: &LayoutEngine, target: NodeId) {
             .copied()
             && let Some(view) = layout.result(id).map(|result| result.rect())
         {
-            let before = reveal.scroll_y.peek();
+            let (Some(before), Some(max)) = (reveal.scroll_y.try_peek(), reveal.max.try_peek())
+            else {
+                return;
+            };
             let shift = overflow(top, bottom, view.origin.y, view.origin.y + view.height);
-            let after = (before + shift).clamp(0.0, reveal.max.peek().max(0.0));
-            if (after - before).abs() > f32::EPSILON {
-                reveal.scroll_y.set(after);
+            let after = (before + shift).clamp(0.0, max.max(0.0));
+            if (after - before).abs() > f32::EPSILON && !reveal.scroll_y.try_set(after) {
+                return;
             }
             top -= after - before;
             bottom -= after - before;

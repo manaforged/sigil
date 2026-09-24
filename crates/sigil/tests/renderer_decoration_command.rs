@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::hal::{Color, Point, Rect};
@@ -23,11 +22,9 @@ fn decoration_commands_walk_and_populate_decoration_pipeline_cache() {
     let scene = decoration_scene();
     assert_decoration_command_shape(&scene);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping decoration command walker test: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();

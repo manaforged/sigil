@@ -1,17 +1,17 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::prelude::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};
 use crate::style::TextStyle;
 
-use super::super::clipboard::Clipboard;
 use super::super::shared::disabled_now;
 use super::TextEdit;
 use super::builder::TextChange;
 use super::ime::ImeState;
+use crate::clipboard::Clipboard;
 
 #[path = "commands.rs"]
 mod commands;
@@ -19,30 +19,36 @@ mod commands;
 mod navigation;
 #[path = "state.rs"]
 mod state;
+pub(in crate::widgets) use commands::{
+    attach_a11y_edit, clipboard_keys, history_keys, submit_text, word_keys,
+};
 pub(super) use navigation::geometry_width;
-use navigation::{move_horizontal, move_vertical, move_visual_edge};
+use navigation::{move_horizontal, move_vertical, move_visual_edge, update_scroll};
 pub use state::TextEditState;
 
 #[derive(Clone)]
-pub(super) struct TextEditRuntime {
-    pub(super) value: Signal<String>,
-    pub(super) disabled: Option<Signal<bool>>,
-    pub(super) edit: Rc<RefCell<TextEdit>>,
-    pub(super) change: TextChange,
-    pub(super) submit: TextChange,
-    pub(super) clipboard: Rc<dyn Clipboard>,
-    pub(super) caret_visible: Signal<bool>,
-    pub(super) caret: Signal<usize>,
-    pub(super) selection: Signal<Option<usize>>,
-    pub(super) ime: ImeState,
-    pub(super) text_style: Signal<TextStyle>,
-    pub(super) content_size: Signal<(f32, f32)>,
-    pub(super) viewport_size: Signal<(f32, f32)>,
-    pub(super) scroll_y: Signal<f32>,
-    pub(super) content_padding: (f32, f32),
-    pub(super) preferred_x: Rc<Cell<Option<f32>>>,
-    pub(super) caret_affinity: Signal<TextAffinity>,
-    pub(super) anchor_affinity: Signal<TextAffinity>,
+pub(in crate::widgets) struct TextEditRuntime {
+    pub(in crate::widgets) value: Signal<String>,
+    pub(in crate::widgets) disabled: Option<Signal<bool>>,
+    pub(in crate::widgets) edit: Rc<RefCell<TextEdit>>,
+    pub(in crate::widgets) change: TextChange,
+    pub(in crate::widgets) submit: TextChange,
+    pub(in crate::widgets) clipboard: Rc<dyn Clipboard>,
+    pub(in crate::widgets) caret_visible: Signal<bool>,
+    pub(in crate::widgets) caret: Signal<usize>,
+    pub(in crate::widgets) selection: Signal<Option<usize>>,
+    pub(in crate::widgets) ime: ImeState,
+    pub(in crate::widgets) text_style: Signal<TextStyle>,
+    pub(in crate::widgets) content_size: Signal<(f32, f32)>,
+    pub(in crate::widgets) viewport_size: Signal<(f32, f32)>,
+    pub(in crate::widgets) scroll_y: Signal<f32>,
+    pub(in crate::widgets) content_padding: (f32, f32),
+    pub(in crate::widgets) preferred_x: Rc<Cell<Option<f32>>>,
+    pub(in crate::widgets) caret_affinity: Signal<TextAffinity>,
+    pub(in crate::widgets) anchor_affinity: Signal<TextAffinity>,
+    pub(in crate::widgets) scroll_x: Signal<f32>,
+    pub(in crate::widgets) column: Option<f32>,
+    pub(in crate::widgets) clip_fail: Signal<bool>,
 }
 
 impl TextEditRuntime {
@@ -50,7 +56,7 @@ impl TextEditRuntime {
         clippy::too_many_arguments,
         reason = "wires retained editor state to widget event handlers"
     )]
-    pub(super) fn new(
+    pub(in crate::widgets) fn new(
         state: TextEditState,
         disabled: Option<Signal<bool>>,
         change: TextChange,
@@ -78,14 +84,27 @@ impl TextEditRuntime {
             preferred_x: Rc::new(Cell::new(None)),
             caret_affinity: signal(TextAffinity::Downstream),
             anchor_affinity: signal(TextAffinity::Downstream),
+            scroll_x: signal(0.0),
+            column: None,
+            clip_fail: signal(false),
         }
     }
 
-    pub(super) fn disabled(&self) -> bool {
+    pub(in crate::widgets) const fn single_line(
+        mut self,
+        column: f32,
+        scroll_x: Signal<f32>,
+    ) -> Self {
+        self.column = Some(column);
+        self.scroll_x = scroll_x;
+        self
+    }
+
+    pub(in crate::widgets) fn disabled(&self) -> bool {
         disabled_now(self.disabled)
     }
 
-    pub(super) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
+    pub(in crate::widgets) fn edit_mut(&self) -> RefMut<'_, TextEdit> {
         let mut edit = self.edit.borrow_mut();
         edit.sync_external(self.value.peek());
         let caret = self.caret.peek();
@@ -94,13 +113,37 @@ impl TextEditRuntime {
         }
         edit
     }
+
+    pub(in crate::widgets) fn place_on_focus(&self, at: FocusCaret) {
+        let mut edit = self.edit_mut();
+        match at {
+            FocusCaret::Keep => return,
+            FocusCaret::End => {
+                let end = edit.len();
+                edit.place_caret(end);
+            }
+            FocusCaret::SelectAll => edit.select_all(),
+        }
+        commit(self, &edit);
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum FocusCaret {
+    #[default]
+    Keep,
+    End,
+    SelectAll,
 }
 
 #[cfg(test)]
 #[path = "handlers_tests.rs"]
 mod tests;
 
-pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
+pub(in crate::widgets) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
+    if let Some(column) = runtime.column {
+        update_scroll(runtime, state, column);
+    }
     runtime.preferred_x.set(None);
     runtime.caret_affinity.set(TextAffinity::Downstream);
     runtime.caret_visible.set(true);
@@ -112,7 +155,7 @@ pub(super) fn commit(runtime: &TextEditRuntime, state: &TextEdit) {
     }
 }
 
-pub(super) fn noop_change() -> TextChange {
+pub(in crate::widgets) fn noop_change() -> TextChange {
     Rc::new(|_| {})
 }
 
@@ -121,7 +164,8 @@ pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextEditRuntime) -
     let node = shift_keys(node, runtime.clone());
     let node = commands::clipboard_keys(node, &runtime);
     let node = word_keys(node, &runtime);
-    commands::history_keys(node, runtime)
+    let node = commands::history_keys(node, runtime.clone());
+    commands::attach_a11y_edit(node, runtime)
 }
 
 fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
@@ -176,69 +220,6 @@ fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
         )
 }
 
-type Edit = fn(&mut TextEdit);
-
-fn word_keys(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let node = motion_keys(node, runtime);
-    deletion_keys(node, runtime)
-}
-
-fn motion_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let bindings: [(Shortcut, Edit); 4] = [
-        (
-            Shortcut::new(Key::ArrowLeft, ModifiersState::ALT),
-            TextEdit::move_word_left,
-        ),
-        (
-            Shortcut::new(Key::ArrowRight, ModifiersState::ALT),
-            TextEdit::move_word_right,
-        ),
-        (
-            Shortcut::new(LogicalKey::character("b"), ModifiersState::ALT),
-            TextEdit::move_word_left,
-        ),
-        (
-            Shortcut::new(LogicalKey::character("f"), ModifiersState::ALT),
-            TextEdit::move_word_right,
-        ),
-    ];
-    for (shortcut, edit) in bindings {
-        let runtime = runtime.clone();
-        node = node.key(shortcut, move |event| move_caret(event, &runtime, edit));
-    }
-    node
-}
-
-fn deletion_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let bindings: [(Shortcut, Edit); 5] = [
-        (
-            Shortcut::new(Key::Backspace, ModifiersState::ALT),
-            TextEdit::delete_word_backward,
-        ),
-        (
-            Shortcut::ctrl(LogicalKey::character("w")),
-            TextEdit::delete_word_backward,
-        ),
-        (
-            Shortcut::new(LogicalKey::character("d"), ModifiersState::ALT),
-            TextEdit::delete_word_forward,
-        ),
-        (
-            Shortcut::ctrl(LogicalKey::character("u")),
-            TextEdit::delete_to_line_start,
-        ),
-        (
-            Shortcut::ctrl(LogicalKey::character("k")),
-            TextEdit::delete_to_line_end,
-        ),
-    ];
-    for (shortcut, edit) in bindings {
-        let runtime = runtime.clone();
-        node = node.key(shortcut, move |event| edit_value(event, &runtime, edit));
-    }
-    node
-}
-
 fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     let left = runtime.clone();
     let right = runtime.clone();
@@ -286,7 +267,7 @@ fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
     )
 }
 
-fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
+pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     if runtime.disabled() {
         event.stop_propagation();
         return;
@@ -296,11 +277,15 @@ fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     {
         return;
     }
-    let Some(text) = event.text.as_deref().filter(|text| is_printable(text)) else {
+    let Some(text) = event
+        .text
+        .as_deref()
+        .and_then(|text| typed_text(runtime, text))
+    else {
         return;
     };
     let mut edit = runtime.edit_mut();
-    edit.insert_str(text);
+    edit.insert_str(&text);
     sync_value(runtime, &edit);
     event.stop_propagation();
 }
@@ -318,7 +303,11 @@ fn insert_newline(event: &mut KeyEvent, runtime: &TextEditRuntime) {
     sync_value(runtime, &edit);
 }
 
-fn edit_value(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce(&mut TextEdit)) {
+pub(in crate::widgets) fn edit_value(
+    event: &mut KeyEvent,
+    runtime: &TextEditRuntime,
+    edit: impl FnOnce(&mut TextEdit),
+) {
     event.stop_propagation();
     if runtime.disabled() {
         return;
@@ -333,7 +322,11 @@ fn edit_value(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce
     }
 }
 
-fn move_caret(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce(&mut TextEdit)) {
+pub(in crate::widgets) fn move_caret(
+    event: &mut KeyEvent,
+    runtime: &TextEditRuntime,
+    edit: impl FnOnce(&mut TextEdit),
+) {
     event.stop_propagation();
     if !runtime.disabled() {
         let mut state = runtime.edit_mut();
@@ -349,7 +342,7 @@ fn move_caret(event: &mut KeyEvent, runtime: &TextEditRuntime, edit: impl FnOnce
     }
 }
 
-fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
+pub(in crate::widgets) fn sync_value(runtime: &TextEditRuntime, state: &TextEdit) {
     batch(|| {
         write_value(runtime.value, state.as_str());
         (runtime.change)(state.as_str());
@@ -364,6 +357,17 @@ pub(super) fn write_value(value: Signal<String>, next: &str) {
     });
 }
 
+fn typed_text(runtime: &TextEditRuntime, text: &str) -> Option<String> {
+    if runtime.column.is_some() {
+        return (!text.is_empty() && !text.chars().any(char::is_control)).then(|| text.to_owned());
+    }
+    let text = text.replace("\r\n", "\n").replace('\r', "\n");
+    (text != "\n" && is_printable(&text)).then_some(text)
+}
+
 fn is_printable(text: &str) -> bool {
-    !text.is_empty() && text.chars().all(|ch| !ch.is_control() || ch == '\t')
+    !text.is_empty()
+        && text
+            .chars()
+            .all(|ch| !ch.is_control() || matches!(ch, '\t' | '\n'))
 }

@@ -2,15 +2,14 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
 
 use sigil::prelude::{
-    FctSpawn, Fill, Geometry, MenuItem, NodeBuilder, Spacing, StateVariants, StyleAccess,
-    StyleAtom, Visual, button, checkbox, container, dropdown, floating_text, menu, modal, panel,
-    progress, scroll, signal, slider, tabs, text_field, toggle,
+    Fill, Geometry, MenuItem, NodeBuilder, Spacing, StateVariants, StyleAccess, StyleAtom, Visual,
+    button, checkbox, container, dropdown, menu, modal, panel, progress, scroll, signal, slider,
+    tabs, text_field, toggle,
 };
 use sigil::reactive::Runtime;
 
@@ -206,22 +205,6 @@ fn progress_accepts_styled_surface() {
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
             "progress bg('surface') must hit the trait accumulator, got {atoms:?}",
-        );
-    });
-}
-
-#[test]
-fn floating_text_accepts_styled_surface() {
-    Runtime::scope("widget-styled-floating-text", || {
-        let spawn = signal(FctSpawn::default());
-        let mut b = floating_text(spawn)
-            .duration(1.5)
-            .capacity(16)
-            .bg("surface");
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
-            "floating_text bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
     });
 }

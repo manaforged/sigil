@@ -1,11 +1,14 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, StyleAtom};
+use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::style::{BORDER_WIDTH, Fill, NodeStyleExt, StateVariants, StyleAtom, Token};
+
+use super::super::interactive::interactive;
 
 use super::atoms::{cached_height_atom, cached_width_atom, to_i16};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::drag::{SplitterState, install_handle_hooks};
+use super::keys::install_handle_keys;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SplitterOrientation {
@@ -14,6 +17,8 @@ pub enum SplitterOrientation {
 }
 
 const HANDLE_PX: f32 = 6.0;
+
+static RULE: &[StyleAtom] = &[Token::Border.bg()];
 
 struct PaneEntry {
     content: Box<dyn IntoNode>,
@@ -306,25 +311,43 @@ fn build_handle(
     orientation: SplitterOrientation,
     state: SplitterState,
 ) -> NodeBuilder {
-    let layout = handle_layout(orientation);
     let node = container()
         .role(Role::Splitter)
-        .layout(layout)
-        .class(&[StyleAtom::BackgroundThemeRef("border")] as &[_]);
-    install_handle_hooks(node, state, handle_idx)
+        .hittable(true)
+        .layout(handle_layout(orientation))
+        .child(rule(orientation));
+    let node = interactive(node)
+        .hover(|s| s.bg(Token::SurfaceHover))
+        .pressed(|s| s.bg(Token::SurfacePressed))
+        .into_node_builder();
+    install_handle_keys(
+        install_handle_hooks(node, state, handle_idx),
+        state,
+        handle_idx,
+    )
 }
 
 fn handle_layout(orientation: SplitterOrientation) -> LayoutStyle {
-    match orientation {
-        SplitterOrientation::Horizontal => LayoutStyle::flex_column()
-            .width(HANDLE_PX)
-            .shrink(0.0)
-            .align_items(AlignItems::Stretch),
-        SplitterOrientation::Vertical => LayoutStyle::flex_column()
-            .height(HANDLE_PX)
-            .shrink(0.0)
-            .align_items(AlignItems::Stretch),
-    }
+    let style = match orientation {
+        SplitterOrientation::Horizontal => LayoutStyle::flex_row().width(HANDLE_PX),
+        SplitterOrientation::Vertical => LayoutStyle::flex_column().height(HANDLE_PX),
+    };
+    style
+        .shrink(0.0)
+        .align_items(AlignItems::Stretch)
+        .justify_content(JustifyContent::Center)
+}
+
+fn rule(orientation: SplitterOrientation) -> NodeBuilder {
+    let thickness = f32::from(BORDER_WIDTH.0);
+    let layout = match orientation {
+        SplitterOrientation::Horizontal => LayoutStyle::block().width(thickness).fill_height(),
+        SplitterOrientation::Vertical => LayoutStyle::block().height(thickness).fill_width(),
+    };
+    container()
+        .hittable(false)
+        .layout(layout.shrink(0.0))
+        .class(RULE)
 }
 
 #[cfg(test)]

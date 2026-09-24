@@ -1,9 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
-#[cfg(feature = "pty")]
 use super::rows_of;
 
-#[cfg(feature = "pty")]
 #[test]
 fn vt100_clear_and_print_lands_on_first_row() {
     let mut parser = vt100::Parser::new(24, 80, 0);

@@ -1,6 +1,7 @@
 use crate::style::scale::ScaleRole;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum Tone {
     #[default]
     Neutral,

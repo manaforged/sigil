@@ -1,21 +1,38 @@
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PanicPolicy {
     #[default]
     Isolate,
     Abort,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Resize {
+    Free,
+    Fixed,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct QuitKeys {
+    pub(crate) esc: bool,
+    pub(crate) ctrl_c: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
-    pub title: String,
-    pub size: (u32, u32),
-    pub esc_exits: bool,
-    pub panic_policy: PanicPolicy,
-    pub overlay: bool,
-    pub frameless: bool,
-    pub anchor: Option<crate::hal::Anchor>,
-    pub theme_file: Option<std::path::PathBuf>,
-    pub user_zoom: f32,
+    pub(crate) title: String,
+    pub(crate) size: (u32, u32),
+    pub(crate) quit: QuitKeys,
+    pub(crate) panic_policy: PanicPolicy,
+    pub(crate) overlay: bool,
+    pub(crate) frameless: bool,
+    pub(crate) anchor: Option<crate::hal::Anchor>,
+    pub(crate) theme_file: Option<std::path::PathBuf>,
+    pub(crate) user_zoom: f32,
+    pub(crate) host: crate::kernel::HostMode,
+    pub(crate) min_size: Option<(u32, u32)>,
+    pub(crate) resize: Resize,
+    pub(crate) frame_interval: std::time::Duration,
 }
 
 impl AppConfig {
@@ -24,13 +41,20 @@ impl AppConfig {
         Self {
             title: title.into(),
             size: (720, 480),
-            esc_exits: false,
+            quit: QuitKeys {
+                esc: false,
+                ctrl_c: true,
+            },
             panic_policy: PanicPolicy::default(),
             overlay: false,
             frameless: false,
             anchor: None,
             theme_file: None,
             user_zoom: 1.0,
+            host: crate::kernel::HostMode::Pixel,
+            min_size: None,
+            resize: Resize::Free,
+            frame_interval: std::time::Duration::from_millis(33),
         }
     }
 
@@ -42,7 +66,13 @@ impl AppConfig {
 
     #[must_use]
     pub const fn esc_exits(mut self, yes: bool) -> Self {
-        self.esc_exits = yes;
+        self.quit.esc = yes;
+        self
+    }
+
+    #[must_use]
+    pub const fn quit_on_ctrl_c(mut self, yes: bool) -> Self {
+        self.quit.ctrl_c = yes;
         self
     }
 
@@ -77,9 +107,60 @@ impl AppConfig {
     }
 
     #[must_use]
+    pub const fn window(mut self) -> Self {
+        self.host = crate::kernel::HostMode::Pixel;
+        self
+    }
+
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub const fn terminal(mut self) -> Self {
+        self.host = crate::kernel::HostMode::Cell;
+        self
+    }
+
+    #[must_use]
     pub const fn user_zoom(mut self, zoom: f32) -> Self {
         self.user_zoom = zoom;
         self
+    }
+
+    #[must_use]
+    pub const fn min_size(mut self, width: u32, height: u32) -> Self {
+        self.min_size = Some((width, height));
+        self
+    }
+
+    #[must_use]
+    pub const fn resizable(mut self, yes: bool) -> Self {
+        self.resize = if yes { Resize::Free } else { Resize::Fixed };
+        self
+    }
+
+    #[must_use]
+    pub const fn frame_interval(mut self, interval: std::time::Duration) -> Self {
+        self.frame_interval = interval;
+        self
+    }
+
+    #[must_use]
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    #[must_use]
+    pub const fn window_size(&self) -> (u32, u32) {
+        self.size
+    }
+
+    #[must_use]
+    pub const fn exits_on_esc(&self) -> bool {
+        self.quit.esc
+    }
+
+    #[must_use]
+    pub const fn on_panic(&self) -> PanicPolicy {
+        self.panic_policy
     }
 }
 

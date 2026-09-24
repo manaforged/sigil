@@ -30,6 +30,7 @@ impl Runtime {
             clear_dead_current(rt);
             core::mem::take(&mut rt.deferred_cleanups)
         });
+        drop(with_rt(|rt| core::mem::take(&mut rt.after_run)));
         run_deferred_cleanups(deferred_cleanups);
     }
 

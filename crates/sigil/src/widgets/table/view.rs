@@ -2,10 +2,11 @@ use std::rc::Rc;
 
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::LayoutStyle;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
+use crate::layout::{LayoutStyle, snap};
 use crate::reactive::{Signal, derived};
-use crate::style::{ClassSource, NodeStyleExt};
+use crate::style::DISABLED_OPACITY;
+use crate::style::{BORDER_WIDTH, ClassSource, NodeStyleExt, Radius, StyleAtom, Token, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::menu::MenuItem;
@@ -19,9 +20,10 @@ use super::row::{RowSpec, body_row};
 use super::select;
 use super::state::TableState;
 
-const DEFAULT_ROW_HEIGHT: f32 = 36.0;
-const DEFAULT_HEADER_HEIGHT: f32 = 36.0;
-const DEFAULT_VIEWPORT_HEIGHT: f32 = 480.0;
+static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
+const DEFAULT_ROW_HEIGHT: f32 = space(9);
+const DEFAULT_HEADER_HEIGHT: f32 = space(9);
+const DEFAULT_VIEWPORT_HEIGHT: f32 = space(120);
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum Density {
@@ -34,25 +36,24 @@ pub enum Density {
 impl Density {
     const fn row(self) -> f32 {
         match self {
-            Self::Grid => 24.0,
-            Self::Compact => 28.0,
-            Self::Default => 36.0,
+            Self::Grid => space(6),
+            Self::Compact => space(7),
+            Self::Default => space(9),
         }
     }
 
     const fn header(self) -> f32 {
         match self {
-            Self::Grid => 26.0,
-            Self::Compact => 32.0,
-            Self::Default => 36.0,
+            Self::Grid => space(7),
+            Self::Compact => space(8),
+            Self::Default => space(9),
         }
     }
 
     const fn pad_x(self) -> f32 {
         match self {
-            Self::Grid => 6.0,
-            Self::Compact => 8.0,
-            Self::Default => 12.0,
+            Self::Grid | Self::Compact => space(2),
+            Self::Default => space(3),
         }
     }
 
@@ -77,6 +78,7 @@ pub struct TableBuilder<Row: 'static> {
     density: Density,
     striped: bool,
     scroll_y: Option<Signal<f32>>,
+    disabled: Option<Signal<bool>>,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
 }
@@ -96,6 +98,7 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         density: Density::Default,
         striped: false,
         scroll_y: None,
+        disabled: None,
         mutators: Vec::new(),
         layout_overrides: LayoutOverrides::new(),
     }
@@ -103,8 +106,8 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
 
 impl<Row: 'static> TableBuilder<Row> {
     #[must_use]
-    pub const fn row_height(mut self, px: f32) -> Self {
-        self.row_height = px;
+    pub fn row_height(mut self, length: impl crate::layout::IntoPx) -> Self {
+        self.row_height = length.into_px();
         self
     }
 
@@ -115,8 +118,8 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     #[must_use]
-    pub const fn viewport_height(mut self, px: f32) -> Self {
-        self.viewport_height = px;
+    pub fn viewport_height(mut self, length: impl crate::layout::IntoPx) -> Self {
+        self.viewport_height = length.into_px();
         self
     }
 
@@ -159,6 +162,12 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     #[must_use]
+    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.disabled = Some(disabled);
+        self
+    }
+
+    #[must_use]
     pub fn empty(mut self, build: impl Fn() -> NodeBuilder + 'static) -> Self {
         self.empty = Some(Rc::new(build));
         self
@@ -177,15 +186,16 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    const fn body_spec(&self, pad_x: f32) -> BodySpec {
+    fn body_spec(&self, pad_x: f32) -> BodySpec {
         BodySpec {
-            row_height: self.row_height,
+            row_height: snap::line(self.row_height),
             viewport_height: self.viewport_height,
             viewport_fill: self.viewport_fill,
             select: self.select,
             pad_x,
             striped: self.striped,
             scroll_y: self.scroll_y,
+            disabled: self.disabled,
         }
     }
 
@@ -197,9 +207,6 @@ impl<Row: 'static> TableBuilder<Row> {
         let viewport_width = self.viewport_width;
         let empty = self.empty;
         let root_state = state.clone();
-        let menu_chrome = chrome.clone();
-        let menu_state = state.clone();
-        let empty_state = state.clone();
         let prefix = if self.select { select::WIDTH } else { 0.0 };
         let pad_x = self.density.pad_x();
         let hscroll = hscroll::bind(&state, viewport_width, prefix);
@@ -209,7 +216,12 @@ impl<Row: 'static> TableBuilder<Row> {
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len() + usize::from(self.select))
-            .class("border border-border-strong rounded-md bg-surface")
+            .class([
+                StyleAtom::BorderWidth(BORDER_WIDTH),
+                Token::BorderStrong.border(),
+                Radius::Md.atom(),
+                Token::Surface.bg(),
+            ])
             .class(self.density.text())
             .layout(
                 self.layout_overrides
@@ -218,18 +230,26 @@ impl<Row: 'static> TableBuilder<Row> {
             .child(header_row(
                 &state,
                 HeaderSpec {
-                    height: self.header_height,
+                    height: snap::line(self.header_height),
                     select: self.select,
                     pad_x,
+                    disabled: self.disabled,
                 },
                 &chrome,
                 hscroll,
             ))
             .child(body)
-            .child(empty_overlay(empty_state, empty, self.header_height))
+            .child(empty_overlay(
+                state.clone(),
+                empty,
+                snap::ruled(self.header_height),
+            ))
             .child(hscroll.scrollbar())
-            .child(context_overlay(menu_state, menu_chrome));
-        wire_hscroll(apply_mutators(root, self.mutators), hscroll)
+            .child(context_overlay(state.clone(), chrome.clone()));
+        wire_hscroll(
+            apply_mutators(dim(root, self.disabled), self.mutators),
+            hscroll,
+        )
     }
 }
 
@@ -277,6 +297,7 @@ struct BodySpec {
     pad_x: f32,
     striped: bool,
     scroll_y: Option<Signal<f32>>,
+    disabled: Option<Signal<bool>>,
 }
 
 fn body_view<Row: 'static>(
@@ -294,6 +315,7 @@ fn body_view<Row: 'static>(
                 select: spec.select,
                 pad_x: spec.pad_x,
                 striped: spec.striped,
+                disabled: spec.disabled,
             },
             chrome,
             hs,
@@ -310,6 +332,14 @@ fn body_view<Row: 'static>(
         body.viewport_fill()
     } else {
         body.viewport_height(spec.viewport_height)
+            .shrink_to_content()
+    }
+}
+
+fn dim(root: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
+    match disabled {
+        Some(disabled) => root.style_reactive(move || if disabled.get() { DIMMED } else { &[] }),
+        None => root,
     }
 }
 
@@ -342,11 +372,15 @@ fn default_empty() -> NodeBuilder {
             LayoutStyle::flex_column()
                 .fill_width()
                 .grow(1.0)
-                .padding(24.0)
+                .padding(space(6))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .child(label("No rows").class("text-sm text-gray-11"))
+        .child(
+            label("No rows")
+                .class("text-sm")
+                .class(Token::Gray11.text()),
+        )
 }
 
 impl<Row: 'static> IntoNode for TableBuilder<Row> {

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::cast_precision_loss)]
 
 #[path = "renderer_child_paint_repro/support.rs"]
@@ -13,6 +12,7 @@ use sigil::kernel::{ImageSource, ObjectFit, container, image};
 use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
 use sigil::renderer::{SceneCommand, emit_scene};
 use sigil::style::{NodeStyleExt, Style};
+use sigil::widgets::layout_ext::WidgetLayoutExt;
 use support::{capture, close};
 
 const SIZE: u32 = 32;

@@ -4,7 +4,7 @@ use smallvec::smallvec;
 
 use crate::renderer::scene_command::ScenePatternStyle;
 use crate::renderer::{
-    BUILTIN_SPRITE_ATLAS_ID, CornerRadii, Fill, GradientStop, LinearGradient, PatternKind,
+    BUILTIN_SPRITE_ATLAS_ID, CornerRadii, GradientStop, LinearGradient, PaintFill, PatternKind,
     SceneBuilder, SceneGradientStyle, SceneRectStyle, Shadow, ShadowKind, SpriteSource, Stroke,
     StrokeAlign, StrokeStyle,
 };
@@ -17,29 +17,29 @@ pub(super) const fn sprite_source(x: f32, y: f32, phase: f32) -> SpriteSource {
     }
 }
 
-pub(super) fn draw_fill(scene: &mut SceneBuilder, rect: Rect, fill: Fill) {
+pub(super) fn draw_fill(scene: &mut SceneBuilder, rect: Rect, fill: PaintFill) {
     match fill {
-        Fill::Solid(color) => scene.draw_rect(
+        PaintFill::Solid(color) => scene.draw_rect(
             rect,
             SceneRectStyle::new(color, CornerRadii::uniform(16.0), 10_000),
         ),
-        Fill::LinearGradient(gradient) => scene.draw_gradient(
+        PaintFill::LinearGradient(gradient) => scene.draw_gradient(
             rect,
             SceneGradientStyle::new(gradient, CornerRadii::uniform(16.0), 10_000),
         ),
-        Fill::Pattern(pattern) => scene.draw_pattern(
+        PaintFill::Pattern(pattern) => scene.draw_pattern(
             rect,
             ScenePatternStyle::new(pattern, CornerRadii::uniform(16.0), 10_000),
         ),
     }
 }
 
-pub(super) fn slash_pattern() -> Fill {
-    Fill::Pattern(slash_kind(rgba(255, 255, 255, 255), 40.0, 16.0))
+pub(super) fn slash_pattern() -> PaintFill {
+    PaintFill::Pattern(slash_kind(rgba(255, 255, 255, 255), 40.0, 16.0))
 }
 
-pub(super) fn checker_pattern() -> Fill {
-    Fill::Pattern(PatternKind::Checker {
+pub(super) fn checker_pattern() -> PaintFill {
+    PaintFill::Pattern(PatternKind::Checker {
         color_a: rgba(220, 60, 60, 255),
         color_b: rgba(245, 245, 250, 255),
         cell: 40.0,
@@ -54,7 +54,7 @@ pub(super) const fn slash_kind(color: Rgba8, period: f32, line_width: f32) -> Pa
     }
 }
 
-pub(super) fn subtle_vertical() -> Fill {
+pub(super) fn subtle_vertical() -> PaintFill {
     linear_gradient(
         (120.0, 72.0),
         (120.0, 200.0),
@@ -65,7 +65,7 @@ pub(super) fn subtle_vertical() -> Fill {
     )
 }
 
-pub(super) fn stripe_horizontal() -> Fill {
+pub(super) fn stripe_horizontal() -> PaintFill {
     linear_gradient(
         (216.0, 136.0),
         (360.0, 136.0),
@@ -76,7 +76,7 @@ pub(super) fn stripe_horizontal() -> Fill {
     )
 }
 
-pub(super) fn rainbow() -> Fill {
+pub(super) fn rainbow() -> PaintFill {
     linear_gradient(
         (384.0, 136.0),
         (528.0, 136.0),
@@ -89,7 +89,7 @@ pub(super) fn rainbow() -> Fill {
     )
 }
 
-pub(super) fn alpha_overlay() -> Fill {
+pub(super) fn alpha_overlay() -> PaintFill {
     linear_gradient(
         (552.0, 72.0),
         (696.0, 200.0),
@@ -104,8 +104,8 @@ fn linear_gradient(
     start: (f32, f32),
     end: (f32, f32),
     stops: smallvec::SmallVec<[GradientStop; 4]>,
-) -> Fill {
-    Fill::LinearGradient(LinearGradient::new(
+) -> PaintFill {
+    PaintFill::LinearGradient(LinearGradient::new(
         Point::new(start.0, start.1),
         Point::new(end.0, end.1),
         stops,

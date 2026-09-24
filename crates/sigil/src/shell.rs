@@ -1,4 +1,3 @@
-//! The winit shell: window loop and event translation.
 use winit::error::EventLoopError;
 
 pub(crate) mod app;

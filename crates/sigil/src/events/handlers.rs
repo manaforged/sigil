@@ -20,6 +20,14 @@ type ScrollHandler = Box<dyn Fn(&mut ScrollEvent) + 'static>;
 type FocusHandler = Box<dyn Fn() + 'static>;
 type FileDropHandler = Box<dyn Fn(&FileDropEvent) + 'static>;
 type ValueAdjustment = Box<dyn Fn(bool) + 'static>;
+type A11yEditHandler = Box<dyn Fn(&A11yEdit) -> bool + 'static>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum A11yEdit {
+    Number(f32),
+    Text(String),
+    Select { anchor: usize, focus: usize },
+}
 
 struct KeyBinding {
     shortcut: Shortcut,
@@ -38,12 +46,15 @@ pub struct EventHandlers {
     pointer_leave: Vec<PointerHandler>,
     scroll: Vec<ScrollHandler>,
     key_capture: Vec<KeyBinding>,
+    key_capture_any: Vec<KeyHandler>,
     key: Vec<KeyBinding>,
     key_any: Vec<KeyHandler>,
+    shortcut: Vec<KeyBinding>,
     focus_in: Vec<FocusHandler>,
     focus_out: Vec<FocusHandler>,
     file_drop: Vec<FileDropHandler>,
     value_adjustment: Option<ValueAdjustment>,
+    a11y_edit: Option<A11yEditHandler>,
 }
 
 impl EventHandlers {
@@ -51,7 +62,14 @@ impl EventHandlers {
         self.value_adjustment = Some(handler);
     }
 
-    #[cfg(feature = "desktop")]
+    pub(crate) fn set_a11y_edit(&mut self, handler: A11yEditHandler) {
+        self.a11y_edit = Some(handler);
+    }
+
+    pub(crate) fn invoke_a11y_edit(&self, edit: &A11yEdit) -> bool {
+        self.a11y_edit.as_ref().is_some_and(|handler| handler(edit))
+    }
+
     pub(crate) fn invoke_value_adjustment(&self, increase: bool) -> bool {
         let Some(handler) = &self.value_adjustment else {
             return false;
@@ -121,8 +139,24 @@ impl EventHandlers {
         self.key_capture.push(KeyBinding { shortcut, handler });
     }
 
+    pub(crate) fn add_key_capture_any(&mut self, handler: KeyHandler) {
+        self.key_capture_any.push(handler);
+    }
+
     pub(crate) fn add_key(&mut self, shortcut: Shortcut, handler: KeyHandler) {
         self.key.push(KeyBinding { shortcut, handler });
+    }
+
+    pub(crate) fn add_shortcut(&mut self, shortcut: Shortcut, handler: KeyHandler) {
+        self.shortcut.push(KeyBinding { shortcut, handler });
+    }
+
+    pub(crate) fn shortcuts(&self) -> impl Iterator<Item = &Shortcut> {
+        self.shortcut.iter().map(|binding| &binding.shortcut)
+    }
+
+    pub(crate) fn invoke_shortcut(&self, event: &mut KeyEvent) -> bool {
+        invoke_bindings(&self.shortcut, event)
     }
 
     pub(crate) fn add_key_any(&mut self, handler: KeyHandler) {
@@ -155,26 +189,16 @@ impl EventHandlers {
     }
 
     pub(crate) fn invoke_key(&self, event: &mut KeyEvent, capture: bool) -> bool {
-        let handlers = if capture {
-            &self.key_capture
+        let (bindings, any) = if capture {
+            (&self.key_capture, &self.key_capture_any)
         } else {
-            &self.key
+            (&self.key, &self.key_any)
         };
-        let mut invoked = false;
-        for binding in handlers {
-            if !binding.shortcut.matches(event) {
-                continue;
-            }
-            (binding.handler)(event);
-            invoked = true;
-            if event.propagation_stopped() {
-                return invoked;
-            }
-        }
-        if capture {
+        let mut invoked = invoke_bindings(bindings, event);
+        if event.propagation_stopped() {
             return invoked;
         }
-        for handler in &self.key_any {
+        for handler in any {
             handler(event);
             invoked = true;
             if event.propagation_stopped() {
@@ -209,6 +233,21 @@ impl EventHandlers {
             _ => None,
         }
     }
+}
+
+fn invoke_bindings(bindings: &[KeyBinding], event: &mut KeyEvent) -> bool {
+    let mut invoked = false;
+    for binding in bindings {
+        if !binding.shortcut.matches(event) {
+            continue;
+        }
+        (binding.handler)(event);
+        invoked = true;
+        if event.propagation_stopped() {
+            return invoked;
+        }
+    }
+    invoked
 }
 
 impl core::fmt::Debug for EventHandlers {

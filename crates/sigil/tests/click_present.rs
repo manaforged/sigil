@@ -1,4 +1,4 @@
-#![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
+#![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
 use std::time::Instant;
 

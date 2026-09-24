@@ -106,6 +106,7 @@ fn zero_lp(value: LengthPercentage) -> bool {
     match value {
         LengthPercentage::Px(px) => px == 0.0,
         LengthPercentage::Percent(percent) => percent == 0.0,
+        LengthPercentage::Text(length) => length.px() == 0.0,
     }
 }
 

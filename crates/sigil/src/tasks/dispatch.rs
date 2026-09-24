@@ -56,7 +56,6 @@ where
     }
 }
 
-#[doc(hidden)]
 #[track_caller]
 pub fn spawn_to_signal<T, E, F>(
     runtime: &AsyncRuntime,
@@ -81,12 +80,14 @@ where
     E: Send + 'static,
     F: Future<Output = Result<T, E>> + Send + 'static,
 {
-    let sig: Signal<Status<T, E>> = signal(Status::Pending);
-    let sig_sendable = sig.into_sendable();
     if !owner.is_alive() {
         drop(future);
-        return sig;
+        return signal(Status::Pending);
     }
+    let mut created = None;
+    crate::reactive::owner_by_id(owner.id(), || created = Some(signal(Status::Pending)));
+    let sig: Signal<Status<T, E>> = created.unwrap_or_else(|| signal(Status::Pending));
+    let sig_sendable = sig.into_sendable();
 
     let dispatcher = parts.dispatcher;
     let work = parts.tokio.spawn(future);
@@ -108,8 +109,7 @@ where
         let sent = dispatcher.send(DispatchMessage {
             owner,
             callback: Box::new(move || {
-                let sig_local = sig_sendable.into_signal();
-                sig_local.set_always(status);
+                sig_sendable.into_signal().try_set_always(status);
             }),
         });
         if sent.is_err() {

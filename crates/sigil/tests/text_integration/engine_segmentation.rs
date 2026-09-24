@@ -1,4 +1,4 @@
-#![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil::hal::{ParagraphMetrics, TextEngine};
 use sigil::style::{TextLineHeight, TextStyle};

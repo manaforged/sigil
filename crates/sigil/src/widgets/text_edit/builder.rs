@@ -7,12 +7,12 @@ use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::clipboard::{Clipboard, clipboard};
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, disabled_now};
 use super::handlers::{TextEditRuntime, TextEditState, attach_key_handlers, noop_change};
 use super::ime::attach_ime_handlers;
 use super::render::{build_base_node, content_padding, edit_layout};
+use crate::clipboard::{Clipboard, clipboard};
 
 pub(super) type TextChange = Rc<dyn Fn(&str) + 'static>;
 

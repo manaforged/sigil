@@ -1,13 +1,13 @@
 use crate::reactive::Signal;
 
-use crate::style::{ColorAtom, Rgba8};
+use crate::style::{ColorAtom, Metrics, Rgba8, Token};
 
 #[derive(Clone, Debug)]
 pub struct FocusRing {
     visible: FocusRingVisibility,
     color: ColorAtom,
-    width: f32,
-    offset: f32,
+    width: Option<f32>,
+    offset: Option<f32>,
     opacity: u16,
 }
 
@@ -16,9 +16,9 @@ impl FocusRing {
     pub const fn new(visible: Signal<bool>) -> Self {
         Self {
             visible: FocusRingVisibility::Reactive(visible),
-            color: ColorAtom::ThemeRef("accent"),
-            width: 2.0,
-            offset: 2.0,
+            color: Token::Ring.color(),
+            width: None,
+            offset: None,
             opacity: 10_000,
         }
     }
@@ -27,9 +27,9 @@ impl FocusRing {
     pub const fn static_visible(visible: bool) -> Self {
         Self {
             visible: FocusRingVisibility::Static(visible),
-            color: ColorAtom::ThemeRef("accent"),
-            width: 2.0,
-            offset: 2.0,
+            color: Token::Ring.color(),
+            width: None,
+            offset: None,
             opacity: 10_000,
         }
     }
@@ -41,20 +41,20 @@ impl FocusRing {
     }
 
     #[must_use]
-    pub const fn theme_color(mut self, token: &'static str) -> Self {
-        self.color = ColorAtom::ThemeRef(token);
+    pub const fn theme_color(mut self, token: Token) -> Self {
+        self.color = token.color();
         self
     }
 
     #[must_use]
     pub const fn width(mut self, width: f32) -> Self {
-        self.width = width;
+        self.width = Some(width);
         self
     }
 
     #[must_use]
     pub const fn offset(mut self, offset: f32) -> Self {
-        self.offset = offset;
+        self.offset = Some(offset);
         self
     }
 
@@ -79,13 +79,13 @@ impl FocusRing {
     }
 
     #[must_use]
-    pub const fn stroke_width(&self) -> f32 {
-        self.width
+    pub fn stroke_width(&self, metrics: Metrics) -> f32 {
+        self.width.unwrap_or_else(|| metrics.ring_width())
     }
 
     #[must_use]
-    pub const fn offset_px(&self) -> f32 {
-        self.offset
+    pub fn offset_px(&self, metrics: Metrics) -> f32 {
+        self.offset.unwrap_or_else(|| metrics.ring_offset())
     }
 
     #[must_use]

@@ -1,4 +1,4 @@
-#![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
+#![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -64,12 +64,10 @@ fn painted_and_surfaces_use_prelude_types() {
             )
         });
         host.layout((80.0, 24.0)).expect("layout");
-        let painted: Vec<Painted> = host.painted();
+        let scene = host.scene((80.0, 24.0)).expect("layout");
         assert!(
-            painted
-                .iter()
-                .any(|node| node.text.as_deref() == Some("hello")),
-            "expected hello in {painted:?}"
+            scene.find_text("hello").is_some(),
+            "expected hello in {scene:?}"
         );
         let holes = host.surfaces();
         let hole = holes.first().copied().expect("one surface hole");

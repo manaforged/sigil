@@ -1,7 +1,5 @@
 use std::cell::Cell;
-use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, NodeEventsExt};
@@ -11,31 +9,26 @@ use crate::kernel::{
 };
 use crate::layout::ViewportOverlay;
 use crate::layout::prelude::{
-    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Position,
+    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow, Position,
 };
-use crate::reactive::{Signal, effect_named, on_cleanup, signal};
+use crate::layout::snap;
+use crate::reactive::{Signal, effect_named, signal};
 use crate::style::{
-    DisplayKind, FocusRing, NodeStyleExt, Px, Style, StyleAccess, StyleAtom, TransitionId,
+    DisplayKind, FocusRing, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, TransitionId, space,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::super::popup::{self, footer};
+use super::escape::{close_top_escape_modal, register_escape_modal};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
-const DIALOG_PADDING: f32 = 16.0;
+const DIALOG_PADDING: f32 = space(4);
 const TITLE_HEIGHT: f32 = 24.0;
 
-static BACKDROP_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("scrim"),
-    StyleAtom::Transition(MODAL_TRANSITION),
-];
+static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
 
-static DIALOG_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("field"),
-    StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderThemeRef("border"),
-    StyleAtom::Transition(MODAL_TRANSITION),
-];
+static DIALOG_BASE: &[StyleAtom] = &[StyleAtom::Transition(MODAL_TRANSITION)];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Side {
@@ -48,6 +41,7 @@ pub struct ModalBuilder {
     show: Signal<bool>,
     title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
+    actions: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
     trap: bool,
     escape_closes: bool,
@@ -75,6 +69,7 @@ impl ModalBuilder {
             show,
             title: None,
             children: Vec::new(),
+            actions: Vec::new(),
             style_accumulator: Style::new(),
             trap: true,
             escape_closes: true,
@@ -126,6 +121,21 @@ impl ModalBuilder {
         self
     }
 
+    #[must_use]
+    pub fn footer(mut self, action: impl IntoNode + 'static) -> Self {
+        self.actions.push(Box::new(action));
+        self
+    }
+
+    #[must_use]
+    pub fn actions(
+        self,
+        cancel: impl IntoNode + 'static,
+        confirm: impl IntoNode + 'static,
+    ) -> Self {
+        self.footer(cancel).footer(confirm)
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let show = self.show;
         let root_name = accessible_name(self.title.as_ref());
@@ -140,6 +150,7 @@ impl ModalBuilder {
             show,
             title: self.title,
             children: self.children,
+            actions: self.actions,
             style_accumulator: self.style_accumulator,
             trap: self.trap,
             side: self.side,
@@ -187,45 +198,6 @@ fn install_open_announcement(show: Signal<bool>, title: Option<TextContent>) {
     });
 }
 
-#[derive(Clone, Copy)]
-struct EscapeModal {
-    id: u64,
-    show: Signal<bool>,
-}
-
-thread_local! {
-    static ESCAPE_MODALS: RefCell<Vec<EscapeModal>> = const {
-        RefCell::new(Vec::new())
-    };
-}
-
-static NEXT_ESCAPE_MODAL_ID: AtomicU64 = AtomicU64::new(1);
-
-fn register_escape_modal(show: Signal<bool>) {
-    let id = NEXT_ESCAPE_MODAL_ID.fetch_add(1, Ordering::Relaxed);
-    ESCAPE_MODALS.with(|stack| stack.borrow_mut().push(EscapeModal { id, show }));
-    on_cleanup(move || {
-        ESCAPE_MODALS.with(|stack| {
-            stack.borrow_mut().retain(|modal| modal.id != id);
-        });
-    });
-}
-
-fn close_top_escape_modal() -> bool {
-    ESCAPE_MODALS.with(|stack| {
-        let top = stack
-            .borrow()
-            .iter()
-            .rev()
-            .copied()
-            .find(|modal| modal.show.peek());
-        top.is_some_and(|modal| {
-            modal.show.set(false);
-            true
-        })
-    })
-}
-
 impl StyleAccess for ModalBuilder {
     fn style_mut(&mut self) -> &mut Style {
         &mut self.style_accumulator
@@ -248,10 +220,15 @@ fn root_layout(side: Option<Side>) -> LayoutStyle {
         Some(Side::Left) => (AlignItems::Stretch, JustifyContent::Start),
         Some(Side::Right | Side::Bottom) => (AlignItems::Stretch, JustifyContent::End),
     };
+    let pad = if side.is_none() {
+        snap::detail(DIALOG_PADDING)
+    } else {
+        0.0
+    };
     root.fill()
         .position(Position::Absolute)
         .inset(0.0)
-        .padding(DIALOG_PADDING)
+        .padding(pad)
         .align_items(align)
         .justify_content(justify)
 }
@@ -285,6 +262,7 @@ struct DialogSpec {
     show: Signal<bool>,
     title: Option<TextContent>,
     children: Vec<Box<dyn IntoNode>>,
+    actions: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
     trap: bool,
     side: Option<Side>,
@@ -296,6 +274,7 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         show,
         title,
         children,
+        actions,
         style_accumulator,
         trap,
         side,
@@ -304,13 +283,10 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
     let title_label = accessible_name(title.as_ref());
     let ring_visible = signal(false);
 
-    let mut dialog = container()
-        .role(Role::Dialog)
+    let mut dialog = popup::surface(Role::Dialog)
         .label(title_label)
         .focusable(true)
         .layout(layout_overrides.apply(dialog_layout(side)))
-        .class("rounded-md")
-        .class("shadow-xl")
         .class(DIALOG_BASE)
         .style_reactive(move || show_display(show))
         .focus_ring(FocusRing::new(ring_visible))
@@ -328,6 +304,9 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
     for child in children {
         dialog = dialog.child(child);
     }
+    if !actions.is_empty() {
+        dialog = dialog.child(footer(actions));
+    }
 
     if !style_accumulator.is_empty() {
         dialog = dialog.style(style_accumulator);
@@ -340,8 +319,10 @@ const SHEET_HEIGHT: f32 = 320.0;
 
 fn dialog_layout(side: Option<Side>) -> LayoutStyle {
     let base = LayoutStyle::flex_column()
-        .padding(DIALOG_PADDING)
-        .gap(8.0)
+        .padding_x(snap::line(DIALOG_PADDING))
+        .padding_y(snap::detail(DIALOG_PADDING))
+        .overflow_y(snap::CellForm::new(Overflow::Visible, Overflow::Hidden).pick())
+        .gap(space(2))
         .align_items(AlignItems::Start)
         .justify_content(JustifyContent::Start)
         .max_size(Dimension::Percent(1.0), Dimension::Percent(1.0))
@@ -355,8 +336,14 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
 
 fn dialog_title(title: TextContent) -> impl IntoNode {
     text(title)
-        .layout(LayoutStyle::block().fill_width().height(TITLE_HEIGHT))
-        .class("text-lg font-medium text-on-surface")
+        .layout(
+            LayoutStyle::block()
+                .fill_width()
+                .height(snap::line(TITLE_HEIGHT))
+                .shrink(0.0),
+        )
+        .class("text-lg font-medium")
+        .class(Token::OnSurface.text())
 }
 
 fn accessible_name(title: Option<&TextContent>) -> AccessibleName {

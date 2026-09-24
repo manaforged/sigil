@@ -8,7 +8,7 @@ use crate::hal::{Color, PhysicalSize, Point, Rect};
 use crate::style::Rgba8;
 
 use super::*;
-use crate::renderer::scene_command::{DrawRect, SceneCommand, SceneRectStyle};
+use crate::scene::{DrawRect, SceneCommand, SceneRectStyle};
 
 const RED: Rgba8 = Rgba8 {
     r: 255,
@@ -140,7 +140,7 @@ fn opacity_layer_scales_alpha() {
 fn glyph_run_paints_ink_inside_its_rect() {
     use crate::style::TextStyle;
     let mut renderer = CpuRenderer::new();
-    let run = crate::renderer::scene_command::shape_glyph_run(
+    let run = crate::scene::shape_glyph_run(
         rect(2.0, 2.0, 60.0, 30.0),
         "III".to_owned(),
         RED,

@@ -6,11 +6,12 @@ use crate::layout::prelude::{
 };
 use crate::layout::with_text_geometry;
 use crate::reactive::{Signal, derived, derived_eq};
-use crate::style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom, TextStyle};
+use crate::style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom, TextStyle, Token};
 
 use crate::widgets::interaction::InteractionState;
 
-use super::handlers::{TextFieldRuntime, commit};
+use super::super::text_edit::commit;
+use super::handlers::TextFieldRuntime;
 
 const CARET_W: f32 = 2.0;
 
@@ -21,9 +22,9 @@ static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::R
     a: 130,
 }))];
 
-static CARET_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
-static FIELD_TEXT_ATOMS: &[StyleAtom] = &[StyleAtom::TextThemeRef("on-surface")];
-static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[StyleAtom::TextThemeRef("on-surface-muted")];
+static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
+static FIELD_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurface.text()];
+static PLACEHOLDER_TEXT_ATOMS: &[StyleAtom] = &[Token::OnSurfaceMuted.text()];
 
 const FALLBACK_LINE_H: f32 = 16.0;
 
@@ -50,10 +51,11 @@ fn track(
     interaction: InteractionState,
     displayed: Signal<String>,
 ) -> NodeBuilder {
-    let scroll = runtime.scroll;
+    let scroll = runtime.input.scroll_x;
     let track_pos = derived(move || (-scroll.get(), 0.0));
-    let placeholder_visible =
-        derived_eq(move || runtime.value.get().is_empty() && runtime.ime.preedit.get().is_empty());
+    let placeholder_visible = derived_eq(move || {
+        runtime.input.value.get().is_empty() && runtime.input.ime.preedit.get().is_empty()
+    });
     container()
         .hittable(false)
         .layout(LayoutStyle::block())
@@ -108,9 +110,9 @@ fn overlay_layer() -> NodeBuilder {
 }
 
 fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
-    let value = runtime.value.get();
-    let caret = runtime.caret.get();
-    let Some(anchor) = runtime.selection.get() else {
+    let value = runtime.input.value.get();
+    let caret = runtime.input.caret.get();
+    let Some(anchor) = runtime.input.selection.get() else {
         return Vec::new();
     };
     let (lo, hi) = if anchor <= caret {
@@ -119,7 +121,7 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
         (caret, anchor)
     };
     let (layout, lo, hi) = layout_span(runtime, &value, lo, hi);
-    let style = runtime.text_style.get();
+    let style = runtime.input.text_style.get();
     let geom = with_text_geometry(|engine| {
         let start = engine.caret(&layout, &style, None, downstream(lo));
         let end = engine.caret(&layout, &style, None, downstream(hi));
@@ -136,13 +138,13 @@ fn selection_rects(runtime: &TextFieldRuntime) -> Vec<NodeBuilder> {
 }
 
 fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec<NodeBuilder> {
-    if !interaction.focus_visible().get() || !runtime.caret_visible.get() {
+    if !interaction.focus_visible().get() || !runtime.input.caret_visible.get() {
         return Vec::new();
     }
-    let value = runtime.value.get();
-    let caret = runtime.caret.get();
+    let value = runtime.input.value.get();
+    let caret = runtime.input.caret.get();
     let (layout, caret, _) = layout_span(runtime, &value, caret, caret);
-    let style = runtime.text_style.get();
+    let style = runtime.input.text_style.get();
     let geom = with_text_geometry(|engine| {
         let pos = engine.caret(&layout, &style, None, downstream(caret));
         (pos.x, pos.top, pos.height)
@@ -190,7 +192,7 @@ fn pointer_down(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
     let byte = hit(runtime, event.position.x);
     let mut state = runtime.edit_mut();
     state.place_caret(byte);
-    commit(runtime, &state);
+    commit(&runtime.input, &state);
     drop(state);
     event.capture_pointer();
 }
@@ -202,7 +204,7 @@ fn pointer_move(event: &mut PointerEvent, runtime: &TextFieldRuntime) {
     let byte = hit(runtime, event.position.x);
     let mut state = runtime.edit_mut();
     state.extend_to(byte);
-    commit(runtime, &state);
+    commit(&runtime.input, &state);
     drop(state);
     event.stop_propagation();
 }
@@ -214,9 +216,9 @@ fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
 }
 
 fn hit(runtime: &TextFieldRuntime, x: f32) -> usize {
-    let value = runtime.value.peek();
-    let text_x = x + runtime.scroll.peek();
-    let style = runtime.text_style.peek();
+    let value = runtime.input.value.peek();
+    let text_x = x + runtime.input.scroll_x.peek();
+    let style = runtime.input.text_style.peek();
     let hiding = super::mask::hiding_peek(runtime.password, runtime.reveal);
     if hiding {
         let layout = super::mask::mask_chars(&value);

@@ -1,22 +1,56 @@
 use crate::kernel::TextContent;
-use crate::style::Tone;
+use crate::style::{BORDER_WIDTH, StyleAtom, Token, Tone};
 
 mod builder;
 pub use builder::ChipBuilder;
 
-pub(crate) const fn chip_class(tone: Tone) -> &'static str {
+static NEUTRAL: &[StyleAtom] = &[
+    Token::Gray3.bg(),
+    Token::Gray12.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Gray6.border(),
+];
+static PRIMARY: &[StyleAtom] = &[
+    Token::Accent3.bg(),
+    Token::Accent12.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Accent6.border(),
+];
+static INFO: &[StyleAtom] = &[
+    Token::Info3.bg(),
+    Token::Info12.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Info6.border(),
+];
+static SUCCESS: &[StyleAtom] = &[
+    Token::Success3.bg(),
+    Token::Success12.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Success6.border(),
+];
+static WARN: &[StyleAtom] = &[
+    Token::Warn3.bg(),
+    Token::Warn12.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Warn6.border(),
+];
+static ERROR: &[StyleAtom] = &[
+    Token::Error3.bg(),
+    Token::Error11.text(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Error6.border(),
+];
+
+pub(crate) const fn chip_class(tone: Tone) -> &'static [StyleAtom] {
     match tone {
-        Tone::Neutral => "bg-gray-3 text-gray-12 border border-gray-6",
-        Tone::Primary => "bg-accent-3 text-accent-12 border border-accent-6",
-        Tone::Info => "bg-info-3 text-info-12 border border-info-6",
-        Tone::Success => "bg-success-3 text-success-12 border border-success-6",
-        Tone::Warn => "bg-warn-3 text-warn-12 border border-warn-6",
-        Tone::Error => "bg-error-3 text-error-11 border border-error-6",
+        Tone::Neutral => NEUTRAL,
+        Tone::Primary => PRIMARY,
+        Tone::Info => INFO,
+        Tone::Success => SUCCESS,
+        Tone::Warn => WARN,
+        Tone::Error => ERROR,
     }
 }
-
-const CHIP_PADDING_X: f32 = 8.0;
-const CHIP_PADDING_Y: f32 = 2.0;
 
 #[must_use]
 pub fn chip(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
@@ -25,7 +59,7 @@ pub fn chip(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
 
 #[must_use]
 pub fn badge(label: impl Into<TextContent>, tone: Tone) -> ChipBuilder {
-    ChipBuilder::new(label, tone).pill()
+    ChipBuilder::new(label, tone)
 }
 
 #[cfg(test)]

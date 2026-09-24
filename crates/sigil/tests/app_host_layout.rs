@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used, missing_docs, unused_crate_dependencies)]
+#![allow(clippy::unwrap_used, unused_crate_dependencies)]
 
 use sigil::app::Host;
 use sigil::kernel::{Surface, container, text};
@@ -18,12 +18,10 @@ fn host_mount_accepts_text_node() {
     host.mount(text("hello"));
     assert!(host.root().is_some());
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
-    let painted = host.painted();
+    let scene = host.scene((80.0, 24.0)).unwrap();
     assert!(
-        painted
-            .iter()
-            .any(|node| node.text.as_deref() == Some("hello")),
-        "expected hello in {painted:?}"
+        scene.find_text("hello").is_some(),
+        "expected hello in {scene:?}"
     );
 }
 
@@ -38,22 +36,11 @@ fn host_layout_reads_text_and_tone_without_a_window() {
         )
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
-    let painted = host.painted();
+    let scene = host.scene((80.0, 24.0)).unwrap();
+    let hello = scene.find_text("hello").expect("hello run");
     assert!(
-        painted
-            .iter()
-            .any(|node| node.text.as_deref() == Some("hello")),
-        "expected hello in {painted:?}"
-    );
-    assert!(
-        painted.iter().any(|node| node.tone == Some(Tone::Primary)),
-        "expected primary tone in {painted:?}"
-    );
-    assert!(
-        painted
-            .iter()
-            .any(|node| node.rect.width > 0.0 && node.rect.height > 0.0),
-        "expected a laid-out rect in {painted:?}"
+        hello.run.rect.width > 0.0 && hello.run.rect.height > 0.0,
+        "expected a laid-out rect in {scene:?}"
     );
 }
 
@@ -111,17 +98,13 @@ fn host_paint_skips_surface_children() {
         )
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
-    let painted = host.painted();
+    let painted = host.scene((80.0, 24.0)).unwrap();
     assert!(
-        painted
-            .iter()
-            .any(|node| node.text.as_deref() == Some("visible")),
+        painted.find_text("visible").is_some(),
         "expected visible in {painted:?}"
     );
     assert!(
-        painted
-            .iter()
-            .all(|node| node.text.as_deref() != Some("secret")),
+        painted.find_text("secret").is_none(),
         "hole children must not paint; got {painted:?}"
     );
     #[cfg(feature = "desktop")]

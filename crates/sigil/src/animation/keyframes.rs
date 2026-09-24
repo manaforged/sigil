@@ -114,8 +114,12 @@ impl Keyframes {
 
     #[must_use]
     pub fn sample(&self, progress: f32) -> f32 {
-        assert!(progress.is_finite());
-        let progress = progress.clamp(0.0, 1.0);
+        debug_assert!(progress.is_finite(), "keyframe progress must be finite");
+        let progress = if progress.is_nan() {
+            0.0
+        } else {
+            progress.clamp(0.0, 1.0)
+        };
         let index = self
             .frames
             .partition_point(|frame| frame.offset <= progress);

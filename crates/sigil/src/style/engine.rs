@@ -118,6 +118,9 @@ impl<'theme> StyleEngine<'theme> {
                 render.text_color = Some(self.theme.scale(self.tone.scale_role()).on_solid);
             }
             StyleAtom::BorderRadius(radius) => render.border_radius = Some(radius),
+            StyleAtom::Radius(radius) => {
+                render.border_radius = Some(self.theme.metrics.radius(radius));
+            }
             StyleAtom::BorderWidth(width) => render.border_width = Some(width),
             StyleAtom::BorderTop(width) => render.border_top = Some(width),
             StyleAtom::BorderRight(width) => render.border_right = Some(width),
@@ -196,6 +199,12 @@ impl<'theme> StyleEngine<'theme> {
                 let resolved = overlay
                     .value_for(NumericAtomKind::BorderRadius)
                     .map_or(literal, encode_px);
+                render.border_radius = Some(resolved);
+            }
+            StyleAtom::Radius(radius) => {
+                let resolved = overlay
+                    .value_for(NumericAtomKind::BorderRadius)
+                    .map_or_else(|| self.theme.metrics.radius(radius), encode_px);
                 render.border_radius = Some(resolved);
             }
             StyleAtom::BackgroundColor(literal) => {
@@ -306,6 +315,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
+        | StyleAtom::Radius(_)
         | StyleAtom::BorderWidth(_)
         | StyleAtom::BorderTop(_)
         | StyleAtom::BorderRight(_)

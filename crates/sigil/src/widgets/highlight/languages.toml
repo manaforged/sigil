@@ -1,0 +1,89 @@
+[styles]
+comment = "on-surface-muted"
+string = "success-11"
+number = "warn-11"
+keyword = "accent-11"
+literal = "warn-11"
+type = "info-11"
+added = "success-11"
+removed = "error-11"
+meta = "info-11"
+
+[lang.rust]
+aliases = ["rs"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\""]
+numbers = true
+words.keyword = [
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum",
+    "extern", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut",
+    "pub", "ref", "return", "self", "Self", "static", "struct", "super", "trait", "type",
+    "unsafe", "use", "where", "while",
+]
+words.literal = ["true", "false", "None", "Some", "Ok", "Err"]
+words.type = [
+    "bool", "char", "str", "String", "Vec", "Option", "Result", "Box", "u8", "u16", "u32",
+    "u64", "usize", "i8", "i16", "i32", "i64", "isize", "f32", "f64",
+]
+
+[lang.sh]
+aliases = ["bash", "shell", "zsh", "console"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "if", "then", "else", "elif", "fi", "for", "while", "until", "do", "done", "case", "esac",
+    "in", "function", "return", "local", "export", "set", "unset", "source", "exit",
+]
+words.literal = ["true", "false"]
+words.type = ["echo", "cd", "cargo", "git", "ssh", "sudo", "rm", "cp", "mv", "ls", "grep"]
+
+[lang.toml]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+prefixes.meta = ["["]
+words.literal = ["true", "false"]
+
+[lang.json]
+aliases = ["jsonc", "json5"]
+line_comments = ["//"]
+strings = ["\""]
+numbers = true
+words.literal = ["true", "false", "null"]
+
+[lang.python]
+aliases = ["py", "python3"]
+line_comments = ["#"]
+strings = ["\"", "'"]
+numbers = true
+words.keyword = [
+    "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del",
+    "elif", "else", "except", "finally", "for", "from", "global", "if", "import", "in", "is",
+    "lambda", "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with",
+    "yield", "self",
+]
+words.literal = ["True", "False", "None"]
+words.type = ["int", "float", "str", "bool", "list", "dict", "set", "tuple", "bytes"]
+
+[lang.javascript]
+aliases = ["js", "jsx", "mjs", "cjs", "typescript", "ts", "tsx"]
+line_comments = ["//"]
+block_comment = ["/*", "*/"]
+strings = ["\"", "'", "`"]
+numbers = true
+words.keyword = [
+    "async", "await", "break", "case", "catch", "class", "const", "continue", "default",
+    "delete", "do", "else", "export", "extends", "finally", "for", "from", "function", "if",
+    "import", "in", "instanceof", "interface", "let", "new", "of", "return", "switch", "this",
+    "throw", "try", "type", "typeof", "var", "void", "while", "yield", "enum", "implements",
+]
+words.literal = ["true", "false", "null", "undefined", "NaN"]
+words.type = ["string", "number", "boolean", "any", "unknown", "never", "object", "Promise"]
+
+[lang.diff]
+aliases = ["patch"]
+prefixes.meta = ["+++", "---", "@@", "diff ", "index "]
+prefixes.added = ["+"]
+prefixes.removed = ["-"]

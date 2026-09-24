@@ -174,7 +174,7 @@ fn definite_width(node: &Node) -> bool {
     node.get_extension::<LayoutStyle>().is_some_and(|style| {
         matches!(
             style.data().size.width,
-            Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill
+            Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
         )
     })
 }

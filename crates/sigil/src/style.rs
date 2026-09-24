@@ -1,4 +1,3 @@
-//! Themes, style atoms, and state-driven styling.
 pub(crate) mod presence;
 pub(crate) mod transform;
 use phf as _;
@@ -18,6 +17,7 @@ pub mod engine;
 pub mod focus_ring;
 mod grid;
 pub mod merge;
+pub mod metrics;
 pub mod overlay;
 pub mod palette;
 pub mod parser;
@@ -30,6 +30,7 @@ pub mod struct_api;
 pub mod styled;
 pub mod text_style;
 pub mod theme;
+pub mod token;
 pub mod tone;
 pub mod variant;
 pub mod variant_kit;
@@ -51,6 +52,9 @@ pub use merge::{
     ComponentId, bump_unknown_class_count, merge_classes, merge_warning_count,
     merge_warning_count_for_component, unknown_class_warning_count,
 };
+pub use metrics::{
+    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Metrics, OVERLAY_SHADOW, Radius, space,
+};
 pub use overlay::StyleOverlay;
 pub use parser::{ParseError, StatefulToken, parse_class_string, parse_stateful_token};
 pub use reactive::StyleReactiveEffect;
@@ -63,8 +67,11 @@ pub use styled::{
     StateStyleBuilder, StateVariants, StyleAccess, Styleable, Styled, Transitions, Typography,
     Visual,
 };
-pub use text_style::{StyledTextEngine, TextLineHeight, TextStyle, is_typography_atom};
+pub use text_style::{
+    StyledTextEngine, TextFace, TextLineHeight, TextRun, TextRuns, TextStyle, is_typography_atom,
+};
 pub use theme::{Theme, ThemeBuilder, ThemeValue};
+pub use token::Token;
 pub use tone::{Tone, ToneContext};
 pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
@@ -76,7 +83,7 @@ pub mod prelude {
         Size, StateSlot, StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom,
         StyleBinding, StyleEngine, StyleReactiveEffect, StyleState, StyleVariant, Styleable,
         Styled, StyledTextEngine, TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue,
-        TransitionId, classes, merge_classes, merge_warning_count,
+        Token, TransitionId, classes, merge_classes, merge_warning_count,
         merge_warning_count_for_component, parse_class_string,
     };
 }

@@ -1,4 +1,4 @@
-#![allow(clippy::panic, missing_docs, unused_crate_dependencies)]
+#![allow(clippy::panic, unused_crate_dependencies)]
 
 use std::time::Duration;
 

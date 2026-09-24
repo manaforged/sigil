@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::hal::{LogicalSize, Size};
-use crate::kernel::{NodeId, TextContent};
+use crate::kernel::{AccessibleName, NodeId, Role, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};
 use crate::style::render_style_for;
@@ -69,7 +69,7 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
 fn selection_moves_the_painted_highlight_between_existing_tabs() {
     Runtime::scope("tabs-selection", || {
         let active = signal(0);
-        let theme = Theme::default();
+        let theme = Theme::light();
         let mut cx = Cx::new_root();
         let root = cx.add(tabs(active, vec!["A".into(), "B".into()]));
         let first = find(&cx, root, Role::Tab, "A");

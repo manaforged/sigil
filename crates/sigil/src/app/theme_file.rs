@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::style::{Rgba8, Theme, ThemeValue};
 
 pub(super) fn load(path: &std::path::Path) -> Option<Theme> {
@@ -12,7 +10,7 @@ pub fn parse(input: &str) -> Option<Theme> {
     let mut theme = match doc.get("base").and_then(toml::Value::as_str) {
         Some("dark") => Theme::dark(),
         Some("console_dark") => Theme::console_dark(),
-        Some("light") | None => Theme::default(),
+        Some("light") | None => Theme::light(),
         Some(_) => return None,
     };
     let tokens = doc.get("tokens")?.as_table()?;
@@ -78,59 +76,21 @@ pub(super) fn watcher(
     Ok((watcher, rx))
 }
 
-pub(super) struct ThemeWatch {
-    pub(super) path: PathBuf,
-    rx: Option<crossbeam_channel::Receiver<()>>,
-    _watcher: Option<notify::RecommendedWatcher>,
-}
-
-pub(super) fn attach_current(
-    cx: &mut crate::kernel::Cx,
-    root: crate::kernel::NodeId,
-    watch: &ThemeWatch,
-) {
-    if let Some(theme) = load(&watch.path)
-        && let Some(node) = cx.get_mut(root)
-    {
-        node.attach(theme);
+pub(crate) fn launch(path: Option<&std::path::Path>) -> Option<crate::app::ThemeWatcher> {
+    let path = path?;
+    if let Some(theme) = load(path) {
+        crate::app::set_theme(theme);
+    } else {
+        tracing::warn!("sigil-app: cannot load theme file {}", path.display());
     }
-}
-
-pub(super) fn drain(
-    cx: &mut crate::kernel::Cx,
-    root: crate::kernel::NodeId,
-    watch: &ThemeWatch,
-) -> bool {
-    let Some(rx) = &watch.rx else {
-        return false;
-    };
-    let mut changed = false;
-    while rx.try_recv().is_ok() {
-        changed = true;
-    }
-    if changed {
-        attach_current(cx, root, watch);
-    }
-    changed
-}
-
-pub(super) fn start(configured: Option<&std::path::Path>) -> Option<ThemeWatch> {
-    let path = configured?;
-    let (watcher, rx) = match watcher(path) {
-        Ok((watcher, rx)) => (Some(watcher), Some(rx)),
-        Err(error) => {
+    crate::app::watch_theme(path)
+        .inspect_err(|error| {
             tracing::warn!(
                 "sigil-app: cannot watch theme file {}: {error}",
                 path.display()
             );
-            (None, None)
-        }
-    };
-    Some(ThemeWatch {
-        path: path.to_path_buf(),
-        rx,
-        _watcher: watcher,
-    })
+        })
+        .ok()
 }
 
 #[cfg(test)]

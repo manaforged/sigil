@@ -65,10 +65,7 @@ impl Cx {
     fn spawn_live_region(&mut self, a11y: A11yProps) -> NodeId {
         let parent_owner = self.root_owner();
         let owner = Owner::new("sigil-kernel::live-region", Some(parent_owner));
-        let id = owner.with(|| {
-            let owner_id = Owner::current().expect("live-region owner is current inside `with`");
-            self.insert_live_region_node(a11y, owner_id)
-        });
+        let id = owner.with(|| self.insert_live_region_node(a11y, owner.id()));
         self.register_live_region_owner(id, owner);
         id
     }

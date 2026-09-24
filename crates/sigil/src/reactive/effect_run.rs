@@ -270,6 +270,7 @@ pub(crate) fn run_effect(key: EffectKey) {
 
     guard.f.as_mut().expect("closure just stored in guard")();
     drop(guard);
+    crate::reactive::effect::run_deferred(key);
 
     trace_effect_run(key);
 }

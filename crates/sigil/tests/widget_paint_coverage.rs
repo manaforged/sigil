@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::print_stdout)]
 
 use std::collections::HashSet;
@@ -13,9 +12,9 @@ use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, badge, chart, checkbox, chip, code_edit, color_field,
     combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, label, markdown,
     number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
-    toggle, turn_strip, virtual_list,
+    toggle, virtual_list,
 };
-use sigil_kittest::{InteractionMode, render_widget_to_png};
+use sigil_kittest::{InteractionMode, render_widget_to_png_stub};
 
 type Case = (&'static str, Box<dyn FnOnce(&mut Cx) -> NodeId>);
 
@@ -157,15 +156,6 @@ fn data() -> Vec<Case> {
             "tabs",
             Box::new(|cx| cx.add(tabs(signal(0_usize), vec!["One".into(), "Two".into()]))),
         ),
-        (
-            "turn_strip",
-            Box::new(|cx| {
-                cx.add(turn_strip(signal(vec![
-                    String::from("Tank"),
-                    String::from("Healer"),
-                ])))
-            }),
-        ),
     ]
 }
 
@@ -237,7 +227,8 @@ fn run(cases: Vec<Case>) {
     for (stem, build) in cases {
         assert_painted(
             stem,
-            render_widget_to_png(build, InteractionMode::Default, [240, 96], (0.0, 0.0)),
+            render_widget_to_png_stub(build, InteractionMode::Default, [240, 96], (0.0, 0.0))
+                .expect("sigil-kittest"),
         );
     }
 }

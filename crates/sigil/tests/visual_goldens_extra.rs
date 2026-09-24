@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
@@ -14,14 +13,14 @@ use sigil::prelude::*;
 use sigil::widgets::patterns;
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
+    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
     render_widget_to_png_with,
 };
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: Option<image::RgbaImage>) {
-    let Some(img) = img else {
+fn check(stem: &str, img: sigil_kittest::Rendered) {
+    let Some(img) = img.expect("sigil-kittest") else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
@@ -52,7 +51,7 @@ fn row_label(label: &str) -> NodeBuilder {
 
 #[test]
 fn virtual_list_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
                 .row_height(20.0)
@@ -69,7 +68,7 @@ fn virtual_list_default() {
 
 #[test]
 fn virtual_list_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
                 .row_height(20.0)
@@ -86,7 +85,7 @@ fn virtual_list_focused() {
 
 #[test]
 fn virtual_list_items_bind() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let items: Signal<Vec<String>> = signal(ten_row_list());
             let w = virtual_list(items, |_, s: &String| row_label(s))
@@ -110,7 +109,7 @@ fn splitter_pane(class: &'static str) -> NodeBuilder {
 
 #[test]
 fn splitter_horizontal_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let w = splitter(SplitterOrientation::Horizontal)
                 .child(splitter_pane("bg-accent"), 120.0)
@@ -127,7 +126,7 @@ fn splitter_horizontal_default() {
 
 #[test]
 fn splitter_vertical_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let w = splitter(SplitterOrientation::Vertical)
                 .child(splitter_pane("bg-accent"), 60.0)
@@ -144,7 +143,7 @@ fn splitter_vertical_default() {
 
 #[test]
 fn splitter_horizontal_with_min_max() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let w = splitter(SplitterOrientation::Horizontal)
                 .child(splitter_pane("bg-accent"), 120.0)
@@ -165,7 +164,7 @@ fn splitter_horizontal_with_min_max() {
 
 #[test]
 fn text_edit_multiline() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let buffer = signal(String::from("first line\nsecond line\nthird line"));
             cx.add(text_edit(buffer).width(360.0).height(160.0))
@@ -185,7 +184,7 @@ fn chip_in(label: &'static str, tone: Tone) -> NodeBuilder {
 
 #[test]
 fn chip_neutral() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(chip_in("READY", Tone::Neutral)),
         InteractionMode::Default,
         [50, 35],
@@ -196,7 +195,7 @@ fn chip_neutral() {
 
 #[test]
 fn chip_info() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(chip_in("INFO", Tone::Info)),
         InteractionMode::Default,
         [50, 35],
@@ -207,7 +206,7 @@ fn chip_info() {
 
 #[test]
 fn chip_success() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(chip_in("OK", Tone::Success)),
         InteractionMode::Default,
         [50, 35],
@@ -218,7 +217,7 @@ fn chip_success() {
 
 #[test]
 fn chip_warn() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(chip_in("WARN", Tone::Warn)),
         InteractionMode::Default,
         [50, 35],
@@ -229,7 +228,7 @@ fn chip_warn() {
 
 #[test]
 fn chip_error() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(chip_in("ERROR", Tone::Error)),
         InteractionMode::Default,
         [50, 35],
@@ -240,7 +239,7 @@ fn chip_error() {
 
 #[test]
 fn divider_horizontal_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -267,7 +266,7 @@ fn divider_horizontal_default() {
 
 #[test]
 fn divider_vertical_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -294,7 +293,7 @@ fn divider_vertical_default() {
 
 #[test]
 fn kv_row_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let row = container()
                 .layout(LayoutStyle::flex_column().fixed_size(220.0, 40.0))
@@ -311,7 +310,7 @@ fn kv_row_default() {
 
 #[test]
 fn status_bar_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let bar = container()
                 .layout(LayoutStyle::flex_column().fixed_size(280.0, 48.0))
@@ -331,7 +330,7 @@ fn status_bar_default() {
 
 #[test]
 fn number_field_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let value = signal(42i32);
             cx.add(number_field(value, 0..=100).text_field())
@@ -345,7 +344,7 @@ fn number_field_default() {
 
 #[test]
 fn number_field_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let value = signal(42i32);
             cx.add(number_field(value, 0..=100).text_field())
@@ -359,7 +358,7 @@ fn number_field_focused() {
 
 #[test]
 fn vector_path_shapes() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let accent = sigil::style::Rgba8 {
                 r: 80,
@@ -419,7 +418,7 @@ fn vector_gradient_fill() {
             base.fill_linear((0.0, 0.0), (60.0, 60.0), vec![(0.0, a), (1.0, b)])
         }
     }
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let gold = sigil::style::Rgba8 {
                 r: 255,
@@ -499,7 +498,7 @@ fn hint_overlay_default() {
 
 #[test]
 fn pattern_app_shell() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -527,7 +526,7 @@ fn pattern_app_shell() {
 
 #[test]
 fn pattern_field() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let buffer = signal(String::from("you@host"));
             let field = container()

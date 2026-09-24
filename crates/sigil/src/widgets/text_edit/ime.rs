@@ -11,8 +11,8 @@ use super::handlers::{TextEditRuntime, commit, write_value};
 use super::render::{floor_char_boundary, splice_preedit};
 
 #[derive(Clone)]
-pub(super) struct ImeState {
-    pub(super) preedit: Signal<String>,
+pub(in crate::widgets) struct ImeState {
+    pub(in crate::widgets) preedit: Signal<String>,
     preedit_cursor: Signal<Option<(usize, usize)>>,
     caret_anchor: Rc<Cell<Option<CaretGeometry>>>,
 }
@@ -27,7 +27,10 @@ impl ImeState {
     }
 }
 
-pub(super) fn attach_ime_handlers(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
+pub(in crate::widgets) fn attach_ime_handlers(
+    node: NodeBuilder,
+    runtime: &TextEditRuntime,
+) -> NodeBuilder {
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
     let event_rt = runtime.clone();
     let blur_rt = runtime.clone();
@@ -104,6 +107,7 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let text_style = runtime.text_style;
     let content_size = runtime.content_size;
     let scroll_y = runtime.scroll_y;
+    let scroll_x = runtime.scroll_x;
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
     let (padding_x, padding_y) = runtime.content_padding;
     effect(move || {
@@ -134,7 +138,7 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
                 },
             );
             CaretGeometry {
-                x: (pos.x + padding_x).max(0.0),
+                x: (pos.x + padding_x - scroll_x.get()).max(0.0),
                 top: pos.top + padding_y - scroll_y.get(),
                 height: pos.height,
             }

@@ -1,10 +1,8 @@
-use std::cell::Cell;
-use std::rc::Rc;
-
-use crate::events::prelude::NodeEventsExt;
 use crate::kernel::NodeBuilder;
-use crate::reactive::{Signal, effect, signal};
-use crate::style::{ClassSource, NodeStyleExt, ReactiveStateSlot, StateSlot, Style, StyleAccess};
+use crate::reactive::Signal;
+use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess};
+use crate::widgets::interaction::InteractionState;
+use crate::widgets::shared::state_surface;
 
 pub struct InteractiveBuilder {
     inner: NodeBuilder,
@@ -47,47 +45,18 @@ impl InteractiveBuilder {
         let mut style = self.style;
         let overlay = style.take_state_overlay();
         let base_atoms = style.into_atoms();
-
-        let hovered = signal(false);
-        let pressed = signal(false);
-        let focused = signal(false);
-        let disabled = self.disabled;
-
-        let slot_cell: ReactiveStateSlot = Rc::new(Cell::new(StateSlot::Rest));
-        publish_slot_on_change(&slot_cell, hovered, pressed, focused, disabled);
-
+        let interaction = InteractionState::new(true);
         let mut node = self.inner.focusable(self.focusable);
         if !base_atoms.is_empty() {
             node = node.class(ClassSource::Owned(Box::new(base_atoms)));
         }
-        if !overlay.is_empty() {
-            node = node.state_overlay(overlay, slot_cell);
-        }
-        node.pointer_enter(move |_event| {
-            if !disabled_is(disabled.as_ref()) {
-                set_if_changed(hovered, true);
-            }
-        })
-        .pointer_leave(move |_event| {
-            set_if_changed(hovered, false);
-            set_if_changed(pressed, false);
-        })
-        .pointer_down(move |_event| {
-            if !disabled_is(disabled.as_ref()) {
-                set_if_changed(pressed, true);
-            }
-        })
-        .pointer_up(move |_event| {
-            set_if_changed(pressed, false);
-        })
-        .focus_in(move || {
-            if !disabled_is(disabled.as_ref()) {
-                set_if_changed(focused, true);
-            }
-        })
-        .focus_out(move || {
-            set_if_changed(focused, false);
-        })
+        let node = state_surface(node, interaction, self.disabled, overlay);
+        let node = if self.focusable {
+            node.focus_ring(interaction.focus_ring())
+        } else {
+            node
+        };
+        interaction.observe_style(node)
     }
 }
 
@@ -102,39 +71,5 @@ impl crate::style::StateHost for InteractiveBuilder {}
 impl crate::kernel::IntoNode for InteractiveBuilder {
     fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {
         self.into_node_builder().build(cx)
-    }
-}
-
-fn publish_slot_on_change(
-    slot_cell: &ReactiveStateSlot,
-    hovered: Signal<bool>,
-    pressed: Signal<bool>,
-    focused: Signal<bool>,
-    disabled: Option<Signal<bool>>,
-) {
-    let cell = Rc::clone(slot_cell);
-    effect(move || {
-        let slot = if disabled_is(disabled.as_ref()) {
-            StateSlot::Disabled
-        } else if pressed.get() {
-            StateSlot::Pressed
-        } else if hovered.get() {
-            StateSlot::Hovered
-        } else if focused.get() {
-            StateSlot::Focused
-        } else {
-            StateSlot::Rest
-        };
-        cell.set(slot);
-    });
-}
-
-fn disabled_is(disabled: Option<&Signal<bool>>) -> bool {
-    disabled.copied().is_some_and(Signal::get)
-}
-
-fn set_if_changed(signal: Signal<bool>, next: bool) {
-    if signal.peek() != next {
-        signal.set(next);
     }
 }

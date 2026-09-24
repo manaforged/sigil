@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom};
+use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, space};
 
 use super::builder::{ContentFactory, ContentSlot};
 
@@ -13,7 +13,11 @@ pub(super) fn wrap_with_content(
 ) -> NodeBuilder {
     let mut root = container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().align_items(AlignItems::Stretch))
+        .layout(
+            LayoutStyle::flex_column()
+                .align_items(AlignItems::Stretch)
+                .gap(space(2)),
+        )
         .child(tab_list);
 
     let mut factories: Vec<Option<ContentFactory>> = (0..count).map(|_| None).collect();

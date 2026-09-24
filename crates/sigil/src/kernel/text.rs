@@ -198,6 +198,17 @@ impl TextBuilder {
     }
 
     #[must_use]
+    pub fn runs(self, runs: Vec<crate::style::TextRun>) -> Self {
+        if runs.is_empty() {
+            return self;
+        }
+        let runs = crate::style::TextRuns(runs.into());
+        self.mutate(move |node| {
+            node.attach(runs);
+        })
+    }
+
+    #[must_use]
     pub fn mutate(mut self, apply: impl FnOnce(&mut crate::kernel::Node) + 'static) -> Self {
         self.pre_extensions.push(Box::new(apply));
         self

@@ -4,6 +4,8 @@ use skrifa::{
     outline::{DrawSettings, pen::PathElement},
 };
 
+use crate::renderer::oblique::Oblique;
+
 use super::curve::{QuadBez, cubic_to_quads, line_to_quad};
 
 pub(super) const BANDS: usize = 16;
@@ -47,8 +49,10 @@ pub(super) fn preprocess_glyph(
     font_index: u32,
     glyph_id: u32,
     variation_coords: &[i16],
+    skew: f32,
 ) -> Option<BandData> {
-    let (elements, upem) = collect_outline(font_bytes, font_index, glyph_id, variation_coords)?;
+    let (elements, upem) =
+        collect_outline(font_bytes, font_index, glyph_id, variation_coords, skew)?;
     let quads = path_elements_to_quads(&elements);
     if quads.is_empty() {
         return None;
@@ -66,6 +70,7 @@ fn collect_outline(
     font_index: u32,
     glyph_id: u32,
     variation_coords: &[i16],
+    skew: f32,
 ) -> Option<(Vec<PathElement>, u16)> {
     let font = FontRef::from_index(font_bytes, font_index).ok()?;
     let upem = font
@@ -79,7 +84,9 @@ fn collect_outline(
     let location = LocationRef::new(&coords);
     let settings = DrawSettings::unhinted(Size::unscaled(), location);
     let mut elements: Vec<PathElement> = Vec::new();
-    glyph.draw(settings, &mut elements).ok()?;
+    glyph
+        .draw(settings, &mut Oblique::new(&mut elements, skew))
+        .ok()?;
     if elements.is_empty() {
         return None;
     }

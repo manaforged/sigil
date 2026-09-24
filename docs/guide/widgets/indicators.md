@@ -6,12 +6,12 @@ Read-only status visuals. They paint state; except for chip with
 
 ## chip and badge
 
-`chip(label, Tone) -> ChipBuilder` — a small `text-xs` label in a
-tinted `rounded-sm` frame. `badge(label, Tone)` is the same builder
-with `.pill()` applied: `rounded-full` instead of `rounded-sm`.
+`chip(label, Tone) -> ChipBuilder` — a 20 px `text-xs font-medium`
+label in a tinted `rounded-full` pill. `badge(label, Tone)` is the same
+builder. The label renders as written; write it in sentence case.
 
 ```rust,ignore
-chip("stable", Tone::Success);
+chip("Stable", Tone::Success);
 badge("3", Tone::Error);
 ```
 
@@ -69,3 +69,39 @@ progress(done, 100.0);
 
 Fills are expressed as `flex-grow` units, so the bar tracks layout
 width exactly.
+
+## spinner
+
+`spinner() -> NodeBuilder`. An indeterminate activity indicator: a braille
+glyph that advances one frame every 80 ms. `spinner_frame(tick)` returns the glyph for
+one frame, so you can draw the same animation in your own text node.
+
+## States, keys, and accessibility
+
+Indicators have one visual state each: the visual catalog captures only
+the default state. They take no keys, except a chip with `.activate()`.
+
+| Widget | Keys | Role | Name source |
+| --- | --- | --- | --- |
+| `chip`, `badge` | Enter with `.activate()`, else none | `Label`, or `Button` with `.activate()` | The label |
+| `dot` | none | `GenericContainer` | None. Put the meaning in a nearby label. |
+| `gauge` | none | `ProgressIndicator` | A static `.label()`, else "Gauge" |
+| `progress` | none | `ProgressIndicator` | `.label()`, else "Progress" |
+| `spinner` | none | `ProgressIndicator` | `.label()` on the returned `NodeBuilder`, else "Loading" |
+
+## Terminal notes
+
+- A gauge or progress track paints as a row of cells. The fill ends on
+  a half-block glyph when it stops inside a cell.
+- A dot paints as a colored cell. With `NO_COLOR` the tone is lost, so
+  do not use a dot as the only signal.
+- The spinner glyph is plain text, so it paints the same in a terminal.
+  The host builds a frame only when the spinner interval is due.
+
+## Example
+
+Run it with `cargo run -p sigil-ui --example widget_indicators`.
+
+```rust
+{{#include ../../../crates/sigil/examples/widget_indicators.rs}}
+```

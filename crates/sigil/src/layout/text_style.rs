@@ -54,6 +54,7 @@ pub(crate) fn text_style_signature(style: &TextStyle) -> u64 {
             value.to_bits().hash(&mut hasher);
         }
     }
+    style.runs.hash(&mut hasher);
     hasher.finish()
 }
 

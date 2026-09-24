@@ -4,7 +4,7 @@ use crate::events::prelude::{MouseButton, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived_eq};
-use crate::style::{NodeStyleExt, Rgba8, StyleAtom};
+use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, Rgba8, StyleAtom, Token};
 
 use super::state::TableState;
 
@@ -12,8 +12,8 @@ pub(super) const WIDTH: f32 = 32.0;
 const BOX: f32 = 18.0;
 const MARK: f32 = 12.0;
 
-static CHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static UNCHECKED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-inset")];
+static CHECKED: &[StyleAtom] = &[Token::Accent.bg()];
+static UNCHECKED: &[StyleAtom] = &[Token::SurfaceInset.bg()];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mark {
@@ -79,9 +79,11 @@ fn select_box(
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .class("rounded-full")
-        .class("border")
-        .class("border-border")
+        .class([
+            Radius::Full.atom(),
+            StyleAtom::BorderWidth(BORDER_WIDTH),
+            Token::Border.border(),
+        ])
         .style_reactive(move || {
             if mark.get() == Mark::Empty {
                 UNCHECKED

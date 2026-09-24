@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
@@ -39,7 +38,8 @@ fn capture_at_scale(stem: &str, scale: f32) {
         scale,
         HIT_POINT,
         Box::new(DefaultTextMeasure::new()),
-    );
+    )
+    .expect("sigil-kittest");
     let Some(img) = img else {
         println!("no GPU adapter — skipping {stem}");
         return;

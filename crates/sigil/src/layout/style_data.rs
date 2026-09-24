@@ -1,7 +1,10 @@
+use crate::layout::units::TextLength;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum LengthPercentage {
     Px(f32),
     Percent(f32),
+    Text(TextLength),
 }
 
 impl Default for LengthPercentage {
@@ -56,6 +59,7 @@ pub enum Dimension {
     #[default]
     Auto,
     Fill,
+    Text(TextLength),
 }
 
 impl From<f32> for Dimension {

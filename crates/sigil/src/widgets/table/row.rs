@@ -1,10 +1,10 @@
 use crate::events::prelude::{ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::reactive::derived_eq;
-use crate::style::{Fill, NodeStyleExt, StateVariants};
+use crate::reactive::{Signal, derived_eq};
+use crate::style::{NodeStyleExt, StyleAtom, Token, space};
 
-use super::super::interactive::interactive;
+use super::super::patterns::{ROW_SELECTED, row_states};
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, flex_cell};
 use super::hscroll::HScroll;
@@ -17,10 +17,12 @@ pub(super) struct RowSpec {
     pub select: bool,
     pub pad_x: f32,
     pub striped: bool,
+    pub disabled: Option<Signal<bool>>,
 }
 
-const SELECTED_CLASS: &str = "bg-accent-5";
-const STRIPE_CLASS: &str = "bg-surface-0";
+static SELECTED: &[StyleAtom] = &[ROW_SELECTED.bg()];
+const STRIPE: Token = Token::SurfaceInset;
+const ROW_INSET: f32 = space(1);
 const NUMERIC_CLASS: &str = "tabular-nums";
 
 pub(super) fn body_row<Row: 'static>(
@@ -43,34 +45,37 @@ fn build_row<Row: 'static>(
 ) -> NodeBuilder {
     let (visible_pos, row_index) = slot;
     let row_height = spec.row_height;
-    let rows = state.rows().peek();
-    let Some(row) = rows.get(row_index as usize) else {
+    if state.rows().peek().get(row_index as usize).is_none() {
         return container();
-    };
+    }
     let selection = state.selection();
     let is_selected = derived_eq(move || selection.get().contains(&row_index));
     let state_cells = state.clone();
     let track = container()
         .layout(track_layout(row_height))
         .children_reactive(move || row_cells(&state_cells, spec, row_index));
-    let mut cells = container()
+    let cells = container()
         .role(Role::Row)
         .label(format!("row {}", visible_pos + 1))
         .row_index(visible_pos + 2)
         .selected(is_selected)
-        .layout(row_layout(row_height, spec.pad_x))
-        .class("border-b border-line");
-    if spec.striped && visible_pos % 2 == 1 {
-        cells = cells.class(STRIPE_CLASS);
-    }
-    let cells = cells
-        .class_when(is_selected, SELECTED_CLASS)
+        .layout(row_layout(row_height, spec.pad_x - ROW_INSET))
+        .style_reactive(move || if is_selected.get() { SELECTED } else { &[] })
         .child(hscroll.shifted(track));
-    let _ = row;
-    interactive(cells)
-        .hover(|s| s.bg("surface-hover"))
-        .into_node_builder()
-        .pointer_down(select_pointer(state.clone(), chrome.clone(), row_index))
+    let mut frame = container()
+        .layout(row_layout(row_height, ROW_INSET))
+        .class("border-b")
+        .class(Token::Border.border());
+    if spec.striped && visible_pos % 2 == 1 {
+        frame = frame.class(STRIPE.bg());
+    }
+    frame.child(
+        row_states(cells, spec.disabled).pointer_down(select_pointer(
+            state.clone(),
+            chrome.clone(),
+            (row_index, spec.disabled),
+        )),
+    )
 }
 
 fn row_cells<Row: 'static>(
@@ -144,9 +149,13 @@ fn body_cell(content: Option<Box<dyn IntoNode>>, index: usize, layout: LayoutSty
 fn select_pointer<Row: 'static>(
     state: TableState<Row>,
     chrome: TableChrome<Row>,
-    row_index: u32,
+    target: (u32, Option<Signal<bool>>),
 ) -> impl Fn(&mut PointerEvent) + 'static {
+    let (row_index, disabled) = target;
     move |event| {
+        if disabled.is_some_and(|off| off.get()) {
+            return;
+        }
         if event.button == Some(MouseButton::Right) {
             if !state.selection().peek().contains(&row_index) {
                 state.select_only(row_index);

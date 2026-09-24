@@ -2,12 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
-    CommandScene, CornerRadii, Fill, OffscreenTarget, PatternKind, SceneBuilder, SceneCommand,
+    CommandScene, CornerRadii, OffscreenTarget, PaintFill, PatternKind, SceneBuilder, SceneCommand,
     ScenePatternStyle, Stroke, StrokeAlign, StrokeStyle, WgpuRenderer,
 };
 use sigil::style::Rgba8;
@@ -22,13 +21,11 @@ const VIEWPORT_HEIGHT: u32 = 80;
 fn pattern_commands_walk_and_populate_fill_pipeline_cache() {
     let scene = pattern_scene();
     assert_pattern_command_shape(&scene);
-    assert!(matches!(Fill::Pattern(slash()), Fill::Pattern(_)));
+    assert!(matches!(PaintFill::Pattern(slash()), PaintFill::Pattern(_)));
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping pattern command walker test: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();

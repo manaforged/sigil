@@ -100,7 +100,7 @@ impl AnimatorOverlay for AttachedAnimators {
         self.entries
             .iter()
             .find(|entry| entry.kind == kind)
-            .map(|entry| entry.signal.peek())
+            .and_then(|entry| entry.signal.try_peek())
     }
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {

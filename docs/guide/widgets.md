@@ -14,11 +14,11 @@ The family pages carry signatures, options, and behavior notes:
 
 - [Controls](widgets/controls.md) — button, icon_button, checkbox,
   toggle, radio_group, slider.
-- [Indicators](widgets/indicators.md) — chip, badge, dot, gauge,
+- [Indicators](widgets/indicators.md) — chip, badge, dot, spinner, gauge,
   progress.
 - [Fields](widgets/fields.md) — text_field, text_edit, number_field,
   date_field, color_field, combobox, dropdown.
-- [Data](widgets/data.md) — table, virtual_list, turn_strip, heatmap.
+- [Data](widgets/data.md) — table, virtual_list, heatmap.
 - [Content](widgets/content.md) — text, label, icon, image, path,
   chart.
 - [Documents](widgets/documents.md) — markdown, markdown_edit, html,
@@ -29,7 +29,7 @@ The family pages carry signatures, options, and behavior notes:
 - [Overlays](widgets/overlays.md) — modal, sheet, menu, menu_bar,
   command_menu, tooltip, toast, toast_queue, hint_overlay.
 - [Plumbing](widgets/plumbing.md) — interactive, axis_drag, drag/drop,
-  clipboard, terminal, transport, floating_text.
+  clipboard, terminal.
 
 ## Inputs
 
@@ -117,8 +117,7 @@ The family pages carry signatures, options, and behavior notes:
   control. Use these for forms.
 - **icon(glyph)**, **dot(Tone)**, **divider_horizontal()**, and
   **divider_vertical()**.
-- **code_edit(...)**, **floating_text(...)** (game FCT), and
-  **turn_strip(...)** (game turn order).
+- **code_edit(...)**.
 - **markdown(Signal\<String\>)** — a read-only document: headings,
   paragraphs, lists, fenced code, pipe tables, plus `**bold**`,
   `` `code` ``, and `[label](url)`. Not an in-place editor.
@@ -128,10 +127,6 @@ The family pages carry signatures, options, and behavior notes:
   browser.
 - **markdown_edit(Signal\<String\>)** — a source `text_edit` plus a live
   `markdown` preview. The caret stays in the source string.
-- **transport(playing, progress, toggle)** — a play/pause `icon_button`
-  plus a 0-1 `slider`. Bind a prelude `Player` (feature `audio`). Open a
-  file with `Player::play_path`. Chain `.seek(|r| ...)` with
-  `Player::seek` so a drag jumps the file.
 - **terminal(lines, on_input)** — a mono `virtual_list` of PTY rows,
   pinned to the bottom. Bind a prelude `Session` (feature `pty`). Paint
   is `Session.lines`. `Session::write` needs `Session::spawn`.
@@ -203,4 +198,4 @@ modal(open).title("Command").child(
 | checkbox, dropdown, slider, tabs, text_field, text_edit | yes |
 | Plain containers, card, avatar, sidebar | via `interactive()` only |
 | chip | no style slots; `.activate` is a clickable button |
-| gauge, progress, dot, floating_text, turn_strip, icon, divider, panel, scroll, modal, menu, command_menu, tooltip | compile error by design (display-only) |
+| gauge, progress, dot, icon, divider, panel, scroll, modal, menu, command_menu, tooltip | compile error by design (display-only) |

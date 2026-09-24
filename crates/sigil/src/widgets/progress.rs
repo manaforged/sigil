@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived_eq};
-use crate::style::{NodeStyleExt, Style, StyleAccess, StyleAtom, Tone};
+use crate::style::{NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, Tone};
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
 
-static TRACK: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static TRACK: &[StyleAtom] = &[Radius::Md.atom(), StyleAtom::BgToneStep(4)];
+static FILL: &[StyleAtom] = &[Radius::Md.atom(), Token::Accent.bg()];
 
 pub struct ProgressBuilder {
     value: Signal<f32>,
@@ -18,6 +18,7 @@ pub struct ProgressBuilder {
     pub indeterminate: bool,
     track_height: f32,
     track_width: Option<f32>,
+    name: AccessibleName,
     style_accumulator: Style,
 }
 
@@ -35,6 +36,7 @@ impl ProgressBuilder {
             indeterminate: false,
             track_height: TRACK_HEIGHT,
             track_width: None,
+            name: AccessibleName::from("Progress"),
             style_accumulator: Style::new(),
         }
     }
@@ -57,6 +59,12 @@ impl ProgressBuilder {
         self
     }
 
+    #[must_use]
+    pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
+        self.name = name.into();
+        self
+    }
+
     fn into_node_builder(self) -> NodeBuilder {
         let value = self.value;
         let max = self.max;
@@ -73,9 +81,9 @@ impl ProgressBuilder {
 
         let mut node = container()
             .role(Role::ProgressIndicator)
+            .label(self.name)
             .value(value, 0.0, max)
             .layout(track_layout(track_h, track_w))
-            .class("rounded-md")
             .class(TRACK)
             .child(fill);
         if !style_accumulator.is_empty() {
@@ -114,7 +122,6 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
-                .class("rounded-md")
                 .style_reactive(move || grow_atoms(filled.get()))
                 .class(FILL)
                 .tone(Tone::Primary),
@@ -166,7 +173,6 @@ fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
-                .class("rounded-md")
                 .style_reactive(|| grow_atoms(grow_units(INDETERMINATE_RATIO)))
                 .class(FILL),
         )

@@ -8,7 +8,6 @@ use crate::app::{FrameHooks, FrameInfo};
 use crate::events::EventRouter;
 #[cfg(feature = "menu")]
 use crate::hal::Shell;
-use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
@@ -31,7 +30,6 @@ struct FrameEnv<'a> {
     exit_requested: &'a mut bool,
     async_rt: &'a mut AsyncRuntime,
     a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
-    theme_watch: &'a Option<crate::app::theme_file::ThemeWatch>,
     frame_state: &'a mut super::FrameState,
     input_error: Option<Error>,
 }
@@ -49,7 +47,6 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
         exit_requested,
         async_rt,
         a11y_action_rx,
-        theme_watch,
         frame_state,
     } = ctx;
 
@@ -65,7 +62,6 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
         exit_requested,
         async_rt,
         a11y_action_rx,
-        theme_watch,
         frame_state,
         input_error: None,
     });
@@ -102,8 +98,6 @@ fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
 fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter) {
     let _effect = crate::profile::span("effect");
     let _ = env.async_rt.pump();
-    watch_theme(host, env.theme_watch.as_ref());
-    apply_appearance(host);
     install_shell_features(env.shell, env.window_handle);
     let surface_result = ensure_surface(EnsureSurfaceCtx {
         shell: env.shell,
@@ -133,25 +127,6 @@ fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter
             exit_requested: env.exit_requested,
         });
         event_wiring::drain_a11y_actions(env.a11y_action_rx, cx, router, layout);
-    }
-}
-
-fn watch_theme(host: &mut Host, watch: Option<&crate::app::theme_file::ThemeWatch>) {
-    if let Some(watch) = watch
-        && let Some(root) = host.root()
-        && crate::app::theme_file::drain(host.cx(), root, watch)
-    {
-        Runtime::mark_frame_dirty();
-    }
-}
-
-fn apply_appearance(host: &mut Host) {
-    if let Some(theme) = crate::app::appearance::take()
-        && let Some(root) = host.root()
-        && let Some(node) = host.cx().get_mut(root)
-    {
-        node.attach(theme);
-        Runtime::mark_frame_dirty();
     }
 }
 
@@ -217,7 +192,7 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, in
 
 #[cfg(test)]
 pub(super) fn begin_effect(async_rt: &mut AsyncRuntime) {
-    Runtime::begin_effect();
+    crate::reactive::Runtime::begin_effect();
     let _drained = async_rt.pump();
 }
 

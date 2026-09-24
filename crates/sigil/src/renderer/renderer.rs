@@ -63,7 +63,6 @@ impl WgpuRenderer {
         self.state.ready().ok().map(|ready| &ready.queue)
     }
 
-    #[doc(hidden)]
     #[must_use]
     pub fn pipeline_cache_counts(&self) -> Option<(usize, usize, usize, usize, usize)> {
         self.state.ready().ok().map(|ready| {
@@ -85,7 +84,6 @@ impl WgpuRenderer {
             .map(|ready| ready.decoration_pipelines.len())
     }
 
-    #[doc(hidden)]
     #[must_use]
     pub fn layer_pool_ready_for_tests(&self) -> bool {
         self.state
@@ -93,9 +91,23 @@ impl WgpuRenderer {
             .is_ok_and(|ready| ready.layer_pool.is_some())
     }
 
-    #[doc(hidden)]
     pub fn ensure_headless_for_tests(&mut self) -> Result<(), RendererError> {
         self.state.ensure_ready_headless().map(|_| ())
+    }
+
+    pub fn headless_device_for_tests()
+    -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
+        DeviceState::request_headless()
+    }
+
+    pub fn attach_headless_for_tests(
+        &mut self,
+        adapter: &wgpu::Adapter,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+    ) {
+        self.state
+            .adopt_headless(adapter.clone(), device.clone(), queue.clone());
     }
 
     pub fn prepare_compositing(
@@ -105,6 +117,18 @@ impl WgpuRenderer {
         let ready = self.state.ready_mut()?;
         LayerCompositePipeline::for_format(&mut ready.layer_pipelines, &ready.device, format);
         Ok(())
+    }
+
+    fn recover_lost_device(&mut self, surface: &WgpuSurface) -> Result<(), RendererError> {
+        if !self.state.is_lost() {
+            return Ok(());
+        }
+        self.frame_transients.clear();
+        self.state.reset();
+        let ready = self.state.ensure_ready(&surface.surface)?;
+        surface.surface.configure(&ready.device, &surface.config);
+        tracing::info!("GPU device rebuilt after loss");
+        self.prepare_compositing(surface.config.format)
     }
 
     pub fn submit_world(
@@ -130,6 +154,7 @@ impl WgpuRenderer {
     where
         F: FnOnce(&wgpu::Device, &wgpu::Queue, &wgpu::TextureView),
     {
+        self.recover_lost_device(surface)?;
         let ready = self.state.ready()?;
         render_frame_surface(ready, surface, clear_color, draw)
     }
@@ -141,6 +166,7 @@ impl WgpuRenderer {
         clear_color: Color,
         viewport: (f32, f32),
     ) -> Result<(), RendererError> {
+        self.recover_lost_device(surface)?;
         self.last_frame_stats = FrameStats::default();
         let Self {
             state,
@@ -221,6 +247,7 @@ impl Renderer for WgpuRenderer {
     }
 
     fn clear(&mut self, surface: &mut Self::Surface, color: Color) -> Result<(), Self::Error> {
+        self.recover_lost_device(surface)?;
         let ready = self.state.ready()?;
         let Some((frame, view)) = acquire_frame(ready, surface)? else {
             return Ok(());

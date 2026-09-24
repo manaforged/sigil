@@ -11,7 +11,7 @@ fn status_bar_has_no_children_when_iterator_is_empty() {
         let children: Vec<NodeBuilder> = Vec::new();
         let id = status_bar(children).build(&mut cx);
         let node = cx.get(id).expect("status-bar root exists");
-        assert_eq!(node.a11y.role, Role::GenericContainer);
+        assert_eq!(node.a11y.role, Role::Status);
         assert!(
             node.children().is_empty(),
             "empty iterator must produce zero children"

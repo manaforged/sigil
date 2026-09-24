@@ -39,6 +39,15 @@ fn write_node_line(node: &AkNode, focused: bool, out: &mut String) {
     if let Some(label) = node.label() {
         let _ = write!(out, ", Name={label:?}");
     }
+    if let Some(description) = node.description() {
+        let _ = write!(out, ", Description={description:?}");
+    }
+    if let Some(level) = node.level() {
+        let _ = write!(out, ", Level={level}");
+    }
+    if let Some(selected) = node.is_selected() {
+        let _ = write!(out, ", Selected={selected}");
+    }
     if let Some(value) = node.value() {
         let _ = write!(out, ", Value={value:?}");
     }

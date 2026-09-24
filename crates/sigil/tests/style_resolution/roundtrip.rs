@@ -43,6 +43,7 @@ pub(super) fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::TextColor(color) => Style::new().text_color(color),
         StyleAtom::TextThemeRef(token) => Style::new().text_theme(token),
         StyleAtom::BorderRadius(px) => Style::new().radius(px.0),
+        StyleAtom::Radius(radius) => Style::new().radius_token(radius),
         StyleAtom::BorderWidth(px) => Style::new().border_width(px.0),
         StyleAtom::BorderTop(px) => Style::new().border_top(px.0),
         StyleAtom::BorderRight(px) => Style::new().border_right(px.0),

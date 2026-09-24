@@ -29,6 +29,21 @@ impl FocusManager {
             && cx.get(id).is_some_and(|node| node.a11y.is_focusable())
     }
 
+    pub(crate) fn holds_live_focus(&self, cx: &Cx) -> bool {
+        self.focused.is_some_and(|id| {
+            visible(cx, id)
+                && cx.get(id).is_some_and(|node| node.a11y.is_focusable())
+                && self.is_within_active_scope(cx, id)
+        })
+    }
+
+    pub(crate) fn focus_first(&mut self, cx: &mut Cx, layout: &LayoutEngine) {
+        self.ensure_ring(cx, Some(layout));
+        let ring = self.enabled_ring(cx);
+        let first = super::scope::first_in_document_order(cx, |id| ring.contains(&id));
+        self.set_focus(cx, first);
+    }
+
     pub(crate) fn is_hittable_target(&self, cx: &Cx, layout: &LayoutEngine, id: NodeId) -> bool {
         let Some(node) = cx.get(id) else { return false };
         if !node.a11y.hittable || node.a11y.is_disabled() || !visible(cx, id) {

@@ -1,4 +1,4 @@
-#![allow(missing_docs, clippy::unwrap_used, clippy::indexing_slicing)]
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use sigil::hal::{HitPosition, ParagraphMetrics, TextAffinity, TextEngine};
 use sigil::text::{OwnedTextEngine, TextConfig};

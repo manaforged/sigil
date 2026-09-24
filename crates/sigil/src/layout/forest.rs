@@ -1,14 +1,24 @@
 #![allow(clippy::redundant_pub_crate)]
 
 use std::cell::Cell;
-use std::hash::{Hash as _, Hasher as _};
 
 use crate::kernel::{NodeId, TextContent};
 use crate::style::TextStyle;
-use ahash::AHasher;
 use smallvec::SmallVec;
 
-use crate::layout::{LayoutError, StyleData, TextMeasure};
+#[cfg(test)]
+use crate::layout::TextMeasure;
+use crate::layout::{LayoutError, StyleData};
+
+mod default_style;
+mod measure;
+mod text_memo;
+
+use default_style::DEFAULT_STYLE;
+pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
+pub(crate) use text_memo::text_memo_clear;
+#[cfg(test)]
+use text_memo::{TEXT_MEMO_LIVE, TextMemo, TextMemoKey};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct LocalId {
@@ -149,7 +159,7 @@ impl LayoutForest {
             let idx = slot.index as usize;
             let node = LayoutNode {
                 kernel,
-                style,
+                style: crate::layout::units::resolve_style(style),
                 text: None,
                 children: SmallVec::new(),
                 tag: slot.tag,
@@ -171,7 +181,7 @@ impl LayoutForest {
         let id = LocalId { index, tag: 0 };
         self.nodes.push(LayoutNode {
             kernel,
-            style,
+            style: crate::layout::units::resolve_style(style),
             text: None,
             children: SmallVec::new(),
             tag: 0,
@@ -239,7 +249,7 @@ impl LayoutForest {
             .nodes
             .get_mut(slot)
             .expect("slot() validated the index is in-bounds");
-        entry.style = style;
+        entry.style = crate::layout::units::resolve_style(style);
         Ok(())
     }
 
@@ -356,283 +366,6 @@ impl NodeRef<'_> {
 
     pub(crate) fn text(&self) -> Option<&LayoutText> {
         self.forest.node(self.id).and_then(LayoutNode::text)
-    }
-}
-
-static DEFAULT_STYLE: StyleData = StyleData {
-    display: crate::layout::style_data::Display::Block,
-    position: crate::layout::style_data::Position::Relative,
-    overflow: crate::layout::style_data::Size {
-        width: crate::layout::style_data::Overflow::Visible,
-        height: crate::layout::style_data::Overflow::Visible,
-    },
-    inset: crate::layout::style_data::Rect {
-        left: crate::layout::style_data::LengthPercentageAuto::Auto,
-        right: crate::layout::style_data::LengthPercentageAuto::Auto,
-        top: crate::layout::style_data::LengthPercentageAuto::Auto,
-        bottom: crate::layout::style_data::LengthPercentageAuto::Auto,
-    },
-    flex_direction: crate::layout::style_data::FlexDirection::Row,
-    flex_wrap: crate::layout::style_data::FlexWrap::NoWrap,
-    flex_grow: 0.0,
-    flex_shrink: 1.0,
-    flex_basis: crate::layout::style_data::Dimension::Auto,
-    justify_content: None,
-    align_items: None,
-    align_content: None,
-    align_self: None,
-    gap: crate::layout::style_data::Size {
-        width: crate::layout::style_data::LengthPercentage::Px(0.0),
-        height: crate::layout::style_data::LengthPercentage::Px(0.0),
-    },
-    margin: crate::layout::style_data::Rect {
-        left: crate::layout::style_data::LengthPercentageAuto::Px(0.0),
-        right: crate::layout::style_data::LengthPercentageAuto::Px(0.0),
-        top: crate::layout::style_data::LengthPercentageAuto::Px(0.0),
-        bottom: crate::layout::style_data::LengthPercentageAuto::Px(0.0),
-    },
-    padding: crate::layout::style_data::Rect {
-        left: crate::layout::style_data::LengthPercentage::Px(0.0),
-        right: crate::layout::style_data::LengthPercentage::Px(0.0),
-        top: crate::layout::style_data::LengthPercentage::Px(0.0),
-        bottom: crate::layout::style_data::LengthPercentage::Px(0.0),
-    },
-    border: crate::layout::style_data::Rect {
-        left: crate::layout::style_data::LengthPercentage::Px(0.0),
-        right: crate::layout::style_data::LengthPercentage::Px(0.0),
-        top: crate::layout::style_data::LengthPercentage::Px(0.0),
-        bottom: crate::layout::style_data::LengthPercentage::Px(0.0),
-    },
-    size: crate::layout::style_data::Size {
-        width: crate::layout::style_data::Dimension::Auto,
-        height: crate::layout::style_data::Dimension::Auto,
-    },
-    min_size: crate::layout::style_data::Size {
-        width: crate::layout::style_data::Dimension::Auto,
-        height: crate::layout::style_data::Dimension::Auto,
-    },
-    max_size: crate::layout::style_data::Size {
-        width: crate::layout::style_data::Dimension::Auto,
-        height: crate::layout::style_data::Dimension::Auto,
-    },
-    order: 0,
-    box_sizing: crate::layout::style_data::BoxSizing::ContentBox,
-    grid_template_columns: Vec::new(),
-    grid_template_rows: Vec::new(),
-    grid_column_span: 1,
-    grid_row_span: 1,
-    grid_column_start: 0,
-    grid_row_start: 0,
-    grid_auto_flow_dense: false,
-};
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum SpaceConstraint {
-    Definite(f32),
-    MinContent,
-    MaxContent,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct AvailableSpace {
-    pub(crate) w: SpaceConstraint,
-    pub(crate) h: SpaceConstraint,
-}
-
-impl AvailableSpace {
-    #[must_use]
-    pub(crate) const fn definite(w: f32, h: f32) -> Self {
-        Self {
-            w: SpaceConstraint::Definite(w),
-            h: SpaceConstraint::Definite(h),
-        }
-    }
-}
-
-pub(crate) struct MeasureScope<'a> {
-    forest: &'a LayoutForest,
-    text: &'a dyn TextMeasure,
-    available: AvailableSpace,
-}
-
-impl<'a> MeasureScope<'a> {
-    pub(crate) const fn new(
-        forest: &'a LayoutForest,
-        text: &'a dyn TextMeasure,
-        available: AvailableSpace,
-    ) -> Self {
-        Self {
-            forest,
-            text,
-            available,
-        }
-    }
-
-    pub(crate) const fn forest(&self) -> &LayoutForest {
-        self.forest
-    }
-
-    pub(crate) const fn text(&self) -> &dyn TextMeasure {
-        self.text
-    }
-
-    pub(crate) const fn available(&self) -> AvailableSpace {
-        self.available
-    }
-
-    pub(crate) fn write(&self, id: LocalId, value: ComputedBox) {
-        let idx = id.index as usize;
-        let Some(entry) = self.forest.nodes.get(idx) else {
-            return;
-        };
-        if !entry.alive || entry.tag != id.tag {
-            return;
-        }
-        if let Some(slot) = self.forest.boxes.get(idx) {
-            slot.write(value, self.forest.current_frame());
-        }
-    }
-
-    pub(crate) fn write_node(&self, node: &NodeRef<'_>, value: ComputedBox) {
-        self.write(node.id(), value);
-    }
-
-    pub(crate) fn measure_text(
-        &self,
-        node: NodeRef<'_>,
-        known: crate::layout::style_data::Size<Option<f32>>,
-        wrap_to: Option<f32>,
-    ) -> Option<crate::layout::style_data::Size<f32>> {
-        let text = node.text()?;
-        let memo_key = text_memo_key(node.id(), known, wrap_to, text);
-        if let Some(hit) = text_memo_get(memo_key) {
-            return Some(hit);
-        }
-        let width = if text.wrap {
-            known.width.or(wrap_to).map_or_else(
-                || space_constraint_to_hal_dim(self.available.w),
-                crate::hal::Dim::Fixed,
-            )
-        } else {
-            crate::hal::Dim::MaxContent
-        };
-        let space = crate::hal::Size {
-            width,
-            height: space_constraint_to_hal_dim(self.available.h),
-        };
-        let measured = text.style.as_ref().map_or_else(
-            || self.text.measure(&text.content, space),
-            |style| self.text.measure_styled(&text.content, style, space),
-        );
-        let natural_w = if text.ellipsis {
-            known
-                .width
-                .or(wrap_to)
-                .map_or(measured.width, |box_w| measured.width.min(box_w))
-        } else {
-            measured.width
-        };
-        let out = crate::layout::style_data::Size {
-            width: known.width.unwrap_or(natural_w),
-            height: known.height.unwrap_or(measured.height),
-        };
-        text_memo_store(memo_key, out);
-        Some(out)
-    }
-}
-
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-struct TextMemoKey {
-    index: u32,
-    tag: u32,
-    known_w: u32,
-    known_h: u32,
-    wrap: u32,
-    content: u64,
-}
-
-fn text_memo_key(
-    id: LocalId,
-    known: crate::layout::style_data::Size<Option<f32>>,
-    wrap_to: Option<f32>,
-    text: &LayoutText,
-) -> TextMemoKey {
-    TextMemoKey {
-        index: id.slot(),
-        tag: id.era(),
-        known_w: known.width.map_or(u32::MAX, f32::to_bits),
-        known_h: known.height.map_or(u32::MAX, f32::to_bits),
-        wrap: wrap_to.map_or(u32::MAX, f32::to_bits),
-        content: text_memo_content(text),
-    }
-}
-
-fn text_memo_content(text: &LayoutText) -> u64 {
-    let mut hasher = AHasher::default();
-    match &text.content {
-        TextContent::Static(value) => value.hash(&mut hasher),
-        live => live.resolve().hash(&mut hasher),
-    }
-    text.wrap.hash(&mut hasher);
-    text.ellipsis.hash(&mut hasher);
-    if let Some(style) = &text.style {
-        crate::layout::text_style::text_style_signature(style).hash(&mut hasher);
-    }
-    hasher.finish()
-}
-
-const TEXT_MEMO_LIVE: usize = 8_192;
-
-#[derive(Default)]
-struct TextMemo {
-    live: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Size<f32>>,
-    stale: ahash::AHashMap<TextMemoKey, crate::layout::style_data::Size<f32>>,
-}
-
-impl TextMemo {
-    fn get(&mut self, key: TextMemoKey) -> Option<crate::layout::style_data::Size<f32>> {
-        if let Some(hit) = self.live.get(&key) {
-            return Some(*hit);
-        }
-        let hit = self.stale.remove(&key)?;
-        self.live.insert(key, hit);
-        Some(hit)
-    }
-
-    fn store(&mut self, key: TextMemoKey, size: crate::layout::style_data::Size<f32>) {
-        if self.live.len() >= TEXT_MEMO_LIVE {
-            self.stale = std::mem::take(&mut self.live);
-        }
-        self.live.insert(key, size);
-    }
-
-    fn clear(&mut self) {
-        self.live.clear();
-        self.stale.clear();
-    }
-}
-
-fn text_memo_get(key: TextMemoKey) -> Option<crate::layout::style_data::Size<f32>> {
-    TEXT_MEMO.with(|cell| cell.borrow_mut().get(key))
-}
-
-fn text_memo_store(key: TextMemoKey, size: crate::layout::style_data::Size<f32>) {
-    TEXT_MEMO.with(|cell| cell.borrow_mut().store(key, size));
-}
-
-pub(crate) fn text_memo_clear() {
-    TEXT_MEMO.with(|cell| cell.borrow_mut().clear());
-}
-
-thread_local! {
-    static TEXT_MEMO: std::cell::RefCell<TextMemo> = std::cell::RefCell::new(TextMemo::default());
-}
-
-const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> crate::hal::Dim {
-    match space {
-        SpaceConstraint::Definite(value) => crate::hal::Dim::Fixed(value),
-        SpaceConstraint::MinContent => crate::hal::Dim::MinContent,
-        SpaceConstraint::MaxContent => crate::hal::Dim::MaxContent,
     }
 }
 

@@ -1,9 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use crate::reactive::Signal;
-#[cfg(feature = "pty")]
 use crate::reactive::signal;
-#[cfg(feature = "pty")]
 use std::sync::mpsc;
 
 use crate::app::{AppResult, Error};
@@ -11,35 +9,26 @@ use crate::app::{AppResult, Error};
 pub struct Session {
     pub lines: Signal<Vec<String>>,
     tx: Sender<Vec<u8>>,
-    #[cfg(feature = "pty")]
     killer: Option<Box<dyn portable_pty::ChildKiller + Send + Sync>>,
 }
 
 impl Drop for Session {
     fn drop(&mut self) {
-        #[cfg(feature = "pty")]
-        if let Some(killer) = self.killer.as_mut() {
-            let _ = killer.kill();
+        if let Some(killer) = self.killer.as_mut()
+            && let Err(err) = killer.kill()
+        {
+            tracing::warn!(target: "sigil::pty", error = %err, "PTY child kill failed");
         }
     }
 }
 
 impl Session {
     pub fn write(&self, bytes: &[u8]) -> AppResult<()> {
-        self.tx
-            .send(bytes.to_vec())
-            .map_err(|_| Error::new(NoChild))
+        self.tx.send(bytes.to_vec()).map_err(|_| Error::io(NoChild))
     }
 
     pub fn spawn(program: &str) -> AppResult<Self> {
-        #[cfg(feature = "pty")]
-        let result = spawn_pty(program);
-        #[cfg(not(feature = "pty"))]
-        let result = {
-            let _ = program;
-            Err(Error::new(Disabled))
-        };
-        result
+        spawn_pty(program)
     }
 }
 
@@ -54,40 +43,21 @@ impl std::fmt::Display for NoChild {
 
 impl std::error::Error for NoChild {}
 
-#[cfg(not(feature = "pty"))]
-#[derive(Debug)]
-struct Disabled;
-
-#[cfg(not(feature = "pty"))]
-impl std::fmt::Display for Disabled {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("enable feature `pty`")
-    }
-}
-
-#[cfg(not(feature = "pty"))]
-impl std::error::Error for Disabled {}
-
-#[cfg(feature = "pty")]
 #[derive(Debug)]
 struct NoOwner;
 
-#[cfg(feature = "pty")]
 impl std::fmt::Display for NoOwner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("Session::spawn needs Runtime::scope")
     }
 }
 
-#[cfg(feature = "pty")]
 impl std::error::Error for NoOwner {}
 
-#[cfg(feature = "pty")]
 fn spawn_pty(program: &str) -> AppResult<Session> {
     spawn_pty_inner(program)
 }
 
-#[cfg(feature = "pty")]
 fn spawn_pty_inner(program: &str) -> AppResult<Session> {
     use std::io::Write;
     use std::thread;
@@ -95,7 +65,7 @@ fn spawn_pty_inner(program: &str) -> AppResult<Session> {
     use crate::tasks::{OwnerHandle, dispatcher};
     use portable_pty::{CommandBuilder, PtySize, native_pty_system};
 
-    let owner = OwnerHandle::current().ok_or_else(|| Error::new(NoOwner))?;
+    let owner = OwnerHandle::current().ok_or_else(|| Error::task(NoOwner))?;
     let dispatcher = dispatcher();
     let pty = native_pty_system();
     let pair = pty
@@ -134,7 +104,6 @@ fn spawn_pty_inner(program: &str) -> AppResult<Session> {
     })
 }
 
-#[cfg(feature = "pty")]
 pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {
     parser
         .screen()
@@ -144,16 +113,14 @@ pub(crate) fn rows_of(parser: &vt100::Parser) -> Vec<String> {
         .collect()
 }
 
-#[cfg(feature = "pty")]
 fn pty_err(err: impl std::fmt::Display) -> Error {
-    Error::new(std::io::Error::other(err.to_string()))
+    Error::io(std::io::Error::other(err.to_string()))
 }
 
 #[allow(
     clippy::needless_pass_by_value,
     reason = "the API takes ownership by contract at this boundary"
 )]
-#[cfg(feature = "pty")]
 fn read_rows(
     mut reader: Box<dyn std::io::Read + Send>,
     dispatcher: crate::tasks::Dispatcher,
@@ -164,6 +131,7 @@ fn read_rows(
 
     let mut buf = [0_u8; 4096];
     let mut parser = vt100::Parser::new(24, 80, 0);
+    let pending: std::sync::Arc<std::sync::Mutex<Option<Vec<String>>>> = std::sync::Arc::default();
     loop {
         let n = match reader.read(&mut buf) {
             Ok(0) | Err(_) => break,
@@ -172,8 +140,19 @@ fn read_rows(
         let (got, _) = buf.split_at(n);
         parser.process(got);
         let rows = rows_of(&parser);
+        let Ok(mut slot) = pending.lock() else {
+            break;
+        };
+        if slot.replace(rows).is_some() {
+            continue;
+        }
+        drop(slot);
+        let pending = std::sync::Arc::clone(&pending);
         crate::tasks::dispatch_to_owner(&dispatcher, owner, move || {
-            painted.into_signal().set(rows);
+            let latest = pending.lock().ok().and_then(|mut held| held.take());
+            if let Some(screen) = latest {
+                painted.into_signal().set(screen);
+            }
         });
     }
 }

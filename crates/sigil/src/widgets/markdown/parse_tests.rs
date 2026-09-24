@@ -1,3 +1,4 @@
+use super::super::containers::List;
 use super::{Block, Span, parse_blocks, parse_inlines};
 
 #[test]
@@ -12,8 +13,17 @@ fn parse_headings_list_fence_and_paragraph() {
                 text: "Title".into(),
             },
             Block::Paragraph("Hello **world**.".into()),
-            Block::List(vec!["one".into(), "two".into()]),
-            Block::Code("fn x() {}".into()),
+            Block::List(List {
+                start: None,
+                items: vec![
+                    vec![Block::Paragraph("one".into())],
+                    vec![Block::Paragraph("two".into())],
+                ],
+            }),
+            Block::Code {
+                lang: String::new(),
+                body: "fn x() {}".into(),
+            },
         ]
     );
     assert_eq!(

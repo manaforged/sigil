@@ -11,7 +11,8 @@ use crate::kernel::{Cx, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};
 
-use crate::widgets::{ClipError, Clipboard, text_field};
+use crate::clipboard::{ClipError, Clipboard};
+use crate::widgets::text_field;
 
 struct Memory(Rc<RefCell<String>>);
 
@@ -20,9 +21,9 @@ impl Clipboard for Memory {
         Some(self.0.borrow().clone())
     }
 
-    fn set(&self, text: &str) -> Result<(), ClipError> {
+    fn set(&self, text: &str) -> Result<crate::clipboard::Delivery, ClipError> {
         self.0.replace(text.to_string());
-        Ok(())
+        Ok(crate::clipboard::Delivery::Confirmed)
     }
 }
 

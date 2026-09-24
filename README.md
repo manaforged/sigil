@@ -1,20 +1,19 @@
 # Sigil
 
-Desktop UI in Rust. One widget tree runs on three hosts: `launch` opens
-a window, `Host` embeds the tree in another engine's loop, and the
-separate `sigil-tui` crate paints it on a character grid.
+Desktop UI in Rust. One widget tree runs on three hosts. `sigil::run`
+opens a window or, with the `terminal` feature, paints the tree on a
+character grid. `Host` embeds the tree in another engine's loop.
 
 ![The workbench example application](docs/workbench.png)
 
 Using a coding agent with Sigil? Give it
 [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md).
 
-Unreleased. The API can change between 0.x releases. Pin a git **rev**,
-not `main`, from a product until `v0.1.0` exists.
+The API can change between 0.x releases. Depend on one minor version.
 
 ## Requirements
 
-- Rust 1.90 or newer. This checkout pins Rust 1.98.1 in `rust-toolchain.toml`.
+- Rust 1.90 or newer.
 - A wgpu-capable GPU for the default desktop renderer.
   Set `SIGIL_BACKEND=cpu` to use the CPU renderer. The terminal host needs no GPU.
 
@@ -22,32 +21,31 @@ not `main`, from a product until `v0.1.0` exists.
 
 | Host | Linux | macOS | Windows |
 | --- | --- | --- | --- |
-| Desktop `launch` | yes (wgpu or `SIGIL_BACKEND=cpu`) | yes | yes |
+| Window `run` | yes (wgpu or `SIGIL_BACKEND=cpu`) | yes | yes |
 | Embed `Host` | yes | yes | yes |
-| Terminal `sigil-tui` | yes | yes | yes |
+| Terminal `run` (feature `terminal`) | yes | yes | yes |
 | Web / mobile | no | no | no |
 
 ## Install
 
-Sigil is not published on crates.io. The repository is currently private;
-you need GitHub access and Git authentication to use this dependency.
-
 ```bash
-cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha>
-cargo add sigil-sign --git https://github.com/manaforged/sigil --rev <sha>
+cargo add sigil-ui
 ```
 
-Replace `<sha>` with a commit from this repository. The package is
-`sigil-gui` because the `sigil` name is taken on crates.io. The library
-is `sigil`, so imports read `sigil::`. The first build compiles the wgpu
-stack; it can take a few minutes. `Cargo.lock` records the selected
-commit.
+The package is `sigil-ui` because the `sigil` name is taken on
+crates.io. The library is `sigil`, so imports read `sigil::`. The first
+build compiles the wgpu stack and can take a few minutes.
 
 For a terminal-only program:
 
 ```bash
-cargo add sigil-tui --git https://github.com/manaforged/sigil --rev <sha>
-cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha> --no-default-features
+cargo add sigil-ui --no-default-features --features terminal
+```
+
+To pack and sign release builds, add `sigil-sign`:
+
+```bash
+cargo add sigil-sign
 ```
 
 ## Usage
@@ -56,7 +54,7 @@ cargo add sigil-gui --git https://github.com/manaforged/sigil --rev <sha> --no-d
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
+    sigil::run(("Sigil - hello-counter", 480, 240), app_tree)
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {
@@ -75,67 +73,55 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 }
 ```
 
-`sigil::launch` opens the window and drives the frame loop. An embed
-host pumps `Host` inside `Runtime::scope`. The terminal entry point is
-`sigil_tui::run`. Run these examples from a clone of this repository:
+`sigil::run` opens the window and drives the frame loop. Pass
+`AppConfig::new(title).terminal()` to run the same tree in the terminal.
+An embed host pumps `Host` inside `Runtime::scope`. To run the
+examples, clone this repository and run:
 
 ```bash
-cargo run -p sigil-gui --example hello-counter   # the app above
-cargo run -p sigil-gui --example hello-host      # embed the tree
-cargo run -p sigil-tui --example hello-tui      # terminal host
+cargo run -p sigil-ui --example hello-counter                        # the app above
+cargo run -p sigil-ui --example hello-host                           # embed the tree
+cargo run -p sigil-ui --example hello-terminal --features terminal   # terminal host
 ```
 
 ## Cargo features
 
-| Feature | Default | Role |
-| --- | --- | --- |
-| `desktop` | yes | Windowed host (`launch`) |
-| `scene` | via desktop | Layout, text, widgets, renderer |
-| `shell` | via desktop | winit + AccessKit |
-| `cpu` | no | `SIGIL_BACKEND=cpu` software renderer |
-| `clipboard` | via desktop | OS clipboard |
-| `dialog` / `menu` / `tray` | no | Native dialogs, menus, tray |
-| `audio` / `pty` | no | Playback and terminal sessions |
-| `image-decode` | no | Image file decode |
-| `render` | no | Scene without a window |
-
-The table lists the features of `sigil-gui`. `sigil-tui` is a separate
-crate. `sigil-sign` packs and signs.
+The [`sigil-ui` README](crates/sigil/README.md#features) lists every
+feature. `desktop` is the default. `terminal` adds the terminal host.
 
 ## Limits
 
 - Headless machines run the terminal host and the test suite. The
-  windowed hosts need a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
+  window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
   the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
-- No supported web or mobile host. A wasm renderer proof exists but is
-  not in this repository.
+- No web or mobile host.
 - The terminal host has no IME, no rounded corners, and no shadows.
   Images render through the terminal graphics protocol on Kitty,
-  Ghostty, WezTerm, Konsole, iTerm2, and Warp. Other terminals show
-  half-block cells.
-- No fuzz targets. Do not feed untrusted documents to the markdown,
-  HTML, or SVG parsers.
-- Intermittent doubled label after save and reopen in a form (issue #5).
-- `sigil-pack macos` ad-hoc codesigns. That is not Developer ID or
-  notarization.
+  Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other
+  terminals show sextant glyphs.
+- Fuzz targets are in progress. Read [SECURITY.md](SECURITY.md) before
+  you pass untrusted documents to the markdown, HTML, or SVG parsers.
+- `sigil-pack macos` ad-hoc codesigns unless you pass a signing
+  identity. Ad-hoc signing is not Developer ID or notarization.
+- A form can show a doubled label after save and reopen (issue #5).
 
 ## Docs
 
 | Read | For |
 | --- | --- |
 | [User guide](docs/guide/README.md) | Task pages in reading order. Build the book with `mdbook serve docs`. |
-| [API map](docs/api.md) | For agents and tools: each job mapped to its symbol or command, the error model, and what is off-limits. |
+| [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
+| [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
+| [API map](docs/api.md) | Every exported item with its signature and an example. Written for agents and tools too. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |
 
-The [changelog](CHANGELOG.md) states the version policy.
+The [changelog](CHANGELOG.md) lists each release.
 
 ## Security
 
-Report vulnerabilities privately to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
-See [SECURITY.md](SECURITY.md) for the other reporting channel.
-The workspace denies `unsafe`, with one exception in the native menu
-path (`crates/sigil/src/app/menu.rs`). `cargo deny check` gates
-advisories.
+Report vulnerabilities by email to [thomas@manaforge.tech](mailto:thomas@manaforge.tech).
+[SECURITY.md](SECURITY.md) lists the other reporting channel and each
+input surface.
 
 ## Contributing
 

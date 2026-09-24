@@ -39,6 +39,7 @@ pub(super) fn scroll_body(s: Surface, row_h: f32) -> NodeBuilder {
                 win,
                 RowCtx {
                     caret,
+                    caret_shown: s.caret_shown.get(),
                     selection: sel,
                     gutter,
                     diagnostics: &diagnostics,

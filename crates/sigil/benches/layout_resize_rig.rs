@@ -1,4 +1,4 @@
-#![allow(missing_docs, unused_crate_dependencies, clippy::unwrap_used)]
+#![allow(unused_crate_dependencies, clippy::unwrap_used)]
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::hal::{LogicalSize, Size};
 use sigil::kernel::{Cx, NodeId, TextContent, container};

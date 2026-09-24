@@ -1,4 +1,3 @@
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(
@@ -7,14 +6,14 @@
 )]
 
 use sigil::renderer::{LayerError, LayerPool};
-use sigil_kittest::gpu::request_device;
+use sigil_kittest::gpu::shared_device;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn acquire_returns_rounded_dims() {
-    let Some((device, _queue)) = request_device() else {
+    let Some((device, _queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter - skipping acquire_returns_rounded_dims");
         return;
     };
@@ -32,7 +31,7 @@ fn acquire_returns_rounded_dims() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn release_then_acquire_reuses_same_size() {
-    let Some((device, _queue)) = request_device() else {
+    let Some((device, _queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter - skipping release_then_acquire_reuses_same_size");
         return;
     };
@@ -54,7 +53,7 @@ fn release_then_acquire_reuses_same_size() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn free_list_caps_at_max_entries() {
-    let Some((device, _queue)) = request_device() else {
+    let Some((device, _queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter - skipping free_list_caps_at_max_entries");
         return;
     };
@@ -69,7 +68,7 @@ fn free_list_caps_at_max_entries() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn oversized_returns_err() {
-    let Some((device, _queue)) = request_device() else {
+    let Some((device, _queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter - skipping oversized_returns_err");
         return;
     };
@@ -91,7 +90,7 @@ fn oversized_returns_err() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn zero_extent_returns_empty() {
     let mut pool = LayerPool::new();
-    let Some((device, _queue)) = request_device() else {
+    let Some((device, _queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter - skipping zero_extent_returns_empty");
         return;
     };

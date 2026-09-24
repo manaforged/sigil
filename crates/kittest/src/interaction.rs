@@ -4,16 +4,16 @@ use sigil::hal::{
 };
 use sigil::prelude::*;
 
-use super::{InteractionMode, SETTLE_SAFETY_CAP};
+use super::{Error, InteractionMode, SETTLE_SAFETY_CAP};
 
 pub(crate) fn drive_state(
-    router: &mut EventRouter,
     cx: &mut Cx,
     layout: &LayoutEngine,
     focus_target: NodeId,
     mode: InteractionMode,
     hit: (f32, f32),
 ) {
+    let mut router = EventRouter::new();
     match mode {
         InteractionMode::Default | InteractionMode::Disabled => {}
         InteractionMode::Hover | InteractionMode::HoverAfterFrames { .. } => {
@@ -31,10 +31,30 @@ pub(crate) fn drive_state(
         InteractionMode::Focused | InteractionMode::FocusedAfterFrames { .. } => {
             router.set_focus(cx, Some(focus_target));
         }
+        InteractionMode::Dragged { dx, dy } => {
+            router.route(cx, layout, pointer_move(hit.0, hit.1));
+            router.route(cx, layout, pointer_down(hit.0, hit.1));
+            router.route(cx, layout, pointer_drag(hit.0 + dx, hit.1 + dy));
+        }
     }
 }
 
-pub(crate) fn advance(mode: InteractionMode, mut layout: impl FnMut()) {
+const fn pointer_drag(x: f32, y: f32) -> ShellEvent {
+    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
+        position: Point::new(x, y),
+        delta: Point::new(0.0, 0.0),
+        kind: PointerKind::Mouse,
+        button: None,
+        phase: PointerPhase::Move,
+        buttons: MouseButtons::LEFT,
+        modifiers: ModifiersState::empty(),
+    }))
+}
+
+pub(crate) fn advance(
+    mode: InteractionMode,
+    mut layout: impl FnMut() -> Result<(), Error>,
+) -> Result<(), Error> {
     let (frames, dt) = match mode {
         InteractionMode::HoverAfterFrames { frames, dt }
         | InteractionMode::PressedAfterFrames { frames, dt }
@@ -42,34 +62,34 @@ pub(crate) fn advance(mode: InteractionMode, mut layout: impl FnMut()) {
         InteractionMode::Hover
         | InteractionMode::Pressed
         | InteractionMode::Focused
-        | InteractionMode::Clicked => (u32::MAX, 1.0 / 60.0),
-        InteractionMode::Default | InteractionMode::Disabled => return,
+        | InteractionMode::Clicked
+        | InteractionMode::Dragged { .. } => (u32::MAX, 1.0 / 60.0),
+        InteractionMode::Default | InteractionMode::Disabled => return Ok(()),
     };
-    if frames == u32::MAX {
-        for _ in 0..SETTLE_SAFETY_CAP {
-            if sigil::animation_runtime::active_count() == 0 {
-                return;
-            }
+    if frames != u32::MAX {
+        for _ in 0..frames {
             sigil::animation_runtime::tick(dt);
-            layout();
+            layout()?;
         }
-        let remaining = sigil::animation_runtime::active_count();
-        assert!(
-            remaining == 0,
-            "golden harness: animation runtime did not settle within \
-             SETTLE_SAFETY_CAP ({SETTLE_SAFETY_CAP}) frames at dt={dt}. \
-             Active animators remaining: {remaining}. A widget under test is \
-             likely retargeting every frame.",
-        );
-        return;
+        return Ok(());
     }
-    for _ in 0..frames {
+    for _ in 0..SETTLE_SAFETY_CAP {
+        if sigil::animation_runtime::active_count() == 0 {
+            return Ok(());
+        }
         sigil::animation_runtime::tick(dt);
-        layout();
+        layout()?;
+    }
+    match sigil::animation_runtime::active_count() {
+        0 => Ok(()),
+        active => Err(Error::Unsettled {
+            frames: SETTLE_SAFETY_CAP,
+            active,
+        }),
     }
 }
 
-fn pointer_move(x: f32, y: f32) -> ShellEvent {
+const fn pointer_move(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -81,7 +101,7 @@ fn pointer_move(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn pointer_down(x: f32, y: f32) -> ShellEvent {
+const fn pointer_down(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
@@ -93,7 +113,7 @@ fn pointer_down(x: f32, y: f32) -> ShellEvent {
     }))
 }
 
-fn pointer_up(x: f32, y: f32) -> ShellEvent {
+const fn pointer_up(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),

@@ -3,31 +3,26 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::NodeEventsExt;
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TopLayer, container, text};
-use crate::layout::ViewportOverlay;
+use crate::events::focus_from_keyboard;
+use crate::events::mutate_handlers;
+use crate::events::prelude::{Key, NodeEventsExt};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
 use crate::style::{
-    ClassSource, DisplayKind, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme,
-    TransitionId,
+    ClassSource, DisplayKind, Metrics, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme,
+    Token, TransitionId, space,
 };
 
+use super::popup::{POPUP_GAP, surface};
 use super::shared::BuilderMutator;
 
-const BUBBLE_OFFSET_ABOVE: f32 = -32.0;
-const BUBBLE_OFFSET_CLAMPED: f32 = 0.0;
-const BUBBLE_HEIGHT: f32 = 28.0;
-const BUBBLE_WIDTH: f32 = 160.0;
-const BUBBLE_PADDING: f32 = 6.0;
+const BUBBLE_MAX_WIDTH: f32 = space(60);
 
 const TOOLTIP_TRANSITION: TransitionId = presets::SMOOTH;
 
-static BUBBLE_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("accent"),
-    StyleAtom::TextThemeRef("on-accent"),
-    StyleAtom::Transition(TOOLTIP_TRANSITION),
-];
+static BUBBLE_BASE: &[StyleAtom] = &[StyleAtom::Transition(TOOLTIP_TRANSITION)];
 
 pub struct TooltipBuilder {
     label: String,
@@ -103,14 +98,14 @@ impl TooltipBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let visible = signal(false);
-        let bubble_top = if self.clamp_top {
-            BUBBLE_OFFSET_CLAMPED
+        let side = if self.clamp_top {
+            PopupSide::Below
         } else {
-            BUBBLE_OFFSET_ABOVE
+            PopupSide::Above
         };
 
         let description = bubble_description(&self.label, self.shortcut.as_deref());
-        let bubble = build_bubble(&self.label, self.shortcut.as_deref(), visible, bubble_top);
+        let bubble = build_bubble(&self.label, self.shortcut.as_deref(), visible, side);
 
         let pending: Rc<Cell<Option<IntervalId>>> = Rc::new(Cell::new(None));
         let delay_ms = self.delay_ms;
@@ -145,8 +140,8 @@ impl TooltipBuilder {
                 event.stop_propagation();
             });
 
-        if let Some(child) = self.child {
-            root = root.child(child);
+        if let Some(inner) = self.child {
+            root = root.child(FocusTarget { inner, visible });
         }
         root = root.child(bubble);
 
@@ -173,6 +168,54 @@ impl IntoNode for TooltipBuilder {
     }
 }
 
+struct FocusTarget {
+    inner: Box<dyn IntoNode>,
+    visible: Signal<bool>,
+}
+
+impl IntoNode for FocusTarget {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        let id = self.inner.build(cx);
+        if let Some(target) = first_focusable(cx, id) {
+            watch_focus(cx, target, self.visible);
+        }
+        id
+    }
+}
+
+fn first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
+    let node = cx.get(id)?;
+    if node.a11y.focusable {
+        return Some(id);
+    }
+    node.children()
+        .iter()
+        .find_map(|child| first_focusable(cx, *child))
+}
+
+fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
+    let Some(node) = cx.get_mut(target) else {
+        return;
+    };
+    mutate_handlers(node, move |handlers| {
+        handlers.add_focus_in(Box::new(move || {
+            if focus_from_keyboard() {
+                visible.set(true);
+            }
+        }));
+        handlers.add_focus_out(Box::new(move || visible.set(false)));
+        handlers.add_key(
+            Key::Escape.into(),
+            Box::new(move |event| {
+                if visible.peek() {
+                    visible.set(false);
+                    event.stop_propagation();
+                }
+            }),
+        );
+    });
+}
+
 fn wrapper_root(description: &str) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
@@ -196,43 +239,49 @@ fn build_bubble(
     label: &str,
     shortcut: Option<&str>,
     visible: Signal<bool>,
-    top_px: f32,
+    side: PopupSide,
 ) -> NodeBuilder {
     let aria_label = bubble_description(label, shortcut);
-    let mut bubble = container()
-        .role(Role::Tooltip)
+    let mut bubble = surface(Role::Tooltip)
         .label(aria_label)
         .with(TopLayer)
         .with(ViewportOverlay)
-        .layout(bubble_layout(top_px, shortcut.is_some()))
-        .class("rounded-sm")
-        .class("shadow-md")
+        .with(Popup {
+            side,
+            center: true,
+            sibling: true,
+            gap: POPUP_GAP,
+        })
+        .layout(bubble_layout())
         .class(BUBBLE_BASE)
         .style_reactive(move || visibility_atoms(visible.get()));
 
-    bubble = bubble.child(text(label.to_owned()).class("text-on-accent"));
+    bubble = bubble.child(
+        text(label.to_owned())
+            .class("text-sm")
+            .class(Token::OnSurface.text()),
+    );
     if let Some(keys) = shortcut.filter(|s| !s.is_empty()) {
-        bubble = bubble.child(text(keys.to_owned()).class("text-on-accent"));
+        bubble = bubble.child(
+            text(keys.to_owned())
+                .class("text-xs")
+                .class(Token::OnSurfaceMuted.text()),
+        );
     }
     bubble
 }
 
-fn bubble_layout(top_px: f32, has_shortcut: bool) -> LayoutStyle {
-    let theme = Theme::default();
-    let gap = theme.gap(Size::Default).px_or_zero();
-    let width = if has_shortcut {
-        BUBBLE_WIDTH
-    } else {
-        BUBBLE_WIDTH * 0.75
-    };
-    LayoutStyle::flex_row()
-        .fixed_size(width, BUBBLE_HEIGHT)
-        .padding(BUBBLE_PADDING)
-        .gap(gap)
-        .align_items(AlignItems::Center)
-        .justify_content(JustifyContent::SpaceBetween)
+fn bubble_layout() -> LayoutStyle {
+    let metrics = Metrics::current();
+    LayoutStyle::flex_column()
+        .max_width(BUBBLE_MAX_WIDTH)
+        .padding_x(metrics.padding(Size::Compact))
+        .padding_y(metrics.overlay_padding())
+        .gap(metrics.overlay_padding())
+        .align_items(AlignItems::Start)
+        .justify_content(JustifyContent::Center)
         .position(Position::Absolute)
-        .inset_top(top_px)
+        .inset_top(0.0)
         .inset_left(0.0)
 }
 

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::panic)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::indexing_slicing)]
@@ -17,7 +16,7 @@ use sigil::renderer::{
     OffscreenTarget, SceneBuilder, SceneGradientStyle, SceneRectStyle, WgpuRenderer,
 };
 use sigil::style::Rgba8;
-use sigil_kittest::gpu::request_device;
+use sigil_kittest::gpu::shared_device;
 use std::hint::black_box;
 use wgpu::TextureFormat;
 
@@ -29,7 +28,7 @@ const FIXED_SIGMA: f32 = 12.0;
 const CLEAR: Color = Color::rgba(0.05, 0.06, 0.09, 1.0);
 
 fn blur_sigma_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };
@@ -70,7 +69,7 @@ fn blur_sigma_sweep(c: &mut Criterion) {
 }
 
 fn blur_count_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };
@@ -111,7 +110,7 @@ fn blur_count_sweep(c: &mut Criterion) {
 }
 
 fn blur_size_sweep(c: &mut Criterion) {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         eprintln!("no adapter — skipping blur_cost");
         return;
     };

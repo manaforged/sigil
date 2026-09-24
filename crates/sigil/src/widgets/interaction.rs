@@ -60,12 +60,17 @@ impl InteractionState {
     pub fn install(self, node: NodeBuilder) -> NodeBuilder {
         node.focusable(self.enabled)
             .hittable(self.enabled)
-            .focus_ring(FocusRing::new(self.ring_visible))
+            .focus_ring(self.focus_ring())
             .focus_in(move || self.on_focus_in())
             .focus_out(move || self.on_focus_out())
             .pointer_enter(move |event| self.pointer_enter(event))
             .pointer_leave(move |event| self.pointer_leave(event))
             .pointer_down(move |event| self.pointer_down(event))
+    }
+
+    #[must_use]
+    pub const fn focus_ring(self) -> FocusRing {
+        FocusRing::new(self.ring_visible)
     }
 
     pub(crate) fn observe_style(self, node: NodeBuilder) -> NodeBuilder {

@@ -25,10 +25,16 @@ impl LayoutResult {
         self.clips
     }
 
-    pub(crate) const fn from_resolved_box(layout: &ResolvedBox, clips: bool) -> Self {
+    pub(crate) const fn translated(mut self, dx: f32, dy: f32) -> Self {
+        self.rect.origin = Point::new(self.rect.origin.x + dx, self.rect.origin.y + dy);
+        self
+    }
+
+    pub(crate) fn from_resolved_box(layout: &ResolvedBox, clips: bool) -> Self {
+        let (x, y, w, h) = crate::layout::snap::rect(layout.x, layout.y, layout.w, layout.h);
         Self {
-            rect: Rect::new(Point::new(layout.x, layout.y), layout.w, layout.h),
-            content_size: Point::new(layout.w, layout.h),
+            rect: Rect::new(Point::new(x, y), w, h),
+            content_size: Point::new(w, h),
             clips,
         }
     }

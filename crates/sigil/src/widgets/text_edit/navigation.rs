@@ -2,6 +2,7 @@ use crate::events::prelude::KeyEvent;
 use crate::hal::{HitPosition, Point, TextAffinity};
 use crate::layout::with_text_geometry;
 
+use super::super::TextEdit;
 use super::{TextEditRuntime, commit};
 
 pub(in crate::widgets::text_edit) fn geometry_width(runtime: &TextEditRuntime) -> Option<f32> {
@@ -187,4 +188,35 @@ pub(super) fn move_visual_edge(
     }
     commit(runtime, &state);
     runtime.caret_affinity.set(target.affinity);
+}
+
+pub(super) fn update_scroll(runtime: &TextEditRuntime, edit: &TextEdit, column: f32) {
+    let style = runtime.text_style.peek();
+    let Some(caret_x) = with_text_geometry(|engine| {
+        engine
+            .caret(
+                edit.as_str(),
+                &style,
+                None,
+                HitPosition {
+                    byte_index: edit.caret(),
+                    affinity: TextAffinity::Downstream,
+                },
+            )
+            .x
+    }) else {
+        return;
+    };
+    let current = runtime.scroll_x.peek();
+    let offset = if caret_x < current {
+        caret_x
+    } else if caret_x > current + column {
+        caret_x - column
+    } else {
+        current
+    }
+    .max(0.0);
+    if (offset - current).abs() > f32::EPSILON {
+        runtime.scroll_x.set(offset);
+    }
 }

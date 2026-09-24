@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Theme, Tone};
+use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, Tone, space};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::label;
@@ -106,16 +106,22 @@ impl ChartBuilder {
             .max()
             .unwrap_or(0);
         let root = container()
-            .role(Role::GenericContainer)
+            .role(Role::Figure)
             .label("Chart")
-            .class("rounded-md border border-gray-6 bg-surface")
+            .description(summary(&self.series, &self.labels))
+            .class([
+                Radius::Md.atom(),
+                StyleAtom::BorderWidth(BORDER_WIDTH),
+                Token::Gray6.border(),
+                Token::Surface.bg(),
+            ])
             .layout(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
                         .width(self.width)
                         .height(self.height)
-                        .padding(12.0)
-                        .gap(8.0),
+                        .padding(space(3))
+                        .gap(space(2)),
                 ),
             );
         if count == 0 || self.series.iter().all(|s| s.values.is_empty()) {
@@ -127,10 +133,38 @@ impl ChartBuilder {
                         .align_items(AlignItems::Center)
                         .justify_content(JustifyContent::Center),
                 )
-                .child(label("No data").class("text-sm text-on-surface-muted"));
+                .child(
+                    label("No data")
+                        .class("text-sm")
+                        .class(Token::OnSurfaceMuted.text()),
+                );
         }
         plot::draw(root, &self.series, &self.labels, self.mark, count)
     }
+}
+
+fn summary(series: &[ChartSeries], labels: &[String]) -> String {
+    let mut parts = Vec::with_capacity(series.len());
+    for (index, item) in series.iter().enumerate() {
+        let name = if item.name.is_empty() {
+            format!("Series {}", index + 1)
+        } else {
+            item.name.clone()
+        };
+        let values = item
+            .values
+            .iter()
+            .enumerate()
+            .map(|(at, value)| {
+                labels
+                    .get(at)
+                    .map_or_else(|| format!("{value}"), |label| format!("{label} {value}"))
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        parts.push(format!("{name}: {values}"));
+    }
+    parts.join("; ")
 }
 
 impl IntoNode for ChartBuilder {
@@ -145,18 +179,18 @@ impl WidgetLayoutExt for ChartBuilder {
     }
 }
 
-pub(crate) fn tone_solid(tone: Tone) -> crate::style::Rgba8 {
-    Theme::default().scale(tone.scale_role()).step(9)
+pub(crate) fn tone_solid(tone: Tone) -> Token {
+    Token::scale(tone.scale_role(), 11).unwrap_or(Token::Gray11)
 }
 
-pub(crate) const fn tone_fill(tone: Tone) -> &'static str {
+pub(crate) const fn tone_fill(tone: Tone) -> Token {
     match tone {
-        Tone::Neutral => "bg-gray-9",
-        Tone::Primary => "bg-accent-9",
-        Tone::Info => "bg-info-9",
-        Tone::Success => "bg-success-9",
-        Tone::Warn => "bg-warn-9",
-        Tone::Error => "bg-error-9",
+        Tone::Neutral => Token::Gray9,
+        Tone::Primary => Token::Accent9,
+        Tone::Info => Token::Info9,
+        Tone::Success => Token::Success9,
+        Tone::Warn => Token::Warn9,
+        Tone::Error => Token::Error9,
     }
 }
 

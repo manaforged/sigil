@@ -58,7 +58,7 @@ fn mark_ring_clears_non_text_contrast() {
         0.2126 * ch(c.r) + 0.7152 * ch(c.g) + 0.0722 * ch(c.b)
     }
 
-    for (name, theme) in [("light", Theme::default()), ("dark", Theme::dark())] {
+    for (name, theme) in [("light", Theme::light()), ("dark", Theme::dark())] {
         let ring = theme.scale(ScaleRole::Gray).step(9);
         let (lr, ls) = (luminance(ring), luminance(theme.surface));
         let ratio = (lr.max(ls) + 0.05) / (lr.min(ls) + 0.05);

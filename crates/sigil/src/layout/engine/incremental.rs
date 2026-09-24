@@ -271,7 +271,7 @@ impl LayoutEngine {
         let definite = |dim: Dimension| {
             matches!(
                 dim,
-                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill
+                Dimension::Px(_) | Dimension::Percent(_) | Dimension::Fill | Dimension::Text(_)
             )
         };
         definite(style.data().size.width) && definite(style.data().size.height)

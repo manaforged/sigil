@@ -2,11 +2,10 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{OffscreenTarget, SceneBuilder, SceneRectStyle, WgpuRenderer};
+use sigil::renderer::{OffscreenTarget, SceneBuilder, SceneRectStyle};
 use sigil::style::Rgba8;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -14,10 +13,9 @@ const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn ordered_batches_share_one_rect_upload_buffer() {
-    let mut renderer = WgpuRenderer::new().expect("renderer");
-    renderer
-        .ensure_headless_for_tests()
-        .expect("GPU device required");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
+        return;
+    };
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
     let texture = device.create_texture(&wgpu::TextureDescriptor {

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
@@ -11,7 +10,7 @@ use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
+    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
 };
 
 struct StubMeasure;
@@ -234,8 +233,8 @@ fn leaf_select_fires_observer_and_closes() {
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: Option<image::RgbaImage>) {
-    let Some(img) = img else {
+fn check(stem: &str, img: sigil_kittest::Rendered) {
+    let Some(img) = img.expect("sigil-kittest") else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
@@ -256,7 +255,7 @@ fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
 
 #[test]
 fn command_menu_open() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(sample_menu(|_| {})()),
         InteractionMode::Default,
         [432, 128],
@@ -267,7 +266,7 @@ fn command_menu_open() {
 
 #[test]
 fn command_menu_nested() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let root = cx.add(sample_menu(|_| {})());
             navigate(
@@ -289,7 +288,7 @@ fn command_menu_nested() {
 
 #[test]
 fn command_menu_disabled_item() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let root = cx.add(sample_menu(|_| {})());
             navigate(

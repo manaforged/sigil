@@ -45,7 +45,7 @@ impl State {
     fn reset(&mut self, previous: Targets, inherited_text: Rgba8) {
         for entry in &mut self.numeric {
             if let Some(Some(value)) = previous.numeric.get(entry.kind as usize) {
-                entry.signal.set(*value);
+                entry.signal.try_set(*value);
             }
         }
         for entry in &mut self.colors {
@@ -88,7 +88,7 @@ impl AnimatorOverlay for StyleAnimator {
             .numeric
             .iter()
             .find(|entry| entry.kind == kind)
-            .map(|entry| entry.signal.peek())
+            .and_then(|entry| entry.signal.try_peek())
     }
 
     fn value_for_color(&self, kind: ColorAtomKind) -> Option<Rgba8> {
@@ -147,7 +147,7 @@ fn update_numeric(
             if let Some(entry) = entries.iter_mut().find(|entry| entry.kind == kind) {
                 entry.animator.cancel();
                 if let Some(to) = to {
-                    entry.signal.set(to);
+                    entry.signal.try_set(to);
                 }
             }
             continue;

@@ -5,9 +5,13 @@ use ahash::AHashSet;
 use crate::layout::LayoutError;
 use crate::layout::block::{BlockSolver, Position2};
 use crate::layout::flex::{CbSize, FlexSolver};
-use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef, SpaceConstraint};
+use crate::layout::forest::{ComputedBox, LocalId, MeasureScope, NodeRef};
+use crate::layout::grid_tracks::{
+    apply_row_template, definite, distribute_fr_rows, grid_box_h, offsets, resolve_columns,
+    resolve_gap, spanned_height,
+};
 use crate::layout::resolve::NodeEdges;
-use crate::layout::style_data::{Dimension, Display, LengthPercentage, Size, StyleData, TrackSize};
+use crate::layout::style_data::{Dimension, Display, Size, StyleData};
 
 pub(crate) struct GridSolver<'a> {
     scope: MeasureScope<'a>,
@@ -129,8 +133,8 @@ impl<'a> GridSolver<'a> {
         let style = subtree.style();
         let edges = NodeEdges::build(style, border_w);
         let inner_w = (border_w - edges.inline_chrome()).max(0.0);
-        let gap_x = resolve_gap(style.gap.width, inner_w);
-        let gap_y = resolve_gap(style.gap.height, inner_w);
+        let gap_x = resolve_gap(style.gap.width, inner_w, crate::layout::snap::gap);
+        let gap_y = resolve_gap(style.gap.height, inner_w, crate::layout::snap::row_gap);
         let widths = resolve_columns(&style.grid_template_columns, inner_w, gap_x);
         let border = Position2 {
             x: origin.x + edges.margin.left.unwrap_or(0.0),
@@ -149,7 +153,7 @@ impl<'a> GridSolver<'a> {
             content,
         };
         let children: Vec<LocalId> = subtree.children().to_vec();
-        let places = self.flow_children(&children, frame.cols.n, frame.style.grid_auto_flow_dense);
+        let places = self.flow_children(&children, &frame);
         let row_h = self.layout_rows(&places, &frame)?;
 
         let avail_h = definite(self.scope.available().h);
@@ -181,6 +185,7 @@ impl<'a> GridSolver<'a> {
         let chrome = frame.edges.block_chrome();
         let inner_h = match frame.style.size.height {
             Dimension::Px(px) => Some((px - chrome).max(0.0)),
+            Dimension::Text(length) => Some((length.px() - chrome).max(0.0)),
             Dimension::Fill => Some((avail_h - chrome).max(0.0)),
             Dimension::Percent(pct) => Some(avail_h.mul_add(pct, -chrome).max(0.0)),
             Dimension::Auto if avail_h > 0.0 => Some((avail_h - chrome).max(0.0)),
@@ -203,10 +208,17 @@ impl<'a> GridSolver<'a> {
         Ok(row_h)
     }
 
-    fn flow_children(&self, children: &[LocalId], ncols: usize, dense: bool) -> Vec<Placement> {
+    fn flow_children(&self, children: &[LocalId], frame: &GridFrame<'_>) -> Vec<Placement> {
+        let (ncols, dense) = (frame.cols.n, frame.style.grid_auto_flow_dense);
+        let row_cap = frame
+            .style
+            .grid_template_rows
+            .len()
+            .max(children.len())
+            .clamp(1, MAX_ROW_SPAN);
         let specs: Vec<Spec> = children
             .iter()
-            .map(|&c| self.child_spec(c, ncols))
+            .map(|&c| self.child_spec(c, ncols, row_cap))
             .collect();
         let mut occupied: AHashSet<(usize, usize)> = AHashSet::new();
         for s in &specs {
@@ -237,13 +249,13 @@ impl<'a> GridSolver<'a> {
         out
     }
 
-    fn child_spec(&self, cid: LocalId, ncols: usize) -> Spec {
+    fn child_spec(&self, cid: LocalId, ncols: usize, row_cap: usize) -> Spec {
         let (span, row_span, cstart, rstart) =
             self.scope.forest().refer(cid).map_or((1, 1, 0, 0), |n| {
                 let s = n.style();
                 (
                     (s.grid_column_span as usize).clamp(1, ncols),
-                    (s.grid_row_span as usize).max(1),
+                    (s.grid_row_span as usize).clamp(1, row_cap),
                     s.grid_column_start as usize,
                     s.grid_row_start as usize,
                 )
@@ -360,139 +372,4 @@ impl<'a> GridSolver<'a> {
     }
 }
 
-fn grid_box_h(style: &StyleData, avail_h: f32, content_h: f32, chrome: f32) -> f32 {
-    match style.size.height {
-        Dimension::Px(px) => px,
-        Dimension::Fill => avail_h,
-        Dimension::Percent(pct) => avail_h * pct,
-        Dimension::Auto if avail_h > 0.0 => avail_h,
-        Dimension::Auto => content_h + chrome,
-    }
-}
-
-fn spanned_height(row_h: &[f32], row: usize, span: usize, gap: f32) -> f32 {
-    let end = (row + span).min(row_h.len());
-    if row >= end {
-        return 0.0;
-    }
-    let tracks = &row_h[row..end];
-    gap.mul_add(
-        (tracks.len().saturating_sub(1)) as f32,
-        tracks.iter().sum::<f32>(),
-    )
-}
-
-fn offsets(start: f32, sizes: &[f32], gap: f32) -> Vec<f32> {
-    let mut out = Vec::with_capacity(sizes.len());
-    let mut pos = start;
-    for size in sizes {
-        out.push(pos);
-        pos += size + gap;
-    }
-    out
-}
-
-fn resolve_columns(tracks: &[TrackSize], inner_w: f32, gap_x: f32) -> Vec<f32> {
-    if tracks.is_empty() {
-        return vec![inner_w.max(0.0)];
-    }
-    let total_gap = gap_x * (tracks.len().saturating_sub(1) as f32);
-    let mut sizes: Vec<Option<f32>> = tracks
-        .iter()
-        .map(|t| match t {
-            TrackSize::Px(px) => Some(px.max(0.0)),
-            _ => None,
-        })
-        .collect();
-    loop {
-        let fixed: f32 = sizes.iter().flatten().sum();
-        let free = (inner_w - total_gap - fixed).max(0.0);
-        let active_weight: f32 = tracks
-            .iter()
-            .zip(&sizes)
-            .filter(|(_, s)| s.is_none())
-            .map(|(t, _)| flex_weight(t))
-            .sum();
-        let per_fr = if active_weight > 0.0 {
-            free / active_weight
-        } else {
-            0.0
-        };
-        let mut froze = false;
-        for (t, s) in tracks.iter().zip(sizes.iter_mut()) {
-            if s.is_none()
-                && let TrackSize::MinMax(min, fr) = t
-                && per_fr * fr.max(0.0) < min.max(0.0)
-            {
-                *s = Some(min.max(0.0));
-                froze = true;
-                break;
-            }
-        }
-        if froze {
-            continue;
-        }
-        for (t, s) in tracks.iter().zip(sizes.iter_mut()) {
-            if s.is_none() {
-                *s = Some(per_fr * flex_weight(t));
-            }
-        }
-        break;
-    }
-    sizes.into_iter().map(|s| s.unwrap_or(0.0)).collect()
-}
-
-const fn flex_weight(track: &TrackSize) -> f32 {
-    match track {
-        TrackSize::Fr(fr) | TrackSize::MinMax(_, fr) => fr.max(0.0),
-        TrackSize::Auto => 1.0,
-        TrackSize::Px(_) => 0.0,
-    }
-}
-
-fn distribute_fr_rows(row_h: &mut [f32], tracks: &[TrackSize], inner_h: f32, gap: f32) {
-    if row_h.is_empty() {
-        return;
-    }
-    let gaps = gap * (row_h.len().saturating_sub(1) as f32);
-    let used: f32 = row_h.iter().sum::<f32>() + gaps;
-    let leftover = inner_h - used;
-    if leftover <= 0.0 {
-        return;
-    }
-    let weight: f32 = (0..row_h.len())
-        .map(|index| tracks.get(index).map_or(0.0, flex_weight))
-        .sum();
-    if weight <= 0.0 {
-        return;
-    }
-    for (index, height) in row_h.iter_mut().enumerate() {
-        let share = tracks.get(index).map_or(0.0, flex_weight);
-        if share > 0.0 {
-            *height = leftover.mul_add(share / weight, *height);
-        }
-    }
-}
-
-fn apply_row_template(row_h: &mut [f32], tracks: &[TrackSize]) {
-    for (row, h) in row_h.iter_mut().enumerate() {
-        if let Some(TrackSize::Px(px)) = tracks.get(row) {
-            *h = px.max(0.0);
-        }
-    }
-}
-
-fn resolve_gap(gap: LengthPercentage, inner_w: f32) -> f32 {
-    let resolved = match gap {
-        LengthPercentage::Px(px) => px.max(0.0),
-        LengthPercentage::Percent(pct) => (pct * inner_w).max(0.0),
-    };
-    crate::layout::snap::gap(resolved)
-}
-
-const fn definite(c: SpaceConstraint) -> f32 {
-    match c {
-        SpaceConstraint::Definite(v) => v,
-        SpaceConstraint::MinContent | SpaceConstraint::MaxContent => 0.0,
-    }
-}
+const MAX_ROW_SPAN: usize = 1024;

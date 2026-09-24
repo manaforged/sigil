@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::events::prelude::{Key, KeyEvent, LogicalKey, NodeEventsExt, PointerEvent};
-use crate::events::with_handlers;
+use crate::events::{A11yEdit, with_handlers};
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
 
@@ -31,11 +31,24 @@ pub(super) fn attach_key_handlers(
         });
     }
     with_handlers(node, move |handlers| {
+        let edited = Rc::clone(&on_change);
         handlers.set_value_adjustment(Box::new(move |increase| {
             if !runtime.disabled() {
                 runtime.step_value(increase);
                 on_change(runtime.value.peek());
             }
+        }));
+        handlers.set_a11y_edit(Box::new(move |edit| {
+            let A11yEdit::Number(raw) = edit else {
+                return false;
+            };
+            if !runtime.disabled() {
+                runtime
+                    .value
+                    .set(quantize(runtime.range, *raw, runtime.step));
+                edited(runtime.value.peek());
+            }
+            true
         }));
     })
 }

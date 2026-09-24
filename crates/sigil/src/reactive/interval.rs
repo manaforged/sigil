@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use crate::reactive::owner::{Owner, OwnerId, on_cleanup};
 
-use crate::reactive::interval_registry::{self, IntervalSlot, REGISTRY, invoke_by_id};
+use crate::reactive::interval_registry::{IntervalSlot, REGISTRY, invoke_by_id};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntervalId(pub(crate) u64);
@@ -28,6 +28,11 @@ pub fn register_interval(period: Duration, callback: impl Fn() + 'static) -> Int
     });
     on_cleanup(move || cancel_interval(id));
     id
+}
+
+#[track_caller]
+pub fn interval(period: Duration, callback: impl Fn() + 'static) -> IntervalId {
+    register_interval(period, callback)
 }
 
 pub fn cancel_interval(id: IntervalId) {
@@ -75,19 +80,19 @@ pub fn next_interval_deadline() -> Option<Instant> {
     })
 }
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub fn __test_set_clock(clock: Instant) {
-    interval_registry::test_set_clock(clock);
+    crate::reactive::interval_registry::test_set_clock(clock);
 }
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub fn __test_advance_clock(delta: Duration) {
-    interval_registry::test_advance_clock(delta);
+    crate::reactive::interval_registry::test_advance_clock(delta);
 }
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub fn __test_clear_clock() {
-    interval_registry::test_clear_clock();
+    crate::reactive::interval_registry::test_clear_clock();
 }
 
 #[cfg(test)]

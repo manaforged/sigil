@@ -8,8 +8,6 @@ thread_local! {
     static TARGET: RefCell<Option<Rc<Cell<bool>>>> = const { RefCell::new(None) };
 }
 
-/// Request exit on the host currently on this thread, or the ambient flag when
-/// no host is active.
 pub fn request_exit() {
     let hosted = TARGET.with(|slot| {
         slot.borrow().as_ref().is_some_and(|cell| {
@@ -22,8 +20,6 @@ pub fn request_exit() {
     }
 }
 
-/// Consume the exit flag of the active host, or the ambient flag when no host
-/// is active.
 #[must_use]
 pub fn take_exit() -> bool {
     if let Some(cell) = TARGET.with(|slot| slot.borrow().clone()) {

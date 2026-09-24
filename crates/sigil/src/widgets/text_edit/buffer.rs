@@ -2,10 +2,7 @@
 
 use unicode_segmentation::UnicodeSegmentation;
 
-#[path = "buffer_helpers.rs"]
-mod helpers;
-
-use helpers::{
+use crate::widgets::grapheme::{
     clamp_to_len_boundary, line_end, line_start, next_boundary, previous_boundary, selection_range,
     word_end_after, word_start_before,
 };
@@ -28,12 +25,6 @@ struct Snapshot {
 }
 
 impl TextEdit {
-    #[must_use]
-    pub(crate) fn new(buffer: String) -> Self {
-        let caret = buffer.len();
-        Self::new_at(buffer, caret)
-    }
-
     #[must_use]
     pub(crate) fn new_at(buffer: String, caret: usize) -> Self {
         let caret = clamp_to_len_boundary(&buffer, caret);

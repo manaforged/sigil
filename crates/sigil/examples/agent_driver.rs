@@ -1,8 +1,9 @@
-#![allow(missing_docs, clippy::print_stdout)]
+#![allow(clippy::print_stdout)]
 #![allow(clippy::cast_possible_truncation)]
 
 use sigil::a11y::snapshot;
 use sigil::prelude::*;
+use sigil::scene::{CommandScene, SceneCommand};
 
 const fn pointer(phase: PointerPhase, x: f32, y: f32) -> ShellEvent {
     let (button, buttons) = match phase {
@@ -79,11 +80,20 @@ fn main() {
             "-- after --\n{}",
             snapshot(&host.accessibility_tree(&router))
         );
-        let texts: Vec<String> = host
-            .painted()
-            .into_iter()
-            .filter_map(|node| node.text)
-            .collect();
-        println!("painted text: {texts:?}");
+        match host.scene(viewport) {
+            Ok(scene) => println!("scene text: {:?}", scene_text(&scene)),
+            Err(err) => eprintln!("{err}"),
+        }
     });
+}
+
+fn scene_text(scene: &CommandScene) -> Vec<&str> {
+    scene
+        .commands
+        .iter()
+        .filter_map(|command| match command {
+            SceneCommand::GlyphRun(draw) => Some(draw.run.text.as_str()),
+            _ => None,
+        })
+        .collect()
 }

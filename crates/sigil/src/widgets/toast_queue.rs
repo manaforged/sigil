@@ -3,9 +3,10 @@ use std::time::{Duration, Instant};
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, register_interval, signal};
-use crate::style::{NodeStyleExt, Tone};
+use crate::style::{NodeStyleExt, Token, Tone, space};
 
 use super::dot::dot;
+use super::popup::SURFACE;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ToastLevel {
@@ -113,9 +114,9 @@ pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
 fn stack_layout() -> LayoutStyle {
     LayoutStyle::flex_column()
         .position(Position::Absolute)
-        .inset_bottom(16.0)
-        .inset_right(16.0)
-        .gap(8.0)
+        .inset_bottom(space(4))
+        .inset_right(space(4))
+        .gap(space(2))
         .align_items(AlignItems::End)
 }
 
@@ -124,12 +125,12 @@ fn toast_node(entry: ToastEntry) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .align_items(AlignItems::Center)
-                .gap(8.0)
-                .padding(12.0),
+                .gap(space(2))
+                .padding(space(3)),
         )
-        .class("rounded-md shadow-md bg-surface-hover")
+        .class(SURFACE)
         .child(dot(entry.level.tone()))
-        .child(text(entry.message))
+        .child(text(entry.message).class(Token::OnSurface.text()))
 }
 
 #[cfg(test)]

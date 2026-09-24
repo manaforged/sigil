@@ -11,6 +11,7 @@ pub use pointer::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ShellEvent {
     Pointer(PointerEvent),
     Key(KeyEvent),
@@ -21,6 +22,7 @@ pub enum ShellEvent {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum FileDropPhase {
     Hovered,
     Dropped,
@@ -34,6 +36,7 @@ pub struct FileDropEvent {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum LogicalKey {
     Named(Key),
     Character(SmolStr),
@@ -107,12 +110,14 @@ impl From<LogicalKey> for Shortcut {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum KeyPhase {
     Down,
     Up,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub struct KeyEvent {
     pub key: LogicalKey,
     pub physical: PhysicalKey,
@@ -163,6 +168,7 @@ impl KeyEvent {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
+#[non_exhaustive]
 pub enum ImeEvent {
     Enabled,
     Preedit(SmolStr, Option<(usize, usize)>),
@@ -171,6 +177,7 @@ pub enum ImeEvent {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub enum ScrollPhase {
     Started,
     Moved,
@@ -179,12 +186,14 @@ pub enum ScrollPhase {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum ScrollDelta {
     Pixels(Point),
     Lines(Point),
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct ScrollEvent {
     pub position: Point,
     pub delta: ScrollDelta,
@@ -224,6 +233,7 @@ impl ScrollEvent {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub enum WindowEvent {
     Resized(PhysicalSize),
     ScaleFactorChanged(Scale),

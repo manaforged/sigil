@@ -1,0 +1,153 @@
+use crate::kernel::{AccessibleName, Cx, NodeId};
+use crate::scene::{CommandScene, DecorationKind, DrawDecoration, DrawRect, SceneCommand};
+use crate::style::Rgba8;
+use smol_str::SmolStr;
+use std::borrow::Cow;
+
+use super::{Grid, Ink, Underline, cell_edge, floor_cell};
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Marks {
+    links: Vec<(NodeId, SmolStr)>,
+    caret: Option<NodeId>,
+}
+
+impl Marks {
+    #[must_use]
+    pub fn collect(cx: &Cx, focus: Option<NodeId>, scene: &CommandScene, cell: f32) -> Self {
+        let mut marks = Self::default();
+        for command in &scene.commands {
+            match command {
+                SceneCommand::GlyphRun(draw) => {
+                    if let Some(id) = draw.run.node
+                        && let Some(url) = link(cx, id)
+                    {
+                        marks.links.push((id, url));
+                    }
+                }
+                SceneCommand::Rect(draw) if caret_shape(draw, cell) => {
+                    if let (Some(id), Some(focus)) = (draw.node, focus)
+                        && within(cx, id, focus)
+                    {
+                        marks.caret = Some(id);
+                    }
+                }
+                _ => {}
+            }
+        }
+        marks
+    }
+
+    pub(super) fn link(&self, node: Option<NodeId>) -> Option<&SmolStr> {
+        let node = node?;
+        self.links
+            .iter()
+            .find_map(|(id, url)| (*id == node).then_some(url))
+    }
+
+    pub(super) fn caret(&self, node: Option<NodeId>) -> bool {
+        node.is_some() && node == self.caret
+    }
+}
+
+fn link(cx: &Cx, id: NodeId) -> Option<SmolStr> {
+    let text = match cx.get(id)?.a11y.description.as_ref()? {
+        AccessibleName::Static(text) => text.clone(),
+        AccessibleName::Derived(signal) => signal.peek(),
+        AccessibleName::None => return None,
+    };
+    let url = text.contains("://") || text.starts_with("mailto:");
+    (url && !text.chars().any(char::is_control)).then(|| SmolStr::from(text))
+}
+
+fn caret_shape(draw: &DrawRect, cell: f32) -> bool {
+    !draw.outline
+        && draw.border.is_none()
+        && draw.rect.width > 0.0
+        && draw.rect.width <= cell / 2.0
+        && draw.rect.height >= cell / 2.0
+        && draw.rect.height <= cell * 2.0
+}
+
+fn within(cx: &Cx, mut id: NodeId, focus: NodeId) -> bool {
+    for _ in 0..64 {
+        if id == focus {
+            return true;
+        }
+        let Some(parent) = cx.parent(id) else {
+            return false;
+        };
+        id = parent;
+    }
+    false
+}
+
+pub(super) fn ascii(text: &str) -> Cow<'_, str> {
+    if text.is_ascii() {
+        return Cow::Borrowed(text);
+    }
+    Cow::Owned(
+        text.chars()
+            .map(|glyph| match glyph {
+                '●' | '•' => '*',
+                '○' => 'o',
+                other => other,
+            })
+            .collect(),
+    )
+}
+
+pub(super) struct Line {
+    pub(super) band: crate::hal::Rect,
+    pub(super) kind: DecorationKind,
+    pub(super) color: Rgba8,
+}
+
+pub(super) fn decorate(grid: &mut Grid, line: &Line, clip: Option<crate::hal::Rect>, size: f32) {
+    let band = line.band;
+    let middle = band.origin.y + band.height / 2.0;
+    if let Some(clip) = clip
+        && (middle < clip.origin.y || middle >= clip.origin.y + clip.height)
+    {
+        return;
+    }
+    let (left, right) = clip.map_or((band.origin.x, band.origin.x + band.width), |clip| {
+        (
+            band.origin.x.max(clip.origin.x),
+            (band.origin.x + band.width).min(clip.origin.x + clip.width),
+        )
+    });
+    let row = floor_cell(middle / size);
+    let ink = if line.color.a > 0 {
+        Ink::Exact(Rgba8 {
+            a: 255,
+            ..line.color
+        })
+    } else {
+        Ink::Bare
+    };
+    for col in cell_edge(left / size)..cell_edge(right / size) {
+        let Some(index) = grid.index(col, row) else {
+            continue;
+        };
+        let Some(cell) = grid.cells.get_mut(index) else {
+            continue;
+        };
+        match line.kind {
+            DecorationKind::Strikethrough => cell.lines.strike = true,
+            DecorationKind::Underline => cell.lines.underline = Underline::Straight,
+            DecorationKind::WavyUnderline => cell.lines.underline = Underline::Curly,
+        }
+        if !matches!(line.kind, DecorationKind::Strikethrough) {
+            cell.underline_ink = ink;
+        }
+    }
+}
+
+pub(super) const fn line(draw: &DrawDecoration, color: Rgba8) -> Line {
+    Line {
+        band: draw.band,
+        kind: draw.kind,
+        color,
+    }
+}

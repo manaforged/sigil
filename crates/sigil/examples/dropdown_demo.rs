@@ -2,12 +2,12 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs, clippy::print_stdout)]
+#![allow(clippy::print_stdout)]
 
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - dropdown demo", 400, 200), build)
+    sigil::run(("Sigil - dropdown demo", 400, 200), build)
 }
 
 fn build(cx: &mut Cx) -> NodeId {

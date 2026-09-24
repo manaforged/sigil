@@ -1,10 +1,11 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Style};
+use crate::style::{NodeStyleExt, Style, Token};
+use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::{
     CARET_W, CHANGE_BAR_W, ChangeKind, DIGIT_W, DiagSeverity, DiagSpan, GUTTER_PAD, HlSpan,
-    RUN_CLASS, SELECTION_CLASS, SelRange, Window,
+    RUN_CLASS, SELECTION, SelRange, Window,
 };
 
 type DiagRange = (usize, usize, DiagSeverity);
@@ -12,6 +13,7 @@ type DiagRange = (usize, usize, DiagSeverity);
 #[derive(Clone, Copy)]
 pub(super) struct RowCtx<'a> {
     pub(super) caret: (usize, usize),
+    pub(super) caret_shown: bool,
     pub(super) selection: Option<SelRange>,
     pub(super) gutter: Option<GutterCtx<'a>>,
     pub(super) diagnostics: &'a [DiagSpan],
@@ -41,7 +43,7 @@ pub(super) fn gutter_width(total: usize) -> f32 {
     let digits = total.max(1).to_string().len();
     #[allow(
         clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
+        reason = "pixel and digit-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     let numbers = digits as f32 * DIGIT_W;
     CHANGE_BAR_W + GUTTER_PAD + numbers + GUTTER_PAD
@@ -96,7 +98,7 @@ pub(super) fn rows(
     let (caret_line, caret_col) = ctx.caret;
     if lines.is_empty() {
         let decor = RowDecor {
-            caret_col: Some(0),
+            caret_col: ctx.caret_shown.then_some(0),
             sel_cols: None,
             gutter: row_gutter(&ctx, 0),
         };
@@ -111,10 +113,10 @@ pub(super) fn rows(
         let i = start + offset;
         let spans = highlights.get(i).map_or(&[][..], Vec::as_slice);
         let decor = RowDecor {
-            caret_col: (i == caret_line).then_some(caret_col),
+            caret_col: (ctx.caret_shown && i == caret_line).then_some(caret_col),
             sel_cols: ctx
                 .selection
-                .and_then(|(a, b)| selected_cols(i, a, b, line.chars().count())),
+                .and_then(|(a, b)| selected_cols(i, a, b, col_count(line))),
             gutter: row_gutter(&ctx, i),
         };
         let diags: Vec<DiagRange> = ctx
@@ -128,17 +130,7 @@ pub(super) fn rows(
     out
 }
 
-fn styled_row(
-    line: &str,
-    spans: &[HlSpan],
-    decor: RowDecor,
-    diags: &[DiagRange],
-    row_h: f32,
-) -> NodeBuilder {
-    let caret_col = decor.caret_col;
-    let sel_cols = decor.sel_cols;
-    let chars: Vec<char> = line.chars().collect();
-    let n = chars.len();
+fn row_bounds(n: usize, spans: &[HlSpan], decor: RowDecor, diags: &[DiagRange]) -> Vec<usize> {
     let mut bounds: Vec<usize> = Vec::with_capacity(spans.len() * 2 + diags.len() * 2 + 5);
     bounds.push(0);
     bounds.push(n);
@@ -146,25 +138,42 @@ fn styled_row(
         bounds.push(s.start.min(n));
         bounds.push(s.end.min(n));
     }
-    if let Some(c) = caret_col {
+    if let Some(c) = decor.caret_col {
         bounds.push(c.min(n));
     }
-    if let Some((lo, hi)) = sel_cols {
+    if let Some((lo, hi)) = decor.sel_cols {
         bounds.push(lo.min(n));
         bounds.push(hi.min(n));
     }
     for (start, end, _) in diags {
-        bounds.push(start.min(&n).to_owned());
-        bounds.push(end.min(&n).to_owned());
+        bounds.push((*start).min(n));
+        bounds.push((*end).min(n));
     }
     bounds.sort_unstable();
     bounds.dedup();
+    bounds
+}
+
+fn styled_row(
+    line: &str,
+    spans: &[HlSpan],
+    decor: RowDecor,
+    diags: &[DiagRange],
+    row_h: f32,
+) -> NodeBuilder {
+    let n = col_count(line);
+    let caret_col = decor.caret_col.map(|c| c.min(n));
+    let sel_cols = decor.sel_cols;
+    let bounds = row_bounds(n, spans, decor, diags);
+    let bytes = col_bytes(line, &bounds);
     let mut row = row_container(row_h);
     if let Some(g) = decor.gutter {
         row = row.child(gutter_cell(g, row_h));
     }
-    for pair in bounds.windows(2) {
-        let &[a, b] = pair else { continue };
+    for (pair, span) in bounds.windows(2).zip(bytes.windows(2)) {
+        let (&[a, _], &[lo_byte, hi_byte]) = (pair, span) else {
+            continue;
+        };
         if caret_col == Some(a) {
             row = row.child(caret_block(row_h));
         }
@@ -172,7 +181,7 @@ fn styled_row(
             .iter()
             .find(|s| s.start <= a && a < s.end)
             .map(|s| s.token);
-        let seg: String = chars.iter().skip(a).take(b - a).collect();
+        let seg = line[lo_byte..hi_byte].to_owned();
         if sel_cols.is_some_and(|(lo, hi)| lo <= a && a < hi) {
             row = row.child(selected_run(seg, token, row_h));
         } else if let Some(severity) = worst_diag_at(a, diags) {
@@ -203,7 +212,7 @@ fn gutter_cell(g: RowGutter, row_h: f32) -> NodeBuilder {
 fn change_bar(mark: Option<ChangeKind>, row_h: f32) -> NodeBuilder {
     let bar = container().layout(LayoutStyle::flex_row().width(CHANGE_BAR_W).height(row_h));
     match mark {
-        Some(kind) => bar.class(kind.bar_class()),
+        Some(kind) => bar.class(kind.bar_token().bg()),
         None => bar,
     }
 }
@@ -220,7 +229,8 @@ fn number_text(number: usize, row_h: f32) -> NodeBuilder {
         )
         .child(
             text(number.to_string())
-                .class("text-sm font-mono text-on-surface-muted")
+                .class("text-sm font-mono")
+                .class(Token::OnSurfaceMuted.text())
                 .layout(LayoutStyle::block().shrink(0.0)),
         )
 }
@@ -246,7 +256,7 @@ fn diag_run(
                 .shrink(0.0)
                 .align_items(AlignItems::Center),
         )
-        .class(severity.tint_class())
+        .class(severity.tint_token().bg())
         .child(run_text(seg, token))
 }
 
@@ -258,14 +268,14 @@ fn selected_run(seg: String, token: Option<&'static str>, row_h: f32) -> NodeBui
                 .shrink(0.0)
                 .align_items(AlignItems::Center),
         )
-        .class(SELECTION_CLASS)
+        .class(SELECTION.bg())
         .child(run_text(seg, token))
 }
 
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .class(RUN_CLASS)
-        .style(Style::new().text_theme(token.unwrap_or("on-surface")))
+        .style(Style::new().text_theme(token.unwrap_or(Token::OnSurface.name())))
         .layout(LayoutStyle::block().shrink(0.0))
 }
 
@@ -281,5 +291,5 @@ fn row_container(row_h: f32) -> NodeBuilder {
 fn caret_block(row_h: f32) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().width(CARET_W).height(row_h * 0.8))
-        .class("bg-on-surface")
+        .class(Token::OnSurface.bg())
 }

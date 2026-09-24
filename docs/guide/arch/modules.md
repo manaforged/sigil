@@ -1,12 +1,10 @@
 # Modules
 
-The workspace has two crates:
+`crates/sigil` is the package `sigil-ui`, library `sigil`.
 
-- `crates/sigil` is the package `sigil-gui`, library `sigil`.
-- `crates/tui` is the package `sigil-tui`, library `sigil_tui`.
-
-Downstream code depends on `sigil-gui`, not on `wgpu` or `winit`
-directly. The terminal host depends on `sigil-gui` and adds crossterm.
+Downstream code depends on `sigil-ui`, not on `wgpu` or `winit`
+directly. The terminal host is the module `terminal` behind the
+feature `terminal`, which adds crossterm.
 
 | Module | Owns |
 | --- | --- |
@@ -22,7 +20,7 @@ directly. The terminal host depends on `sigil-gui` and adds crossterm.
 | `a11y` | AccessKit projection. |
 | `tasks` | Tokio runtime, `spawn`, `dispatch_to_owner`, `Status`. |
 | `animation` and `animation_runtime` | Transitions; `config(id)` for presets. |
-| `app` | `launch`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |
+| `app` | `run`, `Host`, frame loop, menu, tray, dialogs, clipboard, audio, pty. |
 | `widgets` | The widget catalog. No window, no GPU. |
 | `profile` | `SIGIL_PROFILE`, trace output, phase table. |
 
@@ -31,5 +29,5 @@ Modules are layered. `hal` and `reactive` sit at the bottom. `kernel`,
 sit above. `reactive` does not depend on the tree. The tree depends on
 signals, which is why `Signal` is `Copy` and lives in thread-local
 storage: the layout engine can read a style signal without owning a
-widget. The `sigil-tui` crate sits above everything and paints the same
+widget. The `terminal` module sits above everything and paints the same
 tree on a character grid.

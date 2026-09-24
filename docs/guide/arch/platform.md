@@ -1,6 +1,6 @@
 # Platform
 
-`sigil::shell` owns the winit window and the event loop. `launch`
+`sigil::shell` owns the winit window and the event loop. `run`
 drives the phases and presents the window. `Host` embeds the same tree
 in a loop you own.
 
@@ -33,6 +33,7 @@ trace JSON. The phase table reports per-phase time. Counters include
 
 ## Terminal host
 
-`sigil-tui` is a separate crate. `sigil_tui::run` opens the terminal,
-rasterizes the same `Host` tree onto cells, and handles terminal key
-and mouse events. The crate does not depend on wgpu or winit.
+The module `sigil::terminal` (feature `terminal`) is the terminal host.
+`sigil::run` with `.terminal()` opens the terminal, rasterizes the same
+`Host` tree onto cells, and handles terminal key and mouse events. The
+feature does not depend on wgpu or winit.

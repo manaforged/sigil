@@ -7,8 +7,9 @@ use crate::renderer::split_encoder::SplitEncoder;
 mod atlas;
 mod setup;
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub use atlas::set_test_atlas_size_override;
+#[cfg(any(test, feature = "kittest"))]
 pub(crate) use atlas::test_atlas_size_override;
 use atlas::{Placement, RasterAtlas};
 use setup::{
@@ -70,6 +71,10 @@ impl RasterTextPipeline {
     #[must_use]
     pub(crate) const fn format(&self) -> wgpu::TextureFormat {
         self.format
+    }
+
+    pub(crate) fn begin_frame(&mut self, queue: &wgpu::Queue) {
+        self.atlas.begin_frame(queue);
     }
 
     pub(crate) fn record_paragraph(
@@ -171,7 +176,7 @@ impl RasterTextPipeline {
         } else {
             let Some(mask) = self
                 .hinters
-                .rasterize(font_bytes, &key, &g.variation_coords)
+                .rasterize(font_bytes, &key, &g.variation_coords, g.skew)
             else {
                 return GlyphOutcome::Blank;
             };

@@ -9,13 +9,10 @@ use smallvec::SmallVec;
 use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{A11yProps, Node, NodeId, NodeType};
 
-/// How the owning `Host` measures space: pixel units or terminal cells.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum HostMode {
-    /// Pixel host (desktop window or embed).
     #[default]
     Pixel,
-    /// Cell host (terminal); layout snaps to the cell grid.
     Cell,
 }
 
@@ -52,7 +49,6 @@ impl Cx {
         }
     }
 
-    /// The host mode this tree was built under.
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.host_mode
@@ -83,7 +79,13 @@ impl Cx {
     }
 
     pub fn new_node(&mut self, kind: NodeType, a11y: A11yProps) -> NodeId {
-        let owner = Owner::current().expect("Cx::new_node called outside an IntoNode::build scope");
+        let owner = Owner::current().unwrap_or_else(|| {
+            tracing::warn!(
+                target: "sigil::kernel",
+                "Cx::new_node called outside an IntoNode::build scope; using the root owner"
+            );
+            self.root_owner()
+        });
         let id = NodeId(self.nodes.insert(Node::new(kind, a11y, owner)));
         self.mark_dirty(id);
         self.bump_generation();

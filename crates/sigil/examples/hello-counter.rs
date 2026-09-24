@@ -1,9 +1,7 @@
-#![allow(missing_docs)]
-
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - hello-counter", 480, 240), app_tree)
+    sigil::run(("Sigil - hello-counter", 480, 240), app_tree)
 }
 
 fn app_tree(cx: &mut Cx) -> NodeId {

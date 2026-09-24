@@ -2,13 +2,12 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
-    CommandScene, CornerRadii, Fill, GradientStop, LinearGradient, RendererError, SceneBuilder,
-    SceneCommand, SceneGradientStyle, SceneRectStyle, WgpuRenderer, WgpuSurface,
+    CommandScene, CornerRadii, GradientStop, LinearGradient, PaintFill, RendererError,
+    SceneBuilder, SceneCommand, SceneGradientStyle, SceneRectStyle, WgpuRenderer, WgpuSurface,
 };
 use sigil::style::Rgba8;
 use smallvec::smallvec;
@@ -39,11 +38,11 @@ fn command_scene_accepts_rect_and_gradient_draws() {
 
 #[test]
 fn fill_variants_cover_solid_and_linear_gradient() {
-    let solid = Fill::Solid(color(24, 48, 72, 255));
-    let linear = Fill::LinearGradient(gradient());
+    let solid = PaintFill::Solid(color(24, 48, 72, 255));
+    let linear = PaintFill::LinearGradient(gradient());
 
-    assert!(matches!(solid, Fill::Solid(_)));
-    assert!(matches!(linear, Fill::LinearGradient(_)));
+    assert!(matches!(solid, PaintFill::Solid(_)));
+    assert!(matches!(linear, PaintFill::LinearGradient(_)));
 }
 
 type RenderCommandScene = fn(

@@ -7,49 +7,32 @@ use std::path::{Component, Path, PathBuf};
 #[cfg(target_os = "macos")]
 use std::process::Command;
 
-/// A file copied into the bundle after the executable.
+use crate::files::{copy_checked, write_new};
+
 pub struct ResourceCopy<'a> {
-    /// Source path on disk. Must be a regular file or directory, not a symlink.
     pub from: &'a Path,
-    /// Destination relative to `Contents/Resources` (macOS) or the app dir (Windows).
-    /// Must be a relative path with no `..` components.
     pub to: &'a Path,
 }
 
-/// Identity and files for a native application bundle.
 pub struct AppBundle<'a> {
-    /// Display and bundle name.
     pub name: &'a str,
-    /// Reverse-DNS identifier.
     pub identifier: &'a str,
-    /// Short version string.
     pub version: &'a str,
-    /// Built executable to copy. Must be a regular file.
     pub executable: &'a Path,
-    /// File name inside `Contents/MacOS` or the Windows app dir. One path component.
     pub exe_name: &'a str,
-    /// Optional `.icns` copied to `Resources/icon.icns`.
     pub icon: Option<&'a Path>,
-    /// `LSMinimumSystemVersion`. Ignored on Windows.
     pub min_system: &'a str,
 }
 
-/// A bundling failure.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum PackError {
-    /// A required path was missing.
     Missing(PathBuf),
-    /// A filesystem operation failed.
     Io(io::Error),
-    /// `codesign` failed on macOS.
     Codesign(String),
-    /// A path would land outside the bundle.
     Escape(PathBuf),
-    /// A symlink or reparse point was in the source tree.
     Symlink(PathBuf),
-    /// `--out` exists and is not a previous bundle this crate wrote.
     Occupied(PathBuf),
-    /// The executable is not a regular file.
     NotFile(PathBuf),
 }
 
@@ -129,7 +112,7 @@ fn copy_regular_file(from: &Path, to: &Path) -> Result<(), PackError> {
     if let Some(parent) = to.parent() {
         fs::create_dir_all(parent).map_err(PackError::Io)?;
     }
-    fs::copy(from, to).map(|_| ()).map_err(PackError::Io)
+    copy_checked(from, &meta, to).map_err(PackError::Io)
 }
 
 fn copy_tree(from: &Path, to: &Path) -> Result<(), PackError> {
@@ -162,7 +145,7 @@ fn previous_bundle(dest: &Path) -> bool {
 }
 
 fn mark_bundle(dest: &Path) -> Result<(), PackError> {
-    fs::write(dest.join(".sigil-pack"), b"sigil-pack\n").map_err(PackError::Io)
+    write_new(&dest.join(".sigil-pack"), b"sigil-pack\n", 0o644).map_err(PackError::Io)
 }
 
 fn prepare_dest(dest: &Path) -> Result<(), PackError> {
@@ -216,16 +199,9 @@ fn info_plist(app: &AppBundle<'_>, with_icon: bool) -> String {
     )
 }
 
-/// How to codesign a macOS bundle.
-///
-/// The default is ad-hoc, which Gatekeeper does not accept for a
-/// downloaded app. Set `identity` to a Developer ID to produce a
-/// distributable signature.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct CodeSign<'a> {
-    /// Signing identity as `security find-identity` prints it. `None` is ad-hoc.
     pub identity: Option<&'a str>,
-    /// Entitlements plist applied with an identity.
     pub entitlements: Option<&'a Path>,
 }
 
@@ -264,19 +240,6 @@ fn codesign(app: &Path, sign: &CodeSign<'_>) -> Result<(), PackError> {
     }
 }
 
-/// Write a macOS `.app` at `dest`.
-///
-/// On macOS this codesigns with `sign`. The default [`CodeSign`] is ad-hoc
-/// (`codesign --sign -`), which is not a Developer ID or notarized shipping
-/// signature. An identity adds the hardened runtime and a secure timestamp,
-/// which notarization requires.
-///
-/// Extra [`ResourceCopy`] entries land under `Contents/Resources`.
-///
-/// # Errors
-///
-/// Returns [`PackError`] when a path escapes `dest`, a symlink is present,
-/// `dest` is occupied, or `codesign` fails.
 pub fn macos_app(
     app: &AppBundle<'_>,
     resources: &[ResourceCopy<'_>],
@@ -292,9 +255,10 @@ pub fn macos_app(
     if let Some(icon) = app.icon {
         copy_regular_file(icon, &resources_dir.join("icon.icns"))?;
     }
-    fs::write(
-        dest.join("Contents/Info.plist"),
-        info_plist(app, app.icon.is_some()),
+    write_new(
+        &dest.join("Contents/Info.plist"),
+        info_plist(app, app.icon.is_some()).as_bytes(),
+        0o644,
     )
     .map_err(PackError::Io)?;
     for copy in resources {
@@ -307,11 +271,6 @@ pub fn macos_app(
     Ok(())
 }
 
-/// Write a Windows application directory at `dest`.
-///
-/// # Errors
-///
-/// Returns [`PackError`] when a path escapes `dest` or a symlink is present.
 pub fn windows_dir(
     app: &AppBundle<'_>,
     resources: &[ResourceCopy<'_>],

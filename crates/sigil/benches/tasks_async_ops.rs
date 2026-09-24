@@ -1,4 +1,3 @@
-#![allow(missing_docs, clippy::missing_docs_in_private_items)]
 #![allow(clippy::panic)]
 
 #[path = "tasks_async_ops_sustained.rs"]

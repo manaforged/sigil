@@ -1,4 +1,3 @@
-#![allow(missing_docs)]
 #![allow(
     unused_crate_dependencies,
     reason = "target does not use every package dependency"

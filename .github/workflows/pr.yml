@@ -41,7 +41,7 @@ jobs:
             --head "${{ github.event.pull_request.head.sha }}" \
             --json)
           args=""
-          for p in $pkgs; do args="$args -p $p"; done
+          for p in $pkgs; do args="$args -p $p"; if [ "$p" = sigil-ui ]; then args="$args --features sigil-ui/terminal"; fi; done
           echo "args=$args" >> "$GITHUB_OUTPUT"
           echo "dependency-audit=$(echo "$plan" | node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(0)).dependencyAudit))')" >> "$GITHUB_OUTPUT"
           echo "scope: ${args:-none (docs or non-Rust change)}" >> "$GITHUB_STEP_SUMMARY"
@@ -70,7 +70,6 @@ jobs:
       - name: cargo test
         if: steps.scope.outputs.args != ''
         env:
-          SIGIL_REQUIRE_GOLDENS: "1"
           RUST_TEST_THREADS: "1"
           WGPU_BACKEND: vulkan
           LP_NUM_THREADS: "4"

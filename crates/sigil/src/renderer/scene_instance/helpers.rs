@@ -1,7 +1,7 @@
 use crate::hal::Rect;
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::scene_command::{Stroke, StrokeAlign, StrokeStyle};
+use crate::scene::corner_radii::CornerRadii;
 
 use super::{BlendSpace, RectInstance};
 

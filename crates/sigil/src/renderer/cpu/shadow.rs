@@ -10,8 +10,8 @@ use crate::hal::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{BlendMode, FillRule, Mask, Paint, Pixmap, PixmapPaint, Transform};
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::shadow_paint::{Shadow, ShadowKind};
+use crate::scene::corner_radii::CornerRadii;
 
 use super::shapes::{encode, rounded_rect, solid, ts_color};
 

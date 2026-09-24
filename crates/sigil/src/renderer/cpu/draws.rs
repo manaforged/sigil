@@ -9,12 +9,12 @@
 use crate::hal::{Point, Rect};
 use tiny_skia::{Paint, PremultipliedColorU8, Transform as TsTransform};
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::scene_command::walk::{intersect_rect, transform_rect};
 use crate::renderer::scene_command::{
     DrawDecoration, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun,
 };
 use crate::renderer::shadow_paint::Shadow;
+use crate::scene::corner_radii::CornerRadii;
 
 use super::glyphs::RunPlacement;
 use super::paint::{Painter, brush};

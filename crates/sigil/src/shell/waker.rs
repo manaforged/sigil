@@ -7,7 +7,6 @@ use winit::event_loop::EventLoopProxy;
 
 use crate::shell::ShellError;
 
-#[doc(hidden)]
 pub static WAKE_DELIVERED_COUNT: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]

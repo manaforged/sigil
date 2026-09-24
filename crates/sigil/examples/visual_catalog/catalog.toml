@@ -1,0 +1,811 @@
+pad = 16.0
+crop_pad = 12
+cell = 8
+drag = [48.0, 8.0]
+
+[[states]]
+drive = "dragged"
+id = "dragged"
+label = "Dragged"
+
+[[states]]
+drive = "default"
+id = "default"
+label = "Default"
+
+[[states]]
+drive = "hover"
+id = "hover"
+label = "Hover"
+
+[[states]]
+drive = "pressed"
+id = "pressed"
+label = "Pressed"
+
+[[states]]
+drive = "focused"
+id = "focused"
+label = "Focused"
+
+[[states]]
+drive = "disabled"
+id = "disabled"
+label = "Disabled"
+
+[[states]]
+drive = "open"
+id = "open"
+label = "Open"
+
+[[states]]
+drive = "shown"
+id = "open"
+label = "Open"
+
+[[states]]
+drive = "invalid"
+id = "invalid"
+label = "Invalid"
+
+[[states]]
+drive = "selected"
+id = "selected"
+label = "Selected"
+
+[[groups]]
+id = "controls"
+title = "Controls"
+source = "crates/sigil/examples/widget_controls.rs"
+
+[[groups]]
+id = "fields"
+title = "Fields"
+source = "crates/sigil/examples/widget_fields.rs"
+
+[[groups]]
+id = "overlays"
+title = "Overlays"
+source = "crates/sigil/examples/widget_overlays.rs"
+
+[[groups]]
+id = "chrome"
+title = "Chrome"
+source = "crates/sigil/examples/widget_chrome.rs"
+
+[[groups]]
+id = "data"
+title = "Data"
+source = "crates/sigil/examples/widget_data.rs"
+
+[[groups]]
+id = "documents"
+title = "Documents"
+source = "crates/sigil/examples/widget_documents.rs"
+
+[[groups]]
+id = "indicators"
+title = "Indicators"
+source = "crates/sigil/examples/widget_indicators.rs"
+
+[[groups]]
+id = "content"
+title = "Content"
+source = "crates/sigil/examples/widget_content.rs"
+
+[[groups]]
+id = "plumbing"
+title = "Plumbing"
+source = "crates/sigil/examples/widget_plumbing.rs"
+
+[[components]]
+id = "button"
+title = "Button"
+group = "controls"
+builder = "button"
+captures = [
+  { build = "button", size = [240, 64], hit = [30.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+  { build = "button-secondary", variant = "secondary", label = "Secondary", size = [240, 64], hit = [30.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+  { build = "button-ghost", variant = "ghost", label = "Ghost", size = [240, 64], hit = [30.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+  { build = "button-pending", variant = "pending", label = "Pending", size = [240, 64], hit = [30.0, 14.0], states = ["default"] },
+]
+
+[[components]]
+id = "icon_button"
+title = "Icon button"
+group = "controls"
+builder = "icon_button"
+captures = [
+  { build = "icon_button", size = [160, 64], hit = [12.0, 12.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "checkbox"
+title = "Checkbox"
+group = "controls"
+builder = "checkbox"
+captures = [
+  { build = "checkbox", size = [240, 64], hit = [8.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+  { build = "checkbox-unchecked", variant = "unchecked", label = "Unchecked", size = [240, 64], hit = [8.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "toggle"
+title = "Toggle"
+group = "controls"
+builder = "toggle"
+captures = [
+  { build = "toggle", size = [240, 64], hit = [14.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+  { build = "toggle-off", variant = "off", label = "Off", size = [240, 64], hit = [14.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "radio_group"
+title = "Radio group"
+group = "controls"
+builder = "radio_group"
+captures = [
+  { build = "radio_group", size = [240, 96], hit = [8.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "slider"
+title = "Slider"
+group = "controls"
+builder = "slider"
+captures = [
+  { build = "slider", size = [320, 64], hit = [115.0, 10.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "text_field"
+title = "Text field"
+group = "fields"
+builder = "text_field"
+captures = [
+  { build = "text_field", size = [320, 64], hit = [60.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "invalid"] },
+]
+
+[[components]]
+id = "text_edit"
+title = "Text edit"
+group = "fields"
+builder = "text_edit"
+captures = [
+  { build = "text_edit", size = [320, 136], hit = [60.0, 20.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "number_field"
+title = "Number field"
+group = "fields"
+builder = "number_field"
+captures = [
+  { build = "number_field", size = [240, 64], hit = [30.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "invalid"] },
+]
+
+[[components]]
+id = "date_field"
+title = "Date field"
+group = "fields"
+builder = "date_field"
+captures = [
+  { build = "date_field", size = [280, 64], hit = [30.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "invalid"] },
+]
+
+[[components]]
+id = "color_field"
+title = "Color field"
+group = "fields"
+builder = "color_field"
+captures = [
+  { build = "color_field", size = [280, 64], hit = [60.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "invalid"] },
+]
+
+[[components]]
+id = "combobox"
+title = "Combobox"
+group = "fields"
+builder = "combobox"
+preview = "open"
+captures = [
+  { build = "combobox", size = [320, 220], hit = [60.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "open"] },
+]
+
+[[components]]
+id = "dropdown"
+title = "Dropdown"
+group = "fields"
+builder = "dropdown"
+preview = "open"
+captures = [
+  { build = "dropdown", size = [320, 200], hit = [60.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "open"] },
+]
+
+[[components]]
+id = "field"
+title = "Field"
+group = "fields"
+builder = "field"
+captures = [
+  { build = "field", size = [320, 88], hit = [60.0, 36.0], states = ["default", "hover", "pressed", "focused"] },
+]
+
+[[components]]
+id = "validated_field"
+title = "Validated field"
+group = "fields"
+builder = "validated_field"
+captures = [
+  { build = "validated_field", size = [320, 104], hit = [60.0, 36.0], states = ["default", "focused", "invalid"] },
+]
+
+[[components]]
+id = "modal"
+title = "Modal"
+group = "overlays"
+builder = "modal"
+preview = "open"
+captures = [
+  { build = "modal", size = [480, 300], hit = [240.0, 20.0], states = ["default", "shown"] },
+]
+
+[[components]]
+id = "sheet"
+title = "Sheet"
+group = "overlays"
+builder = "sheet"
+preview = "open"
+captures = [
+  { build = "sheet", size = [480, 300], hit = [40.0, 20.0], states = ["default", "shown"] },
+]
+
+[[components]]
+id = "menu"
+title = "Menu"
+group = "overlays"
+builder = "menu"
+captures = [
+  { build = "menu", size = [280, 200], hit = [40.0, 34.0], states = ["shown", "hover", "pressed"] },
+]
+
+[[components]]
+id = "menu_bar"
+title = "Menu bar"
+group = "overlays"
+builder = "menu_bar"
+preview = "open"
+captures = [
+  { build = "menu_bar", size = [320, 200], hit = [16.0, 10.0], states = ["default", "hover", "pressed", "open"] },
+]
+
+[[components]]
+id = "command_menu"
+title = "Command menu"
+group = "overlays"
+builder = "command_menu"
+captures = [
+  { build = "command_menu", size = [360, 220], hit = [60.0, 50.0], states = ["default", "hover", "pressed", "focused"] },
+]
+
+[[components]]
+id = "tooltip"
+title = "Tooltip"
+group = "overlays"
+builder = "tooltip"
+preview = "hover"
+captures = [
+  { build = "tooltip", size = [280, 120], hit = [30.0, 44.0], states = ["default", "hover"] },
+]
+
+[[components]]
+id = "toast"
+title = "Toast"
+group = "overlays"
+builder = "toast"
+preview = "open"
+captures = [
+  { build = "toast", size = [360, 120], hit = [8.0, 8.0], states = ["shown"] },
+]
+
+[[components]]
+id = "toast_queue"
+title = "Toast queue"
+group = "overlays"
+builder = "toast_queue"
+preview = "open"
+captures = [
+  { build = "toast_queue", size = [360, 160], hit = [8.0, 8.0], states = ["default", "shown"] },
+]
+
+[[components]]
+id = "hint_overlay"
+title = "Hint overlay"
+group = "overlays"
+builder = "hint_overlay"
+captures = [
+  { build = "hint_overlay", size = [320, 120], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "app_shell"
+title = "App shell"
+group = "chrome"
+builder = "app_shell"
+captures = [
+  { build = "app_shell", size = [480, 220], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "panel"
+title = "Panel"
+group = "chrome"
+builder = "panel"
+captures = [
+  { build = "panel", size = [320, 120], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "card"
+title = "Card"
+group = "chrome"
+builder = "card"
+captures = [
+  { build = "card", size = [320, 100], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "sidebar"
+title = "Sidebar"
+group = "chrome"
+builder = "sidebar"
+captures = [
+  { build = "sidebar", size = [260, 160], hit = [20.0, 20.0], states = ["default"] },
+]
+
+[[components]]
+id = "tabs"
+title = "Tabs"
+group = "chrome"
+builder = "tabs"
+captures = [
+  { build = "tabs", size = [360, 110], hit = [70.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "selected"] },
+  { build = "tabs_line", variant = "line", label = "Line", size = [360, 110], hit = [100.0, 14.0], states = ["default", "hover", "pressed", "focused", "disabled", "selected"] },
+]
+
+[[components]]
+id = "splitter"
+title = "Splitter"
+group = "chrome"
+builder = "splitter"
+captures = [
+  { build = "splitter", size = [480, 160], hit = [180.0, 60.0], states = ["default", "hover", "pressed"] },
+]
+
+[[components]]
+id = "scroll"
+title = "Scroll"
+group = "chrome"
+builder = "scroll"
+captures = [
+  { build = "scroll", size = [320, 140], hit = [100.0, 40.0], states = ["default", "hover"] },
+  { build = "scroll_auto", variant = "auto", label = "Auto", size = [320, 140], hit = [100.0, 40.0], states = ["default", "hover"] },
+]
+
+[[components]]
+id = "surface"
+title = "Surface"
+group = "chrome"
+builder = "surface"
+captures = [
+  { build = "surface", size = [240, 80], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "status_bar"
+title = "Status bar"
+group = "chrome"
+builder = "status_bar"
+captures = [
+  { build = "status_bar", size = [420, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "virtual_list"
+title = "Virtual list"
+group = "data"
+builder = "virtual_list"
+captures = [
+  { build = "virtual_list", size = [320, 160], hit = [40.0, 40.0], states = ["default", "hover", "pressed", "focused", "selected"] },
+  { build = "virtual_list_fill", variant = "fill", label = "Fill", size = [320, 160], hit = [40.0, 40.0], states = ["default"] },
+]
+
+[[components]]
+id = "table"
+title = "Table"
+group = "data"
+builder = "table"
+captures = [
+  { build = "table", size = [420, 200], hit = [200.0, 54.0], grid = [72, 25], states = ["default", "hover", "pressed", "focused", "disabled", "selected"] },
+]
+
+[[components]]
+id = "heatmap"
+title = "Heatmap"
+group = "data"
+builder = "heatmap"
+captures = [
+  { build = "heatmap", size = [200, 120], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "list_row"
+title = "List row"
+group = "data"
+builder = "list_row"
+captures = [
+  { build = "list_row", size = [320, 56], hit = [40.0, 12.0], states = ["default", "hover", "pressed", "focused", "selected"] },
+  { build = "list_row_tree", variant = "tree", label = "Tree", size = [320, 120], hit = [60.0, 36.0], states = ["default", "hover", "selected"] },
+]
+
+[[components]]
+id = "kv_grid"
+title = "Key-value grid"
+group = "data"
+builder = "kv_grid"
+captures = [
+  { build = "kv_grid", size = [320, 72], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "kv_row"
+title = "Key-value row"
+group = "data"
+builder = "kv_row"
+captures = [
+  { build = "kv_row", size = [320, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "markdown"
+title = "Markdown"
+group = "documents"
+builder = "markdown"
+captures = [
+  { build = "markdown", size = [420, 200], hit = [8.0, 8.0], states = ["default"] },
+  { build = "markdown_image", variant = "image", label = "Image", size = [420, 120], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "markdown_edit"
+title = "Markdown edit"
+group = "documents"
+builder = "markdown_edit"
+captures = [
+  { build = "markdown_edit", size = [520, 260], hit = [60.0, 40.0], states = ["default", "hover", "focused", "disabled"] },
+]
+
+[[components]]
+id = "html"
+title = "HTML"
+group = "documents"
+builder = "html"
+captures = [
+  { build = "html", size = [420, 180], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "code_edit"
+title = "Code edit"
+group = "documents"
+builder = "code_edit"
+captures = [
+  { build = "code_edit", size = [400, 136], hit = [60.0, 20.0], states = ["default", "hover", "focused", "disabled"] },
+]
+
+[[components]]
+id = "mermaid"
+title = "Mermaid"
+group = "documents"
+builder = "mermaid"
+captures = [
+  { build = "mermaid", size = [420, 260], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "diff"
+title = "Diff"
+group = "documents"
+builder = "diff"
+captures = [
+  { build = "diff", size = [480, 180], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "chip"
+title = "Chip"
+group = "indicators"
+builder = "chip"
+captures = [
+  { build = "chip", size = [200, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "badge"
+title = "Badge"
+group = "indicators"
+builder = "badge"
+captures = [
+  { build = "badge", size = [200, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "dot"
+title = "Dot"
+group = "indicators"
+builder = "dot"
+captures = [
+  { build = "dot", size = [160, 48], hit = [4.0, 4.0], states = ["default"] },
+]
+
+[[components]]
+id = "gauge"
+title = "Gauge"
+group = "indicators"
+builder = "gauge"
+captures = [
+  { build = "gauge", size = [320, 80], hit = [10.0, 4.0], states = ["default"] },
+]
+
+[[components]]
+id = "progress"
+title = "Progress"
+group = "indicators"
+builder = "progress"
+captures = [
+  { build = "progress", size = [320, 48], hit = [10.0, 4.0], states = ["default"] },
+]
+
+[[components]]
+id = "spinner"
+title = "Spinner"
+group = "indicators"
+builder = "spinner"
+captures = [
+  { build = "spinner", size = [120, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "text"
+title = "Text"
+group = "content"
+builder = "text"
+captures = [
+  { build = "text", size = [320, 64], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "label"
+title = "Label"
+group = "content"
+builder = "label"
+captures = [
+  { build = "label", size = [240, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "icon"
+title = "Icon"
+group = "content"
+builder = "icon"
+captures = [
+  { build = "icon", size = [120, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "image"
+title = "Image"
+group = "content"
+builder = "image"
+captures = [
+  { build = "image_rgba", size = [120, 64], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "path"
+title = "Path"
+group = "content"
+builder = "path"
+captures = [
+  { build = "path", size = [120, 64], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "chart"
+title = "Chart"
+group = "content"
+builder = "chart"
+captures = [
+  { build = "chart", size = [360, 180], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "section_label"
+title = "Section label"
+group = "content"
+builder = "section_label"
+captures = [
+  { build = "section_label", size = [240, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "notice_band"
+title = "Notice band"
+group = "content"
+builder = "notice_band"
+captures = [
+  { build = "notice_band", size = [360, 64], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "empty_state"
+title = "Empty state"
+group = "content"
+builder = "empty_state"
+captures = [
+  { build = "empty_state", size = [360, 140], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "hint_bar"
+title = "Hint bar"
+group = "content"
+builder = "hint_bar"
+captures = [
+  { build = "hint_bar", size = [360, 48], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "avatar"
+title = "Avatar"
+group = "content"
+builder = "avatar"
+captures = [
+  { build = "avatar", size = [120, 64], hit = [8.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "divider_horizontal"
+title = "Horizontal divider"
+group = "content"
+builder = "divider_horizontal"
+captures = [
+  { build = "divider_horizontal", size = [240, 48], hit = [8.0, 0.0], states = ["default"] },
+]
+
+[[components]]
+id = "divider_vertical"
+title = "Vertical divider"
+group = "content"
+builder = "divider_vertical"
+captures = [
+  { build = "divider_vertical", size = [120, 64], hit = [0.0, 8.0], states = ["default"] },
+]
+
+[[components]]
+id = "hairline"
+title = "Hairline"
+group = "content"
+builder = "hairline"
+captures = [
+  { build = "hairline", size = [240, 48], hit = [8.0, 0.0], states = ["default"] },
+]
+
+[[components]]
+id = "interactive"
+title = "Interactive"
+group = "plumbing"
+builder = "interactive"
+captures = [
+  { build = "interactive", size = [240, 64], hit = [20.0, 8.0], states = ["default", "hover", "pressed", "focused", "disabled"] },
+]
+
+[[components]]
+id = "axis_drag"
+title = "Axis drag"
+group = "plumbing"
+builder = "axis_drag"
+preview = "dragged"
+captures = [
+  { build = "axis_drag", size = [320, 72], hit = [120.0, 20.0], states = ["default", "hover", "dragged"] },
+]
+
+[[components]]
+id = "drag_ghost"
+title = "Drag ghost"
+group = "plumbing"
+builder = "drag_ghost"
+preview = "dragged"
+captures = [
+  { build = "drag_ghost", size = [320, 160], hit = [40.0, 20.0], states = ["default", "dragged"] },
+]
+
+[[components]]
+id = "terminal"
+title = "Terminal"
+group = "plumbing"
+builder = "terminal"
+captures = [
+  { build = "terminal", size = [420, 140], hit = [40.0, 20.0], states = ["default", "hover", "pressed", "focused"] },
+]
+
+[[examples]]
+id = "todo-terminal"
+title = "Todo list"
+summary = "A keyboard-driven todo list with filters, built for the terminal host."
+hosts = ["terminal"]
+build = "todo-terminal"
+size = [480, 240]
+grid = [60, 16]
+source = "crates/sigil/examples/todo-terminal.rs"
+
+[[examples]]
+id = "preferences-window"
+title = "Preferences window"
+summary = "A settings window with side navigation, validated fields, and a toast on save."
+hosts = ["window"]
+build = "preferences-window"
+size = [880, 600]
+grid = [110, 36]
+source = "crates/sigil/examples/preferences-window.rs"
+
+[[examples]]
+id = "chat-both"
+title = "Chat"
+summary = "A chat client with channels, a streamed transcript, and a channel picker that runs in a window or a terminal."
+hosts = ["window", "terminal"]
+build = "chat-both"
+size = [800, 520]
+grid = [96, 26]
+settle = { frames = 12, ms = 100 }
+source = "crates/sigil/examples/chat-both.rs"
+
+[[examples]]
+id = "pomodoro-both"
+title = "Pomodoro timer"
+summary = "A focus timer with start, reset, and a settings modal that runs in a window or a terminal."
+hosts = ["window", "terminal"]
+build = "pomodoro-both"
+size = [480, 360]
+grid = [60, 20]
+source = "crates/sigil/examples/pomodoro-both.rs"
+
+[[examples]]
+id = "showcase-dashboard"
+title = "Dashboard"
+summary = "A metrics dashboard with KPI cards, a sortable table, a chart, and a status bar."
+hosts = ["window"]
+build = "showcase-dashboard"
+size = [960, 600]
+grid = [120, 36]
+source = "crates/sigil/examples/showcase-dashboard.rs"
+
+[[examples]]
+id = "showcase-editor"
+title = "Editor"
+summary = "A code editor with a file list, tabs, a code view, and a live markdown preview in resizable panes."
+hosts = ["window"]
+build = "showcase-editor"
+size = [1024, 640]
+grid = [128, 38]
+source = "crates/sigil/examples/showcase-editor.rs"
+
+[[examples]]
+id = "showcase-settings"
+title = "Settings"
+summary = "A settings screen with side navigation, grouped fields, and save and cancel actions."
+hosts = ["window"]
+build = "showcase-settings"
+size = [880, 600]
+grid = [110, 36]
+source = "crates/sigil/examples/showcase-settings.rs"

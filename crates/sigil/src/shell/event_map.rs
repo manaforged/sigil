@@ -37,7 +37,7 @@ pub(crate) const fn mouse_button_bit(button: MouseButton) -> Option<MouseButtons
         MouseButton::Middle => Some(MouseButtons::MIDDLE),
         MouseButton::Back => Some(MouseButtons::BACK),
         MouseButton::Forward => Some(MouseButtons::FORWARD),
-        MouseButton::Other(_) => None,
+        _ => None,
     }
 }
 

@@ -2,14 +2,16 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{
     AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle,
 };
-use crate::style::NodeStyleExt;
+use crate::style::{NodeStyleExt, Radius, Token, space};
 
 use super::super::shared::label;
 use super::super::vector::path;
-use super::{ChartMark, ChartSeries, nice_max, tone_fill, tone_solid};
+use super::{ChartMark, ChartSeries, nice_max, tone_fill};
 
 const AXIS: f32 = 32.0;
-const PLOT_PAD: f32 = 8.0;
+const PLOT_PAD: f32 = space(2);
+const GROUP_GAP: f32 = space(2);
+const X_AXIS: f32 = space(4);
 
 pub(super) fn draw(
     root: NodeBuilder,
@@ -34,7 +36,7 @@ pub(super) fn draw(
                     .fill_width()
                     .grow(1.0)
                     .min_size(0.0, 0.0)
-                    .gap(8.0),
+                    .gap(space(2)),
             )
             .child(y_axis(max))
             .child(
@@ -56,25 +58,43 @@ pub(super) fn draw(
 }
 
 fn y_axis(max: f32) -> NodeBuilder {
+    let ticks = container()
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .grow(1.0)
+                .align_items(AlignItems::End)
+                .justify_content(JustifyContent::SpaceBetween),
+        )
+        .child(
+            label(format_tick(max))
+                .class("text-xs")
+                .class(Token::Gray11.text()),
+        )
+        .child(
+            label(format_tick(max * 0.5))
+                .class("text-xs")
+                .class(Token::Gray11.text()),
+        )
+        .child(label("0").class("text-xs").class(Token::Gray11.text()));
     container()
         .layout(
             LayoutStyle::flex_column()
                 .width(AXIS)
                 .fill_height()
-                .justify_content(JustifyContent::SpaceBetween),
+                .padding_bottom(X_AXIS),
         )
-        .child(label(format_tick(max)).class("text-xs text-gray-11"))
-        .child(label(format_tick(max * 0.5)).class("text-xs text-gray-11"))
-        .child(label("0").class("text-xs text-gray-11"))
+        .child(ticks)
 }
 
 fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
-            .height(16.0)
+            .height(X_AXIS)
             .shrink(0.0)
-            .gap(8.0),
+            .padding_x(PLOT_PAD)
+            .gap(GROUP_GAP),
     );
     for index in 0..count {
         let text = labels
@@ -82,10 +102,20 @@ fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
             .cloned()
             .unwrap_or_else(|| (index + 1).to_string());
         row = row.child(
-            label(text)
-                .ellipsize()
-                .layout(LayoutStyle::block().grow(1.0))
-                .class("text-xs text-gray-11"),
+            container()
+                .layout(
+                    LayoutStyle::flex_row()
+                        .grow(1.0)
+                        .flex_basis(Dimension::Px(0.0))
+                        .min_size(0.0, 0.0)
+                        .justify_content(JustifyContent::Center),
+                )
+                .child(
+                    label(text)
+                        .ellipsize()
+                        .class("text-xs")
+                        .class(Token::Gray11.text()),
+                ),
         );
     }
     row
@@ -98,11 +128,12 @@ fn bars(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
                 .fill_width()
                 .grow(1.0)
                 .min_size(0.0, 0.0)
-                .gap(6.0)
+                .gap(GROUP_GAP)
                 .align_items(AlignItems::End)
                 .padding(PLOT_PAD),
         )
-        .class("border-b border-gray-6");
+        .class("border-b")
+        .class(Token::Gray6.border());
     for index in 0..count {
         let mut group = container().layout(
             LayoutStyle::flex_row()
@@ -152,8 +183,7 @@ fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
                         .grow(fill)
                         .min_size(0.0, 2.0),
                 )
-                .class("rounded-sm")
-                .class(tone_fill(tone))
+                .class([Radius::Sm.atom(), tone_fill(tone).bg()])
                 .tone(tone),
         )
 }
@@ -165,7 +195,8 @@ fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
     const H_F: f32 = 200.0;
     let mut layer = container()
         .layout(LayoutStyle::block().fill())
-        .class("border-b border-gray-6");
+        .class("border-b")
+        .class(Token::Gray6.border());
     for item in series {
         if item.values.is_empty() {
             continue;
@@ -192,7 +223,7 @@ fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
         }
         layer = layer.child(
             stroke
-                .stroke(tone_solid(item.tone), 2.0)
+                .stroke(tone_fill(item.tone), 2.0)
                 .layout(LayoutStyle::block().fill()),
         );
     }
@@ -200,7 +231,7 @@ fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
 }
 
 fn legend(series: &[ChartSeries]) -> NodeBuilder {
-    let mut row = container().layout(LayoutStyle::flex_row().gap(12.0));
+    let mut row = container().layout(LayoutStyle::flex_row().gap(space(3)));
     for item in series {
         if item.name.is_empty() {
             continue;
@@ -215,10 +246,13 @@ fn legend(series: &[ChartSeries]) -> NodeBuilder {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(8.0, 8.0))
-                        .class("rounded-sm")
-                        .class(tone_fill(item.tone)),
+                        .class([Radius::Sm.atom(), tone_fill(item.tone).bg()]),
                 )
-                .child(label(item.name.clone()).class("text-xs text-gray-12")),
+                .child(
+                    label(item.name.clone())
+                        .class("text-xs")
+                        .class(Token::Gray12.text()),
+                ),
         );
     }
     row

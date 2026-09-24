@@ -1,17 +1,21 @@
 use std::rc::Rc;
 
-use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::snap::CellForm;
 use crate::reactive::Signal;
-use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, StyleOverlay, Theme};
+use crate::style::{
+    ClassSource, NodeStyleExt, Radius, StateHost, Style, StyleAccess, Theme, Token, space,
+};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::BuilderMutator;
 use super::drag::DragState;
-use super::tab::build_tab;
+use super::list::build_tab_list;
+use super::tab::line_strip_height;
 
-pub(super) const TAB_HEIGHT: f32 = 30.0;
-pub(super) const STRIP_HEIGHT: f32 = 36.0;
+pub(super) const TAB_HEIGHT: f32 = space(7);
+pub(super) const STRIP_HEIGHT: f32 = space(9);
 
 #[derive(Clone, Copy, Default)]
 pub(super) enum StripChrome {
@@ -242,29 +246,6 @@ impl IntoNode for TabsBuilder {
     }
 }
 
-fn accessible_label(label: &str) -> AccessibleName {
-    if label.is_empty() {
-        AccessibleName::Static(String::from("Tabs"))
-    } else {
-        AccessibleName::Static(label.to_owned())
-    }
-}
-
-fn tab_list_layout(chrome: StripChrome) -> LayoutStyle {
-    LayoutStyle::flex_row()
-        .height(if matches!(chrome, StripChrome::Line) {
-            STRIP_HEIGHT
-        } else {
-            TAB_HEIGHT
-        })
-        .gap(if matches!(chrome, StripChrome::Line) {
-            4.0
-        } else {
-            0.0
-        })
-        .align_items(AlignItems::Center)
-}
-
 fn apply_chrome(
     chrome: StripChrome,
     justify: Option<JustifyContent>,
@@ -291,12 +272,13 @@ fn wrap_line(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
         .layout(
             LayoutStyle::flex_row()
                 .fill_width()
-                .height(STRIP_HEIGHT)
+                .height(line_strip_height())
                 .shrink(0.0)
                 .justify_content(justify)
-                .align_items(AlignItems::Center),
+                .align_items(CellForm::new(AlignItems::Center, AlignItems::Start).pick()),
         )
-        .class("border-b border-line")
+        .class("border-b")
+        .class(Token::Border.border())
         .child(strip)
 }
 
@@ -306,7 +288,7 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .shrink(0.0)
-                .padding_y(24.0)
+                .padding_y(space(6))
                 .justify_content(justify),
         )
         .child(
@@ -314,77 +296,12 @@ fn wrap_pill(strip: NodeBuilder, justify: JustifyContent) -> NodeBuilder {
                 .layout(
                     LayoutStyle::flex_row()
                         .height(STRIP_HEIGHT)
-                        .padding(4.0)
+                        .padding(space(1))
                         .align_items(AlignItems::Center),
                 )
-                .class("rounded-md bg-surface-2")
+                .class([Radius::Md.atom(), Token::SurfacePressed.bg()])
                 .child(strip),
         )
-}
-
-#[allow(
-    clippy::too_many_arguments,
-    clippy::needless_pass_by_value,
-    reason = "the argument list mirrors the upstream API contract"
-)]
-fn build_tab_list(
-    active: Signal<usize>,
-    labels: Vec<String>,
-    disabled: &[usize],
-    aria_label: &str,
-    order: Option<Signal<Vec<usize>>>,
-    drag: Option<DragState>,
-    closeable: bool,
-    close_handler: Option<CloseHandler>,
-    user_overlay: StyleOverlay,
-    chrome: StripChrome,
-) -> NodeBuilder {
-    let count = labels.len();
-    let disabled = Rc::new(disabled.to_vec());
-
-    let mut root = container()
-        .role(Role::TabList)
-        .label(accessible_label(aria_label))
-        .layout(tab_list_layout(chrome));
-
-    let visual_order: Vec<usize> = order.map_or_else(
-        || identity_order(count),
-        |sig| {
-            let current = sig.peek();
-            if current.len() == count {
-                current
-            } else {
-                identity_order(count)
-            }
-        },
-    );
-
-    for (visual_index, original) in visual_order.iter().copied().enumerate() {
-        let label = labels.get(original).cloned().unwrap_or_default();
-        let tab = build_tab(
-            original,
-            visual_index,
-            label,
-            active,
-            &disabled,
-            drag,
-            closeable,
-            close_handler.as_ref().map(Rc::clone),
-            user_overlay.clone(),
-            chrome,
-        );
-        root = root.child(tab);
-    }
-
-    if let Some(drag_state) = drag {
-        drag_state.bind(order, count);
-    }
-
-    root
-}
-
-fn identity_order(count: usize) -> Vec<usize> {
-    (0..count).collect()
 }
 
 use super::content::wrap_with_content;

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 use sigil::prelude::*;
 
@@ -19,7 +18,7 @@ const PAGES: &[&str] = &[
 const PATCH: &str = "--- a/src/app.rs\n+++ b/src/app.rs\n@@ -1,3 +1,3 @@\n fn main() {\n-    old();\n+    fresh();\n }";
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - widget gallery", 1040, 680), build)
+    sigil::run(("Sigil - widget gallery", 1040, 680), build)
 }
 
 fn build(cx: &mut Cx) -> NodeId {
@@ -231,11 +230,6 @@ fn demo_columns() -> Vec<TableColumn<DemoRow>> {
 
 fn data_page() -> NodeBuilder {
     let items: Vec<String> = (1..=40).map(|i| format!("Item {i}")).collect();
-    let turns = signal(vec![
-        String::from("Tank"),
-        String::from("Healer"),
-        String::from("Rogue"),
-    ]);
     container()
         .layout(page_layout())
         .child(section_label("Table"))
@@ -260,8 +254,6 @@ fn data_page() -> NodeBuilder {
             .selection(SelectionMode::Single)
             .viewport_height(140.0),
         )
-        .child(section_label("Turn strip"))
-        .child(turn_strip(turns).active(signal(1_usize)))
 }
 
 fn content_page() -> NodeBuilder {

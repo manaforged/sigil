@@ -14,6 +14,7 @@ fn mask(glyph_id: u32, physical_px: f32, bin: u8) -> Option<GlyphMask> {
             coords: 0,
         },
         &[],
+        0.0,
     )
 }
 

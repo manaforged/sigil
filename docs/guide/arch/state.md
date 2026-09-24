@@ -34,7 +34,7 @@ reactive owner. When an owner is disposed, its children dispose first.
 Then the `on_cleanup` hooks run in last-in-first-out order. Then the
 owner's slots go away.
 
-- `Runtime::scope("name", || { ... })` creates a root. `launch` wraps
+- `Runtime::scope("name", || { ... })` creates a root. `run` wraps
   the app in one. Tests use it.
 - `Cx::add` creates one owner per node. Removing the node disposes the
   owner and its subtree.

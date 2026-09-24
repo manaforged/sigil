@@ -7,7 +7,6 @@ use crate::animation_runtime::active_count as active_animation_count;
 use crate::animation_runtime::tick as tick_animations;
 use crate::events::EventRouter;
 use crate::hal::{LogicalSize, PhysicalSize, Scale, Shell};
-use crate::kernel::Cx;
 #[cfg(test)]
 use crate::layout::LayoutEngine;
 #[cfg(test)]
@@ -34,7 +33,7 @@ use frame::frame_once;
 use frame::{begin_effect, run_layout_if_dirty};
 use scene_cache::SceneCache;
 
-pub fn launch<C, T>(config: C, tree: T) -> AppResult<()>
+pub(crate) fn launch<C, T>(config: C, tree: T) -> AppResult<()>
 where
     C: Into<AppConfig>,
     T: TreeRoot,
@@ -61,21 +60,25 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     } else {
         WinitShell::new()
     }
-    .map_err(Error::new)?;
+    .map_err(Error::window)?;
     let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
 
     let mut async_rt = install_async_runtime(&shell)?;
 
     let mut host = Host::new();
     host.mount(tree);
-    let root = host.root().expect("TreeRoot::install returns a node");
-    let theme_watch = start_theme_watch(&config, host.cx(), root);
+    if host.root().is_none() {
+        return Err(Error::new(std::io::Error::other(
+            "the mounted tree has no root node",
+        )));
+    }
+    let _theme_watch = crate::app::launch_theme(config.theme_file.as_deref());
 
     let mut viewport = (
         logical_size.width / config.user_zoom,
         logical_size.height / config.user_zoom,
     );
-    host.layout(viewport).map_err(Error::new)?;
+    host.layout(viewport).map_err(Error::from)?;
 
     let mut router = EventRouter::new();
     let a11y_action_rx = shell.a11y_action_receiver();
@@ -106,7 +109,6 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                     exit_requested: &mut exit_requested,
                     async_rt: &mut async_rt,
                     a11y_action_rx: &a11y_action_rx,
-                    theme_watch: &theme_watch,
                     frame_state: &mut frame_state,
                 };
                 if let Err(error) = run_frame(panic_policy, frame) {
@@ -117,7 +119,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
                 }
                 request_animation_frame(shell, window_handle);
             })
-            .map_err(Error::new)
+            .map_err(Error::window)
             .and_then(|()| failure.take().map_or(Ok(()), Err)),
     )
 }
@@ -136,23 +138,13 @@ fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
 }
 
 fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
-    let mut async_rt = AsyncRuntime::new().map_err(Error::new)?;
+    let mut async_rt = AsyncRuntime::new().map_err(Error::task)?;
     let waker = shell.waker();
     async_rt.set_waker(move || {
         let _ = WinitShell::wake(&waker);
     });
     async_rt.install_current();
     Ok(async_rt)
-}
-
-fn start_theme_watch(
-    config: &AppConfig,
-    cx: &mut Cx,
-    root: crate::kernel::NodeId,
-) -> Option<crate::app::theme_file::ThemeWatch> {
-    let watch = crate::app::theme_file::start(config.theme_file.as_deref())?;
-    crate::app::theme_file::attach_current(cx, root, &watch);
-    Some(watch)
 }
 
 fn create_initial_window<S>(
@@ -173,9 +165,11 @@ where
                 anchor: config.anchor,
                 user_zoom: ((config.user_zoom - 1.0).abs() > f32::EPSILON)
                     .then_some(config.user_zoom),
+                min_size: config.min_size.map(logical_size_from_config),
+                fixed_size: config.resize == crate::app::config::Resize::Fixed,
             },
         )
-        .map_err(Error::new)
+        .map_err(Error::window)
 }
 
 struct FrameCtx<'a> {
@@ -190,7 +184,6 @@ struct FrameCtx<'a> {
     exit_requested: &'a mut bool,
     async_rt: &'a mut AsyncRuntime,
     a11y_action_rx: &'a crossbeam_channel::Receiver<accesskit::ActionRequest>,
-    theme_watch: &'a Option<crate::app::theme_file::ThemeWatch>,
     frame_state: &'a mut FrameState,
 }
 
@@ -272,7 +265,7 @@ fn run_frame(policy: PanicPolicy, ctx: FrameCtx<'_>) -> AppResult<()> {
     }
 }
 
-#[doc(hidden)]
+#[cfg(any(test, feature = "kittest"))]
 pub fn __drive_test_frame(layout_pass: impl FnOnce(), paint_pass: impl FnOnce()) {
     Runtime::begin_effect();
     Runtime::begin_layout();
@@ -292,7 +285,7 @@ fn resize_surface(renderer: &mut Backend, surface: &mut Option<Surface>, physica
 
 #[cfg(test)]
 fn layout_for_scale(
-    cx: &mut Cx,
+    cx: &mut crate::kernel::Cx,
     root: crate::kernel::NodeId,
     layout: &mut LayoutEngine,
     _scale: Scale,

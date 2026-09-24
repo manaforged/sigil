@@ -311,19 +311,17 @@ const _: () = assert!(core::mem::size_of::<SpriteUniforms>() == 16);
 
 const SPRITE_SHADER: &str = include_str!("sprite_paint.wgsl");
 
-#[doc(hidden)]
-#[cfg(any(test, feature = "bench"))]
+#[cfg(test)]
 pub(crate) fn sprite_pipeline_new(device: &wgpu::Device) -> SpritePipeline {
     SpritePipeline::new(device, wgpu::TextureFormat::Rgba8UnormSrgb)
 }
 
-#[doc(hidden)]
-#[cfg(any(test, feature = "bench"))]
+#[cfg(test)]
 pub(crate) const fn max_atlases_for_test() -> usize {
     MAX_ATLASES
 }
 
-#[cfg(any(test, feature = "bench"))]
+#[cfg(test)]
 impl SpritePipeline {
     #[allow(
         clippy::too_many_arguments,

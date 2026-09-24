@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use sigil::kernel::{Cx, text};

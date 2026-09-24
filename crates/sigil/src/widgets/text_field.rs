@@ -1,6 +1,5 @@
 mod builder;
 mod handlers;
-mod ime;
 mod mask;
 mod render;
 mod selection;

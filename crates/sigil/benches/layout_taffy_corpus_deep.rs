@@ -2,12 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(
-    missing_docs,
-    clippy::missing_docs_in_private_items,
-    clippy::unwrap_used,
-    clippy::cast_precision_loss
-)]
+#![allow(clippy::unwrap_used, clippy::cast_precision_loss)]
 
 use std::hint::black_box;
 use std::time::Duration;

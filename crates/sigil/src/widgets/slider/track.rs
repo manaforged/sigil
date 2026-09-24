@@ -6,7 +6,8 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    Elevation, NodeStyleExt, Px, StateStyle, Style, StyleAtom, StyleVariant, TransitionId,
+    BORDER_WIDTH, Elevation, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Token,
+    TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -21,31 +22,29 @@ const THUMB_SIZE: f32 = 16.0;
 const TRACK_THICKNESS: f32 = 6.0;
 
 static TRACK_REST: &[StyleAtom] = &[StyleAtom::BgToneStep(4)];
-static TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
-static ROOT_DISABLED: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
+static TRACK_FILL: &[StyleAtom] = &[Token::Accent.bg()];
 static THUMB_REST: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("on-accent"),
-    StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderThemeRef("accent"),
+    Token::OnAccent.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Accent.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_HOVER: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("on-accent"),
-    StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderThemeRef("accent-hover"),
+    Token::OnAccent.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::AccentHover.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_DOWN: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("on-accent"),
-    StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderThemeRef("accent-hover"),
+    Token::OnAccent.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::AccentHover.border(),
     StyleAtom::Shadow(Elevation::Sm),
 ];
 static THUMB_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::BorderWidth(Px(1)),
-    StyleAtom::BorderToneStep(7),
-    StyleAtom::Opacity(5_000),
+    Token::OnAccent.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Gray8.border(),
 ];
 
 fn value_ratio(runtime: SliderRuntime) -> f32 {
@@ -125,14 +124,6 @@ pub(super) fn slider_thumb(
         .style_reactive(move || {
             slider_thumb_variant().state(binary_style_state(interaction, disabled))
         })
-}
-
-pub(super) const fn slider_root_variant() -> StyleVariant {
-    const EMPTY: &[StyleAtom] = &[];
-    StyleVariant::new(
-        EMPTY,
-        StateStyle::new(EMPTY, EMPTY, EMPTY, EMPTY, ROOT_DISABLED),
-    )
 }
 
 const fn slider_thumb_variant() -> StyleVariant {

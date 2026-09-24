@@ -145,7 +145,6 @@ impl AsyncRuntime {
     }
 
     #[must_use]
-    #[doc(hidden)]
     pub fn pending_count(&self) -> usize {
         self.rx.len()
     }
@@ -234,6 +233,7 @@ impl Scheduler for AsyncRuntime {
                 }
             }
         }
+        crate::reactive::run_dispatch_deferred();
         ran
     }
 }

@@ -87,6 +87,7 @@ impl CpuRenderer {
         target.fill(shapes::color(clear));
         let scale = physical_scale(size, viewport);
         self.stats = FrameStats::default();
+        self.raster.begin_frame();
         self.stats.scene_commands = scene.commands.len();
         Painter::new(
             &mut target,

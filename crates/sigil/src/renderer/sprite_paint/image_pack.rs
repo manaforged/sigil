@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use super::SpritePipeline;
-use super::atlas::{AtlasDesc, MAX_ATLASES};
+use super::atlas::{AtlasDesc, MAX_ATLASES, build_atlas, valid_atlas_desc};
 
 pub(super) const PAGE: u32 = 1024;
 const PAD: u32 = 1;
+const STALE_FRAMES: u64 = 300;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PackedImage {
@@ -37,22 +40,55 @@ struct Page {
 #[derive(Default)]
 pub(crate) struct ImagePack {
     pages: Vec<Page>,
+    frame: u64,
+    last_used: HashMap<u64, u64>,
+    reset_pending: bool,
+    free_dedicated: Vec<u32>,
 }
 
 impl ImagePack {
+    fn owns_page(&self, atlas: u32) -> bool {
+        self.pages.iter().any(|page| page.atlas == atlas)
+    }
+
+    fn evicts(&mut self, id: u64, packed: PackedImage, reset: bool) -> bool {
+        let stale = self
+            .last_used
+            .get(&id)
+            .is_none_or(|&used| used + STALE_FRAMES < self.frame);
+        let on_page = self.owns_page(packed.atlas);
+        let evict = stale || (reset && on_page);
+        if evict {
+            self.last_used.remove(&id);
+            if !on_page {
+                self.free_dedicated.push(packed.atlas);
+            }
+        }
+        evict
+    }
+
+    fn reset_pages(&mut self) {
+        for page in &mut self.pages {
+            page.x = 0;
+            page.y = 0;
+            page.shelf_h = 0;
+        }
+    }
+
     pub(super) fn try_place(&mut self, w: u32, h: u32) -> Option<PackedImage> {
         let need_w = w.saturating_add(PAD);
         let need_h = h.saturating_add(PAD);
         if need_w > PAGE || need_h > PAGE {
             return None;
         }
-        let page = self.pages.last_mut()?;
-        page.try_place(need_w, need_h).map(|(x, y)| PackedImage {
-            atlas: page.atlas,
-            x,
-            y,
-            w,
-            h,
+        self.pages.iter_mut().find_map(|page| {
+            page.try_place(need_w, need_h).map(|(x, y)| PackedImage {
+                atlas: page.atlas,
+                x,
+                y,
+                w,
+                h,
+            })
         })
     }
 
@@ -79,20 +115,54 @@ impl ImagePack {
 }
 
 impl SpritePipeline {
+    pub(crate) fn begin_frame(&mut self) {
+        let pack = &mut self.image_pack;
+        pack.frame += 1;
+        let reset = core::mem::take(&mut pack.reset_pending);
+        self.image_slots
+            .retain(|&id, &mut packed| !pack.evicts(id, packed, reset));
+        if reset {
+            pack.reset_pages();
+        }
+    }
+
     pub(crate) fn register_image(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         source: &crate::kernel::ImageSource,
     ) -> PackedImage {
+        let frame = self.image_pack.frame;
         if let Some(&packed) = self.image_slots.get(&source.id()) {
+            self.image_pack.last_used.insert(source.id(), frame);
             return packed;
         }
         let packed = self.place_image(device, queue, source);
-        if !packed.is_none() {
+        if packed.is_none() {
+            self.image_pack.reset_pending = true;
+        } else {
             self.image_slots.insert(source.id(), packed);
+            self.image_pack.last_used.insert(source.id(), frame);
         }
         packed
+    }
+
+    fn reuse_dedicated(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        desc: &AtlasDesc<'_>,
+    ) -> Option<u32> {
+        if !valid_atlas_desc(desc.bytes, desc.width, desc.height, desc.format) {
+            return None;
+        }
+        let slot = self.image_pack.free_dedicated.pop()?;
+        let index = slot as usize;
+        let (entry, bind_group) =
+            build_atlas(device, queue, &self.atlas_layout, &self.sampler, desc);
+        *self.atlases.get_mut(index)? = entry;
+        *self.atlas_bind_groups.get_mut(index)? = bind_group;
+        Some(slot)
     }
 
     fn place_image(
@@ -142,16 +212,15 @@ impl SpritePipeline {
     ) -> PackedImage {
         let w = source.width();
         let h = source.height();
-        let atlas = self.register_atlas(
-            device,
-            queue,
-            &AtlasDesc {
-                bytes: source.rgba(),
-                width: w,
-                height: h,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            },
-        );
+        let desc = AtlasDesc {
+            bytes: source.rgba(),
+            width: w,
+            height: h,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        };
+        let atlas = self
+            .reuse_dedicated(device, queue, &desc)
+            .unwrap_or_else(|| self.register_atlas(device, queue, &desc));
         if atlas == u32::MAX {
             PackedImage::NONE
         } else {

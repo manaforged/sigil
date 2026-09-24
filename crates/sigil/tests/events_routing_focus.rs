@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 #[path = "events_support/mock_shell.rs"]

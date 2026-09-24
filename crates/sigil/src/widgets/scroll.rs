@@ -6,21 +6,25 @@ use crate::layout::prelude::{
     LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
 };
 use crate::reactive::{Signal, derived_eq, effect_named, signal};
-use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess, StyleAtom};
+use crate::style::{
+    ClassSource, NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, space,
+};
 
 pub(crate) mod geometry;
 mod input;
 
 pub(crate) use input::{WheelX, pin_to_bottom, wheel, wheel_x, wheel2};
 
-const VIEWPORT_HEIGHT: f32 = 240.0;
-pub(crate) const SCROLLBAR_WIDTH: f32 = 8.0;
-pub(crate) const THUMB_MIN_HEIGHT: f32 = 24.0;
-const SCROLL_LINE: f32 = 40.0;
-static VIEWPORT_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
+const VIEWPORT_HEIGHT: f32 = space(60);
+pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);
+pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
+pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
+const SCROLL_LINE: f32 = space(10);
+static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 pub(crate) static THUMB_ATOMS: &[StyleAtom] =
-    &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
-pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
+    &[Token::SurfacePressedStrong.bg(), Radius::Full.atom()];
+pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[Radius::Full.atom()];
+static TRACK_HOVER: &[StyleAtom] = &[Radius::Full.atom(), Token::SurfaceSubtle.bg()];
 
 pub struct ScrollBuilder {
     content: NodeBuilder,
@@ -141,12 +145,17 @@ impl ScrollBuilder {
             pin_to_bottom(scroll_y, max_scroll);
         }
         let body = wrap_content(content, scroll_y, max_scroll, extent, viewport_height);
-        let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height);
-        let track = scrollbar_track(height, fill).child(thumb);
+        let hovered = signal(false);
+        let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height, hovered);
+        let track = scrollbar_track(hovered).child(thumb);
 
         let root = viewport_container(width, height, fill)
             .child(body)
             .child(track);
+        let scrollable = derived_eq(move || max_scroll.get() > 0.0);
+        let root = root
+            .focusable(true)
+            .mutate(move |node| node.a11y.tab_stop = Some(scrollable));
         let mut root = input::bind(root, scroll_y, max_scroll, viewport_height).with(
             crate::events::ScrollReveal {
                 scroll_y,
@@ -248,15 +257,23 @@ fn wrap_content(
         .style_reactive(move || geometry::content_atoms(geometry.get()))
 }
 
-fn scrollbar_track(height: f32, fill: bool) -> NodeBuilder {
-    let layout = if fill {
-        LayoutStyle::block().width(SCROLLBAR_WIDTH).fill_height()
-    } else {
-        LayoutStyle::block().fixed_size(SCROLLBAR_WIDTH, height)
-    };
+fn scrollbar_track(hovered: Signal<bool>) -> NodeBuilder {
     container()
-        .layout(layout)
-        .class(&[StyleAtom::BackgroundThemeRef("border")] as &[_])
+        .layout(
+            LayoutStyle::block()
+                .width(SCROLLBAR_WIDTH)
+                .fill_height()
+                .shrink(0.0),
+        )
+        .style_reactive(move || {
+            if hovered.get() {
+                TRACK_HOVER
+            } else {
+                TRACK_ATOMS
+            }
+        })
+        .pointer_enter(move |_| hovered.set(true))
+        .pointer_leave(move |_| hovered.set(false))
 }
 
 fn scrollbar_thumb(
@@ -264,6 +281,7 @@ fn scrollbar_thumb(
     max_scroll: Signal<f32>,
     extent: Signal<f32>,
     viewport_height: Signal<f32>,
+    hovered: Signal<bool>,
 ) -> NodeBuilder {
     let geometry = derived_eq(move || {
         let (thumb_h, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
@@ -275,19 +293,19 @@ fn scrollbar_thumb(
         };
         (to_i16(thumb_h), to_i16(t * max_travel))
     });
-
     let drag_anchor = signal::<Option<(f32, f32)>>(None);
+    let thick = derived_eq(move || hovered.get() || drag_anchor.get().is_some());
 
     container()
         .layout(
             LayoutStyle::block()
-                .fixed_size(SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT)
+                .fixed_size(THUMB_REST_WIDTH, THUMB_MIN_HEIGHT)
                 .position(Position::Absolute)
                 .inset_left(0.0)
                 .inset_top(0.0),
         )
         .class(THUMB_ATOMS)
-        .style_reactive(move || geometry::thumb_atoms(geometry.get()))
+        .style_reactive(move || geometry::thumb_atoms(geometry.get(), thick.get()))
         .pointer_down(move |ev| {
             ev.capture_pointer();
             drag_anchor.set(Some((ev.position.y, scroll_y.peek())));

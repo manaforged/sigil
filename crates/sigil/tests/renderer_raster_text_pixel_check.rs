@@ -1,4 +1,3 @@
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss)]
@@ -103,7 +102,7 @@ fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
         .expect("render_command_scene_offscreen");
 
     set_text_tuning(TextTuning::default());
-    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h);
+    let pixels = read_pixels(&device, &queue, &texture, phys_w, phys_h).expect("sigil-kittest");
     (pixels, phys_w, phys_h)
 }
 
@@ -203,9 +202,7 @@ fn bbox_overlap(a: &BBox, b: &BBox) -> f32 {
 }
 
 fn try_headless_renderer() -> Option<WgpuRenderer> {
-    let mut renderer = WgpuRenderer::new().ok()?;
-    renderer.ensure_headless_for_tests().ok()?;
-    Some(renderer)
+    sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
 }
 
 fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {

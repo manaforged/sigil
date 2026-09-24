@@ -1,6 +1,47 @@
-use crate::hal::{HitPosition, Point, Rect, TextAffinity};
+use crate::hal::{Color, HitPosition, Point, Rect, RenderedGlyph, TextAffinity};
 
-use super::{LayoutLine, LineGlyph, u32_clamp};
+use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
+
+impl Paragraph {
+    #[must_use]
+    pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
+        self.rendered_glyphs_in(0, usize::MAX)
+    }
+
+    #[must_use]
+    pub fn rendered_glyphs_in(&self, start: usize, end: usize) -> Vec<RenderedGlyph> {
+        let mut out = Vec::new();
+        for line in &self.inner.lines {
+            for g in &line.glyphs {
+                let cluster = g.cluster as usize;
+                if cluster < start || cluster >= end {
+                    continue;
+                }
+                let face = self.face_for_slot(g.face_slot);
+                out.push(RenderedGlyph {
+                    font_id: face.id,
+                    font_index: face.index,
+                    glyph_id: g.glyph_id,
+                    x: g.x,
+                    y: line.baseline_y + g.offset_y,
+                    size: self.inner.font_size,
+                    color: Color::WHITE,
+                    variation_coords: face.variation_coords.clone(),
+                    skew: face.skew,
+                });
+            }
+        }
+        out
+    }
+
+    fn face_for_slot(&self, slot: u16) -> &FaceEntry {
+        self.inner
+            .fonts
+            .get(slot as usize)
+            .or_else(|| self.inner.fonts.first())
+            .expect("Paragraph::new always seeds at least the primary face")
+    }
+}
 
 pub(super) fn pick_line(lines: &[LayoutLine], y: f32) -> &LayoutLine {
     for l in lines {

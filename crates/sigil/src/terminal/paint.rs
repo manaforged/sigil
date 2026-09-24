@@ -1,0 +1,336 @@
+use crate::hal::Rect;
+
+use crate::style::{Rgba8, Theme, Tone};
+use crate::terminal::graphics::Placement;
+use smol_str::SmolStr;
+
+mod decoration;
+mod image;
+mod junction;
+mod marks;
+#[path = "paint_clip.rs"]
+mod paint_clip;
+mod scene;
+
+pub use marks::Marks;
+pub use scene::{Paint, raster, raster_into, raster_with};
+
+pub const CONTINUES: &str = "";
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Ink {
+    #[default]
+    Bare,
+    Of(Tone),
+    Exact(Rgba8),
+}
+
+impl Ink {
+    const fn pick(colour: Rgba8, tone: Option<Tone>) -> Self {
+        match (colour, tone) {
+            (colour, _) if colour.a > 0 => Self::Exact(colour),
+            (_, Some(tone)) => Self::Of(tone),
+            (_, None) => Self::Bare,
+        }
+    }
+
+    pub(crate) const fn set(self) -> bool {
+        !matches!(self, Self::Bare)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Underline {
+    #[default]
+    None,
+    Straight,
+    Curly,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Lines {
+    pub underline: Underline,
+    pub strike: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Cell {
+    pub text: SmolStr,
+    pub fg: Ink,
+    pub bg: Ink,
+    pub bold: bool,
+    pub italic: bool,
+    pub dim: bool,
+    pub lines: Lines,
+    pub underline_ink: Ink,
+    pub link: Option<SmolStr>,
+}
+
+impl Cell {
+    #[must_use]
+    pub const fn blank() -> Self {
+        Self {
+            text: SmolStr::new_inline(" "),
+            fg: Ink::Bare,
+            bg: Ink::Bare,
+            bold: false,
+            italic: false,
+            dim: false,
+            lines: Lines {
+                underline: Underline::None,
+                strike: false,
+            },
+            underline_ink: Ink::Bare,
+            link: None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Default)]
+pub(super) struct Face {
+    pub(super) bold: bool,
+    pub(super) italic: bool,
+    pub(super) dim: bool,
+    pub(super) underline: Underline,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Grid {
+    cols: usize,
+    rows: usize,
+    cells: Vec<Cell>,
+    edges: Vec<Option<Frame>>,
+    images: Vec<Placement>,
+    graphics: bool,
+    cursor: Option<(usize, usize)>,
+}
+
+impl Grid {
+    #[must_use]
+    pub fn new(cols: u16, rows: u16) -> Self {
+        let cols = cols as usize;
+        let rows = rows as usize;
+        Self {
+            cols,
+            rows,
+            cells: vec![Cell::blank(); cols.saturating_mul(rows)],
+            edges: vec![None; cols.saturating_mul(rows)],
+            images: Vec::new(),
+            graphics: false,
+            cursor: None,
+        }
+    }
+
+    pub const fn set_graphics(&mut self, graphics: bool) {
+        self.graphics = graphics;
+    }
+
+    #[must_use]
+    pub const fn cursor(&self) -> Option<(usize, usize)> {
+        self.cursor
+    }
+
+    #[must_use]
+    pub fn images(&self) -> &[Placement] {
+        &self.images
+    }
+
+    #[must_use]
+    pub const fn cols(&self) -> usize {
+        self.cols
+    }
+
+    #[must_use]
+    pub const fn rows(&self) -> usize {
+        self.rows
+    }
+
+    pub fn reset(&mut self) {
+        self.cells.fill(Cell::blank());
+        self.edges.fill(None);
+        self.images.clear();
+        self.cursor = None;
+    }
+
+    pub fn resize(&mut self, cols: u16, rows: u16) {
+        let cols = cols as usize;
+        let rows = rows as usize;
+        if self.cols == cols && self.rows == rows {
+            self.reset();
+            return;
+        }
+        self.cols = cols;
+        self.rows = rows;
+        self.cells.clear();
+        self.cells
+            .resize(cols.saturating_mul(rows), Cell::default());
+        self.edges.clear();
+        self.edges.resize(cols.saturating_mul(rows), None);
+    }
+
+    pub fn mirror(&mut self, other: &Self) {
+        if self.cols == other.cols && self.rows == other.rows {
+            self.reset();
+            return;
+        }
+        self.cols = other.cols;
+        self.rows = other.rows;
+        self.cells.clear();
+        self.cells
+            .resize(self.cols.saturating_mul(self.rows), Cell::blank());
+        self.edges.clear();
+        self.edges.resize(self.cols.saturating_mul(self.rows), None);
+    }
+
+    #[must_use]
+    pub fn row(&self, row: usize) -> &[Cell] {
+        let start = row.saturating_mul(self.cols);
+        self.cells
+            .get(start..start.saturating_add(self.cols))
+            .unwrap_or_default()
+    }
+
+    #[must_use]
+    pub fn painted_width(&self, row: usize) -> usize {
+        self.row(row)
+            .iter()
+            .rposition(|cell| *cell != Cell::blank())
+            .map_or(0, |last| last.saturating_add(1))
+    }
+
+    #[must_use]
+    pub fn get(&self, col: usize, row: usize) -> Option<Cell> {
+        let i = self.index(col, row)?;
+        self.cells.get(i).cloned()
+    }
+
+    #[must_use]
+    pub fn text(&self) -> String {
+        let mut out = String::new();
+        for row in 0..self.rows {
+            let start = row.saturating_mul(self.cols);
+            let end = start.saturating_add(self.cols);
+            let Some(slice) = self.cells.get(start..end) else {
+                continue;
+            };
+            let mut line: String = slice.iter().map(|cell| cell.text.as_str()).collect();
+            let trimmed = line.trim_end();
+            line.truncate(trimmed.len());
+            out.push_str(&line);
+            if row + 1 < self.rows {
+                out.push('\n');
+            }
+        }
+        out
+    }
+
+    fn put(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
+        let Some(i) = self.index(col, row) else {
+            return;
+        };
+        if let Some(cell) = self.cells.get_mut(i) {
+            if text != " " {
+                cell.text = text.into();
+            }
+            if fg.set() {
+                cell.fg = fg;
+            }
+        }
+    }
+
+    fn fill(&mut self, area: Area, bg: Ink, (bare, theme): (bool, &Theme)) {
+        if !bg.set() {
+            return;
+        }
+        self.each(area, |cell| decoration::background(cell, bg, bare, theme));
+    }
+
+    fn rule(&mut self, area: Area, glyph: &str, ink: Ink) {
+        self.each(area, |cell| {
+            cell.text = glyph.into();
+            if ink.set() {
+                cell.fg = ink;
+            }
+        });
+    }
+
+    fn each(&mut self, area: Area, mut paint: impl FnMut(&mut Cell)) {
+        let ((col, row), (width, height), inside) = area;
+        let inner = frame(inside);
+        for y in row..row.saturating_add(height).min(self.rows) {
+            for x in col..col.saturating_add(width).min(self.cols) {
+                let Some(index) = self.index(x, y) else {
+                    continue;
+                };
+                let edge = self.edges.get(index).copied().flatten();
+                if edge.is_some_and(|edge| encloses(edge, inner)) {
+                    continue;
+                }
+                if let Some(slot) = self.edges.get_mut(index) {
+                    *slot = None;
+                }
+                if let Some(cell) = self.cells.get_mut(index) {
+                    paint(cell);
+                }
+            }
+        }
+    }
+
+    fn edge(&mut self, col: usize, row: usize, owner: Rect) {
+        if let Some(slot) = self
+            .index(col, row)
+            .and_then(|index| self.edges.get_mut(index))
+        {
+            *slot = Some(frame(owner));
+        }
+    }
+
+    pub(super) const fn index(&self, col: usize, row: usize) -> Option<usize> {
+        if col >= self.cols || row >= self.rows {
+            return None;
+        }
+        Some(row.saturating_mul(self.cols).saturating_add(col))
+    }
+}
+
+type Area = ((usize, usize), (usize, usize), Rect);
+
+type Frame = [i32; 4];
+
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "scene coordinates fit the i32 range after rounding"
+)]
+fn frame(rect: Rect) -> Frame {
+    let px = |value: f32| value.round() as i32;
+    [
+        px(rect.origin.x),
+        px(rect.origin.y),
+        px(rect.origin.x + rect.width),
+        px(rect.origin.y + rect.height),
+    ]
+}
+
+fn encloses(outer: Frame, inner: Frame) -> bool {
+    let [left, top, right, bottom] = outer;
+    let [x0, y0, x1, y1] = inner;
+    x0 >= left && y0 >= top && x1 <= right + 1 && y1 <= bottom + 1 && inner != outer
+}
+
+fn cell_edge(value: f32) -> usize {
+    floor_cell(value + 0.5)
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "values are bounded to the target range before the cast"
+)]
+const fn floor_cell(value: f32) -> usize {
+    if value.is_sign_negative() {
+        0
+    } else {
+        value.floor() as usize
+    }
+}

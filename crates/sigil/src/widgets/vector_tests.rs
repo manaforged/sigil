@@ -16,7 +16,9 @@ fn fills_a_triangle_in_color() {
         .line_to(2.0, 30.0)
         .close()
         .fill(blue);
-    let source = node.rasterize().expect("triangle rasterizes");
+    let source = node
+        .rasterize(&Theme::light())
+        .expect("triangle rasterizes");
     assert_eq!(source.width(), 32);
     assert_eq!(source.height(), 32);
     let again = path(32, 32)
@@ -25,7 +27,7 @@ fn fills_a_triangle_in_color() {
         .line_to(2.0, 30.0)
         .close()
         .fill(blue)
-        .rasterize()
+        .rasterize(&Theme::light())
         .unwrap();
     assert_eq!(
         source.id(),
@@ -33,7 +35,7 @@ fn fills_a_triangle_in_color() {
         "same commands reuse the CPU raster"
     );
 
-    let rgba = node.rasterize().unwrap();
+    let rgba = node.rasterize(&Theme::light()).unwrap();
     assert_eq!(rgba.width(), 32);
     let mut pixmap = Pixmap::new(32, 32).unwrap();
     let ts_path = build_ts_path(&node.cmds).unwrap();
@@ -64,7 +66,7 @@ fn empty_path_yields_no_image() {
                 b: 0,
                 a: 255
             })
-            .rasterize()
+            .rasterize(&Theme::light())
             .is_none()
     );
 }
@@ -84,7 +86,7 @@ fn fit_rasters_two_x_and_pins_logical_box() {
             1.35,
         )
         .fit();
-    let source = node.rasterize().expect("stroke rasterizes");
+    let source = node.rasterize(&Theme::light()).expect("stroke rasterizes");
     assert_eq!(source.width(), 32, "2x pixmap");
     assert_eq!(source.height(), 32);
     assert!(node.layout.is_some(), "fit pins a logical box");
@@ -113,8 +115,8 @@ fn intern_key_distinguishes_gradient_fills() {
         .line_to(16.0, 16.0)
         .fill_linear((0.0, 0.0), (16.0, 0.0), vec![(0.0, blue), (1.0, red)]);
     assert_ne!(
-        a.intern_key(),
-        b.intern_key(),
+        a.intern_key(a.fill.as_ref(), None),
+        b.intern_key(b.fill.as_ref(), None),
         "different gradient stops must not share a raster"
     );
 }

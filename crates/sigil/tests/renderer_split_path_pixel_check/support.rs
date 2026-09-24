@@ -10,7 +10,7 @@
 use std::sync::mpsc;
 
 use sigil::hal::Color;
-pub(super) use sigil_kittest::gpu::{read_pixels, request_device};
+pub(super) use sigil_kittest::gpu::{read_pixels, shared_device};
 
 pub(super) const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 pub(super) const BYTES_PER_PIXEL: u32 = 4;

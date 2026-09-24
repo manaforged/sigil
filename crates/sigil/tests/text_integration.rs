@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 #[path = "text_integration/bidi_visual_order.rs"]
 mod bidi_visual_order;

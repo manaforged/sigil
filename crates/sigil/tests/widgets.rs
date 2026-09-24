@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
     clippy::panic,
@@ -22,9 +21,9 @@ use sigil::renderer::{SceneCommand, emit_scene};
 struct CutMemory(RefCell<Option<String>>);
 
 impl sigil::clipboard::Clipboard for CutMemory {
-    fn set(&self, text: &str) -> Result<(), sigil::widgets::ClipError> {
+    fn set(&self, text: &str) -> Result<sigil::clipboard::Delivery, sigil::clipboard::ClipError> {
         *self.0.borrow_mut() = Some(text.to_owned());
-        Ok(())
+        Ok(sigil::clipboard::Delivery::Confirmed)
     }
     fn get(&self) -> Option<String> {
         self.0.borrow().clone()

@@ -67,6 +67,12 @@ pub trait NodeEventsExt {
         H: Fn(&mut KeyEvent) + 'static;
 
     #[must_use]
+    fn shortcut<S, H>(self, shortcut: S, h: H) -> Self
+    where
+        S: Into<Shortcut>,
+        H: Fn(&mut KeyEvent) + 'static;
+
+    #[must_use]
     fn key_any<H>(self, h: H) -> Self
     where
         H: Fn(&mut KeyEvent) + 'static;
@@ -75,6 +81,11 @@ pub trait NodeEventsExt {
     fn key_capture<S, H>(self, shortcut: S, h: H) -> Self
     where
         S: Into<Shortcut>,
+        H: Fn(&mut KeyEvent) + 'static;
+
+    #[must_use]
+    fn key_capture_any<H>(self, h: H) -> Self
+    where
         H: Fn(&mut KeyEvent) + 'static;
 
     #[must_use]
@@ -199,6 +210,17 @@ impl NodeEventsExt for NodeBuilder {
         })
     }
 
+    fn shortcut<S, H>(self, shortcut: S, h: H) -> Self
+    where
+        S: Into<Shortcut>,
+        H: Fn(&mut KeyEvent) + 'static,
+    {
+        let shortcut = shortcut.into();
+        with_handlers(self, move |handlers| {
+            handlers.add_shortcut(shortcut, Box::new(h));
+        })
+    }
+
     fn key_any<H>(self, h: H) -> Self
     where
         H: Fn(&mut KeyEvent) + 'static,
@@ -214,6 +236,15 @@ impl NodeEventsExt for NodeBuilder {
         let shortcut = shortcut.into();
         with_handlers(self, move |handlers| {
             handlers.add_key_capture(shortcut, Box::new(h));
+        })
+    }
+
+    fn key_capture_any<H>(self, h: H) -> Self
+    where
+        H: Fn(&mut KeyEvent) + 'static,
+    {
+        with_handlers(self, move |handlers| {
+            handlers.add_key_capture_any(Box::new(h));
         })
     }
 
@@ -273,7 +304,7 @@ pub(crate) fn with_handlers(
     builder.mutate(move |node| mutate_handlers(node, mutate))
 }
 
-fn mutate_handlers(node: &mut Node, mutate: impl FnOnce(&mut EventHandlers)) {
+pub(crate) fn mutate_handlers(node: &mut Node, mutate: impl FnOnce(&mut EventHandlers)) {
     if node.get_extension::<EventHandlers>().is_none() {
         let _ = node.attach(EventHandlers::default());
     }

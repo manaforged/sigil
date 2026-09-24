@@ -22,6 +22,7 @@ use crate::renderer::sprite_paint::BUILTIN_SPRITE_ATLAS_ID;
 use super::shapes::{Brush, solid};
 
 const ICON_PX: u32 = 128;
+const STALE_FRAMES: u64 = 300;
 
 #[derive(Clone, Copy, Eq, Hash, PartialEq)]
 struct SpriteKey {
@@ -43,7 +44,8 @@ struct TileKey {
 
 #[derive(Default)]
 pub(super) struct RasterCache {
-    images: AHashMap<u64, Pixmap>,
+    images: AHashMap<u64, (Pixmap, u64)>,
+    frame: u64,
     atlases: AHashMap<u32, Pixmap>,
     sprites: AHashMap<SpriteKey, Pixmap>,
     tiles: AHashMap<TileKey, Pixmap>,
@@ -94,6 +96,13 @@ fn fill_scaled(target: &mut Pixmap, source: &Pixmap, src: Rect, dest: Rect, brus
 }
 
 impl RasterCache {
+    pub(super) fn begin_frame(&mut self) {
+        self.frame += 1;
+        let frame = self.frame;
+        self.images
+            .retain(|_, (_, used)| *used + STALE_FRAMES >= frame);
+    }
+
     pub(super) fn image(
         &mut self,
         target: &mut Pixmap,
@@ -106,11 +115,13 @@ impl RasterCache {
             let Some(pixmap) = from_rgba8(source.width(), source.height(), source.rgba()) else {
                 return;
             };
-            self.images.insert(source.id(), pixmap);
+            self.images.insert(source.id(), (pixmap, self.frame));
         }
-        let Some(pixmap) = self.images.get(&source.id()) else {
+        let Some((pixmap, used)) = self.images.get_mut(&source.id()) else {
             return;
         };
+        *used = self.frame;
+        let pixmap = &*pixmap;
         let (src_rect, dst_rect) = fit(
             draw.fit,
             pixmap.width() as f32,

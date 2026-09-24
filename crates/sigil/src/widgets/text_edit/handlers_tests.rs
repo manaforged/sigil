@@ -3,6 +3,8 @@ use std::iter::once;
 use std::rc::Rc;
 
 use super::{TextEditRuntime, TextEditState, noop_change};
+use crate::clipboard::clipboard;
+use crate::clipboard::{ClipError, Clipboard};
 use crate::events::EventRouter;
 use crate::hal::{
     KeyEvent, KeyEventInit, KeyPhase, LogicalKey, LogicalSize, ModifiersState, PhysicalKey,
@@ -11,8 +13,7 @@ use crate::hal::{
 use crate::kernel::{Cx, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};
-use crate::widgets::clipboard::clipboard;
-use crate::widgets::{ClipError, Clipboard, text_edit};
+use crate::widgets::text_edit;
 
 #[test]
 fn external_caret_controls_the_next_edit() {
@@ -141,9 +142,9 @@ impl TextMeasure for Measure {
 }
 
 impl Clipboard for Memory {
-    fn set(&self, text: &str) -> Result<(), ClipError> {
+    fn set(&self, text: &str) -> Result<crate::clipboard::Delivery, ClipError> {
         *self.0.borrow_mut() = text.to_string();
-        Ok(())
+        Ok(crate::clipboard::Delivery::Confirmed)
     }
 
     fn get(&self) -> Option<String> {

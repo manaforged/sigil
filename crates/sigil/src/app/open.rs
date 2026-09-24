@@ -4,9 +4,25 @@ use std::process::Command;
 use crate::app::{AppResult, Error};
 
 pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
-    let mut child = command(target.as_ref()).spawn().map_err(Error::new)?;
+    if !allowed(target.as_ref()) {
+        return Err(Error::io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "open accepts only http, https, and mailto URLs",
+        )));
+    }
+    let mut child = command(target.as_ref()).spawn().map_err(Error::io)?;
     std::thread::spawn(move || drop(child.wait()));
     Ok(())
+}
+
+fn allowed(target: &OsStr) -> bool {
+    let Some(text) = target.to_str() else {
+        return false;
+    };
+    let lower = text.to_ascii_lowercase();
+    ["http://", "https://", "mailto:"]
+        .iter()
+        .any(|scheme| lower.starts_with(scheme))
 }
 
 pub(crate) fn command(target: &OsStr) -> Command {

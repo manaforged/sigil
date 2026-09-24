@@ -1,8 +1,7 @@
 # Plumbing
 
 The low-level pieces the widgets are built from: interaction state,
-drag mechanics, clipboard, terminal and audio wiring, and floating
-combat text. Use them when a stock widget does not fit — most app code
+drag mechanics, clipboard, and terminal wiring. Use them when a stock widget does not fit — most app code
 never needs them directly.
 
 ## interactive
@@ -60,14 +59,14 @@ drag_ghost(drag, |item| label(item.clone()));
 ## clipboard
 
 `trait Clipboard { fn set(&self, &str) -> Result<(), ClipError>; fn
-get(&self) -> Option<String>; }`. A thread-local handle backs it:
+get(&self) -> Option<String>; }` in `sigil::clipboard`. A thread-local handle backs it:
 `install(clip)` installs, `clipboard()` returns the `Rc<dyn
 Clipboard>`. The default is `NoopClipboard` — `set` errors and `get`
 returns `None` until something installs a real handle.
 
-`sigil::launch` calls `install(OsClipboard)` when the `desktop` feature
+`sigil::run` calls `install(OsClipboard)` when the `desktop` feature
 (`clipboard` → arboard) is on, so text widgets paste from the OS
-automatically. Outside `launch` — tests, embedded hosts — nothing is
+automatically. Outside `run` — tests, embedded hosts — nothing is
 installed. `sigil::clipboard::copy(text)` / `paste()` are the
 `AppResult` convenience wrappers, and the `clipboard-image` feature
 adds `image()`. `text_field` and `text_edit` accept a per-widget
@@ -86,44 +85,40 @@ Pair it with `Session` (`sigil::app::Session` or via the prelude under
 `pty`): `Session::spawn(program)` opens a PTY, parses output through
 vt100 into `session.lines` (a `Signal<Vec<String>>`), and
 `session.write(&bytes)` sends input to the child. Spawn requires a
-`Runtime::scope` owner and the `pty` feature — without the feature
-`spawn` returns `Err("enable feature `pty`")`. Dropping the session
+`Runtime::scope` owner. `Session` exists only with the `pty` feature. Dropping the session
 kills the child. The `terminal` widget itself is not feature-gated —
 feed it lines from anywhere.
 
-## transport and Player
+## States, keys, and accessibility
 
-`transport(playing: Signal<bool>, progress: Signal<f32>, toggle: Fn())
--> TransportBuilder`. A play/pause `icon_button` (⏸/▶ glyphs, labeled
-"Play or pause") beside a `slider` bound to `progress` over `0.0..=1.0`
-at 0.01 steps. `.seek(Fn(f32))` wires the slider's `.change` to a seek
-callback — it fires on release, not continuously.
+The visual catalog captures `interactive` in default, hover, pressed,
+focused, and disabled, and `terminal` in default, hover, pressed, and
+focused.
 
-`Player` is the matching state object: public `playing` and `progress`
-signals, plus `toggle()`, `tick()` (syncs `progress` from the sink —
-call it on an interval), `seek(ratio)`, and `play_path(path)`. Real
-playback needs the `audio` feature (rodio); without it `seek` and
-`play_path` return `Err("enable feature `audio`")` and `toggle` is a
-no-op.
+| Piece | Keys | Role | Name source |
+| --- | --- | --- | --- |
+| `interactive` | None of its own. Add `.key()` handlers on the inner node. | The inner node's role | The inner node |
+| `axis_drag` | Pointer only | The node's role | The node |
+| `drag_source`, `drop_target` | Pointer only | The node's role | The node |
+| `terminal` | Every key-down is sent to `on_input` | `TextInput` | None |
 
-## floating_text
+Drag and drop has no keyboard path. Offer a menu item or a shortcut
+that makes the same change.
 
-`floating_text(spawn: Signal<FctSpawn>) -> FloatingTextBuilder`.
-Game-style floating combat text: write a `FctSpawn` to the signal and a
-particle rises and fades.
+## Terminal notes
 
-- `FctSpawn::new(at: [f32; 2], text, color)` — spawn point, text, tint.
-- `.duration(seconds)` — particle lifetime.
-- `.drift([dx, dy])` — travel over the lifetime.
-- `.time(Signal<f32>)` — the clock; drive it from a frame/tick signal
-  so floaters animate.
-- `.at(Signal<(f32, f32)>)` — anchor all floaters to a moving point.
-- `.style(FloaterStyle)` — `Damage` (error-11), `Heal` (success-11), or
-  `Miss` (gray-12) overrides the spawn color.
-- `.capacity(n)` — pool size, default `FCT_POOL_CAPACITY` (1024);
-  spawns beyond the pool are dropped.
+- Drag and drop works in the terminal host: SGR mouse reports a press,
+  motion, and release at the cell centre. The pointer moves one cell at
+  a time.
+- The `terminal` widget is a view of lines. It works in both hosts.
+  A `Session` needs the `pty` feature.
+- The clipboard in the terminal host is OSC 52 for writes. Reads come
+  through bracketed paste.
 
-For manual control, `FctState` is the standalone pool (`new`,
-`new_anchored`, `spawn`, `tick`, `for_each_alive`,
-`alive_count`, a `generation` signal), and `FctNode` mounts an existing
-`Rc<FctState>` into the tree.
+## Example
+
+Run it with `cargo run -p sigil-ui --example widget_plumbing`.
+
+```rust
+{{#include ../../../crates/sigil/examples/widget_plumbing.rs}}
+```

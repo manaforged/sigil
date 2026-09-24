@@ -11,11 +11,11 @@ use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, Sty
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::shared::{BuilderMutator, binary_style_state, disabled_now};
+use super::super::shared::{BuilderMutator, control_surface, disabled_now};
 use super::handlers::{
     attach_key_handlers, normalized_step, pointer_down, pointer_move, pointer_up, quantize,
 };
-use super::track::{slider_root_variant, slider_thumb, track_fill, track_rest};
+use super::track::{slider_thumb, track_fill, track_rest};
 
 pub(super) type ValueChange = Rc<dyn Fn(f32) + 'static>;
 
@@ -58,6 +58,7 @@ pub struct SliderBuilder {
     on_change: Option<ValueChange>,
     orientation: Orientation,
     length: Option<f32>,
+    label: Option<String>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -80,6 +81,7 @@ impl SliderBuilder {
             on_change: None,
             orientation: Orientation::Horizontal,
             length: None,
+            label: None,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
@@ -88,6 +90,12 @@ impl SliderBuilder {
     #[must_use]
     pub const fn length(mut self, length: f32) -> Self {
         self.length = Some(length);
+        self
+    }
+
+    #[must_use]
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
         self
     }
 
@@ -170,7 +178,7 @@ impl SliderBuilder {
     ) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
         let node = attach_key_handlers(
-            slider_root(runtime, interaction, user_overlay),
+            slider_root(runtime, interaction, user_overlay, self.accessible_label()),
             interaction,
             runtime,
             Rc::clone(&on_change),
@@ -181,6 +189,12 @@ impl SliderBuilder {
             pointer_up(event, interaction, runtime.value, &on_change);
         });
         interaction.install(node)
+    }
+}
+
+impl SliderBuilder {
+    fn accessible_label(&self) -> String {
+        self.label.clone().unwrap_or_else(|| "Slider".to_owned())
     }
 }
 
@@ -264,18 +278,17 @@ fn slider_root(
     runtime: SliderRuntime,
     interaction: InteractionState,
     user_overlay: StyleOverlay,
+    label: String,
 ) -> NodeBuilder {
     let root = container()
         .role(Role::Slider)
-        .label("Slider")
+        .label(label)
         .action(Action::Increment)
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(slider_layout(runtime.orientation, runtime.length))
-        .stateful_style(slider_root_variant(), user_overlay, move || {
-            binary_style_state(interaction, runtime.disabled)
-        });
+        .layout(slider_layout(runtime.orientation, runtime.length));
+    let root = control_surface(root, interaction, runtime.disabled, user_overlay);
     match runtime.orientation {
         Orientation::Horizontal => root
             .child(track_fill(runtime))

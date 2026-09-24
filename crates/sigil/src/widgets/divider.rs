@@ -1,10 +1,10 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, StyleAtom};
+use crate::style::{NodeStyleExt, StyleAtom, Token};
 
 const HAIRLINE_PX: f32 = 1.0;
 
-static RULE_FILL: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("border")];
+static RULE_FILL: &[StyleAtom] = &[Token::Border.bg()];
 
 #[must_use]
 pub fn horizontal() -> NodeBuilder {

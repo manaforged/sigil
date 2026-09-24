@@ -40,7 +40,14 @@ impl WinitShell {
         let mut attrs = WindowAttributes::default()
             .with_title(spec.title.clone())
             .with_inner_size(size)
-            .with_visible(false);
+            .with_visible(false)
+            .with_resizable(!spec.opts.fixed_size);
+        if let Some(min) = spec.opts.min_size {
+            attrs = attrs.with_min_inner_size(WinitLogicalSize::new(
+                f64::from(min.width),
+                f64::from(min.height),
+            ));
+        }
         if spec.opts.overlay {
             attrs = attrs
                 .with_decorations(false)
@@ -96,8 +103,10 @@ impl WinitShell {
             let attrs = Self::window_attrs(&spec, active);
             match active.create_window(attrs) {
                 Ok(window) => {
-                    if spec.opts.overlay {
-                        let _ = window.set_cursor_hittest(false);
+                    if spec.opts.overlay
+                        && let Err(err) = window.set_cursor_hittest(false)
+                    {
+                        tracing::warn!(target: "sigil::shell", error = %err, "overlay hit-test disable failed");
                     }
                     self.install_a11y_adapter(active, spec.handle, &window);
                     let zoom = spec.opts.user_zoom.unwrap_or(1.0);

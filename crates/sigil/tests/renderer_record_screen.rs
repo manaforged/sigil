@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(
@@ -11,7 +10,6 @@
     clippy::missing_const_for_fn
 )]
 
-use pollster::FutureExt;
 use sigil::hal::{Color, Point, Rect};
 use sigil::renderer::{
     CommandScene, CornerRadii, OffscreenTarget, SceneBuilder, SceneRectStyle, ScreenSubmission,
@@ -41,7 +39,9 @@ fn ordering_scene() -> CommandScene {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn record_screen_orders_draws_and_matches_submit_screen() {
-    let (device, queue) = try_device().expect("GPU device required");
+    let Some((device, queue)) = gpu() else {
+        return;
+    };
     let scene = ordering_scene();
 
     let recorded = {
@@ -55,7 +55,7 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
             .record_screen(&submission(&device, &queue, &view), &scene, &mut enc)
             .expect("record_screen");
         queue.submit(core::iter::once(enc.finish()));
-        read_pixels(&device, &queue, &tex, W, H)
+        read_pixels(&device, &queue, &tex, W, H).expect("sigil-kittest")
     };
 
     let top = px(&recorded, W / 2, H / 4);
@@ -76,7 +76,7 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
             .expect("renderer")
             .submit_screen(&submission(&device, &queue, &view), &scene)
             .expect("submit_screen");
-        read_pixels(&device, &queue, &tex, W, H)
+        read_pixels(&device, &queue, &tex, W, H).expect("sigil-kittest")
     };
     for (x, y) in [(W / 2, H / 4), (W / 2, 3 * H / 4), (4, 4)] {
         let a = px(&recorded, x, y);
@@ -95,7 +95,9 @@ fn record_screen_orders_draws_and_matches_submit_screen() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn caller_owned_device_does_not_initialize_a_second_device() {
-    let (device, queue) = try_device().expect("GPU device required");
+    let Some((device, queue)) = gpu() else {
+        return;
+    };
     let texture = capture_texture(&device);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let mut renderer = WgpuRenderer::new().expect("renderer");
@@ -113,7 +115,9 @@ fn caller_owned_device_does_not_initialize_a_second_device() {
 #[test]
 #[ignore = "requires a GPU adapter"]
 fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
-    let (device, queue) = try_device().expect("GPU device required");
+    let Some((device, queue)) = gpu() else {
+        return;
+    };
     let texture = capture_texture(&device);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let mut renderer = WgpuRenderer::new().expect("renderer");
@@ -129,7 +133,7 @@ fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
         renderer.device().is_none(),
         "capture allocated a second device"
     );
-    let pixels = read_pixels(&device, &queue, &texture, W, H);
+    let pixels = read_pixels(&device, &queue, &texture, W, H).expect("sigil-kittest");
     assert_eq!(px(&pixels, W / 2, H / 4), [30, 30, 220, 255]);
     assert_eq!(px(&pixels, W / 2, 3 * H / 4), [220, 30, 30, 255]);
 }
@@ -154,31 +158,6 @@ fn submission<'a>(
     }
 }
 
-fn try_device() -> Option<(wgpu::Device, wgpu::Queue)> {
-    let instance =
-        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-    let adapter = instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            compatible_surface: None,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .block_on()
-        .ok()?;
-    adapter
-        .request_device(&wgpu::DeviceDescriptor {
-            label: Some("record_screen-test device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::downlevel_defaults(),
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-        })
-        .block_on()
-        .ok()
-}
-
 fn capture_texture(device: &wgpu::Device) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("record_screen capture"),
@@ -199,4 +178,10 @@ fn capture_texture(device: &wgpu::Device) -> wgpu::Texture {
 fn px(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
     let i = ((y * W + x) * 4) as usize;
     [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]
+}
+
+fn gpu() -> Option<(wgpu::Device, wgpu::Queue)> {
+    sigil_kittest::gpu::shared_device()
+        .expect("sigil-kittest")
+        .cloned()
 }

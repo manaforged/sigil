@@ -2,7 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, missing_docs)]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use sigil::hal::Size;
 use sigil::kernel::{Cx, TextContent, container, text_live};

@@ -1,6 +1,9 @@
+use super::text::RunNodes;
 use crate::hal::Rect;
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
-use accesskit::{Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate};
+use accesskit::{
+    Action, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,
+};
 
 pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
 
@@ -41,12 +44,16 @@ fn walk_subtree(
         }
         return;
     }
-    let projected = node(cx, id, bounds);
+    let (projected, runs) = project(cx, id, bounds);
     let ak_id = id.to_accesskit();
     if first_root.is_none() {
         *first_root = Some(ak_id);
     }
     out.push((ak_id, projected));
+    if let Some(runs) = runs {
+        out.extend(runs);
+        return;
+    }
     for &child in kernel_node.children() {
         walk_subtree(cx, child, bounds, out, first_root);
     }
@@ -54,8 +61,12 @@ fn walk_subtree(
 
 #[must_use]
 pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
+    project(cx, id, bounds).0
+}
+
+fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<RunNodes>) {
     let Some(kernel_node) = cx.get(id) else {
-        return AkNode::new(accesskit::Role::Unknown);
+        return (AkNode::new(accesskit::Role::Unknown), None);
     };
     let a11y = &kernel_node.a11y;
     let mut ak = AkNode::new(a11y.role);
@@ -70,8 +81,11 @@ pub fn node(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> AkNode {
     }
     apply_grid(&mut ak, a11y);
     apply_bounds(&mut ak, id, bounds, f64::from(cx.scale().factor()));
-    apply_children(cx, kernel_node, &mut ak);
-    ak
+    let runs = super::text::export(id, a11y, &mut ak);
+    if runs.is_none() {
+        apply_children(cx, kernel_node, &mut ak);
+    }
+    (ak, runs)
 }
 
 fn apply_bounds(ak: &mut AkNode, id: NodeId, bounds: BoundsLookup<'_>, factor: f64) {
@@ -114,8 +128,19 @@ fn apply_actions(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(shortcut) = &a11y.keyboard_shortcut {
         ak.set_keyboard_shortcut(format!("{shortcut:?}"));
     }
-    if !a11y.hittable {
-        ak.set_hidden();
+    ak.add_action(Action::ScrollIntoView);
+    if a11y.is_disabled() {
+        return;
+    }
+    if a11y.text_value.is_some() || a11y.value_now.is_some() {
+        ak.add_action(Action::SetValue);
+    }
+    if let Some(sig) = a11y.expanded {
+        ak.add_action(if sig.peek() {
+            Action::Collapse
+        } else {
+            Action::Expand
+        });
     }
 }
 
@@ -139,6 +164,9 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
         ak.set_min_numeric_value(f64::from(min));
         ak.set_max_numeric_value(f64::from(max));
     }
+    if let Some(step) = a11y.step {
+        ak.set_numeric_value_step(f64::from(step));
+    }
     if let Some(sig) = a11y.text_value {
         ak.set_value(sig.peek());
     }
@@ -148,8 +176,19 @@ fn apply_state(ak: &mut AkNode, a11y: &A11yProps) {
     if let Some(sig) = a11y.expanded {
         ak.set_expanded(sig.peek());
     }
-    if let Some(live) = a11y.live {
+    if let Some(live) = a11y.live.or_else(|| default_live(a11y.role)) {
         ak.set_live(live);
+    }
+    if let Some(level) = a11y.level {
+        ak.set_level(level);
+    }
+}
+
+const fn default_live(role: accesskit::Role) -> Option<accesskit::Live> {
+    match role {
+        accesskit::Role::Alert => Some(accesskit::Live::Assertive),
+        accesskit::Role::Status => Some(accesskit::Live::Polite),
+        _ => None,
     }
 }
 

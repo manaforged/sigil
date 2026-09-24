@@ -272,6 +272,9 @@ impl LayoutEngine {
             intent = apply_intrinsic_image_size(intent, source.width(), source.height());
         }
         apply_style_overlay(node, &mut intent, text_style.as_mut());
+        if let Some(style) = text_style.as_mut() {
+            style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
+        }
         intent = apply_reactive_position(node, intent);
         let (text_content, flags) = match &node.kind {
             NodeType::Text {

@@ -1,20 +1,17 @@
-use crate::events::prelude::{Key, NodeEventsExt};
-use crate::kernel::{NodeBuilder, Role, TopLayer, container, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use crate::events::prelude::NodeEventsExt;
+use crate::kernel::{NodeBuilder, Role, container};
+use crate::layout::PopupSide;
+use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived_eq, signal};
-use crate::style::{NodeStyleExt, StyleAtom};
+use crate::style::{Metrics, Size, space};
 
 use super::layout_ext::WidgetLayoutExt;
-use super::scroll::scroll;
+use super::listbox::{ListModel, listbox, scrolled};
+use super::popup::{self, ItemSlots, POPUP_GAP, item_row};
 use super::text_field::{TextFieldBuilder, text_field};
 
 const MAX_VISIBLE: usize = 8;
-const ROW_HEIGHT: f32 = 28.0;
-const FIELD_HEIGHT: f32 = 32.0;
-
-static SURFACE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static SURFACE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static OPTION_ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+const FIELD_HEIGHT: f32 = space(8);
 
 #[derive(Clone, Copy)]
 pub struct Combobox {
@@ -25,6 +22,7 @@ pub struct Combobox {
     cursor: Signal<usize>,
     session: Signal<u32>,
     placeholder: &'static str,
+    disabled: Option<Signal<bool>>,
 }
 
 impl Combobox {
@@ -38,7 +36,14 @@ impl Combobox {
             cursor: signal(0),
             session: signal(0),
             placeholder: "",
+            disabled: None,
         }
+    }
+
+    #[must_use]
+    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.disabled = Some(disabled);
+        self
     }
 
     #[must_use]
@@ -155,6 +160,38 @@ impl Combobox {
     }
 }
 
+impl ListModel for Combobox {
+    fn cursor(&self) -> Signal<usize> {
+        self.cursor
+    }
+
+    fn len(&self) -> usize {
+        self.filtered().len()
+    }
+
+    fn is_open(&self) -> bool {
+        self.open.peek()
+    }
+
+    fn open(&self) {
+        Self::open(*self);
+    }
+
+    fn commit(&self, index: usize) {
+        if let Some(&(option, _)) = self.filtered().get(index) {
+            Self::commit(*self, option);
+        }
+    }
+
+    fn close(&self) {
+        Self::close(*self);
+    }
+
+    fn text_input(&self) -> bool {
+        true
+    }
+}
+
 #[must_use]
 pub fn combobox(state: Combobox) -> NodeBuilder {
     let label = if state.placeholder.is_empty() {
@@ -162,34 +199,26 @@ pub fn combobox(state: Combobox) -> NodeBuilder {
     } else {
         state.placeholder
     };
-    container()
-        .role(Role::ComboBox)
-        .label(label)
-        .expanded(state.open)
-        .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT))
-        .key(Key::Escape, move |ev| {
-            ev.stop_propagation();
-            state.close();
-        })
-        .key(Key::ArrowDown, move |ev| {
-            ev.stop_propagation();
-            if state.open.peek() {
-                state.move_cursor(1);
-            } else {
-                state.open();
-            }
-        })
-        .key(Key::ArrowUp, move |ev| {
-            ev.stop_propagation();
-            state.move_cursor(-1);
-        })
-        .child(field_host(state))
-        .child(popup_host(state))
+    listbox(
+        container()
+            .role(Role::ComboBox)
+            .label(label)
+            .expanded(state.open)
+            .layout(LayoutStyle::block().fill_width().height(FIELD_HEIGHT)),
+        state,
+    )
+    .child(field_host(state))
+    .child(popup_host(state))
 }
 
 fn field_host(state: Combobox) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fill_width())
+        .pointer_down_capture(move |_| {
+            if !state.disabled.is_some_and(|disabled| disabled.peek()) && !state.open.peek() {
+                state.open();
+            }
+        })
         .children_reactive(move || {
             let _ = state.session.get();
             vec![build_field(state)]
@@ -197,8 +226,14 @@ fn field_host(state: Combobox) -> NodeBuilder {
 }
 
 fn build_field(state: Combobox) -> TextFieldBuilder {
-    text_field(state.query)
+    let field = text_field(state.query);
+    let field = match state.disabled {
+        Some(disabled) => field.disabled(disabled),
+        None => field,
+    };
+    field
         .placeholder(state.placeholder)
+        .blur(move || ListModel::blur(&state))
         .height(FIELD_HEIGHT)
         .change(move |text| state.edit(text))
         .submit(move |_| {
@@ -219,58 +254,54 @@ fn popup_host(state: Combobox) -> NodeBuilder {
     })
 }
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "row counts are small; sub-unit precision is irrelevant at render scale"
+)]
+fn rows_height(count: usize) -> f32 {
+    count as f32 * Metrics::current().control_height(Size::Default)
+}
+
 fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
-    let n = matches.len();
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    let extent = n as f32 * ROW_HEIGHT;
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
-    let popup_h = (n.min(MAX_VISIBLE) as f32) * ROW_HEIGHT;
-
-    let popup = container()
-        .role(Role::ListBox)
-        .with(TopLayer)
-        .layout(
-            LayoutStyle::flex_column()
-                .fill_width()
-                .height(popup_h)
-                .position(Position::Absolute)
-                .inset_top(FIELD_HEIGHT)
-                .inset_left(0.0),
-        )
-        .class("rounded-md")
-        .class("shadow-lg")
-        .class(SURFACE_HOVER);
-
+    let count = matches.len();
+    let extent = rows_height(count);
+    let view_h = rows_height(count.min(MAX_VISIBLE));
+    let frame = popup::popup(Role::ListBox, PopupSide::Below).layout(
+        LayoutStyle::flex_column()
+            .fill_width()
+            .height(2.0f32.mul_add(popup::inset(), view_h))
+            .padding(Metrics::current().overlay_padding())
+            .position(Position::Absolute)
+            .inset_top(FIELD_HEIGHT + POPUP_GAP)
+            .inset_left(0.0),
+    );
     let mut list = container().layout(LayoutStyle::flex_column().fill_width().height(extent));
     for (row, (index, label)) in matches.into_iter().enumerate() {
         list = list.child(build_row(state, row, index, label));
     }
-    if n > MAX_VISIBLE {
-        popup.child(scroll(list, extent).height(popup_h))
+    if count > MAX_VISIBLE {
+        frame.child(scrolled(
+            list,
+            state.cursor,
+            rows_height(1),
+            extent,
+            (None, view_h),
+        ))
     } else {
-        popup.child(list)
+        frame.child(list)
     }
 }
 
 fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBuilder {
-    container()
+    let checked = derived_eq(move || state.selected.get() == Some(index));
+    let highlight = derived_eq(move || state.cursor.get() == row);
+    let slots = ItemSlots {
+        checked: Some(checked),
+        ..ItemSlots::new(label)
+    };
+    item_row(slots, highlight)
         .role(Role::ListBoxOption)
-        .label(label.clone())
-        .selected(derived_eq(move || state.selected.get() == Some(index)))
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(ROW_HEIGHT)
-                .padding(8.0)
-                .overflow_x(Overflow::Hidden),
-        )
-        .style_reactive(move || row_atoms(state, row, index))
+        .selected(checked)
         .pointer_up(move |ev| {
             if ev.is_captured() {
                 return;
@@ -281,21 +312,6 @@ fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBu
         .pointer_enter(move |_| {
             state.cursor.set(row);
         })
-        .child(
-            text(label)
-                .layout(LayoutStyle::block().fill_width())
-                .class("text-on-surface"),
-        )
-}
-
-fn row_atoms(state: Combobox, row: usize, index: usize) -> &'static [StyleAtom] {
-    if state.selected.get() == Some(index) {
-        OPTION_ACTIVE
-    } else if state.cursor.get() == row {
-        SURFACE_HOVER
-    } else {
-        SURFACE
-    }
 }
 
 #[cfg(test)]

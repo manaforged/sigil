@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::animation::SpringPreset;
@@ -15,12 +14,14 @@ use sigil_kittest::{InteractionMode, SETTLE_SAFETY_CAP};
 const DT_60HZ: f32 = 1.0 / 60.0;
 
 fn drive_in_harness(mode: InteractionMode) {
-    let _ = sigil_kittest::render_widget_to_png(
+    if let Err(err) = sigil_kittest::render_widget_to_png_stub(
         |cx| cx.add(button("tick")),
         mode,
         [64, 64],
         (10.0, 10.0),
-    );
+    ) {
+        panic!("{err}");
+    }
 }
 
 #[test]

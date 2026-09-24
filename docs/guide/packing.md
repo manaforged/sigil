@@ -40,11 +40,28 @@ sigil-pack windows \
 ## Sign
 
 ```sh
-SIGIL_PACK_PASSWORD='secret' sigil-pack sign --key updater.key --file package.nupkg
+SIGIL_PACK_PASSWORD='secret' sigil-pack sign --key updater.key --file package.nupkg --version 0.1.0
 ```
 
-That writes `package.nupkg.sig` as a **base64** minisign envelope. Do
-not put the password on the command line. See [Signing](signing.md).
+That writes `package.nupkg.sig` as a plain minisign envelope with the
+trusted comment `file:package.nupkg\tversion:0.1.0`. `minisign -V`
+accepts it. Do not put the password on the command line. See
+[Signing](signing.md).
 
-`genkey DIR` writes a fresh `e2e.key`/`e2e.pub` dev keypair and refuses
-to overwrite existing files.
+## Verify
+
+```sh
+sigil-pack verify --pub updater.pub --file package.nupkg --version 0.1.0
+```
+
+`--sig` defaults to `<file>.sig`. Without `--version`, the command checks
+the signature and the file name, and prints the signed version.
+
+## Generate a key
+
+```sh
+SIGIL_PACK_PASSWORD='secret' sigil-pack genkey keys
+```
+
+`sigil-pack genkey DIR` writes `e2e.key` (mode 0600) and `e2e.pub` in
+`DIR`. It refuses to overwrite existing files.

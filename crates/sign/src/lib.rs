@@ -1,10 +1,3 @@
-//! Release packaging for Sigil applications.
-//!
-//! Build a macOS `.app` or a Windows app directory, then sign update
-//! packages with minisign. The envelope is the reference minisign format.
-
-#![deny(missing_docs)]
-
 use std::error::Error;
 use std::fmt;
 use std::fs::{File, read_to_string};
@@ -12,33 +5,32 @@ use std::io;
 use std::path::Path;
 
 mod cli;
+mod files;
 mod pack;
 
 pub use cli::pack_cli;
 pub use pack::{AppBundle, CodeSign, PackError, ResourceCopy, macos_app, windows_dir};
 
-use minisign::{PError, SecretKey, SecretKeyBox};
+use minisign::{PError, PublicKey, SecretKey, SecretKeyBox, SignatureBox};
 
-/// A signing failure.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum SignError {
-    /// The key file could not be read.
     KeyFile(io::Error),
-    /// The secret key could not be parsed or decrypted.
     Key(PError),
-    /// The package could not be read.
     Package(io::Error),
-    /// The envelope could not be produced.
     Envelope(PError),
+    TrustedComment(String),
 }
 
 impl fmt::Display for SignError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::KeyFile(error) => write!(f, "read secret key file: {error}"),
-            Self::Key(error) => write!(f, "load secret key: {error}"),
+            Self::Key(error) => write!(f, "load key: {error}"),
             Self::Package(error) => write!(f, "read package: {error}"),
-            Self::Envelope(error) => write!(f, "build envelope: {error}"),
+            Self::Envelope(error) => write!(f, "signature envelope: {error}"),
+            Self::TrustedComment(reason) => write!(f, "trusted comment: {reason}"),
         }
     }
 }
@@ -48,53 +40,84 @@ impl Error for SignError {
         match self {
             Self::KeyFile(error) | Self::Package(error) => Some(error),
             Self::Key(error) | Self::Envelope(error) => Some(error),
+            Self::TrustedComment(_) => None,
         }
     }
 }
 
-/// Sign the file at `package` with the secret key file at `key`.
-///
-/// `password` decrypts an encrypted secret key. Pass an empty string for an
-/// unencrypted key. The return value is the minisign envelope as text. The
-/// caller writes it. A standard `.sig` file holds the plain envelope; a
-/// transport that needs an ASCII-safe payload base64-encodes this string.
-///
-/// # Errors
-///
-/// Returns [`SignError::KeyFile`] when the key file cannot be read,
-/// [`SignError::Key`] when the key cannot be parsed or decrypted,
-/// [`SignError::Package`] when the package cannot be read, and
-/// [`SignError::Envelope`] when the signature cannot be produced.
-pub fn sign_file(package: &Path, key: &Path, password: &str) -> Result<String, SignError> {
+pub fn sign_file(
+    package: &Path,
+    key: &Path,
+    password: Option<&str>,
+    version: &str,
+) -> Result<String, SignError> {
     let secret_key = read_to_string(key).map_err(SignError::KeyFile)?;
-    sign_file_with_key(package, &secret_key, password)
+    sign_file_with_key(package, &secret_key, password, version)
 }
 
-/// Sign the file at `package` with `secret_key`, a minisign secret key box.
-///
-/// Use this when the key arrives as text rather than as a file, such as a
-/// release secret that stores the box base64-encoded. Decode the transport
-/// encoding before the call; this function takes the box itself.
-///
-/// # Errors
-///
-/// Returns [`SignError::Key`] when the key cannot be parsed or decrypted,
-/// [`SignError::Package`] when the package cannot be read, and
-/// [`SignError::Envelope`] when the signature cannot be produced.
 pub fn sign_file_with_key(
     package: &Path,
     secret_key: &str,
-    password: &str,
+    password: Option<&str>,
+    version: &str,
 ) -> Result<String, SignError> {
     let key = load_key(secret_key, password)?;
+    let comment = format!("file:{}\tversion:{version}", file_name(package)?);
     let data = File::open(package).map_err(SignError::Package)?;
-    let signature = minisign::sign(None, &key, data, None, None).map_err(SignError::Envelope)?;
+    let signature =
+        minisign::sign(None, &key, data, Some(&comment), None).map_err(SignError::Envelope)?;
     Ok(signature.into_string())
 }
 
-fn load_key(secret_key: &str, password: &str) -> Result<SecretKey, SignError> {
+pub fn verify_file(
+    public_key: &Path,
+    file: &Path,
+    sig: &Path,
+    expected_version: Option<&str>,
+) -> Result<String, SignError> {
+    let key = PublicKey::from_file(public_key).map_err(SignError::Key)?;
+    let signature = SignatureBox::from_file(sig).map_err(SignError::Envelope)?;
+    let data = File::open(file).map_err(SignError::Package)?;
+    minisign::verify(&key, &signature, data, true, false, false).map_err(SignError::Envelope)?;
+    let comment = signature.trusted_comment().map_err(SignError::Envelope)?;
+    let name = comment_field(&comment, "file")?;
+    if name != file_name(file)? {
+        return Err(SignError::TrustedComment(format!(
+            "signed for file {name}, not {}",
+            file.display()
+        )));
+    }
+    let version = comment_field(&comment, "version")?;
+    match expected_version {
+        Some(expected) if expected != version => Err(SignError::TrustedComment(format!(
+            "signed for version {version}, expected {expected}"
+        ))),
+        _ => Ok(version.to_owned()),
+    }
+}
+
+fn comment_field<'a>(comment: &'a str, key: &str) -> Result<&'a str, SignError> {
+    comment
+        .split('\t')
+        .find_map(|field| field.strip_prefix(key)?.strip_prefix(':'))
+        .ok_or_else(|| SignError::TrustedComment(format!("no {key} field in {comment}")))
+}
+
+fn file_name(path: &Path) -> Result<&str, SignError> {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| {
+            SignError::Package(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("{} has no UTF-8 file name", path.display()),
+            ))
+        })
+}
+
+fn load_key(secret_key: &str, password: Option<&str>) -> Result<SecretKey, SignError> {
+    let password = password.unwrap_or_default().to_owned();
     SecretKeyBox::from_string(secret_key)
-        .and_then(|boxed| boxed.into_secret_key(Some(password.to_owned())))
+        .and_then(|boxed| boxed.into_secret_key(Some(password)))
         .map_err(SignError::Key)
 }
 

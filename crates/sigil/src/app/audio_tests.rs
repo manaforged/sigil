@@ -43,20 +43,6 @@ fn toggle_without_a_sink_leaves_playing() {
     });
 }
 
-#[cfg(not(feature = "audio"))]
-#[test]
-fn seek_without_audio_errors() {
-    Runtime::scope("audio-seek-disabled", || {
-        let player = Player::new();
-        let err = player.seek(0.5).unwrap_err();
-        assert!(
-            err.to_string().contains("audio"),
-            "expected feature error, got {err}"
-        );
-    });
-}
-
-#[cfg(feature = "audio")]
 #[test]
 fn seek_without_sink_errors() {
     Runtime::scope("audio-seek-idle", || {
@@ -65,21 +51,6 @@ fn seek_without_sink_errors() {
         assert!(
             err.to_string().contains("play_path"),
             "expected play_path error, got {err}"
-        );
-    });
-}
-
-#[cfg(not(feature = "audio"))]
-#[test]
-fn play_path_without_audio_errors() {
-    Runtime::scope("audio-disabled", || {
-        let player = Player::new();
-        let err = player
-            .play_path(std::path::Path::new("missing.wav"))
-            .unwrap_err();
-        assert!(
-            err.to_string().contains("audio"),
-            "expected feature error, got {err}"
         );
     });
 }

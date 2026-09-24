@@ -2,11 +2,7 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(
-    missing_docs,
-    clippy::missing_docs_in_private_items,
-    clippy::unwrap_used
-)]
+#![allow(clippy::unwrap_used)]
 
 use std::hint::black_box;
 use std::sync::mpsc::{self, Receiver, Sender};

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
@@ -24,11 +23,9 @@ fn icon_commands_walk_and_populate_sprite_pipeline_cache() {
     let scene = icon_scene();
     assert_icon_command_shape(&scene);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping icon command walker test: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();

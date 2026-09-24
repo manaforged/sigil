@@ -45,17 +45,27 @@ pub fn dispatcher() -> Dispatcher {
     })
 }
 
+pub(crate) fn scope_parts(caller: &'static str) -> Option<(OwnerHandle, SpawnParts)> {
+    let Some(owner) = OwnerHandle::current() else {
+        tracing::warn!(target: "sigil::tasks", caller, "called outside a reactive scope; dropped the work");
+        return None;
+    };
+    let parts = HOST.with(|slot| slot.borrow().clone());
+    if parts.is_none() {
+        tracing::warn!(
+            target: "sigil::tasks",
+            caller,
+            "called before AsyncRuntime::install_current; dropped the work"
+        );
+    }
+    parts.map(|parts| (owner, parts))
+}
+
 #[track_caller]
 pub fn post(f: impl FnOnce() + Send + 'static) {
-    let owner = OwnerHandle::current().expect("post() called outside a reactive scope");
-    HOST.with(|slot| {
-        let parts = slot
-            .borrow()
-            .as_ref()
-            .expect("post() requires AsyncRuntime::install_current")
-            .clone();
+    if let Some((owner, parts)) = scope_parts("post") {
         crate::tasks::dispatch::dispatch_to_owner(&parts.dispatcher, owner, f);
-    });
+    }
 }
 
 #[must_use]
@@ -66,15 +76,11 @@ where
     E: Send + 'static,
     F: Future<Output = Result<T, E>> + Send + 'static,
 {
-    let owner = OwnerHandle::current().expect("spawn() called outside a reactive scope");
-    HOST.with(|slot| {
-        let parts = slot
-            .borrow()
-            .as_ref()
-            .expect("spawn() requires AsyncRuntime::install_current")
-            .clone();
-        spawn_with(parts, owner, future)
-    })
+    if let Some((owner, parts)) = scope_parts("spawn") {
+        return spawn_with(parts, owner, future);
+    }
+    drop(future);
+    crate::reactive::signal(Status::Pending)
 }
 
 #[must_use]

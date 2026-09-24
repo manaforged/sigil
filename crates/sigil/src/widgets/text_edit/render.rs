@@ -6,8 +6,8 @@ use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, O
 use crate::layout::{TextStyleCapture, with_text_geometry};
 use crate::reactive::{Signal, derived_eq, effect};
 use crate::style::{
-    NodeStyleExt, NumericAtomKind, Px, StateStyle, StyleAtom, StyleOverlay, StyleVariant,
-    TextStyle, TransitionId,
+    BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
+    StyleAtom, StyleOverlay, StyleVariant, TextStyle, Token, TransitionId, space,
 };
 
 use crate::layout::prelude::Position;
@@ -24,19 +24,22 @@ const TEXT_EDIT_TRANSITION: TransitionId = presets::SMOOTH;
 static TEXT_EDIT_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(TEXT_EDIT_TRANSITION)];
 
 static EDIT_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-inset"),
-    StyleAtom::BorderWidth(Px(1)),
+    Token::SurfaceInset.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
 ];
 static EDIT_REST: &[StyleAtom] = &[StyleAtom::BorderToneStep(9)];
-static EDIT_FOCUS: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
+static EDIT_FOCUS: &[StyleAtom] = &[Token::Accent.border()];
 static EDIT_HOVER: &[StyleAtom] = &[StyleAtom::BorderToneStep(10)];
-static EDIT_DOWN: &[StyleAtom] = &[StyleAtom::BorderThemeRef("accent")];
-static EDIT_DISABLED: &[StyleAtom] = &[StyleAtom::BorderToneStep(8), StyleAtom::Opacity(5_000)];
+static EDIT_DOWN: &[StyleAtom] = &[Token::Accent.border()];
+static EDIT_DISABLED: &[StyleAtom] = &[
+    StyleAtom::BorderToneStep(8),
+    StyleAtom::Opacity(DISABLED_OPACITY),
+];
 
 pub(super) const DEFAULT_HEIGHT: f32 = 160.0;
 
 pub(super) const fn content_padding() -> (f32, f32) {
-    (12.0, 8.0)
+    (space(3), space(2))
 }
 
 pub(super) fn build_base_node(
@@ -66,9 +69,10 @@ pub(super) fn build_base_node(
         .role(Role::TextInput)
         .label(accessible_label(placeholder_str.as_str()))
         .text_value(value)
+        .text_cursor(runtime.caret, runtime.selection)
         .placeholder(placeholder_str)
         .layout(edit_layout())
-        .class("rounded-md")
+        .class(Radius::Md.atom())
         .class(TEXT_EDIT_ANIM_BASE)
         .stateful_style(edit_variant(chrome), user_overlay, move || {
             edit_state(interaction, disabled)
@@ -116,8 +120,8 @@ fn edit_inner(
     container()
         .layout(edit_inner_layout())
         .size_reactive(runtime.viewport_size)
-        .class("rounded-sm")
-        .class("bg-surface")
+        .class(Radius::Sm.atom())
+        .class(Token::Surface.bg())
         .pointer_down(move |event| pointer_drag_start(event, &down, scroll_y))
         .pointer_move(move |event| pointer_drag_move(event, &moved, scroll_y))
         .pointer_up(move |event| pointer_up(event, interaction))
@@ -169,7 +173,7 @@ fn scroll_into_view(runtime: &TextEditRuntime) -> Signal<f32> {
     scroll_y
 }
 
-static CARET_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("on-surface")];
+static CARET_ATOMS: &[StyleAtom] = &[Token::OnSurface.bg()];
 const CARET_W: f32 = 1.5;
 
 fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> NodeBuilder {
@@ -239,7 +243,7 @@ fn edit_lines(displayed: Signal<String>, text_style: Signal<TextStyle>) -> TextB
         })
         .hittable(false)
         .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
-        .class("text-on-surface")
+        .class(Token::OnSurface.text())
 }
 
 fn pointer_up(event: &mut PointerEvent, interaction: InteractionState) {
@@ -313,7 +317,7 @@ fn displayed_text(
     })
 }
 
-pub(super) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
+pub(crate) fn splice_preedit(value: &str, caret: usize, preedit: &str) -> String {
     let caret = floor_char_boundary(value, caret);
     let mut out = String::with_capacity(value.len() + preedit.len());
     out.push_str(&value[..caret]);
@@ -349,15 +353,12 @@ fn edit_state(
 }
 
 fn edit_variant(chrome: bool) -> StyleVariant {
-    const CELL_BASE: &[StyleAtom] = &[
-        StyleAtom::BackgroundThemeRef("surface-inset"),
-        StyleAtom::BorderWidth(Px(0)),
-    ];
+    const CELL_BASE: &[StyleAtom] = &[Token::SurfaceInset.bg(), StyleAtom::BorderWidth(Px(0))];
     if !chrome {
         return StyleVariant::new(&[], StateStyle::EMPTY);
     }
     StyleVariant::new(
-        crate::style::cell_size().map_or(EDIT_BASE, |_| CELL_BASE),
+        crate::layout::snap::CellForm::new(EDIT_BASE, CELL_BASE).pick(),
         StateStyle::new(EDIT_REST, EDIT_FOCUS, EDIT_HOVER, EDIT_DOWN, EDIT_DISABLED),
     )
 }

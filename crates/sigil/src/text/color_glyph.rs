@@ -13,8 +13,8 @@ pub struct ColorGlyphRaster {
 }
 
 #[must_use]
-pub fn has_color_bitmaps(font: &FontRef<'_>) -> bool {
-    !font.bitmap_strikes().is_empty()
+pub fn has_color_glyphs(font: &FontRef<'_>) -> bool {
+    !font.bitmap_strikes().is_empty() || super::colr_paint::has_colr(font)
 }
 
 #[must_use]
@@ -23,10 +23,18 @@ pub fn glyph_for_char(font: &FontRef<'_>, ch: char) -> Option<GlyphId> {
 }
 
 #[must_use]
-pub fn rasterize(font: &FontRef<'_>, gid: GlyphId, px_per_em: f32) -> Option<ColorGlyphRaster> {
-    let glyph = font
+pub fn rasterize(
+    font: &FontRef<'_>,
+    gid: GlyphId,
+    px_per_em: f32,
+    foreground: crate::hal::Color,
+) -> Option<ColorGlyphRaster> {
+    let Some(glyph) = font
         .bitmap_strikes()
-        .glyph_for_size(Size::new(px_per_em), gid)?;
+        .glyph_for_size(Size::new(px_per_em), gid)
+    else {
+        return super::colr_paint::rasterize(font, gid, px_per_em, foreground);
+    };
     let rgba = match glyph.data {
         BitmapData::Png(bytes) => decode_png(bytes)?,
         BitmapData::Bgra(bytes) => bgra_to_rgba(bytes, glyph.width, glyph.height)?,

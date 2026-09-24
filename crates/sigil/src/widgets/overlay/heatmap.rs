@@ -1,4 +1,4 @@
-use crate::kernel::{NodeBuilder, container};
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{NodeStyleExt, Rgba8, Style};
 
@@ -10,7 +10,11 @@ pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
     grid_h: usize,
     color: F,
 ) -> NodeBuilder {
-    let mut root = container().layout(LayoutStyle::flex_column());
+    let mut root = container()
+        .role(Role::Figure)
+        .label("Heatmap")
+        .description(format!("{grid_w} by {grid_h} grid"))
+        .layout(LayoutStyle::flex_column());
     for y in 0..grid_h {
         let mut row = container().layout(LayoutStyle::flex_row());
         for x in 0..grid_w {

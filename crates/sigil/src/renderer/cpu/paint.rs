@@ -9,10 +9,10 @@
 use crate::hal::{Point, Rect};
 use tiny_skia::{FillRule, Mask, Pixmap, PixmapPaint, Transform as TsTransform};
 
-use crate::renderer::corner_radii::CornerRadii;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::walk::{IDENTITY, compose, intersect_rect, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Transform};
+use crate::scene::corner_radii::CornerRadii;
 
 use super::glyphs::GlyphCache;
 use super::raster::RasterCache;

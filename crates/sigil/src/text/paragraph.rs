@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::hal::{Color, HitPosition, ParagraphMetrics, Point, Rect, RenderedGlyph, TextAffinity};
+use crate::hal::{HitPosition, ParagraphMetrics, Point, Rect, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;
@@ -180,17 +180,29 @@ struct FaceEntry {
     index: u32,
     id: u64,
     variation_coords: Box<[i16]>,
+    skew: f32,
 }
 
+const OBLIQUE_ID: u64 = 1 << 63;
+
 impl FaceEntry {
-    fn new(font: &Font, weight: u16, size_px: f32) -> Self {
+    fn new(face: &FaceSpec, size_px: f32) -> Self {
+        let oblique = face.skew.abs() > f32::EPSILON;
         Self {
-            bytes: font.bytes_arc(),
-            index: font.face_index(),
-            id: font.id(),
-            variation_coords: font.variation_coords(weight, size_px),
+            bytes: face.font.bytes_arc(),
+            index: face.font.face_index(),
+            id: face.font.id() ^ if oblique { OBLIQUE_ID } else { 0 },
+            variation_coords: face.font.variation_coords(face.weight, size_px),
+            skew: face.skew,
         }
     }
+}
+
+#[derive(Clone)]
+pub(crate) struct FaceSpec {
+    pub(crate) font: Font,
+    pub(crate) weight: u16,
+    pub(crate) skew: f32,
 }
 
 struct ParagraphInner {
@@ -211,13 +223,12 @@ impl Paragraph {
     pub(crate) fn new(
         lines: Vec<LayoutLine>,
         metrics: TextMetrics,
-        faces: &[Font],
-        weight: u16,
+        faces: &[FaceSpec],
         min_content_hint: f32,
     ) -> Self {
         let fonts: Vec<FaceEntry> = faces
             .iter()
-            .map(|font| FaceEntry::new(font, weight, metrics.font_size))
+            .map(|face| FaceEntry::new(face, metrics.font_size))
             .collect();
         Self {
             inner: Rc::new(ParagraphInner {
@@ -313,44 +324,31 @@ impl Paragraph {
         rects
     }
 
-    #[must_use]
-    pub fn rendered_glyphs(&self) -> Vec<RenderedGlyph> {
-        let mut out = Vec::new();
-        for line in &self.inner.lines {
-            for g in &line.glyphs {
-                let face = self.face_for_slot(g.face_slot);
-                out.push(RenderedGlyph {
-                    font_id: face.id,
-                    font_index: face.index,
-                    glyph_id: g.glyph_id,
-                    x: g.x,
-                    y: line.baseline_y + g.offset_y,
-                    size: self.inner.font_size,
-                    color: Color::WHITE,
-                    variation_coords: face.variation_coords.clone(),
-                });
-            }
-        }
-        out
-    }
-
-    fn face_for_slot(&self, slot: u16) -> &FaceEntry {
-        self.inner
-            .fonts
-            .get(slot as usize)
-            .or_else(|| self.inner.fonts.first())
-            .expect("Paragraph::new always seeds at least the primary face")
-    }
-
     pub fn for_each_font<F>(&self, mut f: F)
     where
         F: FnMut(u64, &[u8], u32),
     {
+        self.for_each_font_arc(|id, bytes, index| f(id, bytes.as_slice(), index));
+    }
+
+    pub(crate) fn for_each_font_arc<F>(&self, mut f: F)
+    where
+        F: FnMut(u64, &Arc<Vec<u8>>, u32),
+    {
         if self.inner.lines.iter().all(|l| l.glyphs.is_empty()) {
             return;
         }
-        for face in &self.inner.fonts {
-            f(face.id, face.bytes.as_slice(), face.index);
+        for (index, face) in self.inner.fonts.iter().enumerate() {
+            let seen = self
+                .inner
+                .fonts
+                .get(..index)
+                .unwrap_or_default()
+                .iter()
+                .any(|prior| prior.id == face.id && prior.index == face.index);
+            if !seen {
+                f(face.id, &face.bytes, face.index);
+            }
         }
     }
 }

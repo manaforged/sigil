@@ -17,7 +17,11 @@ pub(super) fn apply_viewport_overrides(
 ) -> NodeBuilder {
     let base = LayoutStyle::block().overflow_y(Overflow::Hidden);
     let base = if size.fill {
-        base.width(Dimension::Fill).height(Dimension::Fill)
+        base.width(Dimension::Fill)
+            .height(Dimension::Fill)
+            .grow(1.0)
+            .flex_basis(Dimension::Px(0.0))
+            .min_size(0.0, 0.0)
     } else {
         let with_height = base.height(size.height);
         match size.width {

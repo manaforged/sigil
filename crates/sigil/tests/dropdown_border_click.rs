@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
@@ -110,7 +109,7 @@ fn assert_single_bordered_trigger(cx: &Cx, root: NodeId, layout: &LayoutEngine) 
     let trigger = cx.nth_child(root, 0).expect("trigger");
     assert_eq!(
         cx.get(trigger).expect("trigger node").a11y.role,
-        Role::Button,
+        Role::GenericContainer,
         "the trigger must be the sole painted and hittable surface",
     );
     let trigger_rect = layout.result(trigger).expect("trigger layout").rect();

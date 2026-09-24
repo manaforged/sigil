@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(deprecated)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
@@ -24,7 +23,7 @@ mod support;
 
 use support::{
     FORMAT, create_capture_texture, create_depth_texture, linear_to_srgb_u8, pixel_rgba,
-    pre_clear_texture, read_pixels, request_device,
+    pre_clear_texture, read_pixels, shared_device,
 };
 
 const PHYS_W: u32 = 1280;
@@ -48,7 +47,7 @@ const fn identity_4x4() -> [[f32; 4]; 4] {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_screen_renders_into_offscreen() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -73,7 +72,7 @@ fn assert_submit_screen_renders_into_offscreen() {
         )
         .expect("submit_screen");
 
-    let pixels = read_pixels(&device, &queue, &texture, PHYS_W, PHYS_H);
+    let pixels = read_pixels(&device, &queue, &texture, PHYS_W, PHYS_H).expect("sigil-kittest");
 
     assert_pixel_dark(&pixels, 32, 32, "clear region (32,32)");
     let cx = (RED_RECT_X + RED_RECT_W / 2.0) as u32;
@@ -84,7 +83,7 @@ fn assert_submit_screen_renders_into_offscreen() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_renderer_reusable_across_targets() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -129,8 +128,10 @@ fn assert_renderer_reusable_across_targets() {
         )
         .expect("submit_screen B");
 
-    let px_a = read_pixels(&device, &queue, &tex_a, vp_a.0 as u32, vp_a.1 as u32);
-    let px_b = read_pixels(&device, &queue, &tex_b, vp_b.0 as u32, vp_b.1 as u32);
+    let px_a =
+        read_pixels(&device, &queue, &tex_a, vp_a.0 as u32, vp_a.1 as u32).expect("sigil-kittest");
+    let px_b =
+        read_pixels(&device, &queue, &tex_b, vp_b.0 as u32, vp_b.1 as u32).expect("sigil-kittest");
 
     assert_target_a_gradient_not_corrupted(&px_a, vp_a.0 as u32);
     assert_target_b_pattern_not_corrupted(&px_b, vp_b.0 as u32);
@@ -139,7 +140,7 @@ fn assert_renderer_reusable_across_targets() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_deprecated_offscreen_forwards() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -184,15 +185,15 @@ fn assert_deprecated_offscreen_forwards() {
         )
         .expect("submit_screen");
 
-    let pix_dep = read_pixels(&device, &queue, &tex_dep, PHYS_W, PHYS_H);
-    let pix_new = read_pixels(&device, &queue, &tex_new, PHYS_W, PHYS_H);
+    let pix_dep = read_pixels(&device, &queue, &tex_dep, PHYS_W, PHYS_H).expect("sigil-kittest");
+    let pix_new = read_pixels(&device, &queue, &tex_new, PHYS_W, PHYS_H).expect("sigil-kittest");
     assert_bytes_near_identical(&pix_dep, &pix_new, 2);
 }
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_world_stub_returns_ok() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping split_path_pixel_check");
         return;
     };
@@ -223,7 +224,7 @@ fn assert_submit_world_stub_returns_ok() {
         );
     assert!(result.is_ok(), "submit_world stub returned Err: {result:?}");
 
-    let pixels = read_pixels(&device, &queue, &tex_world, PHYS_W, PHYS_H);
+    let pixels = read_pixels(&device, &queue, &tex_world, PHYS_W, PHYS_H).expect("sigil-kittest");
     assert_stub_left_pre_clear_intact(&pixels, pre_clear);
 }
 

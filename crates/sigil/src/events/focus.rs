@@ -16,11 +16,12 @@ mod targets;
 mod request;
 mod reveal;
 
-pub use request::request_focus;
-pub(crate) use request::take_focus_requests;
+pub use request::{request_focus, request_reveal};
+pub(crate) use request::{take_focus_requests, take_reveal_requests};
 pub(crate) use reveal::{ScrollReveal, reveal_focus};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FocusIntent {
     Up,
     Down,
@@ -185,7 +186,12 @@ impl FocusManager {
             .iter()
             .copied()
             .filter(|id| {
-                visible(cx, *id) && cx.get(*id).is_some_and(|node| node.a11y.is_focusable())
+                visible(cx, *id)
+                    && cx.get(*id).is_some_and(|node| {
+                        node.a11y.is_focusable()
+                            && (self.focused == Some(*id)
+                                || node.a11y.tab_stop.is_none_or(|stop| stop.peek()))
+                    })
             })
             .collect()
     }

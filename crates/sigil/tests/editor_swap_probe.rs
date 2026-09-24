@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(
     clippy::unwrap_used,
     clippy::indexing_slicing,
@@ -58,7 +57,7 @@ fn recompute(layout: &mut LayoutEngine, cx: &mut Cx, root: NodeId) {
 const FORMAT: TextureFormat = TextureFormat::Rgba8UnormSrgb;
 
 fn renderer_device(renderer: &mut WgpuRenderer) -> Option<(wgpu::Device, wgpu::Queue)> {
-    renderer.ensure_headless_for_tests().ok()?;
+    *renderer = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")?;
     let device = renderer.device()?.clone();
     let queue = renderer.queue()?.clone();
     Some((device, queue))
@@ -113,7 +112,7 @@ fn render(
         )
         .expect("render_command_scene_offscreen");
 
-    let raw = read_pixels(device, queue, &texture, W, H);
+    let raw = read_pixels(device, queue, &texture, W, H).expect("sigil-kittest");
     let img = image::RgbaImage::from_raw(W, H, raw).expect("rgba");
     img.save(temp_dir().join(format!("swap_{}_{label}.png", process::id())))
         .expect("save");

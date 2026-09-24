@@ -1,4 +1,3 @@
-//! The animator runtime that ticks active animations into style atoms.
 #![allow(clippy::redundant_pub_crate)]
 
 #[cfg(test)]

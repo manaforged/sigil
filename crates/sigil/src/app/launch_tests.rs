@@ -187,6 +187,7 @@ fn initial_window_threads_overlay_opts() {
                 frameless: false,
                 anchor: Some(anchor),
                 user_zoom: None,
+                ..crate::hal::WindowOpts::default()
             }
         )]
     );
@@ -231,6 +232,7 @@ fn initial_window_threads_frameless_opts() {
                 frameless: true,
                 anchor: None,
                 user_zoom: None,
+                ..crate::hal::WindowOpts::default()
             }
         )]
     );

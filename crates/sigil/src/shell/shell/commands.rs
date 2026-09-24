@@ -38,10 +38,14 @@ impl WinitShell {
             WindowCommand::Minimize => window.set_minimized(true),
             WindowCommand::ToggleMaximize => window.set_maximized(!window.is_maximized()),
             WindowCommand::Drag => {
-                let _ = window.drag_window();
+                if let Err(err) = window.drag_window() {
+                    tracing::warn!(target: "sigil::shell", error = %err, "window drag failed");
+                }
             }
             WindowCommand::DragResize(direction) => {
-                let _ = window.drag_resize_window(winit_direction(direction));
+                if let Err(err) = window.drag_resize_window(winit_direction(direction)) {
+                    tracing::warn!(target: "sigil::shell", error = %err, "window drag-resize failed");
+                }
             }
         }
     }

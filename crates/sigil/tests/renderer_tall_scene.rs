@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
@@ -22,10 +21,9 @@ const DRAWS: u32 = 2_100;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pass_heavy_scene_keeps_device_alive() {
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    renderer
-        .ensure_headless_for_tests()
-        .expect("headless device");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
+        return;
+    };
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
 
@@ -117,6 +115,7 @@ fn render_offscreen(
         VIEWPORT.0 as u32,
         VIEWPORT.1 as u32,
     )
+    .expect("sigil-kittest")
 }
 
 const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {

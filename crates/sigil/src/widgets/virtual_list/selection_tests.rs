@@ -1,4 +1,4 @@
-#![allow(clippy::indexing_slicing, missing_docs)]
+#![allow(clippy::indexing_slicing)]
 
 use super::*;
 

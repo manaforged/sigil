@@ -9,6 +9,7 @@ use crate::hal::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum Anchor {
     BottomCenter { margin: f32 },
 }
@@ -19,9 +20,12 @@ pub struct WindowOpts {
     pub frameless: bool,
     pub anchor: Option<Anchor>,
     pub user_zoom: Option<f32>,
+    pub min_size: Option<LogicalSize>,
+    pub fixed_size: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ResizeDirection {
     East,
     North,
@@ -34,6 +38,7 @@ pub enum ResizeDirection {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum WindowCommand {
     Close,
     Minimize,

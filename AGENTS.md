@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Sigil is a Rust UI library. One widget tree, three hosts: `sigil::launch`
-(window), `sigil::Host` (embed), `sigil_tui::run` (terminal).
+Sigil is a Rust UI library. One widget tree, three hosts: `sigil::run`
+(window, or terminal with `.terminal()`), and `sigil::Host` (embed).
 
 This file is for an agent that edits this repository. Writing an app
 that depends on Sigil: read [docs/api.md](docs/api.md).
@@ -10,8 +10,7 @@ Humans: [README](README.md). Patching this repo: [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Layout
 
-- `crates/sigil` — package `sigil-gui`, library `sigil`
-- `crates/tui` — package `sigil-tui`
+- `crates/sigil` — package `sigil-ui`, library `sigil`; terminal host in `src/terminal` (feature `terminal`)
 - `crates/sign` — package `sigil-sign`, binary `sigil-pack`
 - `crates/kittest` — package `sigil-kittest`, PNG golden harness for dependents
 - `crates/sigil/examples` — hello-counter, hello-host, widget demos
@@ -24,15 +23,15 @@ xkbcommon, and xdo headers.
 
 ```bash
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace --no-fail-fast
+cargo clippy --workspace --all-targets --features sigil-ui/terminal -- -D warnings
+cargo test --workspace --features sigil-ui/terminal --no-fail-fast
 cargo deny check
 ```
 
 GPU tests are ignored by default. With an adapter:
 
 ```bash
-SIGIL_REQUIRE_GOLDENS=1 cargo test --workspace -- --ignored
+cargo test --workspace -- --ignored
 ```
 
 `SIGIL_BACKEND=cpu` selects the software renderer.

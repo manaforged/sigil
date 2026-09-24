@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_sign_loss, clippy::doc_markdown)]
@@ -12,13 +11,13 @@ use sigil::prelude::*;
 
 use sigil_kittest::{
     InteractionMode, assert_goldens_differ, assert_png_matches_golden, golden_path,
-    render_widget_to_png, render_widget_to_png_focus_descendant,
+    render_widget_to_png_focus_descendant, render_widget_to_png_stub,
 };
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: Option<image::RgbaImage>) {
-    let Some(img) = img else {
+fn check(stem: &str, img: sigil_kittest::Rendered) {
+    let Some(img) = img.expect("sigil-kittest") else {
         println!("no GPU adapter — skipping {stem}");
         return;
     };
@@ -38,7 +37,7 @@ fn on_panel(inner: impl IntoNode + 'static, w: f32, h: f32) -> NodeBuilder {
 
 #[test]
 fn button_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::Default,
         [160, 56],
@@ -49,7 +48,7 @@ fn button_default() {
 
 #[test]
 fn button_solid_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save").primary()),
         InteractionMode::Default,
         [160, 56],
@@ -60,7 +59,7 @@ fn button_solid_default() {
 
 #[test]
 fn button_hover() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::Hover,
         [160, 56],
@@ -71,7 +70,7 @@ fn button_hover() {
 
 #[test]
 fn button_pressed() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::Pressed,
         [160, 56],
@@ -82,7 +81,7 @@ fn button_pressed() {
 
 #[test]
 fn button_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save")),
         InteractionMode::Focused,
         [160, 56],
@@ -93,7 +92,7 @@ fn button_focused() {
 
 #[test]
 fn button_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(button("Save").enabled(false)),
         InteractionMode::Disabled,
         [160, 56],
@@ -104,7 +103,7 @@ fn button_disabled() {
 
 #[test]
 fn checkbox_checked() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(true);
             cx.add(checkbox(checked).class("bg-surface rounded-sm"))
@@ -118,7 +117,7 @@ fn checkbox_checked() {
 
 #[test]
 fn checkbox_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(false);
             cx.add(checkbox(checked).class("bg-surface rounded-sm"))
@@ -132,7 +131,7 @@ fn checkbox_default() {
 
 #[test]
 fn checkbox_hover() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(false);
             cx.add(checkbox(checked).class("bg-surface rounded-sm"))
@@ -146,7 +145,7 @@ fn checkbox_hover() {
 
 #[test]
 fn checkbox_pressed() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(false);
             cx.add(checkbox(checked).class("bg-surface rounded-sm"))
@@ -160,7 +159,7 @@ fn checkbox_pressed() {
 
 #[test]
 fn checkbox_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(false);
             cx.add(checkbox(checked).class("bg-surface rounded-sm"))
@@ -174,7 +173,7 @@ fn checkbox_focused() {
 
 #[test]
 fn checkbox_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let checked = signal(false);
             let dis = signal(true);
@@ -193,7 +192,7 @@ fn checkbox_disabled() {
 
 #[test]
 fn slider_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             cx.add(slider(v, 0.0..=100.0))
@@ -207,7 +206,7 @@ fn slider_default() {
 
 #[test]
 fn slider_hover() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             cx.add(slider(v, 0.0..=100.0))
@@ -221,7 +220,7 @@ fn slider_hover() {
 
 #[test]
 fn slider_pressed() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             cx.add(slider(v, 0.0..=100.0))
@@ -235,7 +234,7 @@ fn slider_pressed() {
 
 #[test]
 fn slider_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             cx.add(slider(v, 0.0..=100.0))
@@ -249,7 +248,7 @@ fn slider_focused() {
 
 #[test]
 fn slider_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             let dis = signal(true);
@@ -264,7 +263,7 @@ fn slider_disabled() {
 
 #[test]
 fn panel_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(panel().title("Settings")),
         InteractionMode::Default,
         [340, 92],
@@ -275,7 +274,7 @@ fn panel_default() {
 
 #[test]
 fn progress_empty() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(0.0_f32);
             cx.add(progress(v, 100.0).height(24.0))
@@ -289,7 +288,7 @@ fn progress_empty() {
 
 #[test]
 fn progress_half() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(50.0_f32);
             cx.add(progress(v, 100.0).height(24.0))
@@ -303,7 +302,7 @@ fn progress_half() {
 
 #[test]
 fn progress_full() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(100.0_f32);
             cx.add(progress(v, 100.0).height(24.0))
@@ -321,7 +320,7 @@ fn dropdown_options() -> Vec<String> {
 
 #[test]
 fn dropdown_open() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             cx.add(dropdown(sel, dropdown_options()))
@@ -335,7 +334,7 @@ fn dropdown_open() {
 
 #[test]
 fn dropdown_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             cx.add(dropdown(sel, dropdown_options()))
@@ -349,7 +348,7 @@ fn dropdown_default() {
 
 #[test]
 fn dropdown_hover() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             cx.add(dropdown(sel, dropdown_options()))
@@ -363,7 +362,7 @@ fn dropdown_hover() {
 
 #[test]
 fn dropdown_pressed() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             cx.add(dropdown(sel, dropdown_options()))
@@ -377,7 +376,7 @@ fn dropdown_pressed() {
 
 #[test]
 fn dropdown_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             cx.add(dropdown(sel, dropdown_options()))
@@ -391,7 +390,7 @@ fn dropdown_focused() {
 
 #[test]
 fn dropdown_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let sel = signal(0_usize);
             let dis = signal(true);
@@ -406,7 +405,7 @@ fn dropdown_disabled() {
 
 #[test]
 fn scroll_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let body = container()
                 .class("bg-accent rounded-sm")
@@ -422,7 +421,7 @@ fn scroll_default() {
 
 #[test]
 fn text_field_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(String::from("Hello"));
             cx.add(text_field(v))
@@ -436,7 +435,7 @@ fn text_field_default() {
 
 #[test]
 fn text_field_hover() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(String::from("Hello"));
             cx.add(text_field(v))
@@ -450,7 +449,7 @@ fn text_field_hover() {
 
 #[test]
 fn text_field_pressed() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(String::from("Hello"));
             cx.add(text_field(v))
@@ -464,7 +463,7 @@ fn text_field_pressed() {
 
 #[test]
 fn text_field_focused() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(String::from("Hello"));
             cx.add(text_field(v))
@@ -478,7 +477,7 @@ fn text_field_focused() {
 
 #[test]
 fn text_field_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let v = signal(String::from("Hello"));
             let dis = signal(true);
@@ -497,7 +496,7 @@ fn tab_labels() -> Vec<String> {
 
 #[test]
 fn tabs_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let active = signal(0_usize);
             cx.add(tabs(active, tab_labels()))
@@ -511,7 +510,7 @@ fn tabs_default() {
 
 #[test]
 fn tabs_hover_tab2() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let active = signal(0_usize);
             cx.add(tabs(active, tab_labels()))
@@ -525,7 +524,7 @@ fn tabs_hover_tab2() {
 
 #[test]
 fn tabs_active_tab2() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let active = signal(1_usize);
             cx.add(tabs(active, tab_labels()))
@@ -547,6 +546,7 @@ fn tabs_focused() {
         InteractionMode::Focused,
         [260, 56],
         (40.0, 17.0),
+        sigil_kittest::stub_text_measure(),
     );
     check("tabs_focused", img);
 }
@@ -558,7 +558,7 @@ fn tabs_focused_differs_from_default() {
 
 #[test]
 fn tabs_disabled() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let active = signal(0_usize);
             cx.add(tabs(active, tab_labels()).disabled(&[1]))
@@ -572,7 +572,7 @@ fn tabs_disabled() {
 
 #[test]
 fn modal_open() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -596,7 +596,7 @@ fn modal_open() {
 
 #[test]
 fn modal_dimmed_backdrop() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let bg = container().class("bg-accent").layout(
@@ -644,6 +644,7 @@ fn modal_focused() {
         InteractionMode::Focused,
         [286, 164],
         (143.0, 82.0),
+        sigil_kittest::stub_text_measure(),
     );
     check("modal_focused", img);
 }
@@ -655,7 +656,7 @@ fn modal_focused_differs_from_open() {
 
 #[test]
 fn modal_dismissing() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -680,7 +681,7 @@ fn modal_dismissing() {
 
 #[test]
 fn menu_open() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -704,7 +705,7 @@ fn menu_open() {
 
 #[test]
 fn menu_hover_item2() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -728,7 +729,7 @@ fn menu_hover_item2() {
 
 #[test]
 fn menu_disabled_item() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -752,7 +753,7 @@ fn menu_disabled_item() {
 
 #[test]
 fn menu_with_separators() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -777,7 +778,7 @@ fn menu_with_separators() {
 
 #[test]
 fn menu_submenu_open() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let open = signal(true);
             let m = container()
@@ -801,7 +802,7 @@ fn menu_submenu_open() {
 
 #[test]
 fn tooltip_visible() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -818,7 +819,7 @@ fn tooltip_visible() {
 
 #[test]
 fn tooltip_offscreen_clamp() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(tooltip("Save the file").clamp_top().child(button("Save"))),
         InteractionMode::Hover,
         [150, 44],
@@ -829,7 +830,7 @@ fn tooltip_offscreen_clamp() {
 
 #[test]
 fn tooltip_with_keyboard_shortcut() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             cx.add(
                 container()
@@ -912,7 +913,7 @@ fn table_golden_view() -> NodeBuilder {
 
 #[test]
 fn table_default() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| cx.add(table_golden_view()),
         InteractionMode::Default,
         [320, 172],
@@ -923,7 +924,7 @@ fn table_default() {
 
 #[test]
 fn table_selected() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let state = table_golden_state();
             state.select_only(1);
@@ -949,7 +950,7 @@ fn table_selected() {
 
 #[test]
 fn table_sorted() {
-    let img = render_widget_to_png(
+    let img = render_widget_to_png_stub(
         |cx| {
             let state = table_golden_state();
             state.toggle_sort("name");

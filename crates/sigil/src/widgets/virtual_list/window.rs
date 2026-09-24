@@ -20,6 +20,14 @@ pub(super) fn positive_px(px: f32, fallback: f32) -> f32 {
     }
 }
 
+pub(super) fn row_px(px: f32) -> f32 {
+    if px.is_finite() && px > 0.0 {
+        crate::layout::snap::track(px)
+    } else {
+        crate::layout::snap::line(DEFAULT_ROW_HEIGHT)
+    }
+}
+
 #[allow(
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,

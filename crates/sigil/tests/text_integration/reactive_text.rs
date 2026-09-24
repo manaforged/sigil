@@ -1,4 +1,4 @@
-#![allow(missing_docs, clippy::unwrap_used)]
+#![allow(clippy::unwrap_used)]
 
 use std::rc::Rc;
 

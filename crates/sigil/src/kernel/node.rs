@@ -99,6 +99,7 @@ impl Node {
 }
 
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub enum NodeType {
     Container,
     Text {

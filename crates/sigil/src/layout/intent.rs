@@ -117,6 +117,30 @@ impl LayoutStyle {
     }
 
     #[must_use]
+    pub fn min_width(mut self, value: impl Into<Dimension>) -> Self {
+        self.0.min_size.width = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn min_height(mut self, value: impl Into<Dimension>) -> Self {
+        self.0.min_size.height = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn max_width(mut self, value: impl Into<Dimension>) -> Self {
+        self.0.max_size.width = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn max_height(mut self, value: impl Into<Dimension>) -> Self {
+        self.0.max_size.height = value.into();
+        self
+    }
+
+    #[must_use]
     pub const fn fixed_size(mut self, width: f32, height: f32) -> Self {
         self.0.size.width = Dimension::Px(width);
         self.0.size.height = Dimension::Px(height);
@@ -323,8 +347,8 @@ impl LayoutStyle {
     }
 
     #[must_use]
-    pub const fn flex_basis(mut self, basis: Dimension) -> Self {
-        self.0.flex_basis = basis;
+    pub fn flex_basis(mut self, basis: impl Into<Dimension>) -> Self {
+        self.0.flex_basis = basis.into();
         self
     }
 

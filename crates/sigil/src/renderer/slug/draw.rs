@@ -261,7 +261,7 @@ impl SlugTextPipeline {
                     variation_coords: g.variation_coords.clone(),
                 };
                 if let Some(data) =
-                    preprocess_glyph(bytes, font_index, g.glyph_id, &g.variation_coords)
+                    preprocess_glyph(bytes, font_index, g.glyph_id, &g.variation_coords, g.skew)
                 {
                     cache.insert(key, data);
                 }

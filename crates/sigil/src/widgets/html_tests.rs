@@ -27,7 +27,7 @@ fn html_maps_subset_to_markdown_blocks() {
         Some(Block::Heading { level: 1, .. })
     ));
     assert!(matches!(blocks.get(1), Some(Block::Paragraph(body)) if body.contains("**world**")));
-    assert!(matches!(blocks.get(2), Some(Block::List(items)) if items.len() == 2));
+    assert!(matches!(blocks.get(2), Some(Block::List(list)) if list.items.len() == 2));
 }
 
 #[test]

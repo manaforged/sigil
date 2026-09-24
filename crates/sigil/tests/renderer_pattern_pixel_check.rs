@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
@@ -14,7 +13,7 @@ use sigil::renderer::{
     CornerRadii, OffscreenTarget, PatternKind, SceneBuilder, ScenePatternStyle, WgpuRenderer,
 };
 use sigil::style::Rgba8;
-use sigil_kittest::gpu::{read_pixels, request_device};
+use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -32,7 +31,7 @@ const CY: f32 = 80.0;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn pattern_pixels_match_slash_and_checker_contracts() {
-    let Some((device, queue)) = request_device() else {
+    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
         println!("no adapter — skipping pattern_pixel_check");
         return;
     };
@@ -105,7 +104,7 @@ fn render_pattern_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u8> {
             Color::rgba(0.06, 0.07, 0.10, 1.0),
         )
         .expect("render_command_scene_offscreen");
-    read_pixels(device, queue, &texture, phys_w, phys_h)
+    read_pixels(device, queue, &texture, phys_w, phys_h).expect("sigil-kittest")
 }
 
 fn assert_slash_transitions(pixels: &[u8], phys_w: u32) {

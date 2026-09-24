@@ -1,6 +1,6 @@
 # Architecture overview
 
-One frame has three phases: Effect, Layout, and Paint. `sigil::launch`
+One frame has three phases: Effect, Layout, and Paint. `sigil::run`
 owns the window and the frame loop.
 
 Signals are written in Effect. Event handlers, animation ticks, and
@@ -28,7 +28,7 @@ A clean frame skips layout and scene assembly. An idle window does not
 spin the loop. The waker from input, a task, a menu, or a tray event
 starts the next frame.
 
-A game loop skips `launch` and pumps `Host` with its own GPU. The
+A game loop skips `run` and pumps `Host` with its own GPU. The
 terminal host skips wgpu and rasters the painted nodes onto cells.
 
 For module ownership, see [Modules](modules.md).

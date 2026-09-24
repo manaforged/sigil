@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, signal};
-use crate::style::{NodeStyleExt, Size, Theme};
+use crate::style::{Metrics, NodeStyleExt, Size};
 
 use super::super::layout_ext::WidgetLayoutExt;
 use super::super::menu::PANEL_INSET;
@@ -87,7 +87,7 @@ pub(super) fn context_overlay<Row: 'static>(
             }
             let (left, top, width, height) = chrome.bounds.get();
             let menu_width = width.min(200.0);
-            let item_height = Theme::default().control_height(Size::Default).px_or_zero();
+            let item_height = Metrics::current().control_height(Size::Default);
             let menu_height = items
                 .iter()
                 .fold(PANEL_INSET * 2.0, |total, _| total + item_height);

@@ -1,23 +1,23 @@
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived_eq, signal};
 use crate::style::{
-    NodeStyleExt, Px, StateHost, StateStyle, Style, StyleAccess, StyleAtom, StyleOverlay,
-    StyleVariant, Tone, TransitionId,
+    BORDER_WIDTH, NodeStyleExt, Radius, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
+    StyleOverlay, StyleVariant, Token, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
 
-use super::super::chart::tone_solid;
+use super::super::listbox::listbox;
+use super::super::popup::{ChevronDirection, chevron};
 use super::super::shared::{
-    Activate, activate_pointer_reactive, disabled_now, reactive_style_state,
+    Activate, DIMMED, activate_pointer_reactive, disabled_now, reactive_style_state,
 };
-use super::super::vector::path;
-use super::popup::{OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
+use super::popup::{DropdownModel, OptionCtx, SURFACE_HOVER, TRIGGER_HEIGHT, build_popup};
 
 #[cfg(test)]
 #[path = "builder_tests.rs"]
@@ -29,22 +29,15 @@ const DROPDOWN_TRANSITION: TransitionId = presets::SMOOTH;
 static DROPDOWN_ANIM_BASE: &[StyleAtom] = &[StyleAtom::Transition(DROPDOWN_TRANSITION)];
 
 static TRIGGER_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("field"),
-    StyleAtom::BorderWidth(Px(1)),
+    Token::Field.bg(),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
     StyleAtom::BorderToneStep(7),
 ];
-static TRIGGER_DOWN: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed")];
-static TRIGGER_DISABLED: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-pressed-strong")];
+static TRIGGER_DOWN: &[StyleAtom] = &[Token::SurfacePressed.bg()];
 
 static TRIGGER_VARIANT: StyleVariant = StyleVariant::new(
     TRIGGER_BASE,
-    StateStyle::new(
-        &[],
-        SURFACE_HOVER,
-        SURFACE_HOVER,
-        TRIGGER_DOWN,
-        TRIGGER_DISABLED,
-    ),
+    StateStyle::new(&[], SURFACE_HOVER, SURFACE_HOVER, TRIGGER_DOWN, DIMMED),
 );
 
 pub struct DropdownBuilder {
@@ -140,7 +133,7 @@ impl DropdownBuilder {
         );
         let popup_options = Rc::clone(&options);
         let popup_on_change = Rc::clone(&on_change);
-        let root = dropdown_root(ctx, options.len(), self.label, on_change)
+        let root = dropdown_root(ctx, Rc::clone(&options), self.label, on_change)
             .child(trigger)
             .children_reactive(move || {
                 if ctx.open.get() {
@@ -170,7 +163,7 @@ impl IntoNode for DropdownBuilder {
 
 fn dropdown_root(
     ctx: OptionCtx,
-    count: usize,
+    options: Rc<Vec<String>>,
     label: String,
     on_change: IndexChange,
 ) -> NodeBuilder {
@@ -178,75 +171,18 @@ fn dropdown_root(
         || LayoutStyle::block().fill_width().height(ctx.trigger_height),
         |px| LayoutStyle::block().width(px).height(ctx.trigger_height),
     );
-    key_bindings(
+    listbox(
         container()
             .role(Role::ComboBox)
             .expanded(ctx.open)
-            .focus_out(move || ctx.open.set(false))
             .label(label)
             .layout(root_layout),
-        ctx,
-        count,
-        on_change,
+        DropdownModel {
+            ctx,
+            options,
+            on_change,
+        },
     )
-}
-
-fn key_bindings(
-    node: NodeBuilder,
-    ctx: OptionCtx,
-    count: usize,
-    on_change: IndexChange,
-) -> NodeBuilder {
-    let OptionCtx {
-        selected,
-        open,
-        cursor,
-        disabled,
-        ..
-    } = ctx;
-    node.key(Key::Enter, move |ev| {
-        ev.stop_propagation();
-        if disabled_now(disabled) {
-            return;
-        }
-        if open.peek() {
-            let index = cursor.peek();
-            if index < count {
-                selected.set(index);
-                on_change(index);
-            }
-            open.set(false);
-        } else {
-            cursor.set(selected.peek());
-            open.set(true);
-        }
-    })
-    .key(Key::Escape, move |ev| {
-        ev.stop_propagation();
-        open.set(false);
-    })
-    .key(Key::ArrowDown, move |ev| {
-        ev.stop_propagation();
-        if disabled_now(disabled) {
-            return;
-        }
-        if !open.peek() {
-            open.set(true);
-            return;
-        }
-        if count > 0 {
-            cursor.set((cursor.peek() + 1).min(count - 1));
-        }
-    })
-    .key(Key::ArrowUp, move |ev| {
-        ev.stop_propagation();
-        if disabled_now(disabled) {
-            return;
-        }
-        if cursor.peek() > 0 {
-            cursor.set(cursor.peek() - 1);
-        }
-    })
 }
 
 fn build_trigger(
@@ -266,10 +202,8 @@ fn build_trigger(
         trigger_height: _,
     } = ctx;
     let mut node = container()
-        .role(Role::Button)
-        .label("Select option")
         .layout(trigger_layout())
-        .class("rounded-md")
+        .class(Radius::Md.atom())
         .class(TRIGGER_VARIANT.base())
         .class(DROPDOWN_ANIM_BASE)
         .stateful_style(TRIGGER_VARIANT, user_overlay, move || {
@@ -283,7 +217,7 @@ fn build_trigger(
             activate_pointer_reactive(ev, interaction, disabled, &cb);
         })
         .child(trigger_label(selected, label_options))
-        .child(trigger_chevron());
+        .child(chevron(ChevronDirection::Down, 16.0));
     if !styled.is_empty() {
         node = node.style(styled);
     }
@@ -294,7 +228,7 @@ fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill()
         .padding_x(10.0)
-        .gap(8.0)
+        .gap(space(2))
         .align_items(AlignItems::Center)
         .justify_content(JustifyContent::SpaceBetween)
 }
@@ -313,15 +247,6 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
         .child(
             text(TextContent::Reactive(label_sig))
                 .layout(LayoutStyle::block().fill_width())
-                .class("text-on-surface"),
+                .class(Token::OnSurface.text()),
         )
-}
-
-fn trigger_chevron() -> impl IntoNode {
-    path(16, 16)
-        .move_to(4.5, 6.0)
-        .line_to(8.0, 9.5)
-        .line_to(11.5, 6.0)
-        .stroke(tone_solid(Tone::Neutral), 1.6)
-        .fit_size(16.0)
 }

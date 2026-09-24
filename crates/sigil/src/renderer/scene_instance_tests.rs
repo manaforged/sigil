@@ -8,12 +8,12 @@ use super::{
     expanded_shadow_rect,
 };
 use crate::renderer::CornerRadii;
-use crate::renderer::scene::emit_scene;
-use crate::renderer::scene_command::{
+use crate::renderer::shadow_paint::{Shadow, ShadowKind};
+use crate::scene::emit_scene;
+use crate::scene::{
     DrawGradient, DrawRect, GradientStop, LinearGradient, SceneCommand, SceneGradientStyle,
     SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
-use crate::renderer::shadow_paint::{Shadow, ShadowKind};
 
 struct StubMeasure;
 

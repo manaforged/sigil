@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 
@@ -25,11 +24,9 @@ fn layer_commands_walk_and_initialize_layer_pool() {
     let scene = layer_scene();
     assert_layer_command_shape(&scene);
 
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping layer command walker test: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();
@@ -45,11 +42,9 @@ fn layer_commands_walk_and_initialize_layer_pool() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn rounded_layer_clip_masks_every_descendant_pipeline() {
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping rounded clip pixels: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
     let pixels = render_scene_pixels(&mut renderer, &device, &queue, &rounded_clip_scene());
@@ -65,11 +60,9 @@ fn rounded_layer_clip_masks_every_descendant_pipeline() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn nested_layer_composites_in_parent_local_coordinates() {
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping nested layer pixels: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
     let pixels = render_scene_pixels(&mut renderer, &device, &queue, &nested_layer_scene());
@@ -87,11 +80,9 @@ fn nested_layer_composites_in_parent_local_coordinates() {
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn retina_layer_allocates_physical_not_logical_pixels() {
-    let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
-    if let Err(err) = renderer.ensure_headless_for_tests() {
-        eprintln!("no headless renderer device - skipping retina layer stats: {err}");
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         return;
-    }
+    };
     let device = renderer.device().expect("headless device").clone();
     let queue = renderer.queue().expect("headless queue").clone();
     render_scene_at_scale(&mut renderer, &device, &queue, &rounded_clip_scene(), 2);
@@ -245,7 +236,7 @@ fn render_scene_pixels(
             Color::rgba(0.0, 0.0, 0.0, 1.0),
         )
         .expect("render rounded clip");
-    read_pixels(device, queue, &texture, VIEWPORT_WIDTH, VIEWPORT_HEIGHT)
+    read_pixels(device, queue, &texture, VIEWPORT_WIDTH, VIEWPORT_HEIGHT).expect("sigil-kittest")
 }
 
 fn render_scene_at_scale(

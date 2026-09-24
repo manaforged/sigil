@@ -79,32 +79,7 @@ pub(super) fn first_enabled(entries: &[Entry]) -> usize {
     entries.iter().position(|e| !e.disabled()).unwrap_or(0)
 }
 
-fn next_enabled(entries: &[Entry], from: usize, forward: bool) -> usize {
-    if entries.is_empty() {
-        return from;
-    }
-    if forward {
-        ((from + 1)..entries.len())
-            .find(|&i| entries.get(i).is_some_and(|e| !e.disabled()))
-            .unwrap_or(from)
-    } else {
-        (0..from)
-            .rev()
-            .find(|&i| entries.get(i).is_some_and(|e| !e.disabled()))
-            .unwrap_or(from)
-    }
-}
-
-pub(super) fn move_cursor(stack: Signal<Vec<MenuLevel>>, forward: bool) {
-    let levels = stack.peek();
-    let Some(top) = levels.last() else {
-        return;
-    };
-    let next = next_enabled(&top.entries, top.cursor.peek(), forward);
-    top.cursor.set(next);
-}
-
-fn reset_to_root(stack: Signal<Vec<MenuLevel>>) {
+pub(super) fn reset_to_root(stack: Signal<Vec<MenuLevel>>) {
     stack.update(|levels| {
         levels.truncate(1);
         if let Some(root) = levels.first() {

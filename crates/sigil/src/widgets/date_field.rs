@@ -1,7 +1,7 @@
 use std::fmt::Write as _;
 
 use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Signal, effect, signal};
+use crate::reactive::{Signal, derived, effect, signal};
 
 use super::text_field::{TextFieldBuilder, text_field};
 
@@ -58,17 +58,35 @@ const fn is_leap(year: i32) -> bool {
 
 pub struct DateFieldBuilder {
     inner: TextFieldBuilder,
+    buffer: Signal<String>,
+    invalid: Option<Signal<bool>>,
 }
 
 impl DateFieldBuilder {
+    #[must_use]
+    pub fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.inner = self.inner.disabled(disabled);
+        self
+    }
+
+    #[must_use]
+    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
+        self.invalid = Some(invalid);
+        self
+    }
+
     pub fn text_field(self) -> TextFieldBuilder {
-        self.inner
+        let buffer = self.buffer;
+        let invalid = self.invalid;
+        self.inner.invalid_when(derived(move || {
+            invalid.is_some_and(|flag| flag.get()) || Date::parse(&buffer.get()).is_none()
+        }))
     }
 }
 
 impl IntoNode for DateFieldBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
-        self.inner.build(cx)
+        self.text_field().build(cx)
     }
 }
 
@@ -90,7 +108,11 @@ pub fn date_field(value: Signal<Date>) -> DateFieldBuilder {
             value.set(parsed);
         }
     });
-    DateFieldBuilder { inner }
+    DateFieldBuilder {
+        inner,
+        buffer,
+        invalid: None,
+    }
 }
 
 #[cfg(test)]

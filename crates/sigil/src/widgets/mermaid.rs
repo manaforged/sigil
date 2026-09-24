@@ -1,22 +1,49 @@
-use crate::kernel::{NodeBuilder, container, text};
+use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::snap::CellForm;
 use crate::style::NodeStyleExt;
 
 mod canvas;
 mod flow;
+mod flow_layout;
+mod flow_paint;
+mod flow_parse;
+mod flow_route;
 mod pie;
+mod rank;
 mod sequence;
+mod strokes;
 
 #[must_use]
 pub fn mermaid(source: impl Into<String>) -> NodeBuilder {
-    let lines = draw(&source.into());
-    let mut col = container()
+    let source = source.into();
+    let lines = draw(&source);
+    let col = container()
+        .role(Role::Figure)
+        .label(diagram_name(&source))
+        .description(bound_source(&source).trim_end().to_string())
         .layout(LayoutStyle::flex_column().fill_width())
         .class("font-mono text-sm");
+    let form =
+        CellForm::<fn(NodeBuilder, &[String]) -> NodeBuilder>::new(strokes::window, text_lines);
+    form.pick()(col, &lines)
+}
+
+fn text_lines(mut col: NodeBuilder, lines: &[String]) -> NodeBuilder {
     for line in lines {
-        col = col.child(text(line));
+        col = col.child(text(line.clone()));
     }
     col
+}
+
+fn diagram_name(source: &str) -> String {
+    let kind = source
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .and_then(|line| line.split_whitespace().next())
+        .unwrap_or("diagram");
+    format!("Mermaid {kind}")
 }
 
 const MAX_SOURCE_LINES: usize = 256;
@@ -47,8 +74,7 @@ fn bound_output(mut lines: Vec<String>) -> Vec<String> {
     lines
 }
 
-#[must_use]
-pub fn draw(source: &str) -> Vec<String> {
+fn draw(source: &str) -> Vec<String> {
     if crate::widgets::source_too_large(source) {
         return vec![String::from("Source is larger than the 1 MiB limit.")];
     }
@@ -61,20 +87,6 @@ pub fn draw(source: &str) -> Vec<String> {
         lines.pop();
     }
     bound_output(lines)
-}
-
-#[must_use]
-pub fn diagram(source: &str) -> bool {
-    let head = source
-        .lines()
-        .map(str::trim)
-        .find(|line| !line.is_empty() && !line.starts_with("%%"))
-        .and_then(|line| line.split_whitespace().next())
-        .unwrap_or_default();
-    matches!(
-        head,
-        "graph" | "flowchart" | "stateDiagram" | "stateDiagram-v2" | "sequenceDiagram" | "pie"
-    )
 }
 
 fn framed(source: &str) -> Vec<String> {

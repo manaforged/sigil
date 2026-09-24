@@ -7,6 +7,7 @@
 )]
 
 use crate::hal::{Point, Rect, RenderedGlyph};
+use crate::renderer::oblique::Oblique;
 use ahash::AHashMap;
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
@@ -141,7 +142,9 @@ fn rasterize(bytes: &[u8], font_index: u32, g: &RenderedGlyph, k: &Key) -> Optio
     let px = k.size as f32 / SIZE_UNIT;
     let settings = DrawSettings::unhinted(Size::new(px), LocationRef::new(&coords));
     let mut pen = Pen(PathBuilder::new());
-    outline.draw(settings, &mut pen).ok()?;
+    outline
+        .draw(settings, &mut Oblique::new(&mut pen, g.skew))
+        .ok()?;
     let shift = f32::from(k.subpixel) / SUBPIXEL_STEPS;
     let path = pen
         .0

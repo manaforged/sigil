@@ -2,12 +2,11 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::launch(("Sigil - checkbox demo", 400, 200), build)
+    sigil::run(("Sigil - checkbox demo", 400, 200), build)
 }
 
 fn build(cx: &mut Cx) -> NodeId {

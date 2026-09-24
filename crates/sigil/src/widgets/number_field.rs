@@ -2,7 +2,7 @@ use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeId};
-use crate::reactive::{Signal, effect, signal};
+use crate::reactive::{Signal, derived, effect, signal};
 
 use super::text_field::{TextFieldBuilder, text_field};
 
@@ -65,18 +65,43 @@ impl_numeric_float!(f64);
 
 pub struct NumberFieldBuilder<T: NumericKind> {
     inner: TextFieldBuilder,
-    _marker: std::marker::PhantomData<fn() -> T>,
+    buffer: Signal<String>,
+    range: Rc<RangeInclusive<T>>,
+    invalid: Option<Signal<bool>>,
 }
 
 impl<T: NumericKind> NumberFieldBuilder<T> {
-    pub fn text_field(self) -> TextFieldBuilder {
-        self.inner
+    #[must_use]
+    pub fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.inner = self.inner.disabled(disabled);
+        self
     }
+
+    #[must_use]
+    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
+        self.invalid = Some(invalid);
+        self
+    }
+
+    pub fn text_field(self) -> TextFieldBuilder {
+        let buffer = self.buffer;
+        let range = self.range;
+        let invalid = self.invalid;
+        self.inner.invalid_when(derived(move || {
+            invalid.is_some_and(|flag| flag.get()) || !in_range(&buffer.get(), &range)
+        }))
+    }
+}
+
+fn in_range<T: NumericKind>(raw: &str, range: &RangeInclusive<T>) -> bool {
+    T::parse(raw).is_some_and(|parsed| {
+        parsed.partial_cmp(&parsed.clamp_to(range)) == Some(core::cmp::Ordering::Equal)
+    })
 }
 
 impl<T: NumericKind> IntoNode for NumberFieldBuilder<T> {
     fn build(self, cx: &mut Cx) -> NodeId {
-        self.inner.build(cx)
+        self.text_field().build(cx)
     }
 }
 
@@ -114,7 +139,9 @@ pub fn number_field<T: NumericKind>(
 
     NumberFieldBuilder {
         inner,
-        _marker: std::marker::PhantomData,
+        buffer,
+        range,
+        invalid: None,
     }
 }
 

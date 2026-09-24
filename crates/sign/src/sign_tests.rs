@@ -47,7 +47,7 @@ impl Fixture {
 #[test]
 fn sign_then_verify_round_trips() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("round-trip", FIXTURE)?;
-    let envelope = sign_file(&fixture.package, &fixture.key, PASSWORD)?;
+    let envelope = sign_file(&fixture.package, &fixture.key, Some(PASSWORD), "0.1.0")?;
     assert!(envelope.starts_with("untrusted comment:"));
     fixture.verify(&envelope)?;
     fixture.clean()?;
@@ -58,7 +58,7 @@ fn sign_then_verify_round_trips() -> Result<(), Box<dyn Error>> {
 fn a_key_held_as_text_signs_the_same_package() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("key-as-text", FIXTURE)?;
     let key = fs::read_to_string(&fixture.key)?;
-    let envelope = sign_file_with_key(&fixture.package, &key, PASSWORD)?;
+    let envelope = sign_file_with_key(&fixture.package, &key, Some(PASSWORD), "0.1.0")?;
     fixture.verify(&envelope)?;
     fixture.clean()?;
     Ok(())
@@ -67,7 +67,7 @@ fn a_key_held_as_text_signs_the_same_package() -> Result<(), Box<dyn Error>> {
 #[test]
 fn tampered_package_fails_verification() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("tampered", FIXTURE)?;
-    let envelope = sign_file(&fixture.package, &fixture.key, PASSWORD)?;
+    let envelope = sign_file(&fixture.package, &fixture.key, Some(PASSWORD), "0.1.0")?;
     fs::write(&fixture.package, b"sigil signing fixture ")?;
     assert!(fixture.verify(&envelope).is_err());
     fixture.clean()?;
@@ -77,7 +77,15 @@ fn tampered_package_fails_verification() -> Result<(), Box<dyn Error>> {
 #[test]
 fn wrong_password_fails_to_load_the_key() -> Result<(), Box<dyn Error>> {
     let fixture = Fixture::new("wrong-password", FIXTURE)?;
-    assert!(sign_file(&fixture.package, &fixture.key, "not the password").is_err());
+    assert!(
+        sign_file(
+            &fixture.package,
+            &fixture.key,
+            Some("not the password"),
+            "0.1.0"
+        )
+        .is_err()
+    );
     fixture.clean()?;
     Ok(())
 }

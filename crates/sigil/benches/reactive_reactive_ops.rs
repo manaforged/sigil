@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs, clippy::missing_docs_in_private_items)]
 
 use std::cell::Cell;
 use std::hint::black_box;

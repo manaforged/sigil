@@ -65,6 +65,15 @@ impl Rect {
     }
 
     #[must_use]
+    pub fn union(self, other: Self) -> Self {
+        let x = self.origin.x.min(other.origin.x);
+        let y = self.origin.y.min(other.origin.y);
+        let right = (self.origin.x + self.width).max(other.origin.x + other.width);
+        let bottom = (self.origin.y + self.height).max(other.origin.y + other.height);
+        Self::new(Point::new(x, y), right - x, bottom - y)
+    }
+
+    #[must_use]
     pub const fn expand(self, pad: f32) -> Self {
         Self::new(
             Point::new(self.origin.x - pad, self.origin.y - pad),

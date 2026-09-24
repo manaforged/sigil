@@ -22,6 +22,7 @@ Key options:
 - `.placeholder(impl Into<TextContent>)` — ghost text while empty.
 - `.change(Fn(&str))` — runs after each committed edit.
 - `.submit(Fn(&str))` — runs on Enter.
+- `.blur(Fn())` — runs when the field loses focus.
 - `.disabled(Signal<bool>)` — blocks input and paints disabled.
 - `.invalid_when(Signal<bool>)` — paints the error frame; a failed
   clipboard write also raises it.
@@ -85,9 +86,12 @@ The visible buffer is a separate string signal. Edits parse on every
 change; parseable input is clamped into the range and written to the
 bound signal, unparseable input stays in the buffer without touching
 the signal. An external `set` re-renders the buffer. Float kinds reject
-non-finite input. `.text_field()` consumes the builder and returns the
-inner `TextFieldBuilder` so you can chain field options after the
-numeric wiring.
+non-finite input. `.disabled(Signal<bool>)` works as in `text_field`.
+`.invalid_when(Signal<bool>)` paints the error frame through the
+`text_field` validation state; the frame also shows while the buffer
+does not parse or is outside the range. `.text_field()` consumes the
+builder and returns the inner `TextFieldBuilder` so you can chain field
+options after the numeric wiring.
 
 ## date_field
 
@@ -97,12 +101,19 @@ invalid text only lives in the buffer, and external sets re-render.
 
 `Date { year: i32, month: u8, day: u8 }` — `Date::new` validates month
 and day including leap years, `Date::parse` reads `YYYY-MM-DD`, and
-`date.render()` formats it. `.text_field()` returns the inner builder.
+`date.render()` formats it. `.disabled(Signal<bool>)` and
+`.invalid_when(Signal<bool>)` work as in `number_field`; the error frame
+also shows while the buffer is not a valid date. `.text_field()`
+returns the inner builder.
 
 ## color_field
 
-`color_field(Signal<Rgba8>) -> NodeBuilder`. A swatch plus a hex text
-field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255.
+`color_field(Signal<Rgba8>) -> ColorFieldBuilder`. A swatch plus a hex
+text field. Accepts `#rgb` and `#rrggbb`; writes `Rgba8` with alpha 255.
+The swatch is one control height square. `.disabled(Signal<bool>)`
+disables the field and dims the swatch. `.invalid_when(Signal<bool>)`
+paints the field error frame; it also shows while the text is not a hex
+colour.
 `parse_hex(&str) -> Option<Rgba8>` and `to_hex(Rgba8) -> String` are
 the helpers the widget itself uses.
 
@@ -122,13 +133,15 @@ combobox(state);
 open flag, and the cursor. Read it back with `.query()`,
 `.selected()` / `.selected_option()`, `.selected_signal()`, and
 `.is_open()`; drive it with `.open()`, `.close()`, `.commit(index)`,
-`.edit_query(text)`, and `.move_cursor(delta)`. `.filtered()` returns
+`.edit_query(text)`, and `.move_cursor(delta)`. `.disabled(Signal<bool>)`
+disables the text field. `.filtered()` returns
 the visible `(index, label)` pairs — a case-insensitive substring
 match.
 
 Typing opens the popup and clears the selection unless the text equals
 the committed label. Arrow Down opens or moves the cursor, Arrow Up
-moves it, Enter commits the cursor row, Escape closes. The popup caps
+moves it, Enter commits the cursor row, Escape closes. The popup also
+closes when the text field loses focus. The popup caps
 at eight 28 px rows and scrolls past that. Committing bumps a session
 signal that rebuilds the field so the label repaints.
 
@@ -151,3 +164,49 @@ Enter opens or commits, Escape closes, the arrows move the cursor, and
 pointer enter moves it too. `focus_out` on the root closes the popup.
 The popup is a `TopLayer` list of `Role::ListBoxOption` rows capped at
 six visible options; longer lists scroll inside the popup.
+
+## field and validated_field
+
+`field(label, control) -> NodeBuilder` stacks a label over any control.
+`validated_field(label, TextFieldBuilder, error) -> NodeBuilder` adds
+an error line under a text field. `error` is any reactive
+`Option<String>`: a `Signal` or a `derived` value. While the error is
+`Some`, the field paints its invalid frame and shows the message.
+
+## States, keys, and accessibility
+
+The visual catalog captures each field in the states in the table.
+Invalid comes from `.invalid_when(Signal<bool>)`, from a buffer that
+does not parse, or from a `validated_field` error. Open is the popup
+of a dropdown or combobox.
+
+| Widget | States | Keys | Role | Name source |
+| --- | --- | --- | --- | --- |
+| `text_field` | default, hover, pressed, focused, disabled, invalid | Editing keys, Enter submits | `TextInput`, or `PasswordInput` with `.password()` | The placeholder, else "Text field" |
+| `validated_field` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
+| `text_edit` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
+| `number_field`, `date_field`, `color_field` | default, hover, pressed, focused, disabled, invalid | As `text_field` | `TextInput` | As `text_field` |
+| `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |
+| `combobox` | default, hover, pressed, focused, disabled, open | Typing, Arrow keys, Enter, Escape | `ComboBox`, popup `ListBox` | The placeholder, else "Combobox" |
+
+`field` adds a visible label but does not name the control. Set the
+placeholder, or `.label()` on a dropdown, so assistive technology reads
+the same name.
+
+## Terminal notes
+
+- There is no IME in the terminal host. Paste arrives through
+  bracketed paste.
+- The caret is the terminal cursor: a steady bar at the caret cell.
+- Copy and cut send OSC 52, so they reach the terminal clipboard.
+- The dropdown and combobox popups draw above clips, after the rest of
+  the tree.
+- Size a field with `rows()`, not pixels. See [Units](../units.md).
+
+## Example
+
+Run it with `cargo run -p sigil-ui --example widget_fields`.
+
+```rust
+{{#include ../../../crates/sigil/examples/widget_fields.rs}}
+```

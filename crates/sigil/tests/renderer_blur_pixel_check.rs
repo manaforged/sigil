@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
@@ -17,7 +16,7 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
-use sigil_kittest::gpu::{read_pixels, request_device};
+use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -40,7 +39,7 @@ const RECT_CENTRE_Y: u32 = 180;
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn blur_pixel_check() {
-    let (device, queue) = request_device().expect(
+    let (device, queue) = shared_device().expect("sigil-kittest").cloned().expect(
         "no wgpu adapter — blur_pixel_check needs a real GPU (run the GPU tier with --ignored)",
     );
 
@@ -78,7 +77,7 @@ fn render_backdrop_blur_scene(device: &wgpu::Device, queue: &wgpu::Queue) -> Vec
         )
         .expect("render_command_scene_offscreen");
 
-    read_pixels(device, queue, &texture, phys_w, phys_h)
+    read_pixels(device, queue, &texture, phys_w, phys_h).expect("sigil-kittest")
 }
 
 fn assert_control_preserves_contrast(pixels: &[u8], phys_w: u32) {

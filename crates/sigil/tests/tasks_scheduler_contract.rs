@@ -3,7 +3,6 @@
     reason = "target does not use every package dependency"
 )]
 #![allow(clippy::panic)]
-#![allow(missing_docs)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

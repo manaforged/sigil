@@ -1,48 +1,116 @@
-use crate::kernel::{NodeBuilder, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, effect, signal};
-use crate::style::{NodeStyleExt, Rgba8, Style};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
+use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
+use crate::layout::snap::CellForm;
+use crate::reactive::{Signal, derived, effect, signal};
+use crate::style::{
+    BORDER_WIDTH, Metrics, NodeStyleExt, Radius, Rgba8, Size, Style, StyleAtom, Token, space,
+};
 
+use super::layout_ext::WidgetLayoutExt;
+use super::shared::disabled_look;
 use super::text_field::text_field;
 
+pub struct ColorFieldBuilder {
+    value: Signal<Rgba8>,
+    disabled: Option<Signal<bool>>,
+    invalid: Option<Signal<bool>>,
+}
+
 #[must_use]
-pub fn color_field(value: Signal<Rgba8>) -> NodeBuilder {
-    let buffer = signal(to_hex(value.peek()));
-    let buf_for_value = buffer;
-    effect(move || {
-        let rendered = to_hex(value.get());
-        if buf_for_value.peek().as_str() != rendered {
-            buf_for_value.set(rendered);
+pub const fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder {
+    ColorFieldBuilder {
+        value,
+        disabled: None,
+        invalid: None,
+    }
+}
+
+impl ColorFieldBuilder {
+    #[must_use]
+    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
+        self.disabled = Some(disabled);
+        self
+    }
+
+    #[must_use]
+    pub const fn invalid_when(mut self, invalid: Signal<bool>) -> Self {
+        self.invalid = Some(invalid);
+        self
+    }
+
+    fn into_node_builder(self) -> NodeBuilder {
+        let value = self.value;
+        let buffer = signal(to_hex(value.peek()));
+        effect(move || {
+            let rendered = to_hex(value.get());
+            if buffer.peek().as_str() != rendered {
+                buffer.set(rendered);
+            }
+        });
+        let invalid = self.invalid;
+        let field = text_field(buffer)
+            .invalid_when(derived(move || {
+                invalid.is_some_and(|flag| flag.get()) || parse_hex(&buffer.get()).is_none()
+            }))
+            .change(move |raw| {
+                let Some(parsed) = parse_hex(raw) else {
+                    return;
+                };
+                if value.peek() != parsed {
+                    value.set(parsed);
+                }
+            });
+        let field = match self.disabled {
+            Some(disabled) => field.disabled(disabled),
+            None => field,
         }
-    });
-    let field = text_field(buffer).change(move |raw| {
-        let Some(parsed) = parse_hex(raw) else {
-            return;
-        };
-        if value.peek() != parsed {
-            value.set(parsed);
-        }
-    });
-    container()
         .layout(
             LayoutStyle::flex_row()
-                .align_items(AlignItems::Center)
-                .gap(8.0),
-        )
-        .child(swatch(value))
-        .child(field)
+                .grow(1.0)
+                .min_size(0.0, Dimension::Auto)
+                .align_items(AlignItems::Center),
+        );
+        container()
+            .layout(
+                LayoutStyle::flex_row()
+                    .fill_width()
+                    .align_items(AlignItems::Center)
+                    .gap(space(2)),
+            )
+            .child(disabled_look(swatch(value), self.disabled))
+            .child(field)
+    }
+}
+
+impl IntoNode for ColorFieldBuilder {
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self.into_node_builder().build(cx)
+    }
 }
 
 fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
+    let extent = Metrics::current().control_height(Size::Default);
+    let (width, chrome) = CellForm::new(
+        (Dimension::Px(extent), SWATCH_CHROME),
+        (cols(2.0).into(), NO_CHROME),
+    )
+    .pick();
     container().children_reactive(move || {
         vec![
             container()
-                .layout(LayoutStyle::block().width(28.0).height(28.0))
-                .class("rounded-md border border-gray-6")
+                .layout(LayoutStyle::block().width(width).height(extent))
+                .class(chrome)
                 .style(Style::new().bg(value.get())),
         ]
     })
 }
+
+static SWATCH_CHROME: &[StyleAtom] = &[
+    StyleAtom::Radius(Radius::Md),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::Gray6.border(),
+];
+static NO_CHROME: &[StyleAtom] = &[];
 
 #[must_use]
 pub fn parse_hex(input: &str) -> Option<Rgba8> {

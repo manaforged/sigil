@@ -1,5 +1,10 @@
+use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
+use crate::layout::prelude::{
+    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
+};
+use crate::layout::snap::CellForm;
+use crate::style::{NodeStyleExt, Size, StyleAccess};
 use crate::style::{Px, StyleAtom, Tone};
-use crate::widgets::widget_dev::*;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -33,40 +38,59 @@ impl DotBuilder {
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let extent = match self.size {
-            Size::Compact => 8.0,
-            Size::Default => 12.0,
-            Size::Wide | Size::Grow => 16.0,
-        };
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "extent is 8.0..=16.0 → half_radius 4..=8, exact i16."
-        )]
-        let half_radius = Px((extent / 2.0) as i16);
-        let inner_extent = (extent - 2.0_f32).max(2.0);
-        #[allow(
-            clippy::cast_possible_truncation,
-            reason = "inner_extent is 6.0..=14.0 → half 3..=7, exact i16."
-        )]
-        let inner_radius = Px((inner_extent / 2.0) as i16);
-        let inner = container()
-            .layout(dot_inner_layout(inner_extent))
-            .style(crate::style::Style::new().radius(inner_radius.0))
-            .tone(self.tone)
-            .class(DOT_FILL_ATOMS);
-        let mut node = container()
+        let (layout, mut node) =
+            CellForm::<fn(Tone, Size) -> (LayoutStyle, NodeBuilder)>::new(round_dot, cell_dot)
+                .pick()(self.tone, self.size);
+        node = node
             .role(Role::GenericContainer)
-            .layout(self.layout_overrides.apply(dot_outer_layout(extent)))
-            .style(crate::style::Style::new().radius(half_radius.0))
-            .tone(self.tone)
-            .class(DOT_RING_ATOMS)
-            .child(inner);
+            .layout(self.layout_overrides.apply(layout));
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
         node
     }
 }
+
+fn cell_dot(tone: Tone, _size: Size) -> (LayoutStyle, NodeBuilder) {
+    let layout = LayoutStyle::block().width(cols(1.0)).height(rows(1.0));
+    let node = container()
+        .tone(tone)
+        .class(DOT_GLYPH_ATOMS)
+        .child(text("●"));
+    (layout, node)
+}
+
+fn round_dot(tone: Tone, size: Size) -> (LayoutStyle, NodeBuilder) {
+    let extent = match size {
+        Size::Compact => 8.0,
+        Size::Default => 12.0,
+        Size::Wide | Size::Grow => 16.0,
+    };
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "extent is 8.0..=16.0 → half_radius 4..=8, exact i16."
+    )]
+    let half_radius = Px((extent / 2.0) as i16);
+    let inner_extent = (extent - 2.0_f32).max(2.0);
+    #[allow(
+        clippy::cast_possible_truncation,
+        reason = "inner_extent is 6.0..=14.0 → half 3..=7, exact i16."
+    )]
+    let inner_radius = Px((inner_extent / 2.0) as i16);
+    let inner = container()
+        .layout(dot_inner_layout(inner_extent))
+        .style(crate::style::Style::new().radius(inner_radius.0))
+        .tone(tone)
+        .class(DOT_FILL_ATOMS);
+    let node = container()
+        .style(crate::style::Style::new().radius(half_radius.0))
+        .tone(tone)
+        .class(DOT_RING_ATOMS)
+        .child(inner);
+    (dot_outer_layout(extent), node)
+}
+
+static DOT_GLYPH_ATOMS: &[StyleAtom] = &[StyleAtom::FgToneStep(9)];
 
 static DOT_FILL_ATOMS: &[StyleAtom] = &[StyleAtom::BgToneStep(9)];
 

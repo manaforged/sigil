@@ -117,6 +117,7 @@ pub(super) fn walk_screen(
     scene: &CommandScene,
     stats: &mut FrameStats,
 ) -> Result<(), RendererError> {
+    ready.begin_frame();
     let ReadyState {
         scene_pipelines,
         fill_pipelines,

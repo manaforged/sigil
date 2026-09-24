@@ -36,34 +36,52 @@ pub(super) fn push_atlas(
     height: u32,
     format: wgpu::TextureFormat,
 ) {
+    let desc = AtlasDesc {
+        bytes,
+        width,
+        height,
+        format,
+    };
+    let (entry, bind_group) = build_atlas(device, queue, layout, sampler, &desc);
+    atlases.push(entry);
+    atlas_bind_groups.push(bind_group);
+}
+
+pub(super) fn build_atlas(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    layout: &wgpu::BindGroupLayout,
+    sampler: &wgpu::Sampler,
+    desc: &AtlasDesc<'_>,
+) -> (AtlasEntry, wgpu::BindGroup) {
     let texture = device.create_texture_with_data(
         queue,
         &wgpu::TextureDescriptor {
             label: Some("sigil-renderer sprite atlas"),
             size: wgpu::Extent3d {
-                width,
-                height,
+                width: desc.width,
+                height: desc.height,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format,
+            format: desc.format,
             usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             view_formats: &[],
         },
         wgpu::util::TextureDataOrder::LayerMajor,
-        bytes,
+        desc.bytes,
     );
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let bind_group = atlas_bind_group(device, layout, &view, sampler);
-    atlases.push(AtlasEntry {
+    let entry = AtlasEntry {
         texture,
         view,
-        width,
-        height,
-    });
-    atlas_bind_groups.push(bind_group);
+        width: desc.width,
+        height: desc.height,
+    };
+    (entry, bind_group)
 }
 
 pub(super) fn valid_atlas_desc(

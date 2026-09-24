@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use sigil::app::{AppConfig, DefaultTextMeasure};
@@ -15,7 +14,7 @@ use sigil::reactive::Runtime;
 fn scale_change_keeps_launch_viewport_logical() {
     Runtime::scope("test", || {
         let config = AppConfig::new("test").size(720, 480);
-        assert_eq!(config.size, (720, 480));
+        assert_eq!(config.window_size(), (720, 480));
         let logical = LogicalSize::new(720.0, 480.0);
         let mut cx = Cx::new_root();
         let root = cx.add(
