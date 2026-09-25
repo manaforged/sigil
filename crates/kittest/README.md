@@ -1,119 +1,124 @@
 # sigil-kittest
 
-Visual-golden PNG harness for Sigil, usable by any dependent crate as a
-dev-dependency. It backs `crates/sigil/tests/visual_goldens.rs`. The
-harness drives a widget into one
-of eight interaction modes — five settled (`Default`, `Hover`, `Pressed`,
-`Focused`, `Disabled`) and three frame-aware (`HoverAfterFrames`,
-`PressedAfterFrames`, `FocusedAfterFrames`) — renders the resulting node
-tree through `WgpuRenderer::render_command_scene_offscreen`, reads pixels
-back, and compares against a committed PNG in the dependent's own
+Visual golden tests for Sigil widgets. The harness drives a widget into
+an interaction state, renders it offscreen with wgpu, reads the pixels
+back, and compares them with a PNG committed under your crate's
 `tests/goldens/` directory.
 
-## Why committed PNGs
+## Install
 
-`tests/widget_states.rs` already asserts theme-colour rectangles for each
-(widget, state) combo programmatically — that proves rendering is
-consistent across runs but produces no artifact a human can eyeball. The
-PNG goldens commit one image per widget × state so a reviewer can open
-them in any image viewer and confirm the widget renders correctly.
+Add the crate as a dev-dependency:
 
-## API
-
-```rust
-use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png,
-};
-
-let Some(img) = render_widget_to_png(
-    |cx| cx.add(button("Save")),
-    InteractionMode::Default,
-    [200, 60],
-    (10.0, 10.0),         // hit-point used for hover/pressed
-) else {
-    println!("no GPU adapter — skipping");
-    return;
-};
-assert_png_matches_golden(&img, &golden_path!("button_default"), 0.5);
+```bash
+cargo add --dev sigil-kittest
 ```
 
-The harness returns `None` when no wgpu adapter is available (CI without
-a GPU). Tests skip cleanly in that case.
+## Usage
 
-`InteractionState` is not an external lever in sigil — each widget owns
-its own `crate::interaction::InteractionState` and drives state through
-`EventRouter` pointer/key events. The harness mirrors that pathway, so
-`hit_point` must land inside the widget's hit-test surface for Hover and
-Pressed to take effect. `Disabled` is driven through the widget builder
-itself (e.g., `button("Save").enabled(false)`) — the harness skips events
-in that mode.
+```rust,no_run
+use sigil::prelude::*;
+use sigil_kittest::{InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png};
 
-### Animated modes (W5.0a)
-
-`HoverAfterFrames`, `PressedAfterFrames`, and `FocusedAfterFrames` drive
-the same pointer / focus event as their non-AfterFrames counterpart, then
-advance `sigil_animation_runtime::tick(dt)` for `frames` iterations so
-animator-driven style atoms resolve to the post-tick value before
-`emit_scene` captures. The canonical `dt` is `1.0 / 60.0`.
-
-```rust
-let img = render_widget_to_png(
-    |cx| cx.add(button("Save")),
-    InteractionMode::HoverAfterFrames { frames: 6, dt: 1.0 / 60.0 },
-    [160, 56],
-    (74.0, 22.0),
-);
+#[test]
+fn button_default() -> Result<(), sigil_kittest::Error> {
+    let Some(img) = render_widget_to_png(
+        |cx| cx.add(button("Save")),
+        InteractionMode::Default,
+        [200, 60],
+        (10.0, 10.0),
+    )?
+    else {
+        return Ok(());
+    };
+    assert_png_matches_golden(&img, &golden_path!("button_default"), 0.5);
+    Ok(())
+}
 ```
 
-`frames: u32::MAX` is a sentinel meaning "tick until every active
-animator settles." A safety cap (`SETTLE_SAFETY_CAP = 600` frames — 10 s
-of simulated time at 60 Hz) guards against runaway animators. A widget
-that retargets on every tick will trip the cap and panic with a clear
-message rather than stalling the test.
+`render_widget_to_png(build, mode, size_px, hit_point)` returns
+`Result<Option<RgbaImage>, Error>`. The hit point must land inside the
+widget for `Hover`, `Pressed`, and `Clicked` to take effect. For
+`Disabled`, build the widget disabled, for example
+`button("Save").enabled(false)`; the harness sends no events in that
+mode.
 
-`InteractionMode::tag()` returns the same lowercase tag for both the
-settled and `*AfterFrames` variants (e.g., both `Hover` and
-`HoverAfterFrames` tag as `"hover"`), so call sites that bake animated
-goldens should append their own `_animated` suffix to the golden stem.
+`golden_path!(stem)` resolves `tests/goldens/<stem>.png` under the
+calling crate's manifest directory. `assert_goldens_differ!(a, b)`
+fails when two goldens are identical.
 
-## Regenerating goldens
+## Interaction modes
+
+| Mode | Effect |
+| --- | --- |
+| `Default` | No input. |
+| `Hover` | Pointer over the hit point, then ticks until animations settle. |
+| `Pressed` | Pointer down at the hit point, then ticks until animations settle. |
+| `Clicked` | Pointer down and up at the hit point, then ticks until animations settle. |
+| `Focused` | Keyboard focus on the widget, then ticks until animations settle. |
+| `Disabled` | No input. |
+| `HoverAfterFrames`, `PressedAfterFrames`, `FocusedAfterFrames` | The same input, then `frames` animation ticks of `dt` seconds. |
+
+`frames: u32::MAX` ticks until every animation settles. If animations
+are still active after `SETTLE_SAFETY_CAP` (600) frames, the harness
+returns `Err(Error::Unsettled { .. })`.
+`InteractionMode::tag()` returns the same tag for a mode and its
+`AfterFrames` form, so add your own suffix to the golden name for an
+animated golden.
+
+## Text layout
+
+The harness uses the real text engine. For a fixed 40x16 box per text
+node, call `render_widget_to_png_stub`, or pass `stub_text_measure()` to
+`render_widget_to_png_with`.
+
+## No GPU
+
+If no wgpu adapter is available, the harness returns
+`Err(Error::NoAdapter(_))`. Set `SIGIL_ALLOW_NO_GPU=1` to get `Ok(None)`
+and skip the check instead. All calls in one test process share one
+wgpu device (`gpu::shared_device`).
+
+## Update goldens
 
 After an intentional rendering change:
 
-```pwsh
-$env:SIGIL_REGEN_GOLDENS = "1"
-cargo test -p sigil-gui --test visual_goldens
-Remove-Item Env:\SIGIL_REGEN_GOLDENS
-```
+1. Run the tests with `SIGIL_REGEN_GOLDENS=1` set. The harness writes
+   each image to its golden path instead of comparing.
+2. Open every new PNG and check that the widget renders correctly.
+3. Commit the PNGs.
 
-Or in bash:
+## Per-adapter goldens
 
-```bash
-SIGIL_REGEN_GOLDENS=1 cargo test -p sigil-gui --test visual_goldens
-```
+Edge anti-aliasing differs between GPU adapters. The harness derives an
+adapter key from the wgpu adapter: the backend and the vendor class, for
+example `dx12-warp`, `dx12-amd`, `vulkan-nvidia`, or `metal-apple`.
+`gpu::adapter_key()` returns it.
 
-When the env var is set, the harness writes each captured PNG to its
-golden path instead of asserting. **Open every regenerated PNG in an
-image viewer before committing** — confirm the widget actually renders.
-The brief's anti-pattern: do not commit placeholder / empty / black
-PNGs. If a widget renders incorrectly under the harness, that is the
-bug — flag it; do not bake junk goldens.
+The harness compares against `<name>.<key>.png` if that file exists.
+Otherwise it compares against `<name>.png`. The budget does not change.
+
+To bake the goldens for one adapter:
+
+1. Run the tests on that adapter with `SIGIL_REGEN_GOLDENS=adapter` set.
+   The harness writes `<name>.<key>.png` only for a test that exceeds its
+   budget against `<name>.png`. It deletes an adapter golden that is no
+   longer needed.
+2. Compare every new PNG with its base golden. Accept only edge
+   anti-aliasing differences.
+3. Commit the PNGs.
+
+`SIGIL_REGEN_GOLDENS=1` writes the adapter golden when one exists for
+the current adapter, and the base golden otherwise.
 
 ## Tolerance
 
-`assert_png_matches_golden(..., max_delta_pct)` accepts a small budget
-of differing pixels to accommodate GPU-driver tolerances (rounding in
-sRGB conversion, anti-aliasing edge cases). A pixel counts as
-"different" when any RGBA channel differs by more than 2 units. The
-default budget is 0.5%.
+`assert_png_matches_golden(actual, golden, max_delta_pct)` allows a
+percentage of pixels to differ, to absorb GPU driver differences. A
+pixel differs when any RGBA channel differs by more than 2. Use `0.5`
+unless a test needs another budget.
 
-If a real visual regression sits below the budget, increase the
-specificity of the check rather than tightening the budget across the
-board.
+The offscreen target clears to opaque black.
 
-## Why a clear black background
+## License
 
-The offscreen path clears to `(0, 0, 0, 1)`. Widgets paint themed
-surfaces on top, so the contrast is high. This makes eyeball review
-trivial; if the background ever needs to be themed, expose a parameter
-in `render_widget_to_png` rather than per-widget hard-coding.
+[MIT](../../LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.

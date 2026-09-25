@@ -4,7 +4,9 @@ use accesskit::{Action, Role, SortDirection};
 use smallvec::SmallVec;
 
 use crate::kernel::component::{ErasedComponent, IntoNode};
-use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, reactive_children};
+use crate::kernel::{
+    A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
+};
 
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
 type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
@@ -82,7 +84,7 @@ impl NodeBuilder {
     pub fn focusable(mut self, yes: bool) -> Self {
         debug_assert!(
             !(yes && matches!(self.kind, NodeType::Fragment)),
-            "focusable(true) on a Fragment: fragments have no geometry; see DR-015"
+            "focusable(true) on a Fragment: fragments have no geometry"
         );
         self.a11y.focusable = yes;
         self
@@ -161,10 +163,12 @@ impl NodeBuilder {
     }
 
     #[must_use]
-    pub const fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
+    pub fn value(mut self, signal: Signal<f32>, min: f32, max: f32) -> Self {
+        let (low, high) = (min.min(max), min.max(max));
+        let valid = !low.is_nan();
         self.a11y.value_now = Some(signal);
-        self.a11y.value_min = Some(min);
-        self.a11y.value_max = Some(max);
+        self.a11y.value_min = valid.then_some(low);
+        self.a11y.value_max = valid.then_some(high);
         self
     }
 
@@ -177,6 +181,16 @@ impl NodeBuilder {
     #[must_use]
     pub const fn text_value(mut self, signal: Signal<String>) -> Self {
         self.a11y.text_value = Some(signal);
+        self
+    }
+
+    #[must_use]
+    pub const fn text_cursor(
+        mut self,
+        caret: Signal<usize>,
+        anchor: Signal<Option<usize>>,
+    ) -> Self {
+        self.a11y.text_cursor = Some(TextCursor { caret, anchor });
         self
     }
 

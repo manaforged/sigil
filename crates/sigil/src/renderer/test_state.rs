@@ -33,3 +33,16 @@ pub fn lock_global_text_state() -> GlobalTextState {
         atlas: test_atlas_size_override(),
     }
 }
+
+#[cfg(test)]
+pub(crate) fn shared_test_device() -> Option<&'static wgpu::Device> {
+    static DEVICE: OnceLock<Option<(wgpu::Device, wgpu::Queue)>> = OnceLock::new();
+    DEVICE
+        .get_or_init(|| {
+            crate::renderer::device_state::DeviceState::request_headless()
+                .ok()
+                .map(|(_, device, queue)| (device, queue))
+        })
+        .as_ref()
+        .map(|(device, _)| device)
+}

@@ -2,7 +2,6 @@
     unused_crate_dependencies,
     reason = "target does not use every package dependency"
 )]
-#![allow(missing_docs)]
 #![allow(clippy::unwrap_used)]
 
 use std::error::Error as StdError;
@@ -27,6 +26,7 @@ fn error_new_wraps_arbitrary_std_error() {
     assert!(format!("{e}").contains("inner failure"));
 }
 
+#[cfg(feature = "desktop")]
 #[test]
 fn error_renderer_error_into_works_via_question_mark() {
     fn try_renderer() -> Result<(), Error> {

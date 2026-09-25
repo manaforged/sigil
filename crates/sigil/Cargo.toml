@@ -1,15 +1,15 @@
 [package]
-name = "sigil-gui"
+name = "sigil-ui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 authors.workspace = true
-description = "GPU UI in Rust. One widget tree: launch and Host; the terminal host is sigil-tui."
+description = "GPU UI in Rust. One widget tree, one entry: sigil::run opens a window or a terminal."
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
-categories = ["gui"]
+categories = ["gui", "command-line-interface"]
 include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "benches/**", "examples/**"]
 autobenches = false
 
@@ -60,6 +60,11 @@ tray-icon = { version = "0.24", optional = true }
 rodio = { version = "0.22", optional = true }
 portable-pty = { version = "0.9", optional = true }
 vt100 = { version = "0.16", optional = true }
+crossterm = { version = "0.29", optional = true }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "1", optional = true, features = ["event", "std"] }
+signal-hook = { version = "0.3", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-core = { version = "0.62", default-features = false, features = ["std"] }
@@ -96,9 +101,7 @@ scene = [
 shell = ["dep:winit", "dep:accesskit_winit"]
 cpu = ["dep:softbuffer"]
 shaping-complex = ["dep:harfrust"]
-windowed = ["scene", "shell"]
 capture = ["scene"]
-bench = []
 render = ["scene"]
 clipboard = ["dep:arboard"]
 clipboard-image = ["clipboard", "arboard/image-data"]
@@ -106,20 +109,42 @@ dialog = ["desktop", "dep:rfd"]
 menu = ["desktop", "dep:muda", "dep:raw-window-handle"]
 tray = ["menu", "dep:tray-icon"]
 image-decode = ["dep:image", "dep:base64"]
-test-support = ["dialog"]
+kittest = []
 audio = ["dep:rodio"]
 pty = ["dep:portable-pty", "dep:vt100"]
+terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]
 
 [dev-dependencies]
 allocation-counter = "0.8.1"
 sigil-kittest = { path = "../kittest" }
 criterion = { version = "0.8", features = ["html_reports"] }
-image = { workspace = true }
+image = { workspace = true, features = ["webp"] }
+serde = { workspace = true }
 pollster = { workspace = true }
 proptest = { workspace = true }
 rayon = { workspace = true }
 taffy = "0.14"
 wgpu = { workspace = true }
+
+[[example]]
+name = "hello-terminal"
+required-features = ["terminal"]
+
+[[example]]
+name = "visual_catalog"
+required-features = ["terminal", "desktop"]
+
+[[test]]
+name = "terminal_host"
+required-features = ["terminal"]
+
+[[test]]
+name = "virtual_list_resize"
+required-features = ["terminal"]
+
+[[test]]
+name = "markdown_terminal"
+required-features = ["terminal"]
 
 [[test]]
 name = "text_integration"
@@ -131,8 +156,9 @@ path = "tests/shell_display_gate.rs"
 harness = false
 
 [[bench]]
-name = "floating_text"
+name = "terminal_frame"
 harness = false
+required-features = ["terminal"]
 
 [[bench]]
 name = "frame_phases"
@@ -234,4 +260,32 @@ harness = false
 workspace = true
 
 [package.metadata.docs.rs]
-features = ["desktop", "render", "clipboard", "clipboard-image", "image-decode", "test-support"]
+features = ["desktop", "terminal", "render", "clipboard", "clipboard-image", "image-decode"]
+
+[[example]]
+name = "todo-terminal"
+required-features = ["terminal"]
+
+[[example]]
+name = "preferences-window"
+required-features = ["desktop"]
+
+[[example]]
+name = "showcase-dashboard"
+required-features = ["desktop"]
+
+[[example]]
+name = "showcase-editor"
+required-features = ["desktop"]
+
+[[example]]
+name = "showcase-settings"
+required-features = ["desktop"]
+
+[[example]]
+name = "chat-both"
+required-features = ["terminal", "desktop"]
+
+[[example]]
+name = "pomodoro-both"
+required-features = ["terminal", "desktop"]

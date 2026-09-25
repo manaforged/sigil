@@ -14,15 +14,15 @@ then route `PointerPhase::Move`, `Down` (button
 `Some(MouseButton::Left)`), then `Up`; `Up` without the button does not
 release a press.
 
-Run `cargo run -p sigil-gui --example agent_driver` for the complete
+Run `cargo run -p sigil-ui --example agent_driver` for the complete
 loop: it mounts a counter, prints the snapshot, finds `Increment` by
 name, clicks it, and prints the snapshot and painted text again.
 
 ## Terminal host
 
-`sigil-tui` exposes the same drive without the terminal:
-`sigil_tui::present(tree, cols, rows, events)` mounts, routes, and
-returns the rendered grid as a string. `sigil_tui::step` advances an
+`sigil::terminal` exposes the same drive without the terminal:
+`sigil::terminal::present(tree, cols, rows, events)` mounts, routes, and
+returns the rendered grid as a string. `sigil::terminal::step` advances an
 existing `Host`/`EventRouter` pair by one frame. Agents that drive a
 terminal app get the screen as text on every step.
 
@@ -38,12 +38,16 @@ let Some(img) = sigil_kittest::render_widget_to_png(
     sigil_kittest::InteractionMode::Default,
     [200, 60],
     (10.0, 10.0),
-) else {
-    return; // no adapter
+)?
+else {
+    return Ok(());
 };
 sigil_kittest::assert_png_matches_golden(&img, &sigil_kittest::golden_path!("save"), 0.5);
 ```
 
-It returns `None` when no GPU adapter exists. `SIGIL_REGEN_GOLDENS=1`
-rebakes, and `SIGIL_REQUIRE_GOLDENS=1` turns the skip into a failure.
+It returns `Err(Error::NoAdapter)` when no GPU adapter exists, and
+`Ok(None)` when `SIGIL_ALLOW_NO_GPU=1` is set. `SIGIL_REGEN_GOLDENS=1`
+rebakes the goldens. `SIGIL_REGEN_GOLDENS=adapter` bakes
+`<name>.<adapter>.png` for the current GPU adapter. Every test process shares one wgpu device through
+`sigil_kittest::gpu::shared_device` and `headless_renderer`.
 See the `sigil-kittest` README for interaction modes and filmstrips.

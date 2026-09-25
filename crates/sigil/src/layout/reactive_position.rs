@@ -19,13 +19,12 @@ pub struct SizeReactive {
 }
 
 impl SizeReactive {
-    pub fn publish(&self, size: (f32, f32)) {
-        let Some(current) = self.size.try_peek() else {
-            return;
-        };
-        if current != size {
+    pub fn publish(&self, size: (f32, f32)) -> bool {
+        let changed = self.size.try_peek().is_some_and(|current| current != size);
+        if changed {
             self.size.set(size);
         }
+        changed
     }
 }
 
@@ -35,13 +34,15 @@ pub struct BoundsReactive {
 }
 
 impl BoundsReactive {
-    pub fn publish(&self, bounds: (f32, f32, f32, f32)) {
-        let Some(current) = self.bounds.try_peek() else {
-            return;
-        };
-        if current != bounds {
+    pub fn publish(&self, bounds: (f32, f32, f32, f32)) -> bool {
+        let changed = self
+            .bounds
+            .try_peek()
+            .is_some_and(|current| current != bounds);
+        if changed {
             self.bounds.set(bounds);
         }
+        changed
     }
 }
 

@@ -1,17 +1,22 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Signal, derived};
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, Tone};
+use crate::reactive::{Reactive, Signal, derived};
+use crate::style::{BORDER_WIDTH, DisplayKind, NodeStyleExt, Radius, StyleAtom, Token, space};
 
+use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
+pub use super::notice::notice_band;
 use super::shared::label;
 use super::text_field::TextFieldBuilder;
 use super::tooltip::{TooltipBuilder, tooltip as tooltip_widget};
 
-const TOP_BAR_HEIGHT: f32 = 48.0;
-const STATUS_BAR_HEIGHT: f32 = 28.0;
-const FIELD_GAP: f32 = 4.0;
-const KV_GRID_ROW_GAP: f32 = 4.0;
-const KV_GRID_COLUMN_GAP: f32 = 12.0;
+const TOP_BAR_HEIGHT: f32 = space(12);
+const FIELD_GAP: f32 = space(1);
+
+static TOP_CHROME: &[StyleAtom] = &[
+    Token::SurfaceSubtle.bg(),
+    StyleAtom::BorderBottom(BORDER_WIDTH),
+    Token::Border.border(),
+];
 
 #[must_use]
 pub fn app_shell(
@@ -35,26 +40,41 @@ pub fn app_shell(
 fn top_section(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_row().fill_width().height(TOP_BAR_HEIGHT))
+        .layout(chrome_layout(TOP_BAR_HEIGHT))
+        .class(TOP_CHROME)
         .child(child)
 }
 
 fn work_section(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().fill_width().grow(1.0))
+        .layout(
+            LayoutStyle::flex_column()
+                .fill_width()
+                .grow(1.0)
+                .min_size(0.0, 0.0)
+                .padding(space(2)),
+        )
+        .class(Token::Surface.bg())
         .child(child)
 }
 
 fn status_section(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .height(STATUS_BAR_HEIGHT),
-        )
+        .layout(chrome_layout(STATUS_BAR_HEIGHT))
+        .class(STATUS_CHROME)
         .child(child)
+}
+
+fn chrome_layout(height: f32) -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .fill_width()
+        .height(height)
+        .shrink(0.0)
+        .padding_x(space(2))
+        .gap(space(2))
+        .align_items(AlignItems::Center)
 }
 
 fn modal_overlay(child: impl IntoNode + 'static) -> NodeBuilder {
@@ -90,8 +110,9 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
 pub fn validated_field(
     label_text: impl Into<TextContent>,
     control: TextFieldBuilder,
-    error: Signal<Option<String>>,
+    error: impl Reactive<Option<String>>,
 ) -> NodeBuilder {
+    let error: Signal<Option<String>> = derived(move || error.read());
     let message: Signal<String> = derived(move || error.get().unwrap_or_default());
     let visible: Signal<bool> = derived(move || error.get().is_some());
     let invalid_signal: Signal<bool> = derived(move || error.get().is_some());
@@ -104,7 +125,8 @@ pub fn validated_field(
         .child(
             text(message)
                 .role(Role::Label)
-                .class("text-error-12 text-xs font-medium")
+                .class("text-xs font-medium")
+                .class(Token::Error12.text())
                 .style_reactive(move || {
                     if visible.get() {
                         ERROR_VISIBLE
@@ -122,20 +144,23 @@ static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 pub fn kv_grid(rows: &[(&'static str, &'static str)]) -> NodeBuilder {
     let mut root = container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().fill_width().gap(KV_GRID_ROW_GAP));
-    for (key, value) in rows {
-        root = root.child(kv_grid_row(key, value));
+        .layout(LayoutStyle::flex_column().fill_width());
+    let last = rows.len().saturating_sub(1);
+    for (index, (key, value)) in rows.iter().enumerate() {
+        let row = kv_row(*key, text(*value).class("font-mono"));
+        root = root.child(if index < last {
+            row.class(ROW_RULE)
+        } else {
+            row
+        });
     }
     root
 }
 
-fn kv_grid_row(key: &'static str, value: &'static str) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_row().fill_width().gap(KV_GRID_COLUMN_GAP))
-        .child(label(key))
-        .child(text(value).class("font-mono"))
-}
+static ROW_RULE: &[StyleAtom] = &[
+    StyleAtom::BorderBottom(BORDER_WIDTH),
+    Token::Border.border(),
+];
 
 #[must_use]
 pub fn tooltip(target: impl IntoNode + 'static, hint: impl Into<String>) -> TooltipBuilder {
@@ -170,13 +195,13 @@ impl HintOverlayBuilder {
             .label("Keyboard shortcuts")
             .layout(
                 LayoutStyle::flex_column()
-                    .padding(12.0)
-                    .gap(6.0)
+                    .padding(space(3))
+                    .gap(space(2))
                     .align_items(AlignItems::Start)
                     .justify_content(JustifyContent::Start),
             )
-            .class("rounded-md")
-            .class(OVERLAY_BASE);
+            .class(super::popup::SURFACE)
+            .class(OVERLAY_TEXT);
 
         for (chord, desc) in self.entries {
             root = root.child(hint_row(&chord, &desc));
@@ -191,17 +216,14 @@ impl IntoNode for HintOverlayBuilder {
     }
 }
 
-static OVERLAY_BASE: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::TextThemeRef("on-surface"),
-];
+static OVERLAY_TEXT: &[StyleAtom] = &[Token::OnSurface.text()];
 
 fn hint_row(chord: &str, description: &str) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(
             LayoutStyle::flex_row()
-                .gap(8.0)
+                .gap(space(2))
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Start),
         )
@@ -214,7 +236,7 @@ pub fn hint_overlay(hints: &[HintEntry<'_>]) -> HintOverlayBuilder {
     HintOverlayBuilder::new(hints)
 }
 
-const AVATAR_PX: f32 = 28.0;
+const AVATAR_PX: f32 = space(7);
 
 #[must_use]
 pub fn spacer() -> NodeBuilder {
@@ -227,23 +249,34 @@ pub fn spacer() -> NodeBuilder {
 pub fn hairline() -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
-        .layout(LayoutStyle::block().fixed_size(1.0, 16.0).shrink(0.0))
-        .class("bg-gray-6")
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(f32::from(BORDER_WIDTH.0), space(4))
+                .shrink(0.0),
+        )
+        .class(Token::Border.bg())
 }
 
 #[must_use]
 pub fn empty_state(title: impl Into<TextContent>, body: impl Into<TextContent>) -> NodeBuilder {
+    let title: TextContent = title.into();
+    let name = title.as_static_str().unwrap_or("Empty").to_owned();
     container()
         .role(Role::Status)
+        .label(name)
         .layout(
             LayoutStyle::flex_column()
                 .fill_width()
-                .padding(48.0)
-                .gap(10.0)
+                .padding(space(12))
+                .gap(space(3))
                 .align_items(AlignItems::Center),
         )
-        .child(text(title).class("text-lg font-medium text-on-surface"))
-        .child(text(body).class("text-sm text-gray-11"))
+        .child(
+            text(title)
+                .class("text-lg font-medium")
+                .class(Token::OnSurface.text()),
+        )
+        .child(text(body).class("text-sm").class(Token::Gray11.text()))
 }
 
 #[must_use]
@@ -253,9 +286,9 @@ pub fn section_label(title: impl Into<TextContent>) -> NodeBuilder {
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
-                .padding_x(8.0),
+                .padding_x(space(2)),
         )
-        .child(text(title).class("text-xs text-gray-11"))
+        .child(text(title).class("text-xs").class(Token::Gray11.text()))
 }
 
 #[must_use]
@@ -265,31 +298,12 @@ pub fn hint_bar(keys: impl Into<TextContent>, right: impl Into<TextContent>) -> 
             LayoutStyle::flex_row()
                 .fill_width()
                 .height(row_height())
-                .padding_x(16.0)
+                .padding_x(space(2))
                 .align_items(AlignItems::Center),
         )
-        .child(text(keys).class("text-xs text-gray-11"))
+        .child(text(keys).class("text-xs").class(Token::Gray11.text()))
         .child(spacer())
-        .child(text(right).class("text-xs text-accent-11"))
-}
-
-#[must_use]
-pub fn notice_band(body: impl Into<TextContent>, tone: Tone) -> NodeBuilder {
-    let class = match tone {
-        Tone::Error => "text-error-11",
-        Tone::Warn => "text-warn-11",
-        Tone::Success => "text-success-11",
-        Tone::Info | Tone::Primary | Tone::Neutral => "text-gray-11",
-    };
-    container()
-        .role(Role::Status)
-        .layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .padding_x(8.0)
-                .padding_y(4.0),
-        )
-        .child(text(body).ellipsize().class(class))
+        .child(text(right).class("text-xs").class(Token::Accent11.text()))
 }
 
 #[must_use]
@@ -298,11 +312,16 @@ pub fn card(child: impl IntoNode + 'static) -> NodeBuilder {
         .role(Role::GenericContainer)
         .layout(
             LayoutStyle::flex_column()
-                .padding(12.0)
-                .gap(8.0)
+                .padding(space(3))
+                .gap(space(2))
                 .fill_width(),
         )
-        .class("rounded-md bg-surface border border-gray-6")
+        .class([
+            Radius::Md.atom(),
+            Token::Surface.bg(),
+            StyleAtom::BorderWidth(BORDER_WIDTH),
+            Token::Border.border(),
+        ])
         .child(child)
 }
 
@@ -323,10 +342,11 @@ pub fn avatar(initials: impl Into<TextContent>) -> NodeBuilder {
                 .justify_content(JustifyContent::Center)
                 .shrink(0.0),
         )
-        .class("rounded-full bg-accent-9")
+        .class([Radius::Full.atom(), Token::Accent9.bg()])
         .child(
             text(content)
-                .class("text-xs font-medium text-on-accent")
+                .class("text-xs font-medium")
+                .class(Token::OnAccent.text())
                 .hittable(false),
         )
 }
@@ -335,7 +355,8 @@ mod list_row;
 mod sidebar;
 
 use list_row::row_height;
-pub use list_row::{ListRowSlots, list_row, list_row_with};
+pub use list_row::{Disclosure, ListRowSlots, list_row, list_row_with};
+pub(crate) use list_row::{ROW_SELECTED, row_states};
 pub use sidebar::{sidebar, sidebar_width};
 
 #[cfg(test)]

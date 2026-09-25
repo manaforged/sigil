@@ -1,23 +1,20 @@
-#![allow(missing_docs)]
-#![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
-#![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
-#![allow(clippy::cast_lossless, clippy::cast_sign_loss)]
-#![allow(clippy::print_stdout, clippy::doc_markdown)]
-#![allow(clippy::too_many_lines, clippy::module_name_repetitions)]
-#![allow(clippy::too_many_arguments, clippy::missing_const_for_fn)]
-#![allow(unreachable_pub, dead_code)]
-
+use sigil::layout::TextMeasure;
 use sigil::prelude::*;
 use sigil::renderer::emit_scene;
 
+mod bounds;
 mod compare;
 pub use compare::{assert_goldens_differ_in, assert_png_matches_golden, golden_path_in};
+mod error;
+pub use error::Error;
 pub mod gpu;
-use gpu::{render_scene_to_image, request_device};
+use gpu::{render_scene_to_image, shared_device};
 mod interaction;
 use interaction::drive_state;
 
 pub const SETTLE_SAFETY_CAP: u32 = 600;
+
+pub type Rendered = Result<Option<image::RgbaImage>, Error>;
 
 #[derive(Clone, Copy, Debug)]
 pub enum InteractionMode {
@@ -30,6 +27,7 @@ pub enum InteractionMode {
     HoverAfterFrames { frames: u32, dt: f32 },
     PressedAfterFrames { frames: u32, dt: f32 },
     FocusedAfterFrames { frames: u32, dt: f32 },
+    Dragged { dx: f32, dy: f32 },
 }
 
 impl InteractionMode {
@@ -42,26 +40,27 @@ impl InteractionMode {
             Self::Clicked => "clicked",
             Self::Focused | Self::FocusedAfterFrames { .. } => "focused",
             Self::Disabled => "disabled",
+            Self::Dragged { .. } => "dragged",
         }
     }
 }
 
 pub const FILMSTRIP_GAP_PX: u32 = 4;
 
-#[must_use]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "a filmstrip needs the widget, its size, the hit point, the frame count, the step, and the text measure"
+)]
 pub fn capture_filmstrip(
     build: impl Fn(&mut Cx) -> NodeId,
     size_px: [u32; 2],
     hit_point: (f32, f32),
     frame_count: u32,
     dt: f32,
-) -> Option<image::RgbaImage> {
-    assert!(
-        frame_count >= 1,
-        "capture_filmstrip: frame_count must be at least 1",
-    );
-    let mut frames: Vec<image::RgbaImage> = Vec::with_capacity(frame_count as usize);
-    for index in 0..frame_count {
+    text_measure: impl Fn() -> Box<dyn TextMeasure>,
+) -> Rendered {
+    let mut frames: Vec<image::RgbaImage> = Vec::new();
+    for index in 0..frame_count.max(1) {
         let mode = if index == 0 {
             InteractionMode::Default
         } else {
@@ -70,31 +69,31 @@ pub fn capture_filmstrip(
                 dt,
             }
         };
-        let frame = render_widget_to_png(&build, mode, size_px, hit_point)?;
+        let Some(frame) =
+            render_widget_to_png_with(&build, mode, size_px, hit_point, text_measure())?
+        else {
+            return Ok(None);
+        };
         frames.push(frame);
     }
-    Some(stitch_horizontal(&frames, FILMSTRIP_GAP_PX))
+    Ok(Some(stitch_horizontal(&frames, size_px, FILMSTRIP_GAP_PX)))
 }
 
-fn stitch_horizontal(frames: &[image::RgbaImage], gap_px: u32) -> image::RgbaImage {
-    assert!(!frames.is_empty(), "stitch_horizontal: no frames");
-    let frame_w = frames[0].width();
-    let height = frames[0].height();
-    for frame in frames {
-        assert_eq!(frame.width(), frame_w, "filmstrip frame width mismatch");
-        assert_eq!(frame.height(), height, "filmstrip frame height mismatch");
-    }
-    let n = frames.len() as u32;
-    let total_w = n * frame_w + n.saturating_sub(1) * gap_px;
+fn stitch_horizontal(
+    frames: &[image::RgbaImage],
+    size_px: [u32; 2],
+    gap_px: u32,
+) -> image::RgbaImage {
+    let [frame_w, height] = size_px;
+    let count = u32::try_from(frames.len()).unwrap_or(u32::MAX);
+    let total_w = count
+        .saturating_mul(frame_w)
+        .saturating_add(count.saturating_sub(1).saturating_mul(gap_px));
     let mut out = image::RgbaImage::from_pixel(total_w, height, image::Rgba([0, 0, 0, 255]));
-    for (index, frame) in frames.iter().enumerate() {
-        let x_offset = index as u32 * (frame_w + gap_px);
-        for y in 0..height {
-            for x in 0..frame_w {
-                let pixel = *frame.get_pixel(x, y);
-                out.put_pixel(x_offset + x, y, pixel);
-            }
-        }
+    let mut x_offset = 0_i64;
+    for frame in frames {
+        image::imageops::replace(&mut out, frame, x_offset, 0);
+        x_offset += i64::from(frame_w) + i64::from(gap_px);
     }
     out
 }
@@ -108,27 +107,33 @@ impl TextMeasure for StubMeasure {
 }
 
 #[must_use]
-pub fn regen_enabled() -> bool {
-    matches!(
-        std::env::var("SIGIL_REGEN_GOLDENS").ok().as_deref(),
-        Some("1" | "true" | "yes" | "on"),
-    )
+pub fn stub_text_measure() -> Box<dyn TextMeasure> {
+    Box::new(StubMeasure)
 }
 
 #[must_use]
-pub fn real_measure_enabled() -> bool {
-    matches!(
-        std::env::var("SIGIL_REAL_MEASURE").ok().as_deref(),
-        Some("1" | "true" | "yes" | "on"),
-    )
+pub fn real_text_measure() -> Box<dyn TextMeasure> {
+    Box::new(sigil::app::DefaultTextMeasure::new())
 }
 
-fn default_text_measure() -> Box<dyn sigil::layout::TextMeasure> {
-    if real_measure_enabled() {
-        Box::new(sigil::app::DefaultTextMeasure::new())
-    } else {
-        Box::new(StubMeasure)
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Regen {
+    All,
+    Adapter,
+}
+
+#[must_use]
+pub fn regen_mode() -> Option<Regen> {
+    match std::env::var("SIGIL_REGEN_GOLDENS").ok().as_deref() {
+        Some("1" | "true" | "yes" | "on") => Some(Regen::All),
+        Some("adapter") => Some(Regen::Adapter),
+        _ => None,
     }
+}
+
+#[must_use]
+pub fn regen_enabled() -> bool {
+    regen_mode().is_some()
 }
 
 #[macro_export]
@@ -145,138 +150,214 @@ macro_rules! assert_goldens_differ {
     };
 }
 
-#[must_use]
 pub fn render_widget_to_png(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
-) -> Option<image::RgbaImage> {
-    render_widget_to_png_with(build, mode, size_px, hit_point, default_text_measure())
+) -> Rendered {
+    render_widget_to_png_with(build, mode, size_px, hit_point, real_text_measure())
 }
 
-#[must_use]
+pub fn render_widget_to_png_stub(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    size_px: [u32; 2],
+    hit_point: (f32, f32),
+) -> Rendered {
+    render_widget_to_png_with(build, mode, size_px, hit_point, stub_text_measure())
+}
+
 pub fn render_widget_to_png_with(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil::layout::TextMeasure>,
-) -> Option<image::RgbaImage> {
-    render_core(build, mode, size_px, hit_point, text_measure, |_, root| {
-        root
-    })
+    text_measure: Box<dyn TextMeasure>,
+) -> Rendered {
+    let target = RenderTarget::unscaled(size_px);
+    render_core(build, mode, target, hit_point, text_measure, |_, root| root)
 }
 
-#[must_use]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "a scaled render needs the logical size and the scale beside the render inputs"
+)]
 pub fn render_widget_to_png_scaled(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
     logical_size_px: [u32; 2],
     scale: f32,
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil::layout::TextMeasure>,
-) -> Option<image::RgbaImage> {
-    let logical = [logical_size_px[0] as f32, logical_size_px[1] as f32];
-    let physical = [
-        (logical[0] * scale).round() as u32,
-        (logical[1] * scale).round() as u32,
-    ];
-    render_core_scaled(
+    text_measure: Box<dyn TextMeasure>,
+) -> Rendered {
+    let target = RenderTarget::scaled(logical_size_px, scale);
+    render_core(build, mode, target, hit_point, text_measure, |_, root| root)
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "a scaled render needs the logical size and the scale beside the render inputs"
+)]
+pub fn render_widget_to_png_scaled_focus_descendant(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    logical_size_px: [u32; 2],
+    scale: f32,
+    hit_point: (f32, f32),
+    text_measure: Box<dyn TextMeasure>,
+) -> Rendered {
+    let target = RenderTarget::scaled(logical_size_px, scale);
+    render_core(
         build,
         mode,
-        logical,
-        physical,
+        target,
         hit_point,
         text_measure,
-        |_, root| root,
+        focus_descendant,
     )
 }
 
-#[must_use]
+pub struct Captured {
+    pub image: image::RgbaImage,
+    pub top_layer: Option<sigil::hal::Rect>,
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "a scaled render needs the logical size and the scale beside the render inputs"
+)]
+pub fn capture_widget_scaled_focus_descendant(
+    build: impl FnOnce(&mut Cx) -> NodeId,
+    mode: InteractionMode,
+    logical_size_px: [u32; 2],
+    scale: f32,
+    hit_point: (f32, f32),
+    text_measure: Box<dyn TextMeasure>,
+) -> Result<Option<Captured>, Error> {
+    let target = RenderTarget::scaled(logical_size_px, scale);
+    capture_core(
+        build,
+        mode,
+        target,
+        hit_point,
+        text_measure,
+        focus_descendant,
+    )
+}
+
+fn focus_descendant(cx: &Cx, root: NodeId) -> NodeId {
+    find_first_focusable(cx, root).unwrap_or(root)
+}
+
 pub fn render_widget_to_png_focus_descendant(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
     size_px: [u32; 2],
     hit_point: (f32, f32),
-) -> Option<image::RgbaImage> {
+    text_measure: Box<dyn TextMeasure>,
+) -> Rendered {
     render_core(
         build,
         mode,
-        size_px,
+        RenderTarget::unscaled(size_px),
         hit_point,
-        Box::new(StubMeasure),
-        |cx, root| find_first_focusable(cx, root).unwrap_or(root),
+        text_measure,
+        focus_descendant,
     )
 }
 
+#[derive(Clone, Copy)]
+struct RenderTarget {
+    logical: [f32; 2],
+    physical: [u32; 2],
+}
+
+impl RenderTarget {
+    fn unscaled(size_px: [u32; 2]) -> Self {
+        Self {
+            logical: size_px.map(extent_f32),
+            physical: size_px,
+        }
+    }
+
+    fn scaled(logical_size_px: [u32; 2], scale: f32) -> Self {
+        Self {
+            logical: logical_size_px.map(extent_f32),
+            physical: logical_size_px.map(|extent| physical_extent(extent, scale)),
+        }
+    }
+}
+
+#[allow(clippy::cast_precision_loss)]
+pub(crate) const fn extent_f32(value: u32) -> f32 {
+    value as f32
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn physical_extent(logical: u32, scale: f32) -> u32 {
+    (extent_f32(logical) * scale).round().max(0.0) as u32
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "every public render entry point funnels its inputs through this function"
+)]
 fn render_core(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
-    size_px: [u32; 2],
+    target: RenderTarget,
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil::layout::TextMeasure>,
+    text_measure: Box<dyn TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
-) -> Option<image::RgbaImage> {
-    let logical = [size_px[0] as f32, size_px[1] as f32];
-    render_core_scaled(
-        build,
-        mode,
-        logical,
-        size_px,
-        hit_point,
-        text_measure,
-        focus_target,
-    )
+) -> Rendered {
+    capture_core(build, mode, target, hit_point, text_measure, focus_target)
+        .map(|captured| captured.map(|captured| captured.image))
 }
 
-fn render_core_scaled(
+#[allow(
+    clippy::too_many_arguments,
+    reason = "every public render entry point funnels its inputs through this function"
+)]
+fn capture_core(
     build: impl FnOnce(&mut Cx) -> NodeId,
     mode: InteractionMode,
-    logical_size: [f32; 2],
-    physical_size_px: [u32; 2],
+    target: RenderTarget,
     hit_point: (f32, f32),
-    text_measure: Box<dyn sigil::layout::TextMeasure>,
+    text_measure: Box<dyn TextMeasure>,
     focus_target: impl Fn(&Cx, NodeId) -> NodeId,
-) -> Option<image::RgbaImage> {
-    let mut image: Option<image::RgbaImage> = None;
+) -> Result<Option<Captured>, Error> {
     sigil::reactive::Runtime::scope("sigil-visual-golden", || {
         let mut cx = Cx::new_root();
         let root = build(&mut cx);
-        let target = focus_target(&cx, root);
-
-        let [viewport_w, viewport_h] = logical_size;
+        let focus = focus_target(&cx, root);
+        let [viewport_w, viewport_h] = target.logical;
+        let viewport = Size::fixed(viewport_w, viewport_h);
         let mut layout = LayoutEngine::with_text_measure(text_measure);
-        layout
-            .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
-            .expect("layout");
-
-        let mut router = EventRouter::new();
-        drive_state(&mut router, &mut cx, &layout, target, mode, hit_point);
-
-        layout
-            .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
-            .expect("layout-after-state");
-
-        interaction::advance(mode, || {
-            layout
-                .compute(&mut cx, root, Size::fixed(viewport_w, viewport_h))
-                .expect("layout-after-animation");
-        });
-
-        let scene = emit_scene(&cx, root);
-        let Some((device, queue)) = request_device() else {
-            return;
+        let relayout = |tree: &mut Cx, engine: &mut LayoutEngine| {
+            engine
+                .compute(tree, root, viewport)
+                .map_err(|err| Error::Layout(format!("{err:?}")))
         };
-        image = Some(render_scene_to_image(
-            &device,
-            &queue,
+        relayout(&mut cx, &mut layout)?;
+        drive_state(&mut cx, &layout, focus, mode, hit_point);
+        relayout(&mut cx, &mut layout)?;
+        interaction::advance(mode, || relayout(&mut cx, &mut layout))?;
+        let scene = emit_scene(&cx, root);
+        let frame = sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), viewport_w, viewport_h);
+        let top_layer = bounds::top_layer(&cx, &layout, root, frame);
+        let Some((device, queue)) = shared_device()? else {
+            return Ok(None);
+        };
+        let image = render_scene_to_image(
+            device,
+            queue,
             &scene,
             (viewport_w, viewport_h),
-            physical_size_px,
-        ));
-    });
-    image
+            target.physical,
+        )?;
+        Ok(Some(Captured { image, top_layer }))
+    })
 }
 
 fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {

@@ -19,6 +19,7 @@ pub struct LayoutEngine {
     synced_version: SecondaryMap<slotmap::DefaultKey, u32>,
     synced_text_sig: SecondaryMap<slotmap::DefaultKey, u64>,
     published_result: SecondaryMap<slotmap::DefaultKey, LayoutResult>,
+    popup_offsets: SecondaryMap<slotmap::DefaultKey, (f32, f32)>,
     generation: u64,
     cached_key: Option<LayoutCacheKey>,
     reactive_layout: BTreeSet<slotmap::DefaultKey>,
@@ -28,6 +29,7 @@ pub struct LayoutEngine {
     steady: AHashSet<NodeId>,
     restyled: AHashSet<NodeId>,
     last_reactive_sig: u64,
+    republished: bool,
 }
 
 impl LayoutEngine {
@@ -39,6 +41,7 @@ impl LayoutEngine {
             synced_version: SecondaryMap::new(),
             synced_text_sig: SecondaryMap::new(),
             published_result: SecondaryMap::new(),
+            popup_offsets: SecondaryMap::new(),
             generation: 0,
             cached_key: None,
             reactive_layout: BTreeSet::new(),
@@ -48,7 +51,12 @@ impl LayoutEngine {
             steady: AHashSet::new(),
             restyled: AHashSet::new(),
             last_reactive_sig: 0,
+            republished: false,
         }
+    }
+
+    pub const fn take_republished(&mut self) -> bool {
+        std::mem::replace(&mut self.republished, false)
     }
 
     #[must_use]
@@ -63,8 +71,13 @@ impl LayoutEngine {
 
     #[must_use]
     pub fn result(&self, id: NodeId) -> Option<LayoutResult> {
-        self.fresh(id)
-            .or_else(|| self.published_result.get(id.key()).copied())
+        let result = self
+            .fresh(id)
+            .or_else(|| self.published_result.get(id.key()).copied())?;
+        Some(match self.popup_offsets.get(id.key()) {
+            Some(&(dx, dy)) => result.translated(dx, dy),
+            None => result,
+        })
     }
 
     fn fresh(&self, id: NodeId) -> Option<LayoutResult> {
@@ -253,6 +266,7 @@ impl LayoutEngine {
         self.synced_version.clear();
         self.synced_text_sig.clear();
         self.published_result.clear();
+        self.popup_offsets.clear();
         self.core_to_handle.clear();
         self.reactive_layout.clear();
         self.positions.clear();
@@ -333,7 +347,7 @@ mod overlays;
 mod sync;
 mod viewport;
 
-pub(crate) use viewport::ViewportOverlay;
+pub(crate) use viewport::{Popup, PopupSide, ViewportOverlay};
 
 fn animated(node: &crate::kernel::Node) -> bool {
     node.get_extension::<StyleBinding>().is_some_and(|binding| {

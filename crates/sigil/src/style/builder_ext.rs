@@ -36,6 +36,18 @@ impl<const N: usize> From<&'static [StyleAtom; N]> for ClassSource {
     }
 }
 
+impl From<StyleAtom> for ClassSource {
+    fn from(value: StyleAtom) -> Self {
+        Self::Owned(Box::new(SmallVec::from_elem(value, 1)))
+    }
+}
+
+impl<const N: usize> From<[StyleAtom; N]> for ClassSource {
+    fn from(value: [StyleAtom; N]) -> Self {
+        Self::Owned(Box::new(value.into_iter().collect()))
+    }
+}
+
 impl From<&'static str> for ClassSource {
     fn from(value: &'static str) -> Self {
         Self::RawString(value)
@@ -247,7 +259,7 @@ fn install_class(node: &mut Node, source: ClassSource) {
 fn debug_assert_not_fragment(node: &Node, op: &'static str) {
     debug_assert!(
         !matches!(node.kind, crate::kernel::NodeType::Fragment),
-        "{op}() on a Fragment: fragments have no paint box; see DR-015"
+        "{op}() on a Fragment: fragments have no paint box"
     );
 }
 

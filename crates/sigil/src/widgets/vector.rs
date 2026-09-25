@@ -1,16 +1,50 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::kernel::{Cx, ImageSource, IntoNode, NodeId, container, image};
-use crate::layout::prelude::LayoutStyle;
-use crate::style::Rgba8;
-use tiny_skia::{
-    Color as TsColor, FillRule, GradientStop, LinearGradient, Paint, PathBuilder as TsPathBuilder,
-    Pixmap, Point as TsPoint, RadialGradient, Shader, SpreadMode, Stroke, Transform,
-};
+use std::rc::Rc;
 
+use crate::kernel::{Cx, ImageSource, IntoNode, NodeId, ThemedImage, container, image};
+use crate::layout::prelude::LayoutStyle;
+use crate::style::{Rgba8, Theme, Token};
+use tiny_skia::{FillRule, Paint, Pixmap, Stroke, Transform};
+
+mod key;
+mod raster;
+
+use key::{OFFSET, hash_cmd, mix, mix_fill, mix_stroke};
+use raster::{build_ts_path, fill_shader, straight_rgba, to_ts_color};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PathColor {
+    Rgba(Rgba8),
+    Token(Token),
+}
+
+impl PathColor {
+    fn resolve(self, theme: &Theme) -> Rgba8 {
+        match self {
+            Self::Rgba(color) => color,
+            Self::Token(token) => theme.resolve_color(token.name()),
+        }
+    }
+}
+
+impl From<Rgba8> for PathColor {
+    fn from(color: Rgba8) -> Self {
+        Self::Rgba(color)
+    }
+}
+
+impl From<Token> for PathColor {
+    fn from(token: Token) -> Self {
+        Self::Token(token)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub enum PathFill {
     Solid(Rgba8),
+    Theme(Token),
     Linear {
         start: (f32, f32),
         end: (f32, f32),
@@ -37,7 +71,7 @@ pub struct PathNode {
     height: u32,
     cmds: Vec<PathCmd>,
     fill: Option<PathFill>,
-    stroke: Option<(Rgba8, f32)>,
+    stroke: Option<(PathColor, f32)>,
     layout: Option<crate::layout::prelude::LayoutStyle>,
     scale: u8,
 }
@@ -47,64 +81,7 @@ thread_local! {
 }
 
 const RASTER_CAP: usize = 256;
-
-fn mix(hash: &mut u64, byte: u8) {
-    const PRIME: u64 = 0x0000_0100_0000_01b3;
-    *hash ^= u64::from(byte);
-    *hash = hash.wrapping_mul(PRIME);
-}
-
-fn mix_f32(hash: &mut u64, value: f32) {
-    for byte in value.to_bits().to_le_bytes() {
-        mix(hash, byte);
-    }
-}
-
-fn mix_rgba(hash: &mut u64, color: Rgba8) {
-    mix(hash, color.r);
-    mix(hash, color.g);
-    mix(hash, color.b);
-    mix(hash, color.a);
-}
-
-fn mix_stops(hash: &mut u64, stops: &[(f32, Rgba8)]) {
-    for &(pos, color) in stops {
-        mix_f32(hash, pos);
-        mix_rgba(hash, color);
-    }
-}
-
-fn hash_cmd(hash: &mut u64, cmd: PathCmd) {
-    match cmd {
-        PathCmd::MoveTo(x, y) => {
-            mix(hash, 1);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::LineTo(x, y) => {
-            mix(hash, 2);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::QuadTo(cx, cy, x, y) => {
-            mix(hash, 3);
-            mix_f32(hash, cx);
-            mix_f32(hash, cy);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
-            mix(hash, 4);
-            mix_f32(hash, c1x);
-            mix_f32(hash, c1y);
-            mix_f32(hash, c2x);
-            mix_f32(hash, c2y);
-            mix_f32(hash, x);
-            mix_f32(hash, y);
-        }
-        PathCmd::Close => mix(hash, 5),
-    }
-}
+const RASTER_BYTES: usize = 64 << 20;
 
 #[must_use]
 pub const fn path(width: u32, height: u32) -> PathNode {
@@ -155,8 +132,11 @@ impl PathNode {
     }
 
     #[must_use]
-    pub fn fill(mut self, color: Rgba8) -> Self {
-        self.fill = Some(PathFill::Solid(color));
+    pub fn fill(mut self, color: impl Into<PathColor>) -> Self {
+        self.fill = Some(match color.into() {
+            PathColor::Rgba(color) => PathFill::Solid(color),
+            PathColor::Token(token) => PathFill::Theme(token),
+        });
         self
     }
 
@@ -187,8 +167,8 @@ impl PathNode {
     }
 
     #[must_use]
-    pub const fn stroke(mut self, color: Rgba8, width: f32) -> Self {
-        self.stroke = Some((color, width));
+    pub fn stroke(mut self, color: impl Into<PathColor>, width: f32) -> Self {
+        self.stroke = Some((color.into(), width));
         self
     }
 
@@ -220,8 +200,29 @@ impl PathNode {
         self
     }
 
-    fn intern_key(&self) -> u64 {
-        const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    #[must_use]
+    pub(crate) const fn retina(mut self) -> Self {
+        self.scale = 2;
+        self
+    }
+
+    const fn themed(&self) -> bool {
+        matches!(self.fill, Some(PathFill::Theme(_)))
+            || matches!(self.stroke, Some((PathColor::Token(_), _)))
+    }
+
+    fn resolved(&self, theme: &Theme) -> (Option<PathFill>, Option<(Rgba8, f32)>) {
+        let fill = self.fill.as_ref().map(|fill| match fill {
+            PathFill::Theme(token) => PathFill::Solid(theme.resolve_color(token.name())),
+            other => other.clone(),
+        });
+        let stroke = self
+            .stroke
+            .map(|(color, width)| (color.resolve(theme), width));
+        (fill, stroke)
+    }
+
+    fn intern_key(&self, fill: Option<&PathFill>, stroke: Option<(Rgba8, f32)>) -> u64 {
         let mut hash = OFFSET;
         for byte in self.width.to_le_bytes() {
             mix(&mut hash, byte);
@@ -233,49 +234,31 @@ impl PathNode {
         for cmd in &self.cmds {
             hash_cmd(&mut hash, *cmd);
         }
-        match self.stroke {
-            Some((color, width)) => {
-                mix(&mut hash, 1);
-                mix_rgba(&mut hash, color);
-                mix_f32(&mut hash, width);
-            }
-            None => mix(&mut hash, 0),
-        }
-        match &self.fill {
-            Some(PathFill::Solid(color)) => {
-                mix(&mut hash, 1);
-                mix_rgba(&mut hash, *color);
-            }
-            Some(PathFill::Linear { start, end, stops }) => {
-                mix(&mut hash, 2);
-                mix_f32(&mut hash, start.0);
-                mix_f32(&mut hash, start.1);
-                mix_f32(&mut hash, end.0);
-                mix_f32(&mut hash, end.1);
-                mix_stops(&mut hash, stops);
-            }
-            Some(PathFill::Radial {
-                center,
-                radius,
-                stops,
-            }) => {
-                mix(&mut hash, 3);
-                mix_f32(&mut hash, center.0);
-                mix_f32(&mut hash, center.1);
-                mix_f32(&mut hash, *radius);
-                mix_stops(&mut hash, stops);
-            }
-            None => mix(&mut hash, 0),
-        }
+        mix_stroke(&mut hash, stroke);
+        mix_fill(&mut hash, fill);
         hash
     }
 
-    fn rasterize(&self) -> Option<ImageSource> {
-        let key = self.intern_key();
+    fn rasterize(&self, theme: &Theme) -> Option<ImageSource> {
+        let (fill, stroke) = self.resolved(theme);
+        let key = self.intern_key(fill.as_ref(), stroke);
         if let Some(hit) = RASTER.with(|map| map.borrow().get(&key).cloned()) {
             return Some(hit);
         }
         crate::profile::count("path.raster");
+        let source = self.paint(fill.as_ref(), stroke)?;
+        RASTER.with(|map| {
+            let mut map = map.borrow_mut();
+            let held: usize = map.values().map(|held| held.rgba().len()).sum();
+            if map.len() >= RASTER_CAP || held + source.rgba().len() > RASTER_BYTES {
+                map.clear();
+            }
+            map.insert(key, source.clone());
+        });
+        Some(source)
+    }
+
+    fn paint(&self, fill: Option<&PathFill>, stroke: Option<(Rgba8, f32)>) -> Option<ImageSource> {
         let path = build_ts_path(&self.cmds)?;
         let scale = f32::from(self.scale.max(1));
         #[allow(
@@ -294,7 +277,7 @@ impl PathNode {
         let pix_h = ((self.height as f32) * scale).round() as u32;
         let mut pixmap = Pixmap::new(pix_w, pix_h)?;
         let transform = Transform::from_scale(scale, scale);
-        if let Some(fill) = &self.fill {
+        if let Some(fill) = fill {
             let paint = Paint {
                 shader: fill_shader(fill),
                 anti_alias: true,
@@ -302,115 +285,41 @@ impl PathNode {
             };
             pixmap.fill_path(&path, &paint, FillRule::Winding, transform, None);
         }
-        if let Some((color, width)) = self.stroke {
+        if let Some((color, width)) = stroke {
             let mut paint = Paint::default();
             paint.set_color(to_ts_color(color));
             paint.anti_alias = true;
-            let stroke = Stroke {
+            let line = Stroke {
                 width,
                 ..Stroke::default()
             };
-            pixmap.stroke_path(&path, &paint, &stroke, transform, None);
+            pixmap.stroke_path(&path, &paint, &line, transform, None);
         }
-        let source = ImageSource::from_rgba8(pix_w, pix_h, straight_rgba(&pixmap))?;
-        RASTER.with(|map| {
-            let mut map = map.borrow_mut();
-            if map.len() >= RASTER_CAP {
-                map.clear();
-            }
-            map.insert(key, source.clone());
-        });
-        Some(source)
+        ImageSource::from_rgba8(pix_w, pix_h, straight_rgba(&pixmap))
     }
 }
 
 impl IntoNode for PathNode {
-    fn build(self, cx: &mut Cx) -> NodeId {
-        match self.rasterize() {
-            Some(source) => {
-                let id = image(source).build(cx);
-                if let Some(style) = self.layout
-                    && let Some(node) = cx.get_mut(id)
-                {
-                    let _ = node.attach(style);
-                }
-                id
+    fn build(mut self, cx: &mut Cx) -> NodeId {
+        let Some(source) = self.rasterize(&Theme::light()) else {
+            return container().build(cx);
+        };
+        let id = image(source).build(cx);
+        let layout = self.layout.take();
+        let themed = self.themed().then(|| {
+            let path = Rc::new(self);
+            ThemedImage::new(move |theme| path.rasterize(theme))
+        });
+        if let Some(node) = cx.get_mut(id) {
+            if let Some(style) = layout {
+                let _ = node.attach(style);
             }
-            None => container().build(cx),
-        }
-    }
-}
-
-fn build_ts_path(cmds: &[PathCmd]) -> Option<tiny_skia::Path> {
-    let mut builder = TsPathBuilder::new();
-    for cmd in cmds {
-        match *cmd {
-            PathCmd::MoveTo(x, y) => builder.move_to(x, y),
-            PathCmd::LineTo(x, y) => builder.line_to(x, y),
-            PathCmd::QuadTo(cx, cy, x, y) => builder.quad_to(cx, cy, x, y),
-            PathCmd::CubicTo(c1x, c1y, c2x, c2y, x, y) => {
-                builder.cubic_to(c1x, c1y, c2x, c2y, x, y);
+            if let Some(themed) = themed {
+                let _ = node.attach(themed);
             }
-            PathCmd::Close => builder.close(),
         }
+        id
     }
-    builder.finish()
-}
-
-fn straight_rgba(pixmap: &Pixmap) -> Vec<u8> {
-    let mut out = Vec::with_capacity(pixmap.pixels().len().saturating_mul(4));
-    for pixel in pixmap.pixels() {
-        let color = pixel.demultiply();
-        out.extend_from_slice(&[color.red(), color.green(), color.blue(), color.alpha()]);
-    }
-    out
-}
-
-fn to_ts_color(color: Rgba8) -> TsColor {
-    TsColor::from_rgba8(color.r, color.g, color.b, color.a)
-}
-
-fn fill_shader(fill: &PathFill) -> Shader<'static> {
-    let transparent = Shader::SolidColor(TsColor::TRANSPARENT);
-    match fill {
-        PathFill::Solid(color) => Shader::SolidColor(to_ts_color(*color)),
-        PathFill::Linear { start, end, stops } => LinearGradient::new(
-            point(*start),
-            point(*end),
-            ts_stops(stops),
-            SpreadMode::Pad,
-            Transform::identity(),
-        )
-        .unwrap_or(transparent),
-        PathFill::Radial {
-            center,
-            radius,
-            stops,
-        } => {
-            let focus = point(*center);
-            RadialGradient::new(
-                focus,
-                0.0,
-                focus,
-                *radius,
-                ts_stops(stops),
-                SpreadMode::Pad,
-                Transform::identity(),
-            )
-            .unwrap_or(transparent)
-        }
-    }
-}
-
-fn ts_stops(stops: &[(f32, Rgba8)]) -> Vec<GradientStop> {
-    stops
-        .iter()
-        .map(|&(position, color)| GradientStop::new(position, to_ts_color(color)))
-        .collect()
-}
-
-fn point((x, y): (f32, f32)) -> TsPoint {
-    TsPoint::from_xy(x, y)
 }
 
 #[cfg(test)]

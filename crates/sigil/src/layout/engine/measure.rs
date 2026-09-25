@@ -117,10 +117,11 @@ impl LayoutEngine {
             if size_binding.is_some() || bounds_binding.is_some() {
                 let rect = result.rect();
                 if let Some(sr) = size_binding {
-                    sr.publish((rect.width, rect.height));
+                    self.republished |= sr.publish((rect.width, rect.height));
                 }
                 if let Some(br) = bounds_binding {
-                    br.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
+                    self.republished |=
+                        br.publish((rect.origin.x, rect.origin.y, rect.width, rect.height));
                 }
             }
             self.published_result.insert(id.key(), result);

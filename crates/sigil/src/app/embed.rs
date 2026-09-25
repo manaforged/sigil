@@ -2,78 +2,32 @@ use crate::events::hit_test::HitTestCache;
 use crate::events::{EventRouter, FocusIntent};
 use crate::hal::{Point, Rect, ShellEvent, Size};
 use crate::reactive::Runtime;
-use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::kernel::{Cx, HostMode, ImageCrop, ImageSource, Node, NodeId, Surface};
+use crate::kernel::{Cx, HostMode, Node, NodeId, Surface};
 use crate::layout::{LayoutEngine, LayoutError, LayoutResult, TextGeometry, TextMeasure};
-use crate::style::{Rgba8, TextStyle, Theme, Tone};
+use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
-#[cfg(feature = "scene")]
-use crate::renderer::{CommandScene, emit_scene_clipped};
+mod perform;
+use super::host_env::{EnvGuard, HostEnv};
+use crate::scene::{CommandScene, emit_scene_clipped};
 
 #[cfg(feature = "scene")]
 use crate::app::DefaultTextMeasure;
-use crate::app::paint::{Cascade, Resolved, TextFlow, Walk, fill_painted};
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Painted {
-    pub id: NodeId,
-    pub rect: Rect,
-    pub text: Option<String>,
-    pub flow: TextFlow,
-    pub tone: Option<Tone>,
-    pub fill: Option<Rgba8>,
-    pub ink: Option<Rgba8>,
-    pub border_widths: [f32; 4],
-    pub border_color: Option<Rgba8>,
-    pub border_radius: f32,
-    pub weight: u16,
-    pub italic: bool,
-    pub bare: bool,
-    pub clip: Option<Rect>,
-    pub image: Option<ImageSource>,
-    pub crop: Option<ImageCrop>,
-}
 
 pub type AccessibilityTree = accesskit::TreeUpdate;
+
+const LAYOUT_PASSES: usize = 4;
 
 pub struct Host {
     cx: Cx,
     layout: LayoutEngine,
     root: Option<NodeId>,
     theme: Theme,
-    resolved: Vec<Resolved>,
-    root_text: Rc<TextStyle>,
     visual_transforms: bool,
     hits: HitTestCache,
     env: HostEnv,
-}
-
-/// Host-owned process state installed on the thread while the host runs:
-/// the cell grid, the text-geometry provider, and the exit flag.
-struct HostEnv {
-    cell: f32,
-    geometry: Rc<dyn TextGeometry>,
-    exit: Rc<Cell<bool>>,
-    focus_source: Rc<Cell<bool>>,
-}
-
-pub(crate) struct EnvGuard {
-    cell: f32,
-    geometry: Option<Rc<dyn TextGeometry>>,
-    exit: Option<Rc<Cell<bool>>>,
-    focus_source: Option<Rc<Cell<bool>>>,
-}
-
-impl Drop for EnvGuard {
-    fn drop(&mut self) {
-        crate::style::swap_cell(self.cell);
-        let _ = crate::layout::text_geometry::swap_geometry(self.geometry.take());
-        let _ = crate::app::exit::swap_target(self.exit.take());
-        let _ = crate::events::focus::swap_focus_source(self.focus_source.take());
-    }
 }
 
 pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
@@ -105,12 +59,7 @@ impl Host {
         let geometry: Rc<dyn TextGeometry> = Rc::new(CellGeometry::new(Self::CELL));
         Self::with_env(
             HostMode::Pixel,
-            HostEnv {
-                cell: 0.0,
-                geometry,
-                exit: Rc::new(Cell::new(false)),
-                focus_source: Rc::new(Cell::new(true)),
-            },
+            (0.0, geometry),
             Box::new(host_measure()),
             true,
         )
@@ -122,12 +71,7 @@ impl Host {
     pub fn cells() -> Self {
         Self::with_env(
             HostMode::Cell,
-            HostEnv {
-                cell: Self::CELL,
-                geometry: Rc::new(CellGeometry::new(Self::CELL)),
-                exit: Rc::new(Cell::new(false)),
-                focus_source: Rc::new(Cell::new(true)),
-            },
+            (Self::CELL, Rc::new(CellGeometry::new(Self::CELL))),
             Box::new(CellGeometry::new(Self::CELL)),
             false,
         )
@@ -135,45 +79,41 @@ impl Host {
 
     fn with_env(
         mode: HostMode,
-        env: HostEnv,
+        (cell, geometry): (f32, Rc<dyn TextGeometry>),
         measure: Box<dyn TextMeasure>,
         visual_transforms: bool,
     ) -> Self {
         let mut cx = Cx::new_root();
         cx.set_host_mode(mode);
+        let env = HostEnv::new(cell, geometry, cx.root_owner());
         Self {
             cx,
             layout: LayoutEngine::with_text_measure(measure),
             root: None,
             theme: Theme::default(),
-            resolved: Vec::new(),
-            root_text: Rc::new(TextStyle::default()),
             visual_transforms,
             hits: HitTestCache::default(),
             env,
         }
     }
 
-    pub(crate) fn enter(&self) -> EnvGuard {
-        EnvGuard {
-            cell: crate::style::swap_cell(self.env.cell),
-            geometry: crate::layout::text_geometry::swap_geometry(Some(Rc::clone(
-                &self.env.geometry,
-            ))),
-            exit: crate::app::exit::swap_target(Some(Rc::clone(&self.env.exit))),
-            focus_source: crate::events::focus::swap_focus_source(Some(Rc::clone(
-                &self.env.focus_source,
-            ))),
-        }
+    pub const fn set_caps(&mut self, caps: super::HostCaps) {
+        self.env.caps = caps;
     }
 
-    /// The mode this host was created with (`new` = pixel, `cells` = cell).
+    pub(crate) fn enter(&self) -> EnvGuard {
+        self.env.enter()
+    }
+
+    pub(crate) fn publish_viewport(&self, viewport: (f32, f32)) {
+        self.env.publish_viewport(viewport);
+    }
+
     #[must_use]
     pub const fn host_mode(&self) -> HostMode {
         self.cx.host_mode()
     }
 
-    /// Consume this host's exit flag, independent of the active guard.
     pub fn take_exit(&self) -> bool {
         self.env.exit.replace(false)
     }
@@ -195,7 +135,6 @@ impl Host {
         if let Some(theme) = theme {
             self.attach_theme(theme);
         }
-        #[cfg(feature = "desktop")]
         self.apply_pending_theme();
         Runtime::mark_frame_dirty();
     }
@@ -208,8 +147,7 @@ impl Host {
         }
     }
 
-    #[cfg(feature = "desktop")]
-    fn apply_pending_theme(&mut self) {
+    pub(crate) fn apply_pending_theme(&mut self) {
         if self.root.is_some()
             && let Some(theme) = super::appearance::take()
         {
@@ -248,9 +186,9 @@ impl Host {
         if self.root.is_some() {
             router.route(&mut self.cx, &self.layout, event);
         }
+        crate::reactive::run_dispatch_deferred();
     }
 
-    /// Route a batch of already-decoded shell events.
     pub fn route_all(
         &mut self,
         router: &mut EventRouter,
@@ -262,8 +200,6 @@ impl Host {
         }
     }
 
-    /// Apply queued `request_focus` calls. `Host::frame` runs this at the end
-    /// of the frame, after layout, so requests observe fresh geometry.
     pub fn apply_focus_requests(&mut self, router: &mut EventRouter) {
         let _env = self.enter();
         if self.root.is_some() {
@@ -274,6 +210,7 @@ impl Host {
     pub fn repair_focus(&mut self, router: &mut EventRouter) {
         let _env = self.enter();
         if self.root.is_some() {
+            router.flush_focus_requests(&mut self.cx, &self.layout);
             router.focus_if_needed(&mut self.cx, &self.layout);
         }
     }
@@ -310,6 +247,16 @@ impl Host {
         Ok(Some(root))
     }
 
+    pub(crate) fn settle_layout(&mut self, viewport: (f32, f32)) -> Result<(), LayoutError> {
+        for _ in 1..LAYOUT_PASSES {
+            self.layout(viewport)?;
+            if !self.layout.take_republished() {
+                return Ok(());
+            }
+        }
+        self.layout(viewport).map(|_| ())
+    }
+
     #[must_use]
     pub fn surfaces(&self) -> Vec<(u64, Rect)> {
         let _env = self.enter();
@@ -320,56 +267,22 @@ impl Host {
     }
 
     #[must_use]
-    pub fn painted(&mut self) -> Vec<Painted> {
-        let mut out = Vec::new();
-        self.paint_into(&mut out);
-        out
+    pub fn theme(&self) -> &Theme {
+        self.root
+            .and_then(|root| self.cx.get(root))
+            .and_then(Node::get_extension::<Theme>)
+            .unwrap_or(&self.theme)
     }
 
-    pub fn paint_into(&mut self, out: &mut Vec<Painted>) {
-        let _moved = self.repaint(out);
-    }
-
-    pub fn repaint(&mut self, out: &mut Vec<Painted>) -> bool {
+    #[must_use]
+    pub fn emit(&mut self, viewport: (f32, f32)) -> CommandScene {
         let _env = self.enter();
-        #[cfg(feature = "desktop")]
         self.apply_pending_theme();
-        let Self {
-            cx,
-            root,
-            theme,
-            resolved,
-            root_text,
-            ..
-        } = self;
-        let Some(root) = *root else {
-            let had = !out.is_empty();
-            out.clear();
-            return had;
-        };
-        let mut next = 0;
-        let mut moved = false;
-        let mut walk = Walk {
-            cx,
-            cache: resolved,
-            out,
-            next: &mut next,
-            moved: &mut moved,
-            deferred: Vec::new(),
-        };
-        fill_painted(&mut walk, root, &Cascade::root(theme, root_text));
-        let mut deferred_at = 0;
-        while let Some((id, cascade)) = walk.deferred.get(deferred_at).cloned() {
-            deferred_at += 1;
-            fill_painted(&mut walk, id, &cascade);
-        }
-        let shrank = out.len() > next;
-        out.truncate(next);
-        resolved.truncate(next);
-        moved || shrank
+        self.root.map_or_else(CommandScene::default, |root| {
+            emit_viewport_scene(&self.cx, root, viewport)
+        })
     }
 
-    #[cfg(feature = "scene")]
     pub fn scene(&mut self, viewport: (f32, f32)) -> Result<CommandScene, LayoutError> {
         let _env = self.enter();
         let Some(root) = self.layout(viewport)? else {
@@ -379,7 +292,6 @@ impl Host {
     }
 }
 
-#[cfg(feature = "scene")]
 pub(crate) fn emit_viewport_scene(cx: &Cx, root: NodeId, viewport: (f32, f32)) -> CommandScene {
     emit_scene_clipped(
         cx,

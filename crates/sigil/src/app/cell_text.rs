@@ -7,20 +7,13 @@ use crate::style::TextStyle;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-/// How wide terminal-specific glyphs measure; `calibrate` sets this once per
-/// process before the host starts.
 #[derive(Clone, Copy, Default)]
 pub enum CellWidth {
-    /// Unicode-width measurement.
     #[default]
     Unicode,
-    /// Per-codepoint widths probed from the terminal.
     Scalar {
-        /// ZWJ width.
         joiner: usize,
-        /// ZWNJ width.
         nonjoiner: usize,
-        /// Keycap combining mark width.
         keycap: usize,
     },
 }
@@ -29,12 +22,10 @@ thread_local! {
     static CELL_WIDTH: Cell<CellWidth> = const { Cell::new(CellWidth::Unicode) };
 }
 
-/// Set the terminal cell-width table; process-wide input calibration.
 pub fn set_cell_width(width: CellWidth) {
     CELL_WIDTH.set(width);
 }
 
-/// Width of `text` in terminal cells under the calibrated table.
 #[must_use]
 pub fn cell_width(text: &str) -> usize {
     match CELL_WIDTH.get() {
@@ -171,8 +162,9 @@ impl TextMeasure for CellGeometry {
             .map(|(start, end)| text.get(*start..*end).map_or(0, cell_width))
             .max()
             .unwrap_or(0);
+        let wide = cells_to_px(cells, self.px);
         LogicalSize::new(
-            cells_to_px(cells, self.px),
+            width.map_or(wide, |width| wide.min(width.max(self.px))),
             cells_to_px(ranges.len().max(1), self.px),
         )
     }
@@ -317,6 +309,8 @@ fn wrap_range(
         } else {
             end
         };
+        let rest = &text[cut..end];
+        let cut = cut + rest.len() - rest.trim_start_matches(' ').len();
         out.push((line_start, cut));
         line_start = cut;
     }
