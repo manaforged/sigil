@@ -4,155 +4,114 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The workspace publishes in lockstep: every published `sigil-*` crate shares one version.
+The `sigil-ui`, `sigil-sign`, and `sigil-kittest` crates share one version.
 
-## [Unreleased]
+## [0.1.0] - Unreleased
 
-Not tagged. Not on crates.io. The repository is still private.
-
-### Added
-
-- `sigil-kittest`: the visual-golden PNG harness is now a crate
-  dependents can use as a dev-dependency. Same API as the old
-  `tests/golden_support` module: `render_widget_to_png`,
-  `assert_png_matches_golden`, `golden_path!`, `assert_goldens_differ!`,
-  `InteractionMode`. `golden_path!` resolves `tests/goldens/` under the
-  caller's manifest dir.
-- `agent_driver` example: mounts a `Host` headless, reads the AccessKit
-  tree, finds a button by name, and clicks it through `EventRouter`.
-- Book chapter "Driving Sigil from an agent" covering `Host`,
-  `EventRouter`, `accessibility_tree`, `sigil_tui::present`/`step`, and
-  `sigil-kittest`.
-- All `sigil` modules are now visible in rustdoc; nothing is
-  `#[doc(hidden)]` except `__drive_test_frame`.
-- `sigil-sign` and `sigil-pack`: macOS `.app` and Windows app directory,
-  minisign signing. Extra files use `--resource-from` / `--resource-to`.
-  Paths must stay inside the bundle. Symlinks and Windows reparse points
-  are refused. `sigil-pack sign` writes a base64 minisign `.sig`. Password
-  is `SIGIL_PACK_PASSWORD`. Ad-hoc `codesign --sign -` is not notarization.
-- `sigil-pack recipe` validates a module recipe against the client schema,
-  signs it, and writes the staging `manifest.json` the release host consumes.
-  `genkey` writes a development keypair and refuses to overwrite one.
+First release.
 
 ### Changed
 
-- `markdown` images load only from `data:` base64 URIs. The widget no
-  longer reads a local file path, so untrusted text cannot make it read
-  a file. Each image decodes once.
-- `AppConfig::esc_exits` defaults to `false`. Escape reaches widgets
-  (modal, menu, dropdown) instead of quitting the app. Call
-  `.esc_exits(true)` to restore the old behaviour.
-- `sigil-pack` replaces an existing output bundle only when it wrote
-  that bundle. A macOS bundle now carries a `SigilPack` key in
-  `Info.plist`. Repack over an older bundle by deleting it first.
-- `genkey` creates the secret key with mode 0600. `sigil-pack sign`
-  refuses to write the `.sig` through a symlink.
-
-### Removed
-
-- `sigil-pack recipe` and the recipe schema: module-recipe policy is
-  product-owned, not library API. The same minisign `.sig` flow stays
-  under `sigil-pack sign`.
+- The terminal writer sends less per frame. When rows move up or down
+  as a block, it scrolls them in place with a scroll region. On a row
+  that changed, it rewrites only the changed cells. It clears a blank
+  row tail with its background colour, and it sends only the SGR
+  attributes that change.
+- Focus repair keeps focus on a node that is still live, visible, and
+  focusable. Automatic focus applies only when nothing holds focus, and
+  it picks the first focusable node in document order. A pending
+  `request_focus` or `focus_when` applies before automatic focus, so a
+  focusable `virtual_list` earlier in the tree no longer takes focus
+  from a later text field.
+- `defer(f)` called outside an effect no longer runs at once. Sigil
+  queues it until the current dispatch ends: an `on_message` batch,
+  event routing, or the frame. The queue runs in one `batch`, so many
+  deferred writes cause one refresh. Inside an effect, `defer` still
+  runs after the effect body.
+- Text runs resolve their colours against the theme of their own node
+  when the scene is built, on both hosts. A run colour is lifted to a
+  4.5:1 contrast ratio against its background, so inline code, table
+  cells with code, and links stay readable in dark and light themes.
+- Inline code in markdown uses the `on-surface` text colour on a
+  `surface-subtle` background. A code span moves to the next row as a
+  whole instead of breaking at a `/` inside it.
+- Terminal markdown headings differ by level: level 1 is bold and
+  underlined, level 2 is bold in the accent colour, and level 3 is bold
+  in the text colour.
+- Without OSC 8 hyperlinks, a terminal shows a markdown link as
+  `text (url)` with a muted URL. It shows the URL once when the text
+  is the URL.
+- Italic text in the window uses a synthesized oblique face.
+- In the terminal, `notice_band` is one row: a tone marker and the
+  text on a tinted row. It was five rows tall with its padding and
+  border. The window form is unchanged.
 
 ### Fixed
 
-- `text_field` shows a value that the app sets, for example a field
-  cleared after save. The next keystroke no longer restores the old
-  text.
-- `notice_band(Tone::Warn)`, the empty `chart`, and `code_edit` used
-  theme tokens that the default theme does not define. They panicked
-  in a debug build.
-
-### Known issues
-
-- Intermittent doubled label after save and reopen in a form (issue #5).
-
-## [0.1.0] — 2026-09-17
-
-Library contents for the first public tag. That tag is not cut yet. The
-facade publishes as `sigil-gui` (the `sigil` name was already taken on
-crates.io); its library is still named `sigil`, so
-`use sigil::prelude::*;` remains the single import user code needs.
+- A split diff gave each side half the width, so a long added line was
+  cut while the removed side had spare room. Each side now takes width
+  in proportion to its widest line.
+- A long markdown link broke right after `https://`. A URL now wraps
+  only after `/`, `?`, `&`, or `=` past the host, and the plain-text
+  fallback `text (url)` wraps the same way.
+- A markdown thematic break (`---`, `***`, `___`) showed as literal
+  text. It now draws a dim rule across the column.
+- A cached subtree that moved, for example after a scroll, kept its
+  terminal border at the old cells. Table frames and quote bars now
+  move with their content.
+- The renderer always asked wgpu for the low-power adapter, so a
+  hybrid-GPU machine could not use its discrete GPU. It now honours
+  `WGPU_POWER_PREF=high|low|none`; the default stays low power.
 
 ### Added
 
-- `mermaid` renders flowcharts and state diagrams (layered layout, box-drawing
-  edges with labels, back edges through side lanes), sequence diagrams
-  (lifelines, arrows, notes, `loop`/`alt`/`opt` frames, `autonumber`), and
-  pie charts as bars; other kinds show the source in a frame.
-  `mermaid_draw` gives the lines, `mermaid_diagram` says whether a source
-  is a supported kind.
-- Terminal pictures: an `image` node in the terminal host draws through the
-  Kitty graphics protocol (Kitty, Ghostty, WezTerm, Konsole) or iTerm2
-  inline images (iTerm2, Warp), detected from the environment, and as
-  half-block cells elsewhere. `SIGIL_GRAPHICS=kitty|iterm2|none` overrides
-  the detection; tmux disables it. `Painted` carries the image source and
-  an optional `ImageCrop` (source rows), so a partly visible picture shows
-  its visible part without re-sending pixels.
-- Signal-graph reactivity (`signal`, `derived`, `effect`, `batch`) with a
-  measured, budgeted write path.
-- Owned incremental layout engine, benchmarked against a Taffy reference corpus.
-- Slug vector text pipeline plus hinted raster glyph atlas; IME-ready text
-  editing; font fallback with Arabic, Hebrew, CJK, and emoji routing
-  (Devanagari, Khmer, Thai, and Lao shaping tests are ignored; their
-  fixtures are missing).
-- Three-layer style system: `classes!` runtime-parsed utility classes,
-  a `Style` struct API, and `style_reactive` signal binding; 12-step design
-  tokens; tone × variant theming with WCAG-aware foregrounds.
-- Widget catalog: avatar, badge, button, card, chart, checkbox, chip,
-  code_edit, color_field, combobox, command_menu (a nested action
-  tree, not a searchable Cmd-K palette), date_field, divider_horizontal, divider_vertical, dot, dropdown, field, floating_text, gauge,
-  icon, icon_button, image_rgba, interactive, heatmap, markdown, markdown_edit, menu,
-  mermaid, modal, number_field, panel, path, progress, radio_group, scroll,
-  sheet, sidebar, slider, splitter, table (headless state), tabs, text_edit,
-  text_field, toast, toast_queue, toggle, tooltip, turn_strip,
-  validated_field, virtual_list. `button.pending(Signal<bool>)` paints
-  disabled while a job is in flight. Native alerts are
-  `sigil::dialog::message` / `confirm` (rfd; GTK on Linux).
-- End-to-end AccessKit accessibility and IME.
-- `sigil::launch` one-call app entry with DPI-aware logical sizing.
-  Installs the OS clipboard so text fields share `sigil::clipboard`.
-- Application host: `html()` document ingest (same nodes as `markdown`),
-  `transport` + `sigil::audio::Player` (feature `audio`), `terminal` +
-  `sigil::pty::Session` (feature `pty`), `surface(key)` layout holes
-  with `Host::surfaces` for native views. Not a webview.
-- Headless testing (`sigil::testing`) and a golden-image visual harness.
-- Terminal host (crate `sigil-tui`, `sigil_tui::run`): the same tree, widgets,
-  and events as the desktop window, painted onto a character grid.
-  - `Screen` holds the buffers a host running its own loop keeps between
-    frames; `render` writes the difference between two of them. A frame that
-    changed nothing sends the terminal no bytes.
-  - Colour resolves through the same code as the window host
-    (`sigil::style::Theme::resolve_color`), so a badge is the theme's own swatch. 24-bit
-    where `COLORTERM` advertises it, the 256-colour cube otherwise.
-  - Mouse and wheel input, mapped onto `ShellEvent::Pointer` and `::Scroll`:
-    hover, click-to-select, wheel scrolling, and header sort work as they do
-    on desktop.
-  - `sigil_tui::every` runs a callback on the frame clock; `sigil_tui::work`
-    runs a job on a worker thread and hands the result back on a frame,
-    with no async runtime.
-  - `sigil_tui::present` and `sigil_tui::step` drive the host in tests.
-    `sigil_tui::{click, pointer, wheel}` build pointer events without crossterm.
-  - `sigil::request_exit` returns from `launch` and `sigil_tui::run` after the
-    current frame.
-  - `sigil::style::grid` measures control chrome in terminal cells, so a
-    button is one line rather than four.
-  - Text is placed by display width, so a CJK glyph keeps its two columns.
-  - A panic restores the terminal before it prints, rather than leaving a
-    blank screen and no reason.
-- Text editors accept native copy, cut, paste, select-all, undo, and
-  redo shortcuts (Control everywhere, Command on macOS). A terminal host
-  reads queued bracketed paste; it does not install an OS clipboard.
-- `TextContent::resolve_into` and `refresh` resolve text into a caller's
-  buffer, and report whether it changed, without allocating for fixed text.
-- `Host::repaint` emits the paint scene and reports whether anything moved.
-
-### Changed
-
-- GitHub Actions runs on pushes to main, pull requests, release tags,
-  and manual dispatch.
-
-### Known issues
-
-- A form field can render its label twice after a save and reopen. The
-  duplication is intermittent and the cause is not isolated.
+- `highlight(language, source)` and `hl_spans(language, source)`: one
+  syntax highlighter for rust, sh, toml, json, python, js/ts, and diff.
+  Rules live in a TOML file and colours come from theme tokens. Other
+  languages stay monochrome. Markdown code fences use it on both hosts,
+  and `code_edit(..).highlights(..)` accepts `hl_spans` output.
+- `HostCaps` and `Host::set_caps`: widgets read what the host can show
+  through `HostCaps::current()`.
+- Hosts. `sigil::run(config, tree)` opens a window (feature `desktop`,
+  the default) or runs the same tree in a terminal with
+  `AppConfig::new(title).terminal()` (feature `terminal`). `Host`
+  embeds the tree in another event loop: it routes events, lays out,
+  returns a `CommandScene`, and reports `surface(key)` holes.
+- Window renderer on wgpu, with a CPU renderer. `SIGIL_BACKEND`
+  selects `auto`, `wgpu`, or `cpu`. `auto` falls back to the CPU
+  renderer when the GPU surface fails.
+- Terminal host: Kitty, iTerm2, and Sixel image protocols with a glyph
+  fallback, colour depth detection that honours `NO_COLOR`, bracketed
+  paste, mouse capture, `suspend`, `set_title`, `bell`, `focused`, an
+  OSC 52 clipboard, and `run_with` hooks for an external event pump.
+- Reactive state: `signal`, `derived`, `effect`, `batch`,
+  `EventChannel`, and `interval` for periodic callbacks.
+- Tasks: `spawn` runs async work into a `Signal<Status>`.
+  `signal_writer` and `post` move results from other threads to the
+  UI thread.
+- Widgets: controls, fields, collections, documents (`markdown`,
+  `html`, `mermaid`, `diff`, `code_edit`), data display (`chart`,
+  `gauge`, `heatmap`), application chrome, and overlays. The
+  [widgets guide](docs/guide/widgets.md) lists each group.
+- Layout on flexbox and grid, with `rows`, `cols`, and `em` text units.
+- Styling: `classes!` utility classes, typed theme colours through
+  `Token`, and shared metrics. `parse_theme`, `set_theme`,
+  `watch_theme`, and `AppConfig::theme_file` load a TOML theme and
+  reload it when the file changes.
+- Accessibility through AccessKit: roles, names, and live regions.
+  `Host::accessibility_tree` exposes the tree to tests and agents.
+- Clipboard: `copy`, `paste`, and `install`. `OsClipboard` (feature
+  `clipboard`) uses the system clipboard. `clipboard-image` reads
+  images.
+- `open` passes `http`, `https`, and `mailto` URLs to the OS handler.
+- Native dialogs, menus, and tray icons (features `dialog`, `menu`,
+  `tray`), audio playback (`audio`), and pseudo-terminal sessions
+  (`pty`).
+- `sigil-sign`: `macos_app` and `windows_dir` build app bundles.
+  `sign_file` signs update packages with minisign and binds the file
+  name and version in the trusted comment. `verify_file` checks the
+  signature, the file name, and an optional expected version. The
+  `.sig` file is the plain minisign envelope. The `sigil-pack` command
+  runs the same steps, with `sign`, `verify`, and `genkey DIR`.
+- `sigil-kittest`: visual golden tests that render a widget offscreen
+  in a chosen interaction state and compare it with a committed PNG.

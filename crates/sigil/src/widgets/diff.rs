@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::style::{NodeStyleExt, Style, StyleAccess};
+use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, space};
 
 use super::button::button;
 use super::shared::label;
@@ -11,9 +11,13 @@ mod patch;
 mod rows;
 
 use patch::{Kind, Pair, pairs, starts};
-use rows::{source_row, split_row, unified_rows};
+use rows::{source_row, split_row, unified_rows, weights};
 
 const GUTTER_W: f32 = 56.0;
+pub(super) const ROW_INSET: f32 = space(2);
+
+static ACTIVE_CHOICE: &[StyleAtom] = &[Token::Gray12.text(), Token::Gray4.bg()];
+static IDLE_CHOICE: &[StyleAtom] = &[Token::Gray10.text()];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffLayout {
@@ -39,18 +43,22 @@ fn change_run(pairs: &[Pair], index: usize) -> usize {
     })
 }
 
-fn text_row(body: String, tone: &'static str) -> NodeBuilder {
-    container().child(
-        label(body)
-            .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
-            .class(tone),
-    )
+fn text_row(body: String, class: &'static str, tone: Token) -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::flex_row().fill_width().padding_x(ROW_INSET))
+        .child(
+            label(body)
+                .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
+                .class(class)
+                .class(tone.text()),
+        )
 }
 
 fn overflow_row() -> NodeBuilder {
     text_row(
         "… expand tool output to see the remaining changes".to_string(),
-        "text-xs text-gray-10",
+        "text-xs",
+        Token::Gray10,
     )
 }
 
@@ -115,69 +123,83 @@ impl DiffBuilder {
             .layout(
                 LayoutStyle::flex_row()
                     .fill_width()
-                    .padding_x(6.0)
+                    .padding_x(ROW_INSET)
                     .min_size(0.0, 0.0)
                     .align_items(AlignItems::Center)
-                    .gap(6.0),
+                    .gap(space(2)),
             )
             .child(
                 label(self.path.clone().unwrap_or_default())
                     .ellipsize()
                     .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
-                    .class("text-xs font-mono font-bold text-gray-12"),
+                    .class("text-xs font-mono font-bold")
+                    .class(Token::Gray12.text()),
             )
-            .child(label(format!("+{added}")).class("text-xs font-mono text-success-11"))
-            .child(label(format!("−{removed}")).class("text-xs font-mono text-error-11"));
+            .child(
+                label(format!("+{added}"))
+                    .class("text-xs font-mono")
+                    .class(Token::Success11.text()),
+            )
+            .child(
+                label(format!("−{removed}"))
+                    .class("text-xs font-mono")
+                    .class(Token::Error11.text()),
+            );
         for choice in [DiffLayout::Split, DiffLayout::Unified] {
             let tone = if choice == self.layout {
-                "text-xs text-gray-12 bg-gray-4"
+                ACTIVE_CHOICE
             } else {
-                "text-xs text-gray-10"
+                IDLE_CHOICE
             };
             row = row.child(match self.pick.clone() {
                 Some(pick) => button(choice.name())
                     .ghost()
                     .activate(move || pick(choice))
+                    .class("text-xs")
                     .class(tone),
-                None => button(choice.name()).ghost().class(tone),
+                None => button(choice.name()).ghost().class("text-xs").class(tone),
             });
         }
         row
     }
 
-    fn labels() -> NodeBuilder {
+    fn labels((lw, rw): (f32, f32)) -> NodeBuilder {
         container()
             .layout(
                 LayoutStyle::flex_row()
                     .fill_width()
                     .min_size(0.0, 0.0)
+                    .padding_x(ROW_INSET)
                     .gap(0.0),
             )
             .child(
                 label("Before")
                     .layout(
                         LayoutStyle::block()
-                            .grow(1.0)
+                            .grow(lw)
                             .flex_basis(Dimension::Px(0.0))
                             .min_size(0.0, 0.0),
                     )
-                    .class("text-xs text-gray-10"),
+                    .class("text-xs")
+                    .class(Token::Gray10.text()),
             )
             .child(
                 label("After")
                     .layout(
                         LayoutStyle::block()
-                            .grow(1.0)
+                            .grow(rw)
                             .flex_basis(Dimension::Px(0.0))
                             .min_size(0.0, 0.0),
                     )
-                    .class("text-xs text-gray-10"),
+                    .class("text-xs")
+                    .class(Token::Gray10.text()),
             )
     }
 
     fn body(&self) -> Vec<NodeBuilder> {
         let pairs = pairs(&self.patch);
         let split = self.layout == DiffLayout::Split;
+        let weights = weights(&pairs);
         let mut rows: Vec<NodeBuilder> = Vec::new();
         let (mut old, mut new, mut index) = (0, 0, 0);
         while let Some(pair) = pairs.get(index) {
@@ -202,23 +224,25 @@ impl DiffBuilder {
                     }
                     rows.push(text_row(
                         pair.left.clone().unwrap_or_default(),
-                        "text-xs font-mono text-info-11",
+                        "text-xs font-mono",
+                        Token::Info11,
                     ));
                 }
                 Kind::Context | Kind::Change => {
                     rows.push(if split {
-                        split_row(pair, old, new)
+                        split_row(pair, old, new, weights)
                     } else {
                         source_row(pair.right.as_deref(), new, ' ', None)
                     });
                     old += usize::from(pair.left.is_some());
                     new += usize::from(pair.right.is_some());
                 }
-                Kind::Meta => {
-                    if let Some(body) = pair.left.as_deref().filter(|line| !line.is_empty()) {
-                        rows.push(text_row(body.to_string(), "text-xs font-mono text-gray-10"));
-                    }
-                }
+                Kind::Meta => rows.extend(
+                    pair.left
+                        .as_deref()
+                        .filter(|line| !line.is_empty())
+                        .map(|body| text_row(body.to_string(), "text-xs font-mono", Token::Gray10)),
+                ),
             }
             index += 1;
         }
@@ -236,7 +260,9 @@ impl DiffBuilder {
             .filter(|pair| pair.kind == Kind::Change && pair.left.is_some())
             .count();
         let mut root = container()
-            .role(Role::GenericContainer)
+            .role(Role::List)
+            .label(self.path.clone().unwrap_or_else(|| String::from("Diff")))
+            .description(format!("{added} added, {removed} removed"))
             .layout(
                 LayoutStyle::flex_column()
                     .fill_width()
@@ -244,11 +270,16 @@ impl DiffBuilder {
                     .overflow_x(Overflow::Hidden)
                     .gap(0.0),
             )
-            .class("rounded bg-field")
-            .style(Style::new().border_width(1).border_theme("border"))
+            .class("rounded")
+            .class(Token::Field.bg())
+            .style(
+                Style::new()
+                    .border_width(BORDER_WIDTH.0)
+                    .border_theme(Token::Border.name()),
+            )
             .child(self.header(added, removed));
         if self.layout == DiffLayout::Split {
-            root = root.child(Self::labels());
+            root = root.child(Self::labels(weights(&pairs)));
         }
         root = self.body().into_iter().fold(root, NodeBuilder::child);
         if let Some(status) = self.status.clone() {
@@ -257,10 +288,11 @@ impl DiffBuilder {
                     .layout(
                         LayoutStyle::block()
                             .fill_width()
-                            .padding_x(6.0)
+                            .padding_x(ROW_INSET)
                             .min_size(0.0, 0.0),
                     )
-                    .class("text-xs text-gray-10"),
+                    .class("text-xs")
+                    .class(Token::Gray10.text()),
             );
         }
         if !self.style_accumulator.is_empty() {
@@ -281,3 +313,7 @@ impl IntoNode for DiffBuilder {
         self.into_node_builder().build(cx)
     }
 }
+
+#[cfg(all(test, feature = "terminal"))]
+#[path = "diff_tests.rs"]
+mod tests;
