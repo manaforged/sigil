@@ -51,6 +51,7 @@ mod popup;
 mod progress;
 mod radio_group;
 mod scroll;
+mod segmented;
 mod shared;
 mod slider;
 mod spinner;
@@ -98,20 +99,21 @@ pub use image::image_bytes;
 pub use image::image_rgba;
 pub use interactive::{InteractiveBuilder, interactive};
 pub use markdown::{MarkdownEditBuilder, markdown, markdown_edit, markdown_inline};
-pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, menu, menu_bar};
+pub use menu::{MenuBarBuilder, MenuBuilder, MenuItem, context_menu, menu, menu_bar};
 pub use mermaid::mermaid;
 pub use modal::{ModalBuilder, Side, modal, sheet};
 pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    Disclosure, HintOverlayBuilder, ListRowSlots, app_shell, avatar, card, empty_state, field,
-    hairline, hint_bar, hint_overlay, kv_grid, list_row, list_row_with, notice_band, section_label,
-    sidebar, sidebar_width, spacer, validated_field,
+    Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, app_shell, avatar, card,
+    empty_state, field, hairline, hint_bar, hint_overlay, kv_grid, list_row, list_row_with,
+    notice_band, section_label, sidebar, sidebar_width, spacer, validated_field,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll, scroll_auto};
+pub use segmented::{SegmentedBuilder, segmented};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
 pub use spinner::{spinner, spinner_frame};

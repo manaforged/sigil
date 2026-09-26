@@ -29,6 +29,10 @@ pub struct IconBuilder {
     glyph: Glyph,
     tone: Tone,
     size: Size,
+    px: Option<f32>,
+    step: u8,
+    #[cfg(feature = "scene")]
+    on_solid: bool,
     label: Option<String>,
     style_accumulator: crate::style::Style,
     layout_overrides: LayoutOverrides,
@@ -54,6 +58,10 @@ impl IconBuilder {
             glyph: Glyph::Text(glyph.into()),
             tone: Tone::Neutral,
             size: Size::Default,
+            px: None,
+            step: 11,
+            #[cfg(feature = "scene")]
+            on_solid: false,
             label: None,
             style_accumulator: crate::style::Style::new(),
             layout_overrides: LayoutOverrides::new(),
@@ -73,17 +81,38 @@ impl IconBuilder {
     }
 
     #[must_use]
+    pub const fn px(mut self, px: f32) -> Self {
+        self.px = Some(px);
+        self
+    }
+
+    #[must_use]
+    pub const fn strong(mut self) -> Self {
+        self.step = 12;
+        self
+    }
+
+    #[cfg(feature = "scene")]
+    #[must_use]
+    pub(crate) const fn on_solid(mut self, yes: bool) -> Self {
+        self.on_solid = yes;
+        self
+    }
+
+    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
         self
     }
 
     fn into_node_builder(self) -> NodeBuilder {
-        let extent = match self.size {
+        let extent = self.px.unwrap_or(match self.size {
             Size::Compact => 16.0,
             Size::Default => 20.0,
             Size::Wide | Size::Grow => 24.0,
-        };
+        });
+        #[cfg(feature = "scene")]
+        let drawn = self.px.unwrap_or(extent * 0.8);
         let glyph_class = match self.size {
             Size::Compact => "text-xs",
             Size::Default => "text-base",
@@ -108,9 +137,13 @@ impl IconBuilder {
             #[cfg(feature = "scene")]
             Glyph::Svg(svg) => container_node.child(SvgGlyph {
                 svg,
-                pixels: svg_pixels(extent * 0.8),
-                token: Token::scale(self.tone.scale_role(), 11).unwrap_or(Token::Gray11),
-                extent: extent * 0.8,
+                pixels: svg_pixels(drawn),
+                token: if self.on_solid {
+                    Token::OnSolid
+                } else {
+                    Token::scale(self.tone.scale_role(), self.step).unwrap_or(Token::Gray11)
+                },
+                extent: drawn,
             }),
         };
         if let Some(label) = self.label {

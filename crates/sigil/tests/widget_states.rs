@@ -274,7 +274,7 @@ fn toggle_off_emits_surface_hover() {
         let root = cx.add(toggle(on));
         compute(&mut cx, root);
         let theme = Theme::default();
-        assert!(rect_colors(&cx, root).contains(&theme.surface_hover));
+        assert!(rect_colors(&cx, root).contains(&theme.color(sigil::style::Token::Gray6)));
     });
 }
 

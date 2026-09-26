@@ -167,10 +167,14 @@ fn dropdown_root(
     label: String,
     on_change: IndexChange,
 ) -> NodeBuilder {
-    let root_layout = ctx.width.map_or_else(
-        || LayoutStyle::block().fill_width().height(ctx.trigger_height),
-        |px| LayoutStyle::block().width(px).height(ctx.trigger_height),
-    );
+    let root_layout = ctx
+        .width
+        .map_or_else(
+            || LayoutStyle::block().fill_width(),
+            |px| LayoutStyle::block().width(px),
+        )
+        .height(ctx.trigger_height)
+        .min_size(MIN_TRIGGER_WIDTH, 0.0);
     listbox(
         container()
             .role(Role::ComboBox)
@@ -224,6 +228,8 @@ fn build_trigger(
     node
 }
 
+const MIN_TRIGGER_WIDTH: f32 = space(24);
+
 fn trigger_layout() -> LayoutStyle {
     LayoutStyle::flex_row()
         .fill()
@@ -246,6 +252,7 @@ fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl Into
         )
         .child(
             text(TextContent::Reactive(label_sig))
+                .ellipsize()
                 .layout(LayoutStyle::block().fill_width())
                 .class(Token::OnSurface.text()),
         )

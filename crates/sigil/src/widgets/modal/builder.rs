@@ -5,7 +5,7 @@ use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{
     AccessibleName, Cx, FocusScopeKind, IntoNode, Live, NodeBuilder, Role, TextContent, TopLayer,
-    container, queue_announcement, text,
+    container, queue_announcement,
 };
 use crate::layout::ViewportOverlay;
 use crate::layout::prelude::{
@@ -20,11 +20,11 @@ use crate::style::{
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::popup::{self, footer};
 use super::escape::{close_top_escape_modal, register_escape_modal};
+use super::parts::{CloseControl, dialog_body, dialog_header};
 
 const MODAL_TRANSITION: TransitionId = presets::SMOOTH;
 
 const DIALOG_PADDING: f32 = space(4);
-const TITLE_HEIGHT: f32 = 24.0;
 
 static BACKDROP_BASE: &[StyleAtom] = &[Token::Scrim.bg(), StyleAtom::Transition(MODAL_TRANSITION)];
 
@@ -46,6 +46,7 @@ pub struct ModalBuilder {
     trap: bool,
     escape_closes: bool,
     dismiss_on_backdrop: bool,
+    close_button: CloseControl,
     side: Option<Side>,
     layout_overrides: LayoutOverrides,
 }
@@ -74,6 +75,7 @@ impl ModalBuilder {
             trap: true,
             escape_closes: true,
             dismiss_on_backdrop: false,
+            close_button: CloseControl::Shown,
             side: None,
             layout_overrides: LayoutOverrides::new(),
         }
@@ -116,6 +118,16 @@ impl ModalBuilder {
     }
 
     #[must_use]
+    pub const fn close_button(mut self, enabled: bool) -> Self {
+        self.close_button = if enabled {
+            CloseControl::Shown
+        } else {
+            CloseControl::Hidden
+        };
+        self
+    }
+
+    #[must_use]
     pub fn child(mut self, child: impl IntoNode + 'static) -> Self {
         self.children.push(Box::new(child));
         self
@@ -153,6 +165,7 @@ impl ModalBuilder {
             actions: self.actions,
             style_accumulator: self.style_accumulator,
             trap: self.trap,
+            close_button: self.close_button,
             side: self.side,
             layout_overrides: self.layout_overrides,
         });
@@ -265,6 +278,7 @@ struct DialogSpec {
     actions: Vec<Box<dyn IntoNode>>,
     style_accumulator: Style,
     trap: bool,
+    close_button: CloseControl,
     side: Option<Side>,
     layout_overrides: LayoutOverrides,
 }
@@ -277,6 +291,7 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
         actions,
         style_accumulator,
         trap,
+        close_button,
         side,
         layout_overrides,
     } = spec;
@@ -299,11 +314,12 @@ fn build_dialog(spec: DialogSpec) -> NodeBuilder {
     }
 
     if let Some(title_text) = title {
-        dialog = dialog.child(dialog_title(title_text));
+        dialog = dialog.child(dialog_header(
+            title_text,
+            (close_button == CloseControl::Shown).then_some(show),
+        ));
     }
-    for child in children {
-        dialog = dialog.child(child);
-    }
+    dialog = dialog.child(dialog_body(children));
     if !actions.is_empty() {
         dialog = dialog.child(footer(actions));
     }
@@ -332,18 +348,6 @@ fn dialog_layout(side: Option<Side>) -> LayoutStyle {
         Some(Side::Left | Side::Right) => base.fill_height().width(SHEET_WIDTH),
         Some(Side::Bottom) => base.fill_width().height(SHEET_HEIGHT),
     }
-}
-
-fn dialog_title(title: TextContent) -> impl IntoNode {
-    text(title)
-        .layout(
-            LayoutStyle::block()
-                .fill_width()
-                .height(snap::line(TITLE_HEIGHT))
-                .shrink(0.0),
-        )
-        .class("text-lg font-medium")
-        .class(Token::OnSurface.text())
 }
 
 fn accessible_name(title: Option<&TextContent>) -> AccessibleName {

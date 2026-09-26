@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::events::prelude::{Key, LogicalKey, MouseButton, NodeEventsExt, Shortcut};
-use crate::kernel::{NodeBuilder, Role, container, text};
+use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{FocusRing, NodeStyleExt, StyleAtom, Token, space};
@@ -15,13 +15,14 @@ use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, ColAlign, TableColumn, flex_cell};
 use super::hscroll::HScroll;
 use super::select;
+use super::sort_mark::sort_mark;
 use super::state::{SortDir, TableState};
 
 const RESIZE_HANDLE: f32 = space(2);
 const RING_INSET: f32 = -space(1);
-const HEADER_WEIGHT: u16 = 600;
+const HEADER_WEIGHT: u16 = 500;
 
-static HEADER_TEXT: &[StyleAtom] = &[
+pub(super) static HEADER_TEXT: &[StyleAtom] = &[
     StyleAtom::FontWeight(HEADER_WEIGHT),
     Token::OnSurfaceMuted.text(),
 ];
@@ -105,7 +106,7 @@ pub(super) fn header_row<Row: 'static>(
         .row_index(1)
         .layout(header_layout(crate::layout::snap::ruled(height), pad_x))
         .class("border-b")
-        .class([Token::SurfaceInset.bg(), Token::BorderStrong.border()])
+        .class([Token::TableHeader.bg(), Token::Border.border()])
         .child(hscroll.shifted(track))
 }
 
@@ -150,7 +151,11 @@ fn header_cell<Row: 'static>(
     let layout = ctx.state.column_layout().peek();
     let override_px = layout.widths.get(column.id()).copied();
     let id = column.id();
-    let title = header_title(column, ctx.pad_x);
+    let title = header_title(
+        column,
+        ctx.pad_x,
+        sort_mark(ctx.state, id, column.is_sortable()),
+    );
     let cell = container()
         .role(Role::ColumnHeader)
         .label(column.title().to_owned())
@@ -166,11 +171,6 @@ fn header_cell<Row: 'static>(
             pad_x: ctx.pad_x,
         }))
         .child(title)
-        .child(
-            text(sort_indicator(ctx.state, id))
-                .class("text-xs")
-                .class(HEADER_TEXT),
-        )
         .child(resize_handle(ctx.state.clone(), id, height));
     let cell = cell_states(cell, ctx.disabled);
     if column.is_sortable() {
@@ -180,25 +180,30 @@ fn header_cell<Row: 'static>(
     }
 }
 
-fn header_title<Row: 'static>(column: &TableColumn<Row>, pad_x: f32) -> NodeBuilder {
+fn header_title<Row: 'static>(
+    column: &TableColumn<Row>,
+    pad_x: f32,
+    mark: NodeBuilder,
+) -> NodeBuilder {
     let title = label(column.title().to_owned())
         .ellipsize()
         .class("text-xs")
         .class(HEADER_TEXT);
-    if column.alignment() == ColAlign::End {
-        container()
-            .layout(
-                LayoutStyle::flex_row()
-                    .grow(1.0)
-                    .padding_x(pad_x)
-                    .justify_content(JustifyContent::End),
-            )
-            .child(title)
+    let justify = if column.alignment() == ColAlign::End {
+        JustifyContent::End
     } else {
-        container()
-            .layout(LayoutStyle::block().grow(1.0).padding_x(pad_x))
-            .child(title)
-    }
+        JustifyContent::Start
+    };
+    container()
+        .layout(
+            LayoutStyle::flex_row()
+                .grow(1.0)
+                .padding_x(pad_x)
+                .align_items(AlignItems::Center)
+                .justify_content(justify),
+        )
+        .child(title)
+        .child(mark)
 }
 
 fn sortable_cell<Row: 'static>(
@@ -315,20 +320,6 @@ fn reorder_only<Row: 'static>(
             state.move_column(from, from.saturating_add_signed(steps as isize));
         }
         event.stop_propagation();
-    })
-}
-
-fn sort_indicator<Row: 'static>(state: &TableState<Row>, column: &'static str) -> Signal<String> {
-    let sort = state.sort_key();
-    derived(move || {
-        let glyph = match sort.get() {
-            Some(key) if key.column == column => match key.dir {
-                SortDir::Ascending => "▲",
-                SortDir::Descending => "▼",
-            },
-            _ => "",
-        };
-        glyph.to_owned()
     })
 }
 

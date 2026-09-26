@@ -4,7 +4,7 @@ use crate::events::prelude::{MouseButton, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{OwnerId, Signal, derived_eq, is_live, owner_by_id, signal};
 use crate::style::{Metrics, Size};
 
 use super::super::listbox::{ListModel, listbox};
@@ -76,10 +76,15 @@ pub(super) fn panel_layout(top: f32, left: f32, width: f32, height: f32) -> Layo
         .justify_content(JustifyContent::Start)
 }
 
-pub(super) fn menu_panel(rows: Vec<Row>, close: Rc<dyn Fn()>, side: PopupSide) -> NodeBuilder {
+pub(super) fn menu_panel(
+    rows: Vec<Row>,
+    close: Rc<dyn Fn()>,
+    side: PopupSide,
+    host: Option<OwnerId>,
+) -> NodeBuilder {
     let rows = Rc::new(rows);
     let cursor = signal(usize::MAX);
-    let commit = commit_fn(Rc::clone(&rows), Rc::clone(&close));
+    let commit = commit_fn(Rc::clone(&rows), Rc::clone(&close), host);
     let mut panel = popup::popup(Role::Menu, side).focusable(true);
     for (index, row) in rows.iter().enumerate() {
         panel = match row {
@@ -98,7 +103,7 @@ pub(super) fn menu_panel(rows: Vec<Row>, close: Rc<dyn Fn()>, side: PopupSide) -
     )
 }
 
-fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>) -> Commit {
+fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>, host: Option<OwnerId>) -> Commit {
     Rc::new(move |index| {
         let Some(Row::Item(item)) = rows.get(index) else {
             return;
@@ -107,7 +112,12 @@ fn commit_fn(rows: Rc<Vec<Row>>, close: Rc<dyn Fn()>) -> Commit {
             return;
         }
         if let Some(select) = &item.select {
-            select();
+            match host {
+                Some(host) if is_live(host) => {
+                    owner_by_id(host, || select());
+                }
+                _ => select(),
+            }
         }
         close();
     })

@@ -4,16 +4,13 @@ use crate::events::prelude::{MouseButton, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived_eq};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, Rgba8, StyleAtom, Token};
+use crate::style::Tone;
 
+use super::super::checkbox::{CheckMark, checkbox_indicator};
+use super::super::interaction::InteractionState;
 use super::state::TableState;
 
 pub(super) const WIDTH: f32 = 32.0;
-const BOX: f32 = 18.0;
-const MARK: f32 = 12.0;
-
-static CHECKED: &[StyleAtom] = &[Token::Accent.bg()];
-static UNCHECKED: &[StyleAtom] = &[Token::SurfaceInset.bg()];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Mark {
@@ -68,34 +65,24 @@ fn select_box(
     toggle: impl Fn() + 'static,
 ) -> NodeBuilder {
     let checked = derived_eq(move || mark.get() == Mark::Full);
-    container()
+    let partial = derived_eq(move || mark.get() == Mark::Partial);
+    let interaction = InteractionState::new(true);
+    let node = container()
         .role(Role::CheckBox)
         .label(label)
         .checked(checked)
         .hittable(true)
         .layout(
             LayoutStyle::flex_row()
-                .fixed_size(BOX, BOX)
                 .align_items(AlignItems::Center)
                 .justify_content(JustifyContent::Center),
         )
-        .class([
-            Radius::Full.atom(),
-            StyleAtom::BorderWidth(BORDER_WIDTH),
-            Token::Border.border(),
-        ])
-        .style_reactive(move || {
-            if mark.get() == Mark::Empty {
-                UNCHECKED
-            } else {
-                CHECKED
-            }
-        })
-        .children_reactive(move || match mark.get() {
-            Mark::Full => vec![mark_node(check_path())],
-            Mark::Partial => vec![mark_node(dash_path())],
-            Mark::Empty => Vec::new(),
-        })
+        .child(checkbox_indicator(
+            CheckMark { checked, partial },
+            None,
+            Tone::Primary,
+            interaction,
+        ))
         .pointer_down(|event| {
             if event.button == Some(MouseButton::Left) {
                 event.stop_propagation();
@@ -109,7 +96,8 @@ fn select_box(
                 toggle();
                 event.stop_propagation();
             }
-        })
+        });
+    interaction.observe_style(node)
 }
 
 fn cell_layout(height: f32) -> LayoutStyle {
@@ -148,34 +136,3 @@ fn toggle_all<Row: 'static>(state: &TableState<Row>) {
     }
     state.selection().set(Rc::new(set));
 }
-
-fn mark_node(path: super::super::vector::PathNode) -> NodeBuilder {
-    container()
-        .hittable(false)
-        .layout(LayoutStyle::block().fixed_size(MARK, MARK))
-        .child(path)
-}
-
-fn check_path() -> super::super::vector::PathNode {
-    super::super::vector::path(24, 24)
-        .move_to(5.0, 12.5)
-        .line_to(10.0, 18.0)
-        .line_to(19.0, 6.5)
-        .stroke(WHITE, 3.0)
-        .layout(LayoutStyle::block().fixed_size(MARK, MARK))
-}
-
-fn dash_path() -> super::super::vector::PathNode {
-    super::super::vector::path(24, 24)
-        .move_to(5.0, 12.0)
-        .line_to(19.0, 12.0)
-        .stroke(WHITE, 3.0)
-        .layout(LayoutStyle::block().fixed_size(MARK, MARK))
-}
-
-const WHITE: Rgba8 = Rgba8 {
-    r: 255,
-    g: 255,
-    b: 255,
-    a: 255,
-};

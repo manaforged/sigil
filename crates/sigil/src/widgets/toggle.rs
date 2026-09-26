@@ -23,6 +23,7 @@ const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
 pub struct ToggleBuilder {
     on: Signal<bool>,
     label: Option<TextContent>,
+    accessible: Option<String>,
     disabled: Option<Signal<bool>>,
     on_change: Option<BoolChange>,
     mutators: Vec<BuilderMutator>,
@@ -51,15 +52,15 @@ static TOGGLE_ON_DOWN: &[StyleAtom] = &[
     StyleAtom::Opacity(8_800),
 ];
 static TOGGLE_OFF: &[StyleAtom] = &[
-    Token::SurfaceHover.bg(),
+    Token::Gray6.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
 ];
 static TOGGLE_OFF_HOVER: &[StyleAtom] = &[
-    Token::Surface.bg(),
+    Token::Gray7.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
 ];
 static TOGGLE_OFF_DOWN: &[StyleAtom] = &[
-    Token::Surface.bg(),
+    Token::Gray7.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
     StyleAtom::Opacity(8_800),
 ];
@@ -68,10 +69,11 @@ static TOGGLE_ON_DISABLED: &[StyleAtom] = &[
     StyleAtom::JustifyContent(JustifyKind::End),
 ];
 static TOGGLE_OFF_DISABLED: &[StyleAtom] = &[
-    Token::SurfaceHover.bg(),
+    Token::Gray4.bg(),
     StyleAtom::JustifyContent(JustifyKind::Start),
 ];
-static TOGGLE_THUMB: &[StyleAtom] = &[Token::OnAccent.bg()];
+static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.bg()];
+static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.bg()];
 
 #[must_use]
 pub const fn toggle(on: Signal<bool>) -> ToggleBuilder {
@@ -84,11 +86,18 @@ impl ToggleBuilder {
         Self {
             on,
             label: None,
+            accessible: None,
             disabled: None,
             on_change: None,
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
         }
+    }
+
+    #[must_use]
+    pub fn accessible(mut self, name: impl Into<String>) -> Self {
+        self.accessible = Some(name.into());
+        self
     }
 
     #[must_use]
@@ -152,7 +161,11 @@ impl ToggleBuilder {
         let space_change = on_change;
         let mut node = container()
             .role(Role::Switch)
-            .label(accessible_label(self.label.as_ref()))
+            .label(
+                self.accessible
+                    .clone()
+                    .unwrap_or_else(|| accessible_label(self.label.as_ref())),
+            )
             .checked(on)
             .layout(toggle_layout(self.label.is_some()))
             .pointer_up(move |event| {
@@ -213,14 +226,15 @@ fn toggle_track(
         .style_reactive(move || {
             toggle_variant(on.get()).state(binary_style_state(interaction, disabled))
         })
-        .child(toggle_thumb())
+        .child(toggle_thumb(on))
 }
 
-fn toggle_thumb() -> NodeBuilder {
+fn toggle_thumb(on: Signal<bool>) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(14.0, 14.0))
         .style(Style::new().radius(7))
-        .class(TOGGLE_THUMB)
+        .class(TOGGLE_ANIM_BASE)
+        .style_reactive(move || if on.get() { THUMB_ON } else { THUMB_OFF })
 }
 
 fn toggle_label(source: TextContent) -> impl IntoNode {

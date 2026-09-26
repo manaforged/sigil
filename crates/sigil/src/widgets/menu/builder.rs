@@ -4,7 +4,7 @@ use crate::events::prelude::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::Signal;
+use crate::reactive::{Owner, OwnerId, Signal};
 use crate::style::{DisplayKind, NodeStyleExt, Style, StyleAccess, StyleAtom};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -71,6 +71,7 @@ impl MenuItem {
 
 pub struct MenuBuilder {
     open: Signal<bool>,
+    host: Option<OwnerId>,
     rows: Vec<Row>,
     label: Option<String>,
     anchor: Option<(f32, f32)>,
@@ -88,6 +89,7 @@ impl MenuBuilder {
     pub fn new(open: Signal<bool>) -> Self {
         Self {
             open,
+            host: Owner::current(),
             rows: Vec::new(),
             label: None,
             anchor: None,
@@ -99,6 +101,12 @@ impl MenuBuilder {
     #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.label = Some(label.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn host(mut self, owner: OwnerId) -> Self {
+        self.host = Some(owner);
         self
     }
 
@@ -128,7 +136,7 @@ impl MenuBuilder {
         let menu_label = self.label.unwrap_or_else(|| String::from("Menu"));
 
         let close: Rc<dyn Fn()> = Rc::new(move || open.set(false));
-        let mut panel = menu_panel(self.rows, close, PopupSide::Keep)
+        let mut panel = menu_panel(self.rows, close, PopupSide::Keep, self.host)
             .mutate(|node| node.a11y.focus_scope = Some(FocusScopeKind::Popup))
             .label(menu_label)
             .layout(self.layout_overrides.apply(placement))

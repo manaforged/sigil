@@ -53,6 +53,22 @@ static TAB_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
     ),
 );
 
+static PILL_ACTIVE_REST: &[StyleAtom] = &[Token::Surface.bg()];
+static PILL_VARIANT: StyleVariant = StyleVariant::new(
+    TAB_BASE,
+    StateStyle::new(&[], TAB_FOCUS, TAB_HOVER, TAB_DOWN, TAB_DISABLED),
+);
+static PILL_ACTIVE_VARIANT: StyleVariant = StyleVariant::new(
+    TAB_BASE,
+    StateStyle::new(
+        PILL_ACTIVE_REST,
+        PILL_ACTIVE_REST,
+        PILL_ACTIVE_REST,
+        PILL_ACTIVE_REST,
+        TAB_DISABLED,
+    ),
+);
+
 static LINE_BASE: &[StyleAtom] = &[
     StyleAtom::Transition(presets::SMOOTH),
     StyleAtom::BorderBottom(Px(2)),
@@ -186,6 +202,8 @@ fn tab_frame(
             let variant = match (chrome, selected.get()) {
                 (StripChrome::Line, true) => LINE_ACTIVE_VARIANT,
                 (StripChrome::Line, false) => LINE_VARIANT,
+                (StripChrome::Pill, true) => PILL_ACTIVE_VARIANT,
+                (StripChrome::Pill, false) => PILL_VARIANT,
                 (_, true) => TAB_ACTIVE_VARIANT,
                 (_, false) => TAB_VARIANT,
             };

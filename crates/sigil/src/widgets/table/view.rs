@@ -13,7 +13,8 @@ use super::super::menu::MenuItem;
 use super::super::scroll::wheel_x;
 use super::super::shared::BuilderMutator;
 use super::super::virtual_list::virtual_list;
-use super::chrome::{RowMenu, TableChrome, context_overlay};
+use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
+use super::density::Density;
 use super::header::{HeaderSpec, header_row};
 use super::hscroll;
 use super::row::{RowSpec, body_row};
@@ -21,49 +22,16 @@ use super::select;
 use super::state::TableState;
 
 static DIMMED: &[StyleAtom] = &[StyleAtom::Opacity(DISABLED_OPACITY)];
+static FRAMED: &[StyleAtom] = &[
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    Token::BorderStrong.border(),
+    Radius::Md.atom(),
+    Token::Surface.bg(),
+];
+static UNFRAMED: &[StyleAtom] = &[Token::Surface.bg()];
 const DEFAULT_ROW_HEIGHT: f32 = space(9);
 const DEFAULT_HEADER_HEIGHT: f32 = space(9);
 const DEFAULT_VIEWPORT_HEIGHT: f32 = space(120);
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub enum Density {
-    Grid,
-    Compact,
-    #[default]
-    Default,
-}
-
-impl Density {
-    const fn row(self) -> f32 {
-        match self {
-            Self::Grid => space(6),
-            Self::Compact => space(7),
-            Self::Default => space(9),
-        }
-    }
-
-    const fn header(self) -> f32 {
-        match self {
-            Self::Grid => space(7),
-            Self::Compact => space(8),
-            Self::Default => space(9),
-        }
-    }
-
-    const fn pad_x(self) -> f32 {
-        match self {
-            Self::Grid | Self::Compact => space(2),
-            Self::Default => space(3),
-        }
-    }
-
-    const fn text(self) -> &'static str {
-        match self {
-            Self::Grid => "text-xs",
-            Self::Compact | Self::Default => "text-sm",
-        }
-    }
-}
 
 pub struct TableBuilder<Row: 'static> {
     state: TableState<Row>,
@@ -73,10 +41,12 @@ pub struct TableBuilder<Row: 'static> {
     viewport_width: Option<f32>,
     viewport_fill: bool,
     row_menu: Option<RowMenu<Row>>,
+    row_activate: Option<RowActivate<Row>>,
     empty: Option<Rc<dyn Fn() -> NodeBuilder>>,
     select: bool,
     density: Density,
     striped: bool,
+    frame: &'static [StyleAtom],
     scroll_y: Option<Signal<f32>>,
     disabled: Option<Signal<bool>>,
     mutators: Vec<BuilderMutator>,
@@ -93,10 +63,12 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         viewport_width: None,
         viewport_fill: false,
         row_menu: None,
+        row_activate: None,
         empty: None,
         select: false,
         density: Density::Default,
         striped: false,
+        frame: FRAMED,
         scroll_y: None,
         disabled: None,
         mutators: Vec::new(),
@@ -142,6 +114,12 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     #[must_use]
+    pub fn row_activate(mut self, activate: impl Fn(&Row) + 'static) -> Self {
+        self.row_activate = Some(Rc::new(activate));
+        self
+    }
+
+    #[must_use]
     pub const fn density(mut self, density: Density) -> Self {
         self.row_height = density.row();
         self.header_height = density.header();
@@ -152,6 +130,12 @@ impl<Row: 'static> TableBuilder<Row> {
     #[must_use]
     pub const fn striped(mut self) -> Self {
         self.striped = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn framed(mut self, framed: bool) -> Self {
+        self.frame = if framed { FRAMED } else { UNFRAMED };
         self
     }
 
@@ -202,7 +186,7 @@ impl<Row: 'static> TableBuilder<Row> {
     fn into_node_builder(self) -> NodeBuilder {
         let body_spec = self.body_spec(self.density.pad_x());
         let state = self.state;
-        let chrome = TableChrome::new(self.row_menu);
+        let chrome = TableChrome::new(self.row_menu, self.row_activate);
         let viewport_fill = self.viewport_fill;
         let viewport_width = self.viewport_width;
         let empty = self.empty;
@@ -216,12 +200,7 @@ impl<Row: 'static> TableBuilder<Row> {
             .role(Role::Grid)
             .row_count(derived(move || root_state.visible().get().len() + 1))
             .column_count(state.columns().len() + usize::from(self.select))
-            .class([
-                StyleAtom::BorderWidth(BORDER_WIDTH),
-                Token::BorderStrong.border(),
-                Radius::Md.atom(),
-                Token::Surface.bg(),
-            ])
+            .class(self.frame)
             .class(self.density.text())
             .layout(
                 self.layout_overrides

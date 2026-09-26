@@ -4,7 +4,7 @@ use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{
     BORDER_WIDTH, Fill, Metrics, NodeStyleExt, Radius, Size, StateVariants, Style, StyleAccess,
     StyleAtom, Token, space,
@@ -68,6 +68,7 @@ impl MenuBarBuilder {
 
     fn into_node_builder(self) -> NodeBuilder {
         let open_idx: Signal<Option<usize>> = signal(None);
+        let host = Owner::current();
         let mut bar = container()
             .role(Role::GenericContainer)
             .label("Menu bar")
@@ -79,7 +80,7 @@ impl MenuBarBuilder {
         }
 
         for (index, slot) in self.slots.into_iter().enumerate() {
-            bar = bar.child(slot_node(index, slot, open_idx));
+            bar = bar.child(slot_node(index, slot, open_idx, host));
         }
 
         bar
@@ -124,7 +125,12 @@ fn trigger_width(label: &str) -> f32 {
     (label.chars().count() as f32).mul_add(EM, PAD)
 }
 
-fn slot_node(index: usize, slot: Slot, open_idx: Signal<Option<usize>>) -> NodeBuilder {
+fn slot_node(
+    index: usize,
+    slot: Slot,
+    open_idx: Signal<Option<usize>>,
+    host: Option<OwnerId>,
+) -> NodeBuilder {
     let trigger = interactive_trigger(slot.label.clone(), index, open_idx);
     let rows = slot.rows;
     let height = panel_height(&rows);
@@ -140,7 +146,7 @@ fn slot_node(index: usize, slot: Slot, open_idx: Signal<Option<usize>>) -> NodeB
         .child(trigger)
         .children_reactive(move || {
             if open_idx.get() == Some(index) {
-                vec![slot_popup(&rows, height, open_idx)]
+                vec![slot_popup(&rows, height, open_idx, host)]
             } else {
                 Vec::new()
             }
@@ -184,9 +190,14 @@ fn interactive_trigger(
         .pressed(|s| s.bg(Token::SurfacePressed))
 }
 
-fn slot_popup(rows: &[Row], height: f32, open_idx: Signal<Option<usize>>) -> NodeBuilder {
+fn slot_popup(
+    rows: &[Row],
+    height: f32,
+    open_idx: Signal<Option<usize>>,
+    host: Option<OwnerId>,
+) -> NodeBuilder {
     let close: Rc<dyn Fn()> = Rc::new(move || open_idx.set(None));
-    menu_panel(rows.to_vec(), close, PopupSide::Below).layout(panel_layout(
+    menu_panel(rows.to_vec(), close, PopupSide::Below, host).layout(panel_layout(
         TRIGGER_H + POPUP_GAP,
         0.0,
         PANEL_WIDTH,

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Signal, signal};
+use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{Metrics, NodeStyleExt, Size};
 
 use super::super::layout_ext::WidgetLayoutExt;
@@ -17,6 +17,7 @@ pub(super) enum ContextKind {
 }
 
 pub(super) type RowMenu<Row> = Rc<dyn Fn(&Row) -> Vec<MenuItem>>;
+pub(super) type RowActivate<Row> = Rc<dyn Fn(&Row)>;
 
 pub(super) struct TableChrome<Row: 'static> {
     pub open: Signal<bool>,
@@ -24,6 +25,8 @@ pub(super) struct TableChrome<Row: 'static> {
     pub bounds: Signal<(f32, f32, f32, f32)>,
     pub kind: Signal<Option<ContextKind>>,
     pub row_menu: Option<RowMenu<Row>>,
+    pub row_activate: Option<RowActivate<Row>>,
+    pub host: Option<OwnerId>,
 }
 
 impl<Row: 'static> Clone for TableChrome<Row> {
@@ -34,18 +37,34 @@ impl<Row: 'static> Clone for TableChrome<Row> {
             bounds: self.bounds,
             kind: self.kind,
             row_menu: self.row_menu.clone(),
+            row_activate: self.row_activate.clone(),
+            host: self.host,
         }
     }
 }
 
 impl<Row: 'static> TableChrome<Row> {
-    pub(super) fn new(row_menu: Option<RowMenu<Row>>) -> Self {
+    pub(super) fn new(
+        row_menu: Option<RowMenu<Row>>,
+        row_activate: Option<RowActivate<Row>>,
+    ) -> Self {
         Self {
             open: signal(false),
             pos: signal((0.0, 0.0)),
             bounds: signal((0.0, 0.0, 0.0, 0.0)),
             kind: signal(None),
             row_menu,
+            row_activate,
+            host: Owner::current(),
+        }
+    }
+
+    pub(super) fn activate(&self, state: &TableState<Row>, row: u32) {
+        let Some(activate) = &self.row_activate else {
+            return;
+        };
+        if let Some(value) = state.rows().peek().get(row as usize) {
+            activate(value);
         }
     }
 
@@ -93,10 +112,11 @@ pub(super) fn context_overlay<Row: 'static>(
                 .fold(PANEL_INSET * 2.0, |total, _| total + item_height);
             let x = (x - left).clamp(0.0, (width - menu_width).max(0.0));
             let y = (y - top).clamp(0.0, (height - menu_height).max(0.0));
-            let mut panel = menu(chrome.open)
-                .label("Table menu")
-                .anchor(x, y)
-                .width(menu_width);
+            let mut panel = menu(chrome.open);
+            if let Some(host) = chrome.host {
+                panel = panel.host(host);
+            }
+            let mut panel = panel.label("Table menu").anchor(x, y).width(menu_width);
             for item in items {
                 panel = panel.item(item);
             }

@@ -61,7 +61,7 @@ fn signal_title_drives_dialog_text_and_accessible_name() {
             .expect("frame")
             .children()
             .iter()
-            .copied()
+            .flat_map(|id| cx.get(*id).expect("child").children().iter().copied())
             .find(|id| matches!(cx.get(*id).expect("child").kind, NodeType::Text { .. }))
             .expect("title text node");
         let title_text = match &cx.get(title_node).expect("title").kind {

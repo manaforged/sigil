@@ -11,7 +11,7 @@ mod atoms;
 
 use atoms::{parse_prefixed_token, push_border_side_atoms, shadow_atom};
 
-const STRUCTURAL_TOKENS: [&str; 80] = [
+const STRUCTURAL_TOKENS: [&str; 81] = [
     "p-4",
     "px-4",
     "py-4",
@@ -83,6 +83,7 @@ const STRUCTURAL_TOKENS: [&str; 80] = [
     "border-accent",
     "font-normal",
     "font-medium",
+    "font-semibold",
     "font-bold",
     "italic",
     "not-italic",
@@ -228,6 +229,7 @@ fn parse_font_token(token: &str) -> Option<StyleAtom> {
     match token {
         "font-normal" => Some(StyleAtom::FontWeight(400)),
         "font-medium" => Some(StyleAtom::FontWeight(500)),
+        "font-semibold" => Some(StyleAtom::FontWeight(600)),
         "font-bold" => Some(StyleAtom::FontWeight(700)),
         "italic" => Some(StyleAtom::FontItalic(true)),
         "not-italic" => Some(StyleAtom::FontItalic(false)),

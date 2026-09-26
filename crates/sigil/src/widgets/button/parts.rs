@@ -1,9 +1,12 @@
 use crate::animation_runtime::presets;
-use crate::kernel::{AccessibleName, TextContent};
+use crate::kernel::{AccessibleName, TextBuilder, TextContent, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutStyle};
-use crate::style::{BORDER_WIDTH, Elevation, StyleAtom, TransitionId};
+use crate::style::{
+    BORDER_WIDTH, Elevation, Metrics, NodeStyleExt, Size, StyleAtom, Tone, TransitionId,
+};
 
 pub(super) const BUTTON_TRANSITION: TransitionId = presets::SMOOTH;
+const COMPACT_LABEL_HEIGHT: f32 = 32.0;
 
 #[derive(Clone, Copy)]
 pub(super) enum ButtonWidth {
@@ -53,3 +56,18 @@ pub(super) static LABEL_TEXT_SOFT: &[StyleAtom] = &[
     StyleAtom::FontWeight(500),
     StyleAtom::LetterSpacing(-10),
 ];
+
+pub(super) fn compact_label(height: f32, override_height: Option<f32>) -> bool {
+    height < Metrics::current().control_height(Size::Default)
+        || override_height.is_some_and(|px| px <= COMPACT_LABEL_HEIGHT)
+}
+
+pub(super) fn label_node(
+    label: TextContent,
+    tone: Tone,
+    atoms: &'static [StyleAtom],
+    compact: bool,
+) -> TextBuilder {
+    let node = text(label).nowrap().tone(tone).class(atoms);
+    if compact { node.class("text-xs") } else { node }
+}

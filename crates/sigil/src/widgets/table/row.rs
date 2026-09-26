@@ -1,10 +1,12 @@
-use crate::events::prelude::{ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
+use crate::events::prelude::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived_eq};
-use crate::style::{NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, Token};
 
-use super::super::patterns::{ROW_SELECTED, row_states};
+use super::super::interaction::InteractionState;
+use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};
+use super::super::shared::{DIMMED, disabled_a11y, reactive_style_state};
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, flex_cell};
 use super::hscroll::HScroll;
@@ -20,9 +22,28 @@ pub(super) struct RowSpec {
     pub disabled: Option<Signal<bool>>,
 }
 
+static REST: &[StyleAtom] = &[];
+static HOVER: &[StyleAtom] = &[Token::SurfaceHover.bg()];
+static PRESSED: &[StyleAtom] = &[Token::SurfacePressed.bg()];
 static SELECTED: &[StyleAtom] = &[ROW_SELECTED.bg()];
+static SELECTED_HOVER: &[StyleAtom] = &[ROW_SELECTED_HOVER.bg()];
+static SELECTED_DISABLED: &[StyleAtom] = &[
+    ROW_SELECTED.bg(),
+    StyleAtom::Opacity(crate::style::DISABLED_OPACITY),
+];
+static PLAIN_ROW: StyleVariant =
+    StyleVariant::new(REST, StateStyle::new(REST, HOVER, HOVER, PRESSED, DIMMED));
+static SELECTED_ROW: StyleVariant = StyleVariant::new(
+    REST,
+    StateStyle::new(
+        SELECTED,
+        SELECTED_HOVER,
+        SELECTED_HOVER,
+        SELECTED_HOVER,
+        SELECTED_DISABLED,
+    ),
+);
 const STRIPE: Token = Token::SurfaceInset;
-const ROW_INSET: f32 = space(1);
 const NUMERIC_CLASS: &str = "tabular-nums";
 
 pub(super) fn body_row<Row: 'static>(
@@ -59,23 +80,63 @@ fn build_row<Row: 'static>(
         .label(format!("row {}", visible_pos + 1))
         .row_index(visible_pos + 2)
         .selected(is_selected)
-        .layout(row_layout(row_height, spec.pad_x - ROW_INSET))
-        .style_reactive(move || if is_selected.get() { SELECTED } else { &[] })
+        .layout(row_layout(row_height, spec.pad_x))
         .child(hscroll.shifted(track));
     let mut frame = container()
-        .layout(row_layout(row_height, ROW_INSET))
+        .layout(row_layout(row_height, 0.0))
         .class("border-b")
-        .class(Token::Border.border());
+        .class(Token::BorderSubtle.border());
     if spec.striped && visible_pos % 2 == 1 {
         frame = frame.class(STRIPE.bg());
     }
-    frame.child(
-        row_states(cells, spec.disabled).pointer_down(select_pointer(
-            state.clone(),
-            chrome.clone(),
-            (row_index, spec.disabled),
-        )),
-    )
+    let cells = row_states(cells, is_selected, spec.disabled).pointer_down(select_pointer(
+        state.clone(),
+        chrome.clone(),
+        (row_index, spec.disabled),
+    ));
+    frame.child(activate_key(
+        cells,
+        state,
+        chrome,
+        (row_index, spec.disabled),
+    ))
+}
+
+fn activate_key<Row: 'static>(
+    row: NodeBuilder,
+    state: &TableState<Row>,
+    chrome: &TableChrome<Row>,
+    target: (u32, Option<Signal<bool>>),
+) -> NodeBuilder {
+    if chrome.row_activate.is_none() {
+        return row;
+    }
+    let (row_index, disabled) = target;
+    let (state, chrome) = (state.clone(), chrome.clone());
+    row.focusable(true).key(Key::Enter, move |event| {
+        if disabled.is_some_and(|off| off.get()) {
+            return;
+        }
+        chrome.activate(&state, row_index);
+        event.stop_propagation();
+    })
+}
+
+fn row_states(
+    row: NodeBuilder,
+    selected: Signal<bool>,
+    disabled: Option<Signal<bool>>,
+) -> NodeBuilder {
+    let interaction = InteractionState::new(true);
+    let row = disabled_a11y(row, disabled).style_reactive(move || {
+        let variant = if selected.get() {
+            SELECTED_ROW
+        } else {
+            PLAIN_ROW
+        };
+        variant.state(reactive_style_state(interaction, disabled))
+    });
+    interaction.observe_style(row)
 }
 
 fn row_cells<Row: 'static>(
@@ -174,6 +235,9 @@ fn select_pointer<Row: 'static>(
             return;
         }
         apply_click(&state, row_index, event.modifiers);
+        if !(event.modifiers.shift() || event.modifiers.ctrl() || event.modifiers.meta()) {
+            chrome.activate(&state, row_index);
+        }
         event.stop_propagation();
     }
 }

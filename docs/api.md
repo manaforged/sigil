@@ -637,16 +637,17 @@ fn main() {
 | Name | Signature | Purpose |
 | --- | --- | --- |
 | `button` | `fn button(label: impl Into<TextContent>) -> ButtonBuilder` | A push button. |
-| `ButtonBuilder` | `primary()`, `ghost()`, `destructive()`, `activate(f)` | Builder of a button. |
+| `ButtonBuilder` | `primary()`, `outline()`, `ghost()`, `destructive()`, `icon_svg(svg)`, `activate(f)`, `size(Size)` | Builder of a button. `outline()` draws a framed ghost button. `icon_svg` puts an SVG icon before the label (feature `scene`). A button below the default size, or with a height of 32 px or less, uses the `text-xs` label. |
 | `icon_button` | `fn icon_button(glyph, activate: impl Fn() + 'static) -> ButtonBuilder` | A button that shows one glyph. |
 | `checkbox` | `fn checkbox(checked: Signal<bool>) -> CheckboxBuilder` | A checkbox. |
-| `CheckboxBuilder` | `struct CheckboxBuilder` | Builder of a checkbox. |
+| `CheckboxBuilder` | `struct CheckboxBuilder`; `indeterminate(Signal<bool>)` | Builder of a checkbox. A 16 px box with an `on-accent` mark. `indeterminate` draws a dash while the signal is true. Table selection uses the same box. |
 | `toggle` | `const fn toggle(on: Signal<bool>) -> ToggleBuilder` | An on/off switch. |
-| `ToggleBuilder` | `struct ToggleBuilder` | Builder of a switch. |
+| `ToggleBuilder` | `struct ToggleBuilder`; `label(text)`, `accessible(name)` | Builder of a switch. `accessible` names the switch for assistive tech without visible text. The off track is `gray-6` with a `gray-11` thumb; a disabled off track is `gray-4`. |
 | `radio_group` | `fn radio_group(selected: Signal<String>) -> RadioGroupBuilder` | A set of radio options; `.label()` and `.labelled_by()` name the group. |
+| `segmented` | `fn segmented(active: Signal<usize>, labels: Vec<String>) -> SegmentedBuilder` | A framed row of options where one is active; `.label()` names the group and `.height()` sets its height. |
 | `RadioGroupBuilder` | `struct RadioGroupBuilder` | Builder of a radio group. |
 | `slider` | `fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder` | A value slider. |
-| `SliderBuilder` | `struct SliderBuilder` | Builder of a slider. |
+| `SliderBuilder` | `struct SliderBuilder`; `step(f32)`, `length(f32)`, `label(text)`, `marks(labels)`, `change(fn)` | Builder of a slider. `marks` draws one label per stop under a horizontal track, spaced evenly from the minimum to the maximum; the current stop is highlighted and a click on a label moves to it. |
 | `Orientation` | `enum Orientation { Horizontal, Vertical }` | Slider axis. |
 | `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder` | A single-line text input. |
 | `TextFieldBuilder` | `struct TextFieldBuilder` | Builder of a text input. |
@@ -713,7 +714,8 @@ fn main() {
 | `combobox` | `fn combobox(state: Combobox) -> NodeBuilder` | A text input with a filtered list. |
 | `Combobox` | `Combobox::new(options: Vec<String>)` | State of a combobox. |
 | `menu` | `fn menu(open: Signal<bool>) -> MenuBuilder` | A popup menu. |
-| `MenuBuilder` | `struct MenuBuilder` | Builder of a popup menu. |
+| `MenuBuilder` | `struct MenuBuilder`; `host(owner)` | Builder of a popup menu. Item actions run under the owner current when the menu was built, or under `host`. |
+| `context_menu` | `fn context_menu(target, items: impl Fn() -> Vec<MenuItem>) -> NodeBuilder` | Wraps `target`; a right click opens a menu of `items()` at the pointer. |
 | `MenuItem` | `struct MenuItem { label, shortcut, disabled, submenu_indicator }` | One menu entry. |
 | `menu_bar` | `fn menu_bar() -> MenuBarBuilder` | An in-window menu bar. |
 | `MenuBarBuilder` | `struct MenuBarBuilder` | Builder of a menu bar. |
@@ -723,7 +725,7 @@ fn main() {
 | `fuzzy_score` | `fn fuzzy_score(query: &str, text: &str) -> Option<FuzzyMatch>` | Rank text against a query. |
 | `FuzzyMatch` | `struct FuzzyMatch { score: usize, positions: Vec<usize> }` | Result of `fuzzy_score`. |
 | `table` | `fn table<Row>(state: TableState<Row>) -> TableBuilder<Row>` | A sortable, filterable table. |
-| `TableBuilder` | `struct TableBuilder<Row>` | Builder of a table. |
+| `TableBuilder` | `struct TableBuilder<Row>`; `framed(bool)`, `row_activate(impl Fn(&Row) + 'static)` | Builder of a table. `row_activate` runs on a plain left click on a row, including its padding but not its selection box, and on Enter while the row has focus. It leaves the selection as the click set it. `framed(false)` drops the rounded outer border so the table runs edge to edge. The header fills with `table-header`; row dividers use `border-subtle`. Selected rows fill with `accent-5`, and `accent-6` under hover or press. |
 | `TableState` | `TableState::new(rows: Vec<Row>, columns: Vec<TableColumn<Row>>)` | Rows, columns, sort, and selection. |
 | `TableColumn` | `TableColumn::new(id: &'static str, title)` | One table column. |
 | `ColWidth` | `enum ColWidth { Fixed(f32), Fraction(f32) }` | Column width. |
@@ -737,7 +739,9 @@ fn main() {
 | `SelectionState` | `SelectionState::new(mode: SelectionMode)` | Selected indexes of a list. |
 | `list_row` | `fn list_row(selected: bool, title, detail) -> NodeBuilder` | One row of a list. |
 | `list_row_with` | `fn list_row_with(selected: bool, title, slots: ListRowSlots) -> NodeBuilder` | A list row with a marker, status, and columns. |
-| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, status, columns, shrink }` | Optional parts of a list row. |
+| `ListRowSlots` | `struct ListRowSlots { depth, disclosure, marker, status, columns, shrink, title_width, tone }` | Optional parts of a list row. `title_width` gives the title a fixed width so columns line up after it. |
+| `ListColumn` | `ListColumn::new(text, width)`; `start()`; `From<(TextContent, f32)>` | One fixed-width column of a list row. Columns align to the end unless `start()` is set. |
+| `RowTone` | `enum RowTone { Normal, Muted, Header }` | Text tone of a list row. `Muted` dims an unavailable row. `Header` labels columns and takes no hover or selection. |
 | `Disclosure` | `enum Disclosure { None, Leaf, Collapsed, Expanded }` | The tree chevron slot of a list row. |
 | `kv_grid` | `fn kv_grid(rows: &[(&'static str, &'static str)]) -> NodeBuilder` | A two-column key/value grid. |
 | `kv_row` | `fn kv_row(label, value: impl IntoNode + 'static) -> NodeBuilder` | One key/value row. |
@@ -814,14 +818,14 @@ fn main() {
 | `card` | `fn card(child: impl IntoNode + 'static) -> NodeBuilder` | A bordered card. |
 | `sheet` | `fn sheet(show: Signal<bool>) -> ModalBuilder` | A panel that slides in from a side. |
 | `modal` | `fn modal(show: Signal<bool>) -> ModalBuilder` | A modal dialog. |
-| `ModalBuilder` | `struct ModalBuilder` | Builder of a modal or sheet. |
+| `ModalBuilder` | `struct ModalBuilder`; `close_button(bool)` | Builder of a modal or sheet. A titled dialog shows a close button that sets `show` to false; `close_button(false)` removes it. Children scroll in a body between the title and the footer, so the title and actions stay visible when the dialog reaches its maximum height. |
 | `Side` | `enum Side { Left, Right, Bottom }` | Edge of a sheet. |
 | `splitter` | `const fn splitter(orientation: SplitterOrientation) -> SplitterBuilder` | Resizable panes. |
 | `SplitterBuilder` | `struct SplitterBuilder` | Builder of a splitter. |
 | `SplitterOrientation` | `enum SplitterOrientation { Horizontal, Vertical }` | Splitter axis. |
 | `scroll` | `fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuilder` | A scroll area with a known extent. |
 | `scroll_auto` | `fn scroll_auto(content: NodeBuilder) -> ScrollBuilder` | A scroll area sized by its content. |
-| `ScrollBuilder` | `struct ScrollBuilder` | Builder of a scroll area. |
+| `ScrollBuilder` | `struct ScrollBuilder`; `fill()`, `fit()` | Builder of a scroll area. `fill()` takes the parent's height. `fit()` takes the content height up to the parent's height, then scrolls. |
 | `section_label` | `fn section_label(title) -> NodeBuilder` | A section heading row. |
 | `hint_bar` | `fn hint_bar(keys, right) -> NodeBuilder` | A key hint row. |
 | `hint_overlay` | `fn hint_overlay(hints: &[(&str, &str)]) -> HintOverlayBuilder` | An overlay that lists key bindings. |
@@ -855,7 +859,7 @@ fn main() {
 | `spinner_frame` | `fn spinner_frame(tick: u64) -> &'static str` | The spinner glyph for a tick count. |
 | `icon` | `fn icon(glyph: impl Into<TextContent>) -> IconBuilder` | An icon glyph. |
 | `icon_svg` | `fn icon_svg(svg: impl Into<Rc<str>>) -> IconBuilder` | An SVG icon. Its colour comes from the tone and the active theme at paint time. |
-| `IconBuilder` | `struct IconBuilder` | Builder of an icon. |
+| `IconBuilder` | `tone(t)`, `size(s)`, `px(px)`, `strong()` | Builder of an icon. `px` sets an exact icon size. `strong` uses the high-contrast step of the tone scale. |
 | `path` | `const fn path(width: u32, height: u32) -> PathNode` | A vector path. |
 | `PathNode` | `move_to`, `line_to`, `quad_to`, `cubic_to`, `close`, `fill`, `stroke` | Builder of a vector path. |
 | `PathCmd` | `enum PathCmd { MoveTo, LineTo, QuadTo, CubicTo, Close }` | One path command. |
@@ -1005,6 +1009,7 @@ fn main() -> AppResult<()> {
 | Stream results from a backend thread | `signal_writer(signal)`, `SignalWriter::update` |
 | Apply a theme | `parse_theme`, `set_theme`, `watch_theme`, `AppConfig::theme_file` |
 | Name a theme colour in code | `sigil::style::Token` (`Token::Surface.bg()`, `Token::Ring.color()`) |
+| Theme a table header or row divider | `Token::TableHeader` (`table-header`), `Token::BorderSubtle` (`border-subtle`) |
 
 ## Terminal rasteriser
 
@@ -1033,6 +1038,30 @@ content.
 | `LayoutError` | `Host::layout`, `Host::scene`, `sigil::terminal::present`, `sigil::terminal::step` | The layout pass failed. It converts into `sigil::Error`. |
 | `sigil_sign::SignError` | `sign_file`, `verify_file` | `KeyFile`, `Key`, `Package`, `Envelope`, or `TrustedComment`: the key, the package, the signature, or the signed file name or version failed. |
 | `sigil_sign::PackError` | `macos_app`, `windows_dir` | `Missing`, `Io`, `Codesign`, `Escape`, `Symlink`, `Occupied`, or `NotFile`. |
+
+## Inspection
+
+With the `inspect` cargo feature, an app exposes a local control socket
+when `SIGIL_INSPECT` is set. `SIGIL_INSPECT=1` binds `127.0.0.1:5761`;
+any other value is an address to bind. The socket speaks one JSON
+object per line, one reply per request.
+
+| `op` | Request | Reply |
+| --- | --- | --- |
+| `tree` | – | `nodes`: id to `{role, name, description, bounds, children, focused, selected, expanded, toggled, value, numeric}` plus `root` and `focus`. Bounds are in points on the window host and cells on the terminal host. |
+| `snapshot` | – | `text`: the accessibility text dump. |
+| `screenshot` | – | Terminal: `text` with the painted grid. Window: `png` (base64) plus `width`/`height` in physical pixels. |
+| `surfaces` | – | `surfaces`: keyed surface holes and rects. |
+| `settle` | – | `ok` after servicing; `settled` is false while the frame stays dirty or animations run. |
+| `click` | `col`/`row` (terminal cells) or `x`/`y` (points), `button` | Moves, presses, and releases the pointer through the normal router. |
+| `move`, `down`, `up` | same coordinates | One pointer phase. |
+| `scroll` | coordinates plus `dx`/`dy` in lines | A scroll event. |
+| `key` | `key` (a `NamedKey` name or one character), `ctrl`/`shift`/`alt`/`meta` | Key down and up. |
+| `type` | `text` | Key events per character. |
+
+Requests are serviced between frames on the UI thread, so replies
+reflect the tree as last laid out. The socket is loopback by
+convention; the feature is off without the environment variable.
 
 ## Conventions
 

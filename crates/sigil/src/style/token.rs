@@ -38,6 +38,8 @@ tokens! {
     OnSurfaceMuted => "on-surface-muted",
     Border => "border",
     BorderStrong => "border-strong",
+    BorderSubtle => "border-subtle",
+    TableHeader => "table-header",
     Scrim => "scrim",
     Ring => "ring",
     Overlay => "overlay",
@@ -116,7 +118,7 @@ tokens! {
     Info12 => "info-12",
 }
 
-const SEMANTIC: usize = 19;
+const SEMANTIC: usize = 21;
 
 impl Token {
     #[must_use]

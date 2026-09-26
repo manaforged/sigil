@@ -3,7 +3,7 @@
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{
-    LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
+    Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
 };
 use crate::reactive::{Signal, derived_eq, effect_named, signal};
 use crate::style::{
@@ -17,6 +17,19 @@ pub(crate) use input::{WheelX, pin_to_bottom, wheel, wheel_x, wheel2};
 
 const VIEWPORT_HEIGHT: f32 = space(60);
 pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Sizing {
+    Fixed,
+    Fill,
+    Fit,
+}
+
+impl Sizing {
+    fn floor(self, extent: Signal<f32>, viewport: Signal<f32>) -> Signal<f32> {
+        if self == Self::Fit { extent } else { viewport }
+    }
+}
+
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
@@ -31,7 +44,7 @@ pub struct ScrollBuilder {
     extent: Option<Signal<f32>>,
     height: f32,
     width: Option<f32>,
-    fill: bool,
+    sizing: Sizing,
     scroll_y: Option<Signal<f32>>,
     initial_end: bool,
     pin_bottom: bool,
@@ -62,7 +75,7 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
         extent: Some(extent.into_extent()),
         height: VIEWPORT_HEIGHT,
         width: None,
-        fill: false,
+        sizing: Sizing::Fixed,
         scroll_y: None,
         initial_end: false,
         pin_bottom: false,
@@ -99,7 +112,14 @@ impl ScrollBuilder {
 
     #[must_use]
     pub const fn fill(mut self) -> Self {
-        self.fill = true;
+        self.sizing = Sizing::Fill;
+        self
+    }
+
+    #[must_use]
+    pub const fn fit(mut self) -> Self {
+        self.sizing = Sizing::Fit;
+        self.height = 0.0;
         self
     }
 
@@ -134,8 +154,8 @@ impl ScrollBuilder {
         };
         let height = self.height;
         let width = self.width;
-        let fill = self.fill;
-        let (viewport, viewport_height) = viewport_signals(width, height, fill);
+        let sizing = self.sizing;
+        let (viewport, viewport_height) = viewport_signals(width, height, sizing != Sizing::Fixed);
 
         let max_scroll = derived_eq(move || (extent.get() - viewport_height.get()).max(0.0));
         if self.initial_end {
@@ -144,12 +164,13 @@ impl ScrollBuilder {
         if self.pin_bottom {
             pin_to_bottom(scroll_y, max_scroll);
         }
-        let body = wrap_content(content, scroll_y, max_scroll, extent, viewport_height);
+        let floor = sizing.floor(extent, viewport_height);
+        let body = wrap_content(content, scroll_y, max_scroll, extent, floor);
         let hovered = signal(false);
         let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height, hovered);
-        let track = scrollbar_track(hovered).child(thumb);
+        let track = scrollbar_track(hovered, sizing).child(thumb);
 
-        let root = viewport_container(width, height, fill)
+        let root = viewport_container(width, height, sizing)
             .child(body)
             .child(track);
         let scrollable = derived_eq(move || max_scroll.get() > 0.0);
@@ -162,7 +183,7 @@ impl ScrollBuilder {
                 max: max_scroll,
             },
         );
-        if fill {
+        if sizing != Sizing::Fixed {
             root = root.size_reactive(viewport);
         }
         if let Some(classes) = self.extra {
@@ -216,11 +237,11 @@ impl IntoNode for ScrollBuilder {
     }
 }
 
-fn viewport_container(width: Option<f32>, height: f32, fill: bool) -> NodeBuilder {
-    let base = if fill {
-        LayoutStyle::flex_row().fill_height()
-    } else {
-        LayoutStyle::flex_row().height(height)
+fn viewport_container(width: Option<f32>, height: f32, sizing: Sizing) -> NodeBuilder {
+    let base = match sizing {
+        Sizing::Fill => LayoutStyle::flex_row().fill_height(),
+        Sizing::Fit => LayoutStyle::flex_row().max_size(Dimension::Auto, Dimension::Percent(1.0)),
+        Sizing::Fixed => LayoutStyle::flex_row().height(height),
     };
     let base = match width {
         Some(px) => base.width(px),
@@ -257,14 +278,14 @@ fn wrap_content(
         .style_reactive(move || geometry::content_atoms(geometry.get()))
 }
 
-fn scrollbar_track(hovered: Signal<bool>) -> NodeBuilder {
+fn scrollbar_track(hovered: Signal<bool>, sizing: Sizing) -> NodeBuilder {
+    let layout = LayoutStyle::block().width(SCROLLBAR_WIDTH).shrink(0.0);
     container()
-        .layout(
-            LayoutStyle::block()
-                .width(SCROLLBAR_WIDTH)
-                .fill_height()
-                .shrink(0.0),
-        )
+        .layout(if sizing == Sizing::Fit {
+            layout
+        } else {
+            layout.fill_height()
+        })
         .style_reactive(move || {
             if hovered.get() {
                 TRACK_HOVER

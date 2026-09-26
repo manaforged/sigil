@@ -7,7 +7,7 @@ use crate::layout::prelude::{
     AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
 };
 use crate::layout::snap::CellForm;
-use crate::reactive::{Signal, derived};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, ClassSource, Metrics, NodeStyleExt, Px, Size, StateHost, StateStyle, Style,
     StyleAccess, StyleAtom, StyleOverlay, StyleVariant, Theme, Token, Tone, TransitionId,
@@ -22,11 +22,12 @@ use super::shared::{
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
-const CHECKBOX_BOX_SIZE: f32 = 18.0;
+const CHECKBOX_BOX_SIZE: f32 = 16.0;
 const CHECKBOX_MARK_SIZE: f32 = 12.0;
 
 pub struct CheckboxBuilder {
     checked: Signal<bool>,
+    partial: Option<Signal<bool>>,
     label: Option<TextContent>,
     disabled: Option<Signal<bool>>,
     tone: Tone,
@@ -79,6 +80,7 @@ impl CheckboxBuilder {
     pub fn new(checked: Signal<bool>) -> Self {
         Self {
             checked,
+            partial: None,
             label: None,
             disabled: None,
             tone: Tone::Primary,
@@ -98,6 +100,12 @@ impl CheckboxBuilder {
     #[must_use]
     pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
         self.disabled = Some(disabled);
+        self
+    }
+
+    #[must_use]
+    pub const fn indeterminate(mut self, partial: Signal<bool>) -> Self {
+        self.partial = Some(partial);
         self
     }
 
@@ -159,6 +167,7 @@ impl CheckboxBuilder {
         user_overlay: StyleOverlay,
     ) -> NodeBuilder {
         let checked = self.checked;
+        let partial = self.partial.unwrap_or_else(|| signal(false));
         let disabled = self.disabled;
         let tone = self.tone;
         let pointer_change = Rc::clone(&on_change);
@@ -179,7 +188,12 @@ impl CheckboxBuilder {
             .key(LogicalKey::character(" "), move |event| {
                 activate_binary_key(event, interaction, disabled, checked, &space_change);
             })
-            .child(checkbox_indicator(checked, disabled, tone, interaction));
+            .child(checkbox_indicator(
+                CheckMark { checked, partial },
+                disabled,
+                tone,
+                interaction,
+            ));
         if let Some(label_source) = self.label.clone() {
             node = node.child(checkbox_label(label_source));
         }
@@ -222,8 +236,20 @@ fn checkbox_layout(has_label: bool) -> LayoutStyle {
     }
 }
 
-fn checkbox_indicator(
-    checked: Signal<bool>,
+#[derive(Clone, Copy)]
+pub(crate) struct CheckMark {
+    pub checked: Signal<bool>,
+    pub partial: Signal<bool>,
+}
+
+impl CheckMark {
+    fn filled(self) -> bool {
+        self.checked.get() || self.partial.get()
+    }
+}
+
+pub(crate) fn checkbox_indicator(
+    mark: CheckMark,
     disabled: Option<Signal<bool>>,
     tone: Tone,
     interaction: InteractionState,
@@ -238,13 +264,13 @@ fn checkbox_indicator(
         .pick()())
         .class(CellForm::new(BOX_BASE, EMPTY_BASE).pick())
         .style_reactive(move || {
-            form(tone, checked.get()).state(binary_style_state(interaction, disabled))
+            form(tone, mark.filled()).state(binary_style_state(interaction, disabled))
         })
-        .child(CellForm::<fn(Signal<bool>) -> NodeBuilder>::new(
+        .child(CellForm::<fn(CheckMark) -> NodeBuilder>::new(
             checkbox_mark,
             cell_mark,
         )
-        .pick()(checked))
+        .pick()(mark))
 }
 
 fn box_layout() -> LayoutStyle {
@@ -262,41 +288,44 @@ const fn cell_variant(_tone: Tone, _checked: bool) -> StyleVariant {
     CELL_VARIANT
 }
 
-fn cell_mark(checked: Signal<bool>) -> NodeBuilder {
+fn cell_mark(mark: CheckMark) -> NodeBuilder {
     container().child(text(derived(move || {
-        if checked.get() { "[x]" } else { "[ ]" }.to_owned()
+        match (mark.partial.get(), mark.checked.get()) {
+            (true, _) => "[-]",
+            (false, true) => "[x]",
+            (false, false) => "[ ]",
+        }
+        .to_owned()
     })))
 }
 
-fn checkbox_mark(checked: Signal<bool>) -> NodeBuilder {
+fn checkbox_mark(mark: CheckMark) -> NodeBuilder {
     container()
         .hittable(false)
         .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE))
         .style_reactive(move || {
-            if checked.get() {
+            if mark.filled() {
                 MARK_VISIBLE
             } else {
                 MARK_HIDDEN
             }
         })
-        .child(check_path())
+        .children_reactive(move || vec![mark_path(mark.partial.get())])
 }
 
-fn check_path() -> super::vector::PathNode {
-    super::vector::path(24, 24)
-        .move_to(5.0, 12.5)
-        .line_to(10.0, 18.0)
-        .line_to(19.0, 6.5)
-        .stroke(
-            crate::style::Rgba8 {
-                r: 255,
-                g: 255,
-                b: 255,
-                a: 255,
-            },
-            3.0,
-        )
-        .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE))
+fn mark_path(partial: bool) -> NodeBuilder {
+    let path = super::vector::path(24, 24);
+    let path = if partial {
+        path.move_to(5.0, 12.0).line_to(19.0, 12.0)
+    } else {
+        path.move_to(5.0, 12.5)
+            .line_to(10.0, 18.0)
+            .line_to(19.0, 6.5)
+    };
+    container().hittable(false).child(
+        path.stroke(Token::OnAccent, 3.0)
+            .layout(LayoutStyle::block().fixed_size(CHECKBOX_MARK_SIZE, CHECKBOX_MARK_SIZE)),
+    )
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
