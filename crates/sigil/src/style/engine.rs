@@ -108,6 +108,9 @@ impl<'theme> StyleEngine<'theme> {
             StyleAtom::BackgroundThemeRef(token) => {
                 render.background_color = Some(self.theme.resolve_color(token));
             }
+            StyleAtom::BackgroundGradient(gradient) => {
+                render.background_gradient = Some(gradient);
+            }
             StyleAtom::TextColor(color) => render.text_color = Some(self.resolve_color(color)),
             StyleAtom::TextThemeRef(token) => {
                 render.text_color = Some(self.theme.resolve_color(token));
@@ -312,6 +315,7 @@ fn apply_text_atom(atom: StyleAtom, text: &mut TextStyle) {
         | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
+        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)

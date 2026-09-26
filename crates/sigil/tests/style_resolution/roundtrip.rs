@@ -40,6 +40,7 @@ pub(super) fn style_for_atom(atom: StyleAtom) -> Style {
         StyleAtom::GridRows(n) => Style::new().grid_rows(n),
         StyleAtom::BackgroundColor(color) => Style::new().fill(color),
         StyleAtom::BackgroundThemeRef(token) => Style::new().background_theme(token),
+        StyleAtom::BackgroundGradient(gradient) => Style::new().background_gradient(gradient),
         StyleAtom::TextColor(color) => Style::new().text_color(color),
         StyleAtom::TextThemeRef(token) => Style::new().text_theme(token),
         StyleAtom::BorderRadius(px) => Style::new().radius(px.0),

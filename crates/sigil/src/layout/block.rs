@@ -37,7 +37,7 @@ impl<'a> BlockSolver<'a> {
         subtree: NodeRef<'_>,
         cb: Size<f32>,
         origin: Position2,
-        assigned_w: Option<f32>,
+        assigned: Size<Option<f32>>,
     ) -> Result<(), LayoutError> {
         let style = subtree.style();
         let edges = NodeEdges::build(style, cb.width);
@@ -45,7 +45,7 @@ impl<'a> BlockSolver<'a> {
             origin.x + edges.margin.left.unwrap_or(0.0),
             origin.y + edges.margin_top(),
         );
-        solve_box_assigned(self, subtree, cb, border_origin, assigned_w).map(|_| ())
+        solve_box_assigned(self, subtree, cb, border_origin, assigned).map(|_| ())
     }
 
     pub(crate) const fn scope(&self) -> &MeasureScope<'_> {
@@ -108,7 +108,16 @@ fn solve_box(
     cb: Size<f32>,
     border_origin: Position2,
 ) -> Result<Resolved, LayoutError> {
-    solve_box_assigned(solver, node, cb, border_origin, None)
+    solve_box_assigned(
+        solver,
+        node,
+        cb,
+        border_origin,
+        Size {
+            width: None,
+            height: None,
+        },
+    )
 }
 
 fn natural_width(
@@ -161,7 +170,7 @@ fn solve_box_assigned(
     node: NodeRef<'_>,
     cb: Size<f32>,
     border_origin: Position2,
-    assigned_w: Option<f32>,
+    assigned: Size<Option<f32>>,
 ) -> Result<Resolved, LayoutError> {
     let style = node.style();
     if matches!(style.display, Display::None) {
@@ -170,7 +179,7 @@ fn solve_box_assigned(
     let edges = NodeEdges::build(style, cb.width);
     let intent = SizeIntent::build(style, cb, &edges);
     let (natural_w, text_size) = natural_width(solver, node, &intent, cb.width, &edges);
-    let box_w = intent.w.clamp(assigned_w.unwrap_or(natural_w));
+    let box_w = intent.w.clamp(assigned.width.unwrap_or(natural_w));
     let inner_w = (box_w - edges.inline_chrome()).max(0.0);
     let inner_cb = Size {
         width: inner_w,
@@ -196,9 +205,11 @@ fn solve_box_assigned(
         content_origin,
     )?;
     let auto_h = content_height + edges.block_chrome();
-    let box_h = intent
-        .h
-        .clamp(intent.h.preferred.unwrap_or(auto_h).max(0.0));
+    let box_h = assigned.height.unwrap_or_else(|| {
+        intent
+            .h
+            .clamp(intent.h.preferred.unwrap_or(auto_h).max(0.0))
+    });
     solver.write(
         node.id(),
         ComputedBox {

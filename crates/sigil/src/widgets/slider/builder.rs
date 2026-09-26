@@ -48,6 +48,7 @@ pub(super) struct SliderRuntime {
     pub(super) disabled: Option<Signal<bool>>,
     pub(super) orientation: Orientation,
     pub(super) length: Option<f32>,
+    pub(super) glass: bool,
 }
 
 pub struct SliderBuilder {
@@ -58,7 +59,9 @@ pub struct SliderBuilder {
     on_change: Option<ValueChange>,
     orientation: Orientation,
     length: Option<f32>,
+    glass: bool,
     label: Option<String>,
+    marks: Vec<String>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
 }
@@ -81,7 +84,9 @@ impl SliderBuilder {
             on_change: None,
             orientation: Orientation::Horizontal,
             length: None,
+            glass: false,
             label: None,
+            marks: Vec::new(),
             mutators: Vec::new(),
             style_accumulator: Style::new(),
         }
@@ -100,6 +105,12 @@ impl SliderBuilder {
     }
 
     #[must_use]
+    pub fn marks(mut self, marks: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.marks = marks.into_iter().map(Into::into).collect();
+        self
+    }
+
+    #[must_use]
     pub const fn step(mut self, step: f32) -> Self {
         self.step = step;
         self
@@ -114,6 +125,12 @@ impl SliderBuilder {
     #[must_use]
     pub fn change(mut self, change: impl Fn(f32) + 'static) -> Self {
         self.on_change = Some(Rc::new(change));
+        self
+    }
+
+    #[must_use]
+    pub const fn glass(mut self) -> Self {
+        self.glass = true;
         self
     }
 
@@ -149,6 +166,7 @@ impl SliderBuilder {
             .on_change
             .as_ref()
             .map_or_else(noop_value_change, Rc::clone);
+        let runtime = SliderRuntime::from_builder(&self);
         let user_overlay = self.style_accumulator.take_state_overlay();
         let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
@@ -157,7 +175,11 @@ impl SliderBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node
+        if self.marks.is_empty() || self.orientation == Orientation::Vertical {
+            node
+        } else {
+            super::marks::with_marks(node, runtime, self.marks, on_change)
+        }
     }
 }
 
@@ -230,6 +252,7 @@ impl SliderRuntime {
             disabled: builder.disabled,
             orientation: builder.orientation,
             length: builder.length,
+            glass: builder.glass,
         }
     }
 
@@ -292,11 +315,11 @@ fn slider_root(
     match runtime.orientation {
         Orientation::Horizontal => root
             .child(track_fill(runtime))
-            .child(slider_thumb(interaction, runtime.disabled))
+            .child(slider_thumb(interaction, runtime.disabled, runtime.glass))
             .child(track_rest(runtime)),
         Orientation::Vertical => root
             .child(track_rest(runtime))
-            .child(slider_thumb(interaction, runtime.disabled))
+            .child(slider_thumb(interaction, runtime.disabled, runtime.glass))
             .child(track_fill(runtime)),
     }
 }

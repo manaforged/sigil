@@ -82,7 +82,46 @@ where
     T: TreeRoot,
 {
     let config = config.into();
-    let result = Runtime::scope("sigil-terminal", || live(&config, tree, hooks));
+    #[cfg(feature = "inspect")]
+    let inspect = crate::app::inspect::install();
+    #[cfg(feature = "inspect")]
+    if let Some(inspect) = &inspect {
+        let mut pump = hooks.external_events.take();
+        let drain = inspect.clone();
+        hooks.external_events = Some(Box::new(move |events| {
+            drain.drain_events(events, CELL);
+            if let Some(pump) = pump.as_mut() {
+                pump(events);
+            }
+        }));
+        let mut after = hooks.after_frame.take();
+        let svc = inspect.clone();
+        hooks.after_frame = Some(Box::new(move |host, router, screen| {
+            svc.service(
+                host,
+                router,
+                crate::app::inspect::View {
+                    cell: Some(CELL),
+                    text: Some(&screen.text()),
+                    shot: None,
+                },
+            );
+            if let Some(hook) = after.as_mut() {
+                hook(host, router, screen);
+            }
+        }));
+    }
+    #[cfg(feature = "inspect")]
+    let inspect_pending = move || {
+        inspect
+            .as_ref()
+            .is_some_and(crate::app::inspect::Inspect::has_pending)
+    };
+    #[cfg(not(feature = "inspect"))]
+    let inspect_pending = || false;
+    let result = Runtime::scope("sigil-terminal", || {
+        live(&config, tree, hooks, inspect_pending)
+    });
     profile::dump_if_enabled();
     result
 }
@@ -169,7 +208,12 @@ fn prepare(config: &AppConfig) -> AppResult<Prepared> {
     ))
 }
 
-fn live<T: TreeRoot>(config: &AppConfig, tree: T, hooks: &mut Hooks<'_>) -> AppResult<()> {
+fn live<T: TreeRoot>(
+    config: &AppConfig,
+    tree: T,
+    hooks: &mut Hooks<'_>,
+    inspect_pending: impl Fn() -> bool,
+) -> AppResult<()> {
     let (mut async_rt, waker, _theme_watch) = prepare(config)?;
     let mut term = Term::enter(&config.title).map_err(Error::io)?;
     let _hooks = HookGuard::install();
@@ -193,7 +237,7 @@ fn live<T: TreeRoot>(config: &AppConfig, tree: T, hooks: &mut Hooks<'_>) -> AppR
         let timing = turn_wait(config.frame_interval, woke, last);
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
             Incoming::Quit => break,
-            Incoming::Idle if !settle && woke == 0 && !frame_due() && !term.pending() => continue,
+            Incoming::Idle if idle(settle, woke, &term, inspect_pending()) => continue,
             Incoming::Idle => Vec::new(),
             Incoming::Events(events) => events,
             Incoming::Resized(next_cols, next_rows, events) => {
@@ -231,6 +275,10 @@ fn term_size(config: &AppConfig) -> AppResult<(u16, u16)> {
 fn pump(host: &Host, async_rt: &mut crate::tasks::AsyncRuntime) -> usize {
     let _env = host.enter();
     async_rt.pump()
+}
+
+fn idle(settle: bool, woke: usize, term: &Term, inspect_pending: bool) -> bool {
+    !settle && woke == 0 && !frame_due() && !term.pending() && !inspect_pending
 }
 
 fn frame_due() -> bool {

@@ -164,36 +164,35 @@ impl DiffBuilder {
     }
 
     fn labels((lw, rw): (f32, f32)) -> NodeBuilder {
+        let side = |text: &'static str, grow: f32, ruled: bool| {
+            let half = container()
+                .layout(
+                    LayoutStyle::flex_row()
+                        .grow(grow)
+                        .flex_basis(Dimension::Px(0.0))
+                        .padding_x(ROW_INSET)
+                        .min_size(0.0, 0.0),
+                )
+                .child(label(text).class("text-xs").class(Token::Gray10.text()));
+            if ruled {
+                half.style(
+                    Style::new()
+                        .border_right(BORDER_WIDTH.0)
+                        .border_theme(Token::Border.name()),
+                )
+            } else {
+                half
+            }
+        };
         container()
             .layout(
                 LayoutStyle::flex_row()
                     .fill_width()
                     .min_size(0.0, 0.0)
-                    .padding_x(ROW_INSET)
                     .gap(0.0),
             )
-            .child(
-                label("Before")
-                    .layout(
-                        LayoutStyle::block()
-                            .grow(lw)
-                            .flex_basis(Dimension::Px(0.0))
-                            .min_size(0.0, 0.0),
-                    )
-                    .class("text-xs")
-                    .class(Token::Gray10.text()),
-            )
-            .child(
-                label("After")
-                    .layout(
-                        LayoutStyle::block()
-                            .grow(rw)
-                            .flex_basis(Dimension::Px(0.0))
-                            .min_size(0.0, 0.0),
-                    )
-                    .class("text-xs")
-                    .class(Token::Gray10.text()),
-            )
+            .child(side("Before", lw, true))
+            .child(side("After", rw, false))
     }
 
     fn body(&self) -> Vec<NodeBuilder> {

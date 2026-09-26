@@ -3,7 +3,7 @@ use windows_core as _;
 
 mod blur_paint;
 mod blur_shader;
-#[cfg(feature = "capture")]
+#[cfg(feature = "scene")]
 pub mod capture;
 pub(crate) mod color_glyph_paint;
 #[cfg(feature = "cpu")]
@@ -17,7 +17,7 @@ mod frame_upload;
 mod layer_composite;
 mod layer_pool;
 mod oblique;
-mod offscreen;
+pub(crate) mod offscreen;
 mod raster;
 mod raster_paint;
 #[allow(clippy::module_inception)]

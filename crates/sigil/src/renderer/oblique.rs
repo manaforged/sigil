@@ -10,6 +10,10 @@ impl<'a, P: OutlinePen> Oblique<'a, P> {
         Self { pen, skew }
     }
 
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "const f32::mul_add is newer than the 1.90 MSRV"
+    )]
     fn x(&self, x: f32, y: f32) -> f32 {
         self.skew.mul_add(y, x)
     }

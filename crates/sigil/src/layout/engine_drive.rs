@@ -168,7 +168,10 @@ impl LayoutDrive {
                 handle,
                 Size { width, height },
                 crate::layout::block::Position2 { x: 0.0, y: 0.0 },
-                Some(width),
+                Size {
+                    width: Some(width),
+                    height: None,
+                },
             ),
         }
     }

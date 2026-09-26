@@ -185,6 +185,10 @@ pub struct DrawGradient {
     pub border_radius: CornerRadii,
     pub opacity: u16,
     pub stroke: Option<Stroke>,
+    pub tone: Option<Tone>,
+    pub leaf: bool,
+    pub border: Option<CellBorder>,
+    pub outline: bool,
 }
 
 impl DrawGradient {
@@ -197,7 +201,24 @@ impl DrawGradient {
             border_radius: style.border_radius,
             opacity: style.opacity,
             stroke: style.stroke,
+            tone: None,
+            leaf: false,
+            border: None,
+            outline: false,
         }
+    }
+
+    pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
+        self.node = Some(node);
+        self
+    }
+
+    pub(crate) const fn with_cell(mut self, cell: CellRect) -> Self {
+        self.tone = cell.tone;
+        self.leaf = cell.leaf;
+        self.border = cell.border;
+        self.outline = cell.outline;
+        self
     }
 }
 

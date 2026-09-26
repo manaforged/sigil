@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle};
+use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, Token};
 
 use super::GUTTER_W;
@@ -36,9 +36,14 @@ pub(super) fn segments(
     hit: Option<Token>,
 ) -> Vec<NodeBuilder> {
     let body = body.replace('\t', "    ");
+    let part = |node: crate::kernel::TextBuilder| {
+        container()
+            .layout(LayoutStyle::block().min_size(0.0, 0.0))
+            .child(node.ellipsize().class("text-xs font-mono").class(fg.text()))
+    };
     let Some(range) = range.filter(|range| range.start < range.end && range.end <= body.len())
     else {
-        return vec![container().child(label(body).class("text-xs font-mono").class(fg.text()))];
+        return vec![part(label(body))];
     };
     let mut parts = Vec::new();
     for (slice, mark) in [
@@ -49,13 +54,11 @@ pub(super) fn segments(
         if slice.is_empty() {
             continue;
         }
-        let node = label(slice.to_string())
-            .class("text-xs font-mono")
-            .class(fg.text());
-        parts.push(container().child(match hit.filter(|_| mark) {
+        let node = part(label(slice.to_string()));
+        parts.push(match hit.filter(|_| mark) {
             Some(hit) => node.class(hit.bg()),
             None => node,
-        }));
+        });
     }
     parts
 }
@@ -66,50 +69,29 @@ pub(super) fn source_row(
     mark: char,
     range: Option<Range<usize>>,
 ) -> NodeBuilder {
-    source_row_ruled(body, number, mark, range, false)
-}
-
-fn source_row_ruled(
-    body: Option<&str>,
-    number: usize,
-    mark: char,
-    range: Option<Range<usize>>,
-    ruled: bool,
-) -> NodeBuilder {
     let (bg, fg, hit) = tones(mark);
-    let rule = |node: NodeBuilder| {
-        if ruled {
-            node.style(
-                Style::new()
-                    .border_right(BORDER_WIDTH.0)
-                    .border_theme(Token::Border.name()),
-            )
-        } else {
-            node
-        }
-    };
-    let row = rule(
-        container().layout(
-            LayoutStyle::flex_row()
-                .fill_width()
-                .padding_x(super::ROW_INSET)
-                .align_items(AlignItems::Center)
-                .gap(0.0),
-        ),
+    let row = container().layout(
+        LayoutStyle::flex_row()
+            .fill_width()
+            .min_size(0.0, 0.0)
+            .padding_x(super::ROW_INSET)
+            .align_items(AlignItems::Center)
+            .gap(0.0),
     );
     let row = match bg {
         Some(bg) => row.class(bg.bg()),
         None => row,
     };
     let Some(body) = body else {
-        return rule(container().layout(LayoutStyle::flex_row().fill_width().gap(0.0)));
+        return container().layout(LayoutStyle::flex_row().fill_width().gap(0.0));
     };
     let row = row
         .role(Role::ListItem)
         .description(line_state(mark))
         .child(
             label(format!("{number:>4} {mark} "))
-                .layout(LayoutStyle::block().width(GUTTER_W))
+                .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
+                .nowrap()
                 .class("text-xs font-mono")
                 .class(Token::Gray9.text()),
         );
@@ -143,21 +125,30 @@ fn half(
     ruled: bool,
     grow: f32,
 ) -> NodeBuilder {
-    container()
-        .layout(
-            LayoutStyle::flex_column()
-                .grow(grow)
-                .flex_basis(Dimension::Px(0.0))
-                .min_size(0.0, 0.0),
+    let column = container().layout(
+        LayoutStyle::flex_column()
+            .grow(grow)
+            .flex_basis(Dimension::Px(0.0))
+            .min_size(0.0, 0.0)
+            .overflow_x(Overflow::Hidden),
+    );
+    let column = if ruled {
+        column.style(
+            Style::new()
+                .border_right(BORDER_WIDTH.0)
+                .border_theme(Token::Border.name()),
         )
-        .child(source_row_ruled(body, number, mark, range, ruled))
+    } else {
+        column
+    };
+    column.child(source_row(body, number, mark, range))
 }
 
 pub(super) fn split_row(pair: &Pair, old: usize, new: usize, (lw, rw): (f32, f32)) -> NodeBuilder {
     let left = pair.left.as_deref();
     let right = pair.right.as_deref();
-    let ranges =
-        (pair.kind == Kind::Change).then(|| changed(left.unwrap_or(""), right.unwrap_or("")));
+    let expanded = |side: Option<&str>| side.unwrap_or("").replace('\t', "    ");
+    let ranges = (pair.kind == Kind::Change).then(|| changed(&expanded(left), &expanded(right)));
     let (left_mark, right_mark) = if ranges.is_some() {
         ('-', '+')
     } else {
@@ -192,7 +183,10 @@ pub(super) fn unified_rows(group: &[Pair], old: usize, new: usize) -> Vec<NodeBu
         for pair in group {
             let left = pair.left.as_deref();
             let right = pair.right.as_deref();
-            let (a, b) = changed(left.unwrap_or(""), right.unwrap_or(""));
+            let (a, b) = changed(
+                &left.unwrap_or("").replace('\t', "    "),
+                &right.unwrap_or("").replace('\t', "    "),
+            );
             let (body, range, mark) = if added {
                 (right, b, '+')
             } else {

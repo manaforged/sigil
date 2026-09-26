@@ -92,11 +92,30 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     shell.on_idle_deadline(next_interval_deadline);
 
     let panic_policy = config.panic_policy;
+    #[cfg(feature = "inspect")]
+    let inspect = crate::app::inspect::install_with_wake({
+        let waker = shell.waker();
+        move || drop(WinitShell::wake(&waker))
+    });
     let failure = Rc::new(Cell::new(None));
     let launch_failure = Rc::clone(&failure);
     finish(
         shell
             .run(move |shell| {
+                #[cfg(feature = "inspect")]
+                if let Some(inspect) = &inspect {
+                    let mut shot =
+                        |app: &mut Host| inspect_shot(app, &mut renderer, &mut surface, viewport);
+                    inspect.service(
+                        &mut host,
+                        &mut router,
+                        crate::app::inspect::View {
+                            cell: None,
+                            text: None,
+                            shot: Some(&mut shot),
+                        },
+                    );
+                }
                 let frame = FrameCtx {
                     config: &mut config,
                     shell,
@@ -122,6 +141,47 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
             .map_err(Error::window)
             .and_then(|()| failure.take().map_or(Ok(()), Err)),
     )
+}
+
+#[cfg(feature = "inspect")]
+fn inspect_shot(
+    app: &mut Host,
+    renderer: &mut Backend,
+    surface: &mut Option<Surface>,
+    viewport: (f32, f32),
+) -> Result<serde_json::Value, String> {
+    let Some((cx, _, root)) = app.tree() else {
+        return Err("no mounted tree".into());
+    };
+    let scene = crate::app::embed::emit_viewport_scene(cx, root, viewport);
+    let Some(surface) = surface.as_mut() else {
+        return Err("window surface is not initialized yet".into());
+    };
+    let clear = if renderer.is_transparent() {
+        crate::hal::Color::rgba(0.0, 0.0, 0.0, 0.0)
+    } else {
+        crate::hal::Color::rgba(0.03, 0.04, 0.05, 1.0)
+    };
+    let size = surface_size(surface);
+    let png = renderer
+        .screenshot(surface, &scene, clear, viewport)
+        .map_err(|err| err.to_string())?;
+    Ok(serde_json::json!({
+        "png": base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            png,
+        ),
+        "width": size.width,
+        "height": size.height,
+    }))
+}
+
+#[cfg(feature = "inspect")]
+const fn surface_size(surface: &Surface) -> PhysicalSize {
+    match surface {
+        Surface::Wgpu(surface) => surface.size(),
+        Surface::Cpu(surface) => surface.size(),
+    }
 }
 
 fn finish(result: AppResult<()>) -> AppResult<()> {

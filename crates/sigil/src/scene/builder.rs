@@ -84,6 +84,20 @@ impl SceneBuilder {
         ));
     }
 
+    pub(crate) fn draw_gradient_for_node(
+        &mut self,
+        node: NodeId,
+        rect: Rect,
+        style: SceneGradientStyle,
+        cell: CellRect,
+    ) {
+        self.commands.push(SceneCommand::Gradient(
+            DrawGradient::new(rect, style)
+                .with_node(node)
+                .with_cell(cell),
+        ));
+    }
+
     pub fn draw_sprite(
         &mut self,
         source: SpriteSource,

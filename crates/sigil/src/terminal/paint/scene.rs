@@ -1,6 +1,7 @@
 use crate::hal::Rect;
 use crate::scene::{
-    CellBorder, CommandScene, DrawDecoration, DrawGlyphRun, DrawImage, DrawRect, SceneCommand,
+    CellBorder, CommandScene, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawRect,
+    LinearGradient, SceneCommand,
 };
 use crate::style::{Rgba8, Theme};
 use crate::terminal::caps::{Borders, Caps};
@@ -51,6 +52,46 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
     }
 }
 
+fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
+    let mut stops = gradient.stops.iter();
+    let Some(first) = stops.next() else {
+        return Rgba8 {
+            r: 0,
+            g: 0,
+            b: 0,
+            a: 0,
+        };
+    };
+    if first.offset >= 0.5 {
+        return first.color;
+    }
+    let mut prev = first;
+    for next in stops {
+        if next.offset >= 0.5 {
+            let span = (next.offset - prev.offset).max(f32::EPSILON);
+            let t = ((0.5 - prev.offset) / span).clamp(0.0, 1.0);
+            return blend(prev.color, next.color, t);
+        }
+        prev = next;
+    }
+    prev.color
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "channels are clamped to the u8 range before the cast"
+)]
+fn blend(a: Rgba8, b: Rgba8, t: f32) -> Rgba8 {
+    let mix = |x: u8, y: u8| (f32::from(x).mul_add(1.0 - t, f32::from(y) * t)).round() as u8;
+    Rgba8 {
+        r: mix(a.r, b.r),
+        g: mix(a.g, b.g),
+        b: mix(a.b, b.b),
+        a: mix(a.a, b.a),
+    }
+}
+
 struct Walk<'a> {
     grid: &'a mut Grid,
     paint: &'a Paint<'a>,
@@ -82,12 +123,12 @@ impl Walk<'_> {
                 self.alphas.pop();
             }
             SceneCommand::Rect(draw) => self.rect(draw),
+            SceneCommand::Gradient(draw) => self.gradient(draw),
             SceneCommand::GlyphRun(draw) => self.text(draw),
             SceneCommand::Image(draw) => self.image(draw),
             SceneCommand::Decoration(draw) => self.decoration(draw),
             SceneCommand::PushTransform(_)
             | SceneCommand::PopTransform
-            | SceneCommand::Gradient(_)
             | SceneCommand::Pattern(_)
             | SceneCommand::DrawShadow { .. }
             | SceneCommand::Sprite(_) => {}
@@ -180,6 +221,23 @@ impl Walk<'_> {
             };
             decoration::border(self.grid, &border, &edge);
         }
+    }
+
+    fn gradient(&mut self, draw: &DrawGradient) {
+        let flat = gradient_flat(&draw.gradient);
+        let draw_rect = DrawRect {
+            node: draw.node,
+            rect: draw.rect,
+            color: flat,
+            border_radius: draw.border_radius,
+            opacity: draw.opacity,
+            stroke: draw.stroke,
+            tone: draw.tone,
+            leaf: draw.leaf,
+            border: draw.border,
+            outline: draw.outline,
+        };
+        self.rect(&draw_rect);
     }
 
     fn text(&mut self, draw: &DrawGlyphRun) {

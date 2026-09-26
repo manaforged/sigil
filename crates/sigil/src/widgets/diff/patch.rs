@@ -19,17 +19,6 @@ pub(super) fn pairs(patch: &str) -> Vec<Pair> {
     let mut rows = Vec::new();
     let mut removed: Vec<String> = Vec::new();
     let mut added: Vec<String> = Vec::new();
-    let flush = |out: &mut Vec<Pair>, dropped: &mut Vec<String>, kept: &mut Vec<String>| {
-        for index in 0..dropped.len().max(kept.len()) {
-            out.push(Pair {
-                left: dropped.get(index).cloned(),
-                right: kept.get(index).cloned(),
-                kind: Kind::Change,
-            });
-        }
-        dropped.clear();
-        kept.clear();
-    };
     for line in patch.lines() {
         if let Some(rest) = line.strip_prefix('-')
             && !line.starts_with("---")
@@ -44,11 +33,7 @@ pub(super) fn pairs(patch: &str) -> Vec<Pair> {
             let kind = if line.starts_with("@@") {
                 Kind::Hunk
             } else if let Some(rest) = line.strip_prefix(' ') {
-                rows.push(Pair {
-                    left: Some(rest.to_string()),
-                    right: Some(rest.to_string()),
-                    kind: Kind::Context,
-                });
+                rows.push(context(rest));
                 continue;
             } else {
                 Kind::Meta
@@ -62,6 +47,37 @@ pub(super) fn pairs(patch: &str) -> Vec<Pair> {
     }
     flush(&mut rows, &mut removed, &mut added);
     rows
+}
+
+fn context(line: &str) -> Pair {
+    Pair {
+        left: Some(line.to_string()),
+        right: Some(line.to_string()),
+        kind: Kind::Context,
+    }
+}
+
+fn flush(out: &mut Vec<Pair>, dropped: &mut Vec<String>, kept: &mut Vec<String>) {
+    while !dropped.is_empty() && dropped.first() == kept.first() {
+        let line = dropped.remove(0);
+        kept.remove(0);
+        out.push(context(&line));
+    }
+    let mut tail = Vec::new();
+    while !dropped.is_empty() && dropped.last() == kept.last() {
+        tail.push(context(&dropped.pop().unwrap_or_default()));
+        kept.pop();
+    }
+    for index in 0..dropped.len().max(kept.len()) {
+        out.push(Pair {
+            left: dropped.get(index).cloned(),
+            right: kept.get(index).cloned(),
+            kind: Kind::Change,
+        });
+    }
+    out.extend(tail.into_iter().rev());
+    dropped.clear();
+    kept.clear();
 }
 
 pub(super) fn starts(line: &str) -> Option<(usize, usize)> {

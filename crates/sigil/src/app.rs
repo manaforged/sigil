@@ -13,6 +13,8 @@ mod error;
 mod exit;
 mod frame;
 mod host_env;
+#[cfg(feature = "inspect")]
+pub(crate) mod inspect;
 #[cfg(feature = "desktop")]
 mod launch;
 #[cfg(feature = "menu")]

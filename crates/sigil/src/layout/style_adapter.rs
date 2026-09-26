@@ -69,6 +69,7 @@ fn apply_style_atom(atom: StyleAtom, style: &mut LayoutStyle) {
         | StyleAtom::BorderToneStep(_)
         | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
+        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)

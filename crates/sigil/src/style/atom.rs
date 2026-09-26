@@ -28,6 +28,40 @@ pub enum ColorAtom {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GradientAxis {
+    TopToBottom,
+    BottomToTop,
+    LeftToRight,
+    RightToLeft,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GradientStopKey {
+    pub offset: u16,
+    pub color: ColorAtom,
+}
+
+impl GradientStopKey {
+    #[must_use]
+    pub const fn new(offset: u16, color: ColorAtom) -> Self {
+        Self { offset, color }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct BgGradient {
+    pub axis: GradientAxis,
+    pub stops: &'static [GradientStopKey],
+}
+
+impl BgGradient {
+    #[must_use]
+    pub const fn new(axis: GradientAxis, stops: &'static [GradientStopKey]) -> Self {
+        Self { axis, stops }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DisplayKind {
     Flex,
     Block,
@@ -96,6 +130,7 @@ pub enum Elevation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RenderStyle {
     pub background_color: Option<Rgba8>,
+    pub background_gradient: Option<BgGradient>,
     pub text_color: Option<Rgba8>,
     pub border_radius: Option<Px>,
     pub border_width: Option<Px>,
@@ -113,6 +148,7 @@ impl Default for RenderStyle {
     fn default() -> Self {
         Self {
             background_color: None,
+            background_gradient: None,
             text_color: None,
             border_radius: None,
             border_width: None,
@@ -172,6 +208,7 @@ pub enum StyleAtom {
     GridRows(u16),
     BackgroundColor(ColorAtom),
     BackgroundThemeRef(&'static str),
+    BackgroundGradient(BgGradient),
     TextColor(ColorAtom),
     TextThemeRef(&'static str),
     BgToneStep(u8),

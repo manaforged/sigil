@@ -6,8 +6,8 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, Elevation, NodeStyleExt, StateStyle, Style, StyleAtom, StyleVariant, Token,
-    TransitionId,
+    BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, NodeStyleExt,
+    Rgba8, StateStyle, Style, StyleAtom, StyleVariant, Token, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -47,6 +47,133 @@ static THUMB_DISABLED: &[StyleAtom] = &[
     Token::Gray8.border(),
 ];
 
+const fn glass(color: Rgba8) -> ColorAtom {
+    ColorAtom::Rgba8(color)
+}
+
+static GLASS_TRACK_STOPS: &[GradientStopKey] = &[
+    GradientStopKey::new(
+        0,
+        glass(Rgba8 {
+            r: 148,
+            g: 163,
+            b: 184,
+            a: 66,
+        }),
+    ),
+    GradientStopKey::new(
+        500,
+        glass(Rgba8 {
+            r: 148,
+            g: 163,
+            b: 184,
+            a: 30,
+        }),
+    ),
+    GradientStopKey::new(
+        1000,
+        glass(Rgba8 {
+            r: 148,
+            g: 163,
+            b: 184,
+            a: 46,
+        }),
+    ),
+];
+static GLASS_TRACK_REST: &[StyleAtom] = &[
+    StyleAtom::BackgroundGradient(BgGradient::new(
+        GradientAxis::TopToBottom,
+        GLASS_TRACK_STOPS,
+    )),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    StyleAtom::BorderColor(glass(Rgba8 {
+        r: 148,
+        g: 163,
+        b: 184,
+        a: 90,
+    })),
+];
+
+static GLASS_FILL_STOPS: &[GradientStopKey] = &[
+    GradientStopKey::new(0, ColorAtom::ThemeRef(Token::AccentHover.name())),
+    GradientStopKey::new(1000, ColorAtom::ThemeRef(Token::Accent.name())),
+];
+static GLASS_TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundGradient(BgGradient::new(
+    GradientAxis::TopToBottom,
+    GLASS_FILL_STOPS,
+))];
+
+static GLASS_THUMB_STOPS: &[GradientStopKey] = &[
+    GradientStopKey::new(
+        0,
+        glass(Rgba8 {
+            r: 255,
+            g: 255,
+            b: 255,
+            a: 250,
+        }),
+    ),
+    GradientStopKey::new(
+        500,
+        glass(Rgba8 {
+            r: 240,
+            g: 243,
+            b: 248,
+            a: 235,
+        }),
+    ),
+    GradientStopKey::new(
+        1000,
+        glass(Rgba8 {
+            r: 214,
+            g: 219,
+            b: 230,
+            a: 240,
+        }),
+    ),
+];
+static GLASS_THUMB_REST: &[StyleAtom] = &[
+    StyleAtom::BackgroundGradient(BgGradient::new(
+        GradientAxis::TopToBottom,
+        GLASS_THUMB_STOPS,
+    )),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    StyleAtom::BorderColor(glass(Rgba8 {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 140,
+    })),
+    StyleAtom::Shadow(Elevation::Md),
+];
+static GLASS_THUMB_HOVER: &[StyleAtom] = &[
+    StyleAtom::BackgroundGradient(BgGradient::new(
+        GradientAxis::TopToBottom,
+        GLASS_THUMB_STOPS,
+    )),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    StyleAtom::BorderColor(glass(Rgba8 {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 190,
+    })),
+    StyleAtom::Shadow(Elevation::Md),
+];
+static GLASS_THUMB_DISABLED: &[StyleAtom] = &[
+    StyleAtom::BackgroundGradient(BgGradient::new(
+        GradientAxis::TopToBottom,
+        GLASS_THUMB_STOPS,
+    )),
+    StyleAtom::BorderWidth(BORDER_WIDTH),
+    StyleAtom::BorderColor(glass(Rgba8 {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 60,
+    })),
+];
+
 fn value_ratio(runtime: SliderRuntime) -> f32 {
     ((runtime.value.get() - runtime.range.min) / runtime.range.span()).clamp(0.0, 1.0)
 }
@@ -60,7 +187,11 @@ pub(super) fn track_fill(runtime: SliderRuntime) -> NodeBuilder {
         .hittable(false)
         .layout(layout)
         .style(Style::new().radius(3))
-        .class(TRACK_FILL)
+        .class(if runtime.glass {
+            GLASS_TRACK_FILL
+        } else {
+            TRACK_FILL
+        })
         .style_reactive(move || fill_extent_atoms(runtime))
 }
 
@@ -109,12 +240,17 @@ pub(super) fn track_rest(runtime: SliderRuntime) -> NodeBuilder {
         .hittable(false)
         .layout(layout)
         .style(Style::new().radius(3))
-        .class(TRACK_REST)
+        .class(if runtime.glass {
+            GLASS_TRACK_REST
+        } else {
+            TRACK_REST
+        })
 }
 
 pub(super) fn slider_thumb(
     interaction: InteractionState,
     disabled: Option<Signal<bool>>,
+    glass: bool,
 ) -> NodeBuilder {
     container()
         .hittable(false)
@@ -122,19 +258,32 @@ pub(super) fn slider_thumb(
         .style(Style::new().radius(8))
         .class(SLIDER_THUMB_ANIM_BASE)
         .style_reactive(move || {
-            slider_thumb_variant().state(binary_style_state(interaction, disabled))
+            slider_thumb_variant(glass).state(binary_style_state(interaction, disabled))
         })
 }
 
-const fn slider_thumb_variant() -> StyleVariant {
-    StyleVariant::new(
-        THUMB_REST,
-        StateStyle::new(
+const fn slider_thumb_variant(glass: bool) -> StyleVariant {
+    if glass {
+        StyleVariant::new(
+            GLASS_THUMB_REST,
+            StateStyle::new(
+                GLASS_THUMB_REST,
+                GLASS_THUMB_HOVER,
+                GLASS_THUMB_HOVER,
+                GLASS_THUMB_HOVER,
+                GLASS_THUMB_DISABLED,
+            ),
+        )
+    } else {
+        StyleVariant::new(
             THUMB_REST,
-            THUMB_HOVER,
-            THUMB_HOVER,
-            THUMB_DOWN,
-            THUMB_DISABLED,
-        ),
-    )
+            StateStyle::new(
+                THUMB_REST,
+                THUMB_HOVER,
+                THUMB_HOVER,
+                THUMB_DOWN,
+                THUMB_DISABLED,
+            ),
+        )
+    }
 }

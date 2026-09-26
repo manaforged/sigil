@@ -1,4 +1,8 @@
 use crate::hal::{Color, PhysicalSize, Renderer as _};
+#[cfg(feature = "inspect")]
+use crate::renderer::capture::{CaptureExtent, capture_texture, read_texture};
+#[cfg(feature = "inspect")]
+use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::{
     CommandScene, CpuRenderer, CpuSurface, FrameStats, RendererError, WgpuRenderer, WgpuSurface,
     into_window_handle,
@@ -128,6 +132,72 @@ impl Backend {
             _ => Err(mismatch()),
         }
     }
+
+    #[cfg(feature = "inspect")]
+    pub(super) fn screenshot(
+        &mut self,
+        surface: &Surface,
+        scene: &CommandScene,
+        clear: Color,
+        viewport: (f32, f32),
+    ) -> Result<Vec<u8>, RendererError> {
+        match (&mut self.inner, surface) {
+            (Inner::Cpu(r), Surface::Cpu(s)) => r
+                .render(scene, clear, viewport, s.size())?
+                .encode_png()
+                .map_err(|err| RendererError::Software(err.to_string())),
+            (Inner::Wgpu(r), Surface::Wgpu(s)) => wgpu_shot(r, s, scene, clear, viewport),
+            _ => Err(mismatch()),
+        }
+    }
+}
+
+#[cfg(feature = "inspect")]
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "mirrors the surface_text_scale formula used for on-screen frames"
+)]
+fn wgpu_shot(
+    renderer: &mut WgpuRenderer,
+    surface: &WgpuSurface,
+    scene: &CommandScene,
+    clear: Color,
+    viewport: (f32, f32),
+) -> Result<Vec<u8>, RendererError> {
+    let (device, queue) = renderer
+        .device()
+        .zip(renderer.queue())
+        .ok_or(RendererError::NotInitialized)
+        .map(|(device, queue)| (device.clone(), queue.clone()))?;
+    let size = surface.size();
+    let extent = CaptureExtent {
+        width: size.width,
+        height: size.height,
+    };
+    let texture = capture_texture(&device, extent);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let scale = size.width as f32 / viewport.0.max(1.0);
+    renderer.render_command_scene_offscreen(
+        OffscreenTarget {
+            device: &device,
+            queue: &queue,
+            view: &view,
+            format: crate::renderer::capture::FORMAT,
+            viewport,
+            scale,
+        },
+        scene,
+        clear,
+    )?;
+    let rgba = read_texture(&device, &queue, &texture, extent)
+        .map_err(|err| RendererError::Software(err.to_string()))?;
+    let image = image::RgbaImage::from_raw(size.width, size.height, rgba)
+        .ok_or(RendererError::InvalidViewport)?;
+    let mut png = Vec::new();
+    image
+        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .map_err(|err| RendererError::Software(err.to_string()))?;
+    Ok(png)
 }
 
 fn mismatch() -> RendererError {

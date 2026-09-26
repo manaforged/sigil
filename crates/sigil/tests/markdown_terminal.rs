@@ -257,3 +257,30 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
     );
     assert_ne!(first(&plain, "https").fg, first(&plain, "Read").fg);
 }
+
+#[test]
+fn a_wrapped_cell_keeps_every_column_border_full_height() {
+    let source = "| Seat | Key env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
+    let grid = sigil::terminal::present(
+        move |cx: &mut Cx| cx.add(markdown(signal(source.to_string()))),
+        22,
+        14,
+        &[],
+    )
+    .expect("layout");
+    let body: Vec<&str> = grid
+        .lines()
+        .skip_while(|line| !line.contains('┌'))
+        .skip(1)
+        .take_while(|line| !line.contains('└'))
+        .filter(|line| !line.contains('├'))
+        .collect();
+    assert!(body.len() > 2, "cell did not wrap:\n{grid}");
+    for line in body {
+        assert_eq!(
+            line.matches('│').count(),
+            3,
+            "border gap in {line:?}:\n{grid}"
+        );
+    }
+}

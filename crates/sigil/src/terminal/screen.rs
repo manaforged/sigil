@@ -124,6 +124,11 @@ impl Screen {
         self.exited
     }
 
+    #[must_use]
+    pub fn text(&self) -> String {
+        if self.dirty { &self.grid } else { &self.prev }.text()
+    }
+
     pub fn flush(&mut self, out: &mut impl Write) -> io::Result<()> {
         if !profile::enabled() {
             return self.write(out);

@@ -104,6 +104,7 @@ fn expand_atom(atom: StyleAtom, out: &mut SmallVec<[(ResolvedSlot, StyleAtom); 4
         | StyleAtom::GridRows(_)
         | StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
+        | StyleAtom::BackgroundGradient(_)
         | StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::BorderRadius(_)
@@ -222,7 +223,8 @@ const fn slot(atom: StyleAtom) -> ResolvedSlot {
         StyleAtom::GridRows(_) => ResolvedSlot::GridRows,
         StyleAtom::BackgroundColor(_)
         | StyleAtom::BackgroundThemeRef(_)
-        | StyleAtom::BgToneStep(_) => ResolvedSlot::BackgroundColor,
+        | StyleAtom::BgToneStep(_)
+        | StyleAtom::BackgroundGradient(_) => ResolvedSlot::BackgroundColor,
         StyleAtom::TextColor(_)
         | StyleAtom::TextThemeRef(_)
         | StyleAtom::FgToneStep(_)

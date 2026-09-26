@@ -2,7 +2,7 @@ use crate::layout::LayoutError;
 use crate::layout::flex::{CbSize, Position2};
 use crate::layout::forest::{ComputedBox, NodeRef};
 use crate::layout::resolve::{NodeEdges, clamp, dim_to_border_box};
-use crate::layout::style_data::{Dimension, Display, StyleData};
+use crate::layout::style_data::{Dimension, Display, Position, Size, StyleData};
 
 use super::placement::PlacedItem;
 use super::sizing::item_min_max_main;
@@ -83,7 +83,7 @@ pub(crate) fn layout_item_subtree(
             crate::layout::grid::GridSolver::new(nested).solve_at(node, w, pre)
         }
         Display::Block | Display::None => {
-            dispatch_block_subtree(ctx, node, style, origin, w, h, assigned_w)
+            dispatch_block_subtree(ctx, node, origin, (w, h), (assigned_w, assigned_h))
         }
     }
 }
@@ -91,17 +91,16 @@ pub(crate) fn layout_item_subtree(
 fn dispatch_block_subtree(
     ctx: &FlexCtx<'_, '_>,
     node: NodeRef<'_>,
-    style: &StyleData,
     origin: Position2,
-    w: f32,
-    h: f32,
-    assigned_w: Option<f32>,
+    (w, h): (f32, f32),
+    (assigned_w, assigned_h): (Option<f32>, Option<f32>),
 ) -> Result<(), LayoutError> {
+    let style = node.style();
     let scope = ctx.solver.scope();
     let nested =
         crate::layout::forest::MeasureScope::new(scope.forest(), scope.text(), scope.available());
     let solver = crate::layout::block::BlockSolver::new(nested);
-    let cb = crate::layout::style_data::Size {
+    let cb = Size {
         width: w,
         height: h,
     };
@@ -111,7 +110,15 @@ fn dispatch_block_subtree(
         x: origin.x - m.left,
         y: origin.y - m.top,
     };
-    solver.solve_at_assigned(node, cb, pre, assigned_w)
+    solver.solve_at_assigned(
+        node,
+        cb,
+        pre,
+        Size {
+            width: assigned_w,
+            height: assigned_h,
+        },
+    )
 }
 
 pub(super) fn write_container(
@@ -179,8 +186,11 @@ fn assigned_size(
     let assigned_w = (!probing
         && (style.size.width != Dimension::Auto || (style.flex_grow > 0.0 && ctx.axes.row)))
         .then_some(w);
+    let in_flow = style.position != Position::Absolute;
     let assigned_h = (!probing
-        && (style.size.height != Dimension::Auto || (style.flex_grow > 0.0 && !ctx.axes.row)))
+        && (style.size.height != Dimension::Auto
+            || (in_flow && ctx.axes.row)
+            || style.flex_grow > 0.0))
         .then_some(h);
     (assigned_w, assigned_h)
 }

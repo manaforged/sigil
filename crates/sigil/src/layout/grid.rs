@@ -341,7 +341,10 @@ impl<'a> GridSolver<'a> {
                     height: h,
                 },
                 origin,
-                Some(w),
+                Size {
+                    width: Some(w),
+                    height: None,
+                },
             ),
         }?;
         if stretch && h > 0.0 {

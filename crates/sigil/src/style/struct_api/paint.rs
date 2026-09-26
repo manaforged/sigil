@@ -1,5 +1,7 @@
 use super::Style;
-use crate::style::{ColorAtom, MillisU16, OverflowKind, Px, Rgba8, StyleAtom, TransitionId};
+use crate::style::{
+    BgGradient, ColorAtom, MillisU16, OverflowKind, Px, Rgba8, StyleAtom, TransitionId,
+};
 
 impl Style {
     #[must_use]
@@ -15,6 +17,11 @@ impl Style {
     #[must_use]
     pub fn background_theme(self, token: &'static str) -> Self {
         self.push(StyleAtom::BackgroundThemeRef(token))
+    }
+
+    #[must_use]
+    pub fn background_gradient(self, gradient: BgGradient) -> Self {
+        self.push(StyleAtom::BackgroundGradient(gradient))
     }
 
     #[must_use]
