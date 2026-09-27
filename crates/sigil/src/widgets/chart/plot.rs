@@ -11,7 +11,7 @@ use super::{ChartMark, ChartSeries, nice_max, tone_fill};
 const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
 const GROUP_GAP: f32 = space(2);
-const X_AXIS: f32 = space(4);
+const X_AXIS: f32 = space(8);
 
 pub(super) fn draw(
     root: NodeBuilder,
@@ -112,7 +112,7 @@ fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
                 )
                 .child(
                     label(text)
-                        .ellipsize()
+                        .wrap()
                         .class("text-xs")
                         .class(Token::Gray11.text()),
                 ),

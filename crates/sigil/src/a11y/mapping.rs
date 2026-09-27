@@ -71,7 +71,10 @@ fn project(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>) -> (AkNode, Option<Run
     let a11y = &kernel_node.a11y;
     let mut ak = AkNode::new(a11y.role);
 
-    apply_name(&mut ak, &a11y.name);
+    if a11y.labelled_by.is_none() {
+        apply_name(&mut ak, &a11y.name);
+    }
+    apply_text_content(&mut ak, kernel_node);
     apply_description(&mut ak, a11y.description.as_ref());
     apply_labelled_by(&mut ak, a11y);
     apply_actions(&mut ak, a11y);
@@ -103,6 +106,15 @@ fn apply_name(ak: &mut AkNode, name: &AccessibleName) {
         AccessibleName::None => {}
         AccessibleName::Static(text) => ak.set_label(text.clone()),
         AccessibleName::Derived(signal) => ak.set_label(signal.peek()),
+    }
+}
+
+fn apply_text_content(ak: &mut AkNode, node: &Node) {
+    if !matches!(node.a11y.name, AccessibleName::None) || node.a11y.text_value.is_some() {
+        return;
+    }
+    if let NodeType::Text { content, .. } = &node.kind {
+        ak.set_value(content.resolve());
     }
 }
 

@@ -4,7 +4,7 @@ use crate::events::prelude::{Key, NodeEventsExt};
 use crate::hal::{KeyEvent, LogicalKey};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
-use crate::widgets::scroll::{ScrollBuilder, reveal_row, scroll};
+use crate::widgets::scroll::{reveal_row, scroll};
 
 pub(crate) trait ListModel: 'static {
     fn cursor(&self) -> Signal<usize>;
@@ -57,8 +57,10 @@ pub(crate) fn listbox(node: NodeBuilder, model: impl ListModel) -> NodeBuilder {
         commit_or_open(enter.as_ref());
     })
     .key(Key::Escape, move |event| {
-        event.stop_propagation();
-        escape.close();
+        if escape.is_open() {
+            event.stop_propagation();
+            escape.close();
+        }
     })
     .key_any(move |event| other_key(other.as_ref(), event))
     .focus_out(move || blur.blur())
@@ -154,14 +156,15 @@ pub(crate) fn scrolled(
     row_height: f32,
     extent: f32,
     viewport: (Option<f32>, f32),
-) -> ScrollBuilder {
+) -> NodeBuilder {
     let scroll_y = signal(0.0_f32);
     reveal_row(scroll_y, cursor, row_height, viewport.1);
     let view = scroll(list, extent)
         .height(viewport.1)
         .scroll_bind(scroll_y);
-    match viewport.0 {
+    let view = match viewport.0 {
         Some(width) => view.width(width),
         None => view,
-    }
+    };
+    view.into_node_builder().focusable(false)
 }

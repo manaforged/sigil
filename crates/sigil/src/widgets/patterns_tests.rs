@@ -91,6 +91,30 @@ fn field_holds_label_and_control_in_order() {
 }
 
 #[test]
+fn a_field_control_is_named_by_its_visible_label() {
+    use crate::widgets::text_field::text_field;
+    Runtime::scope("field-label-wins", || {
+        let mut cx = Cx::new_root();
+        let id = field(
+            "Full name",
+            text_field(crate::reactive::signal(String::new())),
+        )
+        .build(&mut cx);
+        let [label_id, control_id] = *cx.get(id).expect("field root").children() else {
+            panic!("field produces label and control");
+        };
+        let control = cx.get(control_id).expect("control");
+        assert_eq!(control.a11y.labelled_by, Some(label_id));
+        assert!(
+            matches!(control.a11y.name, AccessibleName::None),
+            "the control must not keep its Text field fallback name"
+        );
+        let label = crate::a11y::mapping::node(&cx, label_id, &|_| None);
+        assert_eq!(label.value(), Some("Full name"));
+    });
+}
+
+#[test]
 fn validated_field_emits_three_children() {
     use crate::widgets::text_field::text_field;
     Runtime::scope("validated-field-shape", || {

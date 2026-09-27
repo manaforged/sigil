@@ -141,17 +141,9 @@ impl ScrollBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    pub(crate) fn into_node_builder(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
-        let (content, extent) = if let Some(extent) = self.extent {
-            (self.content, extent)
-        } else {
-            let measured = signal((0.0_f32, 0.0_f32));
-            (
-                self.content.size_reactive(measured),
-                derived_eq(move || measured.get().1.max(0.0)),
-            )
-        };
+        let (content, extent) = resolve_extent(self.content, self.extent);
         let height = self.height;
         let width = self.width;
         let sizing = self.sizing;
@@ -166,9 +158,13 @@ impl ScrollBuilder {
         }
         let floor = sizing.floor(extent, viewport_height);
         let body = wrap_content(content, scroll_y, max_scroll, extent, floor);
-        let hovered = signal(false);
-        let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height, hovered);
-        let track = scrollbar_track(hovered, sizing).child(thumb);
+        let track = scrollbar(
+            scroll_y,
+            max_scroll,
+            extent,
+            viewport_height,
+            sizing != Sizing::Fit,
+        );
 
         let root = viewport_container(width, height, sizing)
             .child(body)
@@ -193,6 +189,18 @@ impl ScrollBuilder {
             root = root.style(self.style_accumulator);
         }
         root
+    }
+}
+
+fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBuilder, Signal<f32>) {
+    if let Some(extent) = extent {
+        (content, extent)
+    } else {
+        let measured = signal((0.0_f32, 0.0_f32));
+        (
+            content.size_reactive(measured),
+            derived_eq(move || measured.get().1.max(0.0)),
+        )
     }
 }
 
@@ -278,13 +286,36 @@ fn wrap_content(
         .style_reactive(move || geometry::content_atoms(geometry.get()))
 }
 
-fn scrollbar_track(hovered: Signal<bool>, sizing: Sizing) -> NodeBuilder {
+pub(crate) fn scrollbar(
+    scroll_y: Signal<f32>,
+    max_scroll: Signal<f32>,
+    extent: Signal<f32>,
+    viewport_height: Signal<f32>,
+    fill_height: bool,
+) -> NodeBuilder {
+    let hovered = signal(false);
+    let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height, hovered);
+    let page = move |ev: &mut crate::hal::PointerEvent| {
+        let (thumb_h, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
+        let max = max_scroll.peek();
+        let thumb_top = if max > 0.0 && max_travel > 0.0 {
+            scroll_y.peek().clamp(0.0, max) / max * max_travel
+        } else {
+            0.0
+        };
+        if ev.position.y >= thumb_top && ev.position.y < thumb_top + thumb_h {
+            return;
+        }
+        let dir = if ev.position.y < thumb_top { -1.0 } else { 1.0 };
+        scroll_y.set((scroll_y.peek() + dir * viewport_height.peek()).clamp(0.0, max));
+        ev.stop_propagation();
+    };
     let layout = LayoutStyle::block().width(SCROLLBAR_WIDTH).shrink(0.0);
     container()
-        .layout(if sizing == Sizing::Fit {
-            layout
-        } else {
+        .layout(if fill_height {
             layout.fill_height()
+        } else {
+            layout
         })
         .style_reactive(move || {
             if hovered.get() {
@@ -295,6 +326,8 @@ fn scrollbar_track(hovered: Signal<bool>, sizing: Sizing) -> NodeBuilder {
         })
         .pointer_enter(move |_| hovered.set(true))
         .pointer_leave(move |_| hovered.set(false))
+        .pointer_down_capture(page)
+        .child(thumb)
 }
 
 fn scrollbar_thumb(

@@ -54,6 +54,88 @@ fn dropdown_selection_wins_over_controls_beneath_the_popup() {
     });
 }
 
+#[test]
+fn clicking_a_scrollable_dropdown_commits_the_visible_option() {
+    Runtime::scope("scrollable-dropdown-selection", || {
+        let selected = signal(0);
+        let changed = signal(String::new());
+        let options = ["Choose", "US", "Canada", "Mexico", "FR", "DE", "JP"];
+        let mut host = Host::new();
+        host.build(|cx| {
+            cx.add(
+                dropdown(selected, options.map(str::to_owned).to_vec())
+                    .change(move |index| changed.set(options.get(index).unwrap().to_string())),
+            )
+        });
+        host.layout((400.0, 300.0)).unwrap();
+        let mut router = EventRouter::new();
+        click(&mut host, &mut router, Point::new(20.0, 16.0));
+        let scene = host.scene((400.0, 300.0)).unwrap();
+        let option = &scene
+            .find_text("Canada")
+            .expect("visible Canada option")
+            .run;
+        click(
+            &mut host,
+            &mut router,
+            Point::new(option.rect.origin.x + 5.0, option.rect.origin.y + 5.0),
+        );
+        host.layout((400.0, 300.0)).unwrap();
+        assert_eq!(
+            changed.peek(),
+            "Canada",
+            "mouse selection must reach the caller"
+        );
+        let selected_scene = host.scene((400.0, 300.0)).unwrap();
+        assert!(
+            selected_scene.find_text("Canada").is_some(),
+            "trigger shows the selected country"
+        );
+        assert!(
+            selected_scene.find_text("Choose").is_none(),
+            "the popup is closed"
+        );
+        press_keys(
+            &mut host,
+            &mut router,
+            &[Key::Enter, Key::ArrowDown, Key::Enter],
+        );
+        assert_eq!(
+            changed.peek(),
+            "Mexico",
+            "keyboard focus stays with the dropdown"
+        );
+    });
+}
+
+#[test]
+fn escape_closes_the_menu_then_reaches_the_surrounding_dialog() {
+    Runtime::scope("dropdown-escape", || {
+        let dismissed = signal(false);
+        let mut host = Host::new();
+        host.build(|cx| {
+            cx.add(
+                container()
+                    .key(Key::Escape, move |_| dismissed.set(true))
+                    .child(dropdown(signal(0), vec!["First".into(), "Second".into()])),
+            )
+        });
+        host.layout((400.0, 300.0)).unwrap();
+        let mut router = EventRouter::new();
+        click(&mut host, &mut router, Point::new(20.0, 16.0));
+        press_keys(&mut host, &mut router, &[Key::Escape]);
+        assert!(!dismissed.peek(), "first Escape only closes the open menu");
+        assert!(
+            host.scene((400.0, 300.0))
+                .unwrap()
+                .find_text("Second")
+                .is_none()
+        );
+        press_keys(&mut host, &mut router, &[Key::Escape]);
+        assert!(dismissed.peek(), "second Escape reaches the dialog");
+    });
+}
+
 fn combo_box(host: &mut Host) -> Option<crate::kernel::NodeId> {
     let root = host.root().unwrap();
     let mut found = None;
@@ -96,5 +178,6 @@ fn click(host: &mut Host, router: &mut EventRouter, position: Point) {
                 phase,
             })),
         );
+        host.layout((400.0, 300.0)).unwrap();
     }
 }

@@ -1,4 +1,6 @@
-use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
+use crate::kernel::{
+    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text,
+};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Reactive, Signal, derived};
 use crate::style::{BORDER_WIDTH, DisplayKind, NodeStyleExt, Radius, StyleAtom, Token, space};
@@ -102,6 +104,7 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
             };
             if let Some(target) = cx.get_mut(control_id) {
                 target.a11y.labelled_by = Some(label_id);
+                target.a11y.name = AccessibleName::None;
             }
         })
 }
