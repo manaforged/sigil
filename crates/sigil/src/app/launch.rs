@@ -1,6 +1,6 @@
 use std::cell::Cell;
 use std::rc::Rc;
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::animation_runtime::active_count as active_animation_count;
 #[cfg(test)]
@@ -11,7 +11,7 @@ use crate::hal::{LogicalSize, PhysicalSize, Scale, Shell};
 use crate::layout::LayoutEngine;
 #[cfg(test)]
 use crate::layout::prelude::Size;
-use crate::reactive::{Runtime, next_interval_deadline};
+use crate::reactive::{Owner, Runtime, next_interval_deadline};
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
 
@@ -26,7 +26,11 @@ mod event_wiring;
 mod frame;
 #[path = "scene_cache.rs"]
 mod scene_cache;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
+#[cfg(feature = "inspect")]
+use backend::inspect_shot;
 use backend::{Backend, Surface};
 use frame::frame_once;
 #[cfg(test)]
@@ -39,11 +43,19 @@ where
     T: TreeRoot,
 {
     let config = config.into();
-    Runtime::scope("sigil-app", || run(config, tree))
+    let owner = Owner::new("sigil-app", None);
+    let result = owner.with(|| run(config, tree, owner));
+    #[cfg(not(target_arch = "wasm32"))]
+    owner.dispose();
+    #[cfg(target_arch = "wasm32")]
+    if let Err(error) = &result {
+        web::report(error);
+    }
+    result
 }
 
 #[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
-fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
+fn run<T: TreeRoot>(config: AppConfig, tree: T, owner: Owner) -> AppResult<()> {
     let mut config = AppConfig {
         user_zoom: if config.user_zoom > 0.0 {
             config.user_zoom
@@ -61,6 +73,8 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
         WinitShell::new()
     }
     .map_err(Error::window)?;
+    #[cfg(target_arch = "wasm32")]
+    shell.set_canvas(config.canvas.clone());
     let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
 
     let mut async_rt = install_async_runtime(&shell)?;
@@ -83,6 +97,11 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     let mut router = EventRouter::new();
     let a11y_action_rx = shell.a11y_action_receiver();
     let mut renderer = Backend::from_env()?;
+    #[cfg(target_arch = "wasm32")]
+    renderer.request_device({
+        let waker = shell.waker();
+        move || drop(WinitShell::wake(&waker))
+    });
     renderer.set_transparent(config.overlay || config.frameless);
     let mut surface: Option<Surface> = None;
     let mut exit_requested = false;
@@ -102,90 +121,56 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T) -> AppResult<()> {
     finish(
         shell
             .run(move |shell| {
-                #[cfg(feature = "inspect")]
-                if let Some(inspect) = &inspect {
-                    let mut shot =
-                        |app: &mut Host| inspect_shot(app, &mut renderer, &mut surface, viewport);
-                    inspect.service(
-                        &mut host,
-                        &mut router,
-                        crate::app::inspect::View {
-                            cell: None,
-                            text: None,
-                            shot: Some(&mut shot),
-                        },
-                    );
-                }
-                let frame = FrameCtx {
-                    config: &mut config,
-                    shell,
-                    window_handle,
-                    host: &mut host,
-                    router: &mut router,
-                    renderer: &mut renderer,
-                    surface: &mut surface,
-                    viewport: &mut viewport,
-                    exit_requested: &mut exit_requested,
-                    async_rt: &mut async_rt,
-                    a11y_action_rx: &a11y_action_rx,
-                    frame_state: &mut frame_state,
-                };
-                if let Err(error) = run_frame(panic_policy, frame) {
-                    Runtime::recover_from_panic();
-                    launch_failure.set(Some(error));
-                    shell.request_exit();
-                    return;
-                }
-                request_animation_frame(shell, window_handle);
+                owner.with(|| {
+                    #[cfg(feature = "inspect")]
+                    if let Some(inspect) = &inspect {
+                        let mut shot = |app: &mut Host| {
+                            inspect_shot(app, &mut renderer, &mut surface, viewport)
+                        };
+                        inspect.service(
+                            &mut host,
+                            &mut router,
+                            crate::app::inspect::View {
+                                cell: None,
+                                text: None,
+                                shot: Some(&mut shot),
+                            },
+                        );
+                    }
+                    let frame = FrameCtx {
+                        config: &mut config,
+                        shell,
+                        window_handle,
+                        host: &mut host,
+                        router: &mut router,
+                        renderer: &mut renderer,
+                        surface: &mut surface,
+                        viewport: &mut viewport,
+                        exit_requested: &mut exit_requested,
+                        async_rt: &mut async_rt,
+                        a11y_action_rx: &a11y_action_rx,
+                        frame_state: &mut frame_state,
+                    };
+                    if let Err(error) = run_frame(panic_policy, frame) {
+                        Runtime::recover_from_panic();
+                        #[cfg(target_arch = "wasm32")]
+                        web::report(&error);
+                        launch_failure.set(Some(error));
+                        shell.request_exit();
+                        return;
+                    }
+                    request_animation_frame(shell, window_handle);
+                });
             })
             .map_err(Error::window)
             .and_then(|()| failure.take().map_or(Ok(()), Err)),
     )
 }
 
-#[cfg(feature = "inspect")]
-fn inspect_shot(
-    app: &mut Host,
-    renderer: &mut Backend,
-    surface: &mut Option<Surface>,
-    viewport: (f32, f32),
-) -> Result<serde_json::Value, String> {
-    let Some((cx, _, root)) = app.tree() else {
-        return Err("no mounted tree".into());
-    };
-    let scene = crate::app::embed::emit_viewport_scene(cx, root, viewport);
-    let Some(surface) = surface.as_mut() else {
-        return Err("window surface is not initialized yet".into());
-    };
-    let clear = if renderer.is_transparent() {
-        crate::hal::Color::rgba(0.0, 0.0, 0.0, 0.0)
-    } else {
-        crate::hal::Color::rgba(0.03, 0.04, 0.05, 1.0)
-    };
-    let size = surface_size(surface);
-    let png = renderer
-        .screenshot(surface, &scene, clear, viewport)
-        .map_err(|err| err.to_string())?;
-    Ok(serde_json::json!({
-        "png": base64::Engine::encode(
-            &base64::engine::general_purpose::STANDARD,
-            png,
-        ),
-        "width": size.width,
-        "height": size.height,
-    }))
-}
-
-#[cfg(feature = "inspect")]
-const fn surface_size(surface: &Surface) -> PhysicalSize {
-    match surface {
-        Surface::Wgpu(surface) => surface.size(),
-        Surface::Cpu(surface) => surface.size(),
-    }
-}
-
 fn finish(result: AppResult<()>) -> AppResult<()> {
-    crate::profile::dump_if_enabled();
+    if cfg!(not(target_arch = "wasm32")) {
+        crate::profile::dump_if_enabled();
+    }
     result
 }
 

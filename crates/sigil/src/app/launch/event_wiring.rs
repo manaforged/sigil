@@ -49,6 +49,11 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
         viewport,
         user_zoom,
     } = ctx;
+    #[cfg(target_arch = "wasm32")]
+    if !renderer.ready()? {
+        *surface = None;
+        return Ok(());
+    }
     if surface.is_some() {
         return Ok(());
     }

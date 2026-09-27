@@ -11,6 +11,8 @@ mod ime_handlers;
 mod pointer_dispatch;
 pub mod prelude;
 mod router;
+pub(crate) mod selection;
+mod selection_walk;
 mod window_command;
 
 pub use builder_ext::NodeEventsExt;
@@ -22,6 +24,7 @@ pub use focus::{
 pub use handlers::EventHandlers;
 pub(crate) use handlers::{A11yEdit, dispatch};
 pub use router::EventRouter;
+pub use selection::SelectableText;
 pub use window_command::{request_window_command, take_window_commands};
 
 pub fn invoke_node(

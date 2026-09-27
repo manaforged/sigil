@@ -4,7 +4,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::id;
 use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
-use std::time::Instant;
+use web_time::Instant;
 
 use serde_json::{Value, json};
 

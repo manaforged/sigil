@@ -166,6 +166,18 @@ fn initial_window_passes_logical_size_and_default_opts() {
 }
 
 #[test]
+fn native_initial_window_ignores_web_canvas() {
+    let logical = LogicalSize::new(720.0, 480.0);
+    let mut plain = MockShell::default();
+    let mut bound = MockShell::default();
+
+    create_initial_window(&mut plain, &AppConfig::new("test"), logical).unwrap();
+    create_initial_window(&mut bound, &AppConfig::new("test").canvas("app"), logical).unwrap();
+
+    assert_eq!(bound.calls, plain.calls);
+}
+
+#[test]
 fn initial_window_threads_overlay_opts() {
     let mut shell = MockShell::default();
     let anchor = crate::hal::Anchor::BottomCenter { margin: 64.0 };

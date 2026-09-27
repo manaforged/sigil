@@ -8,6 +8,7 @@ use accesskit::Action;
 
 use crate::events::EventHandlers;
 use crate::events::ime_handlers::{CaretAnchorExt, ImeHandlers};
+use crate::events::selection::SelectableText;
 
 pub trait NodeEventsExt {
     #[must_use]
@@ -110,6 +111,9 @@ pub trait NodeEventsExt {
     fn ime_eligible<F>(self, f: F) -> Self
     where
         F: Fn() -> bool + 'static;
+
+    #[must_use]
+    fn selectable_text(self, yes: bool) -> Self;
 }
 
 impl NodeEventsExt for NodeBuilder {
@@ -280,6 +284,10 @@ impl NodeEventsExt for NodeBuilder {
         F: Fn() -> bool + 'static,
     {
         with_ime_handlers(self, move |handlers| handlers.set_eligible(Box::new(f)))
+    }
+
+    fn selectable_text(self, yes: bool) -> Self {
+        if yes { self.with(SelectableText) } else { self }
     }
 }
 

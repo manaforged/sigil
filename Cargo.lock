@@ -1729,9 +1729,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
+ "js-sys",
  "libc",
  "r-efi 5.3.0",
  "wasip2",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4085,6 +4087,7 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "crossterm",
+ "getrandom 0.3.4",
  "half",
  "harfrust",
  "image",
@@ -4124,6 +4127,10 @@ dependencies = [
  "unicode-width",
  "usvg",
  "vt100",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
  "wgpu",
  "windows-core",
  "winit",

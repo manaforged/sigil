@@ -1,4 +1,5 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Position};

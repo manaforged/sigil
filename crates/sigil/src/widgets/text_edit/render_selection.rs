@@ -2,17 +2,13 @@ use crate::hal::{HitPosition, Rect};
 use crate::kernel::{NodeBuilder, container, fragment};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::layout::with_text_geometry;
-use crate::style::{ColorAtom, NodeStyleExt, Rgba8, StyleAtom};
+use crate::style::{ColorAtom, NodeStyleExt, SELECTION_FILL, StyleAtom};
 
 use super::super::handlers::geometry_width;
 use super::TextEditRuntime;
 
-static SELECTION_ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(Rgba8 {
-    r: 56,
-    g: 118,
-    b: 224,
-    a: 130,
-}))];
+static SELECTION_ATOMS: &[StyleAtom] =
+    &[StyleAtom::BackgroundColor(ColorAtom::Rgba8(SELECTION_FILL))];
 
 pub(super) fn selection_layer(runtime: &TextEditRuntime) -> NodeBuilder {
     let runtime = runtime.clone();

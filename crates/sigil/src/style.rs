@@ -75,6 +75,13 @@ pub use token::Token;
 pub use tone::{Tone, ToneContext};
 pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 
+pub const SELECTION_FILL: Rgba8 = Rgba8 {
+    r: 56,
+    g: 118,
+    b: 224,
+    a: 130,
+};
+
 pub mod prelude {
     pub use crate::style::{
         AlignKind, ClassSource, ColorAtom, ColorAtomKind, ColorOrToken, ComponentId, Dimension,

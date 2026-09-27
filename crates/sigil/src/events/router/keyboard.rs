@@ -13,11 +13,28 @@ impl EventRouter {
         if event.phase != KeyPhase::Down {
             return;
         }
+        if !self.focused_accepts_text(cx)
+            && {
+                let mods = event.normalized_modifiers();
+                mods.meta() || mods.ctrl()
+            }
+            && matches!(&event.key, LogicalKey::Character(text) if text.eq_ignore_ascii_case("c"))
+            && crate::events::selection::copy_selection(cx)
+        {
+            event.stop_propagation();
+            return;
+        }
         self.shortcuts.refresh(cx);
         if self
             .shortcuts
             .dispatch(cx, &mut event, self.focused_accepts_text(cx))
             || event.propagation_stopped()
+        {
+            return;
+        }
+        if matches!(event.key, LogicalKey::Named(Key::Escape))
+            && event.modifiers.is_empty()
+            && crate::events::selection::escape(cx)
         {
             return;
         }

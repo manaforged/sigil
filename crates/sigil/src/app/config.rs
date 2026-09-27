@@ -33,6 +33,11 @@ pub struct AppConfig {
     pub(crate) min_size: Option<(u32, u32)>,
     pub(crate) resize: Resize,
     pub(crate) frame_interval: std::time::Duration,
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        allow(dead_code, reason = "only the browser host binds a canvas")
+    )]
+    pub(crate) canvas: Option<String>,
 }
 
 impl AppConfig {
@@ -55,6 +60,7 @@ impl AppConfig {
             min_size: None,
             resize: Resize::Free,
             frame_interval: std::time::Duration::from_millis(33),
+            canvas: None,
         }
     }
 
@@ -109,6 +115,12 @@ impl AppConfig {
     #[must_use]
     pub const fn window(mut self) -> Self {
         self.host = crate::kernel::HostMode::Pixel;
+        self
+    }
+
+    #[must_use]
+    pub fn canvas(mut self, id: impl Into<String>) -> Self {
+        self.canvas = Some(id.into());
         self
     }
 

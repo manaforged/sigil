@@ -4,7 +4,7 @@ use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::hal::{
     LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, Rect, Scale, Shell, ShellEvent,
@@ -27,6 +27,8 @@ mod attrs;
 mod commands;
 mod events;
 mod overlay;
+#[cfg(target_arch = "wasm32")]
+mod web;
 
 pub(crate) struct PendingWindow {
     handle: WinitWindowHandle,
@@ -72,6 +74,8 @@ pub struct WinitShell {
     a11y_adapters: Vec<A11yAdapterEntry>,
     a11y_action_tx: crossbeam_channel::Sender<accesskit::ActionRequest>,
     a11y_action_rx: crossbeam_channel::Receiver<accesskit::ActionRequest>,
+    #[cfg(target_arch = "wasm32")]
+    canvas: Option<String>,
 }
 
 impl Drop for WinitShell {
@@ -122,6 +126,8 @@ impl WinitShell {
             a11y_adapters: Vec::new(),
             a11y_action_tx,
             a11y_action_rx,
+            #[cfg(target_arch = "wasm32")]
+            canvas: None,
         }
     }
 
@@ -305,15 +311,25 @@ impl Shell for WinitShell {
         F: FnMut(&mut Self) + 'static,
     {
         let event_loop = self.event_loop.take().ok_or(ShellError::AlreadyRun)?;
-        let mut app = WinitApp {
+        let app = WinitApp {
             shell: self,
             frame,
             app_redraw_pending: false,
         };
-        event_loop.run_app(&mut app)?;
-        match app.shell.take_failed_windows().into_iter().next() {
-            Some((_, error)) => Err(ShellError::Window(error)),
-            None => Ok(()),
+        #[cfg(target_arch = "wasm32")]
+        {
+            use winit::platform::web::EventLoopExtWebSys as _;
+            event_loop.spawn_app(app);
+            Ok(())
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut app = app;
+            event_loop.run_app(&mut app)?;
+            match app.shell.take_failed_windows().into_iter().next() {
+                Some((_, error)) => Err(ShellError::Window(error)),
+                None => Ok(()),
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
 use crate::renderer::sprite_paint::SpritePipeline;
+#[cfg(not(target_arch = "wasm32"))]
 use pollster::FutureExt as _;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -134,7 +135,7 @@ impl DeviceState {
     -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let (adapter, device, queue, _lost) = request_adapter_and_device(&instance, None)?;
+        let (adapter, device, queue, _lost) = request_blocking(&instance, None)?;
         Ok((adapter, device, queue))
     }
 
@@ -145,7 +146,7 @@ impl DeviceState {
         queue: wgpu::Queue,
     ) {
         let instance = self.instance().clone();
-        let lost = watch_device(&device);
+        let lost = watch_device(&device, None);
         *self = Self::Ready(ReadyState::boxed(instance, (adapter, device, queue, lost)));
     }
 
@@ -155,6 +156,25 @@ impl DeviceState {
             Self::Ready(ready) => Ok(&mut **ready),
             Self::Uninitialized(_) => unreachable!(),
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[allow(
+        clippy::future_not_send,
+        reason = "browser GPU futures resolve on the main-thread executor"
+    )]
+    pub(crate) fn request(
+        &self,
+        on_lost: OnLost,
+    ) -> impl core::future::Future<Output = Result<DeviceParts, RendererError>> + 'static {
+        let instance = self.instance().clone();
+        async move { request_adapter_and_device(&instance, None, Some(on_lost)).await }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn adopt(&mut self, parts: DeviceParts) {
+        let instance = self.instance().clone();
+        *self = Self::Ready(ReadyState::boxed(instance, parts));
     }
 
     fn ensure_ready_for(
@@ -169,7 +189,7 @@ impl DeviceState {
                 Self::Uninitialized(i) => i,
                 Self::Ready(_) => unreachable!(),
             };
-            match request_adapter_and_device(&instance, surface) {
+            match request_blocking(&instance, surface) {
                 Ok((adapter, device, queue, lost)) => {
                     *self =
                         Self::Ready(ReadyState::boxed(instance, (adapter, device, queue, lost)));
@@ -184,15 +204,41 @@ impl DeviceState {
     }
 }
 
-type DeviceParts = (wgpu::Adapter, wgpu::Device, wgpu::Queue, Arc<AtomicBool>);
+pub(crate) type DeviceParts = (wgpu::Adapter, wgpu::Device, wgpu::Queue, Arc<AtomicBool>);
+
+pub(crate) type OnLost = Arc<dyn Fn() + Send + Sync>;
 
 fn power_preference() -> wgpu::PowerPreference {
     wgpu::PowerPreference::from_env().unwrap_or(wgpu::PowerPreference::LowPower)
 }
 
-fn request_adapter_and_device(
+#[cfg(not(target_arch = "wasm32"))]
+fn request_blocking(
     instance: &wgpu::Instance,
     surface: Option<&wgpu::Surface<'_>>,
+) -> Result<DeviceParts, RendererError> {
+    request_adapter_and_device(instance, surface, None).block_on()
+}
+
+#[cfg(target_arch = "wasm32")]
+const fn request_blocking(
+    _instance: &wgpu::Instance,
+    _surface: Option<&wgpu::Surface<'_>>,
+) -> Result<DeviceParts, RendererError> {
+    Err(RendererError::NotInitialized)
+}
+
+#[cfg_attr(
+    target_arch = "wasm32",
+    allow(
+        clippy::future_not_send,
+        reason = "browser GPU futures resolve on the main-thread executor"
+    )
+)]
+async fn request_adapter_and_device(
+    instance: &wgpu::Instance,
+    surface: Option<&wgpu::Surface<'_>>,
+    on_lost: Option<OnLost>,
 ) -> Result<DeviceParts, RendererError> {
     let adapter = match instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -201,7 +247,7 @@ fn request_adapter_and_device(
             force_fallback_adapter: false,
             apply_limit_buckets: false,
         })
-        .block_on()
+        .await
     {
         Ok(adapter) => adapter,
         Err(_) => instance
@@ -211,7 +257,7 @@ fn request_adapter_and_device(
                 force_fallback_adapter: true,
                 apply_limit_buckets: false,
             })
-            .block_on()
+            .await
             .map_err(|_| RendererError::NoAdapter)?,
     };
 
@@ -224,12 +270,12 @@ fn request_adapter_and_device(
             memory_hints: wgpu::MemoryHints::Performance,
             trace: wgpu::Trace::Off,
         })
-        .block_on()?;
-    let lost = watch_device(&device);
+        .await?;
+    let lost = watch_device(&device, on_lost);
     Ok((adapter, device, queue, lost))
 }
 
-fn watch_device(device: &wgpu::Device) -> Arc<AtomicBool> {
+fn watch_device(device: &wgpu::Device, on_lost: Option<OnLost>) -> Arc<AtomicBool> {
     let lost = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&lost);
     device.set_device_lost_callback(move |reason, message| {
@@ -239,6 +285,9 @@ fn watch_device(device: &wgpu::Device) -> Arc<AtomicBool> {
         }
         tracing::error!(%message, "GPU device lost; rebuilding on the next frame");
         flag.store(true, Ordering::Release);
+        if let Some(on_lost) = &on_lost {
+            on_lost();
+        }
     });
     device.on_uncaptured_error(Arc::new(|error: wgpu::Error| {
         tracing::error!(%error, "uncaptured wgpu error");

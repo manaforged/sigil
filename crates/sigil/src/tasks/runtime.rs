@@ -91,7 +91,7 @@ impl AsyncRuntime {
                 #[cfg(not(target_arch = "wasm32"))]
                 let runtime = Builder::new_multi_thread().enable_all().build()?;
                 #[cfg(target_arch = "wasm32")]
-                let runtime = Builder::new_current_thread().enable_all().build()?;
+                let runtime = Builder::new_current_thread().build()?;
                 (runtime.handle().clone(), Some(runtime))
             }
         };

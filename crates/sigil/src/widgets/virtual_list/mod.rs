@@ -1,4 +1,8 @@
-#![allow(clippy::missing_const_for_fn, clippy::mod_module_files)]
+#![allow(
+    clippy::missing_const_for_fn,
+    clippy::mod_module_files,
+    clippy::struct_excessive_bools
+)]
 
 mod build;
 mod keyboard;
@@ -106,6 +110,7 @@ where
     max_scroll_bind: Option<Signal<f32>>,
     measured: bool,
     estimate: Option<f32>,
+    scrollbar: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -132,11 +137,7 @@ pub trait IntoList<T, R: Fn(usize, &T) -> NodeBuilder + 'static> {
     fn into_list(self, render: R) -> VirtualListBuilder<T, R>;
 }
 
-impl<T, R> IntoList<T, R> for Vec<T>
-where
-    T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
-{
+impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> IntoList<T, R> for Vec<T> {
     fn into_list(self, render: R) -> VirtualListBuilder<T, R> {
         from_vec(self, render)
     }
@@ -195,6 +196,7 @@ where
         max_scroll_bind: None,
         measured: false,
         estimate: None,
+        scrollbar: false,
     }
 }
 
@@ -374,20 +376,14 @@ where
     }
 }
 
-impl<T, R> IntoNode for VirtualListBuilder<T, R>
-where
-    T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
-{
+impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> IntoNode for VirtualListBuilder<T, R> {
     fn build(self, cx: &mut Cx) -> NodeId {
         self.into_node_builder().build(cx)
     }
 }
 
-impl<T, R> WidgetLayoutExt for VirtualListBuilder<T, R>
-where
-    T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
+impl<T: 'static, R: Fn(usize, &T) -> NodeBuilder + 'static> WidgetLayoutExt
+    for VirtualListBuilder<T, R>
 {
     fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
         &mut self.layout_overrides

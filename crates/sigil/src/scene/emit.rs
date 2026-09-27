@@ -10,8 +10,10 @@ use crate::scene::command::{CommandScene, LayerEffect, LayerScope};
 use crate::scene::emit_cache;
 use crate::scene::style_adapter::{corner_radii_for, render_style_for};
 
+mod borders;
 mod paint;
 mod runs;
+mod selection;
 use paint::{NodePaint, push_focus_ring, push_node};
 mod effects;
 use effects::push_effect;
@@ -27,6 +29,7 @@ pub fn emit_scene(cx: &Cx, root: NodeId) -> CommandScene {
 pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandScene {
     let clip = clip.map(|rect| rect.expand(VIEW_OVERSCAN));
     let mut scene = SceneBuilder::new();
+    let selection = crate::events::selection::ranges(cx);
     let inherited = Inherited {
         theme: default_inherited_theme(),
         text_color: None,
@@ -37,6 +40,7 @@ pub fn emit_scene_clipped(cx: &Cx, root: NodeId, clip: Option<Rect>) -> CommandS
         scene: &mut scene,
         cx,
         deferred: &mut deferred,
+        selection: &selection,
     };
     push_subtree(&mut walk, root, &inherited, clip);
     let mut next = 0;
@@ -51,6 +55,7 @@ struct EmitWalk<'a, 't> {
     scene: &'a mut SceneBuilder,
     cx: &'t Cx,
     deferred: &'a mut Vec<(NodeId, Inherited<'t>, Option<Rect>)>,
+    selection: &'a std::collections::HashMap<NodeId, (usize, usize)>,
 }
 
 #[derive(Clone)]
@@ -115,17 +120,21 @@ fn push_contents<'t>(
                 .get_extension::<ToneContext>()
                 .map(|context| context.tone),
             leaf: !has_laid_child(walk.cx, node),
+            selected: walk.selection.get(&id).copied(),
         };
         let inherit =
             emit_cache::inherit_key(theme, inherited.text_color, inherited.text_style.as_ref())
                 ^ emit_cache::content_key(node)
                 ^ u64::from(paint.leaf);
+        let selected = paint.selected.is_some();
         let key = (walk.cx.instance_id(), id);
-        if !emit_cache::replay(walk.scene, key, node, rect, inherit) {
+        if selected || !emit_cache::replay(walk.scene, key, node, rect, inherit) {
             let start = walk.scene.command_len();
             push_focus_ring(walk.scene, id, node, rect, &paint);
             push_node(walk.scene, id, node, rect, &paint);
-            emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
+            if !selected {
+                emit_cache::store(key, node, rect, inherit, walk.scene.copy_from(start));
+            }
         }
         if result.clips() {
             emit_clipped_children(walk, node, &child_inherited, clip, rect, style);
@@ -154,6 +163,7 @@ fn emit_clipped_children<'t>(
     let clip_radii = corner_radii_for(style.border_radius);
     let cx = walk.cx;
     let deferred = &mut *walk.deferred;
+    let selection = walk.selection;
     if clip_radii.0.iter().any(|radius| *radius > 0.0) {
         walk.scene.with_composite_layer(
             LayerScope {
@@ -167,6 +177,7 @@ fn emit_clipped_children<'t>(
                     scene,
                     cx,
                     deferred,
+                    selection,
                 };
                 push_children(&mut nested, node, inherited, Some(inner));
             },
@@ -177,6 +188,7 @@ fn emit_clipped_children<'t>(
                 scene,
                 cx,
                 deferred,
+                selection,
             };
             push_children(&mut nested, node, inherited, Some(inner));
         });

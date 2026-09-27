@@ -1,7 +1,7 @@
 use core::time::Duration;
 use std::cell::RefCell;
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::reactive::owner::{OwnerId, owner_by_id};
 use crate::reactive::runtime::Runtime;

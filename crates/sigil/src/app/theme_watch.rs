@@ -1,7 +1,8 @@
 use std::fmt;
 use std::path::PathBuf;
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use crate::app::{AppResult, Error};
 use crate::reactive::Owner;

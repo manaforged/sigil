@@ -18,6 +18,7 @@
 - [Units](guide/units.md)
 - [Recipes](guide/recipes.md)
 - [Terminal host](guide/terminal.md)
+- [Web host](guide/web.md)
 - [Driving Sigil from an agent](guide/agents.md)
 - [Signing](guide/signing.md)
 - [Packing](guide/packing.md)

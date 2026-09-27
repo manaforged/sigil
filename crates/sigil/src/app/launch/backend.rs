@@ -14,6 +14,8 @@ const ENV: &str = "SIGIL_BACKEND";
 pub(super) struct Backend {
     inner: Inner,
     fallback: bool,
+    #[cfg(target_arch = "wasm32")]
+    device: Option<super::web::DeviceRequest>,
 }
 
 enum Inner {
@@ -33,23 +35,70 @@ impl Backend {
             "cpu" => Ok(Self {
                 inner: Inner::Cpu(Box::default()),
                 fallback: false,
+                #[cfg(target_arch = "wasm32")]
+                device: None,
             }),
             "wgpu" | "gpu" => Ok(Self {
                 inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
                 fallback: false,
+                #[cfg(target_arch = "wasm32")]
+                device: None,
             }),
             "" | "auto" => Ok(Self {
                 inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
                 fallback: true,
+                #[cfg(target_arch = "wasm32")]
+                device: None,
             }),
             other => {
                 tracing::warn!("sigil-app: {ENV}={other:?} is not cpu, wgpu, or auto; using auto");
                 Ok(Self {
                     inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
                     fallback: true,
+                    #[cfg(target_arch = "wasm32")]
+                    device: None,
                 })
             }
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn request_device(&mut self, wake: impl Fn() + Send + Sync + 'static) {
+        if let Inner::Wgpu(renderer) = &self.inner {
+            let mut request = super::web::DeviceRequest::new(wake);
+            request.start(renderer);
+            self.device = Some(request);
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn ready(&mut self) -> Result<bool, RendererError> {
+        let Some(request) = &mut self.device else {
+            return Ok(true);
+        };
+        if let Inner::Wgpu(renderer) = &self.inner
+            && renderer.device_lost()
+            && !request.waiting()
+        {
+            tracing::warn!("sigil-app: GPU device lost; requesting a new one");
+            request.start(renderer);
+        }
+        let Some(result) = request.take() else {
+            return Ok(!request.waiting());
+        };
+        match (result, &mut self.inner) {
+            (Ok(parts), Inner::Wgpu(renderer)) => renderer.adopt_device(parts),
+            (Ok(_), Inner::Cpu(_)) => {}
+            (Err(err), _) if self.fallback => {
+                tracing::warn!("sigil-app: {err}; using the CPU renderer");
+                let mut cpu = CpuRenderer::new();
+                cpu.set_transparent(self.is_transparent());
+                self.inner = Inner::Cpu(Box::new(cpu));
+                self.device = None;
+            }
+            (Err(err), _) => return Err(err),
+        }
+        Ok(true)
     }
 
     pub(super) const fn name(&self) -> &'static str {
@@ -149,6 +198,47 @@ impl Backend {
             (Inner::Wgpu(r), Surface::Wgpu(s)) => wgpu_shot(r, s, scene, clear, viewport),
             _ => Err(mismatch()),
         }
+    }
+}
+
+#[cfg(feature = "inspect")]
+pub(super) fn inspect_shot(
+    app: &mut crate::app::embed::Host,
+    renderer: &mut Backend,
+    surface: &mut Option<Surface>,
+    viewport: (f32, f32),
+) -> Result<serde_json::Value, String> {
+    let Some((cx, _, root)) = app.tree() else {
+        return Err("no mounted tree".into());
+    };
+    let scene = crate::app::embed::emit_viewport_scene(cx, root, viewport);
+    let Some(surface) = surface.as_mut() else {
+        return Err("window surface is not initialized yet".into());
+    };
+    let clear = if renderer.is_transparent() {
+        Color::rgba(0.0, 0.0, 0.0, 0.0)
+    } else {
+        Color::rgba(0.03, 0.04, 0.05, 1.0)
+    };
+    let size = surface_size(surface);
+    let png = renderer
+        .screenshot(surface, &scene, clear, viewport)
+        .map_err(|err| err.to_string())?;
+    Ok(serde_json::json!({
+        "png": base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            png,
+        ),
+        "width": size.width,
+        "height": size.height,
+    }))
+}
+
+#[cfg(feature = "inspect")]
+const fn surface_size(surface: &Surface) -> PhysicalSize {
+    match surface {
+        Surface::Wgpu(surface) => surface.size(),
+        Surface::Cpu(surface) => surface.size(),
     }
 }
 

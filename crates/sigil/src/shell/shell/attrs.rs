@@ -101,6 +101,8 @@ impl WinitShell {
         let pending = std::mem::take(&mut self.pending);
         for spec in pending {
             let attrs = Self::window_attrs(&spec, active);
+            #[cfg(target_arch = "wasm32")]
+            let attrs = self.web_attrs(attrs);
             match active.create_window(attrs) {
                 Ok(window) => {
                     if spec.opts.overlay

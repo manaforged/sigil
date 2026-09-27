@@ -10,6 +10,8 @@ pub(crate) mod color_glyph_paint;
 mod cpu;
 mod decoration_paint;
 mod device_state;
+#[cfg(target_arch = "wasm32")]
+pub(crate) use device_state::{DeviceParts, OnLost};
 mod error;
 mod fill_paint;
 mod frame_stats;

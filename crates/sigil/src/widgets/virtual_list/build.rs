@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::LayoutStyle;
-use crate::layout::prelude::LayoutBuilderExt;
+use crate::layout::prelude::{LayoutBuilderExt, Position};
 use crate::reactive::{Signal, derived_eq, signal};
 use crate::style::{NodeStyleExt, NumericAtomKind};
 
@@ -31,6 +31,12 @@ where
     T: 'static,
     R: Fn(usize, &T) -> NodeBuilder + 'static,
 {
+    #[must_use]
+    pub const fn scrollbar(mut self, on: bool) -> Self {
+        self.scrollbar = on;
+        self
+    }
+
     pub(super) fn bind_items<S>(mut self, signal: Signal<S>) -> Self
     where
         S: Deref + Clone + 'static,
@@ -172,7 +178,11 @@ where
         let initial_rows = bound.initial_rows;
         let live_rows = bound.live_rows;
         apply_bound_scroll(axes, self.initial_scroll, self.pin_bottom);
-        let root = viewport_container(axes.viewport_height, axes.width).child(content);
+        let root = with_scrollbar(
+            self.scrollbar,
+            viewport_container(axes.viewport_height, axes.width).child(content),
+            axes,
+        );
         let root = apply_viewport_overrides(
             root,
             &self.layout_overrides,
@@ -217,7 +227,11 @@ where
             ),
         );
         let content = content_container(content_height, axes.width).child(visible);
-        let root = viewport_container(axes.viewport_height, axes.width).child(content);
+        let root = with_scrollbar(
+            self.scrollbar,
+            viewport_container(axes.viewport_height, axes.width).child(content),
+            axes,
+        );
         let root = apply_viewport_overrides(
             root,
             &self.layout_overrides,
@@ -322,6 +336,38 @@ where
             state
         }
     }
+}
+
+fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder {
+    if !show {
+        return root;
+    }
+    let viewport_height = derived_eq(move || {
+        let measured = axes.viewport.get().1;
+        if measured > 0.0 {
+            measured
+        } else {
+            axes.viewport_height
+        }
+    });
+    root.child(
+        container()
+            .layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_right(0.0)
+                    .inset_top(0.0)
+                    .inset_bottom(0.0)
+                    .width(crate::widgets::scroll::SCROLLBAR_WIDTH),
+            )
+            .child(crate::widgets::scroll::scrollbar(
+                axes.scroll_y,
+                axes.max,
+                axes.content,
+                viewport_height,
+                true,
+            )),
+    )
 }
 
 fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilder {

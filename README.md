@@ -19,12 +19,13 @@ The API can change between 0.x releases. Depend on one minor version.
 
 ## Platforms
 
-| Host | Linux | macOS | Windows |
-| --- | --- | --- | --- |
-| Window `run` | yes (wgpu or `SIGIL_BACKEND=cpu`) | yes | yes |
-| Embed `Host` | yes | yes | yes |
-| Terminal `run` (feature `terminal`) | yes | yes | yes |
-| Web / mobile | no | no | no |
+| Host | Linux | macOS | Windows | Web (`wasm32`) |
+| --- | --- | --- | --- | --- |
+| Window `run` | yes (wgpu or `SIGIL_BACKEND=cpu`) | yes | yes | yes (WebGPU, or CPU into a 2D canvas) |
+| Embed `Host` | yes | yes | yes | yes |
+| Terminal `run` (feature `terminal`) | yes | yes | yes | no |
+
+No mobile host.
 
 ## Install
 
@@ -94,7 +95,9 @@ feature. `desktop` is the default. `terminal` adds the terminal host.
 - Headless machines run the terminal host and the test suite. The
   window host needs a GPU adapter, unless `SIGIL_BACKEND=cpu` selects
   the CPU renderer. `auto` is the default; `wgpu` requires an adapter.
-- No web or mobile host.
+- No mobile host. The web host has no IME, no system fonts, no
+  clipboard paste, no task executor, and no accessibility tree; see
+  [Web host](docs/guide/web.md).
 - The terminal host has no IME, no rounded corners, and no shadows.
   Images render through the terminal graphics protocol on Kitty,
   Ghostty, WezTerm, Konsole, iTerm2, Warp, and Sixel terminals. Other

@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::app::config::AppConfig;
 use crate::app::embed::Host;

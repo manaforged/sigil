@@ -34,6 +34,30 @@ impl WgpuRenderer {
         })
     }
 
+    #[cfg(target_arch = "wasm32")]
+    #[allow(
+        clippy::future_not_send,
+        reason = "browser GPU futures resolve on the main-thread executor"
+    )]
+    pub(crate) fn request_device(
+        &self,
+        on_lost: crate::renderer::OnLost,
+    ) -> impl core::future::Future<Output = Result<crate::renderer::DeviceParts, RendererError>> + 'static
+    {
+        self.state.request(on_lost)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn adopt_device(&mut self, parts: crate::renderer::DeviceParts) {
+        self.frame_transients.clear();
+        self.state.adopt(parts);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn device_lost(&self) -> bool {
+        self.state.is_lost()
+    }
+
     pub const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
@@ -120,7 +144,7 @@ impl WgpuRenderer {
     }
 
     fn recover_lost_device(&mut self, surface: &WgpuSurface) -> Result<(), RendererError> {
-        if !self.state.is_lost() {
+        if !self.state.is_lost() || cfg!(target_arch = "wasm32") {
             return Ok(());
         }
         self.frame_transients.clear();

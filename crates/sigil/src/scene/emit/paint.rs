@@ -63,10 +63,11 @@ pub(super) struct NodePaint<'a> {
     pub(super) text_base: &'a TextStyle,
     pub(super) tone: Option<Tone>,
     pub(super) leaf: bool,
+    pub(super) selected: Option<(usize, usize)>,
 }
 
 impl NodePaint<'_> {
-    fn cell(&self) -> CellRect {
+    pub(super) fn cell(&self) -> CellRect {
         CellRect {
             tone: self.style.background_color.map_or(self.tone, |_| None),
             leaf: self.leaf,
@@ -75,15 +76,15 @@ impl NodePaint<'_> {
         }
     }
 
-    fn border(&self, rect: Rect) -> Option<CellBorder> {
-        let widths = border_edges(self.style).map(|width| width.max(0.0));
+    pub(super) fn border(&self, rect: Rect) -> Option<CellBorder> {
+        let widths = super::borders::border_edges(self.style).map(|width| width.max(0.0));
         if widths.iter().all(|width| *width <= 0.0) {
             return None;
         }
         Some(CellBorder {
             rect,
             widths,
-            color: border_color(self.style, self.theme),
+            color: super::borders::border_color(self.style, self.theme),
             rounded: self.style.border_radius.is_some_and(|radius| radius.0 > 0),
         })
     }
@@ -127,7 +128,7 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
             elevation_shadow(elevation),
         );
     }
-    let stroke = border_stroke(style, paint.theme);
+    let stroke = super::borders::border_stroke(style, paint.theme);
     if let Some(spec) = style.background_gradient {
         let mut gradient_style = SceneGradientStyle::new(
             gradient_fill(rect, spec, paint.theme),
@@ -156,7 +157,7 @@ fn push_container(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &Node
         }
         scene.draw_rect_for_node(id, rect, rect_style, cell);
     }
-    push_side_borders(scene, id, rect, paint);
+    super::borders::push_side_borders(scene, id, rect, paint);
 }
 
 pub(super) fn push_node(
@@ -208,16 +209,24 @@ fn push_text(scene: &mut SceneBuilder, id: NodeId, node: &Node, rect: Rect, pain
     };
     let mut text_style = text_style_for(node, paint.theme, paint.text_base);
     text_style.runs = node.get_extension::<crate::style::TextRuns>().cloned();
+    let text = text_content(content);
+    if let Some(range) = paint.selected {
+        super::selection::push_selection(
+            scene,
+            id,
+            &super::selection::SelectedText {
+                rect,
+                text: &text,
+                style: &text_style,
+                wrap: *wrap,
+                range,
+            },
+        );
+    }
     let run = shape_run(
-        GlyphRun::new(
-            rect,
-            text_content(content),
-            color,
-            text_style.clone(),
-            style.opacity,
-        )
-        .with_cell(flow, paint.tone)
-        .with_inks(super::runs::inks(text_style.runs.as_ref(), paint.theme)),
+        GlyphRun::new(rect, text, color, text_style.clone(), style.opacity)
+            .with_cell(flow, paint.tone)
+            .with_inks(super::runs::inks(text_style.runs.as_ref(), paint.theme)),
     );
     let run = super::runs::split(scene, id, run);
     let overflows = *ellipsis && overflows(&run, rect);
@@ -302,95 +311,6 @@ fn resolve(theme: &Theme, color: ColorAtom) -> Rgba8 {
     match color {
         ColorAtom::Rgba8(color) => color,
         ColorAtom::ThemeRef(token) => theme.resolve_color(token),
-    }
-}
-
-fn border_edges(style: &RenderStyle) -> [f32; 4] {
-    let uniform = style.border_width.map_or(0.0, |px| f32::from(px.0));
-    [
-        style.border_top.map_or(uniform, |px| f32::from(px.0)),
-        style.border_right.map_or(uniform, |px| f32::from(px.0)),
-        style.border_bottom.map_or(uniform, |px| f32::from(px.0)),
-        style.border_left.map_or(uniform, |px| f32::from(px.0)),
-    ]
-}
-
-fn border_color(style: &RenderStyle, theme: &Theme) -> Rgba8 {
-    style
-        .border_color
-        .or(style.text_color)
-        .unwrap_or(theme.on_surface)
-}
-
-const fn borders_uniform([top, right, bottom, left]: [f32; 4]) -> bool {
-    top.to_bits() == right.to_bits()
-        && right.to_bits() == bottom.to_bits()
-        && bottom.to_bits() == left.to_bits()
-}
-
-fn border_stroke(style: &RenderStyle, theme: &Theme) -> Option<Stroke> {
-    let [top, right, bottom, left] = border_edges(style);
-    if top <= 0.0 || !borders_uniform([top, right, bottom, left]) {
-        return None;
-    }
-    Some(Stroke {
-        color: border_color(style, theme),
-        width: top,
-        style: StrokeStyle::Solid,
-        align: StrokeAlign::Inside,
-    })
-}
-
-fn push_side_borders(scene: &mut SceneBuilder, id: NodeId, rect: Rect, paint: &NodePaint<'_>) {
-    let style = paint.style;
-    let theme = paint.theme;
-    let [top, right, bottom, left] = border_edges(style);
-    if top <= 0.0 && right <= 0.0 && bottom <= 0.0 && left <= 0.0 {
-        return;
-    }
-    if top > 0.0 && borders_uniform([top, right, bottom, left]) {
-        return;
-    }
-    let color = border_color(style, theme);
-    let fill = SceneRectStyle::new(color, CornerRadii::new(0.0, 0.0, 0.0, 0.0), style.opacity);
-    let bottom = bottom.min(rect.height);
-    let right = right.min(rect.width);
-    let sides = [
-        (
-            top,
-            Rect::new(rect.origin, rect.width, top.min(rect.height)),
-        ),
-        (
-            bottom,
-            Rect::new(
-                Point::new(rect.origin.x, rect.origin.y + rect.height - bottom),
-                rect.width,
-                bottom,
-            ),
-        ),
-        (
-            left,
-            Rect::new(rect.origin, left.min(rect.width), rect.height),
-        ),
-        (
-            right,
-            Rect::new(
-                Point::new(rect.origin.x + rect.width - right, rect.origin.y),
-                right,
-                rect.height,
-            ),
-        ),
-    ];
-    let mut cell = CellRect {
-        border: paint.border(rect),
-        outline: true,
-        ..paint.cell()
-    };
-    for (width, side) in sides {
-        if width > 0.0 {
-            scene.draw_rect_for_node(id, side, fill, cell);
-            cell.border = None;
-        }
     }
 }
 

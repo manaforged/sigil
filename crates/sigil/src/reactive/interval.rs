@@ -1,5 +1,5 @@
 use core::time::Duration;
-use std::time::Instant;
+use web_time::Instant;
 
 use crate::reactive::owner::{Owner, OwnerId, on_cleanup};
 

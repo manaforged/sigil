@@ -64,6 +64,10 @@ jobs:
       - name: cargo clippy
         if: steps.scope.outputs.args != ''
         run: cargo clippy ${{ steps.scope.outputs.args }} --all-targets --locked --no-deps -- -D warnings
+      - uses: taiki-e/install-action@37f7c5781271959fb65b6b35224e28652ff2b63d # v2
+        if: steps.scope.outputs.dependency-audit == 'true'
+        with:
+          tool: cargo-deny@0.20.2
       - name: cargo deny
         if: steps.scope.outputs.dependency-audit == 'true'
         run: cargo deny check

@@ -37,8 +37,8 @@ unicode-linebreak = "0.1"
 unicode-script = "0.5"
 unicode-segmentation = "1"
 unicode-width = { workspace = true }
+web-time = "1"
 
-arboard = { workspace = true, optional = true }
 accesskit_winit = { workspace = true, optional = true }
 winit = { workspace = true, optional = true }
 raw-window-handle = { workspace = true, optional = true }
@@ -71,10 +71,15 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread"] }
+arboard = { workspace = true, optional = true }
 zed-font-kit = { workspace = true, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tokio = { workspace = true, features = ["rt"] }
+getrandom = { version = "0.3", features = ["wasm_js"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Clipboard", "Document", "Element", "HtmlCanvasElement", "Navigator", "Window", "console"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = { version = "21", optional = true }
@@ -116,16 +121,18 @@ pty = ["dep:portable-pty", "dep:vt100"]
 terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]
 
 [dev-dependencies]
-allocation-counter = "0.8.1"
-sigil-kittest = { path = "../kittest" }
-criterion = { version = "0.8", features = ["html_reports"] }
 image = { workspace = true, features = ["webp"] }
 serde = { workspace = true }
 pollster = { workspace = true }
 proptest = { workspace = true }
-rayon = { workspace = true }
 taffy = "0.14"
 wgpu = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+allocation-counter = "0.8.1"
+sigil-kittest = { path = "../kittest" }
+criterion = { version = "0.8", features = ["html_reports"] }
+rayon = { workspace = true }
 
 [[example]]
 name = "hello-terminal"

@@ -42,7 +42,7 @@ pub(crate) const fn load() -> SystemFonts {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub(crate) fn script_fallbacks(_: Script) -> Vec<Font> {
+pub(crate) const fn script_fallbacks(_: Script) -> Vec<Font> {
     Vec::new()
 }
 

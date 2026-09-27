@@ -163,6 +163,9 @@ impl EventRouter {
     fn route_pointer(&mut self, cx: &mut Cx, layout: &LayoutEngine, mut event: PointerEvent) {
         self.last_pointer = Some(event.clone());
         let global_position = event.position;
+        if event.phase != PointerPhase::Down {
+            crate::events::selection::drag(cx, layout, &mut event);
+        }
         if self.route_captured_pointer(cx, layout, &mut event, global_position) {
             return;
         }
@@ -171,6 +174,9 @@ impl EventRouter {
             self.release_capture_on_terminal_phase(event.phase);
             return;
         };
+        if event.phase == PointerPhase::Down {
+            crate::events::selection::down(cx, &path, &event);
+        }
         let next_targets = pointer_targets(cx, layout, &path, self.hit_cache.uses_transforms());
         self.update_hover(cx, &next_targets, &event);
         self.focus_pointer_target(cx, &path, event.phase);

@@ -46,6 +46,10 @@ jobs:
 
       - name: clippy
         run: cargo clippy --workspace --all-targets --features sigil-ui/terminal --locked -- -D warnings
+      - name: clippy (wasm32)
+        run: |
+          rustup target add wasm32-unknown-unknown
+          cargo clippy -p sigil-ui --lib --target wasm32-unknown-unknown --locked -- -D warnings
       - name: deny
         run: cargo deny check
 

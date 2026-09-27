@@ -58,6 +58,12 @@ pub struct EventHandlers {
 }
 
 impl EventHandlers {
+    pub(crate) fn owns_pointer_drag(&self) -> bool {
+        !self.pointer_down_capture.is_empty()
+            || !self.pointer_move_capture.is_empty()
+            || !self.pointer_move.is_empty()
+    }
+
     pub(crate) fn set_value_adjustment(&mut self, handler: ValueAdjustment) {
         self.value_adjustment = Some(handler);
     }

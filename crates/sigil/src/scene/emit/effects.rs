@@ -40,6 +40,7 @@ pub(super) fn push_effect<'t>(
     style.transform = Transform2D::IDENTITY;
     let cx = walk.cx;
     let deferred = &mut *walk.deferred;
+    let selection = walk.selection;
     walk.scene.with_composite_layer(
         LayerScope {
             clip: bounds,
@@ -53,6 +54,7 @@ pub(super) fn push_effect<'t>(
                     scene,
                     cx,
                     deferred,
+                    selection,
                 },
                 id,
                 inherited,
