@@ -77,6 +77,9 @@ impl Screen {
         profile::count("tui.frames");
         profile::count_add("workload.cols", u64::from(cols));
         profile::count_add("workload.rows", u64::from(rows));
+        if crate::hud::take_state_change() {
+            self.fresh = true;
+        }
         let dt = self.dt;
         let caps = self.caps;
         let Self {
@@ -96,6 +99,12 @@ impl Screen {
         let hooks = frame_hooks(cells, events, (cols, rows));
         let out = host.frame(router, view(cols, rows), dt, hooks);
         self.exited |= out.exit;
+        if crate::hud::enabled() {
+            crate::terminal::hud::draw(&mut self.grid);
+            if !self.dirty && !self.fresh && !self.unchanged() {
+                self.dirty = true;
+            }
+        }
         if self.dirty && !self.fresh && self.unchanged() {
             self.dirty = false;
             core::mem::swap(&mut self.prev, &mut self.grid);

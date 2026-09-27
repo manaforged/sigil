@@ -225,6 +225,20 @@ impl Grid {
         out
     }
 
+    pub(crate) fn overlay_text(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
+        let mut x = col;
+        for ch in text.chars() {
+            let Some(index) = self.index(x, row) else {
+                return;
+            };
+            if let Some(cell) = self.cells.get_mut(index) {
+                cell.text = ch.to_string().into();
+                cell.fg = fg;
+            }
+            x = x.saturating_add(1);
+        }
+    }
+
     fn put(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
         let Some(i) = self.index(col, row) else {
             return;

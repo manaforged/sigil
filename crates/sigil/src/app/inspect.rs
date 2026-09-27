@@ -207,9 +207,84 @@ fn answer(request: &Value, host: &mut Host, router: &EventRouter, view: &mut Vie
             "settled": !crate::reactive::Runtime::frame_dirty()
                 && crate::animation_runtime::active_count() == 0,
         }),
+        Some("profile") => profile_json(request),
+        Some("profile_dump") => dump_json(request),
+        Some("profile_on") => {
+            crate::profile::enable();
+            json!({"ok": true})
+        }
+        Some("profile_off") => {
+            crate::profile::disable();
+            json!({"ok": true})
+        }
+        Some("hud") => hud_json(request),
         Some(other) => json!({"ok": false, "error": format!("unknown op {other}")}),
         None => json!({"ok": false, "error": "missing op"}),
     }
+}
+
+#[allow(clippy::cast_precision_loss, reason = "ns → ms for display")]
+fn frame_json(frame: &crate::profile::Frame) -> Value {
+    let ms = |ns: u64| Value::from(ns as f64 / 1_000_000.0);
+    json!({
+        "index": frame.index,
+        "cause": frame.cause,
+        "wall_ms": ms(frame.wall_ns),
+        "phases": frame
+            .phases
+            .iter()
+            .map(|(name, ns)| (name.to_string(), ms(*ns)))
+            .collect::<serde_json::Map<String, Value>>(),
+        "counts": frame
+            .counts
+            .iter()
+            .map(|(name, value)| (name.to_string(), Value::from(*value)))
+            .collect::<serde_json::Map<String, Value>>(),
+    })
+}
+
+fn profile_json(request: &Value) -> Value {
+    let limit = usize::try_from(
+        request
+            .get("last")
+            .and_then(Value::as_u64)
+            .unwrap_or(30)
+            .min(500),
+    )
+    .unwrap_or(30);
+    let frames = crate::profile::frames();
+    let shown: Vec<Value> = frames
+        .iter()
+        .rev()
+        .take(limit)
+        .rev()
+        .map(frame_json)
+        .collect();
+    json!({
+        "ok": true,
+        "enabled": crate::profile::enabled(),
+        "frames": shown,
+        "summary": crate::profile::summary(),
+    })
+}
+
+fn dump_json(request: &Value) -> Value {
+    let path = request
+        .get("path")
+        .and_then(Value::as_str)
+        .map(std::path::PathBuf::from)
+        .or_else(crate::profile::dump_path)
+        .unwrap_or_else(|| std::path::PathBuf::from("sigil-profile.json"));
+    match crate::profile::dump(&path) {
+        Ok(()) => json!({"ok": true, "path": path}),
+        Err(error) => json!({"ok": false, "error": error.to_string()}),
+    }
+}
+
+fn hud_json(request: &Value) -> Value {
+    let on = request.get("on").and_then(Value::as_bool).unwrap_or(true);
+    crate::hud::set(on);
+    json!({"ok": true, "hud": on})
 }
 
 fn screenshot_json(host: &mut Host, view: &mut View<'_>) -> Value {

@@ -20,6 +20,7 @@ pub mod app;
 pub mod bidi;
 pub mod events;
 pub mod hal;
+pub(crate) mod hud;
 #[cfg(feature = "scene")]
 pub mod icons;
 pub mod kernel;
@@ -104,8 +105,8 @@ pub mod prelude {
     };
     pub use crate::animation_runtime::{AnimationConfig, Animator, MotionPrefs, Playback};
     pub use crate::events::{
-        EventHandlers, EventRouter, FocusIntent, NodeEventsExt, request_focus, request_reveal,
-        request_window_command,
+        EventHandlers, EventRouter, FocusIntent, NodeEventsExt, SelectableText, request_focus,
+        request_reveal, request_window_command,
     };
     pub use crate::hal::{
         Dim, FileDropEvent, FileDropPhase, ImeEvent, Key, KeyEvent, KeyPhase, LogicalKey,

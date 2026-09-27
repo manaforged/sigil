@@ -31,6 +31,15 @@ Set `SIGIL_PROFILE` to collect a trace. `SIGIL_PROFILE=1` writes
 trace JSON. The phase table reports per-phase time. Counters include
 `scene.cmds` and `scene.glyphs`.
 
+`SIGIL_HUD=1` draws a live heads-up display over the top-right of the
+surface: a sparkline of recent frame wall times (green under half
+budget, amber under budget, red over) and the last frame's phase
+breakdown. On the terminal host it renders as cells in the diffed grid;
+on the desktop host it is appended to the emitted scene at paint time,
+so the cached scene stays untouched. The HUD implies `SIGIL_PROFILE`
+collection and can be toggled at runtime through the inspect socket's
+`hud` op.
+
 ## Terminal host
 
 The module `sigil::terminal` (feature `terminal`) is the terminal host.

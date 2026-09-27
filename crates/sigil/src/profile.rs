@@ -64,6 +64,11 @@ pub fn dump(path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "inspect")]
+pub(crate) fn dump_path() -> Option<std::path::PathBuf> {
+    store::dump_path()
+}
+
 pub fn dump_if_enabled() {
     if let Some(path) = store::dump_path()
         && let Err(err) = dump(&path)

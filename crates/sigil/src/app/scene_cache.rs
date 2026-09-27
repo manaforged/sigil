@@ -74,6 +74,14 @@ impl SceneCache {
             let _emit = crate::profile::span("emit");
             self.scene(cx, root, viewport, allow_replay)
         };
+        let mut overlaid;
+        let scene = if crate::hud::enabled() {
+            overlaid = scene.clone();
+            crate::hud::overlay(&mut overlaid, viewport);
+            &overlaid
+        } else {
+            scene
+        };
         let clear = if renderer.is_transparent() {
             Color::rgba(0.0, 0.0, 0.0, 0.0)
         } else {

@@ -78,7 +78,7 @@ this table.
 | `tray` | `mod tray` | System tray icon (feature `tray`). |
 | `Player` | `struct Player` | Audio file player (feature `audio`). |
 | `Session` | `struct Session` | Child process in a pseudo-terminal (feature `pty`). |
-| `AppConfig` | `struct AppConfig` | Run configuration: title, size, host, theme file. |
+| `AppConfig` | `struct AppConfig` | Run configuration: title, size, host, theme file, web canvas. |
 | `AppResult` | `type AppResult<T> = Result<T, Error>` | Result of the application functions. |
 | `Error` | `struct Error` | Opaque application error. |
 | `ErrorKind` | `enum ErrorKind` | Class of an `Error`. |
@@ -981,6 +981,8 @@ fn main() -> AppResult<()> {
 | Import the application surface | `use sigil::prelude::*;` |
 | Open a window and run the frame loop | `sigil::run(config, tree)` (feature `desktop`) |
 | Run the tree in a terminal | `sigil::run(AppConfig::new(title).terminal(), tree)` (feature `terminal`) |
+| Run the tree in a browser | `sigil::run(config, tree)` built for `wasm32-unknown-unknown` ([Web host](guide/web.md)) |
+| Draw into an existing `<canvas>` | `AppConfig::canvas(id)` (browser host; native hosts ignore it) |
 | Open a file or URL with the operating system handler | `sigil::open(target)` (feature `desktop`) |
 | Stop the application | `sigil::request_exit()`; in the terminal host it also works from a `run_with` hook |
 | Send a window command | `request_window_command`, `WindowCommand` |
@@ -1058,6 +1060,10 @@ object per line, one reply per request.
 | `scroll` | coordinates plus `dx`/`dy` in lines | A scroll event. |
 | `key` | `key` (a `NamedKey` name or one character), `ctrl`/`shift`/`alt`/`meta` | Key down and up. |
 | `type` | `text` | Key events per character. |
+| `profile` | `last` (frame count, default 30) | `enabled`, `frames` (index, cause, `wall_ms`, per-phase ms, counters), and `summary` (the exit report text). |
+| `profile_dump` | `path` (optional) | Writes the Chrome trace JSON now and replies with `path`. Defaults to `SIGIL_PROFILE`'s value or `sigil-profile.json`. |
+| `profile_on`, `profile_off` | – | Enable or stop frame collection without restarting. |
+| `hud` | `on` (default true) | Draws the frame-HUD overlay: a sparkline and last-frame phase readout top-right. Terminal host draws cells; the desktop host overlays scene commands at paint. Enabling turns profiling on. |
 
 Requests are serviced between frames on the UI thread, so replies
 reflect the tree as last laid out. The socket is loopback by

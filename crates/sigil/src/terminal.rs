@@ -2,6 +2,7 @@ mod caps;
 mod clipboard;
 mod colour;
 mod graphics;
+pub(crate) mod hud;
 mod input;
 mod keys;
 mod mouse;
