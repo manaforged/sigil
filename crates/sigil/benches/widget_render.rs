@@ -22,7 +22,9 @@ use sigil::hal::{
 };
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::renderer::{CommandScene, OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::{CommandScene, emit_scene};
+use sigil_kittest::FixedMeasure;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
@@ -41,13 +43,10 @@ impl Mode {
     }
 }
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 40.0,
+    height: 16.0,
+};
 
 struct Gpu {
     device: wgpu::Device,
@@ -157,7 +156,7 @@ fn render_one(
         let mut cx = Cx::new_root();
         let root = build(&mut cx);
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(size_px.0, size_px.1))
             .expect("layout");

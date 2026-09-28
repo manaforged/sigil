@@ -43,7 +43,7 @@ fn click(host: &mut Host, router: &mut EventRouter, name: &str) {
 }
 
 fn main() {
-    Runtime::scope("agent-driver", || {
+    Runtime::scope("headless-driver", || {
         let count = signal(0_i32);
         let label_text = derived(move || format!("Count: {}", count.get()));
         let mut host = Host::new();

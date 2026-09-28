@@ -60,7 +60,9 @@ plus a dialog; `sheet` is `modal(...).side(Side::Right)
 
 Visibility is display-driven from `show`; the node stays in the tree.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let open = signal(false);
 // ... a button sets open.set(true)
 modal(open)
@@ -71,6 +73,7 @@ modal(open)
         button("Cancel").neutral().activate(move || open.set(false)),
         button("Delete").destructive().activate(move || open.set(false)),
     );
+# };
 ```
 
 ## menu and menu_bar
@@ -97,7 +100,9 @@ another.
 (`Role::Menu`, "Command Menu"), not a search palette. Build a tree of
 entries:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 command_menu()
     .item("New file", || { /* ... */ })
     .submenu("Export", |sub| {
@@ -107,6 +112,7 @@ command_menu()
     .disabled("Print")
     .select(|label| tracing::info!(label, "ran"))
     .cancel(|| tracing::info!("cancelled"));
+# };
 ```
 
 Arrow Up/Down move the cursor, Enter or Arrow Right activates the item
@@ -182,6 +188,6 @@ A modal announces its title when it opens. A toast queue is a live
 
 Run it with `cargo run -p sigil-ui --example widget_overlays`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_overlays.rs}}
 ```

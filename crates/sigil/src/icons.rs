@@ -8,13 +8,14 @@ mod quadratic;
 mod raster;
 
 pub use error::BakeError;
+#[cfg(any(test, feature = "kittest"))]
 pub use quadratic::{QuadCurve, cubic_to_quadratics};
 
 #[cfg(test)]
 #[path = "icons/lib_tests.rs"]
 mod tests;
 
-pub const MAX_PATH_SEGMENTS: u32 = 4096;
+pub(crate) const MAX_PATH_SEGMENTS: u32 = 4096;
 
 #[derive(Debug, Default)]
 pub struct IconBaker {

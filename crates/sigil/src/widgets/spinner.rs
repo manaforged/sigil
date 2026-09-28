@@ -1,7 +1,7 @@
 use core::time::Duration;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::reactive::{derived, register_interval, signal};
+use crate::reactive::{derived, interval, signal};
 use crate::style::{Metrics, NodeStyleExt};
 
 use super::shared::ICON_GLYPH;
@@ -24,7 +24,7 @@ pub fn spinner_frame(tick: u64) -> &'static str {
 #[must_use]
 pub fn spinner() -> NodeBuilder {
     let tick = signal(0_u64);
-    register_interval(PERIOD, move || {
+    interval(PERIOD, move || {
         tick.update(|value| *value = value.wrapping_add(1));
     });
     let grid = Metrics::current().is_grid();

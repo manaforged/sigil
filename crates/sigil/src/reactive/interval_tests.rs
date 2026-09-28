@@ -19,7 +19,7 @@ fn interval_fires_after_period_elapses() {
         __test_set_clock(Instant::now());
         let count = Rc::new(Cell::new(0_u32));
         let writer = Rc::clone(&count);
-        let _id = register_interval(Duration::from_millis(100), move || {
+        let _id = interval(Duration::from_millis(100), move || {
             writer.set(writer.get() + 1);
         });
 
@@ -45,7 +45,7 @@ fn interval_is_cancelled_when_owner_disposed() {
     let writer = Rc::clone(&count);
 
     Runtime::scope("interval::cancel_on_dispose", || {
-        register_interval(Duration::from_millis(50), move || {
+        interval(Duration::from_millis(50), move || {
             writer.set(writer.get() + 1);
         });
     });
@@ -60,8 +60,8 @@ fn interval_is_cancelled_when_owner_disposed() {
 fn next_interval_deadline_reports_soonest_slot() {
     Runtime::scope("interval::soonest", || {
         __test_set_clock(Instant::now());
-        let _a = register_interval(Duration::from_millis(200), || {});
-        let _b = register_interval(Duration::from_millis(50), || {});
+        let _a = interval(Duration::from_millis(200), || {});
+        let _b = interval(Duration::from_millis(50), || {});
         let deadline =
             next_interval_deadline().expect("two intervals registered, deadline must exist");
         let now = Instant::now();
@@ -76,7 +76,7 @@ fn panic_in_callback_does_not_zombify_slot() {
         __test_set_clock(Instant::now());
         let hits = Rc::new(Cell::new(0_u32));
         let writer = Rc::clone(&hits);
-        let _id = register_interval(Duration::from_millis(50), move || {
+        let _id = interval(Duration::from_millis(50), move || {
             let count = writer.get() + 1;
             writer.set(count);
             if count == 1 {
@@ -111,7 +111,7 @@ fn cancel_interval_removes_slot_immediately() {
         __test_set_clock(Instant::now());
         let count = Rc::new(Cell::new(0_u32));
         let writer = Rc::clone(&count);
-        let id = register_interval(Duration::from_millis(10), move || {
+        let id = interval(Duration::from_millis(10), move || {
             writer.set(writer.get() + 1);
         });
         cancel_interval(id);
@@ -132,7 +132,7 @@ fn interval_panic_drains_deferred_cleanups_and_clears_origin() {
         let sig_owner = Owner::new("sig", Owner::current());
         let mark = sig_owner.with(|| signal(0_u32));
         let fx_owner = Owner::new("fx", Owner::current());
-        let _id = register_interval(Duration::from_millis(50), move || {
+        let _id = interval(Duration::from_millis(50), move || {
             if ticks.replace(1) != 0 {
                 return;
             }

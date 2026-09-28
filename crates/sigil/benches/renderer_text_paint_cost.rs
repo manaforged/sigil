@@ -7,10 +7,11 @@
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::hal::Size;
-use sigil::kernel::{TextContent, prelude::*};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::kernel::prelude::*;
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil::scene::{SceneCommand, emit_scene};
 use sigil::text::{OwnedTextEngine, TextConfig};
+use sigil_kittest::FixedMeasure;
 use std::hint::black_box;
 
 fn text_paint_cost(c: &mut Criterion) {
@@ -53,7 +54,7 @@ fn text_paint_cost(c: &mut Criterion) {
     });
 }
 
-fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::renderer::DrawGlyphRun]) {
+fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::scene::DrawGlyphRun]) {
     for draw in runs {
         let run = &draw.run;
         let _ = engine
@@ -62,7 +63,7 @@ fn warm_interim_cache(engine: &OwnedTextEngine, runs: &[&sigil::renderer::DrawGl
     }
 }
 
-fn text_scene() -> sigil::renderer::CommandScene {
+fn text_scene() -> sigil::scene::CommandScene {
     let mut cx = Cx::new_root();
     let mut root = container().layout(LayoutStyle::flex_column().fixed_size(360.0, 1_200.0));
     for index in 0..50 {
@@ -72,19 +73,16 @@ fn text_scene() -> sigil::renderer::CommandScene {
         );
     }
     let root = cx.add(root);
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
         .compute(&mut cx, root, Size::fixed(360.0, 1_200.0))
         .expect("bench scene layout computes");
     emit_scene(&cx, root)
 }
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(160.0, 18.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 160.0,
+    height: 18.0,
+};
 
 criterion_group!(benches, text_paint_cost);
 criterion_main!(benches);

@@ -13,7 +13,7 @@ use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
-use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
+use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun};
 use crate::text::shaper::{Font, Script, Style, TextSegment, classify_segment_script};
 
 pub(crate) fn shape(segment: &TextSegment<'_>, style: &Style, font: &Font) -> Option<GlyphRun> {
@@ -187,16 +187,11 @@ fn build_glyph_run(
         }
     }
     let baseline = face_metrics.ascent;
-    let bbox = Rect {
-        x: min_x,
-        y: -face_metrics.ascent,
-        w: max_x - min_x,
-        h: face_metrics.ascent - face_metrics.descent,
-    };
+    let width = max_x - min_x;
     GlyphRun {
         glyphs: out,
         baseline,
-        bbox,
+        width,
     }
 }
 

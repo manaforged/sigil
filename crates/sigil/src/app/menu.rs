@@ -24,6 +24,7 @@ pub fn events() -> EventChannel<MenuId> {
     EVENTS.with(Clone::clone)
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub fn simulate(id: MenuId) {
     events().emit(id);
 }

@@ -41,8 +41,7 @@ arrives as text, call `sign_file_with_key`. Decode any transport
 encoding first; that function takes the key box itself.
 
 `verify_file(public_key, file, sig, expected_version)` checks the
-signature, the file name in the trusted comment, and, when given, the
-version. It returns the signed version.
+signature, and the file name and version in the trusted comment.
 
 `macos_app` and `windows_dir` build the bundles. `sigil-pack macos`,
 `sigil-pack windows`, `sigil-pack sign`, and `sigil-pack verify` run the

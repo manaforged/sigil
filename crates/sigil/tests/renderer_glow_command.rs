@@ -4,9 +4,9 @@
 )]
 
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, RendererError, SceneBuilder, SceneCommand, SceneRectStyle, Shadow,
-    ShadowKind, WgpuRenderer, WgpuSurface,
+use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::scene::{
+    CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Shadow, ShadowKind,
 };
 use sigil::style::Rgba8;
 

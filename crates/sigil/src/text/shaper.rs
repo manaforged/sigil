@@ -17,7 +17,7 @@ use skrifa::raw::types::Tag;
 use smallvec::SmallVec;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun, Rect};
+use crate::text::glyph::{GlyphId, GlyphPos, GlyphRun};
 
 #[path = "shaper/classify.rs"]
 mod classify_mod;
@@ -293,17 +293,12 @@ fn shape_simple(font: &Font, segment: &TextSegment<'_>, style: &Style) -> GlyphR
     }
 
     let baseline = face_metrics.ascent;
-    let bbox = Rect {
-        x: min_x,
-        y: -face_metrics.ascent,
-        w: max_x - min_x,
-        h: face_metrics.ascent - face_metrics.descent,
-    };
+    let width = max_x - min_x;
 
     GlyphRun {
         glyphs,
         baseline,
-        bbox,
+        width,
     }
 }
 

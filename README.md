@@ -6,8 +6,8 @@ character grid. `Host` embeds the tree in another engine's loop.
 
 ![The workbench example application](docs/workbench.png)
 
-Using a coding agent with Sigil? Give it
-[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md).
+[docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md)
+lists every exported item with its signature in one plain-text file.
 
 The API can change between 0.x releases. Depend on one minor version.
 
@@ -115,7 +115,7 @@ feature. `desktop` is the default. `terminal` adds the terminal host.
 | [User guide](docs/guide/README.md) | Task pages in reading order. Build the book with `mdbook serve docs`. |
 | [Troubleshooting](docs/guide/troubleshooting.md) | No GPU, images in tmux, and terminal colour. |
 | [Recipes](docs/guide/recipes.md) | Keys, theme switching, layout, streaming, timers, terminal hooks, and screen readers. |
-| [API map](docs/api.md) | Every exported item with its signature and an example. Written for agents and tools too. |
+| [API map](docs/api.md) | Every exported item with its signature and an example. Plain Markdown for tools too. |
 | [Architecture](docs/guide/arch/overview.md) | How it works inside. |
 
 The [changelog](CHANGELOG.md) lists each release.

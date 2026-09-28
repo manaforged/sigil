@@ -5,13 +5,13 @@ use crate::hal::{HitPosition, Point, Rect};
 use crate::reactive::Signal;
 use crate::style::TextStyle;
 
-pub struct TextStyleCapture {
+pub(crate) struct TextStyleCapture {
     target: Signal<TextStyle>,
 }
 
 impl TextStyleCapture {
     #[must_use]
-    pub const fn new(target: Signal<TextStyle>) -> Self {
+    pub(crate) const fn new(target: Signal<TextStyle>) -> Self {
         Self { target }
     }
 
@@ -57,6 +57,7 @@ thread_local! {
     static TEXT_GEOMETRY: RefCell<Option<Rc<dyn TextGeometry>>> = const { RefCell::new(None) };
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub fn set_text_geometry(geometry: Rc<dyn TextGeometry>) {
     TEXT_GEOMETRY.with(|cell| *cell.borrow_mut() = Some(geometry));
 }
@@ -67,7 +68,7 @@ pub(crate) fn swap_geometry(
     TEXT_GEOMETRY.with(|cell| core::mem::replace(&mut *cell.borrow_mut(), geometry))
 }
 
-pub fn with_text_geometry<R>(f: impl FnOnce(&dyn TextGeometry) -> R) -> Option<R> {
+pub(crate) fn with_text_geometry<R>(f: impl FnOnce(&dyn TextGeometry) -> R) -> Option<R> {
     let provider = TEXT_GEOMETRY.with(|cell| cell.borrow().clone());
     provider.map(|geometry| f(geometry.as_ref()))
 }

@@ -16,7 +16,9 @@ pub(crate) fn apply(
     let clickable = router.is_click_target(cx, layout, target);
     match request.action {
         Action::Focus if focusable => router.set_focus(cx, Some(target)),
-        Action::Click if clickable => crate::events::invoke_node(cx, layout, target),
+        Action::Click if clickable => {
+            crate::events::pointer_dispatch::invoke_node(cx, layout, target);
+        }
         Action::Increment if focusable => adjust_value(cx, target, true),
         Action::Decrement if focusable => adjust_value(cx, target, false),
         Action::SetValue | Action::SetTextSelection if focusable => {

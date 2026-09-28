@@ -17,9 +17,11 @@ pub(crate) mod style;
 
 pub use crate::style::NumericAtomKind;
 pub use animator::{Animator, AnimatorStatus};
+#[cfg(any(test, feature = "kittest"))]
+pub use binding_animate::ANIMATION_REGISTRY_MISS;
 pub use binding_animate::{
-    ANIMATION_REGISTRY_MISS, AttachedAnimator, AttachedAnimators, AttachedColorAnimator,
-    install_animators, install_animators_themed,
+    AttachedAnimator, AttachedAnimators, AttachedColorAnimator, install_animators,
+    install_animators_themed,
 };
 pub use binding_animate_color::{lerp_rgba8, linear_channel_to_srgb, srgb_channel_to_linear};
 pub use config::AnimationConfig;

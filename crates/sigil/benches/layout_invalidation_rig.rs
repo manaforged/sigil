@@ -8,9 +8,10 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil_kittest::CharMeasure;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 720.0;
@@ -20,21 +21,10 @@ const ROW_HEIGHT: f32 = 7.2;
 const LEAF_WIDTH: f32 = 12.8;
 const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
-    )]
-    fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
-        let chars = match source {
-            TextContent::Static(value) => value.chars().count() as f32,
-            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
-        };
-        LogicalSize::new(chars * 8.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 16.0,
+};
 
 fn bench_static_frame(c: &mut Criterion) {
     c.bench_function("layout_invalidation/S1_static_10k", |b| {
@@ -114,7 +104,7 @@ fn build_10k_tree() -> (Cx, NodeId, LayoutEngine) {
         root_builder = root_builder.child(row());
     }
     let root = cx.add(root_builder);
-    let engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
     (cx, root, engine)
 }
 

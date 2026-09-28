@@ -8,7 +8,7 @@ pub(crate) mod focus;
 mod handlers;
 pub(crate) mod hit_test;
 mod ime_handlers;
-mod pointer_dispatch;
+pub(crate) mod pointer_dispatch;
 pub mod prelude;
 mod router;
 pub(crate) mod selection;
@@ -27,6 +27,7 @@ pub use router::EventRouter;
 pub use selection::SelectableText;
 pub use window_command::{request_window_command, take_window_commands};
 
+#[cfg(any(test, feature = "kittest"))]
 pub fn invoke_node(
     cx: &crate::kernel::Cx,
     layout: &crate::layout::LayoutEngine,

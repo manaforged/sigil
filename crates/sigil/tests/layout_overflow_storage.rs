@@ -4,7 +4,7 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::layout::{LayoutStyle, Overflow, style_adapter::apply_style_atoms};
+use sigil::layout::{LayoutStyle, Overflow, apply_style_atoms};
 use sigil::style::{OverflowKind, StyleAtom};
 
 #[test]

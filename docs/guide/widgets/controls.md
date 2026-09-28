@@ -15,11 +15,14 @@ closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
 `button(label) -> ButtonBuilder`. `label` is `impl Into<TextContent>`:
 a `&str`, `String`, `Signal<String>`, or `TextContent::compute(f)`.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let count = signal(0_i32);
 button("Increment").primary().activate(move || {
     count.set(count.peek() + 1);
 });
+# };
 ```
 
 Key options:
@@ -58,11 +61,14 @@ hover, pressed, focus, and disabled states. The label is a Unicode glyph. Chain
 vector check mark. `Role::CheckBox`; publishes `checked` to the
 accessibility tree.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let agreed = signal(false);
 checkbox(agreed).label("Accept terms").change(|on| {
     tracing::info!(on, "checkbox");
 });
+# };
 ```
 
 Key options: `.label(impl Into<TextContent>)` puts a label beside the
@@ -90,12 +96,15 @@ label text or "Toggle".
 `radio_group(Signal<String>) -> RadioGroupBuilder`. A vertical stack of
 options bound to a string key.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let mode = signal(String::from("auto"));
 radio_group(mode)
     .option("auto", "Automatic")
     .option("manual", "Manual")
     .tone(Tone::Primary);
+# };
 ```
 
 `.option(key, label)` appends a row (`Role::RadioButton`, publishes
@@ -111,11 +120,14 @@ group from the focus order, and paints it at the disabled opacity.
 thumb on a filled track. `Role::Slider`; publishes the value, the
 range, and the step so assistive tech can issue Increment/Decrement.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let volume = signal(50.0_f32);
 slider(volume, 0.0..=100.0)
     .step(5.0)
     .change(|v| tracing::info!(v, "volume"));
+# };
 ```
 
 Key options:
@@ -165,6 +177,6 @@ leaves the focus order.
 The example builds one of each control. Run it with
 `cargo run -p sigil-ui --example widget_controls`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_controls.rs}}
 ```

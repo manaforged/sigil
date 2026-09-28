@@ -34,14 +34,20 @@ handles are built on it — use it for any drag-to-adjust control.
 `DragState::<T>::new()` is a shared session object for one drag type;
 `T: Clone`.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let node = container();
+# let bin = container();
+# let payload_string = String::from("task:1");
+# let _ = {
 let drag = DragState::<String>::new();
 // source:
-node.drag_source(drag, payload_string);
+node.drag_source(drag.clone(), payload_string);
 // target:
-bin.drop_target(drag, |item| item.starts_with("task:"), |item| { /* ... */ });
+bin.drop_target(drag.clone(), |item| item.starts_with("task:"), |item| { /* ... */ });
 // floating preview, mounted once at the root:
 drag_ghost(drag, |item| label(item.clone()));
+# };
 ```
 
 - `node.drag_source(state, payload)` (from `DragDropExt`) arms on
@@ -119,6 +125,6 @@ that makes the same change.
 
 Run it with `cargo run -p sigil-ui --example widget_plumbing`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_plumbing.rs}}
 ```

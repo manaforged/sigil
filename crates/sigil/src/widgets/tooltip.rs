@@ -9,7 +9,7 @@ use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TopLayer, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::layout::{Popup, PopupSide, ViewportOverlay};
-use crate::reactive::{IntervalId, Signal, cancel_interval, register_interval, signal};
+use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::{
     ClassSource, DisplayKind, Metrics, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme,
     Token, TransitionId, space,
@@ -122,7 +122,7 @@ impl TooltipBuilder {
                     return;
                 }
                 let pending_for_cb = Rc::clone(&pending_for_enter);
-                let id = register_interval(Duration::from_millis(delay_ms), move || {
+                let id = interval(Duration::from_millis(delay_ms), move || {
                     visible.set(true);
                     if let Some(id) = pending_for_cb.take() {
                         cancel_interval(id);

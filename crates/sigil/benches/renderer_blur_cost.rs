@@ -11,9 +11,10 @@
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sigil::hal::Color;
-use sigil::renderer::{
-    CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient,
-    OffscreenTarget, SceneBuilder, SceneGradientStyle, SceneRectStyle, WgpuRenderer,
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::{
+    CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient, SceneBuilder,
+    SceneGradientStyle, SceneRectStyle,
 };
 use sigil::style::Rgba8;
 use sigil_kittest::gpu::shared_device;

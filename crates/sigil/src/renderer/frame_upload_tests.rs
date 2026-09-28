@@ -3,11 +3,11 @@ use crate::style::Rgba8;
 
 use super::*;
 use crate::renderer::scene_command::{GradientStop, LinearGradient};
-use crate::renderer::{CornerRadii, SceneGradientStyle, SceneRectStyle};
+use crate::scene::{CornerRadii, SceneGradientStyle, SceneRectStyle};
 
 #[test]
 fn capacity_counts_ordered_primitive_payloads() {
-    let mut scene = crate::renderer::SceneBuilder::new();
+    let mut scene = crate::scene::SceneBuilder::new();
     scene.draw_rect(rect(), SceneRectStyle::solid(color()));
     scene.draw_gradient(
         rect(),

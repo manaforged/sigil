@@ -19,7 +19,8 @@ std::fs::write("MyApp-0.1.0-full.nupkg.sig", envelope)?;
 `sign_file` reads the package and returns the envelope as text. The caller
 decides where to write it.
 
-Pass `None` for an unencrypted key.
+Pass `None` for an unencrypted key. An encrypted key without a password
+returns `SignError::PasswordRequired`.
 
 The trusted comment is `file:<name>\tversion:<version>`. The signature
 covers it, so a signature cannot be moved to another file name or version.
@@ -32,20 +33,18 @@ A standard `.sig` file holds the plain envelope. `minisign -Vm <file> -p
 ## Verify a package
 
 ```rust,no_run
-let version = sigil_sign::verify_file(
+sigil_sign::verify_file(
     std::path::Path::new("updater.pub"),
     std::path::Path::new("MyApp-0.1.0-full.nupkg"),
     std::path::Path::new("MyApp-0.1.0-full.nupkg.sig"),
-    Some("0.1.0"),
+    "0.1.0",
 )?;
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
 `verify_file` checks the signature, then checks that the trusted comment
-names the file. If you pass an expected version, it also checks the
-version. A mismatch returns `SignError::TrustedComment`. Pass the version
-you expect to install, so an older signed package is refused. The return
-value is the signed version.
+names the file and the version you expect to install, so an older signed
+package is refused. A mismatch returns `SignError::TrustedComment`.
 
 The application embeds the public key. It verifies each package against the
 signature beside it before it installs the update.

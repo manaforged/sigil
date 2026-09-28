@@ -6,7 +6,7 @@
 
 use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
 
 const SEL: sigil::style::Rgba8 = sigil::style::Rgba8 {
     r: 56,

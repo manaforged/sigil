@@ -11,6 +11,7 @@ enum UnsupportedSlot {
     UnknownThemeRef(&'static str),
 }
 
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn unsupported_style_warning_count_for(token: &'static str, id: NodeId) -> usize {
     let Some(warned) = WARNED_UNSUPPORTED.get() else {

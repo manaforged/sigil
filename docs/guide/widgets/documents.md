@@ -139,6 +139,6 @@ only while the editor has focus.
 
 Run it with `cargo run -p sigil-ui --example widget_documents`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_documents.rs}}
 ```

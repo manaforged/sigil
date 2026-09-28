@@ -21,6 +21,7 @@ pub enum SignError {
     Package(io::Error),
     Envelope(PError),
     TrustedComment(String),
+    PasswordRequired,
 }
 
 impl fmt::Display for SignError {
@@ -31,6 +32,7 @@ impl fmt::Display for SignError {
             Self::Package(error) => write!(f, "read package: {error}"),
             Self::Envelope(error) => write!(f, "signature envelope: {error}"),
             Self::TrustedComment(reason) => write!(f, "trusted comment: {reason}"),
+            Self::PasswordRequired => write!(f, "the secret key is encrypted; give its password"),
         }
     }
 }
@@ -40,7 +42,7 @@ impl Error for SignError {
         match self {
             Self::KeyFile(error) | Self::Package(error) => Some(error),
             Self::Key(error) | Self::Envelope(error) => Some(error),
-            Self::TrustedComment(_) => None,
+            Self::TrustedComment(_) | Self::PasswordRequired => None,
         }
     }
 }
@@ -73,8 +75,8 @@ pub fn verify_file(
     public_key: &Path,
     file: &Path,
     sig: &Path,
-    expected_version: Option<&str>,
-) -> Result<String, SignError> {
+    expected_version: &str,
+) -> Result<(), SignError> {
     let key = PublicKey::from_file(public_key).map_err(SignError::Key)?;
     let signature = SignatureBox::from_file(sig).map_err(SignError::Envelope)?;
     let data = File::open(file).map_err(SignError::Package)?;
@@ -88,12 +90,12 @@ pub fn verify_file(
         )));
     }
     let version = comment_field(&comment, "version")?;
-    match expected_version {
-        Some(expected) if expected != version => Err(SignError::TrustedComment(format!(
-            "signed for version {version}, expected {expected}"
-        ))),
-        _ => Ok(version.to_owned()),
+    if version != expected_version {
+        return Err(SignError::TrustedComment(format!(
+            "signed for version {version}, expected {expected_version}"
+        )));
     }
+    Ok(())
 }
 
 fn comment_field<'a>(comment: &'a str, key: &str) -> Result<&'a str, SignError> {
@@ -115,12 +117,19 @@ fn file_name(path: &Path) -> Result<&str, SignError> {
 }
 
 fn load_key(secret_key: &str, password: Option<&str>) -> Result<SecretKey, SignError> {
-    let password = password.unwrap_or_default().to_owned();
-    SecretKeyBox::from_string(secret_key)
-        .and_then(|boxed| boxed.into_secret_key(Some(password)))
-        .map_err(SignError::Key)
+    let boxed = SecretKeyBox::from_string(secret_key).map_err(SignError::Key)?;
+    boxed
+        .into_secret_key(Some(password.unwrap_or_default().to_owned()))
+        .map_err(|error| match password {
+            None => SignError::PasswordRequired,
+            Some(_) => SignError::Key(error),
+        })
 }
 
 #[cfg(test)]
 #[path = "sign_tests.rs"]
 mod tests;
+
+#[cfg(doctest)]
+#[doc = include_str!("../../../docs/guide/signing.md")]
+pub struct SigningGuide;

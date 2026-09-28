@@ -6,7 +6,7 @@ use skrifa::MetadataProvider;
 use skrifa::instance::{LocationRef, Size};
 use smallvec::SmallVec;
 
-use crate::text::glyph::{GlyphPos, GlyphRun, Rect};
+use crate::text::glyph::{GlyphPos, GlyphRun};
 use crate::text::shaper::{Font, Style, TextSegment};
 
 const SIMPLE: &[u8] = b"0123456789 .,-+%$:/()";
@@ -26,7 +26,6 @@ struct Key {
 struct Entry {
     glyph: GlyphPos,
     ascent: f32,
-    descent: f32,
 }
 
 thread_local! {
@@ -61,7 +60,6 @@ pub(crate) fn shape(
     let mut glyphs: SmallVec<[GlyphPos; 16]> = SmallVec::with_capacity(segment.text.len());
     let mut pen = 0.0_f32;
     let mut ascent = 0.0_f32;
-    let mut descent = 0.0_f32;
     for (offset, ch) in segment.text.bytes().enumerate() {
         let key = Key { ch, ..base };
         let entry = CACHE.with(|cache| {
@@ -81,17 +79,11 @@ pub(crate) fn shape(
         pen += glyph.advance;
         glyphs.push(glyph);
         ascent = entry.ascent;
-        descent = entry.descent;
     }
     Some(GlyphRun {
         glyphs,
         baseline: ascent,
-        bbox: Rect {
-            x: 0.0,
-            y: -ascent,
-            w: pen,
-            h: ascent - descent,
-        },
+        width: pen,
     })
 }
 
@@ -117,7 +109,6 @@ fn shape_char(
     Some(Entry {
         glyph: *glyph,
         ascent: metrics.ascent,
-        descent: metrics.descent,
     })
 }
 

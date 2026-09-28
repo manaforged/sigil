@@ -1,9 +1,9 @@
-# Driving Sigil from an agent
+# Headless driving and automation
 
 A Sigil app can run headless. `Host` owns the tree without a window,
 `EventRouter` takes synthetic `ShellEvent`s, and
 `Host::accessibility_tree` returns an AccessKit `TreeUpdate` — the same
-snapshot a screen reader sees. An agent drives the UI through those
+snapshot a screen reader sees. A test or automation script drives the UI through those
 three calls: read the tree, route events, read it again.
 
 `sigil::a11y::snapshot` renders the `TreeUpdate`
@@ -14,7 +14,7 @@ then route `PointerPhase::Move`, `Down` (button
 `Some(MouseButton::Left)`), then `Up`; `Up` without the button does not
 release a press.
 
-Run `cargo run -p sigil-ui --example agent_driver` for the complete
+Run `cargo run -p sigil-ui --example headless_driver` for the complete
 loop: it mounts a counter, prints the snapshot, finds `Increment` by
 name, clicks it, and prints the snapshot and painted text again.
 
@@ -23,8 +23,8 @@ name, clicks it, and prints the snapshot and painted text again.
 `sigil::terminal` exposes the same drive without the terminal:
 `sigil::terminal::present(tree, cols, rows, events)` mounts, routes, and
 returns the rendered grid as a string. `sigil::terminal::step` advances an
-existing `Host`/`EventRouter` pair by one frame. Agents that drive a
-terminal app get the screen as text on every step.
+existing `Host`/`EventRouter` pair by one frame. A driver of a
+terminal app gets the screen as text on every step.
 
 ## Golden images
 
@@ -32,7 +32,9 @@ terminal app get the screen as text on every step.
 through `EventRouter`, renders the scene offscreen with wgpu, and
 compares pixels against a committed golden:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
 let Some(img) = sigil_kittest::render_widget_to_png(
     |cx| cx.add(button("Save")),
     sigil_kittest::InteractionMode::Default,
@@ -43,6 +45,8 @@ else {
     return Ok(());
 };
 sigil_kittest::assert_png_matches_golden(&img, &sigil_kittest::golden_path!("save"), 0.5);
+# Ok(())
+# }
 ```
 
 It returns `Err(Error::NoAdapter)` when no GPU adapter exists, and

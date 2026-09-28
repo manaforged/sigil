@@ -1,3 +1,4 @@
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, AtomicU64, Ordering},

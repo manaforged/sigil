@@ -1,16 +1,15 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeId, TextContent, container};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeId, container};
+use sigil::layout::LayoutEngine;
 use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil::layout::{LayoutEngine, TextMeasure};
+use sigil_kittest::FixedMeasure;
 use std::hint::black_box;
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: sigil::hal::Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 0.0,
+    height: 0.0,
+};
 const CHILDREN: usize = 1_000;
 const LEAVES: usize = 100;
 fn build(cx: &mut Cx) -> NodeId {
@@ -28,7 +27,7 @@ fn bench_resize(c: &mut Criterion) {
     c.bench_function("resize/owned", |b| {
         let mut cx = Cx::new_root();
         let root = build(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, Size::fixed(12800.0, 100.0))
             .expect("bench harness invariant");

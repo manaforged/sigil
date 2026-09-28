@@ -54,8 +54,9 @@ accepts it. Do not put the password on the command line. See
 sigil-pack verify --pub updater.pub --file package.nupkg --version 0.1.0
 ```
 
-`--sig` defaults to `<file>.sig`. Without `--version`, the command checks
-the signature and the file name, and prints the signed version.
+`--sig` defaults to `<file>.sig`. `--version` is required: the command
+checks the signature, the file name, and the version, so an older signed
+package is refused.
 
 ## Generate a key
 

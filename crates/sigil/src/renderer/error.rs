@@ -9,7 +9,6 @@ pub enum RendererError {
     NoSupportedFormat,
     SurfaceValidation,
     NotInitialized,
-    InvalidViewProj,
     InvalidViewport,
     Layer(crate::renderer::layer_pool::LayerError),
     Software(String),
@@ -30,9 +29,6 @@ impl fmt::Display for RendererError {
             Self::Software(detail) => write!(f, "software renderer failed: {detail}"),
             Self::NotInitialized => {
                 f.write_str("renderer has not yet picked a GPU device; call create_surface first")
-            }
-            Self::InvalidViewProj => {
-                f.write_str("view_proj matrix contains a non-finite value (NaN or infinity)")
             }
             Self::InvalidViewport => {
                 f.write_str("viewport dimensions must be strictly positive (width > 0, height > 0)")
@@ -59,7 +55,6 @@ impl core::error::Error for RendererError {
             | Self::NoSupportedFormat
             | Self::SurfaceValidation
             | Self::NotInitialized
-            | Self::InvalidViewProj
             | Self::InvalidViewport
             | Self::Layer(_)
             | Self::Software(_) => None,

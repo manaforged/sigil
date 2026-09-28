@@ -244,12 +244,6 @@ impl DrawPattern {
             stroke: style.stroke,
         }
     }
-
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
-    pub(crate) const fn with_node(mut self, node: NodeId) -> Self {
-        self.node = Some(node);
-        self
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

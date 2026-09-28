@@ -1,3 +1,4 @@
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use crate::text::error::TextError;
 use crate::text::font_family::FontFamily;
 use crate::text::fonts::DefaultFontSource;
@@ -73,11 +74,13 @@ impl FontCollection {
         }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn primary(&self) -> &Font {
         self.sans.select(400)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn select(&self, family: &str) -> &Font {
         self.select_weight(family, 400)

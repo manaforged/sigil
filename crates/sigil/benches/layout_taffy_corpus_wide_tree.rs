@@ -8,9 +8,10 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
 
 const ROOT_WIDTH: f32 = 12_800.0;
@@ -23,13 +24,10 @@ const CHILDREN: usize = 1_000;
 const GRANDCHILDREN_PER_CHILD: usize = 100;
 const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 0.0,
+    height: 0.0,
+};
 
 const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
@@ -79,7 +77,7 @@ fn bench_owned_wide_tree(c: &mut Criterion) {
     c.bench_function("wide_tree/owned", |b| {
         let mut cx = Cx::new_root();
         let root = build_owned_wide_tree(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

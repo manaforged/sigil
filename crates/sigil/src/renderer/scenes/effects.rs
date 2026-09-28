@@ -2,7 +2,7 @@ use crate::hal::{Color, Point};
 
 use super::helpers::{rect, rgba};
 use crate::renderer::scene_command::{GradientStop, LinearGradient};
-use crate::renderer::{
+use crate::scene::{
     CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneGradientStyle,
     SceneRectStyle,
 };

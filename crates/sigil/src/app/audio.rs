@@ -1,4 +1,4 @@
-use crate::reactive::{IntervalId, cancel_interval, register_interval};
+use crate::reactive::{IntervalId, cancel_interval, interval};
 use crate::reactive::{Signal, signal};
 
 #[derive(Clone)]
@@ -162,7 +162,7 @@ fn play_rodio(player: &Player, path: &std::path::Path) -> crate::app::AppResult<
         interval: None,
     });
     let ticking = player.clone();
-    let id = register_interval(Duration::from_millis(50), move || ticking.tick());
+    let id = interval(Duration::from_millis(50), move || ticking.tick());
     if let Some(device) = player.device.borrow_mut().as_mut() {
         device.interval = Some(id);
     }

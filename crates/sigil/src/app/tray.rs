@@ -21,6 +21,7 @@ pub fn events() -> EventChannel<TrayIconEvent> {
     EVENTS.with(Clone::clone)
 }
 
+#[cfg(any(test, feature = "kittest"))]
 pub fn simulate(event: TrayIconEvent) {
     events().emit(event);
 }

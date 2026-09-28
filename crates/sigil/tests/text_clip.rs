@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil::renderer::SceneCommand;
+use sigil::scene::SceneCommand;
 
 const LONG: &str = "an over-long single-line value that cannot fit a ninety-six pixel box";
 
@@ -28,7 +28,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::hal::Rect>, sigil::hal::Rect) {
             .expect("layout");
         let text_id = *cx.get(root).unwrap().children().first().unwrap();
         let rect = layout.result(text_id).unwrap().rect();
-        let scene = sigil::renderer::emit_scene(&cx, root);
+        let scene = sigil::scene::emit_scene(&cx, root);
         let mut clip: Option<sigil::hal::Rect> = None;
         let mut hit = None;
         for command in &scene.commands {

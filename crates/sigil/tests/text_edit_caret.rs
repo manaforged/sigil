@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
 
 fn caret_rects(cx: &Cx, root: NodeId) -> Vec<sigil::hal::Rect> {
     emit_scene(cx, root)

@@ -3,7 +3,7 @@ use web_time::Instant;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Signal, register_interval, signal};
+use crate::reactive::{Signal, interval, signal};
 use crate::style::{NodeStyleExt, Token, Tone, space};
 
 use super::dot::dot;
@@ -99,7 +99,7 @@ impl ToastQueue {
 
 #[must_use]
 pub fn toast_queue(queue: ToastQueue) -> NodeBuilder {
-    register_interval(SWEEP_PERIOD, move || queue.dismiss_expired(Instant::now()));
+    interval(SWEEP_PERIOD, move || queue.dismiss_expired(Instant::now()));
     container()
         .role(Role::Status)
         .layout(stack_layout())

@@ -10,10 +10,10 @@ use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use sigil::hal::{LogicalSize, Scale, Size};
-use sigil::kernel::TextContent;
+use sigil::hal::{Scale, Size};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container, text};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil_kittest::CharMeasure;
 
 const ROOT_WIDTH: f32 = 1280.0;
 const ROOT_HEIGHT: f32 = 1000.0;
@@ -28,23 +28,13 @@ enum BenchCommand {
     Stop,
 }
 
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel/char magnitudes are bounded; sub-unit precision is irrelevant"
-    )]
-    fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
-        let chars = match source {
-            TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
-        };
-        LogicalSize::new(chars * 8.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 16.0,
+};
 
 fn stub_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
 }
 
 fn tree_with_text_children(count: usize) -> NodeBuilder {

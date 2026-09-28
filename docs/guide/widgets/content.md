@@ -11,9 +11,12 @@ derived string. `text_live(f)` is shorthand for the compute form.
 `label(source)` is `text(source).nowrap().class("text-on-surface")` —
 the single-line foreground-text convenience.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let count = signal(0_i32);
 label(TextContent::compute(move || format!("Count: {}", count.get())));
+# };
 ```
 
 `TextBuilder` options: `.wrap()` (default) / `.nowrap()` /
@@ -61,12 +64,15 @@ vertical band, plus the usual `.width()`/`.height()` layout overrides.
 `path(width, height) -> PathNode` — a tiny vector canvas rasterized
 through tiny-skia into an image. Build with commands:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 path(16, 16)
     .move_to(2.0, 8.0)
     .line_to(14.0, 8.0)
     .stroke(Rgba8 { r: 255, g: 255, b: 255, a: 255 }, 2.0)
     .fit();
+# };
 ```
 
 Commands: `.move_to`, `.line_to`, `.quad_to`, `.cubic_to`, `.close`.
@@ -136,6 +142,6 @@ example `.focusable(true)` and `.key(...)` on a `text` node.
 
 Run it with `cargo run -p sigil-ui --example widget_content`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_content.rs}}
 ```

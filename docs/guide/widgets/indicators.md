@@ -10,9 +10,12 @@ Read-only status visuals. They paint state; except for chip with
 label in a tinted `rounded-full` pill. `badge(label, Tone)` is the same
 builder. The label renders as written; write it in sentence case.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 chip("Stable", Tone::Success);
 badge("3", Tone::Error);
+# };
 ```
 
 - `.tone(Tone)` retints statically; `.tone_signal(Signal<Tone>)`
@@ -38,9 +41,12 @@ focusable.
 proportional fill. `Role::ProgressIndicator`; publishes the value over
 0..max.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let cpu = signal(0.42_f32);
 gauge(cpu).max(1.0).label("CPU").warn(0.2);
+# };
 ```
 
 - `.max(f32)` sets the denominator (default 1.0; values below
@@ -56,9 +62,12 @@ gauge(cpu).max(1.0).label("CPU").warn(0.2);
 `progress(Signal<f32>, max: f32) -> ProgressBuilder`. An 8 px fill bar.
 `Role::ProgressIndicator`.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let done = signal(30.0_f32);
 progress(done, 100.0);
+# };
 ```
 
 - `.height(px)` and `.width(px)` size the track; the default fills the
@@ -102,6 +111,6 @@ the default state. They take no keys, except a chip with `.activate()`.
 
 Run it with `cargo run -p sigil-ui --example widget_indicators`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_indicators.rs}}
 ```

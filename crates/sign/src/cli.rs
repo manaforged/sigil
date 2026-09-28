@@ -191,14 +191,9 @@ fn pack_verify(argv: &[String]) -> Result<(), String> {
     let key = flag(argv, "--pub")?.ok_or("missing --pub")?;
     let file = flag(argv, "--file")?.ok_or("missing --file")?;
     let sig = flag(argv, "--sig")?.unwrap_or_else(|| format!("{file}.sig"));
-    let expected = flag(argv, "--version")?;
-    let version = verify_file(
-        Path::new(&key),
-        Path::new(&file),
-        Path::new(&sig),
-        expected.as_deref(),
-    )
-    .map_err(|e| e.to_string())?;
+    let version = flag(argv, "--version")?.ok_or("missing --version")?;
+    verify_file(Path::new(&key), Path::new(&file), Path::new(&sig), &version)
+        .map_err(|e| e.to_string())?;
     eprintln!("verified {file} version {version}");
     Ok(())
 }

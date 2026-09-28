@@ -35,6 +35,7 @@ impl Cx {
         self.post_announcement(text.into(), Live::Assertive);
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn live_region_id(&self) -> Option<NodeId> {
         self.live_region

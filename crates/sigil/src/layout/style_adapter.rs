@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
 use crate::style::{
     AlignKind, Dimension as StyleDimension, DisplayKind, FlexDir, FlexWrapKind, JustifyKind,

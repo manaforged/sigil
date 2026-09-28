@@ -5,25 +5,26 @@ use skrifa::instance::Size;
 use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ColorGlyphRaster {
-    pub width: u32,
-    pub height: u32,
-    pub rgba: Vec<u8>,
-    pub ppem: f32,
+pub(crate) struct ColorGlyphRaster {
+    pub(crate) width: u32,
+    pub(crate) height: u32,
+    pub(crate) rgba: Vec<u8>,
+    pub(crate) ppem: f32,
 }
 
 #[must_use]
-pub fn has_color_glyphs(font: &FontRef<'_>) -> bool {
+pub(crate) fn has_color_glyphs(font: &FontRef<'_>) -> bool {
     !font.bitmap_strikes().is_empty() || super::colr_paint::has_colr(font)
 }
 
 #[must_use]
-pub fn glyph_for_char(font: &FontRef<'_>, ch: char) -> Option<GlyphId> {
+#[cfg(test)]
+pub(crate) fn glyph_for_char(font: &FontRef<'_>, ch: char) -> Option<GlyphId> {
     font.charmap().map(ch)
 }
 
 #[must_use]
-pub fn rasterize(
+pub(crate) fn rasterize(
     font: &FontRef<'_>,
     gid: GlyphId,
     px_per_em: f32,

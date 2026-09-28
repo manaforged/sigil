@@ -13,12 +13,17 @@ implementing `IntoList` — a `Vec<T>`, or a `Signal<S>` whose target is
 signal changes, the list rebuilds the rows in its window. With
 `.key_by` or `.identified()`, only rows with a new key rebuild.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# struct Row { name: String, detail: String }
+# let rows = vec![Row { name: "a.txt".into(), detail: "4 KB".into() }];
+# let _ = {
 virtual_list(rows, |index, row| {
     list_row(index == 3, row.name.clone(), row.detail.clone())
 })
 .selection(SelectionMode::Single)
 .viewport_height(400.0);
+# };
 ```
 
 Only the rows inside the viewport plus an overscan margin are
@@ -88,18 +93,23 @@ Key options:
 `table(TableState<Row>) -> TableBuilder<Row>`. The body is a virtual
 list, so large row sets stay cheap; the header is rendered once.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# struct Row { name: String, size: u64 }
+# let rows = vec![Row { name: "a.txt".into(), size: 4096 }];
+# let _ = {
 let state = TableState::new(
     rows,
     vec![
         TableColumn::new("name", "Name")
-            .sort_by(|r| r.name.clone())
+            .sort_by(|r: &Row| r.name.clone())
             .filterable(|r, q| r.name.contains(q))
             .cell(|r| label(r.name.clone())),
-        TableColumn::new("size", "Size").numeric().cell(|r| label(format!("{} B", r.size))),
+        TableColumn::new("size", "Size").numeric().cell(|r: &Row| label(format!("{} B", r.size))),
     ],
 );
 table(state).striped().viewport_fill();
+# };
 ```
 
 `TableColumn::new(id: &'static str, title)`:
@@ -201,6 +211,6 @@ A selected row keeps the `accent-5` wash. Hover and pressed rows show
 
 Run it with `cargo run -p sigil-ui --example widget_data`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_data.rs}}
 ```

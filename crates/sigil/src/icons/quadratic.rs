@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
 use lyon_geom::{CubicBezierSegment, Point, QuadraticBezierSegment};
 use usvg::tiny_skia_path::PathSegment;
@@ -75,6 +76,7 @@ pub(crate) fn to_quads(paths: &[SvgPath]) -> Result<Vec<QuadCurve>, BakeError> {
     Ok(quads)
 }
 
+#[cfg(any(test, feature = "kittest"))]
 #[must_use]
 pub fn cubic_to_quadratics(
     p0: (f32, f32),

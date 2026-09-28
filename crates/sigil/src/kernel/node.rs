@@ -90,6 +90,7 @@ impl Node {
         &self.children
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn has_extensions(&self) -> bool {
         self.extensions

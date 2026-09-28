@@ -3,10 +3,13 @@
 App state is a signal graph. A signal holds a value. A write to the
 signal is the invalidation; there is no separate notify call.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let count = signal(0_i32);
 let label = derived(move || format!("Count: {}", count.get()));
 button("Increment").activate(move || count.set(count.peek() + 1));
+# };
 ```
 
 `get` subscribes the current effect or derived. `peek` reads without

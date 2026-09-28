@@ -3,7 +3,6 @@
 use crate::kernel::Node;
 use crate::style::{FocusRing, Px, Rgba8, StyleEngine, Theme};
 
-pub use crate::style::unsupported_style_warning_count_for;
 pub(crate) use crate::style::{render_style_for, text_style_for};
 
 use crate::scene::corner_radii::CornerRadii;

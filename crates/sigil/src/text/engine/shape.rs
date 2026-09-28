@@ -12,7 +12,10 @@ pub(super) struct ShapedSegment {
     pub(super) breakable_before: bool,
     pub(super) is_hard_break: bool,
     pub(super) level: u8,
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
+    #[cfg_attr(
+        not(any(test, debug_assertions)),
+        expect(dead_code, reason = "read only by debug_segments_for_tests")
+    )]
     pub(super) script: Script,
     pub(super) face_slot: u16,
 }

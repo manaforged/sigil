@@ -10,11 +10,14 @@ every edit and then call `.change()` as a side effect — you do not need
 with placeholder, selection, undo history, IME preedit, and clipboard
 shortcuts.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let name = signal(String::new());
 text_field(name)
     .placeholder("Display name")
     .submit(|value| tracing::info!(value, "submitted"));
+# };
 ```
 
 Key options:
@@ -63,8 +66,8 @@ signal, and a selection signal. `state.select(byte, extend)` moves or
 extends the caret, `state.insert(text)` inserts at the caret,
 `state.replace(text)` rewrites the buffer, and `state.selection()`
 returns `Option<Range<usize>>` (`None` when there is no selection
-anchor). Use it when a second widget or an
-agent must edit the buffer programmatically.
+anchor). Use it when a second widget or a
+script must edit the buffer programmatically.
 
 Editing keys add: Arrow Up/Down, PageUp/PageDown, Alt+Left/Right (or
 Alt+B/F) for word motion, Alt+Backspace and Ctrl+W to kill a word
@@ -77,9 +80,12 @@ Shift on any motion key to extend the selection.
 where `T: NumericKind` — a sealed trait implemented for `i32`, `i64`,
 `usize`, `f32`, and `f64`. A text field that parses and clamps:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let quantity = signal(1_i32);
 number_field(quantity, 1..=99);
+# };
 ```
 
 The visible buffer is a separate string signal. Edits parse on every
@@ -123,10 +129,13 @@ the helpers the widget itself uses.
 filterable popup list. Unlike the other builders, the state is a
 standalone object you construct first:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let state = Combobox::new(vec!["Rust".into(), "Go".into(), "Zig".into()])
     .placeholder("Language");
 combobox(state);
+# };
 ```
 
 `Combobox` holds the option list, the query, the selection, the popup
@@ -150,10 +159,13 @@ signal that rebuilds the field so the label repaints.
 `dropdown(Signal<usize>, Vec<String>) -> DropdownBuilder`. A trigger
 button plus a popup list — pick by index, not free text.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 let choice = signal(0_usize);
 dropdown(choice, vec!["Small".into(), "Large".into()])
     .change(|i| tracing::info!(i, "picked"));
+# };
 ```
 
 `.label()` names the control for accessibility (default "Dropdown");
@@ -207,6 +219,6 @@ the same name.
 
 Run it with `cargo run -p sigil-ui --example widget_fields`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_fields.rs}}
 ```

@@ -14,12 +14,12 @@ impl ReactivePosition {
 }
 
 #[derive(Clone, Copy)]
-pub struct SizeReactive {
+pub(crate) struct SizeReactive {
     size: Signal<(f32, f32)>,
 }
 
 impl SizeReactive {
-    pub fn publish(&self, size: (f32, f32)) -> bool {
+    pub(crate) fn publish(self, size: (f32, f32)) -> bool {
         let changed = self.size.try_peek().is_some_and(|current| current != size);
         if changed {
             self.size.set(size);

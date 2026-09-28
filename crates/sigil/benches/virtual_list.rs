@@ -14,11 +14,12 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil::reactive::signal;
 use sigil::widgets::virtual_list;
+use sigil_kittest::FixedMeasure;
 
 const TOTAL_ROWS: usize = 100_000;
 const ROW_HEIGHT: f32 = 32.0;
@@ -32,13 +33,10 @@ const ROW_WIDTH: f32 = ID_CELL_W + LABEL_CELL_W + ACTION_CELL_W + SPACER_CELL_W;
 
 const AVAILABLE: Size = Size::fixed(VIEWPORT_WIDTH, VIEWPORT_HEIGHT);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 0.0,
+    height: 0.0,
+};
 
 #[derive(Clone, Copy)]
 struct RowData {
@@ -77,7 +75,7 @@ fn bench_first_render(c: &mut Criterion) {
                     let data = make_data_source();
                     let scroll_y = signal(0.0_f32);
                     let cx = Cx::new_root();
-                    let engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+                    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
                     (data, scroll_y, cx, engine)
                 },
                 |(data, scroll_y, mut cx, mut engine)| {
@@ -103,7 +101,7 @@ fn bench_scroll_step(c: &mut Criterion) {
                 || {
                     let data = data.clone();
                     let cx = Cx::new_root();
-                    let engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+                    let engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
                     (data, cx, engine)
                 },
                 |(data, mut cx, mut engine)| {

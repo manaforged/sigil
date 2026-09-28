@@ -1,7 +1,7 @@
 use crate::hal::{Color, Rect};
 
 use super::helpers::{rect, rgba};
-use crate::renderer::{
+use crate::scene::{
     CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneRectStyle,
 };
 

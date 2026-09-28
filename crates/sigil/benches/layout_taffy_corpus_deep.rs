@@ -8,9 +8,10 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
 
 const DEPTH: usize = 17;
@@ -18,13 +19,10 @@ const ROOT_WIDTH: f32 = 800.0;
 const ROOT_HEIGHT: f32 = 800.0;
 const AVAILABLE: Size = Size::fixed(ROOT_WIDTH, ROOT_HEIGHT);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 0.0,
+    height: 0.0,
+};
 
 const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
@@ -74,7 +72,7 @@ fn bench_owned_deep_random(c: &mut Criterion) {
     c.bench_function("deep_random/owned", |b| {
         let mut cx = Cx::new_root();
         let root = build_owned_deep_random(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");
@@ -157,7 +155,7 @@ fn bench_owned_deep_auto(c: &mut Criterion) {
     c.bench_function("deep_auto/owned", |b| {
         let mut cx = Cx::new_root();
         let root = build_owned_deep_auto(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

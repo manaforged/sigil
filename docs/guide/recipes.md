@@ -31,6 +31,8 @@ also works.
 ### Bind a key on a focused node
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 
 fn tree(cx: &mut Cx) -> NodeId {
@@ -49,6 +51,8 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("keys").terminal(), tree)
 }
+# }
+# fn main() {}
 ```
 
 `request_focus` gives the node keyboard focus. Without focus, a node
@@ -62,6 +66,8 @@ many shortcuts. A plain character shortcut does not fire while a text
 input has focus, so typing `q` into a field does not quit.
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 
 fn tree(cx: &mut Cx) -> NodeId {
@@ -77,6 +83,8 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("global keys").terminal(), tree)
 }
+# }
+# fn main() {}
 ```
 
 ### See every key before the focused widget
@@ -227,6 +235,8 @@ height and `cols(1.0)` is one character advance. Use text-relative
 units in a tree that runs on both hosts. See [Units](units.md).
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 
 fn tree(cx: &mut Cx) -> NodeId {
@@ -248,10 +258,13 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("layout").terminal(), tree)
 }
+# }
+# fn main() {}
 ```
 
-`viewport_size()` returns the viewport as a signal, in logical px on a
-window and in cells on the terminal. Read it in a `derived` or a
+`viewport_size()` returns the viewport as a signal, in logical px on
+every host. On the terminal one cell is `Host::CELL` px, so divide by
+it to get columns and rows. Read it in a `derived` or a
 `children_reactive` closure to adapt the tree to the size.
 
 ```rust,no_run
@@ -277,6 +290,8 @@ transcript is not copied on each chunk. Read it with `Signal::with` to
 avoid a clone.
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 use std::time::Duration;
 
@@ -296,6 +311,8 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("stream").terminal(), tree)
 }
+# }
+# fn main() {}
 ```
 
 The future runs on the app's tokio runtime. Wait inside it with
@@ -443,6 +460,8 @@ interval stops when its owner is disposed, or when you call
 `sigil::reactive::cancel_interval(id)`. It needs no thread.
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 use std::time::Duration;
 
@@ -464,6 +483,8 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("timer").terminal(), tree)
 }
+# }
+# fn main() {}
 ```
 
 `spinner()` is a text node that uses the same interval registry.
@@ -482,6 +503,8 @@ These functions work in the terminal host. Outside the terminal host,
 | `sigil::request_exit()` | Exit after this frame, on any host. |
 
 ```rust,no_run
+# #[cfg(feature = "terminal")]
+# mod terminal_only {
 use sigil::prelude::*;
 
 fn edit() {
@@ -505,6 +528,8 @@ fn tree(cx: &mut Cx) -> NodeId {
 fn main() -> AppResult<()> {
     sigil::run(AppConfig::new("hooks").terminal().quit_on_ctrl_c(false), tree)
 }
+# }
+# fn main() {}
 ```
 
 With `quit_on_ctrl_c(false)`, Ctrl+C reaches the tree as a key event,

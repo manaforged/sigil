@@ -113,7 +113,7 @@ fn host_paint_skips_surface_children() {
         let rects = scene
             .commands
             .iter()
-            .filter(|command| matches!(command, sigil::renderer::SceneCommand::Rect(_)))
+            .filter(|command| matches!(command, sigil::scene::SceneCommand::Rect(_)))
             .count();
         assert_eq!(rects, 0, "hole fill must not emit a rect");
         assert!(

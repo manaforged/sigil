@@ -5,7 +5,8 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{OffscreenTarget, SceneBuilder, SceneRectStyle};
+use sigil::renderer::OffscreenTarget;
+use sigil::scene::{SceneBuilder, SceneRectStyle};
 use sigil::style::Rgba8;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -63,7 +64,7 @@ fn ordered_batches_share_one_rect_upload_buffer() {
     );
 }
 
-fn two_batch_scene() -> sigil::renderer::CommandScene {
+fn two_batch_scene() -> sigil::scene::CommandScene {
     let mut scene = SceneBuilder::new();
     scene.draw_rect(rect(4.0, 4.0), SceneRectStyle::solid(color(220, 60, 80)));
     scene.with_clip(Rect::new(Point::new(48.0, 0.0), 48.0, 48.0), |scene| {

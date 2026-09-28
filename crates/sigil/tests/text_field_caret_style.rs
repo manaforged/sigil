@@ -9,7 +9,7 @@ use std::rc::Rc;
 use sigil::hal::{HitPosition, Rect, TextAffinity};
 use sigil::layout::{TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil::renderer::{CommandScene, SceneCommand, emit_scene};
+use sigil::scene::{CommandScene, SceneCommand, emit_scene};
 
 const VALUE: &str = "Testing this is a complet";
 

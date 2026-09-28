@@ -30,12 +30,9 @@ pub use channel::{EventChannel, Subscription};
 pub use derived::{derived, derived_eq};
 pub(crate) use effect::{current_effect_owner, run_dispatch_deferred};
 pub use effect::{defer, effect, effect_named, untrack};
-#[cfg(any(test, feature = "kittest"))]
+#[cfg(any(test, feature = "test-clock"))]
 pub use interval::{__test_advance_clock, __test_clear_clock, __test_set_clock};
-pub use interval::{
-    IntervalId, cancel_interval, interval, next_interval_deadline, register_interval,
-    tick_intervals,
-};
+pub use interval::{IntervalId, cancel_interval, interval, next_interval_deadline, tick_intervals};
 pub use owner::{Owner, OwnerId, is_live, on_cleanup, owner_by_id};
 pub use phase::DrawPhase;
 pub use runtime::Runtime;

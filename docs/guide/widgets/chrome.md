@@ -13,8 +13,14 @@ a 1 px `border` rule toward the work area, an 8 px side inset, and
 vertically centered content. The work area uses `surface`. `modal` takes `Option<impl IntoNode>` — pass `None::<NodeBuilder>`
 when you have no overlay.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let items = vec![MenuItem::new("Quit")];
+# let work_area = container();
+# let status_line = container();
+# let _ = {
 app_shell(menu_bar().menu("File", items), work_area, status_line, None::<NodeBuilder>)
+# };
 ```
 
 `menu_bar()` draws the same chrome: a 32 px `surface-subtle` bar with a
@@ -74,11 +80,16 @@ splits top/bottom. Each handle is a 6 px hit area that draws a 1 px
 `border` rule in its center. The area fills with `surface-hover` on
 hover and `surface-pressed` while dragged.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let nav_pane = container();
+# let content_pane = container();
+# let _ = {
 splitter(SplitterOrientation::Horizontal)
     .child(nav_pane, 240.0)
     .pane(content_pane).min(200.0).grow(1.0)
     .commit();
+# };
 ```
 
 - `.child(node, initial_px)` — simple pane.
@@ -206,6 +217,6 @@ shortcut that sets the tab signal.
 
 Run it with `cargo run -p sigil-ui --example widget_chrome`.
 
-```rust
+```rust,ignore
 {{#include ../../../crates/sigil/examples/widget_chrome.rs}}
 ```

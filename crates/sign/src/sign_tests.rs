@@ -89,3 +89,35 @@ fn wrong_password_fails_to_load_the_key() -> Result<(), Box<dyn Error>> {
     fixture.clean()?;
     Ok(())
 }
+
+#[test]
+fn an_encrypted_key_without_a_password_says_so() -> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new("no-password", FIXTURE)?;
+    let result = sign_file(&fixture.package, &fixture.key, None, "0.1.0");
+    fixture.clean()?;
+    assert!(matches!(result, Err(super::SignError::PasswordRequired)));
+    Ok(())
+}
+
+#[test]
+fn verify_refuses_to_run_without_an_expected_version() -> Result<(), Box<dyn Error>> {
+    let fixture = Fixture::new("no-version", FIXTURE)?;
+    let envelope = sign_file(&fixture.package, &fixture.key, Some(PASSWORD), "0.1.0")?;
+    let sig = fixture.dir.join("package.nupkg.sig");
+    fs::write(&sig, envelope)?;
+    let public = fixture.dir.join("release.pub");
+    fs::write(&public, fixture.pair.pk.to_box()?.to_string())?;
+    let argv: Vec<String> = [
+        "verify",
+        "--pub",
+        public.to_str().ok_or("path")?,
+        "--file",
+        fixture.package.to_str().ok_or("path")?,
+    ]
+    .map(str::to_owned)
+    .to_vec();
+    let result = super::pack_cli(&argv);
+    fixture.clean()?;
+    assert_eq!(result, Err(String::from("missing --version")));
+    Ok(())
+}

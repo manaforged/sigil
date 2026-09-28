@@ -8,22 +8,20 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
+use sigil::hal::Size;
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
 
 const NODE_COUNT: usize = 10_000;
 const NODE_SIZE: f32 = 100.0;
 const AVAILABLE: Size = Size::fixed(NODE_SIZE, NODE_SIZE);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::new(0.0, 0.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 0.0,
+    height: 0.0,
+};
 
 const fn fixed_available(width: f32, height: f32) -> taffy::Size<taffy::AvailableSpace> {
     taffy::Size {
@@ -67,7 +65,7 @@ fn bench_owned_huge_nested(c: &mut Criterion) {
     c.bench_function("huge_nested/owned", |b| {
         let mut cx = Cx::new_root();
         let root = build_owned_huge_nested(&mut cx);
-        let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
             .expect("bench harness invariant");

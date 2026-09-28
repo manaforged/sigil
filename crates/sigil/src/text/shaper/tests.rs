@@ -87,7 +87,7 @@ fn empty_input_yields_empty_run() {
     let shaper = Shaper::new(&font);
     let run = shaper.shape(&TextSegment::ltr(""), &Style::regular(16.0));
     assert!(run.glyphs.is_empty(), "empty input must produce no glyphs");
-    assert_eq!(run.bbox.w, 0.0);
+    assert_eq!(run.width, 0.0);
 }
 
 #[test]
@@ -119,9 +119,9 @@ fn hello_word_is_five_glyphs_monotonic() {
     }
     let total: f32 = run.glyphs.iter().map(|g| g.advance).sum();
     assert!(
-        (run.bbox.w - total).abs() < 0.01,
-        "bbox.w {} should equal Σadvance {}",
-        run.bbox.w,
+        (run.width - total).abs() < 0.01,
+        "width {} should equal Σadvance {}",
+        run.width,
         total,
     );
 }
