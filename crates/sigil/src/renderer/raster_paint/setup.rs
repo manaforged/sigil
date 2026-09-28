@@ -141,7 +141,7 @@ pub(super) fn bind_group(
     atlas_view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
 ) -> wgpu::BindGroup {
-    count("alloc.raster.bind_groups");
+    count(crate::profile::Counter::AllocRasterBindGroups);
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer raster text bind group"),
         layout: bgl,

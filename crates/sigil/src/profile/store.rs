@@ -9,6 +9,9 @@ use web_time::Instant;
 use serde_json::{Value, json};
 
 use crate::profile::event::Event;
+use crate::profile::key::{
+    BackendStatus, Cause, Counter, CounterValue, Phase, PhaseTime, accumulate,
+};
 
 const MAX_EVENTS: usize = 65_536;
 const MAX_FRAMES: usize = 4_096;
@@ -29,35 +32,35 @@ thread_local! {
     static STORE: RefCell<Store> = RefCell::new(Store::new());
 }
 
-pub type Phase = (&'static str, u64);
-
 #[derive(Clone, Debug)]
 pub struct Frame {
     pub index: u32,
-    pub cause: &'static str,
+    pub cause: Cause,
     pub wall_ns: u64,
-    pub phases: Vec<Phase>,
-    pub counts: Vec<Phase>,
+    pub phases: Vec<PhaseTime>,
+    pub counts: Vec<CounterValue>,
+    pub backend: Option<BackendStatus>,
 }
 
 impl Default for Frame {
     fn default() -> Self {
         Self {
             index: 0,
-            cause: "idle",
+            cause: Cause::Idle,
             wall_ns: 0,
             phases: Vec::new(),
             counts: Vec::new(),
+            backend: None,
         }
     }
 }
 
 impl Frame {
     #[must_use]
-    pub fn counter(&self, name: &str) -> u64 {
+    pub fn counter(&self, counter: Counter) -> u64 {
         self.counts
             .iter()
-            .find(|(n, _)| *n == name)
+            .find(|(n, _)| *n == counter)
             .map_or(0, |(_, v)| *v)
     }
 
@@ -68,13 +71,13 @@ impl Frame {
         }
         self.phases
             .iter()
-            .filter(|(n, _)| !n.contains('.'))
+            .filter(|(phase, _)| phase.is_top_level())
             .map(|(_, ns)| *ns)
             .sum()
     }
 
     #[must_use]
-    pub fn hottest(&self) -> Option<Phase> {
+    pub fn hottest(&self) -> Option<PhaseTime> {
         self.phases.iter().copied().max_by_key(|(_, ns)| *ns)
     }
 }
@@ -89,7 +92,6 @@ struct Store {
     open_start: Option<Instant>,
     next_flow: u64,
     open_flow: Option<(&'static str, u64, u64)>,
-    cause_rank: u8,
 }
 
 impl Store {
@@ -104,7 +106,6 @@ impl Store {
             open_start: None,
             next_flow: 1,
             open_flow: None,
-            cause_rank: 0,
         }
     }
 
@@ -167,19 +168,19 @@ pub(crate) fn now_us() -> u64 {
     STORE.with(|cell| cell.borrow().now_us())
 }
 
-pub(crate) fn begin_frame() {
+pub(crate) fn begin_frame(backend: BackendStatus) {
     if !enabled() {
         return;
     }
     STORE.with(|cell| {
         let mut store = cell.borrow_mut();
         store.open_start = Some(Instant::now());
-        store.cause_rank = 0;
-        store.open.cause = "idle";
+        store.open.cause = Cause::Idle;
+        store.open.backend = Some(backend);
     });
 }
 
-pub(crate) fn complete(name: &'static str, cat: &'static str, start_us: u64, dur_ns: u64) {
+pub(crate) fn complete(phase: Phase, start_us: u64, dur_ns: u64) {
     if !enabled() {
         return;
     }
@@ -189,52 +190,55 @@ pub(crate) fn complete(name: &'static str, cat: &'static str, start_us: u64, dur
         push_event(
             &mut store,
             Event::Complete {
-                name,
-                cat,
+                phase,
                 tid: 1,
                 start_us,
                 dur_us: micros,
             },
         );
-        push_phase(&mut store.open.phases, name, dur_ns);
+        accumulate(&mut store.open.phases, phase, dur_ns);
     });
 }
 
-pub(crate) fn count_add(name: &'static str, n: u64) {
+pub(crate) fn count_add(counter: Counter, n: u64) {
     if !enabled() {
         return;
     }
     STORE.with(|cell| {
-        push_phase(&mut cell.borrow_mut().open.counts, name, n);
+        accumulate(&mut cell.borrow_mut().open.counts, counter, n);
     });
 }
 
-pub(crate) fn gauge(name: &'static str, value: u64) {
+pub(crate) fn gauge(counter: Counter, value: u64) {
     if !enabled() {
         return;
     }
     STORE.with(|cell| {
         let mut store = cell.borrow_mut();
-        if let Some((_, previous)) = store.open.counts.iter_mut().find(|(key, _)| *key == name) {
+        if let Some((_, previous)) = store
+            .open
+            .counts
+            .iter_mut()
+            .find(|(key, _)| *key == counter)
+        {
             *previous = value;
         } else {
-            store.open.counts.push((name, value));
+            store.open.counts.push((counter, value));
         }
     });
 }
 
-pub(crate) fn interact(name: &'static str) {
+pub(crate) fn interact(cause: Cause) {
     if !enabled() {
         return;
     }
     STORE.with(|cell| {
         let mut store = cell.borrow_mut();
         let ts = store.now_us();
-        let rank = cause_rank(name);
-        if rank >= store.cause_rank {
-            store.cause_rank = rank;
-            store.open.cause = name;
+        if cause.rank() >= store.open.cause.rank() {
+            store.open.cause = cause;
         }
+        let name = cause.name();
         push_event(
             &mut store,
             Event::Instant {
@@ -292,11 +296,11 @@ fn close_open_inner(store: &mut Store, warn: bool) {
         );
     }
     let mut frame = std::mem::take(&mut store.open);
-    for &(name, value) in &frame.counts {
+    for &(counter, value) in &frame.counts {
         push_event(
             store,
             Event::Counter {
-                name,
+                counter,
                 ts_us: end_us,
                 value,
             },
@@ -314,11 +318,10 @@ fn close_open_inner(store: &mut Store, warn: bool) {
         store.frames.pop_front();
     }
     store.frames.push_back(frame);
-    store.cause_rank = 0;
 }
 
 fn warn_slow(frame: &Frame) {
-    if frame.total_ns() <= FRAME_BUDGET_NS || frame.cause == "idle" {
+    if frame.total_ns() <= FRAME_BUDGET_NS || frame.cause == Cause::Idle {
         return;
     }
     if WARNS.load(Ordering::Relaxed) >= WARN_CAP {
@@ -327,25 +330,17 @@ fn warn_slow(frame: &Frame) {
     WARNS.fetch_add(1, Ordering::Relaxed);
     #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
     let ms = frame.total_ns() as f64 / 1_000_000.0;
-    let (hot, peak) = frame.hottest().unwrap_or(("", 0));
+    let (hot, peak) = frame
+        .hottest()
+        .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
     #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
     let peak_ms = peak as f64 / 1_000_000.0;
     eprintln!(
         "sigil-profile: frame {} {} {ms:.1}ms {hot}={peak_ms:.1} cmds={}",
         frame.index,
         frame.cause,
-        frame.counter("scene.cmds")
+        frame.counter(Counter::SceneCmds)
     );
-}
-
-fn cause_rank(name: &str) -> u8 {
-    match name {
-        "pointer" | "key" => 5,
-        "scroll" | "ime" => 4,
-        "hover" | "resize" | "a11y" => 3,
-        "animation" | "interval" => 2,
-        _ => 1,
-    }
 }
 
 fn push_event(store: &mut Store, event: Event) {
@@ -354,14 +349,6 @@ fn push_event(store: &mut Store, event: Event) {
         store.dropped_events += 1;
     }
     store.events.push_back(event);
-}
-
-fn push_phase(list: &mut Vec<Phase>, name: &'static str, add: u64) {
-    if let Some((_, ns)) = list.iter_mut().find(|(n, _)| *n == name) {
-        *ns = ns.saturating_add(add);
-    } else {
-        list.push((name, add));
-    }
 }
 
 pub(crate) fn frames() -> Vec<Frame> {

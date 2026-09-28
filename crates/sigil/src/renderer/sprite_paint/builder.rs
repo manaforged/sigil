@@ -100,7 +100,7 @@ pub(super) fn uniform_bind_group(
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
-    count("alloc.sprite.bind_groups");
+    count(crate::profile::Counter::AllocSpriteBindGroups);
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer sprite uniforms bind group"),
         layout,
@@ -170,5 +170,7 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         2 => Float32x4,
         3 => Float32x4,
         4 => Float32x4,
+        5 => Float32x4,
+        6 => Float32x4,
     ],
 };

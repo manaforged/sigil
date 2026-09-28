@@ -9,12 +9,19 @@ use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::scene_command::CommandScene;
 use crate::renderer::window_handle::{DisplayAndWindow, WindowHandle};
 
+mod bound;
 mod draws;
+mod glyph_outline;
 mod glyphs;
+mod layers;
 mod paint;
+mod pattern;
 mod raster;
 mod shadow;
+mod shadow_field;
 mod shapes;
+mod sprite_tint;
+mod stroke;
 
 use glyphs::GlyphCache;
 use paint::Painter;
@@ -26,8 +33,9 @@ pub struct CpuRenderer {
     glyphs: GlyphCache,
     raster: RasterCache,
     layers: Vec<Pixmap>,
+    covers: Vec<tiny_skia::Mask>,
     transparent: bool,
-    stats: FrameStats,
+    pub(crate) stats: FrameStats,
 }
 
 pub struct CpuSurface {
@@ -56,6 +64,7 @@ impl CpuRenderer {
             glyphs: GlyphCache::default(),
             raster: RasterCache::default(),
             layers: Vec::new(),
+            covers: Vec::new(),
             transparent: false,
             stats: FrameStats::default(),
         }
@@ -70,6 +79,7 @@ impl CpuRenderer {
         self.transparent
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn last_frame_stats(&self) -> FrameStats {
         self.stats
@@ -88,6 +98,7 @@ impl CpuRenderer {
         let scale = physical_scale(size, viewport);
         self.stats = FrameStats::default();
         self.raster.begin_frame();
+        self.glyphs.begin_frame();
         self.stats.scene_commands = scene.commands.len();
         Painter::new(
             &mut target,
@@ -97,6 +108,7 @@ impl CpuRenderer {
                 raster: &mut self.raster,
                 stats: &mut self.stats,
                 pool: &mut self.layers,
+                covers: &mut self.covers,
             },
         )
         .walk(&scene.commands);

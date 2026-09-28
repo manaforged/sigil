@@ -87,14 +87,6 @@ impl LayoutEngine {
         Some(LayoutResult::from_resolved_box(&layout, clips))
     }
 
-    #[must_use]
-    pub fn parent_content_box(&self, cx: &Cx, id: NodeId) -> Option<Size> {
-        let parent = cx.parent(id)?;
-        let result = self.result(parent)?;
-        let rect = result.rect();
-        Some(Size::fixed(rect.width, rect.height))
-    }
-
     pub fn sync(&mut self, cx: &Cx, root: NodeId) -> Result<(), LayoutError> {
         self.gc(cx)?;
         let root_text = TextStyle::default();
@@ -133,9 +125,7 @@ impl LayoutEngine {
             .cached_key
             .is_none_or(|key| key.cx_generation != cx.mutation_generation());
 
-        let resized = self.cached_key.is_some_and(|key| {
-            key.available != cache_key.available || key.scale_bits != cache_key.scale_bits
-        });
+        let resized = self.resized(cache_key);
         let mirror_current = dirty.is_empty() && self.same_inputs(cache_key);
         self.seed_reactive_dirty(cx, &mut dirty, mirrored, mirror_current);
         if !resized && mirrored && self.translate_moved(cx, &mut dirty)? > 0 && dirty.is_empty() {
@@ -146,19 +136,27 @@ impl LayoutEngine {
         let broadcast =
             resized || !mirrored || dirty.is_empty() || dirty.len() >= live_count.max(1) / 2;
         if mirror_current {
-            crate::profile::count("layout.resize");
+            crate::profile::count(crate::profile::Counter::LayoutResize);
             self.remeasure_and_publish(cx, root, available)?;
         } else if broadcast {
             note_full(mirrored, &dirty);
             self.full_sync_and_measure(cx, root, available)?;
         } else {
-            crate::profile::count("layout.incr");
+            crate::profile::count(crate::profile::Counter::LayoutIncr);
             self.incremental_sync_and_measure(cx, &dirty, root, available, structural)?;
         }
 
         self.measure_viewport_overlays(cx, root, available)?;
         self.finish(cx, cache_key);
         Ok(())
+    }
+
+    fn resized(&self, cache_key: LayoutCacheKey) -> bool {
+        self.cached_key.is_some_and(|key| {
+            key.available != cache_key.available
+                || key.scale_bits != cache_key.scale_bits
+                || key.fonts != cache_key.fonts
+        })
     }
 
     fn same_inputs(&self, cache_key: LayoutCacheKey) -> bool {
@@ -181,7 +179,7 @@ impl LayoutEngine {
                 })
             })
             .then_some(cache_key);
-        let _sig = crate::profile::span("layout.sig");
+        let _sig = crate::profile::span(crate::profile::Phase::LayoutSig);
         self.last_reactive_sig = reactive_layout_signature(cx, &self.reactive_layout);
     }
 
@@ -226,11 +224,13 @@ impl LayoutEngine {
         let cx_generation = cx.mutation_generation();
         let available_key = AvailableKey::from_size(available);
         let scale_bits = cx.scale().factor().to_bits();
+        let fonts = self.drive.font_generation();
         let key = |input_signature| LayoutCacheKey {
             cx_instance,
             root,
             available: available_key,
             scale_bits,
+            fonts,
             cx_generation,
             input_signature,
         };
@@ -239,6 +239,7 @@ impl LayoutEngine {
             && prev.root == root
             && prev.available == available_key
             && prev.scale_bits == scale_bits
+            && prev.fonts == fonts
         {
             if cx.has_specific_dirty() {
                 return CacheDecision::Miss(key(prev.input_signature));
@@ -255,6 +256,7 @@ impl LayoutEngine {
                 && prev.root == root
                 && prev.available == available_key
                 && prev.scale_bits == scale_bits
+                && prev.fonts == fonts
                 && prev.input_signature == signature
         }) {
             return CacheDecision::Hit;
@@ -330,12 +332,12 @@ impl LayoutEngine {
 fn take_cache_miss(cx: &mut Cx, decision: CacheDecision) -> Option<LayoutCacheKey> {
     match decision {
         CacheDecision::Hit => {
-            crate::profile::count("layout.hit");
+            crate::profile::count(crate::profile::Counter::LayoutHit);
             cx.clear_dirty();
             None
         }
         CacheDecision::Miss(key) => {
-            crate::profile::count("layout.miss");
+            crate::profile::count(crate::profile::Counter::LayoutMiss);
             Some(key)
         }
     }
@@ -356,13 +358,13 @@ fn animated(node: &crate::kernel::Node) -> bool {
 }
 
 fn note_full(mirrored: bool, dirty: &[NodeId]) {
-    crate::profile::count("layout.full");
+    crate::profile::count(crate::profile::Counter::LayoutFull);
     crate::profile::count(if !mirrored {
-        "layout.full.unmirrored"
+        crate::profile::Counter::LayoutFullUnmirrored
     } else if dirty.is_empty() {
-        "layout.full.nodirty"
+        crate::profile::Counter::LayoutFullNoDirty
     } else {
-        "layout.full.majority"
+        crate::profile::Counter::LayoutFullMajority
     });
 }
 

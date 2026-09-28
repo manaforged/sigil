@@ -5,8 +5,9 @@ use crate::style::Rgba8;
 use bytemuck::{Pod, Zeroable};
 use half::f16;
 
+use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{
-    DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind,
+    DrawGradient, DrawPattern, DrawRect, GradientStop, PatternKind, Transform,
 };
 use crate::renderer::shadow_paint::Shadow;
 use crate::scene::corner_radii::CornerRadii;
@@ -19,6 +20,8 @@ use helpers::{
     stroke_outset,
 };
 
+pub(crate) const LAYER_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum BlendSpace {
     Linear,
@@ -27,7 +30,7 @@ pub(crate) enum BlendSpace {
 
 impl BlendSpace {
     pub(crate) fn from_format(format: wgpu::TextureFormat) -> Self {
-        if format.is_srgb() {
+        if format.is_srgb() || format == LAYER_FORMAT {
             Self::Linear
         } else {
             Self::Gamma
@@ -51,12 +54,12 @@ impl BlendSpace {
     }
 
     pub(crate) fn rgba16f(self, color: Rgba8) -> [f16; 4] {
-        let alpha = f32::from(color.a) / 255.0;
+        let [r, g, b, a] = self.rgba(color);
         [
-            f16::from_f32(self.channel(color.r) * alpha),
-            f16::from_f32(self.channel(color.g) * alpha),
-            f16::from_f32(self.channel(color.b) * alpha),
-            f16::from_f32(alpha),
+            f16::from_f32(r),
+            f16::from_f32(g),
+            f16::from_f32(b),
+            f16::from_f32(a),
         ]
     }
 }
@@ -64,6 +67,11 @@ impl BlendSpace {
 pub(crate) const FILL_KIND_GRADIENT: u32 = 0;
 pub(crate) const FILL_KIND_SLASH: u32 = 1;
 pub(crate) const FILL_KIND_CHECKER: u32 = 2;
+
+pub(crate) const fn affine_rows(transform: Transform) -> [[f32; 4]; 2] {
+    let [[a, b, tx], [c, d, ty]] = transform;
+    [[a, b, tx, 0.0], [c, d, ty, 0.0]]
+}
 
 pub(crate) const MAX_GRADIENT_STOPS: usize = 8;
 pub(crate) const MAX_GRADIENT_STOPS_U32: u32 = 8;
@@ -77,6 +85,24 @@ pub(crate) struct RectInstance {
     pub(crate) params: [f32; 4],
     pub(crate) stroke_params: [f32; 4],
     pub(crate) stroke_meta: [f32; 4],
+    pub(crate) xform_x: [f32; 4],
+    pub(crate) xform_y: [f32; 4],
+}
+
+impl RectInstance {
+    pub(crate) const fn with_dash_origin(mut self, origin: [f32; 2]) -> Self {
+        let [opacity, outset, _, _] = self.params;
+        let [x, y] = origin;
+        self.params = [opacity, outset, x, y];
+        self
+    }
+
+    pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
+        let [xform_x, xform_y] = affine_rows(transform);
+        self.xform_x = xform_x;
+        self.xform_y = xform_y;
+        self
+    }
 }
 
 #[repr(C)]
@@ -91,6 +117,31 @@ pub(crate) struct FillInstance {
     pub(crate) stroke_meta: [f32; 4],
     pub(crate) pattern_a: [f32; 4],
     pub(crate) pattern_b: [f32; 4],
+    pub(crate) xform_x: [f32; 4],
+    pub(crate) xform_y: [f32; 4],
+}
+
+impl FillInstance {
+    pub(crate) const fn with_dash_origin(mut self, origin: [f32; 2]) -> Self {
+        let [opacity, outset, _, _] = self.params;
+        let [x, y] = origin;
+        self.params = [opacity, outset, x, y];
+        self
+    }
+
+    pub(crate) const fn with_phase(mut self, phase: [f32; 2]) -> Self {
+        let [a, b, _, _] = self.line;
+        let [x, y] = phase;
+        self.line = [a, b, x, y];
+        self
+    }
+
+    pub(crate) const fn transformed(mut self, transform: Transform) -> Self {
+        let [xform_x, xform_y] = affine_rows(transform);
+        self.xform_x = xform_x;
+        self.xform_y = xform_y;
+        self
+    }
 }
 
 #[repr(C)]
@@ -144,9 +195,10 @@ pub(crate) fn draw_gradient_instance(
     stop_count: u32,
     space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, space);
-    let outset = stroke_outset(draw.stroke);
+    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, draw.rect, space);
+    let outset = stroke_outset(draw.stroke, draw.rect);
     let inflated = inflate(draw.rect, outset);
+    let [xform_x, xform_y] = affine_rows(IDENTITY);
     let Rect {
         origin,
         width,
@@ -179,6 +231,8 @@ pub(crate) fn draw_gradient_instance(
         stroke_meta,
         pattern_a: [0.0; 4],
         pattern_b: [0.0; 4],
+        xform_x,
+        xform_y,
     }
 }
 
@@ -187,19 +241,20 @@ pub(crate) fn draw_pattern_instance(
     opacity_scale: f32,
     space: BlendSpace,
 ) -> FillInstance {
-    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, space);
-    let outset = stroke_outset(draw.stroke);
+    let (stroke_params, stroke_meta) = stroke_fields(draw.stroke, draw.rect, space);
+    let outset = stroke_outset(draw.stroke, draw.rect);
     let inflated = inflate(draw.rect, outset);
+    let [xform_x, xform_y] = affine_rows(IDENTITY);
     let Rect {
         origin,
         width,
         height,
     } = inflated;
     let opacity = ((f32::from(draw.opacity) / 10_000.0) * opacity_scale).clamp(0.0, 1.0);
-    let (fill_kind, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
+    let (fill_kind, line, pattern_a, pattern_b) = pack_pattern(draw.pattern, space);
     FillInstance {
         rect: [origin.x, origin.y, width, height],
-        line: [0.0; 4],
+        line,
         corner_radii: draw
             .border_radius
             .normalized_for(draw.rect.width, draw.rect.height),
@@ -209,33 +264,41 @@ pub(crate) fn draw_pattern_instance(
         stroke_meta,
         pattern_a,
         pattern_b,
+        xform_x,
+        xform_y,
     }
 }
 
-fn pack_pattern(kind: PatternKind, space: BlendSpace) -> (u32, [f32; 4], [f32; 4]) {
-    match kind {
+type PatternPack = (u32, [f32; 4], [f32; 4], [f32; 4]);
+
+fn pack_pattern(kind: PatternKind, space: BlendSpace) -> PatternPack {
+    match kind.normalized() {
         PatternKind::Slash {
             color,
             period,
             line_width,
-        } => {
-            let [r, g, b, a] = space.rgba(color);
-            (
-                FILL_KIND_SLASH,
-                [r, g, b, a],
-                [period, line_width, 0.0, 0.0],
-            )
-        }
+        } => (
+            FILL_KIND_SLASH,
+            [period, line_width, 0.0, 0.0],
+            premultiplied(space, color),
+            [0.0; 4],
+        ),
         PatternKind::Checker {
             color_a,
             color_b,
             cell,
-        } => {
-            let [ra, ga, ba, aa] = space.rgba(color_a);
-            let [rb, gb, bb, _ab] = space.rgba(color_b);
-            (FILL_KIND_CHECKER, [ra, ga, ba, aa], [rb, gb, bb, cell])
-        }
+        } => (
+            FILL_KIND_CHECKER,
+            [cell, 0.0, 0.0, 0.0],
+            premultiplied(space, color_a),
+            premultiplied(space, color_b),
+        ),
     }
+}
+
+fn premultiplied(space: BlendSpace, color: Rgba8) -> [f32; 4] {
+    let [r, g, b, a] = space.rgba(color);
+    [r * a, g * a, b * a, a]
 }
 
 pub(crate) fn draw_shadow_instance(

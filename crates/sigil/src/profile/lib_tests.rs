@@ -15,7 +15,7 @@ fn disabled_span_is_silent() {
     disable();
     assert!(!enabled());
     {
-        let _s = span("layout");
+        let _s = span(crate::profile::Phase::Layout);
     }
     assert!(frames().is_empty());
 }
@@ -25,19 +25,22 @@ fn span_records_when_enabled() {
     let _gate = lock();
     enable();
     reset();
-    begin_frame();
+    begin_frame(BackendStatus {
+        kind: BackendKind::Cpu,
+        fallback: FallbackCause::None,
+    });
     {
-        let _s = span("layout");
-        count("text.measure");
+        let _s = span(crate::profile::Phase::Layout);
+        count(crate::profile::Counter::TextMeasure);
     }
     tick_frame();
     let got = frames();
     let last = got.last().expect("frame");
     assert!(
-        last.phases.iter().any(|(n, _)| *n == "layout"),
+        last.phases.iter().any(|(n, _)| *n == Phase::Layout),
         "layout phase present"
     );
-    assert_eq!(last.counter("text.measure"), 1);
+    assert_eq!(last.counter(crate::profile::Counter::TextMeasure), 1);
     disable();
 }
 
@@ -46,13 +49,16 @@ fn pointer_beats_hover_on_the_same_frame() {
     let _gate = lock();
     enable();
     reset();
-    begin_frame();
-    interact("hover");
-    interact("pointer");
+    begin_frame(BackendStatus {
+        kind: BackendKind::Cpu,
+        fallback: FallbackCause::None,
+    });
+    interact(Cause::Hover);
+    interact(Cause::Pointer);
     tick_frame();
     let got = frames();
     let last = got.last().expect("frame");
-    assert_eq!(last.cause, "pointer");
+    assert_eq!(last.cause, Cause::Pointer);
     disable();
 }
 
@@ -61,11 +67,20 @@ fn count_add_sums() {
     let _gate = lock();
     enable();
     reset();
-    begin_frame();
-    count_add("scene.cmds", 12);
-    count_add("scene.cmds", 3);
+    begin_frame(BackendStatus {
+        kind: BackendKind::Cpu,
+        fallback: FallbackCause::None,
+    });
+    count_add(crate::profile::Counter::SceneCmds, 12);
+    count_add(crate::profile::Counter::SceneCmds, 3);
     tick_frame();
-    assert_eq!(frames().last().expect("frame").counter("scene.cmds"), 15);
+    assert_eq!(
+        frames()
+            .last()
+            .expect("frame")
+            .counter(crate::profile::Counter::SceneCmds),
+        15
+    );
     disable();
 }
 
@@ -74,11 +89,14 @@ fn dump_writes_chrome_json() {
     let _gate = lock();
     enable();
     reset();
-    begin_frame();
-    interact("pointer");
+    begin_frame(BackendStatus {
+        kind: BackendKind::Cpu,
+        fallback: FallbackCause::None,
+    });
+    interact(Cause::Pointer);
     {
-        let _s = span("paint");
-        count("scene.emit");
+        let _s = span(crate::profile::Phase::Paint);
+        count(crate::profile::Counter::SceneEmit);
     }
     let path = std::env::temp_dir().join("sigil-profile-dump-test.json");
     dump(&path).expect("dump");
@@ -107,7 +125,7 @@ fn dump_closes_open_frame() {
     enable();
     reset();
     {
-        let _s = span("effect");
+        let _s = span(crate::profile::Phase::Effect);
     }
     assert!(frames().is_empty(), "not ticked yet");
     let path = std::env::temp_dir().join("sigil-profile-close-test.json");

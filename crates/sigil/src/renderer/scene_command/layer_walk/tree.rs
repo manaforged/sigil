@@ -1,58 +1,52 @@
+use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::{LayerScope, SceneCommand};
 
 pub(super) enum Node<'a> {
     Command(&'a SceneCommand),
-    Scope {
-        command: &'a SceneCommand,
-        children: Vec<Self>,
-    },
+    State(&'a SceneCommand),
     Layer {
         scope: LayerScope,
+        children: Vec<Self>,
+    },
+    Group {
+        opacity: f32,
+        commands: &'a [SceneCommand],
         children: Vec<Self>,
     },
 }
 
 pub(super) fn build_tree(commands: &[SceneCommand]) -> Vec<Node<'_>> {
-    let mut index = 0;
-    build_until_pop(commands, &mut index)
-}
-
-fn build_until_pop<'a>(commands: &'a [SceneCommand], index: &mut usize) -> Vec<Node<'a>> {
     let mut nodes = Vec::new();
-    while let Some(command) = commands.get(*index) {
-        *index += 1;
+    let mut index = 0;
+    while let Some(command) = commands.get(index) {
+        index += 1;
         match command {
             SceneCommand::PushLayer(scope) => {
-                let children = build_until_pop(commands, index);
+                let end = SceneState::layer_end(commands, index);
                 nodes.push(Node::Layer {
                     scope: *scope,
-                    children,
+                    children: build_tree(commands.get(index..end).unwrap_or_default()),
                 });
+                index = end + 1;
             }
-            SceneCommand::PushClip(_)
-            | SceneCommand::PushTransform(_)
-            | SceneCommand::SaveLayer { .. } => {
-                let children = build_until_pop(commands, index);
-                nodes.push(Node::Scope { command, children });
+            SceneCommand::SaveLayer { opacity } => {
+                let end = SceneState::group_end(commands, index);
+                let inner = commands.get(index..end).unwrap_or_default();
+                if SceneState::composites_group(inner) {
+                    nodes.push(Node::Group {
+                        opacity: *opacity,
+                        commands: inner,
+                        children: build_tree(inner),
+                    });
+                    index = end + 1;
+                } else {
+                    nodes.push(Node::State(command));
+                }
             }
-            SceneCommand::PopLayer
-            | SceneCommand::PopClip
-            | SceneCommand::PopTransform
-            | SceneCommand::RestoreLayer => break,
-            other => nodes.push(Node::Command(other)),
+            SceneCommand::PopLayer => {}
+            other if SceneState::draws(other) => nodes.push(Node::Command(other)),
+            other => nodes.push(Node::State(other)),
         }
     }
     nodes
-}
-
-pub(super) fn layer_depth(nodes: &[Node<'_>]) -> usize {
-    nodes
-        .iter()
-        .map(|node| match node {
-            Node::Command(_) => 0,
-            Node::Layer { children, .. } => 1 + layer_depth(children),
-            Node::Scope { children, .. } => layer_depth(children),
-        })
-        .max()
-        .unwrap_or(0)
 }

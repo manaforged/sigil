@@ -1,10 +1,14 @@
-use super::color::polarity_flag;
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
+use crate::renderer::glyph_place::{pen_shift, text_gamma};
+use crate::renderer::scene_instance::BlendSpace;
 use std::collections::HashMap;
 
-use crate::hal::{Color, Rect, RenderedGlyph};
+use crate::hal::{Color, Point, Rect, RenderedGlyph};
+use crate::scene::command::effects::transform_point;
 use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 
+#[cfg(any(test, feature = "kittest"))]
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::frame_upload::FrameUploads;
@@ -16,6 +20,7 @@ use crate::renderer::slug::{
 };
 use crate::renderer::split_encoder::SplitEncoder;
 
+#[cfg_attr(not(any(test, feature = "kittest")), allow(dead_code))]
 pub struct DrawParams<'a> {
     pub device: &'a wgpu::Device,
     pub queue: &'a wgpu::Queue,
@@ -26,6 +31,7 @@ pub struct DrawParams<'a> {
     pub paragraph: &'a Paragraph,
     pub glyphs: Option<&'a [RenderedGlyph]>,
     pub origin: (f32, f32),
+    pub transform: [[f32; 3]; 2],
     pub color: Option<Color>,
     pub clip: Option<Rect>,
 }
@@ -37,8 +43,6 @@ struct SurfaceUniform {
     scale: f32,
     dilation: f32,
     sharpen: f32,
-    gamma_lod: f32,
-    gamma_dol: f32,
     enabled: f32,
 }
 
@@ -46,10 +50,11 @@ struct SurfaceUniform {
 #[derive(bytemuck::Pod, bytemuck::Zeroable, Copy, Clone)]
 pub(crate) struct GlyphInstance {
     origin: [f32; 2],
-    size: [f32; 2],
+    axis_x: [f32; 2],
+    axis_y: [f32; 2],
     color: [f32; 4],
     atlas_offset: u32,
-    polarity: f32,
+    gamma: f32,
 }
 pub(crate) const SLUG_INSTANCE_BYTES: usize = core::mem::size_of::<GlyphInstance>();
 
@@ -103,20 +108,7 @@ impl SlugTextPipeline {
         self.format
     }
 
-    pub fn draw_paragraph(&mut self, params: &DrawParams<'_>) -> Result<(), RendererError> {
-        let encoder = params
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("slug-encoder"),
-            });
-        let mut encoder = SplitEncoder::new(params.device, params.queue, encoder);
-        self.record_paragraph_in_frame(&mut encoder, params, None);
-        params
-            .queue
-            .submit(core::iter::once(encoder.into_inner().finish()));
-        Ok(())
-    }
-
+    #[cfg(any(test, feature = "kittest"))]
     pub fn record_paragraph(
         &mut self,
         encoder: &mut wgpu::CommandEncoder,
@@ -136,6 +128,7 @@ impl SlugTextPipeline {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn record_paragraph_in_frame(
         &mut self,
         encoder: &mut SplitEncoder,
@@ -231,12 +224,7 @@ impl SlugTextPipeline {
     fn ensure_preprocessed(&mut self, glyphs: &[RenderedGlyph], para: &Paragraph) {
         let mut missing: HashMap<(u64, u32), Vec<usize>> = HashMap::new();
         for (i, g) in glyphs.iter().enumerate() {
-            let key = GlyphKey {
-                font_id: g.font_id,
-                font_index: g.font_index,
-                glyph_id: g.glyph_id,
-                variation_coords: g.variation_coords.clone(),
-            };
+            let key = GlyphKey::of(g);
             if !self.cache.contains(&key) {
                 missing
                     .entry((g.font_id, g.font_index))
@@ -254,12 +242,7 @@ impl SlugTextPipeline {
             };
             for &i in indices {
                 let Some(g) = glyphs.get(i) else { continue };
-                let key = GlyphKey {
-                    font_id,
-                    font_index,
-                    glyph_id: g.glyph_id,
-                    variation_coords: g.variation_coords.clone(),
-                };
+                let key = GlyphKey::of(g);
                 if let Some(data) =
                     preprocess_glyph(bytes, font_index, g.glyph_id, &g.variation_coords, g.skew)
                 {
@@ -269,70 +252,51 @@ impl SlugTextPipeline {
         });
     }
 
-    #[allow(
-        clippy::cast_precision_loss,
-        reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-    )]
     fn build_instances(
         &self,
         glyphs: &[RenderedGlyph],
         params: &DrawParams<'_>,
     ) -> Vec<GlyphInstance> {
-        let snap = {
-            let t = super::text_tuning();
-            t.enabled && t.snap
-        };
-        let mut instances = Vec::new();
-        for g in glyphs {
-            let key = GlyphKey {
-                font_id: g.font_id,
-                font_index: g.font_index,
-                glyph_id: g.glyph_id,
-                variation_coords: g.variation_coords.clone(),
-            };
-            let Some(cached) = self.cache.get(&key) else {
-                continue;
-            };
-            let Some(atlas_offset) = self.atlas.get_offset(&key) else {
-                continue;
-            };
-            let bbox = cached.band_data.bbox;
-            let upem_f = if cached.band_data.units_per_em == 0 {
-                1000.0_f32
-            } else {
-                f32::from(cached.band_data.units_per_em)
-            };
-            let scale = g.size / upem_f;
-            let base_y = params.origin.1 + g.y;
-            let pen_y = if snap {
-                snap_to_physical_grid(base_y, params.scale)
-            } else {
-                base_y
-            };
-            let ink_left = bbox.x_min.mul_add(scale, params.origin.0 + g.x);
-            let origin_x = if snap {
-                snap_to_physical_grid(ink_left, params.scale)
-            } else {
-                ink_left
-            };
-            let color = glyph_color(g, params);
-            instances.push(GlyphInstance {
-                origin: [origin_x, bbox.y_max.mul_add(-scale, pen_y)],
-                size: [bbox.width() * scale, bbox.height() * scale],
-                color,
-                atlas_offset,
-                polarity: polarity_flag(color, self.format),
-            });
-        }
-        instances
+        glyphs
+            .iter()
+            .filter_map(|g| self.instance(g, params))
+            .collect()
     }
-}
 
-fn snap_to_physical_grid(logical: f32, scale: f32) -> f32 {
-    if scale <= 0.0 {
-        return logical;
+    fn instance(&self, glyph: &RenderedGlyph, params: &DrawParams<'_>) -> Option<GlyphInstance> {
+        let key = GlyphKey::of(glyph);
+        let cached = self.cache.get(&key)?;
+        let atlas_offset = self.atlas.get_offset(&key)?;
+        let bbox = cached.band_data.bbox;
+        let upem = match cached.band_data.units_per_em {
+            0 => 1000.0_f32,
+            units => f32::from(units),
+        };
+        let scale = glyph.size / upem;
+        let pen = (params.origin.0 + glyph.x, params.origin.1 + glyph.y);
+        let shift = pen_shift(params.transform, Point::new(pen.0, pen.1), params.scale);
+        let pen = (pen.0 + shift.x, pen.1 + shift.y);
+        let corner = (
+            bbox.x_min.mul_add(scale, pen.0),
+            bbox.y_max.mul_add(-scale, pen.1),
+        );
+        let [[xx, xy, _], [yx, yy, _]] = params.transform;
+        let mapped = transform_point(params.transform, Point::new(corner.0, corner.1));
+        let origin = [mapped.x, mapped.y];
+        let (width, height) = (bbox.width() * scale, bbox.height() * scale);
+        let color = glyph_color(glyph, params);
+        Some(GlyphInstance {
+            origin,
+            axis_x: [xx * width, yx * width],
+            axis_y: [xy * height, yy * height],
+            color,
+            atlas_offset,
+            gamma: text_gamma(
+                color,
+                BlendSpace::from_format(self.format) == BlendSpace::Linear,
+            ),
+        })
     }
-    (logical * scale).round() / scale
 }
 
 fn glyph_color(glyph: &RenderedGlyph, params: &DrawParams<'_>) -> [f32; 4] {
@@ -355,8 +319,6 @@ fn make_bind_group(
         scale: params.scale.max(1.0),
         dilation: tuning.dilation,
         sharpen: tuning.sharpen,
-        gamma_lod: tuning.gamma_light_on_dark,
-        gamma_dol: tuning.gamma_dark_on_light,
         enabled: f32::from(u8::from(tuning.enabled)),
     };
     let (ubuf, offset, _) = encoder.uniform(&surface_uniform);

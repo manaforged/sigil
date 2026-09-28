@@ -1,9 +1,10 @@
 use crate::hal::Rect;
 
-use crate::renderer::scene_command::{Stroke, StrokeAlign, StrokeStyle};
+use crate::renderer::scene_command::walk::IDENTITY;
+use crate::renderer::scene_command::{Stroke, StrokeBand};
 use crate::scene::corner_radii::CornerRadii;
 
-use super::{BlendSpace, RectInstance};
+use super::{BlendSpace, RectInstance, affine_rows};
 
 #[derive(Clone, Copy)]
 pub(super) struct RectPaint {
@@ -24,9 +25,10 @@ pub(super) fn rect_instance_parts(
         stroke,
         space,
     } = paint;
-    let (stroke_params, stroke_meta) = stroke_fields(stroke, space);
-    let outset = stroke_outset(stroke);
+    let (stroke_params, stroke_meta) = stroke_fields(stroke, rect, space);
+    let outset = stroke_outset(stroke, rect);
     let inflated = inflate(rect, outset);
+    let [xform_x, xform_y] = affine_rows(IDENTITY);
     RectInstance {
         rect: rect_fields(inflated),
         color,
@@ -34,13 +36,13 @@ pub(super) fn rect_instance_parts(
         params: [opacity.clamp(0.0, 1.0), outset, 0.0, 0.0],
         stroke_params,
         stroke_meta,
+        xform_x,
+        xform_y,
     }
 }
 
-pub(super) fn stroke_outset(stroke: Option<Stroke>) -> f32 {
-    stroke
-        .map(|stroke| stroke.width.max(0.0))
-        .unwrap_or_default()
+pub(super) fn stroke_outset(stroke: Option<Stroke>, rect: Rect) -> f32 {
+    StrokeBand::reach(stroke, rect)
 }
 
 pub(super) fn inflate(rect: Rect, outset: f32) -> Rect {
@@ -73,39 +75,17 @@ pub(super) fn shadow_color(color: [f32; 4], opacity_scale: f32) -> [f32; 4] {
     ]
 }
 
-pub(super) fn stroke_fields(stroke: Option<Stroke>, space: BlendSpace) -> ([f32; 4], [f32; 4]) {
-    let Some(stroke) = stroke else {
+pub(super) fn stroke_fields(
+    stroke: Option<Stroke>,
+    rect: Rect,
+    space: BlendSpace,
+) -> ([f32; 4], [f32; 4]) {
+    let Some((stroke, band)) = stroke.and_then(|s| StrokeBand::of(s, rect).map(|b| (s, b))) else {
         return ([0.0; 4], [0.0; 4]);
     };
+    let (length, gap) = band.dash.map_or((0.0, 0.0), |dash| (dash.length, dash.gap));
     (
         space.rgba(stroke.color),
-        [
-            stroke.width.max(0.0),
-            stroke_style_f32(stroke.style),
-            stroke_align_f32(stroke.align),
-            stroke_dash_gap(stroke.style),
-        ],
+        [band.inside, band.outside, length, gap],
     )
-}
-
-const fn stroke_style_f32(style: StrokeStyle) -> f32 {
-    match style {
-        StrokeStyle::Solid => 0.0,
-        StrokeStyle::Dashed(_) => 1.0,
-    }
-}
-
-const fn stroke_align_f32(align: StrokeAlign) -> f32 {
-    match align {
-        StrokeAlign::Centered => 0.0,
-        StrokeAlign::Inside => 1.0,
-        StrokeAlign::Outside => 2.0,
-    }
-}
-
-const fn stroke_dash_gap(style: StrokeStyle) -> f32 {
-    match style {
-        StrokeStyle::Solid => 0.0,
-        StrokeStyle::Dashed(gap) => gap,
-    }
 }

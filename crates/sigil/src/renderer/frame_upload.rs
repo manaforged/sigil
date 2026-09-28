@@ -214,8 +214,8 @@ impl UploadBuffer {
                 usage: self.usage | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }));
-            count("alloc.upload.buffers");
-            count_add("alloc.upload.bytes", self.capacity);
+            count(crate::profile::Counter::AllocUploadBuffers);
+            count_add(crate::profile::Counter::AllocUploadBytes, self.capacity);
             allocated_bytes = self.capacity;
             start = 0;
         }
@@ -236,8 +236,11 @@ impl UploadBuffer {
         }
         let buffer = self.buffer.as_ref().expect("upload buffer initialized");
         queue.write_buffer(buffer, self.pending_offset, &self.pending);
-        count("gpu.shared_upload_writes");
-        count_add("gpu.shared_upload_bytes", self.pending.len() as u64);
+        count(crate::profile::Counter::GpuSharedUploadWrites);
+        count_add(
+            crate::profile::Counter::GpuSharedUploadBytes,
+            self.pending.len() as u64,
+        );
         self.pending.clear();
     }
 }

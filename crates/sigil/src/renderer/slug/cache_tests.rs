@@ -22,6 +22,7 @@ fn key(glyph_id: u32) -> GlyphKey {
         font_index: 0,
         glyph_id,
         variation_coords: Box::new([]),
+        skew_bits: 0,
     }
 }
 
@@ -41,4 +42,26 @@ fn slots_are_dense_stable_and_survive_reinsert() {
 
     cache.insert(key(40), band());
     assert_eq!(cache.get(&key(40)).unwrap().slot, 3);
+}
+
+#[test]
+fn skewed_and_upright_glyphs_get_distinct_cache_entries() {
+    let glyph = |skew: f32| crate::hal::RenderedGlyph {
+        font_id: 7,
+        font_index: 0,
+        glyph_id: 12,
+        x: 0.0,
+        y: 0.0,
+        size: 16.0,
+        color: crate::hal::Color::BLACK,
+        variation_coords: Box::new([]),
+        skew,
+    };
+    let mut cache = GlyphCache::new();
+    cache.insert(GlyphKey::of(&glyph(0.0)), band());
+    assert!(cache.contains(&GlyphKey::of(&glyph(0.0))));
+    assert!(
+        !cache.contains(&GlyphKey::of(&glyph(0.2))),
+        "a synthetic-italic glyph must not reuse the upright outline"
+    );
 }

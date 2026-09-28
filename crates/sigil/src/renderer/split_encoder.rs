@@ -79,7 +79,7 @@ impl SplitEncoder {
                         as u64;
                     uniforms += self.uniform_alignment;
                 }
-                SceneCommand::PushLayer(_) => {
+                SceneCommand::PushLayer(_) | SceneCommand::SaveLayer { .. } => {
                     vertices += size_of::<LayerInstance>() as u64;
                     uniforms += 3 * self.uniform_alignment;
                 }
@@ -149,7 +149,7 @@ impl SplitEncoder {
             && let Some(target) = target
             && Some(target) == self.target.as_ref()
         {
-            count("gpu.pass_reuses");
+            count(crate::profile::Counter::GpuPassReuses);
             let size = target.texture().size();
             let pass = self.pass.as_mut().expect("active render pass");
             pass.set_scissor_rect(0, 0, size.width, size.height);
@@ -157,7 +157,7 @@ impl SplitEncoder {
         }
         drop(self.pass.take());
         self.passes += 1;
-        count("gpu.render_passes");
+        count(crate::profile::Counter::GpuRenderPasses);
         if self.passes > MAX_PASSES_PER_SUBMISSION {
             let fresh = self
                 .device
@@ -167,7 +167,7 @@ impl SplitEncoder {
             let full = replace(&mut self.encoder, fresh);
             self.flush();
             self.queue.submit(core::iter::once(full.finish()));
-            count("gpu.split_submissions");
+            count(crate::profile::Counter::GpuSplitSubmissions);
             self.passes = 1;
         }
         self.target = target.cloned();

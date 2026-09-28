@@ -1,3 +1,4 @@
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use std::borrow::Cow;
 use std::rc::Rc;
 
@@ -24,7 +25,7 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
     }
 
     fn measure_styled(&self, source: &TextContent, style: &TextStyle, space: Size) -> LogicalSize {
-        crate::profile::count("text.measure");
+        crate::profile::count(crate::profile::Counter::TextMeasure);
         let text = resolve_text(source);
         let max_width = match space.width {
             Dim::Fixed(w) => Some(w),
@@ -48,6 +49,10 @@ impl<E: StyledTextEngine> TextMeasure for TextEngineMeasure<E> {
     }
 
     fn begin_frame(&self) {}
+
+    fn font_generation(&self) -> u64 {
+        self.engine.font_generation()
+    }
 }
 
 fn resolve_text(source: &TextContent) -> Cow<'_, str> {

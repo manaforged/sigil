@@ -12,6 +12,10 @@ The window host reads `SIGIL_BACKEND` when it starts:
 
 Any other value logs a warning and acts as `auto`.
 
+The frame HUD (`SIGIL_HUD=1`) shows the active backend. A fallback
+shows its cause, for example `cpu (no-adapter)` or
+`gpu-software (no-adapter)`.
+
 If the app still fails to start, set the CPU renderer:
 
 ```bash

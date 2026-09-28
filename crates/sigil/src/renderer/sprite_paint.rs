@@ -5,6 +5,7 @@
     clippy::cast_precision_loss,
     clippy::imprecise_flops
 )]
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
 use bytemuck::{Pod, Zeroable};
 use std::slice::from_ref;
@@ -15,11 +16,11 @@ mod icon;
 mod image_pack;
 
 use crate::renderer::frame_upload::UploadedRange;
-use crate::renderer::scene_command::{DrawSprite, SceneCommand, SpriteKind};
-use crate::renderer::scene_instance::BlendSpace;
+use crate::renderer::scene_command::{DrawSprite, SceneCommand, SpriteKind, Transform};
+use crate::renderer::scene_instance::{BlendSpace, affine_rows};
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::sprite_atlas::{
-    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, builtin_atlas_rgba8,
+    BUILTIN_ATLAS_HEIGHT, BUILTIN_ATLAS_WIDTH, BUILTIN_ICON_ATLAS_COUNT, builtin_atlas_rgba8,
 };
 
 use self::atlas::{AtlasDesc, AtlasEntry, MAX_ATLASES, push_atlas, valid_atlas_desc};
@@ -32,7 +33,6 @@ use self::image_pack::ImagePack;
 pub(crate) use self::image_pack::PackedImage;
 
 pub const BUILTIN_SPRITE_ATLAS_ID: u32 = u32::MAX - 1;
-const BUILTIN_ICON_ATLAS_COUNT: usize = 5;
 
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -41,6 +41,14 @@ pub(crate) struct SpriteInstance {
     uv_rect: [f32; 4],
     color: [f32; 4],
     params: [f32; 4],
+    xform: [[f32; 4]; 2],
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct SpritePaint {
+    pub(crate) opacity: f32,
+    pub(crate) space: BlendSpace,
+    pub(crate) transform: Transform,
 }
 
 #[repr(C)]
@@ -157,13 +165,12 @@ impl SpritePipeline {
         &mut self,
         ctx: &mut PaintCtx<'_>,
         draw: &DrawSprite,
-        opacity_scale: f32,
-        space: BlendSpace,
+        paint: SpritePaint,
     ) {
         let Some(atlas_id) = self.resolve_atlas(ctx.device, ctx.queue, draw.source.atlas) else {
             return;
         };
-        let Some(instance) = self.build_instance(atlas_id, draw, opacity_scale, space) else {
+        let Some(instance) = self.build_instance(atlas_id, draw, paint) else {
             return;
         };
         let Some((aw, ah)) = self.atlas_dims(atlas_id) else {
@@ -225,11 +232,15 @@ impl SpritePipeline {
         &self,
         atlas_id: usize,
         draw: &DrawSprite,
-        opacity_scale: f32,
-        space: BlendSpace,
+        paint: SpritePaint,
     ) -> Option<SpriteInstance> {
+        let SpritePaint {
+            opacity: opacity_scale,
+            space,
+            transform,
+        } = paint;
         let (aw, ah) = self.atlas_dims(atlas_id)?;
-        let r = &draw.source.region;
+        let (r, dest) = draw.source.fitted((aw, ah), draw.destination)?;
         let uv_rect = [
             r.origin.x / aw,
             r.origin.y / ah,
@@ -237,12 +248,12 @@ impl SpritePipeline {
             (r.origin.y + r.height) / ah,
         ];
         let opacity = (f32::from(draw.opacity) / 10_000.0 * opacity_scale).clamp(0.0, 1.0);
-        let dest = &draw.destination;
         Some(SpriteInstance {
             dest: [dest.origin.x, dest.origin.y, dest.width, dest.height],
             uv_rect,
             color: space.rgba(draw.color),
             params: [opacity, sprite_kind_f32(draw.kind), draw.source.phase, 0.0],
+            xform: affine_rows(transform),
         })
     }
 
@@ -306,15 +317,10 @@ const fn sprite_kind_f32(kind: SpriteKind) -> f32 {
     }
 }
 
-const _: () = assert!(core::mem::size_of::<SpriteInstance>() == 64);
+const _: () = assert!(core::mem::size_of::<SpriteInstance>() == 96);
 const _: () = assert!(core::mem::size_of::<SpriteUniforms>() == 16);
 
 const SPRITE_SHADER: &str = include_str!("sprite_paint.wgsl");
-
-#[cfg(test)]
-pub(crate) fn sprite_pipeline_new(device: &wgpu::Device) -> SpritePipeline {
-    SpritePipeline::new(device, wgpu::TextureFormat::Rgba8UnormSrgb)
-}
 
 #[cfg(test)]
 pub(crate) const fn max_atlases_for_test() -> usize {

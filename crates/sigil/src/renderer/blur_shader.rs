@@ -4,7 +4,7 @@
 pub(crate) const BLUR_SHADER: &str = r"
 struct Uniforms {
     viewport: vec2<f32>,
-    _pad: vec2<f32>,
+    params: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
@@ -40,32 +40,18 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
 }
 
 @fragment
-fn fs_down(in: VertexOut) -> @location(0) vec4<f32> {
-    let tex_size = vec2<f32>(textureDimensions(src, 0));
-    let half_pixel = 0.5 / tex_size;
-    let center = textureSample(src, samp, in.uv) * 4.0;
-    let corners =
-          textureSample(src, samp, in.uv - half_pixel)
-        + textureSample(src, samp, in.uv + half_pixel)
-        + textureSample(src, samp, in.uv + vec2<f32>( half_pixel.x, -half_pixel.y))
-        + textureSample(src, samp, in.uv + vec2<f32>(-half_pixel.x,  half_pixel.y));
-    return (center + corners) / 8.0;
-}
-
-@fragment
-fn fs_up(in: VertexOut) -> @location(0) vec4<f32> {
-    let tex_size = vec2<f32>(textureDimensions(src, 0));
-    let half_pixel = 0.5 / tex_size;
-    let cardinals =
-          textureSample(src, samp, in.uv + vec2<f32>(-half_pixel.x * 2.0, 0.0))
-        + textureSample(src, samp, in.uv + vec2<f32>( half_pixel.x * 2.0, 0.0))
-        + textureSample(src, samp, in.uv + vec2<f32>(0.0,  half_pixel.y * 2.0))
-        + textureSample(src, samp, in.uv + vec2<f32>(0.0, -half_pixel.y * 2.0));
-    let corners =
-          textureSample(src, samp, in.uv + vec2<f32>(-half_pixel.x,  half_pixel.y))
-        + textureSample(src, samp, in.uv + vec2<f32>( half_pixel.x,  half_pixel.y))
-        + textureSample(src, samp, in.uv + vec2<f32>(-half_pixel.x, -half_pixel.y))
-        + textureSample(src, samp, in.uv + vec2<f32>( half_pixel.x, -half_pixel.y));
-    return (cardinals * 2.0 + corners) / 12.0;
+fn fs_box(in: VertexOut) -> @location(0) vec4<f32> {
+    let size = vec2<i32>(textureDimensions(src, 0));
+    let center = vec2<i32>(floor(in.clip.xy));
+    let radius = i32(u.params.x);
+    let step = select(vec2<i32>(0, 1), vec2<i32>(1, 0), u.params.y > 0.5);
+    var sum = vec4<f32>(0.0);
+    for (var i = -radius; i <= radius; i = i + 1) {
+        let p = center + step * i;
+        if all(p >= vec2<i32>(0)) && all(p < size) {
+            sum = sum + textureLoad(src, p, 0);
+        }
+    }
+    return sum / f32(2 * radius + 1);
 }
 ";

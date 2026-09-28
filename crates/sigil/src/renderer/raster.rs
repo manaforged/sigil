@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::hal::RenderedGlyph;
+use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::oblique::Oblique;
 
 use skrifa::instance::{LocationRef, NormalizedCoord, Size};
@@ -10,6 +12,8 @@ use skrifa::{FontRef, GlyphId, MetadataProvider};
 use zeno::{Command, Mask, Origin, Vector};
 
 pub(crate) const SUBPIXEL_BINS: u8 = 4;
+
+static COORDS_HASH: ahash::RandomState = ahash::RandomState::with_seeds(1, 2, 3, 4);
 
 pub(crate) const RASTER_MAX_LOGICAL_PX: f32 = 20.0;
 
@@ -31,6 +35,26 @@ pub(crate) struct RasterKey {
     pub coords: u64,
 }
 
+impl RasterKey {
+    pub(crate) fn new(g: &RenderedGlyph, physical_px: f32, bin: u8) -> Self {
+        Self {
+            font_id: g.font_id,
+            font_index: g.font_index,
+            glyph_id: g.glyph_id,
+            physical_px_bits: physical_px.to_bits(),
+            bin,
+            coords: COORDS_HASH.hash_one(&g.variation_coords),
+        }
+    }
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub(crate) fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
+    let bins = f32::from(SUBPIXEL_BINS);
+    let q = (physical_pen_x.rem_euclid(1.0) * bins).round();
+    if q >= bins { (0, 1.0) } else { (q as u8, 0.0) }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct HintKey {
     pub font_id: u64,
@@ -38,8 +62,6 @@ pub(crate) struct HintKey {
     pub physical_px_bits: u32,
     pub coords: u64,
 }
-
-const HINTER_LIMIT: usize = 48;
 
 #[derive(Default)]
 pub(crate) struct Hinters {
@@ -54,7 +76,7 @@ impl Hinters {
         size: Size,
         coords: &[NormalizedCoord],
     ) -> Option<&HintingInstance> {
-        if self.map.len() >= HINTER_LIMIT
+        if self.map.len() >= CacheLimits::DEFAULT.hinters
             && !self.map.contains_key(&key)
             && let Some(&stale) = self.map.keys().next()
         {

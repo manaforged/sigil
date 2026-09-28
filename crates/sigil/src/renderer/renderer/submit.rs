@@ -24,17 +24,6 @@ pub struct ScreenSubmission<'a> {
     pub clear: Option<Color>,
 }
 
-#[derive(Debug)]
-pub struct WorldSubmission<'a> {
-    pub device: &'a wgpu::Device,
-    pub queue: &'a wgpu::Queue,
-    pub view: &'a wgpu::TextureView,
-    pub format: wgpu::TextureFormat,
-    pub depth: &'a wgpu::TextureView,
-    pub view_proj: [[f32; 4]; 4],
-    pub viewport: (f32, f32),
-}
-
 pub(super) fn acquire_frame(
     ready: &ReadyState,
     surface: &WgpuSurface,
@@ -63,7 +52,7 @@ pub(crate) fn record_clear(
     view: &wgpu::TextureView,
     color: Color,
 ) {
-    count("gpu.render_passes");
+    count(crate::profile::Counter::GpuRenderPasses);
     let _p = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: Some("sigil-renderer clear pass"),
         color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -87,7 +76,7 @@ pub(crate) fn record_clear(
     });
 }
 
-pub fn submit_clear(
+pub(crate) fn submit_clear(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     view: &wgpu::TextureView,
@@ -129,6 +118,7 @@ pub(super) fn walk_screen(
         layer_pipelines,
         blur_pipelines,
         layer_pool,
+        pending,
         ..
     } = ready;
     walk_command_scene(
@@ -151,28 +141,11 @@ pub(super) fn walk_screen(
             layer_pipelines,
             blur_pipelines,
             layer_pool,
+            pending,
             stats,
         },
         scene,
     )
-}
-
-pub(super) fn render_frame_surface<F>(
-    ready: &ReadyState,
-    surface: &WgpuSurface,
-    clear_color: crate::hal::Color,
-    draw: F,
-) -> Result<(), RendererError>
-where
-    F: FnOnce(&wgpu::Device, &wgpu::Queue, &wgpu::TextureView),
-{
-    let Some((frame, view)) = acquire_frame(ready, surface)? else {
-        return Ok(());
-    };
-    submit_clear(&ready.device, &ready.queue, &view, clear_color);
-    draw(&ready.device, &ready.queue, &view);
-    ready.queue.present(frame);
-    Ok(())
 }
 
 #[allow(

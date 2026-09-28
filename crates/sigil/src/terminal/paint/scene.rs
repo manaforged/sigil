@@ -224,7 +224,7 @@ impl Walk<'_> {
     }
 
     fn gradient(&mut self, draw: &DrawGradient) {
-        let flat = gradient_flat(&draw.gradient);
+        let flat = gradient_flat(&draw.gradient.normalized());
         let draw_rect = DrawRect {
             node: draw.node,
             rect: draw.rect,

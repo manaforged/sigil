@@ -4,7 +4,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt as _;
 
 use crate::renderer::frame_upload::UploadedRange;
-use crate::renderer::scene_command::{DecorationKind, DrawDecoration};
+use crate::renderer::scene_command::{DecorationKind, DrawDecoration, Transform};
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
 
@@ -16,9 +16,11 @@ pub(crate) struct DecorationInstance {
     pub(crate) band: [f32; 4],
     pub(crate) color: [f32; 4],
     pub(crate) params: [f32; 4],
+    pub(crate) axes: [f32; 4],
+    pub(crate) offset: [f32; 4],
 }
 
-const _: () = assert!(core::mem::size_of::<DecorationInstance>() == 48);
+const _: () = assert!(core::mem::size_of::<DecorationInstance>() == 80);
 
 const UNIT_QUAD_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
     array_stride: (core::mem::size_of::<f32>() as u64) * 2,
@@ -33,6 +35,8 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         1 => Float32x4,
         2 => Float32x4,
         3 => Float32x4,
+        4 => Float32x4,
+        5 => Float32x4,
     ],
 };
 
@@ -178,7 +182,7 @@ fn make_pipeline(
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format,
-                blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
@@ -200,25 +204,26 @@ fn make_unit_quad(device: &wgpu::Device) -> wgpu::Buffer {
 
 pub(crate) fn decoration_instance(
     draw: &DrawDecoration,
+    transform: Transform,
     opacity_scale: f32,
     space: BlendSpace,
-) -> DecorationInstance {
+) -> Option<DecorationInstance> {
+    let geometry = draw.geometry()?;
     let opacity = (f32::from(draw.opacity) / 10_000.0) * opacity_scale;
     let kind_f32 = match draw.kind {
         DecorationKind::Underline => 0.0_f32,
         DecorationKind::Strikethrough => 1.0_f32,
         DecorationKind::WavyUnderline => 2.0_f32,
     };
-    DecorationInstance {
-        band: [
-            draw.band.origin.x,
-            draw.band.origin.y,
-            draw.band.width,
-            draw.band.height,
-        ],
+    let band = geometry.band;
+    let [[a, c, tx], [b, d, ty]] = transform;
+    Some(DecorationInstance {
+        band: [band.origin.x, band.origin.y, band.width, band.height],
         color: space.rgba(draw.color),
-        params: [opacity, draw.period, draw.line_width, kind_f32],
-    }
+        params: [opacity, geometry.period, geometry.thickness, kind_f32],
+        axes: [a, b, c, d],
+        offset: [tx, ty, geometry.amplitude, 0.0],
+    })
 }
 
 #[cfg(test)]

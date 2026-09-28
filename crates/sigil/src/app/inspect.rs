@@ -228,7 +228,7 @@ fn frame_json(frame: &crate::profile::Frame) -> Value {
     let ms = |ns: u64| Value::from(ns as f64 / 1_000_000.0);
     json!({
         "index": frame.index,
-        "cause": frame.cause,
+        "cause": frame.cause.name(),
         "wall_ms": ms(frame.wall_ns),
         "phases": frame
             .phases
@@ -240,6 +240,7 @@ fn frame_json(frame: &crate::profile::Frame) -> Value {
             .iter()
             .map(|(name, value)| (name.to_string(), Value::from(*value)))
             .collect::<serde_json::Map<String, Value>>(),
+        "backend": frame.backend.map(|status| status.to_string()),
     })
 }
 

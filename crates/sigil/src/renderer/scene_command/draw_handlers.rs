@@ -1,6 +1,6 @@
 use crate::hal::{Color, RenderedGlyph};
 
-use crate::renderer::raster::RASTER_MAX_LOGICAL_PX;
+use crate::renderer::glyph_place::{GlyphMode, plan_glyph_run};
 use crate::renderer::raster_paint::{RasterDrawParams, RasterTextPipeline};
 use crate::renderer::scene_command::walk::{QueuedGlyphs, Walk, transform_rect};
 use crate::renderer::scene_command::{
@@ -8,20 +8,25 @@ use crate::renderer::scene_command::{
 };
 use crate::renderer::scene_instance::BlendSpace;
 use crate::renderer::scene_paint::PaintCtx;
-use crate::renderer::slug::{DrawParams, QueuedRun, RunFrame, SlugTextPipeline, text_tuning};
-use crate::renderer::sprite_paint::SpritePipeline;
+use crate::renderer::slug::{DrawParams, QueuedRun, RunFrame, SlugTextPipeline};
+use crate::renderer::sprite_paint::{SpritePaint, SpritePipeline};
 
 impl Walk<'_> {
     pub(super) fn draw_sprite(&mut self, draw: &DrawSprite) {
-        let dest = transform_rect(self.current_transform(), draw.destination);
-        if self.clip_rect(dest).is_none() {
+        let transform = self.state.current_transform();
+        if self
+            .state
+            .clip_rect(transform_rect(transform, draw.destination))
+            .is_none()
+        {
             return;
         }
-        let opacity = self.current_opacity();
-        let space = BlendSpace::from_format(self.ctx.format);
-        let clip = self.current_clip();
-        let mut transformed = draw.clone();
-        transformed.destination = dest;
+        let paint = SpritePaint {
+            opacity: self.state.current_opacity(),
+            space: BlendSpace::from_format(self.ctx.format),
+            transform,
+        };
+        let clip = self.state.current_clip();
         let pipeline =
             sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
         pipeline.paint_sprite(
@@ -34,9 +39,8 @@ impl Walk<'_> {
                 clip,
                 scale: self.ctx.scale,
             },
-            &transformed,
-            opacity,
-            space,
+            draw,
+            paint,
         );
         self.ctx.stats.sprite_draws += 1;
     }
@@ -54,8 +58,9 @@ impl Walk<'_> {
         if packed.is_none() {
             return;
         }
-        let (mut region, destination) =
-            fit_image(draw.fit, packed.w as f32, packed.h as f32, draw.destination);
+        let Some((mut region, destination)) = draw.placement() else {
+            return;
+        };
         region.origin.x += packed.x as f32;
         region.origin.y += packed.y as f32;
         let sprite = DrawSprite {
@@ -80,27 +85,29 @@ impl Walk<'_> {
 
     pub(super) fn queue_glyph_run(&mut self, draw: &DrawGlyphRun) {
         let run = &draw.run;
-        let rect = transform_rect(self.current_transform(), run.rect);
-        let Some(bounds) = self.clip_rect(rect) else {
+        let transform = self.state.current_transform();
+        let Some(plan) = plan_glyph_run(run, transform, self.ctx.scale) else {
             return;
         };
-        let clip = self.current_clip();
+        let Some(bounds) = self.state.clip_rect(plan.bounds) else {
+            return;
+        };
+        let clip = self.state.current_clip();
         let Some(paragraph) = run.paragraph() else {
             return;
         };
-        let glyphs = run.positioned_glyphs();
-        if glyphs.is_empty() {
-            return;
-        }
         self.ctx.stats.glyph_runs += 1;
         let space = BlendSpace::from_format(self.ctx.format);
-        let color = glyph_run_color(run, self.current_opacity(), space);
-        let origin = (rect.origin.x, rect.origin.y);
-        let leftover = self.raster_pass(run, origin, color, clip);
+        let color = glyph_run_color(run, self.state.current_opacity(), space);
+        let origin = (run.rect.origin.x, run.rect.origin.y);
+        let leftover = match plan.mode {
+            GlyphMode::Mask => self.raster_pass(run, origin, color, clip),
+            GlyphMode::Outline => None,
+        };
         let glyphs: &[RenderedGlyph] = match leftover.as_deref() {
             Some([]) => return,
             Some(slice) => slice,
-            None => glyphs,
+            None => run.positioned_glyphs(),
         };
         let ctx = &mut self.ctx;
         let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
@@ -116,11 +123,12 @@ impl Walk<'_> {
                 paragraph,
                 glyphs: Some(glyphs),
                 origin,
+                transform,
                 color: Some(color),
                 clip,
             },
         );
-        self.pending_glyphs.push(QueuedGlyphs {
+        self.ctx.pending.glyphs.push(QueuedGlyphs {
             run: QueuedRun { instances, clip },
             bounds,
         });
@@ -133,12 +141,6 @@ impl Walk<'_> {
         color: Color,
         clip: Option<crate::hal::Rect>,
     ) -> Option<Vec<RenderedGlyph>> {
-        let eligible = text_tuning().raster
-            && self.is_identity_transform()
-            && run.style.font_size <= RASTER_MAX_LOGICAL_PX;
-        if !eligible {
-            return None;
-        }
         let paragraph = run.paragraph()?;
         self.finish();
         let glyphs = run.positioned_glyphs();
@@ -163,16 +165,15 @@ impl Walk<'_> {
     }
 
     pub(super) fn flush_glyphs(&mut self) {
-        if self.pending_glyphs.is_empty() {
+        if self.ctx.pending.glyphs.is_empty() {
             return;
         }
         self.flush_shapes();
-        let runs: Vec<QueuedRun> = self
-            .pending_glyphs
-            .drain(..)
-            .map(|queued| queued.run)
-            .collect();
         let ctx = &mut self.ctx;
+        let pending = &mut *ctx.pending;
+        pending
+            .runs
+            .extend(pending.glyphs.drain(..).map(|queued| queued.run));
         let pipeline = slug_pipeline_for(ctx.slug_pipelines, ctx.device, ctx.format);
         pipeline.record_runs_in_frame(
             &mut *ctx.encoder,
@@ -183,9 +184,10 @@ impl Walk<'_> {
                 surface_height: ctx.viewport.1,
                 scale: ctx.scale,
             },
-            &runs,
+            &ctx.pending.runs,
             Some(&mut *ctx.stats),
         );
+        ctx.pending.runs.clear();
     }
 }
 
@@ -244,36 +246,6 @@ fn glyph_run_color(run: &GlyphRun, opacity_scale: f32, space: BlendSpace) -> Col
     let opacity = (f32::from(run.opacity) / 10_000.0) * opacity_scale;
     let [r, g, b, a] = space.rgba(run.color);
     Color::rgba(r, g, b, a * opacity.clamp(0.0, 1.0))
-}
-
-fn fit_image(
-    fit: crate::kernel::ObjectFit,
-    iw: f32,
-    ih: f32,
-    dest: crate::hal::Rect,
-) -> (crate::hal::Rect, crate::hal::Rect) {
-    use crate::hal::{Point, Rect};
-    let full_src = Rect::new(Point::new(0.0, 0.0), iw, ih);
-    if iw <= 0.0 || ih <= 0.0 || dest.width <= 0.0 || dest.height <= 0.0 {
-        return (full_src, dest);
-    }
-    match fit {
-        crate::kernel::ObjectFit::Fill => (full_src, dest),
-        crate::kernel::ObjectFit::Contain => {
-            let scale = (dest.width / iw).min(dest.height / ih);
-            let (w, h) = (iw * scale, ih * scale);
-            let x = dest.origin.x + (dest.width - w) / 2.0;
-            let y = dest.origin.y + (dest.height - h) / 2.0;
-            (full_src, Rect::new(Point::new(x, y), w, h))
-        }
-        crate::kernel::ObjectFit::Cover => {
-            let scale = (dest.width / iw).max(dest.height / ih);
-            let (vw, vh) = (dest.width / scale, dest.height / scale);
-            let sx = (iw - vw) / 2.0;
-            let sy = (ih - vh) / 2.0;
-            (Rect::new(Point::new(sx, sy), vw, vh), dest)
-        }
-    }
 }
 
 #[cfg(test)]

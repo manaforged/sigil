@@ -1,5 +1,3 @@
-use smallvec::{SmallVec, smallvec};
-
 use crate::hal::{Point, Rect};
 
 use crate::renderer::blur_paint::BlurPipeline;
@@ -11,6 +9,7 @@ use crate::renderer::frame_upload::{FrameUploads, UploadCapacities};
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::{LayerHandle, LayerPool};
 use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::scene_command::state::SceneState;
 use crate::renderer::scene_command::{CommandScene, SceneCommand, Transform};
 use crate::renderer::scene_instance::{FillInstance, GpuStop, RectInstance, ShadowInstance};
 use crate::renderer::scene_paint::ScenePipeline;
@@ -18,7 +17,7 @@ use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::{QueuedRun, SlugTextPipeline};
 use crate::renderer::split_encoder::SplitEncoder;
 use crate::renderer::sprite_paint::SpritePipeline;
-pub(crate) use crate::scene::command::effects::{transform_point, transform_rect};
+pub(crate) use crate::scene::command::effects::transform_rect;
 
 pub(crate) const IDENTITY: Transform = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
@@ -41,7 +40,31 @@ pub(crate) struct WalkCtx<'a> {
     pub(crate) layer_pipelines: &'a mut Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: &'a mut Vec<BlurPipeline>,
     pub(crate) layer_pool: &'a mut Option<LayerPool>,
+    pub(crate) pending: &'a mut WalkPending,
     pub(crate) stats: &'a mut FrameStats,
+}
+
+#[derive(Default)]
+pub(crate) struct WalkPending {
+    pub(super) rects: Vec<RectInstance>,
+    pub(super) fills: Vec<FillInstance>,
+    pub(super) stops: Vec<GpuStop>,
+    pub(super) shadows: Vec<ShadowInstance>,
+    pub(super) decorations: Vec<DecorationInstance>,
+    pub(super) glyphs: Vec<QueuedGlyphs>,
+    pub(super) runs: Vec<QueuedRun>,
+}
+
+impl WalkPending {
+    fn clear(&mut self) {
+        self.rects.clear();
+        self.fills.clear();
+        self.stops.clear();
+        self.shadows.clear();
+        self.decorations.clear();
+        self.glyphs.clear();
+        self.runs.clear();
+    }
 }
 
 pub(crate) fn walk_command_scene(
@@ -63,6 +86,7 @@ pub(crate) fn walk_command_scene(
         .commands
         .iter()
         .any(|cmd| matches!(cmd, SceneCommand::PushLayer(_)))
+        || SceneState::has_composited_group(&scene.commands)
     {
         return super::layer_walk::walk_layer_command_scene(ctx, scene);
     }
@@ -73,16 +97,8 @@ pub(crate) fn walk_command_scene(
 
 pub(super) struct Walk<'a> {
     pub(super) ctx: WalkCtx<'a>,
-    clips: SmallVec<[Rect; 4]>,
-    transforms: SmallVec<[Transform; 4]>,
-    layers: SmallVec<[f32; 4]>,
+    pub(super) state: SceneState,
     pub(super) uploads: FrameUploads,
-    pub(super) pending_rects: Vec<RectInstance>,
-    pub(super) pending_fills: Vec<FillInstance>,
-    pub(super) pending_stops: Vec<GpuStop>,
-    pub(super) pending_shadows: Vec<ShadowInstance>,
-    pub(super) pending_decorations: Vec<DecorationInstance>,
-    pub(super) pending_glyphs: Vec<QueuedGlyphs>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -93,26 +109,19 @@ enum Shape {
     Decoration,
 }
 
-pub(super) struct QueuedGlyphs {
+pub(crate) struct QueuedGlyphs {
     pub(super) run: QueuedRun,
     pub(super) bounds: Rect,
 }
 
 impl<'a> Walk<'a> {
     pub(super) fn new(ctx: WalkCtx<'a>, capacity: UploadCapacities) -> Self {
+        ctx.pending.clear();
         let uploads = FrameUploads::new(ctx.encoder, ctx.viewport, capacity, &mut *ctx.stats);
         Self {
             ctx,
-            clips: SmallVec::new(),
-            transforms: smallvec![IDENTITY],
-            layers: smallvec![1.0],
+            state: SceneState::default(),
             uploads,
-            pending_rects: Vec::new(),
-            pending_fills: Vec::new(),
-            pending_stops: Vec::new(),
-            pending_shadows: Vec::new(),
-            pending_decorations: Vec::new(),
-            pending_glyphs: Vec::new(),
         }
     }
 
@@ -124,6 +133,9 @@ impl<'a> Walk<'a> {
     }
 
     pub(super) fn handle(&mut self, command: &SceneCommand) {
+        if self.state.clipped_out() && SceneState::draws(command) {
+            return;
+        }
         if self.queue_batchable(command) {
             return;
         }
@@ -131,24 +143,18 @@ impl<'a> Walk<'a> {
             SceneCommand::PushClip(_) | SceneCommand::PopClip => self.flush_shapes(),
             _ => self.finish(),
         }
+        if self.state.apply(command) || self.state.clipped_out() {
+            return;
+        }
         match command {
-            SceneCommand::PushClip(rect) => self.push_clip(*rect),
-            SceneCommand::PopClip => {
-                let _ = self.clips.pop();
-            }
-            SceneCommand::PushTransform(transform) => self.push_transform(*transform),
-            SceneCommand::PopTransform => {
-                if self.transforms.len() > 1 {
-                    let _ = self.transforms.pop();
-                }
-            }
-            SceneCommand::SaveLayer { opacity } => self.push_opacity_layer(*opacity),
-            SceneCommand::RestoreLayer => {
-                if self.layers.len() > 1 {
-                    let _ = self.layers.pop();
-                }
-            }
-            SceneCommand::PushLayer(_) | SceneCommand::PopLayer => {}
+            SceneCommand::PushLayer(_)
+            | SceneCommand::PopLayer
+            | SceneCommand::PushClip(_)
+            | SceneCommand::PopClip
+            | SceneCommand::PushTransform(_)
+            | SceneCommand::PopTransform
+            | SceneCommand::SaveLayer { .. }
+            | SceneCommand::RestoreLayer => {}
             SceneCommand::Rect(_)
             | SceneCommand::Gradient(_)
             | SceneCommand::Pattern(_)
@@ -169,7 +175,7 @@ impl<'a> Walk<'a> {
                 true
             }
             SceneCommand::Rect(draw) => {
-                if self.glyphs_under(transform_rect(self.current_transform(), draw.rect)) {
+                if self.glyphs_under(transform_rect(self.state.current_transform(), draw.rect)) {
                     self.flush_glyphs();
                 }
                 self.flush_shapes_except(Shape::Rect);
@@ -236,46 +242,11 @@ impl<'a> Walk<'a> {
     }
 
     fn glyphs_under(&self, rect: Rect) -> bool {
-        self.pending_glyphs
+        self.ctx
+            .pending
+            .glyphs
             .iter()
             .any(|queued| intersect_rect(queued.bounds, rect).is_some())
-    }
-
-    pub(super) fn push_clip(&mut self, rect: Rect) {
-        self.clips
-            .push(transform_rect(self.current_transform(), rect));
-    }
-
-    pub(super) fn push_transform(&mut self, transform: Transform) {
-        self.transforms
-            .push(compose(self.current_transform(), transform));
-    }
-
-    fn push_opacity_layer(&mut self, opacity: f32) {
-        self.layers
-            .push(self.current_opacity() * opacity.clamp(0.0, 1.0));
-    }
-
-    pub(super) fn clip_rect(&self, rect: Rect) -> Option<Rect> {
-        self.clips.iter().copied().try_fold(rect, intersect_rect)
-    }
-
-    pub(super) fn current_clip(&self) -> Option<Rect> {
-        let mut clips = self.clips.iter().copied();
-        let first = clips.next()?;
-        clips.try_fold(first, intersect_rect)
-    }
-
-    pub(super) fn current_transform(&self) -> Transform {
-        self.transforms.last().copied().unwrap_or(IDENTITY)
-    }
-
-    pub(super) fn is_identity_transform(&self) -> bool {
-        self.current_transform() == IDENTITY
-    }
-
-    pub(super) fn current_opacity(&self) -> f32 {
-        self.layers.last().copied().unwrap_or(1.0)
     }
 }
 

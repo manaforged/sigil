@@ -1,11 +1,8 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
+use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::raster::{GlyphMask, RasterKey};
-
-const INITIAL_ATLAS_SIZE: u32 = 1024;
-const MAX_ATLAS_SIZE: u32 = 2048;
-const STALE_FRAMES: u64 = 120;
 
 static TEST_INITIAL_SIZE: AtomicU32 = AtomicU32::new(0);
 static TEST_MAX_SIZE: AtomicU32 = AtomicU32::new(0);
@@ -27,14 +24,14 @@ pub(crate) fn test_atlas_size_override() -> (u32, u32) {
 
 fn initial_atlas_size() -> u32 {
     match TEST_INITIAL_SIZE.load(Ordering::Relaxed) {
-        0 => INITIAL_ATLAS_SIZE,
+        0 => CacheLimits::DEFAULT.atlas_initial,
         v => v,
     }
 }
 
 fn max_atlas_size() -> u32 {
     match TEST_MAX_SIZE.load(Ordering::Relaxed) {
-        0 => MAX_ATLAS_SIZE,
+        0 => CacheLimits::DEFAULT.atlas_max,
         v => v,
     }
 }
@@ -119,8 +116,9 @@ impl RasterAtlas {
     fn evict_stale(&mut self) {
         let frame = self.frame;
         let before = self.cache.len();
-        self.cache
-            .retain(|_, cached| cached.last_used + STALE_FRAMES >= frame);
+        self.cache.retain(|_, cached| {
+            cached.last_used + CacheLimits::DEFAULT.glyph_stale_frames >= frame
+        });
         if self.cache.len() == before {
             self.cache.retain(|_, cached| cached.last_used + 1 >= frame);
         }

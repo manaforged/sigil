@@ -23,14 +23,14 @@ impl LayoutEngine {
         structural: bool,
     ) -> Result<(), LayoutError> {
         let roots = {
-            let _dirty = crate::profile::span("layout.dirty");
+            let _dirty = crate::profile::span(crate::profile::Phase::LayoutDirty);
             self.dirty_roots(cx, dirty, root, structural)?
         };
         {
-            let _solve = crate::profile::span("layout.solve");
+            let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
             self.solve_roots(&roots, root, available)?;
         }
-        let _attach = crate::profile::span("layout.attach");
+        let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
         for subroot in roots {
             self.attach_subtree_results(cx, subroot)?;
         }
@@ -63,10 +63,16 @@ impl LayoutEngine {
             .copied()
             .filter(|id| !self.steady.contains(id) && !self.text_kept_size(cx, *id))
             .collect();
-        crate::profile::count_add("layout.dirty.n", dirty.len() as u64);
-        crate::profile::count_add("layout.resized.n", resized.len() as u64);
+        crate::profile::count_add(
+            crate::profile::Counter::LayoutDirtyNodes,
+            dirty.len() as u64,
+        );
+        crate::profile::count_add(
+            crate::profile::Counter::LayoutResizedNodes,
+            resized.len() as u64,
+        );
         let roots = self.containment_roots(cx, &resized, root, &repositioned);
-        crate::profile::count_add("layout.roots", roots.len() as u64);
+        crate::profile::count_add(crate::profile::Counter::LayoutRoots, roots.len() as u64);
         Ok(roots)
     }
 
@@ -183,7 +189,7 @@ impl LayoutEngine {
             .collect();
         dirty.retain(|id| !moved.contains(id));
         for id in moved.iter().copied() {
-            crate::profile::count("layout.translate");
+            crate::profile::count(crate::profile::Counter::LayoutTranslate);
             self.translate(cx, id)?;
         }
         Ok(moved.len())

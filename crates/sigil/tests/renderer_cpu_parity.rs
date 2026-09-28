@@ -9,14 +9,27 @@
 use std::path::PathBuf;
 
 use sigil::hal::{Color, PhysicalSize};
-use sigil::renderer::{CommandScene, CpuRenderer, OffscreenTarget, WgpuRenderer, scenes};
+use sigil::renderer::{CpuRenderer, OffscreenTarget, WgpuRenderer, scenes};
+use sigil::scene::CommandScene;
 use sigil_kittest::gpu::read_pixels;
+use sigil_kittest::parity::{CLOSE_TOLERANCE, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, diff};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const SCALE: f32 = 2.0;
-const MAX_MEAN_DIFF: f32 = 20.0;
-const MIN_CLOSE_FRACTION: f32 = 0.85;
-const CLOSE_TOLERANCE: u8 = 48;
+const LIMITS: [(&str, f32, f32); 12] = [
+    ("gradient", 2.69, 0.98),
+    ("stroke", 2.87, 0.971),
+    ("corner_radius", 1.02, 0.98),
+    ("shadow", 1.05, 0.98),
+    ("inner_shadow", 1.74, 0.98),
+    ("pattern", 1.82, 0.98),
+    ("sprite", 1.79, 0.979),
+    ("icon", 1.23, 0.98),
+    ("decoration", 2.1, 0.967),
+    ("glow", 1.27, 0.98),
+    ("text", 1.61, 0.977),
+    ("translucent", 2.87, 0.98),
+];
 
 type Scene = (CommandScene, (f32, f32), Color);
 
@@ -32,6 +45,8 @@ fn catalog() -> Vec<(&'static str, Scene)> {
         ("icon", scenes::icon()),
         ("decoration", scenes::decoration()),
         ("glow", scenes::glow()),
+        ("text", scenes::text()),
+        ("translucent", scenes::translucent()),
     ]
 }
 
@@ -143,28 +158,13 @@ fn gpu_pixels(renderer: &mut WgpuRenderer, scene: &Scene) -> (Vec<u8>, PhysicalS
     )
 }
 
-struct Diff {
-    mean: f32,
-    close: f32,
-}
-
-fn diff(a: &[u8], b: &[u8]) -> Diff {
-    let mut total = 0_u64;
-    let mut close = 0_usize;
-    let pixels = a.len() / 4;
-    let (a, _) = a.as_chunks::<4>();
-    let (b, _) = b.as_chunks::<4>();
-    for (pa, pb) in a.iter().zip(b) {
-        let d = [0, 1, 2].map(|i| pa[i].abs_diff(pb[i]));
-        total += d.iter().map(|&v| u64::from(v)).sum::<u64>();
-        if d.iter().all(|&v| v <= CLOSE_TOLERANCE) {
-            close += 1;
-        }
-    }
-    Diff {
-        mean: total as f32 / (pixels * 3) as f32,
-        close: close as f32 / pixels as f32,
-    }
+fn limits(name: &str) -> (f32, f32) {
+    LIMITS
+        .iter()
+        .find(|(scene, _, _)| *scene == name)
+        .map_or((MAX_MEAN_DIFF, MIN_CLOSE_FRACTION), |&(_, mean, close)| {
+            (mean, close)
+        })
 }
 
 #[test]
@@ -187,7 +187,8 @@ fn cpu_matches_gpu_on_catalog_scenes() {
             d.mean,
             d.close * 100.0
         );
-        if d.mean > MAX_MEAN_DIFF || d.close < MIN_CLOSE_FRACTION {
+        let (max_mean, min_close) = limits(name);
+        if d.mean > max_mean || d.close < min_close {
             failures.push(name);
         }
     }

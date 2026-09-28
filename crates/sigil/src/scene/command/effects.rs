@@ -18,6 +18,34 @@ pub struct SpriteSource {
     pub phase: f32,
 }
 
+impl SpriteSource {
+    #[cfg(feature = "scene")]
+    pub(crate) fn fitted(self, atlas: (f32, f32), dest: Rect) -> Option<(Rect, Rect)> {
+        let region = self.region;
+        if region.width <= 0.0 || region.height <= 0.0 {
+            return None;
+        }
+        let x0 = region.origin.x.max(0.0);
+        let y0 = region.origin.y.max(0.0);
+        let x1 = (region.origin.x + region.width).min(atlas.0);
+        let y1 = (region.origin.y + region.height).min(atlas.1);
+        if x1 <= x0 || y1 <= y0 {
+            return None;
+        }
+        let sx = dest.width / region.width;
+        let sy = dest.height / region.height;
+        let visible = Rect::new(
+            Point::new(
+                (x0 - region.origin.x).mul_add(sx, dest.origin.x),
+                (y0 - region.origin.y).mul_add(sy, dest.origin.y),
+            ),
+            (x1 - x0) * sx,
+            (y1 - y0) * sy,
+        );
+        Some((Rect::new(Point::new(x0, y0), x1 - x0, y1 - y0), visible))
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DecorationKind {
     Underline,

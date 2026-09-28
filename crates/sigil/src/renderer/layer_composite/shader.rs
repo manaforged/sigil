@@ -19,6 +19,7 @@ struct InstanceIn {
     @location(4) opacity: f32,
     @location(5) transform_x: vec3<f32>,
     @location(6) transform_y: vec3<f32>,
+    @location(7) round: vec4<f32>,
 };
 
 struct VertexOut {
@@ -42,8 +43,8 @@ fn vs_main(v: VertexIn, inst: InstanceIn) -> VertexOut {
     out.clip = vec4<f32>(ndc, 0.0, 1.0);
     out.uv = v.unit * inst.uv_max;
     out.opacity = inst.opacity;
-    out.local = (v.unit - vec2<f32>(0.5)) * inst.dest.zw;
-    out.half_size = inst.dest.zw * 0.5;
+    out.local = local.xy - inst.round.xy;
+    out.half_size = inst.round.zw;
     out.clip_radii = inst.clip_radii;
     return out;
 }

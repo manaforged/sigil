@@ -33,6 +33,8 @@ pub(super) const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBuf
         7 => Float32x4,
         8 => Float32x4,
         9 => Float32x4,
+        10 => Float32x4,
+        11 => Float32x4,
     ],
 };
 

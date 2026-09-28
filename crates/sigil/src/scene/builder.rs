@@ -41,21 +41,13 @@ impl SceneBuilder {
     }
 
     pub fn draw_decoration(&mut self, style: SceneDecorationStyle) {
-        let period = if matches!(
-            style.kind,
-            crate::scene::command::DecorationKind::WavyUnderline
-        ) {
-            style.period.max(1.0)
-        } else {
-            style.period
-        };
         self.commands.push(SceneCommand::Decoration(DrawDecoration {
             node: None,
             kind: style.kind,
             band: style.band,
             color: style.color,
             opacity: style.opacity,
-            period,
+            period: style.period,
             line_width: style.line_width,
         }));
     }

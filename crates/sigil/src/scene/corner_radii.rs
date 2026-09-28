@@ -36,29 +36,25 @@ impl CornerRadii {
 
     #[must_use]
     pub(crate) fn nonnegative_array(self) -> [f32; 4] {
-        self.0.map(|radius| radius.max(0.0))
+        self.0.map(|radius| {
+            if radius.is_nan() {
+                0.0
+            } else {
+                radius.max(0.0)
+            }
+        })
     }
 
     #[must_use]
     pub fn normalized_for(self, width: f32, height: f32) -> [f32; 4] {
-        let [top_left, top_right, bottom_right, bottom_left] = self.nonnegative_array();
+        let longest = width.max(height).max(0.0);
+        let [top_left, top_right, bottom_right, bottom_left] =
+            self.nonnegative_array().map(|radius| radius.min(longest));
         let factor = edge_factor(width, top_left + top_right)
             .min(edge_factor(width, bottom_left + bottom_right))
             .min(edge_factor(height, top_left + bottom_left))
             .min(edge_factor(height, top_right + bottom_right));
         [top_left, top_right, bottom_right, bottom_left].map(|radius| radius * factor)
-    }
-
-    #[must_use]
-    pub fn corner_for(self, local: [f32; 2]) -> f32 {
-        let [x, y] = local;
-        let [top_left, top_right, bottom_right, bottom_left] = self.nonnegative_array();
-        match (x > 0.0, y < 0.0) {
-            (false, true) => top_left,
-            (true, true) => top_right,
-            (true, false) => bottom_right,
-            (false, false) => bottom_left,
-        }
     }
 }
 

@@ -4,7 +4,7 @@
     clippy::cast_sign_loss
 )]
 
-use std::cell::Cell;
+use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -16,6 +16,8 @@ use crate::text::glyph::GlyphRun;
 
 #[path = "paragraph_geometry.rs"]
 mod geometry;
+#[path = "paragraph_ink.rs"]
+mod ink;
 
 use geometry::{
     caret_x_in_line, hit_test_line, locate_line_for_position, order_positions, pick_line,
@@ -212,6 +214,7 @@ struct ParagraphInner {
     fonts: Vec<FaceEntry>,
     min_content_hint: f32,
     content_widths: Cell<Option<ContentWidths>>,
+    ink: OnceCell<Option<Rect>>,
 }
 
 #[derive(Clone)]
@@ -238,6 +241,7 @@ impl Paragraph {
                 fonts,
                 min_content_hint,
                 content_widths: Cell::new(None),
+                ink: OnceCell::new(),
             }),
         }
     }

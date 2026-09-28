@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::bands::BandData;
+use crate::hal::RenderedGlyph;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(super) struct GlyphKey {
@@ -8,6 +9,19 @@ pub(super) struct GlyphKey {
     pub font_index: u32,
     pub glyph_id: u32,
     pub variation_coords: Box<[i16]>,
+    pub skew_bits: u32,
+}
+
+impl GlyphKey {
+    pub(super) fn of(glyph: &RenderedGlyph) -> Self {
+        Self {
+            font_id: glyph.font_id,
+            font_index: glyph.font_index,
+            glyph_id: glyph.glyph_id,
+            variation_coords: glyph.variation_coords.clone(),
+            skew_bits: glyph.skew.to_bits(),
+        }
+    }
 }
 
 pub(super) struct CachedGlyph {
@@ -55,12 +69,6 @@ impl GlyphCache {
 
     pub(super) fn iter(&self) -> impl Iterator<Item = (&GlyphKey, &CachedGlyph)> {
         self.map.iter()
-    }
-
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
-    pub(super) fn clear(&mut self) {
-        self.map.clear();
-        self.generation = self.generation.wrapping_add(1);
     }
 }
 

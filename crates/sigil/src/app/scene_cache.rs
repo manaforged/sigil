@@ -1,7 +1,7 @@
-use crate::hal::Color;
 use crate::kernel::{Cx, NodeId};
+use crate::profile::{Counter, Phase};
 use crate::reactive::Runtime;
-use crate::renderer::{CommandScene, SceneCommand};
+use crate::scene::{CommandScene, SceneCommand};
 
 use crate::app::launch::backend::{Backend, Surface};
 
@@ -44,7 +44,7 @@ impl SceneCache {
     ) -> &CommandScene {
         let key = SceneKey::new(cx, root, viewport);
         if !allow_replay || self.key != Some(key) {
-            crate::profile::count("scene.emit");
+            crate::profile::count(Counter::SceneEmit);
             self.scene = emit_viewport_scene(cx, root, viewport);
             self.key = Some(key);
             #[cfg(test)]
@@ -52,7 +52,7 @@ impl SceneCache {
                 self.emissions += 1;
             }
         } else {
-            crate::profile::count("scene.replay");
+            crate::profile::count(Counter::SceneReplay);
         }
         note_scene(&self.scene);
         &self.scene
@@ -70,28 +70,21 @@ impl SceneCache {
         let Some(surface) = surface.as_mut() else {
             return;
         };
-        let scene = {
-            let _emit = crate::profile::span("emit");
-            self.scene(cx, root, viewport, allow_replay)
-        };
-        let mut overlaid;
-        let scene = if crate::hud::enabled() {
-            overlaid = scene.clone();
-            crate::hud::overlay(&mut overlaid, viewport);
-            &overlaid
-        } else {
-            scene
-        };
-        let clear = if renderer.is_transparent() {
-            Color::rgba(0.0, 0.0, 0.0, 0.0)
-        } else {
-            Color::rgba(0.03, 0.04, 0.05, 1.0)
-        };
-        let _render = crate::profile::span("render.cpu");
-        if let Err(err) = renderer.render(surface, scene, clear, viewport) {
+        {
+            let _emit = crate::profile::span(Phase::Emit);
+            self.scene(cx, root, viewport, allow_replay);
+        }
+        let base = self.scene.commands.len();
+        if crate::hud::enabled() {
+            crate::hud::overlay(&mut self.scene, viewport);
+        }
+        let clear = renderer.clear_color();
+        let _render = crate::profile::span(Phase::RenderCpu);
+        if let Err(err) = renderer.render(surface, &self.scene, clear, viewport) {
             tracing::warn!("sigil-app: render_command_scene failed: {err}");
             Runtime::mark_frame_dirty();
         }
+        self.scene.commands.truncate(base);
         renderer.last_frame_stats().record_profile();
     }
 }
@@ -113,9 +106,9 @@ fn note_scene(scene: &CommandScene) {
             _ => {}
         }
     }
-    crate::profile::count_add("scene.glyphs", glyphs);
-    crate::profile::count_add("scene.rects", rects);
-    crate::profile::count_add("scene.images", images);
+    crate::profile::count_add(Counter::SceneGlyphs, glyphs);
+    crate::profile::count_add(Counter::SceneRects, rects);
+    crate::profile::count_add(Counter::SceneImages, images);
 }
 
 pub(super) struct PaintRequest<'a> {

@@ -113,6 +113,9 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
     let spread = in.shadow_params.w;
     let surface_half_size = max(vec2<f32>(0.0), in.surface_rect.zw * 0.5);
     let shadow_kind = in.shadow_meta.x;
+    let p_surface = in.pos_px - center;
+    let d_surface = rounded_rect_sdf(p_surface, surface_half_size, in.corner_radii, 0.0);
+    let edge_aa = max(fwidth(d_surface) * 0.5, 0.0001);
     var coverage = 0.0;
 
     if shadow_kind >= 1.5 {
@@ -120,16 +123,11 @@ fn fs_main(in: VertexOut) -> @location(0) vec4<f32> {
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));
         coverage = shadow_coverage(p, sigma, in.corner_radii, half_size, spread);
     } else if shadow_kind >= 0.5 {
-        let p_surface = in.pos_px - center;
-        let d_surface = rounded_rect_sdf(p_surface, surface_half_size, in.corner_radii, 0.0);
-        if d_surface > 0.0 {
-            coverage = 0.0;
-        } else {
-            let inner_spread = -spread;
-            let p_shadow = p_surface - offset;
-            let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(inner_spread));
-            coverage = 1.0 - shadow_coverage(p_shadow, sigma, in.corner_radii, half_size, inner_spread);
-        }
+        let edge = 1.0 - smoothstep(-edge_aa, edge_aa, d_surface);
+        let inner_spread = -spread;
+        let p_shadow = p_surface - offset;
+        let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(inner_spread));
+        coverage = edge * (1.0 - shadow_coverage(p_shadow, sigma, in.corner_radii, half_size, inner_spread));
     } else {
         let p = in.pos_px - center - offset;
         let half_size = max(vec2<f32>(0.0), surface_half_size + vec2<f32>(spread));

@@ -13,7 +13,7 @@ use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::scene_paint::PaintCtx;
 use crate::renderer::scissor::apply;
-use crate::renderer::{CornerRadii, Transform};
+use crate::scene::{CornerRadii, Transform};
 use shader::LAYER_SHADER;
 
 #[repr(C)]
@@ -32,6 +32,7 @@ pub(crate) struct LayerInstance {
     opacity: f32,
     transform_x: [f32; 3],
     transform_y: [f32; 3],
+    round: [f32; 4],
 }
 
 pub(crate) struct LayerCompositePipeline {
@@ -55,8 +56,8 @@ impl LayerCompositePipeline {
             .iter()
             .position(|p| p.format() == format)
             .unwrap_or_else(|| {
-                let _span = span("render.pipeline.composite");
-                count("gpu.pipeline.composite.created");
+                let _span = span(crate::profile::Phase::RenderCompositePipeline);
+                count(crate::profile::Counter::GpuCompositePipelines);
                 pipelines.push(Self::new(device, format));
                 pipelines.len() - 1
             });
@@ -110,7 +111,7 @@ impl LayerCompositePipeline {
             ],
             clip_radii: request
                 .clip_radii
-                .normalized_for(request.dest.width, request.dest.height),
+                .normalized_for(request.round.width, request.round.height),
             uv_max: [
                 request.source_extent.0 as f32 / request.texture_size.0.max(1) as f32,
                 request.source_extent.1 as f32 / request.texture_size.1.max(1) as f32,
@@ -118,6 +119,12 @@ impl LayerCompositePipeline {
             opacity: request.opacity.clamp(0.0, 1.0),
             transform_x: request.transform[0],
             transform_y: request.transform[1],
+            round: [
+                request.round.width.mul_add(0.5, request.round.origin.x),
+                request.round.height.mul_add(0.5, request.round.origin.y),
+                request.round.width * 0.5,
+                request.round.height * 0.5,
+            ],
         };
         let offset = self.uniform(&mut ctx);
         let instances = ctx.encoder.upload(from_ref(&instance));
@@ -157,6 +164,7 @@ impl LayerCompositePipeline {
 pub(crate) struct CompositeRequest<'a> {
     pub(crate) layer_view: &'a wgpu::TextureView,
     pub(crate) dest: Rect,
+    pub(crate) round: Rect,
     pub(crate) texture_size: (u32, u32),
     pub(crate) source_extent: (u32, u32),
     pub(crate) opacity: f32,
@@ -290,7 +298,7 @@ fn uniform_bind_group(
     layout: &wgpu::BindGroupLayout,
     buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
-    count("alloc.composite.uniform_bind_groups");
+    count(crate::profile::Counter::AllocCompositeUniformBindGroups);
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer layer uniforms bind group"),
         layout,
@@ -311,7 +319,7 @@ fn texture_bind_group(
     view: &wgpu::TextureView,
     sampler: &wgpu::Sampler,
 ) -> wgpu::BindGroup {
-    count("alloc.composite.texture_bind_groups");
+    count(crate::profile::Counter::AllocCompositeTextureBindGroups);
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("sigil-renderer layer texture bind group"),
         layout,
@@ -362,5 +370,6 @@ const INSTANCE_LAYOUT: wgpu::VertexBufferLayout<'_> = wgpu::VertexBufferLayout {
         4 => Float32,
         5 => Float32x3,
         6 => Float32x3,
+        7 => Float32x4,
     ],
 };

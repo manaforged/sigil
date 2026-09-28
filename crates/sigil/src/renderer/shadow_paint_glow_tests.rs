@@ -17,9 +17,9 @@ fn shadow_pipeline_constructs_against_real_device() {
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn inner_shadow_shader_clips_and_inverts_coverage() {
     assert!(SHADOW_SHADER.contains("if shadow_kind >= 0.5"));
-    assert!(SHADOW_SHADER.contains("if d_surface > 0.0"));
+    assert!(SHADOW_SHADER.contains("1.0 - smoothstep(-edge_aa, edge_aa, d_surface)"));
     assert!(SHADOW_SHADER.contains("let inner_spread = -spread"));
-    assert!(SHADOW_SHADER.contains("coverage = 1.0 - shadow_coverage"));
+    assert!(SHADOW_SHADER.contains("coverage = edge * (1.0 - shadow_coverage("));
 }
 
 #[test]

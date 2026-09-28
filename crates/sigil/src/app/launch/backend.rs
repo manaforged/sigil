@@ -1,19 +1,43 @@
 use crate::hal::{Color, PhysicalSize, Renderer as _};
+use crate::profile::{BackendKind, BackendStatus, FallbackCause};
 #[cfg(feature = "inspect")]
 use crate::renderer::capture::{CaptureExtent, capture_texture, read_texture};
+use crate::renderer::frame_stats::FrameStats;
 #[cfg(feature = "inspect")]
 use crate::renderer::offscreen::OffscreenTarget;
 use crate::renderer::{
-    CommandScene, CpuRenderer, CpuSurface, FrameStats, RendererError, WgpuRenderer, WgpuSurface,
-    into_window_handle,
+    CpuRenderer, CpuSurface, RendererError, WgpuRenderer, WgpuSurface, into_window_handle,
 };
+use crate::scene::CommandScene;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 const ENV: &str = "SIGIL_BACKEND";
+const SURFACE_CLEAR: Color = Color::rgba(0.03, 0.04, 0.05, 1.0);
+const TRANSPARENT_CLEAR: Color = Color::rgba(0.0, 0.0, 0.0, 0.0);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Choice {
+    Auto,
+    Gpu,
+    Cpu,
+    Unknown,
+}
+
+impl Choice {
+    fn parse(value: &str) -> Self {
+        match value {
+            "" | "auto" => Self::Auto,
+            "wgpu" | "gpu" => Self::Gpu,
+            "cpu" => Self::Cpu,
+            _ => Self::Unknown,
+        }
+    }
+}
 
 pub(super) struct Backend {
     inner: Inner,
     fallback: bool,
+    status: BackendStatus,
     #[cfg(target_arch = "wasm32")]
     device: Option<super::web::DeviceRequest>,
 }
@@ -30,36 +54,86 @@ pub(super) enum Surface {
 
 impl Backend {
     pub(super) fn from_env() -> Result<Self, RendererError> {
-        let choice = std::env::var(ENV).unwrap_or_default();
-        match choice.as_str() {
-            "cpu" => Ok(Self {
-                inner: Inner::Cpu(Box::default()),
-                fallback: false,
-                #[cfg(target_arch = "wasm32")]
-                device: None,
-            }),
-            "wgpu" | "gpu" => Ok(Self {
-                inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
-                fallback: false,
-                #[cfg(target_arch = "wasm32")]
-                device: None,
-            }),
-            "" | "auto" => Ok(Self {
-                inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
-                fallback: true,
-                #[cfg(target_arch = "wasm32")]
-                device: None,
-            }),
-            other => {
-                tracing::warn!("sigil-app: {ENV}={other:?} is not cpu, wgpu, or auto; using auto");
-                Ok(Self {
-                    inner: Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
-                    fallback: true,
-                    #[cfg(target_arch = "wasm32")]
-                    device: None,
-                })
-            }
+        let value = std::env::var(ENV).unwrap_or_default();
+        let choice = Choice::parse(&value);
+        if choice == Choice::Unknown {
+            tracing::warn!("sigil-app: {ENV}={value:?} is not cpu, wgpu, or auto; using auto");
         }
+        let (inner, cause) = match choice {
+            Choice::Cpu => (Inner::Cpu(Box::default()), FallbackCause::ForcedByEnv),
+            Choice::Gpu | Choice::Auto => (
+                Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
+                FallbackCause::None,
+            ),
+            Choice::Unknown => (
+                Inner::Wgpu(Box::new(WgpuRenderer::new()?)),
+                FallbackCause::UnknownEnv,
+            ),
+        };
+        let kind = match inner {
+            Inner::Wgpu(_) => BackendKind::Gpu,
+            Inner::Cpu(_) => BackendKind::Cpu,
+        };
+        let backend = Self {
+            inner,
+            fallback: choice != Choice::Gpu && choice != Choice::Cpu,
+            status: BackendStatus {
+                kind,
+                fallback: cause,
+            },
+            #[cfg(target_arch = "wasm32")]
+            device: None,
+        };
+        Ok(backend)
+    }
+
+    pub(super) const fn status(&self) -> BackendStatus {
+        self.status
+    }
+
+    pub(super) const fn clear_color(&self) -> Color {
+        if self.is_transparent() {
+            TRANSPARENT_CLEAR
+        } else {
+            SURFACE_CLEAR
+        }
+    }
+
+    fn settle(&mut self, status: BackendStatus) {
+        let fallback = match (status.fallback, self.status.fallback) {
+            (FallbackCause::None, earlier) => earlier,
+            (cause, _) => cause,
+        };
+        self.status = BackendStatus {
+            kind: status.kind,
+            fallback,
+        };
+        if fallback != FallbackCause::None {
+            tracing::warn!("sigil-app: renderer degraded: {}", self.status);
+        }
+    }
+
+    fn adopt_gpu_status(&mut self) {
+        if let Inner::Wgpu(renderer) = &self.inner
+            && let Some(status) = renderer.backend_status()
+        {
+            self.settle(status);
+        }
+    }
+
+    fn fall_back_to_cpu(&mut self, err: &RendererError) -> CpuRenderer {
+        tracing::warn!("sigil-app: {err}; using the CPU renderer");
+        let fallback = match err {
+            RendererError::NoAdapter => FallbackCause::NoAdapter,
+            _ => FallbackCause::DeviceError,
+        };
+        self.settle(BackendStatus {
+            kind: BackendKind::Cpu,
+            fallback,
+        });
+        let mut cpu = CpuRenderer::new();
+        cpu.set_transparent(self.is_transparent());
+        cpu
     }
 
     #[cfg(target_arch = "wasm32")]
@@ -87,25 +161,19 @@ impl Backend {
             return Ok(!request.waiting());
         };
         match (result, &mut self.inner) {
-            (Ok(parts), Inner::Wgpu(renderer)) => renderer.adopt_device(parts),
+            (Ok(parts), Inner::Wgpu(renderer)) => {
+                renderer.adopt_device(parts);
+                self.adopt_gpu_status();
+            }
             (Ok(_), Inner::Cpu(_)) => {}
             (Err(err), _) if self.fallback => {
-                tracing::warn!("sigil-app: {err}; using the CPU renderer");
-                let mut cpu = CpuRenderer::new();
-                cpu.set_transparent(self.is_transparent());
+                let cpu = self.fall_back_to_cpu(&err);
                 self.inner = Inner::Cpu(Box::new(cpu));
                 self.device = None;
             }
             (Err(err), _) => return Err(err),
         }
         Ok(true)
-    }
-
-    pub(super) const fn name(&self) -> &'static str {
-        match self.inner {
-            Inner::Wgpu(_) => "wgpu",
-            Inner::Cpu(_) => "cpu",
-        }
     }
 
     pub(super) const fn set_transparent(&mut self, transparent: bool) {
@@ -124,8 +192,8 @@ impl Backend {
 
     pub(super) const fn last_frame_stats(&self) -> FrameStats {
         match &self.inner {
-            Inner::Wgpu(r) => r.last_frame_stats(),
-            Inner::Cpu(r) => r.last_frame_stats(),
+            Inner::Wgpu(r) => r.last_frame_stats,
+            Inner::Cpu(r) => r.stats,
         }
     }
 
@@ -137,22 +205,26 @@ impl Backend {
     where
         W: HasWindowHandle + HasDisplayHandle + Clone + Send + Sync + 'static,
     {
-        match &mut self.inner {
-            Inner::Cpu(r) => Ok(Surface::Cpu(
-                r.create_surface(into_window_handle(window), size)?,
-            )),
-            Inner::Wgpu(r) => match r.create_surface(into_window_handle(window.clone()), size) {
-                Ok(surface) => Ok(Surface::Wgpu(surface)),
-                Err(err) if self.fallback => {
-                    tracing::warn!("sigil-app: {err}; using the CPU renderer");
-                    let mut cpu = CpuRenderer::new();
-                    cpu.set_transparent(r.is_transparent());
-                    let surface = cpu.create_surface(into_window_handle(window), size)?;
-                    self.inner = Inner::Cpu(Box::new(cpu));
-                    Ok(Surface::Cpu(surface))
-                }
-                Err(err) => Err(err),
-            },
+        let attempt = match &mut self.inner {
+            Inner::Cpu(r) => {
+                return Ok(Surface::Cpu(
+                    r.create_surface(into_window_handle(window), size)?,
+                ));
+            }
+            Inner::Wgpu(r) => r.create_surface(into_window_handle(window.clone()), size),
+        };
+        match attempt {
+            Ok(surface) => {
+                self.adopt_gpu_status();
+                Ok(Surface::Wgpu(surface))
+            }
+            Err(err) if self.fallback => {
+                let mut cpu = self.fall_back_to_cpu(&err);
+                let surface = cpu.create_surface(into_window_handle(window), size)?;
+                self.inner = Inner::Cpu(Box::new(cpu));
+                Ok(Surface::Cpu(surface))
+            }
+            Err(err) => Err(err),
         }
     }
 
@@ -215,11 +287,7 @@ pub(super) fn inspect_shot(
     let Some(surface) = surface.as_mut() else {
         return Err("window surface is not initialized yet".into());
     };
-    let clear = if renderer.is_transparent() {
-        Color::rgba(0.0, 0.0, 0.0, 0.0)
-    } else {
-        Color::rgba(0.03, 0.04, 0.05, 1.0)
-    };
+    let clear = renderer.clear_color();
     let size = surface_size(surface);
     let png = renderer
         .screenshot(surface, &scene, clear, viewport)

@@ -7,8 +7,8 @@ use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,
     expanded_shadow_rect,
 };
-use crate::renderer::CornerRadii;
 use crate::renderer::shadow_paint::{Shadow, ShadowKind};
+use crate::scene::CornerRadii;
 use crate::scene::emit_scene;
 use crate::scene::{
     DrawGradient, DrawRect, GradientStop, LinearGradient, SceneCommand, SceneGradientStyle,
@@ -110,7 +110,7 @@ fn draw_rect_instance_packs_solid_centered_stroke() {
     );
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
-    assert_array_close(inst.stroke_meta, [2.0, 0.0, 0.0, 0.0]);
+    assert_array_close(inst.stroke_meta, [1.0, 1.0, 0.0, 0.0]);
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn draw_rect_instance_packs_dashed_inside_stroke() {
     );
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
-    assert_array_close(inst.stroke_meta, [3.0, 1.0, 1.0, 6.0]);
+    assert_array_close(inst.stroke_meta, [3.0, 0.0, 9.0, 6.0]);
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn draw_gradient_instance_packs_outside_stroke() {
     let inst = draw_gradient_instance(&draw, 1.0, 0, 2, BlendSpace::Gamma);
 
     assert_array_close(inst.stroke_params, [0.2, 0.4, 0.6, 0.8]);
-    assert_array_close(inst.stroke_meta, [4.0, 0.0, 2.0, 0.0]);
+    assert_array_close(inst.stroke_meta, [0.0, 4.0, 0.0, 0.0]);
 }
 
 #[test]
@@ -321,7 +321,7 @@ const fn rect() -> Rect {
     Rect::new(Point::new(0.0, 0.0), 48.0, 48.0)
 }
 
-fn collect_rect_instances(scene: &crate::renderer::CommandScene) -> Vec<RectInstance> {
+fn collect_rect_instances(scene: &crate::scene::CommandScene) -> Vec<RectInstance> {
     scene
         .commands
         .iter()

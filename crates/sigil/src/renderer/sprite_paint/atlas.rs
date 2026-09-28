@@ -12,10 +12,7 @@ pub(crate) struct AtlasDesc<'a> {
 }
 
 pub(crate) struct AtlasEntry {
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(super) texture: wgpu::Texture,
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
-    pub(super) view: wgpu::TextureView,
     pub(super) width: u32,
     pub(super) height: u32,
 }
@@ -77,7 +74,6 @@ pub(super) fn build_atlas(
     let bind_group = atlas_bind_group(device, layout, &view, sampler);
     let entry = AtlasEntry {
         texture,
-        view,
         width: desc.width,
         height: desc.height,
     };

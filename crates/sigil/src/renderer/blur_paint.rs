@@ -18,22 +18,21 @@ use setup::{
     make_uniform_layout, make_unit_quad,
 };
 
-pub(crate) fn pass_count_for(sigma: f32) -> u32 {
-    if sigma <= 0.0 {
-        0
-    } else if sigma <= 8.0 {
-        1
-    } else if sigma <= 16.0 {
-        2
-    } else {
-        3
+pub(crate) const BLUR_PASSES: u32 = 3;
+
+pub(crate) fn box_radius(sigma: f32) -> u32 {
+    if sigma.is_nan() || sigma < 0.5 {
+        return 0;
     }
+    let width = (12.0 * sigma / BLUR_PASSES as f32)
+        .mul_add(sigma, 1.0)
+        .sqrt();
+    ((width - 1.0) / 2.0).round() as u32
 }
 
 pub(crate) struct BlurPipeline {
     format: wgpu::TextureFormat,
-    down_pipeline: wgpu::RenderPipeline,
-    up_pipeline: wgpu::RenderPipeline,
+    box_pipeline: wgpu::RenderPipeline,
     uniform_layout: wgpu::BindGroupLayout,
     texture_layout: wgpu::BindGroupLayout,
     sampler: wgpu::Sampler,
@@ -61,12 +60,10 @@ impl BlurPipeline {
             bind_group_layouts: &[Some(&uniform_layout), Some(&texture_layout)],
             immediate_size: 0,
         });
-        let down_pipeline = make_pipeline(device, format, &shader, &layout, "fs_down");
-        let up_pipeline = make_pipeline(device, format, &shader, &layout, "fs_up");
+        let box_pipeline = make_pipeline(device, format, &shader, &layout, "fs_box");
         Self {
             format,
-            down_pipeline,
-            up_pipeline,
+            box_pipeline,
             uniform_layout,
             texture_layout,
             sampler,
@@ -85,118 +82,50 @@ impl BlurPipeline {
         src: PassSrc<'_>,
         sigma: f32,
     ) -> Result<Option<wgpu::TextureView>, RendererError> {
-        let passes = pass_count_for(sigma);
-        if passes == 0 {
+        let radius = box_radius(sigma);
+        if radius == 0 {
             return Ok(None);
         }
-        let pyramid = self.downsample(ctx, pool, src, passes)?;
-        let (result, intermediates) = self.upsample(ctx, pool, &pyramid, (src.w, src.h))?;
-        let view = result.view.clone();
-        ctx.retained.extend(pyramid);
-        ctx.retained.extend(intermediates);
-        ctx.retained.push(result);
-        Ok(Some(view))
-    }
-
-    fn downsample(
-        &self,
-        ctx: &mut PassCtx<'_>,
-        pool: &mut LayerPool,
-        src: PassSrc<'_>,
-        passes: u32,
-    ) -> Result<Vec<LayerHandle>, RendererError> {
-        let mut pyramid: Vec<LayerHandle> = Vec::with_capacity(passes as usize);
-        let mut w = src.w;
-        let mut h = src.h;
-        for _i in 0..passes {
-            let next_w = (w / 2).max(1);
-            let next_h = (h / 2).max(1);
-            let handle = pool
-                .acquire(ctx.device, next_w, next_h, self.format)
-                .map_err(RendererError::Layer)?;
-            let vp = (handle.width as f32, handle.height as f32);
-            let read_view: &wgpu::TextureView =
-                pyramid.last().map_or(src.view, |lv: &LayerHandle| &lv.view);
+        let pair = [
+            pool.acquire(ctx.device, src.w, src.h, self.format)
+                .map_err(RendererError::Layer)?,
+            pool.acquire(ctx.device, src.w, src.h, self.format)
+                .map_err(RendererError::Layer)?,
+        ];
+        let viewport = (src.w as f32, src.h as f32);
+        for pass in 0..BLUR_PASSES * 2 {
+            let horizontal = pass % 2 == 0;
+            let (read, write) = if horizontal {
+                (&pair[1], &pair[0])
+            } else {
+                (&pair[0], &pair[1])
+            };
+            let read_view = if pass == 0 { src.view } else { &read.view };
             self.run_pass(
                 ctx,
-                &self.down_pipeline,
                 PassSrc {
                     view: read_view,
-                    w,
-                    h,
+                    w: src.w,
+                    h: src.h,
                 },
                 PassDst {
-                    view: &handle.view,
-                    viewport: vp,
+                    view: &write.view,
+                    viewport,
                 },
+                [radius as f32, if horizontal { 1.0 } else { 0.0 }],
             );
-            w = handle.width;
-            h = handle.height;
-            pyramid.push(handle);
         }
-        Ok(pyramid)
-    }
-
-    fn upsample(
-        &self,
-        ctx: &mut PassCtx<'_>,
-        pool: &mut LayerPool,
-        pyramid: &[LayerHandle],
-        src_dims: (u32, u32),
-    ) -> Result<(LayerHandle, Vec<LayerHandle>), RendererError> {
-        let (src_width, src_height) = src_dims;
-        let n = pyramid.len();
-        let seed = pyramid.last().ok_or(RendererError::Layer(
-            crate::renderer::layer_pool::LayerError::Empty,
-        ))?;
-        let mut intermediates: Vec<LayerHandle> = Vec::new();
-        let mut current: Option<LayerHandle> = None;
-        for up_pass in 0..n {
-            let (target_w, target_h) = if up_pass + 1 == n {
-                (src_width, src_height)
-            } else {
-                pyramid
-                    .get(n - up_pass - 2)
-                    .map_or((src_width, src_height), |lv| (lv.width, lv.height))
-            };
-            let out_handle = pool
-                .acquire(ctx.device, target_w, target_h, self.format)
-                .map_err(RendererError::Layer)?;
-            let vp = (out_handle.width as f32, out_handle.height as f32);
-            {
-                let src_handle: &LayerHandle = current.as_ref().unwrap_or(seed);
-                self.run_pass(
-                    ctx,
-                    &self.up_pipeline,
-                    PassSrc {
-                        view: &src_handle.view,
-                        w: src_handle.width,
-                        h: src_handle.height,
-                    },
-                    PassDst {
-                        view: &out_handle.view,
-                        viewport: vp,
-                    },
-                );
-            }
-            if let Some(prev) = current.take() {
-                intermediates.push(prev);
-            }
-            current = Some(out_handle);
-        }
-        current
-            .map(|result| (result, intermediates))
-            .ok_or(RendererError::Layer(
-                crate::renderer::layer_pool::LayerError::Empty,
-            ))
+        let view = pair[1].view.clone();
+        ctx.retained.extend(pair);
+        Ok(Some(view))
     }
 
     fn run_pass(
         &self,
         ctx: &mut PassCtx<'_>,
-        pipeline: &wgpu::RenderPipeline,
         src: PassSrc<'_>,
         dst: PassDst<'_>,
+        params: [f32; 2],
     ) {
         let (vw, vh) = dst.viewport;
         let instance = BlurInstance {
@@ -209,7 +138,7 @@ impl BlurPipeline {
             ctx.device,
             &BlurUniforms {
                 viewport: [vw.max(1.0), vh.max(1.0)],
-                _pad: [0.0, 0.0],
+                params,
             },
         );
         let uniform_bg = make_uniform_bind_group(ctx.device, &self.uniform_layout, &uniform_buf);
@@ -232,7 +161,7 @@ impl BlurPipeline {
             occlusion_query_set: None,
             multiview_mask: None,
         });
-        pass.set_pipeline(pipeline);
+        pass.set_pipeline(&self.box_pipeline);
         pass.set_bind_group(0, &uniform_bg, &[]);
         pass.set_bind_group(1, &tex_bg, &[]);
         pass.set_vertex_buffer(0, self.unit_quad.slice(..));

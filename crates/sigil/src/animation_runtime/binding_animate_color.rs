@@ -1,106 +1,28 @@
+use std::sync::Arc;
+
 use crate::reactive::signal;
-use crate::style::scale::{ColorScale, ScaleRole};
-use crate::style::{ColorAtomKind, Rgba8, StyleAtom, Theme};
+use crate::style::{ColorAtomKind, ColorKey, Rgba8, StyleAtom, Theme};
 
 use crate::animation_runtime::{AnimationConfig, Animator};
 
 use super::binding_animate::AttachedColorAnimator;
 
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ThemeSnapshot {
-    pub(crate) accent: Rgba8,
-    pub(crate) accent_hover: Rgba8,
-    pub(crate) on_accent: Rgba8,
-    pub(crate) surface: Rgba8,
-    pub(crate) surface_hover: Rgba8,
-    pub(crate) surface_pressed: Rgba8,
-    pub(crate) surface_pressed_strong: Rgba8,
-    pub(crate) on_surface: Rgba8,
-    pub(crate) border: Rgba8,
-    pub(crate) missing_token_fallback: Rgba8,
-    pub(crate) gray: ColorScale,
-    pub(crate) accent_scale: ColorScale,
-    pub(crate) success: ColorScale,
-    pub(crate) warn: ColorScale,
-    pub(crate) error: ColorScale,
-    pub(crate) info: ColorScale,
-    pub(crate) on_solid: Rgba8,
-}
+#[derive(Clone, Debug)]
+pub(crate) struct ThemeSnapshot(Arc<Theme>);
 
 impl ThemeSnapshot {
-    pub(crate) const fn from_theme(theme: &Theme) -> Self {
-        Self {
-            accent: theme.accent,
-            accent_hover: theme.accent_hover,
-            on_accent: theme.on_accent,
-            surface: theme.surface,
-            surface_hover: theme.surface_hover,
-            surface_pressed: theme.surface_pressed,
-            surface_pressed_strong: theme.surface_pressed_strong,
-            on_surface: theme.on_surface,
-            border: theme.border,
-            missing_token_fallback: theme.missing_token_fallback,
-            gray: theme.gray,
-            accent_scale: theme.accent_scale,
-            success: theme.success,
-            warn: theme.warn,
-            error: theme.error,
-            info: theme.info,
-            on_solid: theme.on_solid,
-        }
+    pub(crate) fn from_theme(theme: &Theme) -> Self {
+        Self(Arc::new(theme.clone()))
     }
 
-    pub(crate) fn resolve(self, token: &str) -> Rgba8 {
-        match token {
-            "accent" => self.accent,
-            "accent-hover" => self.accent_hover,
-            "on-accent" => self.on_accent,
-            "surface" => self.surface,
-            "surface-hover" => self.surface_hover,
-            "surface-pressed" => self.surface_pressed,
-            "surface-pressed-strong" => self.surface_pressed_strong,
-            "on-surface" => self.on_surface,
-            "border" => self.border,
-            "on-solid" => self.on_solid,
-            "surface-subtle" => self.gray.step(3),
-            "on-surface-muted" => self.gray.step(11),
-            _ => self
-                .scale_step(token)
-                .unwrap_or(self.missing_token_fallback),
-        }
-    }
-
-    fn scale_step(self, token: &str) -> Option<Rgba8> {
-        let (role_name, step_str) = token.rsplit_once('-')?;
-        let role = ScaleRole::from_token(role_name)?;
-        let step: u8 = step_str.parse().ok()?;
-        if !(1..=12).contains(&step) {
-            return None;
-        }
-        let scale = self.scale(role);
-        Some(scale.step(step))
-    }
-
-    const fn scale(self, role: ScaleRole) -> ColorScale {
-        match role {
-            ScaleRole::Gray => self.gray,
-            ScaleRole::Accent => self.accent_scale,
-            ScaleRole::Success => self.success,
-            ScaleRole::Warn => self.warn,
-            ScaleRole::Error => self.error,
-            ScaleRole::Info => self.info,
-        }
+    pub(crate) fn resolve(&self, key: ColorKey) -> Rgba8 {
+        self.0.resolve_color(key)
     }
 }
 
 #[must_use]
 pub fn srgb_channel_to_linear(c: u8) -> f32 {
-    let v = f32::from(c) / 255.0;
-    if v <= 0.040_45 {
-        v / 12.92
-    } else {
-        ((v + 0.055) / 1.055).powf(2.4)
-    }
+    crate::style::srgb::decode(c)
 }
 
 #[must_use]
@@ -110,13 +32,9 @@ pub fn srgb_channel_to_linear(c: u8) -> f32 {
     reason = "value is clamped to 0..=255 before the cast — bounded"
 )]
 pub fn linear_channel_to_srgb(v: f32) -> u8 {
-    let v = v.clamp(0.0, 1.0);
-    let s = if v <= 0.003_130_8 {
-        v * 12.92
-    } else {
-        1.055_f32.mul_add(v.powf(1.0 / 2.4), -0.055)
-    };
-    (s * 255.0).round().clamp(0.0, 255.0) as u8
+    (crate::style::srgb::encode(v) * 255.0)
+        .round()
+        .clamp(0.0, 255.0) as u8
 }
 
 #[must_use]

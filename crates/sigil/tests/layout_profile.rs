@@ -40,7 +40,7 @@ fn compute_records_layout_miss() {
     let recorded = frames();
     let last = recorded.last().expect("frame");
     assert!(
-        last.counter("layout.miss") >= 1,
+        last.counter(sigil::profile::Counter::LayoutMiss) >= 1,
         "first compute is a cache miss"
     );
     disable();
@@ -183,7 +183,7 @@ fn second_engine_does_not_inherit_text_memo() {
         second.compute(&mut cx, root, avail).expect("second");
         assert!(
             hits.get() >= 1,
-            "new engine must remasure; TEXT_MEMO must not leak across LayoutDrive::new"
+            "a new engine must remeasure; the text memo belongs to one forest"
         );
     });
 }
@@ -281,9 +281,9 @@ fn derived_text_increment_records_layout_path() {
         tick_frame();
         let recorded = frames();
         let last = recorded.last().expect("frame");
-        let full = last.counter("layout.full");
-        let incr = last.counter("layout.incr");
-        let resize = last.counter("layout.resize");
+        let full = last.counter(sigil::profile::Counter::LayoutFull);
+        let incr = last.counter(sigil::profile::Counter::LayoutIncr);
+        let resize = last.counter(sigil::profile::Counter::LayoutResize);
         assert!(
             full + incr + resize >= 1,
             "increment must layout; full={full} incr={incr} resize={resize} {elapsed_us}us"
@@ -323,4 +323,54 @@ fn paint_only_tick_on_wide_tree_is_hit() {
             "paint-only tick on a wide static tree must be a cache hit"
         );
     });
+}
+
+#[test]
+fn letter_spacing_change_remeasures_text() {
+    struct SpacingMeasure;
+    impl TextMeasure for SpacingMeasure {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
+            sigil::hal::LogicalSize::new(40.0, 16.0)
+        }
+        fn measure_styled(
+            &self,
+            _: &sigil::kernel::TextContent,
+            style: &sigil::style::TextStyle,
+            _: Size,
+        ) -> sigil::hal::LogicalSize {
+            sigil::hal::LogicalSize::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
+        }
+    }
+    use sigil::style::StyleAtom;
+    static TIGHT: &[StyleAtom] = &[StyleAtom::LetterSpacing(0)];
+    static LOOSE: &[StyleAtom] = &[StyleAtom::LetterSpacing(200)];
+
+    Runtime::scope("layout-memo-letter-spacing", || {
+        let loose = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .style_reactive(move || if loose.get() { LOOSE } else { TIGHT })
+                .layout(LayoutStyle::flex_row().fixed_size(400.0, 24.0)),
+        );
+        let label = cx.add_child(root, text("hello"));
+        let avail = Size::fixed(400.0, 24.0);
+        let mut engine = LayoutEngine::with_text_measure(Box::new(SpacingMeasure));
+        engine.compute(&mut cx, root, avail).expect("tight");
+        let tight_w = label_width(&cx, label);
+        loose.set(true);
+        engine.compute(&mut cx, root, avail).expect("loose");
+        assert!(
+            label_width(&cx, label) > tight_w,
+            "letter spacing change must reach the measurer"
+        );
+    });
+}
+
+fn label_width(cx: &Cx, id: NodeId) -> f32 {
+    cx.get(id)
+        .and_then(|node| node.get_extension::<LayoutResult>())
+        .expect("layout result exists")
+        .rect()
+        .width
 }

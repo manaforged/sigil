@@ -10,13 +10,12 @@ pub use builder::SceneBuilder;
 #[cfg(feature = "scene")]
 pub use command::shape_glyph_run;
 pub use command::{
-    CellBorder, CellRect, CommandScene, DecorationKind, DrawDecoration, DrawGlyphRun, DrawGradient,
-    DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun, GradientStop, LayerEffect, LayerScope,
-    LinearGradient, PaintFill, PatternKind, SceneCommand, SceneDecorationStyle, SceneGradientStyle,
-    ScenePatternStyle, SceneRectStyle, SceneSpriteStyle, SpriteKind, SpriteSource, Stroke,
-    StrokeAlign, StrokeStyle, TextFlow, Transform,
+    CellBorder, CellRect, CommandScene, DecorationGeometry, DecorationKind, DrawDecoration,
+    DrawGlyphRun, DrawGradient, DrawImage, DrawPattern, DrawRect, DrawSprite, GlyphRun,
+    GradientStop, LayerEffect, LayerScope, LinearGradient, PaintFill, PatternKind, SceneCommand,
+    SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle, SceneSpriteStyle,
+    SpriteKind, SpriteSource, Stroke, StrokeAlign, StrokeStyle, TextFlow, Transform,
 };
 pub use corner_radii::CornerRadii;
 pub use emit::{emit_scene, emit_scene_clipped};
 pub use shadow::{Shadow, ShadowKind};
-pub use style_adapter::unsupported_style_warning_count_for;

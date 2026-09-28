@@ -22,12 +22,12 @@ impl LayoutEngine {
         available: Size,
     ) -> Result<(), LayoutError> {
         {
-            let _solve = crate::profile::span("layout.solve");
+            let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
             self.compute_mirror(root, available)?;
         }
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(root, |id, _node| ids.push(id));
-        let _attach = crate::profile::span("layout.attach");
+        let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
         self.attach_results(cx, ids)
     }
 
@@ -40,18 +40,18 @@ impl LayoutEngine {
         let previous_ids: SmallVec<[NodeId; 32]> =
             self.core_to_handle.keys().map(NodeId::from_key).collect();
         {
-            let _sync = crate::profile::span("layout.sync");
+            let _sync = crate::profile::span(crate::profile::Phase::LayoutSync);
             self.sync(cx, root)?;
         }
         {
-            let _solve = crate::profile::span("layout.solve");
+            let _solve = crate::profile::span(crate::profile::Phase::LayoutSolve);
             self.compute_mirror(root, available)?;
         }
 
         let mut ids = SmallVec::<[_; 32]>::new();
         cx.visit_preorder(root, |id, _node| ids.push(id));
         self.remove_stale_extensions(cx, previous_ids);
-        let _attach = crate::profile::span("layout.attach");
+        let _attach = crate::profile::span(crate::profile::Phase::LayoutAttach);
         self.attach_results(cx, ids)
     }
 

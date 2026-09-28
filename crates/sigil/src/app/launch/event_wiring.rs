@@ -4,6 +4,7 @@ use crate::hal::{
 };
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
+use crate::profile::Cause;
 use crate::reactive::Runtime;
 use crate::shell::{WinitShell, WinitWindowHandle};
 
@@ -66,7 +67,10 @@ pub(super) fn ensure_surface(ctx: EnsureSurfaceCtx<'_>) -> AppResult<()> {
     let logical = logical_size_from_viewport(*viewport);
 
     let new_surface = renderer.create_surface(Arc::clone(window), scale.to_physical(logical))?;
-    tracing::info!("sigil-app: rendering with the {} backend", renderer.name());
+    tracing::info!(
+        "sigil-app: rendering with the {} backend",
+        renderer.status()
+    );
     *surface = Some(new_surface);
     Runtime::mark_frame_dirty();
     Ok(())
@@ -147,15 +151,17 @@ fn note_input(event: &ShellEvent) {
     }
     match event {
         ShellEvent::Pointer(pointer) => match pointer.phase {
-            PointerPhase::Down | PointerPhase::Up => crate::profile::interact("pointer"),
-            PointerPhase::Move => crate::profile::interact("hover"),
+            PointerPhase::Down | PointerPhase::Up => {
+                crate::profile::interact(Cause::Pointer);
+            }
+            PointerPhase::Move => crate::profile::interact(Cause::Hover),
             PointerPhase::Enter | PointerPhase::Leave | PointerPhase::Cancel => {}
         },
-        ShellEvent::Key(_) => crate::profile::interact("key"),
-        ShellEvent::Scroll(_) => crate::profile::interact("scroll"),
-        ShellEvent::Ime(_) => crate::profile::interact("ime"),
+        ShellEvent::Key(_) => crate::profile::interact(Cause::Key),
+        ShellEvent::Scroll(_) => crate::profile::interact(Cause::Scroll),
+        ShellEvent::Ime(_) => crate::profile::interact(Cause::Ime),
         ShellEvent::Window(WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged(_)) => {
-            crate::profile::interact("resize");
+            crate::profile::interact(Cause::Resize);
         }
         ShellEvent::Window(_) | ShellEvent::FileDrop(_) => {}
     }
@@ -193,7 +199,7 @@ pub(super) fn drain_a11y_actions(
     let mut bridge =
         crate::a11y::AccessKitBridge::new(action_rx.clone(), |_: accesskit::TreeUpdate| {});
     while let Some((target, request)) = crate::hal::A11yBridge::take_action(&mut bridge) {
-        crate::profile::interact("a11y");
+        crate::profile::interact(Cause::A11y);
         crate::a11y::actions::apply(cx, router, layout, target, &request);
     }
 }

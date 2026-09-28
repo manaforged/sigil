@@ -11,9 +11,13 @@ use crate::style::Rgba8;
 mod backdrop_blur;
 mod effects;
 mod helpers;
+mod text;
+mod translucent;
 
 pub use backdrop_blur::backdrop_blur;
 pub use effects::{glow, layer_pool};
+pub use text::text;
+pub use translucent::translucent;
 
 use helpers::{
     alpha_overlay, ambient_shadow, card_color, card_rect, checker_pattern, corner_color_for,
@@ -22,13 +26,12 @@ use helpers::{
     sprite_source, stripe_horizontal, stroke_with, subtle_vertical,
 };
 
-use crate::renderer::scene_command::{DecorationKind, SceneDecorationStyle, ScenePatternStyle};
-use crate::renderer::{
-    BUILTIN_SPRITE_ATLAS_ID, CommandScene, CornerRadii, SceneBuilder, SceneRectStyle, SpriteKind,
-    SpriteSource, StrokeAlign, StrokeStyle,
+use crate::scene::{
+    CommandScene, CornerRadii, DecorationKind, SceneBuilder, SceneDecorationStyle,
+    ScenePatternStyle, SceneRectStyle, SpriteKind, SpriteSource, StrokeAlign, StrokeStyle,
 };
 
-pub const BUILTIN_ICON_ATLAS_BASE_ID: u32 = BUILTIN_SPRITE_ATLAS_ID - 5;
+pub use crate::renderer::sprite_atlas::BUILTIN_ICON_ATLAS_BASE_ID;
 
 static BUILTIN_ICONS: OnceLock<Vec<crate::icons::BakedIcon>> = OnceLock::new();
 
@@ -161,11 +164,6 @@ pub fn pattern() -> (CommandScene, (f32, f32), Color) {
         (1200.0, 380.0),
         Color::rgba(0.05, 0.06, 0.09, 1.0),
     )
-}
-
-#[must_use]
-pub fn screen_split() -> [(CommandScene, (f32, f32), Color); 2] {
-    [gradient(), pattern()]
 }
 
 #[must_use]

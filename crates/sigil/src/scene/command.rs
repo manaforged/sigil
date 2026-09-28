@@ -3,11 +3,19 @@
 use crate::scene::corner_radii::CornerRadii;
 use crate::scene::shadow::Shadow;
 
+mod decoration;
 pub(crate) mod effects;
 pub(crate) mod fills;
 mod glyph;
+#[cfg(feature = "scene")]
+pub(crate) mod image_fit;
 pub(crate) mod payloads;
+#[cfg(feature = "scene")]
+pub(crate) mod stroke_band;
+#[cfg(feature = "scene")]
+pub(crate) mod trim;
 
+pub use decoration::DecorationGeometry;
 pub use effects::{DecorationKind, LayerEffect, LayerScope, SpriteKind, SpriteSource, Transform};
 pub use fills::{
     GradientStop, LinearGradient, PaintFill, PatternKind, Stroke, StrokeAlign, StrokeStyle,
@@ -21,6 +29,8 @@ pub use payloads::{
     DrawSprite, SceneDecorationStyle, SceneGradientStyle, ScenePatternStyle, SceneRectStyle,
     SceneSpriteStyle,
 };
+#[cfg(feature = "scene")]
+pub(crate) use stroke_band::{StrokeBand, StrokeDash};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CommandScene {
@@ -33,6 +43,7 @@ impl CommandScene {
         Self { commands }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn find_text(&self, expected: &str) -> Option<&DrawGlyphRun> {
         self.commands.iter().find_map(|command| match command {

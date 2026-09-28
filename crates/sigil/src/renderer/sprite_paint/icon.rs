@@ -1,7 +1,7 @@
 use crate::icons::{BakedIcon, IconBaker, builtin};
 
 use super::{AtlasDesc, SpritePipeline};
-use crate::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
+use crate::renderer::sprite_atlas::builtin_icon_index;
 
 pub(super) fn is_builtin_icon_atlas(raw_id: u32) -> bool {
     builtin_icon_index(raw_id).is_some()
@@ -52,10 +52,4 @@ impl SpritePipeline {
         }
         Some(slot)
     }
-}
-
-fn builtin_icon_index(raw_id: u32) -> Option<usize> {
-    let offset = raw_id.checked_sub(BUILTIN_ICON_ATLAS_BASE_ID)?;
-    let index = usize::try_from(offset).ok()?;
-    (index < builtin::ALL.len()).then_some(index)
 }

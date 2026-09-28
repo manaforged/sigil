@@ -14,7 +14,7 @@ fn subpixel_wrap_carries_into_anchor() {
 
 #[test]
 fn quantized_placement_error_bounded_by_half_bin() {
-    let bins = f32::from(raster::SUBPIXEL_BINS);
+    let bins = f32::from(crate::renderer::raster::SUBPIXEL_BINS);
     for i in 0..1000 {
         #[allow(clippy::cast_precision_loss)]
         let pen = 10.0 + (i as f32) / 1000.0;

@@ -2,11 +2,11 @@ use crate::hal::{Point, Rect};
 use crate::style::Rgba8;
 use smallvec::smallvec;
 
-use crate::renderer::scene_command::ScenePatternStyle;
-use crate::renderer::{
-    BUILTIN_SPRITE_ATLAS_ID, CornerRadii, GradientStop, LinearGradient, PaintFill, PatternKind,
-    SceneBuilder, SceneGradientStyle, SceneRectStyle, Shadow, ShadowKind, SpriteSource, Stroke,
-    StrokeAlign, StrokeStyle,
+use crate::renderer::BUILTIN_SPRITE_ATLAS_ID;
+use crate::scene::{
+    CornerRadii, GradientStop, LinearGradient, PaintFill, PatternKind, SceneBuilder,
+    SceneGradientStyle, ScenePatternStyle, SceneRectStyle, Shadow, ShadowKind, SpriteSource,
+    Stroke, StrokeAlign, StrokeStyle,
 };
 
 pub(super) const fn sprite_source(x: f32, y: f32, phase: f32) -> SpriteSource {
@@ -100,7 +100,7 @@ pub(super) fn alpha_overlay() -> PaintFill {
     )
 }
 
-fn linear_gradient(
+pub(super) fn linear_gradient(
     start: (f32, f32),
     end: (f32, f32),
     stops: smallvec::SmallVec<[GradientStop; 4]>,

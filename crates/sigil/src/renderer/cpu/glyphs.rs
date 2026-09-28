@@ -7,40 +7,21 @@
 )]
 
 use crate::hal::{Point, Rect, RenderedGlyph};
-use crate::renderer::oblique::Oblique;
+use crate::renderer::cache_limits::CacheLimits;
+use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
+use crate::style::Rgba8;
 use ahash::AHashMap;
-use skrifa::instance::{LocationRef, NormalizedCoord, Size};
-use skrifa::outline::{DrawSettings, OutlinePen};
-use skrifa::{FontRef, GlyphId, MetadataProvider as _};
-use tiny_skia::{FillRule, Mask, PathBuilder, Pixmap, PremultipliedColorU8, Transform};
+use tiny_skia::Pixmap;
+
+use super::shapes::{coverage_table, decode, encode};
 
 use crate::renderer::scene_command::GlyphRun;
 
-const SUBPIXEL_STEPS: f32 = 4.0;
-const SIZE_UNIT: f32 = 64.0;
-const MAX_GLYPHS: usize = 8_192;
-
-#[derive(Clone, Copy, Eq, Hash, PartialEq)]
-struct Key {
-    font: u64,
-    index: u32,
-    glyph: u32,
-    size: u32,
-    subpixel: u8,
-    coords: u64,
-}
-
-struct Raster {
-    left: i32,
-    top: i32,
-    width: u32,
-    height: u32,
-    alpha: Vec<u8>,
-}
-
 #[derive(Default)]
 pub(super) struct GlyphCache {
-    masks: AHashMap<Key, Option<Raster>>,
+    masks: AHashMap<RasterKey, (Option<GlyphMask>, u64)>,
+    hinters: Hinters,
+    frame: u64,
 }
 
 pub(super) struct RunPlacement {
@@ -48,126 +29,83 @@ pub(super) struct RunPlacement {
     pub(super) scale: f32,
     pub(super) offset: Point,
     pub(super) clip: Option<Rect>,
-    pub(super) color: PremultipliedColorU8,
+    pub(super) table: [[u8; 4]; 256],
+}
+
+pub(super) fn glyph_table(color: Rgba8, opacity: f32) -> [[u8; 4]; 256] {
+    coverage_table(
+        [color.r, color.g, color.b].map(decode),
+        f32::from(color.a) / 255.0 * opacity,
+    )
 }
 
 impl GlyphCache {
+    pub(super) fn begin_frame(&mut self) {
+        self.frame += 1;
+        let limits = CacheLimits::DEFAULT;
+        if self.masks.len() > limits.glyph_masks {
+            let frame = self.frame;
+            self.masks
+                .retain(|_, (_, used)| *used + limits.glyph_stale_frames >= frame);
+        }
+    }
+
     pub(super) fn draw_run(&mut self, target: &mut Pixmap, run: &GlyphRun, place: &RunPlacement) {
         let Some(paragraph) = run.paragraph() else {
             return;
         };
         let glyphs = run.positioned_glyphs();
-        let placed: Vec<(Key, i32, i32)> = glyphs
+        let frame = self.frame;
+        if glyphs
             .iter()
-            .map(|g| {
-                let x = (place.origin.x + g.x).mul_add(place.scale, -place.offset.x);
-                let y = (place.origin.y + g.y).mul_add(place.scale, -place.offset.y);
-                let subpixel = ((x.fract() * SUBPIXEL_STEPS).round() as u8) % SUBPIXEL_STEPS as u8;
-                (
-                    key(g, place.scale, subpixel),
-                    x.floor() as i32,
-                    y.floor() as i32,
-                )
-            })
-            .collect();
-        if placed.iter().any(|(k, _, _)| !self.masks.contains_key(k)) {
-            if self.masks.len() >= MAX_GLYPHS {
-                self.masks.clear();
-            }
+            .any(|g| !self.masks.contains_key(&place_glyph(g, place).0))
+        {
             paragraph.for_each_font(|font_id, bytes, font_index| {
-                for ((k, _, _), g) in placed.iter().zip(glyphs) {
-                    if k.font == font_id && k.index == font_index && !self.masks.contains_key(k) {
-                        self.masks.insert(*k, rasterize(bytes, font_index, g, k));
+                for g in glyphs {
+                    let (k, _, _) = place_glyph(g, place);
+                    if k.font_id == font_id
+                        && k.font_index == font_index
+                        && !self.masks.contains_key(&k)
+                    {
+                        let mask = self
+                            .hinters
+                            .rasterize(bytes, &k, &g.variation_coords, g.skew);
+                        self.masks.insert(k, (mask, frame));
                     }
                 }
             });
         }
         let bounds = pixel_clip(place.clip, place.scale, place.offset, target);
-        for (k, x, y) in placed {
-            if let Some(Some(raster)) = self.masks.get(&k) {
-                blit(
-                    target,
-                    raster,
-                    Blit {
-                        x,
-                        y,
-                        bounds,
-                        color: place.color,
-                    },
-                );
+        for g in glyphs {
+            let (k, x, y) = place_glyph(g, place);
+            if let Some((mask, used)) = self.masks.get_mut(&k) {
+                *used = frame;
+                if let Some(mask) = mask {
+                    blit(
+                        target,
+                        mask,
+                        Blit {
+                            x,
+                            y,
+                            bounds,
+                            table: &place.table,
+                        },
+                    );
+                }
             }
         }
     }
 }
 
-fn key(g: &RenderedGlyph, scale: f32, subpixel: u8) -> Key {
-    Key {
-        font: g.font_id,
-        index: g.font_index,
-        glyph: g.glyph_id,
-        size: (g.size * scale * SIZE_UNIT).round() as u32,
-        subpixel,
-        coords: ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(&g.variation_coords),
-    }
-}
-
-struct Pen(PathBuilder);
-
-impl OutlinePen for Pen {
-    fn move_to(&mut self, x: f32, y: f32) {
-        self.0.move_to(x, -y);
-    }
-    fn line_to(&mut self, x: f32, y: f32) {
-        self.0.line_to(x, -y);
-    }
-    fn quad_to(&mut self, cx: f32, cy: f32, x: f32, y: f32) {
-        self.0.quad_to(cx, -cy, x, -y);
-    }
-    fn curve_to(&mut self, c0x: f32, c0y: f32, c1x: f32, c1y: f32, x: f32, y: f32) {
-        self.0.cubic_to(c0x, -c0y, c1x, -c1y, x, -y);
-    }
-    fn close(&mut self) {
-        self.0.close();
-    }
-}
-
-fn rasterize(bytes: &[u8], font_index: u32, g: &RenderedGlyph, k: &Key) -> Option<Raster> {
-    let font = FontRef::from_index(bytes, font_index).ok()?;
-    let outline = font.outline_glyphs().get(GlyphId::new(g.glyph_id))?;
-    let coords: Vec<NormalizedCoord> = g
-        .variation_coords
-        .iter()
-        .map(|&c| NormalizedCoord::from_bits(c))
-        .collect();
-    let px = k.size as f32 / SIZE_UNIT;
-    let settings = DrawSettings::unhinted(Size::new(px), LocationRef::new(&coords));
-    let mut pen = Pen(PathBuilder::new());
-    outline
-        .draw(settings, &mut Oblique::new(&mut pen, g.skew))
-        .ok()?;
-    let shift = f32::from(k.subpixel) / SUBPIXEL_STEPS;
-    let path = pen
-        .0
-        .finish()?
-        .transform(Transform::from_translate(shift, 0.0))?;
-    let b = path.bounds();
-    let (left, top) = (b.left().floor() as i32, b.top().floor() as i32);
-    let width = (b.right().ceil() as i32 - left).max(1) as u32;
-    let height = (b.bottom().ceil() as i32 - top).max(1) as u32;
-    let mut mask = Mask::new(width, height)?;
-    mask.fill_path(
-        &path,
-        FillRule::Winding,
-        true,
-        Transform::from_translate(-(left as f32), -(top as f32)),
-    );
-    Some(Raster {
-        left,
-        top,
-        width,
-        height,
-        alpha: mask.data().to_vec(),
-    })
+fn place_glyph(g: &RenderedGlyph, place: &RunPlacement) -> (RasterKey, i32, i32) {
+    let x = (place.origin.x + g.x).mul_add(place.scale, -place.offset.x);
+    let y = (place.origin.y + g.y).mul_add(place.scale, -place.offset.y);
+    let (bin, carry) = subpixel_quantize(x);
+    (
+        RasterKey::new(g, g.size * place.scale, bin),
+        (x + carry).floor() as i32,
+        y.round() as i32,
+    )
 }
 
 fn pixel_clip(clip: Option<Rect>, scale: f32, offset: Point, target: &Pixmap) -> [i32; 4] {
@@ -192,25 +130,18 @@ fn pixel_clip(clip: Option<Rect>, scale: f32, offset: Point, target: &Pixmap) ->
 }
 
 #[derive(Clone, Copy)]
-struct Blit {
+struct Blit<'a> {
     x: i32,
     y: i32,
     bounds: [i32; 4],
-    color: PremultipliedColorU8,
+    table: &'a [[u8; 4]; 256],
 }
 
-fn blit(target: &mut Pixmap, raster: &Raster, blit: Blit) {
+fn blit(target: &mut Pixmap, raster: &GlyphMask, blit: Blit<'_>) {
     let stride = target.width() as usize;
-    let src = [
-        blit.color.red(),
-        blit.color.green(),
-        blit.color.blue(),
-        blit.color.alpha(),
-    ]
-    .map(u32::from);
     let data = target.data_mut();
     for row in 0..raster.height as i32 {
-        let py = blit.y + raster.top + row;
+        let py = blit.y - raster.top + row;
         if py < blit.bounds[1] || py >= blit.bounds[3] {
             continue;
         }
@@ -220,21 +151,30 @@ fn blit(target: &mut Pixmap, raster: &Raster, blit: Blit) {
                 continue;
             }
             let at = (row as u32 * raster.width + col as u32) as usize;
-            let cov = u32::from(raster.alpha.get(at).copied().unwrap_or(0));
-            if cov == 0 {
-                continue;
-            }
-            let dst_at = (py as usize * stride + px as usize) * 4;
-            let Some(dst) = data
-                .get_mut(dst_at..dst_at + 4)
-                .and_then(|s| <&mut [u8; 4]>::try_from(s).ok())
-            else {
+            let cov = usize::from(raster.data.get(at).copied().unwrap_or(0));
+            let Some(src) = blit.table.get(cov).filter(|_| cov > 0) else {
                 continue;
             };
-            let inv = 255 - (src[3] * cov + 127) / 255;
-            for (d, s) in dst.iter_mut().zip(src) {
-                *d = ((s * cov + u32::from(*d) * inv + 127) / 255) as u8;
+            let dst_at = (py as usize * stride + px as usize) * 4;
+            if let Some(dst) = data
+                .get_mut(dst_at..dst_at + 4)
+                .and_then(|s| <&mut [u8; 4]>::try_from(s).ok())
+            {
+                over(dst, *src);
             }
         }
     }
 }
+
+fn over(dst: &mut [u8; 4], src: [u8; 4]) {
+    let keep = 1.0 - f32::from(src[3]) / 255.0;
+    for (d, s) in dst.iter_mut().zip(src).take(3) {
+        let linear = decode(*d).mul_add(keep, decode(s));
+        *d = (encode(linear) * 255.0).round() as u8;
+    }
+    dst[3] = f32::from(dst[3]).mul_add(keep, f32::from(src[3])).round() as u8;
+}
+
+#[cfg(test)]
+#[path = "glyphs_tests.rs"]
+mod tests;

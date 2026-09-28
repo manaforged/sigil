@@ -5,7 +5,7 @@ use wgpu::util::DeviceExt as _;
 #[derive(Clone, Copy, Pod, Zeroable)]
 pub(super) struct BlurUniforms {
     pub(super) viewport: [f32; 2],
-    pub(super) _pad: [f32; 2],
+    pub(super) params: [f32; 2],
 }
 
 const _: () = assert!(core::mem::size_of::<BlurUniforms>() == 16);
@@ -44,7 +44,7 @@ pub(super) fn make_uniform_layout(device: &wgpu::Device) -> wgpu::BindGroupLayou
         label: Some("sigil-renderer blur uniforms layout"),
         entries: &[wgpu::BindGroupLayoutEntry {
             binding: 0,
-            visibility: wgpu::ShaderStages::VERTEX,
+            visibility: wgpu::ShaderStages::VERTEX_FRAGMENT,
             ty: wgpu::BindingType::Buffer {
                 ty: wgpu::BufferBindingType::Uniform,
                 has_dynamic_offset: false,

@@ -1,7 +1,7 @@
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 mod atlas;
 mod bands;
 mod cache;
-mod color;
 mod curve;
 mod pipeline;
 

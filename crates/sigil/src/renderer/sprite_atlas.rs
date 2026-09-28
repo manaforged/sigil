@@ -2,6 +2,19 @@
 
 pub const BUILTIN_ATLAS_WIDTH: u32 = 600;
 pub const BUILTIN_ATLAS_HEIGHT: u32 = 200;
+pub const BUILTIN_ICON_ATLAS_COUNT: usize = crate::icons::builtin::ALL.len();
+#[allow(
+    clippy::cast_possible_truncation,
+    reason = "the built-in icon list has a handful of entries"
+)]
+pub const BUILTIN_ICON_ATLAS_BASE_ID: u32 =
+    crate::renderer::sprite_paint::BUILTIN_SPRITE_ATLAS_ID - BUILTIN_ICON_ATLAS_COUNT as u32;
+
+pub(crate) fn builtin_icon_index(raw_id: u32) -> Option<usize> {
+    let offset = raw_id.checked_sub(BUILTIN_ICON_ATLAS_BASE_ID)?;
+    let index = usize::try_from(offset).ok()?;
+    (index < BUILTIN_ICON_ATLAS_COUNT).then_some(index)
+}
 
 pub fn builtin_atlas_rgba8() -> Vec<u8> {
     let w = BUILTIN_ATLAS_WIDTH as usize;

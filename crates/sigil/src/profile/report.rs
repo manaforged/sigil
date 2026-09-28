@@ -1,5 +1,8 @@
 use std::fmt::Write as _;
 
+use std::fmt::Display;
+
+use crate::profile::key::{Cause, Counter, Phase};
 use crate::profile::store::{self, FRAME_BUDGET_NS, Frame, INTERACT_BUDGET_NS};
 
 pub(crate) fn summary() -> String {
@@ -33,18 +36,20 @@ pub(crate) fn summary() -> String {
     out
 }
 
-fn phases_of(frame: &Frame) -> &[crate::profile::store::Phase] {
+type Pick<K> = fn(&Frame) -> &[(K, u64)];
+
+fn phases_of(frame: &Frame) -> &[(Phase, u64)] {
     &frame.phases
 }
 
-fn counts_of(frame: &Frame) -> &[crate::profile::store::Phase] {
+fn counts_of(frame: &Frame) -> &[(Counter, u64)] {
     &frame.counts
 }
 
-fn write_named_rows(
+fn write_named_rows<K: Copy + PartialEq + Display>(
     out: &mut String,
     frames: &[Frame],
-    pick: fn(&Frame) -> &[crate::profile::store::Phase],
+    pick: Pick<K>,
 ) {
     for name in collect_names(frames, pick) {
         let last = frames
@@ -63,9 +68,9 @@ fn write_named_rows(
 }
 
 fn write_interact_rows(out: &mut String, frames: &[Frame]) {
-    let mut names: Vec<&'static str> = Vec::new();
+    let mut names: Vec<Cause> = Vec::new();
     for frame in frames {
-        if frame.cause != "idle" && !names.contains(&frame.cause) {
+        if frame.cause != Cause::Idle && !names.contains(&frame.cause) {
             names.push(frame.cause);
         }
     }
@@ -138,7 +143,9 @@ fn write_bottlenecks(out: &mut String, frames: &[Frame]) {
     }
     out.push_str("\nbottlenecks (over 16.67ms)\n");
     for frame in slow.iter().take(12) {
-        let (hot, hot_ns) = frame.hottest().unwrap_or(("", 0));
+        let (hot, hot_ns) = frame
+            .hottest()
+            .map_or(("", 0), |(phase, ns)| (phase.name(), ns));
         let _ = writeln!(
             out,
             "  #{:<4} {:<10} {:>7.1}ms  {hot}={:.1}  cmds={}",
@@ -146,12 +153,12 @@ fn write_bottlenecks(out: &mut String, frames: &[Frame]) {
             frame.cause,
             ns_ms(frame.total_ns()),
             ns_ms(hot_ns),
-            frame.counter("scene.cmds")
+            frame.counter(Counter::SceneCmds)
         );
     }
     let inp = frames
         .iter()
-        .filter(|frame| frame.cause != "idle" && frame.total_ns() > INTERACT_BUDGET_NS)
+        .filter(|frame| frame.cause != Cause::Idle && frame.total_ns() > INTERACT_BUDGET_NS)
         .count();
     if inp > 0 {
         let _ = writeln!(
@@ -161,10 +168,7 @@ fn write_bottlenecks(out: &mut String, frames: &[Frame]) {
     }
 }
 
-fn collect_names(
-    frames: &[Frame],
-    pick: fn(&Frame) -> &[crate::profile::store::Phase],
-) -> Vec<&'static str> {
+fn collect_names<K: Copy + PartialEq>(frames: &[Frame], pick: Pick<K>) -> Vec<K> {
     let mut names = Vec::new();
     for frame in frames {
         for (name, _) in pick(frame) {
@@ -176,11 +180,11 @@ fn collect_names(
     names
 }
 
-fn value_ms(list: &[crate::profile::store::Phase], name: &str) -> f64 {
+fn value_ms<K: Copy + PartialEq>(list: &[(K, u64)], name: K) -> f64 {
     ns_ms(value_u64(list, name))
 }
 
-fn value_u64(list: &[crate::profile::store::Phase], name: &str) -> u64 {
+fn value_u64<K: Copy + PartialEq>(list: &[(K, u64)], name: K) -> u64 {
     list.iter()
         .find(|(n, _)| *n == name)
         .map_or(0, |(_, ns)| *ns)

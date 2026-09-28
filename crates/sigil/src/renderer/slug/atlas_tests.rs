@@ -6,6 +6,7 @@ fn key(glyph_id: u32) -> GlyphKey {
         font_index: 0,
         glyph_id,
         variation_coords: Box::new([]),
+        skew_bits: 0,
     }
 }
 

@@ -50,7 +50,7 @@ pub(super) fn frame_once(ctx: FrameCtx<'_>) -> AppResult<()> {
         frame_state,
     } = ctx;
 
-    crate::profile::begin_frame();
+    crate::profile::begin_frame(renderer.status());
     let dt = frame_state.animation_clock.elapsed(Instant::now());
     let env = RefCell::new(FrameEnv {
         config,
@@ -96,7 +96,7 @@ fn frame_hooks<'e, 's: 'e>(env: &'e RefCell<FrameEnv<'s>>) -> FrameHooks<'e> {
 }
 
 fn input_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &mut EventRouter) {
-    let _effect = crate::profile::span("effect");
+    let _effect = crate::profile::span(crate::profile::Phase::Effect);
     let _ = env.async_rt.pump();
     install_shell_features(env.shell, env.window_handle);
     let surface_result = ensure_surface(EnsureSurfaceCtx {
@@ -167,12 +167,12 @@ fn pump_shell_features() {
 }
 
 fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, info: &FrameInfo) {
-    let _paint = crate::profile::span("paint");
+    let _paint = crate::profile::span(crate::profile::Phase::Paint);
     let force_paint = env.shell.take_force_paint();
     let paint_needed = force_paint || info.dirty;
     let allow_replay = force_paint && !info.dirty && !info.animating;
     if allow_replay {
-        crate::profile::interact("expose");
+        crate::profile::interact(crate::profile::Cause::Expose);
     }
     if paint_needed && let Some((cx, _, root)) = host.tree() {
         env.frame_state.scene_cache.paint(PaintRequest {
@@ -184,7 +184,7 @@ fn paint_phase(env: &mut FrameEnv<'_>, host: &mut Host, router: &EventRouter, in
             allow_replay,
         });
     }
-    let _a11y = crate::profile::span("a11y");
+    let _a11y = crate::profile::span(crate::profile::Phase::A11y);
     if let Some((cx, layout, _)) = host.tree() {
         event_wiring::publish_a11y(env.shell, cx, router, layout, paint_needed);
     }

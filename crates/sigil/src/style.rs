@@ -1,4 +1,5 @@
 pub(crate) mod presence;
+pub(crate) mod srgb;
 pub(crate) mod transform;
 use phf as _;
 use smallvec as _;
@@ -28,6 +29,7 @@ pub mod size;
 pub mod state;
 pub mod struct_api;
 pub mod styled;
+pub(crate) mod text_identity;
 pub mod text_style;
 pub mod theme;
 pub mod token;
@@ -58,7 +60,9 @@ pub use metrics::{
 pub use overlay::StyleOverlay;
 pub use parser::{ParseError, StatefulToken, parse_class_string, parse_stateful_token};
 pub use reactive::StyleReactiveEffect;
-pub use resolve::{render_style_for, text_style_for, unsupported_style_warning_count_for};
+#[cfg(any(test, feature = "kittest"))]
+pub use resolve::unsupported_style_warning_count_for;
+pub use resolve::{render_style_for, text_style_for};
 pub use size::{LengthPercentage, Size};
 pub use state::{StateSlot, StateStyle, StyleState, StyleVariant};
 pub use struct_api::Style;
@@ -70,8 +74,8 @@ pub use styled::{
 pub use text_style::{
     StyledTextEngine, TextFace, TextLineHeight, TextRun, TextRuns, TextStyle, is_typography_atom,
 };
-pub use theme::{Theme, ThemeBuilder, ThemeValue};
-pub use token::Token;
+pub use theme::{Theme, ThemeBuilder, ThemeValue, TokenLayer, TokenTable};
+pub use token::{ColorKey, Token};
 pub use tone::{Tone, ToneContext};
 pub use variant_kit::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT};
 

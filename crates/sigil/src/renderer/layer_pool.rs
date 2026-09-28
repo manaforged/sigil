@@ -1,3 +1,4 @@
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 use wgpu::TextureUsages;
 
 use crate::profile::{count, count_add, enabled, gauge};
@@ -11,6 +12,7 @@ pub enum LayerError {
 }
 
 pub struct LayerHandle {
+    #[cfg_attr(not(any(test, feature = "kittest")), allow(dead_code))]
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub width: u32,
@@ -38,7 +40,7 @@ impl LayerPool {
         let budget = Self::bytes((texture.width(), texture.height()), texture.format());
         self.budget = Some(budget);
         self.trim(budget);
-        gauge("gpu.layer_cache_budget_bytes", budget);
+        gauge(crate::profile::Counter::GpuLayerCacheBudgetBytes, budget);
         self.record_profile();
     }
 
@@ -73,13 +75,13 @@ impl LayerPool {
             .iter()
             .position(|slot| slot.width == w && slot.height == h && slot.format == format)
         {
-            count("gpu.layer_reuses");
+            count(crate::profile::Counter::GpuLayerReuses);
             return Ok(self.free.remove(index));
         }
-        count("alloc.layer.textures");
+        count(crate::profile::Counter::AllocLayerTextures);
         if let Some(bytes) = format.block_copy_size(None) {
             count_add(
-                "alloc.layer.bytes",
+                crate::profile::Counter::AllocLayerBytes,
                 u64::from(w) * u64::from(h) * u64::from(bytes),
             );
         }
@@ -118,23 +120,32 @@ impl LayerPool {
         if !enabled() {
             return;
         }
-        gauge("gpu.layer_cache_bytes", self.retained_bytes());
-        gauge("gpu.layer_cache_textures", self.free.len() as u64);
+        gauge(
+            crate::profile::Counter::GpuLayerCacheBytes,
+            self.retained_bytes(),
+        );
+        gauge(
+            crate::profile::Counter::GpuLayerCacheTextures,
+            self.free.len() as u64,
+        );
     }
 
     pub(crate) fn contains(&self, view: &wgpu::TextureView) -> bool {
         self.free.iter().any(|handle| handle.view == *view)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn clear(&mut self) {
         self.free.clear();
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn len(&self) -> usize {
         self.free.len()
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.free.is_empty()

@@ -7,23 +7,21 @@
 use std::hint::black_box;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::{LogicalSize, Point, Rect, Size};
-use sigil::kernel::{Cx, NodeId, TextContent};
-use sigil::layout::{LayoutEngine, TextMeasure};
+use sigil::hal::{Point, Rect, Size};
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::profile;
 use sigil::reactive::Runtime;
-use sigil::renderer::emit_scene_clipped;
+use sigil::scene::emit_scene_clipped;
+use sigil_kittest::FixedMeasure;
 
 const ROWS: u32 = 500;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::new(80.0, 16.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 80.0,
+    height: 16.0,
+};
 
 fn build(cx: &mut Cx) -> NodeId {
     let mut col = container().layout(LayoutStyle::flex_column().fixed_size(1280.0, 800.0));
@@ -44,15 +42,15 @@ fn layout_then_emit(c: &mut Criterion) {
             Runtime::scope("frame_phases", || {
                 let mut cx = Cx::new_root();
                 let root = build(&mut cx);
-                let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+                let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
                 {
-                    let _layout = profile::span("layout");
+                    let _layout = profile::span(sigil::profile::Phase::Layout);
                     layout
                         .compute(&mut cx, root, Size::fixed(1280.0, 800.0))
                         .expect("bench harness invariant");
                 }
                 {
-                    let _emit = profile::span("emit");
+                    let _emit = profile::span(sigil::profile::Phase::Emit);
                     black_box(emit_scene_clipped(
                         &cx,
                         root,

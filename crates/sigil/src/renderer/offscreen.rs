@@ -11,7 +11,7 @@ use crate::renderer::layer_pool::{LayerHandle, LayerPool};
 use crate::renderer::raster_paint::RasterTextPipeline;
 use crate::renderer::renderer::{ScreenSubmission, WgpuRenderer, record_clear};
 use crate::renderer::scene_command::CommandScene;
-use crate::renderer::scene_command::walk::{WalkCtx, walk_command_scene};
+use crate::renderer::scene_command::walk::{WalkCtx, WalkPending, walk_command_scene};
 use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
@@ -112,6 +112,7 @@ fn walk_with_ready(
         layer_pipelines,
         blur_pipelines,
         layer_pool,
+        pending,
         ..
     } = ready;
     walk_command_scene(
@@ -134,6 +135,7 @@ fn walk_with_ready(
             layer_pipelines,
             blur_pipelines,
             layer_pool,
+            pending,
             stats,
         },
         scene,
@@ -161,6 +163,7 @@ pub(crate) fn walk_with_temporary_pipelines(
     let mut layer_pipelines = Vec::<LayerCompositePipeline>::new();
     let mut blur_pipelines = Vec::<BlurPipeline>::new();
     let mut layer_pool = Some(LayerPool::new());
+    let mut pending = WalkPending::default();
     walk_command_scene(
         WalkCtx {
             device: target.device,
@@ -181,6 +184,7 @@ pub(crate) fn walk_with_temporary_pipelines(
             layer_pipelines: &mut layer_pipelines,
             blur_pipelines: &mut blur_pipelines,
             layer_pool: &mut layer_pool,
+            pending: &mut pending,
             stats,
         },
         scene,

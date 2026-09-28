@@ -1,3 +1,4 @@
+use crate::renderer::cache_limits::CacheLimits;
 use std::collections::HashMap;
 
 use super::SpritePipeline;
@@ -5,7 +6,6 @@ use super::atlas::{AtlasDesc, MAX_ATLASES, build_atlas, valid_atlas_desc};
 
 pub(super) const PAGE: u32 = 1024;
 const PAD: u32 = 1;
-const STALE_FRAMES: u64 = 300;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct PackedImage {
@@ -55,7 +55,7 @@ impl ImagePack {
         let stale = self
             .last_used
             .get(&id)
-            .is_none_or(|&used| used + STALE_FRAMES < self.frame);
+            .is_none_or(|&used| used + CacheLimits::DEFAULT.image_stale_frames < self.frame);
         let on_page = self.owns_page(packed.atlas);
         let evict = stale || (reset && on_page);
         if evict {

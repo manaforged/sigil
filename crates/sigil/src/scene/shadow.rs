@@ -64,10 +64,5 @@ pub(crate) fn expanded_shadow_rect(surface: Rect, shadow: Shadow) -> Rect {
 }
 
 pub(crate) fn srgb_channel_to_linear(channel: u8) -> f32 {
-    let value = f32::from(channel) / 255.0;
-    if value <= 0.040_45 {
-        value / 12.92
-    } else {
-        ((value + 0.055) / 1.055).powf(2.4)
-    }
+    crate::style::srgb::decode(channel)
 }

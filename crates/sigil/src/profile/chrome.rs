@@ -5,6 +5,7 @@ use std::path::Path;
 use serde_json::{Value, json, to_writer};
 
 use crate::profile::event::Event;
+use crate::profile::key::{Counter, Phase};
 use crate::profile::store;
 
 pub(crate) fn write(path: &Path) -> io::Result<()> {
@@ -24,9 +25,11 @@ pub(crate) fn write(path: &Path) -> io::Result<()> {
         value(
             &mut out,
             &json!({
-                "index": frame.index, "cause": frame.cause,
-                "wall_ns": frame.total_ns(), "phases_ns": frame.phases,
-                "counts": frame.counts
+                "index": frame.index, "cause": frame.cause.name(),
+                "wall_ns": frame.total_ns(),
+                "phases_ns": named(&frame.phases, Phase::name),
+                "counts": named(&frame.counts, Counter::name),
+                "backend": frame.backend.map(|status| status.to_string())
             }),
         )?;
     }
@@ -61,21 +64,24 @@ fn value(out: &mut BufWriter<File>, value: &Value) -> io::Result<()> {
 fn event_value(event: Event) -> Value {
     match event {
         Event::Complete {
-            name,
-            cat,
+            phase,
             tid,
             start_us,
             dur_us,
         } => json!({
-            "name": name, "cat": cat, "ph": "X", "ts": start_us,
+            "name": phase.name(), "cat": phase.category().name(), "ph": "X", "ts": start_us,
             "dur": dur_us, "pid": 1, "tid": tid
         }),
         Event::Instant { name, cat, ts_us } => json!({
             "name": name, "cat": cat, "ph": "i", "s": "t",
             "ts": ts_us, "pid": 1, "tid": 1
         }),
-        Event::Counter { name, ts_us, value } => json!({
-            "name": name, "ph": "C", "ts": ts_us,
+        Event::Counter {
+            counter,
+            ts_us,
+            value,
+        } => json!({
+            "name": counter.name(), "ph": "C", "ts": ts_us,
             "pid": 1, "tid": 1, "args": {"value": value}
         }),
         Event::FlowStart { name, id, ts_us } => json!({
@@ -87,4 +93,10 @@ fn event_value(event: Event) -> Value {
             "id": id, "ts": ts_us, "pid": 1, "tid": 1
         }),
     }
+}
+
+fn named<K: Copy>(list: &[(K, u64)], name: fn(K) -> &'static str) -> Vec<(&'static str, u64)> {
+    list.iter()
+        .map(|&(key, value)| (name(key), value))
+        .collect()
 }

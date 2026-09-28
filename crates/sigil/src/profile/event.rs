@@ -1,8 +1,9 @@
+use crate::profile::key::{Counter, Phase};
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Event {
     Complete {
-        name: &'static str,
-        cat: &'static str,
+        phase: Phase,
         tid: u32,
         start_us: u64,
         dur_us: u64,
@@ -13,7 +14,7 @@ pub(crate) enum Event {
         ts_us: u64,
     },
     Counter {
-        name: &'static str,
+        counter: Counter,
         ts_us: u64,
         value: u64,
     },

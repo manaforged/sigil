@@ -1,4 +1,4 @@
-use crate::profile::{enabled, gauge};
+use crate::profile::{Counter, enabled, gauge};
 
 pub(crate) fn snapshot(instance: &wgpu::Instance) {
     if !enabled() {
@@ -9,16 +9,16 @@ pub(crate) fn snapshot(instance: &wgpu::Instance) {
     };
     let hub = report.hub;
     for (name, value) in [
-        ("wgpu.ids.buffers", hub.buffers.num_allocated),
-        ("wgpu.ids.textures", hub.textures.num_allocated),
-        ("wgpu.ids.texture_views", hub.texture_views.num_allocated),
-        ("wgpu.ids.bind_groups", hub.bind_groups.num_allocated),
+        (Counter::WgpuBuffers, hub.buffers.num_allocated),
+        (Counter::WgpuTextures, hub.textures.num_allocated),
+        (Counter::WgpuTextureViews, hub.texture_views.num_allocated),
+        (Counter::WgpuBindGroups, hub.bind_groups.num_allocated),
         (
-            "wgpu.ids.command_buffers",
+            Counter::WgpuCommandBuffers,
             hub.command_buffers.num_allocated,
         ),
         (
-            "wgpu.ids.render_pipelines",
+            Counter::WgpuRenderPipelines,
             hub.render_pipelines.num_allocated,
         ),
     ] {

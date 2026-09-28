@@ -1,7 +1,7 @@
 use crate::hal::{Color, Rect, RenderedGlyph};
 use crate::text::Paragraph;
 
-use crate::renderer::raster::{self, Hinters, RasterKey};
+use crate::renderer::raster::{Hinters, RasterKey, subpixel_quantize};
 use crate::renderer::split_encoder::SplitEncoder;
 
 mod atlas;
@@ -163,14 +163,7 @@ impl RasterTextPipeline {
         let physical_px = g.size * scale;
         let physical_pen_x = (params.origin.0 + g.x) * scale;
         let (bin, carry) = subpixel_quantize(physical_pen_x);
-        let key = RasterKey {
-            font_id: g.font_id,
-            font_index: g.font_index,
-            glyph_id: g.glyph_id,
-            physical_px_bits: physical_px.to_bits(),
-            bin,
-            coords: ahash::RandomState::with_seeds(1, 2, 3, 4).hash_one(&g.variation_coords),
-        };
+        let key = RasterKey::new(g, physical_px, bin);
         let placement = if let Some(p) = self.atlas.get(&key) {
             p
         } else {
@@ -290,13 +283,6 @@ fn normalize_uvs(instances: &mut [RasterInstance], atlas_size: u32) {
             *c /= s;
         }
     }
-}
-
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn subpixel_quantize(physical_pen_x: f32) -> (u8, f32) {
-    let bins = f32::from(raster::SUBPIXEL_BINS);
-    let q = (physical_pen_x.rem_euclid(1.0) * bins).round();
-    if q >= bins { (0, 1.0) } else { (q as u8, 0.0) }
 }
 
 fn apply_clip_scissor(pass: &mut wgpu::RenderPass<'_>, params: &RasterDrawParams<'_>) -> bool {

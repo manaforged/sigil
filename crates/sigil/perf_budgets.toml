@@ -1,0 +1,11 @@
+bench_tolerance = 0.25
+
+[frames]
+idle = { allocs = 1 }
+hover = { allocs = 73 }
+scroll = { allocs = 1510 }
+typing = { allocs = 231 }
+chart = { allocs = 338 }
+terminal = { allocs = 344 }
+
+[benches]

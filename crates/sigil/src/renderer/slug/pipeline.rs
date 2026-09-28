@@ -28,12 +28,13 @@ pub(super) fn create_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroup
 
 const QUAD_ATTRS: [wgpu::VertexAttribute; 1] = wgpu::vertex_attr_array![0 => Float32x2];
 
-const INSTANCE_ATTRS: [wgpu::VertexAttribute; 5] = wgpu::vertex_attr_array![
+const INSTANCE_ATTRS: [wgpu::VertexAttribute; 6] = wgpu::vertex_attr_array![
     1 => Float32x2,
     2 => Float32x2,
-    3 => Float32x4,
-    4 => Uint32,
-    5 => Float32,
+    3 => Float32x2,
+    4 => Float32x4,
+    5 => Uint32,
+    6 => Float32,
 ];
 
 const fn vertex_buffers<'a>() -> [Option<wgpu::VertexBufferLayout<'a>>; 2] {
@@ -44,7 +45,7 @@ const fn vertex_buffers<'a>() -> [Option<wgpu::VertexBufferLayout<'a>>; 2] {
             attributes: &QUAD_ATTRS,
         }),
         Some(wgpu::VertexBufferLayout {
-            array_stride: 40,
+            array_stride: 48,
             step_mode: wgpu::VertexStepMode::Instance,
             attributes: &INSTANCE_ATTRS,
         }),

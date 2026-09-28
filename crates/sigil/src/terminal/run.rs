@@ -2,7 +2,7 @@ use std::io::{self, Write};
 use std::time::Duration;
 
 use crate::app::{
-    AppConfig, AppResult, CellWidth, Error, FrameHooks, Host, LayoutError, PanicPolicy, TreeRoot,
+    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, PanicPolicy, TreeRoot,
     set_cell_width,
 };
 use crate::events::EventRouter;
@@ -14,42 +14,47 @@ use crossterm::{cursor, execute};
 use unicode_width::UnicodeWidthStr;
 
 use crate::profile;
+use crate::terminal::caps::Caps;
 use crate::terminal::input::{Incoming, Wake, gather_input, limit};
-use crate::terminal::paint::{Grid, raster};
+use crate::terminal::paint::Grid;
 use crate::terminal::screen::Screen;
 use crate::terminal::signals::SignalGuard;
 #[cfg(test)]
 use crate::terminal::term::paint_frame;
 use crate::terminal::term::{HookGuard, Term, restore};
 
-pub(crate) const TICK: Duration = Duration::from_millis(33);
 pub(crate) const CELL: f32 = crate::app::Host::CELL;
 
 pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
     set_cell_width(CellWidth::Unicode);
-    let modifier = probe(out, "👍🏽")?;
+    let home = cursor::position()?;
+    let modifier = probe(out, home, "👍🏽")?;
     if modifier > UnicodeWidthStr::width("👍🏽") {
-        let joiner = probe(out, "\u{200d}")?;
-        let nonjoiner = probe(out, "\u{200c}")?;
-        let keycap = probe(out, "1\u{fe0f}\u{20e3}")?.saturating_sub(1);
+        let joiner = probe(out, home, "\u{200d}")?;
+        let nonjoiner = probe(out, home, "\u{200c}")?;
+        let keycap = probe(out, home, "1\u{fe0f}\u{20e3}")?.saturating_sub(1);
         set_cell_width(CellWidth::Scalar {
             joiner,
             nonjoiner,
             keycap,
         });
     }
-    execute!(out, cursor::MoveTo(0, 0), Clear(ClearType::CurrentLine))
-}
-
-fn probe(out: &mut impl Write, text: &str) -> io::Result<usize> {
     execute!(
         out,
-        cursor::MoveTo(0, 0),
+        cursor::MoveTo(0, home.1),
+        Clear(ClearType::CurrentLine)
+    )
+}
+
+fn probe(out: &mut impl Write, home: (u16, u16), text: &str) -> io::Result<usize> {
+    execute!(
+        out,
+        cursor::MoveTo(0, home.1),
         Clear(ClearType::CurrentLine),
         Print(text)
     )?;
     let (col, row) = cursor::position()?;
-    if row != 0 {
+    if row != home.1 {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "terminal width probe wrapped",
@@ -66,22 +71,11 @@ pub type AfterFrame<'a> = Box<dyn FnMut(&mut Host, &mut EventRouter, &Screen) + 
 pub struct Hooks<'a> {
     pub external_events: Option<EventPump<'a>>,
     pub after_frame: Option<AfterFrame<'a>>,
+    pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
 }
 
-pub(crate) fn run<C, T>(config: C, tree: T) -> AppResult<()>
-where
-    C: Into<AppConfig>,
-    T: TreeRoot,
-{
-    run_with(config, tree, &mut Hooks::default())
-}
-
-pub fn run_with<C, T>(config: C, tree: T, hooks: &mut Hooks<'_>) -> AppResult<()>
-where
-    C: Into<AppConfig>,
-    T: TreeRoot,
-{
-    let config = config.into();
+pub(crate) fn run<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
+    let hooks = &mut config.terminal_hooks.take();
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install();
     #[cfg(feature = "inspect")]
@@ -120,7 +114,7 @@ where
     #[cfg(not(feature = "inspect"))]
     let inspect_pending = || false;
     let result = Runtime::scope("sigil-terminal", || {
-        live(&config, tree, hooks, inspect_pending)
+        live(config, tree, hooks, inspect_pending)
     });
     profile::dump_if_enabled();
     result
@@ -148,31 +142,8 @@ pub fn step(
     cols: u16,
     rows: u16,
 ) -> Result<Grid, LayoutError> {
-    let mut grid = None;
-    let hooks = step_hooks(events, &mut grid, cols, rows);
-    let out = host.frame(router, view(cols, rows), TICK.as_secs_f32(), hooks);
-    out.layout?;
-    Ok(grid.expect("paint runs after a successful layout"))
-}
-
-fn step_hooks<'e>(
-    events: impl IntoIterator<Item = ShellEvent> + 'e,
-    grid_slot: &'e mut Option<Grid>,
-    cols: u16,
-    rows: u16,
-) -> FrameHooks<'e> {
-    FrameHooks {
-        input: Some(Box::new(move |host, router| {
-            host.route_all(router, events);
-        })),
-        paint: Some(Box::new(move |host, _router, info| {
-            if info.layout_ok {
-                let scene = host.emit(view(cols, rows));
-                *grid_slot = Some(raster(&scene, host.theme(), cols, rows, CELL));
-            }
-        })),
-        ..FrameHooks::default()
-    }
+    let mut screen = Screen::new(cols, rows);
+    screen.frame(host, router, events, (cols, rows)).cloned()
 }
 
 fn prime(
@@ -215,7 +186,7 @@ fn live<T: TreeRoot>(
     inspect_pending: impl Fn() -> bool,
 ) -> AppResult<()> {
     let (mut async_rt, waker, _theme_watch) = prepare(config)?;
-    let mut term = Term::enter(&config.title).map_err(Error::io)?;
+    let mut term = enter(config)?;
     let _hooks = HookGuard::install();
     let _signals = SignalGuard::install().map_err(Error::io)?;
     let (mut cols, mut rows) = term_size(config)?;
@@ -223,21 +194,21 @@ fn live<T: TreeRoot>(
     let mut router = EventRouter::new();
     crate::terminal::clipboard::install_clipboard(term.caps());
     host.set_caps(term.caps().host());
-    host.mount(tree);
+    host.mount_app(tree);
     prime(&mut host, &mut router, cols, rows).map_err(Error::from)?;
-    let mut screen = Screen::with_caps(cols, rows, term.caps());
+    let mut screen = open_screen(config, (cols, rows), term.caps());
     let mut pointer = crate::hal::Point::new(0.0, 0.0);
-    let (mut first, mut settle) = (true, true);
-    let mut last = std::time::Instant::now();
+    let (mut first, mut settle, mut last) = (true, true, std::time::Instant::now());
     loop {
         if crate::app::take_exit() {
             break;
         }
         let woke = pump(&host, &mut async_rt);
-        let timing = turn_wait(config.frame_interval, woke, last);
+        let timing = turn_wait(config.frame_interval, woke, last, screen.deadline());
+        let pending = inspect_pending() || due(screen.deadline());
         let input = match gather_input(&mut first, config, &mut pointer, hooks, (&waker, timing))? {
             Incoming::Quit => break,
-            Incoming::Idle if idle(settle, woke, &term, inspect_pending()) => continue,
+            Incoming::Idle if idle(settle, woke, &term, pending) => continue,
             Incoming::Idle => Vec::new(),
             Incoming::Events(events) => events,
             Incoming::Resized(next_cols, next_rows, events) => {
@@ -258,12 +229,19 @@ fn live<T: TreeRoot>(
             router: &mut router,
             term: &mut term,
         };
-        turn.frame_and_present(config.panic_policy, input, (cols, rows), hooks)?;
+        turn.take(config, input, (cols, rows), hooks)?;
         if turn.screen.exited() {
             break;
         }
     }
     Ok(())
+}
+
+fn open_screen(config: &AppConfig, (cols, rows): (u16, u16), caps: Caps) -> Screen {
+    let mut screen = Screen::with_caps(cols, rows, caps);
+    screen.set_access(config.terminal_access);
+    screen.speak_above(config.inline);
+    screen
 }
 
 fn term_size(config: &AppConfig) -> AppResult<(u16, u16)> {
@@ -281,6 +259,10 @@ fn idle(settle: bool, woke: usize, term: &Term, inspect_pending: bool) -> bool {
     !settle && woke == 0 && !frame_due() && !term.pending() && !inspect_pending
 }
 
+fn due(deadline: Option<std::time::Instant>) -> bool {
+    deadline.is_some_and(|due| due <= std::time::Instant::now())
+}
+
 fn frame_due() -> bool {
     Runtime::frame_dirty()
         || crate::animation_runtime::active_count() > 0
@@ -288,11 +270,20 @@ fn frame_due() -> bool {
             .is_some_and(|due| due <= std::time::Instant::now())
 }
 
-fn turn_wait(tick: Duration, woke: usize, last: std::time::Instant) -> (Duration, bool) {
+fn turn_wait(
+    tick: Duration,
+    woke: usize,
+    last: std::time::Instant,
+    status: Option<std::time::Instant>,
+) -> (Option<Duration>, bool) {
     if woke > 0 || frame_due() {
-        return (tick.saturating_sub(last.elapsed()), false);
+        return (Some(tick.saturating_sub(last.elapsed())), false);
     }
-    let wait = crate::reactive::next_interval_deadline().map_or(tick, |due| {
+    let next = match (crate::reactive::next_interval_deadline(), status) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    };
+    let wait = next.map(|due| {
         due.saturating_duration_since(std::time::Instant::now())
             .min(tick)
     });
@@ -308,6 +299,20 @@ struct Turn<'a> {
 }
 
 impl Turn<'_> {
+    fn take(
+        &mut self,
+        config: &AppConfig,
+        incoming: Vec<ShellEvent>,
+        (cols, rows): (u16, u16),
+        hooks: &mut Hooks<'_>,
+    ) -> AppResult<()> {
+        let size = match hooks.region_rows.as_mut() {
+            Some(hook) if config.inline => (cols, hook().clamp(1, rows.max(1))),
+            _ => (cols, rows),
+        };
+        self.frame_and_present(config.panic_policy, incoming, size, hooks)
+    }
+
     fn frame_and_present(
         &mut self,
         policy: PanicPolicy,
@@ -315,10 +320,9 @@ impl Turn<'_> {
         size: (u16, u16),
         hooks: &mut Hooks<'_>,
     ) -> AppResult<()> {
-        self.screen
-            .set_dt(self.last.elapsed().as_secs_f32().min(0.1));
+        self.screen.set_dt(self.last.elapsed().as_secs_f32());
         *self.last = std::time::Instant::now();
-        profile::begin_frame();
+        profile::begin_frame(profile::BackendStatus::TERMINAL);
         let recovered = frame_isolated(policy, self.screen, self.host, self.router, incoming, size)
             .map_err(Error::io)?;
         if recovered {
@@ -328,8 +332,13 @@ impl Turn<'_> {
         if let Some(after) = hooks.after_frame.as_mut() {
             after(self.host, self.router, self.screen);
         }
+        for message in self.screen.take_above() {
+            if let Err(err) = crate::terminal::print_above(&message) {
+                tracing::warn!(target: "sigil::terminal", error = %err, "announcement write failed");
+            }
+        }
         {
-            let _phase = profile::span("tui.present");
+            let _phase = profile::span(crate::profile::Phase::TuiPresent);
             self.term.paint(self.screen).map_err(Error::io)?;
         }
         profile::tick_frame();
@@ -366,3 +375,12 @@ fn frame_isolated(
 #[cfg(test)]
 #[path = "run_tests.rs"]
 mod tests;
+
+fn enter(config: &AppConfig) -> AppResult<Term> {
+    let term = Term::enter(&config.title, config.inline).map_err(Error::io)?;
+    let dark = term.caps().backdrop == Some(crate::terminal::Backdrop::Dark);
+    if config.theme_file.is_none() && dark {
+        crate::app::set_theme(crate::style::Theme::dark());
+    }
+    Ok(term)
+}

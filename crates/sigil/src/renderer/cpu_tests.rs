@@ -132,8 +132,8 @@ fn opacity_layer_scales_alpha() {
         .unwrap();
     let [r, g, b, _] = pixel(&out, 1, 1);
     assert_eq!(r, 255);
-    assert!((120..=135).contains(&g), "g={g}");
-    assert!((120..=135).contains(&b), "b={b}");
+    assert!((180..=195).contains(&g), "g={g}");
+    assert!((180..=195).contains(&b), "b={b}");
 }
 
 #[test]

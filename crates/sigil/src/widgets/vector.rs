@@ -24,7 +24,7 @@ impl PathColor {
     fn resolve(self, theme: &Theme) -> Rgba8 {
         match self {
             Self::Rgba(color) => color,
-            Self::Token(token) => theme.resolve_color(token.name()),
+            Self::Token(token) => theme.color(token),
         }
     }
 }
@@ -213,7 +213,7 @@ impl PathNode {
 
     fn resolved(&self, theme: &Theme) -> (Option<PathFill>, Option<(Rgba8, f32)>) {
         let fill = self.fill.as_ref().map(|fill| match fill {
-            PathFill::Theme(token) => PathFill::Solid(theme.resolve_color(token.name())),
+            PathFill::Theme(token) => PathFill::Solid(theme.color(*token)),
             other => other.clone(),
         });
         let stroke = self
@@ -245,7 +245,7 @@ impl PathNode {
         if let Some(hit) = RASTER.with(|map| map.borrow().get(&key).cloned()) {
             return Some(hit);
         }
-        crate::profile::count("path.raster");
+        crate::profile::count(crate::profile::Counter::PathRaster);
         let source = self.paint(fill.as_ref(), stroke)?;
         RASTER.with(|map| {
             let mut map = map.borrow_mut();
