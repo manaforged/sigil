@@ -329,7 +329,7 @@ fn inline_proof_paints_relative_and_clears_tail() {
     let grid6 = draw(vec![plain("alpha", None)], 8, 6);
 
     let mut out = Vec::new();
-    super::inline(&mut out, None, &grid6, 0, &caps).unwrap();
+    super::inline(&mut out, None, &grid6, (0, false), &caps).unwrap();
     let text = String::from_utf8(out).unwrap();
     assert!(!text.contains("\x1b[1049h"), "inline emitted alt-screen");
     assert!(
@@ -345,7 +345,7 @@ fn inline_proof_paints_relative_and_clears_tail() {
 
     let grid4 = draw(vec![plain("beta", None)], 8, 4);
     let mut shrunk_out = Vec::new();
-    super::inline(&mut shrunk_out, None, &grid4, 6, &caps).unwrap();
+    super::inline(&mut shrunk_out, None, &grid4, (6, false), &caps).unwrap();
     let shrunk = String::from_utf8(shrunk_out).unwrap();
     assert!(
         shrunk.contains("\x1b[5A"),
@@ -357,4 +357,24 @@ fn inline_proof_paints_relative_and_clears_tail() {
         "tail rows need clearing"
     );
     assert_eq!(shrunk.matches("\r\n").count(), 5);
+}
+
+#[test]
+fn the_cursor_shows_only_at_a_text_caret() -> std::io::Result<()> {
+    let caps = Caps::default();
+    let mut focus = Vec::new();
+    super::cursor(&mut focus, Some((0, 0)), false, &caps)?;
+    let mut caret = Vec::new();
+    super::cursor(&mut caret, Some((3, 1)), true, &caps)?;
+    let focus = String::from_utf8_lossy(&focus);
+    let caret = String::from_utf8_lossy(&caret);
+    assert!(
+        focus.contains("\x1b[?25l") && !focus.contains("\x1b[?25h"),
+        "a focus spot without a caret must keep the cursor hidden: {focus:?}"
+    );
+    assert!(
+        caret.contains("\x1b[2;4H") && caret.ends_with("\x1b[?25h"),
+        "a text caret shows the cursor where it sits: {caret:?}"
+    );
+    Ok(())
 }

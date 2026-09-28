@@ -18,18 +18,41 @@ pub enum CellWidth {
     },
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Ambiguous {
+    #[default]
+    Narrow,
+    Wide,
+}
+
 thread_local! {
     static CELL_WIDTH: Cell<CellWidth> = const { Cell::new(CellWidth::Unicode) };
+    static AMBIGUOUS: Cell<Ambiguous> = const { Cell::new(Ambiguous::Narrow) };
 }
 
 pub fn set_cell_width(width: CellWidth) {
     CELL_WIDTH.set(width);
 }
 
+pub fn set_ambiguous(width: Ambiguous) {
+    AMBIGUOUS.set(width);
+}
+
+fn char_width(ch: char) -> usize {
+    match AMBIGUOUS.get() {
+        Ambiguous::Narrow => UnicodeWidthChar::width(ch),
+        Ambiguous::Wide => UnicodeWidthChar::width_cjk(ch),
+    }
+    .unwrap_or(0)
+}
+
 #[must_use]
 pub fn cell_width(text: &str) -> usize {
     match CELL_WIDTH.get() {
-        CellWidth::Unicode => UnicodeWidthStr::width(text),
+        CellWidth::Unicode => match AMBIGUOUS.get() {
+            Ambiguous::Narrow => UnicodeWidthStr::width(text),
+            Ambiguous::Wide => UnicodeWidthStr::width_cjk(text),
+        },
         CellWidth::Scalar {
             joiner,
             nonjoiner,
@@ -40,7 +63,7 @@ pub fn cell_width(text: &str) -> usize {
                 '\u{200d}' => joiner,
                 '\u{200c}' => nonjoiner,
                 '\u{20e3}' => keycap,
-                _ => UnicodeWidthChar::width(ch).unwrap_or(0),
+                _ => char_width(ch),
             })
             .sum(),
     }
@@ -350,3 +373,7 @@ fn floor_boundary(text: &str, byte: usize) -> usize {
     }
     byte
 }
+
+#[cfg(test)]
+#[path = "cell_text_tests.rs"]
+mod tests;

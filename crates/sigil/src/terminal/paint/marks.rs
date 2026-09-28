@@ -2,7 +2,6 @@ use crate::kernel::{AccessibleName, Cx, NodeId};
 use crate::scene::{CommandScene, DecorationKind, DrawDecoration, DrawRect, SceneCommand};
 use crate::style::Rgba8;
 use smol_str::SmolStr;
-use std::borrow::Cow;
 
 use super::{Grid, Ink, Underline, cell_edge, floor_cell};
 
@@ -80,21 +79,6 @@ fn within(cx: &Cx, mut id: NodeId, focus: NodeId) -> bool {
         id = parent;
     }
     false
-}
-
-pub(super) fn ascii(text: &str) -> Cow<'_, str> {
-    if text.is_ascii() {
-        return Cow::Borrowed(text);
-    }
-    Cow::Owned(
-        text.chars()
-            .map(|glyph| match glyph {
-                '●' | '•' => '*',
-                '○' => 'o',
-                other => other,
-            })
-            .collect(),
-    )
 }
 
 pub(super) struct Line {

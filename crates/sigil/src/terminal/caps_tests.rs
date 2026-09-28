@@ -1,0 +1,108 @@
+use super::{Caps, ColorDepth, Erase, Keyboard};
+use crate::app::Ambiguous;
+use crate::terminal::glyphs::Glyphs;
+
+fn caps(pairs: &[(&str, &str)]) -> Caps {
+    Caps::detect(|key| {
+        pairs
+            .iter()
+            .find(|(name, _)| *name == key)
+            .map(|(_, value)| (*value).to_string())
+    })
+}
+
+type Row = (&'static [(&'static str, &'static str)], ColorDepth);
+
+#[test]
+fn term_selects_colour_depth() {
+    let table: [Row; 13] = [
+        (&[("TERM", "xterm-ghostty")], ColorDepth::Truecolor),
+        (&[("TERM", "xterm-kitty")], ColorDepth::Truecolor),
+        (&[("TERM", "wezterm")], ColorDepth::Truecolor),
+        (&[("TERM", "alacritty")], ColorDepth::Truecolor),
+        (&[("TERM", "foot")], ColorDepth::Truecolor),
+        (&[("TERM", "contour")], ColorDepth::Truecolor),
+        (&[("TERM", "xterm-direct")], ColorDepth::Truecolor),
+        (
+            &[("TERM", "xterm"), ("TERM_PROGRAM", "iTerm.app")],
+            ColorDepth::Truecolor,
+        ),
+        (
+            &[("TERM", "xterm"), ("COLORTERM", "24bit")],
+            ColorDepth::Truecolor,
+        ),
+        (
+            &[
+                ("TERM", "xterm-256color"),
+                ("TERM_PROGRAM", "Apple_Terminal"),
+            ],
+            ColorDepth::Ansi256,
+        ),
+        (&[("TERM", "xterm")], ColorDepth::Ansi16),
+        (
+            &[("TERM", "xterm"), ("SIGIL_COLOR", "256")],
+            ColorDepth::Ansi256,
+        ),
+        (
+            &[("TERM", "xterm-kitty"), ("SIGIL_COLOR", "none")],
+            ColorDepth::Monochrome,
+        ),
+    ];
+    for (env, depth) in table {
+        assert_eq!(caps(env).color, depth, "{env:?}");
+    }
+}
+
+#[test]
+fn mux_ignores_inherited_outer_terminal() {
+    let inside = caps(&[
+        ("TERM", "tmux-256color"),
+        ("TMUX", "/tmp/tmux-1/default,1,0"),
+        ("KITTY_WINDOW_ID", "1"),
+        ("GHOSTTY_RESOURCES_DIR", "/usr/share/ghostty"),
+        ("WEZTERM_EXECUTABLE", "/usr/bin/wezterm"),
+        ("LC_TERMINAL", "iTerm2"),
+        ("VTE_VERSION", "7600"),
+        ("WT_SESSION", "1"),
+    ]);
+    assert_eq!(inside.color, ColorDepth::Ansi256);
+    assert_eq!(inside.keyboard, Keyboard::Legacy);
+    assert!(!inside.hyperlinks);
+    let outside = caps(&[("TERM", "xterm-256color"), ("KITTY_WINDOW_ID", "1")]);
+    assert_eq!(outside.color, ColorDepth::Truecolor);
+    assert_eq!(outside.keyboard, Keyboard::Kitty);
+}
+
+#[test]
+fn unknown_terminal_keeps_legacy_keys() {
+    assert_eq!(
+        caps(&[("TERM", "xterm-256color")]).keyboard,
+        Keyboard::Legacy
+    );
+}
+
+#[test]
+fn glyphs_follow_term_locale_and_override() {
+    assert_eq!(caps(&[("TERM", "xterm-256color")]).glyphs, Glyphs::Unicode);
+    assert_eq!(caps(&[("TERM", "linux")]).glyphs, Glyphs::Console);
+    assert_eq!(caps(&[("TERM", "vt100")]).glyphs, Glyphs::Ascii);
+    assert_eq!(
+        caps(&[("TERM", "xterm"), ("LANG", "C")]).glyphs,
+        Glyphs::Ascii
+    );
+    assert_eq!(
+        caps(&[("TERM", "xterm"), ("SIGIL_ASCII", "1")]).glyphs,
+        Glyphs::Ascii
+    );
+}
+
+#[test]
+fn ambiguous_width_and_bce_come_from_env() {
+    assert_eq!(caps(&[("TERM", "xterm")]).ambiguous, Ambiguous::Narrow);
+    assert_eq!(
+        caps(&[("TERM", "xterm"), ("SIGIL_AMBIGUOUS_WIDE", "1")]).ambiguous,
+        Ambiguous::Wide
+    );
+    assert_eq!(caps(&[("TERM", "screen-256color")]).erase, Erase::Default);
+    assert_eq!(caps(&[("TERM", "xterm")]).erase, Erase::Background);
+}

@@ -28,8 +28,23 @@ impl Clipboard for Osc52 {
     }
 
     fn get(&self) -> Option<String> {
-        None
+        (self.0.clipboard == ClipRoute::Pbcopy)
+            .then(pbpaste)
+            .flatten()
     }
+}
+
+fn pbpaste() -> Option<String> {
+    let output = Command::new("/usr/bin/pbpaste")
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8(output.stdout).ok())
+        .flatten()
 }
 
 fn pbcopy(text: &str) -> bool {

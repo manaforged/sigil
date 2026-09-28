@@ -169,7 +169,8 @@ type Prepared = (
 
 fn prepare(config: &AppConfig) -> AppResult<Prepared> {
     crate::app::clear_exit();
-    let mut async_rt = crate::tasks::AsyncRuntime::new().map_err(Error::task)?;
+    let mut async_rt =
+        crate::tasks::AsyncRuntime::with_workers(config.task_workers).map_err(Error::task)?;
     let wake = Wake::install(&mut async_rt);
     async_rt.install_current();
     Ok((
@@ -200,7 +201,7 @@ fn live<T: TreeRoot>(
     let mut pointer = crate::hal::Point::new(0.0, 0.0);
     let (mut first, mut settle, mut last) = (true, true, std::time::Instant::now());
     loop {
-        if crate::app::take_exit() {
+        if crate::app::take_exit() || crate::terminal::signals::halted() {
             break;
         }
         let woke = pump(&host, &mut async_rt);
@@ -377,7 +378,11 @@ fn frame_isolated(
 mod tests;
 
 fn enter(config: &AppConfig) -> AppResult<Term> {
+    if let Some(tracking) = config.mouse_tracking {
+        crate::terminal::set_mouse_tracking(tracking).map_err(Error::io)?;
+    }
     let term = Term::enter(&config.title, config.inline).map_err(Error::io)?;
+    crate::app::set_ambiguous(term.caps().ambiguous);
     let dark = term.caps().backdrop == Some(crate::terminal::Backdrop::Dark);
     if config.theme_file.is_none() && dark {
         crate::app::set_theme(crate::style::Theme::dark());

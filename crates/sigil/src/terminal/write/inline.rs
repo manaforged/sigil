@@ -12,7 +12,7 @@ pub(crate) fn inline(
     out: &mut impl Write,
     prev: Option<&Grid>,
     next: &Grid,
-    last_rows: usize,
+    (last_rows, caret): (usize, bool),
     caps: &Caps,
 ) -> io::Result<()> {
     let rows = next.rows();
@@ -47,7 +47,8 @@ pub(crate) fn inline(
         pen.flush(out)?;
         pen.rest(out)?;
     }
-    inline_cursor(out, next.cursor(), rows, painted, caps)
+    let at = next.cursor().filter(|_| caret);
+    inline_cursor(out, at, rows, painted, caps)
 }
 
 fn inline_cursor(

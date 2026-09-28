@@ -1,4 +1,4 @@
-use crossterm::event::{KeyCode, KeyEvent as TerminalKeyEvent, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyEvent as TerminalKeyEvent, KeyModifiers};
 
 use super::*;
 
@@ -66,4 +66,56 @@ fn committed_cjk_text_arrives_as_one_insert() {
         }
     }
     assert_eq!(ascii.len(), 2, "ASCII keys stay separate for shortcuts");
+}
+
+fn typed_keys(text: &str) -> Vec<Event> {
+    text.chars()
+        .map(|ch| match ch {
+            '\n' => key(KeyCode::Enter, KeyModifiers::NONE),
+            ch => key(KeyCode::Char(ch), KeyModifiers::NONE),
+        })
+        .collect()
+}
+
+fn key(code: KeyCode, modifiers: KeyModifiers) -> Event {
+    Event::Key(TerminalKeyEvent::new(code, modifiers))
+}
+
+#[test]
+fn late_osc_and_apc_replies_never_become_keys() {
+    let mut events = vec![key(KeyCode::Char(']'), KeyModifiers::ALT)];
+    events.extend(typed_keys("11;rgb:0a0a/0a0a/0a0a"));
+    events.push(key(KeyCode::Char('\\'), KeyModifiers::ALT));
+    events.push(key(KeyCode::Char('q'), KeyModifiers::NONE));
+    events.push(key(KeyCode::Char(']'), KeyModifiers::ALT));
+    events.extend(typed_keys("11;rgb:ffff/ffff/ffff"));
+    events.push(key(KeyCode::Char('g'), KeyModifiers::CONTROL));
+    events.push(key(KeyCode::Char('_'), KeyModifiers::ALT));
+    events.extend(typed_keys("Gi=31;OK"));
+    events.push(key(KeyCode::Char('\\'), KeyModifiers::ALT));
+    strip_replies(&mut events);
+    assert_eq!(events, vec![key(KeyCode::Char('q'), KeyModifiers::NONE)]);
+}
+
+#[test]
+fn an_unterminated_alt_bracket_stays_a_key() {
+    let mut events = vec![
+        key(KeyCode::Char(']'), KeyModifiers::ALT),
+        key(KeyCode::Char('x'), KeyModifiers::NONE),
+    ];
+    let before = events.clone();
+    strip_replies(&mut events);
+    assert_eq!(events, before);
+}
+
+#[test]
+fn an_unbracketed_multi_line_burst_arrives_as_one_paste() {
+    let pasted = coalesce_paste(typed_keys("first\nsecond"));
+    assert_eq!(pasted, vec![Event::Paste("first\nsecond".to_owned())]);
+    let submitted = typed_keys("k\n");
+    assert_eq!(
+        coalesce_paste(submitted.clone()),
+        submitted,
+        "a key and Enter stay keys so Enter still submits"
+    );
 }

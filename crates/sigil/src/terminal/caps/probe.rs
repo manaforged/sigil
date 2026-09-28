@@ -1,9 +1,10 @@
-use std::time::Duration;
+use std::os::fd::AsFd;
+use std::time::{Duration, Instant};
 
 use super::{Answers, Backdrop, Questions};
 use crate::terminal::graphics::Protocol;
 
-const TIMEOUT: Duration = Duration::from_millis(150);
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
     use std::io::{IsTerminal, Write};
@@ -37,28 +38,38 @@ fn queries(ask: Questions, backdrop: bool) -> String {
     text
 }
 
-fn read_reply(stdin: &std::io::Stdin) -> Option<String> {
-    let deadline = std::time::Instant::now() + TIMEOUT;
+fn read_reply(input: &impl AsFd) -> Option<String> {
     let mut reply = Vec::new();
-    let mut chunk = [0_u8; 256];
-    while da1(&String::from_utf8_lossy(&reply)).is_none() {
-        let left = deadline.checked_duration_since(std::time::Instant::now())?;
-        if !ready(stdin, left)? {
-            return None;
-        }
-        let read = rustix::io::read(stdin, &mut chunk).ok()?;
-        if read == 0 {
-            return None;
-        }
-        reply.extend_from_slice(chunk.get(..read)?);
+    if !collect(input, &mut reply, Instant::now() + TIMEOUT) {
+        return None;
     }
     Some(String::from_utf8_lossy(&reply).into_owned())
 }
 
-fn ready(stdin: &std::io::Stdin, wait: Duration) -> Option<bool> {
+fn collect(input: &impl AsFd, reply: &mut Vec<u8>, deadline: Instant) -> bool {
+    let mut chunk = [0_u8; 256];
+    while da1(&String::from_utf8_lossy(reply)).is_none() {
+        let Some(left) = deadline.checked_duration_since(Instant::now()) else {
+            return false;
+        };
+        if ready(input, left) != Some(true) {
+            return false;
+        }
+        let Ok(read) = rustix::io::read(input, &mut chunk) else {
+            return false;
+        };
+        let Some(bytes) = chunk.get(..read).filter(|bytes| !bytes.is_empty()) else {
+            return false;
+        };
+        reply.extend_from_slice(bytes);
+    }
+    true
+}
+
+fn ready(input: &impl AsFd, wait: Duration) -> Option<bool> {
     use rustix::event::{PollFd, PollFlags, Timespec, poll};
     let wait = Timespec::try_from(wait).ok()?;
-    let mut fds = [PollFd::new(stdin, PollFlags::IN)];
+    let mut fds = [PollFd::new(input, PollFlags::IN)];
     Some(poll(&mut fds, Some(&wait)).ok()? > 0)
 }
 

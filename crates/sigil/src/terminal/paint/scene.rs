@@ -3,12 +3,11 @@ use crate::scene::{
     CellBorder, CommandScene, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawRect,
     LinearGradient, SceneCommand,
 };
-use crate::style::{Rgba8, Theme};
-use crate::terminal::caps::{Borders, Caps};
-use std::borrow::Cow;
+use crate::style::{Rgba8, Theme, Tone};
+use crate::terminal::caps::{Caps, ColorDepth};
 
 use super::decoration::{self, Edge, Surface};
-use super::marks::{self, Marks};
+use super::marks::Marks;
 use super::paint_clip::{Text, image_crop, paint_text};
 use super::{Face, Grid, Ink, Underline, cell_edge, floor_cell};
 
@@ -50,6 +49,7 @@ pub fn raster_with(grid: &mut Grid, scene: &CommandScene, paint: &Paint<'_>) {
     for command in &scene.commands {
         walk.command(command);
     }
+    grid.map_glyphs(paint.caps.glyphs);
 }
 
 fn gradient_flat(gradient: &LinearGradient) -> Rgba8 {
@@ -104,6 +104,13 @@ struct Walk<'a> {
 type Area = (Rect, (usize, usize), (usize, usize));
 
 impl Walk<'_> {
+    const fn ink(&self, colour: Rgba8, tone: Option<Tone>) -> Ink {
+        match (self.paint.caps.color, tone) {
+            (ColorDepth::Ansi16 | ColorDepth::Monochrome, Some(tone)) => Ink::Of(tone),
+            _ => Ink::pick(colour, tone),
+        }
+    }
+
     fn command(&mut self, command: &SceneCommand) {
         match command {
             SceneCommand::PushClip(rect) => self.push_clip(*rect),
@@ -193,7 +200,7 @@ impl Walk<'_> {
         }
         if !draw.outline {
             let color = self.fade(draw.color, draw.opacity);
-            let ink = Ink::pick(color, draw.tone);
+            let ink = self.ink(color, draw.tone);
             if ink.set() {
                 let surface = Surface {
                     rect: draw.rect,
@@ -245,26 +252,16 @@ impl Walk<'_> {
         let Some((visible, ..)) = self.area(run.rect) else {
             return;
         };
-        let content = if self.paint.caps.borders == Borders::Ascii {
-            marks::ascii(&run.text)
-        } else {
-            Cow::Borrowed(&*run.text)
-        };
         let text = Text {
             rect: run.rect,
             clip: self.clip(),
-            content: &content,
+            content: &run.text,
             flow: run.flow,
-            ink: Ink::pick(self.fade(run.color, run.opacity), run.tone),
+            ink: self.ink(self.fade(run.color, run.opacity), run.tone),
             face: self.face(draw),
             link: self.paint.marks.link(run.node),
             theme: self.theme,
-            runs: run
-                .style
-                .runs
-                .as_ref()
-                .filter(|_| matches!(content, Cow::Borrowed(_)))
-                .map(|runs| (runs, run.inks())),
+            runs: run.style.runs.as_ref().map(|runs| (runs, run.inks())),
             hyperlinks: self.paint.caps.hyperlinks,
         };
         paint_text(self.grid, &text, visible, self.cell);
@@ -290,7 +287,12 @@ impl Walk<'_> {
         if color.a == 0 {
             return;
         }
-        marks::decorate(self.grid, &marks::line(draw, color), self.clip(), self.cell);
+        super::marks::decorate(
+            self.grid,
+            &super::marks::line(draw, color),
+            self.clip(),
+            self.cell,
+        );
     }
 
     fn image(&mut self, draw: &DrawImage) {

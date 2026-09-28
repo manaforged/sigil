@@ -6,6 +6,7 @@ use super::{TextEditRuntime, TextEditState, noop_change};
 use crate::clipboard::clipboard;
 use crate::clipboard::{ClipError, Clipboard};
 use crate::events::EventRouter;
+use crate::events::prelude::{NodeEventsExt, Shortcut};
 use crate::hal::{
     KeyEvent, KeyEventInit, KeyPhase, LogicalKey, LogicalSize, ModifiersState, PhysicalKey,
     ShellEvent, Size,
@@ -204,6 +205,48 @@ fn editing_shortcuts_copy_cut_paste_and_restore_unicode() {
             }
         });
     }
+}
+
+struct Unreadable;
+
+impl Clipboard for Unreadable {
+    fn set(&self, _text: &str) -> Result<crate::clipboard::Delivery, ClipError> {
+        Ok(crate::clipboard::Delivery::Requested)
+    }
+
+    fn get(&self) -> Option<String> {
+        None
+    }
+}
+
+#[test]
+fn paste_without_a_readable_clipboard_leaves_the_key_to_the_host() {
+    Runtime::scope("paste-unreadable", || {
+        let value = signal("kept".to_string());
+        let reached = signal(false);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            crate::kernel::container()
+                .key(
+                    Shortcut::new(LogicalKey::character("v"), ModifiersState::CONTROL),
+                    move |_| reached.set(true),
+                )
+                .child(text_edit(value).clipboard(Unreadable)),
+        );
+        let mut layout = LayoutEngine::with_text_measure(Box::new(Measure));
+        let laid = layout.compute(&mut cx, root, Size::fixed(400.0, 200.0));
+        assert!(laid.is_ok(), "editor layout");
+        let editor = cx.first_child(root);
+        assert!(editor.is_some(), "the editor mounts under the container");
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, editor);
+        router.route(&mut cx, &layout, shortcut("v", ModifiersState::CONTROL));
+        assert_eq!(value.peek(), "kept");
+        assert!(
+            reached.peek(),
+            "Ctrl+V must reach the host when the clipboard cannot be read"
+        );
+    });
 }
 
 fn shortcut(key: &str, modifiers: ModifiersState) -> ShellEvent {

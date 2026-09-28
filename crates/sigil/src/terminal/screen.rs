@@ -212,7 +212,13 @@ impl Screen {
         }
         self.dirty = false;
         let prev = (!self.fresh).then_some(&self.prev);
-        crate::terminal::write::inline(out, prev, &self.grid, self.live_rows, &self.caps)?;
+        crate::terminal::write::inline(
+            out,
+            prev,
+            &self.grid,
+            (self.live_rows, self.announcer.caret),
+            &self.caps,
+        )?;
         self.live_rows = self.grid.rows();
         self.fresh = false;
         core::mem::swap(&mut self.prev, &mut self.grid);
@@ -261,7 +267,7 @@ impl Screen {
                 redraw: full,
             },
         )?;
-        crate::terminal::write::cursor(out, self.grid.cursor(), &self.caps)?;
+        crate::terminal::write::cursor(out, self.grid.cursor(), self.announcer.caret, &self.caps)?;
         core::mem::swap(&mut self.prev, &mut self.grid);
         Ok(())
     }

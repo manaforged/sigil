@@ -7,6 +7,28 @@ use crossterm::event::{KeyModifiers, MouseButton as TermButton, MouseEvent, Mous
 
 const NOTCH: f32 = 3.0;
 
+pub(crate) const MOUSE_OFF: &str = "\x1b[?1006l\x1b[?1003l\x1b[?1002l\x1b[?1000l";
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MouseTracking {
+    Off,
+    Clicks,
+    #[default]
+    Drags,
+    Motion,
+}
+
+impl MouseTracking {
+    pub(crate) const fn sequence(self) -> &'static str {
+        match self {
+            Self::Off => "",
+            Self::Clicks => "\x1b[?1000h\x1b[?1006h",
+            Self::Drags => "\x1b[?1000h\x1b[?1002h\x1b[?1006h",
+            Self::Motion => "\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006h",
+        }
+    }
+}
+
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {
     let cell = crate::app::Host::CELL;

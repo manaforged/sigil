@@ -5,9 +5,8 @@ use std::sync::{Mutex, PoisonError};
 use std::thread::ThreadId;
 
 use crossterm::event::{
-    DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-    EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags, PopKeyboardEnhancementFlags,
-    PushKeyboardEnhancementFlags,
+    DisableBracketedPaste, DisableFocusChange, EnableBracketedPaste, EnableFocusChange,
+    KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::style::Print;
 use crossterm::terminal::{
@@ -17,7 +16,9 @@ use crossterm::terminal::{
 use crossterm::{cursor, execute, queue};
 
 use crate::terminal::caps::{Caps, Cursor, Keyboard};
+use crate::terminal::mouse::{MOUSE_OFF, MouseTracking};
 use crate::terminal::screen::Screen;
+use crate::terminal::signals;
 
 mod above;
 
@@ -36,7 +37,7 @@ thread_local! {
     static LIVE: Cell<bool> = const { Cell::new(false) };
     static REDRAW: Cell<bool> = const { Cell::new(false) };
     static FOCUSED: Cell<bool> = const { Cell::new(true) };
-    static MOUSE: Cell<bool> = const { Cell::new(true) };
+    static MOUSE: Cell<MouseTracking> = const { Cell::new(MouseTracking::Drags) };
     static TITLE: RefCell<Option<String>> = const { RefCell::new(None) };
     static CAPS: Cell<Option<Caps>> = const { Cell::new(None) };
     static LIVE_ROWS: Cell<u16> = const { Cell::new(0) };
@@ -53,6 +54,7 @@ impl Term {
     pub(crate) fn enter(title: &str, inline: bool) -> io::Result<Self> {
         TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
         set_owner(Some(std::thread::current().id()));
+        signals::resume();
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
@@ -76,6 +78,10 @@ impl Term {
     }
 
     pub(crate) fn paint(&mut self, screen: &mut Screen) -> io::Result<()> {
+        let _painting = signals::painting();
+        if signals::halted() {
+            return Ok(());
+        }
         let redraw = core::mem::take(&mut self.redraw) | REDRAW.with(|flag| flag.replace(false));
         if self.inline {
             return paint_inline(&mut self.out, screen, redraw);
@@ -135,7 +141,7 @@ fn enter_modes(inline: bool) -> io::Result<()> {
         execute!(out, EnterAlternateScreen)?;
     }
     execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
-    write_mouse(MOUSE.with(Cell::get))?;
+    write_mouse(&mut out, MOUSE.with(Cell::get))?;
     if current_caps().keyboard == Keyboard::Kitty {
         KEYS_PUSHED.store(true, Ordering::Relaxed);
         drop(execute!(
@@ -239,7 +245,7 @@ pub(crate) fn restore() {
         Print("\x1b[?2026l"),
         DisableBracketedPaste,
         DisableFocusChange,
-        DisableMouseCapture,
+        Print(MOUSE_OFF),
         cursor::Show
     ));
     if !INLINE.swap(false, Ordering::Relaxed) {
@@ -290,20 +296,26 @@ pub fn bell(note: Option<&str>) -> io::Result<()> {
 }
 
 pub fn set_mouse_capture(yes: bool) -> io::Result<()> {
-    MOUSE.with(|mouse| mouse.set(yes));
+    set_mouse_tracking(if yes {
+        MouseTracking::Drags
+    } else {
+        MouseTracking::Off
+    })
+}
+
+pub fn set_mouse_tracking(tracking: MouseTracking) -> io::Result<()> {
+    MOUSE.with(|mouse| mouse.set(tracking));
     if LIVE.with(Cell::get) {
-        write_mouse(yes)
+        write_mouse(&mut io::stdout(), tracking)
     } else {
         Ok(())
     }
 }
 
-fn write_mouse(yes: bool) -> io::Result<()> {
-    if yes {
-        execute!(io::stdout(), EnableMouseCapture)
-    } else {
-        execute!(io::stdout(), DisableMouseCapture)
-    }
+fn write_mouse(out: &mut impl Write, tracking: MouseTracking) -> io::Result<()> {
+    out.write_all(MOUSE_OFF.as_bytes())?;
+    out.write_all(tracking.sequence().as_bytes())?;
+    out.flush()
 }
 
 #[must_use]

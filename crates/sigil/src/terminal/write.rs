@@ -7,7 +7,7 @@ use crossterm::style::{
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, queue};
 
-use crate::terminal::caps::{Caps, ColorDepth, Cursor};
+use crate::terminal::caps::{Caps, ColorDepth, Cursor, Erase};
 use crate::terminal::colour::paint;
 use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
 use crate::terminal::scroll::Shift;
@@ -99,15 +99,19 @@ fn same_cell(old: &Cell, new: &Cell, caps: &Caps) -> bool {
 pub(crate) fn cursor(
     out: &mut impl Write,
     at: Option<(usize, usize)>,
+    caret: bool,
     caps: &Caps,
 ) -> io::Result<()> {
     let Some((col, row)) = at else {
         return queue!(out, cursor::Hide);
     };
+    let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
+    if !caret {
+        return queue!(out, cursor::Hide, cursor::MoveTo(clip(col), clip(row)));
+    }
     if caps.cursor == Cursor::Bar {
         queue!(out, cursor::SetCursorStyle::SteadyBar)?;
     }
-    let clip = |value: usize| u16::try_from(value).unwrap_or(u16::MAX);
     queue!(out, cursor::MoveTo(clip(col), clip(row)), cursor::Show)
 }
 
@@ -291,6 +295,9 @@ fn cells(
 fn filled(row_cells: &[Cell], (start, end): (usize, usize), caps: &Caps) -> Option<(usize, Style)> {
     let span = row_cells.get(start..end)?;
     let paint = Style::of(span.last()?, caps);
+    if caps.erase == Erase::Default && paint.bg != Color::Reset {
+        return None;
+    }
     let reaches = end == row_cells.len() || paint.bg == Color::Reset;
     if !reaches || paint.underline != Underline::None || paint.strike || paint.link.is_some() {
         return None;

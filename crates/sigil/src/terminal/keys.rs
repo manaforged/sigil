@@ -1,7 +1,7 @@
 use crate::hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
-use crossterm::event::{KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode};
+use crossterm::event::{Event, KeyCode, KeyEventKind, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 use smol_str::SmolStr;
 
 #[must_use]
@@ -73,6 +73,107 @@ fn composed_text(event: &ShellEvent) -> Option<&str> {
         && (key.modifiers - ModifiersState::SHIFT).is_empty();
     (plain && !text.is_empty() && !text.is_ascii() && !text.chars().any(char::is_control))
         .then_some(text)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Reply {
+    Osc,
+    Apc,
+}
+
+pub(crate) fn strip_replies(events: &mut Vec<Event>) {
+    let mut kept = Vec::with_capacity(events.len());
+    let mut open = Vec::new();
+    let mut reply = None;
+    for event in events.drain(..) {
+        match reply {
+            None => {
+                reply = opener(&event);
+                if reply.is_some() {
+                    open.push(event);
+                } else {
+                    kept.push(event);
+                }
+            }
+            Some(kind) if closes(kind, &event) => {
+                open.clear();
+                reply = None;
+            }
+            Some(_) => open.push(event),
+        }
+    }
+    kept.append(&mut open);
+    *events = kept;
+}
+
+fn opener(event: &Event) -> Option<Reply> {
+    let (code, modifiers) = pressed(event)?;
+    if modifiers != KeyModifiers::ALT {
+        return None;
+    }
+    match code {
+        KeyCode::Char(']') => Some(Reply::Osc),
+        KeyCode::Char('_') => Some(Reply::Apc),
+        _ => None,
+    }
+}
+
+fn closes(kind: Reply, event: &Event) -> bool {
+    match pressed(event) {
+        Some((KeyCode::Char('\\'), modifiers)) => modifiers == KeyModifiers::ALT,
+        Some((KeyCode::Char('g'), modifiers)) => {
+            kind == Reply::Osc && modifiers == KeyModifiers::CONTROL
+        }
+        _ => false,
+    }
+}
+
+fn pressed(event: &Event) -> Option<(KeyCode, KeyModifiers)> {
+    match event {
+        Event::Key(key) if key.kind != KeyEventKind::Release => Some((key.code, key.modifiers)),
+        _ => None,
+    }
+}
+
+pub(crate) fn coalesce_paste(events: Vec<Event>) -> Vec<Event> {
+    let mut out = Vec::with_capacity(events.len());
+    let mut run = (String::new(), Vec::new());
+    for event in events {
+        if let Some(ch) = typed(&event) {
+            run.0.push(ch);
+            run.1.push(event);
+        } else {
+            settle(&mut out, &mut run);
+            out.push(event);
+        }
+    }
+    settle(&mut out, &mut run);
+    out
+}
+
+fn settle(out: &mut Vec<Event>, (text, held): &mut (String, Vec<Event>)) {
+    let text = core::mem::take(text);
+    if text.trim_end_matches('\n').contains('\n') {
+        held.clear();
+        out.push(Event::Paste(text));
+    } else {
+        out.append(held);
+    }
+}
+
+fn typed(event: &Event) -> Option<char> {
+    let Event::Key(key) = event else {
+        return None;
+    };
+    if key.kind == KeyEventKind::Release || !(key.modifiers - KeyModifiers::SHIFT).is_empty() {
+        return None;
+    }
+    match shifted(key) {
+        KeyCode::Char(ch) => Some(ch),
+        KeyCode::Enter => Some('\n'),
+        KeyCode::Tab => Some('\t'),
+        _ => None,
+    }
 }
 
 #[must_use]

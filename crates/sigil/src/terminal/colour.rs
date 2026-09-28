@@ -13,7 +13,7 @@ pub(crate) fn cube(colour: Rgba8) -> u8 {
     let gray_index = mean.saturating_sub(8).saturating_add(5) / 10;
     let gray_index = gray_index.min(23) as u8;
     let gray = 8 + gray_index * 10;
-    if distance(colour, gray, gray, gray) < cube_distance {
+    if !chromatic(colour) && distance(colour, gray, gray, gray) < cube_distance {
         232 + gray_index
     } else {
         16 + 36 * r + 6 * g + b
@@ -80,9 +80,30 @@ const BASIC: [(Color, [u8; 3]); 16] = [
     (Color::White, [255, 255, 255]),
 ];
 
+const CHROMA: u8 = 40;
+
+fn chromatic(colour: Rgba8) -> bool {
+    let high = colour.r.max(colour.g).max(colour.b);
+    let low = colour.r.min(colour.g).min(colour.b);
+    high.saturating_sub(low) >= CHROMA
+}
+
+const fn grey(color: Color) -> bool {
+    matches!(
+        color,
+        Color::Black | Color::Grey | Color::DarkGrey | Color::White
+    )
+}
+
 fn basic(colour: Rgba8) -> Color {
+    let hue = chromatic(colour);
     BASIC
         .iter()
+        .filter(|(color, _)| !(hue && grey(*color)))
         .min_by_key(|(_, [red, green, blue])| distance(colour, *red, *green, *blue))
         .map_or(Color::Reset, |(color, _)| *color)
 }
+
+#[cfg(test)]
+#[path = "colour_tests.rs"]
+mod tests;

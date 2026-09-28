@@ -58,10 +58,13 @@ pub struct AppConfig {
     pub(crate) frame_interval: std::time::Duration,
     pub(crate) reduced_motion: Option<bool>,
     pub(crate) click: Option<crate::hal::ClickConfig>,
+    pub(crate) task_workers: crate::tasks::TaskWorkers,
     #[cfg(feature = "terminal")]
     pub(crate) terminal_hooks: TerminalHooks,
     #[cfg(feature = "terminal")]
     pub(crate) terminal_access: crate::terminal::Access,
+    #[cfg(feature = "terminal")]
+    pub(crate) mouse_tracking: Option<crate::terminal::MouseTracking>,
     #[cfg_attr(
         not(target_arch = "wasm32"),
         allow(dead_code, reason = "only the browser host binds a canvas")
@@ -92,10 +95,13 @@ impl AppConfig {
             frame_interval: FRAME_INTERVAL,
             reduced_motion: None,
             click: None,
+            task_workers: crate::tasks::TaskWorkers::Auto,
             #[cfg(feature = "terminal")]
             terminal_hooks: TerminalHooks::default(),
             #[cfg(feature = "terminal")]
             terminal_access: crate::terminal::Access::default(),
+            #[cfg(feature = "terminal")]
+            mouse_tracking: None,
             canvas: None,
         }
     }
@@ -181,6 +187,13 @@ impl AppConfig {
         self
     }
 
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub const fn mouse_tracking(mut self, tracking: crate::terminal::MouseTracking) -> Self {
+        self.mouse_tracking = Some(tracking);
+        self
+    }
+
     #[must_use]
     pub const fn inline(mut self, yes: bool) -> Self {
         self.inline = yes;
@@ -220,6 +233,12 @@ impl AppConfig {
     #[must_use]
     pub const fn click(mut self, click: crate::hal::ClickConfig) -> Self {
         self.click = Some(click);
+        self
+    }
+
+    #[must_use]
+    pub const fn task_workers(mut self, workers: crate::tasks::TaskWorkers) -> Self {
+        self.task_workers = workers;
         self
     }
 

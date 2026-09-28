@@ -47,7 +47,9 @@ pub use crate::text::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
-pub use cell_text::{CellWidth, cell_text_lines, cell_width, set_cell_width};
+pub use cell_text::{
+    Ambiguous, CellWidth, cell_text_lines, cell_width, set_ambiguous, set_cell_width,
+};
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;
 pub use config::{AppConfig, PanicPolicy};

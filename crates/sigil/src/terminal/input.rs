@@ -5,7 +5,7 @@ use crossterm::event::{self, Event};
 
 use crate::app::{AppConfig, AppResult, Error};
 use crate::hal::{LogicalSize, Scale, ShellEvent, WindowEvent};
-use crate::terminal::keys::{map_key, push_key_text};
+use crate::terminal::keys::{coalesce_paste, map_key, push_key_text, strip_replies};
 use crate::terminal::mouse::map_mouse;
 use crate::terminal::run::{CELL, Hooks};
 use crate::terminal::term::set_focused;
@@ -101,8 +101,14 @@ pub(crate) fn gather_input(
         && wake
             .ready((wait, config.frame_interval), listen)
             .map_err(Error::io)?;
+    let mut burst = Vec::new();
     while ready {
-        match map_input(event::read().map_err(Error::io)?, config, pointer) {
+        burst.push(event::read().map_err(Error::io)?);
+        ready = event::poll(Duration::ZERO).map_err(Error::io)?;
+    }
+    strip_replies(&mut burst);
+    for read in coalesce_paste(burst) {
+        match map_input(read, config, pointer) {
             Input::Quit => return Ok(Incoming::Quit),
             Input::Event(mapped) => push_key_text(&mut incoming, mapped),
             Input::Resize(mut cols, mut rows) => {
@@ -111,7 +117,6 @@ pub(crate) fn gather_input(
             }
             Input::None => {}
         }
-        ready = event::poll(Duration::ZERO).map_err(Error::io)?;
     }
     if let Some(pump) = hooks.external_events.as_mut() {
         pump(&mut incoming);

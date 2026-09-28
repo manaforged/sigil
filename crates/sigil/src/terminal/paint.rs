@@ -1,8 +1,10 @@
 use crate::hal::Rect;
 
 use crate::style::{Rgba8, Theme, Tone};
+use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::Placement;
 use smol_str::SmolStr;
+use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
 mod decoration;
@@ -165,6 +167,21 @@ impl Grid {
         self.edges.fill(None);
         self.images.clear();
         self.cursor = None;
+    }
+
+    pub(super) fn map_glyphs(&mut self, glyphs: Glyphs) {
+        if glyphs == Glyphs::Unicode {
+            return;
+        }
+        for cell in &mut self.cells {
+            let mapped = match glyphs.text(&cell.text) {
+                Cow::Owned(text) => Some(SmolStr::from(text)),
+                Cow::Borrowed(_) => None,
+            };
+            if let Some(text) = mapped {
+                cell.text = text;
+            }
+        }
     }
 
     pub fn resize(&mut self, cols: u16, rows: u16) {

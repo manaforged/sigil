@@ -170,13 +170,14 @@ fn clipboard_cut(event: &mut KeyEvent, runtime: &TextEditRuntime) {
 }
 
 fn clipboard_paste(event: &mut KeyEvent, runtime: &TextEditRuntime) {
-    event.stop_propagation();
     if runtime.disabled() {
+        event.stop_propagation();
         return;
     }
     let Some(text) = runtime.clipboard.get() else {
         return;
     };
+    event.stop_propagation();
     let mut state = runtime.edit_mut();
     let normalised = if runtime.column.is_some() {
         text.chars()

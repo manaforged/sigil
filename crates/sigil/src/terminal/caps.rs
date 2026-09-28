@@ -1,3 +1,5 @@
+use crate::app::Ambiguous;
+use crate::terminal::glyphs::Glyphs;
 use crate::terminal::graphics::{Mux, Protocol, detect, detect_mux};
 
 #[cfg(unix)]
@@ -43,6 +45,20 @@ pub enum Cursor {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Erase {
+    Background,
+    Default,
+}
+
+fn erase_for(term: Option<&str>) -> Erase {
+    if term.is_some_and(|term| term.starts_with("screen")) {
+        Erase::Default
+    } else {
+        Erase::Background
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Caps {
     pub color: ColorDepth,
     pub graphics: Option<Protocol>,
@@ -51,6 +67,9 @@ pub struct Caps {
     pub hyperlinks: bool,
     pub underline_styles: bool,
     pub borders: Borders,
+    pub glyphs: Glyphs,
+    pub ambiguous: Ambiguous,
+    pub erase: Erase,
     pub cursor: Cursor,
     pub sync: bool,
     pub clipboard: ClipRoute,
@@ -67,6 +86,9 @@ impl Default for Caps {
             hyperlinks: false,
             underline_styles: false,
             borders: Borders::Rounded,
+            glyphs: Glyphs::Unicode,
+            ambiguous: Ambiguous::Narrow,
+            erase: Erase::Background,
             cursor: Cursor::Block,
             sync: true,
             clipboard: ClipRoute::Osc52,
@@ -151,15 +173,16 @@ impl Draft {
         if self.caps.backdrop.is_none() {
             self.caps.backdrop = answers.backdrop;
         }
-        if self.ask.keys && !answers.kitty_keys {
-            self.caps.keyboard = Keyboard::Legacy;
+        if self.ask.keys && answers.kitty_keys {
+            self.caps.keyboard = Keyboard::Kitty;
         }
         self.caps
     }
 }
 
 fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
-    let known = known(env);
+    let mux = detect_mux(env);
+    let known = known(env, mux);
     let sync = known.map(|term| !matches!(term, Known::Vte | Known::Apple));
     let keys = known.map(|term| {
         matches!(
@@ -173,16 +196,13 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
         )
     });
     let graphics = detect(env);
+    let glyphs = glyphs(env);
     Draft {
         caps: Caps {
             color: color_depth(env, known),
             graphics,
-            mux: detect_mux(env),
-            keyboard: if keys == Some(false) {
-                Keyboard::Legacy
-            } else {
-                Keyboard::Kitty
-            },
+            mux,
+            keyboard: keyboard(keys),
             hyperlinks: known.is_some_and(|term| term != Known::Apple),
             underline_styles: known.is_some_and(|term| {
                 !matches!(
@@ -190,7 +210,10 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
                     Known::Apple | Known::Alacritty | Known::WindowsTerminal
                 )
             }),
-            borders: borders(env),
+            borders: borders(glyphs),
+            glyphs,
+            ambiguous: ambiguous(env),
+            erase: erase_for(env("TERM").as_deref()),
             cursor: if known.is_some_and(|term| term != Known::Apple) {
                 Cursor::Bar
             } else {
@@ -208,37 +231,71 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
     }
 }
 
-fn known(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
+fn known(env: &impl Fn(&str) -> Option<String>, mux: Option<Mux>) -> Option<Known> {
     let term = env("TERM").unwrap_or_default();
+    known_term(&term).or_else(|| if mux.is_some() { None } else { known_env(env) })
+}
+
+fn known_term(term: &str) -> Option<Known> {
+    Some(match term {
+        "xterm-kitty" => Known::Kitty,
+        "xterm-ghostty" => Known::Ghostty,
+        "wezterm" => Known::WezTerm,
+        "alacritty" => Known::Alacritty,
+        _ if term.starts_with("foot") => Known::Foot,
+        _ if term.starts_with("contour") => Known::Contour,
+        _ => return None,
+    })
+}
+
+fn known_env(env: &impl Fn(&str) -> Option<String>) -> Option<Known> {
     let program = env("TERM_PROGRAM").unwrap_or_default();
+    Some(if env("KITTY_WINDOW_ID").is_some() {
+        Known::Kitty
+    } else if env("GHOSTTY_RESOURCES_DIR").is_some() || program == "ghostty" {
+        Known::Ghostty
+    } else if env("WEZTERM_EXECUTABLE").is_some() || program == "WezTerm" {
+        Known::WezTerm
+    } else if program == "iTerm.app" || env("LC_TERMINAL").as_deref() == Some("iTerm2") {
+        Known::Iterm
+    } else if env("ALACRITTY_WINDOW_ID").is_some() {
+        Known::Alacritty
+    } else if env("WT_SESSION").is_some() {
+        Known::WindowsTerminal
+    } else if env("VTE_VERSION").is_some() {
+        Known::Vte
+    } else if program == "Apple_Terminal" {
+        Known::Apple
+    } else {
+        return None;
+    })
+}
+
+fn forced_color(env: &impl Fn(&str) -> Option<String>) -> Option<ColorDepth> {
     Some(
-        if env("KITTY_WINDOW_ID").is_some() || term == "xterm-kitty" {
-            Known::Kitty
-        } else if env("GHOSTTY_RESOURCES_DIR").is_some() || program == "ghostty" {
-            Known::Ghostty
-        } else if env("WEZTERM_EXECUTABLE").is_some() || program == "WezTerm" {
-            Known::WezTerm
-        } else if program == "iTerm.app" || env("LC_TERMINAL").as_deref() == Some("iTerm2") {
-            Known::Iterm
-        } else if term.starts_with("foot") {
-            Known::Foot
-        } else if term == "alacritty" || env("ALACRITTY_WINDOW_ID").is_some() {
-            Known::Alacritty
-        } else if term.starts_with("contour") {
-            Known::Contour
-        } else if env("WT_SESSION").is_some() {
-            Known::WindowsTerminal
-        } else if env("VTE_VERSION").is_some() {
-            Known::Vte
-        } else if program == "Apple_Terminal" {
-            Known::Apple
-        } else {
-            return None;
+        match env("SIGIL_COLOR")?.trim().to_ascii_lowercase().as_str() {
+            "truecolor" | "24bit" => ColorDepth::Truecolor,
+            "256" => ColorDepth::Ansi256,
+            "16" => ColorDepth::Ansi16,
+            "none" => ColorDepth::Monochrome,
+            _ => return None,
         },
     )
 }
 
+fn flag(env: &impl Fn(&str) -> Option<String>, key: &str) -> bool {
+    env(key).is_some_and(|value| {
+        matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
+}
+
 fn color_depth(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> ColorDepth {
+    if let Some(forced) = forced_color(env) {
+        return forced;
+    }
     if env("NO_COLOR").is_some_and(|value| !value.is_empty()) {
         return ColorDepth::Monochrome;
     }
@@ -263,19 +320,46 @@ fn color_depth(env: &impl Fn(&str) -> Option<String>, known: Option<Known>) -> C
     }
 }
 
-fn borders(env: &impl Fn(&str) -> Option<String>) -> Borders {
+fn glyphs(env: &impl Fn(&str) -> Option<String>) -> Glyphs {
+    if flag(env, "SIGIL_ASCII") {
+        return Glyphs::Ascii;
+    }
     let term = env("TERM").unwrap_or_default();
     let locale = ["LC_ALL", "LC_CTYPE", "LANG"]
         .into_iter()
         .find_map(|key| env(key).filter(|value| !value.is_empty()))
         .map(|value| value.to_ascii_lowercase());
     let utf8 = locale.is_none_or(|value| value.contains("utf-8") || value.contains("utf8"));
-    if term == "dumb" || !utf8 {
-        Borders::Ascii
+    if !utf8 || matches!(term.as_str(), "dumb" | "vt100" | "vt102" | "vt220") {
+        Glyphs::Ascii
     } else if term == "linux" {
-        Borders::Light
+        Glyphs::Console
     } else {
-        Borders::Rounded
+        Glyphs::Unicode
+    }
+}
+
+const fn keyboard(known: Option<bool>) -> Keyboard {
+    if matches!(known, Some(true)) {
+        Keyboard::Kitty
+    } else {
+        Keyboard::Legacy
+    }
+}
+
+fn ambiguous(env: &impl Fn(&str) -> Option<String>) -> Ambiguous {
+    if flag(env, "SIGIL_AMBIGUOUS_WIDE") {
+        Ambiguous::Wide
+    } else {
+        Ambiguous::Narrow
+    }
+}
+
+const fn borders(glyphs: Glyphs) -> Borders {
+    match glyphs {
+        Glyphs::Ascii => Borders::Ascii,
+        Glyphs::Console => Borders::Light,
+        Glyphs::Unicode => Borders::Rounded,
     }
 }
 
@@ -296,3 +380,7 @@ fn backdrop(env: &impl Fn(&str) -> Option<String>) -> Option<Backdrop> {
         Backdrop::Dark
     })
 }
+
+#[cfg(test)]
+#[path = "caps_tests.rs"]
+mod tests;

@@ -52,14 +52,14 @@ pub fn detect(env: impl Fn(&str) -> Option<String>) -> Option<Protocol> {
     let program = env("TERM_PROGRAM").unwrap_or_default();
     if env("KITTY_WINDOW_ID").is_some()
         || env("GHOSTTY_RESOURCES_DIR").is_some()
-        || env("WEZTERM_EXECUTABLE").is_some()
         || env("KONSOLE_VERSION").is_some()
         || matches!(term.as_str(), "xterm-kitty" | "xterm-ghostty")
-        || matches!(program.as_str(), "WezTerm" | "ghostty")
+        || program == "ghostty"
     {
         return Some(Protocol::Kitty);
     }
-    if matches!(program.as_str(), "iTerm.app" | "WarpTerminal")
+    if matches!(program.as_str(), "iTerm.app" | "WarpTerminal" | "WezTerm")
+        || env("WEZTERM_EXECUTABLE").is_some()
         || env("LC_TERMINAL").as_deref() == Some("iTerm2")
     {
         return Some(Protocol::Iterm2);

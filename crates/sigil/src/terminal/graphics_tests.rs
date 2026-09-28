@@ -56,7 +56,11 @@ fn detection_prefers_the_override_then_known_terminals() {
     );
     assert_eq!(
         detect(env(&[("TERM_PROGRAM", "WezTerm")])),
-        Some(Protocol::Kitty)
+        Some(Protocol::Iterm2)
+    );
+    assert_eq!(
+        detect(env(&[("WEZTERM_EXECUTABLE", "/usr/bin/wezterm-gui")])),
+        Some(Protocol::Iterm2)
     );
     assert_eq!(
         detect(env(&[("TERM_PROGRAM", "iTerm.app")])),
