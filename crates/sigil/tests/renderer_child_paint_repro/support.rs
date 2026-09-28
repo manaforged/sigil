@@ -3,17 +3,15 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::Size;
-use sigil::kernel::{Cx, TextContent};
-use sigil::layout::{LayoutEngine, TextMeasure};
-use sigil::renderer::emit_scene;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
+use sigil::scene::emit_scene;
+use sigil_kittest::FixedMeasure;
 
-pub(super) struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+pub(super) const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 40.0,
+    height: 16.0,
+};
 
 pub(super) fn close(r: u8, g: u8, b: u8, expected: sigil::style::Rgba8, tolerance: i32) -> bool {
     (i32::from(r) - i32::from(expected.r)).abs() <= tolerance
@@ -58,7 +56,7 @@ pub(super) fn capture(
     let root = build(&mut cx);
 
     let [w, h] = size_px;
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
     layout
         .compute(&mut cx, root, Size::fixed(w as f32, h as f32))
         .expect("layout compute");

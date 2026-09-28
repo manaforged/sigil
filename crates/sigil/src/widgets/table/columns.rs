@@ -154,11 +154,6 @@ impl<Row> TableColumn<Row> {
     }
 
     #[must_use]
-    pub const fn min_width_px(&self) -> f32 {
-        self.min_width
-    }
-
-    #[must_use]
     pub(crate) const fn min_px(&self) -> f32 {
         self.min_width
     }

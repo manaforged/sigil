@@ -297,6 +297,7 @@ impl Cx {
         }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn component_owner(&self, id: NodeId) -> Option<OwnerId> {
         self.owner_for_node.get(&id).map(|owner| owner.id())
@@ -347,13 +348,7 @@ impl Cx {
             .and_then(|node| node.children.first().copied())
     }
 
-    #[must_use]
-    pub fn last_child(&self, id: NodeId) -> Option<NodeId> {
-        self.nodes
-            .get(id.key())
-            .and_then(|node| node.children.last().copied())
-    }
-
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn nth_child(&self, id: NodeId, n: usize) -> Option<NodeId> {
         self.nodes
@@ -361,6 +356,7 @@ impl Cx {
             .and_then(|node| node.children.get(n).copied())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn child_count(&self, id: NodeId) -> usize {
         self.nodes

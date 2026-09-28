@@ -1,4 +1,4 @@
-use crate::events::prelude::{ScrollDelta, ScrollEvent};
+use crate::events::prelude::ScrollEvent;
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
@@ -72,17 +72,14 @@ pub(super) fn wheel(
     viewport: Signal<(f32, f32)>,
     row_h: f32,
 ) {
-    let dy = match ev.delta {
-        ScrollDelta::Pixels(p) => p.y,
-        ScrollDelta::Lines(l) => l.y * row_h,
+    let height = viewport.peek().1;
+    let max = max_scroll(lines.peek().len(), height, row_h);
+    let y = crate::widgets::scroll::WheelAxis {
+        offset: scroll_y,
+        viewport: height,
+        max,
     };
-    let max = max_scroll(lines.peek().len(), viewport.peek().1, row_h);
-    let current = scroll_y.peek();
-    let next = (current - dy).clamp(0.0, max);
-    if (next - current).abs() > f32::EPSILON {
-        scroll_y.set(next);
-        ev.stop_propagation();
-    }
+    crate::widgets::scroll::wheel(ev, Some(y), None);
 }
 
 fn max_scroll(line_count: usize, viewport_h: f32, row_h: f32) -> f32 {

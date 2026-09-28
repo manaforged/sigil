@@ -4,24 +4,13 @@
 )]
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::prelude::*;
 use sigil::widgets::{SplitterOrientation, splitter};
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(0.0, 0.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId, width: f32, height: f32) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(width, height))
-        .expect("layout");
-    layout
-}
+use sigil_kittest::FixedMeasure;
+use widget_support::compute;
 
 #[test]
 fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
@@ -33,7 +22,12 @@ fn horizontal_splitter_lays_out_panes_with_initial_sizes() {
             .child(container().label("c"), 200.0),
     );
 
-    let layout = compute(&mut cx, root, 612.0, 200.0);
+    let layout = compute(
+        &mut cx,
+        root,
+        Size::fixed(612.0, 200.0),
+        Box::new(FixedMeasure::default()),
+    );
 
     let pane_0 = cx.nth_child(root, 0).expect("pane 0");
     let pane_1 = cx.nth_child(root, 2).expect("pane 1");
@@ -66,7 +60,12 @@ fn vertical_splitter_lays_out_panes_with_initial_sizes() {
             .child(container().label("bottom"), 100.0),
     );
 
-    let layout = compute(&mut cx, root, 300.0, 206.0);
+    let layout = compute(
+        &mut cx,
+        root,
+        Size::fixed(300.0, 206.0),
+        Box::new(FixedMeasure::default()),
+    );
 
     let pane_top = cx.nth_child(root, 0).expect("top pane");
     let pane_bottom = cx.nth_child(root, 2).expect("bottom pane");
@@ -101,7 +100,12 @@ fn nested_splitter_renders_all_leaves() {
             .child(inner, 100.0),
     );
 
-    let _layout = compute(&mut cx, root, 306.0, 206.0);
+    let _layout = compute(
+        &mut cx,
+        root,
+        Size::fixed(306.0, 206.0),
+        Box::new(FixedMeasure::default()),
+    );
 
     let bottom_pane = cx.nth_child(root, 2).expect("bottom pane");
     let inner_root = cx.nth_child(bottom_pane, 0).expect("inner splitter root");
@@ -128,7 +132,12 @@ fn pane_builder_carries_initial_min_max_into_layout() {
             .max(400.0),
     );
 
-    let layout = compute(&mut cx, root, 406.0, 200.0);
+    let layout = compute(
+        &mut cx,
+        root,
+        Size::fixed(406.0, 200.0),
+        Box::new(FixedMeasure::default()),
+    );
 
     let pane_a = cx.nth_child(root, 0).expect("pane a");
     let pane_b = cx.nth_child(root, 2).expect("pane b");
@@ -160,7 +169,12 @@ fn grow_pane_takes_leftover_width() {
                 .width(406.0)
                 .height(200.0),
         );
-        let layout = compute(&mut cx, root, 406.0, 200.0);
+        let layout = compute(
+            &mut cx,
+            root,
+            Size::fixed(406.0, 200.0),
+            Box::new(FixedMeasure::default()),
+        );
         let side = cx.nth_child(root, 0).expect("side pane");
         let main = cx.nth_child(root, 2).expect("main pane");
         let side_w = layout.result(side).expect("side").rect().width;

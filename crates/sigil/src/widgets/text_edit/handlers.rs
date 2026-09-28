@@ -15,6 +15,8 @@ use crate::clipboard::Clipboard;
 
 #[path = "commands.rs"]
 mod commands;
+#[path = "keymap.rs"]
+mod keymap;
 #[path = "navigation.rs"]
 mod navigation;
 #[path = "state.rs"]
@@ -22,8 +24,9 @@ mod state;
 pub(in crate::widgets) use commands::{
     attach_a11y_edit, clipboard_keys, history_keys, submit_text, word_keys,
 };
+pub(in crate::widgets) use keymap::{KeyProfile, LineStep, edit_keys};
 pub(super) use navigation::geometry_width;
-use navigation::{move_horizontal, move_vertical, move_visual_edge, update_scroll};
+use navigation::{move_vertical, move_visual_edge, update_scroll};
 pub use state::TextEditState;
 
 #[derive(Clone)]
@@ -160,111 +163,30 @@ pub(in crate::widgets) fn noop_change() -> TextChange {
 }
 
 pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let node = edit_keys(node, runtime.clone());
-    let node = shift_keys(node, runtime.clone());
+    let edge = runtime.clone();
+    let line = runtime.clone();
+    let profile = KeyProfile {
+        edge: Rc::new(move |event, end, extend| move_visual_edge(event, &edge, end, extend)),
+        line: Some(Rc::new(move |event, step, extend| {
+            move_vertical(event, &line, step, extend);
+        })),
+    };
+    let node = keymap::edit_keys(node, &runtime, &profile);
+    let node = enter_keys(node, &runtime);
     let node = commands::clipboard_keys(node, &runtime);
     let node = word_keys(node, &runtime);
     let node = commands::history_keys(node, runtime.clone());
     commands::attach_a11y_edit(node, runtime)
 }
 
-fn edit_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let any_key = runtime.clone();
-    let backspace = runtime.clone();
-    let delete = runtime.clone();
-    let left = runtime.clone();
-    let right = runtime.clone();
-    let up = runtime.clone();
-    let down = runtime.clone();
-    let home = runtime.clone();
-    let end = runtime.clone();
-    let page_up = runtime.clone();
-    let page_down = runtime.clone();
+fn enter_keys(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
     let enter = runtime.clone();
-    let submit = runtime;
-    node.key_any(move |event| insert_text(event, &any_key))
-        .key(Key::Backspace, move |event| {
-            edit_value(event, &backspace, TextEdit::backspace);
-        })
-        .key(Key::Delete, move |event| {
-            edit_value(event, &delete, TextEdit::delete_forward);
-        })
-        .key(Key::ArrowLeft, move |event| {
-            move_horizontal(event, &left, false, false);
-        })
-        .key(Key::ArrowRight, move |event| {
-            move_horizontal(event, &right, true, false);
-        })
-        .key(Key::ArrowUp, move |event| {
-            move_vertical(event, &up, -1, false);
-        })
-        .key(Key::ArrowDown, move |event| {
-            move_vertical(event, &down, 1, false);
-        })
-        .key(Key::Home, move |event| {
-            move_visual_edge(event, &home, false, false);
-        })
-        .key(Key::End, move |event| {
-            move_visual_edge(event, &end, true, false);
-        })
-        .key(Key::PageUp, move |event| {
-            move_vertical(event, &page_up, -10, false);
-        })
-        .key(Key::PageDown, move |event| {
-            move_vertical(event, &page_down, 10, false);
-        })
-        .key(Key::Enter, move |event| insert_newline(event, &enter))
+    let submit = runtime.clone();
+    node.key(Key::Enter, move |event| insert_newline(event, &enter))
         .key(
             Shortcut::new(Key::Enter, ModifiersState::CONTROL),
             move |event| commands::submit_text(event, &submit),
         )
-}
-
-fn shift_keys(node: NodeBuilder, runtime: TextEditRuntime) -> NodeBuilder {
-    let left = runtime.clone();
-    let right = runtime.clone();
-    let home = runtime.clone();
-    let end = runtime.clone();
-    let up = runtime.clone();
-    let down = runtime.clone();
-    let page_up = runtime.clone();
-    let page_down = runtime;
-    node.key(
-        Shortcut::new(Key::ArrowLeft, ModifiersState::SHIFT),
-        move |event| move_horizontal(event, &left, false, true),
-    )
-    .key(
-        Shortcut::new(Key::ArrowRight, ModifiersState::SHIFT),
-        move |event| move_horizontal(event, &right, true, true),
-    )
-    .key(
-        Shortcut::new(Key::ArrowUp, ModifiersState::SHIFT),
-        move |event| move_vertical(event, &up, -1, true),
-    )
-    .key(
-        Shortcut::new(Key::ArrowDown, ModifiersState::SHIFT),
-        move |event| move_vertical(event, &down, 1, true),
-    )
-    .key(
-        Shortcut::new(Key::Home, ModifiersState::SHIFT),
-        move |event| {
-            move_visual_edge(event, &home, false, true);
-        },
-    )
-    .key(
-        Shortcut::new(Key::End, ModifiersState::SHIFT),
-        move |event| {
-            move_visual_edge(event, &end, true, true);
-        },
-    )
-    .key(
-        Shortcut::new(Key::PageUp, ModifiersState::SHIFT),
-        move |event| move_vertical(event, &page_up, -10, true),
-    )
-    .key(
-        Shortcut::new(Key::PageDown, ModifiersState::SHIFT),
-        move |event| move_vertical(event, &page_down, 10, true),
-    )
 }
 
 pub(in crate::widgets) fn insert_text(event: &mut KeyEvent, runtime: &TextEditRuntime) {

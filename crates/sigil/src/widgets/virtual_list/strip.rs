@@ -7,12 +7,10 @@ use crate::layout::LayoutReactiveExt;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
 
-use super::measure::{Measure, row_key_of};
+use super::measure::{Measure, Tops, row_key_of};
 use super::render::{WidthSpec, place_row, with_selection};
 use super::selection::SelectionRuntime;
-use super::window::{
-    VisibleWindow, page_rows, prefix_row_top, strip_height, visible_window, visible_window_variable,
-};
+use super::window::{RowHeights, VisibleWindow, page_rows, strip_height, visible_window};
 
 type MountedRows = RefCell<Vec<(u64, NodeId)>>;
 
@@ -25,6 +23,7 @@ pub(super) struct BoundStrip<T, R> {
     pub selection: SelectionRuntime,
     pub row_key: Option<super::RowKey<T>>,
     pub measure: Option<Measure>,
+    pub tops: Option<Tops>,
 }
 
 pub(super) fn bound_strip<S, T, R>(
@@ -79,7 +78,7 @@ fn strip_layout<T, R>(spec: &BoundStrip<T, R>) -> LayoutStyle {
     let style = LayoutStyle::block()
         .position(Position::Absolute)
         .inset_left(0.0);
-    let style = if spec.measure.is_some() {
+    let style = if spec.tops.is_some() {
         style
     } else {
         style.height(strip_height(
@@ -97,12 +96,12 @@ fn strip_position<T, R>(
     spec: &BoundStrip<T, R>,
 ) -> Signal<(f32, f32)> {
     let rh = spec.row_height;
-    let tops = spec.measure.as_ref().map(|measure| measure.tops);
+    let tops = spec.tops;
     derived(move || {
         let first = anchor.get();
         let top = tops.map_or_else(
-            || strip_top(first, rh),
-            |tops| prefix_row_top(&tops.get(), first),
+            || RowHeights::fixed(first, rh).total(),
+            |tops| RowHeights::Tops(&tops.get()).top(first),
         );
         (0.0, top - scroll_y.get())
     })
@@ -141,8 +140,8 @@ where
     fn run(&self) {
         let y = self.scroll_y.get();
         let content = self.content.get();
-        if let Some(measure) = &self.spec.measure {
-            measure.tops.track();
+        if let Some(tops) = self.spec.tops {
+            tops.track();
         }
         let stale = self.seen.replace(content) != content;
         if stale {
@@ -179,19 +178,19 @@ where
 {
     let items = signal.peek();
     let slice: &[T] = (*items).as_ref();
-    let window = spec.measure.as_ref().map_or_else(
+    let window = spec.tops.map_or_else(
         || {
+            let heights = RowHeights::fixed(slice.len(), spec.row_height);
+            visible_window(scroll_y, heights, spec.viewport_height, spec.overscan)
+        },
+        |tops| {
+            let tops = tops.peek();
             visible_window(
                 scroll_y,
-                slice.len(),
-                spec.row_height,
+                RowHeights::Tops(&tops),
                 spec.viewport_height,
                 spec.overscan,
             )
-        },
-        |measure| {
-            let tops = measure.tops.peek();
-            visible_window_variable(scroll_y, &tops, spec.viewport_height, spec.overscan)
         },
     );
     let block = mount_block(spec.viewport_height, spec.row_height);
@@ -209,14 +208,6 @@ const MOUNT_BLOCKS_PER_PAGE: usize = 4;
 
 fn mount_block(viewport_height: f32, row_height: f32) -> usize {
     (page_rows(viewport_height, row_height) / MOUNT_BLOCKS_PER_PAGE).max(1)
-}
-
-#[allow(
-    clippy::cast_precision_loss,
-    reason = "row indices are far below the f32 mantissa limit"
-)]
-fn strip_top(first: usize, row_height: f32) -> f32 {
-    first as f32 * row_height
 }
 
 fn keyed_rows<S, T, R>(
@@ -270,7 +261,9 @@ where
     R: Fn(usize, &T) -> NodeBuilder + 'static,
 {
     let render = Rc::clone(&spec.render);
-    let row_height = spec.row_height;
+    let row_height = spec.tops.map_or(spec.row_height, |tops| {
+        RowHeights::Tops(&tops.peek()).span(index).1
+    });
     let width = spec.width;
     let selection = spec.selection;
     let measure = spec.measure.clone();

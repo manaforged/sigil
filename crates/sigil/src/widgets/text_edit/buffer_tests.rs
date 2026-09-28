@@ -199,3 +199,12 @@ fn line_deletion_stops_at_newlines() {
     edit.delete_to_line_end();
     assert_eq!(edit.as_str(), "", "a selection wins over the line span");
 }
+
+#[test]
+fn right_arrow_on_an_rtl_line_moves_visually_in_a_multiline_buffer() {
+    let text = String::from("x\nאבג");
+    let end = text.len();
+    let mut edit = TextEdit::new_at(text, end);
+    edit.move_right();
+    assert_eq!(edit.caret(), end - "ג".len());
+}

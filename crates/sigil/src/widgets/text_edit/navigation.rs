@@ -3,6 +3,7 @@ use crate::hal::{HitPosition, Point, TextAffinity};
 use crate::layout::with_text_geometry;
 
 use super::super::TextEdit;
+use super::keymap::LineStep;
 use super::{TextEditRuntime, commit};
 
 pub(in crate::widgets::text_edit) fn geometry_width(runtime: &TextEditRuntime) -> Option<f32> {
@@ -94,7 +95,7 @@ fn wrap_transition(
 pub(super) fn move_vertical(
     event: &mut KeyEvent,
     runtime: &TextEditRuntime,
-    rows: isize,
+    step: LineStep,
     extend: bool,
 ) {
     if runtime.disabled() {
@@ -119,7 +120,7 @@ pub(super) fn move_vertical(
             clippy::cast_precision_loss,
             reason = "vertical movement counts are small relative to layout coordinates"
         )]
-        let rows = rows as f32;
+        let rows = step.rows(runtime.viewport_size.peek().1, height) as f32;
         let target = engine.hit(
             &buffer,
             &style,

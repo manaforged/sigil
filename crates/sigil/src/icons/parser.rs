@@ -25,10 +25,8 @@ pub(crate) fn svg_options() -> usvg::Options<'static> {
 }
 
 pub(crate) fn parse(svg_source: &str) -> Result<(Vec<SvgPath>, ViewBox), BakeError> {
-    if svg_source.len() > crate::widgets::MAX_SOURCE_BYTES {
-        return Err(BakeError::SvgParseError(String::from(
-            "SVG source is larger than the 1 MiB limit",
-        )));
+    if crate::widgets::source_too_large(svg_source) {
+        return Err(BakeError::SvgParseError(crate::widgets::oversize_message()));
     }
     if nesting_depth(svg_source.as_bytes()) > MAX_ELEMENT_DEPTH {
         return Err(BakeError::SvgParseError(String::from(

@@ -45,19 +45,6 @@ impl TextContent {
         }
     }
 
-    pub fn resolve_into(&self, out: &mut String) {
-        out.clear();
-        match self {
-            Self::Static(value) => out.push_str(value),
-            Self::Reactive(signal) => {
-                if let Some(value) = signal.try_peek() {
-                    out.push_str(&value);
-                }
-            }
-            Self::Compute(compute) => out.push_str(&compute()),
-        }
-    }
-
     #[must_use]
     pub fn compute(f: impl Fn() -> String + 'static) -> Self {
         Self::Compute(Rc::new(f))

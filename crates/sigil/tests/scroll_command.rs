@@ -4,24 +4,21 @@
 )]
 #![allow(clippy::unwrap_used, clippy::float_cmp)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::{Point, ScrollEventInit};
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
+use sigil_kittest::FixedMeasure;
+use widget_support::compute;
 
-struct StubMeasure;
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 60.0,
+    height: 16.0,
+};
 
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(60.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout computes");
-}
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[test]
 fn scroll_viewport_has_scroll_view_role() {
@@ -40,7 +37,7 @@ fn scroll_emits_viewport_and_scrollbar_rects() {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content, 800.0));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
         let rect_count = scene
@@ -61,7 +58,7 @@ fn scroll_at_zero_has_no_thumb_offset() {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content, 800.0));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
         let rects: Vec<_> = scene
@@ -88,7 +85,7 @@ fn scroll_thumb_proportional_to_content() {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content, 480.0).height(240.0));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
         let rect_heights: Vec<f32> = scene
@@ -112,7 +109,7 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
         let mut cx = Cx::new_root();
         let content = container();
         let root = cx.add(scroll(content, 800.0).height(240.0));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
         let scene = emit_scene(&cx, root);
         let rect_count = scene
             .commands
@@ -135,7 +132,7 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
         );
         let scroll_id = cx.nth_child(root, 0).expect("scroll viewport exists");
         let body_id = cx.nth_child(scroll_id, 0).expect("scroll body exists");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("initial layout computes");

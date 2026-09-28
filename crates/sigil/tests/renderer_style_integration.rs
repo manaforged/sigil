@@ -5,21 +5,14 @@
 #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
 use sigil::hal::Size;
-use sigil::kernel::{TextContent, prelude::*};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle, TextMeasure};
-use sigil::renderer::{
+use sigil::kernel::prelude::*;
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
+use sigil::scene::{
     CommandScene, DrawGlyphRun, DrawRect, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
 use sigil::style::TextLineHeight;
 use sigil::style::{FocusRing, NodeStyleExt, Theme};
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _source: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
-    }
-}
+use sigil_kittest::FixedMeasure;
 
 #[test]
 fn theme_accent_rect_emits_in_scene() {
@@ -153,7 +146,7 @@ fn shadow_class_parses_cleanly_and_paints() {
     let has_shadow = scene
         .commands
         .iter()
-        .any(|command| matches!(command, sigil::renderer::SceneCommand::DrawShadow { .. }));
+        .any(|command| matches!(command, sigil::scene::SceneCommand::DrawShadow { .. }));
 
     assert_eq!(
         sigil::style::unknown_class_warning_count(),
@@ -164,7 +157,7 @@ fn shadow_class_parses_cleanly_and_paints() {
 }
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     engine
         .compute(cx, root, Size::fixed(320.0, 240.0))
         .expect("layout compute succeeds");

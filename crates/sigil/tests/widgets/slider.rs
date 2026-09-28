@@ -6,7 +6,7 @@ fn slider_click_jumps_to_position() {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -29,7 +29,7 @@ fn slider_drag_updates_value_continuously() {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).length(SLIDER_TRACK));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -48,7 +48,7 @@ fn slider_drag_with_step_quantizes_value() {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).step(10.0).length(SLIDER_TRACK));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -67,7 +67,7 @@ fn slider_keyboard_stepping() {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0).step(5.0).length(SLIDER_TRACK));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -102,7 +102,7 @@ fn slider_disabled_ignores_input() {
                 .step(5.0)
                 .length(SLIDER_TRACK),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -133,7 +133,7 @@ fn slider_capture_releases_on_pointer_up() {
             let changes = Rc::clone(&changes);
             move |_| changes.set(changes.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

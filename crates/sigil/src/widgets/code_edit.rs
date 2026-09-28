@@ -202,7 +202,7 @@ impl CodeEditBuilder {
                 },
                 row_h,
             ));
-        let node = editing::attach(a11y::expose(node, &runtime), &runtime);
+        let node = editing::attach(a11y::expose(node, &runtime), &runtime, viewport, row_h);
         interaction.observe_style(disabled_a11y(node, disabled))
     }
 }

@@ -38,7 +38,7 @@ fn button_is_focusable_and_activates_on_enter() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -64,7 +64,7 @@ fn disabled_button_does_not_focus_or_activate() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -89,7 +89,7 @@ fn button_pointer_activation_requires_press_inside() {
             let hits = Rc::clone(&hits);
             move || hits.set(hits.get() + 1)
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

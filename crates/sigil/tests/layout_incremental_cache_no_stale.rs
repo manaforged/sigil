@@ -2,15 +2,9 @@
 
 use sigil::hal::Size;
 use sigil::kernel::{Cx, container};
+use sigil::layout::LayoutEngine;
 use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil::layout::{LayoutEngine, TextMeasure};
-
-struct NoText;
-impl TextMeasure for NoText {
-    fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(0.0, 0.0)
-    }
-}
+use sigil_kittest::FixedMeasure;
 
 #[test]
 fn dirty_frame_reflects_mutation_then_clean_frame_hits() {
@@ -23,7 +17,7 @@ fn dirty_frame_reflects_mutation_then_clean_frame_hits() {
     );
     let leaf_id = *cx.get(root).unwrap().children().first().unwrap();
 
-    let mut engine = LayoutEngine::with_text_measure(Box::new(NoText));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     let avail = Size::fixed(200.0, 200.0);
     engine.compute(&mut cx, root, avail).unwrap();
     cx.clear_dirty();

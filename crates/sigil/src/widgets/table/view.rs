@@ -10,7 +10,7 @@ use crate::style::{BORDER_WIDTH, ClassSource, NodeStyleExt, Radius, StyleAtom, T
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::menu::MenuItem;
-use super::super::scroll::wheel_x;
+use super::super::scroll::{WheelAxis, wheel};
 use super::super::shared::BuilderMutator;
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
@@ -335,7 +335,12 @@ fn wire_hscroll(root: NodeBuilder, hs: hscroll::HScroll) -> NodeBuilder {
         None => root,
     };
     root.on_scroll(move |ev| {
-        wheel_x(ev, hs.scroll_x, hs.viewport.peek(), hs.max.peek());
+        let x = WheelAxis {
+            offset: hs.scroll_x,
+            viewport: hs.viewport.peek(),
+            max: hs.max.peek(),
+        };
+        wheel(ev, None, Some(x));
     })
 }
 

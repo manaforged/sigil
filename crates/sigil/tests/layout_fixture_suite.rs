@@ -6,13 +6,13 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil_kittest::FixedMeasure;
 use stub::stub_engine;
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::layout::{
-    Dimension as StyleDimension, LayoutDrive, StyleData, StyleDisplay, StyleLengthPercentageAuto,
-    StylePosition,
+    Dimension as StyleDimension, Display, LayoutDrive, LengthPercentageAuto, Position, StyleData,
 };
 
 const EPSILON: f32 = 0.5;
@@ -168,22 +168,22 @@ fn nested_absolute_uses_positioned_parent_origin() {
 
 #[test]
 fn absolute_child_uses_inset_offset() {
-    let mut drive = LayoutDrive::new(Box::new(NullMeasure));
+    let mut drive = LayoutDrive::new(Box::new(FixedMeasure::default()));
     let mut parent_style = StyleData {
-        display: StyleDisplay::Flex,
+        display: Display::Flex,
         ..StyleData::default()
     };
     parent_style.size.width = StyleDimension::Px(200.0);
     parent_style.size.height = StyleDimension::Px(100.0);
 
     let mut child_style = StyleData {
-        position: StylePosition::Absolute,
+        position: Position::Absolute,
         ..StyleData::default()
     };
     child_style.size.width = StyleDimension::Px(30.0);
     child_style.size.height = StyleDimension::Px(20.0);
-    child_style.inset.left = StyleLengthPercentageAuto::Px(20.0);
-    child_style.inset.top = StyleLengthPercentageAuto::Px(50.0);
+    child_style.inset.left = LengthPercentageAuto::Px(20.0);
+    child_style.inset.top = LengthPercentageAuto::Px(50.0);
 
     let root = drive.insert(parent_style);
     let child = drive.insert(child_style);
@@ -239,14 +239,6 @@ fn result_for(cx: &Cx, id: NodeId) -> &LayoutResult {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")
-}
-
-struct NullMeasure;
-
-impl TextMeasure for NullMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> LogicalSize {
-        LogicalSize::default()
-    }
 }
 
 fn assert_close(actual: f32, expected: f32) {

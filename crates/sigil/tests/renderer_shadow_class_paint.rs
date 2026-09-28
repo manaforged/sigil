@@ -11,14 +11,14 @@ mod support;
 use sigil::hal::Size;
 use sigil::kernel::{Cx, prelude::*};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
-use sigil::renderer::{SceneCommand, ShadowKind, emit_scene};
+use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::NodeStyleExt;
-use support::StubMeasure;
+use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
     engine
         .compute(cx, root, Size::fixed(SIZE as f32, SIZE as f32))
         .expect("layout compute");

@@ -5,15 +5,13 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
+use sigil_kittest::FixedMeasure;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(60.0, 16.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 60.0,
+    height: 16.0,
+};
 
 fn glyph_runs(cx: &Cx, root: NodeId) -> usize {
     emit_scene(cx, root)
@@ -42,7 +40,7 @@ fn items_bind_shrink_still_paints_rows() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
@@ -102,7 +100,7 @@ fn items_bind_via_effect_chain_still_paints_rows() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .unwrap();
@@ -152,7 +150,7 @@ fn items_bind_shrink_paints_under_frame_phases() {
                 .viewport_width(300.0),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {
@@ -218,7 +216,7 @@ fn items_bind_app_shape_batched_keystrokes() {
             .select(move |i| selected.set(Some(i))),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, writes: &[&str]| {
             Runtime::begin_effect();
             for s in writes {
@@ -290,7 +288,7 @@ fn items_bind_shrink_paints_via_incremental_layout() {
                 .child(list),
         );
 
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         let mut frame = |frame_cx: &mut Cx, write: Option<&str>| {
             Runtime::begin_effect();
             if let Some(s) = write {

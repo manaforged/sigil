@@ -2,6 +2,8 @@
 
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::bidi::{ParagraphBidi, Step};
+
 use crate::widgets::grapheme::{
     clamp_to_len_boundary, line_end, line_start, next_boundary, previous_boundary, selection_range,
     word_end_after, word_start_before,
@@ -121,16 +123,14 @@ impl TextEdit {
                 previous_boundary(&self.buffer, self.caret)
             }
         };
-        if self.buffer.contains('\n') {
-            return logical();
-        }
-        match crate::bidi::visual_step(&self.buffer, self.caret, right) {
-            crate::bidi::Step::To(pos) if pos > self.caret => {
-                next_boundary(&self.buffer, self.caret)
-            }
-            crate::bidi::Step::To(_) => previous_boundary(&self.buffer, self.caret),
-            crate::bidi::Step::Edge => None,
-            crate::bidi::Step::Logical => logical(),
+        let start = line_start(&self.buffer, self.caret);
+        let end = line_end(&self.buffer, self.caret);
+        let line = self.buffer.get(start..end).unwrap_or_default();
+        match ParagraphBidi::new(line).visual_step(self.caret - start, right) {
+            Step::To(pos) if pos + start > self.caret => next_boundary(&self.buffer, self.caret),
+            Step::To(_) => previous_boundary(&self.buffer, self.caret),
+            Step::Edge if start == 0 && end == self.buffer.len() => None,
+            Step::Edge | Step::Logical => logical(),
         }
     }
 

@@ -6,13 +6,7 @@
 
 use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _c: &TextContent, _s: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(0.0, 0.0)
-    }
-}
+use sigil_kittest::FixedMeasure;
 
 fn click_at(x: f32, width: f32) -> f32 {
     let mut result = 0.0;
@@ -24,7 +18,7 @@ fn click_at(x: f32, width: f32) -> f32 {
                 .layout(LayoutStyle::flex_row().fixed_size(width, 40.0))
                 .child(slider(value, 0.0..=100.0).length(width)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(width, 40.0))
             .expect("layout");
@@ -68,7 +62,7 @@ fn filled_slider_maps_clicks_through_its_parent_width() {
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 40.0))
                 .child(slider(value, 0.0..=100.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 40.0))
             .expect("layout");

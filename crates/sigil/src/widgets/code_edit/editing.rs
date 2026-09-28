@@ -1,19 +1,18 @@
 use crate::clipboard::clipboard;
-use crate::events::prelude::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
+use std::rc::Rc;
+
+use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
 use crate::widgets::grapheme::col_count;
 use crate::widgets::text_edit::{
-    TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit, attach_ime_handlers,
-    clipboard_keys, edit_value, history_keys, insert_text, move_caret, noop_change, word_keys,
+    KeyProfile, LineStep, TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit,
+    attach_ime_handlers, clipboard_keys, edit_keys, edit_value, history_keys, move_caret,
+    noop_change, word_keys,
 };
 
 use super::SelectionAnchor;
 use super::a11y::{byte_at, point_at};
-
-const PAGE_ROWS: isize = 10;
-
-type Edit = fn(&mut TextEdit);
 
 #[derive(Clone, Copy)]
 pub(super) struct Model {
@@ -92,9 +91,30 @@ fn sync_outward(model: Model, runtime: &TextEditRuntime) {
     });
 }
 
-pub(super) fn attach(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let node = edit_keys(node, runtime);
-    let node = line_keys(node, runtime);
+pub(super) fn attach(
+    node: NodeBuilder,
+    runtime: &TextEditRuntime,
+    viewport: Signal<(f32, f32)>,
+    row_h: f32,
+) -> NodeBuilder {
+    let edge = runtime.clone();
+    let line = runtime.clone();
+    let profile = KeyProfile {
+        edge: Rc::new(move |event, end, extend| {
+            let target = if end { LineMove::End } else { LineMove::Start };
+            move_caret(event, &edge, |edit| move_line(edit, target, extend));
+        }),
+        line: Some(Rc::new(move |event, step: LineStep, extend| {
+            let rows = step.rows(viewport.peek().1, row_h);
+            move_caret(event, &line, |edit| {
+                move_line(edit, LineMove::Rows(rows), extend);
+            });
+        })),
+    };
+    let enter = runtime.clone();
+    let node = edit_keys(node, runtime, &profile).key(Key::Enter, move |event| {
+        edit_value(event, &enter, |edit| edit.insert_str("\n"));
+    });
     let node = clipboard_keys(node, runtime);
     let node = word_keys(node, runtime);
     let node = history_keys(node, runtime.clone());
@@ -102,59 +122,11 @@ pub(super) fn attach(node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilde
     attach_ime_handlers(node, runtime)
 }
 
-fn edit_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let any_key = runtime.clone();
-    let enter = runtime.clone();
-    node = node
-        .key_any(move |event| insert_text(event, &any_key))
-        .key(Key::Enter, move |event| {
-            edit_value(event, &enter, |edit| edit.insert_str("\n"));
-        });
-    let edits: [(Shortcut, Edit); 6] = [
-        (Key::Backspace.into(), TextEdit::backspace),
-        (Key::Delete.into(), TextEdit::delete_forward),
-        (Key::ArrowLeft.into(), TextEdit::move_left),
-        (Key::ArrowRight.into(), TextEdit::move_right),
-        (shift(Key::ArrowLeft), TextEdit::shift_left),
-        (shift(Key::ArrowRight), TextEdit::shift_right),
-    ];
-    for (index, (shortcut, edit)) in edits.into_iter().enumerate() {
-        let runtime = runtime.clone();
-        node = if index < 2 {
-            node.key(shortcut, move |event| edit_value(event, &runtime, edit))
-        } else {
-            node.key(shortcut, move |event| move_caret(event, &runtime, edit))
-        };
-    }
-    node
-}
-
 #[derive(Clone, Copy)]
 enum LineMove {
     Rows(isize),
     Start,
     End,
-}
-
-fn line_keys(mut node: NodeBuilder, runtime: &TextEditRuntime) -> NodeBuilder {
-    let moves = [
-        (Key::ArrowUp, LineMove::Rows(-1)),
-        (Key::ArrowDown, LineMove::Rows(1)),
-        (Key::PageUp, LineMove::Rows(-PAGE_ROWS)),
-        (Key::PageDown, LineMove::Rows(PAGE_ROWS)),
-        (Key::Home, LineMove::Start),
-        (Key::End, LineMove::End),
-    ];
-    for (key, line_move) in moves {
-        for extend in [false, true] {
-            let runtime = runtime.clone();
-            let shortcut = if extend { shift(key) } else { key.into() };
-            node = node.key(shortcut, move |event: &mut KeyEvent| {
-                move_caret(event, &runtime, |edit| move_line(edit, line_move, extend));
-            });
-        }
-    }
-    node
 }
 
 fn move_line(edit: &mut TextEdit, line_move: LineMove, extend: bool) {
@@ -176,8 +148,4 @@ fn move_line(edit: &mut TextEdit, line_move: LineMove, extend: bool) {
     } else {
         edit.place_caret(byte);
     }
-}
-
-fn shift(key: Key) -> Shortcut {
-    Shortcut::new(key, ModifiersState::SHIFT)
 }

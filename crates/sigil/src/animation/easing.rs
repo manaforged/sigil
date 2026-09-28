@@ -32,11 +32,6 @@ pub enum Easing {
 
 impl Easing {
     #[must_use]
-    pub fn cubic_bezier(x1: f32, y1: f32, x2: f32, y2: f32) -> Self {
-        Self::Bezier(CubicBezier::new(x1, y1, x2, y2))
-    }
-
-    #[must_use]
     pub const fn steps(count: NonZeroU16, start: bool) -> Self {
         Self::Steps { count, start }
     }

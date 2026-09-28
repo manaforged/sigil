@@ -5,27 +5,12 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::prelude::*;
+use sigil_kittest::{CharMeasure, FixedMeasure};
 
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _c: &TextContent, _s: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(0.0, 0.0)
-    }
-}
-
-struct ProportionalMeasure;
-
-impl TextMeasure for ProportionalMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        let len = match content {
-            TextContent::Static(value) => value.len(),
-            TextContent::Reactive(value) => value.peek().len(),
-            TextContent::Compute(_) => content.resolve().len(),
-        };
-        let bounded = u16::try_from(len).unwrap_or(u16::MAX);
-        sigil::hal::LogicalSize::new(f32::from(bounded) * 7.0, 16.0)
-    }
-}
+const CHAR_MEASURE: CharMeasure = CharMeasure {
+    char_width: 7.0,
+    line_height: 16.0,
+};
 
 fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) -> f32 {
     let mut width = -1.0;
@@ -36,7 +21,7 @@ fn widget_width<N: IntoNode + 'static>(parent_w: f32, make: impl FnOnce() -> N) 
                 .layout(LayoutStyle::flex_column().fixed_size(parent_w, 200.0))
                 .child(make()),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(parent_w, 200.0))
             .expect("layout");
@@ -112,7 +97,7 @@ fn hug_button_keeps_width_next_to_a_grow_spacer() {
                 .child(button("Start All")),
         );
         let children: Vec<_> = cx.get(root).expect("row").children().to_vec();
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(160.0, 40.0))
             .expect("layout");
@@ -142,7 +127,7 @@ fn button_hugs_its_label_at_desktop_density() {
     sigil::reactive::Runtime::scope("button-hug", || {
         let mut cx = Cx::new_root();
         let root = cx.add(button("Save"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(300.0, 100.0))
             .expect("layout");
@@ -175,7 +160,7 @@ fn grow_size_fills_button_without_collapsing_its_height() {
             .first()
             .copied()
             .expect("button");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(300.0, 100.0))
             .expect("layout");
@@ -208,7 +193,7 @@ fn text_field_inner_surface_leaves_one_pixel_frame() {
             .first()
             .copied()
             .expect("inner surface");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(CHAR_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(600.0, 42.0))
             .expect("layout");
@@ -237,7 +222,7 @@ fn button_and_toggle_fill_via_grow() {
                 .child(button("Save").grow(1.0))
                 .child(toggle(signal(false)).grow(1.0)),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(400.0, 60.0))
             .expect("layout");

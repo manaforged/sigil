@@ -1,32 +1,25 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
 use sigil::hal::{Point, Rect, Size};
-use sigil::kernel::{TextContent, prelude::*};
-use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Overflow, TextMeasure};
-use sigil::renderer::{SceneCommand, emit_scene, emit_scene_clipped};
+use sigil::kernel::prelude::*;
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Overflow};
+use sigil::scene::{SceneCommand, emit_scene, emit_scene_clipped};
 use sigil::style::NodeStyleExt;
+use sigil_kittest::CharMeasure;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, source: &TextContent, _space: Size) -> sigil::hal::LogicalSize {
-        #[allow(clippy::cast_precision_loss)]
-        let n = match source {
-            TextContent::Static(s) => s.len() as f32,
-            TextContent::Reactive(_) | TextContent::Compute(_) => 8.0,
-        };
-        sigil::hal::LogicalSize::new(n * 8.0, 20.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 20.0,
+};
 
 fn layout(cx: &mut Cx, root: NodeId) {
-    let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
     engine
         .compute(cx, root, Size::fixed(200.0, 80.0))
         .expect("layout");
 }
 
-fn glyph_runs(scene: &sigil::renderer::CommandScene) -> usize {
+fn glyph_runs(scene: &sigil::scene::CommandScene) -> usize {
     scene
         .commands
         .iter()

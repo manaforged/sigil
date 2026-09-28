@@ -13,7 +13,7 @@ use crate::style::{
 pub(crate) mod geometry;
 mod input;
 
-pub(crate) use input::{WheelX, pin_to_bottom, wheel, wheel_x, wheel2};
+pub(crate) use input::{ScrollAxis, WheelAxis, pin_to_bottom, wheel};
 
 const VIEWPORT_HEIGHT: f32 = space(60);
 pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);

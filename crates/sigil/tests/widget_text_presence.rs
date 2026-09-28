@@ -5,27 +5,20 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
+use sigil_kittest::CharMeasure;
 
-struct ProportionalText;
-impl TextMeasure for ProportionalText {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        let len = match content {
-            TextContent::Static(s) => s.len(),
-            TextContent::Reactive(sig) => sig.peek().len(),
-            TextContent::Compute(_) => content.resolve().len(),
-        };
-        #[allow(clippy::cast_precision_loss)]
-        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 7.0,
+    line_height: 16.0,
+};
 
 fn painted_text(width: f32, build: impl FnOnce() -> NodeBuilder) -> Vec<String> {
     let mut found = Vec::new();
     sigil::reactive::Runtime::scope("text-presence", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(width, 400.0))
             .expect("layout computes");

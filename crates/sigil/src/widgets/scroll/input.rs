@@ -26,7 +26,14 @@ pub(super) fn bind(
     })
     .key(Key::Home, move |event| jump(event, scroll_y, 0.0))
     .key(Key::End, move |event| jump(event, scroll_y, max.peek()))
-    .on_scroll(move |event| wheel(event, scroll_y, height.peek(), max.peek()))
+    .on_scroll(move |event| {
+        let y = WheelAxis {
+            offset: scroll_y,
+            viewport: height.peek(),
+            max: max.peek(),
+        };
+        wheel(event, Some(y), None);
+    })
 }
 
 fn step(event: &mut KeyEvent, scroll_y: Signal<f32>, delta: f32, max: f32) {
@@ -43,32 +50,37 @@ fn jump(event: &mut KeyEvent, scroll_y: Signal<f32>, target: f32) {
     scroll_y.set(target);
 }
 
-pub(crate) fn wheel(event: &mut ScrollEvent, scroll_y: Signal<f32>, height: f32, max: f32) {
-    let (_, dy) = deltas(event, height, height);
-    if apply(scroll_y, dy, max) {
-        event.stop_propagation();
+#[derive(Clone, Copy)]
+pub(crate) struct ScrollAxis {
+    pub(crate) offset: Signal<f32>,
+    pub(crate) max: Signal<f32>,
+    pub(crate) viewport: Signal<f32>,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct WheelAxis {
+    pub(crate) offset: Signal<f32>,
+    pub(crate) viewport: f32,
+    pub(crate) max: f32,
+}
+
+impl From<ScrollAxis> for WheelAxis {
+    fn from(axis: ScrollAxis) -> Self {
+        Self {
+            offset: axis.offset,
+            viewport: axis.viewport.peek(),
+            max: axis.max.peek(),
+        }
     }
 }
 
-pub(crate) type WheelX = (Signal<f32>, Signal<f32>, Signal<f32>);
-
-pub(crate) fn wheel2(
-    event: &mut ScrollEvent,
-    scroll_y: Signal<f32>,
-    height: f32,
-    max_y: f32,
-    x: WheelX,
-) {
-    let (dx, dy) = deltas(event, height, x.2.peek());
-    let moved = apply(scroll_y, dy, max_y) | apply(x.0, dx, x.1.peek());
-    if moved {
-        event.stop_propagation();
-    }
-}
-
-pub(crate) fn wheel_x(event: &mut ScrollEvent, scroll_x: Signal<f32>, width: f32, max: f32) {
-    let (dx, _) = deltas(event, width, width);
-    if apply(scroll_x, dx, max) {
+pub(crate) fn wheel(event: &mut ScrollEvent, y: Option<WheelAxis>, x: Option<WheelAxis>) {
+    let height = y.or(x).map_or(0.0, |axis| axis.viewport);
+    let width = x.map_or(height, |axis| axis.viewport);
+    let (dx, dy) = deltas(event, height, width);
+    let moved_y = y.is_some_and(|axis| apply(axis.offset, dy, axis.max));
+    let moved_x = x.is_some_and(|axis| apply(axis.offset, dx, axis.max));
+    if moved_y | moved_x {
         event.stop_propagation();
     }
 }

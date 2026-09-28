@@ -4,11 +4,14 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
+use input::ime_event;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -18,10 +21,6 @@ use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
 use routing_helpers::{compute_layout, route_event};
-
-const fn ime_event(event: ImeEvent) -> sigil::hal::ShellEvent {
-    sigil::hal::ShellEvent::Ime(event)
-}
 
 const fn ime_label(event: &ImeEvent) -> &'static str {
     match event {

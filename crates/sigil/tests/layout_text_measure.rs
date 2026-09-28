@@ -7,23 +7,21 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
+use sigil_kittest::FixedMeasure;
 use stub::stub_engine;
 
-use sigil::kernel::{TextContent, prelude::*};
+use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-struct FixedMeasure;
-
-impl TextMeasure for FixedMeasure {
-    fn measure(&self, _source: &TextContent, _space: Size) -> LogicalSize {
-        LogicalSize::new(100.0, 20.0)
-    }
-}
+const TEXT_MEASURE: FixedMeasure = FixedMeasure {
+    width: 100.0,
+    height: 20.0,
+};
 
 #[test]
 fn custom_text_measure_overrides_placeholder_measurement() {
     let default_width = computed_text_width(stub_engine());
-    let custom_width = computed_text_width(LayoutEngine::with_text_measure(Box::new(FixedMeasure)));
+    let custom_width = computed_text_width(LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE)));
 
     assert_eq!(default_width, 16.0);
     assert_eq!(custom_width, 100.0);

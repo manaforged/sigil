@@ -7,18 +7,11 @@
 use accesskit::{Node as AkNode, Role, TreeUpdate};
 use sigil::a11y::tree;
 use sigil::hal::{Point, Rect};
-use sigil::kernel::{Cx, NodeId, TextContent, container};
+use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
 use sigil::widgets::{button, modal, text_field};
-
-struct ZeroTextMeasure;
-
-impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
-    }
-}
+use sigil_kittest::FixedMeasure;
 
 #[test]
 fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
@@ -42,7 +35,7 @@ fn bounds_reflect_a_signal_driven_move_only_after_a_fresh_recompute() {
             .children()
             .first()
             .expect("root has one child");
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
         recompute(&mut cx, &mut layout, root);
         let before = projected_bounds(&cx, &layout, moved);
         assert_eq!(before, (10.0, 20.0), "starts at the signal's initial pos");

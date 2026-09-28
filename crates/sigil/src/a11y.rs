@@ -1,7 +1,3 @@
-#[cfg(test)]
-#[path = "a11y/lib_tests.rs"]
-mod tests;
-
 pub(crate) mod actions;
 pub mod bridge;
 pub mod mapping;

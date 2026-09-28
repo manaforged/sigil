@@ -9,21 +9,15 @@ use std::ops::Deref;
 
 use super::keyboard::{KeyboardRuntime, attach_key_handlers};
 use super::measure::Measure;
-use super::render::{
-    HeightSpec, VisibleRenderSpec, build_visible_window, content_container, viewport_container,
-    width_apply, width_spec,
-};
+use super::render::{content_container, viewport_container, width_apply, width_spec};
 use super::scroll::{self, apply_bound_scroll, attach_wheel};
 use super::selection::{SelectionRuntime, SelectionState};
 use super::strip::{BoundStrip, bound_strip};
 use super::viewport::{ViewportSize, apply_viewport_overrides};
-use super::window::{
-    self, VisibleWindow, prefix_row_top, row_top, strip_height, total_height,
-    total_height_variable, visible_window, visible_window_variable,
-};
+use super::window::{self, strip_height};
 use super::{
     BoundCtx, BoundItems, BoundVisibleThunk, BuildAxes, DEFAULT_ROW_HEIGHT,
-    DEFAULT_VIEWPORT_HEIGHT, InitialScroll, Sizing, VirtualListBuilder, bound_slice,
+    DEFAULT_VIEWPORT_HEIGHT, Sizing, VirtualListBuilder, bound_slice,
 };
 
 impl<T, R> VirtualListBuilder<T, R>
@@ -55,6 +49,7 @@ where
                 overscan,
                 row_key,
                 measure,
+                tops,
             } = ctx;
             let render = std::rc::Rc::new(render);
             container()
@@ -73,6 +68,7 @@ where
                                 selection,
                                 row_key: row_key.clone(),
                                 measure,
+                                tops,
                             },
                         )),
                 )
@@ -95,7 +91,10 @@ where
     }
 
     pub(super) fn into_node_builder(mut self) -> NodeBuilder {
-        if self.measured && self.bound.is_none() {
+        if self.bound.is_none() {
+            if self.item_height.is_some() && !self.measured {
+                self.ensure_row_tops();
+            }
             let items = signal(std::rc::Rc::new(std::mem::take(&mut self.items)));
             return self.bind_items(items).into_node_builder();
         }
@@ -104,20 +103,14 @@ where
             .bound
             .as_ref()
             .map(|bound| std::rc::Rc::clone(&bound.count));
-        let static_rows = self.items.len();
         scroll::bind_extent(axes, self.content_height_bind, self.max_scroll_bind);
         scroll::anchor(axes);
         if let Some(target) = self.follow {
             scroll::follow(target, axes, move || {
-                count.as_ref().map_or(static_rows, |count| count())
+                count.as_ref().map_or(0, |count| count())
             });
         }
-        let root = if self.bound.is_some() {
-            self.build_bound(axes, measure)
-        } else {
-            self.build_static(axes)
-        };
-        root.size_reactive(axes.viewport)
+        self.build_bound(axes, measure).size_reactive(axes.viewport)
     }
 
     fn axes(&mut self) -> (BuildAxes, Option<Measure>) {
@@ -129,16 +122,13 @@ where
         let viewport_height = window::positive_px(self.viewport_height, DEFAULT_VIEWPORT_HEIGHT);
         let measure = self.take_measure(row_height);
         let tops = measure.as_ref().map(|measure| measure.tops).or_else(|| {
-            (self.bound.is_none() && self.item_height.is_some()).then(|| {
-                self.ensure_row_tops();
-                signal(std::rc::Rc::new(self.row_tops.clone()))
-            })
+            (!self.row_tops.is_empty())
+                .then(|| signal(std::rc::Rc::new(std::mem::take(&mut self.row_tops))))
         });
         let live_rows = self.bound.as_ref().map(|bound| bound.live_rows);
-        let static_rows = self.items.len();
         let viewport = signal((0.0, 0.0));
         let (content, max) = scroll::extent(viewport, viewport_height, move || {
-            let rows = live_rows.map_or(static_rows, |rows| rows.get());
+            let rows = live_rows.map_or(0, |rows| rows.get());
             scroll::content_px(tops, row_height, rows)
         });
         let axes = BuildAxes {
@@ -174,6 +164,7 @@ where
             overscan: self.overscan,
             row_key: self.row_key,
             measure,
+            tops: axes.tops,
         });
         let initial_rows = bound.initial_rows;
         let live_rows = bound.live_rows;
@@ -204,105 +195,8 @@ where
         }
     }
 
-    fn build_static(mut self, axes: BuildAxes) -> NodeBuilder {
-        let using_variable_heights =
-            self.prepare_scroll(axes.scroll_y, axes.row_height, axes.viewport_height);
-        let window = self.current_window(
-            axes.scroll_y.get(),
-            axes.row_height,
-            axes.viewport_height,
-            using_variable_heights,
-        );
-        let content_height = self.content_height(axes.row_height, using_variable_heights);
-        let heights = self.height_spec(axes.row_height, using_variable_heights);
-        let visible = build_visible_window(
-            &self.items,
-            &self.render,
-            window,
-            VisibleRenderSpec::new(
-                heights,
-                axes.width,
-                SelectionRuntime::new(axes.selection_state),
-                axes.scroll_y.get(),
-            ),
-        );
-        let content = content_container(content_height, axes.width).child(visible);
-        let root = with_scrollbar(
-            self.scrollbar,
-            viewport_container(axes.viewport_height, axes.width).child(content),
-            axes,
-        );
-        let root = apply_viewport_overrides(
-            root,
-            &self.layout_overrides,
-            ViewportSize {
-                height: self.shrunk_height(content_height, axes.viewport_height),
-                width: self.viewport_width,
-                fill: self.sizing == Sizing::Fill,
-            },
-        );
-        let root = attach_wheel(root, axes);
-        if self.keyboard_enabled {
-            attach_key_handlers(root, KeyboardRuntime::new(axes, self.items.len(), None))
-        } else {
-            root
-        }
-    }
-
     const fn shrinks(&self) -> bool {
         matches!(self.sizing, Sizing::ShrinkToContent)
-    }
-
-    fn shrunk_height(&self, content_height: f32, viewport_height: f32) -> f32 {
-        if self.shrinks() && content_height > 0.0 {
-            content_height.min(viewport_height)
-        } else {
-            viewport_height
-        }
-    }
-
-    fn current_window(
-        &self,
-        scroll_y: f32,
-        row_height: f32,
-        vh: f32,
-        variable: bool,
-    ) -> VisibleWindow {
-        if variable {
-            visible_window_variable(scroll_y, &self.row_tops, vh, self.overscan)
-        } else {
-            visible_window(scroll_y, self.items.len(), row_height, vh, self.overscan)
-        }
-    }
-
-    fn content_height(&self, row_height: f32, variable: bool) -> f32 {
-        if variable {
-            total_height_variable(&self.row_tops)
-        } else {
-            total_height(self.items.len(), row_height)
-        }
-    }
-
-    fn height_spec(&self, row_height: f32, variable: bool) -> HeightSpec<'_> {
-        (row_height, variable.then_some(self.row_tops.as_slice()))
-    }
-
-    fn prepare_scroll(&mut self, scroll_y: Signal<f32>, row_height: f32, vh: f32) -> bool {
-        let variable = self.item_height.is_some();
-        if variable {
-            self.ensure_row_tops();
-        }
-        let Some(initial) = self.initial_scroll else {
-            return variable;
-        };
-        let max = (self.content_height(row_height, variable) - vh).max(0.0);
-        let target = match initial {
-            InitialScroll::End => max,
-            InitialScroll::Row(index) if variable => prefix_row_top(&self.row_tops, index),
-            InitialScroll::Row(index) => row_top(index, row_height),
-        };
-        scroll_y.set(target.clamp(0.0, max));
-        variable
     }
 
     fn ensure_row_tops(&mut self) {

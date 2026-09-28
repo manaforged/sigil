@@ -235,12 +235,6 @@ impl LayoutStyle {
     }
 
     #[must_use]
-    pub const fn clips_paint(&self) -> bool {
-        !matches!(self.0.overflow.height, Overflow::Visible)
-            || !matches!(self.0.overflow.width, Overflow::Visible)
-    }
-
-    #[must_use]
     pub fn inset_top(mut self, top: impl Into<LengthPercentageAuto>) -> Self {
         self.0.inset.top = top.into();
         self

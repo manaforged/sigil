@@ -65,8 +65,7 @@ pub(crate) fn parse_tail(source: &str) -> (Vec<Block>, Option<(usize, usize)>) {
 
 fn parse_at_depth(source: &str, depth: usize) -> (Vec<Block>, Option<(usize, usize)>) {
     if crate::widgets::source_too_large(source) {
-        let limit = String::from("Source is larger than the 1 MiB limit.");
-        return (vec![Block::Paragraph(limit)], None);
+        return (vec![crate::widgets::oversize_block()], None);
     }
     let mut lines = Vec::new();
     let mut ends = Vec::new();

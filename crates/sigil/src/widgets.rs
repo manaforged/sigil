@@ -6,6 +6,17 @@ pub(crate) const fn source_too_large(source: &str) -> bool {
     source.len() > MAX_SOURCE_BYTES
 }
 
+pub(crate) fn oversize_message() -> String {
+    format!(
+        "Source is larger than the {} MiB limit.",
+        MAX_SOURCE_BYTES >> 20
+    )
+}
+
+pub(crate) fn oversize_block() -> markdown::parse::Block {
+    markdown::parse::Block::Paragraph(oversize_message())
+}
+
 #[cfg(test)]
 #[path = "widgets/lib_tests.rs"]
 mod tests;
@@ -54,6 +65,7 @@ mod scroll;
 mod segmented;
 mod shared;
 mod slider;
+mod sparkline;
 mod spinner;
 mod splitter;
 mod surface;
@@ -116,6 +128,9 @@ pub use scroll::{ScrollBuilder, scroll, scroll_auto};
 pub use segmented::{SegmentedBuilder, segmented};
 pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
+#[cfg(feature = "terminal")]
+pub(crate) use sparkline::spark_glyph;
+pub use sparkline::{SparkMark, SparklineBuilder, sparkline};
 pub use spinner::{spinner, spinner_frame};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
 pub use surface::surface;

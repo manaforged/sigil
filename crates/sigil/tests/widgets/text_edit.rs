@@ -7,7 +7,7 @@ fn text_field_shift_arrow_selects_and_cut_clears_value() {
         let value = signal(String::from("hello"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -33,7 +33,7 @@ fn text_field_ctrl_a_selects_all_and_delete_clears() {
         let value = signal(String::from("hello world"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -53,7 +53,7 @@ fn text_field_undo_restores_previous_value() {
         let builder = text_field(value);
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -78,7 +78,7 @@ fn text_field_redo_reapplies_undone_change() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -104,7 +104,7 @@ fn text_field_caret_visible_resets_on_keystroke() {
         let caret_visible = builder.caret_visible();
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -133,7 +133,7 @@ fn text_field_scroll_offset_advances_past_visible_window() {
         let scroll_offset = builder.scroll_offset();
         let mut cx = Cx::new_root();
         let root = cx.add(builder);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");

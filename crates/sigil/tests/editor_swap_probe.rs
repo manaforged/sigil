@@ -14,7 +14,9 @@ use sigil::hal::{
     PointerPhase, ShellEvent,
 };
 use sigil::prelude::*;
-use sigil::renderer::{OffscreenTarget, WgpuRenderer, emit_scene};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::emit_scene;
+use sigil_kittest::CharMeasure;
 use std::{env::temp_dir, process};
 use wgpu::TextureFormat;
 
@@ -22,16 +24,10 @@ use sigil_kittest::gpu::read_pixels;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        let text = content.as_static_str().unwrap_or("");
-        let lines = text.lines().count().max(1);
-        let cols = text.lines().map(str::len).max().unwrap_or(0).max(1);
-        sigil::hal::LogicalSize::new(cols as f32 * 8.0, lines as f32 * 16.8)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 16.8,
+};
 
 fn editor_view(name: &str, body: &str) -> NodeBuilder {
     let line_count = body.lines().count().max(1);
@@ -169,7 +165,7 @@ fn clicking_second_file_swaps_editor_without_breaking() {
 }
 
 fn fresh_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
 }
 
 const fn pointer_move(x: f32, y: f32) -> ShellEvent {

@@ -48,10 +48,6 @@ where
             return;
         }
 
-        if let Some(hook) = self.shell.wake_hook() {
-            hook();
-        }
-
         self.shell.pending_wake().store(false, Ordering::Release);
 
         self.app_redraw_pending = true;

@@ -6,7 +6,7 @@ use crate::widgets::interaction::InteractionState;
 
 use super::BuildAxes;
 use super::scroll::viewport_px;
-use super::window::{prefix_row_top, row_top, y_to_row};
+use super::window::RowHeights;
 
 #[derive(Clone, Copy)]
 pub(super) struct KeyboardRuntime {
@@ -53,11 +53,12 @@ impl KeyboardRuntime {
         let viewport = self.viewport();
         if let Some(tops) = self.axes.tops {
             let tops = tops.peek();
-            let top = prefix_row_top(&tops, from);
+            let heights = RowHeights::Tops(&tops);
+            let top = heights.top(from);
             return if forward {
-                y_to_row(&tops, top + viewport).max(from.saturating_add(1))
+                heights.row_at(top + viewport).max(from.saturating_add(1))
             } else {
-                y_to_row(&tops, top - viewport).min(from.saturating_sub(1))
+                heights.row_at(top - viewport).min(from.saturating_sub(1))
             };
         }
         let rows = (viewport / self.axes.row_height).ceil().max(1.0) as usize;
@@ -70,12 +71,8 @@ impl KeyboardRuntime {
 
     fn span(self, index: usize) -> (f32, f32) {
         self.axes.tops.map_or_else(
-            || (row_top(index, self.axes.row_height), self.axes.row_height),
-            |tops| {
-                let tops = tops.peek();
-                let top = prefix_row_top(&tops, index);
-                (top, prefix_row_top(&tops, index.saturating_add(1)) - top)
-            },
+            || RowHeights::fixed(index.saturating_add(1), self.axes.row_height).span(index),
+            |tops| RowHeights::Tops(&tops.peek()).span(index),
         )
     }
 

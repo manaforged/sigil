@@ -22,11 +22,6 @@ impl StyleReactiveEffect {
         Self::default()
     }
 
-    #[must_use]
-    pub fn current_slice(&self) -> &'static [StyleAtom] {
-        self.atoms.get()
-    }
-
     pub(crate) fn atoms(&self) -> ReactiveStyleAtoms {
         Rc::clone(&self.atoms)
     }

@@ -4,21 +4,11 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
-use sigil::hal::{LogicalSize, Size as HalSize};
-use sigil::kernel::TextContent;
-use sigil::layout::{
-    Dimension, LayoutDrive, NodeHandle, ResolvedBox, Size, StyleData, StyleDisplay, TextMeasure,
-};
-
-struct NullText;
-impl TextMeasure for NullText {
-    fn measure(&self, _: &TextContent, _: HalSize) -> LogicalSize {
-        LogicalSize::default()
-    }
-}
+use sigil::layout::{Dimension, Display, LayoutDrive, NodeHandle, ResolvedBox, Size, StyleData};
+use sigil_kittest::FixedMeasure;
 
 fn drive() -> LayoutDrive {
-    LayoutDrive::new(Box::new(NullText))
+    LayoutDrive::new(Box::new(FixedMeasure::default()))
 }
 
 fn fixed(w: f32, h: f32) -> StyleData {
@@ -30,7 +20,7 @@ fn fixed(w: f32, h: f32) -> StyleData {
 
 fn flex_fixed(w: f32, h: f32) -> StyleData {
     let mut s = fixed(w, h);
-    s.display = StyleDisplay::Flex;
+    s.display = Display::Flex;
     s
 }
 

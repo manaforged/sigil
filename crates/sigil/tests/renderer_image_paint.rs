@@ -10,7 +10,7 @@ mod support;
 
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
 use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::{NodeStyleExt, Style};
 use sigil::widgets::layout_ext::WidgetLayoutExt;
 use support::{capture, close};
@@ -63,7 +63,8 @@ fn image_node_emits_an_image_command_carrying_its_pixels() {
     let mut cx = sigil::kernel::Cx::new_root();
     let root = cx.add(image(quadrant_image()));
     let engine_size = sigil::hal::Size::fixed(SIZE as f32, SIZE as f32);
-    let mut engine = sigil::layout::LayoutEngine::with_text_measure(Box::new(support::StubMeasure));
+    let mut engine =
+        sigil::layout::LayoutEngine::with_text_measure(Box::new(support::TEXT_MEASURE));
     engine.compute(&mut cx, root, engine_size).expect("layout");
 
     let scene = emit_scene(&cx, root);

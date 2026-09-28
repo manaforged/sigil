@@ -20,7 +20,7 @@ use crate::reactive::{Signal, effect};
 use std::ops::Deref;
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::scroll::WheelX;
+use super::scroll::ScrollAxis;
 use super::table::Identifiable;
 use selection::SelectionRuntime;
 pub use selection::{SelectionMode, SelectionState};
@@ -44,6 +44,7 @@ struct BoundCtx<T, R> {
     overscan: usize,
     row_key: Option<RowKey<T>>,
     measure: Option<measure::Measure>,
+    tops: Option<measure::Tops>,
 }
 
 type BoundVisibleThunk<T, R> = dyn FnOnce(BoundCtx<T, R>) -> NodeBuilder + 'static;
@@ -63,7 +64,7 @@ struct BuildAxes {
     viewport_height: f32,
     width: render::WidthSpec,
     scroll_y: Signal<f32>,
-    scroll_x: Option<WheelX>,
+    scroll_x: Option<ScrollAxis>,
     focused_row: Signal<usize>,
     selection_state: Signal<SelectionState>,
     viewport: Signal<(f32, f32)>,
@@ -95,7 +96,7 @@ where
     sizing: Sizing,
     overscan: usize,
     scroll_y: Option<Signal<f32>>,
-    scroll_x: Option<WheelX>,
+    scroll_x: Option<ScrollAxis>,
     focused_row: Option<Signal<usize>>,
     selection_state: Option<Signal<SelectionState>>,
     selection_mode: SelectionMode,
@@ -303,7 +304,11 @@ where
         max: Signal<f32>,
         width: Signal<f32>,
     ) -> Self {
-        self.scroll_x = Some((scroll_x, max, width));
+        self.scroll_x = Some(ScrollAxis {
+            offset: scroll_x,
+            max,
+            viewport: width,
+        });
         self
     }
 

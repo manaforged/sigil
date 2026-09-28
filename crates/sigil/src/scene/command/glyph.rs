@@ -71,23 +71,16 @@ impl GlyphRun {
     }
 
     #[must_use]
-    pub fn has_positioned_glyphs(&self) -> bool {
-        !self.shared.positioned_glyphs.is_empty()
-    }
-
-    #[must_use]
     pub fn positioned_glyphs(&self) -> &[RenderedGlyph] {
         &self.shared.positioned_glyphs
     }
 
     #[cfg(feature = "scene")]
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(crate) fn paragraph(&self) -> Option<&Paragraph> {
         self.shared.paragraph.as_ref()
     }
 
     #[cfg(feature = "scene")]
-    #[allow(dead_code, reason = "intentional, reviewed trade-off")]
     pub(crate) fn with_paragraph(mut self, paragraph: Paragraph) -> Self {
         let shared = Rc::make_mut(&mut self.shared);
         shared.positioned_glyphs = paragraph.rendered_glyphs();

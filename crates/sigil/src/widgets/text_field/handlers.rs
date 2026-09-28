@@ -1,13 +1,13 @@
 use std::cell::RefMut;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 
 use super::super::text_edit::{
-    TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit, attach_ime_handlers,
-    clipboard_keys, edit_value, history_keys, insert_text, move_caret, submit_text, word_keys,
+    KeyProfile, TextEdit, TextEditRuntime, TextEditState, attach_a11y_edit, attach_ime_handlers,
+    clipboard_keys, edit_keys, history_keys, move_caret, submit_text, word_keys,
 };
 use super::builder::TextChange;
 use crate::clipboard::Clipboard;
@@ -63,8 +63,16 @@ impl TextFieldRuntime {
 
 pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: &TextFieldRuntime) -> NodeBuilder {
     let input = &runtime.input;
-    let node = edit_keys(node, input);
-    let node = shift_keys(node, input);
+    let edge = input.clone();
+    let profile = KeyProfile {
+        edge: Rc::new(move |event, end, extend| {
+            move_caret(event, &edge, |edit| edge_move(edit, end, extend));
+        }),
+        line: None,
+    };
+    let submit = input.clone();
+    let node =
+        edit_keys(node, input, &profile).key(Key::Enter, move |event| submit_text(event, &submit));
     let node = clipboard_keys(node, input);
     let node = word_keys(node, input);
     let node = history_keys(node, input.clone());
@@ -72,49 +80,13 @@ pub(super) fn attach_key_handlers(node: NodeBuilder, runtime: &TextFieldRuntime)
     attach_ime_handlers(node, input)
 }
 
-type Edit = fn(&mut TextEdit);
-
-fn edit_keys(mut node: NodeBuilder, input: &TextEditRuntime) -> NodeBuilder {
-    let any_key = input.clone();
-    let submit = input.clone();
-    node = node
-        .key_any(move |event| insert_text(event, &any_key))
-        .key(Key::Enter, move |event| submit_text(event, &submit));
-    let edits: [(Key, Edit); 2] = [
-        (Key::Backspace, TextEdit::backspace),
-        (Key::Delete, TextEdit::delete_forward),
-    ];
-    for (key, edit) in edits {
-        let input = input.clone();
-        node = node.key(key, move |event| edit_value(event, &input, edit));
+fn edge_move(edit: &mut TextEdit, end: bool, extend: bool) {
+    match (end, extend) {
+        (false, false) => edit.move_home(),
+        (true, false) => edit.move_end(),
+        (false, true) => edit.shift_home(),
+        (true, true) => edit.shift_end(),
     }
-    let moves: [(Key, Edit); 4] = [
-        (Key::ArrowLeft, TextEdit::move_left),
-        (Key::ArrowRight, TextEdit::move_right),
-        (Key::Home, TextEdit::move_home),
-        (Key::End, TextEdit::move_end),
-    ];
-    for (key, edit) in moves {
-        let input = input.clone();
-        node = node.key(key, move |event| move_caret(event, &input, edit));
-    }
-    node
-}
-
-fn shift_keys(mut node: NodeBuilder, input: &TextEditRuntime) -> NodeBuilder {
-    let moves: [(Key, Edit); 4] = [
-        (Key::ArrowLeft, TextEdit::shift_left),
-        (Key::ArrowRight, TextEdit::shift_right),
-        (Key::Home, TextEdit::shift_home),
-        (Key::End, TextEdit::shift_end),
-    ];
-    for (key, edit) in moves {
-        let input = input.clone();
-        node = node.key(Shortcut::new(key, ModifiersState::SHIFT), move |event| {
-            move_caret(event, &input, edit);
-        });
-    }
-    node
 }
 
 #[cfg(test)]

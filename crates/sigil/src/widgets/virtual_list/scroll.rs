@@ -6,9 +6,9 @@ use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, derived_eq, effect, untrack};
 
 use super::measure::Tops;
-use super::window::{prefix_row_top, row_top, total_height, total_height_variable, y_to_row};
+use super::window::RowHeights;
 use super::{BuildAxes, InitialScroll, VirtualListBuilder};
-use crate::widgets::scroll::{pin_to_bottom as follow_bottom, wheel, wheel2};
+use crate::widgets::scroll::{WheelAxis, pin_to_bottom, wheel};
 
 impl<T, R> VirtualListBuilder<T, R>
 where
@@ -30,8 +30,8 @@ where
 
 pub(super) fn content_px(tops: Option<Tops>, row_height: f32, rows: usize) -> f32 {
     tops.map_or_else(
-        || total_height(rows, row_height),
-        |tops| total_height_variable(&tops.get()),
+        || RowHeights::fixed(rows, row_height).total(),
+        |tops| RowHeights::Tops(&tops.get()).total(),
     )
 }
 
@@ -57,12 +57,8 @@ pub(super) fn bind_extent(axes: BuildAxes, content: Option<Signal<f32>>, max: Op
 
 fn row_span(axes: BuildAxes, index: usize) -> (f32, f32) {
     axes.tops.map_or_else(
-        || (row_top(index, axes.row_height), axes.row_height),
-        |tops| {
-            let tops = tops.get();
-            let top = prefix_row_top(&tops, index);
-            (top, prefix_row_top(&tops, index + 1) - top)
-        },
+        || RowHeights::fixed(index.saturating_add(1), axes.row_height).span(index),
+        |tops| RowHeights::Tops(&tops.get()).span(index),
     )
 }
 
@@ -94,7 +90,7 @@ fn follow_target(axes: BuildAxes, (top, height): (f32, f32), current: f32, viewp
 }
 
 pub(super) fn follow(target: Signal<usize>, axes: BuildAxes, rows: impl Fn() -> usize + 'static) {
-    follow_bottom(axes.scroll_y, axes.max);
+    pin_to_bottom(axes.scroll_y, axes.max);
     let last_rows = Cell::new(rows());
     effect(move || {
         let wanted = target.get();
@@ -126,13 +122,14 @@ pub(super) fn anchor(axes: BuildAxes) {
             let prev = seen.replace(Rc::clone(&next));
             let current = axes.scroll_y.peek();
             let viewport = viewport_px(axes.viewport.peek(), axes.viewport_height);
-            if current + 1.0 >= total_height_variable(&prev) - viewport {
+            let (before, after) = (RowHeights::Tops(&prev), RowHeights::Tops(&next));
+            if current + 1.0 >= before.total() - viewport {
                 return;
             }
-            let row = y_to_row(&prev, current);
-            let shift = prefix_row_top(&next, row) - prefix_row_top(&prev, row);
+            let row = before.row_at(current);
+            let shift = after.top(row) - before.top(row);
             if shift.abs() > f32::EPSILON {
-                let max = (total_height_variable(&next) - viewport).max(0.0);
+                let max = (after.total() - viewport).max(0.0);
                 axes.scroll_y.set((current + shift).clamp(0.0, max));
             }
         });
@@ -153,7 +150,7 @@ pub(super) fn apply_bound_scroll(
         axes.scroll_y.set(target);
     }
     if pin_bottom {
-        follow_bottom(axes.scroll_y, axes.max);
+        pin_to_bottom(axes.scroll_y, axes.max);
     }
 }
 
@@ -161,11 +158,11 @@ pub(super) fn attach_wheel(root: NodeBuilder, axes: BuildAxes) -> NodeBuilder {
     let scroll_y = axes.scroll_y;
     let scroll_x = axes.scroll_x;
     root.on_scroll(move |ev| {
-        let viewport_height = viewport_px(axes.viewport.peek(), axes.viewport_height);
-        let max = axes.max.peek();
-        match scroll_x {
-            Some(x) => wheel2(ev, scroll_y, viewport_height, max, x),
-            None => wheel(ev, scroll_y, viewport_height, max),
-        }
+        let y = WheelAxis {
+            offset: scroll_y,
+            viewport: viewport_px(axes.viewport.peek(), axes.viewport_height),
+            max: axes.max.peek(),
+        };
+        wheel(ev, Some(y), scroll_x.map(WheelAxis::from));
     })
 }

@@ -5,9 +5,7 @@ use crate::widgets::text_search::{CloseTags, find_ci, starts_ci};
 
 pub(crate) fn parse_html(source: &str) -> Vec<Block> {
     if crate::widgets::source_too_large(source) {
-        return vec![Block::Paragraph(String::from(
-            "Source is larger than the 1 MiB limit.",
-        ))];
+        return vec![crate::widgets::oversize_block()];
     }
     let body = strip_noise(source);
     let mut out = Vec::new();
@@ -39,6 +37,7 @@ fn strip_noise(source: &str) -> String {
         out.push_str(&rest[..start]);
         let after = &rest[start..];
         let Some(end) = after.find('>') else {
+            rest = after;
             break;
         };
         let script = starts_ci(after, "<script");
@@ -165,7 +164,7 @@ fn tagged(rest: &str, pair: (&str, &str), tags: &mut CloseTags) -> Option<(Strin
 }
 
 fn take_text(rest: &str) -> (String, usize) {
-    match rest.find('<') {
+    match rest.find('<').filter(|&i| rest[i..].contains('>')) {
         Some(0) => {
             let end = rest.find('>').map_or(rest.len(), |i| i + 1);
             (String::new(), end)
@@ -192,8 +191,11 @@ fn inner_text(source: &str) -> String {
                 rest = rest.get(eaten..).unwrap_or("");
                 continue;
             }
-            let skip = rest.find('>').map_or(rest.len(), |i| i + 1);
-            rest = rest.get(skip..).unwrap_or("");
+            let Some(close) = rest.find('>') else {
+                out.push_str(&decode(rest));
+                break;
+            };
+            rest = rest.get(close + 1..).unwrap_or("");
             continue;
         }
         let end = rest.find('<').unwrap_or(rest.len());

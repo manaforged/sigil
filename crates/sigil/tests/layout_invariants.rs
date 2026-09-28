@@ -5,20 +5,12 @@
 #![allow(clippy::unwrap_used, clippy::panic)]
 
 use sigil::prelude::*;
+use sigil_kittest::CharMeasure;
 
-struct ProportionalText;
-
-impl TextMeasure for ProportionalText {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        let len = match content {
-            TextContent::Static(s) => s.len(),
-            TextContent::Reactive(sig) => sig.peek().len(),
-            TextContent::Compute(_) => content.resolve().len(),
-        };
-        #[allow(clippy::cast_precision_loss)]
-        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 7.0,
+    line_height: 16.0,
+};
 
 struct NativeLineGeometry;
 
@@ -132,7 +124,7 @@ fn assert_sound(label: &str, width: f32, build: impl FnOnce() -> NodeBuilder) {
     sigil::reactive::Runtime::scope("layout-invariants", || {
         let mut cx = Cx::new_root();
         let root = cx.add(build());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(width, 2000.0))
             .expect("layout computes");
@@ -213,7 +205,7 @@ fn compact_text_field_contains_native_line_height() {
         sigil::layout::set_text_geometry(std::rc::Rc::new(NativeLineGeometry));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(signal(String::new())).width(560.0).height(34.0));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(560.0, 34.0))
             .expect("layout computes");
@@ -279,7 +271,7 @@ fn layout_re_resolves_when_the_container_resizes() {
             labeled_field("a", progress(signal(0.5_f32), 1.0)),
             labeled_field("b", progress(signal(0.5_f32), 1.0)),
         ]));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(ProportionalText));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
 
         let mut widths = Vec::new();
         for w in [400.0_f32, 900.0, 250.0] {

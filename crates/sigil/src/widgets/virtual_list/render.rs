@@ -1,19 +1,8 @@
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow, Position};
+use crate::layout::prelude::{Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
 
 use super::selection::SelectionRuntime;
-use super::window::{VisibleWindow, prefix_row_top, row_top, total_height};
-
-pub(super) type HeightSpec<'a> = (f32, Option<&'a [f32]>);
-
-#[derive(Clone, Copy)]
-pub(super) struct VisibleRenderSpec<'a> {
-    heights: HeightSpec<'a>,
-    width: WidthSpec,
-    selection: SelectionRuntime,
-    scroll_y: f32,
-}
 
 #[derive(Clone, Copy)]
 pub(super) enum WidthSpec {
@@ -33,55 +22,6 @@ pub(super) fn viewport_container(height: f32, width: WidthSpec) -> NodeBuilder {
 
 pub(super) fn content_container(height: f32, width: WidthSpec) -> NodeBuilder {
     container().layout(width.apply(LayoutStyle::block().height(height)))
-}
-
-pub(super) fn build_visible_window<T, R>(
-    items: &[T],
-    render: &R,
-    window: VisibleWindow,
-    spec: VisibleRenderSpec<'_>,
-) -> NodeBuilder
-where
-    T: 'static,
-    R: Fn(usize, &T) -> NodeBuilder + 'static,
-{
-    let (row_height, row_tops) = spec.heights;
-    let document_top = row_tops.map_or_else(
-        || row_top(window.first, row_height),
-        |row_tops| prefix_row_top(row_tops, window.first),
-    );
-    let top = document_top - spec.scroll_y;
-    let visible_height = row_tops.map_or_else(
-        || total_height(window.len(), row_height),
-        |row_tops| prefix_row_top(row_tops, window.end) - document_top,
-    );
-    let mut visible = container().layout(
-        spec.width.apply(
-            LayoutStyle::block()
-                .position(Position::Absolute)
-                .inset_top(top)
-                .inset_left(0.0)
-                .height(visible_height),
-        ),
-    );
-
-    for index in window.first..window.end {
-        let Some(item) = items.get(index) else {
-            break;
-        };
-        let slot_height = row_tops.map_or(row_height, |row_tops| {
-            prefix_row_top(row_tops, index + 1) - prefix_row_top(row_tops, index)
-        });
-        visible = visible.child(place_row(
-            index,
-            slot_height,
-            spec.width,
-            render(index, item),
-            spec.selection,
-        ));
-    }
-
-    visible
 }
 
 pub(super) fn place_row(
@@ -130,21 +70,5 @@ pub(super) fn width_spec(width: Option<f32>) -> WidthSpec {
     match width {
         Some(px) if px.is_finite() && px > 0.0 => WidthSpec::Fixed(px),
         _ => WidthSpec::Stretch,
-    }
-}
-
-impl<'a> VisibleRenderSpec<'a> {
-    pub(super) const fn new(
-        heights: HeightSpec<'a>,
-        width: WidthSpec,
-        selection: SelectionRuntime,
-        scroll_y: f32,
-    ) -> Self {
-        Self {
-            heights,
-            width,
-            selection,
-            scroll_y,
-        }
     }
 }

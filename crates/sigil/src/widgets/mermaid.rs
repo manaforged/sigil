@@ -76,7 +76,7 @@ fn bound_output(mut lines: Vec<String>) -> Vec<String> {
 
 fn draw(source: &str) -> Vec<String> {
     if crate::widgets::source_too_large(source) {
-        return vec![String::from("Source is larger than the 1 MiB limit.")];
+        return vec![crate::widgets::oversize_message()];
     }
     let source = bound_source(source);
     let mut lines = flow::draw(&source)

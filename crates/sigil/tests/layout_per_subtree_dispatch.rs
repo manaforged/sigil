@@ -9,28 +9,16 @@
     clippy::similar_names
 )]
 
-use sigil::hal::{LogicalSize, Size as HalSize};
-use sigil::kernel::TextContent;
-use sigil::layout::{
-    Dimension, LayoutDrive, Size as StyleSize, StyleData, StyleDisplay as Display,
-    StyleFlexDirection as FlexDirection, TextMeasure,
+use sigil::layout::{Dimension, Display, FlexDirection, LayoutDrive, Size as StyleSize, StyleData};
+use sigil_kittest::CharMeasure;
+
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 16.0,
 };
 
-struct StubText;
-
-impl TextMeasure for StubText {
-    #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextContent, _space: HalSize) -> LogicalSize {
-        let chars = match source {
-            TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
-        };
-        LogicalSize::new(chars * 8.0, 16.0)
-    }
-}
-
 fn drive() -> LayoutDrive {
-    LayoutDrive::new(Box::new(StubText))
+    LayoutDrive::new(Box::new(TEXT_MEASURE))
 }
 
 fn block_style() -> StyleData {

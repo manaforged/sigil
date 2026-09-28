@@ -5,16 +5,10 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::hal::Size;
-use sigil::kernel::{Cx, NodeId, TextContent, container};
+use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil::layout::{Dimension, LayoutEngine, TextMeasure};
-
-struct NoText;
-impl TextMeasure for NoText {
-    fn measure(&self, _c: &TextContent, _s: Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(0.0, 0.0)
-    }
-}
+use sigil::layout::{Dimension, LayoutEngine};
+use sigil_kittest::FixedMeasure;
 
 fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
     let mut cx = Cx::new_root();
@@ -24,7 +18,7 @@ fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {
             .child(container().layout(a))
             .child(container().layout(b)),
     );
-    let mut layout = LayoutEngine::with_text_measure(Box::new(NoText));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     layout
         .compute(&mut cx, root, Size::fixed(root_w, 100.0))
         .unwrap();
