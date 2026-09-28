@@ -3,6 +3,7 @@ use crate::hal::Rect;
 use crate::style::{Rgba8, Theme, Tone};
 use crate::terminal::graphics::Placement;
 use smol_str::SmolStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 mod decoration;
 mod image;
@@ -131,6 +132,19 @@ impl Grid {
         self.cursor
     }
 
+    pub(crate) const fn place_cursor(&mut self, at: Option<(usize, usize)>) {
+        self.cursor = at;
+    }
+
+    pub(crate) fn set_row(&mut self, row: usize, cells: &[Cell]) {
+        let start = row.saturating_mul(self.cols);
+        if let Some(slot) = self.cells.get_mut(start..start.saturating_add(self.cols)) {
+            for (cell, next) in slot.iter_mut().zip(cells) {
+                cell.clone_from(next);
+            }
+        }
+    }
+
     #[must_use]
     pub fn images(&self) -> &[Placement] {
         &self.images
@@ -162,6 +176,7 @@ impl Grid {
         }
         self.cols = cols;
         self.rows = rows;
+        self.cursor = None;
         self.cells.clear();
         self.cells
             .resize(cols.saturating_mul(rows), Cell::default());
@@ -227,15 +242,27 @@ impl Grid {
 
     pub(crate) fn overlay_text(&mut self, col: usize, row: usize, text: &str, fg: Ink) {
         let mut x = col;
-        for ch in text.chars() {
-            let Some(index) = self.index(x, row) else {
+        for grapheme in text.graphemes(true) {
+            let step = crate::app::cell_width(grapheme);
+            if step == 0 {
+                continue;
+            }
+            if x.saturating_add(step) > self.cols {
                 return;
-            };
-            if let Some(cell) = self.cells.get_mut(index) {
-                cell.text = ch.to_string().into();
+            }
+            for pad in 0..step {
+                let Some(cell) = self.index(x + pad, row).and_then(|i| self.cells.get_mut(i))
+                else {
+                    return;
+                };
+                cell.text = if pad == 0 {
+                    grapheme.into()
+                } else {
+                    SmolStr::new_inline(CONTINUES)
+                };
                 cell.fg = fg;
             }
-            x = x.saturating_add(1);
+            x += step;
         }
     }
 

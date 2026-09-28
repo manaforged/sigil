@@ -1,6 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::io::{self, BufWriter, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, PoisonError};
+use std::thread::ThreadId;
 
 use crossterm::event::{
     DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
@@ -17,11 +19,18 @@ use crossterm::{cursor, execute, queue};
 use crate::terminal::caps::{Caps, Cursor, Keyboard};
 use crate::terminal::screen::Screen;
 
+mod above;
+
+pub use above::{PrintAboveError, print_above};
+
 const BUFFER: usize = 64 * 1024;
 
 static RESTORED: AtomicBool = AtomicBool::new(true);
 static TITLED: AtomicBool = AtomicBool::new(false);
 static KEYS_PUSHED: AtomicBool = AtomicBool::new(false);
+static INLINE: AtomicBool = AtomicBool::new(false);
+static BAR_CURSOR: AtomicBool = AtomicBool::new(false);
+static OWNER: Mutex<Option<ThreadId>> = Mutex::new(None);
 
 thread_local! {
     static LIVE: Cell<bool> = const { Cell::new(false) };
@@ -30,35 +39,47 @@ thread_local! {
     static MOUSE: Cell<bool> = const { Cell::new(true) };
     static TITLE: RefCell<Option<String>> = const { RefCell::new(None) };
     static CAPS: Cell<Option<Caps>> = const { Cell::new(None) };
+    static LIVE_ROWS: Cell<u16> = const { Cell::new(0) };
 }
 
 pub(crate) struct Term {
     pub(crate) redraw: bool,
+    inline: bool,
     caps: Caps,
     out: BufWriter<io::Stdout>,
 }
 
 impl Term {
-    pub(crate) fn enter(title: &str) -> io::Result<Self> {
+    pub(crate) fn enter(title: &str, inline: bool) -> io::Result<Self> {
         TITLE.with(|slot| *slot.borrow_mut() = Some(title.to_owned()));
+        set_owner(Some(std::thread::current().id()));
         let guard = EnterGuard;
         RESTORED.store(false, Ordering::Relaxed);
         enable_raw_mode()?;
         let caps = Caps::probe();
         CAPS.with(|slot| slot.set(Some(caps)));
-        enter_modes()?;
+        BAR_CURSOR.store(caps.cursor == Cursor::Bar, Ordering::Relaxed);
+        enter_modes(inline)?;
         core::mem::forget(guard);
         LIVE.with(|live| live.set(true));
         FOCUSED.with(|focused| focused.set(true));
-        Ok(Self {
+        let mut term = Self {
             redraw: true,
+            inline,
             caps,
             out: BufWriter::with_capacity(BUFFER, io::stdout()),
-        })
+        };
+        if inline {
+            ground(&mut term.out)?;
+        }
+        Ok(term)
     }
 
     pub(crate) fn paint(&mut self, screen: &mut Screen) -> io::Result<()> {
         let redraw = core::mem::take(&mut self.redraw) | REDRAW.with(|flag| flag.replace(false));
+        if self.inline {
+            return paint_inline(&mut self.out, screen, redraw);
+        }
         paint_frame(&mut self.out, screen, redraw)
     }
 
@@ -71,7 +92,10 @@ impl Term {
     }
 
     pub(crate) fn reenter(&mut self) -> io::Result<()> {
-        enter_modes()?;
+        enter_modes(self.inline)?;
+        if self.inline {
+            ground(&mut self.out)?;
+        }
         self.redraw = true;
         Ok(())
     }
@@ -81,21 +105,36 @@ impl Drop for Term {
     fn drop(&mut self) {
         LIVE.with(|live| live.set(false));
         restore();
+        if self.inline {
+            drop(execute!(io::stdout(), Print("\n")));
+        }
         CAPS.with(|slot| slot.set(None));
         TITLE.with(|slot| drop(slot.borrow_mut().take()));
+        set_owner(None);
     }
 }
 
-fn enter_modes() -> io::Result<()> {
+fn set_owner(owner: Option<ThreadId>) {
+    *OWNER.lock().unwrap_or_else(PoisonError::into_inner) = owner;
+}
+
+fn owns_terminal() -> bool {
+    OWNER
+        .try_lock()
+        .ok()
+        .and_then(|owner| *owner)
+        .is_some_and(|owner| owner == std::thread::current().id())
+}
+
+fn enter_modes(inline: bool) -> io::Result<()> {
+    INLINE.store(inline, Ordering::Relaxed);
     RESTORED.store(false, Ordering::Relaxed);
     enable_raw_mode()?;
-    execute!(
-        io::stdout(),
-        EnterAlternateScreen,
-        EnableBracketedPaste,
-        EnableFocusChange,
-        cursor::Hide
-    )?;
+    let mut out = io::stdout();
+    if !inline {
+        execute!(out, EnterAlternateScreen)?;
+    }
+    execute!(out, EnableBracketedPaste, EnableFocusChange, cursor::Hide)?;
     write_mouse(MOUSE.with(Cell::get))?;
     if current_caps().keyboard == Keyboard::Kitty {
         KEYS_PUSHED.store(true, Ordering::Relaxed);
@@ -123,6 +162,37 @@ fn current_caps() -> Caps {
 fn write_title(title: &str) -> io::Result<()> {
     TITLED.store(true, Ordering::Relaxed);
     execute!(io::stdout(), SetTitle(title))
+}
+
+fn paint_inline(out: &mut impl Write, screen: &mut Screen, redraw: bool) -> io::Result<()> {
+    if !redraw && !screen.needs_flush() {
+        return Ok(());
+    }
+    let sync = screen.caps().sync;
+    if sync {
+        queue!(out, Print("\x1b[?2026h"))?;
+    }
+    if redraw {
+        screen.invalidate();
+    }
+    screen.flush_inline(out)?;
+    LIVE_ROWS.with(|rows| rows.set(u16::try_from(screen.rows()).unwrap_or(u16::MAX)));
+    if sync {
+        queue!(out, Print("\x1b[?2026l"))?;
+    }
+    out.flush()
+}
+
+fn ground(out: &mut impl Write) -> io::Result<()> {
+    queue!(out, cursor::MoveToColumn(0))?;
+    let Ok((_, row)) = cursor::position() else {
+        return out.write_all(b"\n").and_then(|()| out.flush());
+    };
+    let rows = crossterm::terminal::size().map_or(0, |(_, rows)| rows);
+    for _ in row..rows.saturating_sub(1) {
+        queue!(out, Print("\n"))?;
+    }
+    out.flush()
 }
 
 pub(crate) fn paint_frame(
@@ -158,7 +228,7 @@ pub(crate) fn restore() {
     if TITLED.swap(false, Ordering::Relaxed) {
         drop(execute!(io::stdout(), SetTitle("")));
     }
-    if current_caps().cursor == Cursor::Bar {
+    if BAR_CURSOR.load(Ordering::Relaxed) {
         drop(execute!(
             io::stdout(),
             cursor::SetCursorStyle::DefaultUserShape
@@ -170,9 +240,11 @@ pub(crate) fn restore() {
         DisableBracketedPaste,
         DisableFocusChange,
         DisableMouseCapture,
-        cursor::Show,
-        LeaveAlternateScreen
+        cursor::Show
     ));
+    if !INLINE.swap(false, Ordering::Relaxed) {
+        drop(execute!(io::stdout(), LeaveAlternateScreen));
+    }
     drop(disable_raw_mode());
 }
 
@@ -184,9 +256,13 @@ pub fn suspend<R>(run: impl FnOnce() -> R) -> io::Result<R> {
     if !LIVE.with(Cell::get) {
         return Ok(run());
     }
+    let inline = INLINE.load(Ordering::Relaxed);
     restore();
     let result = run();
-    enter_modes()?;
+    enter_modes(inline)?;
+    if inline {
+        ground(&mut io::stdout())?;
+    }
     REDRAW.with(|flag| flag.set(true));
     Ok(result)
 }
@@ -254,7 +330,9 @@ impl HookGuard {
         let previous: std::sync::Arc<PanicHook> = std::sync::Arc::new(std::panic::take_hook());
         let chained = std::sync::Arc::clone(&previous);
         std::panic::set_hook(Box::new(move |info| {
-            restore();
+            if owns_terminal() {
+                restore();
+            }
             chained(info);
         }));
         Self {
@@ -270,3 +348,7 @@ impl Drop for HookGuard {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "term_tests.rs"]
+mod tests;

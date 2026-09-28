@@ -1,25 +1,25 @@
 use std::time::Duration;
 
-use super::{Answers, Questions};
+use super::{Answers, Backdrop, Questions};
 use crate::terminal::graphics::Protocol;
 
 const TIMEOUT: Duration = Duration::from_millis(150);
 
-pub(super) fn ask(ask: Questions) -> Option<Answers> {
+pub(super) fn ask(ask: Questions, backdrop: bool) -> Option<Answers> {
     use std::io::{IsTerminal, Write};
     let stdin = std::io::stdin();
     if !stdin.is_terminal() || !std::io::stdout().is_terminal() || ready(&stdin, Duration::ZERO)? {
         return None;
     }
     let mut out = std::io::stdout().lock();
-    out.write_all(queries(ask).as_bytes()).ok()?;
+    out.write_all(queries(ask, backdrop).as_bytes()).ok()?;
     out.flush().ok()?;
     drop(out);
     let reply = read_reply(&stdin)?;
     Some(parse(&reply))
 }
 
-fn queries(ask: Questions) -> String {
+fn queries(ask: Questions, backdrop: bool) -> String {
     let mut text = String::new();
     if ask.graphics {
         text.push_str("\x1b_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\");
@@ -29,6 +29,9 @@ fn queries(ask: Questions) -> String {
     }
     if ask.keys {
         text.push_str("\x1b[?u");
+    }
+    if backdrop {
+        text.push_str("\x1b]11;?\x1b\\");
     }
     text.push_str("\x1b[c");
     text
@@ -73,6 +76,7 @@ fn parse(reply: &str) -> Answers {
             .skip(1)
             .any(|rest| rest.starts_with(['1', '2', '3', '4'])),
         kitty_keys: csi_params(reply, 'u').is_some(),
+        backdrop: backdrop(reply),
     }
 }
 
@@ -87,3 +91,25 @@ fn csi_params(reply: &str, last: char) -> Option<&str> {
         rest.get(end..)?.starts_with(last).then_some(head)
     })
 }
+
+fn backdrop(reply: &str) -> Option<Backdrop> {
+    let (_, rest) = reply.split_once("\x1b]11;rgb:")?;
+    let body = rest.split(['\x1b', '\x07']).next()?;
+    let mut channels = body.split('/').map(|hex| {
+        let digits = u32::try_from(hex.len()).ok()?;
+        let value = u32::from_str_radix(hex, 16).ok()?;
+        let top = 16_u32.checked_pow(digits)?.checked_sub(1)?;
+        Some(f64::from(value) / f64::from(top.max(1)))
+    });
+    let (r, g, b) = (channels.next()??, channels.next()??, channels.next()??);
+    let luma = 0.0722f64.mul_add(b, 0.2126f64.mul_add(r, 0.7152 * g));
+    Some(if luma < 0.5 {
+        Backdrop::Dark
+    } else {
+        Backdrop::Light
+    })
+}
+
+#[cfg(test)]
+#[path = "probe_tests.rs"]
+mod tests;

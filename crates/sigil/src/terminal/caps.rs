@@ -12,6 +12,12 @@ pub enum ColorDepth {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Backdrop {
+    Dark,
+    Light,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Keyboard {
     Legacy,
     Kitty,
@@ -48,6 +54,7 @@ pub struct Caps {
     pub cursor: Cursor,
     pub sync: bool,
     pub clipboard: ClipRoute,
+    pub backdrop: Option<Backdrop>,
 }
 
 impl Default for Caps {
@@ -63,6 +70,7 @@ impl Default for Caps {
             cursor: Cursor::Block,
             sync: true,
             clipboard: ClipRoute::Osc52,
+            backdrop: None,
         }
     }
 }
@@ -86,6 +94,7 @@ struct Answers {
     graphics: Option<Protocol>,
     sync: bool,
     kitty_keys: bool,
+    backdrop: Option<Backdrop>,
 }
 
 #[derive(Clone, Copy)]
@@ -116,11 +125,12 @@ impl Caps {
     #[must_use]
     pub fn probe() -> Self {
         let draft = draft(&|key: &str| std::env::var(key).ok());
-        if !(draft.ask.graphics || draft.ask.sync || draft.ask.keys) {
+        let backdrop = draft.caps.backdrop.is_none();
+        if !(draft.ask.graphics || draft.ask.sync || draft.ask.keys || backdrop) {
             return draft.caps;
         }
         #[cfg(unix)]
-        let answers = probe::ask(draft.ask);
+        let answers = probe::ask(draft.ask, backdrop);
         #[cfg(not(unix))]
         let answers: Option<Answers> = None;
         match answers {
@@ -137,6 +147,9 @@ impl Draft {
         }
         if self.ask.sync {
             self.caps.sync = answers.sync;
+        }
+        if self.caps.backdrop.is_none() {
+            self.caps.backdrop = answers.backdrop;
         }
         if self.ask.keys && !answers.kitty_keys {
             self.caps.keyboard = Keyboard::Legacy;
@@ -185,6 +198,7 @@ fn draft(env: &impl Fn(&str) -> Option<String>) -> Draft {
             },
             sync: sync.unwrap_or(true),
             clipboard: clip_route(env),
+            backdrop: backdrop(env),
         },
         ask: Questions {
             graphics: graphics.is_none() && env("SIGIL_GRAPHICS").is_none(),
@@ -271,4 +285,14 @@ fn clip_route(env: &impl Fn(&str) -> Option<String>) -> ClipRoute {
     } else {
         ClipRoute::Osc52
     }
+}
+
+fn backdrop(env: &impl Fn(&str) -> Option<String>) -> Option<Backdrop> {
+    let pair = env("COLORFGBG")?;
+    let index: u8 = pair.rsplit(';').next()?.parse().ok()?;
+    Some(if matches!(index, 7 | 15) {
+        Backdrop::Light
+    } else {
+        Backdrop::Dark
+    })
 }

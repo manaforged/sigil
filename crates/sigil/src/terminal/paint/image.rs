@@ -6,6 +6,7 @@ use smol_str::SmolStr;
 use super::{Cell, Grid, Ink};
 
 const SOLID: u32 = 51;
+const PEAK: u32 = 128;
 const INK: u8 = 64;
 
 type Window = (usize, usize, usize);
@@ -131,14 +132,14 @@ fn texel(source: &ImageSource, x: usize, y: usize) -> [u8; 4] {
 
 struct Sums {
     cols: usize,
-    slots: Vec<[u32; 5]>,
+    slots: Vec<[u32; 6]>,
 }
 
 impl Sums {
     fn sample(source: &ImageSource, (width, top, height): Window, cells: (usize, usize)) -> Self {
         let cols = cells.0 * 2;
         let rows = cells.1 * 3;
-        let mut slots = vec![[0_u32; 5]; cols * rows];
+        let mut slots = vec![[0_u32; 6]; cols * rows];
         if width == 0 || height == 0 {
             return Self { cols, slots };
         }
@@ -159,8 +160,8 @@ impl Sums {
         let mut total = [0_u32; 4];
         for bit in 0..6 {
             let index = (row * 3 + bit / 2) * self.cols + col * 2 + bit % 2;
-            let [red, green, blue, alpha, weight] = *self.slots.get(index)?;
-            if weight > 0 && alpha * 255 >= weight * SOLID {
+            let [red, green, blue, alpha, weight, peak] = *self.slots.get(index)?;
+            if weight > 0 && (alpha * 255 >= weight * SOLID || peak >= PEAK) {
                 mask |= 1 << bit;
                 for (sum, value) in total.iter_mut().zip([red, green, blue, alpha]) {
                     *sum += value;
@@ -171,8 +172,9 @@ impl Sums {
     }
 }
 
-fn add([sr, sg, sb, sa, sn]: &mut [u32; 5], [r, g, b, a]: [u8; 4]) {
+fn add([sr, sg, sb, sa, sn, peak]: &mut [u32; 6], [r, g, b, a]: [u8; 4]) {
     let alpha = u32::from(a);
+    *peak = (*peak).max(alpha);
     *sr += u32::from(r) * alpha;
     *sg += u32::from(g) * alpha;
     *sb += u32::from(b) * alpha;
@@ -215,11 +217,11 @@ fn icon(source: &ImageSource, (width, top, height): Window) -> Option<Icon> {
     let across = bands(&|x, y| (y, (x - x0) * 1000 / (x1 - x0 + 1)), y0, y1);
     let down = bands(&|x, y| (x, (y - y0) * 1000 / (y1 - y0 + 1)), x0, x1);
     let glyph = arrow(across, down)?;
-    let mut total = [0_u32; 5];
+    let mut total = [0_u32; 6];
     for (.., px) in &inked {
         add(&mut total, *px);
     }
-    let [r, g, b, a, _] = total;
+    let [r, g, b, a, ..] = total;
     let centre = (
         (x0 + x1 + 1) * 500 / width.max(1),
         (y0 + y1 + 1) * 500 / height.max(1),

@@ -18,6 +18,7 @@ pub struct ProgressBuilder {
     pub indeterminate: bool,
     track_height: f32,
     track_width: Option<f32>,
+    tone: Tone,
     name: AccessibleName,
     style_accumulator: Style,
 }
@@ -36,6 +37,7 @@ impl ProgressBuilder {
             indeterminate: false,
             track_height: TRACK_HEIGHT,
             track_width: None,
+            tone: Tone::Primary,
             name: AccessibleName::from("Progress"),
             style_accumulator: Style::new(),
         }
@@ -60,6 +62,12 @@ impl ProgressBuilder {
     }
 
     #[must_use]
+    pub const fn tone(mut self, tone: Tone) -> Self {
+        self.tone = tone;
+        self
+    }
+
+    #[must_use]
     pub fn label(mut self, name: impl Into<AccessibleName>) -> Self {
         self.name = name.into();
         self
@@ -76,7 +84,7 @@ impl ProgressBuilder {
         let fill = if is_indeterminate {
             indeterminate_fill(value, track_h)
         } else {
-            determinate_fill(value, max, track_h)
+            determinate_fill(value, max, track_h, self.tone)
         };
 
         let mut node = container()
@@ -114,7 +122,7 @@ fn track_layout(track_h: f32, track_w: Option<f32>) -> LayoutStyle {
     base.align_items(AlignItems::Center)
 }
 
-fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
+fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> NodeBuilder {
     let filled = derived_eq(move || grow_units(value.get() / max));
     let empty = derived_eq(move || GROW_SCALE - grow_units(value.get() / max));
     container()
@@ -123,14 +131,22 @@ fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
                 .style_reactive(move || grow_atoms(filled.get()))
-                .class(FILL)
-                .tone(Tone::Primary),
+                .class(fill_atoms(tone))
+                .tone(tone),
         )
         .child(
             container()
                 .layout(LayoutStyle::block().height(track_h).width(0.0))
                 .style_reactive(move || grow_atoms(empty.get())),
         )
+}
+
+const fn fill_atoms(tone: Tone) -> [StyleAtom; 2] {
+    let paint = match tone {
+        Tone::Primary => Token::Accent.bg(),
+        _ => super::chart::tone_fill(tone).bg(),
+    };
+    [Radius::Md.atom(), paint]
 }
 
 const GROW_SCALE: u16 = 1_000;

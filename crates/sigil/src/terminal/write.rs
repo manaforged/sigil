@@ -13,6 +13,10 @@ use crate::terminal::paint::{CONTINUES, Cell, Grid, Ink, Underline};
 use crate::terminal::scroll::Shift;
 use smol_str::SmolStr;
 
+mod inline;
+
+pub(crate) use inline::inline;
+
 pub(crate) struct Measured<'a, W> {
     inner: &'a mut W,
     pub(crate) bytes: u64,

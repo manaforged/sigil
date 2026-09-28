@@ -3,8 +3,6 @@ use crate::profile::{self, Frame};
 use crate::style::Tone;
 use crate::terminal::paint::{Grid, Ink};
 
-const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
-
 const fn tone(wall_ns: u64) -> Tone {
     match hud::level(wall_ns) {
         2 => Tone::Error,
@@ -13,17 +11,13 @@ const fn tone(wall_ns: u64) -> Tone {
     }
 }
 
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "frame times fit in f32 at glyph precision"
+)]
 fn spark(wall_ns: u64) -> char {
     let scale = crate::profile::FRAME_BUDGET_NS.saturating_mul(2);
-    let level = wall_ns
-        .saturating_mul(7)
-        .checked_div(scale)
-        .unwrap_or(7)
-        .min(7);
-    SPARKS
-        .get(usize::try_from(level).unwrap_or(0))
-        .copied()
-        .unwrap_or('▁')
+    crate::widgets::spark_glyph(wall_ns as f32 / scale.max(1) as f32)
 }
 
 pub(crate) fn draw(grid: &mut Grid) {

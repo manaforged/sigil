@@ -322,3 +322,39 @@ fn a_blank_tail_is_cleared_rather_than_spaced() {
         "the tail must be cleared, not just left unwritten: {out:?}"
     );
 }
+
+#[test]
+fn inline_proof_paints_relative_and_clears_tail() {
+    let caps = Caps::default();
+    let grid6 = draw(vec![plain("alpha", None)], 8, 6);
+
+    let mut out = Vec::new();
+    super::inline(&mut out, None, &grid6, 0, &caps).unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(!text.contains("\x1b[1049h"), "inline emitted alt-screen");
+    assert!(
+        !text.contains("\x1b[H") && !text.contains("H\x1b"),
+        "absolute MoveTo"
+    );
+    for row in 1..=20u8 {
+        let needle = format!("\x1b[{row};");
+        assert!(!text.contains(&needle), "absolute row {row}");
+    }
+    assert!(text.contains("alpha"));
+    assert_eq!(text.matches("\r\n").count(), 5);
+
+    let grid4 = draw(vec![plain("beta", None)], 8, 4);
+    let mut shrunk_out = Vec::new();
+    super::inline(&mut shrunk_out, None, &grid4, 6, &caps).unwrap();
+    let shrunk = String::from_utf8(shrunk_out).unwrap();
+    assert!(
+        shrunk.contains("\x1b[5A"),
+        "shrink must return to region top: {shrunk:?}"
+    );
+    assert_eq!(
+        shrunk.matches("\x1b[2K").count(),
+        6,
+        "tail rows need clearing"
+    );
+    assert_eq!(shrunk.matches("\r\n").count(), 5);
+}

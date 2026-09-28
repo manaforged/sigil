@@ -1,0 +1,134 @@
+use crate::style::Tone;
+
+use super::SparkMark;
+
+pub(super) const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
+const BLOCK_LEVELS: usize = 8;
+const BRAILLE_LEVELS: usize = 4;
+const BRAILLE_BASE: u32 = 0x2800;
+const BRAILLE_LEFT: [u32; 4] = [0x01, 0x02, 0x04, 0x40];
+const BRAILLE_RIGHT: [u32; 4] = [0x08, 0x10, 0x20, 0x80];
+const EMPTY: char = ' ';
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the level is clamped to 0..=7 before the cast"
+)]
+pub(crate) fn spark_glyph(fraction: f32) -> char {
+    let level = (fraction.clamp(0.0, 1.0) * 7.0).floor() as usize;
+    SPARKS.get(level).copied().unwrap_or('▁')
+}
+
+#[allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "the fraction is clamped to 0..=1, so the level fits in usize"
+)]
+fn level(fraction: f32, levels: usize) -> usize {
+    (fraction.clamp(0.0, 1.0) * levels as f32).round() as usize
+}
+
+fn cell_fill(level: usize, row_from_bottom: usize, per_row: usize) -> usize {
+    level.saturating_sub(row_from_bottom * per_row).min(per_row)
+}
+
+pub(super) fn graph_rows(fractions: &[f32], rows: usize, mark: SparkMark) -> Vec<String> {
+    let rows = rows.max(1);
+    match mark {
+        SparkMark::Block if rows == 1 => vec![fractions.iter().copied().map(spark_glyph).collect()],
+        SparkMark::Block => block_rows(fractions, rows),
+        SparkMark::Braille => braille_rows(fractions, rows),
+    }
+}
+
+fn block_rows(fractions: &[f32], rows: usize) -> Vec<String> {
+    let levels: Vec<usize> = fractions
+        .iter()
+        .map(|fraction| level(*fraction, BLOCK_LEVELS * rows))
+        .collect();
+    (0..rows)
+        .rev()
+        .map(|row| {
+            levels
+                .iter()
+                .map(|level| block_cell(cell_fill(*level, row, BLOCK_LEVELS)))
+                .collect()
+        })
+        .collect()
+}
+
+fn block_cell(fill: usize) -> char {
+    fill.checked_sub(1)
+        .and_then(|index| SPARKS.get(index).copied())
+        .unwrap_or(EMPTY)
+}
+
+fn braille_rows(fractions: &[f32], rows: usize) -> Vec<String> {
+    let levels: Vec<usize> = fractions
+        .iter()
+        .map(|fraction| level(*fraction, BRAILLE_LEVELS * rows))
+        .collect();
+    (0..rows)
+        .rev()
+        .map(|row| {
+            levels
+                .chunks(2)
+                .map(|pair| {
+                    let left = pair
+                        .first()
+                        .map_or(0, |l| cell_fill(*l, row, BRAILLE_LEVELS));
+                    let right = pair
+                        .get(1)
+                        .map_or(0, |l| cell_fill(*l, row, BRAILLE_LEVELS));
+                    braille_cell(left, right)
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn braille_cell(left: usize, right: usize) -> char {
+    let bits = column_bits(&BRAILLE_LEFT, left) | column_bits(&BRAILLE_RIGHT, right);
+    char::from_u32(BRAILLE_BASE | bits).unwrap_or(EMPTY)
+}
+
+fn column_bits(column: &[u32; 4], fill: usize) -> u32 {
+    column
+        .iter()
+        .rev()
+        .take(fill)
+        .fold(0, |bits, bit| bits | bit)
+}
+
+pub(super) fn cell_tones(
+    tones: &[Option<Tone>],
+    values: usize,
+    mark: SparkMark,
+    base: Tone,
+) -> Vec<Tone> {
+    let tone_at = |index: usize| tones.get(index).copied().flatten();
+    match mark {
+        SparkMark::Block => (0..values).map(|i| tone_at(i).unwrap_or(base)).collect(),
+        SparkMark::Braille => (0..values.div_ceil(2))
+            .map(|cell| {
+                tone_at(cell * 2 + 1)
+                    .or_else(|| tone_at(cell * 2))
+                    .unwrap_or(base)
+            })
+            .collect(),
+    }
+}
+
+pub(super) fn tone_runs(row: &str, tones: &[Tone], base: Tone) -> Vec<(Tone, String)> {
+    let mut runs: Vec<(Tone, String)> = Vec::new();
+    for (index, glyph) in row.chars().enumerate() {
+        let tone = tones.get(index).copied().unwrap_or(base);
+        match runs.last_mut() {
+            Some((last, text)) if *last == tone => text.push(glyph),
+            _ => runs.push((tone, glyph.to_string())),
+        }
+    }
+    runs
+}
