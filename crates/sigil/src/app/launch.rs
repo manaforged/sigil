@@ -77,7 +77,7 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T, owner: Owner) -> AppResult<()> {
     shell.set_canvas(config.canvas.clone());
     let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
 
-    let mut async_rt = install_async_runtime(&shell)?;
+    let mut async_rt = install_async_runtime(&shell, config.task_workers)?;
     install_font_wake(&shell);
 
     let mut host = Host::new();
@@ -188,8 +188,11 @@ fn install_font_wake(shell: &WinitShell) {
     crate::text::on_fonts_changed(move || drop(WinitShell::wake(&waker)));
 }
 
-fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
-    let mut async_rt = AsyncRuntime::new().map_err(Error::task)?;
+fn install_async_runtime(
+    shell: &WinitShell,
+    workers: crate::tasks::TaskWorkers,
+) -> AppResult<AsyncRuntime> {
+    let mut async_rt = AsyncRuntime::with_workers(workers).map_err(Error::task)?;
     let waker = shell.waker();
     async_rt.set_waker(move || {
         let _ = WinitShell::wake(&waker);

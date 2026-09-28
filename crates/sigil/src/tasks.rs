@@ -18,6 +18,7 @@ mod task;
 #[cfg(target_arch = "wasm32")]
 mod timer;
 
+pub use backend::TaskWorkers;
 pub use current::{dispatcher, installed, post, signal_writer, spawn};
 pub use dispatch::spawn_to_signal;
 pub use dispatch::{SignalWriter, dispatch_to_owner};
