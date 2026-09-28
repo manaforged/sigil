@@ -61,7 +61,7 @@ impl Painter<'_> {
         let Some(brush) = shader_brush(mask, &ctx, bounds, opacity) else {
             return;
         };
-        raster.image(target, draw, &brush);
+        raster.image(target, draw, ctx.scale, &brush);
         stats.sprite_draws += 1;
     }
 

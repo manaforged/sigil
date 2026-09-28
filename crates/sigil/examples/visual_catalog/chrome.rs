@@ -19,7 +19,7 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
 ];
 
 fn panel_row(_state: State) -> NodeBuilder {
-    node(panel().title("Panel").child(label("Panel body")))
+    node(panel().title("Panel").child(text("Panel body").nowrap()))
 }
 
 fn card_row(_state: State) -> NodeBuilder {
@@ -44,9 +44,9 @@ fn sidebar_row(_state: State) -> NodeBuilder {
 
 fn status_row(_state: State) -> NodeBuilder {
     node(status_bar([
-        label("main"),
-        label("Ln 4, Col 12"),
-        label("UTF-8"),
+        text("main").nowrap(),
+        text("Ln 4, Col 12").nowrap(),
+        text("UTF-8").nowrap(),
     ]))
 }
 
@@ -54,9 +54,9 @@ fn shell_row(_state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(200.0))
         .child(app_shell(
-            label("Top bar"),
-            label("Work area"),
-            label("Status"),
+            text("Top bar").nowrap(),
+            text("Work area").nowrap(),
+            text("Status").nowrap(),
             None::<NodeBuilder>,
         ))
 }
@@ -81,9 +81,9 @@ fn tabs_row(state: State) -> NodeBuilder {
             vec!["First".into(), "Second".into(), "Third".into()],
         )
         .disabled(disabled)
-        .content_for(0, label("First tab pane"))
-        .content_for(1, label("Second tab pane"))
-        .content_for(2, label("Third tab pane")),
+        .content_for(0, text("First tab pane").nowrap())
+        .content_for(1, text("Second tab pane").nowrap())
+        .content_for(2, text("Third tab pane").nowrap()),
     )
 }
 
@@ -97,17 +97,17 @@ fn tabs_line_row(state: State) -> NodeBuilder {
         )
         .line()
         .disabled(disabled)
-        .content_for(0, label("Overview pane"))
-        .content_for(1, label("Activity pane"))
-        .content_for(2, label("Settings pane")),
+        .content_for(0, text("Overview pane").nowrap())
+        .content_for(1, text("Activity pane").nowrap())
+        .content_for(2, text("Settings pane").nowrap()),
     )
 }
 
 fn splitter_row(_state: State) -> NodeBuilder {
     node(
         splitter(SplitterOrientation::Horizontal)
-            .child(card(label("Navigation")), 180.0)
-            .child(card(label("Content")), 260.0)
+            .child(card(text("Navigation").nowrap()), 180.0)
+            .child(card(text("Content").nowrap()), 260.0)
             .height(140.0),
     )
 }
@@ -121,7 +121,7 @@ fn scroll_fixed_row(_state: State) -> NodeBuilder {
 fn scroll_lines() -> NodeBuilder {
     let mut column = container().layout(LayoutStyle::flex_column().fill_width().gap(4.0));
     for index in 1..=12 {
-        column = column.child(label(format!("Scrolled line {index}")));
+        column = column.child(text(format!("Scrolled line {index}")).nowrap());
     }
     column
 }

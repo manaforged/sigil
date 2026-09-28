@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::gpu::adapter_key;
+use crate::harness::fail;
 use crate::{Regen, Rendered, regen_mode};
 
 #[must_use]
@@ -19,24 +20,23 @@ fn adapter_golden(golden: &Path) -> Option<PathBuf> {
 }
 
 #[track_caller]
-#[allow(clippy::panic, clippy::print_stdout)]
+#[allow(clippy::print_stdout)]
 fn write_golden(actual: &image::RgbaImage, golden: &Path) {
     guard_regen_does_not_erase_content(actual, golden);
     if let Some(dir) = golden.parent() {
         std::fs::create_dir_all(dir)
-            .unwrap_or_else(|err| panic!("create {}: {err}", dir.display()));
+            .unwrap_or_else(|err| fail(format!("create {}: {err}", dir.display())));
     }
     actual
         .save(golden)
-        .unwrap_or_else(|err| panic!("write golden {}: {err}", golden.display()));
+        .unwrap_or_else(|err| fail(format!("write golden {}: {err}", golden.display())));
     println!("REGEN: wrote {}", golden.display());
 }
 
 #[track_caller]
-#[allow(clippy::panic)]
 fn differing_pct(actual: &image::RgbaImage, golden: &Path) -> f64 {
     let expected = image::open(golden)
-        .unwrap_or_else(|err| panic!("decode golden {}: {err}", golden.display()))
+        .unwrap_or_else(|err| fail(format!("decode golden {}: {err}", golden.display())))
         .to_rgba8();
     assert_eq!(
         actual.dimensions(),
@@ -70,7 +70,6 @@ pub fn assert_rendered_matches_golden(rendered: Rendered, golden: &Path, max_del
 }
 
 #[track_caller]
-#[allow(clippy::panic)]
 pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_delta_pct: f32) {
     let keyed = adapter_golden(golden);
     let existing_keyed = keyed.clone().filter(|path| path.exists());
@@ -83,12 +82,13 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
             if !golden.exists() {
                 write_golden(actual, golden);
             } else if differing_pct(actual, golden) > f64::from(max_delta_pct) {
-                let path =
-                    keyed.unwrap_or_else(|| panic!("no GPU adapter key for {}", golden.display()));
+                let path = keyed.unwrap_or_else(|| {
+                    fail(format!("no GPU adapter key for {}", golden.display()))
+                });
                 write_golden(actual, &path);
             } else if let Some(path) = existing_keyed {
                 std::fs::remove_file(&path)
-                    .unwrap_or_else(|err| panic!("remove {}: {err}", path.display()));
+                    .unwrap_or_else(|err| fail(format!("remove {}: {err}", path.display())));
             }
             return;
         }
@@ -113,6 +113,33 @@ pub fn assert_png_matches_golden(actual: &image::RgbaImage, golden: &Path, max_d
         CHANNEL_TOLERANCE,
         max_delta_pct,
         adapter_key().unwrap_or_default(),
+    );
+}
+
+#[track_caller]
+#[allow(clippy::print_stdout)]
+pub fn assert_text_matches_golden(actual: &str, golden: &Path) {
+    if regen_mode().is_some() {
+        if let Some(dir) = golden.parent() {
+            std::fs::create_dir_all(dir)
+                .unwrap_or_else(|err| fail(format!("create {}: {err}", dir.display())));
+        }
+        std::fs::write(golden, actual)
+            .unwrap_or_else(|err| fail(format!("write golden {}: {err}", golden.display())));
+        println!("REGEN: wrote {}", golden.display());
+        return;
+    }
+    let expected = std::fs::read_to_string(golden).unwrap_or_else(|err| {
+        fail(format!(
+            "golden file {}: {err}\nRun with SIGIL_REGEN_GOLDENS=1 to create it.",
+            golden.display()
+        ))
+    });
+    assert!(
+        actual == expected,
+        "text golden {} differs.\n--- expected\n{expected}\n--- actual\n{actual}\n\
+         Re-bake with SIGIL_REGEN_GOLDENS=1 if intentional.",
+        golden.display(),
     );
 }
 
@@ -166,14 +193,13 @@ fn guard_regen_does_not_erase_content(actual: &image::RgbaImage, golden: &Path) 
 }
 
 #[track_caller]
-#[allow(clippy::panic)]
 pub fn assert_goldens_differ_in(manifest_dir: &str, name_a: &str, name_b: &str) {
     let path_a = golden_path_in(manifest_dir, name_a);
     let path_b = golden_path_in(manifest_dir, name_b);
     let bytes_a = std::fs::read(&path_a)
-        .unwrap_or_else(|err| panic!("read golden {}: {err}", path_a.display()));
+        .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path_a.display())));
     let bytes_b = std::fs::read(&path_b)
-        .unwrap_or_else(|err| panic!("read golden {}: {err}", path_b.display()));
+        .unwrap_or_else(|err| fail(format!("read golden {}: {err}", path_b.display())));
     assert_ne!(
         bytes_a, bytes_b,
         "goldens '{name_a}' and '{name_b}' are byte-identical — the state \

@@ -46,7 +46,7 @@ impl Todos {
         );
         let filter = signal(0_usize);
         let cursor = signal(0_usize);
-        let visible = derived_eq(move || {
+        let visible = derived(move || {
             let f = filter.get();
             items.with(|all| {
                 all.iter()
@@ -165,7 +165,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
                         } else {
                             row
                         };
-                        row.child(label(format!("{mark} {}", todo.text)).ellipsize())
+                        row.child(text(format!("{mark} {}", todo.text)).nowrap().ellipsize())
                     })
                     .collect::<Vec<_>>()
             }),
@@ -195,7 +195,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
 }
 
 fn status(todos: Todos) -> NodeBuilder {
-    let counts = text_live(move || {
+    let counts = text(move || {
         let (total, done) = todos
             .items
             .with(|all| (all.len(), all.iter().filter(|t| t.done).count()));
@@ -205,7 +205,10 @@ fn status(todos: Todos) -> NodeBuilder {
             total - done
         )
     });
-    status_bar([counts, label("Esc list  Spc done  d del  f filter  q quit")])
+    status_bar([
+        counts,
+        text("Esc list  Spc done  d del  f filter  q quit").nowrap(),
+    ])
 }
 
 pub(crate) fn app(cx: &mut Cx) -> NodeId {
@@ -227,15 +230,13 @@ pub(crate) fn app(cx: &mut Cx) -> NodeId {
             .child(
                 container()
                     .layout(LayoutStyle::flex_row().fill_width().gap(cols(2.0)))
-                    .child(label("Todo").class("text-accent"))
-                    .child(label(TextContent::compute(move || {
-                        filter_strip(todos.filter.get())
-                    }))),
+                    .child(text("Todo").nowrap().class("text-accent"))
+                    .child(text(move || filter_strip(todos.filter.get())).nowrap()),
             )
             .child(
                 text_field(draft)
                     .placeholder("New item, Enter to add")
-                    .focus_when(signal(1_u64))
+                    .autofocus()
                     .submit(move |value| {
                         todos.add(value);
                         draft.set(String::new());

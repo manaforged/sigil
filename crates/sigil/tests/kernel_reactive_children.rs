@@ -7,7 +7,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::kernel::{Cx, NodeId, NodeType, TextContent, container, node, text, text_live};
+use sigil::kernel::{Cx, NodeId, NodeType, TextContent, container, node, text};
 use sigil::reactive::{Runtime, signal};
 
 fn text_value(cx: &Cx, id: NodeId) -> String {
@@ -240,7 +240,7 @@ fn children_keyed_live_text_is_node_owned() {
         let parent = cx.add(container().children_keyed(move || {
             keys.get()
                 .into_iter()
-                .map(move |key| (key, text_live(move || label.get())))
+                .map(move |key| (key, text(move || label.get())))
                 .collect::<Vec<_>>()
         }));
         cx.flush_reactive_children();

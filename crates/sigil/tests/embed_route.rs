@@ -3,52 +3,31 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-
-const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase,
-    }))
-}
+use sigil_kittest::Harness;
 
 #[test]
 fn routed_click_reaches_button_activate() {
-    Runtime::scope("embed_route", || {
-        let clicked = Rc::new(Cell::new(false));
-        let seen = clicked.clone();
+    let clicked = Rc::new(Cell::new(false));
+    let seen = clicked.clone();
+    let mut ui = Harness::new(move |cx: &mut Cx| {
+        cx.add(
+            container()
+                .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
+                .child(button("hit me").activate({
+                    let seen = seen.clone();
+                    move || seen.set(true)
+                })),
+        )
+    })
+    .pixels(200, 100);
+    let target = ui.get_by_role(Role::Button, "hit me");
+    ui.click(&target);
 
-        let mut ui = Host::new();
-        ui.build(|cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::block().fixed_size(200.0, 100.0))
-                    .child(button("hit me").activate(move || seen.set(true))),
-            )
-        });
-        ui.layout((200.0, 100.0)).expect("layout");
-
-        let mut router = EventRouter::new();
-        ui.route(
-            &mut router,
-            pointer(20.0, 20.0, PointerPhase::Down, Some(MouseButton::Left)),
-        );
-        ui.route(
-            &mut router,
-            pointer(20.0, 20.0, PointerPhase::Up, Some(MouseButton::Left)),
-        );
-
-        assert!(
-            clicked.get(),
-            "routed click must reach the button's activate handler"
-        );
-    });
+    assert!(
+        clicked.get(),
+        "routed click must reach the button's activate handler"
+    );
 }
 
 #[test]

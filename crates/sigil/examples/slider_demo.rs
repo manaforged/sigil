@@ -17,7 +17,7 @@ fn build(cx: &mut Cx) -> NodeId {
         container()
             .role(Role::Main)
             .layout(LayoutStyle::flex_column().gap(24.0).padding(32.0))
-            .class(classes!("w-full h-full bg-surface"))
+            .class("w-full h-full bg-surface")
             .child(slider(h_val, 0.0..=100.0).change(move |v| h_val.set(v)))
             .child(
                 slider(g_val, 0.0..=100.0)

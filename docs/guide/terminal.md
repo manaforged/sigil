@@ -5,11 +5,10 @@ character grid. Without `desktop` it does not build wgpu or winit.
 
 ## Install
 
-```bash
-cargo add sigil-ui --no-default-features --features terminal
-```
+Use the terminal-only Git dependency from
+[Install](https://github.com/manaforged/sigil#install).
 
-`--no-default-features` keeps the GPU stack out. `sigil::prelude` is
+`default-features = false` keeps the GPU stack out. `sigil::prelude` is
 the same.
 
 ## Usage

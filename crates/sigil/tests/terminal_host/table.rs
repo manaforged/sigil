@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn replacing_rows_repaints_the_table() {
     use sigil::Host;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -18,7 +18,7 @@ fn replacing_rows_repaints_the_table() {
             vec![
                 TableColumn::new("n", "NAME")
                     .width(ColWidth::Fixed(96.0))
-                    .cell(|row: &Row| label(row.name.clone())),
+                    .cell(|row: &Row| text(row.name.clone()).nowrap()),
             ],
         );
         let mounted = state.clone();
@@ -61,7 +61,7 @@ fn a_click_selects_the_row_under_it() {
     use sigil::events::EventRouter;
     use sigil::hal::Point;
     use sigil::terminal::map_mouse;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -78,7 +78,7 @@ fn a_click_selects_the_row_under_it() {
             vec![
                 TableColumn::new("n", "NAME")
                     .width(ColWidth::Fixed(96.0))
-                    .cell(|row: &Row| label(row.name)),
+                    .cell(|row: &Row| text(row.name).nowrap()),
             ],
         );
         let mounted = state.clone();
@@ -134,7 +134,7 @@ fn the_wheel_scrolls_the_body() {
     use sigil::events::EventRouter;
     use sigil::hal::Point;
     use sigil::terminal::map_mouse;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -152,7 +152,7 @@ fn the_wheel_scrolls_the_body() {
             vec![
                 TableColumn::new("n", "NAME")
                     .width(ColWidth::Fixed(96.0))
-                    .cell(|row: &Row| label(row.name.clone())),
+                    .cell(|row: &Row| text(row.name.clone()).nowrap()),
             ],
         );
         let mounted = state;

@@ -3,16 +3,18 @@ use std::collections::HashMap;
 
 use std::rc::Rc;
 
-use crate::kernel::{Cx, ImageSource, IntoNode, NodeId, ThemedImage, container, image};
+use crate::kernel::{
+    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, container, image,
+};
 use crate::layout::prelude::LayoutStyle;
 use crate::style::{Rgba8, Theme, Token};
-use tiny_skia::{FillRule, Paint, Pixmap, Stroke, Transform};
+use tiny_skia::{FillRule, Paint, Pixmap, Transform};
 
 mod key;
 mod raster;
 
 use key::{OFFSET, hash_cmd, mix, mix_fill, mix_stroke};
-use raster::{build_ts_path, fill_shader, straight_rgba, to_ts_color};
+use raster::{build_ts_path, fill_shader, straight_rgba, stroke_path};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PathColor {
@@ -74,7 +76,10 @@ pub struct PathNode {
     stroke: Option<(PathColor, f32)>,
     layout: Option<crate::layout::prelude::LayoutStyle>,
     scale: u8,
+    non_scaling: bool,
 }
+
+type RasterSize = (u32, u32, f32);
 
 thread_local! {
     static RASTER: RefCell<HashMap<u64, ImageSource>> = RefCell::new(HashMap::new());
@@ -93,6 +98,7 @@ pub const fn path(width: u32, height: u32) -> PathNode {
         stroke: None,
         layout: None,
         scale: 1,
+        non_scaling: false,
     }
 }
 
@@ -173,6 +179,12 @@ impl PathNode {
     }
 
     #[must_use]
+    pub const fn non_scaling_stroke(mut self) -> Self {
+        self.non_scaling = true;
+        self
+    }
+
+    #[must_use]
     pub fn layout(mut self, style: LayoutStyle) -> Self {
         self.layout = Some(style);
         self
@@ -206,11 +218,6 @@ impl PathNode {
         self
     }
 
-    const fn themed(&self) -> bool {
-        matches!(self.fill, Some(PathFill::Theme(_)))
-            || matches!(self.stroke, Some((PathColor::Token(_), _)))
-    }
-
     fn resolved(&self, theme: &Theme) -> (Option<PathFill>, Option<(Rgba8, f32)>) {
         let fill = self.fill.as_ref().map(|fill| match fill {
             PathFill::Theme(token) => PathFill::Solid(theme.color(*token)),
@@ -230,7 +237,7 @@ impl PathNode {
         for byte in self.height.to_le_bytes() {
             mix(&mut hash, byte);
         }
-        mix(&mut hash, self.scale);
+        mix(&mut hash, u8::from(self.non_scaling));
         for cmd in &self.cmds {
             hash_cmd(&mut hash, *cmd);
         }
@@ -239,14 +246,47 @@ impl PathNode {
         hash
     }
 
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "path extents are small positive integers"
+    )]
     fn rasterize(&self, theme: &Theme) -> Option<ImageSource> {
         let (fill, stroke) = self.resolved(theme);
         let key = self.intern_key(fill.as_ref(), stroke);
+        let scale = f32::from(self.scale.max(1));
+        let pixels = |extent: u32| ((extent as f32) * scale).round() as u32;
+        let target = (pixels(self.width), pixels(self.height), scale);
+        self.raster(fill.as_ref(), stroke, key, target)
+    }
+
+    fn bind(self: &Rc<Self>, theme: &Theme) -> ImageRaster {
+        let (fill, stroke) = self.resolved(theme);
+        let key = self.intern_key(fill.as_ref(), stroke);
+        let path = Rc::clone(self);
+        ImageRaster::new(key, move |width, height, scale| {
+            path.raster(fill.as_ref(), stroke, key, (width, height, scale))
+        })
+    }
+
+    fn raster(
+        &self,
+        fill: Option<&PathFill>,
+        stroke: Option<(Rgba8, f32)>,
+        key: u64,
+        size: RasterSize,
+    ) -> Option<ImageSource> {
+        let mut key = key;
+        for byte in size.0.to_le_bytes().into_iter().chain(size.1.to_le_bytes()) {
+            mix(&mut key, byte);
+        }
+        key::mix_f32(&mut key, size.2);
         if let Some(hit) = RASTER.with(|map| map.borrow().get(&key).cloned()) {
             return Some(hit);
         }
         crate::profile::count(crate::profile::Counter::PathRaster);
-        let source = self.paint(fill.as_ref(), stroke)?;
+        let source = self.paint(fill, stroke, size)?;
         RASTER.with(|map| {
             let mut map = map.borrow_mut();
             let held: usize = map.values().map(|held| held.rgba().len()).sum();
@@ -258,25 +298,22 @@ impl PathNode {
         Some(source)
     }
 
-    fn paint(&self, fill: Option<&PathFill>, stroke: Option<(Rgba8, f32)>) -> Option<ImageSource> {
+    #[allow(
+        clippy::cast_precision_loss,
+        reason = "pixel extents are bounded by the raster size cap"
+    )]
+    fn paint(
+        &self,
+        fill: Option<&PathFill>,
+        stroke: Option<(Rgba8, f32)>,
+        (width, height, scale): RasterSize,
+    ) -> Option<ImageSource> {
         let path = build_ts_path(&self.cmds)?;
-        let scale = f32::from(self.scale.max(1));
-        #[allow(
-            clippy::cast_precision_loss,
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-        )]
-        let pix_w = ((self.width as f32) * scale).round() as u32;
-        #[allow(
-            clippy::cast_precision_loss,
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-        )]
-        let pix_h = ((self.height as f32) * scale).round() as u32;
-        let mut pixmap = Pixmap::new(pix_w, pix_h)?;
-        let transform = Transform::from_scale(scale, scale);
+        let mut pixmap = Pixmap::new(width, height)?;
+        let transform = Transform::from_scale(
+            width as f32 / self.width.max(1) as f32,
+            height as f32 / self.height.max(1) as f32,
+        );
         if let Some(fill) = fill {
             let paint = Paint {
                 shader: fill_shader(fill),
@@ -285,17 +322,11 @@ impl PathNode {
             };
             pixmap.fill_path(&path, &paint, FillRule::Winding, transform, None);
         }
-        if let Some((color, width)) = stroke {
-            let mut paint = Paint::default();
-            paint.set_color(to_ts_color(color));
-            paint.anti_alias = true;
-            let line = Stroke {
-                width,
-                ..Stroke::default()
-            };
-            pixmap.stroke_path(&path, &paint, &line, transform, None);
+        if let Some((color, line)) = stroke {
+            let fixed = self.non_scaling.then_some(scale);
+            stroke_path(&mut pixmap, &path, (color, line), transform, fixed);
         }
-        ImageSource::from_rgba8(pix_w, pix_h, straight_rgba(&pixmap))
+        ImageSource::from_rgba8(width, height, straight_rgba(&pixmap))
     }
 }
 
@@ -306,17 +337,17 @@ impl IntoNode for PathNode {
         };
         let id = image(source).build(cx);
         let layout = self.layout.take();
-        let themed = self.themed().then(|| {
-            let path = Rc::new(self);
-            ThemedImage::new(move |theme| path.rasterize(theme))
-        });
+        let path = Rc::new(self);
+        let fallback = Rc::clone(&path);
+        let themed = ThemedImage::new(
+            move |theme| fallback.rasterize(theme),
+            move |theme| path.bind(theme),
+        );
         if let Some(node) = cx.get_mut(id) {
             if let Some(style) = layout {
                 let _ = node.attach(style);
             }
-            if let Some(themed) = themed {
-                let _ = node.attach(themed);
-            }
+            let _ = node.attach(themed);
         }
         id
     }

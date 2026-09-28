@@ -19,7 +19,7 @@ fn kpi(title: &'static str, value: &'static str, trend: &'static str, tone: Tone
     card(
         container()
             .layout(LayoutStyle::flex_column().gap(rows(0.5)))
-            .child(label(title))
+            .child(text(title).nowrap())
             .child(text(value))
             .child(chip(trend, tone)),
     )
@@ -70,14 +70,14 @@ fn orders_table() -> TableBuilder<Order> {
         },
     ];
     let columns = vec![
-        TableColumn::new("id", "Order").cell(|row: &Order| label(row.id)),
+        TableColumn::new("id", "Order").cell(|row: &Order| text(row.id).nowrap()),
         TableColumn::new("customer", "Customer")
             .sort_by(|row: &Order| row.customer)
-            .cell(|row| label(row.customer)),
+            .cell(|row| text(row.customer).nowrap()),
         TableColumn::new("total", "Total")
             .numeric()
             .sort_by(|row: &Order| row.total)
-            .cell(|row| label(format!("${}", row.total))),
+            .cell(|row| text(format!("${}", row.total)).nowrap()),
     ];
     table(TableState::new(orders, columns))
         .striped()
@@ -122,7 +122,11 @@ pub(crate) fn app(cx: &mut Cx) -> NodeId {
     cx.add(app_shell(
         top_bar(),
         work_area(),
-        status_bar([label("Synced"), label("4 orders"), label("EUR")]),
+        status_bar([
+            text("Synced").nowrap(),
+            text("4 orders").nowrap(),
+            text("EUR").nowrap(),
+        ]),
         None::<NodeBuilder>,
     ))
 }

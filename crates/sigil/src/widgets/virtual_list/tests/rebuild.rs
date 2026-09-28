@@ -105,7 +105,7 @@ fn scrolled_rows_land_at_their_document_position() {
                 container()
                     .layout(crate::layout::LayoutStyle::block().fixed_size(800.0, 24.0))
                     .label(format!("row {index}"))
-                    .child(crate::kernel::text_live(move || {
+                    .child(crate::kernel::text(move || {
                         format!("{index}:{}", tick.get())
                     }))
             })

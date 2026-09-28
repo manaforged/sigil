@@ -93,19 +93,70 @@ fn content_id(width: u32, height: u32, rgba: &[u8]) -> u64 {
     hash
 }
 
-type ThemedSource = Box<dyn Fn(&crate::style::Theme) -> Option<ImageSource>>;
+type RasterFn = dyn Fn(u32, u32, f32) -> Option<ImageSource>;
 
-pub(crate) struct ThemedImage(ThemedSource);
+#[derive(Clone)]
+pub struct ImageRaster {
+    key: u64,
+    raster: Rc<RasterFn>,
+}
+
+impl ImageRaster {
+    pub(crate) fn new(
+        key: u64,
+        raster: impl Fn(u32, u32, f32) -> Option<ImageSource> + 'static,
+    ) -> Self {
+        Self {
+            key,
+            raster: Rc::new(raster),
+        }
+    }
+
+    #[must_use]
+    pub fn at(&self, width: u32, height: u32, scale: f32) -> Option<ImageSource> {
+        (self.raster)(width, height, scale)
+    }
+}
+
+impl PartialEq for ImageRaster {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl core::fmt::Debug for ImageRaster {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ImageRaster")
+            .field("key", &self.key)
+            .finish_non_exhaustive()
+    }
+}
+
+type ThemedSource = Box<dyn Fn(&crate::style::Theme) -> Option<ImageSource>>;
+type ThemedRaster = Box<dyn Fn(&crate::style::Theme) -> ImageRaster>;
+
+pub(crate) struct ThemedImage {
+    source: ThemedSource,
+    raster: ThemedRaster,
+}
 
 impl ThemedImage {
     pub(crate) fn new(
         source: impl Fn(&crate::style::Theme) -> Option<ImageSource> + 'static,
+        raster: impl Fn(&crate::style::Theme) -> ImageRaster + 'static,
     ) -> Self {
-        Self(Box::new(source))
+        Self {
+            source: Box::new(source),
+            raster: Box::new(raster),
+        }
     }
 
     pub(crate) fn resolve(&self, theme: &crate::style::Theme) -> Option<ImageSource> {
-        (self.0)(theme)
+        (self.source)(theme)
+    }
+
+    pub(crate) fn raster(&self, theme: &crate::style::Theme) -> ImageRaster {
+        (self.raster)(theme)
     }
 }
 

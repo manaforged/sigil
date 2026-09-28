@@ -104,8 +104,8 @@ let state = TableState::new(
         TableColumn::new("name", "Name")
             .sort_by(|r: &Row| r.name.clone())
             .filterable(|r, q| r.name.contains(q))
-            .cell(|r| label(r.name.clone())),
-        TableColumn::new("size", "Size").numeric().cell(|r: &Row| label(format!("{} B", r.size))),
+            .cell(|r| text(r.name.clone()).nowrap()),
+        TableColumn::new("size", "Size").numeric().cell(|r: &Row| text(format!("{} B", r.size)).nowrap()),
     ],
 );
 table(state).striped().viewport_fill();

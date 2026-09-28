@@ -126,7 +126,6 @@ pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
 pub use scroll::{ScrollBuilder, scroll, scroll_auto};
 pub use segmented::{SegmentedBuilder, segmented};
-pub use shared::label;
 pub use slider::{Orientation, SliderBuilder, slider};
 #[cfg(feature = "terminal")]
 pub(crate) use sparkline::spark_glyph;

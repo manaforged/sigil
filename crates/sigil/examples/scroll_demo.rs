@@ -18,7 +18,7 @@ fn root() -> NodeBuilder {
     container()
         .role(Role::Main)
         .layout(LayoutStyle::flex_column().padding(24.0))
-        .class(classes!("w-full h-full bg-surface"))
+        .class("w-full h-full bg-surface")
         .child(scroll(items, 600.0).height(300.0))
 }
 

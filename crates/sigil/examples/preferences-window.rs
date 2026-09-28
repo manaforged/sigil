@@ -191,7 +191,7 @@ fn notifications(prefs: Prefs) -> NodeBuilder {
 }
 
 fn footer(prefs: Prefs, queue: ToastQueue) -> NodeBuilder {
-    let invalid = derived_eq(move || {
+    let invalid = derived(move || {
         name_error(&prefs.name.get()).is_some() || email_error(&prefs.email.get()).is_some()
     });
     container()

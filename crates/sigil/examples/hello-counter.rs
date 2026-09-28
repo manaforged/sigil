@@ -6,18 +6,15 @@ fn main() -> sigil::AppResult<()> {
 
 fn app_tree(cx: &mut Cx) -> NodeId {
     let count = signal(0_i32);
-    let label_text = derived(move || format!("Count: {}", count.get()));
     cx.add(
         container()
-            .layout(
-                LayoutStyle::flex_column()
-                    .fixed_size(480.0, 240.0)
-                    .gap(16.0),
-            )
-            .class(classes!("p-8 bg-surface"))
-            .child(text(label_text).class(classes!("text-on-surface")))
-            .child(button("Increment").primary().activate(move || {
-                count.set(count.peek() + 1);
-            })),
+            .layout(LayoutStyle::flex_column().gap(16.0))
+            .class("p-32 bg-surface")
+            .child(text(move || format!("Count: {}", count.get())))
+            .child(
+                button("Increment")
+                    .primary()
+                    .activate(move || count.update(|n| *n += 1)),
+            ),
     )
 }

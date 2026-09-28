@@ -1,7 +1,7 @@
 use crate::events::prelude::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEvent};
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, Token};
 
 use super::super::interaction::InteractionState;
@@ -70,7 +70,7 @@ fn build_row<Row: 'static>(
         return container();
     }
     let selection = state.selection();
-    let is_selected = derived_eq(move || selection.get().contains(&row_index));
+    let is_selected = derived(move || selection.get().contains(&row_index));
     let state_cells = state.clone();
     let track = container()
         .layout(track_layout(row_height))

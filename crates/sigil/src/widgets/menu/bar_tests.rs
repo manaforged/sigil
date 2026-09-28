@@ -32,7 +32,7 @@ fn class_is_accepted() {
     Runtime::scope("menu-bar-class", || {
         let mut cx = Cx::new_root();
         let root = menu_bar()
-            .class("bg-surface-hover px-4")
+            .class("bg-surface-hover px-16")
             .menu("File", [MenuItem::new("Open")])
             .build(&mut cx);
         assert!(cx.child_count(root) >= 1);

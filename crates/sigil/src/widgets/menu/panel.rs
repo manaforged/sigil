@@ -4,7 +4,7 @@ use crate::events::prelude::{MouseButton, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutStyle, Position};
-use crate::reactive::{OwnerId, Signal, derived_eq, is_live, owner_by_id, signal};
+use crate::reactive::{OwnerId, Signal, derived, is_live, owner_by_id, signal};
 use crate::style::{Metrics, Size};
 
 use super::super::listbox::{ListModel, listbox};
@@ -131,7 +131,7 @@ fn build_item(item: &MenuItem, index: usize, cursor: Signal<usize>, commit: Comm
         disabled,
         ..ItemSlots::new(item.label.clone())
     };
-    let highlight = derived_eq(move || cursor.get() == index);
+    let highlight = derived(move || cursor.get() == index);
     item_row(slots, highlight)
         .role(Role::MenuItem)
         .hittable(true)

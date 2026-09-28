@@ -10,8 +10,84 @@ The `sigil-ui`, `sigil-sign`, and `sigil-kittest` crates share one version.
 
 First release.
 
+### Added
+
+- A retained widget tree built with `Cx` and builder helpers, driven by
+  reactive signals: `signal`, `derived`, and effects.
+- `sigil::run` opens the tree in a desktop window on Linux, macOS, and
+  Windows, and in a canvas on `wasm32`.
+- A terminal host (feature `terminal`) paints the same tree on a character
+  grid, with screen-reader support and dialogs.
+- `sigil::Host` embeds the tree in another engine's event loop.
+- A wgpu renderer and a CPU renderer; `SIGIL_BACKEND=cpu` selects the CPU one.
+- Text shaping, bidirectional text, IME input, and text editing widgets.
+- Layout with flexbox and grid, class strings, and builder methods.
+- Themes with design tokens and tones.
+- Content widgets: `markdown`, `html`, `mermaid`, charts, icons, and images.
+- Accessibility: roles, names, and focus exported to the platform screen
+  reader.
+- Background tasks with `tasks` and `signal_writer` for results from
+  other threads.
+- `sigil-sign`: the `sigil-pack` binary packs and signs release builds.
+- `sigil-kittest`: a PNG golden harness for apps that depend on Sigil.
+
 ### Changed
 
+- The terminal host picks colour depth from more terminals: `TERM`
+  `xterm-ghostty`, `xterm-kitty`, `wezterm`, `alacritty`, `foot`,
+  `contour`, and `*-direct` get truecolor. `SIGIL_COLOR` forces the depth.
+- With 16 colours, toned text and fills use the tone's ANSI colour, and a
+  saturated exact colour never maps to grey or black.
+- Inside tmux or screen, the terminal host ignores environment variables
+  inherited from the outer terminal, and keeps legacy keys unless the
+  terminal answers the keyboard probe.
+- The terminal host maps glyphs through `terminal::Glyphs`: ASCII for a
+  non-UTF-8 locale, `TERM=dumb`, `TERM=vt100`, or `SIGIL_ASCII=1`, and a
+  reduced set for the Linux console.
+- `app::set_ambiguous` counts East Asian
+  ambiguous characters as two cells. `SIGIL_AMBIGUOUS_WIDE=1` sets `Caps::ambiguous`.
+- The terminal cursor shows only at a text caret. Before, an app with no
+  text input showed a block cursor at the focused node or the top-left cell.
+- Terminal mouse capture asks for clicks and drags (1000, 1002, 1006), not
+  all motion (1003). `terminal::MouseTracking`, `set_mouse_tracking`, and
+  `AppConfig::mouse_tracking` pick the mode; `Motion` turns hover back on.
+- Ctrl+V in a text input pastes on a local macOS terminal. Over OSC 52,
+  where the clipboard cannot be read, the key goes on to the app.
+- The terminal probe waits up to 1 s for the terminal's reply and reads it
+  to the end, so a slow reply never reaches the app as keys. A stray OSC or
+  APC reply in the input is dropped.
+- A multi-line burst of typed text in one read arrives as one paste event,
+  for terminals without bracketed paste.
+- After SIGTERM, SIGHUP, or SIGINT restores the terminal, the host paints no
+  more frames.
+- The native task runtime starts on the first spawned task, not at app
+  start. An app that never spawns a task owns no worker threads.
+  `AppConfig::task_workers` and `AsyncRuntime::with_workers` take a
+  `tasks::TaskWorkers` to fix the worker count.
+- `derived` skips unchanged values: it needs `T: PartialEq`, and its
+  readers do not re-run when the new value equals the old one.
+  `derived_eq` is removed; call `derived`. This is a breaking change.
+- `text(source)` is the one text node. `source` is a `&str`, a
+  `String`, a `Signal<T: Display>`, or a closure `Fn() -> String`.
+  `text_live`, `TextContent::compute`, and `widgets::label` are
+  removed; write `text(f)` and `text(source).nowrap()`. This is a
+  breaking change.
+- The `classes!` macro is removed; write `.class("p-16 bg-surface")`.
+  `parse_classes` is in the prelude. An unknown class panics in a debug
+  build with the nearest valid names and logs one warning per name in a
+  release build. This is a breaking change.
+- Spacing and size numbers in class strings are pixels, the unit of the
+  builder methods: `p-16` is 16 px, as `.padding(16.0)` is. Multiply an
+  old class number by 4 to keep the same size (`p-4` becomes `p-16`).
+  This is a breaking change.
+- The app root fills the viewport on both hosts when its width or
+  height is auto. A root no longer needs `fixed_size` to match the
+  window.
+- `TextFieldBuilder::focus_when` no longer focuses on mount when the
+  signal is already nonzero; use `.autofocus()`. This is a breaking
+  change.
+- `NodeBuilder::on_added` runs every hook it receives, in order, instead
+  of only the last one.
 - Scene types have one path: `sigil::scene`. `sigil::renderer` no
   longer re-exports `CommandScene`, `SceneBuilder`, `SceneCommand`, the
   draw payloads, the style structs, `emit_scene`, or `shape_glyph_run`,
@@ -143,6 +219,11 @@ First release.
   outside the root closure keep their values, and focus returns to the
   node with the same role and name path. `Host::mount_hot` gives the same
   to an embed host. Not on wasm. See [Hot reload](docs/guide/hot-reload.md).
+- `show(cond, then, otherwise)` and `for_each(items, key, render)` in
+  the prelude. `for_each` reconciles by key, so a row whose key stays
+  keeps its node and state.
+- `.autofocus()` on `NodeBuilder` (through `NodeEventsExt`) and on
+  `TextFieldBuilder` focuses the node when it mounts.
 - Inline terminal host. `AppConfig::inline(true)` draws the live region
   in the normal screen below the prompt instead of the alternate screen,
   so earlier output stays in scrollback. `Hooks::region_rows` sets the

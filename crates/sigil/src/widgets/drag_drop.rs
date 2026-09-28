@@ -244,7 +244,7 @@ where
     };
     vec![
         container()
-            .class("px-2 py-1")
+            .class("px-8 py-4")
             .class([
                 Radius::Md.atom(),
                 Token::Accent3.bg(),

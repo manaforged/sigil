@@ -66,7 +66,7 @@ fn default_text_wraps_in_a_narrow_column() {
 
 #[test]
 fn label_stays_a_single_line() {
-    let hugged = text_height(label(LONG));
+    let hugged = text_height(text(LONG).nowrap());
     assert!(
         (hugged - 16.0).abs() < 0.5,
         "label is chrome and must stay one line, got {hugged}",
@@ -114,7 +114,10 @@ fn row_cell_rect(style: LayoutStyle) -> sigil::hal::Rect {
     let mut rect = sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), -1.0, -1.0);
     sigil::reactive::Runtime::scope("text-wrap-off-viewport", || {
         let mut cx = Cx::new_root();
-        let cell = label(LONGER_THAN_VIEWPORT).ellipsize().layout(style);
+        let cell = text(LONGER_THAN_VIEWPORT)
+            .nowrap()
+            .ellipsize()
+            .layout(style);
         let root = cx.add(
             container()
                 .layout(
@@ -174,7 +177,7 @@ fn ellipsize_leaf_shrinks_instead_of_crushing_fixed_siblings() {
     sigil::reactive::Runtime::scope("text-ellipsize-floor", || {
         let mut cx = Cx::new_root();
         let fixed = container().layout(LayoutStyle::block().width(96.0).height(16.0));
-        let flex = label(LONG).ellipsize().layout(LayoutStyle::block());
+        let flex = text(LONG).nowrap().ellipsize().layout(LayoutStyle::block());
         let root = cx.add(
             container()
                 .layout(

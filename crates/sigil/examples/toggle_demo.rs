@@ -16,7 +16,7 @@ fn build(cx: &mut Cx) -> NodeId {
         container()
             .role(Role::Main)
             .layout(LayoutStyle::flex_row().gap(24.0).padding(32.0))
-            .class(classes!("w-full h-full bg-surface"))
+            .class("w-full h-full bg-surface")
             .child(toggle(on).change(move |v| on.set(v)))
             .child(toggle(signal(true)))
             .child(toggle(signal(false)).disabled(disabled)),

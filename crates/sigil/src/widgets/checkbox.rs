@@ -18,7 +18,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, activate_binary_key, activate_binary_pointer, binary_style_state,
-    control_row, control_surface, disabled_now, label, noop_bool_change,
+    control_row, control_surface, disabled_now, noop_bool_change,
 };
 
 const CHECKBOX_TRANSITION: TransitionId = presets::SMOOTH;
@@ -329,7 +329,9 @@ fn mark_path(partial: bool) -> NodeBuilder {
 }
 
 fn checkbox_label(source: TextContent) -> impl IntoNode {
-    label(source).layout(LayoutStyle::block().fill_width())
+    crate::kernel::text(source)
+        .nowrap()
+        .layout(LayoutStyle::block().fill_width())
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {

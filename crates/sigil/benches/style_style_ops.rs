@@ -14,18 +14,18 @@ use sigil::reactive::{Runtime, signal};
 use sigil::style::{
     AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
     RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
-    TransitionId, classes, merge_classes,
+    TransitionId, merge_classes, parse_classes,
 };
 use sigil::style::{ColorKey, Token};
 
 static CLASS_50: LazyLock<&'static [StyleAtom]> = LazyLock::new(|| {
-    classes!(
-        "p-4 px-4 py-4 pt-4 pr-4 pb-4 pl-4 m-4 mx-4 my-4 mt-4 mr-4 mb-4 ml-4 gap-4 w-4 h-4 w-full h-full w-auto h-auto flex block hidden flex-row flex-col flex-row-reverse flex-col-reverse items-start items-center items-end items-stretch justify-start justify-center justify-end justify-between justify-around rounded rounded-sm rounded-md rounded-lg rounded-full bg-accent bg-border bg-surface text-xs text-sm text-base text-lg text-xl"
+    parse_classes(
+        "p-16 px-16 py-16 pt-16 pr-16 pb-16 pl-16 m-16 mx-16 my-16 mt-16 mr-16 mb-16 ml-16 gap-16 w-16 h-16 w-full h-full w-auto h-auto flex block hidden flex-row flex-col flex-row-reverse flex-col-reverse items-start items-center items-end items-stretch justify-start justify-center justify-end justify-between justify-around rounded rounded-sm rounded-md rounded-lg rounded-full bg-accent bg-border bg-surface text-xs text-sm text-base text-lg text-xl",
     )
 });
 
 static APPLY_ATOMS: LazyLock<&'static [StyleAtom]> =
-    LazyLock::new(|| classes!("bg-accent text-on-surface rounded-md opacity-100"));
+    LazyLock::new(|| parse_classes("bg-accent text-on-surface rounded-md opacity-100"));
 static REACTIVE_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Surface,
 ))];
@@ -33,7 +33,7 @@ static REACTIVE_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Tok
     Token::Accent,
 ))];
 static THEME_SWAP_ATOMS: LazyLock<&'static [StyleAtom]> =
-    LazyLock::new(|| classes!("bg-accent text-on-accent rounded-md opacity-100"));
+    LazyLock::new(|| parse_classes("bg-accent text-on-accent rounded-md opacity-100"));
 static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Surface,
 ))];

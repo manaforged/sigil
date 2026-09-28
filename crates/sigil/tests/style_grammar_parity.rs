@@ -73,8 +73,8 @@ type AtomCheck = fn(&StyleAtom) -> bool;
 #[test]
 fn new_parity_tokens_resolve_to_expected_atoms() {
     let cases: [(&str, AtomCheck); 9] = [
-        ("min-h-4", |a| matches!(a, StyleAtom::MinHeight(_))),
-        ("max-h-4", |a| matches!(a, StyleAtom::MaxHeight(_))),
+        ("min-h-16", |a| matches!(a, StyleAtom::MinHeight(_))),
+        ("max-h-16", |a| matches!(a, StyleAtom::MaxHeight(_))),
         ("grow", |a| matches!(a, StyleAtom::FlexGrow(1000))),
         ("grow-0", |a| matches!(a, StyleAtom::FlexGrow(0))),
         ("shrink", |a| matches!(a, StyleAtom::FlexShrink(1000))),

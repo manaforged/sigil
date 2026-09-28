@@ -169,6 +169,7 @@ impl Gen<'_, '_, '_> {
             destination,
             opacity,
             crop,
+            raster: None,
         })
     }
 

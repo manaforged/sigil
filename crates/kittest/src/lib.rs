@@ -6,16 +6,20 @@ mod bounds;
 mod compare;
 pub use compare::{
     assert_goldens_differ_in, assert_png_matches_golden, assert_rendered_matches_golden,
-    golden_path_in,
+    assert_text_matches_golden, golden_path_in,
 };
 mod error;
 pub use error::Error;
 pub mod gpu;
 use gpu::{render_scene_to_image, shared_device};
+mod harness;
+pub use harness::{Harness, Node, Query, SNAPSHOT_MAX_DELTA_PCT, Target};
+pub mod input;
 mod interaction;
 mod measure;
 pub mod parity;
 pub mod scene_gen;
+mod settle;
 use interaction::drive_state;
 pub use measure::{CharMeasure, FixedMeasure};
 
@@ -375,3 +379,7 @@ fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
 #[cfg(doctest)]
 #[doc = include_str!("../../../docs/guide/automation.md")]
 pub struct AutomationGuide;
+
+#[cfg(doctest)]
+#[doc = include_str!("../../../docs/guide/testing.md")]
+pub struct TestingGuide;

@@ -21,7 +21,7 @@ fn p_4_applies_sixteen_px_padding() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 50.0))
-            .class("p-4")
+            .class("p-16")
             .child(container().class("w-full h-full")),
     );
     let child = first_child(&cx, root);
@@ -43,7 +43,7 @@ fn layout_style_padding_wins_over_class() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
-            .class("p-4")
+            .class("p-16")
             .child(container().class("w-full h-full")),
     );
     let child = first_child(&cx, root);
@@ -108,7 +108,7 @@ fn flex_row_items_center() {
 #[test]
 fn typography_atoms_drive_text_measurement() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Type").class("text-xl font-bold leading-8"));
+    let root = cx.add(text("Type").class("text-xl font-bold leading-32"));
 
     LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))
         .compute(&mut cx, root, Size::max_content())

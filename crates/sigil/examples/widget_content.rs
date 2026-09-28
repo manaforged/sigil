@@ -22,9 +22,7 @@ fn text_demo() -> TextBuilder {
 
 fn label_demo() -> TextBuilder {
     let count = signal(3_i32);
-    label(TextContent::compute(move || {
-        format!("Count: {}", count.get())
-    }))
+    text(move || format!("Count: {}", count.get())).nowrap()
 }
 
 fn icon_demo() -> IconBuilder {
@@ -36,7 +34,7 @@ fn image_demo() -> NodeBuilder {
         .flat_map(|i| [u8::try_from(i % 32 * 8).unwrap_or(u8::MAX), 90, 200, 255])
         .collect();
     image_rgba(32, 32, pixels).map_or_else(
-        || container().child(label("Image unavailable")),
+        || container().child(text("Image unavailable").nowrap()),
         |picture| container().child(picture.alt("Gradient")),
     )
 }
@@ -84,9 +82,9 @@ fn divider_horizontal_demo() -> NodeBuilder {
 fn divider_vertical_demo() -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().gap(cols(1.0)))
-        .child(label("Left"))
+        .child(text("Left").nowrap())
         .child(divider_vertical())
-        .child(label("Right"))
+        .child(text("Right").nowrap())
 }
 
 fn hairline_demo() -> NodeBuilder {

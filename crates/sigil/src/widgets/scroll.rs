@@ -5,7 +5,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{
     Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
 };
-use crate::reactive::{Signal, derived_eq, effect_named, signal};
+use crate::reactive::{Signal, derived, effect_named, signal};
 use crate::style::{
     ClassSource, NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, space,
 };
@@ -149,7 +149,7 @@ impl ScrollBuilder {
         let sizing = self.sizing;
         let (viewport, viewport_height) = viewport_signals(width, height, sizing != Sizing::Fixed);
 
-        let max_scroll = derived_eq(move || (extent.get() - viewport_height.get()).max(0.0));
+        let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
         if self.initial_end {
             scroll_y.set(max_scroll.peek());
         }
@@ -169,7 +169,7 @@ impl ScrollBuilder {
         let root = viewport_container(width, height, sizing)
             .child(body)
             .child(track);
-        let scrollable = derived_eq(move || max_scroll.get() > 0.0);
+        let scrollable = derived(move || max_scroll.get() > 0.0);
         let root = root
             .focusable(true)
             .mutate(move |node| node.a11y.tab_stop = Some(scrollable));
@@ -199,7 +199,7 @@ fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBui
         let measured = signal((0.0_f32, 0.0_f32));
         (
             content.size_reactive(measured),
-            derived_eq(move || measured.get().1.max(0.0)),
+            derived(move || measured.get().1.max(0.0)),
         )
     }
 }
@@ -222,7 +222,7 @@ fn viewport_signals(
     fill: bool,
 ) -> (Signal<(f32, f32)>, Signal<f32>) {
     let viewport = signal((width.unwrap_or(0.0), height));
-    let viewport_height = derived_eq(move || {
+    let viewport_height = derived(move || {
         let measured = viewport.get().1;
         if fill && measured > 0.0 {
             measured
@@ -268,7 +268,7 @@ fn wrap_content(
     extent: Signal<f32>,
     viewport_height: Signal<f32>,
 ) -> NodeBuilder {
-    let geometry = derived_eq(move || {
+    let geometry = derived(move || {
         let clamped = scroll_y.get().clamp(0.0, max_scroll.get());
         (
             to_i16(clamped),
@@ -337,7 +337,7 @@ fn scrollbar_thumb(
     viewport_height: Signal<f32>,
     hovered: Signal<bool>,
 ) -> NodeBuilder {
-    let geometry = derived_eq(move || {
+    let geometry = derived(move || {
         let (thumb_h, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
         let max = max_scroll.get();
         let t = if max > 0.0 {
@@ -348,7 +348,7 @@ fn scrollbar_thumb(
         (to_i16(thumb_h), to_i16(t * max_travel))
     });
     let drag_anchor = signal::<Option<(f32, f32)>>(None);
-    let thick = derived_eq(move || hovered.get() || drag_anchor.get().is_some());
+    let thick = derived(move || hovered.get() || drag_anchor.get().is_some());
 
     container()
         .layout(

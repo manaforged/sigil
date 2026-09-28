@@ -57,6 +57,6 @@ from `crates/sigil/perf_budgets.toml`, the only budget table.
 
 ## Do not
 
-- Add Copilot instruction files or a second agent guide.
+- Add a second contributor guide. This file is the only one.
 - Put renderer showcases or profiling tools back in `examples/`.
-- Feed untrusted markdown, HTML, or SVG into the parsers. `fuzz/` has targets `html`, `markdown`, `mermaid`, `style_class`, and `svg_icon` ([fuzz/README.md](fuzz/README.md) has the run commands). Each target has only run for 10 minutes without a failure, so the parsers are not yet hardened for untrusted input.
+- Feed untrusted markdown, HTML, or SVG into the parsers. `fuzz/` has targets `html`, `markdown`, `mermaid`, `scene_render`, `style_class`, and `svg_icon` ([fuzz/README.md](fuzz/README.md) has the run commands). Each target has only run for 10 minutes without a failure, so the parsers are not yet hardened for untrusted input.

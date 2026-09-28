@@ -5,7 +5,7 @@ use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyl
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, space};
 
 use super::button::button;
-use super::shared::label;
+use crate::kernel::text;
 
 mod patch;
 mod rows;
@@ -47,7 +47,8 @@ fn text_row(body: String, class: &'static str, tone: Token) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row().fill_width().padding_x(ROW_INSET))
         .child(
-            label(body)
+            text(body)
+                .nowrap()
                 .layout(LayoutStyle::block().fill_width().min_size(0.0, 0.0))
                 .class(class)
                 .class(tone.text()),
@@ -129,19 +130,22 @@ impl DiffBuilder {
                     .gap(space(2)),
             )
             .child(
-                label(self.path.clone().unwrap_or_default())
+                text(self.path.clone().unwrap_or_default())
+                    .nowrap()
                     .ellipsize()
                     .layout(LayoutStyle::block().grow(1.0).min_size(0.0, 0.0))
                     .class("text-xs font-mono font-bold")
                     .class(Token::Gray12.text()),
             )
             .child(
-                label(format!("+{added}"))
+                text(format!("+{added}"))
+                    .nowrap()
                     .class("text-xs font-mono")
                     .class(Token::Success11.text()),
             )
             .child(
-                label(format!("−{removed}"))
+                text(format!("−{removed}"))
+                    .nowrap()
                     .class("text-xs font-mono")
                     .class(Token::Error11.text()),
             );
@@ -173,7 +177,12 @@ impl DiffBuilder {
                         .padding_x(ROW_INSET)
                         .min_size(0.0, 0.0),
                 )
-                .child(label(text).class("text-xs").class(Token::Gray10.text()));
+                .child(
+                    crate::kernel::text(text)
+                        .nowrap()
+                        .class("text-xs")
+                        .class(Token::Gray10.text()),
+                );
             if ruled {
                 half.style(
                     Style::new()
@@ -283,7 +292,8 @@ impl DiffBuilder {
         root = self.body().into_iter().fold(root, NodeBuilder::child);
         if let Some(status) = self.status.clone() {
             root = root.child(
-                label(status)
+                text(status)
+                    .nowrap()
                     .layout(
                         LayoutStyle::block()
                             .fill_width()

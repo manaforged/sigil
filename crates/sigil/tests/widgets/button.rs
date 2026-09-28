@@ -110,7 +110,7 @@ fn label_accepts_reactive_text() {
     sigil::reactive::Runtime::scope("sigil-widget-label-reactive", || {
         let value = signal(String::from("Ready"));
         let mut cx = Cx::new_root();
-        let root = cx.add(label(value));
+        let root = cx.add(text(value).nowrap());
         let node = cx.get(root).unwrap();
         let is_reactive_text = matches!(&node.kind, NodeType::Text { content, .. } if content.as_static_str().is_none());
         assert!(is_reactive_text);

@@ -19,7 +19,7 @@ use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::reactive::Runtime;
 
-use input::{pointer_down, pointer_move, pointer_up};
+use input::{pointer_down, pointer_drag, pointer_up};
 use routing_helpers::{compute_layout, route_event};
 
 #[test]
@@ -31,8 +31,8 @@ fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {
         let mut router = EventRouter::new();
 
         route_event(&mut router, &mut cx, &layout, pointer_down(10.0, 10.0));
-        route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 150.0));
-        route_event(&mut router, &mut cx, &layout, pointer_move(350.0, 250.0));
+        route_event(&mut router, &mut cx, &layout, pointer_drag(200.0, 150.0));
+        route_event(&mut router, &mut cx, &layout, pointer_drag(350.0, 250.0));
         route_event(&mut router, &mut cx, &layout, pointer_up(350.0, 250.0));
 
         assert_eq!(
@@ -46,7 +46,7 @@ fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {
             "captured up dispatches to the requesting parent",
         );
 
-        route_event(&mut router, &mut cx, &layout, pointer_move(20.0, 20.0));
+        route_event(&mut router, &mut cx, &layout, pointer_drag(20.0, 20.0));
         assert_eq!(moves.borrow().len(), 2, "capture released after up");
     });
 }

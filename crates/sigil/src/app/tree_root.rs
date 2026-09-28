@@ -1,4 +1,5 @@
 use crate::kernel::{Cx, ImageBuilder, IntoNode, NodeBuilder, NodeId, TextBuilder};
+use crate::layout::{Dimension, LayoutStyle};
 
 pub(crate) mod sealed {
     use crate::app::Host;
@@ -75,6 +76,23 @@ impl TreeRoot for NodeBuilder {
 impl TreeRoot for TextBuilder {
     fn install(self, cx: &mut Cx) -> NodeId {
         cx.add(self)
+    }
+}
+
+pub(crate) fn fill_root(cx: &mut Cx, root: NodeId) {
+    if let Some(node) = cx.get_mut(root) {
+        let mut style = node
+            .get_extension::<LayoutStyle>()
+            .cloned()
+            .unwrap_or_default();
+        let size = &mut style.data_mut().size;
+        if size.width == Dimension::Auto {
+            size.width = Dimension::Fill;
+        }
+        if size.height == Dimension::Auto {
+            size.height = Dimension::Fill;
+        }
+        let _ = node.attach(style);
     }
 }
 

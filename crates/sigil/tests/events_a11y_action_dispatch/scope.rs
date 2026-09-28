@@ -28,7 +28,7 @@ fn scoped_tree_with_outside_sibling(
     let outside = cx.nth_child(root, 0).expect("outside child should exist");
     let layout = compute_layout(cx, root, 200.0, 200.0);
     let mut router = EventRouter::new();
-    route_event(&mut router, cx, &layout, pointer_move(-10.0, -10.0));
+    route_event(&mut router, cx, &layout, pointer_drag(-10.0, -10.0));
     (outside, router, layout)
 }
 

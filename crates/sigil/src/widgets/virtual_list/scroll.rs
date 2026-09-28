@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::NodeBuilder;
-use crate::reactive::{Signal, derived_eq, effect, untrack};
+use crate::reactive::{Signal, derived, effect, untrack};
 
 use super::measure::Tops;
 use super::window::RowHeights;
@@ -40,9 +40,9 @@ pub(super) fn extent(
     viewport_height: f32,
     content: impl Fn() -> f32 + 'static,
 ) -> (Signal<f32>, Signal<f32>) {
-    let content = derived_eq(content);
+    let content = derived(content);
     let max =
-        derived_eq(move || (content.get() - viewport_px(viewport.get(), viewport_height)).max(0.0));
+        derived(move || (content.get() - viewport_px(viewport.get(), viewport_height)).max(0.0));
     (content, max)
 }
 

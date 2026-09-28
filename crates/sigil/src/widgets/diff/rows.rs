@@ -7,7 +7,7 @@ use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, Token};
 use super::GUTTER_W;
 use super::patch::{Kind, Pair, changed};
 use crate::app::cell_width;
-use crate::widgets::shared::label;
+use crate::kernel::text;
 
 const fn tones(mark: char) -> (Option<Token>, Token, Option<Token>) {
     match mark {
@@ -43,7 +43,7 @@ pub(super) fn segments(
     };
     let Some(range) = range.filter(|range| range.start < range.end && range.end <= body.len())
     else {
-        return vec![part(label(body))];
+        return vec![part(text(body).nowrap())];
     };
     let mut parts = Vec::new();
     for (slice, mark) in [
@@ -54,7 +54,7 @@ pub(super) fn segments(
         if slice.is_empty() {
             continue;
         }
-        let node = part(label(slice.to_string()));
+        let node = part(text(slice.to_string()).nowrap());
         parts.push(match hit.filter(|_| mark) {
             Some(hit) => node.class(hit.bg()),
             None => node,
@@ -89,7 +89,8 @@ pub(super) fn source_row(
         .role(Role::ListItem)
         .description(line_state(mark))
         .child(
-            label(format!("{number:>4} {mark} "))
+            text(format!("{number:>4} {mark} "))
+                .nowrap()
                 .layout(LayoutStyle::block().width(GUTTER_W).shrink(0.0))
                 .nowrap()
                 .class("text-xs font-mono")

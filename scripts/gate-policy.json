@@ -11,9 +11,9 @@
     "unreachable_pub": { "lint": "unreachable_pub", "max": 17 },
     "too_many_lines": { "lint": "clippy::too_many_lines", "max": 9 },
     "too_many_arguments": { "lint": "clippy::too_many_arguments", "max": 23 },
-    "panic": { "lint": "clippy::panic", "max": 6 },
+    "panic": { "lint": "clippy::panic", "max": 4 },
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },
     "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 5 },
-    "expect_call": { "pattern": "\\.expect\\(", "max": 91 }
+    "expect_call": { "pattern": "\\.expect\\(", "max": 89 }
   }
 }

@@ -129,6 +129,7 @@ pub fn unique_images(count: u32, side: u32) -> GeneratedScene {
             ),
             opacity: 10_000,
             crop: None,
+            raster: None,
         }));
     }
     scene(commands, (512.0, 512.0), 1.0)

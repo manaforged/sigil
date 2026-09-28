@@ -27,7 +27,7 @@ mod trace;
 
 pub use batch::batch;
 pub use channel::{EventChannel, Subscription};
-pub use derived::{derived, derived_eq};
+pub use derived::derived;
 pub(crate) use effect::{current_effect_owner, run_dispatch_deferred};
 pub use effect::{defer, effect, effect_named, untrack};
 #[cfg(any(test, feature = "test-clock"))]

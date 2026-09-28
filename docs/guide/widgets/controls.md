@@ -13,7 +13,7 @@ closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
 ## button
 
 `button(label) -> ButtonBuilder`. `label` is `impl Into<TextContent>`:
-a `&str`, `String`, `Signal<String>`, or `TextContent::compute(f)`.
+a `&str`, `String`, `Signal<T: Display>`, or a closure `Fn() -> String`.
 
 ```rust,no_run
 # use sigil::prelude::*;

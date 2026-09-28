@@ -10,13 +10,13 @@ use crate::style::{FocusRing, NodeStyleExt, StyleAtom, Token, space};
 use super::super::drag::{Axis, axis_drag};
 use super::super::interaction::InteractionState;
 use super::super::patterns::row_states;
-use super::super::shared::label;
 use super::chrome::{ContextKind, TableChrome};
 use super::columns::{CellSpec, ColAlign, TableColumn, flex_cell};
 use super::hscroll::HScroll;
 use super::select;
 use super::sort_mark::sort_mark;
 use super::state::{SortDir, TableState};
+use crate::kernel::text;
 
 const RESIZE_HANDLE: f32 = space(2);
 const RING_INSET: f32 = -space(1);
@@ -185,7 +185,8 @@ fn header_title<Row: 'static>(
     pad_x: f32,
     mark: NodeBuilder,
 ) -> NodeBuilder {
-    let title = label(column.title().to_owned())
+    let title = text(column.title().to_owned())
+        .nowrap()
         .ellipsize()
         .class("text-xs")
         .class(HEADER_TEXT);

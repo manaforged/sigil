@@ -3,7 +3,7 @@ use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, Layou
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, Tone, space};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
-use super::shared::label;
+use crate::kernel::text;
 mod plot;
 
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
@@ -134,7 +134,8 @@ impl ChartBuilder {
                         .justify_content(JustifyContent::Center),
                 )
                 .child(
-                    label("No data")
+                    text("No data")
+                        .nowrap()
                         .class("text-sm")
                         .class(Token::OnSurfaceMuted.text()),
                 );

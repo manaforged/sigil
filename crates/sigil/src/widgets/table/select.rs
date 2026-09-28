@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::events::prelude::{MouseButton, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::Tone;
 
 use super::super::checkbox::{CheckMark, checkbox_indicator};
@@ -38,7 +38,7 @@ pub(super) fn row_cell<Row: 'static>(
     height: f32,
 ) -> NodeBuilder {
     let selection = state.selection();
-    let mark = derived_eq(move || {
+    let mark = derived(move || {
         if selection.get().contains(&row) {
             Mark::Full
         } else {
@@ -64,8 +64,8 @@ fn select_box(
     label: impl Into<AccessibleName>,
     toggle: impl Fn() + 'static,
 ) -> NodeBuilder {
-    let checked = derived_eq(move || mark.get() == Mark::Full);
-    let partial = derived_eq(move || mark.get() == Mark::Partial);
+    let checked = derived(move || mark.get() == Mark::Full);
+    let partial = derived(move || mark.get() == Mark::Partial);
     let interaction = InteractionState::new(true);
     let node = container()
         .role(Role::CheckBox)
@@ -109,7 +109,7 @@ fn cell_layout(height: f32) -> LayoutStyle {
 }
 
 fn header_mark<Row: 'static>(state: TableState<Row>) -> Signal<Mark> {
-    derived_eq(move || {
+    derived(move || {
         let visible = state.visible().get();
         let selection = state.selection().get();
         if selection.is_empty() {

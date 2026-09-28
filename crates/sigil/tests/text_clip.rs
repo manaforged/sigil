@@ -47,7 +47,8 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::hal::Rect>, sigil::hal::Rect) {
 #[test]
 fn ellipsize_in_a_box_too_narrow_for_the_ellipsis_clips() {
     let (clip, rect) = clip_for(
-        label(LONG)
+        text(LONG)
+            .nowrap()
             .ellipsize()
             .layout(LayoutStyle::block().fixed_size(4.0, 40.0)),
     );
@@ -61,7 +62,8 @@ fn ellipsize_in_a_box_too_narrow_for_the_ellipsis_clips() {
 #[test]
 fn ellipsize_in_a_box_shorter_than_a_line_clips() {
     let (clip, rect) = clip_for(
-        label(LONG)
+        text(LONG)
+            .nowrap()
             .ellipsize()
             .layout(LayoutStyle::block().fixed_size(96.0, 4.0)),
     );
@@ -75,7 +77,8 @@ fn ellipsize_in_a_box_shorter_than_a_line_clips() {
 #[test]
 fn ellipsized_text_that_fits_emits_no_clip() {
     let (clip, _) = clip_for(
-        label(LONG)
+        text(LONG)
+            .nowrap()
             .ellipsize()
             .layout(LayoutStyle::block().width(96.0)),
     );

@@ -3,19 +3,19 @@
 Text, icons, images, vector paths, and charts — the leaf nodes that
 paint content.
 
-## text and label
+## text
 
-`text(source) -> TextBuilder` where `source` is `impl Into<TextContent>`
-— `&str`, `String`, `Signal<String>`, or `TextContent::compute(f)` for a
-derived string. `text_live(f)` is shorthand for the compute form.
-`label(source)` is `text(source).nowrap().class("text-on-surface")` —
-the single-line foreground-text convenience.
+`text(source) -> TextBuilder` is the one text node. `source` is
+`impl Into<TextContent>`: a `&str` or `String` (static), a
+`Signal<T: Display>` (live), or a closure `Fn() -> String` that
+re-runs when the signals it reads change. `.nowrap()` keeps it on one
+line.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
 let count = signal(0_i32);
-label(TextContent::compute(move || format!("Count: {}", count.get())));
+text(move || format!("Count: {}", count.get())).nowrap();
 # };
 ```
 
@@ -81,9 +81,14 @@ Paint with `.fill(color)`, `.fill_linear(start, end, stops)`,
 `fill` and `stroke` take an `Rgba8` or a theme `Token`. A `Token`
 resolves against the active theme at paint time.
 `.layout(LayoutStyle)` overrides layout; `.fit()` / `.fit_size(px)`
-fix the node to a logical size and rasterize at 2× for crispness.
-Finished paths are interned in a thread-local raster cache (256
-entries), so repeated identical paths share their pixmap.
+fix the node to a logical size. The `width` and `height` given to
+`path` are the viewbox: the renderer maps it onto the laid-out box and
+rasterizes at the physical pixel size, so paths stay sharp at any
+device scale. Stroke widths scale with the viewbox; call
+`.non_scaling_stroke()` to keep them in logical px with round joins
+and caps, as data lines in a stretched plot need.
+Rasters are interned in a thread-local cache (256 entries), keyed by
+path, paint, and pixel size.
 
 ## chart
 
@@ -117,7 +122,7 @@ example `.focusable(true)` and `.key(...)` on a `text` node.
 
 | Widget | Role | Name source |
 | --- | --- | --- |
-| `text`, `label` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
+| `text` | `Label` (change it with `.role()`) | The text, or `.label(name)` |
 | `icon` | `Image` with `.label()`, else `GenericContainer` | `.label(name)` |
 | `image_rgba`, `image_bytes` | Image node | `.alt(text)` |
 | `path` | Image node | None |

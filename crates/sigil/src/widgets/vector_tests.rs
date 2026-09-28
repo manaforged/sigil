@@ -1,5 +1,6 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
+use super::raster::to_ts_color;
 use super::*;
 
 #[test]

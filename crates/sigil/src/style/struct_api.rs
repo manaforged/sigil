@@ -39,15 +39,7 @@ impl Style {
         for token in input.split(' ').filter(|token| !token.is_empty()) {
             match parse_stateful_token(token) {
                 Ok(parsed) => self.absorb_token(parsed),
-                Err(err) => {
-                    crate::style::merge::bump_unknown_class_count();
-                    tracing::warn!(
-                        target: "sigil_style::class",
-                        input,
-                        error = %err,
-                        "unknown class token ignored",
-                    );
-                }
+                Err(err) => crate::style::builder_ext::diagnostic::class_parse(input, &err),
             }
         }
         self

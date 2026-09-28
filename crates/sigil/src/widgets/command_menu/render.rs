@@ -1,7 +1,7 @@
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::{Metrics, NodeStyleExt, Size, Style, space};
 
 use super::super::layout_ext::LayoutOverrides;
@@ -173,7 +173,7 @@ fn build_row(entry: &Entry, idx: usize, cursor: Signal<usize>, active: Active) -
         ..ItemSlots::new(entry.label().to_owned())
     };
     let highlight =
-        derived_eq(move || (active.focused.get() || active.pointed.get()) && cursor.get() == idx);
+        derived(move || (active.focused.get() || active.pointed.get()) && cursor.get() == idx);
     item_row(slots, highlight)
         .role(Role::MenuItem)
         .pointer_enter(move |_| {

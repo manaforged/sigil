@@ -9,6 +9,7 @@ stable until the node is removed.
 rebuilds the list. `children_keyed` remounts by key: a matching key
 keeps its `NodeId`. The new builder for a kept key is dropped, so a
 dummy `container()` is enough. First key wins on duplicates.
+`for_each` and `show` are `children_keyed` on a `fragment`.
 
 `virtual_list` takes a `Vec` or a `Signal`. Default keys are list
 indices. Use `.identified()` when `T: Identifiable`, and `.key_by` for

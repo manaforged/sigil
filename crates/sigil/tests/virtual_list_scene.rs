@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use sigil::hal::Size;
-use sigil::kernel::{Cx, container, text_live};
+use sigil::kernel::{Cx, container, text};
 use sigil::layout::LayoutEngine;
 use sigil::reactive::{Runtime, signal};
 use sigil::scene::emit_scene;
@@ -19,7 +19,7 @@ fn items_bind_tick_updates_reactive_text() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             virtual_list_bind(items, move |index, _| {
-                container().child(text_live(move || {
+                container().child(text(move || {
                     items.get().get(index).cloned().unwrap_or_default()
                 }))
             })

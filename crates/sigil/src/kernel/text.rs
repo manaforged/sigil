@@ -45,11 +45,6 @@ impl TextContent {
         }
     }
 
-    #[must_use]
-    pub fn compute(f: impl Fn() -> String + 'static) -> Self {
-        Self::Compute(Rc::new(f))
-    }
-
     fn into_live(self) -> Self {
         match self {
             Self::Compute(compute) => Self::Reactive(derived(move || compute())),
@@ -80,9 +75,18 @@ impl From<String> for TextContent {
     }
 }
 
-impl From<Signal<String>> for TextContent {
-    fn from(value: Signal<String>) -> Self {
-        Self::Reactive(value)
+impl<T: fmt::Display + 'static> From<Signal<T>> for TextContent {
+    fn from(value: Signal<T>) -> Self {
+        if let Some(text) = (&value as &dyn std::any::Any).downcast_ref::<Signal<String>>() {
+            return Self::Reactive(*text);
+        }
+        Self::Reactive(derived(move || value.with(ToString::to_string)))
+    }
+}
+
+impl<F: Fn() -> String + 'static> From<F> for TextContent {
+    fn from(value: F) -> Self {
+        Self::Compute(Rc::new(value))
     }
 }
 
@@ -92,11 +96,6 @@ pub struct TextBuilder {
     wrap: bool,
     ellipsis: bool,
     pre_extensions: Vec<TextMutator>,
-}
-
-#[must_use]
-pub fn text_live(f: impl Fn() -> String + 'static) -> TextBuilder {
-    text(TextContent::compute(f))
 }
 
 #[must_use]

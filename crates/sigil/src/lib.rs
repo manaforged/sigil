@@ -117,9 +117,9 @@ pub mod prelude {
         ScrollPhase, ShellEvent, Shortcut, Size, WindowCommand, WindowEvent,
     };
     pub use crate::kernel::{
-        A11yProps, AccessibleName, Action, Cx, ImageCrop, ImageSource, IntoNode, Node, NodeBuilder,
-        NodeExtensions, NodeId, NodeType, ObjectFit, Role, Surface, TextBuilder, TextContent,
-        TopLayer, container, fragment, image, node, text, text_live,
+        A11yProps, AccessibleName, Action, Cx, ImageCrop, ImageRaster, ImageSource, IntoNode, Node,
+        NodeBuilder, NodeExtensions, NodeId, NodeType, ObjectFit, Role, Surface, TextBuilder,
+        TextContent, TopLayer, container, for_each, fragment, image, node, show, text,
     };
     pub use crate::layout::{
         AlignItems, AlignSelf, BoundsReactive, Dimension, Display, FlexDirection, FlexWrap, IntoPx,
@@ -128,14 +128,15 @@ pub mod prelude {
         ReactivePosition, TextLength, TextMeasure, TrackSize, cols, em, rows,
     };
     pub use crate::reactive::{
-        EventChannel, IntervalId, Reactive, Signal, batch, defer, derived, derived_eq, effect,
-        interval, on_cleanup, signal, untrack,
+        EventChannel, IntervalId, Reactive, Signal, batch, defer, derived, effect, interval,
+        on_cleanup, signal, untrack,
     };
     pub use crate::style::{
         ColorAtom, ColorKey, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing,
         Geometry, NodeStyleExt, NumericAtomKind, Px, Rgba8, Sizing, Spacing, StateStyle,
         StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
-        Theme, ThemeValue, TokenLayer, TokenTable, Tone, Transitions, Typography, Visual, classes,
+        Theme, ThemeValue, TokenLayer, TokenTable, Tone, Transitions, Typography, Visual,
+        parse_classes,
     };
     pub use crate::tasks::{
         OwnerHandle, ScheduleError, SignalWriter, Status, dispatch_to_owner, dispatcher,
@@ -181,11 +182,11 @@ pub mod prelude {
         date_field, diff, divider_horizontal, divider_vertical, dot, drag_ghost, dropdown,
         empty_state, field, fuzzy_score, gauge, hairline, heatmap, highlight, hint_bar,
         hint_overlay, hl_spans, html, icon, icon_button, image_rgba, interactive, kv_grid, kv_row,
-        label, list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu, menu_bar,
-        mermaid, modal, notice_band, number_field, panel, path, progress, radio_group, scroll,
-        scroll_auto, section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer,
-        sparkline, spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal,
-        text_edit, text_field, toast, toast_queue, toggle, tooltip, validated_field, virtual_list,
+        list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu, menu_bar, mermaid,
+        modal, notice_band, number_field, panel, path, progress, radio_group, scroll, scroll_auto,
+        section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer, sparkline,
+        spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal, text_edit,
+        text_field, toast, toast_queue, toggle, tooltip, validated_field, virtual_list,
     };
     pub use crate::{
         AppConfig, AppResult, Error, Host, HostCaps, TreeRoot, is_grid, viewport_size,

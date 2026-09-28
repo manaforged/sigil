@@ -4,7 +4,7 @@ use crate::hal::{HitPosition, Point, TextAffinity};
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, fragment, text};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
 use crate::layout::{TextStyleCapture, with_text_geometry};
-use crate::reactive::{Signal, derived_eq, effect};
+use crate::reactive::{Signal, derived, effect};
 use crate::style::{
     BORDER_WIDTH, DISABLED_OPACITY, NodeStyleExt, NumericAtomKind, Px, Radius, StateStyle,
     StyleAtom, StyleOverlay, StyleVariant, TextStyle, Token, TransitionId, space,
@@ -97,7 +97,7 @@ fn edit_inner(
     let moved = runtime.clone();
     let scroll_y = scroll_into_view(runtime);
     let (padding_x, padding_y) = runtime.content_padding;
-    let offset = derived_eq(move || (0.0, padding_y - scroll_y.get()));
+    let offset = derived(move || (0.0, padding_y - scroll_y.get()));
     let text_box = container()
         .hittable(false)
         .layout(LayoutStyle::block().min_size(0.0, 0.0))
@@ -107,7 +107,7 @@ fn edit_inner(
         .child(caret_layer(runtime, interaction))
         .child(edit_lines(displayed, runtime.text_style));
     let content_size = runtime.content_size;
-    let extent = derived_eq(move || padding_y.mul_add(2.0, content_size.get().1));
+    let extent = derived(move || padding_y.mul_add(2.0, content_size.get().1));
     let body = container()
         .layout(
             LayoutStyle::block()
@@ -183,17 +183,17 @@ fn caret_layer(runtime: &TextEditRuntime, interaction: InteractionState) -> Node
     let style = runtime.text_style;
     let caret_affinity = runtime.caret_affinity;
     let content_size = runtime.content_size;
+    let ime = runtime.ime.clone();
     fragment()
         .layout(LayoutStyle::block())
         .children_reactive(move || {
             if !interaction.focus_visible().get() || !caret_visible.get() {
                 return Vec::new();
             }
-            let buffer = value.get();
+            let (buffer, byte) = ime.composing_caret(&value.get(), caret.get());
             let content_width = content_size.get().0;
             let width = (content_width > 0.0).then_some(content_width);
             let text_style = style.get();
-            let byte = caret.get().min(buffer.len());
             caret_rect(
                 &buffer,
                 &text_style,
@@ -304,7 +304,7 @@ fn displayed_text(
     preedit: Signal<String>,
     caret: Signal<usize>,
 ) -> Signal<String> {
-    derived_eq(move || {
+    derived(move || {
         let current = value.get();
         let composing = preedit.get();
         if !composing.is_empty() {

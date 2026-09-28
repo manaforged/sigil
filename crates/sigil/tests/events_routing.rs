@@ -18,7 +18,7 @@ use sigil::events::prelude::*;
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-use input::{pointer_down, pointer_move, scroll_lines, window_blur};
+use input::{pointer_down, pointer_drag, scroll_lines, window_blur};
 use routing_helpers::{abs_rect, compute_layout, record, route_event};
 
 #[test]
@@ -164,7 +164,7 @@ fn pointer_capture_redirects_moves() {
     let mut router = EventRouter::new();
 
     route_event(&mut router, &mut cx, &layout, pointer_down(5.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 200.0));
+    route_event(&mut router, &mut cx, &layout, pointer_drag(200.0, 200.0));
 
     assert_eq!(captured_moves.get(), 1);
 }
@@ -216,9 +216,9 @@ fn pointer_move_synthesizes_enter_leave() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_move(5.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_move(45.0, 5.0));
-    route_event(&mut router, &mut cx, &layout, pointer_move(200.0, 200.0));
+    route_event(&mut router, &mut cx, &layout, pointer_drag(5.0, 5.0));
+    route_event(&mut router, &mut cx, &layout, pointer_drag(45.0, 5.0));
+    route_event(&mut router, &mut cx, &layout, pointer_drag(200.0, 200.0));
 
     assert_eq!(
         &*order.borrow(),
@@ -245,7 +245,7 @@ fn window_blur_dispatches_synthetic_leaves() {
     let layout = compute_layout(&mut cx, root, 100.0, 100.0);
     let mut router = EventRouter::new();
 
-    route_event(&mut router, &mut cx, &layout, pointer_move(5.0, 5.0));
+    route_event(&mut router, &mut cx, &layout, pointer_drag(5.0, 5.0));
     assert_eq!(&*order.borrow(), &["root-enter", "child-enter"]);
 
     route_event(&mut router, &mut cx, &layout, window_blur());

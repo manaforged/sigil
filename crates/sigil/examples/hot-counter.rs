@@ -14,8 +14,8 @@ fn counter(count: Signal<i32>) -> NodeBuilder {
     let label = derived(move || format!("Count: {}", count.get()));
     container()
         .layout(LayoutStyle::flex_column().gap(16.0))
-        .class(classes!("p-8 bg-surface"))
-        .child(text(label).class(classes!("text-on-surface")))
+        .class("p-32 bg-surface")
+        .child(text(label).class("text-on-surface"))
         .child(button("Increment").primary().activate(move || {
             count.set(count.peek() + 1);
         }))

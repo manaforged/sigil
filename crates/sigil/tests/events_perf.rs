@@ -11,7 +11,7 @@ use sigil_kittest::FixedMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use input::{key_down, pointer_down, pointer_move, pointer_up};
+use input::{key_down, pointer_down, pointer_drag, pointer_up};
 use sigil::events::prelude::*;
 use sigil::hal::{
     Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, ShellEvent,
@@ -88,7 +88,7 @@ fn captured_pointer_up_release_does_not_allocate() {
     assert_eq!(info.count_total, 0, "{info:?}");
     assert_eq!(ups.get(), 1);
 
-    router.route(&mut cx, &layout, pointer_move(200.0, 200.0));
+    router.route(&mut cx, &layout, pointer_drag(200.0, 200.0));
     assert_eq!(ups.get(), 1);
 }
 
@@ -115,7 +115,7 @@ fn captured_pointer_move_does_not_allocate() {
     router.route(&mut cx, &layout, pointer_down(0.5, 0.5));
 
     let info = allocation_counter::measure(|| {
-        router.route(&mut cx, &layout, pointer_move(200.0, 200.0));
+        router.route(&mut cx, &layout, pointer_drag(200.0, 200.0));
     });
 
     assert_eq!(info.count_total, 0, "{info:?}");

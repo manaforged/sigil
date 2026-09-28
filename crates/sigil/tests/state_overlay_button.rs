@@ -9,7 +9,7 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move_event;
+use input::pointer_move;
 use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
 use sigil::style::Tone;
@@ -26,7 +26,7 @@ fn button_user_pressed_overlay_overrides_widget_pressed_bg() {
         let root = cx.add(button("Delete").pressed(|s| s.bg(ruby_10)));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(31.0, 14.0));
+        router.route(&mut cx, &layout, pointer_move(31.0, 14.0));
         router.route(
             &mut cx,
             &layout,

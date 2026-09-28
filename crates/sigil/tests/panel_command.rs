@@ -98,7 +98,7 @@ fn panel_without_title_emits_no_title_text() {
 fn panel_with_child_label_renders_child_text() {
     sigil::reactive::Runtime::scope("sigil-panel-child", || {
         let mut cx = Cx::new_root();
-        let root = cx.add(panel().title("Stats").child(label("Gold: 42")));
+        let root = cx.add(panel().title("Stats").child(text("Gold: 42").nowrap()));
         let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))

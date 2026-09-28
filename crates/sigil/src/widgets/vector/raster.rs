@@ -1,6 +1,7 @@
 use tiny_skia::{
-    Color as TsColor, GradientStop, LinearGradient, PathBuilder as TsPathBuilder, Pixmap,
-    Point as TsPoint, RadialGradient, Shader, SpreadMode, Transform,
+    Color as TsColor, GradientStop, LineCap, LineJoin, LinearGradient, Paint,
+    PathBuilder as TsPathBuilder, Pixmap, Point as TsPoint, RadialGradient, Shader, SpreadMode,
+    Stroke, Transform,
 };
 
 use super::{PathCmd, PathFill};
@@ -29,6 +30,36 @@ pub(super) fn straight_rgba(pixmap: &Pixmap) -> Vec<u8> {
         out.extend_from_slice(&[color.red(), color.green(), color.blue(), color.alpha()]);
     }
     out
+}
+
+pub(super) fn stroke_path(
+    pixmap: &mut Pixmap,
+    path: &tiny_skia::Path,
+    (color, width): (Rgba8, f32),
+    transform: Transform,
+    fixed_scale: Option<f32>,
+) {
+    let mut paint = Paint::default();
+    paint.set_color(to_ts_color(color));
+    paint.anti_alias = true;
+    let Some(scale) = fixed_scale else {
+        let line = Stroke {
+            width,
+            ..Stroke::default()
+        };
+        pixmap.stroke_path(path, &paint, &line, transform, None);
+        return;
+    };
+    let Some(mapped) = path.clone().transform(transform) else {
+        return;
+    };
+    let line = Stroke {
+        width: width * scale,
+        line_cap: LineCap::Round,
+        line_join: LineJoin::Round,
+        ..Stroke::default()
+    };
+    pixmap.stroke_path(&mapped, &paint, &line, Transform::identity(), None);
 }
 
 pub(super) fn to_ts_color(color: Rgba8) -> TsColor {

@@ -155,11 +155,11 @@ The family pages carry signatures, options, and behavior notes:
 
   ```rust,ignore
   let picked = sigil::dialog::FileDialog::new().filter("CSV", &["csv"]).open_file();
-  text(TextContent::compute(move || picked.with(|status| match status {
+  text(move || picked.with(|status| match status {
       Status::Ok(Some(path)) => path.display().to_string(),
       Status::Ok(None) => String::from("Cancelled"),
       _ => String::from("Choosing"),
-  })))
+  }))
   ```
 - **sheet(open)** — the same builder, docked. The default is
   `.side(Side::Right)`. Use `.side(Side::Left)` or
@@ -169,7 +169,7 @@ The family pages carry signatures, options, and behavior notes:
 - **tabs(Signal\<usize\>, Vec\<String\>)** — chain `.content_for(i, node)`
   and `.close(Fn(usize))`.
 - **scroll(inner, extent)** — chain `.width()` and `.height()`.
-- **menu_bar()** — a GPU app bar. `.class("bg-surface-hover px-3")`
+- **menu_bar()** — a GPU app bar. `.class("bg-surface-hover px-12")`
   styles the strip. `.menu("File", [MenuItem::new("Open").select(|| {})])`
   builds a dropdown. This is the bar you design. The native OS bar is
   opt-in: `sigil::menu::set_menu_bar` (feature `menu`, next frame).

@@ -29,6 +29,7 @@ pub struct TextFieldBuilder {
     pub(super) caret_visible: Option<Signal<bool>>,
     pub(super) scroll_offset: Option<Signal<f32>>,
     focus_trigger: Option<Signal<u64>>,
+    autofocus: bool,
     focus_caret: FocusCaret,
     pub(super) password: bool,
     pub(super) reveal: Option<Signal<bool>>,
@@ -57,6 +58,7 @@ impl TextFieldBuilder {
             caret_visible: None,
             scroll_offset: None,
             focus_trigger: None,
+            autofocus: false,
             focus_caret: FocusCaret::Keep,
             password: false,
             reveal: None,
@@ -126,6 +128,12 @@ impl TextFieldBuilder {
     #[must_use]
     pub const fn focus_when(mut self, trigger: Signal<u64>) -> Self {
         self.focus_trigger = Some(trigger);
+        self
+    }
+
+    #[must_use]
+    pub const fn autofocus(mut self) -> Self {
+        self.autofocus = true;
         self
     }
 
@@ -214,13 +222,14 @@ impl WidgetLayoutExt for TextFieldBuilder {
 impl IntoNode for TextFieldBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
         let focus_trigger = self.focus_trigger;
+        let autofocus = self.autofocus;
         let at = self.focus_caret;
         let (node, runtime) = self.into_node_builder();
         let id = node.build(cx);
+        if autofocus {
+            focus_field(id, &runtime, at);
+        }
         if let Some(trigger) = focus_trigger {
-            if trigger.peek() > 0 {
-                focus_field(id, &runtime, at);
-            }
             install_focus_trigger(id, trigger, runtime, at);
         }
         id

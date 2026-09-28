@@ -152,7 +152,7 @@ fn model(
     let names = signal(CHANNELS.split(' ').map(str::to_owned).collect::<Vec<_>>());
     let active = signal(0_usize);
     let seen = signal(vec![0_usize; 6]);
-    let unread = derived_eq(move || {
+    let unread = derived(move || {
         let marks = seen.get();
         messages.with(|all| {
             let count = |(ch, skip): (usize, &usize)| {
@@ -164,7 +164,7 @@ fn model(
             marks.iter().enumerate().map(count).collect::<Vec<_>>()
         })
     });
-    let visible = derived_eq(move || {
+    let visible = derived(move || {
         let current = active.get();
         messages.with(|all| {
             let hit = |(index, msg): (usize, &Msg)| (msg.channel == current).then_some(index);
@@ -226,17 +226,15 @@ pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
             .child(
                 container()
                     .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)))
-                    .child(label(TextContent::compute(move || {
-                        format!("# {}", current_name(chat))
-                    })))
+                    .child(text(move || format!("# {}", current_name(chat))).nowrap())
                     .child(spacer())
-                    .child(label("sigil-chat").class("text-sm")),
+                    .child(text("sigil-chat").nowrap().class("text-sm")),
             )
             .child(work(chat, posts))
             .child(status_bar([
-                label(TextContent::compute(move || link_text(chat))),
-                label(TextContent::compute(unread)),
-                label("^K switch channel  Enter send"),
+                text(move || link_text(chat)).nowrap(),
+                text(unread).nowrap(),
+                text("^K switch channel  Enter send").nowrap(),
             ]))
             .child(picker_modal(chat, picker)),
     )
@@ -306,24 +304,22 @@ fn transcript(chat: Chat) -> ScrollBuilder {
 
 fn message(chat: Chat, index: usize) -> NodeBuilder {
     let read = move |f: fn(&Msg) -> String| chat.messages.with(|all| all.get(index).map(f));
-    let head = TextContent::compute(move || {
+    let head = move || {
         let head = |msg: &Msg| format!("{}{}", msg.author, if msg.done { "" } else { " · typing" });
         read(head).unwrap_or_default()
-    });
-    let body = text_live(move || read(|msg| msg.body.clone()).unwrap_or_default());
+    };
+    let body = text(move || read(|msg| msg.body.clone()).unwrap_or_default());
     container()
         .layout(LayoutStyle::flex_column().fill_width())
-        .child(label(head).class("text-sm text-accent"))
+        .child(text(head).nowrap().class("text-sm text-accent"))
         .child(body.wrap())
 }
 
 fn composer(chat: Chat, posts: Sender<Post>) -> TextFieldBuilder {
     let draft = signal(String::new());
     text_field(draft)
-        .focus_when(signal(1_u64))
-        .placeholder(TextContent::compute(move || {
-            format!("Message # {}", current_name(chat))
-        }))
+        .autofocus()
+        .placeholder(move || format!("Message # {}", current_name(chat)))
         .submit(move |value| {
             let post = Post {
                 channel: chat.active.peek(),
@@ -354,7 +350,7 @@ fn pick(chat: Chat, picker: Picker, channel: usize) {
 }
 
 fn picker_modal(chat: Chat, picker: Picker) -> ModalBuilder {
-    let hits = derived_eq(move || {
+    let hits = derived(move || {
         let query = picker.query.get();
         chat.names.with(|names| rank(names, &query))
     });

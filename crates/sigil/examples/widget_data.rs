@@ -37,11 +37,11 @@ fn table_demo() -> TableBuilder<Repo> {
     let columns = vec![
         TableColumn::new("name", "Name")
             .sort_by(|row: &Repo| row.name)
-            .cell(|row| label(row.name)),
+            .cell(|row| text(row.name).nowrap()),
         TableColumn::new("stars", "Stars")
             .numeric()
             .sort_by(|row: &Repo| row.stars)
-            .cell(|row| label(row.stars.to_string())),
+            .cell(|row| text(row.stars.to_string()).nowrap()),
     ];
     table(TableState::new(repos, columns))
         .striped()

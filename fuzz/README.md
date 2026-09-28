@@ -1,7 +1,7 @@
 # Fuzz targets
 
-Five libFuzzer targets cover the parsers that read text input. `scene_render`
-covers the CPU renderer.
+Six libFuzzer targets. Five cover the parsers that read text input, and
+`scene_render` covers the CPU renderer.
 
 | Target | Parser |
 | --- | --- |

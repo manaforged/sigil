@@ -32,7 +32,7 @@ fn text_row(_state: State) -> NodeBuilder {
 }
 
 fn label_row(_state: State) -> NodeBuilder {
-    node(label("Labels and text share TextContent."))
+    node(text("Labels and text share TextContent.").nowrap())
 }
 
 fn section_row(_state: State) -> NodeBuilder {
@@ -87,7 +87,7 @@ fn image_row(_state: State) -> NodeBuilder {
             [shade, 120, 255 - shade, 255]
         })
         .collect();
-    image_rgba(32, 32, pixels).map_or_else(|| node(label("image_rgba rejected")), node)
+    image_rgba(32, 32, pixels).map_or_else(|| node(text("image_rgba rejected").nowrap()), node)
 }
 
 fn divider_h_row(_state: State) -> NodeBuilder {

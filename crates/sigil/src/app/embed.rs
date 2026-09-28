@@ -26,6 +26,7 @@ pub struct Host {
     cx: Cx,
     layout: LayoutEngine,
     root: Option<NodeId>,
+    fill_root: bool,
     theme: Theme,
     visual_transforms: bool,
     hits: HitTestCache,
@@ -96,6 +97,7 @@ impl Host {
             cx,
             layout: LayoutEngine::with_text_measure(measure),
             root: None,
+            fill_root: false,
             theme: Theme::default(),
             visual_transforms,
             hits: HitTestCache::default(),
@@ -142,6 +144,7 @@ impl Host {
 
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub(crate) fn mount_app(&mut self, tree: impl crate::app::TreeRoot) {
+        self.fill_root = true;
         super::tree_root::sealed::Sealed::mount_into(tree, self);
     }
 
@@ -159,7 +162,11 @@ impl Host {
         if let Some(root) = self.root.take() {
             self.cx.remove(root);
         }
-        self.root = Some(install(&mut self.cx));
+        let root = install(&mut self.cx);
+        if self.fill_root {
+            super::tree_root::fill_root(&mut self.cx, root);
+        }
+        self.root = Some(root);
         if let Some(theme) = theme {
             self.attach_theme(theme);
         }

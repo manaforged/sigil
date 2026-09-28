@@ -11,16 +11,14 @@ fn main() -> sigil::AppResult<()> {
 }
 
 fn interactive_demo() -> InteractiveBuilder {
-    interactive(container().child(label("Focusable row")))
+    interactive(container().child(text("Focusable row").nowrap()))
         .focusable(true)
         .class("rounded-md")
 }
 
 fn axis_drag_demo() -> NodeBuilder {
     let width = signal(120.0_f32);
-    let handle = card(label(TextContent::compute(move || {
-        format!("Drag me: {:.0}", width.get())
-    })));
+    let handle = card(text(move || format!("Drag me: {:.0}", width.get())).nowrap());
     axis_drag(
         handle,
         Axis::X,
@@ -35,13 +33,15 @@ fn drag_ghost_demo() -> NodeBuilder {
     let dropped = signal(String::from("Drop a card here"));
     container()
         .layout(LayoutStyle::flex_column().gap(rows(1.0)))
-        .child(card(label("Card A")).drag_source(drag.clone(), String::from("Card A")))
-        .child(card(label(dropped)).drop_target(
+        .child(card(text("Card A").nowrap()).drag_source(drag.clone(), String::from("Card A")))
+        .child(card(text(dropped).nowrap()).drop_target(
             drag.clone(),
             |_| true,
             move |item| dropped.set(format!("Dropped {item}")),
         ))
-        .child(drag_ghost(drag, |item: &String| label(item.clone())))
+        .child(drag_ghost(drag, |item: &String| {
+            text(item.clone()).nowrap()
+        }))
 }
 
 fn terminal_demo() -> NodeBuilder {

@@ -2,7 +2,7 @@ use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::{Metrics, Size, space};
 
 use super::layout_ext::WidgetLayoutExt;
@@ -293,8 +293,8 @@ fn build_popup(state: Combobox, matches: Vec<(usize, String)>) -> NodeBuilder {
 }
 
 fn build_row(state: Combobox, row: usize, index: usize, label: String) -> NodeBuilder {
-    let checked = derived_eq(move || state.selected.get() == Some(index));
-    let highlight = derived_eq(move || state.cursor.get() == row);
+    let checked = derived(move || state.selected.get() == Some(index));
+    let highlight = derived(move || state.cursor.get() == row);
     let slots = ItemSlots {
         checked: Some(checked),
         ..ItemSlots::new(label)

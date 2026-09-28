@@ -77,7 +77,11 @@ pub(crate) fn app(cx: &mut Cx) -> NodeId {
     cx.add(app_shell(
         menu_bar().menu("File", file_menu),
         work_area(),
-        status_bar([label("main"), label("Ln 7, Col 5"), label("Rust")]),
+        status_bar([
+            text("main").nowrap(),
+            text("Ln 7, Col 5").nowrap(),
+            text("Rust").nowrap(),
+        ]),
         None::<NodeBuilder>,
     ))
 }

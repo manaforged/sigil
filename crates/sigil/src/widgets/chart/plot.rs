@@ -1,12 +1,12 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::prelude::{
-    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle,
+    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, Position,
 };
 use crate::style::{NodeStyleExt, Radius, Token, space};
 
-use super::super::shared::label;
-use super::super::vector::path;
+use super::super::vector::{PathNode, path};
 use super::{ChartMark, ChartSeries, nice_max, tone_fill};
+use crate::kernel::text;
 
 const AXIS: f32 = 32.0;
 const PLOT_PAD: f32 = space(2);
@@ -25,9 +25,9 @@ pub(super) fn draw(
         .flat_map(|item| item.values.iter().copied())
         .fold(0.0_f32, f32::max);
     let max = nice_max(peak);
-    let plot = match mark {
-        ChartMark::Bar => bars(series, count, max),
-        ChartMark::Line => lines(series, count, max),
+    let (plot, gap) = match mark {
+        ChartMark::Bar => (bars(series, count, max), GROUP_GAP),
+        ChartMark::Line => (lines(series, count, max), 0.0),
     };
     let mut node = root.child(
         container()
@@ -48,7 +48,7 @@ pub(super) fn draw(
                             .fill_height(),
                     )
                     .child(plot)
-                    .child(x_axis(labels, count)),
+                    .child(x_axis(labels, count, gap)),
             ),
     );
     if series.iter().any(|item| !item.name.is_empty()) {
@@ -67,16 +67,23 @@ fn y_axis(max: f32) -> NodeBuilder {
                 .justify_content(JustifyContent::SpaceBetween),
         )
         .child(
-            label(format_tick(max))
+            text(format_tick(max))
+                .nowrap()
                 .class("text-xs")
                 .class(Token::Gray11.text()),
         )
         .child(
-            label(format_tick(max * 0.5))
+            text(format_tick(max * 0.5))
+                .nowrap()
                 .class("text-xs")
                 .class(Token::Gray11.text()),
         )
-        .child(label("0").class("text-xs").class(Token::Gray11.text()));
+        .child(
+            text("0")
+                .nowrap()
+                .class("text-xs")
+                .class(Token::Gray11.text()),
+        );
     container()
         .layout(
             LayoutStyle::flex_column()
@@ -87,14 +94,14 @@ fn y_axis(max: f32) -> NodeBuilder {
         .child(ticks)
 }
 
-fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
+fn x_axis(labels: &[String], count: usize, gap: f32) -> NodeBuilder {
     let mut row = container().layout(
         LayoutStyle::flex_row()
             .fill_width()
             .height(X_AXIS)
             .shrink(0.0)
             .padding_x(PLOT_PAD)
-            .gap(GROUP_GAP),
+            .gap(gap),
     );
     for index in 0..count {
         let text = labels
@@ -111,7 +118,7 @@ fn x_axis(labels: &[String], count: usize) -> NodeBuilder {
                         .justify_content(JustifyContent::Center),
                 )
                 .child(
-                    label(text)
+                    crate::kernel::text(text)
                         .wrap()
                         .class("text-xs")
                         .class(Token::Gray11.text()),
@@ -189,45 +196,58 @@ fn bar_col(pct: f32, tone: super::Tone, name: &str, value: f32) -> NodeBuilder {
 }
 
 fn lines(series: &[ChartSeries], count: usize, max: f32) -> NodeBuilder {
-    const W: u32 = 400;
-    const H: u32 = 200;
-    const W_F: f32 = 400.0;
-    const H_F: f32 = 200.0;
-    let mut layer = container()
-        .layout(LayoutStyle::block().fill())
-        .class("border-b")
-        .class(Token::Gray6.border());
+    let mut layer = container().layout(LayoutStyle::block().fill());
     for item in series {
         if item.values.is_empty() {
             continue;
         }
-        let last = u32::try_from(count - 1).unwrap_or(u32::MAX);
-        let mut stroke = path(W, H);
-        for (point, value) in item.values.iter().take(count).enumerate() {
-            #[allow(
-                clippy::cast_precision_loss,
-                reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
-            )]
-            let x = if count <= 1 {
-                W_F * 0.5
-            } else {
-                (point as f32 / last as f32).mul_add(W_F - 8.0, 4.0)
-            };
-            let t = ((*value).max(0.0) / max).clamp(0.0, 1.0);
-            let y = (1.0 - t).mul_add(H_F - 8.0, 4.0);
-            stroke = if point == 0 {
-                stroke.move_to(x, y)
-            } else {
-                stroke.line_to(x, y)
-            };
-        }
         layer = layer.child(
-            stroke
-                .stroke(tone_fill(item.tone), 2.0)
-                .layout(LayoutStyle::block().fill()),
+            line_path(item, count, max).layout(
+                LayoutStyle::block()
+                    .position(Position::Absolute)
+                    .inset_top(0.0)
+                    .inset_left(0.0)
+                    .fill(),
+            ),
         );
     }
-    layer
+    container()
+        .layout(
+            LayoutStyle::block()
+                .fill_width()
+                .grow(1.0)
+                .min_size(0.0, 0.0)
+                .padding_x(PLOT_PAD),
+        )
+        .class("border-b")
+        .class(Token::Gray6.border())
+        .child(layer)
+}
+
+#[allow(
+    clippy::cast_precision_loss,
+    reason = "point counts are small; sub-unit precision is irrelevant at render scale"
+)]
+fn line_path(item: &ChartSeries, count: usize, max: f32) -> PathNode {
+    const W: u32 = 400;
+    const H: u32 = 200;
+    const W_F: f32 = 400.0;
+    const H_F: f32 = 200.0;
+    let columns = count as f32;
+    let mut stroke = path(W, H);
+    for (point, value) in item.values.iter().take(count).enumerate() {
+        let x = W_F * (point as f32 + 0.5) / columns;
+        let t = ((*value).max(0.0) / max).clamp(0.0, 1.0);
+        let y = (1.0 - t).mul_add(H_F - 8.0, 4.0);
+        stroke = if point == 0 {
+            stroke.move_to(x, y)
+        } else {
+            stroke.line_to(x, y)
+        };
+    }
+    stroke
+        .stroke(tone_fill(item.tone), 2.0)
+        .non_scaling_stroke()
 }
 
 fn legend(series: &[ChartSeries]) -> NodeBuilder {
@@ -249,7 +269,8 @@ fn legend(series: &[ChartSeries]) -> NodeBuilder {
                         .class([Radius::Sm.atom(), tone_fill(item.tone).bg()]),
                 )
                 .child(
-                    label(item.name.clone())
+                    text(item.name.clone())
+                        .nowrap()
                         .class("text-xs")
                         .class(Token::Gray12.text()),
                 ),

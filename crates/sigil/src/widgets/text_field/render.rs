@@ -6,7 +6,7 @@ use crate::events::prelude::{NodeEventsExt, PointerEvent};
 use crate::kernel::{NodeBuilder, Role, TextContent, container};
 use crate::layout::TextStyleCapture;
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{
     ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay,
     TransitionId, space,
@@ -154,7 +154,7 @@ fn displayed_text(
     let caret = runtime.input.caret;
     let password = runtime.password;
     let reveal = runtime.reveal;
-    derived_eq(move || {
+    derived(move || {
         let current = value.get();
         let composing = preedit.get();
         let hiding = super::mask::hiding(password, reveal);

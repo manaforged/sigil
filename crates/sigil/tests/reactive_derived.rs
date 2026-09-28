@@ -6,7 +6,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::reactive::{Owner, Runtime, derived, derived_eq, effect, signal};
+use sigil::reactive::{Owner, Runtime, derived, effect, signal};
 
 #[test]
 fn derived_computes_initial_value_on_registration() {
@@ -58,7 +58,7 @@ fn derived_reads_are_tracked_by_outer_effects() {
 fn derived_eq_memoizes_equal_values() {
     Runtime::scope("derived_eq_memoizes", || {
         let n = signal(3_i32);
-        let is_pos = derived_eq(move || n.get() > 0);
+        let is_pos = derived(move || n.get() > 0);
 
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -113,7 +113,7 @@ fn derived_of_derived_propagates_correctly() {
 fn derived_eq_does_not_fire_outer_effects_when_value_unchanged() {
     Runtime::scope("derived_eq_silent_on_unchanged", || {
         let n = signal(10_i32);
-        let bucket = derived_eq(move || n.get() / 51);
+        let bucket = derived(move || n.get() / 51);
 
         let runs = Rc::new(Cell::new(0_u32));
         {
@@ -175,7 +175,7 @@ fn derived_eq_calls_f_exactly_once_per_update_even_on_equal_values() {
         let calls = Rc::new(Cell::new(0_u32));
 
         let calls_for_f = Rc::clone(&calls);
-        let is_pos = derived_eq(move || {
+        let is_pos = derived(move || {
             calls_for_f.set(calls_for_f.get() + 1);
             n.get() > 0
         });
@@ -221,25 +221,5 @@ fn derived_survives_across_multiple_effect_runs() {
             n.set(v);
             assert_eq!(d.get(), v + 100);
         }
-    });
-}
-
-#[test]
-fn derived_works_with_non_partial_eq_type() {
-    #[derive(Clone)]
-    struct Opaque(#[expect(dead_code)] Rc<dyn Fn(i32) -> i32>);
-
-    Runtime::scope("derived_non_partial_eq", || {
-        let which = signal(0_i32);
-        let op: sigil::reactive::Signal<Opaque> = derived(move || {
-            if which.get() == 0 {
-                Opaque(Rc::new(|x| x + 1))
-            } else {
-                Opaque(Rc::new(|x| x * 2))
-            }
-        });
-        let _first = op.get();
-        which.set(1);
-        let _second = op.get();
     });
 }

@@ -7,7 +7,6 @@ use crate::style::{BORDER_WIDTH, DisplayKind, NodeStyleExt, Radius, StyleAtom, T
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
-use super::shared::label;
 use super::text_field::TextFieldBuilder;
 use super::tooltip::{TooltipBuilder, tooltip as tooltip_widget};
 
@@ -95,7 +94,7 @@ pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'stati
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
-        .child(label(label_text))
+        .child(text(label_text).nowrap())
         .child(control)
         .on_added(|cx, id| {
             let Some(node) = cx.get(id) else { return };
@@ -123,7 +122,7 @@ pub fn validated_field(
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
-        .child(label(label_text))
+        .child(text(label_text).nowrap())
         .child(control)
         .child(
             text(message)

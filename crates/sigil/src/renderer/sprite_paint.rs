@@ -115,11 +115,12 @@ impl SpritePipeline {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         commands: &[SceneCommand],
+        scale: f32,
     ) {
         for command in commands {
             match command {
                 SceneCommand::Image(draw) => {
-                    self.register_image(device, queue, &draw.source);
+                    self.register_image(device, queue, &draw.source_at(scale).0);
                 }
                 SceneCommand::Sprite(draw) => {
                     let _ = self.resolve_atlas(device, queue, draw.source.atlas);

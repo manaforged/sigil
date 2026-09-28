@@ -56,13 +56,11 @@ fn focus_when_bump_focuses_the_field() {
 }
 
 #[test]
-fn focus_when_mounts_with_a_set_trigger_take_focus() {
+fn autofocus_field_takes_focus_on_mount() {
     sigil::reactive::Runtime::scope("text-field-focus-mount", || {
         let value = signal(String::new());
-        let trigger = signal(0_u64);
-        trigger.set(1);
         let mut cx = Cx::new_root();
-        let root = cx.add(text_field(value).focus_when(trigger));
+        let root = cx.add(text_field(value).autofocus());
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
@@ -70,17 +68,15 @@ fn focus_when_mounts_with_a_set_trigger_take_focus() {
         assert_eq!(
             router.focus(),
             Some(root),
-            "a field mounted after the bump takes focus without a new bump"
+            "an autofocus field takes focus when it mounts"
         );
     });
 }
 
 #[test]
-fn focus_when_mount_inside_trapped_modal_takes_typing() {
+fn autofocus_inside_trapped_modal_takes_typing() {
     sigil::reactive::Runtime::scope("text-field-focus-modal", || {
         let value = signal(String::new());
-        let trigger = signal(0_u64);
-        trigger.set(1);
         let open = signal(true);
         let mut cx = Cx::new_root();
         let root = cx.add(
@@ -88,7 +84,7 @@ fn focus_when_mount_inside_trapped_modal_takes_typing() {
                 modal(open)
                     .title("authentication")
                     .trap(true)
-                    .child(text_field(value).focus_when(trigger)),
+                    .child(text_field(value).autofocus()),
             ),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

@@ -10,7 +10,7 @@ use sigil::prelude::*;
 use sigil::style::Rgba8;
 use sigil::widgets::{
     Combobox, Date, TableColumn, TableState, badge, chart, checkbox, chip, code_edit, color_field,
-    combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, label, markdown,
+    combobox, date_field, divider_horizontal, dot, dropdown, gauge, icon_button, markdown,
     number_field, progress, radio_group, scroll, slider, table, tabs, text_edit, text_field,
     toggle, virtual_list,
 };
@@ -25,8 +25,8 @@ struct PaintRow {
 
 fn columns() -> Vec<TableColumn<PaintRow>> {
     vec![
-        TableColumn::new("name", "Name").cell(|row: &PaintRow| label(row.name)),
-        TableColumn::new("lang", "Language").cell(|row: &PaintRow| label(row.lang)),
+        TableColumn::new("name", "Name").cell(|row: &PaintRow| text(row.name).nowrap()),
+        TableColumn::new("lang", "Language").cell(|row: &PaintRow| text(row.lang).nowrap()),
     ]
 }
 
@@ -137,7 +137,7 @@ fn data() -> Vec<Case> {
     vec![
         ("dot", Box::new(|cx| cx.add(dot(Tone::Warn)))),
         ("divider", Box::new(|cx| cx.add(divider_horizontal()))),
-        ("label", Box::new(|cx| cx.add(label("Field")))),
+        ("label", Box::new(|cx| cx.add(text("Field").nowrap()))),
         ("text", Box::new(|cx| cx.add(text("Body copy")))),
         (
             "markdown",
@@ -187,7 +187,7 @@ fn views() -> Vec<Case> {
             Box::new(|cx| {
                 cx.add(
                     virtual_list(vec!["a".to_string(), "b".to_string()], |_, item| {
-                        container().child(label(item.clone()))
+                        container().child(text(item.clone()).nowrap())
                     })
                     .row_height(24.0)
                     .viewport_height(80.0)

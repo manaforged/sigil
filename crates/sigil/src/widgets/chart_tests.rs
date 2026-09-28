@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::kernel::{IntoNode, container};
-use crate::prelude::{Host, label};
+use crate::prelude::Host;
 use crate::reactive::Runtime;
 
 #[test]
@@ -53,7 +53,7 @@ fn narrow_chart_dates_keep_the_day_digits_visible() {
                     .child(chart([1.0; 7]).width(300.0).labels([
                         "Sep 20", "Sep 21", "Sep 22", "Sep 23", "Sep 24", "Sep 25", "Sep 26",
                     ]))
-                    .child(label("26").class("text-xs")),
+                    .child(text("26").nowrap().class("text-xs")),
             )
         });
         host.layout((400.0, 300.0)).unwrap();

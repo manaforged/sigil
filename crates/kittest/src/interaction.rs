@@ -1,10 +1,7 @@
-use sigil::hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind, PointerPhase,
-    ShellEvent,
-};
 use sigil::prelude::*;
 
-use super::{Error, InteractionMode, SETTLE_SAFETY_CAP};
+use super::{Error, InteractionMode};
+use crate::input::{click, pointer_down, pointer_drag, pointer_move};
 
 pub(crate) fn drive_state(
     cx: &mut Cx,
@@ -14,41 +11,29 @@ pub(crate) fn drive_state(
     hit: (f32, f32),
 ) {
     let mut router = EventRouter::new();
-    match mode {
-        InteractionMode::Default | InteractionMode::Disabled => {}
+    let (x, y) = hit;
+    let events: Vec<ShellEvent> = match mode {
+        InteractionMode::Default | InteractionMode::Disabled => Vec::new(),
         InteractionMode::Hover | InteractionMode::HoverAfterFrames { .. } => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
+            vec![pointer_move(x, y)]
         }
         InteractionMode::Pressed | InteractionMode::PressedAfterFrames { .. } => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
+            vec![pointer_move(x, y), pointer_down(x, y)]
         }
-        InteractionMode::Clicked => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
-            router.route(cx, layout, pointer_up(hit.0, hit.1));
-        }
+        InteractionMode::Clicked => click(x, y).to_vec(),
         InteractionMode::Focused | InteractionMode::FocusedAfterFrames { .. } => {
             router.set_focus(cx, Some(focus_target));
+            Vec::new()
         }
-        InteractionMode::Dragged { dx, dy } => {
-            router.route(cx, layout, pointer_move(hit.0, hit.1));
-            router.route(cx, layout, pointer_down(hit.0, hit.1));
-            router.route(cx, layout, pointer_drag(hit.0 + dx, hit.1 + dy));
-        }
+        InteractionMode::Dragged { dx, dy } => vec![
+            pointer_move(x, y),
+            pointer_down(x, y),
+            pointer_drag(x + dx, y + dy),
+        ],
+    };
+    for event in events {
+        router.route(cx, layout, event);
     }
-}
-
-const fn pointer_drag(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-    }))
 }
 
 pub(crate) fn advance(
@@ -66,61 +51,15 @@ pub(crate) fn advance(
         | InteractionMode::Dragged { .. } => (u32::MAX, 1.0 / 60.0),
         InteractionMode::Default | InteractionMode::Disabled => return Ok(()),
     };
+    let mut frame = || {
+        sigil::animation_runtime::tick(dt);
+        layout()
+    };
     if frames != u32::MAX {
         for _ in 0..frames {
-            sigil::animation_runtime::tick(dt);
-            layout()?;
+            frame()?;
         }
         return Ok(());
     }
-    for _ in 0..SETTLE_SAFETY_CAP {
-        if sigil::animation_runtime::active_count() == 0 {
-            return Ok(());
-        }
-        sigil::animation_runtime::tick(dt);
-        layout()?;
-    }
-    match sigil::animation_runtime::active_count() {
-        0 => Ok(()),
-        active => Err(Error::Unsettled {
-            frames: SETTLE_SAFETY_CAP,
-            active,
-        }),
-    }
-}
-
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
-}
-
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Down,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-    }))
-}
-
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        phase: PointerPhase::Up,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
+    crate::settle::settle(|| sigil::animation_runtime::active_count() > 0, frame)
 }

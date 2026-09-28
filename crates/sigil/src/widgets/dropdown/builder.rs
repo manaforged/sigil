@@ -4,7 +4,7 @@ use crate::animation_runtime::presets;
 use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, NodeStyleExt, Radius, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
     StyleOverlay, StyleVariant, Token, TransitionId, space,
@@ -240,7 +240,7 @@ fn trigger_layout() -> LayoutStyle {
 }
 
 fn trigger_label(selected: Signal<usize>, options: Rc<Vec<String>>) -> impl IntoNode {
-    let label_sig = derived_eq(move || options.get(selected.get()).cloned().unwrap_or_default());
+    let label_sig = derived(move || options.get(selected.get()).cloned().unwrap_or_default());
     container()
         .layout(
             LayoutStyle::flex_row()

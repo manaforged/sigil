@@ -19,7 +19,10 @@ name = "sigil_kittest"
 sigil-ui = { path = "../sigil", version = "0.1.0", default-features = false, features = [
     "scene",
     "kittest",
+    "terminal",
+    "test-clock",
 ] }
+accesskit = { workspace = true }
 image = { workspace = true }
 wgpu = { workspace = true }
 

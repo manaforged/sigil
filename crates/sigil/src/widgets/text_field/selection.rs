@@ -5,7 +5,7 @@ use crate::layout::prelude::{
     LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
 };
 use crate::layout::with_text_geometry;
-use crate::reactive::{Signal, derived, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{ColorAtom, NodeStyleExt, SELECTION_FILL, StyleAtom, TextStyle, Token};
 
 use crate::widgets::interaction::InteractionState;
@@ -49,7 +49,7 @@ fn track(
 ) -> NodeBuilder {
     let scroll = runtime.input.scroll_x;
     let track_pos = derived(move || (-scroll.get(), 0.0));
-    let placeholder_visible = derived_eq(move || {
+    let placeholder_visible = derived(move || {
         runtime.input.value.get().is_empty() && runtime.input.ime.preedit.get().is_empty()
     });
     container()
@@ -137,9 +137,11 @@ fn caret_rects(runtime: &TextFieldRuntime, interaction: InteractionState) -> Vec
     if !interaction.focus_visible().get() || !runtime.input.caret_visible.get() {
         return Vec::new();
     }
-    let value = runtime.input.value.get();
-    let caret = runtime.input.caret.get();
-    let (layout, caret, _) = layout_span(runtime, &value, caret, caret);
+    let (composed, cursor) = runtime
+        .input
+        .ime
+        .composing_caret(&runtime.input.value.get(), runtime.input.caret.get());
+    let (layout, caret, _) = layout_span(runtime, &composed, cursor, cursor);
     let style = runtime.input.text_style.get();
     let geom = with_text_geometry(|engine| {
         let pos = engine.caret(&layout, &style, None, downstream(caret));

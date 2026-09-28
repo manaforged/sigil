@@ -20,7 +20,7 @@ fn modal_demo() -> NodeBuilder {
         .child(
             modal(open)
                 .title("Delete file")
-                .child(label("This cannot be undone."))
+                .child(text("This cannot be undone.").nowrap())
                 .actions(
                     button("Cancel").activate(move || open.set(false)),
                     button("Delete")

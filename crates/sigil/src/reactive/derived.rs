@@ -45,35 +45,6 @@ fn current_owner_or_panic(caller: &'static Location<'static>) -> OwnerKey {
 #[track_caller]
 pub fn derived<T, F>(mut f: F) -> Signal<T>
 where
-    T: Clone + 'static,
-    F: FnMut() -> T + 'static,
-{
-    let caller = Location::caller();
-    let parent_owner = current_owner_or_panic(caller);
-
-    let holder: Rc<Cell<Option<Signal<T>>>> = Rc::new(Cell::new(None));
-    let holder_inside = Rc::clone(&holder);
-
-    effect(move || {
-        let value = f();
-        match holder_inside.get() {
-            None => {
-                let sig = signal_in_owner(value, parent_owner, caller);
-                holder_inside.set(Some(sig));
-            }
-            Some(sig) => sig.set_always(value),
-        }
-    });
-
-    holder.get().expect(
-        "derived's tracking effect populates the backing signal on its synchronous first run",
-    )
-}
-
-#[must_use]
-#[track_caller]
-pub fn derived_eq<T, F>(mut f: F) -> Signal<T>
-where
     T: Clone + PartialEq + 'static,
     F: FnMut() -> T + 'static,
 {
@@ -90,20 +61,7 @@ where
                 let sig = signal_in_owner(value, parent_owner, caller);
                 holder_inside.set(Some(sig));
             }
-            Some(sig) => {
-                let key = sig.key_for_derived();
-                let is_equal = with_rt(|rt| {
-                    rt.signals.get(key).is_some_and(|slot| {
-                        slot.value
-                            .downcast_ref::<T>()
-                            .expect("derived signal type invariant")
-                            == &value
-                    })
-                });
-                if !is_equal {
-                    sig.set(value);
-                }
-            }
+            Some(sig) => sig.set(value),
         }
     });
 

@@ -11,19 +11,11 @@ use sigil::prelude::*;
 
 ## Install
 
-```bash
-cargo add sigil-ui
-```
+Sigil is not on crates.io yet. Add the Git dependency from
+[Install](https://github.com/manaforged/sigil#install).
 
 The package is `sigil-ui` because the `sigil` name is taken on
 crates.io. The library is `sigil`, so imports read `sigil::`.
-
-For a terminal-only program, turn off the default features:
-
-```bash
-cargo add sigil-ui --no-default-features --features terminal
-```
-
 [Terminal host](terminal.md) covers that host.
 
 ## The smallest app
@@ -39,15 +31,12 @@ fn main() -> sigil::AppResult<()> {
 
 fn app_tree(cx: &mut Cx) -> NodeId {
     let count = signal(0_i32);
-    let label_text = derived(move || format!("Count: {}", count.get()));
     cx.add(
         container()
-            .layout(LayoutStyle::flex_column().fixed_size(480.0, 240.0).gap(16.0))
-            .class(classes!("p-8 bg-surface"))
-            .child(text(label_text).class(classes!("text-on-surface")))
-            .child(button("Increment").primary().activate(move || {
-                count.set(count.peek() + 1);
-            })),
+            .layout(LayoutStyle::flex_column().gap(16.0))
+            .class("p-32 bg-surface")
+            .child(text(move || format!("Count: {}", count.get())))
+            .child(button("Increment").primary().activate(move || count.update(|n| *n += 1))),
     )
 }
 ```
@@ -58,16 +47,37 @@ The moving parts:
   drives the frame loop. `app_tree` builds the node tree once.
 - `signal(0)` creates a reactive cell. Signals are `Copy`; pass them
   into closures freely.
-- `derived(...)` computes a value from signals and re-evaluates when
-  they change. `text(label_text)` re-renders when the count changes.
-  You do not subscribe or schedule a repaint.
+- `text(move || ...)` takes a closure. The closure re-runs when a
+  signal it reads changes, and the text re-renders. `text` also takes a
+  `&str`, a `String`, or a signal. You do not subscribe or schedule a
+  repaint.
+- The root fills the window. It needs no size of its own.
 - `.activate(move || ...)` is an event handler: a plain closure that
-  writes signals. `count.peek()` reads without subscribing the
-  enclosing effect; `count.get()` reads with subscription.
+  writes signals. `count.update(...)` changes the value in place;
+  `count.get()` reads with subscription and `count.peek()` without.
 
 Widget helpers implement `IntoNode`; type a layout helper as
 `impl IntoNode`. `run` takes a closure, `text`, `container`, or
 `root(button("Go"))`.
+
+## Lists and conditions
+
+`for_each` renders one row per item and keeps a row's node while its
+key stays. `show` swaps two branches on a condition.
+
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
+let names = signal(vec![String::from("Ada"), String::from("Lin")]);
+let empty = move || names.with(Vec::is_empty);
+container()
+    .child(for_each(names, String::clone, |name: &String| text(name.clone())))
+    .child(show(empty, || text("No names"), || fragment()))
+# };
+```
+
+`.autofocus()` on a node or a `text_field` gives it keyboard focus when
+it mounts.
 
 ## Three hosts
 
@@ -88,9 +98,12 @@ details.
 
 ## Styling
 
-`classes!("p-8 bg-surface rounded-md")` is the default styling path.
-The tokens are Tailwind-shaped and parsed at runtime; a typo warns and
-is ignored. Spacing tokens are 4px steps (`p-4` = 16px, `w-4` = 16px).
+`.class("p-32 bg-surface rounded-md")` is the default styling path.
+The tokens are Tailwind-shaped and parsed at runtime. An unknown class
+panics in a debug build with the nearest valid names, and logs one
+warning in a release build. Spacing and size numbers are pixels, the
+same unit as the builder methods: `p-16` and `.padding(16.0)` are both
+16 px, `w-16` is 16 px wide.
 `opacity-50` is a percent. Theme tokens (`bg-surface`, `text-on-surface`,
 `bg-accent`) come from the active theme. Dark mode is a theme swap, not
 a restyle.
@@ -106,7 +119,7 @@ Class strings still parse token names at runtime.
 use sigil::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
 
 container()
-    .class("p-4")
+    .class("p-16")
     .class([
         Token::Overlay.bg(),
         Token::OverlayBorder.border(),
@@ -135,7 +148,7 @@ Shared metrics:
 
 | Item | API | Value |
 | --- | --- | --- |
-| Spacing | `space(n)` | `n` × 4 px |
+| Spacing step | `space(n)` | `n` × 4 px, for builder methods and classes alike |
 | Radius family | `Radius::{Sm, Md, Lg, Full}.atom()` | 2, 6, 8, 9999 px; 0 on a character grid |
 | Border width | `BORDER_WIDTH` | 1 px |
 | Focus ring | `FocusRing` default | 2 px wide, 2 px offset, colour `Ring` |
@@ -172,7 +185,7 @@ press, focus, and disabled semantics:
 interactive(
     container()
         .layout(LayoutStyle::block().fixed_size(328.0, 304.0))
-        .class(classes!("p-8 bg-accent rounded-md")),
+        .class("p-32 bg-accent rounded-md"),
 )
 .hover(|s| s.bg("accent-hover"))
 # };

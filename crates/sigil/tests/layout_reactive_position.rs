@@ -156,7 +156,7 @@ fn reposition_with_a_dirty_descendant_still_translates() {
                         .child(
                             container()
                                 .layout(LayoutStyle::block().fixed_size(50.0, 10.0))
-                                .child(text_live(move || label.get())),
+                                .child(text(move || label.get())),
                         ),
                 ),
         );
@@ -203,7 +203,7 @@ fn incremental_root_with_margin_keeps_its_place() {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0).margin(10.0))
-                        .child(text_live(move || label.get())),
+                        .child(text(move || label.get())),
                 ),
         );
         let boxed = *cx.get(root).unwrap().children().get(1).unwrap();

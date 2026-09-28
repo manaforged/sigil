@@ -7,7 +7,7 @@ use crate::hal::Scheduler;
 use crate::reactive::OwnerId;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 
-use crate::tasks::backend::{Backend, OwnedRuntime};
+use crate::tasks::backend::{Backend, TaskWorkers};
 use crate::tasks::handle::OwnerHandle;
 use crate::tasks::schedule_error::ScheduleError;
 use crate::tasks::task::TaskHandle;
@@ -53,7 +53,6 @@ pub(crate) struct SpawnParts {
 
 pub struct AsyncRuntime {
     parts: SpawnParts,
-    _owned: OwnedRuntime,
     rx: UnboundedReceiver<DispatchMessage>,
 }
 
@@ -71,6 +70,8 @@ impl Drop for AsyncRuntime {
             }
         }
         crate::tasks::current::uninstall(&self.parts.dispatcher);
+        #[cfg(not(target_arch = "wasm32"))]
+        self.parts.backend.shutdown();
     }
 }
 
@@ -88,7 +89,11 @@ fn lock(
 
 impl AsyncRuntime {
     pub fn new() -> std::io::Result<Self> {
-        let (backend, owned) = Backend::new()?;
+        Self::with_workers(TaskWorkers::Auto)
+    }
+
+    pub fn with_workers(workers: TaskWorkers) -> std::io::Result<Self> {
+        let backend = Backend::new(workers);
         let (tx, rx) = unbounded_channel();
         Ok(Self {
             parts: SpawnParts {
@@ -99,7 +104,6 @@ impl AsyncRuntime {
                 backend,
                 owner_tasks: Arc::new(Mutex::new(HashMap::new())),
             },
-            _owned: owned,
             rx,
         })
     }
@@ -126,6 +130,11 @@ impl AsyncRuntime {
 
     pub fn install_current(&self) {
         crate::tasks::current::install(self.spawn_parts());
+    }
+
+    #[cfg(all(test, not(target_arch = "wasm32")))]
+    pub(crate) fn runtime_started(&self) -> bool {
+        self.parts.backend.started()
     }
 
     #[cfg(any(test, feature = "kittest"))]
@@ -210,3 +219,7 @@ impl Scheduler for AsyncRuntime {
         ran
     }
 }
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+#[path = "runtime_tests.rs"]
+mod tests;

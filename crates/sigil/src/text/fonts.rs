@@ -1,6 +1,9 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
 
+use crate::text::error::TextError;
+use crate::text::shaper::Font;
+
 pub(crate) type SansWeight = (u16, Arc<Vec<u8>>, u32);
 
 #[derive(Clone, Default)]
@@ -23,6 +26,9 @@ pub(crate) enum DefaultFontSource {
 
 static DEFAULT_FONTS: RwLock<DefaultFontSource> = RwLock::new(DefaultFontSource::Bundled);
 static GENERATION: AtomicU64 = AtomicU64::new(0);
+type FallbackFace = (Arc<Vec<u8>>, u32);
+
+static ADDED_FALLBACKS: RwLock<Vec<FallbackFace>> = RwLock::new(Vec::new());
 
 type FontsChanged = Arc<dyn Fn() + Send + Sync>;
 static ON_CHANGE: RwLock<Option<FontsChanged>> = RwLock::new(None);
@@ -70,6 +76,30 @@ pub fn prefer_system_fonts() {
         drop(guard);
         fonts_changed();
     }
+}
+
+pub fn add_fallback_font(bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
+    let bytes = Arc::new(bytes);
+    Font::from_shared(Arc::clone(&bytes), face_index).map_err(|_| TextError::InvalidFont)?;
+    let mut guard = ADDED_FALLBACKS
+        .write()
+        .map_err(|_| TextError::InvalidFont)?;
+    guard.push((bytes, face_index));
+    drop(guard);
+    fonts_changed();
+    Ok(())
+}
+
+pub(crate) fn added_fallback_fonts() -> Vec<Font> {
+    ADDED_FALLBACKS.read().map_or_else(
+        |_| Vec::new(),
+        |guard| {
+            guard
+                .iter()
+                .filter_map(|(bytes, index)| Font::from_shared(Arc::clone(bytes), *index).ok())
+                .collect()
+        },
+    )
 }
 
 pub(crate) fn default_font_source() -> DefaultFontSource {

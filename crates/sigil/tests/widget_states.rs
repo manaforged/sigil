@@ -9,7 +9,7 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move_event;
+use input::pointer_move;
 use sigil::hal::{KeyEventInit, PhysicalKey, Point, PointerEventInit};
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
@@ -93,7 +93,7 @@ fn button_hovered_emits_soft_hover_on_pointer_enter() {
         let root = cx.add(button("OK"));
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(24.0, 16.0));
+        router.route(&mut cx, &layout, pointer_move(24.0, 16.0));
         let theme = Theme::default();
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(5)));
     });

@@ -31,12 +31,12 @@ fn demo_columns() -> Vec<TableColumn<DemoRow>> {
     vec![
         TableColumn::new("name", "Name")
             .sort_by(|row: &DemoRow| row.name)
-            .cell(|row| label(row.name)),
-        TableColumn::new("lang", "Language").cell(|row: &DemoRow| label(row.lang)),
+            .cell(|row| text(row.name).nowrap()),
+        TableColumn::new("lang", "Language").cell(|row: &DemoRow| text(row.lang).nowrap()),
         TableColumn::new("stars", "Stars")
             .numeric()
             .sort_by(|row: &DemoRow| row.stars)
-            .cell(|row| label(row.stars.to_string())),
+            .cell(|row| text(row.stars.to_string()).nowrap()),
     ]
 }
 
@@ -102,14 +102,14 @@ fn kv_grid_row(_state: State) -> NodeBuilder {
 }
 
 fn kv_row_row(_state: State) -> NodeBuilder {
-    node(kv_row("Region", label("eu-west-1")))
+    node(kv_row("Region", text("eu-west-1").nowrap()))
 }
 
 fn virtual_list_fill_row(_state: State) -> NodeBuilder {
     let items: Vec<String> = (1..=20).map(|i| format!("Item {i}")).collect();
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(152.0))
-        .child(label("Header above the list"))
+        .child(text("Header above the list").nowrap())
         .child(
             container()
                 .layout(LayoutStyle::flex_column().fill_width().grow(1.0))
@@ -120,7 +120,7 @@ fn virtual_list_fill_row(_state: State) -> NodeBuilder {
                     .viewport_fill(),
                 ),
         )
-        .child(label("Footer below the list"))
+        .child(text("Footer below the list").nowrap())
 }
 
 fn chart_row(_state: State) -> NodeBuilder {

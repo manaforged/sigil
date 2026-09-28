@@ -15,7 +15,7 @@ use crate::widgets::interaction::InteractionState;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{
     BoolChange, BuilderMutator, CONTROL_INSET, activate_binary_key, activate_binary_pointer,
-    binary_style_state, control_row, control_surface, disabled_now, label, noop_bool_change,
+    binary_style_state, control_row, control_surface, disabled_now, noop_bool_change,
 };
 
 const TOGGLE_TRANSITION: TransitionId = presets::SMOOTH;
@@ -238,7 +238,7 @@ fn toggle_thumb(on: Signal<bool>) -> NodeBuilder {
 }
 
 fn toggle_label(source: TextContent) -> impl IntoNode {
-    label(source)
+    crate::kernel::text(source).nowrap()
 }
 
 fn accessible_label(label: Option<&TextContent>) -> String {

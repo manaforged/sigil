@@ -1,15 +1,16 @@
 use super::*;
+use sigil_kittest::Harness;
 
 #[test]
 fn same_tree_paints_label() {
-    let grid = present(counter, 40, 12, &[]);
+    let grid = Harness::new(counter).size(40, 12).text();
     assert!(grid.contains("Count: 0"), "expected Count: 0 in:\n{grid}");
     assert!(grid.contains("Increment"), "expected Increment in:\n{grid}");
 }
 
 #[test]
 fn enter_increments_the_same_button() {
-    let grid = present(counter, 40, 12, &[key_down(Key::Enter)]);
+    let grid = Harness::new(counter).size(40, 12).press(Key::Enter).text();
     assert!(
         grid.contains("Count: 1"),
         "expected Count: 1 after Enter in:\n{grid}"
@@ -91,7 +92,7 @@ fn mermaid_fence_paints_boxes() {
 #[test]
 fn a_chip_cell_paints_on_its_own_row() {
     use sigil::style::Tone;
-    use sigil::widgets::{ColWidth, TableColumn, TableState, badge, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, badge, table};
 
     #[derive(Clone)]
     struct Row {
@@ -106,7 +107,7 @@ fn a_chip_cell_paints_on_its_own_row() {
                 vec![
                     TableColumn::new("name", "NAME")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|row: &Row| label(row.name)),
+                        .cell(|row: &Row| text(row.name).nowrap()),
                     TableColumn::new("tag", "TAG")
                         .width(ColWidth::Fixed(64.0))
                         .cell(|row: &Row| badge(row.name, Tone::Neutral)),
@@ -140,7 +141,7 @@ fn a_chip_cell_paints_on_its_own_row() {
 
 #[test]
 fn a_wide_cell_clips_at_the_column_edge() {
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row;
@@ -152,10 +153,10 @@ fn a_wide_cell_clips_at_the_column_edge() {
                 vec![
                     TableColumn::new("wide", "WIDE")
                         .width(ColWidth::Fixed(32.0))
-                        .cell(|_: &Row| label("aaaaaaaaaaaaaaaa")),
+                        .cell(|_: &Row| text("aaaaaaaaaaaaaaaa").nowrap()),
                     TableColumn::new("tail", "TAIL")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|_: &Row| label("tail")),
+                        .cell(|_: &Row| text("tail").nowrap()),
                 ],
             );
             cx.add(
@@ -226,7 +227,7 @@ fn a_control_stands_one_line_tall() {
 
 #[test]
 fn a_filled_table_keeps_its_header_off_row_one() {
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -240,7 +241,7 @@ fn a_filled_table_keeps_its_header_off_row_one() {
                 vec![
                     TableColumn::new("n", "NAME")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|row: &Row| label(row.name)),
+                        .cell(|row: &Row| text(row.name).nowrap()),
                 ],
             );
             cx.add(
@@ -300,7 +301,7 @@ fn a_timer_comes_due_on_the_frame_clock() {
 fn a_wide_glyph_keeps_the_next_column() {
     use unicode_width::UnicodeWidthChar;
 
-    use sigil::widgets::{ColWidth, TableColumn, TableState, label, table};
+    use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
     #[derive(Clone)]
     struct Row {
@@ -324,10 +325,10 @@ fn a_wide_glyph_keeps_the_next_column() {
                 vec![
                     TableColumn::new("n", "NAME")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|row: &Row| label(row.name)),
+                        .cell(|row: &Row| text(row.name).nowrap()),
                     TableColumn::new("t", "TAIL")
                         .width(ColWidth::Fixed(64.0))
-                        .cell(|row: &Row| label(row.tail)),
+                        .cell(|row: &Row| text(row.tail).nowrap()),
                 ],
             );
             cx.add(

@@ -28,10 +28,6 @@ impl<T: 'static> Signal<T> {
         }
     }
 
-    pub(crate) const fn key_for_derived(self) -> SignalKey {
-        self.key
-    }
-
     #[must_use]
     pub fn into_sendable(self) -> SendableSignal<T> {
         SendableSignal {

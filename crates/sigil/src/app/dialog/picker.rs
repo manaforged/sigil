@@ -3,11 +3,11 @@ use std::rc::Rc;
 
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::events::request_focus;
-use crate::kernel::{Cx, IntoNode, NodeId, TextContent, container};
+use crate::kernel::{Cx, IntoNode, NodeId, container, text};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::rows;
 use crate::reactive::{Signal, effect_named, signal};
-use crate::widgets::{button, label, list_row, modal, text_field, virtual_list};
+use crate::widgets::{button, list_row, modal, text_field, virtual_list};
 
 use super::entries::{Entry, EntryKind, list, start_dir};
 use super::layer::{Answer, Finish};
@@ -116,9 +116,7 @@ pub(super) fn picker_view(
     let dir = picker.dir;
     let mut body = modal(show)
         .title(title)
-        .child(label(TextContent::compute(move || {
-            dir.get().display().to_string()
-        })))
+        .child(text(move || dir.get().display().to_string()).nowrap())
         .child(entry_list(picker.clone()));
     if kind == PickKind::Save {
         let submit = picker.clone();
@@ -186,7 +184,7 @@ pub(super) fn alert_view(
     let show = signal(true);
     cancel_on_close(show, finish.clone());
     let ok = finish.clone();
-    let shown = modal(show).title(title).child(label(body));
+    let shown = modal(show).title(title).child(text(body).nowrap());
     match kind {
         AlertKind::Message => shown.footer(
             button("OK")

@@ -20,8 +20,7 @@ subscribing. Event handlers use `peek`; derived values use `get`. A
 | Function | Job |
 | --- | --- |
 | `signal(v)` | Create a cell |
-| `derived(\|\| ...)` | Memoized read |
-| `derived_eq(\|\| ...)` | Memoized read; notify only when the result changes |
+| `derived(\|\| ...)` | Memoized read; notify only when the result changes |
 | `effect(\|\| ...)` | Side effect that re-runs on its `get` dependencies |
 | `spawn(fut)` | Background future → `Signal<Status<T, E>>` |
 | `batch(\|\| ...)` | Coalesce writes into one run |

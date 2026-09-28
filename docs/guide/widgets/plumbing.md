@@ -46,7 +46,7 @@ node.drag_source(drag.clone(), payload_string);
 // target:
 bin.drop_target(drag.clone(), |item| item.starts_with("task:"), |item| { /* ... */ });
 // floating preview, mounted once at the root:
-drag_ghost(drag, |item| label(item.clone()));
+drag_ghost(drag, |item| text(item.clone()).nowrap());
 # };
 ```
 

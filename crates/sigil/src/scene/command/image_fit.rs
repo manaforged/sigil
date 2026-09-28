@@ -4,7 +4,7 @@
 )]
 
 use crate::hal::{Point, Rect};
-use crate::kernel::{ImageCrop, ObjectFit};
+use crate::kernel::{ImageCrop, ImageSource, ObjectFit};
 
 use super::payloads::DrawImage;
 
@@ -17,14 +17,16 @@ impl ImageCrop {
 }
 
 impl DrawImage {
-    pub(crate) fn placement(&self) -> Option<(Rect, Rect)> {
-        let (width, height) = (self.source.width(), self.source.height());
+    pub(crate) fn placement_at(&self, scale: f32) -> Option<(ImageSource, Rect, Rect)> {
+        let (source, dest) = self.source_at(scale);
+        let (width, height) = (source.width(), source.height());
         let (top, rows) = match self.crop {
             Some(crop) => crop.rows(height)?,
             None => (0, height),
         };
-        let source = Rect::new(Point::new(0.0, top as f32), width as f32, rows as f32);
-        Some(fit(self.fit, source, self.destination))
+        let region = Rect::new(Point::new(0.0, top as f32), width as f32, rows as f32);
+        let (region, destination) = fit(self.fit, region, dest);
+        Some((source, region, destination))
     }
 }
 

@@ -4,7 +4,9 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::rc::Rc;
 
 use crate::icons::{BakedIcon, IconBaker};
-use crate::kernel::{Cx, ImageSource, IntoNode, NodeId, ThemedImage, container, image};
+use crate::kernel::{
+    Cx, ImageRaster, ImageSource, IntoNode, NodeId, ThemedImage, container, image,
+};
 use crate::layout::LayoutStyle;
 use crate::style::{Rgba8, Theme, Token};
 
@@ -76,8 +78,21 @@ fn tint(key: u64, icon: &BakedIcon, color: Rgba8) -> Option<ImageSource> {
 
 impl SvgGlyph {
     fn source(&self, theme: &Theme) -> Option<ImageSource> {
-        let (key, icon) = baked(&self.svg, self.pixels)?;
-        tint(key, &icon, theme.color(self.token))
+        self.sized(theme.color(self.token), self.pixels)
+    }
+
+    fn sized(&self, color: Rgba8, pixels: u32) -> Option<ImageSource> {
+        let (key, icon) = baked(&self.svg, pixels)?;
+        tint(key, &icon, color)
+    }
+
+    fn bind(self: &Rc<Self>, base: u64, theme: &Theme) -> ImageRaster {
+        let color = theme.color(self.token);
+        let glyph = Rc::clone(self);
+        let key = base ^ u64::from(u32::from_le_bytes([color.r, color.g, color.b, color.a]));
+        ImageRaster::new(key, move |width, height, _| {
+            glyph.sized(color, width.max(height))
+        })
     }
 }
 
@@ -89,9 +104,16 @@ impl IntoNode for SvgGlyph {
         let extent = self.extent;
         let id = image(source).build(cx);
         let layout = LayoutStyle::block().fixed_size(extent, extent).shrink(0.0);
+        let base = bake_key(&self.svg, 0);
+        let glyph = Rc::new(self);
+        let fallback = Rc::clone(&glyph);
+        let themed = ThemedImage::new(
+            move |theme| fallback.source(theme),
+            move |theme| glyph.bind(base, theme),
+        );
         if let Some(node) = cx.get_mut(id) {
             let _ = node.attach(layout);
-            let _ = node.attach(ThemedImage::new(move |theme| self.source(theme)));
+            let _ = node.attach(themed);
         }
         id
     }

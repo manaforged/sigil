@@ -22,7 +22,7 @@ use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{DisplayKind, NodeStyleExt, StyleAtom};
 
-use input::pointer_move;
+use input::pointer_drag;
 use routing_helpers::{compute_layout, route_event};
 
 fn dispatch(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, request: &ActionRequest) {

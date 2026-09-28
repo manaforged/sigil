@@ -37,7 +37,6 @@ pub mod tone;
 pub mod variant;
 pub mod variant_kit;
 
-pub use crate::classes;
 pub use animator_overlay::{AnimatorOverlay, ColorAtomKind, NumericAtomKind};
 pub use atom::{
     AlignKind, BgGradient, ColorAtom, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind,
@@ -94,7 +93,7 @@ pub mod prelude {
         Size, StateSlot, StateStyle, StateStyleBuilder, Style, StyleAccess, StyleAtom,
         StyleBinding, StyleEngine, StyleReactiveEffect, StyleState, StyleVariant, Styleable,
         Styled, StyledTextEngine, TextLineHeight, TextStyle, Theme, ThemeBuilder, ThemeValue,
-        Token, TransitionId, classes, merge_classes, merge_warning_count,
-        merge_warning_count_for_component, parse_class_string,
+        Token, TransitionId, merge_classes, merge_warning_count, merge_warning_count_for_component,
+        parse_class_string, parse_classes,
     };
 }

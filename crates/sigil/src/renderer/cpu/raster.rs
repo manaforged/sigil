@@ -95,8 +95,16 @@ impl RasterCache {
             .retain(|_, (_, used)| *used + CacheLimits::DEFAULT.image_stale_frames >= frame);
     }
 
-    pub(super) fn image(&mut self, target: &mut Pixmap, draw: &DrawImage, brush: &Brush<'_>) {
-        let source = &draw.source;
+    pub(super) fn image(
+        &mut self,
+        target: &mut Pixmap,
+        draw: &DrawImage,
+        scale: f32,
+        brush: &Brush<'_>,
+    ) {
+        let Some((source, src_rect, dst_rect)) = draw.placement_at(scale) else {
+            return;
+        };
         if !self.images.contains_key(&source.id()) {
             let Some(pixmap) = from_rgba8(source.width(), source.height(), source.rgba()) else {
                 return;
@@ -108,9 +116,6 @@ impl RasterCache {
         };
         *used = self.frame;
         let pixmap = &*pixmap;
-        let Some((src_rect, dst_rect)) = draw.placement() else {
-            return;
-        };
         fill_scaled(target, pixmap, src_rect, dst_rect, brush);
     }
 

@@ -8,7 +8,7 @@ use sigil::app::{Host, HostCaps};
 use sigil::events::EventRouter;
 use sigil::hal::ShellEvent;
 use sigil::kernel::Cx;
-use sigil::prelude::{NodeStyleExt, classes};
+use sigil::prelude::NodeStyleExt;
 use sigil::reactive::{Runtime, signal};
 use sigil::terminal::{Cell, Grid, Underline, step};
 use sigil::widgets::markdown;
@@ -100,7 +100,7 @@ fn paragraph(cols: u16, inline: bool) -> Vec<String> {
     let grid = sigil::terminal::present(
         move |cx: &mut Cx| {
             if inline {
-                cx.add(sigil::widgets::markdown_inline(REASONING).class(classes!("italic")))
+                cx.add(sigil::widgets::markdown_inline(REASONING).class("italic"))
             } else {
                 cx.add(markdown(signal(REASONING.to_string())))
             }

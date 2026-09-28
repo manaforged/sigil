@@ -36,7 +36,7 @@ fn build(cx: &mut Cx) -> NodeId {
             .child(
                 modal(dialog)
                     .title("Confirm action")
-                    .child(label("This modal is mounted at the root."))
+                    .child(text("This modal is mounted at the root.").nowrap())
                     .child(
                         button("Close")
                             .primary()
@@ -46,7 +46,7 @@ fn build(cx: &mut Cx) -> NodeId {
             .child(
                 sheet(drawer)
                     .title("Details")
-                    .child(label("A right-edge sheet.")),
+                    .child(text("A right-edge sheet.").nowrap()),
             )
             .child(toast_queue(queue)),
     )
@@ -67,7 +67,7 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
 }
 
 fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder {
-    let active = derived_eq(move || page.get() == index);
+    let active = derived(move || page.get() == index);
     container()
         .role(Role::Button)
         .focusable(true)
@@ -80,7 +80,7 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
         )
         .class("rounded-md")
         .class_when(active, "bg-accent-4")
-        .child(label(name).class("text-sm"))
+        .child(text(name).nowrap().class("text-sm"))
         .pointer_up(move |_| page.set(index))
 }
 
@@ -219,12 +219,12 @@ fn demo_columns() -> Vec<TableColumn<DemoRow>> {
         TableColumn::new("name", "Name")
             .sort_by(|row: &DemoRow| row.name)
             .filterable(|row, query| row.name.contains(query))
-            .cell(|row| label(row.name)),
-        TableColumn::new("lang", "Language").cell(|row: &DemoRow| label(row.lang)),
+            .cell(|row| text(row.name).nowrap()),
+        TableColumn::new("lang", "Language").cell(|row: &DemoRow| text(row.lang).nowrap()),
         TableColumn::new("stars", "Stars")
             .numeric()
             .sort_by(|row: &DemoRow| row.stars)
-            .cell(|row| label(row.stars.to_string())),
+            .cell(|row| text(row.stars.to_string()).nowrap()),
     ]
 }
 
@@ -260,7 +260,7 @@ fn content_page() -> NodeBuilder {
     container()
         .layout(page_layout())
         .child(section_label("Text"))
-        .child(label("Labels and text share TextContent."))
+        .child(text("Labels and text share TextContent.").nowrap())
         .child(section_label("Icons and indicators"))
         .child(row3(
             icon("★").tone(Tone::Warn).label("Star"),
@@ -328,20 +328,20 @@ fn chrome_page() -> NodeBuilder {
         ))
         .child(section_label("Panel and card"))
         .child(row2(
-            panel().title("Panel").child(label("Panel body")),
+            panel().title("Panel").child(text("Panel body").nowrap()),
             card(kv_grid(&[("Host", "wgpu"), ("Backend", "metal")])),
         ))
         .child(section_label("Tabs"))
         .child(
             tabs(tab, vec!["First".into(), "Second".into()])
-                .content_for(0, label("First tab pane"))
-                .content_for(1, label("Second tab pane")),
+                .content_for(0, text("First tab pane").nowrap())
+                .content_for(1, text("Second tab pane").nowrap()),
         )
         .child(section_label("Splitter"))
         .child(
             splitter(SplitterOrientation::Horizontal)
-                .child(card(label("Navigation")), 180.0)
-                .child(card(label("Content")), 280.0)
+                .child(card(text("Navigation").nowrap()), 180.0)
+                .child(card(text("Content").nowrap()), 280.0)
                 .height(140.0),
         )
         .child(section_label("Patterns"))

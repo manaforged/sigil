@@ -34,8 +34,9 @@ Key options:
 - `.password()` — masks the glyphs with `*`; the signal stays
   plaintext.
 - `.reveal(Signal<bool>)` — shows the plaintext while true.
-- `.focus_when(Signal<u64>)` — bump the signal to focus this field,
-  including on mount when the value is already nonzero.
+- `.autofocus()` — focus this field when it mounts.
+- `.focus_when(Signal<u64>)` — bump the signal to focus this field
+  after it mounts.
 - `caret_visible()` / `scroll_offset()` — `&mut self` accessors that
   return the internal signals so you can observe or drive them.
 

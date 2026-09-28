@@ -10,7 +10,7 @@ description = "GPU UI in Rust. One widget tree, one entry: sigil::run opens a wi
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui", "command-line-interface"]
-include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "benches/**", "examples/**"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "examples/**"]
 autobenches = false
 
 [lib]
@@ -80,7 +80,7 @@ dioxus-devtools = { version = "0.7.10", default-features = false, optional = tru
 getrandom = { version = "0.3", features = ["wasm_js"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Clipboard", "CompositionEvent", "CssStyleDeclaration", "DomRect", "Document", "Element", "Event", "EventTarget", "FocusEvent", "HtmlCanvasElement", "HtmlElement", "HtmlTextAreaElement", "InputEvent", "KeyboardEvent", "KeyboardEventInit", "Navigator", "Node", "Window", "console"] }
+web-sys = { version = "0.3", features = ["Clipboard", "CompositionEvent", "CssStyleDeclaration", "DomRect", "Document", "Element", "Event", "EventTarget", "FocusEvent", "HtmlCanvasElement", "HtmlElement", "HtmlTextAreaElement", "InputEvent", "KeyboardEvent", "KeyboardEventInit", "Navigator", "Node", "Window", "Response", "console"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = { version = "21", optional = true }

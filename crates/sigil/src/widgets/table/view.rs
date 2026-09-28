@@ -349,7 +349,7 @@ fn empty_slot(empty: Option<&Rc<dyn Fn() -> NodeBuilder>>) -> NodeBuilder {
 }
 
 fn default_empty() -> NodeBuilder {
-    use super::super::shared::label;
+    use crate::kernel::text;
     use crate::layout::prelude::{AlignItems, JustifyContent};
     container()
         .layout(
@@ -361,7 +361,8 @@ fn default_empty() -> NodeBuilder {
                 .justify_content(JustifyContent::Center),
         )
         .child(
-            label("No rows")
+            text("No rows")
+                .nowrap()
                 .class("text-sm")
                 .class(Token::Gray11.text()),
         )

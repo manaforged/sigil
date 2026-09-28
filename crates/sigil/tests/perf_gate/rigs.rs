@@ -5,10 +5,10 @@ use sigil::kernel::{Cx, NodeId, container};
 use sigil::layout::LayoutStyle;
 use sigil::prelude::*;
 use sigil::reactive::signal;
-use sigil::widgets::{button, chart, label, text_edit, virtual_list};
+use sigil::widgets::{button, chart, text_edit, virtual_list};
 
 use crate::budgets::Scenario;
-use crate::input::{pointer_down, pointer_move_event, pointer_up, scroll_lines, type_char};
+use crate::input::{pointer_down, pointer_move, pointer_up, scroll_lines, type_char};
 
 pub(crate) const VIEW: (f32, f32) = (1280.0, 800.0);
 const ROWS_10K: usize = 10_000;
@@ -35,13 +35,11 @@ fn rows(cx: &mut Cx) -> NodeId {
     let y = signal(0.0_f32);
     let data: Vec<String> = (0..ROWS_10K).map(|i| format!("row {i}")).collect();
     cx.add(
-        virtual_list(data, |_, row: &String| {
-            container().child(label(row.clone()))
-        })
-        .row_height(24.0)
-        .viewport_height(VIEW.1)
-        .viewport_width(VIEW.0)
-        .scroll_bind(y),
+        virtual_list(data, |_, row: &String| container().child(text(row.clone())))
+            .row_height(24.0)
+            .viewport_height(VIEW.1)
+            .viewport_width(VIEW.0)
+            .scroll_bind(y),
     )
 }
 
@@ -64,7 +62,7 @@ fn plot(cx: &mut Cx) -> NodeId {
 
 const fn hover(frame: u32) -> ShellEvent {
     let y = if frame.is_multiple_of(2) { 10.0 } else { 60.0 };
-    pointer_move_event(20.0, y)
+    pointer_move(20.0, y)
 }
 
 const fn scroll(frame: u32) -> ShellEvent {
@@ -87,7 +85,7 @@ pub(crate) fn rig(scenario: Scenario) -> Rig {
     };
     let setup = match scenario {
         Scenario::Typing => vec![pointer_down(20.0, 10.0), pointer_up(20.0, 10.0)],
-        Scenario::Scroll => vec![pointer_move_event(100.0, 100.0)],
+        Scenario::Scroll => vec![pointer_move(100.0, 100.0)],
         _ => Vec::new(),
     };
     Rig {

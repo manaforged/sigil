@@ -10,7 +10,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::layout::snap::{CellForm, line};
-use crate::reactive::{Signal, derived_eq, effect, signal};
+use crate::reactive::{Signal, derived, effect, signal};
 use crate::style::{NodeStyleExt, StyleOverlay, Token, space};
 
 use super::shared::{FIELD_VARIANT, disabled_a11y, disabled_now, reactive_style_state};
@@ -170,7 +170,7 @@ impl CodeEditBuilder {
         let viewport = signal((0.0_f32, DEFAULT_VIEWPORT_H));
         let interaction = InteractionState::new(true);
         let disabled = self.disabled;
-        let start = derived_eq(move || first_row(scroll_y.get(), lines.get().len(), row_h));
+        let start = derived(move || first_row(scroll_y.get(), lines.get().len(), row_h));
         effect(move || follow_caret(scroll_y, self.caret, lines, viewport, row_h));
         let runtime = editing::runtime(model, self.disabled);
         let node = field_chrome(container(), interaction, disabled)
@@ -220,7 +220,7 @@ fn field_chrome(
 
 fn caret_shown(focused: Signal<bool>) -> Signal<bool> {
     let always = CellForm::new(true, false).pick();
-    derived_eq(move || always || focused.get())
+    derived(move || always || focused.get())
 }
 
 fn gated(on_key: KeyHandler, disabled: Option<Signal<bool>>) -> impl Fn(&mut KeyEvent) + 'static {

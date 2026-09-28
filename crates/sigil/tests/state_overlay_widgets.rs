@@ -9,7 +9,7 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move_event;
+use input::pointer_move;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Rgba8;
@@ -31,14 +31,14 @@ fn assert_hover_overlay_paints(
         "rest scene must not contain the user hover colour {overlay:?}",
     );
     let mut router = EventRouter::new();
-    router.route(cx, layout, pointer_move_event(hover_xy.0, hover_xy.1));
+    router.route(cx, layout, pointer_move(hover_xy.0, hover_xy.1));
     assert!(
         rect_colors(cx, root).contains(&overlay),
         "pointer enter must paint the user .hover() overlay {overlay:?}; \
          scene colours: {:?}",
         rect_colors(cx, root),
     );
-    router.route(cx, layout, pointer_move_event(LEAVE_XY.0, LEAVE_XY.1));
+    router.route(cx, layout, pointer_move(LEAVE_XY.0, LEAVE_XY.1));
     assert!(
         !rect_colors(cx, root).contains(&overlay),
         "pointer leave must restore the base paint (drop {overlay:?})",
@@ -140,7 +140,7 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
             "thumb rim must rest at accent"
         );
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(320.0, 12.0));
+        router.route(&mut cx, &layout, pointer_move(320.0, 12.0));
         assert_eq!(
             thumb_rim(&cx, root),
             Some(theme.accent_hover),

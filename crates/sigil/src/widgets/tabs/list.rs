@@ -5,7 +5,7 @@ use crate::events::prelude::{Key, NodeEventsExt};
 use crate::events::request_focus;
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{StyleOverlay, space};
 
 use super::builder::{CloseHandler, StripChrome, TAB_HEIGHT};
@@ -145,7 +145,7 @@ pub(super) fn build_tab_list(
             user_overlay.clone(),
             chrome,
         );
-        let tab_stop = derived_eq(move || active.get() == original);
+        let tab_stop = derived(move || active.get() == original);
         let tab = tab.mutate(move |node| node.a11y.tab_stop = Some(tab_stop));
         root = root.child(roving.install(tab, visual_index));
     }

@@ -172,8 +172,8 @@ pub(super) fn push_node(
         NodeType::Container => push_container(scene, id, rect, paint),
         NodeType::Text { .. } => push_text(scene, id, node, rect, paint),
         NodeType::Image { source, fit } => {
-            let source = node
-                .get_extension::<ThemedImage>()
+            let themed = node.get_extension::<ThemedImage>();
+            let source = themed
                 .and_then(|themed| themed.resolve(paint.theme))
                 .unwrap_or_else(|| source.clone());
             scene.draw_image(DrawImage {
@@ -183,6 +183,7 @@ pub(super) fn push_node(
                 destination: rect,
                 opacity: style.opacity,
                 crop: node.get_extension::<ImageCrop>().copied(),
+                raster: themed.map(|themed| themed.raster(paint.theme)),
             });
         }
         NodeType::Fragment => {}

@@ -131,5 +131,6 @@ fn emit_one(
         destination,
         opacity: target.opacity,
         crop: None,
+        raster: None,
     });
 }

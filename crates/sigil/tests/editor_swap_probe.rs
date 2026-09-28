@@ -230,7 +230,7 @@ fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -
             selected.set(idx);
             ev.stop_propagation();
         })
-        .child(label(name.to_owned()))
+        .child(text(name.to_owned()).nowrap())
 }
 
 #[test]
@@ -352,7 +352,7 @@ fn deep_reactive_scroll_switch_stays_positioned() {
             });
         let mut filler = container().layout(LayoutStyle::flex_column());
         for i in 0..120 {
-            filler = filler.child(label(format!("filler row {i}")));
+            filler = filler.child(text(format!("filler row {i}")).nowrap());
         }
         let tree = container()
             .layout(LayoutStyle::flex_column().grow(1.0))
@@ -363,7 +363,7 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                     .child(
                         container()
                             .layout(LayoutStyle::flex_column().width(248.0))
-                            .child(label("SIDEBAR".to_owned())),
+                            .child(text("SIDEBAR".to_owned()).nowrap()),
                     )
                     .child(pane),
             );

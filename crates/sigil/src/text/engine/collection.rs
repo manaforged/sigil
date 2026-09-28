@@ -50,9 +50,12 @@ impl FontCollection {
                     f.fallbacks
                         .iter()
                         .filter_map(|slot| face(Some(slot)))
-                        .collect()
+                        .collect::<Vec<_>>()
                 })
-                .unwrap_or_default(),
+                .unwrap_or_default()
+                .into_iter()
+                .chain(crate::text::fonts::added_fallback_fonts())
+                .collect(),
             emoji: load_emoji_font(),
         }
     }
@@ -69,7 +72,7 @@ impl FontCollection {
             serif: system.serif,
             display: None,
             icon: None,
-            fallbacks: Vec::new(),
+            fallbacks: crate::text::fonts::added_fallback_fonts(),
             emoji: load_emoji_font(),
         }
     }

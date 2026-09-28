@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 
 use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, Tone};
 
 const TRACK_HEIGHT: f32 = 8.0;
@@ -123,8 +123,8 @@ fn track_layout(track_h: f32, track_w: Option<f32>) -> LayoutStyle {
 }
 
 fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> NodeBuilder {
-    let filled = derived_eq(move || grow_units(value.get() / max));
-    let empty = derived_eq(move || GROW_SCALE - grow_units(value.get() / max));
+    let filled = derived(move || grow_units(value.get() / max));
+    let empty = derived(move || GROW_SCALE - grow_units(value.get() / max));
     container()
         .layout(LayoutStyle::flex_row().fill_width().height(track_h))
         .child(
@@ -169,11 +169,11 @@ fn grow_atoms(units: u16) -> &'static [StyleAtom] {
 }
 
 fn indeterminate_fill(phase: Signal<f32>, track_h: f32) -> NodeBuilder {
-    let lead = derived_eq(move || {
+    let lead = derived(move || {
         let t = phase.get().clamp(0.0, 1.0);
         grow_units(t * (1.0 - INDETERMINATE_RATIO))
     });
-    let trail = derived_eq(move || {
+    let trail = derived(move || {
         let t = phase.get().clamp(0.0, 1.0);
         let used = t * (1.0 - INDETERMINATE_RATIO) + INDETERMINATE_RATIO;
         GROW_SCALE - grow_units(used)

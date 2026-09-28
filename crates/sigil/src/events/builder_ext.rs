@@ -114,6 +114,9 @@ pub trait NodeEventsExt {
 
     #[must_use]
     fn selectable_text(self, yes: bool) -> Self;
+
+    #[must_use]
+    fn autofocus(self) -> Self;
 }
 
 impl NodeEventsExt for NodeBuilder {
@@ -288,6 +291,10 @@ impl NodeEventsExt for NodeBuilder {
 
     fn selectable_text(self, yes: bool) -> Self {
         if yes { self.with(SelectableText) } else { self }
+    }
+
+    fn autofocus(self) -> Self {
+        self.on_added(|_, id| crate::events::focus::request_focus(id))
     }
 }
 

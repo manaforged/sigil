@@ -8,7 +8,7 @@ input — a source over 1 MiB renders as a "Source is larger than the
 ## markdown
 
 `markdown(Signal<String>) -> NodeBuilder`. Parses the signal into
-blocks inside a `derived_eq`, so the document re-renders only when the
+blocks inside a `derived`, so the document re-renders only when the
 parsed tree changes. The root is `Role::Document`, a vertical column.
 
 Supported blocks: headings (`#`–`###`), paragraphs, `-`/`*` bullet

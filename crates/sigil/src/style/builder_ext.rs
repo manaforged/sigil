@@ -331,19 +331,39 @@ fn smallvec16(atoms: SmallVec<[StyleAtom; 32]>) -> SmallVec<[StyleAtom; 16]> {
     atoms.into_iter().collect()
 }
 
-mod diagnostic {
+pub(crate) mod diagnostic {
+    #![cfg_attr(debug_assertions, allow(clippy::panic))]
+
     use super::ParseError;
     use crate::style::merge::bump_unknown_class_count;
 
+    #[cfg(debug_assertions)]
     #[cold]
     #[track_caller]
-    pub(super) fn class_parse(input: &str, err: &ParseError) {
+    pub(crate) fn class_parse(input: &str, err: &ParseError) {
         bump_unknown_class_count();
-        tracing::warn!(
-            target: "sigil_style::class",
-            input,
-            error = %err,
-            "unknown class token ignored",
-        );
+        panic!("invalid class in \"{input}\": {err}");
+    }
+
+    #[cfg(not(debug_assertions))]
+    #[cold]
+    pub(crate) fn class_parse(input: &str, err: &ParseError) {
+        use std::collections::HashSet;
+        use std::sync::{Mutex, OnceLock};
+
+        static WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+        bump_unknown_class_count();
+        let first = WARNED
+            .get_or_init(Mutex::default)
+            .lock()
+            .map_or(true, |mut seen| seen.insert(err.to_string()));
+        if first {
+            tracing::warn!(
+                target: "sigil_style::class",
+                input,
+                error = %err,
+                "unknown class token ignored",
+            );
+        }
     }
 }

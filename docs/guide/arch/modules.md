@@ -12,7 +12,7 @@ feature `terminal`, which adds crossterm.
 | `reactive` | Signal graph, owner tree, `EventChannel`, phases. |
 | `kernel` | `Cx`, `NodeId`, builders, semantics, reactive children. |
 | `layout` | `LayoutEngine`, `LayoutStyle`, the incremental drive. |
-| `style` | `StyleAtom`, theme, `classes!`, struct and fluent style. |
+| `style` | `StyleAtom`, theme, `parse_classes`, struct and fluent style. |
 | `events` | Hit testing, focus walk, pointer capture, handler builders. |
 | `text` | Shaping, measurement, paragraph cache, fonts. |
 | `renderer` | wgpu, `CommandScene`, emit cache, layer pool. |

@@ -65,7 +65,7 @@ fn styled_text_color_overrides_default() {
 #[test]
 fn styled_text_typography_emits_in_scene() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Large").class("text-xl font-bold leading-8"));
+    let root = cx.add(text("Large").class("text-xl font-bold leading-32"));
 
     layout(&mut cx, root);
 
@@ -219,7 +219,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-lg font-bold font-mono leading-6")
+            .class("text-lg font-bold font-mono leading-24")
             .child(text("Doom")),
     );
 
@@ -236,7 +236,7 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     assert_eq!(
         run.run.style.line_height,
         TextLineHeight::Absolute(24.0),
-        "leading-6 must inherit"
+        "leading-24 must inherit"
     );
 }
 

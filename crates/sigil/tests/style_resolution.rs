@@ -184,7 +184,7 @@ use roundtrip::style_for_atom;
 #[test]
 fn parse_minimal() {
     assert_eq!(
-        parse_class_string("p-4 rounded-md bg-accent")
+        parse_class_string("p-16 rounded-md bg-accent")
             .unwrap()
             .as_slice(),
         &[
@@ -199,12 +199,12 @@ fn parse_minimal() {
 #[allow(clippy::cognitive_complexity)]
 fn parse_grammar_branches() {
     let parsed = parse_class_string(
-        "px-2 py-3 pt-1 pr-1 pb-1 pl-1 m-1 mx-2 my-3 mt-1 mr-1 mb-1 ml-1 \
-         gap-2 w-4 h-5 w-full h-auto flex block hidden flex-row flex-col \
+        "px-8 py-12 pt-4 pr-4 pb-4 pl-4 m-4 mx-8 my-12 mt-4 mr-4 mb-4 ml-4 \
+         gap-8 w-16 h-20 w-full h-auto flex block hidden flex-row flex-col \
          items-start items-center items-end items-stretch justify-start justify-center \
          justify-end justify-between justify-around rounded rounded-sm rounded-lg rounded-full \
          text-xs text-sm text-base text-lg text-xl text-on-surface font-normal font-medium \
-         font-bold italic not-italic leading-6 opacity-75",
+         font-bold italic not-italic leading-24 opacity-75",
     )
     .unwrap();
 
@@ -264,7 +264,7 @@ fn parse_unknown_structural_error() {
 #[test]
 fn parse_responsive_prefix_not_supported() {
     assert_eq!(
-        parse_class_string("sm:p-4"),
+        parse_class_string("sm:p-16"),
         Err(ParseError::ResponsiveNotSupported {
             prefix: "sm".to_owned(),
         }),
@@ -286,7 +286,7 @@ fn class_string_attaches_binding() {
     let mut ptrs = Vec::new();
     for _ in 0..10 {
         let mut cx = sigil::kernel::Cx::new_root();
-        let id = cx.add(sigil::kernel::container().class("p-4 rounded-md bg-accent"));
+        let id = cx.add(sigil::kernel::container().class("p-16 rounded-md bg-accent"));
         let binding = cx
             .get(id)
             .and_then(|node| node.get_extension::<StyleBinding>())
@@ -335,7 +335,7 @@ fn theme_swap_invalidates_binding() {
     let mut cx = sigil::kernel::Cx::new_root();
     let id = cx.add(
         sigil::kernel::container()
-            .class("p-4")
+            .class("p-16")
             .theme(Theme::default()),
     );
     let node = cx.get(id).unwrap();
@@ -347,7 +347,7 @@ fn theme_swap_invalidates_binding() {
 fn t12_vocabulary_tokens_parse() {
     use sigil::style::{FlexWrapKind, OverflowKind};
 
-    let parsed = parse_class_string("gap-x-4 gap-y-2 flex-wrap justify-evenly overflow-auto")
+    let parsed = parse_class_string("gap-x-16 gap-y-8 flex-wrap justify-evenly overflow-auto")
         .expect("t12 tokens parse");
     assert!(parsed.contains(&StyleAtom::GapX(Px(16))));
     assert!(parsed.contains(&StyleAtom::GapY(Px(8))));

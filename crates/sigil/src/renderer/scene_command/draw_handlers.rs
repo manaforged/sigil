@@ -50,17 +50,17 @@ impl Walk<'_> {
         reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
     )]
     pub(super) fn draw_image(&mut self, draw: &DrawImage) {
+        let Some((source, mut region, destination)) = draw.placement_at(self.ctx.scale) else {
+            return;
+        };
         let packed = {
             let pipeline =
                 sprite_pipeline_for(self.ctx.sprite_pipelines, self.ctx.device, self.ctx.format);
-            pipeline.register_image(self.ctx.device, self.ctx.queue, &draw.source)
+            pipeline.register_image(self.ctx.device, self.ctx.queue, &source)
         };
         if packed.is_none() {
             return;
         }
-        let Some((mut region, destination)) = draw.placement() else {
-            return;
-        };
         region.origin.x += packed.x as f32;
         region.origin.y += packed.y as f32;
         let sprite = DrawSprite {

@@ -1,6 +1,6 @@
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
-use crate::reactive::derived_eq;
+use crate::reactive::derived;
 
 use super::builder::SplitterOrientation;
 use super::drag::SplitterState;
@@ -13,7 +13,7 @@ pub(super) fn install_handle_keys(
     handle: usize,
 ) -> NodeBuilder {
     let (min, max) = state.bounds(handle);
-    let value = derived_eq(move || state.tracked_size(handle));
+    let value = derived(move || state.tracked_size(handle));
     let (back, forward) = match state.orientation() {
         SplitterOrientation::Horizontal => (Key::ArrowLeft, Key::ArrowRight),
         SplitterOrientation::Vertical => (Key::ArrowUp, Key::ArrowDown),

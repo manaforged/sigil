@@ -4,7 +4,7 @@ use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
 use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Signal, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{Metrics, Size, StyleAtom, Token};
 
 use super::super::listbox::{ListModel, scrolled};
@@ -129,8 +129,8 @@ fn build_option(
     ctx: OptionCtx,
     on_change: IndexChange,
 ) -> NodeBuilder {
-    let checked = derived_eq(move || ctx.selected.get() == index);
-    let highlight = derived_eq(move || ctx.cursor.get() == index);
+    let checked = derived(move || ctx.selected.get() == index);
+    let highlight = derived(move || ctx.cursor.get() == index);
     let slots = ItemSlots {
         checked: Some(checked),
         ..ItemSlots::new(label)

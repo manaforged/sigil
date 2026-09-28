@@ -254,6 +254,43 @@ pub struct DrawImage {
     pub destination: Rect,
     pub opacity: u16,
     pub crop: Option<crate::kernel::ImageCrop>,
+    pub raster: Option<crate::kernel::ImageRaster>,
+}
+
+const RASTER_MAX_SIDE: f32 = 4096.0;
+
+impl DrawImage {
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_precision_loss,
+        reason = "the extent is clamped to a bounded positive range before the cast"
+    )]
+    #[must_use]
+    pub fn source_at(&self, scale: f32) -> (crate::kernel::ImageSource, Rect) {
+        let dest = self.destination;
+        let raster = self
+            .raster
+            .as_ref()
+            .filter(|_| self.crop.is_none() && scale.is_finite() && scale > 0.0);
+        let Some(raster) = raster else {
+            return (self.source.clone(), dest);
+        };
+        let left = (dest.origin.x * scale).round();
+        let top = (dest.origin.y * scale).round();
+        let width = ((dest.origin.x + dest.width) * scale).round() - left;
+        let height = ((dest.origin.y + dest.height) * scale).round() - top;
+        let side = |extent: f32| extent.clamp(1.0, RASTER_MAX_SIDE) as u32;
+        let Some(source) = raster.at(side(width), side(height), scale) else {
+            return (self.source.clone(), dest);
+        };
+        let snapped = Rect::new(
+            crate::hal::Point::new(left / scale, top / scale),
+            source.width() as f32 / scale,
+            source.height() as f32 / scale,
+        );
+        (source, snapped)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

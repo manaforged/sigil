@@ -19,7 +19,7 @@ pub struct NodeBuilder {
     kind: NodeType,
     pre_extensions: Vec<NodeMutator>,
     reactive_children: Option<ReactiveChildrenInstall>,
-    on_added: Option<AddedHook>,
+    on_added: Vec<AddedHook>,
 }
 
 #[must_use]
@@ -40,7 +40,7 @@ impl NodeBuilder {
             kind,
             pre_extensions: Vec::new(),
             reactive_children: None,
-            on_added: None,
+            on_added: Vec::new(),
         }
     }
 
@@ -208,7 +208,7 @@ impl NodeBuilder {
 
     #[must_use]
     pub fn on_added(mut self, hook: impl FnOnce(&mut Cx, NodeId) + 'static) -> Self {
-        self.on_added = Some(Box::new(hook));
+        self.on_added.push(Box::new(hook));
         self
     }
 
@@ -276,7 +276,7 @@ impl IntoNode for NodeBuilder {
         if let Some(install) = self.reactive_children {
             install(id);
         }
-        if let Some(hook) = self.on_added {
+        for hook in self.on_added {
             hook(cx, id);
         }
         id

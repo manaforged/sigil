@@ -68,7 +68,7 @@ let open = signal(false);
 modal(open)
     .title("Delete file")
     .dismiss_on_backdrop(true)
-    .child(label("This cannot be undone."))
+    .child(text("This cannot be undone.").nowrap())
     .actions(
         button("Cancel").neutral().activate(move || open.set(false)),
         button("Delete").destructive().activate(move || open.set(false)),

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::events::prelude::{KeyEvent, PointerEvent};
-use crate::kernel::{NodeBuilder, TextBuilder, TextContent, text};
+use crate::kernel::NodeBuilder;
 use crate::layout::prelude::LayoutStyle;
 use crate::reactive::{Signal, derived};
 use crate::style::{
@@ -14,11 +14,6 @@ use crate::widgets::interaction::InteractionState;
 pub(super) type Activate = Rc<dyn Fn() + 'static>;
 pub(super) type BoolChange = Rc<dyn Fn(bool) + 'static>;
 pub(super) type BuilderMutator = Box<dyn FnOnce(NodeBuilder) -> NodeBuilder>;
-
-#[must_use]
-pub fn label(source: impl Into<TextContent>) -> TextBuilder {
-    text(source).nowrap().class(Token::OnSurface.text())
-}
 
 pub(super) fn activate_pointer(
     event: &mut PointerEvent,

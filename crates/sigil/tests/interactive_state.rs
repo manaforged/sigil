@@ -9,7 +9,7 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::pointer_move_event;
+use input::pointer_move;
 use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
 use sigil::style::{Rgba8, Theme};
@@ -66,13 +66,13 @@ fn interactive_hover_overlay_paints_on_pointer_enter() {
             "rest state must not paint the hover slice"
         );
 
-        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        router.route(&mut cx, &layout, pointer_move(50.0, 50.0));
         assert!(
             rect_colors(&cx, root).contains(&HOVER_BG),
             "pointer enter must paint the .hover() slice"
         );
 
-        router.route(&mut cx, &layout, pointer_move_event(300.0, 300.0));
+        router.route(&mut cx, &layout, pointer_move(300.0, 300.0));
         assert!(
             !rect_colors(&cx, root).contains(&HOVER_BG),
             "pointer leave must return to rest"
@@ -95,7 +95,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
         let rest = rect_colors(&cx, root);
         assert!(rest.contains(&REST_BG), "rest state paints the base bg");
 
-        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        router.route(&mut cx, &layout, pointer_move(50.0, 50.0));
         let hovered = rect_colors(&cx, root);
         assert_ne!(
             rest, hovered,
@@ -106,7 +106,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
             "hover slice must override the base bg, got {hovered:?}"
         );
 
-        router.route(&mut cx, &layout, pointer_move_event(300.0, 300.0));
+        router.route(&mut cx, &layout, pointer_move(300.0, 300.0));
         assert_eq!(
             rect_colors(&cx, root),
             rest,
@@ -127,7 +127,7 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
-        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        router.route(&mut cx, &layout, pointer_move(50.0, 50.0));
         assert!(rect_colors(&cx, root).contains(&HOVER_BG));
 
         router.route(&mut cx, &layout, pointer_down_event(50.0, 50.0));
@@ -159,7 +159,7 @@ fn interactive_hover_does_not_stop_ancestor_hover() {
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        router.route(&mut cx, &layout, pointer_move(50.0, 50.0));
         let count = rect_colors(&cx, root)
             .iter()
             .filter(|c| **c == HOVER_BG)
@@ -180,7 +180,7 @@ fn interactive_disabled_signal_suppresses_hover() {
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
-        router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
+        router.route(&mut cx, &layout, pointer_move(50.0, 50.0));
         assert!(
             !rect_colors(&cx, root).contains(&HOVER_BG),
             "disabled interactive must not paint hover"

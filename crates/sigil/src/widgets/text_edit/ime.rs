@@ -25,6 +25,19 @@ impl ImeState {
             caret_anchor: Rc::new(Cell::new(None)),
         }
     }
+
+    pub(in crate::widgets) fn composing_caret(&self, value: &str, caret: usize) -> (String, usize) {
+        let preedit = self.preedit.get();
+        let base = floor_char_boundary(value, caret);
+        if preedit.is_empty() {
+            return (value.to_owned(), base);
+        }
+        let offset = self
+            .preedit_cursor
+            .get()
+            .map_or(preedit.len(), |(_, end)| floor_char_boundary(&preedit, end));
+        (splice_preedit(value, base, &preedit), base + offset)
+    }
 }
 
 pub(in crate::widgets) fn attach_ime_handlers(
@@ -99,8 +112,7 @@ fn install_disable_clears_preedit(runtime: &TextEditRuntime) {
 }
 
 fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
-    let preedit = runtime.ime.preedit;
-    let preedit_cursor = runtime.ime.preedit_cursor;
+    let ime = runtime.ime.clone();
     let disabled = runtime.disabled;
     let value = runtime.value;
     let caret = runtime.caret;
@@ -111,18 +123,11 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let anchor = Rc::clone(&runtime.ime.caret_anchor);
     let (padding_x, padding_y) = runtime.content_padding;
     effect(move || {
-        let preedit_text = preedit.get();
         if disabled.is_some_and(Signal::get) {
             anchor.set(None);
             return;
         }
-        let base_value = value.get();
-        let base_caret = floor_char_boundary(&base_value, caret.get());
-        let composed = splice_preedit(&base_value, base_caret, &preedit_text);
-        let cursor_in_preedit = preedit_cursor.get().map_or(preedit_text.len(), |(_, end)| {
-            floor_char_boundary(&preedit_text, end)
-        });
-        let effective_cursor = base_caret + cursor_in_preedit;
+        let (composed, cursor) = ime.composing_caret(&value.get(), caret.get());
         let width = (content_size.get().0 > 0.0).then_some(content_size.peek().0);
         let style = text_style.get();
         let rect = with_text_geometry(|engine| {
@@ -131,7 +136,7 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
                 &style,
                 width,
                 HitPosition {
-                    byte_index: effective_cursor,
+                    byte_index: cursor,
                     affinity: TextAffinity::Downstream,
                 },
             );

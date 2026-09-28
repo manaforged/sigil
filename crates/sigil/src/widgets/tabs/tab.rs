@@ -5,7 +5,7 @@ use crate::animation_runtime::presets;
 use crate::events::prelude::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::reactive::{Signal, derived, derived_eq};
+use crate::reactive::{Signal, derived};
 use crate::style::{
     ClassSource, ColorAtom, DISABLED_OPACITY, NodeStyleExt, Px, Radius, Rgba8, StateSlot,
     StateStyle, StyleAtom, StyleOverlay, StyleVariant, Token, space,
@@ -231,7 +231,7 @@ pub(super) fn build_tab(
 ) -> NodeBuilder {
     let is_disabled = disabled.contains(&index);
     let interaction = InteractionState::new(!is_disabled);
-    let selected = derived_eq(move || active.get() == index);
+    let selected = derived(move || active.get() == index);
 
     let drag_for_activate = drag;
     let activate: Activate = Rc::new(move || {

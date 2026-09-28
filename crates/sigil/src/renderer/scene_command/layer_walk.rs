@@ -18,16 +18,18 @@ mod tree;
 use tree::{Node, build_tree};
 #[path = "layer_walk/offscreen.rs"]
 mod offscreen;
-use offscreen::{Layer, composite_layer, render_group, render_layer};
+use offscreen::{
+    Layer, OpenLayer, close_layer, composite_layer, group_plan, layer_plan, open_layer,
+};
 
 #[derive(Clone)]
-struct Target<'a> {
-    view: &'a wgpu::TextureView,
+struct Target {
+    view: wgpu::TextureView,
     bounds: Rect,
     state: SceneState,
 }
 
-impl Target<'_> {
+impl Target {
     #[expect(
         clippy::cast_precision_loss,
         reason = "GPU texture dimensions fit exactly in f32"
@@ -40,6 +42,74 @@ impl Target<'_> {
     }
 }
 
+struct Frame<'n> {
+    target: Target,
+    batch: &'n [Node<'n>],
+    rest: &'n [Node<'n>],
+    prepare: Prepare<'n>,
+}
+
+impl<'n> Frame<'n> {
+    fn new(ctx: &WalkCtx<'_>, nodes: &'n [Node<'n>], target: Target) -> Self {
+        let end = batch_len(nodes, target.bounds, ctx.scale, ctx.format);
+        let (batch, rest) = nodes.split_at(end);
+        let prepare = Prepare::new(batch, &target);
+        Self {
+            target,
+            batch,
+            rest,
+            prepare,
+        }
+    }
+}
+
+struct Prepare<'n> {
+    nodes: &'n [Node<'n>],
+    target: Target,
+    layers: Vec<Option<Layer>>,
+}
+
+impl<'n> Prepare<'n> {
+    fn new(nodes: &'n [Node<'n>], target: &Target) -> Self {
+        Self {
+            nodes,
+            target: target.clone(),
+            layers: Vec::new(),
+        }
+    }
+}
+
+struct Nested<'n> {
+    open: OpenLayer,
+    frame: Frame<'n>,
+}
+
+struct FrameStack<'n> {
+    root: Frame<'n>,
+    nested: Vec<Nested<'n>>,
+}
+
+impl<'n> FrameStack<'n> {
+    fn top(&mut self) -> &mut Frame<'n> {
+        self.nested
+            .last_mut()
+            .map_or(&mut self.root, |nested| &mut nested.frame)
+    }
+
+    fn run(mut self, ctx: &mut WalkCtx<'_>) -> Result<(), RendererError> {
+        loop {
+            if let Some(nested) = advance(ctx, self.top())? {
+                self.nested.push(nested);
+            } else if let Some(done) = self.nested.pop() {
+                let layer = close_layer(ctx, done.open)?;
+                self.top().prepare.layers.push(Some(layer));
+            } else {
+                return Ok(());
+            }
+        }
+    }
+}
+
 pub(crate) fn walk_layer_command_scene(
     mut ctx: WalkCtx<'_>,
     scene: &CommandScene,
@@ -47,11 +117,11 @@ pub(crate) fn walk_layer_command_scene(
     prepare_sprites(&mut ctx, &scene.commands);
     let nodes = build_tree(&scene.commands);
     let target = Target {
-        view: ctx.view,
+        view: ctx.view.clone(),
         bounds: Rect::new(Point::new(0.0, 0.0), ctx.viewport.0, ctx.viewport.1),
         state: SceneState::default(),
     };
-    let result = render_nodes(&mut ctx, &nodes, &target);
+    let result = render_nodes(&mut ctx, &nodes, target);
     if let Some(pool) = ctx.layer_pool.as_ref() {
         for pipeline in &mut *ctx.layer_pipelines {
             pipeline.retain(pool);
@@ -80,22 +150,41 @@ fn prepare_sprites(ctx: &mut WalkCtx<'_>, commands: &[SceneCommand]) {
     ctx.sprite_pipelines
         .get_mut(index)
         .expect("sprite pipeline index was just constructed from the vec")
-        .prepare(ctx.device, ctx.queue, commands);
+        .prepare(ctx.device, ctx.queue, commands, ctx.scale);
 }
 
 fn render_nodes(
     ctx: &mut WalkCtx<'_>,
-    mut nodes: &[Node<'_>],
-    target: &Target<'_>,
+    nodes: &[Node<'_>],
+    target: Target,
 ) -> Result<(), RendererError> {
-    let mut target = target.clone();
-    while !nodes.is_empty() {
-        let end = batch_len(nodes, target.bounds, ctx.scale, ctx.format);
-        let (batch, remaining) = nodes.split_at(end);
-        render_batch(ctx, batch, &mut target)?;
-        nodes = remaining;
+    let format = ctx.format;
+    let stack = FrameStack {
+        root: Frame::new(ctx, nodes, target),
+        nested: Vec::new(),
+    };
+    let result = stack.run(ctx);
+    ctx.format = format;
+    result
+}
+
+fn advance<'n>(
+    ctx: &mut WalkCtx<'_>,
+    frame: &mut Frame<'n>,
+) -> Result<Option<Nested<'n>>, RendererError> {
+    loop {
+        if let Some(nested) = prepare_layers(ctx, &mut frame.prepare)? {
+            return Ok(Some(nested));
+        }
+        let prepared = std::mem::take(&mut frame.prepare.layers);
+        render_batch(ctx, frame.batch, &mut frame.target, prepared);
+        if frame.rest.is_empty() {
+            return Ok(None);
+        }
+        let end = batch_len(frame.rest, frame.target.bounds, ctx.scale, ctx.format);
+        (frame.batch, frame.rest) = frame.rest.split_at(end);
+        frame.prepare = Prepare::new(frame.batch, &frame.target);
     }
-    Ok(())
 }
 
 fn batch_len(nodes: &[Node<'_>], bounds: Rect, scale: f32, format: wgpu::TextureFormat) -> usize {
@@ -122,9 +211,10 @@ fn batch_len(nodes: &[Node<'_>], bounds: Rect, scale: f32, format: wgpu::Texture
 fn render_batch(
     ctx: &mut WalkCtx<'_>,
     nodes: &[Node<'_>],
-    target: &mut Target<'_>,
-) -> Result<(), RendererError> {
-    let mut layers = prepare_layers(ctx, nodes, target.clone())?.into_iter();
+    target: &mut Target,
+    prepared: Vec<Option<Layer>>,
+) {
+    let mut layers = prepared.into_iter();
     let mut batch: Vec<&SceneCommand> = Vec::new();
     for node in nodes {
         match node {
@@ -142,35 +232,44 @@ fn render_batch(
         }
     }
     flush_command_batch(ctx, &mut batch, target);
-    Ok(())
 }
 
-fn prepare_layers(
+fn prepare_layers<'n>(
     ctx: &mut WalkCtx<'_>,
-    nodes: &[Node<'_>],
-    mut target: Target<'_>,
-) -> Result<Vec<Option<Layer>>, RendererError> {
-    let mut layers = Vec::new();
-    for node in nodes {
-        match node {
-            Node::Command(_) => {}
+    prepare: &mut Prepare<'n>,
+) -> Result<Option<Nested<'n>>, RendererError> {
+    while let Some((node, rest)) = prepare.nodes.split_first() {
+        prepare.nodes = rest;
+        let (plan, children) = match node {
+            Node::Command(_) => continue,
             Node::State(command) => {
-                let _ = target.state.apply(command);
+                let _ = prepare.target.state.apply(command);
+                continue;
             }
             Node::Layer { scope, children } => {
-                layers.push(render_layer(ctx, *scope, &target, children)?);
+                (layer_plan(*scope, &prepare.target, ctx.scale), children)
             }
             Node::Group {
                 opacity,
                 commands,
                 children,
-            } => layers.push(render_group(ctx, *opacity, &target, commands, children)?),
-        }
+            } => (
+                group_plan(*opacity, commands, &prepare.target, ctx.scale),
+                children,
+            ),
+        };
+        let Some(plan) = plan else {
+            prepare.layers.push(None);
+            continue;
+        };
+        let (open, target) = open_layer(ctx, plan)?;
+        let frame = Frame::new(ctx, children, target);
+        return Ok(Some(Nested { open, frame }));
     }
-    Ok(layers)
+    Ok(None)
 }
 
-fn flush_command_batch(ctx: &mut WalkCtx<'_>, batch: &mut Vec<&SceneCommand>, target: &Target<'_>) {
+fn flush_command_batch(ctx: &mut WalkCtx<'_>, batch: &mut Vec<&SceneCommand>, target: &Target) {
     if batch.is_empty() {
         return;
     }
@@ -181,7 +280,7 @@ fn flush_command_batch(ctx: &mut WalkCtx<'_>, batch: &mut Vec<&SceneCommand>, ta
     let capacity = UploadCapacities::from_commands(batch.iter().copied());
     let clip = target.bounds;
     let mut walk = Walk::new(
-        reborrow_ctx(ctx, target.view, target.viewport(ctx.scale)),
+        reborrow_ctx(ctx, &target.view, target.viewport(ctx.scale)),
         capacity,
     );
     walk.state.push_clip(local_rect(

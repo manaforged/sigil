@@ -43,7 +43,7 @@ fn wrapped_label_inside_modal_band_wraps() {
                                 .child(
                                     text(body)
                                         .wrap()
-                                        .class(sigil::classes!("text-xs"))
+                                        .class("text-xs")
                                         .layout(LayoutStyle::block().fill_width()),
                                 ),
                         ),
@@ -84,7 +84,7 @@ fn wrapped_label_inside_flex_row_band_wraps() {
 #[test]
 fn grow_fill_does_not_clip_row_labels() {
     use sigil::kernel::{container, node};
-    use sigil::prelude::{AlignItems, LayoutStyle, divider_horizontal, label};
+    use sigil::prelude::{AlignItems, LayoutStyle, divider_horizontal};
     let grid = present(
         |cx: &mut Cx| {
             cx.add(
@@ -107,7 +107,7 @@ fn grow_fill_does_not_clip_row_labels() {
                             )
                             .children_reactive(|| {
                                 vec![
-                                    node(container().child(label("L_L_L_L"))),
+                                    node(container().child(text("L_L_L_L").nowrap())),
                                     node(
                                         container()
                                             .layout(
@@ -117,7 +117,7 @@ fn grow_fill_does_not_clip_row_labels() {
                                             )
                                             .child(divider_horizontal()),
                                     ),
-                                    node(container().child(label("RRRRRRRRRRRRRRRR"))),
+                                    node(container().child(text("RRRRRRRRRRRRRRRR").nowrap())),
                                 ]
                             }),
                     ),

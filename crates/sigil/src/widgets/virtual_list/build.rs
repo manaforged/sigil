@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::layout::LayoutStyle;
 use crate::layout::prelude::{LayoutBuilderExt, Position};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::{NodeStyleExt, NumericAtomKind};
 
 use std::ops::Deref;
@@ -37,7 +37,7 @@ where
         S::Target: AsRef<[T]>,
     {
         let initial_rows = bound_slice(&signal.peek()).len();
-        let live_rows = derived_eq(move || bound_slice(&signal.get()).len());
+        let live_rows = derived(move || bound_slice(&signal.get()).len());
         let thunk: Box<BoundVisibleThunk<T, R>> = Box::new(move |ctx: BoundCtx<T, R>| {
             let BoundCtx {
                 render,
@@ -236,7 +236,7 @@ fn with_scrollbar(show: bool, root: NodeBuilder, axes: BuildAxes) -> NodeBuilder
     if !show {
         return root;
     }
-    let viewport_height = derived_eq(move || {
+    let viewport_height = derived(move || {
         let measured = axes.viewport.get().1;
         if measured > 0.0 {
             measured
@@ -268,7 +268,7 @@ fn shrink_bound(root: NodeBuilder, axes: BuildAxes, shrinks: bool) -> NodeBuilde
     if !shrinks {
         return root;
     }
-    let height = derived_eq(move || {
+    let height = derived(move || {
         let content = axes.content.get();
         if content > 0.0 {
             content.min(axes.viewport_height)

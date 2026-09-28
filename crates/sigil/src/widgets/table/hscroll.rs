@@ -1,7 +1,7 @@
 use crate::events::prelude::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
 use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle};
-use crate::reactive::{Signal, derived_eq, signal};
+use crate::reactive::{Signal, derived, signal};
 use crate::style::NodeStyleExt;
 
 use super::super::scroll::{
@@ -27,13 +27,13 @@ pub(super) fn bind<Row: 'static>(
     let (viewport, probe) = explicit.map_or_else(
         || {
             let probe = signal((0.0_f32, 0.0_f32));
-            (derived_eq(move || probe.get().0), Some(probe))
+            (derived(move || probe.get().0), Some(probe))
         },
         |px| (signal(px), None),
     );
     let extent_state = state.clone();
-    let extent = derived_eq(move || prefix + content_extent(&extent_state));
-    let max = derived_eq(move || (extent.get() - viewport.get()).max(0.0));
+    let extent = derived(move || prefix + content_extent(&extent_state));
+    let max = derived(move || (extent.get() - viewport.get()).max(0.0));
     HScroll {
         scroll_x: signal(0.0),
         max,
@@ -61,7 +61,7 @@ fn content_extent<Row: 'static>(state: &TableState<Row>) -> f32 {
 impl HScroll {
     pub(super) fn shifted(&self, node: NodeBuilder) -> NodeBuilder {
         let hs = *self;
-        let shift = derived_eq(move || {
+        let shift = derived(move || {
             (
                 to_i16(hs.scroll_x.get().clamp(0.0, hs.max.get())),
                 to_i16(hs.extent.get()),
@@ -97,7 +97,7 @@ fn track(hs: HScroll) -> NodeBuilder {
 }
 
 fn thumb(hs: HScroll) -> NodeBuilder {
-    let geometry_signal = derived_eq(move || {
+    let geometry_signal = derived(move || {
         let (width, travel) = geometry::thumb_metrics(hs.extent.get(), hs.viewport.get());
         let max = hs.max.get();
         let t = if max > 0.0 {

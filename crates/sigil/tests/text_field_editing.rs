@@ -14,7 +14,7 @@ mod input;
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use input::{pointer_down, pointer_move, pointer_up, type_char};
+use input::{pointer_down, pointer_drag, pointer_up, type_char};
 use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
@@ -134,7 +134,7 @@ fn text_field_pointer_drag_selects_then_type_replaces() {
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, pointer_down(14.0, 18.0));
-        router.route(&mut cx, &layout, pointer_move(64.0, 18.0));
+        router.route(&mut cx, &layout, pointer_drag(64.0, 18.0));
         router.route(&mut cx, &layout, pointer_up(64.0, 18.0));
         router.route(&mut cx, &layout, type_char("q", PhysicalKey::KeyQ));
 

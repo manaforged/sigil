@@ -272,7 +272,7 @@ use sigil::prelude::*;
 
 fn tree(cx: &mut Cx) -> NodeId {
     let size = viewport_size();
-    let wide = derived_eq(move || size.get().width > if is_grid() { 100.0 } else { 900.0 });
+    let wide = derived(move || size.get().width > if is_grid() { 100.0 } else { 900.0 });
     cx.add(text(derived(move || if wide.get() { "two columns".to_string() } else { "one column".to_string() })))
 }
 
@@ -305,7 +305,7 @@ fn tree(cx: &mut Cx) -> NodeId {
         }
         Ok::<(), ScheduleError>(())
     });
-    cx.add(text_live(move || transcript.with(|text| format!("{} bytes: {text}", text.len()))))
+    cx.add(text(move || transcript.with(|text| format!("{} bytes: {text}", text.len()))))
 }
 
 fn main() -> AppResult<()> {
@@ -407,7 +407,7 @@ use std::rc::Rc;
 
 fn tree(cx: &mut Cx) -> NodeId {
     let messages: Signal<Rc<Vec<String>>> = signal(Rc::new(Vec::new()));
-    let tail = derived_eq(move || messages.get().len().saturating_sub(1));
+    let tail = derived(move || messages.get().len().saturating_sub(1));
     let (scroll, max) = (signal(0.0_f32), signal(0.0_f32));
     let page = 400.0;
     let list = virtual_list(messages, |_, text: &String| markdown(signal(text.clone())))

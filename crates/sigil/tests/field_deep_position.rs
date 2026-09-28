@@ -75,7 +75,7 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
         let mut spacer =
             container().layout(LayoutStyle::flex_column().fixed_size(1000.0, SPACER_H));
         for i in 0..120 {
-            spacer = spacer.child(label(format!("filler row {i}")));
+            spacer = spacer.child(text(format!("filler row {i}")).nowrap());
         }
         let tree = container()
             .layout(LayoutStyle::flex_column().fixed_size(1000.0, 1000.0))

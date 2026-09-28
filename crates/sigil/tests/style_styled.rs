@@ -380,8 +380,8 @@ fn class_routes_state_prefixes_to_overlay_slots() {
 }
 
 #[test]
-fn class_accumulates_slot_and_skips_unknown() {
-    let s = sigil::style::Style::new().class("hover:bg-accent hover:rounded-md bogus:x px-4");
+fn class_accumulates_slot() {
+    let s = sigil::style::Style::new().class("hover:bg-accent hover:rounded-md px-16");
 
     assert_eq!(
         s.hover_atoms(),
@@ -391,4 +391,10 @@ fn class_accumulates_slot_and_skips_unknown() {
         ]
     );
     assert_eq!(s.as_atoms(), [StyleAtom::PaddingX(sigil::style::Px(16))]);
+}
+
+#[test]
+#[should_panic(expected = "invalid class")]
+fn unknown_class_panics_in_debug() {
+    let _ = sigil::style::Style::new().class("bogus:x px-16");
 }

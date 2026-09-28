@@ -32,11 +32,11 @@ fn menu_row(state: State) -> NodeBuilder {
 fn modal_row(state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(268.0))
-        .child(label("Page behind the modal"))
+        .child(text("Page behind the modal").nowrap())
         .child(
             modal(shown(state))
                 .title("Confirm action")
-                .child(label("This modal is mounted at the root."))
+                .child(text("This modal is mounted at the root.").nowrap())
                 .actions(button("Cancel"), button("Confirm").primary()),
         )
 }
@@ -44,11 +44,11 @@ fn modal_row(state: State) -> NodeBuilder {
 fn sheet_row(state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(268.0))
-        .child(label("Page behind the sheet"))
+        .child(text("Page behind the sheet").nowrap())
         .child(
             sheet(shown(state))
                 .title("Details")
-                .child(label("A right-edge sheet.")),
+                .child(text("A right-edge sheet.").nowrap()),
         )
 }
 

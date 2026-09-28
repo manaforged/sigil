@@ -55,6 +55,34 @@ Copy writes through `navigator.clipboard` and returns
 `Delivery::Requested`. The browser has no synchronous read, so paste
 from the system clipboard does not reach widgets.
 
+## Fonts
+
+The bundled faces cover Latin, Greek, Cyrillic, and emoji. The browser
+host cannot read system fonts. Chinese, Japanese, Korean, and other
+scripts outside the bundled faces draw as empty boxes until you load a
+font that covers them.
+
+Load a font file from your server with `sigil::text::load_font_url`.
+It fetches the file, adds it as a fallback face, and lays the text out
+again when the face is ready:
+
+```rust,ignore
+use sigil::tasks::Status;
+
+let cjk = sigil::text::load_font_url("fonts/NotoSansJP-Regular.otf", 0);
+if let Status::Err(error) = cjk.get() {
+    web_sys::console::error_1(&error.to_string().into());
+}
+```
+
+Call it while you build the tree. Serve a Noto Sans JP, SC, or KR file
+(or a subset of it) from the same origin, or from a server that sends
+CORS headers. The file must be OpenType or TrueType. WOFF2 does not
+load. `face_index` selects a face in a `.ttc` collection.
+
+Text in the loaded script shows empty boxes until the signal turns
+`Ok(())`. If it turns `Err`, the boxes stay.
+
 ## Limits
 
 - IME input goes through a hidden `<textarea>` that Sigil appends to
@@ -62,7 +90,8 @@ from the system clipboard does not reach widgets.
   caret, so the browser draws the candidate window there. Composition
   events become the same `ImeEvent`s as on the desktop host. Other keys
   pass to the canvas unchanged.
-- No system fonts. Scripts outside the bundled faces do not draw.
+- No system fonts. Scripts outside the bundled faces draw as empty
+  boxes until `load_font_url` loads a face that covers them.
 - `spawn` and `sleep` futures do not run. The async runtime has no
   browser executor.
 - No WebGL. A browser without WebGPU uses the CPU renderer.

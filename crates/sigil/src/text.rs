@@ -10,6 +10,8 @@ mod config;
 mod engine;
 mod error;
 mod font_family;
+#[cfg(target_arch = "wasm32")]
+mod font_url;
 mod fonts;
 mod numeric_run;
 mod paragraph;
@@ -32,10 +34,12 @@ pub use config::TextConfig;
 pub use engine::FontCollection;
 pub use engine::OwnedTextEngine;
 pub use error::TextError;
+#[cfg(target_arch = "wasm32")]
+pub use font_url::{FontLoadError, load_font_url};
 #[cfg(feature = "desktop")]
 pub(crate) use fonts::on_fonts_changed;
 pub use fonts::prefer_system_fonts;
-pub use fonts::{DefaultFonts, set_default_fonts, use_system_fonts};
+pub use fonts::{DefaultFonts, add_fallback_font, set_default_fonts, use_system_fonts};
 pub(crate) use paragraph::FaceSpec;
 pub use paragraph::Paragraph;
 pub use shaper::Font;

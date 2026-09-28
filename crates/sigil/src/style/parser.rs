@@ -12,27 +12,27 @@ mod atoms;
 use atoms::{parse_prefixed_token, push_border_side_atoms, shadow_atom};
 
 const STRUCTURAL_TOKENS: [&str; 81] = [
-    "p-4",
-    "px-4",
-    "py-4",
-    "pt-4",
-    "pr-4",
-    "pb-4",
-    "pl-4",
-    "m-4",
-    "mx-4",
-    "my-4",
-    "mt-4",
-    "mr-4",
-    "mb-4",
-    "ml-4",
-    "gap-4",
-    "w-4",
-    "h-4",
-    "min-w-4",
-    "max-w-4",
-    "min-h-4",
-    "max-h-4",
+    "p-16",
+    "px-16",
+    "py-16",
+    "pt-16",
+    "pr-16",
+    "pb-16",
+    "pl-16",
+    "m-16",
+    "mx-16",
+    "my-16",
+    "mt-16",
+    "mr-16",
+    "mb-16",
+    "ml-16",
+    "gap-16",
+    "w-16",
+    "h-16",
+    "min-w-16",
+    "max-w-16",
+    "min-h-16",
+    "max-h-16",
     "w-full",
     "h-full",
     "w-auto",
@@ -90,7 +90,7 @@ const STRUCTURAL_TOKENS: [&str; 81] = [
     "font-sans",
     "font-mono",
     "font-serif",
-    "leading-4",
+    "leading-16",
     "opacity-0",
     "opacity-100",
 ];
@@ -308,8 +308,7 @@ fn malformed_theme_token(token: &str) -> bool {
 }
 
 fn scale(value: &str) -> Option<Px> {
-    let unit = value.parse::<i16>().ok()?;
-    unit.checked_mul(4).map(Px)
+    value.parse::<i16>().ok().map(Px)
 }
 
 fn unknown(token: &str) -> ParseError {
@@ -369,13 +368,6 @@ fn intern_token(token: &str) -> Option<&'static str> {
     tokens.insert(interned);
     drop(tokens);
     Some(interned)
-}
-
-#[macro_export]
-macro_rules! classes {
-    ($($input:literal),+ $(,)?) => {
-        $crate::style::parse_classes(concat!($($input, " "),+))
-    };
 }
 
 #[cfg(test)]

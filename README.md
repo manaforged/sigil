@@ -9,7 +9,12 @@ character grid. `Host` embeds the tree in another engine's loop.
 [docs/api.md](https://raw.githubusercontent.com/manaforged/sigil/main/docs/api.md)
 lists every exported item with its signature in one plain-text file.
 
-The API can change between 0.x releases. Depend on one minor version.
+## Status
+
+0.1 is an early release. The API will break between minor versions until
+1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for
+untrusted input; they have been fuzzed only briefly. Report bugs on
+[GitHub issues](https://github.com/manaforged/sigil/issues).
 
 ## Requirements
 
@@ -29,8 +34,9 @@ No mobile host.
 
 ## Install
 
-```bash
-cargo add sigil-ui
+```toml
+[dependencies]
+sigil-ui = "0.1"
 ```
 
 The package is `sigil-ui` because the `sigil` name is taken on
@@ -39,14 +45,16 @@ build compiles the wgpu stack and can take a few minutes.
 
 For a terminal-only program:
 
-```bash
-cargo add sigil-ui --no-default-features --features terminal
+```toml
+[dependencies]
+sigil-ui = { version = "0.1", default-features = false, features = ["terminal"] }
 ```
 
 To pack and sign release builds, add `sigil-sign`:
 
-```bash
-cargo add sigil-sign
+```toml
+[dependencies]
+sigil-sign = "0.1"
 ```
 
 ## Usage
@@ -60,16 +68,12 @@ fn main() -> sigil::AppResult<()> {
 
 fn app_tree(cx: &mut Cx) -> NodeId {
     let count = signal(0_i32);
-    let label = derived(move || format!("Count: {}", count.get()));
-
     cx.add(
         container()
-            .layout(LayoutStyle::flex_column().fixed_size(480.0, 240.0).gap(16.0))
-            .class(classes!("p-8 bg-surface"))
-            .child(text(label).class(classes!("text-on-surface")))
-            .child(button("Increment").primary().activate(move || {
-                count.set(count.peek() + 1);
-            })),
+            .layout(LayoutStyle::flex_column().gap(16.0))
+            .class("p-32 bg-surface")
+            .child(text(move || format!("Count: {}", count.get())))
+            .child(button("Increment").primary().activate(move || count.update(|n| *n += 1))),
     )
 }
 ```
