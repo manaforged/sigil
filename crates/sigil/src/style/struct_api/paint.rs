@@ -1,6 +1,6 @@
 use super::Style;
 use crate::style::{
-    BgGradient, ColorAtom, MillisU16, OverflowKind, Px, Rgba8, StyleAtom, TransitionId,
+    BgGradient, ColorAtom, ColorKey, MillisU16, OverflowKind, Px, Rgba8, StyleAtom, TransitionId,
 };
 
 impl Style {
@@ -15,8 +15,8 @@ impl Style {
     }
 
     #[must_use]
-    pub fn background_theme(self, token: &'static str) -> Self {
-        self.push(StyleAtom::BackgroundThemeRef(token))
+    pub fn background_theme(self, token: impl Into<ColorKey>) -> Self {
+        self.push(StyleAtom::BackgroundThemeRef(token.into()))
     }
 
     #[must_use]
@@ -30,8 +30,8 @@ impl Style {
     }
 
     #[must_use]
-    pub fn text_theme(self, token: &'static str) -> Self {
-        self.push(StyleAtom::TextThemeRef(token))
+    pub fn text_theme(self, token: impl Into<ColorKey>) -> Self {
+        self.push(StyleAtom::TextThemeRef(token.into()))
     }
 
     #[must_use]

@@ -9,6 +9,7 @@ use crate::animation_runtime::binding_animate_color::{
 };
 use crate::animation_runtime::{AnimationConfig, Animator};
 
+#[cfg(any(test, feature = "kittest"))]
 pub const ANIMATION_REGISTRY_MISS: ComponentId = 0xA111_0000_0000_0001;
 
 pub struct AttachedAnimator {
@@ -131,25 +132,14 @@ pub fn install_animators_themed(
     component_id: ComponentId,
     theme: &Theme,
 ) -> AttachedAnimators {
-    install_impl(
-        atoms,
-        state_style,
-        component_id,
-        Some(ThemeSnapshot::from_theme(theme)),
-    )
+    install_impl(atoms, state_style, component_id, Some(theme))
 }
 
-#[allow(
-    clippy::large_types_passed_by_value,
-    reason = "`theme_snapshot` is consumed — install_impl stores it into the \
-              returned AttachedAnimators. Passing by reference \
-              would force a clone at the assignment site."
-)]
 fn install_impl(
     atoms: &[StyleAtom],
     state_style: StateStyle,
     component_id: ComponentId,
-    theme_snapshot: Option<ThemeSnapshot>,
+    theme: Option<&Theme>,
 ) -> AttachedAnimators {
     let Some(id) = first_transition_id(atoms) else {
         return AttachedAnimators::empty();
@@ -174,11 +164,12 @@ fn install_impl(
         entries.push(build_entry(*kind, base, config));
     }
 
+    let theme_snapshot = theme.map(ThemeSnapshot::from_theme);
     let mut color_entries = Vec::new();
-    if let Some(theme) = theme_snapshot.as_ref() {
+    if let Some(snapshot) = theme_snapshot.as_ref() {
         for kind in [ColorAtomKind::Background, ColorAtomKind::Text] {
-            let base_value = find_color(kind, atoms, theme);
-            let hover_value = find_color(kind, hover_atoms, theme);
+            let base_value = find_color(kind, atoms, snapshot);
+            let hover_value = find_color(kind, hover_atoms, snapshot);
             let (Some(base), Some(hover)) = (base_value, hover_value) else {
                 continue;
             };
@@ -282,23 +273,17 @@ fn emit_registry_miss(component_id: ComponentId) {
     let _ = merge_warning_count_for_component(component_id);
 }
 
-pub mod miss_counter {
-    use core::sync::atomic::{AtomicUsize, Ordering};
+pub(super) mod miss_counter {
     use std::collections::HashMap;
     use std::sync::{Mutex, OnceLock};
 
     use crate::style::ComponentId;
 
-    static TOTAL: AtomicUsize = AtomicUsize::new(0);
     static PER_COMPONENT: OnceLock<Mutex<HashMap<ComponentId, usize>>> = OnceLock::new();
 
+    #[cfg(test)]
     #[must_use]
-    pub fn total() -> usize {
-        TOTAL.load(Ordering::Relaxed)
-    }
-
-    #[must_use]
-    pub fn for_component(component_id: ComponentId) -> usize {
+    pub(crate) fn for_component(component_id: ComponentId) -> usize {
         let map = PER_COMPONENT.get_or_init(|| Mutex::new(HashMap::new()));
         let Ok(map) = map.lock() else {
             return 0;
@@ -307,7 +292,6 @@ pub mod miss_counter {
     }
 
     pub(super) fn bump(component_id: ComponentId) {
-        TOTAL.fetch_add(1, Ordering::Relaxed);
         let map = PER_COMPONENT.get_or_init(|| Mutex::new(HashMap::new()));
         if let Ok(mut map) = map.lock() {
             *map.entry(component_id).or_insert(0) += 1;

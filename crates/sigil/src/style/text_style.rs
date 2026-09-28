@@ -142,4 +142,8 @@ pub trait StyledTextEngine: TextEngine {
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Result<Self::Paragraph, Self::Error>;
+
+    fn font_generation(&self) -> u64 {
+        0
+    }
 }

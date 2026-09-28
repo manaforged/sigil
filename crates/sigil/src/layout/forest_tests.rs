@@ -318,6 +318,7 @@ fn text_memo_keeps_recent_entries_across_overflow() {
         known_h: 0,
         wrap: 0,
         content: 0,
+        fonts: 0,
     };
     let size = crate::layout::style_data::Size {
         width: 1.0,

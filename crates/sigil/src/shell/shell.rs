@@ -26,9 +26,10 @@ mod a11y;
 mod attrs;
 mod commands;
 mod events;
-mod overlay;
 #[cfg(target_arch = "wasm32")]
 mod web;
+#[cfg(target_arch = "wasm32")]
+mod web_ime;
 
 pub(crate) struct PendingWindow {
     handle: WinitWindowHandle,
@@ -41,8 +42,6 @@ pub(crate) enum PendingWindowSize {
     Physical(PhysicalSize),
     Logical(LogicalSize),
 }
-
-pub(crate) type WakeHook = Arc<dyn Fn() + Send + Sync + 'static>;
 
 pub(crate) type DeadlineHook = Arc<dyn Fn() -> Option<Instant> + Send + Sync + 'static>;
 
@@ -67,7 +66,6 @@ pub struct WinitShell {
     pointer_buttons: MouseButtons,
     modifiers: ModifiersState,
     next_handle: u64,
-    wake_hook: Option<WakeHook>,
     deadline_hook: Option<DeadlineHook>,
     exit_requested: bool,
     force_paint: bool,
@@ -76,6 +74,8 @@ pub struct WinitShell {
     a11y_action_rx: crossbeam_channel::Receiver<accesskit::ActionRequest>,
     #[cfg(target_arch = "wasm32")]
     canvas: Option<String>,
+    #[cfg(target_arch = "wasm32")]
+    web_ime: Option<web_ime::WebIme>,
 }
 
 impl Drop for WinitShell {
@@ -119,7 +119,6 @@ impl WinitShell {
             pointer_buttons: MouseButtons::empty(),
             modifiers: ModifiersState::empty(),
             next_handle: 0,
-            wake_hook: None,
             deadline_hook: None,
             exit_requested: false,
             force_paint: false,
@@ -128,11 +127,9 @@ impl WinitShell {
             a11y_action_rx,
             #[cfg(target_arch = "wasm32")]
             canvas: None,
+            #[cfg(target_arch = "wasm32")]
+            web_ime: None,
         }
-    }
-
-    pub fn on_wake<F: Fn() + Send + Sync + 'static>(&mut self, hook: F) {
-        self.wake_hook = Some(Arc::new(hook));
     }
 
     pub fn on_idle_deadline<F: Fn() -> Option<Instant> + Send + Sync + 'static>(
@@ -158,6 +155,13 @@ impl WinitShell {
             .find_map(|(h, w)| (*h == handle).then_some(w))
     }
 
+    fn window_zoom(&self, handle: WinitWindowHandle) -> f32 {
+        self.window_zooms
+            .iter()
+            .find_map(|(stored, zoom)| (*stored == handle).then_some(*zoom))
+            .unwrap_or(1.0)
+    }
+
     #[must_use]
     pub fn windows(&self) -> &[(WinitWindowHandle, Arc<Window>)] {
         &self.windows
@@ -170,10 +174,6 @@ impl WinitShell {
 
     pub(crate) const fn has_failed_windows(&self) -> bool {
         !self.failed.is_empty()
-    }
-
-    pub(crate) fn wake_hook(&self) -> Option<&WakeHook> {
-        self.wake_hook.as_ref()
     }
 
     pub(crate) fn deadline_hook(&self) -> Option<&DeadlineHook> {
@@ -273,10 +273,18 @@ impl Shell for WinitShell {
     }
 
     fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ime) = &self.web_ime {
+            ime.drain_into(&mut self.events);
+        }
         std::mem::take(&mut self.events).into_iter()
     }
 
     fn set_ime_allowed(&mut self, window: &Self::Window, allowed: bool) -> Result<(), Self::Error> {
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ime) = &mut self.web_ime {
+            ime.set_allowed(allowed);
+        }
         if let Some(window) = self.window_for(*window) {
             window.set_ime_allowed(allowed);
         }
@@ -288,10 +296,16 @@ impl Shell for WinitShell {
         window: &Self::Window,
         rect: Rect,
     ) -> Result<(), Self::Error> {
+        let zoom = self.window_zoom(*window);
+        #[cfg(target_arch = "wasm32")]
+        if let Some(ime) = &self.web_ime {
+            ime.set_cursor_area(rect, zoom);
+        }
         if let Some(window) = self.window_for(*window) {
+            let at = |value: f32| f64::from(value * zoom);
             window.set_ime_cursor_area(
-                WinitLogicalPosition::new(f64::from(rect.origin.x), f64::from(rect.origin.y)),
-                WinitLogicalSize::new(f64::from(rect.width), f64::from(rect.height)),
+                WinitLogicalPosition::new(at(rect.origin.x), at(rect.origin.y)),
+                WinitLogicalSize::new(at(rect.width), at(rect.height)),
             );
         }
         Ok(())

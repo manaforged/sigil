@@ -157,7 +157,7 @@ fn grid(source: &str, cols: u16, hyperlinks: bool) -> Grid {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         host.set_caps(HostCaps { hyperlinks });
-        host.mount(move |cx: &mut Cx| cx.add(markdown(signal(source))));
+        host.build(move |cx: &mut Cx| cx.add(markdown(signal(source))));
         step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout");
         step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout")
     })

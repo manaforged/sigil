@@ -348,6 +348,13 @@ static INTERNED_TOKENS: std::sync::LazyLock<
     std::sync::Mutex<std::collections::HashSet<&'static str>>,
 > = std::sync::LazyLock::new(std::sync::Mutex::default);
 
+fn color_key(name: &str) -> Option<crate::style::ColorKey> {
+    if let Some(token) = crate::style::Token::from_name(name) {
+        return Some(crate::style::ColorKey::Token(token));
+    }
+    intern_token(name).map(crate::style::ColorKey::Custom)
+}
+
 fn intern_token(token: &str) -> Option<&'static str> {
     let mut tokens = INTERNED_TOKENS
         .lock()

@@ -196,9 +196,22 @@ pub(super) fn text_intrinsic(
     if !node.children().is_empty() {
         return None;
     }
+    let edges = NodeEdges::build(style, ctx.cb.w);
     let known = crate::layout::style_data::Size {
-        width: dim_to_border_box(style.size.width, ctx.cb.w, 0.0, style.box_sizing),
-        height: dim_to_border_box(style.size.height, ctx.cb.h, 0.0, style.box_sizing),
+        width: dim_to_border_box(
+            style.size.width,
+            ctx.cb.w,
+            edges.inline_chrome(),
+            style.box_sizing,
+        ),
+        height: dim_to_border_box(
+            style.size.height,
+            ctx.cb.h,
+            edges.block_chrome(),
+            style.box_sizing,
+        ),
     };
-    ctx.solver.scope().measure_text(node, known, Some(ctx.cb.w))
+    ctx.solver
+        .scope()
+        .measure_leaf_text(node, known, ctx.cb.w, &edges)
 }

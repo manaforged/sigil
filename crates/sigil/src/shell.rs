@@ -1,6 +1,8 @@
 use winit::error::EventLoopError;
 
 pub(crate) mod app;
+#[cfg(any(target_arch = "wasm32", test))]
+pub(crate) mod composition;
 pub(crate) mod dpi;
 pub(crate) mod event_map;
 pub(crate) mod key_map;
@@ -9,7 +11,9 @@ pub(crate) mod shell;
 pub(crate) mod waker;
 
 pub use shell::WinitShell;
-pub use waker::{WAKE_DELIVERED_COUNT, WakeEvent, WinitWaker};
+#[cfg(any(test, feature = "kittest"))]
+pub use waker::WAKE_DELIVERED_COUNT;
+pub use waker::{WakeEvent, WinitWaker};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct WinitWindowHandle(u64);

@@ -10,7 +10,14 @@ pub fn snapshot(update: &TreeUpdate) -> String {
     let mut out = String::new();
     let root = update.tree.as_ref().map_or(AkNodeId(0), |tree| tree.root);
     let focus = update.focus;
-    walk(&lookup, root, focus, 0, &mut out);
+    match lookup.get(&root) {
+        Some(window) if root == super::mapping::WINDOW_ROOT => {
+            for child in window.children() {
+                walk(&lookup, *child, focus, 0, &mut out);
+            }
+        }
+        _ => walk(&lookup, root, focus, 0, &mut out),
+    }
     out
 }
 

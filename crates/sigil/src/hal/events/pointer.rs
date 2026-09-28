@@ -135,3 +135,40 @@ impl PointerEvent {
         self.captured = captured;
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ClickConfig {
+    pub interval: core::time::Duration,
+    pub distance: f32,
+}
+
+impl Default for ClickConfig {
+    fn default() -> Self {
+        Self {
+            interval: core::time::Duration::from_millis(450),
+            distance: 8.0,
+        }
+    }
+}
+
+thread_local! {
+    static CLICK: core::cell::Cell<Option<ClickConfig>> = const { core::cell::Cell::new(None) };
+}
+
+impl ClickConfig {
+    #[must_use]
+    pub fn current() -> Self {
+        CLICK.with(core::cell::Cell::get).unwrap_or_default()
+    }
+
+    pub fn set(config: Self) {
+        CLICK.with(|cell| cell.set(Some(config)));
+    }
+
+    #[must_use]
+    pub fn is_repeat(&self, elapsed: core::time::Duration, from: Point, to: Point) -> bool {
+        elapsed <= self.interval
+            && (from.x - to.x).abs() <= self.distance
+            && (from.y - to.y).abs() <= self.distance
+    }
+}

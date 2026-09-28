@@ -1,70 +1,40 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use std::sync::OnceLock;
+use std::cell::Cell;
 
-use crate::style::{TextLineHeight, TextStyle};
-use ahash::{AHashMap, RandomState};
+use crate::style::TextStyle;
+use crate::style::text_identity::{DiscreteTextStyle, hasher};
+use ahash::AHashMap;
 
 use crate::text::Paragraph;
 
 const MAX_ENTRIES: usize = 16_384;
-
-fn hasher() -> &'static RandomState {
-    static HASHER: OnceLock<RandomState> = OnceLock::new();
-    HASHER.get_or_init(RandomState::default)
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct DiscreteWidth(i32);
-
-impl DiscreteWidth {
-    #[allow(
-        clippy::cast_possible_truncation,
-        reason = "values are bounded to the target range before the cast"
-    )]
-    fn from_option(w: Option<f32>) -> Self {
-        w.map_or(Self(i32::MAX), |v| Self((v * 2.0) as i32))
-    }
-}
+const EVICT_DIVISOR: usize = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct CacheKey {
     text_hash: u64,
-    width: DiscreteWidth,
+    width_bits: Option<u32>,
     style: DiscreteTextStyle,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-struct DiscreteTextStyle {
-    font_family_hash: u64,
-    font_size_bits: u32,
-    font_weight: u16,
-    line_height: DiscreteLineHeight,
-    letter_spacing_bits: u32,
-    tabular_nums: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-enum DiscreteLineHeight {
-    FontSizeRelative(u32),
-    Absolute(u32),
 }
 
 struct CacheEntry {
     text: String,
     style: TextStyle,
-    max_width: Option<f32>,
     paragraph: Paragraph,
+    used: Cell<u64>,
 }
 
 pub(crate) struct ParagraphCache {
     map: AHashMap<CacheKey, CacheEntry>,
+    clock: Cell<u64>,
 }
 
 impl ParagraphCache {
     pub(crate) fn new() -> Self {
         Self {
             map: AHashMap::new(),
+            clock: Cell::new(0),
         }
     }
 
@@ -74,13 +44,12 @@ impl ParagraphCache {
         max_width: Option<f32>,
         style: &TextStyle,
     ) -> Option<&Paragraph> {
-        let key = Self::key(text, max_width, style);
-        let entry = self.map.get(&key)?;
-        if entry.text == text && entry.style == *style && widths_match(entry.max_width, max_width) {
-            Some(&entry.paragraph)
-        } else {
-            None
+        let entry = self.map.get(&Self::key(text, max_width, style))?;
+        if entry.text != text || entry.style != *style {
+            return None;
         }
+        entry.used.set(self.tick());
+        Some(&entry.paragraph)
     }
 
     pub(crate) fn insert(
@@ -91,19 +60,17 @@ impl ParagraphCache {
         para: Paragraph,
     ) {
         let key = Self::key(text, max_width, style);
-        if self.map.len() >= MAX_ENTRIES
-            && !self.map.contains_key(&key)
-            && let Some(victim) = self.map.keys().next().copied()
-        {
-            self.map.remove(&victim);
+        if self.map.len() >= MAX_ENTRIES && !self.map.contains_key(&key) {
+            self.evict_least_recent();
         }
+        let used = Cell::new(self.tick());
         self.map.insert(
             key,
             CacheEntry {
                 text: text.to_owned(),
                 style: style.clone(),
-                max_width,
                 paragraph: para,
+                used,
             },
         );
     }
@@ -112,41 +79,25 @@ impl ParagraphCache {
         self.map.clear();
     }
 
+    fn tick(&self) -> u64 {
+        let now = self.clock.get().wrapping_add(1);
+        self.clock.set(now);
+        now
+    }
+
+    fn evict_least_recent(&mut self) {
+        let mut ages: Vec<u64> = self.map.values().map(|entry| entry.used.get()).collect();
+        let batch = (ages.len() / EVICT_DIVISOR).max(1);
+        let (_, cutoff, _) = ages.select_nth_unstable(batch - 1);
+        let cutoff = *cutoff;
+        self.map.retain(|_, entry| entry.used.get() > cutoff);
+    }
+
     fn key(text: &str, max_width: Option<f32>, style: &TextStyle) -> CacheKey {
         CacheKey {
             text_hash: hasher().hash_one(text),
-            width: DiscreteWidth::from_option(max_width),
+            width_bits: max_width.map(f32::to_bits),
             style: DiscreteTextStyle::from(style),
-        }
-    }
-}
-
-const fn widths_match(a: Option<f32>, b: Option<f32>) -> bool {
-    match (a, b) {
-        (Some(x), Some(y)) => x.to_bits() == y.to_bits(),
-        (None, None) => true,
-        _ => false,
-    }
-}
-
-impl From<&TextStyle> for DiscreteTextStyle {
-    fn from(style: &TextStyle) -> Self {
-        Self {
-            font_family_hash: hasher().hash_one(style.font_family.as_str()),
-            font_size_bits: style.font_size.to_bits(),
-            font_weight: style.font_weight,
-            line_height: DiscreteLineHeight::from(style.line_height),
-            letter_spacing_bits: style.letter_spacing_em.to_bits(),
-            tabular_nums: style.tabular_nums,
-        }
-    }
-}
-
-impl From<TextLineHeight> for DiscreteLineHeight {
-    fn from(line_height: TextLineHeight) -> Self {
-        match line_height {
-            TextLineHeight::FontSizeRelative(value) => Self::FontSizeRelative(value.to_bits()),
-            TextLineHeight::Absolute(value) => Self::Absolute(value.to_bits()),
         }
     }
 }

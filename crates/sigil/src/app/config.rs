@@ -18,6 +18,28 @@ pub(crate) struct QuitKeys {
     pub(crate) ctrl_c: bool,
 }
 
+pub(crate) const FRAME_INTERVAL: std::time::Duration = std::time::Duration::from_millis(33);
+
+#[cfg(feature = "terminal")]
+#[derive(Clone, Default)]
+pub(crate) struct TerminalHooks(
+    std::rc::Rc<std::cell::RefCell<Option<crate::terminal::Hooks<'static>>>>,
+);
+
+#[cfg(feature = "terminal")]
+impl TerminalHooks {
+    pub(crate) fn take(&self) -> crate::terminal::Hooks<'static> {
+        self.0.borrow_mut().take().unwrap_or_default()
+    }
+}
+
+#[cfg(feature = "terminal")]
+impl std::fmt::Debug for TerminalHooks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("TerminalHooks")
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub(crate) title: String,
@@ -32,7 +54,14 @@ pub struct AppConfig {
     pub(crate) host: crate::kernel::HostMode,
     pub(crate) min_size: Option<(u32, u32)>,
     pub(crate) resize: Resize,
+    pub(crate) inline: bool,
     pub(crate) frame_interval: std::time::Duration,
+    pub(crate) reduced_motion: Option<bool>,
+    pub(crate) click: Option<crate::hal::ClickConfig>,
+    #[cfg(feature = "terminal")]
+    pub(crate) terminal_hooks: TerminalHooks,
+    #[cfg(feature = "terminal")]
+    pub(crate) terminal_access: crate::terminal::Access,
     #[cfg_attr(
         not(target_arch = "wasm32"),
         allow(dead_code, reason = "only the browser host binds a canvas")
@@ -59,7 +88,14 @@ impl AppConfig {
             host: crate::kernel::HostMode::Pixel,
             min_size: None,
             resize: Resize::Free,
-            frame_interval: std::time::Duration::from_millis(33),
+            inline: false,
+            frame_interval: FRAME_INTERVAL,
+            reduced_motion: None,
+            click: None,
+            #[cfg(feature = "terminal")]
+            terminal_hooks: TerminalHooks::default(),
+            #[cfg(feature = "terminal")]
+            terminal_access: crate::terminal::Access::default(),
             canvas: None,
         }
     }
@@ -131,6 +167,26 @@ impl AppConfig {
         self
     }
 
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub fn terminal_hooks(mut self, hooks: crate::terminal::Hooks<'static>) -> Self {
+        self.terminal_hooks = TerminalHooks(std::rc::Rc::new(std::cell::RefCell::new(Some(hooks))));
+        self
+    }
+
+    #[cfg(feature = "terminal")]
+    #[must_use]
+    pub const fn terminal_access(mut self, access: crate::terminal::Access) -> Self {
+        self.terminal_access = access;
+        self
+    }
+
+    #[must_use]
+    pub const fn inline(mut self, yes: bool) -> Self {
+        self.inline = yes;
+        self
+    }
+
     #[must_use]
     pub const fn user_zoom(mut self, zoom: f32) -> Self {
         self.user_zoom = zoom;
@@ -152,6 +208,18 @@ impl AppConfig {
     #[must_use]
     pub const fn frame_interval(mut self, interval: std::time::Duration) -> Self {
         self.frame_interval = interval;
+        self
+    }
+
+    #[must_use]
+    pub const fn reduced_motion(mut self, reduced: bool) -> Self {
+        self.reduced_motion = Some(reduced);
+        self
+    }
+
+    #[must_use]
+    pub const fn click(mut self, click: crate::hal::ClickConfig) -> Self {
+        self.click = Some(click);
         self
     }
 

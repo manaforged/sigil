@@ -112,9 +112,7 @@ fn install_caret_anchor_sync(runtime: &TextEditRuntime) {
     let (padding_x, padding_y) = runtime.content_padding;
     effect(move || {
         let preedit_text = preedit.get();
-        let composing = !preedit_text.is_empty();
-        let is_disabled = disabled.is_some_and(Signal::get);
-        if !composing || is_disabled {
+        if disabled.is_some_and(Signal::get) {
             anchor.set(None);
             return;
         }

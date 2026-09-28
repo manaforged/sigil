@@ -16,10 +16,26 @@ pub(crate) fn disposed_signal(op: &'static str, caller: &'static Location<'stati
 
 #[cold]
 #[track_caller]
-pub(crate) fn reactive_cycle(loc: Option<&'static Location<'static>>) {
-    #[cfg(debug_assertions)]
-    panic!("reactive cycle detected: effect at {loc:?} would re-enter itself");
+pub(crate) fn reactive_cycle(cycle: Cycle) {
+    match cycle {
+        Cycle::ReEntry(loc) => {
+            #[cfg(debug_assertions)]
+            panic!("reactive cycle detected: effect at {loc:?} would re-enter itself");
 
-    #[cfg(not(debug_assertions))]
-    eprintln!("reactive cycle detected: effect at {loc:?} would re-enter itself; skipping re-run");
+            #[cfg(not(debug_assertions))]
+            eprintln!(
+                "reactive cycle detected: effect at {loc:?} would re-enter itself; skipping re-run"
+            );
+        }
+        Cycle::Budget(limit) => tracing::error!(
+            target: "sigil::reactive",
+            "reactive cycle detected: {limit} effect runs in one drain; the rest stay dirty until the next drain"
+        ),
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum Cycle {
+    ReEntry(Option<&'static Location<'static>>),
+    Budget(usize),
 }

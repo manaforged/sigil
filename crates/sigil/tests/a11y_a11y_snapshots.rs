@@ -15,7 +15,7 @@ fn button_role_and_name() {
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
-    assert_eq!(text, "[Role=Button, Name=\"Save\", Focused=true]\n");
+    assert_eq!(text, "[Role=Button, Name=\"Save\"]\n");
 }
 
 #[test]
@@ -29,10 +29,7 @@ fn checkbox_role_surfaces() {
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
-    assert_eq!(
-        text,
-        "[Role=CheckBox, Name=\"Accept terms\", Focused=true]\n"
-    );
+    assert_eq!(text, "[Role=CheckBox, Name=\"Accept terms\"]\n");
 }
 
 #[test]
@@ -43,7 +40,7 @@ fn generic_container_default_role() {
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
-    assert_eq!(text, "[Role=GenericContainer, Focused=true]\n");
+    assert_eq!(text, "[Role=GenericContainer]\n");
 }
 
 #[test]
@@ -56,11 +53,11 @@ fn fragment_reparents_children_in_projection() {
     let update = tree(&cx, None, &|_| None);
     let text = snapshot(&update);
 
-    assert_eq!(text, "[Role=Button, Name=\"Inner\", Focused=true]\n");
+    assert_eq!(text, "[Role=Button, Name=\"Inner\"]\n");
 }
 
 #[test]
-fn removed_focus_target_falls_back_to_live_root() {
+fn removed_focus_target_falls_back_to_window_root() {
     let mut cx = Cx::new_root();
     let root = container().child(container()).add(&mut cx);
     let stale_focus = cx.nth_child(root, 0).unwrap_or(root);
@@ -68,6 +65,10 @@ fn removed_focus_target_falls_back_to_live_root() {
 
     let update = tree(&cx, Some(stale_focus), &|_| None);
 
-    assert_eq!(update.focus, root.to_accesskit());
+    assert_eq!(
+        Some(update.focus),
+        update.tree.as_ref().map(|info| info.root)
+    );
+    assert_ne!(update.focus, root.to_accesskit());
     assert!(update.nodes.iter().any(|(id, _)| *id == update.focus));
 }

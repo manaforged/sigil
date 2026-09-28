@@ -4,7 +4,8 @@ use web_time::Instant;
 
 use crate::events::handlers::EventHandlers;
 use crate::hal::{
-    HitPosition, ModifiersState, MouseButton, Point, PointerEvent, PointerPhase, TextAffinity,
+    ClickConfig, HitPosition, ModifiersState, MouseButton, Point, PointerEvent, PointerPhase,
+    TextAffinity,
 };
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::LayoutEngine;
@@ -14,9 +15,6 @@ use super::selection_walk::{
 };
 
 pub struct SelectableText;
-
-const DOUBLE_CLICK_MS: u128 = 450;
-const DOUBLE_CLICK_PX: f32 = 8.0;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(crate) struct Endpoint {
@@ -55,6 +53,14 @@ pub(crate) fn drag(cx: &mut Cx, layout: &LayoutEngine, event: &mut PointerEvent)
     if matches!(event.phase, PointerPhase::Move | PointerPhase::Up) {
         extend(cx, layout, event);
     }
+}
+
+pub(crate) fn end_drag() {
+    STATE.with(|state| {
+        if let Some(selection) = state.borrow_mut().as_mut() {
+            selection.dragging = false;
+        }
+    });
 }
 
 pub(crate) fn escape(cx: &mut Cx) -> bool {
@@ -138,9 +144,7 @@ fn note_down(point: Point) -> bool {
     let now = Instant::now();
     let double = LAST_DOWN.with(|state| {
         state.borrow().is_some_and(|(at, prev)| {
-            now.duration_since(at).as_millis() <= DOUBLE_CLICK_MS
-                && (prev.x - point.x).abs() <= DOUBLE_CLICK_PX
-                && (prev.y - point.y).abs() <= DOUBLE_CLICK_PX
+            ClickConfig::current().is_repeat(now.duration_since(at), prev, point)
         })
     });
     LAST_DOWN.with(|state| *state.borrow_mut() = Some((now, point)));

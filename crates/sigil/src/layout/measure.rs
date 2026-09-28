@@ -11,4 +11,8 @@ pub trait TextMeasure {
     }
 
     fn begin_frame(&self) {}
+
+    fn font_generation(&self) -> u64 {
+        0
+    }
 }

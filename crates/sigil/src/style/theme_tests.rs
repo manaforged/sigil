@@ -1,4 +1,5 @@
 use super::*;
+use crate::style::ColorKey;
 use crate::style::palette::Palette;
 use crate::style::palette::perceived_brightness_u32;
 use crate::style::variant::{FontFamilyHint, Variant};
@@ -109,25 +110,46 @@ fn on_accent_contrasts_with_bright_accent_on_bright_palette() {
 fn console_dark_resolves_shadcn_tokens_to_captured_srgb() {
     let t = Theme::console_dark();
     let rgba = |r, g, b, a| Rgba8 { r, g, b, a };
-    assert_eq!(t.resolve_color("background"), rgba(10, 10, 10, 255));
-    assert_eq!(t.resolve_color("card"), rgba(23, 23, 23, 255));
-    assert_eq!(t.resolve_color("primary"), rgba(229, 229, 229, 255));
     assert_eq!(
-        t.resolve_color("muted-foreground"),
+        t.resolve_color(ColorKey::parse("background")),
+        rgba(10, 10, 10, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("card")),
+        rgba(23, 23, 23, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("primary")),
+        rgba(229, 229, 229, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("muted-foreground")),
         rgba(161, 161, 161, 255)
     );
-    assert_eq!(t.resolve_color("destructive"), rgba(255, 100, 103, 255));
-    assert_eq!(t.resolve_color("sidebar-primary"), rgba(20, 71, 230, 255));
-    assert_eq!(t.resolve_color("accent"), rgba(38, 38, 38, 255));
-    assert_eq!(t.resolve_color("border"), rgba(245, 255, 255, 26));
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("destructive")),
+        rgba(255, 100, 103, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("sidebar-primary")),
+        rgba(20, 71, 230, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("accent")),
+        rgba(38, 38, 38, 255)
+    );
+    assert_eq!(
+        t.resolve_color(ColorKey::parse("border")),
+        rgba(245, 255, 255, 26)
+    );
 }
 
 #[test]
 fn dark_built_in_accent_unaffected_by_token_first_resolution() {
     let t = Theme::dark();
-    assert_eq!(t.resolve_color("accent"), t.accent);
+    assert_eq!(t.resolve_color(ColorKey::parse("accent")), t.accent);
     assert_ne!(
-        t.resolve_color("accent"),
+        t.resolve_color(ColorKey::parse("accent")),
         Rgba8 {
             r: 38,
             g: 38,
@@ -154,9 +176,12 @@ fn runtime_token_rebinding_accent_wins_over_builtin() {
     let t = Theme::dark()
         .with_token("accent", ThemeValue::Color(gold))
         .with_token("on-accent", ThemeValue::Color(navy));
-    assert_eq!(t.resolve_color("accent"), gold);
+    assert_eq!(t.resolve_color(ColorKey::parse("accent")), gold);
     assert_eq!(t.accent, gold);
     assert_eq!(t.accent_scale.step(9), gold);
     assert_eq!(t.accent_scale.on_solid, navy);
-    assert_ne!(t.resolve_color("accent"), Theme::dark().accent);
+    assert_ne!(
+        t.resolve_color(ColorKey::parse("accent")),
+        Theme::dark().accent
+    );
 }

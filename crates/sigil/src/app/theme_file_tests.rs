@@ -5,8 +5,8 @@ fn parses_base_and_hex_tokens() {
     let theme = parse("base = \"dark\"\n[tokens]\naccent = \"#7c3aed\"\nsoft = \"#11223344\"\n")
         .expect("parses");
     assert_eq!(
-        theme.runtime_tokens.get("accent"),
-        Some(&ThemeValue::Color(Rgba8 {
+        theme.tokens.overrides.value("accent"),
+        Some(ThemeValue::Color(Rgba8 {
             r: 0x7c,
             g: 0x3a,
             b: 0xed,
@@ -14,8 +14,8 @@ fn parses_base_and_hex_tokens() {
         })),
     );
     assert_eq!(
-        theme.runtime_tokens.get("soft"),
-        Some(&ThemeValue::Color(Rgba8 {
+        theme.tokens.overrides.value("soft"),
+        Some(ThemeValue::Color(Rgba8 {
             r: 0x11,
             g: 0x22,
             b: 0x33,
@@ -28,8 +28,8 @@ fn parses_base_and_hex_tokens() {
 fn light_is_the_default_base() {
     let theme = parse("[tokens]\naccent = \"0x102030\"").expect("parses");
     assert_eq!(
-        theme.runtime_tokens.get("accent"),
-        Some(&ThemeValue::Color(Rgba8 {
+        theme.tokens.overrides.value("accent"),
+        Some(ThemeValue::Color(Rgba8 {
             r: 0x10,
             g: 0x20,
             b: 0x30,

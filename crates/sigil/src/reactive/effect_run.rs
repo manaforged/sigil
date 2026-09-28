@@ -177,7 +177,9 @@ fn run_setup(key: EffectKey) -> RunSetup {
         }
         if rt.running.contains(&key) {
             let loc = rt.effects.get(key).map(|e| e.location);
-            crate::reactive::diagnostic::reactive_cycle(loc);
+            crate::reactive::diagnostic::reactive_cycle(
+                crate::reactive::diagnostic::Cycle::ReEntry(loc),
+            );
             return RunSetup::Skip;
         }
         if rt.effects.get(key).is_some_and(|slot| slot.f.is_none()) {

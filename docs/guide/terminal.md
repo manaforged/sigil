@@ -27,17 +27,100 @@ fn app_tree(cx: &mut Cx) -> NodeId {
 ```
 
 `sigil::run` with `.terminal()` opens the terminal, runs the frame loop,
-and restores the screen on exit. `sigil::terminal::run_with` is the
-same loop with `Hooks`: an external event pump and an after-frame
-callback. The terminal host installs an OSC
-52 clipboard so widget copy/cut reaches the host terminal's clipboard.
+and restores the screen on exit. `AppConfig::terminal_hooks(Hooks)` gives
+the same loop an external event pump and an after-frame callback. The
+terminal host installs an OSC 52 clipboard so widget copy/cut reaches the host terminal's clipboard.
+
+## Inline mode
+
+By default the terminal host draws on the alternate screen and restores
+the previous screen on exit. `AppConfig::inline(true)` keeps the normal
+screen instead: the host moves the prompt to the bottom of the
+terminal and draws a live region there, so output above it stays in
+scrollback and remains after exit.
+
+```rust,no_run
+use sigil::prelude::*;
+use sigil::terminal::{Hooks, print_above};
+
+fn main() -> sigil::AppResult<()> {
+    let hooks = Hooks {
+        region_rows: Some(Box::new(|| 3)),
+        ..Hooks::default()
+    };
+    let config = AppConfig::new("log")
+        .terminal()
+        .inline(true)
+        .terminal_hooks(hooks);
+    sigil::run(config, app_tree)
+}
+
+fn app_tree(cx: &mut Cx) -> NodeId {
+    let _ = print_above("build started");
+    cx.add(text("working"))
+}
+```
+
+`Hooks::region_rows` returns the height of the live region for each
+frame, clamped between one row and the terminal height. Without it the
+region fills the terminal. The hook applies only in inline mode.
+
+`sigil::terminal::print_above(text)` writes each line of `text` above
+the live region, where it scrolls into scrollback, and the next frame
+redraws the region below it. Each line loses control and escape
+sequences and is clipped to the terminal width. It returns an error
+that carries `PrintAboveError::NotLive` when no host runs on this
+thread, and `PrintAboveError::FullScreen` when the host is not inline.
+`suspend` keeps inline mode across the child process.
+
+## Accessibility
+
+Terminal screen readers (VoiceOver, NVDA, Orca) read the visible text
+and follow the terminal cursor. The terminal host uses both.
+
+- Cursor follows focus. When a node has keyboard focus and no text
+  caret is visible, the host moves the terminal cursor to the top-left
+  cell of the focused node and shows it. A focused text input keeps its
+  caret. `FocusCursor::Off` keeps the cursor hidden instead.
+- Announcements. `cx.announce`, `cx.announce_assertive`, a modal that
+  opens, and any node with a live region (`Role::Alert`,
+  `Role::Status`) send their new text to the terminal. In inline mode
+  the host writes it above the live region with `print_above`. On the
+  alternate screen it draws the text on the last row for
+  `Access::status` (default 5 s), then redraws that row.
+
+```rust,no_run
+use std::time::Duration;
+
+use sigil::prelude::*;
+use sigil::terminal::{Access, FocusCursor};
+
+fn main() -> sigil::AppResult<()> {
+    let access = Access {
+        focus_cursor: FocusCursor::Off,
+        status: Duration::from_secs(3),
+    };
+    sigil::run(
+        AppConfig::new("quiet").terminal().terminal_access(access),
+        app_tree,
+    )
+}
+
+fn app_tree(cx: &mut Cx) -> NodeId {
+    cx.add(text("hello"))
+}
+```
 
 ## Capabilities
 
 `run` detects one `sigil::terminal::Caps` when it starts. It reads the
 environment first. If the environment does not name the terminal, `run`
 sends a Kitty graphics query, a DEC 2026 mode query, a Kitty keyboard
-query, and DA1, and waits up to 150 ms for the reply. `Caps::detect`
+query, an OSC 11 background query, and DA1, and waits up to 150 ms for
+the reply.
+
+On a dark backdrop, `run` starts with `Theme::dark()` unless
+`AppConfig::theme_file` is set. `set_theme` from the app still wins. `Caps::detect`
 runs the environment step alone.
 
 | Capability | Environment | Query | Fallback |
@@ -52,6 +135,7 @@ runs the environment step alone.
 | Borders | `TERM`, `LC_ALL`, `LC_CTYPE`, `LANG` | none | rounded, then light, then ASCII |
 | Cursor shape | known terminal other than Apple Terminal | none | block cursor |
 | Clipboard | macOS without `SSH_TTY` | none | OSC 52 |
+| Backdrop | `COLORFGBG` | `OSC 11 ; ?` | unknown; the light theme |
 
 Color depth:
 
@@ -109,7 +193,9 @@ frame. It waits for input until the next interval is due.
 
 ## Limits
 
-- No IME.
+- The terminal composes CJK input. It draws the preedit and the
+  candidate window at the hardware cursor, which Sigil puts on the caret
+  cell. Committed text is inserted as one edit.
 - No shadows, blur, or gradients.
 - Images render through the Kitty, iTerm2, or Sixel graphics protocol
   when the terminal advertises one (`TERM`, `KITTY_WINDOW_ID`, or
@@ -148,7 +234,7 @@ frame. It waits for input until the next interval is due.
 - `SIGIL_TUI_TRANSCRIPT=1` turns on a transcript stream on stderr:
   each flushed frame writes the `sigil::a11y::snapshot` of the
   accessibility tree when the tree changed, else the text rows that
-  changed. This is the screen-reader and agent-transcript surface.
+  changed. This is the screen-reader and automation transcript surface.
 - The cell grid changes the paint, not the tree. The widgets, events,
   and signals are the same as the desktop host.
 - Write ordinary pixel geometry. Layout snaps it to the cell grid: a

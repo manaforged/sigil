@@ -17,7 +17,7 @@ pub fn parse(input: &str) -> Option<Theme> {
     for (name, value) in tokens {
         let hex = value.as_str()?;
         let color = parse_hex(hex)?;
-        theme.register_token(name.clone(), ThemeValue::Color(color));
+        theme.register_token(name, ThemeValue::Color(color));
     }
     Some(theme)
 }

@@ -78,9 +78,10 @@ fn run<T: TreeRoot>(config: AppConfig, tree: T, owner: Owner) -> AppResult<()> {
     let window_handle = create_initial_window(&mut shell, &config, logical_size)?;
 
     let mut async_rt = install_async_runtime(&shell)?;
+    install_font_wake(&shell);
 
     let mut host = Host::new();
-    host.mount(tree);
+    host.mount_app(tree);
     if host.root().is_none() {
         return Err(Error::new(std::io::Error::other(
             "the mounted tree has no root node",
@@ -182,6 +183,11 @@ fn request_animation_frame(shell: &WinitShell, handle: WinitWindowHandle) {
     }
 }
 
+fn install_font_wake(shell: &WinitShell) {
+    let waker = shell.waker();
+    crate::text::on_fonts_changed(move || drop(WinitShell::wake(&waker)));
+}
+
 fn install_async_runtime(shell: &WinitShell) -> AppResult<AsyncRuntime> {
     let mut async_rt = AsyncRuntime::new().map_err(Error::task)?;
     let waker = shell.waker();
@@ -239,7 +245,6 @@ struct FrameState {
 }
 
 const NOMINAL_FRAME_SECS: f32 = 1.0 / 60.0;
-const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
 
 #[derive(Default)]
 struct AnimationClock {
@@ -255,9 +260,7 @@ impl AnimationClock {
         self.previous
             .replace(now)
             .map_or(NOMINAL_FRAME_SECS, |previous| {
-                now.saturating_duration_since(previous)
-                    .as_secs_f32()
-                    .min(MAX_ANIMATION_FRAME_SECS)
+                now.saturating_duration_since(previous).as_secs_f32()
             })
     }
 

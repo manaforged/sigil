@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
 
 use crate::kernel::TextContent;
 use crate::style::TextStyle;
@@ -8,7 +9,7 @@ use crate::layout::block::BlockSolver;
 use crate::layout::error::LayoutError;
 use crate::layout::flex::FlexSolver;
 use crate::layout::forest::{
-    AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope, text_memo_clear,
+    AvailableSpace, ComputedBox, LayoutForest, LayoutText, LocalId, MeasureScope,
 };
 use crate::layout::measure::TextMeasure;
 use crate::layout::style_data::{Display, Overflow, Size, StyleData};
@@ -32,13 +33,13 @@ pub struct LayoutDrive {
 impl LayoutDrive {
     #[must_use]
     pub fn new(text: Box<dyn TextMeasure>) -> Self {
-        text_memo_clear();
         Self {
             forest: LayoutForest::new(),
             text,
         }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn insert(&mut self, style: StyleData) -> NodeHandle {
         NodeHandle(self.forest.insert(None, style))
     }
@@ -83,6 +84,7 @@ impl LayoutDrive {
         self.forest.text_for(node.0)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn attach(&mut self, parent: NodeHandle, child: NodeHandle) -> Result<(), LayoutError> {
         self.forest.attach(parent.0, child.0)
     }
@@ -110,15 +112,21 @@ impl LayoutDrive {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn count(&self) -> usize {
         self.forest.count()
+    }
+
+    pub(crate) fn font_generation(&self) -> u64 {
+        self.text.font_generation()
     }
 
     pub fn begin_frame(&self) {
         self.text.begin_frame();
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn measure(&mut self, root: NodeHandle, viewport: Size<f32>) -> Result<(), LayoutError> {
         let avail = AvailableSpace::definite(viewport.width, viewport.height);
         self.measure_with_constraints(root, avail)

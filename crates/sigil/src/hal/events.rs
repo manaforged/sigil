@@ -7,7 +7,8 @@ pub use keyboard_types::{Code as PhysicalKey, Modifiers as ModifiersState, Named
 mod pointer;
 
 pub use pointer::{
-    MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    ClickConfig, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase,
 };
 
 #[derive(Clone, Debug, PartialEq)]

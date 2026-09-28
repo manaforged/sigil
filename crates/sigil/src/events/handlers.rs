@@ -230,8 +230,8 @@ impl EventHandlers {
         match (phase, capture) {
             (PointerPhase::Down, true) => Some(&self.pointer_down_capture),
             (PointerPhase::Down, false) => Some(&self.pointer_down),
-            (PointerPhase::Up, true) => Some(&self.pointer_up_capture),
-            (PointerPhase::Up, false) => Some(&self.pointer_up),
+            (PointerPhase::Up | PointerPhase::Cancel, true) => Some(&self.pointer_up_capture),
+            (PointerPhase::Up | PointerPhase::Cancel, false) => Some(&self.pointer_up),
             (PointerPhase::Move, true) => Some(&self.pointer_move_capture),
             (PointerPhase::Move, false) => Some(&self.pointer_move),
             (PointerPhase::Enter, false) => Some(&self.pointer_enter),

@@ -1,8 +1,9 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use super::text_memo::{text_memo_get, text_memo_key, text_memo_store};
+use super::text_memo::text_memo_key;
 use super::{ComputedBox, LayoutForest, LocalId, NodeRef};
 use crate::layout::TextMeasure;
+use crate::layout::resolve::NodeEdges;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum SpaceConstraint {
@@ -18,6 +19,7 @@ pub(crate) struct AvailableSpace {
 }
 
 impl AvailableSpace {
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub(crate) const fn definite(w: f32, h: f32) -> Self {
         Self {
@@ -75,15 +77,31 @@ impl<'a> MeasureScope<'a> {
         self.write(node.id(), value);
     }
 
-    pub(crate) fn measure_text(
+    pub(crate) fn measure_leaf_text(
+        &self,
+        node: NodeRef<'_>,
+        border_known: crate::layout::style_data::Size<Option<f32>>,
+        cb_width: f32,
+        edges: &NodeEdges,
+    ) -> Option<crate::layout::style_data::Size<f32>> {
+        let inline = edges.inline_chrome();
+        let block = edges.block_chrome();
+        let known = crate::layout::style_data::Size {
+            width: border_known.width.map(|w| (w - inline).max(0.0)),
+            height: border_known.height.map(|h| (h - block).max(0.0)),
+        };
+        self.measure_text(node, known, Some((cb_width - inline).max(0.0)))
+    }
+
+    fn measure_text(
         &self,
         node: NodeRef<'_>,
         known: crate::layout::style_data::Size<Option<f32>>,
         wrap_to: Option<f32>,
     ) -> Option<crate::layout::style_data::Size<f32>> {
         let text = node.text()?;
-        let memo_key = text_memo_key(node.id(), known, wrap_to, text);
-        if let Some(hit) = text_memo_get(memo_key) {
+        let memo_key = text_memo_key(node.id(), known, wrap_to, text, self.text.font_generation());
+        if let Some(hit) = self.forest.text_memo_get(memo_key) {
             return Some(hit);
         }
         let width = if text.wrap {
@@ -96,7 +114,7 @@ impl<'a> MeasureScope<'a> {
         };
         let space = crate::hal::Size {
             width,
-            height: space_constraint_to_hal_dim(self.available.h),
+            height: crate::hal::Dim::MaxContent,
         };
         let measured = text.style.as_ref().map_or_else(
             || self.text.measure(&text.content, space),
@@ -114,7 +132,7 @@ impl<'a> MeasureScope<'a> {
             width: known.width.unwrap_or(natural_w),
             height: known.height.unwrap_or(measured.height),
         };
-        text_memo_store(memo_key, out);
+        self.forest.text_memo_store(memo_key, out);
         Some(out)
     }
 }

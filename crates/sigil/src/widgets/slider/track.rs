@@ -95,8 +95,8 @@ static GLASS_TRACK_REST: &[StyleAtom] = &[
 ];
 
 static GLASS_FILL_STOPS: &[GradientStopKey] = &[
-    GradientStopKey::new(0, ColorAtom::ThemeRef(Token::AccentHover.name())),
-    GradientStopKey::new(1000, ColorAtom::ThemeRef(Token::Accent.name())),
+    GradientStopKey::new(0, Token::AccentHover.color()),
+    GradientStopKey::new(1000, Token::Accent.color()),
 ];
 static GLASS_TRACK_FILL: &[StyleAtom] = &[StyleAtom::BackgroundGradient(BgGradient::new(
     GradientAxis::TopToBottom,

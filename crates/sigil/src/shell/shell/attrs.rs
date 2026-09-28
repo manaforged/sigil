@@ -111,6 +111,8 @@ impl WinitShell {
                         tracing::warn!(target: "sigil::shell", error = %err, "overlay hit-test disable failed");
                     }
                     self.install_a11y_adapter(active, spec.handle, &window);
+                    #[cfg(target_arch = "wasm32")]
+                    self.install_web_ime(&window);
                     let zoom = spec.opts.user_zoom.unwrap_or(1.0);
                     self.window_zooms.push((spec.handle, zoom));
                     self.window_scales.push((

@@ -1,4 +1,5 @@
-use std::cell::{Cell, Ref, RefCell};
+#![cfg_attr(not(any(test, feature = "kittest")), allow(unreachable_pub))]
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use crate::hal::{ParagraphMetrics, TextEngine};
@@ -31,6 +32,7 @@ use spans::{shape_spans, style_spans};
 pub struct OwnedTextEngine {
     fonts: RefCell<FontCollection>,
     font_gen: Cell<u64>,
+    font_epoch: Cell<u64>,
     config: TextConfig,
     cache: RefCell<ParagraphCache>,
 }
@@ -41,6 +43,7 @@ impl OwnedTextEngine {
         Self {
             fonts: RefCell::new(FontCollection::with_default()),
             font_gen: Cell::new(crate::text::fonts::default_fonts_generation()),
+            font_epoch: Cell::new(0),
             config,
             cache: RefCell::new(ParagraphCache::new()),
         }
@@ -60,8 +63,19 @@ impl OwnedTextEngine {
         if generation != self.font_gen.get() {
             *self.fonts.borrow_mut() = FontCollection::with_default();
             self.font_gen.set(generation);
-            self.cache.borrow_mut().clear();
+            self.fonts_changed();
         }
+    }
+
+    fn fonts_changed(&self) {
+        self.font_epoch.set(self.font_epoch.get().wrapping_add(1));
+        self.cache.borrow_mut().clear();
+    }
+
+    #[must_use]
+    pub fn font_generation(&self) -> u64 {
+        self.refresh_fonts();
+        self.font_epoch.get()
     }
 
     pub fn clear_cache(&self) {
@@ -128,8 +142,9 @@ impl OwnedTextEngine {
         self.layout_paragraph_styled(&out, None, style)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
-    pub fn fonts(&self) -> Ref<'_, FontCollection> {
+    pub fn fonts(&self) -> std::cell::Ref<'_, FontCollection> {
         self.fonts.borrow()
     }
 
@@ -149,7 +164,8 @@ impl OwnedTextEngine {
 
     pub fn register_font(&mut self, bytes: Vec<u8>, face_index: u32) -> Result<(), TextError> {
         self.fonts.borrow_mut().register(bytes, face_index)?;
-        self.cache.borrow_mut().clear();
+        self.fonts_changed();
+        crate::text::fonts::wake_font_listeners();
         Ok(())
     }
 
@@ -162,7 +178,8 @@ impl OwnedTextEngine {
         self.fonts
             .borrow_mut()
             .register_family(family, bytes, face_index)?;
-        self.cache.borrow_mut().clear();
+        self.fonts_changed();
+        crate::text::fonts::wake_font_listeners();
         Ok(())
     }
 
@@ -216,26 +233,40 @@ impl StyledTextEngine for OwnedTextEngine {
     ) -> Result<Paragraph, TextError> {
         Self::layout_paragraph_styled(self, text, max_width, style)
     }
+
+    fn font_generation(&self) -> u64 {
+        Self::font_generation(self)
+    }
 }
 
 fn to_shaper_style(style: &TextStyle) -> Style {
     Style {
-        size_px: style.font_size.max(1.0),
+        size_px: font_size_px(style),
         weight: style.font_weight,
         features: if style.tabular_nums {
             smallvec::smallvec![FeatureTag(*b"tnum")]
         } else {
             smallvec::SmallVec::new()
         },
-        letter_spacing_em: style.letter_spacing_em,
+        letter_spacing_em: finite_or(style.letter_spacing_em, 0.0),
     }
 }
 
+fn font_size_px(style: &TextStyle) -> f32 {
+    finite_or(style.font_size, TextStyle::default().font_size).max(1.0)
+}
+
 fn resolve_line_height(style: &TextStyle) -> f32 {
-    match style.line_height {
-        TextLineHeight::FontSizeRelative(factor) => (style.font_size * factor.max(0.1)).max(1.0),
-        TextLineHeight::Absolute(value) => value.max(1.0),
-    }
+    let size = font_size_px(style);
+    let line = |height: TextLineHeight| match height {
+        TextLineHeight::FontSizeRelative(factor) => size * factor.max(0.1),
+        TextLineHeight::Absolute(value) => value,
+    };
+    finite_or(line(style.line_height), line(TextLineHeight::default())).max(1.0)
+}
+
+const fn finite_or(value: f32, fallback: f32) -> f32 {
+    if value.is_finite() { value } else { fallback }
 }
 
 #[cfg(test)]

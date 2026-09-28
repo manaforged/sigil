@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::style::metrics::{Metrics, Radius};
 use crate::style::palette::{Palette, is_dark, pick_higher_contrast};
 use crate::style::scale::{
@@ -13,6 +11,9 @@ use mix::{alpha_mix, rgba, shift};
 mod color;
 mod console;
 mod mix;
+mod table;
+
+pub use table::{TokenLayer, TokenTable};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
@@ -22,7 +23,7 @@ pub enum ThemeValue {
     Ms(u16),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Theme {
     pub gray: ColorScale,
     pub accent_scale: ColorScale,
@@ -42,8 +43,7 @@ pub struct Theme {
     pub on_surface: Rgba8,
     pub border: Rgba8,
     pub missing_token_fallback: Rgba8,
-    pub tokens: phf::Map<&'static str, ThemeValue>,
-    pub runtime_tokens: HashMap<String, ThemeValue>,
+    pub tokens: TokenTable,
     pub metrics: Metrics,
 }
 
@@ -166,8 +166,7 @@ impl Theme {
             on_surface: gray.step(12),
             border: gray.step(7),
             missing_token_fallback: rgba(255, 0, 255),
-            tokens: phf::Map::new(),
-            runtime_tokens: HashMap::new(),
+            tokens: TokenTable::default(),
             metrics: Metrics::current(),
         }
     }
@@ -208,8 +207,7 @@ impl Theme {
             on_surface: palette.text,
             border: alpha_mix(palette.text, palette.background, 0.35),
             missing_token_fallback: rgba(255, 0, 255),
-            tokens: phf::Map::new(),
-            runtime_tokens: HashMap::new(),
+            tokens: TokenTable::default(),
             metrics: Metrics::current(),
         }
     }
@@ -284,18 +282,14 @@ impl ThemeBuilder {
     }
 
     #[must_use]
-    #[allow(
-        clippy::missing_const_for_fn,
-        reason = "Theme now owns a HashMap; const-stable in the consumer regardless."
-    )]
-    pub fn tokens(mut self, tokens: phf::Map<&'static str, ThemeValue>) -> Self {
-        self.theme.tokens = tokens;
+    pub fn tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
+        self.theme = self.theme.with_theme_tokens(tokens);
         self
     }
 
     #[must_use]
-    pub fn token(mut self, name: impl Into<String>, value: ThemeValue) -> Self {
-        self.theme.runtime_tokens.insert(name.into(), value);
+    pub fn token(mut self, name: &str, value: ThemeValue) -> Self {
+        self.theme.register_token(name, value);
         self
     }
 

@@ -1,9 +1,9 @@
-use crate::style::{ColorAtom, Rgba8, StyleAtom, Token};
+use crate::style::{ColorAtom, ColorKey, Rgba8, StyleAtom, Token};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColorOrToken {
     Rgba(Rgba8),
-    Token(&'static str),
+    Token(ColorKey),
     Atom(ColorAtom),
 }
 
@@ -15,13 +15,13 @@ impl From<Rgba8> for ColorOrToken {
 
 impl From<&'static str> for ColorOrToken {
     fn from(value: &'static str) -> Self {
-        Self::Token(value)
+        Self::Token(ColorKey::parse(value))
     }
 }
 
 impl From<Token> for ColorOrToken {
     fn from(value: Token) -> Self {
-        Self::Token(value.name())
+        Self::Token(ColorKey::Token(value))
     }
 }
 

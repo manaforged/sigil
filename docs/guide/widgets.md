@@ -148,7 +148,19 @@ The family pages carry signatures, options, and behavior notes:
 - **modal(open)** — a GPU dialog. `open` is a `Signal<bool>`. `.title()`,
   `.width()`, and `.height()` size the frame. Escape and the focus trap
   are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The
-  native alert is `sigil::dialog::message` / `confirm` (feature `dialog`).
+  alert is `sigil::dialog::message` / `confirm` (feature `dialog`).
+  File and message dialogs return a `Signal<Status<..>>` and never block
+  the frame loop. Feature `dialog` shows an in-app picker on every host;
+  add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
+
+  ```rust,ignore
+  let picked = sigil::dialog::FileDialog::new().filter("CSV", &["csv"]).open_file();
+  text(TextContent::compute(move || picked.with(|status| match status {
+      Status::Ok(Some(path)) => path.display().to_string(),
+      Status::Ok(None) => String::from("Cancelled"),
+      _ => String::from("Choosing"),
+  })))
+  ```
 - **sheet(open)** — the same builder, docked. The default is
   `.side(Side::Right)`. Use `.side(Side::Left)` or
   `.side(Side::Bottom)`. A backdrop click dismisses.
@@ -172,7 +184,10 @@ The family pages carry signatures, options, and behavior notes:
 
 `command_menu` is nested actions. A filter-as-you-type palette is:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# const COMMANDS: &[&str] = &["open file", "save file"];
+# let _ = {
 let open = signal(false);
 let query = signal(String::new());
 let hits = derived(move || {
@@ -186,8 +201,9 @@ let hits = derived(move || {
 modal(open).title("Command").child(
     container()
         .child(text_field(query).placeholder("Filter…"))
-        .child(virtual_list(hits, |_i, row| text(row.clone()))),
+        .child(virtual_list(hits, |_i, row| list_row(false, *row, ""))),
 );
+# };
 ```
 
 ## Interaction state support

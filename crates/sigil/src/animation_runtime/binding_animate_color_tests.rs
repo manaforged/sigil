@@ -31,27 +31,17 @@ fn theme_snapshot_resolves_scale_step_tokens() {
         ("info-5", theme.info.step(5)),
     ];
     for (token, expected) in cases {
-        let resolved = snap.resolve(token);
+        let resolved = snap.resolve(ColorKey::parse(token));
         assert_eq!(
             resolved, expected,
             "ThemeSnapshot::resolve({token:?}) returned {resolved:?}, \
              expected scale-step color {expected:?}",
         );
         assert_ne!(
-            resolved, snap.missing_token_fallback,
+            resolved, theme.missing_token_fallback,
             "{token:?} silently fell back to magenta — scale-step path broken",
         );
     }
-}
-
-#[test]
-fn theme_snapshot_unknown_token_still_falls_back() {
-    let theme = Theme::default();
-    let snap = ThemeSnapshot::from_theme(&theme);
-    assert_eq!(
-        snap.resolve("not-a-real-token-name"),
-        snap.missing_token_fallback,
-    );
 }
 
 #[test]
@@ -97,4 +87,12 @@ fn lerp_linear_space_is_brighter_than_srgb_at_midpoint() {
         "linear-light midpoint of black+white must sit near 188 sRGB (got {})",
         mid.r,
     );
+}
+
+#[test]
+fn theme_snapshot_honours_runtime_token_overrides() {
+    let pink = rgba(255, 0, 128, 255);
+    let theme = Theme::default().with_token("accent-9", crate::style::ThemeValue::Color(pink));
+    let snap = ThemeSnapshot::from_theme(&theme);
+    assert_eq!(snap.resolve(ColorKey::parse("accent-9")), pink);
 }

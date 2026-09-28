@@ -5,7 +5,7 @@ text shaping, and the wgpu renderer are owned code. AccessKit, IME,
 utility classes, and the widget catalog ship in the crate. You write
 plain Rust against one import.
 
-```rust,ignore
+```rust,no_run
 use sigil::prelude::*;
 ```
 
@@ -30,7 +30,7 @@ cargo add sigil-ui --no-default-features --features terminal
 
 A complete reactive counter (example `hello-counter`):
 
-```rust,ignore
+```rust,no_run
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
@@ -100,7 +100,9 @@ a restyle.
 `Token` names every theme colour. An unknown name does not compile.
 Class strings still parse token names at runtime.
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 use sigil::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
 
 container()
@@ -111,6 +113,7 @@ container()
         StyleAtom::BorderWidth(BORDER_WIDTH),
         Radius::Md.atom(),
     ])
+# };
 ```
 
 | Group | Tokens |
@@ -163,13 +166,16 @@ Static styling works on any node. Interaction styling goes through
 `interactive()`, the opt-in wrapper that gives plain containers hover,
 press, focus, and disabled semantics:
 
-```rust,ignore
+```rust,no_run
+# use sigil::prelude::*;
+# let _ = {
 interactive(
     container()
         .layout(LayoutStyle::block().fixed_size(328.0, 304.0))
         .class(classes!("p-8 bg-accent rounded-md")),
 )
 .hover(|s| s.bg("accent-hover"))
+# };
 ```
 
 `interactive()` owns the hit testing and the state, so a hover
@@ -181,7 +187,8 @@ out of the box.
 
 - Widgets: `button`, `icon_button`, `text_field`, `text_edit`,
   `modal` / `sheet`, `virtual_list`, `table`, `card`, `avatar`,
-  `sidebar`. Native alert is `sigil::dialog::message` / `confirm`.
+  `sidebar`. Alerts are `sigil::dialog::message` / `confirm`; they return a
+  signal and do not block.
 - Architecture: [Overview](arch/overview.md),
   [State](arch/state.md), [Painting](arch/painting.md),
   [Platform](arch/platform.md), [Modules](arch/modules.md).

@@ -1,5 +1,7 @@
 use crate::hal::{HitPosition, TextAffinity};
-use crate::layout::style_data::{Dimension, LengthPercentage, Rect, Size, StyleData};
+use crate::layout::style_data::{
+    Dimension, LengthPercentage, LengthPercentageAuto, Rect, Size, StyleData, TrackSize,
+};
 use crate::layout::text_geometry::with_text_geometry;
 use crate::style::{TextLineHeight, TextStyle};
 
@@ -110,14 +112,39 @@ const fn downstream(byte_index: usize) -> HitPosition {
 
 fn dimension(value: Dimension) -> Dimension {
     match value {
-        Dimension::Text(length) => Dimension::Px(length.px()),
+        Dimension::Text(length) => finite_dimension(length.px()),
+        Dimension::Px(px) => finite_dimension(px),
+        Dimension::Percent(pct) if !pct.is_finite() => Dimension::Auto,
         other => other,
     }
 }
 
+const fn finite_dimension(px: f32) -> Dimension {
+    if px.is_finite() {
+        Dimension::Px(px)
+    } else {
+        Dimension::Auto
+    }
+}
+
 fn length(value: LengthPercentage) -> LengthPercentage {
+    let px = match value {
+        LengthPercentage::Text(length) => length.px(),
+        LengthPercentage::Px(px) => px,
+        LengthPercentage::Percent(pct) if pct.is_finite() => return value,
+        LengthPercentage::Percent(_) => 0.0,
+    };
+    LengthPercentage::Px(if px.is_finite() { px } else { 0.0 })
+}
+
+const fn length_auto(
+    value: LengthPercentageAuto,
+    fallback: LengthPercentageAuto,
+) -> LengthPercentageAuto {
     match value {
-        LengthPercentage::Text(length) => LengthPercentage::Px(length.px()),
+        LengthPercentageAuto::Px(v) | LengthPercentageAuto::Percent(v) if !v.is_finite() => {
+            fallback
+        }
         other => other,
     }
 }
@@ -135,7 +162,40 @@ fn edges(rect: Rect<LengthPercentage>) -> Rect<LengthPercentage> {
     }
 }
 
+const fn auto_edges(
+    rect: Rect<LengthPercentageAuto>,
+    fallback: LengthPercentageAuto,
+) -> Rect<LengthPercentageAuto> {
+    Rect {
+        left: length_auto(rect.left, fallback),
+        right: length_auto(rect.right, fallback),
+        top: length_auto(rect.top, fallback),
+        bottom: length_auto(rect.bottom, fallback),
+    }
+}
+
+const fn factor(value: f32, initial: f32) -> f32 {
+    if value.is_finite() && value >= 0.0 {
+        value
+    } else {
+        initial
+    }
+}
+
+const fn track(value: TrackSize) -> TrackSize {
+    let valid = match value {
+        TrackSize::Px(v) => v.is_finite(),
+        TrackSize::Fr(v) => v.is_finite() && v >= 0.0,
+        TrackSize::MinMax(lo, hi) => lo.is_finite() && hi.is_finite(),
+        TrackSize::Auto => true,
+    };
+    if valid { value } else { TrackSize::Auto }
+}
+
 pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
+    let initial = StyleData::default();
+    style.flex_grow = factor(style.flex_grow, initial.flex_grow);
+    style.flex_shrink = factor(style.flex_shrink, initial.flex_shrink);
     style.flex_basis = dimension(style.flex_basis);
     style.size = dimensions(style.size);
     style.min_size = dimensions(style.min_size);
@@ -143,5 +203,15 @@ pub(crate) fn resolve_style(mut style: StyleData) -> StyleData {
     style.gap = Size::new(length(style.gap.width), length(style.gap.height));
     style.padding = edges(style.padding);
     style.border = edges(style.border);
+    style.margin = auto_edges(style.margin, LengthPercentageAuto::Px(0.0));
+    style.inset = auto_edges(style.inset, LengthPercentageAuto::Auto);
+    for list in [
+        &mut style.grid_template_columns,
+        &mut style.grid_template_rows,
+    ] {
+        for size in list.iter_mut() {
+            *size = track(*size);
+        }
+    }
     style
 }

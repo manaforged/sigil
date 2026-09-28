@@ -16,9 +16,9 @@ mod text_memo;
 
 use default_style::DEFAULT_STYLE;
 pub(crate) use measure::{AvailableSpace, MeasureScope, SpaceConstraint};
-pub(crate) use text_memo::text_memo_clear;
+use text_memo::TextMemo;
 #[cfg(test)]
-use text_memo::{TEXT_MEMO_LIVE, TextMemo, TextMemoKey};
+use text_memo::{TEXT_MEMO_LIVE, TextMemoKey};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub(crate) struct LocalId {
@@ -122,6 +122,7 @@ pub(crate) struct LayoutForest {
     boxes: Vec<BoxCell>,
     free: Vec<LocalId>,
     frame: u32,
+    text_memo: std::cell::RefCell<TextMemo>,
 }
 
 impl Default for LayoutForest {
@@ -132,12 +133,13 @@ impl Default for LayoutForest {
 
 impl LayoutForest {
     #[must_use]
-    pub(crate) const fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             nodes: Vec::new(),
             boxes: Vec::new(),
             free: Vec::new(),
             frame: 1,
+            text_memo: std::cell::RefCell::new(TextMemo::default()),
         }
     }
 
@@ -150,6 +152,7 @@ impl LayoutForest {
         self.frame
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn count(&self) -> usize {
         self.nodes.iter().filter(|n| n.alive).count()
     }
@@ -211,6 +214,7 @@ impl LayoutForest {
         Ok(())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn attach(&mut self, parent: LocalId, child: LocalId) -> Result<(), LayoutError> {
         let _ = self.slot(child)?;
         let slot = self.slot(parent)?;

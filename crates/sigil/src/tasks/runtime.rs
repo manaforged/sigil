@@ -5,12 +5,12 @@ use std::sync::{Arc, Mutex};
 
 use crate::hal::Scheduler;
 use crate::reactive::OwnerId;
-use tokio::runtime::{Builder, Handle, Runtime, RuntimeFlavor};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tokio::task::{AbortHandle, JoinHandle};
 
+use crate::tasks::backend::{Backend, OwnedRuntime};
 use crate::tasks::handle::OwnerHandle;
 use crate::tasks::schedule_error::ScheduleError;
+use crate::tasks::task::TaskHandle;
 
 pub(crate) struct DispatchMessage {
     pub(crate) owner: OwnerHandle,
@@ -42,12 +42,19 @@ const _: fn() = || {
     assert_send_sync_clone_static::<Dispatcher>();
 };
 
+type OwnerTasks = Arc<Mutex<HashMap<OwnerId, Vec<TaskHandle>>>>;
+
+#[derive(Clone)]
+pub(crate) struct SpawnParts {
+    pub(crate) dispatcher: Dispatcher,
+    pub(crate) backend: Backend,
+    owner_tasks: OwnerTasks,
+}
+
 pub struct AsyncRuntime {
-    rt: Handle,
-    _owned: Option<Runtime>,
-    sender: Dispatcher,
+    parts: SpawnParts,
+    _owned: OwnedRuntime,
     rx: UnboundedReceiver<DispatchMessage>,
-    owner_tasks: Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>>,
 }
 
 impl fmt::Debug for AsyncRuntime {
@@ -58,17 +65,12 @@ impl fmt::Debug for AsyncRuntime {
 
 impl Drop for AsyncRuntime {
     fn drop(&mut self) {
-        for (_, handles) in self
-            .owner_tasks
-            .lock()
-            .expect("owner_tasks mutex poisoned by a panicking holder")
-            .drain()
-        {
+        for (_, handles) in lock(&self.parts.owner_tasks).drain() {
             for handle in handles {
                 handle.abort();
             }
         }
-        crate::tasks::current::uninstall(&self.sender);
+        crate::tasks::current::uninstall(&self.parts.dispatcher);
     }
 }
 
@@ -76,35 +78,29 @@ fn noop_waker() -> Arc<dyn Fn() + Send + Sync + 'static> {
     Arc::new(|| {})
 }
 
-#[derive(Clone)]
-pub(crate) struct SpawnParts {
-    pub(crate) dispatcher: Dispatcher,
-    pub(crate) tokio: Handle,
-    pub(crate) owner_tasks: Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>>,
+fn lock(
+    registry: &Mutex<HashMap<OwnerId, Vec<TaskHandle>>>,
+) -> std::sync::MutexGuard<'_, HashMap<OwnerId, Vec<TaskHandle>>> {
+    registry
+        .lock()
+        .expect("owner_tasks mutex poisoned by a panicking holder")
 }
 
 impl AsyncRuntime {
     pub fn new() -> std::io::Result<Self> {
-        let (rt, owned) = match Handle::try_current() {
-            Ok(handle) if handle.runtime_flavor() == RuntimeFlavor::MultiThread => (handle, None),
-            _ => {
-                #[cfg(not(target_arch = "wasm32"))]
-                let runtime = Builder::new_multi_thread().enable_all().build()?;
-                #[cfg(target_arch = "wasm32")]
-                let runtime = Builder::new_current_thread().build()?;
-                (runtime.handle().clone(), Some(runtime))
-            }
-        };
+        let (backend, owned) = Backend::new()?;
         let (tx, rx) = unbounded_channel();
         Ok(Self {
-            rt,
-            _owned: owned,
-            sender: Dispatcher {
-                tx,
-                waker: noop_waker(),
+            parts: SpawnParts {
+                dispatcher: Dispatcher {
+                    tx,
+                    waker: noop_waker(),
+                },
+                backend,
+                owner_tasks: Arc::new(Mutex::new(HashMap::new())),
             },
+            _owned: owned,
             rx,
-            owner_tasks: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
@@ -112,7 +108,7 @@ impl AsyncRuntime {
     where
         F: Fn() + Send + Sync + 'static,
     {
-        self.sender.waker = Arc::new(waker);
+        self.parts.dispatcher.waker = Arc::new(waker);
     }
 
     pub fn pump(&mut self) -> usize {
@@ -121,51 +117,39 @@ impl AsyncRuntime {
 
     #[must_use]
     pub fn dispatcher(&self) -> Dispatcher {
-        self.sender.clone()
-    }
-
-    pub(crate) fn owner_tasks(&self) -> Arc<Mutex<HashMap<OwnerId, Vec<AbortHandle>>>> {
-        Arc::clone(&self.owner_tasks)
-    }
-
-    pub(crate) fn tokio_handle(&self) -> Handle {
-        self.rt.clone()
+        self.parts.dispatcher.clone()
     }
 
     pub(crate) fn spawn_parts(&self) -> SpawnParts {
-        SpawnParts {
-            dispatcher: self.dispatcher(),
-            tokio: self.tokio_handle(),
-            owner_tasks: self.owner_tasks(),
-        }
+        self.parts.clone()
     }
 
     pub fn install_current(&self) {
         crate::tasks::current::install(self.spawn_parts());
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn pending_count(&self) -> usize {
         self.rx.len()
     }
 }
 
-pub(crate) fn register_abort(
-    registry: &Mutex<HashMap<OwnerId, Vec<AbortHandle>>>,
-    owner: OwnerId,
-    abort: AbortHandle,
-) {
-    let mut map = registry
-        .lock()
-        .expect("owner_tasks mutex poisoned by a panicking holder");
-    map.entry(owner).or_default().push(abort);
+pub(crate) fn attach_task(parts: &SpawnParts, owner: OwnerHandle, task: TaskHandle) {
+    lock(&parts.owner_tasks)
+        .entry(owner.id())
+        .or_default()
+        .push(task.clone());
+    let registered = crate::reactive::owner_by_id(owner.id(), move || {
+        crate::reactive::on_cleanup(move || task.abort());
+    });
+    if !registered {
+        tracing::warn!(owner = ?owner.id(), "task cleanup could not attach to a live owner");
+    }
 }
 
-pub(crate) fn sweep_owner_tasks(registry: &Mutex<HashMap<OwnerId, Vec<AbortHandle>>>) {
-    let mut map = registry
-        .lock()
-        .expect("owner_tasks mutex poisoned by a panicking holder");
-    map.retain(|&owner_id, handles| {
+fn sweep_owner_tasks(registry: &Mutex<HashMap<OwnerId, Vec<TaskHandle>>>) {
+    lock(registry).retain(|&owner_id, handles| {
         if !crate::reactive::is_live(owner_id) {
             for h in handles.drain(..) {
                 h.abort();
@@ -180,14 +164,16 @@ pub(crate) fn sweep_owner_tasks(registry: &Mutex<HashMap<OwnerId, Vec<AbortHandl
 impl Scheduler for AsyncRuntime {
     type Error = ScheduleError;
     type OwnerHandle = OwnerHandle;
-    type SpawnTask = JoinHandle<()>;
+    type SpawnTask = TaskHandle;
 
     fn enqueue_main(
         &self,
         owner: Self::OwnerHandle,
         f: Box<dyn FnOnce() + Send + 'static>,
     ) -> Result<(), Self::Error> {
-        self.sender.send(DispatchMessage { owner, callback: f })
+        self.parts
+            .dispatcher
+            .send(DispatchMessage { owner, callback: f })
     }
 
     fn spawn<F>(&self, owner: Self::OwnerHandle, future: F) -> Self::SpawnTask
@@ -196,28 +182,15 @@ impl Scheduler for AsyncRuntime {
     {
         if !owner.is_alive() {
             drop(future);
-            return self.rt.spawn(async {});
+            return TaskHandle::finished();
         }
-
-        let join = self.rt.spawn(future);
-        let abort = join.abort_handle();
-
-        register_abort(&self.owner_tasks, owner.id(), abort.clone());
-
-        let registered = crate::reactive::owner_by_id(owner.id(), move || {
-            crate::reactive::on_cleanup(move || {
-                abort.abort();
-            });
-        });
-        if !registered {
-            tracing::warn!(owner = ?owner.id(), "task cleanup could not attach to a live owner");
-        }
-
-        join
+        let task = self.parts.backend.spawn(owner.id(), future, drop);
+        attach_task(&self.parts, owner, task.clone());
+        task
     }
 
     fn drain(&mut self) -> usize {
-        sweep_owner_tasks(&self.owner_tasks);
+        sweep_owner_tasks(&self.parts.owner_tasks);
 
         let budget = self.rx.len();
         let mut ran = 0_usize;

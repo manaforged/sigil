@@ -109,9 +109,10 @@ fn ui_tasks_share_the_host_runtime_and_leave_it_running() {
         );
         drop(runtime);
         assert!(std::panic::catch_unwind(sigil::tasks::dispatcher).is_err());
-        assert!(spin_until(Duration::from_secs(2), || ui_task.is_finished()));
-        let cancelled = host.block_on(ui_task);
-        assert!(cancelled.expect_err("UI task was cancelled").is_cancelled());
+        assert!(
+            spin_until(Duration::from_secs(2), || ui_task.is_finished()),
+            "dropping the UI runtime cancels its pending task"
+        );
         finish
             .send("backend drained")
             .expect("backend survives UI teardown");

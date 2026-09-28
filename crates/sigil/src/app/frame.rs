@@ -5,6 +5,8 @@ use crate::events::EventRouter;
 use crate::layout::LayoutError;
 use crate::reactive::{Runtime, tick_intervals};
 
+const MAX_ANIMATION_FRAME_SECS: f32 = 0.1;
+
 #[non_exhaustive]
 pub struct FrameInfo {
     pub dirty: bool,
@@ -40,6 +42,8 @@ impl Host {
         dt: f32,
         hooks: FrameHooks<'_>,
     ) -> FrameOutput {
+        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        self.remount_patched(router);
         let _env = self.enter();
         self.apply_pending_theme();
         Runtime::begin_effect();
@@ -47,10 +51,12 @@ impl Host {
             input(self, router);
         }
         crate::reactive::run_dispatch_deferred();
+        #[cfg(feature = "dialog")]
+        self.sync_dialogs();
         let intervals = tick_intervals();
         let animating = active_animation_count() > 0;
         if animating {
-            tick_animations(dt);
+            tick_animations(dt.min(MAX_ANIMATION_FRAME_SECS));
         }
         self.publish_viewport(viewport);
         let exit = take_exit();
@@ -65,6 +71,7 @@ impl Host {
                 after_layout(self, router);
             }
         }
+        self.cx().flush_announcements();
         Runtime::begin_paint();
         let info = FrameInfo {
             dirty: Runtime::frame_dirty(),

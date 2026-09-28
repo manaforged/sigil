@@ -9,10 +9,15 @@ use std::rc::Rc;
 
 use sigil::kernel::{Cx, container};
 use sigil::reactive::{Runtime, signal};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding};
 
-static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Surface,
+))];
+static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Accent,
+))];
 static PADDING_ON: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(16))];
 static PADDING_OFF: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(4))];
 
@@ -125,7 +130,9 @@ fn class_when_toggles_on_signal_change() {
         let live = reactive_slice(&cx, id);
         assert_eq!(
             live,
-            &[StyleAtom::BackgroundThemeRef("accent")],
+            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Accent
+            ))],
             "class_when must install `bg-accent` atoms when signal flips true, got {live:?}",
         );
 

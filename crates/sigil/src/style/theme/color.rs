@@ -1,8 +1,7 @@
 use super::mix::{alpha_mix, ramp_accent};
 use super::{Theme, ThemeValue};
 use crate::style::palette::is_dark;
-use crate::style::scale::ScaleRole;
-use crate::style::{Rgba8, Token};
+use crate::style::{ColorKey, Rgba8, Token};
 
 const SCRIM: Rgba8 = Rgba8 {
     r: 0,
@@ -14,63 +13,60 @@ const SCRIM: Rgba8 = Rgba8 {
 impl Theme {
     #[must_use]
     pub fn color(&self, token: Token) -> Rgba8 {
-        self.resolve_color(token.name())
-    }
-
-    pub(crate) fn resolve_color(&self, token: &'static str) -> Rgba8 {
-        if let Some(ThemeValue::Color(color)) = self.runtime_tokens.get(token).copied() {
-            return color;
-        }
-        if let Some(ThemeValue::Color(color)) = self.tokens.get(token).copied() {
-            return color;
-        }
-        if let Some(color) = self.built_in_color(token) {
-            return color;
-        }
-        if let Some(color) = self.scale_step_color(token) {
-            return color;
-        }
-        self.missing_color(token)
-    }
-
-    pub fn register_token(
-        &mut self,
-        name: impl Into<String>,
-        value: ThemeValue,
-    ) -> Option<ThemeValue> {
-        let name = name.into();
-        if let ThemeValue::Color(color) = value {
-            self.sync_runtime_color(&name, color);
-        }
-        self.runtime_tokens.insert(name, value)
+        self.resolve_color(ColorKey::Token(token))
     }
 
     #[must_use]
-    pub fn with_token(mut self, name: impl Into<String>, value: ThemeValue) -> Self {
+    pub fn resolve_color(&self, key: ColorKey) -> Rgba8 {
+        self.tokens
+            .overrides
+            .color(key)
+            .or_else(|| self.tokens.theme.color(key))
+            .or_else(|| self.built_in_color(key))
+            .unwrap_or_else(|| self.missing_color(key.name()))
+    }
+
+    pub fn register_token(&mut self, name: &str, value: ThemeValue) -> Option<ThemeValue> {
+        if let (Some(token), ThemeValue::Color(color)) = (Token::from_name(name), value) {
+            self.sync_runtime_color(token, color);
+        }
+        self.tokens.overrides.insert(name, value)
+    }
+
+    #[must_use]
+    pub fn with_theme_tokens(mut self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self {
+        for (name, value) in tokens {
+            self.tokens.theme.insert(name, *value);
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn with_token(mut self, name: &str, value: ThemeValue) -> Self {
         self.register_token(name, value);
         self
     }
 
-    fn sync_runtime_color(&mut self, name: &str, color: Rgba8) {
-        match name {
-            "accent" => {
+    fn sync_runtime_color(&mut self, token: Token, color: Rgba8) {
+        match token {
+            Token::Accent => {
                 self.accent = color;
                 self.accent_scale = ramp_accent(self.surface, color);
             }
-            "accent-hover" => {
+            Token::AccentHover => {
                 self.accent_hover = color;
                 self.accent_scale.steps[9] = color;
             }
-            "on-accent" => {
+            Token::OnAccent => {
                 self.on_accent = color;
                 self.accent_scale.on_solid = color;
             }
-            "surface" => self.surface = color,
-            "surface-hover" => self.surface_hover = color,
-            "surface-pressed" => self.surface_pressed = color,
-            "surface-pressed-strong" => self.surface_pressed_strong = color,
-            "on-surface" => self.on_surface = color,
-            "border" => self.border = color,
+            Token::Surface => self.surface = color,
+            Token::SurfaceHover => self.surface_hover = color,
+            Token::SurfacePressed => self.surface_pressed = color,
+            Token::SurfacePressedStrong => self.surface_pressed_strong = color,
+            Token::OnSurface => self.on_surface = color,
+            Token::Border => self.border = color,
             _ => {}
         }
     }
@@ -83,27 +79,33 @@ impl Theme {
         }
     }
 
-    fn built_in_color(&self, token: &str) -> Option<Rgba8> {
-        match token {
-            "accent" | "ring" => Some(self.accent),
-            "accent-hover" => Some(self.accent_hover),
-            "on-accent" => Some(self.on_accent),
-            "field" | "overlay" => Some(self.field()),
-            "surface" => Some(self.surface),
-            "surface-hover" => Some(self.surface_hover),
-            "surface-pressed" => Some(self.surface_pressed),
-            "surface-pressed-strong" => Some(self.surface_pressed_strong),
-            "on-surface" => Some(self.on_surface),
-            "border" | "overlay-border" => Some(self.border),
-            "border-strong" => Some(self.border_strong()),
-            "surface-subtle" => Some(self.surface_subtle()),
-            "surface-inset" | "table-header" => Some(self.gray.step(1)),
-            "border-subtle" => Some(alpha_mix(self.surface, self.border, 0.5)),
-            "on-surface-muted" => Some(self.text_muted()),
-            "on-solid" => Some(self.on_solid),
-            "scrim" => Some(SCRIM),
-            _ => None,
-        }
+    fn built_in_color(&self, key: ColorKey) -> Option<Rgba8> {
+        let ColorKey::Token(token) = key else {
+            return None;
+        };
+        Some(match token {
+            Token::Accent | Token::Ring => self.accent,
+            Token::AccentHover => self.accent_hover,
+            Token::OnAccent => self.on_accent,
+            Token::Field | Token::Overlay => self.field(),
+            Token::Surface => self.surface,
+            Token::SurfaceHover => self.surface_hover,
+            Token::SurfacePressed => self.surface_pressed,
+            Token::SurfacePressedStrong => self.surface_pressed_strong,
+            Token::OnSurface => self.on_surface,
+            Token::Border | Token::OverlayBorder => self.border,
+            Token::BorderStrong => self.border_strong(),
+            Token::SurfaceSubtle => self.surface_subtle(),
+            Token::SurfaceInset | Token::TableHeader => self.gray.step(1),
+            Token::BorderSubtle => alpha_mix(self.surface, self.border, 0.5),
+            Token::OnSurfaceMuted => self.text_muted(),
+            Token::OnSolid => self.on_solid,
+            Token::Scrim => SCRIM,
+            _ => {
+                let (role, step) = token.scale_step()?;
+                self.scale(role).step(step)
+            }
+        })
     }
 
     pub(crate) fn legible(color: Rgba8, background: Rgba8) -> Rgba8 {
@@ -122,16 +124,6 @@ impl Theme {
         out
     }
 
-    fn scale_step_color(&self, token: &str) -> Option<Rgba8> {
-        let (role_name, step_str) = token.rsplit_once('-')?;
-        let role = ScaleRole::from_token(role_name)?;
-        let step: u8 = step_str.parse().ok()?;
-        if !(1..=12).contains(&step) {
-            return None;
-        }
-        Some(self.scale(role).step(step))
-    }
-
     #[cfg(debug_assertions)]
     fn missing_color(&self, token: &str) -> Rgba8 {
         let message = self.unknown_token_message(token);
@@ -139,7 +131,8 @@ impl Theme {
     }
 
     #[cfg(not(debug_assertions))]
-    const fn missing_color(&self, _token: &str) -> Rgba8 {
+    fn missing_color(&self, token: &'static str) -> Rgba8 {
+        diagnostic::warn_unknown_once(token);
         self.missing_token_fallback
     }
 
@@ -159,8 +152,8 @@ impl Theme {
     #[cfg(debug_assertions)]
     fn registered_tokens(&self) -> Vec<String> {
         let mut tokens: Vec<String> = Token::ALL.iter().map(|t| t.name().into()).collect();
-        tokens.extend(self.tokens.keys().map(|s| (*s).into()));
-        tokens.extend(self.runtime_tokens.keys().cloned());
+        tokens.extend(self.tokens.theme.names().map(String::from));
+        tokens.extend(self.tokens.overrides.names().map(String::from));
         tokens
     }
 }
@@ -223,5 +216,21 @@ mod diagnostic {
     #[track_caller]
     pub(super) fn unknown_theme_token(message: &str) -> ! {
         panic!("{message}");
+    }
+}
+
+#[cfg(not(debug_assertions))]
+mod diagnostic {
+    use std::collections::HashSet;
+    use std::sync::{Mutex, OnceLock};
+
+    static WARNED: OnceLock<Mutex<HashSet<&'static str>>> = OnceLock::new();
+
+    #[cold]
+    pub(super) fn warn_unknown_once(token: &'static str) {
+        let warned = WARNED.get_or_init(|| Mutex::new(HashSet::new()));
+        if warned.lock().is_ok_and(|mut set| set.insert(token)) {
+            tracing::warn!(token, "unknown theme token");
+        }
     }
 }

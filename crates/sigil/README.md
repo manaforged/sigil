@@ -108,6 +108,7 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or
 | `menu` | no | `sigil::menu`: native application menus. Turns on `desktop`. |
 | `tray` | no | `sigil::tray`: system tray icons and events. Turns on `menu`. |
 | `audio` | no | `Player` for audio playback. |
+| `hot` | no | Code hot reload under `dx serve --hot-patch`: `run` mounts the root again after each patch, and `Host::mount_hot`. Uses `subsecond` and `dioxus-devtools`. Not on wasm. |
 | `pty` | no | `Session`: a child process on a pseudo-terminal. |
 | `kittest` | no | Test support for `sigil-kittest`. Not API. |
 

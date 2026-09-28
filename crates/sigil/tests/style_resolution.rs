@@ -6,6 +6,7 @@
 
 use sigil::style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
 use sigil::style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{NodeStyleExt, StyleBinding};
 use sigil::style::{ParseError, parse_class_string};
 
@@ -26,8 +27,8 @@ fn theme_ref_resolves() {
 
     engine.apply(
         &[
-            StyleAtom::BackgroundThemeRef("accent"),
-            StyleAtom::TextColor(ColorAtom::ThemeRef("on-accent")),
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+            StyleAtom::TextColor(ColorAtom::ThemeRef(ColorKey::Token(Token::OnAccent))),
         ],
         &mut render,
     );
@@ -44,7 +45,10 @@ fn unknown_token_panics_dev() {
     let mut render = RenderStyle::default();
 
     let err = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        engine.apply(&[StyleAtom::BackgroundThemeRef("accnet")], &mut render);
+        engine.apply(
+            &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
+            &mut render,
+        );
     }))
     .unwrap_err();
     let message = err.downcast_ref::<String>().unwrap();
@@ -61,7 +65,10 @@ fn unknown_token_falls_back_release() {
     let engine = StyleEngine::new(&theme);
     let mut render = RenderStyle::default();
 
-    engine.apply(&[StyleAtom::BackgroundThemeRef("accnet")], &mut render);
+    engine.apply(
+        &[StyleAtom::BackgroundThemeRef(ColorKey::Custom("accnet"))],
+        &mut render,
+    );
 
     assert_eq!(render.background_color, Some(theme.missing_token_fallback));
 }
@@ -136,9 +143,9 @@ fn struct_api_covers_every_atom() {
         StyleAtom::FlexGrow(1),
         StyleAtom::FlexShrink(1),
         StyleAtom::BackgroundColor(ColorAtom::Rgba8(color)),
-        StyleAtom::BackgroundThemeRef("accent"),
-        StyleAtom::TextColor(ColorAtom::ThemeRef("on-accent")),
-        StyleAtom::TextThemeRef("on-surface"),
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+        StyleAtom::TextColor(ColorAtom::ThemeRef(ColorKey::Token(Token::OnAccent))),
+        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
         StyleAtom::BorderRadius(Px(1)),
         StyleAtom::Opacity(10_000),
         StyleAtom::FontSize(Px(12)),
@@ -183,7 +190,7 @@ fn parse_minimal() {
         &[
             StyleAtom::PaddingAll(Px(16)),
             StyleAtom::BorderRadius(Px(6)),
-            StyleAtom::BackgroundThemeRef("accent"),
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
         ],
     );
 }
@@ -224,7 +231,7 @@ fn parse_grammar_branches() {
     assert!(parsed.contains(&StyleAtom::FontSize(Px(16))));
     assert!(parsed.contains(&StyleAtom::FontSize(Px(18))));
     assert!(parsed.contains(&StyleAtom::FontSize(Px(20))));
-    assert!(parsed.contains(&StyleAtom::TextThemeRef("on-surface")));
+    assert!(parsed.contains(&StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))));
     assert!(parsed.contains(&StyleAtom::FontWeight(400)));
     assert!(parsed.contains(&StyleAtom::FontWeight(500)));
     assert!(parsed.contains(&StyleAtom::FontWeight(700)));
@@ -305,7 +312,7 @@ fn class_string_attaches_to_text_binding() {
 
     assert_eq!(
         binding.static_slice(),
-        &[StyleAtom::TextThemeRef("on-surface")]
+        &[StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))]
     );
     assert_eq!(binding.dynamic_slice(), &[]);
 }

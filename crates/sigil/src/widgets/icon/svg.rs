@@ -77,7 +77,7 @@ fn tint(key: u64, icon: &BakedIcon, color: Rgba8) -> Option<ImageSource> {
 impl SvgGlyph {
     fn source(&self, theme: &Theme) -> Option<ImageSource> {
         let (key, icon) = baked(&self.svg, self.pixels)?;
-        tint(key, &icon, theme.resolve_color(self.token.name()))
+        tint(key, &icon, theme.color(self.token))
     }
 }
 

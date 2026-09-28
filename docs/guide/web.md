@@ -27,12 +27,15 @@ directory over HTTP:
 
 ## Usage
 
-```rust,ignore
+```rust,no_run
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("App").canvas("app"), app_tree)
 }
+# fn app_tree(cx: &mut Cx) -> NodeId {
+#     cx.add(text("app"))
+# }
 ```
 
 `AppConfig::canvas(id)` draws into the `<canvas>` with that id and keeps
@@ -54,8 +57,11 @@ from the system clipboard does not reach widgets.
 
 ## Limits
 
-- No IME. The winit web backend sends no composition events, so
-  CJK input does not reach text fields. Keys and typed Latin text work.
+- IME input goes through a hidden `<textarea>` that Sigil appends to
+  `<body>`. It takes focus while a text input has focus and sits at the
+  caret, so the browser draws the candidate window there. Composition
+  events become the same `ImeEvent`s as on the desktop host. Other keys
+  pass to the canvas unchanged.
 - No system fonts. Scripts outside the bundled faces do not draw.
 - `spawn` and `sleep` futures do not run. The async runtime has no
   browser executor.

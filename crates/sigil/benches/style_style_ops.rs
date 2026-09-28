@@ -16,6 +16,7 @@ use sigil::style::{
     RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
     TransitionId, classes, merge_classes,
 };
+use sigil::style::{ColorKey, Token};
 
 static CLASS_50: LazyLock<&'static [StyleAtom]> = LazyLock::new(|| {
     classes!(
@@ -25,19 +26,29 @@ static CLASS_50: LazyLock<&'static [StyleAtom]> = LazyLock::new(|| {
 
 static APPLY_ATOMS: LazyLock<&'static [StyleAtom]> =
     LazyLock::new(|| classes!("bg-accent text-on-surface rounded-md opacity-100"));
-static REACTIVE_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static REACTIVE_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static REACTIVE_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Surface,
+))];
+static REACTIVE_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Accent,
+))];
 static THEME_SWAP_ATOMS: LazyLock<&'static [StyleAtom]> =
     LazyLock::new(|| classes!("bg-accent text-on-accent rounded-md opacity-100"));
-static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
-static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface-hover")];
+static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Surface,
+))];
+static STATE_FOCUS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::SurfaceHover,
+))];
+static STATE_HOVER: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::SurfaceHover,
+))];
 static STATE_PRESS: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(8_800),
 ];
 static STATE_DISABLED: &[StyleAtom] = &[
-    StyleAtom::BackgroundThemeRef("surface-hover"),
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover)),
     StyleAtom::Opacity(5_000),
 ];
 
@@ -61,8 +72,8 @@ const DEFAULTS_32: [StyleAtom; 32] = [
     StyleAtom::JustifyContent(JustifyKind::Start),
     StyleAtom::FlexGrow(1_000),
     StyleAtom::FlexShrink(1_000),
-    StyleAtom::BackgroundThemeRef("surface"),
-    StyleAtom::TextThemeRef("on-surface"),
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
+    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
     StyleAtom::BorderRadius(Px(2)),
     StyleAtom::Opacity(8_000),
     StyleAtom::FontSize(Px(14)),
@@ -96,8 +107,8 @@ const OVERRIDES_32: [StyleAtom; 32] = [
     StyleAtom::JustifyContent(JustifyKind::Between),
     StyleAtom::FlexGrow(2_000),
     StyleAtom::FlexShrink(0),
-    StyleAtom::BackgroundThemeRef("accent"),
-    StyleAtom::TextThemeRef("on-accent"),
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
     StyleAtom::BorderRadius(Px(8)),
     StyleAtom::Opacity(10_000),
     StyleAtom::FontSize(Px(18)),

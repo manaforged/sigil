@@ -3,9 +3,10 @@ use std::future::Future;
 use crate::reactive::{SendableSignal, Signal, signal};
 
 use crate::tasks::handle::OwnerHandle;
-use crate::tasks::runtime::{AsyncRuntime, DispatchMessage, Dispatcher, register_abort};
+use crate::tasks::runtime::{AsyncRuntime, DispatchMessage, Dispatcher, attach_task};
 use crate::tasks::schedule_error::ScheduleError;
 use crate::tasks::status::Status;
+use crate::tasks::task::Outcome;
 
 #[derive(Clone)]
 pub struct SignalWriter<T: Send + 'static> {
@@ -67,11 +68,11 @@ where
     E: Send + 'static,
     F: Future<Output = Result<T, E>> + Send + 'static,
 {
-    spawn_with(runtime.spawn_parts(), owner, future)
+    spawn_with(&runtime.spawn_parts(), owner, future)
 }
 
 pub(crate) fn spawn_with<T, E, F>(
-    parts: crate::tasks::runtime::SpawnParts,
+    parts: &crate::tasks::runtime::SpawnParts,
     owner: OwnerHandle,
     future: F,
 ) -> Signal<Status<T, E>>
@@ -89,22 +90,13 @@ where
     let sig: Signal<Status<T, E>> = created.unwrap_or_else(|| signal(Status::Pending));
     let sig_sendable = sig.into_sendable();
 
-    let dispatcher = parts.dispatcher;
-    let work = parts.tokio.spawn(future);
-    let abort = work.abort_handle();
-    let _observer = parts.tokio.spawn(async move {
-        let status = match work.await {
-            Ok(Ok(value)) => Status::Ok(value),
-            Ok(Err(error)) => Status::Err(error),
-            Err(join) if join.is_cancelled() => return,
-            Err(join) => {
-                let message = match join.try_into_panic() {
-                    Ok(payload) => super::panic_message(&*payload).to_owned(),
-                    Err(join) => join.to_string(),
-                };
-                tracing::warn!(owner = ?owner.id(), %message, "spawned task panicked");
-                Status::Panicked(message)
-            }
+    let dispatcher = parts.dispatcher.clone();
+    let task = parts.backend.spawn(owner.id(), future, move |outcome| {
+        let status = match outcome {
+            Outcome::Done(Ok(value)) => Status::Ok(value),
+            Outcome::Done(Err(error)) => Status::Err(error),
+            Outcome::Panicked(message) => Status::Panicked(message),
+            Outcome::Cancelled => return,
         };
         let sent = dispatcher.send(DispatchMessage {
             owner,
@@ -116,15 +108,6 @@ where
             tracing::warn!(owner = ?owner.id(), "task result dropped: dispatcher closed");
         }
     });
-
-    register_abort(&parts.owner_tasks, owner.id(), abort.clone());
-    let registered = crate::reactive::owner_by_id(owner.id(), move || {
-        crate::reactive::on_cleanup(move || {
-            abort.abort();
-        });
-    });
-    if !registered {
-        tracing::warn!(owner = ?owner.id(), "task cleanup could not attach to a live owner");
-    }
+    attach_task(parts, owner, task);
     sig
 }

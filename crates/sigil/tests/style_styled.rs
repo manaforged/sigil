@@ -11,6 +11,7 @@ use sigil::style::{
     ColorAtom, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8, Sizing, Spacing,
     StateStyleBuilder, StateVariants, StyleAtom, Styleable, Typography, Visual,
 };
+use sigil::style::{ColorKey, Token};
 
 fn styled() -> sigil::style::NodeStyledBuilder {
     container().styled()
@@ -20,7 +21,11 @@ fn styled() -> sigil::style::NodeStyledBuilder {
 fn default_impl_chains_correctly() {
     let b = styled().bg("surface").px(16);
     let atoms = b.style().as_atoms();
-    assert!(atoms.contains(&StyleAtom::BackgroundThemeRef("surface")));
+    assert!(
+        atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::Surface
+        )))
+    );
     assert!(atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(16))));
 }
 
@@ -29,7 +34,10 @@ fn hover_state_record_overwrites_on_second_call() {
     let b = styled().hover(|s| s.bg("a")).hover(|s| s.bg("b"));
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 1, "hover slot must be last-call-wins");
-    assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("b"));
+    assert_eq!(
+        hover[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Custom("b"))
+    );
 }
 
 #[test]
@@ -37,7 +45,10 @@ fn hover_atoms_accumulate_within_closure() {
     let b = styled().hover(|s| s.bg("a").px(8));
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 2);
-    assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("a"));
+    assert_eq!(
+        hover[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Custom("a"))
+    );
     assert_eq!(hover[1], StyleAtom::PaddingX(sigil::style::Px(8)));
 }
 
@@ -46,7 +57,10 @@ fn focus_slot_records_atoms() {
     let b = styled().focus(|s| s.bg("focus-ring"));
     let focus = b.style().focus_atoms();
     assert_eq!(focus.len(), 1);
-    assert_eq!(focus[0], StyleAtom::BackgroundThemeRef("focus-ring"));
+    assert_eq!(
+        focus[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Custom("focus-ring"))
+    );
 }
 
 #[test]
@@ -54,7 +68,10 @@ fn pressed_slot_records_atoms() {
     let b = styled().pressed(|s| s.bg("pressed"));
     let pressed = b.style().pressed_atoms();
     assert_eq!(pressed.len(), 1);
-    assert_eq!(pressed[0], StyleAtom::BackgroundThemeRef("pressed"));
+    assert_eq!(
+        pressed[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Custom("pressed"))
+    );
 }
 
 #[test]
@@ -84,7 +101,10 @@ fn bg_accepts_theme_token() {
     let b = styled().bg("surface");
     let atoms = b.style().as_atoms();
     assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::BackgroundThemeRef("surface"));
+    assert_eq!(
+        atoms[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface))
+    );
 }
 
 #[test]
@@ -195,8 +215,14 @@ fn state_builder_implements_styled_within_closure() {
     });
     let hover = b.style().hover_atoms();
     assert_eq!(hover.len(), 4);
-    assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
-    assert_eq!(hover[1], StyleAtom::TextThemeRef("on-surface"));
+    assert_eq!(
+        hover[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
+    );
+    assert_eq!(
+        hover[1],
+        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))
+    );
     assert_eq!(hover[2], StyleAtom::PaddingX(sigil::style::Px(12)));
     assert_eq!(hover[3], StyleAtom::Opacity(9_000));
 }
@@ -220,7 +246,10 @@ fn color_or_token_from_impls_route_correctly() {
     .into();
 
     assert!(matches!(from_rgba, ColorOrToken::Rgba(_)));
-    assert!(matches!(from_token, ColorOrToken::Token("surface")));
+    assert!(matches!(
+        from_token,
+        ColorOrToken::Token(ColorKey::Token(Token::Surface))
+    ));
     assert!(matches!(from_atom, ColorOrToken::Atom(_)));
 }
 
@@ -229,7 +258,10 @@ fn state_style_builder_can_be_built_standalone() {
     let outer = styled().hover(|s: StateStyleBuilder| s.bg("h"));
     let hover = outer.style().hover_atoms();
     assert_eq!(hover.len(), 1);
-    assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("h"));
+    assert_eq!(
+        hover[0],
+        StyleAtom::BackgroundThemeRef(ColorKey::Custom("h"))
+    );
 }
 
 #[test]
@@ -322,14 +354,23 @@ fn class_routes_state_prefixes_to_overlay_slots() {
     let s = sigil::style::Style::new()
         .class("bg-surface hover:bg-surface-hover active:bg-surface-pressed focus:rounded-md disabled:opacity-50");
 
-    assert_eq!(s.as_atoms(), [StyleAtom::BackgroundThemeRef("surface")]);
+    assert_eq!(
+        s.as_atoms(),
+        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::Surface
+        ))]
+    );
     assert_eq!(
         s.hover_atoms(),
-        [StyleAtom::BackgroundThemeRef("surface-hover")]
+        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::SurfaceHover
+        ))]
     );
     assert_eq!(
         s.pressed_atoms(),
-        [StyleAtom::BackgroundThemeRef("surface-pressed")]
+        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::SurfacePressed
+        ))]
     );
     assert_eq!(
         s.focus_atoms(),
@@ -345,7 +386,7 @@ fn class_accumulates_slot_and_skips_unknown() {
     assert_eq!(
         s.hover_atoms(),
         [
-            StyleAtom::BackgroundThemeRef("accent"),
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
             StyleAtom::BorderRadius(sigil::style::Px(6)),
         ]
     );

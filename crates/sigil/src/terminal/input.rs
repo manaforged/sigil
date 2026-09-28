@@ -5,7 +5,7 @@ use crossterm::event::{self, Event};
 
 use crate::app::{AppConfig, AppResult, Error};
 use crate::hal::{LogicalSize, Scale, ShellEvent, WindowEvent};
-use crate::terminal::keys::map_key;
+use crate::terminal::keys::{map_key, push_key_text};
 use crate::terminal::mouse::map_mouse;
 use crate::terminal::run::{CELL, Hooks};
 use crate::terminal::term::set_focused;
@@ -40,22 +40,29 @@ impl Wake {
     }
 
     #[cfg(unix)]
-    fn ready(&self, wait: Duration, listen: bool) -> io::Result<bool> {
+    fn ready(&self, (wait, tick): (Option<Duration>, Duration), listen: bool) -> io::Result<bool> {
         use rustix::event::{PollFd, PollFlags, Timespec, poll};
         use std::io::Read;
-        let Some(rx) = self.rx.as_ref().filter(|_| listen && !wait.is_zero()) else {
-            return event::poll(wait);
+        let Some(rx) = self
+            .rx
+            .as_ref()
+            .filter(|_| listen && wait.is_none_or(|wait| !wait.is_zero()))
+        else {
+            return event::poll(wait.unwrap_or(tick));
         };
         if event::poll(Duration::ZERO)? {
             return Ok(true);
         }
         let stdin = io::stdin();
-        let timeout = Timespec::try_from(wait).map_err(io::Error::other)?;
+        let timeout = wait
+            .map(Timespec::try_from)
+            .transpose()
+            .map_err(io::Error::other)?;
         let mut fds = [
             PollFd::new(&stdin, PollFlags::IN),
             PollFd::new(rx, PollFlags::IN),
         ];
-        match poll(&mut fds, Some(&timeout)) {
+        match poll(&mut fds, timeout.as_ref()) {
             Ok(_) | Err(rustix::io::Errno::INTR) => {}
             Err(errno) => return Err(errno.into()),
         }
@@ -65,8 +72,8 @@ impl Wake {
     }
 
     #[cfg(not(unix))]
-    fn ready(&self, wait: Duration, _listen: bool) -> io::Result<bool> {
-        event::poll(wait)
+    fn ready(&self, (wait, tick): (Option<Duration>, Duration), _listen: bool) -> io::Result<bool> {
+        event::poll(wait.unwrap_or(tick))
     }
 }
 
@@ -85,16 +92,19 @@ pub(crate) fn gather_input(
     config: &AppConfig,
     pointer: &mut crate::hal::Point,
     hooks: &mut Hooks<'_>,
-    (wake, (wait, listen)): (&Wake, (Duration, bool)),
+    (wake, (wait, listen)): (&Wake, (Option<Duration>, bool)),
 ) -> AppResult<Incoming> {
     let mut incoming = Vec::new();
     let mut resize = None;
     let fresh = core::mem::take(first);
-    let mut ready = !fresh && wake.ready(wait, listen).map_err(Error::io)?;
+    let mut ready = !fresh
+        && wake
+            .ready((wait, config.frame_interval), listen)
+            .map_err(Error::io)?;
     while ready {
         match map_input(event::read().map_err(Error::io)?, config, pointer) {
             Input::Quit => return Ok(Incoming::Quit),
-            Input::Event(mapped) => incoming.push(mapped),
+            Input::Event(mapped) => push_key_text(&mut incoming, mapped),
             Input::Resize(mut cols, mut rows) => {
                 limit(config, &mut cols, &mut rows);
                 resize = Some((cols, rows));

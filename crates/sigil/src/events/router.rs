@@ -43,12 +43,7 @@ impl EventRouter {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, layout, event),
             ShellEvent::Window(crate::hal::WindowEvent::Focused(false)) => {
-                self.pointer_capture = None;
-                let source = self
-                    .last_pointer
-                    .clone()
-                    .unwrap_or_else(synthetic_leave_source);
-                self.clear_hover(cx, &source);
+                self.focus_lost(cx, layout);
             }
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),
             ShellEvent::Ime(event) => self.route_ime(cx, layout, &event),
@@ -245,6 +240,20 @@ impl EventRouter {
         }
         self.hover_targets.clear();
         self.hover_targets.extend(next.iter().copied());
+    }
+
+    fn focus_lost(&mut self, cx: &Cx, layout: &LayoutEngine) {
+        let source = self
+            .last_pointer
+            .clone()
+            .unwrap_or_else(synthetic_leave_source);
+        if let Some(captured) = self.pointer_capture.take().filter(|id| visible(cx, *id)) {
+            let target =
+                pointer_target_for_node(cx, layout, captured, self.hit_cache.visual_transforms);
+            dispatch_synthetic_target(cx, target, &source, PointerPhase::Cancel);
+        }
+        crate::events::selection::end_drag();
+        self.clear_hover(cx, &source);
     }
 
     fn clear_hover(&mut self, cx: &Cx, source: &PointerEvent) {

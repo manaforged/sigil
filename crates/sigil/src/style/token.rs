@@ -18,6 +18,14 @@ macro_rules! tokens {
                     $(Self::$variant => $name,)*
                 }
             }
+
+            #[must_use]
+            pub fn from_name(name: &str) -> Option<Self> {
+                match name {
+                    $($name => Some(Self::$variant),)*
+                    _ => None,
+                }
+            }
         }
     };
 }
@@ -119,39 +127,92 @@ tokens! {
 }
 
 const SEMANTIC: usize = 21;
+const STEPS: usize = 12;
+const ROLES: [ScaleRole; 6] = [
+    ScaleRole::Gray,
+    ScaleRole::Accent,
+    ScaleRole::Success,
+    ScaleRole::Warn,
+    ScaleRole::Error,
+    ScaleRole::Info,
+];
 
 impl Token {
+    pub const COUNT: usize = Self::ALL.len();
+
     #[must_use]
     pub fn scale(role: ScaleRole, step: u8) -> Option<Self> {
-        let offset = usize::from(step.checked_sub(1).filter(|s| *s < 12)?);
-        let row = match role {
-            ScaleRole::Gray => 0,
-            ScaleRole::Accent => 1,
-            ScaleRole::Success => 2,
-            ScaleRole::Warn => 3,
-            ScaleRole::Error => 4,
-            ScaleRole::Info => 5,
-        };
-        Self::ALL.get(SEMANTIC + row * 12 + offset).copied()
+        let offset = usize::from(step.checked_sub(1)?);
+        if offset >= STEPS {
+            return None;
+        }
+        let row = ROLES.iter().position(|r| *r == role)?;
+        Self::ALL.get(SEMANTIC + row * STEPS + offset).copied()
+    }
+
+    #[must_use]
+    pub const fn index(self) -> usize {
+        self as usize
+    }
+
+    #[must_use]
+    pub fn scale_step(self) -> Option<(ScaleRole, u8)> {
+        let offset = self.index().checked_sub(SEMANTIC)?;
+        let role = *ROLES.get(offset / STEPS)?;
+        let step = u8::try_from(offset % STEPS + 1).ok()?;
+        Some((role, step))
     }
 
     #[must_use]
     pub const fn color(self) -> ColorAtom {
-        ColorAtom::ThemeRef(self.name())
+        ColorAtom::ThemeRef(ColorKey::Token(self))
     }
 
     #[must_use]
     pub const fn bg(self) -> StyleAtom {
-        StyleAtom::BackgroundThemeRef(self.name())
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(self))
     }
 
     #[must_use]
     pub const fn text(self) -> StyleAtom {
-        StyleAtom::TextThemeRef(self.name())
+        StyleAtom::TextThemeRef(ColorKey::Token(self))
     }
 
     #[must_use]
     pub const fn border(self) -> StyleAtom {
-        StyleAtom::BorderThemeRef(self.name())
+        StyleAtom::BorderThemeRef(ColorKey::Token(self))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ColorKey {
+    Token(Token),
+    Custom(&'static str),
+}
+
+impl ColorKey {
+    #[must_use]
+    pub fn parse(name: &'static str) -> Self {
+        Token::from_name(name).map_or(Self::Custom(name), Self::Token)
+    }
+
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Token(token) => token.name(),
+            Self::Custom(name) => name,
+        }
+    }
+}
+
+impl From<Token> for ColorKey {
+    fn from(token: Token) -> Self {
+        Self::Token(token)
+    }
+}
+
+impl From<&'static str> for ColorKey {
+    fn from(name: &'static str) -> Self {
+        Self::parse(name)
     }
 }

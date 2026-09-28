@@ -1,11 +1,9 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use std::hash::{Hash as _, Hasher as _};
 use std::sync::OnceLock;
 
 use crate::kernel::{Cx, Node, NodeId};
-use crate::style::{StyleBinding, StyleEngine, TextLineHeight, TextStyle, Theme};
-use ahash::AHasher;
+use crate::style::{StyleBinding, StyleEngine, TextStyle, Theme};
 use smallvec::SmallVec;
 
 pub(crate) fn apply_text_binding(
@@ -40,22 +38,7 @@ impl<'a> InheritedText<'a> {
 }
 
 pub(crate) fn text_style_signature(style: &TextStyle) -> u64 {
-    let mut hasher = AHasher::default();
-    style.font_family.hash(&mut hasher);
-    style.font_size.to_bits().hash(&mut hasher);
-    style.font_weight.hash(&mut hasher);
-    match style.line_height {
-        TextLineHeight::FontSizeRelative(value) => {
-            0_u8.hash(&mut hasher);
-            value.to_bits().hash(&mut hasher);
-        }
-        TextLineHeight::Absolute(value) => {
-            1_u8.hash(&mut hasher);
-            value.to_bits().hash(&mut hasher);
-        }
-    }
-    style.runs.hash(&mut hasher);
-    hasher.finish()
+    crate::style::text_identity::DiscreteTextStyle::identity(style)
 }
 
 pub(crate) fn inherited_text_style(cx: &Cx, id: NodeId) -> TextStyle {

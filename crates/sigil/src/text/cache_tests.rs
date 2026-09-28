@@ -1,5 +1,6 @@
 use super::*;
 use crate::hal::ParagraphMetrics;
+use crate::style::TextLineHeight;
 use crate::text::OwnedTextEngine;
 use crate::text::config::TextConfig;
 
@@ -85,4 +86,24 @@ fn cached_paragraph_metrics_are_identical_on_hit() {
 
     let hit = cache.get("Typography", None, &style).unwrap();
     assert!((hit.width() - original_width).abs() < f32::EPSILON);
+}
+
+#[test]
+fn near_equal_widths_keep_separate_entries() {
+    let mut cache = ParagraphCache::new();
+    let style = style_at(16.0);
+    cache.insert(
+        "Hello",
+        Some(100.2),
+        &style,
+        make_paragraph("Hello", &style),
+    );
+    cache.insert(
+        "Hello",
+        Some(100.4),
+        &style,
+        make_paragraph("Hello", &style),
+    );
+    assert!(cache.get("Hello", Some(100.2), &style).is_some());
+    assert!(cache.get("Hello", Some(100.4), &style).is_some());
 }

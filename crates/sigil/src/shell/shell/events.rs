@@ -109,6 +109,15 @@ impl WinitShell {
     }
 
     pub(super) fn push_focus(&mut self, focused: bool) -> bool {
+        #[cfg(target_arch = "wasm32")]
+        if !focused
+            && self
+                .web_ime
+                .as_ref()
+                .is_some_and(super::web_ime::WebIme::owns_focus)
+        {
+            return false;
+        }
         self.push_window(SigilWindowEvent::Focused(focused));
         if !focused {
             self.push_pointer_phase(PointerPhase::Leave);

@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use super::{intern_token, scale};
+use super::{color_key, scale};
 use crate::style::{AlignKind, Dimension, Elevation, JustifyKind, Px, StyleAtom};
 
 pub(super) fn parse_prefixed_token(token: &str) -> Option<StyleAtom> {
@@ -76,7 +76,7 @@ fn border_atom(token: &str) -> Option<StyleAtom> {
     if let Ok(width) = value.parse::<i16>() {
         return (width >= 0).then_some(StyleAtom::BorderWidth(Px(width)));
     }
-    intern_token(value).map(StyleAtom::BorderThemeRef)
+    color_key(value).map(StyleAtom::BorderThemeRef)
 }
 
 fn spacing_atom(token: &str) -> Option<StyleAtom> {
@@ -162,10 +162,10 @@ fn opacity_atom(token: &str) -> Option<StyleAtom> {
 
 fn theme_atom(token: &str) -> Option<StyleAtom> {
     if let Some(value) = token.strip_prefix("bg-") {
-        return intern_token(value).map(StyleAtom::BackgroundThemeRef);
+        return color_key(value).map(StyleAtom::BackgroundThemeRef);
     }
     token
         .strip_prefix("text-")
-        .and_then(intern_token)
+        .and_then(color_key)
         .map(StyleAtom::TextThemeRef)
 }

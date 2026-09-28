@@ -35,18 +35,3 @@ fn light_scales_with_saturated_step_9_use_white_on_solid() {
     assert_eq!(ruby_light().on_solid, white);
     assert_eq!(cyan_light().on_solid, white);
 }
-
-#[test]
-fn role_token_round_trips() {
-    for (name, role) in [
-        ("gray", ScaleRole::Gray),
-        ("accent", ScaleRole::Accent),
-        ("success", ScaleRole::Success),
-        ("warn", ScaleRole::Warn),
-        ("error", ScaleRole::Error),
-        ("info", ScaleRole::Info),
-    ] {
-        assert_eq!(ScaleRole::from_token(name), Some(role));
-    }
-    assert_eq!(ScaleRole::from_token("unknown"), None);
-}

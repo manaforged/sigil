@@ -7,7 +7,7 @@ use tokio::sync::mpsc::{Receiver, UnboundedReceiver};
 use crate::reactive::{Signal, signal};
 use crate::tasks::current::scope_parts;
 use crate::tasks::dispatch::dispatch_to_owner;
-use crate::tasks::runtime::register_abort;
+use crate::tasks::runtime::attach_task;
 
 pub trait MessageReceiver<T>: Send + 'static {
     fn recv(&mut self) -> impl Future<Output = Option<T>> + Send + '_;
@@ -56,8 +56,8 @@ where
         close: Cell::new(Some(Box::new(on_close))),
     }));
     let slot = handlers.into_sendable();
-    let dispatcher = parts.dispatcher;
-    let work = parts.tokio.spawn(async move {
+    let dispatcher = parts.dispatcher.clone();
+    let work = async move {
         while let Some(value) = rx.recv().await {
             dispatch_to_owner(&dispatcher, owner, move || {
                 if let Some(current) = slot.into_signal().try_peek() {
@@ -70,8 +70,7 @@ where
                 close();
             }
         });
-    });
-    let abort = work.abort_handle();
-    register_abort(&parts.owner_tasks, owner.id(), abort.clone());
-    crate::reactive::on_cleanup(move || abort.abort());
+    };
+    let task = parts.backend.spawn(owner.id(), work, drop);
+    attach_task(&parts, owner, task);
 }

@@ -4,6 +4,7 @@
 #[path = "tasks/lib_tests.rs"]
 mod tests;
 
+mod backend;
 mod current;
 mod dispatch;
 mod handle;
@@ -13,6 +14,9 @@ mod runtime;
 mod schedule_error;
 mod sleep;
 mod status;
+mod task;
+#[cfg(target_arch = "wasm32")]
+mod timer;
 
 pub use current::{dispatcher, installed, post, signal_writer, spawn};
 pub use dispatch::spawn_to_signal;
@@ -24,3 +28,4 @@ pub use runtime::{AsyncRuntime, Dispatcher};
 pub use schedule_error::ScheduleError;
 pub use sleep::sleep;
 pub use status::Status;
+pub use task::TaskHandle;

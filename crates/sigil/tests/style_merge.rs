@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::panic)]
 
+use sigil::style::{ColorKey, Token};
 use sigil::style::{
     Dimension, Px, StyleAtom, bump_unknown_class_count, merge_classes,
     merge_warning_count_for_component, unknown_class_warning_count,
@@ -12,14 +13,20 @@ use sigil::style::{
 #[test]
 fn merge_last_wins() {
     let merged = merge_classes(
-        &[StyleAtom::BackgroundThemeRef("surface")],
-        &[StyleAtom::BackgroundThemeRef("accent")],
+        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::Surface,
+        ))],
+        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::Accent,
+        ))],
         1,
     );
 
     assert_eq!(
         merged.as_slice(),
-        &[StyleAtom::BackgroundThemeRef("accent")]
+        &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+            Token::Accent
+        ))]
     );
 }
 
@@ -47,8 +54,12 @@ fn merge_warns_once() {
     let component_id = 77;
     for _ in 0..1_000 {
         let _merged = merge_classes(
-            &[StyleAtom::BackgroundThemeRef("surface")],
-            &[StyleAtom::BackgroundThemeRef("accent")],
+            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface,
+            ))],
+            &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Accent,
+            ))],
             component_id,
         );
     }
@@ -71,8 +82,8 @@ fn merge_is_alloc_free_below_32() {
     let overrides = [
         StyleAtom::Width(Dimension::Full),
         StyleAtom::Height(Dimension::Auto),
-        StyleAtom::BackgroundThemeRef("accent"),
-        StyleAtom::TextThemeRef("on-accent"),
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
     ];
 
     let info = allocation_counter::measure(|| {

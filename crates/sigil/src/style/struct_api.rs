@@ -1,8 +1,8 @@
 use smallvec::SmallVec;
 
 use crate::style::{
-    AlignKind, ColorAtom, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, JustifyKind,
-    Px, StateSlot, StyleAtom,
+    AlignKind, ColorAtom, ColorKey, Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind,
+    JustifyKind, Px, StateSlot, StyleAtom,
     parser::{StatefulToken, parse_stateful_token},
 };
 
@@ -294,8 +294,8 @@ impl Style {
     }
 
     #[must_use]
-    pub fn border_theme(self, token: &'static str) -> Self {
-        self.push(StyleAtom::BorderThemeRef(token))
+    pub fn border_theme(self, token: impl Into<ColorKey>) -> Self {
+        self.push(StyleAtom::BorderThemeRef(token.into()))
     }
 
     #[must_use]

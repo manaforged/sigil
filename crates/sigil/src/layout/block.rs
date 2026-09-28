@@ -128,13 +128,14 @@ fn natural_width(
     edges: &NodeEdges,
 ) -> (f32, Option<Size<f32>>) {
     let text_size = if node.children().is_empty() {
-        solver.scope.measure_text(
+        solver.scope.measure_leaf_text(
             node,
             Size {
                 width: intent.w.preferred,
                 height: intent.h.preferred,
             },
-            Some((cb_width - edges.inline_chrome()).max(0.0)),
+            cb_width,
+            edges,
         )
     } else {
         None

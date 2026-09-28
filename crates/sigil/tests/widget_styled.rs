@@ -12,6 +12,7 @@ use sigil::prelude::{
     tabs, text_field, toggle,
 };
 use sigil::reactive::Runtime;
+use sigil::style::{ColorKey, Token};
 
 #[test]
 fn button_styled_bg_emits_atom() {
@@ -19,7 +20,9 @@ fn button_styled_bg_emits_atom() {
         let mut b = button("Run").bg("surface").rounded(8);
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "button bg('surface') must push BackgroundThemeRef onto the accumulator, got {atoms:?}",
         );
         assert!(
@@ -40,7 +43,10 @@ fn button_styled_hover_populates_state_slot() {
             2,
             "hover closure must record both bg + opacity atoms, got {hover:?}",
         );
-        assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
+        assert_eq!(
+            hover[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
+        );
         assert_eq!(hover[1], StyleAtom::Opacity(8_000));
     });
 }
@@ -69,7 +75,9 @@ fn checkbox_styled_bg_emits_atom() {
         let mut b = checkbox(checked).bg("surface").rounded(6);
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "checkbox bg('surface') must reach the trait accumulator, got {atoms:?}",
         );
         assert!(
@@ -86,7 +94,10 @@ fn checkbox_styled_hover_populates_state_slot() {
         let mut b = checkbox(checked).hover(|s| s.bg("accent-hover"));
         let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert_eq!(hover.len(), 1, "hover slot must capture exactly one atom");
-        assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("accent-hover"));
+        assert_eq!(
+            hover[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::AccentHover))
+        );
     });
 }
 
@@ -99,7 +110,9 @@ fn dropdown_styled_emits_on_trigger_accumulator() {
             .padding(12);
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "dropdown bg('surface') must hit the trait accumulator (which is then \
              merged into the trigger at build time), got {atoms:?}",
         );
@@ -120,7 +133,7 @@ fn dropdown_styled_pressed_populates_state_slot() {
         assert_eq!(pressed.len(), 1);
         assert_eq!(
             pressed[0],
-            StyleAtom::BackgroundThemeRef("surface-pressed-strong"),
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfacePressedStrong)),
         );
     });
 }
@@ -132,7 +145,9 @@ fn panel_accepts_styled_surface() {
         let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("accent")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Accent
+            ))),
             "panel bg('accent') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
@@ -157,7 +172,9 @@ fn text_field_styled_composes_with_state_variant() {
         let style = StyleAccess::style_mut(&mut b);
         let base = style.as_atoms().to_vec();
         assert!(
-            base.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            base.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "text_field bg('surface') must land in trait accumulator base, got {base:?}",
         );
         assert!(
@@ -166,13 +183,22 @@ fn text_field_styled_composes_with_state_variant() {
         );
         let hover = style.hover_atoms().to_vec();
         assert_eq!(hover.len(), 1, "hover slot must capture one atom");
-        assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
+        assert_eq!(
+            hover[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
+        );
         let focus = style.focus_atoms().to_vec();
         assert_eq!(focus.len(), 1, "focus slot must capture one atom");
-        assert_eq!(focus[0], StyleAtom::BackgroundThemeRef("on-surface"));
+        assert_eq!(
+            focus[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::OnSurface))
+        );
         let pressed = style.pressed_atoms().to_vec();
         assert_eq!(pressed.len(), 1, "pressed slot must capture one atom");
-        assert_eq!(pressed[0], StyleAtom::BackgroundThemeRef("surface-pressed"));
+        assert_eq!(
+            pressed[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfacePressed))
+        );
         let disabled = style.disabled_atoms().to_vec();
         assert_eq!(disabled.len(), 1, "disabled slot must capture one atom");
         assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
@@ -186,7 +212,9 @@ fn slider_accepts_styled_surface() {
         let mut b = slider(value, 0.0..=1.0).bg("surface").padding(8);
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "slider bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
         assert!(
@@ -203,7 +231,9 @@ fn progress_accepts_styled_surface() {
         let mut b = progress(value, 1.0).bg("surface");
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "progress bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
     });
@@ -240,7 +270,9 @@ fn modal_accepts_styled_surface() {
         let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "modal bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(
@@ -261,11 +293,16 @@ fn tabs_accepts_styled_surface() {
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "tabs bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
         assert_eq!(hover.len(), 1, "hover slot must capture one atom");
-        assert_eq!(hover[0], StyleAtom::BackgroundThemeRef("surface-hover"));
+        assert_eq!(
+            hover[0],
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
+        );
     });
 }
 
@@ -276,7 +313,9 @@ fn scroll_accepts_styled_surface() {
         let mut b = scroll(inner, 400.0_f32).bg("surface");
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "scroll bg('surface') must hit the trait accumulator, got {atoms:?}",
         );
     });
@@ -297,7 +336,9 @@ fn menu_accepts_styled_surface() {
         let style = StyleAccess::style_mut(&mut b);
         let atoms = style.as_atoms().to_vec();
         assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef("surface")),
+            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
+                Token::Surface
+            ))),
             "menu bg('surface') must land in the trait accumulator, got {atoms:?}",
         );
         assert!(

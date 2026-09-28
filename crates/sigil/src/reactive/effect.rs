@@ -2,8 +2,11 @@ use core::panic::Location;
 
 use smallvec::SmallVec;
 
+use crate::reactive::diagnostic::{Cycle, reactive_cycle};
 use crate::reactive::effect_run::run_effect;
 use crate::reactive::runtime::{EffectKey, EffectSlot, OwnerKey, with_rt};
+
+const DRAIN_BUDGET: usize = 10_000;
 
 #[track_caller]
 pub fn effect<F: FnMut() + 'static>(f: F) {
@@ -83,6 +86,7 @@ pub(crate) fn run_deferred(key: EffectKey) {
 }
 
 pub(crate) fn run_dispatch_deferred() {
+    let mut runs = 0;
     loop {
         let queued = with_rt(|rt| {
             if rt.current_effect.is_some() {
@@ -97,6 +101,12 @@ pub(crate) fn run_dispatch_deferred() {
         if queued.is_empty() {
             return;
         }
+        if runs >= DRAIN_BUDGET {
+            with_rt(|rt| rt.after_run.extend(queued));
+            reactive_cycle(Cycle::Budget(DRAIN_BUDGET));
+            return;
+        }
+        runs += queued.len();
         crate::reactive::batch(|| {
             for (_, f) in queued {
                 f();
@@ -133,7 +143,7 @@ pub(crate) fn schedule_effects(effects: SmallVec<[EffectKey; 4]>) {
 }
 
 pub(crate) fn drain_pending() {
-    loop {
+    for _ in 0..DRAIN_BUDGET {
         let next = with_rt(|rt| {
             let next = rt.pending.pop_front();
             if let Some(key) = next {
@@ -145,5 +155,8 @@ pub(crate) fn drain_pending() {
             return;
         };
         run_effect(key);
+    }
+    if with_rt(|rt| !rt.pending.is_empty()) {
+        reactive_cycle(Cycle::Budget(DRAIN_BUDGET));
     }
 }

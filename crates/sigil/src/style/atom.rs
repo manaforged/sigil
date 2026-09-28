@@ -1,4 +1,4 @@
-use super::Transform2D;
+use super::{ColorKey, Transform2D};
 
 pub const SPACING_STEP: f32 = 4.0;
 
@@ -24,7 +24,7 @@ pub struct Rgba8 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ColorAtom {
     Rgba8(Rgba8),
-    ThemeRef(&'static str),
+    ThemeRef(ColorKey),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -207,10 +207,10 @@ pub enum StyleAtom {
     GridColumns(u16),
     GridRows(u16),
     BackgroundColor(ColorAtom),
-    BackgroundThemeRef(&'static str),
+    BackgroundThemeRef(ColorKey),
     BackgroundGradient(BgGradient),
     TextColor(ColorAtom),
-    TextThemeRef(&'static str),
+    TextThemeRef(ColorKey),
     BgToneStep(u8),
     FgToneStep(u8),
     FgOnSolid,
@@ -222,7 +222,7 @@ pub enum StyleAtom {
     BorderBottom(Px),
     BorderLeft(Px),
     BorderColor(ColorAtom),
-    BorderThemeRef(&'static str),
+    BorderThemeRef(ColorKey),
     BorderToneStep(u8),
     Shadow(Elevation),
     Opacity(u16),

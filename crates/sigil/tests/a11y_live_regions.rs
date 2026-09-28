@@ -116,3 +116,27 @@ fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
         "label carries the urgent text verbatim"
     );
 }
+
+#[test]
+fn announcement_tree_is_accepted_by_platform_consumer() {
+    let mut cx = Cx::new_root();
+    let _ = cx.add(button("Save"));
+    cx.announce("saved");
+    cx.flush_announcements();
+    let consumed = accesskit_consumer::Tree::new(tree(&cx, None, &|_| None), false);
+    assert!(consumed.state().root().children().count() >= 2);
+}
+
+#[test]
+fn open_modal_tree_is_accepted_by_platform_consumer() {
+    Runtime::scope("a11y-modal-consumer", || {
+        let mut cx = Cx::new_root();
+        let _ = cx.add(button("Save"));
+        let visible = signal(false);
+        let _ = cx.add(modal(visible).title("File saved"));
+        visible.set(true);
+        cx.flush_announcements();
+        let consumed = accesskit_consumer::Tree::new(tree(&cx, None, &|_| None), false);
+        assert!(consumed.state().root().children().count() >= 2);
+    });
+}

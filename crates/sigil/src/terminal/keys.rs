@@ -47,6 +47,34 @@ pub fn map_key(event: &crossterm::event::KeyEvent) -> Option<ShellEvent> {
     })))
 }
 
+pub(crate) fn push_key_text(events: &mut Vec<ShellEvent>, event: ShellEvent) {
+    let merged = match (events.last(), &event) {
+        (Some(last), next) => composed_text(last)
+            .zip(composed_text(next))
+            .map(|(head, tail)| paste(&format!("{head}{tail}"))),
+        (None, _) => None,
+    };
+    match merged {
+        Some(merged) => {
+            events.pop();
+            events.push(merged);
+        }
+        None => events.push(event),
+    }
+}
+
+fn composed_text(event: &ShellEvent) -> Option<&str> {
+    let ShellEvent::Key(key) = event else {
+        return None;
+    };
+    let text = key.text.as_deref()?;
+    let plain = key.phase == KeyPhase::Down
+        && !key.repeat
+        && (key.modifiers - ModifiersState::SHIFT).is_empty();
+    (plain && !text.is_empty() && !text.is_ascii() && !text.chars().any(char::is_control))
+        .then_some(text)
+}
+
 #[must_use]
 pub fn paste(text: &str) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {

@@ -25,6 +25,7 @@ pub(crate) struct LayoutCacheKey {
     pub(crate) root: NodeId,
     pub(crate) available: AvailableKey,
     pub(crate) scale_bits: u32,
+    pub(crate) fonts: u64,
     pub(crate) cx_generation: u64,
     pub(crate) input_signature: u64,
 }

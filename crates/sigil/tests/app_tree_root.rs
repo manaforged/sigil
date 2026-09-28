@@ -31,10 +31,11 @@ fn builder_root_installs_and_returns_id() {
 #[test]
 fn fn_root_can_capture_state() {
     Runtime::scope("test", || {
-        let captured = std::cell::Cell::new(0_u32);
+        let captured = std::rc::Rc::new(std::cell::Cell::new(0_u32));
+        let inner = std::rc::Rc::clone(&captured);
         let mut cx = Cx::new_root();
-        let root = (|cx: &mut Cx| {
-            captured.set(42);
+        let root = (move |cx: &mut Cx| {
+            inner.set(42);
             cx.add(container())
         })
         .install(&mut cx);
@@ -58,7 +59,7 @@ fn derived_survives_closure_install() {
         let n = signal(0_i32);
         let label = derived(move || n.get().to_string());
         let mut cx = Cx::new_root();
-        let root = (|cx: &mut Cx| cx.add(text(label))).install(&mut cx);
+        let root = (move |cx: &mut Cx| cx.add(text(label))).install(&mut cx);
         n.set(7);
         assert_eq!(label.peek(), "7");
         assert!(cx.get(root).is_some());

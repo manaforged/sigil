@@ -320,21 +320,6 @@ pub enum ScaleRole {
     Info,
 }
 
-impl ScaleRole {
-    #[must_use]
-    pub fn from_token(name: &str) -> Option<Self> {
-        match name {
-            "gray" => Some(Self::Gray),
-            "accent" => Some(Self::Accent),
-            "success" => Some(Self::Success),
-            "warn" => Some(Self::Warn),
-            "error" => Some(Self::Error),
-            "info" => Some(Self::Info),
-            _ => None,
-        }
-    }
-}
-
 #[cfg(test)]
 #[path = "scale_tests.rs"]
 mod tests;

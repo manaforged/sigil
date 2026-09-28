@@ -77,7 +77,7 @@ where
     F: Future<Output = Result<T, E>> + Send + 'static,
 {
     if let Some((owner, parts)) = scope_parts("spawn") {
-        return spawn_with(parts, owner, future);
+        return spawn_with(&parts, owner, future);
     }
     drop(future);
     crate::reactive::signal(Status::Pending)

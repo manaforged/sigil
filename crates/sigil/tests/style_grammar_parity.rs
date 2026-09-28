@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::style::{ColorKey, Token};
 use sigil::style::{StyleAtom, parse_class_string};
 
 #[test]
@@ -35,7 +36,7 @@ fn border_tokens_resolve_to_width_and_color_atoms() {
     assert!(
         colored
             .iter()
-            .any(|a| matches!(a, StyleAtom::BorderThemeRef("accent"))),
+            .any(|a| matches!(a, StyleAtom::BorderThemeRef(ColorKey::Token(Token::Accent)))),
         "border-<token> must resolve as a theme colour reference"
     );
     let left = parse_class_string("border-l-4").unwrap();

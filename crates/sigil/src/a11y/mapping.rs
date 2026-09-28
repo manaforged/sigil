@@ -7,56 +7,64 @@ use accesskit::{
 
 pub type BoundsLookup<'a> = &'a dyn Fn(NodeId) -> Option<Rect>;
 
+pub(super) const WINDOW_ROOT: AkNodeId = AkNodeId(u64::MAX);
+
 #[must_use]
 pub fn tree(cx: &Cx, focus: Option<NodeId>, bounds: BoundsLookup<'_>) -> TreeUpdate {
-    let mut nodes = Vec::with_capacity(cx.len());
-    let mut first_root_ak: Option<AkNodeId> = None;
-    let roots = cx.roots();
-    for root in roots.iter().copied() {
-        walk_subtree(cx, root, bounds, &mut nodes, &mut first_root_ak);
+    let mut window = AkNode::new(accesskit::Role::Window);
+    let mut top = Vec::new();
+    let mut nodes = Vec::with_capacity(cx.len() + 1);
+    for root in cx.roots().iter().copied() {
+        top_level(cx, root, &mut top);
+        walk_subtree(cx, root, bounds, &mut nodes);
     }
-    let root_ak = first_root_ak.unwrap_or(AkNodeId(0));
+    window.set_children(top);
+    nodes.insert(0, (WINDOW_ROOT, window));
     let focus_ak = focus
         .map(NodeId::to_accesskit)
         .filter(|candidate| nodes.iter().any(|(id, _)| id == candidate))
-        .unwrap_or(root_ak);
+        .unwrap_or(WINDOW_ROOT);
     TreeUpdate {
         nodes,
-        tree: Some(TreeInfo::new(root_ak)),
+        tree: Some(TreeInfo::new(WINDOW_ROOT)),
         tree_id: TreeId::ROOT,
         focus: focus_ak,
     }
 }
 
-fn walk_subtree(
-    cx: &Cx,
-    id: NodeId,
-    bounds: BoundsLookup<'_>,
-    out: &mut Vec<(AkNodeId, AkNode)>,
-    first_root: &mut Option<AkNodeId>,
-) {
+fn walk_subtree(cx: &Cx, id: NodeId, bounds: BoundsLookup<'_>, out: &mut Vec<(AkNodeId, AkNode)>) {
     let Some(kernel_node) = cx.get(id) else {
         return;
     };
     if matches!(kernel_node.kind, NodeType::Fragment) {
         for &child in kernel_node.children() {
-            walk_subtree(cx, child, bounds, out, first_root);
+            walk_subtree(cx, child, bounds, out);
         }
         return;
     }
     let (projected, runs) = project(cx, id, bounds);
     let ak_id = id.to_accesskit();
-    if first_root.is_none() {
-        *first_root = Some(ak_id);
-    }
     out.push((ak_id, projected));
     if let Some(runs) = runs {
         out.extend(runs);
         return;
     }
     for &child in kernel_node.children() {
-        walk_subtree(cx, child, bounds, out, first_root);
+        walk_subtree(cx, child, bounds, out);
     }
+}
+
+fn top_level(cx: &Cx, id: NodeId, top: &mut Vec<AkNodeId>) {
+    let Some(kernel_node) = cx.get(id) else {
+        return;
+    };
+    if matches!(kernel_node.kind, NodeType::Fragment) {
+        for &child in kernel_node.children() {
+            top_level(cx, child, top);
+        }
+        return;
+    }
+    top.push(id.to_accesskit());
 }
 
 #[must_use]

@@ -1,9 +1,12 @@
 use wasm_bindgen::JsCast as _;
 use web_sys::HtmlCanvasElement;
-use winit::platform::web::WindowAttributesExtWebSys as _;
-use winit::window::WindowAttributes;
+use winit::platform::web::{WindowAttributesExtWebSys as _, WindowExtWebSys as _};
+use winit::window::{Window, WindowAttributes};
+
+use crate::hal::Shell as _;
 
 use super::WinitShell;
+use super::web_ime::WebIme;
 
 impl WinitShell {
     pub(crate) fn set_canvas(&mut self, id: Option<String>) {
@@ -21,6 +24,18 @@ impl WinitShell {
         let mut attrs = attrs.with_canvas(Some(canvas));
         attrs.inner_size = None;
         attrs
+    }
+
+    pub(super) fn install_web_ime(&mut self, window: &Window) {
+        if self.web_ime.is_some() {
+            return;
+        }
+        self.web_ime = window
+            .canvas()
+            .and_then(|canvas| WebIme::new(canvas, self.waker()));
+        if self.web_ime.is_none() {
+            tracing::warn!(target: "sigil::ime", "IME text area not created; composition is off");
+        }
     }
 }
 

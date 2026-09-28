@@ -5,9 +5,12 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, container, fragment};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{NodeStyleExt, StyleAtom, Theme};
 
-static ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Accent,
+))];
 
 #[test]
 fn class_on_container_is_allowed() {

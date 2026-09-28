@@ -1,4 +1,5 @@
-use crate::layout::{TextEngineMeasure, TextMeasure};
+use crate::layout::TextMeasure;
+use crate::layout::text_adapter::TextEngineMeasure;
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;
 
@@ -41,5 +42,9 @@ impl TextMeasure for DefaultTextMeasure {
 
     fn begin_frame(&self) {
         self.inner.begin_frame();
+    }
+
+    fn font_generation(&self) -> u64 {
+        self.inner.font_generation()
     }
 }

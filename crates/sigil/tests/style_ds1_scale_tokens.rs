@@ -103,3 +103,18 @@ fn customizing_accent_scale_propagates_through_role_tokens() {
     assert_eq!(resolved_bg(&theme, "bg-accent-3"), ruby_light().step(3));
     assert_eq!(theme.accent, ruby_light().step(9));
 }
+
+#[test]
+fn tone_step_resolution_does_not_allocate() {
+    let theme = Theme::default();
+    let engine = sigil::style::StyleEngine::new(&theme);
+    let atoms = [
+        StyleAtom::BgToneStep(3),
+        StyleAtom::FgToneStep(11),
+        StyleAtom::BorderToneStep(6),
+    ];
+    let mut render = sigil::style::RenderStyle::default();
+    engine.apply(&atoms, &mut render);
+    let info = allocation_counter::measure(|| engine.apply(&atoms, &mut render));
+    assert_eq!(info.count_total, 0, "{info:?}");
+}

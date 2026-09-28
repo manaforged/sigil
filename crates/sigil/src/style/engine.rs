@@ -1,7 +1,6 @@
-use crate::style::scale::ScaleRole;
 use crate::style::{
     AnimatorOverlay, ColorAtom, ColorAtomKind, NumericAtomKind, Px, RenderStyle, Rgba8, StyleAtom,
-    TextLineHeight, TextStyle, Theme, ThemeValue, Tone,
+    TextLineHeight, TextStyle, Theme, Token, Tone,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -24,17 +23,6 @@ impl<'theme> StyleEngine<'theme> {
     pub fn apply(&self, atoms: &[StyleAtom], render: &mut RenderStyle) {
         for atom in atoms {
             (*self).apply_atom(*atom, render);
-        }
-    }
-
-    pub fn apply_with_overlay(
-        &self,
-        atoms: &[StyleAtom],
-        overlay: &dyn AnimatorOverlay,
-        render: &mut RenderStyle,
-    ) {
-        for atom in atoms {
-            (*self).apply_atom_overlaid(*atom, overlay, render);
         }
     }
 
@@ -74,18 +62,10 @@ impl<'theme> StyleEngine<'theme> {
     #[must_use]
     fn tone_step(&self, step: u8) -> Rgba8 {
         let role = self.tone.scale_role();
-        let prefix = match role {
-            ScaleRole::Gray => "gray",
-            ScaleRole::Accent => "accent",
-            ScaleRole::Success => "success",
-            ScaleRole::Warn => "warn",
-            ScaleRole::Error => "error",
-            ScaleRole::Info => "info",
-        };
-        match self.theme.runtime_tokens.get(&format!("{prefix}-{step}")) {
-            Some(ThemeValue::Color(color)) => *color,
-            _ => self.theme.scale(role).step(step),
-        }
+        Token::scale(role, step).map_or_else(
+            || self.theme.scale(role).step(step),
+            |token| self.theme.color(token),
+        )
     }
 
     #[must_use]
@@ -182,59 +162,6 @@ impl<'theme> StyleEngine<'theme> {
             | StyleAtom::Transition(_)
             | StyleAtom::TransitionDuration(_)
             | StyleAtom::UnknownThemeRef(_) => {}
-        }
-    }
-
-    fn apply_atom_overlaid(
-        self,
-        atom: StyleAtom,
-        overlay: &dyn AnimatorOverlay,
-        render: &mut RenderStyle,
-    ) {
-        match atom {
-            StyleAtom::Opacity(literal) => {
-                let resolved = overlay
-                    .value_for(NumericAtomKind::Opacity)
-                    .map_or(literal, encode_opacity);
-                render.opacity = resolved;
-            }
-            StyleAtom::BorderRadius(literal) => {
-                let resolved = overlay
-                    .value_for(NumericAtomKind::BorderRadius)
-                    .map_or(literal, encode_px);
-                render.border_radius = Some(resolved);
-            }
-            StyleAtom::Radius(radius) => {
-                let resolved = overlay
-                    .value_for(NumericAtomKind::BorderRadius)
-                    .map_or_else(|| self.theme.metrics.radius(radius), encode_px);
-                render.border_radius = Some(resolved);
-            }
-            StyleAtom::BackgroundColor(literal) => {
-                let resolved = overlay
-                    .value_for_color(ColorAtomKind::Background)
-                    .unwrap_or_else(|| self.resolve_color(literal));
-                render.background_color = Some(resolved);
-            }
-            StyleAtom::BackgroundThemeRef(token) => {
-                let resolved = overlay
-                    .value_for_color(ColorAtomKind::Background)
-                    .unwrap_or_else(|| self.theme.resolve_color(token));
-                render.background_color = Some(resolved);
-            }
-            StyleAtom::TextColor(literal) => {
-                let resolved = overlay
-                    .value_for_color(ColorAtomKind::Text)
-                    .unwrap_or_else(|| self.resolve_color(literal));
-                render.text_color = Some(resolved);
-            }
-            StyleAtom::TextThemeRef(token) => {
-                let resolved = overlay
-                    .value_for_color(ColorAtomKind::Text)
-                    .unwrap_or_else(|| self.theme.resolve_color(token));
-                render.text_color = Some(resolved);
-            }
-            _ => self.apply_atom(atom, render),
         }
     }
 }

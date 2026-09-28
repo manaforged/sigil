@@ -43,3 +43,27 @@ fn shifted_letters_map_to_uppercase() {
             .contains(ModifiersState::SHIFT | ModifiersState::CONTROL)
     );
 }
+
+#[test]
+fn committed_cjk_text_arrives_as_one_insert() {
+    let mut events = Vec::new();
+    for ch in ['日', '本', '語'] {
+        if let Some(event) = map_key(&TerminalKeyEvent::new(
+            KeyCode::Char(ch),
+            KeyModifiers::NONE,
+        )) {
+            push_key_text(&mut events, event);
+        }
+    }
+    assert_eq!(events.len(), 1, "{events:?}");
+    let mut ascii = Vec::new();
+    for ch in ['a', 'b'] {
+        if let Some(event) = map_key(&TerminalKeyEvent::new(
+            KeyCode::Char(ch),
+            KeyModifiers::NONE,
+        )) {
+            push_key_text(&mut ascii, event);
+        }
+    }
+    assert_eq!(ascii.len(), 2, "ASCII keys stay separate for shortcuts");
+}
