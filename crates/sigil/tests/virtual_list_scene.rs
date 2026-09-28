@@ -5,18 +5,12 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use sigil::hal::Size;
-use sigil::kernel::{Cx, TextContent, container, text_live};
-use sigil::layout::{LayoutEngine, TextMeasure};
+use sigil::kernel::{Cx, container, text_live};
+use sigil::layout::LayoutEngine;
 use sigil::reactive::{Runtime, signal};
-use sigil::renderer::emit_scene;
+use sigil::scene::emit_scene;
 use sigil::widgets::virtual_list_bind;
-
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+use sigil_kittest::stub_text_measure;
 
 #[test]
 fn items_bind_tick_updates_reactive_text() {
@@ -33,7 +27,7 @@ fn items_bind_tick_updates_reactive_text() {
             .viewport_height(80.0)
             .viewport_width(200.0),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         let avail = Size::fixed(200.0, 80.0);
         layout.compute(&mut cx, root, avail).expect("layout");
         assert!(emit_scene(&cx, root).find_text("alpha").is_some());

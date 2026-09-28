@@ -5,18 +5,28 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, LayerEffect, LayerScope, OffscreenTarget, SceneBuilder,
-    SceneCommand, SceneRectStyle, WgpuRenderer,
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::{color, rect};
+use sigil::hal::Color;
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::{
+    CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneCommand, SceneRectStyle,
 };
-use sigil::style::Rgba8;
 use sigil_kittest::gpu::read_pixels;
+use sigil_kittest::gpu::{Capture, render_capture};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 120.0);
 const VIEWPORT_WIDTH: u32 = 220;
 const VIEWPORT_HEIGHT: u32 = 120;
+const CAPTURE: Capture = Capture {
+    viewport: VIEWPORT,
+    size_px: [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
+    scale: 1.0,
+    clear: Color::rgba(0.05, 0.06, 0.09, 1.0),
+};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -30,7 +40,13 @@ fn layer_commands_walk_and_initialize_layer_pool() {
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();
-    render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
+    render_capture(
+        &mut renderer,
+        (&ready_device, &ready_queue),
+        &scene,
+        &CAPTURE,
+    )
+    .expect("render_capture");
 
     let (scene_pipelines, _, _, _, _) = renderer
         .pipeline_cache_counts()
@@ -164,43 +180,6 @@ fn nested_layer_scene() -> CommandScene {
     builder.finish()
 }
 
-fn render_scene(
-    renderer: &mut WgpuRenderer,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    scene: &CommandScene,
-) {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("layer-command capture"),
-        size: wgpu::Extent3d {
-            width: VIEWPORT_WIDTH,
-            height: VIEWPORT_HEIGHT,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    renderer
-        .render_command_scene_offscreen(
-            OffscreenTarget {
-                device,
-                queue,
-                view: &view,
-                format: FORMAT,
-                viewport: VIEWPORT,
-                scale: 1.0,
-            },
-            scene,
-            Color::rgba(0.05, 0.06, 0.09, 1.0),
-        )
-        .expect("render_command_scene_offscreen");
-}
-
 fn render_scene_pixels(
     renderer: &mut WgpuRenderer,
     device: &wgpu::Device,
@@ -285,12 +264,4 @@ const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
         pixels[offset + 2],
         pixels[offset + 3],
     ]
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

@@ -6,33 +6,19 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::doc_markdown, clippy::too_many_lines, clippy::print_stdout)]
 
-use sigil::hal::{KeyEventInit, PhysicalKey};
+#[path = "events_support/input.rs"]
+mod input;
+
+use sigil::hal::PhysicalKey;
 use sigil::prelude::*;
 
+use input::key_down;
+use sigil_kittest::stub_text_measure;
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
+    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
 };
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
 const VIEWPORT: (f32, f32) = (420.0, 260.0);
-
-fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
 
 fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuBuilder + 'static {
     move || {
@@ -51,7 +37,7 @@ fn sample_menu(select: impl Fn(&str) + 'static) -> impl FnOnce() -> CommandMenuB
 fn setup(build: impl FnOnce() -> CommandMenuBuilder) -> (Cx, LayoutEngine, EventRouter, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(build());
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
     layout
         .compute(&mut cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
@@ -233,16 +219,8 @@ fn leaf_select_fires_observer_and_closes() {
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: sigil_kittest::Rendered) {
-    let Some(img) = img.expect("sigil-kittest") else {
-        println!("no GPU adapter — skipping {stem}");
-        return;
-    };
-    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
-}
-
 fn navigate(cx: &mut Cx, root: NodeId, keys: &[(Key, PhysicalKey)]) {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
     layout
         .compute(cx, root, Size::fixed(VIEWPORT.0, VIEWPORT.1))
         .expect("layout");
@@ -261,7 +239,7 @@ fn command_menu_open() {
         [432, 128],
         (1.0, 1.0),
     );
-    check("command_menu_open", img);
+    assert_rendered_matches_golden(img, &golden_path!("command_menu_open"), DELTA_PCT);
 }
 
 #[test]
@@ -283,7 +261,7 @@ fn command_menu_nested() {
         [432, 128],
         (1.0, 1.0),
     );
-    check("command_menu_nested", img);
+    assert_rendered_matches_golden(img, &golden_path!("command_menu_nested"), DELTA_PCT);
 }
 
 #[test]
@@ -305,5 +283,5 @@ fn command_menu_disabled_item() {
         [432, 128],
         (1.0, 1.0),
     );
-    check("command_menu_disabled_item", img);
+    assert_rendered_matches_golden(img, &golden_path!("command_menu_disabled_item"), DELTA_PCT);
 }

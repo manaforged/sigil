@@ -10,20 +10,12 @@
 use sigil::prelude::*;
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, capture_filmstrip, golden_path,
+    InteractionMode, assert_rendered_matches_golden, capture_filmstrip, golden_path,
     render_widget_to_png_stub,
 };
 
 const DELTA_PCT: f32 = 0.5;
 const DT: f32 = 1.0 / 60.0;
-
-fn check(stem: &str, img: sigil_kittest::Rendered) {
-    let Some(img) = img.expect("sigil-kittest") else {
-        println!("no GPU adapter — skipping {stem}");
-        return;
-    };
-    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
-}
 
 #[test]
 fn button_hover_settled() {
@@ -36,7 +28,7 @@ fn button_hover_settled() {
         [160, 56],
         (24.0, 16.0),
     );
-    check("button_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("button_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -47,7 +39,7 @@ fn button_hover_midflight() {
         [160, 56],
         (24.0, 16.0),
     );
-    check("button_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("button_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -60,7 +52,7 @@ fn button_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("button_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("button_hover_filmstrip"), DELTA_PCT);
 }
 
 fn checkbox_widget(cx: &mut Cx) -> NodeId {
@@ -79,7 +71,7 @@ fn checkbox_hover_settled() {
         [36, 36],
         (16.0, 16.0),
     );
-    check("checkbox_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -90,7 +82,7 @@ fn checkbox_hover_midflight() {
         [36, 36],
         (16.0, 16.0),
     );
-    check("checkbox_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -103,7 +95,7 @@ fn checkbox_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("checkbox_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_filmstrip"), DELTA_PCT);
 }
 
 fn slider_widget(cx: &mut Cx) -> NodeId {
@@ -122,7 +114,7 @@ fn slider_hover_settled() {
         [192, 36],
         (90.0, 14.0),
     );
-    check("slider_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("slider_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -133,7 +125,7 @@ fn slider_hover_midflight() {
         [192, 36],
         (90.0, 14.0),
     );
-    check("slider_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("slider_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -146,7 +138,7 @@ fn slider_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("slider_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("slider_hover_filmstrip"), DELTA_PCT);
 }
 
 fn dropdown_widget_options() -> Vec<String> {
@@ -169,7 +161,7 @@ fn dropdown_hover_settled() {
         [212, 52],
         (90.0, 22.0),
     );
-    check("dropdown_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -180,7 +172,7 @@ fn dropdown_hover_midflight() {
         [212, 52],
         (90.0, 22.0),
     );
-    check("dropdown_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -193,7 +185,7 @@ fn dropdown_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("dropdown_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_filmstrip"), DELTA_PCT);
 }
 
 fn text_field_widget(cx: &mut Cx) -> NodeId {
@@ -212,7 +204,7 @@ fn text_field_hover_settled() {
         [192, 44],
         (40.0, 22.0),
     );
-    check("text_field_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -223,7 +215,7 @@ fn text_field_hover_midflight() {
         [192, 44],
         (40.0, 22.0),
     );
-    check("text_field_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -236,7 +228,7 @@ fn text_field_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("text_field_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("text_field_hover_filmstrip"), DELTA_PCT);
 }
 
 fn toggle_widget(cx: &mut Cx) -> NodeId {
@@ -255,7 +247,7 @@ fn toggle_hover_settled() {
         [50, 32],
         (35.0, 22.4),
     );
-    check("toggle_hover_settled", img);
+    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_settled"), DELTA_PCT);
 }
 
 #[test]
@@ -266,7 +258,7 @@ fn toggle_hover_midflight() {
         [50, 32],
         (35.0, 22.4),
     );
-    check("toggle_hover_midflight", img);
+    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_midflight"), DELTA_PCT);
 }
 
 #[test]
@@ -279,5 +271,5 @@ fn toggle_hover_filmstrip() {
         DT,
         sigil_kittest::stub_text_measure,
     );
-    check("toggle_hover_filmstrip", img);
+    assert_rendered_matches_golden(img, &golden_path!("toggle_hover_filmstrip"), DELTA_PCT);
 }

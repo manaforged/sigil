@@ -10,10 +10,10 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture};
 use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
 const UNDERLINE_MID_Y: u32 = 43;
@@ -25,7 +25,7 @@ const SCAN_X0: u32 = 440;
 const SCAN_LEN: u32 = 32;
 
 const PERIOD_PX: u32 = 32;
-const COL_P0: u32 = 80;
+const COL_P0: u32 = 80 + PERIOD_PX / 4;
 const COL_P_HALF: u32 = COL_P0 + PERIOD_PX / 2;
 const COL_P1: u32 = COL_P0 + PERIOD_PX;
 
@@ -201,21 +201,4 @@ fn wave_peak_y(pixels: &[u8], width: u32, x: u32) -> u32 {
     (WAVY_BAND_Y0..=WAVY_BAND_Y1)
         .max_by_key(|&y| pixel_channel(pixels, width, x, y, Channel::R))
         .expect("band has rows")
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("decoration-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

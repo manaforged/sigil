@@ -8,7 +8,7 @@ struct Memory(RefCell<Option<String>>);
 
 #[cfg(feature = "clipboard-image")]
 #[test]
-#[ignore = "requires a native clipboard containing the 2x2 RGBA fixture"]
+#[ignore = "manual: needs a native clipboard containing the 2x2 RGBA fixture"]
 fn native_image_reads_pixels() {
     let source = image()
         .expect("native clipboard read")
@@ -24,7 +24,7 @@ fn native_image_reads_pixels() {
 
 #[cfg(feature = "clipboard-image")]
 #[test]
-#[ignore = "requires a native clipboard containing only text"]
+#[ignore = "manual: needs a native clipboard containing only text"]
 fn native_image_without_pixels() {
     assert_eq!(image().expect("native clipboard read"), None);
 }

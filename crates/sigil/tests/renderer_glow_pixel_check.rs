@@ -11,11 +11,10 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
 use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
 
 const VIEWPORT: (f32, f32) = (960.0, 360.0);
 
@@ -231,33 +230,6 @@ fn halo_ring_points(x: f32, y: f32, w: f32, h: f32) -> [(u32, u32); 8] {
     ]
 }
 
-fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
-    let base = ((y * width + x) * BYTES_PER_PIXEL) as usize;
-    [
-        pixels[base],
-        pixels[base + 1],
-        pixels[base + 2],
-        pixels[base + 3],
-    ]
-}
-
 fn abs_diff(a: u8, b: u8) -> u8 {
     a.abs_diff(b)
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("glow-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

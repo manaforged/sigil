@@ -13,7 +13,7 @@ fn checkbox_click_flips_signal() {
                 changes.set(changes.get() + 1);
             }
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -36,7 +36,7 @@ fn checkbox_keyboard_activation() {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Monitor"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -67,7 +67,7 @@ fn checkbox_disabled_ignores_click() {
                     move |_| changes.set(changes.get() + 1)
                 }),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -90,17 +90,17 @@ fn checkbox_scene_emits_checked_and_unchecked_variants() {
         let checked = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(checkbox(checked).label("Visual").tone(Tone::Primary));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let unchecked_colors = scene_rect_colors(&cx, root);
+        let unchecked_colors = rect_colors(&cx, root);
         assert!(unchecked_colors.contains(&theme.gray.step(1)));
 
         checked.set(true);
-        let checked_colors = scene_rect_colors(&cx, root);
+        let checked_colors = rect_colors(&cx, root);
         assert!(checked_colors.contains(&theme.accent));
         assert!(
             emit_scene(&cx, root)
@@ -128,7 +128,7 @@ fn toggle_click_flips_signal() {
                 changes.set(changes.get() + 1);
             }
         }));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -151,7 +151,7 @@ fn toggle_keyboard_activation() {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Monitor"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
@@ -172,13 +172,13 @@ fn toggle_scene_emits_on_and_off_variants() {
         let on = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(toggle(on).label("Visual"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         layout
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let off_colors = scene_rect_colors(&cx, root);
+        let off_colors = rect_colors(&cx, root);
         let off_thumb_x =
             first_rect_x_for_color(&cx, root, theme.color(sigil::style::Token::Gray11));
         assert!(off_colors.contains(&theme.color(sigil::style::Token::Gray6)));
@@ -190,7 +190,7 @@ fn toggle_scene_emits_on_and_off_variants() {
         for _ in 0..120 {
             sigil::animation_runtime::tick(1.0 / 60.0);
         }
-        let on_colors = scene_rect_colors(&cx, root);
+        let on_colors = rect_colors(&cx, root);
         let on_thumb_x = first_rect_x_for_color(&cx, root, theme.on_accent);
         assert!(on_colors.contains(&theme.accent));
         assert!(on_thumb_x > off_thumb_x);

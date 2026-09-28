@@ -71,6 +71,12 @@ The harness uses the real text engine. For a fixed 40x16 box per text
 node, call `render_widget_to_png_stub`, or pass `stub_text_measure()` to
 `render_widget_to_png_with`.
 
+Layout tests that need a deterministic measure without rendering pass
+`FixedMeasure { width, height }` (one box per text node) or
+`CharMeasure { char_width, line_height }` (widest line times
+`char_width`, line count times `line_height`) to
+`LayoutEngine::with_text_measure`.
+
 ## No GPU
 
 If no wgpu adapter is available, the harness returns
@@ -116,8 +122,20 @@ the current adapter, and the base golden otherwise.
 percentage of pixels to differ, to absorb GPU driver differences. A
 pixel differs when any RGBA channel differs by more than 2. Use `0.5`
 unless a test needs another budget.
+`assert_rendered_matches_golden(rendered, golden, max_delta_pct)` takes
+the `Rendered` result directly and skips the check when no adapter is
+available.
 
 The offscreen target clears to opaque black.
+
+## Raw captures
+
+For renderer tests that inspect pixels, `gpu::render_capture` renders a
+`CommandScene` into a new texture described by `gpu::Capture` (viewport,
+pixel size, scale, clear color). `gpu::read_pixels` reads it back as
+RGBA8 rows, and `gpu::pixel_rgba` returns one pixel.
+`gpu::create_capture_texture` and `gpu::FORMAT` create a target for
+custom render paths.
 
 ## License
 

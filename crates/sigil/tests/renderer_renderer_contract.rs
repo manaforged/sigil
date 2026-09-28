@@ -6,7 +6,7 @@
 use core::error::Error;
 use std::time::{Duration, Instant};
 
-use sigil::hal::{Color, PhysicalSize, Renderer};
+use sigil::hal::Renderer;
 use sigil::renderer::{RendererError, WgpuRenderer};
 
 const SLUG_SHADER: &str = include_str!("../src/renderer/slug/shader.wgsl");
@@ -123,7 +123,7 @@ fn slug_aa_keeps_one_pixel_stem_centers_opaque() {
 }
 
 #[test]
-#[ignore = "requires a working GPU adapter; run locally with --ignored"]
+#[ignore = "needs a wgpu adapter"]
 fn wgpu_renderer_constructs_without_panic() {
     let renderer = WgpuRenderer::new();
     assert!(
@@ -151,11 +151,4 @@ fn renderer_new_does_not_block_on_gpu() {
          (expected < 1 s, got {elapsed:?}). If this test regresses, adapter \
          or device work has leaked back out of create_surface."
     );
-}
-
-#[test]
-#[ignore = "needs a real windowed surface; exercised by the hello-rect rewrite"]
-fn zero_sized_resize_is_noop() {
-    let _ = PhysicalSize::new(0, 0);
-    let _ = Color::BLACK;
 }

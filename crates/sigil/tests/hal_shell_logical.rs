@@ -3,63 +3,11 @@
     reason = "target does not use every package dependency"
 )]
 
-use std::fmt;
+#[path = "events_support/mock_shell.rs"]
+mod mock_shell;
 
-use sigil::hal::{LogicalSize, PhysicalSize, Shell, ShellEvent};
-
-#[derive(Debug)]
-struct MockError;
-
-impl fmt::Display for MockError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("mock shell error")
-    }
-}
-
-impl std::error::Error for MockError {}
-
-#[derive(Clone)]
-struct MockWaker;
-
-#[derive(Default)]
-struct MockShell {
-    created: Vec<(String, PhysicalSize)>,
-}
-
-impl Shell for MockShell {
-    type Error = MockError;
-    type Waker = MockWaker;
-    type Window = usize;
-
-    fn waker(&self) -> Self::Waker {
-        MockWaker
-    }
-
-    fn wake(_waker: &Self::Waker) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn create_window(
-        &mut self,
-        title: &str,
-        initial_size: PhysicalSize,
-    ) -> Result<Self::Window, Self::Error> {
-        let handle = self.created.len();
-        self.created.push((title.to_owned(), initial_size));
-        Ok(handle)
-    }
-
-    fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {
-        Vec::new().into_iter()
-    }
-
-    fn run<F>(self, _frame: F) -> Result<(), Self::Error>
-    where
-        F: FnMut(&mut Self) + 'static,
-    {
-        Ok(())
-    }
-}
+use mock_shell::MockShell;
+use sigil::hal::{LogicalSize, PhysicalSize, Shell};
 
 #[test]
 fn default_create_window_logical_uses_scale_one_physical_size() {

@@ -16,12 +16,11 @@ mod paragraph;
 mod script_fonts;
 mod system_fonts;
 
-pub mod bidi;
-pub mod color_glyph;
+pub use crate::bidi;
+pub(crate) mod color_glyph;
 mod colr_paint;
 mod colr_radial;
-pub mod glyph;
-pub mod segment;
+pub(crate) mod glyph;
 
 pub(crate) mod shaper;
 
@@ -29,10 +28,14 @@ pub(crate) mod shaper;
 pub(crate) mod shaping_complex;
 
 pub use config::TextConfig;
-pub use engine::{FontCollection, OwnedTextEngine};
+#[cfg(any(test, feature = "kittest"))]
+pub use engine::FontCollection;
+pub use engine::OwnedTextEngine;
 pub use error::TextError;
+#[cfg(feature = "desktop")]
+pub(crate) use fonts::on_fonts_changed;
 pub use fonts::prefer_system_fonts;
-pub use fonts::{DefaultFonts, SansWeight, set_default_fonts, use_system_fonts};
+pub use fonts::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub(crate) use paragraph::FaceSpec;
 pub use paragraph::Paragraph;
 pub use shaper::Font;

@@ -3,8 +3,12 @@
     reason = "target does not use every package dependency"
 )]
 
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::color;
 use sigil::hal::{Point, Rect};
-use sigil::renderer::{
+use sigil::scene::{
     CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand, SceneGradientStyle,
     SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
@@ -127,8 +131,4 @@ fn gradient() -> LinearGradient {
 
 const fn rect(x: f32, y: f32) -> Rect {
     Rect::new(Point::new(x, y), 48.0, 48.0)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

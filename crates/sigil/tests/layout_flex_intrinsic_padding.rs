@@ -8,17 +8,10 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
-
-fn child_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("child result")
-        .rect()
-}
 
 fn chip_builder(label: &'static str) -> sigil::kernel::NodeBuilder {
     container()
@@ -55,7 +48,7 @@ fn chip_row_is_laid_out_without_overlap() {
         .iter()
         .zip(chips.iter())
     {
-        let r = child_rect(&cx, *id);
+        let r = layout_rect(&cx, *id);
         if prev_right > 0.0 {
             assert!(
                 r.origin.x >= prev_right + 11.5,
@@ -90,7 +83,7 @@ fn container_intrinsic_main_does_not_double_count_padding() {
         .compute(&mut cx, row, Size::fixed(500.0, 40.0))
         .expect("compute");
 
-    let r = child_rect(&cx, chip_id);
+    let r = layout_rect(&cx, chip_id);
     assert_eq!(
         r.width, 72.0,
         "chip width must be text(56) + padding_x(2 * 8) = 72, got {}",

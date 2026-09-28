@@ -6,7 +6,7 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::hal::Size;
 use sigil::kernel::prelude::*;
@@ -14,13 +14,6 @@ use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
 
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);
-
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("layout result must exist")
-        .rect()
-}
 
 #[test]
 fn reactive_children_in_sized_container_only_relayouts_subtree() {

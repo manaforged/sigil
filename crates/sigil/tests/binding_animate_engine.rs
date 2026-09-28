@@ -10,33 +10,23 @@
     clippy::items_after_statements
 )]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
 use sigil::hal::Size;
-use sigil::kernel::{Cx, IntoNode, NodeId, TextContent, container};
+use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::reactive::Runtime;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
-}
+use widget_support::compute;
 
 const DT_60HZ: f32 = 1.0 / 60.0;
 const OPACITY_BASE: u16 = 5_000;
 const OPACITY_HOVER: u16 = 10_000;
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[expect(
     clippy::cast_possible_truncation,
@@ -67,7 +57,7 @@ fn first_rect_opacity(cx: &Cx, root: NodeId) -> u16 {
 
 fn build_animated_node(cx: &mut Cx) -> NodeId {
     static BASE: &[StyleAtom] = &[
-        StyleAtom::BackgroundThemeRef("surface"),
+        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
         StyleAtom::Opacity(OPACITY_BASE),
         StyleAtom::Transition(presets::DEFAULT),
     ];
@@ -91,7 +81,7 @@ fn engine_reads_animator_signal_over_ticks() {
         MotionPrefs::set(false);
         let mut cx = Cx::new_root();
         let root = build_animated_node(&mut cx);
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let frame0 = first_rect_opacity(&cx, root);
         assert_eq!(
@@ -155,14 +145,14 @@ fn engine_falls_back_to_literal_when_no_animator() {
             MotionPrefs::set(false);
             let mut cx = Cx::new_root();
             static NO_TRANSITION: &[StyleAtom] = &[
-                StyleAtom::BackgroundThemeRef("surface"),
+                StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
                 StyleAtom::Opacity(OPACITY_BASE),
             ];
             let root = container()
                 .class(NO_TRANSITION)
                 .layout(LayoutStyle::block().fixed_size(64.0, 32.0))
                 .build(&mut cx);
-            compute(&mut cx, root);
+            compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
             let opacity = first_rect_opacity(&cx, root);
             assert_eq!(

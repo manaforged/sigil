@@ -9,18 +9,19 @@
     clippy::cast_precision_loss
 )]
 
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::ime_event;
 use sigil::kernel::{NodeType, TextContent};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::style::TextStyle;
+use widget_support::{compute, find_text_node};
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
 struct StubGeometry;
 
@@ -71,7 +72,7 @@ fn text_field_preedit_displays_inline() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -97,7 +98,7 @@ fn text_field_commit_writes_value_and_clears_preedit() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -129,8 +130,8 @@ fn text_field_preedit_cancelled_on_focus_loss() {
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
-        let _ = compute(&mut cx, other);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        let _ = compute(&mut cx, other, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -160,7 +161,7 @@ fn text_field_disabling_mid_composition_clears_preedit_immediately() {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).disabled(disabled));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -189,7 +190,7 @@ fn text_field_disabled_mid_composition_ignores_commit() {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).disabled(disabled));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -216,7 +217,7 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
         let mut builder = text_field(value);
         let scroll = builder.scroll_offset();
         let root = cx.add(builder);
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -248,18 +249,6 @@ fn text_field_ime_caret_anchor_accounts_for_horizontal_scroll() {
     });
 }
 
-const fn ime_event(event: ImeEvent) -> ShellEvent {
-    ShellEvent::Ime(event)
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(320.0, 120.0))
-        .expect("layout computes");
-    layout
-}
-
 fn displayed_text(cx: &Cx, root: NodeId) -> String {
     let text_node = find_text_node(cx, root).expect("field has a text node");
     let Some(node) = cx.get(text_node) else {
@@ -276,16 +265,6 @@ fn displayed_text(cx: &Cx, root: NodeId) -> String {
         } => text.clone(),
         _ => String::new(),
     }
-}
-
-fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
-    let mut found = None;
-    cx.visit_preorder(root, |id, node| {
-        if found.is_none() && matches!(node.kind, NodeType::Text { .. }) {
-            found = Some(id);
-        }
-    });
-    found
 }
 
 fn arrow_left() -> ShellEvent {
@@ -316,7 +295,7 @@ fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
         let value = signal(String::from("a\u{e9}"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -333,6 +312,24 @@ fn text_field_multibyte_backspace_during_preedit_does_not_panic() {
             value.get(),
             "\u{e9}",
             "backspace must land on the shrunk buffer"
+        );
+    });
+}
+
+#[test]
+fn text_field_publishes_the_ime_anchor_before_composition_starts() {
+    sigil::reactive::Runtime::scope("text-field-ime-anchor-idle", || {
+        set_text_geometry(std::rc::Rc::new(StubGeometry));
+        let value = signal(String::from("abcd"));
+        let mut cx = Cx::new_root();
+        let root = cx.add(text_field(value));
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        let mut router = EventRouter::new();
+        router.set_focus(&mut cx, Some(root));
+        let anchor = router.ime_caret_rect(&cx, &layout);
+        assert!(
+            anchor.is_some(),
+            "the candidate window needs the caret before the first keystroke"
         );
     });
 }

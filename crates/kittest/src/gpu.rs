@@ -1,11 +1,12 @@
 use std::sync::{OnceLock, mpsc};
 
 use sigil::hal::Color;
-use sigil::renderer::{CommandScene, OffscreenTarget, RendererError, WgpuRenderer};
+use sigil::renderer::{OffscreenTarget, RendererError, WgpuRenderer};
+use sigil::scene::CommandScene;
 
 use crate::{Error, extent_f32};
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
 pub type Gpu = (wgpu::Device, wgpu::Queue);
@@ -85,6 +86,39 @@ fn open_device() -> Result<(wgpu::Adapter, Gpu), Error> {
     }
 }
 
+pub struct Capture {
+    pub viewport: (f32, f32),
+    pub size_px: [u32; 2],
+    pub scale: f32,
+    pub clear: Color,
+}
+
+pub fn render_capture(
+    renderer: &mut WgpuRenderer,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    scene: &CommandScene,
+    capture: &Capture,
+) -> Result<wgpu::Texture, Error> {
+    let [width, height] = capture.size_px;
+    let texture = create_capture_texture(device, width, height);
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    renderer
+        .render_command_scene_offscreen(
+            OffscreenTarget {
+                device,
+                queue,
+                view: &view,
+                format: FORMAT,
+                viewport: capture.viewport,
+                scale: capture.scale,
+            },
+            scene,
+            capture.clear,
+        )
+        .map_err(|err| Error::Render(err.to_string()))?;
+    Ok(texture)
+}
+
 pub fn render_scene_to_image(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -93,36 +127,21 @@ pub fn render_scene_to_image(
     size_px: [u32; 2],
 ) -> Result<image::RgbaImage, Error> {
     let [width, height] = size_px;
-    let texture = create_capture_texture(device, width, height);
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let clear = Color {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
+    let mut renderer = WgpuRenderer::new().map_err(|err| Error::Render(err.to_string()))?;
+    let capture = Capture {
+        viewport,
+        size_px,
+        scale: extent_f32(width) / viewport.0,
+        clear: Color::rgba(0.0, 0.0, 0.0, 1.0),
     };
-    let scale = extent_f32(width) / viewport.0;
-    WgpuRenderer::new()
-        .map_err(|err| Error::Render(err.to_string()))?
-        .render_command_scene_offscreen(
-            OffscreenTarget {
-                device,
-                queue,
-                view: &view,
-                format: FORMAT,
-                viewport,
-                scale,
-            },
-            scene,
-            clear,
-        )
-        .map_err(|err| Error::Render(err.to_string()))?;
+    let texture = render_capture(&mut renderer, (device, queue), scene, &capture)?;
     let raw = read_pixels(device, queue, &texture, width, height)?;
     image::RgbaImage::from_raw(width, height, raw)
         .ok_or_else(|| Error::Readback("pixel buffer does not match the image size".to_owned()))
 }
 
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
+#[must_use]
+pub fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("visual-golden capture"),
         size: wgpu::Extent3d {
@@ -137,6 +156,16 @@ fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgp
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
         view_formats: &[],
     })
+}
+
+#[must_use]
+pub fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
+    let start =
+        usize::try_from((y * width + x) * BYTES_PER_PIXEL).expect("pixel offset fits usize");
+    pixels
+        .get(start..start + 4)
+        .and_then(|px| <[u8; 4]>::try_from(px).ok())
+        .expect("pixel inside the readback")
 }
 
 fn readback_error(err: impl std::fmt::Display) -> Error {

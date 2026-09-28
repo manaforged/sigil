@@ -9,6 +9,8 @@ use crate::layout::{LayoutEngine, LayoutError, LayoutResult, TextGeometry, TextM
 use crate::style::Theme;
 
 use super::cell_text::CellGeometry;
+#[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+mod hot;
 mod perform;
 use super::host_env::{EnvGuard, HostEnv};
 use crate::scene::{CommandScene, emit_scene_clipped};
@@ -28,6 +30,10 @@ pub struct Host {
     visual_transforms: bool,
     hits: HitTestCache,
     env: HostEnv,
+    #[cfg(feature = "dialog")]
+    dialogs: Vec<super::dialog::layer::Mounted>,
+    #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+    hot: Option<hot::HotRoot>,
 }
 
 pub(crate) fn surface_holes(cx: &Cx, root: NodeId) -> Vec<(u64, Rect)> {
@@ -94,6 +100,10 @@ impl Host {
             visual_transforms,
             hits: HitTestCache::default(),
             env,
+            #[cfg(feature = "dialog")]
+            dialogs: Vec::new(),
+            #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+            hot: None,
         }
     }
 
@@ -119,10 +129,28 @@ impl Host {
     }
 
     pub fn build(&mut self, tree: impl FnOnce(&mut Cx) -> NodeId) {
-        self.mount(tree);
+        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        self.forget_hot();
+        self.replace_root(tree);
     }
 
     pub fn mount(&mut self, tree: impl crate::app::TreeRoot) {
+        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        self.forget_hot();
+        self.replace_root(|cx| tree.install(cx));
+    }
+
+    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    pub(crate) fn mount_app(&mut self, tree: impl crate::app::TreeRoot) {
+        super::tree_root::sealed::Sealed::mount_into(tree, self);
+    }
+
+    #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+    fn forget_hot(&mut self) {
+        self.hot = None;
+    }
+
+    fn replace_root(&mut self, install: impl FnOnce(&mut Cx) -> NodeId) {
         let _env = self.enter();
         let theme = self
             .root
@@ -131,12 +159,17 @@ impl Host {
         if let Some(root) = self.root.take() {
             self.cx.remove(root);
         }
-        self.root = Some(tree.install(&mut self.cx));
+        self.root = Some(install(&mut self.cx));
         if let Some(theme) = theme {
             self.attach_theme(theme);
         }
         self.apply_pending_theme();
         Runtime::mark_frame_dirty();
+    }
+
+    #[cfg(feature = "dialog")]
+    pub(crate) fn sync_dialogs(&mut self) {
+        super::dialog::layer::sync(&mut self.cx, self.root, &mut self.dialogs);
     }
 
     fn attach_theme(&mut self, theme: Theme) {
@@ -187,17 +220,6 @@ impl Host {
             router.route(&mut self.cx, &self.layout, event);
         }
         crate::reactive::run_dispatch_deferred();
-    }
-
-    pub fn route_all(
-        &mut self,
-        router: &mut EventRouter,
-        events: impl IntoIterator<Item = ShellEvent>,
-    ) {
-        let _env = self.enter();
-        for event in events {
-            self.route(router, event);
-        }
     }
 
     pub fn apply_focus_requests(&mut self, router: &mut EventRouter) {

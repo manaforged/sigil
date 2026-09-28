@@ -4,47 +4,17 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::{key_down, pointer_down};
+use sigil::hal::PhysicalKey;
 use sigil::prelude::*;
+use widget_support::compute;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
-    layout
-}
-
-fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
-
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
-}
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 fn modal_dialog(cx: &Cx, root: NodeId) -> NodeId {
     cx.nth_child(root, 1).expect("modal dialog child")
@@ -60,7 +30,7 @@ fn modal_width_sizes_the_dialog_not_the_overlay() {
                 .layout(LayoutStyle::block().fixed_size(640.0, 480.0))
                 .child(modal(show).width(360.0).height(280.0).title("Compose")),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let modal_root = cx.nth_child(root, 0).expect("modal root");
         let dialog = modal_dialog(&cx, modal_root);
         let overlay = layout.result(modal_root).expect("overlay").rect();
@@ -98,7 +68,7 @@ fn modal_open_pushes_focus_scope() {
                 )
                 .child(modal(show)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let modal_root = cx.nth_child(root, 1).expect("modal root");
         let dialog = modal_dialog(&cx, modal_root);
 
@@ -128,7 +98,7 @@ fn sheet_open_pushes_the_same_focus_scope_as_modal() {
                 )
                 .child(sheet(show).title("Filters").close_button(false)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let sheet_root = cx.nth_child(root, 1).expect("sheet root");
         let dialog = modal_dialog(&cx, sheet_root);
         let node = cx.get(dialog).expect("dialog");
@@ -159,7 +129,7 @@ fn dismissed_modal_releases_focus_trap() {
                 )
                 .child(modal(show)),
         );
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let outside = cx.nth_child(root, 0).expect("outside focusable");
         let modal_root = cx.nth_child(root, 1).expect("modal root");
         let dialog = modal_dialog(&cx, modal_root);
@@ -187,7 +157,7 @@ fn escape_closes_modal_when_enabled_default() {
         let mut cx = Cx::new_root();
         let show = signal(true);
         let root = cx.add(modal(show));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let dialog = modal_dialog(&cx, root);
 
         let mut router = EventRouter::new();
@@ -208,7 +178,7 @@ fn backdrop_click_closes_when_opt_in() {
                 .dismiss_on_backdrop(true)
                 .child(container().layout(LayoutStyle::block().fixed_size(80.0, 24.0))),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         let dialog = modal_dialog(&cx, root);
@@ -243,7 +213,7 @@ fn three_modal_stack_escape_pops_one_at_a_time() {
                 .child(modal(second).title("Second"))
                 .child(modal(third).title("Third")),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let top_root = cx.nth_child(root, 2).expect("third modal root");
         let top_dialog = modal_dialog(&cx, top_root);
 

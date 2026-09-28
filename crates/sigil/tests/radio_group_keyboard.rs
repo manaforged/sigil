@@ -5,23 +5,14 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::shadow_unrelated)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
+use widget_support::compute;
 
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(320.0, 240.0))
-        .expect("layout");
-    layout
-}
+const VIEWPORT: Size = Size::fixed(320.0, 240.0);
 
 fn press(
     router: &mut EventRouter,
@@ -57,7 +48,7 @@ fn arrows_move_selection_with_wraparound() {
         let selected = signal(String::from("a"));
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
 
@@ -106,7 +97,7 @@ fn checked_row_shows_focus_ring_only_while_group_focused() {
         let selected = signal(String::from("b"));
         let mut cx = Cx::new_root();
         let root = cx.add(three_option_group(selected));
-        let _layout = compute(&mut cx, root);
+        let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         let checked_row = cx

@@ -65,6 +65,8 @@ allow = [
     # library use only; a downstream consumer's proprietary code is not contaminated by
     # MPL-2.0 linkage per MPL-2.0 §3.3).
     "MPL-2.0",
+    # SIL Open Font License: the bundled fonts under assets/text/fonts.
+    "OFL-1.1",
     "Unicode-3.0",
     "Zlib",
 ]
@@ -102,6 +104,7 @@ deny = []
 # duplicated version EXCEPT the newest, so any additional new version still
 # fails the gate.
 skip = [
+    { crate = "rustc-hash@1.1.0", reason = "naga 30 pins 1.1; dioxus-core 0.7 under the opt-in hot feature uses 2.x" },
     # wgpu 30 uses hashbrown 0.15 (via gpu-descriptor) AND 0.16 (via naga,
     # wgpu-core, wgpu-hal, gpu-allocator). All in the wgpu dep tree, no
     # workaround available.

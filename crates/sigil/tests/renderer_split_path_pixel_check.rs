@@ -12,19 +12,14 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::hal::Color;
-use sigil::renderer::{
-    CommandScene, CornerRadii, OffscreenTarget, SceneBuilder, SceneRectStyle, ScreenSubmission,
-    WgpuRenderer, WorldSubmission,
-};
+use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
+use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
 use sigil::style::Rgba8;
 
 #[path = "renderer_split_path_pixel_check/support.rs"]
 mod support;
 
-use support::{
-    FORMAT, create_capture_texture, create_depth_texture, linear_to_srgb_u8, pixel_rgba,
-    pre_clear_texture, read_pixels, shared_device,
-};
+use support::{FORMAT, create_capture_texture, pixel_rgba, read_pixels, shared_device};
 
 const PHYS_W: u32 = 1280;
 const PHYS_H: u32 = 400;
@@ -35,15 +30,6 @@ const RED_RECT_Y: f32 = 100.0;
 const RED_RECT_W: f32 = 480.0;
 const RED_RECT_H: f32 = 200.0;
 
-const fn identity_4x4() -> [[f32; 4]; 4] {
-    [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0],
-    ]
-}
-
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
 fn assert_submit_screen_renders_into_offscreen() {
@@ -52,7 +38,7 @@ fn assert_submit_screen_renders_into_offscreen() {
         return;
     };
 
-    let texture = create_capture_texture(&device, PHYS_W, PHYS_H, "screen-target");
+    let texture = create_capture_texture(&device, PHYS_W, PHYS_H);
     let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
     let scene = build_red_rect_scene();
 
@@ -91,9 +77,9 @@ fn assert_renderer_reusable_across_targets() {
     let (scene_a, vp_a, clear_a) = sigil::renderer::scenes::gradient();
     let (scene_b, vp_b, clear_b) = sigil::renderer::scenes::pattern();
 
-    let tex_a = create_capture_texture(&device, vp_a.0 as u32, vp_a.1 as u32, "reuse-a");
+    let tex_a = create_capture_texture(&device, vp_a.0 as u32, vp_a.1 as u32);
     let view_a = tex_a.create_view(&wgpu::TextureViewDescriptor::default());
-    let tex_b = create_capture_texture(&device, vp_b.0 as u32, vp_b.1 as u32, "reuse-b");
+    let tex_b = create_capture_texture(&device, vp_b.0 as u32, vp_b.1 as u32);
     let view_b = tex_b.create_view(&wgpu::TextureViewDescriptor::default());
 
     let mut renderer = WgpuRenderer::new().expect("WgpuRenderer::new");
@@ -148,9 +134,9 @@ fn assert_deprecated_offscreen_forwards() {
     let scene = build_red_rect_scene();
     let clear = Color::rgba(0.0, 0.0, 0.0, 1.0);
 
-    let tex_dep = create_capture_texture(&device, PHYS_W, PHYS_H, "deprecated-target");
+    let tex_dep = create_capture_texture(&device, PHYS_W, PHYS_H);
     let view_dep = tex_dep.create_view(&wgpu::TextureViewDescriptor::default());
-    let tex_new = create_capture_texture(&device, PHYS_W, PHYS_H, "new-target");
+    let tex_new = create_capture_texture(&device, PHYS_W, PHYS_H);
     let view_new = tex_new.create_view(&wgpu::TextureViewDescriptor::default());
 
     WgpuRenderer::new()
@@ -188,44 +174,6 @@ fn assert_deprecated_offscreen_forwards() {
     let pix_dep = read_pixels(&device, &queue, &tex_dep, PHYS_W, PHYS_H).expect("sigil-kittest");
     let pix_new = read_pixels(&device, &queue, &tex_new, PHYS_W, PHYS_H).expect("sigil-kittest");
     assert_bytes_near_identical(&pix_dep, &pix_new, 2);
-}
-
-#[test]
-#[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
-fn assert_submit_world_stub_returns_ok() {
-    let Some((device, queue)) = shared_device().expect("sigil-kittest").cloned() else {
-        println!("no adapter — skipping split_path_pixel_check");
-        return;
-    };
-
-    let scene = SceneBuilder::new().finish();
-    let pre_clear = Color::rgba(0.3, 0.0, 0.5, 1.0);
-
-    let tex_world = create_capture_texture(&device, PHYS_W, PHYS_H, "world-target");
-    let view_world = tex_world.create_view(&wgpu::TextureViewDescriptor::default());
-    pre_clear_texture(&device, &queue, &view_world, pre_clear);
-
-    let depth_tex = create_depth_texture(&device, PHYS_W, PHYS_H);
-    let depth_view = depth_tex.create_view(&wgpu::TextureViewDescriptor::default());
-
-    let result = WgpuRenderer::new()
-        .expect("WgpuRenderer::new")
-        .submit_world(
-            &WorldSubmission {
-                device: &device,
-                queue: &queue,
-                view: &view_world,
-                format: FORMAT,
-                depth: &depth_view,
-                view_proj: identity_4x4(),
-                viewport: VIEWPORT,
-            },
-            &scene,
-        );
-    assert!(result.is_ok(), "submit_world stub returned Err: {result:?}");
-
-    let pixels = read_pixels(&device, &queue, &tex_world, PHYS_W, PHYS_H).expect("sigil-kittest");
-    assert_stub_left_pre_clear_intact(&pixels, pre_clear);
 }
 
 fn build_red_rect_scene() -> CommandScene {
@@ -312,23 +260,4 @@ fn assert_bytes_near_identical(deprecated: &[u8], new_api: &[u8], tol: u8) {
         deprecated[mismatches[0]],
         new_api[mismatches[0]],
     );
-}
-
-fn assert_stub_left_pre_clear_intact(pixels: &[u8], pre_clear: Color) {
-    let exp_r = linear_to_srgb_u8(pre_clear.r);
-    let exp_g = linear_to_srgb_u8(pre_clear.g);
-    let exp_b = linear_to_srgb_u8(pre_clear.b);
-    for row in 0..4_u32 {
-        for col in 0..4_u32 {
-            let x = 50 + col * 300;
-            let y = 50 + row * 80;
-            let [r, g, b, _] = pixel_rgba(pixels, PHYS_W, x, y);
-            assert!(
-                r.abs_diff(exp_r) <= 20 && g.abs_diff(exp_g) <= 20 && b.abs_diff(exp_b) <= 20,
-                "submit_world stub painted at ({x},{y}). \
-                 Expected pre-clear sRGB≈({exp_r},{exp_g},{exp_b}), got ({r},{g},{b}). \
-                 The stub must return Ok without issuing any draw commands.",
-            );
-        }
-    }
 }

@@ -31,13 +31,19 @@ pub(crate) fn enabled() -> bool {
     state() == ON
 }
 
-#[cfg(any(feature = "inspect", all(test, feature = "terminal")))]
+#[cfg(any(
+    all(feature = "inspect", any(feature = "desktop", feature = "terminal")),
+    all(test, feature = "terminal")
+))]
 pub(crate) fn set(on: bool) {
     STATE.store(if on { ON } else { OFF }, Ordering::Relaxed);
     if on {
         profile::enable();
     }
 }
+
+#[cfg(all(test, feature = "terminal"))]
+pub(crate) static TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 #[cfg(feature = "terminal")]
 pub(crate) fn take_state_change() -> bool {
@@ -58,12 +64,16 @@ pub(crate) fn compact(frame: &Frame) -> String {
     #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
     let wall = frame.wall_ns as f64 / 1_000_000.0;
     let mut line = format!("f{} {} {wall:.1}ms", frame.index, frame.cause);
+    if let Some(backend) = frame.backend {
+        let _ = write!(line, " [{backend}]");
+    }
     for (name, ns) in frame.phases.iter().take(4).copied() {
         #[allow(clippy::cast_precision_loss, reason = "ns → ms display only")]
         let ms = ns as f64 / 1_000_000.0;
         let _ = write!(line, " {name}={ms:.1}");
     }
-    let nodes = frame.counter("tui.nodes") + frame.counter("scene.cmds");
+    let nodes = frame.counter(crate::profile::Counter::TuiNodes)
+        + frame.counter(crate::profile::Counter::SceneCmds);
     if nodes > 0 {
         let _ = write!(line, " nodes={nodes}");
     }

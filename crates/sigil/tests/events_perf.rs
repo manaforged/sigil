@@ -4,13 +4,17 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
+
+use sigil_kittest::FixedMeasure;
 use std::cell::Cell;
 use std::rc::Rc;
 
+use input::{key_down, pointer_down, pointer_move, pointer_up};
 use sigil::events::prelude::*;
 use sigil::hal::{
-    Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, MouseButton, MouseButtons, PhysicalKey,
-    Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
+    Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, ShellEvent,
 };
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
@@ -172,7 +176,7 @@ fn deepest_child(cx: &Cx, root: NodeId) -> NodeId {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     layout.compute(cx, root, Size::fixed(240.0, 240.0)).unwrap();
     layout
 }
@@ -198,53 +202,6 @@ fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
         })
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
-}
-
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
-}
-
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Up,
-    }))
-}
-
-fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
-
 fn ctrl_s() -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: LogicalKey::character("s"),
@@ -254,12 +211,4 @@ fn ctrl_s() -> ShellEvent {
         phase: KeyPhase::Down,
         text: None,
     }))
-}
-
-struct ZeroTextMeasure;
-
-impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
-    }
 }

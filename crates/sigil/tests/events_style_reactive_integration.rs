@@ -4,6 +4,11 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+#[path = "layout_stub/mod.rs"]
+mod stub;
+use sigil_kittest::FixedMeasure;
+use stub::first_child;
+
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -14,10 +19,15 @@ use sigil::hal::{
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{NodeStyleExt, StyleAtom, StyleBinding};
 
-static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("surface")];
-static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef("accent")];
+static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Surface,
+))];
+static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
+    Token::Accent,
+))];
 
 #[test]
 fn pointer_move_drives_style_reactive_without_allocating() {
@@ -71,15 +81,11 @@ fn pointer_move_drives_style_reactive_without_allocating() {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(100.0, 100.0))
         .expect("layout computes");
     layout
-}
-
-fn first_child(cx: &Cx, root: NodeId) -> NodeId {
-    cx.get(root).unwrap().children().first().copied().unwrap()
 }
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
@@ -101,12 +107,4 @@ const fn pointer_move(x: f32, y: f32) -> ShellEvent {
         modifiers: ModifiersState::empty(),
         phase: PointerPhase::Move,
     }))
-}
-
-struct ZeroTextMeasure;
-
-impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
-    }
 }

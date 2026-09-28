@@ -4,16 +4,13 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+use sigil::scene::emit_scene;
+use sigil_kittest::stub_text_measure;
+use widget_support::rect_colors;
 
 #[test]
 fn panel_has_generic_container_role() {
@@ -30,13 +27,13 @@ fn panel_elevation_zero_emits_surface_color() {
     sigil::reactive::Runtime::scope("sigil-panel-elevation-0", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().elevation(0));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let colors = scene_rect_colors(&cx, root);
+        let colors = rect_colors(&cx, root);
         assert!(
             colors.contains(&theme.surface),
             "elevation 0 should emit surface color"
@@ -49,13 +46,13 @@ fn panel_elevation_one_emits_surface_hover_color() {
     sigil::reactive::Runtime::scope("sigil-panel-elevation-1", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().elevation(1));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let colors = scene_rect_colors(&cx, root);
+        let colors = rect_colors(&cx, root);
         assert!(
             colors.contains(&theme.surface_hover),
             "elevation 1 should emit surface-hover color"
@@ -68,7 +65,7 @@ fn panel_with_title_renders_text() {
     sigil::reactive::Runtime::scope("sigil-panel-title", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().title("Inventory"));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
@@ -85,7 +82,7 @@ fn panel_without_title_emits_no_title_text() {
     sigil::reactive::Runtime::scope("sigil-panel-no-title", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
@@ -102,7 +99,7 @@ fn panel_with_child_label_renders_child_text() {
     sigil::reactive::Runtime::scope("sigil-panel-child", || {
         let mut cx = Cx::new_root();
         let root = cx.add(panel().title("Stats").child(label("Gold: 42")));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
@@ -110,17 +107,6 @@ fn panel_with_child_label_renders_child_text() {
         assert!(scene_has_text(&cx, root, "Stats"), "title in scene");
         assert!(scene_has_text(&cx, root, "Gold: 42"), "child text in scene");
     });
-}
-
-fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|command| match command {
-            SceneCommand::Rect(rect) => Some(rect.color),
-            _ => None,
-        })
-        .collect()
 }
 
 fn scene_has_text(cx: &Cx, root: NodeId, expected: &str) -> bool {

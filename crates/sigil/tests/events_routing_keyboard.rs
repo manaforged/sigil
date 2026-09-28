@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -17,7 +19,8 @@ use sigil::hal::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut};
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-use routing_helpers::{compute_layout, ctrl_s, key_event, route_event};
+use input::{ctrl_s, key_event};
+use routing_helpers::{compute_layout, route_event};
 
 #[test]
 fn shortcut_dispatch_invokes_action() {

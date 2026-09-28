@@ -1,4 +1,4 @@
-#![allow(clippy::redundant_pub_crate)]
+#![allow(clippy::redundant_pub_crate, dead_code)]
 
 use std::error::Error;
 use std::fmt;
@@ -8,7 +8,7 @@ use sigil::hal::{PhysicalSize, Shell, ShellEvent};
 #[derive(Default)]
 pub(crate) struct MockShell {
     events: Vec<ShellEvent>,
-    next_window: u64,
+    pub(crate) created: Vec<(String, PhysicalSize)>,
 }
 
 impl MockShell {
@@ -35,7 +35,7 @@ impl Error for MockShellError {}
 impl Shell for MockShell {
     type Error = MockShellError;
     type Waker = ();
-    type Window = u64;
+    type Window = usize;
 
     fn waker(&self) -> Self::Waker {}
 
@@ -45,12 +45,11 @@ impl Shell for MockShell {
 
     fn create_window(
         &mut self,
-        _title: &str,
-        _initial_size: PhysicalSize,
+        title: &str,
+        initial_size: PhysicalSize,
     ) -> Result<Self::Window, Self::Error> {
-        let id = self.next_window;
-        self.next_window = self.next_window.wrapping_add(1);
-        Ok(id)
+        self.created.push((title.to_owned(), initial_size));
+        Ok(self.created.len() - 1)
     }
 
     fn drain_events(&mut self) -> std::vec::IntoIter<ShellEvent> {

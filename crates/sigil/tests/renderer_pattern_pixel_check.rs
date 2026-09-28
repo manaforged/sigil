@@ -9,15 +9,13 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CornerRadii, OffscreenTarget, PatternKind, SceneBuilder, ScenePatternStyle, WgpuRenderer,
-};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::{CornerRadii, PatternKind, SceneBuilder, ScenePatternStyle};
 use sigil::style::Rgba8;
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
 use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
 const VIEWPORT: (f32, f32) = (1200.0, 400.0);
 
 const SX: f32 = 80.0;
@@ -45,7 +43,7 @@ fn pattern_pixels_match_slash_and_checker_contracts() {
     assert_checker_colour_sanity(&pixels, phys_w);
 }
 
-fn build_pattern_scene() -> sigil::renderer::CommandScene {
+fn build_pattern_scene() -> sigil::scene::CommandScene {
     let slash = PatternKind::Slash {
         color: Rgba8 {
             r: 255,
@@ -208,11 +206,6 @@ fn pixel_r(pixels: &[u8], width: u32, x: u32, y: u32) -> u8 {
     pixel_rgba(pixels, width, x, y)[0]
 }
 
-fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
-    let b = ((y * width + x) * BYTES_PER_PIXEL) as usize;
-    [pixels[b], pixels[b + 1], pixels[b + 2], pixels[b + 3]]
-}
-
 const fn is_reddish(rgba: [u8; 4]) -> bool {
     rgba[0] > 180 && rgba[1] < 120
 }
@@ -228,21 +221,4 @@ const fn is_reddish_tight(rgba: [u8; 4]) -> bool {
 
 const fn is_whitish(rgba: [u8; 4]) -> bool {
     rgba[0] > 200 && rgba[1] > 200 && rgba[2] > 200
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("pattern-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

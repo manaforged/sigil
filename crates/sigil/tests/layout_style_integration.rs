@@ -13,7 +13,7 @@ use sigil::layout::prelude::*;
 use sigil::style::NodeStyleExt;
 use sigil::style::{TextLineHeight, TextStyle};
 
-use stub::stub_engine;
+use stub::{first_child, layout_rect, stub_engine};
 
 #[test]
 fn p_4_applies_sixteen_px_padding() {
@@ -117,17 +117,6 @@ fn typography_atoms_drive_text_measurement() {
     let rect = layout_rect(&cx, root);
     assert_eq!(rect.width, 27.0);
     assert_eq!(rect.height, 32.0);
-}
-
-fn first_child(cx: &Cx, root: NodeId) -> NodeId {
-    cx.get(root).unwrap().children().first().copied().unwrap()
-}
-
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("layout result exists")
-        .rect()
 }
 
 struct StyleAwareMeasure;

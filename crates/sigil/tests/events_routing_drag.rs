@@ -5,6 +5,8 @@
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 #![allow(clippy::float_cmp)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -16,7 +18,8 @@ use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
 
-use routing_helpers::{pointer_down, route_event};
+use input::pointer_down;
+use routing_helpers::route_event;
 
 const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
@@ -68,7 +71,7 @@ fn dragging_a_position_reactive_node_moves_its_box() {
         let card = *cx.get(root).unwrap().children().first().unwrap();
 
         let mut layout =
-            LayoutEngine::with_text_measure(Box::new(routing_helpers::ZeroTextMeasure));
+            LayoutEngine::with_text_measure(Box::new(sigil_kittest::FixedMeasure::default()));
         layout
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .unwrap();
@@ -113,5 +116,28 @@ fn dragging_a_position_reactive_node_moves_its_box() {
 
         let card_again = *cx.get(root).unwrap().children().first().unwrap();
         assert_eq!(card, card_again, "node identity stable across the drag");
+    });
+}
+
+#[test]
+fn window_blur_cancels_a_captured_drag() {
+    Runtime::scope("events_blur_cancel", || {
+        let ended = signal(Option::<PointerPhase>::None);
+        let mut cx = Cx::new_root();
+        let root = cx.add(
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(400.0, 300.0))
+                .child(
+                    container()
+                        .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
+                        .pointer_down(sigil::hal::PointerEvent::capture_pointer)
+                        .pointer_up(move |ev| ended.set(Some(ev.phase))),
+                ),
+        );
+        let layout = routing_helpers::compute_layout(&mut cx, root, 400.0, 300.0);
+        let mut router = EventRouter::new();
+        route_event(&mut router, &mut cx, &layout, pointer_down(20.0, 20.0));
+        route_event(&mut router, &mut cx, &layout, input::window_blur());
+        assert_eq!(ended.get(), Some(PointerPhase::Cancel));
     });
 }

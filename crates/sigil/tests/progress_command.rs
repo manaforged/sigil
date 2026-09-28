@@ -4,16 +4,12 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+use sigil_kittest::stub_text_measure;
+use widget_support::{assert_approx, rect_colors};
 
 #[test]
 fn progress_has_progress_indicator_role() {
@@ -60,13 +56,13 @@ fn progress_track_emits_border_strong_color() {
         let value = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let colors = scene_rect_colors(&cx, root);
+        let colors = rect_colors(&cx, root);
         assert!(
             colors.contains(&theme.gray.step(4)),
             "track should emit the muted gray-4 color"
@@ -80,13 +76,13 @@ fn progress_fill_emits_accent_color() {
         let value = signal(60.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(value, 100.0));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let colors = scene_rect_colors(&cx, root);
+        let colors = rect_colors(&cx, root);
         assert!(
             colors.contains(&theme.accent),
             "fill should emit the solid accent color"
@@ -100,34 +96,16 @@ fn progress_indeterminate_emits_accent_fill() {
         let phase = signal(0.5_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(progress(phase, 1.0).indeterminate());
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout computes");
 
         let theme = Theme::default();
-        let colors = scene_rect_colors(&cx, root);
+        let colors = rect_colors(&cx, root);
         assert!(
             colors.contains(&theme.accent),
             "indeterminate fill should emit the solid accent color"
         );
     });
-}
-
-fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|command| match command {
-            SceneCommand::Rect(rect) => Some(rect.color),
-            _ => None,
-        })
-        .collect()
-}
-
-fn assert_approx(actual: f32, expected: f32) {
-    assert!(
-        (actual - expected).abs() < 0.001,
-        "expected {expected}, got {actual}"
-    );
 }

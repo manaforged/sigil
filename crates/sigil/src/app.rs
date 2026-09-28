@@ -13,7 +13,7 @@ mod error;
 mod exit;
 mod frame;
 mod host_env;
-#[cfg(feature = "inspect")]
+#[cfg(all(feature = "inspect", any(feature = "desktop", feature = "terminal")))]
 pub(crate) mod inspect;
 #[cfg(feature = "desktop")]
 mod launch;
@@ -21,6 +21,8 @@ mod launch;
 pub mod menu;
 #[cfg(feature = "desktop")]
 pub mod open;
+#[cfg(any(feature = "desktop", feature = "terminal"))]
+pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]
 pub mod pty;
 #[cfg(feature = "scene")]
@@ -46,6 +48,8 @@ pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
 pub use cell_text::{CellWidth, cell_text_lines, cell_width, set_cell_width};
+#[cfg(feature = "terminal")]
+pub(crate) use config::FRAME_INTERVAL;
 pub use config::{AppConfig, PanicPolicy};
 pub use embed::{AccessibilityTree, Host};
 pub use error::{AppResult, Error, ErrorKind};

@@ -1,10 +1,11 @@
 #![allow(clippy::redundant_pub_crate, dead_code)]
 
+use sigil_kittest::FixedMeasure;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil::events::prelude::*;
-use sigil::hal::{KeyEventInit, Point, PointerEventInit, ScrollEventInit, Shell};
+use sigil::hal::Shell;
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
@@ -24,83 +25,11 @@ pub(crate) fn route_event(
 }
 
 pub(crate) fn compute_layout(cx: &mut Cx, root: NodeId, width: f32, height: f32) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(ZeroTextMeasure));
+    let mut layout = LayoutEngine::with_text_measure(Box::new(FixedMeasure::default()));
     layout
         .compute(cx, root, Size::fixed(width, height))
         .unwrap();
     layout
-}
-
-pub(crate) const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
-}
-
-pub(crate) const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
-}
-
-pub(crate) fn tab(shift: bool) -> ShellEvent {
-    let mut modifiers = ModifiersState::empty();
-    modifiers.set(ModifiersState::SHIFT, shift);
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: Key::Tab.into(),
-        physical: PhysicalKey::Tab,
-        modifiers,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
-
-pub(crate) fn ctrl_s() -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character("s"),
-        physical: PhysicalKey::KeyS,
-        modifiers: ModifiersState::CONTROL,
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
-
-pub(crate) fn key_event(key: Key, physical: PhysicalKey, phase: KeyPhase) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase,
-        text: None,
-    }))
-}
-
-pub(crate) const fn window_blur() -> ShellEvent {
-    ShellEvent::Window(sigil::hal::WindowEvent::Focused(false))
-}
-
-pub(crate) const fn scroll_lines(x: f32, y: f32, dy: f32) -> ShellEvent {
-    ShellEvent::Scroll(ScrollEvent::new(ScrollEventInit {
-        position: Point::new(x, y),
-        delta: ScrollDelta::Lines(Point::new(0.0, dy)),
-        modifiers: ModifiersState::empty(),
-        phase: ScrollPhase::Moved,
-    }))
 }
 
 pub(crate) fn abs_rect(x: f32, y: f32, width: f32, height: f32) -> LayoutStyle {
@@ -154,13 +83,5 @@ pub(crate) fn focusable_child(tab_index: Option<i32>) -> NodeBuilder {
         builder.tab_index(index)
     } else {
         builder
-    }
-}
-
-pub(crate) struct ZeroTextMeasure;
-
-impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
     }
 }

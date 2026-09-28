@@ -8,17 +8,10 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
-
-fn rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("rect")
-        .rect()
-}
 
 #[test]
 fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
@@ -45,8 +38,8 @@ fn column_with_text_and_container_with_text_child_does_not_collapse_text() {
         .compute(&mut cx, root, Size::fixed(600.0, 80.0))
         .expect("compute");
 
-    let first_rect = rect(&cx, first);
-    let inner_rect = rect(&cx, inner);
+    let first_rect = layout_rect(&cx, first);
+    let inner_rect = layout_rect(&cx, inner);
     assert_eq!(
         first_rect.height, 16.0,
         "text leaf must keep its intrinsic 16 height; got {}",
@@ -91,8 +84,8 @@ fn column_with_container_then_text_does_not_collapse_text() {
         .compute(&mut cx, root, Size::fixed(600.0, 80.0))
         .expect("compute");
 
-    let inner_rect = rect(&cx, inner);
-    let second_rect = rect(&cx, second);
+    let inner_rect = layout_rect(&cx, inner);
+    let second_rect = layout_rect(&cx, second);
     assert_eq!(inner_rect.height, 16.0);
     assert_eq!(second_rect.height, 16.0);
 }
@@ -122,8 +115,8 @@ fn column_with_text_and_empty_container_child_does_not_collapse_text() {
         .compute(&mut cx, root, Size::fixed(600.0, 80.0))
         .expect("compute");
 
-    let first_rect = rect(&cx, first);
-    let inner_rect = rect(&cx, inner);
+    let first_rect = layout_rect(&cx, first);
+    let inner_rect = layout_rect(&cx, inner);
     assert_eq!(
         first_rect.height, 16.0,
         "text leaf must keep its intrinsic 16 height even when sibling is an empty-tree container; got {}",

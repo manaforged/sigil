@@ -10,20 +10,20 @@
     clippy::cast_possible_truncation
 )]
 
-use sigil::hal::KeyEventInit;
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::type_char;
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::style::TextStyle;
+use sigil_kittest::stub_text_measure;
+use widget_support::find_text_node;
 
 const VIEWPORT: Size = Size::fixed(1000.0, 1000.0);
 const SPACER_H: f32 = 800.0;
-
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
 
 struct StubGeometry;
 impl TextGeometry for StubGeometry {
@@ -84,7 +84,7 @@ fn deep_text_field_glyphs_stay_in_field_after_typing() {
 
         let mut cx = Cx::new_root();
         let root = cx.add(tree);
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, VIEWPORT)
             .expect("initial layout");
@@ -140,16 +140,6 @@ fn field_text_field_root(cx: &Cx, root: NodeId) -> NodeId {
     cx.nth_child(root, 1).expect("field is the second child")
 }
 
-fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
-    let mut found = None;
-    cx.visit_preorder(root, |id, node| {
-        if found.is_none() && matches!(node.kind, NodeType::Text { .. }) {
-            found = Some(id);
-        }
-    });
-    found
-}
-
 fn attached_top(cx: &Cx, id: NodeId) -> f32 {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
@@ -157,15 +147,4 @@ fn attached_top(cx: &Cx, id: NodeId) -> f32 {
         .rect()
         .origin
         .y
-}
-
-fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.to_string().into()),
-    }))
 }

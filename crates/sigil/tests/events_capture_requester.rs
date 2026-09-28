@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -13,24 +15,12 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil::events::prelude::*;
-use sigil::hal::{Point, PointerEventInit};
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::reactive::Runtime;
 
-use routing_helpers::{compute_layout, pointer_down, pointer_move, route_event};
-
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Up,
-    }))
-}
+use input::{pointer_down, pointer_move, pointer_up};
+use routing_helpers::{compute_layout, route_event};
 
 #[test]
 fn capture_binds_to_the_requesting_ancestor_not_the_hit_leaf() {

@@ -9,21 +9,19 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::hal::{
-    KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEvent, PointerEventInit,
-    PointerKind, PointerPhase,
-};
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::{pointer_down, pointer_move, pointer_up, type_char};
+use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::style::TextStyle;
+use widget_support::compute;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
 struct StubGeometry;
 
@@ -73,7 +71,7 @@ fn text_field_undo_reverts_typing() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -93,7 +91,7 @@ fn text_field_redo_reapplies_undone_edit() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -113,7 +111,7 @@ fn text_field_select_all_then_type_replaces_buffer() {
         let value = signal(String::from("hello world"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -131,7 +129,7 @@ fn text_field_pointer_drag_selects_then_type_replaces() {
         let value = signal(String::from("hello world"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -154,7 +152,7 @@ fn text_field_external_write_resyncs_edit_buffer() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -182,61 +180,6 @@ fn text_field_external_write_resyncs_edit_buffer() {
             "backspace must edit the externally-written buffer, not the stale 'ab'"
         );
     });
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(320.0, 120.0))
-        .expect("layout computes");
-    layout
-}
-
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
-}
-
-const fn pointer_move(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Move,
-    }))
-}
-
-const fn pointer_up(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Up,
-    }))
-}
-
-fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.to_string().into()),
-    }))
 }
 
 fn ctrl_key(ch: &str, physical: PhysicalKey) -> ShellEvent {

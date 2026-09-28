@@ -9,10 +9,11 @@
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
+use sigil::style::{ColorKey, Token};
 use sigil::style::{Dimension, Px, StyleAtom, StyleBinding};
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
+    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
 };
 
 fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
@@ -48,15 +49,21 @@ fn fill_width_px(atoms: &[StyleAtom]) -> i16 {
 }
 
 fn has_warn_tone(atoms: &[StyleAtom]) -> bool {
-    atoms
-        .iter()
-        .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("warn-9")))
+    atoms.iter().any(|atom| {
+        matches!(
+            atom,
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Warn9))
+        )
+    })
 }
 
 fn has_muted_accent_tone(atoms: &[StyleAtom]) -> bool {
-    atoms
-        .iter()
-        .any(|atom| matches!(atom, StyleAtom::BackgroundThemeRef("accent-8")))
+    atoms.iter().any(|atom| {
+        matches!(
+            atom,
+            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent8))
+        )
+    })
 }
 
 #[test]
@@ -107,14 +114,6 @@ fn gauge_fill_tracks_signal() {
 
 const DELTA_PCT: f32 = 0.5;
 
-fn check(stem: &str, img: sigil_kittest::Rendered) {
-    let Some(img) = img.expect("sigil-kittest") else {
-        println!("no GPU adapter — skipping {stem}");
-        return;
-    };
-    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
-}
-
 #[test]
 fn gauge_full() {
     let img = render_widget_to_png_stub(
@@ -126,7 +125,7 @@ fn gauge_full() {
         [220, 40],
         (1.0, 1.0),
     );
-    check("gauge_full", img);
+    assert_rendered_matches_golden(img, &golden_path!("gauge_full"), DELTA_PCT);
 }
 
 #[test]
@@ -140,5 +139,5 @@ fn gauge_low_warn() {
         [220, 40],
         (1.0, 1.0),
     );
-    check("gauge_low_warn", img);
+    assert_rendered_matches_golden(img, &golden_path!("gauge_low_warn"), DELTA_PCT);
 }

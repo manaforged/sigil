@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -16,10 +18,8 @@ use sigil::events::prelude::*;
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-use routing_helpers::{
-    abs_rect, compute_layout, pointer_down, pointer_move, record, route_event, scroll_lines,
-    window_blur,
-};
+use input::{pointer_down, pointer_move, scroll_lines, window_blur};
+use routing_helpers::{abs_rect, compute_layout, record, route_event};
 
 #[test]
 fn pointer_down_hits_top_of_z_stack() {

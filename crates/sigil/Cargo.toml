@@ -3,14 +3,14 @@ name = "sigil-ui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
+license = "MIT AND OFL-1.1"
 repository.workspace = true
 authors.workspace = true
 description = "GPU UI in Rust. One widget tree, one entry: sigil::run opens a window or a terminal."
 readme = "README.md"
 keywords = ["gui", "ui", "widgets", "wgpu", "desktop"]
 categories = ["gui", "command-line-interface"]
-include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "benches/**", "examples/**"]
+include = ["src/**", "!src/**/*_tests.rs", "!src/**/tests.rs", "!src/**/*_tests/**", "/Cargo.toml", "/README.md", "/LICENSE-MIT", "assets/**", "benches/**", "examples/**"]
 autobenches = false
 
 [lib]
@@ -73,16 +73,18 @@ windows-core = { version = "0.62", default-features = false, features = ["std"] 
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 arboard = { workspace = true, optional = true }
 zed-font-kit = { workspace = true, optional = true }
+subsecond = { version = "0.7.10", optional = true }
+dioxus-devtools = { version = "0.7.10", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { workspace = true, features = ["rt"] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Clipboard", "Document", "Element", "HtmlCanvasElement", "Navigator", "Window", "console"] }
+web-sys = { version = "0.3", features = ["Clipboard", "CompositionEvent", "CssStyleDeclaration", "DomRect", "Document", "Element", "Event", "EventTarget", "FocusEvent", "HtmlCanvasElement", "HtmlElement", "HtmlTextAreaElement", "InputEvent", "KeyboardEvent", "KeyboardEventInit", "Navigator", "Node", "Window", "console"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 core-text = { version = "21", optional = true }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSAccessibility", "NSEvent", "NSWorkspace"] }
 
 [features]
 default = ["desktop"]
@@ -106,18 +108,20 @@ scene = [
 shell = ["dep:winit", "dep:accesskit_winit"]
 cpu = ["dep:softbuffer"]
 shaping-complex = ["dep:harfrust"]
-capture = ["scene"]
 render = ["scene"]
 clipboard = ["dep:arboard"]
 clipboard-image = ["clipboard", "arboard/image-data"]
-dialog = ["desktop", "dep:rfd"]
+dialog = []
+native-dialog = ["dialog", "desktop", "dep:rfd"]
 menu = ["desktop", "dep:muda", "dep:raw-window-handle"]
 tray = ["menu", "dep:tray-icon"]
 image-decode = ["dep:image", "dep:base64"]
 inspect = ["dep:base64"]
 kittest = []
+test-clock = []
 audio = ["dep:rodio"]
 pty = ["dep:portable-pty", "dep:vt100"]
+hot = ["dep:subsecond", "dep:dioxus-devtools"]
 terminal = ["dep:crossterm", "dep:rustix", "dep:signal-hook", "image-decode"]
 
 [dev-dependencies]
@@ -128,9 +132,14 @@ proptest = { workspace = true }
 taffy = "0.14"
 wgpu = { workspace = true }
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+accesskit_consumer = "0.39"
 allocation-counter = "0.8.1"
 sigil-kittest = { path = "../kittest" }
+sigil-ui = { path = ".", default-features = false, features = ["test-clock"] }
 criterion = { version = "0.8", features = ["html_reports"] }
 rayon = { workspace = true }
 
@@ -143,6 +152,12 @@ name = "visual_catalog"
 required-features = ["terminal", "desktop"]
 
 [[test]]
+name = "perf_gate"
+harness = false
+test = false
+required-features = ["terminal"]
+
+[[test]]
 name = "terminal_host"
 required-features = ["terminal"]
 
@@ -152,6 +167,10 @@ required-features = ["terminal"]
 
 [[test]]
 name = "markdown_terminal"
+required-features = ["terminal"]
+
+[[test]]
+name = "terminal_marks"
 required-features = ["terminal"]
 
 [[test]]
@@ -297,3 +316,7 @@ required-features = ["terminal", "desktop"]
 [[example]]
 name = "pomodoro-both"
 required-features = ["terminal", "desktop"]
+
+[[example]]
+name = "hot-counter"
+required-features = ["hot", "terminal", "desktop"]

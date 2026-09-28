@@ -48,9 +48,9 @@ fn arabic_alef_lam_ain_shapes_with_multiple_glyphs() {
         assert!(g.advance >= 0.0, "advances must be non-negative");
     }
     assert!(
-        run.bbox.w > 0.0,
+        run.width > 0.0,
         "shaped Arabic must have positive visual width, got {}",
-        run.bbox.w,
+        run.width,
     );
 }
 
@@ -107,22 +107,6 @@ fn arabic_via_shaper_dispatch_routes_through_harfrust() {
         assert_ne!(g.id, GlyphId(0));
     }
 }
-
-#[test]
-#[ignore = "G1.6 followup: needs NotoSansDevanagari fixture font (current fixtures cover Arabic + Hebrew only)."]
-fn devanagari_shapes_with_reordering() {}
-
-#[test]
-#[ignore = "G1.6 followup: needs NotoSansKhmer fixture font."]
-fn khmer_shapes_with_complex_reordering() {}
-
-#[test]
-#[ignore = "G1.6 followup: needs NotoSansThai fixture font."]
-fn thai_shapes_tone_marks_above_base() {}
-
-#[test]
-#[ignore = "G1.6 followup: needs NotoSansLao fixture font."]
-fn lao_shapes_tone_marks_above_base() {}
 
 #[test]
 fn empty_segment_returns_empty_run() {

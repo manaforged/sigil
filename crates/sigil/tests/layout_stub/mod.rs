@@ -1,21 +1,28 @@
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::TextContent;
-use sigil::layout::{LayoutEngine, TextMeasure};
+#![allow(dead_code)]
 
-struct StubMeasure;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::{LayoutEngine, LayoutResult};
+use sigil_kittest::CharMeasure;
 
-impl TextMeasure for StubMeasure {
-    #[allow(clippy::cast_precision_loss)]
-    fn measure(&self, source: &TextContent, _space: Size) -> LogicalSize {
-        let chars = match source {
-            TextContent::Static(v) => v.chars().count() as f32,
-            TextContent::Reactive(_) | TextContent::Compute(_) => 0.0,
-        };
-        LogicalSize::new(chars * 8.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 8.0,
+    line_height: 16.0,
+};
 
 #[allow(clippy::redundant_pub_crate)]
 pub(crate) fn stub_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
+}
+
+pub(crate) fn layout_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
+    cx.get(id)
+        .and_then(|node| node.get_extension::<LayoutResult>())
+        .expect("layout result exists")
+        .rect()
+}
+
+pub(crate) fn first_child(cx: &Cx, root: NodeId) -> NodeId {
+    cx.get(root)
+        .and_then(|node| node.children().first().copied())
+        .expect("root has a first child")
 }

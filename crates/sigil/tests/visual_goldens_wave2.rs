@@ -11,18 +11,10 @@ use sigil::prelude::*;
 use sigil::style::Size as ControlSize;
 
 use sigil_kittest::{
-    InteractionMode, assert_png_matches_golden, golden_path, render_widget_to_png_stub,
+    InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
 };
 
 const DELTA_PCT: f32 = 0.5;
-
-fn check(stem: &str, img: sigil_kittest::Rendered) {
-    let Some(img) = img.expect("sigil-kittest") else {
-        println!("no GPU adapter — skipping {stem}");
-        return;
-    };
-    assert_png_matches_golden(&img, &golden_path!(stem), DELTA_PCT);
-}
 
 #[test]
 fn icon_default() {
@@ -39,7 +31,7 @@ fn icon_default() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("icon_default", img);
+    assert_rendered_matches_golden(img, &golden_path!("icon_default"), DELTA_PCT);
 }
 
 #[test]
@@ -57,7 +49,7 @@ fn icon_primary_tone() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("icon_primary_tone", img);
+    assert_rendered_matches_golden(img, &golden_path!("icon_primary_tone"), DELTA_PCT);
 }
 
 #[test]
@@ -75,7 +67,7 @@ fn icon_error_tone() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("icon_error_tone", img);
+    assert_rendered_matches_golden(img, &golden_path!("icon_error_tone"), DELTA_PCT);
 }
 
 #[test]
@@ -93,7 +85,7 @@ fn dot_success() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("dot_success", img);
+    assert_rendered_matches_golden(img, &golden_path!("dot_success"), DELTA_PCT);
 }
 
 #[test]
@@ -111,7 +103,7 @@ fn dot_warn_default_size() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("dot_warn_default_size", img);
+    assert_rendered_matches_golden(img, &golden_path!("dot_warn_default_size"), DELTA_PCT);
 }
 
 #[test]
@@ -129,7 +121,7 @@ fn dot_error_wide() {
         [32, 32],
         (16.0, 16.0),
     );
-    check("dot_error_wide", img);
+    assert_rendered_matches_golden(img, &golden_path!("dot_error_wide"), DELTA_PCT);
 }
 
 #[test]
@@ -153,7 +145,11 @@ fn radio_group_three_options_first_selected() {
         [220, 120],
         (10.0, 14.0),
     );
-    check("radio_group_three_options_first_selected", img);
+    assert_rendered_matches_golden(
+        img,
+        &golden_path!("radio_group_three_options_first_selected"),
+        DELTA_PCT,
+    );
 }
 
 #[test]
@@ -177,7 +173,7 @@ fn radio_group_middle_selected() {
         [220, 120],
         (10.0, 42.0),
     );
-    check("radio_group_middle_selected", img);
+    assert_rendered_matches_golden(img, &golden_path!("radio_group_middle_selected"), DELTA_PCT);
 }
 
 #[test]
@@ -200,7 +196,7 @@ fn validated_field_no_error() {
         [200, 52],
         (10.0, 10.0),
     );
-    check("validated_field_no_error", img);
+    assert_rendered_matches_golden(img, &golden_path!("validated_field_no_error"), DELTA_PCT);
 }
 
 #[test]
@@ -223,5 +219,5 @@ fn validated_field_with_error() {
         [200, 80],
         (10.0, 10.0),
     );
-    check("validated_field_with_error", img);
+    assert_rendered_matches_golden(img, &golden_path!("validated_field_with_error"), DELTA_PCT);
 }

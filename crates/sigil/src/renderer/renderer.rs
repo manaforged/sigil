@@ -1,15 +1,17 @@
 mod submit;
 
-pub(crate) use submit::record_clear;
-pub use submit::{ScreenSubmission, WorldSubmission, submit_clear};
+pub use submit::ScreenSubmission;
+pub(crate) use submit::{record_clear, submit_clear};
 
-use submit::{acquire_frame, render_command_scene_surface, render_frame_surface};
+use submit::{acquire_frame, render_command_scene_surface};
 
 use crate::hal::{Color, PhysicalSize, Renderer};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::profile::gpu::snapshot;
 
 use crate::renderer::device_state::DeviceState;
+#[cfg(feature = "desktop")]
+use crate::renderer::device_state::ReadyState;
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
 use crate::renderer::layer_composite::LayerCompositePipeline;
@@ -58,6 +60,11 @@ impl WgpuRenderer {
         self.state.is_lost()
     }
 
+    #[cfg(feature = "desktop")]
+    pub(crate) fn backend_status(&self) -> Option<crate::profile::BackendStatus> {
+        self.state.ready().ok().map(ReadyState::backend_status)
+    }
+
     pub const fn set_transparent(&mut self, transparent: bool) {
         self.transparent = transparent;
     }
@@ -67,6 +74,7 @@ impl WgpuRenderer {
         self.transparent
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub const fn last_frame_stats(&self) -> FrameStats {
         self.last_frame_stats
@@ -87,6 +95,7 @@ impl WgpuRenderer {
         self.state.ready().ok().map(|ready| &ready.queue)
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn pipeline_cache_counts(&self) -> Option<(usize, usize, usize, usize, usize)> {
         self.state.ready().ok().map(|ready| {
@@ -100,6 +109,7 @@ impl WgpuRenderer {
         })
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn decoration_pipeline_cache_count(&self) -> Option<usize> {
         self.state
@@ -108,6 +118,7 @@ impl WgpuRenderer {
             .map(|ready| ready.decoration_pipelines.len())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     #[must_use]
     pub fn layer_pool_ready_for_tests(&self) -> bool {
         self.state
@@ -115,15 +126,18 @@ impl WgpuRenderer {
             .is_ok_and(|ready| ready.layer_pool.is_some())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn ensure_headless_for_tests(&mut self) -> Result<(), RendererError> {
         self.state.ensure_ready_headless().map(|_| ())
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn headless_device_for_tests()
     -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
         DeviceState::request_headless()
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub fn attach_headless_for_tests(
         &mut self,
         adapter: &wgpu::Adapter,
@@ -153,34 +167,6 @@ impl WgpuRenderer {
         surface.surface.configure(&ready.device, &surface.config);
         tracing::info!("GPU device rebuilt after loss");
         self.prepare_compositing(surface.config.format)
-    }
-
-    pub fn submit_world(
-        &mut self,
-        target: &WorldSubmission<'_>,
-        _scene: &CommandScene,
-    ) -> Result<(), RendererError> {
-        if target.viewport.0 <= 0.0 || target.viewport.1 <= 0.0 {
-            return Err(RendererError::InvalidViewport);
-        }
-        if !target.view_proj.iter().flatten().all(|f| f.is_finite()) {
-            return Err(RendererError::InvalidViewProj);
-        }
-        Ok(())
-    }
-
-    pub fn render_frame<F>(
-        &mut self,
-        surface: &mut WgpuSurface,
-        clear_color: Color,
-        draw: F,
-    ) -> Result<(), RendererError>
-    where
-        F: FnOnce(&wgpu::Device, &wgpu::Queue, &wgpu::TextureView),
-    {
-        self.recover_lost_device(surface)?;
-        let ready = self.state.ready()?;
-        render_frame_surface(ready, surface, clear_color, draw)
     }
 
     pub fn render_command_scene(

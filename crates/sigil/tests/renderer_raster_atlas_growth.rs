@@ -20,13 +20,14 @@ use windows_core as _;
 use zeno as _;
 
 use sigil::renderer::{
-    CommandScene, SceneBuilder, ScreenSubmission, TextTuning, WgpuRenderer, lock_global_text_state,
-    set_test_atlas_size_override, set_text_tuning, shape_glyph_run,
+    ScreenSubmission, TextTuning, WgpuRenderer, lock_global_text_state,
+    set_test_atlas_size_override, set_text_tuning,
 };
+use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 use sigil_kittest::gpu::read_pixels;
+use sigil_kittest::gpu::{FORMAT, create_capture_texture};
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
 const LOGICAL_W: f32 = 460.0;
@@ -41,11 +42,13 @@ const GROWTH_TEXT: &str = "The Quick Brown Fox Jumps 0123456789!?.,\n\
 #[test]
 fn growth_crossing_produces_correctly_placed_ink() {
     let _guard = lock_global_text_state();
-    let Some(mut ref_renderer) = try_headless_renderer() else {
+    let Some(mut ref_renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
+    else {
         println!("no adapter — skipping growth_crossing_produces_correctly_placed_ink");
         return;
     };
-    let Some(mut tiny_renderer) = try_headless_renderer() else {
+    let Some(mut tiny_renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
+    else {
         println!("no adapter — skipping growth_crossing_produces_correctly_placed_ink");
         return;
     };
@@ -79,11 +82,13 @@ const OVERFLOW_BANDS: u32 = 3;
 #[test]
 fn atlas_full_falls_back_to_vector_with_ink_throughout() {
     let _guard = lock_global_text_state();
-    let Some(mut vector_renderer) = try_headless_renderer() else {
+    let Some(mut vector_renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
+    else {
         println!("no adapter — skipping atlas_full_falls_back_to_vector_with_ink_throughout");
         return;
     };
-    let Some(mut mixed_renderer) = try_headless_renderer() else {
+    let Some(mut mixed_renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
+    else {
         println!("no adapter — skipping atlas_full_falls_back_to_vector_with_ink_throughout");
         return;
     };
@@ -242,25 +247,4 @@ fn build_text_scene(content: &str) -> CommandScene {
     let mut builder = SceneBuilder::new();
     builder.draw_glyph_run(run);
     builder.finish()
-}
-
-fn try_headless_renderer() -> Option<WgpuRenderer> {
-    sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("raster-atlas-growth capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

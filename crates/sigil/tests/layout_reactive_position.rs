@@ -8,18 +8,11 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::reactive::{Runtime, signal};
-
-fn rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("rect")
-        .rect()
-}
 
 #[test]
 fn position_reactive_tracks_signal_with_stable_identity() {
@@ -41,7 +34,7 @@ fn position_reactive_tracks_signal_with_stable_identity() {
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .expect("initial compute");
-        let r1 = rect(&cx, node);
+        let r1 = layout_rect(&cx, node);
         assert_eq!(
             (r1.origin.x, r1.origin.y),
             (50.0, 30.0),
@@ -53,7 +46,7 @@ fn position_reactive_tracks_signal_with_stable_identity() {
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
             .expect("reposition compute");
-        let r2 = rect(&cx, node);
+        let r2 = layout_rect(&cx, node);
         assert_eq!(
             (r2.origin.x, r2.origin.y),
             (120.0, 200.0),
@@ -123,7 +116,10 @@ fn reposition_translates_the_subtree_without_a_resolve() {
             .expect("initial compute");
         sigil::profile::enable();
         sigil::profile::reset();
-        sigil::profile::begin_frame();
+        sigil::profile::begin_frame(sigil::profile::BackendStatus {
+            kind: sigil::profile::BackendKind::Cpu,
+            fallback: sigil::profile::FallbackCause::None,
+        });
         pos.set((0.0, -35.0));
         engine
             .compute(&mut cx, root, Size::fixed(800.0, 600.0))
@@ -134,11 +130,13 @@ fn reposition_translates_the_subtree_without_a_resolve() {
             .map(|f| f.counts.clone())
             .unwrap_or_default();
         assert!(
-            counts.iter().any(|(name, _)| *name == "layout.translate"),
+            counts
+                .iter()
+                .any(|(name, _)| *name == sigil::profile::Counter::LayoutTranslate),
             "a position-only change must take the translate path; counts {counts:?}"
         );
-        assert_eq!(rect(&cx, strip).origin.y, -35.0);
-        assert_eq!(rect(&cx, leaf).origin.y, -35.0);
+        assert_eq!(layout_rect(&cx, strip).origin.y, -35.0);
+        assert_eq!(layout_rect(&cx, leaf).origin.y, -35.0);
     });
 }
 
@@ -169,7 +167,10 @@ fn reposition_with_a_dirty_descendant_still_translates() {
             .expect("initial compute");
         sigil::profile::enable();
         sigil::profile::reset();
-        sigil::profile::begin_frame();
+        sigil::profile::begin_frame(sigil::profile::BackendStatus {
+            kind: sigil::profile::BackendKind::Cpu,
+            fallback: sigil::profile::FallbackCause::None,
+        });
         label.set(String::from("bb"));
         pos.set((0.0, -35.0));
         engine
@@ -181,10 +182,12 @@ fn reposition_with_a_dirty_descendant_still_translates() {
             .map(|f| f.counts.clone())
             .unwrap_or_default();
         assert!(
-            counts.iter().any(|(name, _)| *name == "layout.translate"),
+            counts
+                .iter()
+                .any(|(name, _)| *name == sigil::profile::Counter::LayoutTranslate),
             "the strip must translate even when a cell inside it is dirty; counts {counts:?}"
         );
-        assert_eq!(rect(&cx, strip).origin.y, -35.0);
+        assert_eq!(layout_rect(&cx, strip).origin.y, -35.0);
     });
 }
 
@@ -208,12 +211,12 @@ fn incremental_root_with_margin_keeps_its_place() {
         engine
             .compute(&mut cx, root, Size::fixed(400.0, 300.0))
             .expect("initial compute");
-        let before = rect(&cx, boxed);
+        let before = layout_rect(&cx, boxed);
         label.set(String::from("bb"));
         engine
             .compute(&mut cx, root, Size::fixed(400.0, 300.0))
             .expect("incremental compute");
-        let after = rect(&cx, boxed);
+        let after = layout_rect(&cx, boxed);
         assert_eq!(
             (after.origin.x, after.origin.y),
             (before.origin.x, before.origin.y),

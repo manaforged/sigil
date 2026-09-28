@@ -11,19 +11,12 @@
 )]
 
 use sigil::prelude::*;
+use sigil_kittest::stub_text_measure;
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
 fn fresh_engine() -> LayoutEngine {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
+    LayoutEngine::with_text_measure(stub_text_measure())
 }
 
 fn recompute(layout: &mut LayoutEngine, cx: &mut Cx, root: NodeId) {

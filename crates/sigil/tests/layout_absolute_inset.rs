@@ -11,7 +11,7 @@ use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 use sigil::layout::{LengthPercentageAuto, Rect as StyleRect};
 
-use stub::stub_engine;
+use stub::{first_child, layout_rect, stub_engine};
 
 const PARENT_W: f32 = 200.0;
 const PARENT_H: f32 = 120.0;
@@ -391,15 +391,4 @@ fn flex_absolute_leading_inset_auto_size_keeps_containing_block_fill() {
     assert_eq!(rect.origin.y, 12.0);
     assert_eq!(rect.width, 60.0);
     assert_eq!(rect.height, 20.0);
-}
-
-fn first_child(cx: &Cx, root: NodeId) -> NodeId {
-    cx.get(root).unwrap().children().first().copied().unwrap()
-}
-
-fn layout_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("layout result exists")
-        .rect()
 }

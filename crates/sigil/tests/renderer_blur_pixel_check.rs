@@ -16,11 +16,10 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
 use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
 
 const BAR_SCAN_RECT0_X: u32 = 216;
 const BAR_SCAN_RECT1_X: u32 = 520;
@@ -184,31 +183,4 @@ fn scan_r_channel(pixels: &[u8], phys_w: u32, x_start: u32, y: u32, len: u32) ->
     (x_start..x_start + len)
         .map(|x| pixel_rgba(pixels, phys_w, x, y)[0])
         .collect()
-}
-
-fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
-    let base = ((y * width + x) * BYTES_PER_PIXEL) as usize;
-    [
-        pixels[base],
-        pixels[base + 1],
-        pixels[base + 2],
-        pixels[base + 3],
-    ]
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("blur-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

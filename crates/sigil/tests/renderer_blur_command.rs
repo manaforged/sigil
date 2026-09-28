@@ -4,15 +4,23 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, LayerEffect, LayerScope, OffscreenTarget, SceneBuilder, WgpuRenderer,
-};
+#[path = "scene_support/mod.rs"]
+mod scene_support;
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+use scene_support::rect;
+use sigil::hal::Color;
+use sigil::scene::{CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder};
+use sigil_kittest::gpu::{Capture, render_capture};
+
 const VIEWPORT: (f32, f32) = (128.0, 64.0);
 const VIEWPORT_WIDTH: u32 = 128;
 const VIEWPORT_HEIGHT: u32 = 64;
+const CAPTURE: Capture = Capture {
+    viewport: VIEWPORT,
+    size_px: [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
+    scale: 1.0,
+    clear: Color::rgba(0.05, 0.06, 0.09, 1.0),
+};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -26,7 +34,7 @@ fn blur_sigma_zero_is_identity() {
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
-    render_scene(&mut renderer, &device, &queue, &scene);
+    render_capture(&mut renderer, (&device, &queue), &scene, &CAPTURE).expect("render_capture");
 }
 
 #[test]
@@ -41,7 +49,7 @@ fn blur_sigma_nonzero_renders_without_panic() {
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
-    render_scene(&mut renderer, &device, &queue, &scene);
+    render_capture(&mut renderer, (&device, &queue), &scene, &CAPTURE).expect("render_capture");
 }
 
 #[test]
@@ -55,13 +63,13 @@ fn blur_sigma_strong_renders_without_panic() {
 
     let device = renderer.device().expect("device").clone();
     let queue = renderer.queue().expect("queue").clone();
-    render_scene(&mut renderer, &device, &queue, &scene);
+    render_capture(&mut renderer, (&device, &queue), &scene, &CAPTURE).expect("render_capture");
 }
 
 fn assert_blur_command_shape(scene: &CommandScene, expected_sigma: f32) {
     let [
-        sigil::renderer::SceneCommand::PushLayer(scope),
-        sigil::renderer::SceneCommand::PopLayer,
+        sigil::scene::SceneCommand::PushLayer(scope),
+        sigil::scene::SceneCommand::PopLayer,
     ] = scene.commands.as_slice()
     else {
         panic!("expected push-layer, pop-layer; got {:?}", scene.commands);
@@ -85,45 +93,4 @@ fn blur_scene(sigma: f32) -> CommandScene {
     });
     builder.pop_layer();
     builder.finish()
-}
-
-fn render_scene(
-    renderer: &mut WgpuRenderer,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    scene: &CommandScene,
-) {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("blur-command capture"),
-        size: wgpu::Extent3d {
-            width: VIEWPORT_WIDTH,
-            height: VIEWPORT_HEIGHT,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    renderer
-        .render_command_scene_offscreen(
-            OffscreenTarget {
-                device,
-                queue,
-                view: &view,
-                format: FORMAT,
-                viewport: VIEWPORT,
-                scale: 1.0,
-            },
-            scene,
-            Color::rgba(0.05, 0.06, 0.09, 1.0),
-        )
-        .expect("render_command_scene_offscreen");
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
 }

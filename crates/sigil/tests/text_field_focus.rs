@@ -4,24 +4,14 @@
 )]
 #![allow(clippy::expect_used, clippy::panic)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::KeyEventInit;
 use sigil::prelude::*;
+use widget_support::compute;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(320.0, 120.0))
-        .expect("layout computes");
-    layout
-}
+const VIEWPORT: Size = Size::fixed(320.0, 120.0);
 
 fn key(ch: &str, physical: PhysicalKey, phase: KeyPhase) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
@@ -53,7 +43,7 @@ fn focus_when_bump_focuses_the_field() {
         let trigger = signal(0_u64);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).focus_when(trigger));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         router.flush_focus_requests(&mut cx, &layout);
@@ -73,7 +63,7 @@ fn focus_when_mounts_with_a_set_trigger_take_focus() {
         trigger.set(1);
         let mut cx = Cx::new_root();
         let root = cx.add(text_field(value).focus_when(trigger));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         router.flush_focus_requests(&mut cx, &layout);
@@ -101,7 +91,7 @@ fn focus_when_mount_inside_trapped_modal_takes_typing() {
                     .child(text_field(value).focus_when(trigger)),
             ),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let field = field_node(&cx, root);
         let mut router = EventRouter::new();
 
@@ -137,7 +127,7 @@ fn slash_shortcut_focuses_field_then_typing_reaches_it() {
                 })
                 .child(text_field(value).focus_when(trigger)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let field = field_node(&cx, root);
         let mut router = EventRouter::new();
 

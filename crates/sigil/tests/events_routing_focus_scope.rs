@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -14,7 +16,8 @@ use sigil::kernel::FocusScopeKind;
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-use routing_helpers::{compute_layout, route_event, tab};
+use input::tab;
+use routing_helpers::{compute_layout, route_event};
 
 fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut sigil::kernel::Node) {
     move |node| {

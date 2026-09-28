@@ -9,20 +9,21 @@
     clippy::cast_precision_loss
 )]
 
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::{ime_event, type_char};
 use sigil::hal::KeyEventInit;
 use sigil::kernel::{NodeType, TextContent};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
 use sigil::style::TextStyle;
 use sigil::widgets::text_edit;
+use widget_support::{compute, find_text_node};
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+const VIEWPORT: Size = Size::fixed(360.0, 160.0);
 
 struct StubGeometry;
 
@@ -77,7 +78,7 @@ fn text_edit_preedit_displays_inline() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -101,7 +102,7 @@ fn text_edit_commit_lands_at_caret_on_line_two_of_three() {
         let value = signal(String::from("aaa\nbbb\nccc"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         for _ in 0..7 {
@@ -136,7 +137,7 @@ fn text_edit_anchor_tracks_preedit_cursor_not_just_preedit_end() {
         let value = signal(String::new());
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -179,7 +180,7 @@ fn text_edit_multibyte_backspace_during_preedit_does_not_panic() {
         let value = signal(String::from("aé"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, arrow_left());
@@ -200,7 +201,7 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
         let value = signal(String::from("café"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(&mut cx, &layout, ctrl_a());
@@ -209,7 +210,7 @@ fn text_edit_selection_replace_during_preedit_does_not_panic() {
             &layout,
             ime_event(ImeEvent::Preedit("X".into(), Some((0, 1)))),
         );
-        router.route(&mut cx, &layout, type_char("z"));
+        router.route(&mut cx, &layout, type_char("z", PhysicalKey::KeyZ));
         let result = value.get();
         assert!(
             result.contains('z'),
@@ -229,7 +230,7 @@ fn text_edit_external_value_mutation_survives_ime_commit() {
         let value = signal(String::from("initial"));
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         value.set(String::from("replaced by app"));
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
@@ -269,8 +270,8 @@ fn text_edit_preedit_cancelled_on_focus_loss() {
                 .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
         );
         let root = cx.add(text_edit(value));
-        let layout = compute(&mut cx, root);
-        let _ = compute(&mut cx, other);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+        let _ = compute(&mut cx, other, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -297,7 +298,7 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
         let disabled = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(text_edit(value).disabled(disabled));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.set_focus(&mut cx, Some(root));
         router.route(
@@ -313,9 +314,6 @@ fn text_edit_disabling_mid_composition_clears_preedit_immediately() {
             "disabling the editor must clear a stale preedit without waiting for an ImeEvent"
         );
     });
-}
-const fn ime_event(event: ImeEvent) -> ShellEvent {
-    ShellEvent::Ime(event)
 }
 fn arrow_left() -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
@@ -347,23 +345,6 @@ fn ctrl_a() -> ShellEvent {
         text: None,
     }))
 }
-fn type_char(ch: &str) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical: PhysicalKey::KeyZ,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.to_string().into()),
-    }))
-}
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(360.0, 160.0))
-        .expect("layout computes");
-    layout
-}
 fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
     cx.flush_reactive_children();
     let text_node = find_text_node(cx, root).expect("editor has a text node");
@@ -381,13 +362,4 @@ fn displayed_text(cx: &mut Cx, root: NodeId) -> String {
         } => text.clone(),
         _ => String::new(),
     }
-}
-fn find_text_node(cx: &Cx, root: NodeId) -> Option<NodeId> {
-    let mut found = None;
-    cx.visit_preorder(root, |id, node| {
-        if found.is_none() && matches!(node.kind, NodeType::Text { .. }) {
-            found = Some(id);
-        }
-    });
-    found
 }

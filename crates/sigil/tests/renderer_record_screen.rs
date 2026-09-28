@@ -11,10 +11,8 @@
 )]
 
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, OffscreenTarget, SceneBuilder, SceneRectStyle, ScreenSubmission,
-    WgpuRenderer,
-};
+use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
+use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
 use sigil::style::Rgba8;
 use sigil_kittest::gpu::read_pixels;
 
@@ -113,7 +111,7 @@ fn caller_owned_device_does_not_initialize_a_second_device() {
 }
 
 #[test]
-#[ignore = "requires a GPU adapter"]
+#[ignore = "needs a wgpu adapter"]
 fn offscreen_capture_uses_the_callers_device_and_preserves_draw_order() {
     let Some((device, queue)) = gpu() else {
         return;

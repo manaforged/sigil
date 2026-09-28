@@ -4,34 +4,15 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::KeyEventInit;
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil_kittest::stub_text_measure;
+use widget_support::{compute, rect_colors};
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) {
-    LayoutEngine::with_text_measure(Box::new(StubMeasure))
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
-}
-
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|c| match c {
-            SceneCommand::Rect(r) => Some(r.color),
-            _ => None,
-        })
-        .collect()
-}
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 #[test]
 fn dropdown_has_combobox_role() {
@@ -51,7 +32,7 @@ fn dropdown_trigger_emits_surface_inset_rect() {
             signal(0_usize),
             vec!["A".to_owned(), "B".to_owned()],
         ));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
         assert!(rect_colors(&cx, root).contains(&theme.gray.step(1)));
     });
@@ -63,7 +44,7 @@ fn dropdown_popup_hidden_emits_trigger_rect_only() {
         let mut cx = Cx::new_root();
         let opts = vec!["X".to_owned(), "Y".to_owned(), "Z".to_owned()];
         let root = cx.add(dropdown(signal(0_usize), opts));
-        compute(&mut cx, root);
+        compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
         let colors = rect_colors(&cx, root);
         assert!(!colors.is_empty(), "trigger rect should emit when closed");
@@ -102,7 +83,7 @@ fn dropdown_selected_signal_updates_on_open_and_select() {
         let mut cx = Cx::new_root();
         let opts = vec!["Alpha".to_owned(), "Beta".to_owned()];
         let root = cx.add(dropdown(selected, opts));
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout");

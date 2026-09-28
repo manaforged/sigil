@@ -8,7 +8,7 @@ use crate::reactive::Runtime;
 fn empty_state_has_title_and_body() {
     Runtime::scope("empty-state", || {
         let mut cx = Cx::new_root();
-        let id = empty_state("Summonr", "Message the agent.").build(&mut cx);
+        let id = empty_state("No messages", "Send a message to start.").build(&mut cx);
         let node = cx.get(id).expect("empty");
         assert_eq!(node.a11y.role, Role::Status);
         assert_eq!(node.children().len(), 2);

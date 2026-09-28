@@ -21,10 +21,8 @@ use zeno as _;
 
 use std::time::Instant;
 
-use sigil::renderer::{
-    CommandScene, SceneBuilder, ScreenSubmission, TextTuning, WgpuRenderer, set_text_tuning,
-    shape_glyph_run,
-};
+use sigil::renderer::{ScreenSubmission, TextTuning, WgpuRenderer, set_text_tuning};
+use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -38,10 +36,10 @@ const TARGET_GLYPHS: usize = 2000;
 const PARAGRAPH_UNIT: &str = "The quick brown fox jumps over the lazy dog. ";
 
 #[test]
-#[ignore = "manual throughput bench — run with `cargo test -p sigil-ui \
+#[ignore = "manual: throughput bench; run with `cargo test -p sigil-ui \
             --test renderer_raster_throughput_bench -- --ignored --nocapture`"]
 fn raster_vs_vector_throughput() {
-    let Some(mut renderer) = try_headless_renderer() else {
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         println!("no adapter — skipping raster_vs_vector_throughput");
         return;
     };
@@ -173,10 +171,6 @@ fn report(label: &str, samples: &[f64]) {
 fn report_raster(samples: &[f64]) {
     println!("raster cold (iter 1): {:.1}us/frame", samples[0]);
     report("raster warm (iter 2..N)", &samples[1..]);
-}
-
-fn try_headless_renderer() -> Option<WgpuRenderer> {
-    sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
 }
 
 fn create_render_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {

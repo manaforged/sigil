@@ -4,16 +4,17 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{KeyEventInit, PhysicalKey};
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+#[path = "events_support/input.rs"]
+mod input;
+
+use input::key_down;
+use sigil::hal::PhysicalKey;
 use sigil::prelude::*;
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
+use sigil_kittest::stub_text_measure;
+use widget_support::assert_approx;
 
 fn setup(
     value: Signal<f32>,
@@ -22,30 +23,12 @@ fn setup(
 ) -> (Cx, LayoutEngine, EventRouter, NodeId) {
     let mut cx = Cx::new_root();
     let root = cx.add(slider(value, range).step(step));
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
     layout
         .compute(&mut cx, root, Size::fixed(320.0, 120.0))
         .expect("layout");
     let router = EventRouter::new();
     (cx, layout, router, root)
-}
-
-fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
-
-fn assert_approx(actual: f32, expected: f32) {
-    assert!(
-        (actual - expected).abs() < 0.001,
-        "expected {expected}, got {actual}"
-    );
 }
 
 #[test]
@@ -142,7 +125,7 @@ fn slider_focus_ring_visible_when_focused() {
         assert!(node_before.a11y.focusable, "slider must be focusable");
 
         router.set_focus(&mut cx, Some(root));
-        let mut layout2 = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout2 = LayoutEngine::with_text_measure(stub_text_measure());
         layout2
             .compute(&mut cx, root, Size::fixed(320.0, 120.0))
             .expect("layout after focus");

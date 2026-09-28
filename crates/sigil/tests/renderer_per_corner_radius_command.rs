@@ -3,11 +3,15 @@
     reason = "target does not use every package dependency"
 )]
 
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::color;
 use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, RendererError, SceneBuilder,
-    SceneCommand, SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
-    WgpuRenderer, WgpuSurface,
+use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::scene::{
+    CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
+    SceneGradientStyle, SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,
 };
 use sigil::style::Rgba8;
 use smallvec::smallvec;
@@ -94,8 +98,4 @@ const fn solid_stroke() -> Stroke {
 
 const fn rect(x: f32, y: f32) -> Rect {
     Rect::new(Point::new(x, y), 48.0, 48.0)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

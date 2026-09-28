@@ -4,28 +4,19 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, StrokeAlign, emit_scene};
+use sigil::scene::{SceneCommand, StrokeAlign, emit_scene};
+use sigil_kittest::stub_text_measure;
+use widget_support::compute;
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    recompute(cx, root, &mut layout);
-    layout
-}
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 fn recompute(cx: &mut Cx, root: NodeId, layout: &mut LayoutEngine) {
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
+    layout.compute(cx, root, VIEWPORT).expect("layout");
 }
 
 fn pointer(x: f32, y: f32, phase: PointerPhase) -> ShellEvent {
@@ -87,7 +78,7 @@ fn frame_click(
 }
 
 fn glyph_runs(cx: &mut Cx, root: NodeId) -> usize {
-    compute(cx, root);
+    compute(cx, root, VIEWPORT, stub_text_measure());
     emit_scene(cx, root)
         .commands
         .iter()
@@ -146,7 +137,7 @@ fn border_click_toggles_popup_open_and_closed() {
     sigil::reactive::Runtime::scope("dd-border-click", || {
         let mut cx = Cx::new_root();
         let root = dropdown_fixture(&mut cx);
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
@@ -173,7 +164,7 @@ fn mid_gesture_disable_vetoes_release(scope: &'static str, x: f32, y: f32) {
             dropdown(signal(0_usize), vec!["Alpha".to_owned(), "Beta".to_owned()])
                 .disabled(disabled),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
@@ -202,7 +193,7 @@ fn reactive_disable_vetoes_arrow_down_open() {
             dropdown(signal(0_usize), vec!["Alpha".to_owned(), "Beta".to_owned()])
                 .disabled(disabled),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
@@ -238,7 +229,7 @@ fn interior_click_toggles_exactly_once() {
     sigil::reactive::Runtime::scope("dd-interior-click", || {
         let mut cx = Cx::new_root();
         let root = dropdown_fixture(&mut cx);
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
 
         let mut router = EventRouter::new();
@@ -264,7 +255,7 @@ fn trigger_reopens_after_selecting_an_option() {
                 .map(str::to_owned)
                 .collect(),
         ));
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
         let mut router = EventRouter::new();
 
@@ -301,7 +292,7 @@ fn trigger_reopens_when_each_pointer_event_runs_in_its_own_frame() {
                 .map(str::to_owned)
                 .collect(),
         ));
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         let closed = glyph_runs(&mut cx, root);
         let mut router = EventRouter::new();
 
@@ -350,7 +341,7 @@ fn compact_dropdown_keeps_its_label_and_popup_anchor() {
             .width(132.0)
             .height(28.0),
         );
-        let mut layout = compute(&mut cx, root);
+        let mut layout = compute(&mut cx, root, VIEWPORT, stub_text_measure());
         assert!(
             matches!(&cx.get(root).expect("root").a11y.name, AccessibleName::Static(name) if name == "Backend")
         );

@@ -9,11 +9,10 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
 use sigil_kittest::gpu::{read_pixels, shared_device};
 
 const SCALE: u32 = 1;
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
-const BYTES_PER_PIXEL: u32 = 4;
 
 const MONO_X: f32 = 80.0;
 const MONO_Y: f32 = 80.0;
@@ -147,30 +146,8 @@ fn lp(lx: f32, ly: f32) -> (u32, u32) {
     ((lx * SCALE as f32) as u32, (ly * SCALE as f32) as u32)
 }
 
-fn pixel_rgba(pixels: &[u8], width: u32, x: u32, y: u32) -> [u8; 4] {
-    let b = ((y * width + x) * BYTES_PER_PIXEL) as usize;
-    [pixels[b], pixels[b + 1], pixels[b + 2], pixels[b + 3]]
-}
-
 fn color_distance(a: [u8; 4], b: [u8; 4]) -> u32 {
     (0..4)
         .map(|i| (a[i] as i32 - b[i] as i32).unsigned_abs())
         .sum()
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("sprite-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

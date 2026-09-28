@@ -5,17 +5,24 @@
 #![allow(clippy::panic)]
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, OffscreenTarget, SceneBuilder, SceneCommand, SpriteKind, SpriteSource,
-    WgpuRenderer, scenes::BUILTIN_ICON_ATLAS_BASE_ID,
-};
-use sigil::style::Rgba8;
+#[path = "scene_support/mod.rs"]
+mod scene_support;
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
+use scene_support::color;
+use sigil::hal::{Color, Point, Rect};
+use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;
+use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, SpriteKind, SpriteSource};
+use sigil_kittest::gpu::{Capture, render_capture};
+
 const VIEWPORT: (f32, f32) = (360.0, 80.0);
 const VIEWPORT_WIDTH: u32 = 360;
 const VIEWPORT_HEIGHT: u32 = 80;
+const CAPTURE: Capture = Capture {
+    viewport: VIEWPORT,
+    size_px: [VIEWPORT_WIDTH, VIEWPORT_HEIGHT],
+    scale: 1.0,
+    clear: Color::rgba(0.05, 0.06, 0.09, 1.0),
+};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]
@@ -29,7 +36,13 @@ fn icon_commands_walk_and_populate_sprite_pipeline_cache() {
 
     let ready_device = renderer.device().expect("headless device").clone();
     let ready_queue = renderer.queue().expect("headless queue").clone();
-    render_scene(&mut renderer, &ready_device, &ready_queue, &scene);
+    render_capture(
+        &mut renderer,
+        (&ready_device, &ready_queue),
+        &scene,
+        &CAPTURE,
+    )
+    .expect("render_capture");
 
     let (_, _, _, _, sprite_pipelines) = renderer
         .pipeline_cache_counts()
@@ -68,43 +81,6 @@ fn icon_scene() -> CommandScene {
     builder.finish()
 }
 
-fn render_scene(
-    renderer: &mut WgpuRenderer,
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    scene: &CommandScene,
-) {
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("icon-command capture"),
-        size: wgpu::Extent3d {
-            width: VIEWPORT_WIDTH,
-            height: VIEWPORT_HEIGHT,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
-    });
-    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-    renderer
-        .render_command_scene_offscreen(
-            OffscreenTarget {
-                device,
-                queue,
-                view: &view,
-                format: FORMAT,
-                viewport: VIEWPORT,
-                scale: 1.0,
-            },
-            scene,
-            Color::rgba(0.05, 0.06, 0.09, 1.0),
-        )
-        .expect("render_command_scene_offscreen");
-}
-
 const fn source(atlas: u32, x: f32, y: f32) -> SpriteSource {
     SpriteSource {
         atlas,
@@ -115,8 +91,4 @@ const fn source(atlas: u32, x: f32, y: f32) -> SpriteSource {
 
 const fn rect(x: f32) -> Rect {
     Rect::new(Point::new(x, 0.0), 48.0, 48.0)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

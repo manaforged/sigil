@@ -4,12 +4,13 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, ScreenSubmission,
-    WgpuRenderer,
-};
-use sigil::style::Rgba8;
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::{color, rect};
+use sigil::hal::Color;
+use sigil::renderer::{ScreenSubmission, WgpuRenderer};
+use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 80.0);
@@ -88,12 +89,4 @@ fn render_scene(
             scene,
         )
         .expect("submit_screen");
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

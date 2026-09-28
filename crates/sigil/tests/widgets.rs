@@ -10,13 +10,20 @@
     clippy::cast_possible_truncation
 )]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+#[path = "events_support/input.rs"]
+mod input;
+
+use sigil_kittest::CharMeasure;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 use sigil::hal::{KeyEventInit, Point, PointerEventInit};
 use sigil::layout::{CaretGeometry, TextGeometry, set_text_geometry};
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
 
 struct CutMemory(RefCell<Option<String>>);
 
@@ -29,20 +36,14 @@ impl sigil::clipboard::Clipboard for CutMemory {
         self.0.borrow().clone()
     }
 }
+use input::type_char;
 use sigil::style::TextStyle;
+use widget_support::{assert_approx, rect_colors};
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        let len = match content {
-            TextContent::Static(s) => s.len(),
-            TextContent::Reactive(sig) => sig.peek().len(),
-            TextContent::Compute(_) => content.resolve().len(),
-        };
-        sigil::hal::LogicalSize::new(len as f32 * 7.0, 16.0)
-    }
-}
+const TEXT_MEASURE: CharMeasure = CharMeasure {
+    char_width: 7.0,
+    line_height: 16.0,
+};
 
 struct StubGeometry;
 
@@ -108,17 +109,6 @@ fn ctrl_shift_key(ch: &str, physical: PhysicalKey) -> ShellEvent {
     }))
 }
 
-fn type_char(ch: &str, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: LogicalKey::character(ch),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: Some(ch.to_string().into()),
-    }))
-}
-
 fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {
         key: LogicalKey::character(ch.as_str()),
@@ -128,17 +118,6 @@ fn type_char_owned(ch: String, physical: PhysicalKey) -> ShellEvent {
         phase: KeyPhase::Down,
         text: Some(ch.into()),
     }))
-}
-
-fn scene_rect_colors(cx: &Cx, root: NodeId) -> Vec<sigil::style::Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|command| match command {
-            SceneCommand::Rect(rect) => Some(rect.color),
-            _ => None,
-        })
-        .collect()
 }
 
 fn first_rect_x_for_color(cx: &Cx, root: NodeId, color: sigil::style::Rgba8) -> f32 {
@@ -254,13 +233,6 @@ fn arrow_down(key: Key, physical: PhysicalKey) -> ShellEvent {
 }
 
 const SLIDER_TRACK: f32 = 180.0;
-
-fn assert_approx(actual: f32, expected: f32) {
-    assert!(
-        (actual - expected).abs() < 0.001,
-        "expected {expected}, got {actual}"
-    );
-}
 
 fn named_key(key: Key, physical: PhysicalKey) -> ShellEvent {
     ShellEvent::Key(KeyEvent::new(KeyEventInit {

@@ -1,5 +1,7 @@
 #![allow(clippy::redundant_pub_crate)]
 
+#[cfg(feature = "desktop")]
+use crate::profile::{BackendKind, BackendStatus, FallbackCause};
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationPipeline;
 use crate::renderer::error::RendererError;
@@ -8,6 +10,7 @@ use crate::renderer::frame_upload::UploadBuffers;
 use crate::renderer::layer_composite::LayerCompositePipeline;
 use crate::renderer::layer_pool::LayerPool;
 use crate::renderer::raster_paint::RasterTextPipeline;
+use crate::renderer::scene_command::walk::WalkPending;
 use crate::renderer::scene_paint::ScenePipeline;
 use crate::renderer::shadow_paint::ShadowPipeline;
 use crate::renderer::slug::SlugTextPipeline;
@@ -37,13 +40,18 @@ pub(crate) struct ReadyState {
     pub(crate) layer_pipelines: Vec<LayerCompositePipeline>,
     pub(crate) blur_pipelines: Vec<BlurPipeline>,
     pub(crate) layer_pool: Option<LayerPool>,
+    pub(crate) pending: WalkPending,
     pub(crate) uploads: Option<UploadBuffers>,
     lost: Arc<AtomicBool>,
+    #[cfg(feature = "desktop")]
+    forced_fallback: bool,
 }
 
 impl ReadyState {
     fn boxed(instance: wgpu::Instance, parts: DeviceParts) -> Box<Self> {
-        let (adapter, device, queue, lost) = parts;
+        let (adapter, device, queue, lost, forced_fallback) = parts;
+        #[cfg(not(feature = "desktop"))]
+        let _ = forced_fallback;
         Box::new(Self {
             instance,
             adapter,
@@ -59,8 +67,11 @@ impl ReadyState {
             layer_pipelines: Vec::new(),
             blur_pipelines: Vec::new(),
             layer_pool: Some(LayerPool::new()),
+            pending: WalkPending::default(),
             uploads: None,
             lost,
+            #[cfg(feature = "desktop")]
+            forced_fallback,
         })
     }
 
@@ -70,6 +81,23 @@ impl ReadyState {
         }
         for pipeline in &mut self.sprite_pipelines {
             pipeline.begin_frame();
+        }
+    }
+
+    #[cfg(feature = "desktop")]
+    pub(crate) fn backend_status(&self) -> BackendStatus {
+        let software = self.adapter.get_info().device_type == wgpu::DeviceType::Cpu;
+        BackendStatus {
+            kind: if software || self.forced_fallback {
+                BackendKind::GpuSoftware
+            } else {
+                BackendKind::Gpu
+            },
+            fallback: if self.forced_fallback {
+                FallbackCause::NoAdapter
+            } else {
+                FallbackCause::None
+            },
         }
     }
 
@@ -131,14 +159,16 @@ impl DeviceState {
         }
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn request_headless()
     -> Result<(wgpu::Adapter, wgpu::Device, wgpu::Queue), RendererError> {
         let instance =
             wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle_from_env());
-        let (adapter, device, queue, _lost) = request_blocking(&instance, None)?;
+        let (adapter, device, queue, _lost, _forced) = request_blocking(&instance, None)?;
         Ok((adapter, device, queue))
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn adopt_headless(
         &mut self,
         adapter: wgpu::Adapter,
@@ -147,9 +177,13 @@ impl DeviceState {
     ) {
         let instance = self.instance().clone();
         let lost = watch_device(&device, None);
-        *self = Self::Ready(ReadyState::boxed(instance, (adapter, device, queue, lost)));
+        *self = Self::Ready(ReadyState::boxed(
+            instance,
+            (adapter, device, queue, lost, false),
+        ));
     }
 
+    #[cfg(any(test, feature = "kittest"))]
     pub(crate) fn ensure_ready_headless(&mut self) -> Result<&mut ReadyState, RendererError> {
         self.ensure_ready_for(None)?;
         match self {
@@ -190,10 +224,7 @@ impl DeviceState {
                 Self::Ready(_) => unreachable!(),
             };
             match request_blocking(&instance, surface) {
-                Ok((adapter, device, queue, lost)) => {
-                    *self =
-                        Self::Ready(ReadyState::boxed(instance, (adapter, device, queue, lost)));
-                }
+                Ok(parts) => *self = Self::Ready(ReadyState::boxed(instance, parts)),
                 Err(err) => {
                     *self = Self::Uninitialized(instance);
                     return Err(err);
@@ -204,7 +235,13 @@ impl DeviceState {
     }
 }
 
-pub(crate) type DeviceParts = (wgpu::Adapter, wgpu::Device, wgpu::Queue, Arc<AtomicBool>);
+pub(crate) type DeviceParts = (
+    wgpu::Adapter,
+    wgpu::Device,
+    wgpu::Queue,
+    Arc<AtomicBool>,
+    bool,
+);
 
 pub(crate) type OnLost = Arc<dyn Fn() + Send + Sync>;
 
@@ -240,25 +277,15 @@ async fn request_adapter_and_device(
     surface: Option<&wgpu::Surface<'_>>,
     on_lost: Option<OnLost>,
 ) -> Result<DeviceParts, RendererError> {
-    let adapter = match instance
-        .request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: power_preference(),
-            compatible_surface: surface,
-            force_fallback_adapter: false,
-            apply_limit_buckets: false,
-        })
-        .await
-    {
-        Ok(adapter) => adapter,
-        Err(_) => instance
-            .request_adapter(&wgpu::RequestAdapterOptions {
-                power_preference: power_preference(),
-                compatible_surface: surface,
-                force_fallback_adapter: true,
-                apply_limit_buckets: false,
-            })
-            .await
-            .map_err(|_| RendererError::NoAdapter)?,
+    let (adapter, forced_fallback) = match request_adapter(instance, surface, false).await {
+        Ok(adapter) => (adapter, false),
+        Err(err) => {
+            tracing::warn!("sigil-renderer: {err}; retrying with the software fallback adapter");
+            let adapter = request_adapter(instance, surface, true)
+                .await
+                .map_err(|_| RendererError::NoAdapter)?;
+            (adapter, true)
+        }
     };
 
     let (device, queue) = adapter
@@ -272,7 +299,29 @@ async fn request_adapter_and_device(
         })
         .await?;
     let lost = watch_device(&device, on_lost);
-    Ok((adapter, device, queue, lost))
+    Ok((adapter, device, queue, lost, forced_fallback))
+}
+
+#[cfg_attr(
+    target_arch = "wasm32",
+    allow(
+        clippy::future_not_send,
+        reason = "browser GPU futures resolve on the main-thread executor"
+    )
+)]
+async fn request_adapter(
+    instance: &wgpu::Instance,
+    surface: Option<&wgpu::Surface<'_>>,
+    force_fallback_adapter: bool,
+) -> Result<wgpu::Adapter, wgpu::RequestAdapterError> {
+    instance
+        .request_adapter(&wgpu::RequestAdapterOptions {
+            power_preference: power_preference(),
+            compatible_surface: surface,
+            force_fallback_adapter,
+            apply_limit_buckets: false,
+        })
+        .await
 }
 
 fn watch_device(device: &wgpu::Device, on_lost: Option<OnLost>) -> Arc<AtomicBool> {

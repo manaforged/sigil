@@ -6,12 +6,16 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 #![allow(clippy::cast_precision_loss)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, GradientStop, LinearGradient, OffscreenTarget, SceneBuilder,
-    SceneGradientStyle, SceneRectStyle, WgpuRenderer,
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::{color, rect};
+use sigil::hal::{Color, Point};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
+use sigil::scene::{
+    CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneGradientStyle,
+    SceneRectStyle,
 };
-use sigil::style::Rgba8;
 use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -126,12 +130,4 @@ const fn pixel(pixels: &[u8], x: u32, y: u32) -> [u8; 4] {
         pixels[offset + 2],
         pixels[offset + 3],
     ]
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
-}
-
-const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {
-    Rgba8 { r, g, b, a }
 }

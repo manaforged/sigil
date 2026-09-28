@@ -4,28 +4,14 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
-use sigil::hal::{KeyEventInit, PhysicalKey};
+#[path = "events_support/input.rs"]
+mod input;
+
+use input::key_down;
+use sigil::hal::PhysicalKey;
 use sigil::prelude::*;
 use sigil::widgets::virtual_list;
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn key_down(key: Key, physical: PhysicalKey) -> ShellEvent {
-    ShellEvent::Key(KeyEvent::new(KeyEventInit {
-        key: key.into(),
-        physical,
-        modifiers: ModifiersState::empty(),
-        repeat: false,
-        phase: KeyPhase::Down,
-        text: None,
-    }))
-}
+use sigil_kittest::stub_text_measure;
 
 fn press(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine, key: Key) {
     let physical = match key {
@@ -61,7 +47,7 @@ fn keyboard_navigation_moves_focus_and_scrolls_into_view() {
                 .scroll_bind(scroll_y)
                 .focused_row_bind(focused_row),
         );
-        let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+        let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
         layout
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("layout");

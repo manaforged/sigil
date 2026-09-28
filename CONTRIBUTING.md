@@ -1,7 +1,7 @@
 # Contributing
 
 Issues are welcome. Pull requests are by invitation: open an issue
-first, and send a patch only when asked. Coding agents: [AGENTS.md](AGENTS.md).
+first, and send a patch only when asked. Repository conventions: [AGENTS.md](AGENTS.md).
 
 ## Build
 
@@ -20,22 +20,20 @@ cargo build --workspace
 
 ## Run the gate
 
-Run the same checks that CI runs before you push:
+Run the same gate that CI runs before you push:
 
 ```bash
-cargo fmt --check
-cargo clippy --workspace --all-targets --features sigil-ui/terminal -- -D warnings
-cargo test --workspace --features sigil-ui/terminal --no-fail-fast
-cargo deny check
+scripts/gate.sh
 ```
 
-Install `cargo deny` once if it is missing: `cargo install cargo-deny`.
+The gate needs `node`, `cargo-hack`, `cargo-deny`, `cargo-fuzz`, `mdbook`,
+and `wasm-bindgen-test-runner`. It names the install command for a missing
+tool. It installs the MSRV and nightly toolchains through `rustup`.
 
-The default test run skips tests that need a GPU adapter. On a machine
-with a GPU adapter, run the hardware tier too:
+On a machine with a GPU adapter, run the hardware tier too:
 
 ```bash
-cargo test --workspace -- --ignored
+scripts/gate.sh --gpu
 ```
 
 ## Code shape

@@ -4,51 +4,20 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{Point, PointerEventInit};
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::pointer_move_event;
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
+use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Rgba8;
 use sigil::style::scale::ruby_light;
-
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
-    layout
-}
-
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|c| match c {
-            SceneCommand::Rect(r) => Some(r.color),
-            _ => None,
-        })
-        .collect()
-}
-
-const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
-}
+use widget_support::{compute, rect_colors};
 
 const LEAVE_XY: (f32, f32) = (500.0, 400.0);
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 fn assert_hover_overlay_paints(
     cx: &mut Cx,
@@ -83,7 +52,7 @@ fn checkbox_user_hover_overlay_paints_row_root() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(checkbox(checked).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (10.0, 10.0), ruby_9);
     });
 }
@@ -95,7 +64,7 @@ fn dropdown_user_hover_overlay_paints_trigger() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(dropdown(selected, vec!["a".into(), "b".into()]).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (100.0, 20.0), ruby_9);
     });
 }
@@ -107,7 +76,7 @@ fn slider_user_hover_overlay_paints_track_root() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(slider(value, 0.0..=100.0).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (10.0, 14.0), ruby_9);
     });
 }
@@ -119,7 +88,7 @@ fn tabs_user_hover_overlay_paints_hovered_tab() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(tabs(active, vec!["A".into(), "B".into()]).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (120.0, 17.0), ruby_9);
     });
 }
@@ -131,7 +100,7 @@ fn text_field_user_hover_overlay_paints_frame() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(text_field(value).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (30.0, 15.0), ruby_9);
     });
 }
@@ -143,7 +112,7 @@ fn text_edit_user_hover_overlay_paints_frame() {
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
         let root = cx.add(text_edit(value).hover(|s| s.bg(ruby_9)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (20.0, 20.0), ruby_9);
     });
 }
@@ -154,7 +123,7 @@ fn slider_thumb_hover_variant_intact_without_overlay() {
         let value = signal(50.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(slider(value, 0.0..=100.0));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let theme = Theme::default();
         let thumb_rim = |scene_cx: &Cx, scene_root: NodeId| {
             emit_scene(scene_cx, scene_root)

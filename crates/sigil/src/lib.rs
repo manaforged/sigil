@@ -20,6 +20,7 @@ pub mod app;
 pub mod bidi;
 pub mod events;
 pub mod hal;
+#[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) mod hud;
 #[cfg(feature = "scene")]
 pub mod icons;
@@ -72,9 +73,10 @@ where
     T: TreeRoot,
 {
     let config = config.into();
+    app::platform_prefs::apply(&config);
     match config.host {
         #[cfg(feature = "terminal")]
-        kernel::HostMode::Cell => terminal::run(config, tree),
+        kernel::HostMode::Cell => terminal::run(&config, tree),
         #[cfg(feature = "desktop")]
         kernel::HostMode::Pixel => {
             clipboard::install_os();
@@ -120,23 +122,20 @@ pub mod prelude {
         TopLayer, container, fragment, image, node, text, text_live,
     };
     pub use crate::layout::{
-        BoundsReactive, Dimension, FlexWrap, IntoPx, LayoutBuilderExt, LayoutEngine, LayoutError,
-        LayoutReactiveExt, LayoutResult, LayoutStyle, Overflow, ReactivePosition,
-        StyleAlignItems as AlignItems, StyleAlignSelf as AlignSelf, StyleDisplay as Display,
-        StyleFlexDirection as FlexDirection, StyleJustifyContent as JustifyContent,
-        StyleLengthPercentage as LengthPercentage,
-        StyleLengthPercentageAuto as LengthPercentageAuto, StylePosition as Position, TextLength,
-        TextMeasure, TrackSize, cols, em, rows,
+        AlignItems, AlignSelf, BoundsReactive, Dimension, Display, FlexDirection, FlexWrap, IntoPx,
+        JustifyContent, LayoutBuilderExt, LayoutEngine, LayoutError, LayoutReactiveExt,
+        LayoutResult, LayoutStyle, LengthPercentage, LengthPercentageAuto, Overflow, Position,
+        ReactivePosition, TextLength, TextMeasure, TrackSize, cols, em, rows,
     };
     pub use crate::reactive::{
         EventChannel, IntervalId, Reactive, Signal, batch, defer, derived, derived_eq, effect,
         interval, on_cleanup, signal, untrack,
     };
     pub use crate::style::{
-        ColorAtom, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing, Geometry,
-        NodeStyleExt, NumericAtomKind, Px, Rgba8, Sizing, Spacing, StateStyle, StateVariants,
-        Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled, Theme,
-        ThemeValue, Tone, Transitions, Typography, Visual, classes,
+        ColorAtom, ColorKey, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing,
+        Geometry, NodeStyleExt, NumericAtomKind, Px, Rgba8, Sizing, Spacing, StateStyle,
+        StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
+        Theme, ThemeValue, TokenLayer, TokenTable, Tone, Transitions, Typography, Visual, classes,
     };
     pub use crate::tasks::{
         OwnerHandle, ScheduleError, SignalWriter, Status, dispatch_to_owner, dispatcher,
@@ -174,23 +173,83 @@ pub mod prelude {
         MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
         PanelBuilder, PathCmd, PathColor, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
         RowTone, ScrollAnchor, ScrollBuilder, SegmentedBuilder, SelectionMode, SelectionState,
-        Side, SliderBuilder, SplitterBuilder, SplitterOrientation, SubmenuBuilder, TableBuilder,
-        TableColumn, TableState, TabsBuilder, TextEditBuilder, TextEditState, TextFieldBuilder,
-        ToastEntry, ToastLevel, ToastQueue, ToggleBuilder, TooltipBuilder, VirtualListBuilder,
-        app_shell, avatar, axis_drag, badge, button, card, chart, checkbox, chip, code_edit,
-        color_field, combobox, command_menu, context_menu, date_field, diff, divider_horizontal,
-        divider_vertical, dot, drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge,
-        hairline, heatmap, highlight, hint_bar, hint_overlay, hl_spans, html, icon, icon_button,
-        image_rgba, interactive, kv_grid, kv_row, label, list_row, list_row_with, markdown,
-        markdown_edit, markdown_inline, menu, menu_bar, mermaid, modal, notice_band, number_field,
-        panel, path, progress, radio_group, scroll, scroll_auto, section_label, segmented, sheet,
-        sidebar, sidebar_width, slider, spacer, spinner, spinner_frame, splitter, status_bar,
-        surface, table, tabs, terminal, text_edit, text_field, toast, toast_queue, toggle, tooltip,
-        validated_field, virtual_list,
+        Side, SliderBuilder, SparkMark, SparklineBuilder, SplitterBuilder, SplitterOrientation,
+        SubmenuBuilder, TableBuilder, TableColumn, TableState, TabsBuilder, TextEditBuilder,
+        TextEditState, TextFieldBuilder, ToastEntry, ToastLevel, ToastQueue, ToggleBuilder,
+        TooltipBuilder, VirtualListBuilder, app_shell, avatar, axis_drag, badge, button, card,
+        chart, checkbox, chip, code_edit, color_field, combobox, command_menu, context_menu,
+        date_field, diff, divider_horizontal, divider_vertical, dot, drag_ghost, dropdown,
+        empty_state, field, fuzzy_score, gauge, hairline, heatmap, highlight, hint_bar,
+        hint_overlay, hl_spans, html, icon, icon_button, image_rgba, interactive, kv_grid, kv_row,
+        label, list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu, menu_bar,
+        mermaid, modal, notice_band, number_field, panel, path, progress, radio_group, scroll,
+        scroll_auto, section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer,
+        sparkline, spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal,
+        text_edit, text_field, toast, toast_queue, toggle, tooltip, validated_field, virtual_list,
     };
     pub use crate::{
         AppConfig, AppResult, Error, Host, HostCaps, TreeRoot, is_grid, viewport_size,
     };
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::{ThemeWatcher, parse_theme, watch_theme};
+}
+
+#[cfg(doctest)]
+mod doc_snippets {
+    #[doc = include_str!("../../../README.md")]
+    pub struct Readme;
+    #[doc = include_str!("../../../docs/api.md")]
+    pub struct Api;
+    #[doc = include_str!("../../../docs/guide/README.md")]
+    pub struct GuideReadme;
+    #[doc = include_str!("../../../docs/guide/arch/modules.md")]
+    pub struct GuideArchModules;
+    #[doc = include_str!("../../../docs/guide/arch/overview.md")]
+    pub struct GuideArchOverview;
+    #[doc = include_str!("../../../docs/guide/arch/painting.md")]
+    pub struct GuideArchPainting;
+    #[doc = include_str!("../../../docs/guide/arch/platform.md")]
+    pub struct GuideArchPlatform;
+    #[doc = include_str!("../../../docs/guide/arch/state.md")]
+    pub struct GuideArchState;
+    #[doc = include_str!("../../../docs/guide/decisions/DR-058-signals-over-entity.md")]
+    pub struct GuideDecisionsDr058SignalsOverEntity;
+    #[doc = include_str!("../../../docs/guide/decisions/README.md")]
+    pub struct GuideDecisionsReadme;
+    #[cfg_attr(feature = "desktop", doc = include_str!("../../../docs/guide/hot-reload.md"))]
+    pub struct GuideHotReload;
+    #[doc = include_str!("../../../docs/guide/packing.md")]
+    pub struct GuidePacking;
+    #[doc = include_str!("../../../docs/guide/quickstart.md")]
+    pub struct GuideQuickstart;
+    #[doc = include_str!("../../../docs/guide/recipes.md")]
+    pub struct GuideRecipes;
+    #[cfg_attr(feature = "terminal", doc = include_str!("../../../docs/guide/terminal.md"))]
+    pub struct GuideTerminal;
+    #[doc = include_str!("../../../docs/guide/troubleshooting.md")]
+    pub struct GuideTroubleshooting;
+    #[doc = include_str!("../../../docs/guide/units.md")]
+    pub struct GuideUnits;
+    #[doc = include_str!("../../../docs/guide/web.md")]
+    pub struct GuideWeb;
+    #[doc = include_str!("../../../docs/guide/widgets/chrome.md")]
+    pub struct GuideWidgetsChrome;
+    #[doc = include_str!("../../../docs/guide/widgets/content.md")]
+    pub struct GuideWidgetsContent;
+    #[doc = include_str!("../../../docs/guide/widgets/controls.md")]
+    pub struct GuideWidgetsControls;
+    #[doc = include_str!("../../../docs/guide/widgets/data.md")]
+    pub struct GuideWidgetsData;
+    #[doc = include_str!("../../../docs/guide/widgets/documents.md")]
+    pub struct GuideWidgetsDocuments;
+    #[doc = include_str!("../../../docs/guide/widgets/fields.md")]
+    pub struct GuideWidgetsFields;
+    #[doc = include_str!("../../../docs/guide/widgets/indicators.md")]
+    pub struct GuideWidgetsIndicators;
+    #[doc = include_str!("../../../docs/guide/widgets/overlays.md")]
+    pub struct GuideWidgetsOverlays;
+    #[doc = include_str!("../../../docs/guide/widgets/plumbing.md")]
+    pub struct GuideWidgetsPlumbing;
+    #[doc = include_str!("../../../docs/guide/widgets.md")]
+    pub struct GuideWidgets;
 }

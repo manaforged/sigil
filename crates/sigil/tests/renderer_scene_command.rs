@@ -3,8 +3,12 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::hal::{Point, Rect};
-use sigil::renderer::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::rect;
+use sigil::hal::Rect;
+use sigil::scene::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
 use sigil::style::Rgba8;
 
 #[test]
@@ -118,10 +122,6 @@ fn command_scene_clone_is_deep() {
 
     assert_eq!(original_kinds, cloned_kinds);
     assert_ne!(scene.commands.as_ptr(), cloned.commands.as_ptr());
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
 }
 
 const fn rect_style() -> SceneRectStyle {

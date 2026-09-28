@@ -1,16 +1,23 @@
 use sigil::layout::TextMeasure;
 use sigil::prelude::*;
-use sigil::renderer::emit_scene;
+use sigil::scene::emit_scene;
 
 mod bounds;
 mod compare;
-pub use compare::{assert_goldens_differ_in, assert_png_matches_golden, golden_path_in};
+pub use compare::{
+    assert_goldens_differ_in, assert_png_matches_golden, assert_rendered_matches_golden,
+    golden_path_in,
+};
 mod error;
 pub use error::Error;
 pub mod gpu;
 use gpu::{render_scene_to_image, shared_device};
 mod interaction;
+mod measure;
+pub mod parity;
+pub mod scene_gen;
 use interaction::drive_state;
+pub use measure::{CharMeasure, FixedMeasure};
 
 pub const SETTLE_SAFETY_CAP: u32 = 600;
 
@@ -98,17 +105,12 @@ fn stitch_horizontal(
     out
 }
 
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
 #[must_use]
 pub fn stub_text_measure() -> Box<dyn TextMeasure> {
-    Box::new(StubMeasure)
+    Box::new(FixedMeasure {
+        width: 40.0,
+        height: 16.0,
+    })
 }
 
 #[must_use]
@@ -369,3 +371,7 @@ fn find_first_focusable(cx: &Cx, id: NodeId) -> Option<NodeId> {
         .iter()
         .find_map(|child| find_first_focusable(cx, *child))
 }
+
+#[cfg(doctest)]
+#[doc = include_str!("../../../docs/guide/automation.md")]
+pub struct AutomationGuide;

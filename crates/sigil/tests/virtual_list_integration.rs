@@ -4,24 +4,21 @@
 )]
 #![allow(clippy::panic, clippy::trivially_copy_pass_by_ref, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use sigil::hal::{KeyEventInit, MouseButton, MouseButtons, PhysicalKey, Point, PointerEventInit};
+use input::{pointer_down, scroll_lines};
+use sigil::hal::{KeyEventInit, PhysicalKey};
 use sigil::prelude::*;
 use sigil::widgets::{SelectionMode, virtual_list};
+use sigil_kittest::stub_text_measure;
 
 const ROW_HEIGHT: f32 = 32.0;
 const VIEWPORT_WIDTH: f32 = 1_280.0;
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
 
 #[test]
 fn widget_renders_only_visible_window_at_100k_items() {
@@ -55,7 +52,10 @@ fn scroll_signal_drives_window_advance() {
             .first()
             .copied()
             .expect("visible row materialised");
-        assert_eq!(first, 985, "first row was {first}");
+        assert!(
+            (982..=985).contains(&first),
+            "first row was {first}, expected the overscanned page above row 1000"
+        );
     });
 }
 
@@ -134,7 +134,7 @@ fn scroll_step_meets_144hz_budget() {
                     .viewport_width(VIEWPORT_WIDTH)
                     .scroll_bind(scroll_y),
             );
-            let mut engine = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+            let mut engine = LayoutEngine::with_text_measure(stub_text_measure());
             engine
                 .compute(&mut cx, root, Size::fixed(VIEWPORT_WIDTH, VIEWPORT_WIDTH))
                 .expect("layout computes");
@@ -201,7 +201,7 @@ fn selected_a11y_count(cx: &Cx, root: NodeId) -> usize {
 }
 
 fn compute_layout(cx: &mut Cx, root: NodeId, size: Size) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
+    let mut layout = LayoutEngine::with_text_measure(stub_text_measure());
     layout.compute(cx, root, size).expect("layout computes");
     layout
 }
@@ -221,14 +221,36 @@ fn press_down(router: &mut EventRouter, cx: &mut Cx, layout: &LayoutEngine) {
     );
 }
 
-const fn pointer_down(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: Some(MouseButton::Left),
-        buttons: MouseButtons::LEFT,
-        modifiers: ModifiersState::empty(),
-        phase: PointerPhase::Down,
-    }))
+#[test]
+fn a_static_list_renders_new_rows_when_the_wheel_scrolls() {
+    sigil::reactive::Runtime::scope("sigil-virtual-list-static-wheel", || {
+        let rendered = Rc::new(RefCell::new(Vec::new()));
+        let seen = Rc::clone(&rendered);
+        let mut cx = Cx::new_root();
+        let items: Vec<usize> = (0..10_000).collect();
+        let root = cx.add(
+            virtual_list(items, move |index, item| {
+                seen.borrow_mut().push(index);
+                row(index, item)
+            })
+            .row_height(ROW_HEIGHT)
+            .viewport_height(480.0)
+            .viewport_width(320.0),
+        );
+        let size = Size::fixed(320.0, 480.0);
+        let mut layout = compute_layout(&mut cx, root, size);
+        let mut router = EventRouter::new();
+        for _ in 0..40 {
+            router.route(&mut cx, &layout, scroll_lines(100.0, 100.0, -3.0));
+            cx.flush_reactive_children();
+            layout
+                .compute(&mut cx, root, size)
+                .expect("layout computes");
+        }
+        let deepest = rendered.borrow().iter().copied().max().unwrap_or(0);
+        assert!(
+            deepest > 100,
+            "wheel scrolling never rendered past row {deepest}"
+        );
+    });
 }

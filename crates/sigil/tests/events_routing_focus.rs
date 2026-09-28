@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
 #[path = "events_support/mock_shell.rs"]
 mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
@@ -16,7 +18,8 @@ use sigil::events::prelude::*;
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
 
-use routing_helpers::{compute_layout, focus_tree, pointer_down, record_focus, route_event, tab};
+use input::{pointer_down, tab};
+use routing_helpers::{compute_layout, focus_tree, record_focus, route_event};
 
 #[test]
 fn pointer_down_focuses_nearest_focusable_ancestor() {

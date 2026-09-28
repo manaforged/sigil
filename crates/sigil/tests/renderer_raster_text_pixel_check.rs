@@ -20,14 +20,12 @@ use tracing as _;
 use windows_core as _;
 use zeno as _;
 
-use sigil::renderer::{
-    CommandScene, OffscreenTarget, SceneBuilder, TextTuning, WgpuRenderer, set_text_tuning,
-    shape_glyph_run,
-};
+use sigil::renderer::{OffscreenTarget, TextTuning, WgpuRenderer, set_text_tuning};
+use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 use sigil_kittest::gpu::read_pixels;
+use sigil_kittest::gpu::{FORMAT, create_capture_texture};
 
-const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const BYTES_PER_PIXEL: u32 = 4;
 
 const LOGICAL_W: f32 = 120.0;
@@ -38,7 +36,7 @@ const TEXT: &str = "Hi there";
 
 #[test]
 fn raster_path_renders_ink_matching_vector_position() {
-    let Some(mut renderer) = try_headless_renderer() else {
+    let Some(mut renderer) = sigil_kittest::gpu::headless_renderer().expect("sigil-kittest") else {
         println!("no adapter — skipping raster_text_pixel_check");
         return;
     };
@@ -199,25 +197,4 @@ fn bbox_overlap(a: &BBox, b: &BBox) -> f32 {
         * f32::from(u16::try_from(b.y1 - b.y0).unwrap_or(u16::MAX));
     let union = area_a + area_b - inter;
     if union <= 0.0 { 0.0 } else { inter / union }
-}
-
-fn try_headless_renderer() -> Option<WgpuRenderer> {
-    sigil_kittest::gpu::headless_renderer().expect("sigil-kittest")
-}
-
-fn create_capture_texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("raster-text-pixel-check capture"),
-        size: wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: FORMAT,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
-        view_formats: &[],
-    })
 }

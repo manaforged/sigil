@@ -8,17 +8,10 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
-
-fn child_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("child result")
-        .rect()
-}
 
 #[test]
 fn fill_width_in_flex_column_resolves_against_parent_width() {
@@ -43,7 +36,7 @@ fn fill_width_in_flex_column_resolves_against_parent_width() {
         .compute(&mut cx, root, Size::fixed(220.0, 40.0))
         .expect("compute succeeds");
 
-    let r = child_rect(&cx, child);
+    let r = layout_rect(&cx, child);
     assert_eq!(
         r.width, 220.0,
         "fill_width child in a flex_column parent must take parent's WIDTH (220), got {}",
@@ -74,7 +67,7 @@ fn fill_height_in_flex_row_resolves_against_parent_height() {
         .compute(&mut cx, root, Size::fixed(40.0, 220.0))
         .expect("compute succeeds");
 
-    let r = child_rect(&cx, child);
+    let r = layout_rect(&cx, child);
     assert_eq!(
         r.height, 220.0,
         "fill_height child in a flex_row parent must take parent's HEIGHT (220), got {}",

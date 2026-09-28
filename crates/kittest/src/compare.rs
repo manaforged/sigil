@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use crate::gpu::adapter_key;
-use crate::{Regen, regen_mode};
+use crate::{Regen, Rendered, regen_mode};
 
 #[must_use]
 pub fn golden_path_in(manifest_dir: &str, stem: &str) -> PathBuf {
@@ -58,6 +58,16 @@ fn differing_pct(actual: &image::RgbaImage, golden: &Path) -> f64 {
 }
 
 const CHANNEL_TOLERANCE: u8 = 2;
+
+#[track_caller]
+#[allow(clippy::print_stdout)]
+pub fn assert_rendered_matches_golden(rendered: Rendered, golden: &Path, max_delta_pct: f32) {
+    let Some(img) = rendered.expect("sigil-kittest") else {
+        println!("no GPU adapter — skipping {}", golden.display());
+        return;
+    };
+    assert_png_matches_golden(&img, golden, max_delta_pct);
+}
 
 #[track_caller]
 #[allow(clippy::panic)]

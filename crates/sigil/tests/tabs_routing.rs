@@ -13,27 +13,17 @@
     clippy::shadow_unrelated
 )]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
 use sigil::prelude::*;
+use widget_support::compute;
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
-
-struct StubMeasure;
-
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout.compute(cx, root, VIEWPORT).expect("layout computes");
-    layout
-}
 
 const fn pointer_event(
     x: f32,
@@ -140,7 +130,7 @@ fn routing_only_materialises_active_content() {
                         .layout(LayoutStyle::block().fixed_size(120.0, 40.0)),
                 ),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let panel0 = find_by_role_label(&cx, root, Role::GenericContainer, "panel-0");
         let panel1 = find_by_role_label(&cx, root, Role::GenericContainer, "panel-1");
@@ -163,7 +153,7 @@ fn routing_only_materialises_active_content() {
         assert!(h2 == 0.0, "inactive panel 2 must collapse (height = {h2})");
 
         active.set(2);
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let h0 = layout
             .result(panel0[0])
             .map_or(0.0, |result| result.rect().height);
@@ -200,7 +190,7 @@ fn close_button_wired_into_each_tab() {
                 .closeable(true)
                 .close(recorder),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let close_buttons = find_by_role_label(&cx, root, Role::Button, "Close tab");
         assert_eq!(close_buttons.len(), 3, "one close button per tab");
@@ -233,7 +223,7 @@ fn non_reorderable_ignores_drag() {
         let mut cx = Cx::new_root();
         let root =
             cx.add(tabs(active, vec!["Alpha".into(), "Beta".into(), "Gamma".into()]).order(order));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let tab_nodes = find_all_by_role(&cx, root, Role::Tab);
         assert_eq!(tab_nodes.len(), 3);
@@ -267,7 +257,7 @@ fn reorder_swaps_tab_indices_on_drag() {
                 .reorderable(true)
                 .order(order),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let tab_nodes = find_all_by_role(&cx, root, Role::Tab);
         assert_eq!(tab_nodes.len(), 3);
@@ -310,7 +300,7 @@ fn close_button_fires_callback_with_index() {
                 .closeable(true)
                 .close(recorder),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let close_buttons = find_by_role_label(&cx, root, Role::Button, "Close tab");
         let close_for_tab_1 = close_buttons[1];

@@ -8,17 +8,10 @@
 
 #[path = "layout_stub/mod.rs"]
 mod stub;
-use stub::stub_engine;
+use stub::{layout_rect, stub_engine};
 
 use sigil::kernel::prelude::*;
 use sigil::layout::prelude::*;
-
-fn rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
-    cx.get(id)
-        .and_then(|node| node.get_extension::<LayoutResult>())
-        .expect("rect")
-        .rect()
-}
 
 #[test]
 fn non_grow_row_beside_grow_spacer_stays_intrinsic_height() {
@@ -50,9 +43,9 @@ fn non_grow_row_beside_grow_spacer_stays_intrinsic_height() {
         .compute(&mut cx, root, Size::fixed(1408.0, 750.0))
         .expect("compute");
 
-    let row_rect = rect(&cx, row_id);
-    let card_rect = rect(&cx, card_id);
-    let spacer_rect = rect(&cx, spacer_id);
+    let row_rect = layout_rect(&cx, row_id);
+    let card_rect = layout_rect(&cx, card_id);
+    let spacer_rect = layout_rect(&cx, spacer_id);
 
     assert_eq!(
         row_rect.height, 80.0,

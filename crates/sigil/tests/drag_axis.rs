@@ -5,10 +5,15 @@
 #![allow(clippy::unwrap_used, clippy::too_many_lines)]
 #![allow(clippy::float_cmp)]
 
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
 use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
+use widget_support::compute;
 
 const ROW_H: f32 = 20.0;
+const VIEWPORT: Size = Size::fixed(200.0, 100.0);
 
 const fn pointer(x: f32, y: f32, phase: PointerPhase, button: Option<MouseButton>) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
@@ -34,28 +39,13 @@ fn build_handle(width_signal: Signal<f32>) -> NodeBuilder {
         ))
 }
 
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(200.0, 100.0))
-        .expect("layout");
-    layout
-}
-
 #[test]
 fn axis_drag_applies_delta_against_down_snapshot_and_resettles() {
     Runtime::scope("axis-drag-snapshot", || {
         let width = signal(100.0_f32);
         let mut cx = Cx::new_root();
         let root = cx.add(build_handle(width));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         router.route(

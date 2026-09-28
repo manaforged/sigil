@@ -4,11 +4,13 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::hal::{Color, Point, Rect};
-use sigil::renderer::{
-    CommandScene, CornerRadii, RendererError, SceneBuilder, SceneCommand, SceneRectStyle,
-    WgpuRenderer, WgpuSurface,
-};
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+
+use scene_support::rect;
+use sigil::hal::Color;
+use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
+use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
 use sigil::style::Rgba8;
 
 #[test]
@@ -110,10 +112,6 @@ fn nested_clip_scene() -> CommandScene {
         });
     });
     builder.finish()
-}
-
-const fn rect(x: f32, y: f32, width: f32, height: f32) -> Rect {
-    Rect::new(Point::new(x, y), width, height)
 }
 
 const fn rect_style() -> SceneRectStyle {

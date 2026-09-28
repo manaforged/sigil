@@ -4,10 +4,16 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::pointer_move_event;
 use sigil::hal::{Point, PointerEventInit};
 use sigil::prelude::*;
-use sigil::renderer::{SceneCommand, emit_scene};
 use sigil::style::{Rgba8, Theme};
+use widget_support::{compute, rect_colors};
 
 const HOVER_BG: Rgba8 = Rgba8 {
     r: 10,
@@ -27,44 +33,7 @@ const REST_BG: Rgba8 = Rgba8 {
     b: 240,
     a: 255,
 };
-
-struct StubMeasure;
-impl TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::new(40.0, 16.0)
-    }
-}
-
-fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
-    let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
-    layout
-        .compute(cx, root, Size::fixed(640.0, 480.0))
-        .expect("layout");
-    layout
-}
-
-fn rect_colors(cx: &Cx, root: NodeId) -> Vec<Rgba8> {
-    emit_scene(cx, root)
-        .commands
-        .iter()
-        .filter_map(|c| match c {
-            SceneCommand::Rect(r) => Some(r.color),
-            _ => None,
-        })
-        .collect()
-}
-
-const fn pointer_move_event(x: f32, y: f32) -> ShellEvent {
-    ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
-        position: Point::new(x, y),
-        delta: Point::new(0.0, 0.0),
-        kind: PointerKind::Mouse,
-        button: None,
-        phase: PointerPhase::Move,
-        buttons: MouseButtons::empty(),
-        modifiers: ModifiersState::empty(),
-    }))
-}
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
 
 const fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
     ShellEvent::Pointer(PointerEvent::new(PointerEventInit {
@@ -89,7 +58,7 @@ fn interactive_hover_overlay_paints_on_pointer_enter() {
     Runtime::scope("interactive-hover-paints", || {
         let mut cx = Cx::new_root();
         let root = cx.add(interactive(rest_pane()).hover(|s| s.bg(HOVER_BG)));
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         assert!(
@@ -120,7 +89,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
                 .theme(Theme::dark())
                 .child(interactive(rest_pane()).class("hover:bg-accent-9")),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         let rest = rect_colors(&cx, root);
@@ -155,7 +124,7 @@ fn interactive_pressed_overlay_paints_on_pointer_down() {
                 .hover(|s| s.bg(HOVER_BG))
                 .pressed(|s| s.bg(PRESSED_BG)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
 
         router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
@@ -188,7 +157,7 @@ fn interactive_hover_does_not_stop_ancestor_hover() {
             )
             .hover(|s| s.bg(HOVER_BG)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
         let count = rect_colors(&cx, root)
@@ -209,7 +178,7 @@ fn interactive_disabled_signal_suppresses_hover() {
                 .disabled_signal(disabled)
                 .hover(|s| s.bg(HOVER_BG)),
         );
-        let layout = compute(&mut cx, root);
+        let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
         router.route(&mut cx, &layout, pointer_move_event(50.0, 50.0));
         assert!(
