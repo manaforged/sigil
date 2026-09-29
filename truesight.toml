@@ -1,0 +1,14 @@
+toolchain = "nightly-2026-09-16"
+book = "docs"
+
+[[crate]]
+package = "sigil-ui"
+tag = "sigil-ui-v{version}"
+
+[[crate]]
+package = "sigil-kittest"
+tag = "sigil-kittest-v{version}"
+
+[[crate]]
+package = "sigil-sign"
+tag = "sigil-sign-v{version}"

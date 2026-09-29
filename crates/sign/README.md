@@ -50,6 +50,18 @@ key pair. `sigil-pack sign` and `sigil-pack genkey` read the key
 password from `SIGIL_PACK_PASSWORD`. `sigil-pack sign` writes the plain
 minisign envelope to `<file>.sig`; `minisign -V` accepts it.
 
+## API
+
+<!-- truesight:surface sigil-sign -->
+
+35 public items (5 types, 6 functions, 11 fields, 13 variants) at 35 paths; 0 are re-export aliases. 10 trait impl lines, 0 inherent impl lines. 1 module, 0 re-export only.
+
+| Module | Items | Types | Functions | Methods | Aliases |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `sigil_sign` | 35 | 5 | 6 | 0 | 0 |
+
+<!-- /truesight -->
+
 ## License
 
-[MIT](../../LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.
+[MIT](https://github.com/manaforged/sigil/blob/main/LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.

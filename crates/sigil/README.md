@@ -7,17 +7,22 @@ embed it with `sigil::Host`, or paint it on a character grid with
 The package is `sigil-ui` because `sigil` is taken on crates.io. The
 library name is `sigil`, so imports read `sigil::`.
 
+## Status
+
+0.1 is an early release. The API will break between minor versions until
+1.0. The markdown, HTML, SVG, and mermaid parsers are not hardened for
+untrusted input; they have been fuzzed only briefly. Report bugs on
+[GitHub issues](https://github.com/manaforged/sigil/issues).
+
 ## Install
 
-```bash
-cargo add sigil-ui
+```toml
+[dependencies]
+sigil-ui = "0.1"
 ```
 
-For the terminal host only, without the GPU stack:
-
-```bash
-cargo add sigil-ui --no-default-features --features terminal
-```
+[Install](https://github.com/manaforged/sigil#install) also gives the
+terminal-only line without the GPU stack.
 
 Rust 1.90 or newer. The window host uses wgpu by default;
 `SIGIL_BACKEND=cpu` selects the CPU renderer.
@@ -40,15 +45,12 @@ fn main() -> sigil::AppResult<()> {
 
 fn app_tree(cx: &mut Cx) -> NodeId {
     let count = signal(0_i32);
-    let label = derived(move || format!("Count: {}", count.get()));
     cx.add(
         container()
-            .layout(LayoutStyle::flex_column().fixed_size(480.0, 240.0).gap(16.0))
-            .class(classes!("p-8 bg-surface"))
-            .child(text(label).class(classes!("text-on-surface")))
-            .child(button("Increment").primary().activate(move || {
-                count.set(count.peek() + 1);
-            })),
+            .layout(LayoutStyle::flex_column().gap(16.0))
+            .class("p-32 bg-surface")
+            .child(text(move || format!("Count: {}", count.get())))
+            .child(button("Increment").primary().activate(move || count.update(|n| *n += 1))),
     )
 }
 ```
@@ -125,8 +127,9 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or
 - Public modules not listed in `docs/api.md` are used by tests and
   macro expansion. They are not API and can change in any 0.1.x release.
 
-`classes!` joins its string literals and parses the class string at
-runtime. An unknown class logs a warning and has no effect. Typed
+`.class("...")` parses the class string at runtime. An unknown class
+panics in a debug build with the nearest valid names, and logs one
+warning in a release build. Typed
 actions use a plain `impl Action for ...`; there is no derive macro.
 
 ## Docs
@@ -138,3 +141,105 @@ maps each job to its symbol.
 
 License: MIT. The bundled fonts under `assets/text/fonts` are under the
 SIL Open Font License; see `LICENSE-OFL.txt` there.
+
+## API
+
+<!-- truesight:surface sigil-ui -->
+
+3197 public items (420 types, 216 functions, 1317 methods, 477 fields, 711 variants, 56 constants) at 5975 paths; 2778 are re-export aliases. 1700 trait impl lines, 192 inherent impl lines. 90 modules, 20 re-export only.
+
+| Module | Items | Types | Functions | Methods | Aliases |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `sigil` | 101 | 12 | 12 | 53 | 26 |
+| `sigil::a11y` (re-export only) | 0 | 0 | 0 | 0 | 7 |
+| `sigil::a11y::bridge` | 9 | 3 | 0 | 5 | 0 |
+| `sigil::a11y::mapping` | 3 | 1 | 2 | 0 | 0 |
+| `sigil::a11y::snapshot` | 1 | 0 | 1 | 0 | 1 |
+| `sigil::animation` | 76 | 9 | 0 | 33 | 0 |
+| `sigil::animation_runtime` | 36 | 5 | 6 | 18 | 26 |
+| `sigil::animation_runtime::binding_animate` | 16 | 3 | 2 | 5 | 0 |
+| `sigil::animation_runtime::presets` | 8 | 0 | 0 | 0 | 0 |
+| `sigil::app` | 35 | 10 | 6 | 2 | 76 |
+| `sigil::app::open` | 1 | 0 | 1 | 0 | 1 |
+| `sigil::app::profile` (re-export only) | 0 | 0 | 0 | 0 | 146 |
+| `sigil::bidi` | 11 | 2 | 2 | 4 | 0 |
+| `sigil::clipboard` | 14 | 5 | 4 | 3 | 0 |
+| `sigil::events` | 52 | 5 | 6 | 37 | 0 |
+| `sigil::events::prelude` (re-export only) | 0 | 0 | 0 | 0 | 143 |
+| `sigil::hal` | 60 | 7 | 0 | 14 | 181 |
+| `sigil::hal::a11y` | 7 | 5 | 0 | 2 | 0 |
+| `sigil::hal::events` | 80 | 14 | 0 | 13 | 40 |
+| `sigil::hal::geometry` | 26 | 4 | 0 | 8 | 0 |
+| `sigil::hal::layout` | 11 | 2 | 0 | 4 | 0 |
+| `sigil::hal::renderer` | 7 | 4 | 0 | 3 | 0 |
+| `sigil::hal::scheduler` | 7 | 4 | 0 | 3 | 0 |
+| `sigil::hal::shell` | 40 | 8 | 0 | 10 | 0 |
+| `sigil::hal::size` | 11 | 2 | 0 | 6 | 0 |
+| `sigil::hal::text` | 27 | 7 | 0 | 7 | 0 |
+| `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
+| `sigil::icons::builtin` | 9 | 0 | 0 | 0 | 0 |
+| `sigil::interaction` (re-export only) | 0 | 0 | 0 | 0 | 1 |
+| `sigil::kernel` | 198 | 21 | 9 | 106 | 0 |
+| `sigil::kernel::prelude` (re-export only) | 0 | 0 | 0 | 0 | 76 |
+| `sigil::kernel::prelude::image` (re-export only) | 0 | 0 | 0 | 0 | 12 |
+| `sigil::kernel::prelude::node` (re-export only) | 0 | 0 | 0 | 0 | 19 |
+| `sigil::kernel::prelude::text` (re-export only) | 0 | 0 | 0 | 0 | 7 |
+| `sigil::layout` | 205 | 26 | 3 | 79 | 8 |
+| `sigil::layout::builder_ext` | 2 | 1 | 0 | 1 | 0 |
+| `sigil::layout::prelude` (re-export only) | 0 | 0 | 0 | 0 | 93 |
+| `sigil::layout::reactive_position` | 8 | 3 | 0 | 5 | 0 |
+| `sigil::open` (re-export only) | 0 | 0 | 0 | 0 | 2 |
+| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 923 |
+| `sigil::prelude::heatmap` (re-export only) | 0 | 0 | 0 | 0 | 3 |
+| `sigil::prelude::interactive` (re-export only) | 0 | 0 | 0 | 0 | 3 |
+| `sigil::prelude::number_field` (re-export only) | 0 | 0 | 0 | 0 | 7 |
+| `sigil::prelude::open` (re-export only) | 0 | 0 | 0 | 0 | 2 |
+| `sigil::prelude::patterns` (re-export only) | 0 | 0 | 0 | 0 | 43 |
+| `sigil::profile` | 159 | 11 | 15 | 12 | 0 |
+| `sigil::reactive` | 58 | 10 | 14 | 30 | 0 |
+| `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
+| `sigil::renderer` | 55 | 9 | 1 | 19 | 10 |
+| `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
+| `sigil::scene` | 251 | 36 | 3 | 52 | 0 |
+| `sigil::shell` | 25 | 5 | 0 | 15 | 0 |
+| `sigil::style` | 105 | 19 | 1 | 78 | 420 |
+| `sigil::style::animator_overlay` | 25 | 3 | 0 | 5 | 0 |
+| `sigil::style::atom` | 156 | 19 | 0 | 4 | 0 |
+| `sigil::style::binding` | 19 | 3 | 0 | 16 | 0 |
+| `sigil::style::builder_ext` | 18 | 2 | 1 | 12 | 0 |
+| `sigil::style::engine` | 6 | 1 | 0 | 5 | 0 |
+| `sigil::style::focus_ring` | 13 | 1 | 0 | 12 | 0 |
+| `sigil::style::merge` | 6 | 1 | 5 | 0 | 0 |
+| `sigil::style::metrics` | 25 | 2 | 1 | 13 | 0 |
+| `sigil::style::overlay` | 10 | 1 | 0 | 9 | 0 |
+| `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
+| `sigil::style::parser` | 13 | 2 | 2 | 0 | 0 |
+| `sigil::style::prelude` (re-export only) | 0 | 0 | 0 | 0 | 331 |
+| `sigil::style::reactive` | 2 | 1 | 0 | 1 | 0 |
+| `sigil::style::resolve` | 2 | 0 | 2 | 0 | 0 |
+| `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
+| `sigil::style::size` | 9 | 2 | 0 | 1 | 0 |
+| `sigil::style::state` | 31 | 4 | 0 | 17 | 0 |
+| `sigil::style::struct_api` | 79 | 1 | 0 | 78 | 0 |
+| `sigil::style::styled` (re-export only) | 0 | 0 | 0 | 0 | 86 |
+| `sigil::style::text_style` | 33 | 6 | 1 | 6 | 0 |
+| `sigil::style::theme` | 56 | 3 | 1 | 30 | 4 |
+| `sigil::style::token` | 110 | 2 | 0 | 11 | 0 |
+| `sigil::style::tone` | 11 | 2 | 0 | 2 | 0 |
+| `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |
+| `sigil::style::variant_kit` | 3 | 0 | 0 | 0 | 0 |
+| `sigil::tasks` | 47 | 9 | 11 | 19 | 0 |
+| `sigil::text` | 33 | 5 | 2 | 21 | 20 |
+| `sigil::text::bidi` (re-export only) | 0 | 0 | 0 | 0 | 7 |
+| `sigil::widgets` | 636 | 79 | 68 | 373 | 20 |
+| `sigil::widgets::heatmap` (re-export only) | 0 | 0 | 0 | 0 | 3 |
+| `sigil::widgets::interaction` | 11 | 1 | 0 | 10 | 0 |
+| `sigil::widgets::interactive` | 6 | 1 | 1 | 4 | 1 |
+| `sigil::widgets::layout_ext` | 17 | 2 | 0 | 15 | 0 |
+| `sigil::widgets::number_field` | 9 | 2 | 1 | 6 | 1 |
+| `sigil::widgets::overlay` | 0 | 0 | 0 | 0 | 0 |
+| `sigil::widgets::overlay::heatmap` | 2 | 0 | 1 | 0 | 1 |
+| `sigil::widgets::patterns` | 17 | 2 | 13 | 2 | 28 |
+
+<!-- /truesight -->
+

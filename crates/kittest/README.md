@@ -5,6 +5,11 @@ an interaction state, renders it offscreen with wgpu, reads the pixels
 back, and compares them with a PNG committed under your crate's
 `tests/goldens/` directory.
 
+For interaction tests, `Harness` finds controls by accessible role and
+name, clicks and types through the event router, and compares the
+terminal grid or the rendered image with a golden. See the
+[testing guide](https://github.com/manaforged/sigil/blob/main/docs/guide/testing.md).
+
 ## Install
 
 Add the crate as a dev-dependency:
@@ -137,6 +142,23 @@ RGBA8 rows, and `gpu::pixel_rgba` returns one pixel.
 `gpu::create_capture_texture` and `gpu::FORMAT` create a target for
 custom render paths.
 
+## API
+
+<!-- truesight:surface sigil-kittest -->
+
+187 public items (17 types, 53 functions, 59 methods, 30 fields, 18 variants, 8 constants, 2 macros) at 187 paths; 0 are re-export aliases. 44 trait impl lines, 6 inherent impl lines. 6 modules, 0 re-export only.
+
+| Module | Items | Types | Functions | Methods | Aliases |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `sigil_kittest` | 112 | 11 | 17 | 45 | 0 |
+| `sigil_kittest::gpu` | 16 | 2 | 9 | 0 | 0 |
+| `sigil_kittest::input` | 15 | 0 | 15 | 0 | 0 |
+| `sigil_kittest::parity` | 16 | 2 | 5 | 0 | 0 |
+| `sigil_kittest::scene_gen` | 23 | 2 | 2 | 14 | 0 |
+| `sigil_kittest::scene_gen::stress` | 5 | 0 | 5 | 0 | 0 |
+
+<!-- /truesight -->
+
 ## License
 
-[MIT](../../LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.
+[MIT](https://github.com/manaforged/sigil/blob/main/LICENSE-MIT). Copyright (c) 2026 Thomas Gardiner.
