@@ -51,6 +51,7 @@ named!(Phase {
     TuiRaster => "tui.raster",
     TuiWrite => "tui.write",
     TuiPresent => "tui.present",
+    AppUpdate => "app.update",
 });
 
 impl Phase {
@@ -67,7 +68,11 @@ impl Phase {
             Self::RenderCpu | Self::RenderCompositePipeline => Category::Render,
             Self::A11y => Category::A11y,
             Self::Effect => Category::Reactive,
-            Self::TuiPaint | Self::TuiRaster | Self::TuiWrite | Self::TuiPresent => Category::App,
+            Self::TuiPaint
+            | Self::TuiRaster
+            | Self::TuiWrite
+            | Self::TuiPresent
+            | Self::AppUpdate => Category::App,
         }
     }
 
@@ -170,6 +175,11 @@ named!(Counter {
     TuiWrites => "tui.writes",
     WorkloadCols => "workload.cols",
     WorkloadRows => "workload.rows",
+    WorkloadItems => "workload.items",
+    WorkloadHeadless => "workload.headless",
+    WorkloadFps => "workload.fps",
+    WorkloadScenario => "workload.scenario",
+    BuildProfile => "build.profile",
 });
 
 named!(BackendKind {

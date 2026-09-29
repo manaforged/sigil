@@ -134,3 +134,25 @@ fn dump_closes_open_frame() {
     disable();
     drop(std::fs::remove_file(path));
 }
+
+#[test]
+fn app_workload_keys_record_under_their_names() {
+    let _gate = lock();
+    enable();
+    reset();
+    begin_frame(BackendStatus::TERMINAL);
+    {
+        let _s = span(Phase::AppUpdate);
+        count_add(Counter::WorkloadFps, 60);
+        count_add(Counter::BuildProfile, 2);
+    }
+    tick_frame();
+    let got = frames();
+    let last = got.last().expect("frame");
+    assert!(last.phases.iter().any(|(n, _)| *n == Phase::AppUpdate));
+    assert_eq!(Phase::AppUpdate.category(), Category::App);
+    assert_eq!(last.counter(Counter::WorkloadFps), 60);
+    assert_eq!(Counter::WorkloadFps.name(), "workload.fps");
+    assert_eq!(Counter::BuildProfile.name(), "build.profile");
+    disable();
+}
