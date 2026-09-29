@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::events::prelude::{MouseButton, MouseButtons, NodeEventsExt, PointerEvent};
+use crate::events::{MouseButton, MouseButtons, NodeEventsExt, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::reactive::{Signal, derived, signal};

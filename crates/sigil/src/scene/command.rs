@@ -55,7 +55,7 @@ impl CommandScene {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SceneCommand {
-    PushClip(crate::hal::Rect),
+    PushClip(crate::geometry::Rect),
     PopClip,
     PushTransform(Transform),
     PopTransform,

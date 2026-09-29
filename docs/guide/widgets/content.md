@@ -107,10 +107,10 @@ to update data. The node is `Role::GenericContainer` labeled "Chart".
 
 ## Small content helpers
 
-These helpers from `sigil::widgets::patterns` paint fixed content:
+These helpers in `sigil::widgets` paint fixed content:
 `section_label(title)`, `empty_state(title, body)`,
 `notice_band(body, tone)`, `hint_bar(keys, right)`, `avatar(initials)`,
-`hairline()`, and `spacer()`. [Chrome](chrome.md#patterns) describes
+`hairline()`, and `spacer()`. [Chrome](chrome.md#small-composites) describes
 each one. `divider_horizontal()` and `divider_vertical()` draw 1 px
 rules in the border colour.
 

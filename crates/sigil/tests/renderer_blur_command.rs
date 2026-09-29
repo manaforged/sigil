@@ -8,8 +8,8 @@
 mod scene_support;
 
 use scene_support::rect;
-use sigil::hal::Color;
 use sigil::scene::{CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder};
+use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (128.0, 64.0);

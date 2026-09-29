@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 
-use crate::hal::ImeEvent;
+use crate::events::ImeEvent;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum CompositionInput<'a> {

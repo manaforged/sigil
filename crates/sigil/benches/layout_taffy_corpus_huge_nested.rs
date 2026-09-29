@@ -4,12 +4,13 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::IntoNode;
 use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
-use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::geometry::Size;
+use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
@@ -42,8 +43,8 @@ fn taffy_flex_column_fixed(width: f32, height: f32) -> taffy::Style {
     }
 }
 
-fn build_owned_huge_nested(cx: &mut Cx) -> NodeId {
-    cx.add(owned_huge_nested_node(0))
+fn build_owned_huge_nested() -> impl IntoNode {
+    owned_huge_nested_node(0)
 }
 
 fn owned_huge_nested_node(index: usize) -> NodeBuilder {
@@ -64,7 +65,7 @@ fn owned_huge_nested_node(index: usize) -> NodeBuilder {
 fn bench_owned_huge_nested(c: &mut Criterion) {
     c.bench_function("huge_nested/owned", |b| {
         let mut cx = Cx::new_root();
-        let root = build_owned_huge_nested(&mut cx);
+        let root = cx.add(build_owned_huge_nested);
         let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)

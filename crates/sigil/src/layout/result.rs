@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use crate::layout::engine_drive::ResolvedBox;
 

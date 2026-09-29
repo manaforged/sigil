@@ -4,10 +4,9 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
-use sigil::layout::{Dimension, LayoutEngine};
+use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 
 fn widths(root_w: f32, a: LayoutStyle, b: LayoutStyle) -> Vec<f32> {

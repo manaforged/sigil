@@ -1,7 +1,7 @@
 use smallvec::smallvec;
 
-use crate::hal::Color;
 use crate::scene::{CommandScene, CornerRadii, GradientStop, SceneBuilder, SceneRectStyle};
+use crate::style::Color;
 
 use super::helpers::{draw_fill, linear_gradient, rect, rgba};
 

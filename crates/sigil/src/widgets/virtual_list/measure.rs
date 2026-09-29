@@ -5,7 +5,7 @@ use std::rc::Rc;
 
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, effect, signal};
 
 use super::render::{WidthSpec, width_apply};

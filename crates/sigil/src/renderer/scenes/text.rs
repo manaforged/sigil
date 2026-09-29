@@ -1,6 +1,7 @@
-use crate::hal::{Color, Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::scene::shape_glyph_run;
 use crate::scene::{CommandScene, SceneBuilder};
+use crate::style::Color;
 use crate::style::{Rgba8, TextLineHeight, TextStyle};
 
 const LINES: [(&str, f32); 3] = [

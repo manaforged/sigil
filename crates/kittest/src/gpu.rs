@@ -1,8 +1,8 @@
 use std::sync::{OnceLock, mpsc};
 
-use sigil::hal::Color;
 use sigil::renderer::{OffscreenTarget, RendererError, WgpuRenderer};
 use sigil::scene::CommandScene;
+use sigil::style::Color;
 
 use crate::{Error, extent_f32};
 

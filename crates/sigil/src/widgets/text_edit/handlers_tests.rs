@@ -6,11 +6,11 @@ use super::{TextEditRuntime, TextEditState, noop_change};
 use crate::clipboard::clipboard;
 use crate::clipboard::{ClipError, Clipboard};
 use crate::events::EventRouter;
-use crate::events::prelude::{NodeEventsExt, Shortcut};
-use crate::hal::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, LogicalSize, ModifiersState, PhysicalKey,
-    ShellEvent, Size,
+use crate::events::{
+    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
+use crate::events::{NodeEventsExt, Shortcut};
+use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{Cx, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};

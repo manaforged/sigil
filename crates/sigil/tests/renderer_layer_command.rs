@@ -9,13 +9,12 @@
 mod scene_support;
 
 use scene_support::{color, rect};
-use sigil::hal::Color;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
     CommandScene, CornerRadii, LayerEffect, LayerScope, SceneBuilder, SceneCommand, SceneRectStyle,
 };
-use sigil_kittest::gpu::read_pixels;
-use sigil_kittest::gpu::{Capture, render_capture};
+use sigil::style::Color;
+use sigil_kittest::gpu::{Capture, read_pixels, render_capture};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 120.0);

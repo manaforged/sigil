@@ -4,12 +4,13 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::IntoNode;
 use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
-use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::geometry::Size;
+use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
@@ -53,12 +54,12 @@ fn taffy_fixed_style(
     }
 }
 
-fn build_owned_wide_tree(cx: &mut Cx) -> NodeId {
+fn build_owned_wide_tree() -> impl IntoNode {
     let mut root = container().layout(LayoutStyle::flex_row().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
     for _ in 0..CHILDREN {
         root = root.child(owned_wide_tree_child());
     }
-    cx.add(root)
+    root
 }
 
 fn owned_wide_tree_child() -> NodeBuilder {
@@ -76,7 +77,7 @@ fn owned_wide_tree_child() -> NodeBuilder {
 fn bench_owned_wide_tree(c: &mut Criterion) {
     c.bench_function("wide_tree/owned", |b| {
         let mut cx = Cx::new_root();
-        let root = build_owned_wide_tree(&mut cx);
+        let root = cx.add(build_owned_wide_tree);
         let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)

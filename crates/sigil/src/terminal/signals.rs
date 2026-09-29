@@ -8,6 +8,10 @@ pub(crate) fn halted() -> bool {
     HALTED.load(Ordering::Relaxed)
 }
 
+pub(crate) fn stopped() -> bool {
+    crate::app::take_exit() || halted()
+}
+
 pub(crate) fn painting() -> MutexGuard<'static, ()> {
     PAINTING.lock().unwrap_or_else(PoisonError::into_inner)
 }

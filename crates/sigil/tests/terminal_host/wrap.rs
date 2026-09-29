@@ -2,12 +2,16 @@ use super::*;
 
 #[test]
 fn wrapped_label_fills_the_container_width() {
-    use sigil::layout::prelude::LayoutStyle;
+    use sigil::layout::LayoutStyle;
     let body = "x".repeat(80);
     let out = present(
-        container()
-            .layout(LayoutStyle::block().fill_width())
-            .child(text(body).wrap().layout(LayoutStyle::block().fill_width())),
+        move || {
+            container().layout(LayoutStyle::block().fill_width()).child(
+                text(body.clone())
+                    .wrap()
+                    .layout(LayoutStyle::block().fill_width()),
+            )
+        },
         60,
         10,
         &[],
@@ -21,34 +25,36 @@ fn wrapped_label_fills_the_container_width() {
 
 #[test]
 fn wrapped_label_inside_modal_band_wraps() {
-    use sigil::layout::prelude::LayoutStyle;
+    use sigil::layout::LayoutStyle;
     use sigil::reactive::signal;
     use sigil::widgets::modal;
     sigil::reactive::Runtime::scope("tui-modal-wrap", || {
         let body = "x".repeat(80);
         let open = signal(true);
         let out = present(
-            container().child(
-                modal(open).title("models").trap(true).child(
-                    container()
-                        .layout(LayoutStyle::flex_column().fill_width())
-                        .child(
-                            container()
-                                .layout(
-                                    LayoutStyle::flex_row()
-                                        .fill_width()
-                                        .min_size(0.0, 0.0)
-                                        .padding_x(8.0),
-                                )
-                                .child(
-                                    text(body)
-                                        .wrap()
-                                        .class("text-xs")
-                                        .layout(LayoutStyle::block().fill_width()),
-                                ),
-                        ),
-                ),
-            ),
+            move || {
+                container().child(
+                    modal(open).title("models").trap(true).child(
+                        container()
+                            .layout(LayoutStyle::flex_column().fill_width())
+                            .child(
+                                container()
+                                    .layout(
+                                        LayoutStyle::flex_row()
+                                            .fill_width()
+                                            .min_size(0.0, 0.0)
+                                            .padding_x(8.0),
+                                    )
+                                    .child(
+                                        text(body.clone())
+                                            .wrap()
+                                            .class("text-xs")
+                                            .layout(LayoutStyle::block().fill_width()),
+                                    ),
+                            ),
+                    ),
+                )
+            },
             60,
             10,
             &[],
@@ -60,19 +66,25 @@ fn wrapped_label_inside_modal_band_wraps() {
 
 #[test]
 fn wrapped_label_inside_flex_row_band_wraps() {
-    use sigil::layout::prelude::LayoutStyle;
+    use sigil::layout::LayoutStyle;
     let body = "x".repeat(80);
     let out = present(
-        container().layout(LayoutStyle::block().fill_width()).child(
-            container()
-                .layout(
-                    LayoutStyle::flex_row()
-                        .fill_width()
-                        .min_size(0.0, 0.0)
-                        .padding_x(8.0),
-                )
-                .child(text(body).wrap().layout(LayoutStyle::block().fill_width())),
-        ),
+        move || {
+            container().layout(LayoutStyle::block().fill_width()).child(
+                container()
+                    .layout(
+                        LayoutStyle::flex_row()
+                            .fill_width()
+                            .min_size(0.0, 0.0)
+                            .padding_x(8.0),
+                    )
+                    .child(
+                        text(body.clone())
+                            .wrap()
+                            .layout(LayoutStyle::block().fill_width()),
+                    ),
+            )
+        },
         60,
         10,
         &[],
@@ -86,42 +98,38 @@ fn grow_fill_does_not_clip_row_labels() {
     use sigil::kernel::{container, node};
     use sigil::prelude::{AlignItems, LayoutStyle, divider_horizontal};
     let grid = present(
-        |cx: &mut Cx| {
-            cx.add(
-                container()
-                    .layout(
-                        LayoutStyle::flex_column()
-                            .fill_width()
-                            .min_size(0.0, 0.0)
-                            .padding_x(24.0)
-                            .gap(0.0),
-                    )
-                    .child(
-                        container()
-                            .layout(
-                                LayoutStyle::flex_row()
-                                    .fill_width()
-                                    .shrink(0.0)
-                                    .align_items(AlignItems::Center)
-                                    .gap(8.0),
-                            )
-                            .children_reactive(|| {
-                                vec![
-                                    node(container().child(text("L_L_L_L").nowrap())),
-                                    node(
-                                        container()
-                                            .layout(
-                                                LayoutStyle::flex_row()
-                                                    .grow(1.0)
-                                                    .min_size(0.0, 0.0),
-                                            )
-                                            .child(divider_horizontal()),
-                                    ),
-                                    node(container().child(text("RRRRRRRRRRRRRRRR").nowrap())),
-                                ]
-                            }),
-                    ),
-            )
+        || {
+            container()
+                .layout(
+                    LayoutStyle::flex_column()
+                        .fill_width()
+                        .min_size(0.0, 0.0)
+                        .padding_x(24.0)
+                        .gap(0.0),
+                )
+                .child(
+                    container()
+                        .layout(
+                            LayoutStyle::flex_row()
+                                .fill_width()
+                                .shrink(0.0)
+                                .align_items(AlignItems::Center)
+                                .gap(8.0),
+                        )
+                        .children_reactive(|| {
+                            vec![
+                                node(container().child(text("L_L_L_L").nowrap())),
+                                node(
+                                    container()
+                                        .layout(
+                                            LayoutStyle::flex_row().grow(1.0).min_size(0.0, 0.0),
+                                        )
+                                        .child(divider_horizontal()),
+                                ),
+                                node(container().child(text("RRRRRRRRRRRRRRRR").nowrap())),
+                            ]
+                        }),
+                )
         },
         40,
         8,

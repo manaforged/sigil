@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::NodeStyleExt;
 
 mod canvas;

@@ -1,4 +1,6 @@
-use crate::hal::{Color, Rect, RenderedGlyph};
+use crate::geometry::Rect;
+use crate::hal::RenderedGlyph;
+use crate::style::Color;
 use crate::text::Paragraph;
 
 use crate::renderer::raster::{Hinters, RasterKey, subpixel_quantize};

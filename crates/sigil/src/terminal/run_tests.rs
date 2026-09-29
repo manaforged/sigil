@@ -7,7 +7,7 @@ fn spawned_task_completes_across_frames() {
         async_rt.install_current();
         let result = crate::tasks::spawn::<u32, core::convert::Infallible, _>(async { Ok(7) });
         let mut host = Host::cells();
-        host.mount(crate::kernel::text("hello"));
+        host.mount(move || crate::kernel::text("hello"));
         let mut router = EventRouter::new();
         for _ in 0..100 {
             let _ = async_rt.pump();
@@ -37,7 +37,7 @@ fn step_paints_the_hud_like_the_live_host() {
     Runtime::scope("tui-step-hud", || {
         crate::hud::set(true);
         let mut host = Host::cells();
-        host.mount(crate::kernel::text("hello"));
+        host.mount(move || crate::kernel::text("hello"));
         let mut router = EventRouter::new();
         crate::profile::reset();
         crate::profile::begin_frame(crate::profile::BackendStatus::TERMINAL);
@@ -51,12 +51,12 @@ fn step_paints_the_hud_like_the_live_host() {
 }
 
 fn tab() -> ShellEvent {
-    ShellEvent::Key(crate::hal::KeyEvent::new(crate::hal::KeyEventInit {
-        key: crate::hal::Key::Tab.into(),
-        physical: crate::hal::PhysicalKey::Tab,
-        modifiers: crate::hal::ModifiersState::empty(),
+    ShellEvent::Key(crate::events::KeyEvent::new(crate::events::KeyEventInit {
+        key: crate::events::Key::Tab.into(),
+        physical: crate::events::PhysicalKey::Tab,
+        modifiers: crate::events::ModifiersState::empty(),
         repeat: false,
-        phase: crate::hal::KeyPhase::Down,
+        phase: crate::events::KeyPhase::Down,
         text: None,
     }))
 }
@@ -65,11 +65,11 @@ fn tab() -> ShellEvent {
 fn the_cursor_sits_on_the_focused_control() {
     Runtime::scope("tui-focus-cursor", || {
         let mut host = Host::cells();
-        host.mount(
+        host.mount(move || {
             crate::kernel::container()
                 .child(crate::kernel::text("title"))
-                .child(crate::widgets::button("Save")),
-        );
+                .child(crate::widgets::button("Save"))
+        });
         let mut router = EventRouter::new();
         let _ = step(&mut host, &mut router, [], 40, 6);
         let grid = step(&mut host, &mut router, [tab()], 40, 6).expect("frame");
@@ -85,9 +85,9 @@ fn an_announcement_reaches_the_status_row() {
     Runtime::scope("tui-announce", || {
         let visible = crate::reactive::signal(false);
         let mut host = Host::cells();
-        host.mount(
-            crate::kernel::container().child(crate::widgets::modal(visible).title("File saved")),
-        );
+        host.mount(move || {
+            crate::kernel::container().child(crate::widgets::modal(visible).title("File saved"))
+        });
         let mut router = EventRouter::new();
         let _ = step(&mut host, &mut router, [], 40, 8);
         visible.set(true);

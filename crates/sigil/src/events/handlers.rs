@@ -1,4 +1,4 @@
-use crate::hal::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
+use crate::events::{FileDropEvent, KeyEvent, PointerEvent, PointerPhase, ScrollEvent, Shortcut};
 use crate::kernel::{Cx, NodeId};
 use crate::reactive::owner_by_id;
 

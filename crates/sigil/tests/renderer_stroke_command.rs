@@ -7,7 +7,7 @@
 mod scene_support;
 
 use scene_support::color;
-use sigil::hal::{Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::scene::{
     CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand, SceneGradientStyle,
     SceneRectStyle, Stroke, StrokeAlign, StrokeStyle,

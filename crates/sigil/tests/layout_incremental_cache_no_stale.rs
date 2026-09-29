@@ -1,9 +1,8 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, container};
-use sigil::layout::LayoutEngine;
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 
 #[test]

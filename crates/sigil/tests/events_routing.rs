@@ -14,9 +14,10 @@ mod routing_helpers;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 use input::{pointer_down, pointer_drag, scroll_lines, window_blur};
 use routing_helpers::{abs_rect, compute_layout, record, route_event};

@@ -6,7 +6,7 @@
     reason = "pixel coordinates are bounded by the target size; float-to-int rounding is the rasterizer contract"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::icons::{IconBaker, builtin};
 use crate::renderer::cache_limits::CacheLimits;
 use crate::style::Rgba8;

@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use super::{Grid, Ink, Pen, paint, row_bytes, terminal_inks};
 use crate::app::{CellWidth, set_cell_width};

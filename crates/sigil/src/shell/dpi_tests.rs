@@ -1,4 +1,5 @@
-use crate::hal::{Point, Scale, WindowEvent};
+use crate::events::WindowEvent;
+use crate::geometry::{Point, Scale};
 
 use super::logical_point_from_f64;
 

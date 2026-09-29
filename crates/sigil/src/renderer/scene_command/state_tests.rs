@@ -1,5 +1,5 @@
 use super::SceneState;
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::renderer::scene_command::SceneCommand;
 use crate::renderer::scene_command::walk::IDENTITY;
 

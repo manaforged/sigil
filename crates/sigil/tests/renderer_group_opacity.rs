@@ -4,10 +4,10 @@
 )]
 #![allow(clippy::expect_used, clippy::indexing_slicing)]
 
-use sigil::hal::{Color, PhysicalSize, Point, Rect};
+use sigil::geometry::{PhysicalSize, Point, Rect};
 use sigil::renderer::CpuRenderer;
 use sigil::scene::{CommandScene, SceneBuilder, SceneRectStyle};
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 
 const RED: Rgba8 = Rgba8 {
     r: 255,

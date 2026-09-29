@@ -1,7 +1,7 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
 use crate::hal::TextAffinity;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, signal};

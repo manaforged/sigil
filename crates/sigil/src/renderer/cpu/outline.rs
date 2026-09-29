@@ -7,7 +7,7 @@
 
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use tiny_skia::{Path, PathBuilder};
 
 const TOLERANCE: f32 = 0.05;

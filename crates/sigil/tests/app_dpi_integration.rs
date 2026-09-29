@@ -4,10 +4,11 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::app::{AppConfig, DefaultTextMeasure};
-use sigil::hal::{LogicalSize, PhysicalSize, Scale};
+use sigil::AppConfig;
+use sigil::app::DefaultTextMeasure;
+use sigil::geometry::{LogicalSize, PhysicalSize, Scale, Size};
 use sigil::kernel::{Cx, container};
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Size};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil::reactive::Runtime;
 
 #[test]

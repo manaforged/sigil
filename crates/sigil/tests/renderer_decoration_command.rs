@@ -8,11 +8,11 @@
 mod scene_support;
 
 use scene_support::{color, rect};
-use sigil::hal::{Color, Rect};
+use sigil::geometry::Rect;
 use sigil::scene::{
     CommandScene, DecorationKind, SceneBuilder, SceneCommand, SceneDecorationStyle,
 };
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (220.0, 120.0);

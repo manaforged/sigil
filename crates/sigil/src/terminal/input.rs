@@ -3,12 +3,13 @@ use std::time::Duration;
 
 use crossterm::event::{self, Event};
 
-use crate::app::{AppConfig, AppResult, Error};
-use crate::hal::{LogicalSize, Scale, ShellEvent, WindowEvent};
+use crate::events::{ShellEvent, WindowEvent};
+use crate::geometry::{LogicalSize, Scale};
 use crate::terminal::keys::{coalesce_paste, map_key, push_key_text, strip_replies};
 use crate::terminal::mouse::map_mouse;
 use crate::terminal::run::{CELL, Hooks};
 use crate::terminal::term::set_focused;
+use crate::{AppConfig, AppResult, Error};
 
 pub(crate) enum Incoming {
     Quit,
@@ -90,7 +91,7 @@ fn wake_pair(async_rt: &mut crate::tasks::AsyncRuntime) -> Option<std::os::unix:
 pub(crate) fn gather_input(
     first: &mut bool,
     config: &AppConfig,
-    pointer: &mut crate::hal::Point,
+    pointer: &mut crate::geometry::Point,
     hooks: &mut Hooks<'_>,
     (wake, (wait, listen)): (&Wake, (Option<Duration>, bool)),
 ) -> AppResult<Incoming> {
@@ -138,7 +139,7 @@ enum Input {
     None,
 }
 
-fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::hal::Point) -> Input {
+fn map_input(event: Event, config: &AppConfig, pointer: &mut crate::geometry::Point) -> Input {
     match event {
         Event::Key(key) => {
             if quit(&key, config) {

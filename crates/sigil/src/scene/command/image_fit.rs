@@ -3,7 +3,7 @@
     reason = "image dimensions are far below the f32 mantissa limit"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageCrop, ImageSource, ObjectFit};
 
 use super::payloads::DrawImage;

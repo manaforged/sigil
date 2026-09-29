@@ -1,6 +1,6 @@
-use crate::events::prelude::{NodeEventsExt, PointerEvent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle};
+use crate::events::{NodeEventsExt, PointerEvent};
+use crate::kernel::{NodeBuilder, container};
+use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::NodeStyleExt;
 
@@ -78,7 +78,7 @@ impl HScroll {
                 if hs.max.get() <= 0.0 {
                     return Vec::new();
                 }
-                vec![move |cx: &mut Cx| track(hs).build(cx)]
+                vec![move || track(hs)]
             })
     }
 }

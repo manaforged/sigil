@@ -16,7 +16,7 @@ pub(crate) struct PaintCtx<'a> {
     pub encoder: &'a mut SplitEncoder,
     pub view: &'a wgpu::TextureView,
     pub viewport: (f32, f32),
-    pub clip: Option<crate::hal::Rect>,
+    pub clip: Option<crate::geometry::Rect>,
     pub scale: f32,
 }
 

@@ -50,11 +50,11 @@ impl Player {
         sync(self);
     }
 
-    pub fn seek(&self, ratio: f32) -> crate::app::AppResult<()> {
+    pub fn seek(&self, ratio: f32) -> crate::AppResult<()> {
         seek_rodio(self, ratio)
     }
 
-    pub fn play_path(&self, path: &std::path::Path) -> crate::app::AppResult<()> {
+    pub fn play_path(&self, path: &std::path::Path) -> crate::AppResult<()> {
         play_rodio(self, path)
     }
 }
@@ -122,34 +122,34 @@ impl std::fmt::Display for NoDuration {
 
 impl std::error::Error for NoDuration {}
 
-fn seek_rodio(player: &Player, ratio: f32) -> crate::app::AppResult<()> {
+fn seek_rodio(player: &Player, ratio: f32) -> crate::AppResult<()> {
     let ratio = ratio.clamp(0.0, 1.0);
     let mut slot = player.device.borrow_mut();
-    let device = slot.as_mut().ok_or_else(|| crate::app::Error::io(NoSink))?;
+    let device = slot.as_mut().ok_or_else(|| crate::Error::io(NoSink))?;
     let total = device
         .duration
         .filter(|total| !total.is_zero())
-        .ok_or_else(|| crate::app::Error::io(NoDuration))?;
+        .ok_or_else(|| crate::Error::io(NoDuration))?;
     let pos = total.mul_f32(ratio);
     device
         .sink
         .try_seek(pos)
-        .map_err(|err| crate::app::Error::io(std::io::Error::other(err.to_string())))?;
+        .map_err(|err| crate::Error::io(std::io::Error::other(err.to_string())))?;
     player.progress.set(ratio);
     Ok(())
 }
 
-fn play_rodio(player: &Player, path: &std::path::Path) -> crate::app::AppResult<()> {
+fn play_rodio(player: &Player, path: &std::path::Path) -> crate::AppResult<()> {
     use std::fs::File;
     use std::io::BufReader;
     use std::time::Duration;
 
     use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer, Source};
 
-    let file = File::open(path).map_err(crate::app::Error::io)?;
-    let decoder = Decoder::new(BufReader::new(file)).map_err(crate::app::Error::io)?;
+    let file = File::open(path).map_err(crate::Error::io)?;
+    let decoder = Decoder::new(BufReader::new(file)).map_err(crate::Error::io)?;
     let duration = decoder.total_duration();
-    let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::app::Error::io)?;
+    let stream = DeviceSinkBuilder::open_default_sink().map_err(crate::Error::io)?;
     let sink = RodioPlayer::connect_new(stream.mixer());
     sink.append(decoder);
     sink.play();

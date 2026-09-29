@@ -1,9 +1,8 @@
 #![allow(clippy::unwrap_used, unused_crate_dependencies)]
 
-use sigil::app::Host;
+use sigil::Host;
 use sigil::kernel::{Surface, container, text};
-use sigil::layout::LayoutError;
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::layout::{LayoutBuilderExt, LayoutError, LayoutStyle};
 use sigil::style::{NodeStyleExt, Tone, ToneContext};
 
 #[test]
@@ -15,7 +14,7 @@ fn host_root_is_none_until_build() {
 #[test]
 fn host_mount_accepts_text_node() {
     let mut host = Host::new();
-    host.mount(text("hello"));
+    host.mount(move || text("hello"));
     assert!(host.root().is_some());
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let scene = host.scene((80.0, 24.0)).unwrap();
@@ -28,12 +27,10 @@ fn host_mount_accepts_text_node() {
 #[test]
 fn host_layout_reads_text_and_tone_without_a_window() {
     let mut host = Host::new();
-    host.build(|cx| {
-        cx.add(
-            container()
-                .with(ToneContext::new(Tone::Primary))
-                .child(text("hello")),
-        )
+    host.mount(move || {
+        container()
+            .with(ToneContext::new(Tone::Primary))
+            .child(text("hello"))
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let scene = host.scene((80.0, 24.0)).unwrap();
@@ -47,13 +44,8 @@ fn host_layout_reads_text_and_tone_without_a_window() {
 #[test]
 fn host_layout_returns_missing_root_error() {
     let mut host = Host::new();
-    let mut root = None;
-    host.build(|cx| {
-        let id = cx.add(text("gone"));
-        root = Some(id);
-        id
-    });
-    let root = root.unwrap();
+    host.mount(|| text("gone"));
+    let root = host.root().unwrap();
     assert!(host.cx().remove(root));
 
     assert_eq!(
@@ -65,13 +57,11 @@ fn host_layout_returns_missing_root_error() {
 #[test]
 fn host_surfaces_reports_hole_rect() {
     let mut host = Host::new();
-    host.build(|cx| {
-        cx.add(
-            container()
-                .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
-                .with(Surface { key: 3 })
-                .child(text("hole")),
-        )
+    host.mount(move || {
+        container()
+            .layout(LayoutStyle::block().fixed_size(80.0, 24.0))
+            .with(Surface { key: 3 })
+            .child(text("hole"))
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let holes = host.surfaces();
@@ -83,19 +73,17 @@ fn host_surfaces_reports_hole_rect() {
 #[test]
 fn host_paint_skips_surface_children() {
     let mut host = Host::new();
-    host.build(|cx| {
-        cx.add(
-            container()
-                .layout(LayoutStyle::flex_row().fixed_size(80.0, 24.0))
-                .child(text("visible"))
-                .child(
-                    container()
-                        .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
-                        .with(Surface { key: 1 })
-                        .class("bg-accent")
-                        .child(text("secret")),
-                ),
-        )
+    host.mount(move || {
+        container()
+            .layout(LayoutStyle::flex_row().fixed_size(80.0, 24.0))
+            .child(text("visible"))
+            .child(
+                container()
+                    .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
+                    .with(Surface { key: 1 })
+                    .class("bg-accent")
+                    .child(text("secret")),
+            )
     });
     assert!(host.layout((80.0, 24.0)).unwrap().is_some());
     let painted = host.scene((80.0, 24.0)).unwrap();

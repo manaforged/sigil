@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{Metrics, Size, StyleAtom, Token};
 

@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::{CharMeasure, FixedMeasure};
 

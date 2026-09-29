@@ -9,8 +9,7 @@
 use sigil::kernel::{Cx, NodeId};
 use sigil::prelude::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{Dimension, Px, StyleAtom, StyleBinding};
+use sigil::style::{ColorKey, Dimension, Px, StyleAtom, StyleBinding, Token};
 
 use sigil_kittest::{
     InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,
@@ -117,9 +116,9 @@ const DELTA_PCT: f32 = 0.5;
 #[test]
 fn gauge_full() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let value = signal(0.9_f32);
-            cx.add(gauge(value).max(1.0).label("HP").warn(0.3))
+            gauge(value).max(1.0).label("HP").warn(0.3)
         },
         InteractionMode::Default,
         [220, 40],
@@ -131,9 +130,9 @@ fn gauge_full() {
 #[test]
 fn gauge_low_warn() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let value = signal(0.15_f32);
-            cx.add(gauge(value).max(1.0).label("HP").warn(0.3))
+            gauge(value).max(1.0).label("HP").warn(0.3)
         },
         InteractionMode::Default,
         [220, 40],

@@ -1,4 +1,4 @@
-use crate::hal::Size;
+use crate::geometry::Size;
 use crate::kernel::{Cx, TextContent, container};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::Runtime;
@@ -8,8 +8,8 @@ use super::SceneCache;
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, _: &TextContent, _: Size) -> crate::hal::LogicalSize {
-        crate::hal::LogicalSize::new(0.0, 0.0)
+    fn measure(&self, _: &TextContent, _: Size) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::new(0.0, 0.0)
     }
 }
 

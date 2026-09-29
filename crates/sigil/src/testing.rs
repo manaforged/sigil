@@ -1,4 +1,4 @@
-use crate::prelude::{Cx, NodeId};
+use crate::kernel::Cx;
 use crate::reactive::Runtime;
 
 pub fn with_cx<F: FnOnce(&mut Cx)>(name: &'static str, f: F) {
@@ -12,10 +12,10 @@ pub fn with_runtime<F: FnOnce(&Runtime)>(name: &'static str, f: F) {
     Runtime::scope(name, || f(&Runtime));
 }
 
-pub fn tree_size(name: &'static str, f: impl FnOnce(&mut Cx) -> NodeId) -> usize {
+pub fn tree_size(name: &'static str, root: impl crate::kernel::IntoNode) -> usize {
     let mut size = 0;
     with_cx(name, |cx| {
-        let root = f(cx);
+        let root = cx.add(root);
         cx.visit_preorder(root, |_, _| size += 1);
     });
     size

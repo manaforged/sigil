@@ -1,4 +1,4 @@
-use crate::hal::Color;
+use crate::style::Color;
 
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::DecorationPipeline;

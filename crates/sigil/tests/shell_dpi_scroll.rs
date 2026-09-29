@@ -7,8 +7,9 @@
 #[path = "../src/shell/event_map.rs"]
 mod event_map;
 
-use sigil::hal;
-use sigil::hal::{Point, Scale, ScrollDelta};
+use sigil::events::ScrollDelta;
+use sigil::geometry::{Point, Scale};
+use sigil::{events, geometry};
 use winit::dpi::PhysicalPosition;
 use winit::event::MouseScrollDelta;
 

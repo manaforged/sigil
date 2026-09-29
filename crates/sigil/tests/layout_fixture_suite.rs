@@ -9,10 +9,10 @@ mod stub;
 use sigil_kittest::FixedMeasure;
 use stub::stub_engine;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
 use sigil::layout::{
-    Dimension as StyleDimension, Display, LayoutDrive, LengthPercentageAuto, Position, StyleData,
+    Dimension as StyleDimension, Display, LayoutDrive, LengthPercentageAuto, Position, StyleData, *,
 };
 
 const EPSILON: f32 = 0.5;

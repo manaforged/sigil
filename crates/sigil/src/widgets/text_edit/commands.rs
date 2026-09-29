@@ -1,7 +1,7 @@
 use std::iter::once;
 
-use crate::events::prelude::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use crate::events::{A11yEdit, with_handlers};
+use crate::events::{Key, KeyEvent, LogicalKey, ModifiersState, NodeEventsExt, Shortcut};
 use crate::kernel::NodeBuilder;
 
 use super::super::TextEdit;

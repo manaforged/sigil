@@ -53,7 +53,7 @@ fn skewed_and_upright_glyphs_get_distinct_cache_entries() {
         x: 0.0,
         y: 0.0,
         size: 16.0,
-        color: crate::hal::Color::BLACK,
+        color: crate::style::Color::BLACK,
         variation_coords: Box::new([]),
         skew,
     };

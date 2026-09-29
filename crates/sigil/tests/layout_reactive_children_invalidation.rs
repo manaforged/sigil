@@ -8,9 +8,9 @@
 mod stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::hal::Size;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
 
 const AVAILABLE: Size = Size::fixed(800.0, 1000.0);

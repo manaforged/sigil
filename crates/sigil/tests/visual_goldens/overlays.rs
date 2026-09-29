@@ -1,9 +1,10 @@
 use super::*;
+use sigil::layout::Position;
 
 #[test]
 fn modal_open() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -15,7 +16,7 @@ fn modal_open() {
                         .height(128.0)
                         .child(button("OK")),
                 );
-            cx.add(on_panel(m, 286.0, 164.0))
+            on_panel(m, 286.0, 164.0)
         },
         InteractionMode::Default,
         [286, 164],
@@ -27,7 +28,7 @@ fn modal_open() {
 #[test]
 fn modal_dimmed_backdrop() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let bg = container().class("bg-accent").layout(
                 LayoutStyle::block()
@@ -45,7 +46,7 @@ fn modal_dimmed_backdrop() {
                 .layout(LayoutStyle::block().fixed_size(400.0, 280.0))
                 .child(bg)
                 .child(dialog);
-            cx.add(on_panel(stack, 412.0, 292.0))
+            on_panel(stack, 412.0, 292.0)
         },
         InteractionMode::Default,
         [412, 292],
@@ -57,7 +58,7 @@ fn modal_dimmed_backdrop() {
 #[test]
 fn modal_focused() {
     let img = render_widget_to_png_focus_descendant(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -69,7 +70,7 @@ fn modal_focused() {
                         .height(128.0)
                         .child(button("OK")),
                 );
-            cx.add(on_panel(m, 286.0, 164.0))
+            on_panel(m, 286.0, 164.0)
         },
         InteractionMode::Focused,
         [286, 164],
@@ -87,7 +88,7 @@ fn modal_focused_differs_from_open() {
 #[test]
 fn modal_dismissing() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -100,7 +101,7 @@ fn modal_dismissing() {
                         .child(button("OK"))
                         .opacity(0.5),
                 );
-            cx.add(on_panel(m, 286.0, 164.0))
+            on_panel(m, 286.0, 164.0)
         },
         InteractionMode::Default,
         [286, 164],
@@ -112,7 +113,7 @@ fn modal_dismissing() {
 #[test]
 fn menu_open() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -124,7 +125,7 @@ fn menu_open() {
                         .item(MenuItem::new("Open\u{2026}"))
                         .item(MenuItem::new("Save")),
                 );
-            cx.add(on_panel(m, 140.0, 112.0))
+            on_panel(m, 140.0, 112.0)
         },
         InteractionMode::Default,
         [140, 112],
@@ -136,7 +137,7 @@ fn menu_open() {
 #[test]
 fn menu_hover_item2() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -148,7 +149,7 @@ fn menu_hover_item2() {
                         .item(MenuItem::new("Open\u{2026}"))
                         .item(MenuItem::new("Save")),
                 );
-            cx.add(on_panel(m, 140.0, 112.0))
+            on_panel(m, 140.0, 112.0)
         },
         InteractionMode::Hover,
         [140, 112],
@@ -160,7 +161,7 @@ fn menu_hover_item2() {
 #[test]
 fn menu_disabled_item() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -172,7 +173,7 @@ fn menu_disabled_item() {
                         .item(MenuItem::new("Save"))
                         .item(MenuItem::new("Save As\u{2026}").disabled(true)),
                 );
-            cx.add(on_panel(m, 140.0, 112.0))
+            on_panel(m, 140.0, 112.0)
         },
         InteractionMode::Default,
         [140, 112],
@@ -184,7 +185,7 @@ fn menu_disabled_item() {
 #[test]
 fn menu_with_separators() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -197,7 +198,7 @@ fn menu_with_separators() {
                         .separator()
                         .item(MenuItem::new("Paste")),
                 );
-            cx.add(on_panel(m, 140.0, 124.0))
+            on_panel(m, 140.0, 124.0)
         },
         InteractionMode::Default,
         [140, 124],
@@ -209,7 +210,7 @@ fn menu_with_separators() {
 #[test]
 fn menu_submenu_open() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let open = signal(true);
             let m = container()
                 .layout(LayoutStyle::flex_column().fill())
@@ -221,7 +222,7 @@ fn menu_submenu_open() {
                         .item(MenuItem::new("Recent").submenu(true))
                         .item(MenuItem::new("Quit")),
                 );
-            cx.add(on_panel(m, 140.0, 112.0))
+            on_panel(m, 140.0, 112.0)
         },
         InteractionMode::Default,
         [140, 112],
@@ -233,12 +234,10 @@ fn menu_submenu_open() {
 #[test]
 fn tooltip_visible() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column().padding_y(30.0))
-                    .child(tooltip("Save the file").child(button("Save"))),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::flex_column().padding_y(30.0))
+                .child(tooltip("Save the file").child(button("Save")))
         },
         InteractionMode::Hover,
         [150, 74],
@@ -250,7 +249,7 @@ fn tooltip_visible() {
 #[test]
 fn tooltip_offscreen_clamp() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(tooltip("Save the file").clamp_top().child(button("Save"))),
+        || tooltip("Save the file").clamp_top().child(button("Save")),
         InteractionMode::Hover,
         [150, 44],
         (74.0, 22.0),
@@ -261,16 +260,14 @@ fn tooltip_offscreen_clamp() {
 #[test]
 fn tooltip_with_keyboard_shortcut() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column().padding_y(30.0))
-                    .child(
-                        tooltip("Save the file")
-                            .shortcut(Some("Ctrl+S"))
-                            .child(button("Save")),
-                    ),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::flex_column().padding_y(30.0))
+                .child(
+                    tooltip("Save the file")
+                        .shortcut(Some("Ctrl+S"))
+                        .child(button("Save")),
+                )
         },
         InteractionMode::Hover,
         [180, 74],

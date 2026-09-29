@@ -4,13 +4,15 @@ use std::fmt;
 use std::time::{Duration, Instant};
 
 use crate::animation_runtime::{Animator, MotionPrefs, active_count, config, presets};
-use crate::hal::{LogicalSize, PhysicalSize, Scale, Shell, ShellEvent};
+use crate::events::ShellEvent;
+use crate::geometry::{LogicalSize, PhysicalSize, Scale};
+use crate::hal::Shell;
 use crate::kernel::{Cx, container};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
+use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use crate::reactive::{Runtime, signal};
 use crate::tasks::{AsyncRuntime, signal_writer};
 
-use crate::app::Host;
+use crate::Host;
 use crate::app::config::AppConfig;
 use crate::app::launch::{
     AnimationClock, begin_effect, create_initial_window, layout_for_scale, run_layout_if_dirty,
@@ -22,11 +24,11 @@ fn completion_rebuilds_before_accessibility_reads_replaced_controls() {
     Runtime::scope("completion-rebuild", || {
         let revision = signal(0);
         let mut host = Host::cells();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(container().children_reactive(move || {
+        host.mount(move || {
+            container().children_reactive(move || {
                 let value = signal(format!("Profile {}", revision.get()));
                 vec![container().text_value(value)]
-            }))
+            })
         });
         host.layout((200.0, 100.0)).unwrap();
         let router = crate::events::EventRouter::new();
@@ -82,7 +84,7 @@ struct MockWaker;
 enum CreateCall {
     Physical(String, PhysicalSize),
     Logical(String, LogicalSize),
-    With(String, LogicalSize, crate::hal::WindowOpts),
+    With(String, LogicalSize, crate::app::WindowOpts),
 }
 
 #[derive(Default)]
@@ -127,7 +129,7 @@ impl Shell for MockShell {
         &mut self,
         title: &str,
         initial: LogicalSize,
-        opts: crate::hal::WindowOpts,
+        opts: crate::app::WindowOpts,
     ) -> Result<Self::Window, Self::Error> {
         self.calls
             .push(CreateCall::With(title.to_owned(), initial, opts));
@@ -160,7 +162,7 @@ fn initial_window_passes_logical_size_and_default_opts() {
         vec![CreateCall::With(
             "test".to_owned(),
             logical,
-            crate::hal::WindowOpts::default()
+            crate::app::WindowOpts::default()
         )]
     );
 }
@@ -180,7 +182,7 @@ fn native_initial_window_ignores_web_canvas() {
 #[test]
 fn initial_window_threads_overlay_opts() {
     let mut shell = MockShell::default();
-    let anchor = crate::hal::Anchor::BottomCenter { margin: 64.0 };
+    let anchor = crate::app::Anchor::BottomCenter { margin: 64.0 };
     let config = AppConfig::new("pill")
         .size(200, 48)
         .overlay(true)
@@ -194,12 +196,12 @@ fn initial_window_threads_overlay_opts() {
         vec![CreateCall::With(
             "pill".to_owned(),
             logical,
-            crate::hal::WindowOpts {
+            crate::app::WindowOpts {
                 overlay: true,
                 frameless: false,
                 anchor: Some(anchor),
                 user_zoom: None,
-                ..crate::hal::WindowOpts::default()
+                ..crate::app::WindowOpts::default()
             }
         )]
     );
@@ -218,9 +220,9 @@ fn initial_window_threads_user_zoom() {
         vec![CreateCall::With(
             "zoom".to_owned(),
             logical,
-            crate::hal::WindowOpts {
+            crate::app::WindowOpts {
                 user_zoom: Some(1.1),
-                ..crate::hal::WindowOpts::default()
+                ..crate::app::WindowOpts::default()
             }
         )]
     );
@@ -239,12 +241,12 @@ fn initial_window_threads_frameless_opts() {
         vec![CreateCall::With(
             "frameless".to_owned(),
             logical,
-            crate::hal::WindowOpts {
+            crate::app::WindowOpts {
                 overlay: false,
                 frameless: true,
                 anchor: None,
                 user_zoom: None,
-                ..crate::hal::WindowOpts::default()
+                ..crate::app::WindowOpts::default()
             }
         )]
     );
@@ -273,8 +275,8 @@ fn layout_for_scale_keeps_logical_rects_stable() {
 #[test]
 fn host_layout_matches_layout_for_scale() {
     Runtime::scope("host-layout", || {
-        let mut host = crate::app::Host::new();
-        host.build(|cx| cx.add(container().layout(LayoutStyle::block().fixed_size(720.0, 480.0))));
+        let mut host = crate::Host::new();
+        host.mount(move || container().layout(LayoutStyle::block().fixed_size(720.0, 480.0)));
         let root = host.layout((720.0, 480.0)).unwrap().unwrap();
         let (_, engine, _) = host.tree().unwrap();
         let rect = engine.result(root).unwrap().rect();

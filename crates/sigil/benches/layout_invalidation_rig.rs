@@ -8,7 +8,7 @@ use std::hint::black_box;
 use std::time::{Duration, Instant};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::CharMeasure;

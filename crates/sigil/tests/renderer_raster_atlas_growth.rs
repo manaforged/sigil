@@ -19,14 +19,13 @@ use tracing as _;
 use windows_core as _;
 use zeno as _;
 
+use sigil::app::{TextTuning, set_text_tuning};
 use sigil::renderer::{
-    ScreenSubmission, TextTuning, WgpuRenderer, lock_global_text_state,
-    set_test_atlas_size_override, set_text_tuning,
+    ScreenSubmission, WgpuRenderer, lock_global_text_state, set_test_atlas_size_override,
 };
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
-use sigil_kittest::gpu::read_pixels;
-use sigil_kittest::gpu::{FORMAT, create_capture_texture};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels};
 
 const BYTES_PER_PIXEL: u32 = 4;
 
@@ -209,7 +208,7 @@ fn render(renderer: &mut WgpuRenderer, content: &str) -> (Vec<u8>, u32, u32) {
                 format: FORMAT,
                 viewport: (LOGICAL_W, LOGICAL_H),
                 scale: 1.0,
-                clear: Some(sigil::hal::Color::BLACK),
+                clear: Some(sigil::style::Color::BLACK),
             },
             &scene,
         )
@@ -227,8 +226,8 @@ fn build_text_scene(content: &str) -> CommandScene {
         line_height: TextLineHeight::FontSizeRelative(1.2),
         ..TextStyle::default()
     };
-    let rect = sigil::hal::Rect::new(
-        sigil::hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil::geometry::Rect::new(
+        sigil::geometry::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

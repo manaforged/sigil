@@ -7,15 +7,15 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::hal::{Dim, LogicalSize};
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::{Dim, LogicalSize, Size};
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::Runtime;
 
 struct Wrapping;
 
 impl TextMeasure for Wrapping {
-    fn measure(&self, _: &TextContent, space: sigil::hal::Size) -> LogicalSize {
+    fn measure(&self, _: &TextContent, space: sigil::geometry::Size) -> LogicalSize {
         let w = match space.width {
             Dim::Fixed(w) => w.min(300.0),
             Dim::MinContent | Dim::MaxContent => 300.0,
@@ -30,7 +30,7 @@ struct Swappable {
 }
 
 impl TextMeasure for Swappable {
-    fn measure(&self, _: &TextContent, _: sigil::hal::Size) -> LogicalSize {
+    fn measure(&self, _: &TextContent, _: sigil::geometry::Size) -> LogicalSize {
         LogicalSize::new(self.width.get(), 16.0)
     }
 
@@ -43,7 +43,7 @@ fn leaf_rect(
     parent: LayoutStyle,
     leaf: LayoutStyle,
     measure: Box<dyn TextMeasure>,
-) -> sigil::hal::Rect {
+) -> sigil::geometry::Rect {
     Runtime::scope("layout-hardening", || {
         let mut cx = Cx::new_root();
         let root = cx.add(container().layout(parent));

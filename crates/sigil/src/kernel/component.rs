@@ -23,12 +23,24 @@ impl IntoNode for Box<dyn IntoNode> {
     }
 }
 
-impl<F> IntoNode for F
+impl<F, N> IntoNode for F
+where
+    F: FnOnce() -> N,
+    N: IntoNode,
+{
+    fn build(self, cx: &mut Cx) -> NodeId {
+        self().build(cx)
+    }
+}
+
+pub(crate) struct WithCx<F>(pub(crate) F);
+
+impl<F> IntoNode for WithCx<F>
 where
     F: FnOnce(&mut Cx) -> NodeId,
 {
     fn build(self, cx: &mut Cx) -> NodeId {
-        self(cx)
+        (self.0)(cx)
     }
 }
 

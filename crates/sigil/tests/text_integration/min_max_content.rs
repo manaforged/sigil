@@ -2,10 +2,9 @@
 
 use std::rc::Rc;
 
-use sigil::hal::{Dim, LogicalSize, Size};
+use sigil::geometry::{Dim, LogicalSize, Size};
 use sigil::kernel::TextContent;
-use sigil::layout::TextEngineMeasure;
-use sigil::layout::TextMeasure;
+use sigil::layout::{TextEngineMeasure, TextMeasure};
 use sigil::text::{OwnedTextEngine, TextConfig};
 
 fn make_measurer() -> TextEngineMeasure<OwnedTextEngine> {

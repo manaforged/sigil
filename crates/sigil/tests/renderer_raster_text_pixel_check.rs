@@ -20,11 +20,11 @@ use tracing as _;
 use windows_core as _;
 use zeno as _;
 
-use sigil::renderer::{OffscreenTarget, TextTuning, WgpuRenderer, set_text_tuning};
+use sigil::app::{TextTuning, set_text_tuning};
+use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
-use sigil_kittest::gpu::read_pixels;
-use sigil_kittest::gpu::{FORMAT, create_capture_texture};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels};
 
 const BYTES_PER_PIXEL: u32 = 4;
 
@@ -95,7 +95,7 @@ fn render(renderer: &mut WgpuRenderer, raster: bool) -> (Vec<u8>, u32, u32) {
                 scale: 1.0,
             },
             &scene,
-            sigil::hal::Color::BLACK,
+            sigil::style::Color::BLACK,
         )
         .expect("render_command_scene_offscreen");
 
@@ -112,8 +112,8 @@ fn build_text_scene() -> CommandScene {
         line_height: TextLineHeight::FontSizeRelative(1.2),
         ..TextStyle::default()
     };
-    let rect = sigil::hal::Rect::new(
-        sigil::hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil::geometry::Rect::new(
+        sigil::geometry::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

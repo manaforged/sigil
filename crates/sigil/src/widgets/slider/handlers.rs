@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, KeyEvent, LogicalKey, NodeEventsExt, PointerEvent};
 use crate::events::{A11yEdit, with_handlers};
+use crate::events::{Key, KeyEvent, LogicalKey, NodeEventsExt, PointerEvent};
 use crate::kernel::NodeBuilder;
 use crate::reactive::Signal;
 

@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
 use crate::events::request_focus;
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeId, container, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::rows;
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, effect_named, signal};
 use crate::widgets::{button, list_row, modal, text_field, virtual_list};
 
@@ -131,7 +131,7 @@ pub(super) fn picker_view(
 }
 
 fn entry_list(picker: Picker) -> impl IntoNode {
-    move |cx: &mut Cx| {
+    crate::kernel::WithCx(move |cx: &mut Cx| {
         let cursor = picker.cursor;
         let rows_view = virtual_list(picker.entries, move |index, entry: &Entry| {
             entry_row(cursor, index, entry)
@@ -157,7 +157,7 @@ fn entry_list(picker: Picker) -> impl IntoNode {
             .build(cx);
         focus_first_child(cx, id);
         id
-    }
+    })
 }
 
 fn focus_first_child(cx: &Cx, id: NodeId) {

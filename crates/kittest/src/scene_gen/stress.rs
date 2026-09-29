@@ -1,10 +1,10 @@
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageSource, ObjectFit};
 use sigil::scene::{
     CornerRadii, DrawGlyphRun, DrawImage, DrawRect, LayerEffect, LayerScope, SceneCommand,
     SceneRectStyle, shape_glyph_run,
 };
-use sigil::style::{Rgba8, TextStyle};
+use sigil::style::{Color, Rgba8, TextStyle};
 
 use super::GeneratedScene;
 

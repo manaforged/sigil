@@ -4,12 +4,13 @@
 )]
 #![allow(clippy::unwrap_used, clippy::cast_precision_loss)]
 
+use sigil::kernel::IntoNode;
 use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
-use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::geometry::Size;
+use sigil::kernel::{Cx, NodeBuilder, container};
 use sigil::layout::{Dimension, LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 use taffy::prelude::*;
@@ -51,10 +52,10 @@ impl Rng {
     }
 }
 
-fn build_owned_deep_random(cx: &mut Cx) -> NodeId {
+fn build_owned_deep_random() -> impl IntoNode {
     let mut rng = Rng::new(0xC0FF_EE42);
-    let root = owned_deep_random_node(&mut rng, 0);
-    cx.add(root)
+
+    owned_deep_random_node(&mut rng, 0)
 }
 
 fn owned_deep_random_node(rng: &mut Rng, depth: usize) -> NodeBuilder {
@@ -71,7 +72,7 @@ fn owned_deep_random_node(rng: &mut Rng, depth: usize) -> NodeBuilder {
 fn bench_owned_deep_random(c: &mut Criterion) {
     c.bench_function("deep_random/owned", |b| {
         let mut cx = Cx::new_root();
-        let root = build_owned_deep_random(&mut cx);
+        let root = cx.add(build_owned_deep_random);
         let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)
@@ -132,8 +133,8 @@ fn bench_taffy_deep_random(c: &mut Criterion) {
     });
 }
 
-fn build_owned_deep_auto(cx: &mut Cx) -> NodeId {
-    cx.add(owned_deep_auto_node(0))
+fn build_owned_deep_auto() -> impl IntoNode {
+    owned_deep_auto_node(0)
 }
 
 fn owned_deep_auto_node(depth: usize) -> NodeBuilder {
@@ -154,7 +155,7 @@ fn owned_deep_auto_node(depth: usize) -> NodeBuilder {
 fn bench_owned_deep_auto(c: &mut Criterion) {
     c.bench_function("deep_auto/owned", |b| {
         let mut cx = Cx::new_root();
-        let root = build_owned_deep_auto(&mut cx);
+        let root = cx.add(build_owned_deep_auto);
         let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, AVAILABLE)

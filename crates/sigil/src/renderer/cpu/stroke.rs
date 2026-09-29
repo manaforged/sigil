@@ -5,7 +5,7 @@
     reason = "pixel coordinates are bounded by the target size; float-to-int rounding is the rasterizer contract"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use tiny_skia::{FillRule, Mask, Path, PathBuilder, Pixmap, Point as TsPoint};
 
 use crate::renderer::scene_command::{Stroke, StrokeBand, StrokeDash};

@@ -8,7 +8,7 @@
 )]
 
 use super::*;
-use crate::hal::{LogicalSize, Size as HalSize};
+use crate::geometry::{LogicalSize, Size as HalSize};
 use crate::kernel::TextContent;
 use crate::layout::forest::{AvailableSpace, LayoutForest, MeasureScope};
 use crate::layout::resolve::{Edges as AlgoEdges, clamp, dim_to_border_box, resolve_lp};

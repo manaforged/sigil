@@ -15,10 +15,9 @@ use input::ime_event;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
-use sigil::kernel::FocusScopeKind;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::*;
+use sigil::kernel::{FocusScopeKind, *};
+use sigil::layout::*;
 
 use routing_helpers::{compute_layout, route_event};
 

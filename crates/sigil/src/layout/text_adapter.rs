@@ -2,7 +2,8 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use crate::hal::{Dim, LogicalSize, ParagraphMetrics, Size};
+use crate::geometry::{Dim, LogicalSize, Size};
+use crate::hal::ParagraphMetrics;
 use crate::kernel::TextContent;
 use crate::style::{StyledTextEngine, TextStyle};
 

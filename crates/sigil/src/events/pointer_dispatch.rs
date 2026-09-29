@@ -1,9 +1,10 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::{
-    LogicalSize, ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit,
-    PointerKind, PointerPhase,
+use crate::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase,
 };
+use crate::geometry::{LogicalSize, Point};
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;

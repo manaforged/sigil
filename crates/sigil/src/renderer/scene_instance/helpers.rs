@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 
 use crate::renderer::scene_command::walk::IDENTITY;
 use crate::renderer::scene_command::{Stroke, StrokeBand};
@@ -50,7 +50,7 @@ pub(super) fn inflate(rect: Rect, outset: f32) -> Rect {
         return rect;
     }
     Rect {
-        origin: crate::hal::Point::new(rect.origin.x - outset, rect.origin.y - outset),
+        origin: crate::geometry::Point::new(rect.origin.x - outset, rect.origin.y - outset),
         width: outset.mul_add(2.0, rect.width),
         height: outset.mul_add(2.0, rect.height),
     }

@@ -23,14 +23,8 @@ fn sheet_docks_a_dialog_on_the_right() {
             .get_extension::<LayoutStyle>()
             .expect("layout")
             .clone();
-        assert_eq!(
-            style.data().size.width,
-            crate::layout::prelude::Dimension::Px(360.0)
-        );
-        assert_eq!(
-            style.data().size.height,
-            crate::layout::prelude::Dimension::Fill
-        );
+        assert_eq!(style.data().size.width, crate::layout::Dimension::Px(360.0));
+        assert_eq!(style.data().size.height, crate::layout::Dimension::Fill);
     });
 }
 

@@ -1,10 +1,11 @@
 use std::path::PathBuf;
 
-use crate::hal::{
+use crate::events::{
     FileDropEvent, FileDropPhase, ImeEvent, KeyEvent as SigilKeyEvent, KeyEventInit, KeyPhase,
-    MouseButton, PhysicalSize, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
-    Scale, ScrollEvent, ScrollEventInit, ShellEvent, WindowEvent as SigilWindowEvent,
+    MouseButton, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ScrollEvent,
+    ScrollEventInit, ShellEvent, WindowEvent as SigilWindowEvent,
 };
+use crate::geometry::{PhysicalSize, Point, Scale};
 use smol_str::SmolStr;
 use winit::{
     event::{

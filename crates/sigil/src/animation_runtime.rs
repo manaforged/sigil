@@ -4,7 +4,7 @@
 use criterion as _;
 
 pub(crate) mod animator;
-pub mod binding_animate;
+pub(crate) mod binding_animate;
 pub(crate) mod binding_animate_color;
 pub(crate) mod config;
 pub(crate) mod keyframes;
@@ -15,7 +15,6 @@ pub(crate) mod registry;
 pub(crate) mod state;
 pub(crate) mod style;
 
-pub use crate::style::NumericAtomKind;
 pub use animator::{Animator, AnimatorStatus};
 #[cfg(any(test, feature = "kittest"))]
 pub use binding_animate::ANIMATION_REGISTRY_MISS;

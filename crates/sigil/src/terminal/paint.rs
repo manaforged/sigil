@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 
 use crate::style::{Rgba8, Theme, Tone};
 use crate::terminal::glyphs::Glyphs;

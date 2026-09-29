@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::hal::LogicalSize;
+use crate::geometry::LogicalSize;
 use crate::layout::TextGeometry;
 use crate::reactive::{Owner, OwnerId, Signal, owner_by_id, signal};
 

@@ -7,6 +7,8 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::stub_text_measure;
 use widget_support::{assert_approx, rect_colors};

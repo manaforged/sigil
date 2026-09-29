@@ -1,4 +1,4 @@
-use crate::text::bidi;
+use crate::bidi;
 use crate::text::paragraph::{LayoutLine, SegmentAppend};
 use crate::text::shaper::{Shaper, Style};
 

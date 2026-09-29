@@ -10,8 +10,9 @@
 mod stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 #[test]
 fn fill_resolves_to_parent_content_box() {

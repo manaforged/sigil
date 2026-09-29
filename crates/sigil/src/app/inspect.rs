@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use crate::a11y;
 use crate::app::embed::Host;
 use crate::events::EventRouter;
-use crate::hal::ShellEvent;
+use crate::events::ShellEvent;
 
 mod input;
 

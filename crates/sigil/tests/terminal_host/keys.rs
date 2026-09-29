@@ -13,7 +13,7 @@ fn map_enter_is_the_shell_enter_key() {
 
 #[test]
 fn map_backtab_is_shift_tab() {
-    use sigil::hal::{Key, LogicalKey, ModifiersState, ShellEvent};
+    use sigil::events::{Key, LogicalKey, ModifiersState, ShellEvent};
     use sigil::terminal::map_key;
 
     let event = crossterm::event::KeyEvent::new(
@@ -29,18 +29,15 @@ fn map_backtab_is_shift_tab() {
 #[test]
 fn a_focus_change_reaches_the_terminal() {
     use sigil::Host;
-    use sigil::events::EventRouter;
-    use sigil::hal::Key;
+    use sigil::events::{EventRouter, Key};
 
     sigil::reactive::Runtime::scope("tui-animate", || {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(|cx: &mut Cx| {
-            cx.add(
-                container()
-                    .child(button("One").primary())
-                    .child(button("Two").primary()),
-            )
+        host.mount(move || {
+            container()
+                .child(button("One").primary())
+                .child(button("Two").primary())
         });
         host.layout((320.0, 64.0)).expect("layout");
         router.focus_next(host.cx());
@@ -68,7 +65,7 @@ fn typing_reaches_a_text_field() {
         let value = signal(String::new());
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| cx.add(text_field(value)));
+        host.mount(move || text_field(value));
         drop(step(&mut host, &mut router, [], 40, 6));
         router.focus_next(host.cx());
         let typed = map_key(&crossterm::event::KeyEvent::new(
@@ -98,7 +95,7 @@ fn a_control_chord_inserts_nothing() {
         let value = signal(String::new());
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| cx.add(text_field(value)));
+        host.mount(move || text_field(value));
         drop(step(&mut host, &mut router, [], 40, 6));
         router.focus_next(host.cx());
         let chord = map_key(&crossterm::event::KeyEvent::new(
@@ -123,7 +120,7 @@ fn paste_inserts_whole() {
         let value = signal(String::new());
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| cx.add(text_field(value)));
+        host.mount(move || text_field(value));
         drop(step(&mut host, &mut router, [], 40, 6));
         router.focus_next(host.cx());
         drop(step(&mut host, &mut router, [paste("hello world")], 40, 6));

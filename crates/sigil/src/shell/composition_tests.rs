@@ -1,5 +1,5 @@
 use super::{CompositionInput, KeyRoute, composition_events, key_route};
-use crate::hal::ImeEvent;
+use crate::events::ImeEvent;
 
 #[test]
 fn a_finished_composition_clears_the_preedit_then_commits() {

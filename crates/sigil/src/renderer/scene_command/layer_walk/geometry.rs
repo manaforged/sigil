@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 pub(super) const fn local_rect(rect: Rect, parent_origin: Point) -> Rect {
     Rect::new(

@@ -1,4 +1,5 @@
-use crate::hal::{Color, PhysicalSize, Renderer as _};
+use crate::geometry::PhysicalSize;
+use crate::hal::Renderer as _;
 use crate::profile::{BackendKind, BackendStatus, FallbackCause};
 #[cfg(feature = "inspect")]
 use crate::renderer::capture::{CaptureExtent, capture_texture, read_texture};
@@ -9,6 +10,7 @@ use crate::renderer::{
     CpuRenderer, CpuSurface, RendererError, WgpuRenderer, WgpuSurface, into_window_handle,
 };
 use crate::scene::CommandScene;
+use crate::style::Color;
 use raw_window_handle::{HasDisplayHandle, HasWindowHandle};
 
 const ENV: &str = "SIGIL_BACKEND";

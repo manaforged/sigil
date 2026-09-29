@@ -70,7 +70,7 @@ pub(super) fn render_text(
             texture_scale,
             draw_scale,
             content: TEXT,
-            text: sigil::hal::Color::WHITE,
+            text: sigil::style::Color::WHITE,
             background: wgpu::Color::BLACK,
         },
         device,
@@ -83,7 +83,7 @@ pub(super) fn render_text_string(
     queue: &wgpu::Queue,
     scale: f32,
     content: &str,
-    colors: (sigil::hal::Color, wgpu::Color),
+    colors: (sigil::style::Color, wgpu::Color),
 ) -> (Vec<u8>, u32, u32) {
     render_text_inner(
         &RenderArgs {
@@ -102,7 +102,7 @@ pub(super) struct RenderArgs<'a> {
     pub(super) texture_scale: f32,
     pub(super) draw_scale: f32,
     pub(super) content: &'a str,
-    pub(super) text: sigil::hal::Color,
+    pub(super) text: sigil::style::Color,
     pub(super) background: wgpu::Color,
 }
 

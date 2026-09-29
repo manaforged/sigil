@@ -8,12 +8,11 @@
 #![allow(clippy::doc_markdown, clippy::missing_const_for_fn)]
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{CornerRadii, PatternKind, SceneBuilder, ScenePatternStyle};
-use sigil::style::Rgba8;
-use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
-use sigil_kittest::gpu::{read_pixels, shared_device};
+use sigil::style::{Color, Rgba8};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba, read_pixels, shared_device};
 
 const SCALE: u32 = 1;
 const VIEWPORT: (f32, f32) = (1200.0, 400.0);

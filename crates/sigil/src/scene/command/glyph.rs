@@ -2,7 +2,8 @@ use core::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::hal::{Rect, RenderedGlyph};
+use crate::geometry::Rect;
+use crate::hal::RenderedGlyph;
 use crate::kernel::NodeId;
 use crate::style::{Rgba8, TextStyle, Tone};
 #[cfg(feature = "scene")]

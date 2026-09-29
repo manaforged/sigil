@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::{Key, LogicalKey, PhysicalKey};
+use crate::events::{Key, LogicalKey, PhysicalKey};
 use winit::keyboard::{
     Key as WinitKey, KeyCode as WinitKeyCode, NamedKey as WinitNamedKey,
     PhysicalKey as WinitPhysicalKey,

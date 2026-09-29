@@ -1,5 +1,9 @@
-use sigil::events::prelude::*;
-use sigil::hal::{KeyEventInit, LogicalKey, Point, PointerEventInit, ScrollEventInit};
+use sigil::events::{
+    ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    MouseButtons, PhysicalKey, PointerEvent, PointerEventInit, PointerKind, PointerPhase,
+    ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
+};
+use sigil::geometry::Point;
 
 const fn pointer(x: f32, y: f32, phase: PointerPhase, held: MouseButtons) -> ShellEvent {
     let button = match phase {
@@ -122,7 +126,7 @@ pub fn tab(shift: bool) -> ShellEvent {
 
 #[must_use]
 pub const fn window_blur() -> ShellEvent {
-    ShellEvent::Window(sigil::hal::WindowEvent::Focused(false))
+    ShellEvent::Window(sigil::events::WindowEvent::Focused(false))
 }
 
 #[must_use]

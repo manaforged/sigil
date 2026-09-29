@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::renderer::decoration_paint::{DecorationPipeline, decoration_instance};
 use crate::renderer::fill_paint::FillPipeline;
 use crate::renderer::frame_upload::FrameUploads;

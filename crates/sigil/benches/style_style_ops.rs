@@ -12,11 +12,10 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use sigil::kernel::{Cx, NodeId, container};
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{
-    AlignKind, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
-    RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme,
+    AlignKind, ColorKey, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
+    RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token,
     TransitionId, merge_classes, parse_classes,
 };
-use sigil::style::{ColorKey, Token};
 
 static CLASS_50: LazyLock<&'static [StyleAtom]> = LazyLock::new(|| {
     parse_classes(

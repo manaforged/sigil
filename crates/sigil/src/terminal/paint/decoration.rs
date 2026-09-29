@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::scene::CellBorder;
 use crate::style::{Rgba8, Theme};
 use crate::terminal::caps::Borders;

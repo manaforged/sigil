@@ -4,7 +4,7 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
-use sigil::kernel::prelude::*;
+use sigil::kernel::*;
 use sigil::reactive::Runtime;
 use sigil::style::{NodeStyleExt, Px, StyleAtom, StyleBinding};
 

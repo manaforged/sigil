@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::kernel::NodeId;
 use crate::style::Rgba8;
 

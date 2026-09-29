@@ -1,6 +1,7 @@
 use std::cell::Cell;
 
-use crate::hal::{Dim, HitPosition, LogicalSize, Point, Rect, Size, TextAffinity};
+use crate::geometry::{Dim, LogicalSize, Point, Rect, Size};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::TextContent;
 use crate::layout::{CaretGeometry, TextGeometry, TextMeasure};
 use crate::style::TextStyle;

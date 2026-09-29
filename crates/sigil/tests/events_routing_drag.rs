@@ -12,10 +12,10 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use sigil::events::prelude::*;
-use sigil::hal::{Point, PointerEventInit};
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::{PointerEventInit, *};
+use sigil::geometry::{Point, Size};
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
 
 use input::pointer_down;
@@ -33,7 +33,7 @@ const fn pointer_move_delta(x: f32, y: f32, dx: f32, dy: f32) -> ShellEvent {
     }))
 }
 
-fn node_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
+fn node_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("node has a layout result")
@@ -130,7 +130,7 @@ fn window_blur_cancels_a_captured_drag() {
                 .child(
                     container()
                         .layout(LayoutStyle::flex_column().fixed_size(200.0, 80.0))
-                        .pointer_down(sigil::hal::PointerEvent::capture_pointer)
+                        .pointer_down(sigil::events::PointerEvent::capture_pointer)
                         .pointer_up(move |ev| ended.set(Some(ev.phase))),
                 ),
         );

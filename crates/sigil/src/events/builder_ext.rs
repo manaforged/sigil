@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::hal::{FileDropEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
+use crate::events::{FileDropEvent, ImeEvent, KeyEvent, PointerEvent, ScrollEvent, Shortcut};
 use crate::kernel::{Node, NodeBuilder};
 use crate::layout::CaretGeometry;
 use accesskit::Action;

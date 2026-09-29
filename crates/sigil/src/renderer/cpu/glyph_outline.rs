@@ -5,7 +5,8 @@ use tiny_skia::{
     FillRule, Mask, Path, PathBuilder, Pixmap, Rect as TsRect, Transform as TsTransform,
 };
 
-use crate::hal::{Point, RenderedGlyph};
+use crate::geometry::Point;
+use crate::hal::RenderedGlyph;
 use crate::renderer::glyph_place::{coverage_curve, pen_shift, text_gamma};
 use crate::renderer::oblique::Oblique;
 use crate::renderer::scene_command::{GlyphRun, Transform};

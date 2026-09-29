@@ -8,14 +8,16 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::events::{EventRouter, NodeEventsExt};
-use sigil::hal::{
-    Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
-    PhysicalKey, Point, PointerEvent, PointerEventInit, PointerKind, PointerPhase, ShellEvent,
-    Shortcut,
+use sigil::events::{
+    EventRouter, Key, KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton,
+    MouseButtons, NodeEventsExt, PhysicalKey, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase, ShellEvent, Shortcut,
 };
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::{Point, Size};
+use sigil::kernel::{Cx, NodeBuilder, NodeId, TextContent, container};
+use sigil::layout::{
+    LayoutBuilderExt, LayoutEngine, LayoutStyle, LengthPercentageAuto, Position, TextMeasure,
+};
 use sigil::style::TextStyle;
 
 fn hit_test_1000_nodes(c: &mut Criterion) {
@@ -297,16 +299,20 @@ fn ctrl_s() -> ShellEvent {
 struct ZeroTextMeasure;
 
 impl TextMeasure for ZeroTextMeasure {
-    fn measure(&self, _content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
+    fn measure(
+        &self,
+        _content: &TextContent,
+        _space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
+        sigil::geometry::LogicalSize::default()
     }
 
     fn measure_styled(
         &self,
         _content: &TextContent,
         _style: &TextStyle,
-        _space: sigil::hal::Size,
-    ) -> sigil::hal::LogicalSize {
-        sigil::hal::LogicalSize::default()
+        _space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
+        sigil::geometry::LogicalSize::default()
     }
 }

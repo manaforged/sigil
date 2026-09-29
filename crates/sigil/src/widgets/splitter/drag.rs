@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 

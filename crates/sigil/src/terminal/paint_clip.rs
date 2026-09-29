@@ -1,5 +1,5 @@
 use crate::app::{cell_text_lines, cell_width};
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::kernel::{ImageCrop, ImageSource};
 use crate::scene::TextFlow;
 use crate::scene::command::RunInk;

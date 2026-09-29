@@ -1,7 +1,7 @@
 use core::fmt;
 use std::error::Error as StdError;
 
-pub type AppResult<T> = core::result::Result<T, Error>;
+pub type AppResult<T = ()> = core::result::Result<T, Error>;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

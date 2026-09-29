@@ -1,5 +1,5 @@
 use super::text::RunNodes;
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::kernel::{A11yProps, AccessibleName, Cx, Node, NodeId, NodeType};
 use accesskit::{
     Action, Node as AkNode, NodeId as AkNodeId, Toggled, TreeId, TreeInfo, TreeUpdate,

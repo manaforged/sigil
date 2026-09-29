@@ -4,7 +4,7 @@
 )]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, container, text};
 use sigil::layout::LayoutEngine;
 use sigil::reactive::{Runtime, signal};

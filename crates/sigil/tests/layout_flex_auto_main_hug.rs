@@ -1,8 +1,7 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
-use sigil::hal::Size;
-use sigil::layout::LayoutEngine;
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::geometry::Size;
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 
 fn column_height(parent_h: f32) -> f32 {

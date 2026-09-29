@@ -11,10 +11,10 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use sigil::events::prelude::*;
-use sigil::kernel::FocusScopeKind;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::*;
+use sigil::geometry::Size;
+use sigil::kernel::{FocusScopeKind, *};
+use sigil::layout::*;
 
 use input::tab;
 use routing_helpers::{compute_layout, route_event};

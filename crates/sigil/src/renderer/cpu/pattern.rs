@@ -5,7 +5,7 @@
     reason = "device spans are clamped to the target size before the float-to-int conversion"
 )]
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::style::Rgba8;
 use tiny_skia::{FilterQuality, Pattern, Pixmap, Point as TsPoint, Shader, SpreadMode, Transform};
 

@@ -9,8 +9,9 @@
 mod stub;
 use stub::stub_engine;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 #[test]
 fn flex_row_text_children_use_placeholder_intrinsic_widths() {

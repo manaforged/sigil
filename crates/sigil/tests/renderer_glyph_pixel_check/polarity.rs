@@ -25,7 +25,7 @@ fn assert_polarity_parity(scale: f32) {
         &queue,
         scale,
         POLARITY_TEXT,
-        (sigil::hal::Color::WHITE, wgpu::Color::BLACK),
+        (sigil::style::Color::WHITE, wgpu::Color::BLACK),
     );
     let lod = measure(&lod_px, lw, lh);
     let (dol_raw, dw, dh) = render_text_string(
@@ -33,7 +33,7 @@ fn assert_polarity_parity(scale: f32) {
         &queue,
         scale,
         POLARITY_TEXT,
-        (sigil::hal::Color::BLACK, wgpu::Color::WHITE),
+        (sigil::style::Color::BLACK, wgpu::Color::WHITE),
     );
     let dol_px: Vec<u8> = dol_raw.iter().map(|b| 255 - b).collect();
     let dol = measure(&dol_px, dw, dh);

@@ -5,9 +5,11 @@ pub(crate) use submit::{record_clear, submit_clear};
 
 use submit::{acquire_frame, render_command_scene_surface};
 
-use crate::hal::{Color, PhysicalSize, Renderer};
+use crate::geometry::PhysicalSize;
+use crate::hal::Renderer;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::profile::gpu::snapshot;
+use crate::style::Color;
 
 use crate::renderer::device_state::DeviceState;
 #[cfg(feature = "desktop")]

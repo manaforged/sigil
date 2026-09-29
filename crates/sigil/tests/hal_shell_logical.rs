@@ -7,7 +7,8 @@
 mod mock_shell;
 
 use mock_shell::MockShell;
-use sigil::hal::{LogicalSize, PhysicalSize, Shell};
+use sigil::geometry::{LogicalSize, PhysicalSize};
+use sigil::hal::Shell;
 
 #[test]
 fn default_create_window_logical_uses_scale_one_physical_size() {
@@ -32,12 +33,12 @@ fn default_create_window_with_ignores_opts_and_delegates() {
         .create_window_with(
             "pill",
             LogicalSize::new(200.0, 48.0),
-            sigil::hal::WindowOpts {
+            sigil::app::WindowOpts {
                 overlay: true,
                 frameless: false,
-                anchor: Some(sigil::hal::Anchor::BottomCenter { margin: 64.0 }),
+                anchor: Some(sigil::app::Anchor::BottomCenter { margin: 64.0 }),
                 user_zoom: None,
-                ..sigil::hal::WindowOpts::default()
+                ..sigil::app::WindowOpts::default()
             },
         )
         .expect("default opts create should delegate");

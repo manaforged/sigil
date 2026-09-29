@@ -1,4 +1,4 @@
-use crate::hal::{LogicalSize, Size};
+use crate::geometry::{LogicalSize, Size};
 use crate::kernel::TextContent;
 use crate::style::TextStyle;
 

@@ -20,7 +20,7 @@ const DT: f32 = 1.0 / 60.0;
 #[test]
 fn button_hover_settled() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::HoverAfterFrames {
             frames: u32::MAX,
             dt: DT,
@@ -34,7 +34,7 @@ fn button_hover_settled() {
 #[test]
 fn button_hover_midflight() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         InteractionMode::HoverAfterFrames { frames: 6, dt: DT },
         [160, 56],
         (24.0, 16.0),
@@ -45,7 +45,7 @@ fn button_hover_midflight() {
 #[test]
 fn button_hover_filmstrip() {
     let img = capture_filmstrip(
-        |cx| cx.add(button("Save")),
+        || button("Save"),
         [160, 56],
         (24.0, 16.0),
         6,
@@ -55,9 +55,9 @@ fn button_hover_filmstrip() {
     assert_rendered_matches_golden(img, &golden_path!("button_hover_filmstrip"), DELTA_PCT);
 }
 
-fn checkbox_widget(cx: &mut Cx) -> NodeId {
+fn checkbox_widget() -> impl IntoNode {
     let checked = signal(false);
-    cx.add(checkbox(checked).class("bg-surface rounded-sm"))
+    checkbox(checked).class("bg-surface rounded-sm")
 }
 
 #[test]
@@ -98,9 +98,9 @@ fn checkbox_hover_filmstrip() {
     assert_rendered_matches_golden(img, &golden_path!("checkbox_hover_filmstrip"), DELTA_PCT);
 }
 
-fn slider_widget(cx: &mut Cx) -> NodeId {
+fn slider_widget() -> impl IntoNode {
     let v = signal(50.0_f32);
-    cx.add(slider(v, 0.0..=100.0))
+    slider(v, 0.0..=100.0)
 }
 
 #[test]
@@ -145,9 +145,9 @@ fn dropdown_widget_options() -> Vec<String> {
     vec![String::from("First"), String::from("Second")]
 }
 
-fn dropdown_widget(cx: &mut Cx) -> NodeId {
+fn dropdown_widget() -> impl IntoNode {
     let sel = signal(0_usize);
-    cx.add(dropdown(sel, dropdown_widget_options()))
+    dropdown(sel, dropdown_widget_options())
 }
 
 #[test]
@@ -188,9 +188,9 @@ fn dropdown_hover_filmstrip() {
     assert_rendered_matches_golden(img, &golden_path!("dropdown_hover_filmstrip"), DELTA_PCT);
 }
 
-fn text_field_widget(cx: &mut Cx) -> NodeId {
+fn text_field_widget() -> impl IntoNode {
     let v = signal(String::from("Hello"));
-    cx.add(text_field(v))
+    text_field(v)
 }
 
 #[test]
@@ -231,9 +231,9 @@ fn text_field_hover_filmstrip() {
     assert_rendered_matches_golden(img, &golden_path!("text_field_hover_filmstrip"), DELTA_PCT);
 }
 
-fn toggle_widget(cx: &mut Cx) -> NodeId {
+fn toggle_widget() -> impl IntoNode {
     let on = signal(false);
-    cx.add(toggle(on))
+    toggle(on)
 }
 
 #[test]

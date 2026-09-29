@@ -9,7 +9,6 @@ mod handlers;
 pub(crate) mod hit_test;
 mod ime_handlers;
 pub(crate) mod pointer_dispatch;
-pub mod prelude;
 mod router;
 pub(crate) mod selection;
 mod selection_walk;
@@ -35,3 +34,10 @@ pub fn invoke_node(
 ) {
     pointer_dispatch::invoke_node(cx, layout, target);
 }
+
+pub use crate::hal::events::{
+    ClickConfig, FileDropEvent, FileDropPhase, ImeEvent, Key, KeyEvent, KeyEventInit, KeyPhase,
+    LogicalKey, ModifiersState, MouseButton, MouseButtons, PhysicalKey, PointerEvent,
+    PointerEventInit, PointerKind, PointerPhase, ScrollDelta, ScrollEvent, ScrollEventInit,
+    ScrollPhase, ShellEvent, Shortcut, WindowEvent,
+};

@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::hash::{Hash as _, Hasher as _};
 
-use crate::hal::{Dim, Size};
+use crate::geometry::{Dim, Size};
 use crate::kernel::{Cx, Node, NodeId, NodeType, TextContent};
 use crate::style::{NumericAtomKind, StyleBinding};
 use ahash::AHasher;

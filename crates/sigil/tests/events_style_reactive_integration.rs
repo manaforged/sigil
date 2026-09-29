@@ -12,15 +12,12 @@ use stub::first_child;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
-use sigil::hal::{
-    ModifiersState, MouseButtons, Point, PointerEvent, PointerEventInit, PointerKind,
-};
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::{ModifiersState, MouseButtons, PointerEvent, PointerEventInit, PointerKind, *};
+use sigil::geometry::{Point, Size};
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{NodeStyleExt, StyleAtom, StyleBinding};
+use sigil::style::{ColorKey, NodeStyleExt, StyleAtom, StyleBinding, Token};
 
 static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Surface,

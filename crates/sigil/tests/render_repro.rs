@@ -6,6 +6,7 @@
 #![allow(clippy::cast_possible_truncation, clippy::cast_precision_loss)]
 #![allow(clippy::print_stdout, clippy::doc_markdown, clippy::too_many_lines)]
 
+use sigil::layout::Position;
 use sigil::prelude::*;
 
 use sigil_kittest::{InteractionMode, render_widget_to_png_stub};
@@ -17,7 +18,7 @@ fn position_relative_child_paints() {
     const SAMPLE_Y: u32 = 64;
 
     let Some(img) = render_widget_to_png_stub(
-        |cx| {
+        || {
             let inner = container()
                 .layout(
                     LayoutStyle::block()
@@ -35,15 +36,14 @@ fn position_relative_child_paints() {
                 )
                 .class("bg-surface-pressed")
                 .child(inner);
-            let root = container()
+            container()
                 .layout(
                     LayoutStyle::block()
                         .fixed_size(150.0, 150.0)
                         .padding(ROOT_PADDING as f32),
                 )
                 .class("bg-surface")
-                .child(middle);
-            cx.add(root)
+                .child(middle)
         },
         InteractionMode::Default,
         [150, 150],
@@ -77,7 +77,7 @@ fn narrow_text_renders_glyph() {
     const WIN_H: u32 = 16;
 
     let Some(img) = render_widget_to_png_stub(
-        |cx| {
+        || {
             let glyph = text("v")
                 .layout(LayoutStyle::block().width(WIN_W as f32))
                 .class("text-on-surface");
@@ -85,15 +85,14 @@ fn narrow_text_renders_glyph() {
                 .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
                 .class("rounded-sm bg-surface")
                 .child(glyph);
-            let root = container()
+            container()
                 .layout(
                     LayoutStyle::block()
                         .fixed_size(200.0, 80.0)
                         .padding(ROOT_PADDING as f32),
                 )
                 .class("bg-surface")
-                .child(wrapper);
-            cx.add(root)
+                .child(wrapper)
         },
         InteractionMode::Default,
         [200, 80],

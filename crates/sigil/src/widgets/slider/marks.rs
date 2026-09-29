@@ -1,6 +1,6 @@
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, container, text};
-use crate::layout::prelude::{JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::style::{NodeStyleExt, Token};
 
 use super::builder::{SliderRuntime, ValueChange};

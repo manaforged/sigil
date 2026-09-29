@@ -3,9 +3,9 @@ use super::*;
 #[test]
 fn text_edit_multiline() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let buffer = signal(String::from("first line\nsecond line\nthird line"));
-            cx.add(text_edit(buffer).width(360.0).height(160.0))
+            text_edit(buffer).width(360.0).height(160.0)
         },
         InteractionMode::Default,
         [220, 88],
@@ -23,7 +23,7 @@ fn chip_in(label: &'static str, tone: Tone) -> NodeBuilder {
 #[test]
 fn chip_neutral() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(chip_in("READY", Tone::Neutral)),
+        || chip_in("READY", Tone::Neutral),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -34,7 +34,7 @@ fn chip_neutral() {
 #[test]
 fn chip_info() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(chip_in("INFO", Tone::Info)),
+        || chip_in("INFO", Tone::Info),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -45,7 +45,7 @@ fn chip_info() {
 #[test]
 fn chip_success() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(chip_in("OK", Tone::Success)),
+        || chip_in("OK", Tone::Success),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -56,7 +56,7 @@ fn chip_success() {
 #[test]
 fn chip_warn() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(chip_in("WARN", Tone::Warn)),
+        || chip_in("WARN", Tone::Warn),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -67,7 +67,7 @@ fn chip_warn() {
 #[test]
 fn chip_error() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(chip_in("ERROR", Tone::Error)),
+        || chip_in("ERROR", Tone::Error),
         InteractionMode::Default,
         [50, 35],
         (42.0, 29.4),
@@ -78,22 +78,20 @@ fn chip_error() {
 #[test]
 fn divider_horizontal_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column().fixed_size(180.0, 60.0))
-                    .child(
-                        container()
-                            .class("bg-accent")
-                            .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
-                    )
-                    .child(divider_horizontal())
-                    .child(
-                        container()
-                            .class("bg-surface-hover")
-                            .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
-                    ),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::flex_column().fixed_size(180.0, 60.0))
+                .child(
+                    container()
+                        .class("bg-accent")
+                        .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
+                )
+                .child(divider_horizontal())
+                .child(
+                    container()
+                        .class("bg-surface-hover")
+                        .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
+                )
         },
         InteractionMode::Default,
         [192, 72],
@@ -105,22 +103,20 @@ fn divider_horizontal_default() {
 #[test]
 fn divider_vertical_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_row().fixed_size(120.0, 60.0))
-                    .child(
-                        container()
-                            .class("bg-accent")
-                            .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
-                    )
-                    .child(divider_vertical())
-                    .child(
-                        container()
-                            .class("bg-surface-hover")
-                            .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
-                    ),
-            )
+        || {
+            container()
+                .layout(LayoutStyle::flex_row().fixed_size(120.0, 60.0))
+                .child(
+                    container()
+                        .class("bg-accent")
+                        .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
+                )
+                .child(divider_vertical())
+                .child(
+                    container()
+                        .class("bg-surface-hover")
+                        .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
+                )
         },
         InteractionMode::Default,
         [136, 72],
@@ -132,12 +128,12 @@ fn divider_vertical_default() {
 #[test]
 fn kv_row_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let row = container()
                 .layout(LayoutStyle::flex_column().fixed_size(220.0, 40.0))
                 .class("bg-surface")
                 .child(kv_row("Status", text("200 OK").class("font-mono")));
-            cx.add(on_black(row, 232.0, 52.0))
+            on_black(row, 232.0, 52.0)
         },
         InteractionMode::Default,
         [232, 52],
@@ -149,7 +145,7 @@ fn kv_row_default() {
 #[test]
 fn status_bar_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let bar = container()
                 .layout(LayoutStyle::flex_column().fixed_size(280.0, 48.0))
                 .class("bg-surface")
@@ -157,7 +153,7 @@ fn status_bar_default() {
                     chip("READY", Tone::Success),
                     chip("3 ITEMS", Tone::Neutral),
                 ]));
-            cx.add(on_black(bar, 292.0, 60.0))
+            on_black(bar, 292.0, 60.0)
         },
         InteractionMode::Default,
         [292, 60],
@@ -169,9 +165,9 @@ fn status_bar_default() {
 #[test]
 fn number_field_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let value = signal(42i32);
-            cx.add(number_field(value, 0..=100).text_field())
+            number_field(value, 0..=100).text_field()
         },
         InteractionMode::Default,
         [192, 44],
@@ -183,9 +179,9 @@ fn number_field_default() {
 #[test]
 fn number_field_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let value = signal(42i32);
-            cx.add(number_field(value, 0..=100).text_field())
+            number_field(value, 0..=100).text_field()
         },
         InteractionMode::Focused,
         [192, 44],

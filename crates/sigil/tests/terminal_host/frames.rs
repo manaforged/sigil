@@ -6,7 +6,7 @@ fn a_still_tree_reports_no_movement() {
 
     sigil::reactive::Runtime::scope("still", || {
         let mut host = Host::cells();
-        host.mount(|cx: &mut Cx| cx.add(container().child(text("steady"))));
+        host.mount(move || container().child(text("steady")));
         host.layout((320.0, 64.0)).expect("layout");
         let first = host.emit((320.0, 64.0));
         assert!(
@@ -43,12 +43,10 @@ fn a_reactive_class_change_repaints() {
         sigil::reactive::Runtime::scope("reactive-truth", || {
             let active = signal(start);
             let mut host = Host::cells();
-            host.mount(move |cx: &mut Cx| {
-                cx.add(
-                    container()
-                        .class_when(active, "bg-accent")
-                        .child(text("cell")),
-                )
+            host.mount(move || {
+                container()
+                    .class_when(active, "bg-accent")
+                    .child(text("cell"))
             });
             host.layout((320.0, 64.0)).expect("layout");
             fills(&host.emit((320.0, 64.0)))
@@ -64,12 +62,10 @@ fn a_reactive_class_change_repaints() {
     sigil::reactive::Runtime::scope("reactive-class", || {
         let active = signal(false);
         let mut host = Host::cells();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(
-                container()
-                    .class_when(active, "bg-accent")
-                    .child(text("cell")),
-            )
+        host.mount(move || {
+            container()
+                .class_when(active, "bg-accent")
+                .child(text("cell"))
         });
         host.layout((320.0, 64.0)).expect("layout");
         let first = host.emit((320.0, 64.0));
@@ -99,7 +95,7 @@ fn a_skipped_frame_returns_what_is_showing() {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         let mut screen = Screen::new(30, 6);
-        host.mount(|cx: &mut Cx| cx.add(container().child(text("onscreen"))));
+        host.mount(move || container().child(text("onscreen")));
 
         let drawn = screen
             .frame(&mut host, &mut router, [], (30, 6))
@@ -130,7 +126,7 @@ fn only_a_change_sends_bytes() {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         let mut screen = Screen::new(30, 6);
-        host.mount(move |cx: &mut Cx| cx.add(container().child(text(label))));
+        host.mount(move || container().child(text(label)));
 
         let sent = |next: &mut Screen, app: &mut Host, events: &mut EventRouter| {
             next.frame(app, events, [], (30, 6)).expect("layout");

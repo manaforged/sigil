@@ -13,8 +13,7 @@ use sigil::renderer::{DrawParams, ScreenSubmission, SlugTextPipeline};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 use sigil::text::{OwnedTextEngine, TextConfig};
-use sigil_kittest::gpu::{FORMAT, create_capture_texture};
-use sigil_kittest::gpu::{read_pixels, shared_device};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, read_pixels, shared_device};
 
 const BYTES_PER_PIXEL: u32 = 4;
 
@@ -104,7 +103,7 @@ fn render_embed_text(submission_scale: f32) -> (Vec<u8>, u32, u32) {
                 format: FORMAT,
                 viewport: (LOGICAL_W, LOGICAL_H),
                 scale: submission_scale,
-                clear: Some(sigil::hal::Color::BLACK),
+                clear: Some(sigil::style::Color::BLACK),
             },
             &scene,
         )
@@ -123,8 +122,8 @@ fn build_text_scene() -> CommandScene {
         letter_spacing_em: 0.0,
         ..Default::default()
     };
-    let rect = sigil::hal::Rect::new(
-        sigil::hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil::geometry::Rect::new(
+        sigil::geometry::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

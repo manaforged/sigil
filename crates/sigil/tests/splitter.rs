@@ -7,6 +7,7 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::widgets::{SplitterOrientation, splitter};
 use sigil_kittest::FixedMeasure;

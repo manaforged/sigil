@@ -9,8 +9,8 @@
 mod stub;
 use stub::stub_engine;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
 
 #[test]
 fn gc_removes_mirrored_nodes_for_disposed_core_subtrees() {

@@ -8,7 +8,8 @@ use web_sys::{
     InputEvent, KeyboardEvent, KeyboardEventInit,
 };
 
-use crate::hal::{Rect, ShellEvent, WindowEvent};
+use crate::events::{ShellEvent, WindowEvent};
+use crate::geometry::Rect;
 use crate::shell::WinitWaker;
 use crate::shell::composition::{CompositionInput, KeyRoute, composition_events, key_route};
 
@@ -94,7 +95,7 @@ impl WebIme {
             self.area.set_value("");
             self.queue
                 .borrow_mut()
-                .push(ShellEvent::Ime(crate::hal::ImeEvent::Disabled));
+                .push(ShellEvent::Ime(crate::events::ImeEvent::Disabled));
         }
         self.allowed = allowed;
     }

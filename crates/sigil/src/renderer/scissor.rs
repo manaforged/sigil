@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 
 pub(crate) fn apply(
     pass: &mut wgpu::RenderPass<'_>,

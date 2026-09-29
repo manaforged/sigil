@@ -1,9 +1,10 @@
 use unicode_segmentation::UnicodeSegmentation;
 
+use crate::bidi;
 use crate::style::{TextRuns, TextStyle};
+use crate::text::FaceSpec;
 use crate::text::glyph::GlyphRun;
 use crate::text::shaper::{Font, Script, Style};
-use crate::text::{FaceSpec, bidi};
 
 use super::FontCollection;
 use super::shape::{

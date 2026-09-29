@@ -11,10 +11,9 @@
 #![allow(clippy::print_stdout, clippy::too_many_lines)]
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
-use sigil::hal::Color;
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 
 #[path = "renderer_split_path_pixel_check/support.rs"]
 mod support;
@@ -177,7 +176,7 @@ fn assert_deprecated_offscreen_forwards() {
 }
 
 fn build_red_rect_scene() -> CommandScene {
-    use sigil::hal::{Point, Rect};
+    use sigil::geometry::{Point, Rect};
     let mut scene = SceneBuilder::new();
     scene.draw_rect(
         Rect::new(Point::new(RED_RECT_X, RED_RECT_Y), RED_RECT_W, RED_RECT_H),

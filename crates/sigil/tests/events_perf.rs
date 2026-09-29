@@ -12,12 +12,12 @@ use std::cell::Cell;
 use std::rc::Rc;
 
 use input::{key_down, pointer_down, pointer_drag, pointer_up};
-use sigil::events::prelude::*;
-use sigil::hal::{
-    Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, ShellEvent,
+use sigil::events::{
+    Key, KeyEvent, KeyEventInit, KeyPhase, ModifiersState, PhysicalKey, PointerEvent, ShellEvent, *,
 };
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 #[test]
 fn pointer_route_depth_64_does_not_allocate() {

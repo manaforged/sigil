@@ -1,6 +1,6 @@
 use smol_str::SmolStr;
 
-use crate::hal::{PhysicalSize, Point, Scale};
+use crate::geometry::{PhysicalSize, Point, Scale};
 
 pub use keyboard_types::{Code as PhysicalKey, Modifiers as ModifiersState, NamedKey as Key};
 

@@ -7,9 +7,9 @@
 #[path = "layout_stub/mod.rs"]
 mod stub;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
-use sigil::layout::{LayoutResult, TrackSize};
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::{LayoutResult, TrackSize, *};
 use sigil::style::NodeStyleExt;
 
 use stub::stub_engine;

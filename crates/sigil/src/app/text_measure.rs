@@ -26,8 +26,8 @@ impl TextMeasure for DefaultTextMeasure {
     fn measure(
         &self,
         content: &crate::kernel::TextContent,
-        space: crate::hal::Size,
-    ) -> crate::hal::LogicalSize {
+        space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
         self.inner.measure(content, space)
     }
 
@@ -35,8 +35,8 @@ impl TextMeasure for DefaultTextMeasure {
         &self,
         content: &crate::kernel::TextContent,
         style: &TextStyle,
-        space: crate::hal::Size,
-    ) -> crate::hal::LogicalSize {
+        space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
         self.inner.measure_styled(content, style, space)
     }
 

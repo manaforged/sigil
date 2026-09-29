@@ -10,8 +10,9 @@
 mod stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 #[test]
 fn column_with_text_and_container_with_text_child_does_not_collapse_text() {

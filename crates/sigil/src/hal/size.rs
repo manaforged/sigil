@@ -1,4 +1,4 @@
-use crate::hal::{PhysicalSize, Point};
+use crate::geometry::{PhysicalSize, Point};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Scale(f32);

@@ -1,5 +1,3 @@
-use crate::kernel::Cx;
-
 use super::diff;
 
 const PATCH: &str = "\
@@ -11,8 +9,7 @@ const PATCH: &str = "\
 
 #[test]
 fn a_split_diff_gives_the_longer_side_the_width() {
-    let grid =
-        crate::terminal::present(|cx: &mut Cx| cx.add(diff(PATCH)), 110, 12, &[]).expect("layout");
+    let grid = crate::terminal::present(|| diff(PATCH), 110, 12, &[]).expect("layout");
     assert!(
         grid.contains("raise ValueError(\"amount must be positive\") from None"),
         "right column cut:\n{grid}"
@@ -26,8 +23,7 @@ fn a_split_diff_gives_the_longer_side_the_width() {
 #[test]
 fn an_added_line_keeps_the_split_divider_on_the_empty_side() {
     let patch = "@@ -30,2 +30,3 @@\n tools/out/\n+tools/.env\n runs/\n";
-    let grid = crate::terminal::present(move |cx: &mut Cx| cx.add(diff(patch)), 80, 10, &[])
-        .expect("layout");
+    let grid = crate::terminal::present(move || diff(patch), 80, 10, &[]).expect("layout");
     let added = grid
         .lines()
         .find(|line| line.contains("tools/.env"))

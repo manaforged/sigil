@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, NodeId, TopLayer};
 use crate::layout::{LayoutEngine, LayoutResult};
 use crate::style::{StyleBinding, Transform2D};

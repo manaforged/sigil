@@ -7,7 +7,7 @@ use wgpu::util::DeviceExt as _;
 #[path = "layer_composite/shader.rs"]
 mod shader;
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::profile::{count, span};
 use crate::renderer::frame_upload::UploadedRange;
 use crate::renderer::layer_pool::LayerPool;

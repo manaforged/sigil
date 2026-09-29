@@ -10,8 +10,9 @@
 mod stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
 
 #[test]

@@ -6,9 +6,9 @@
 
 use accesskit::{Node as AkNode, Role, TreeUpdate};
 use sigil::a11y::tree;
-use sigil::hal::{Point, Rect};
-use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::prelude::*;
+use sigil::geometry::{Point, Rect, Size};
+use sigil::kernel::{Cx, IntoNode, NodeId, container};
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
 use sigil::widgets::{button, modal, text_field};
 use sigil_kittest::FixedMeasure;
@@ -79,9 +79,9 @@ fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
     Runtime::scope("sigil_a11y::bounds_projection", || {
         let mut cx = Cx::new_root();
 
-        let button_id = build_button(&mut cx);
-        let field_id = build_text_field(&mut cx);
-        let modal_id = build_modal(&mut cx);
+        let button_id = cx.add(build_button);
+        let field_id = cx.add(build_text_field);
+        let modal_id = cx.add(build_modal);
 
         let button_rect = Rect::new(Point::new(10.0, 20.0), 80.0, 32.0);
         let field_rect = Rect::new(Point::new(10.0, 60.0), 200.0, 28.0);
@@ -130,18 +130,18 @@ fn projects_role_name_and_injected_bounds_for_button_field_and_modal() {
     });
 }
 
-fn build_button(cx: &mut Cx) -> NodeId {
-    cx.add(button("Save"))
+fn build_button() -> impl IntoNode {
+    button("Save")
 }
 
-fn build_text_field(cx: &mut Cx) -> NodeId {
+fn build_text_field() -> impl IntoNode {
     let value = signal(String::new());
-    cx.add(text_field(value).placeholder("Email"))
+    text_field(value).placeholder("Email")
 }
 
-fn build_modal(cx: &mut Cx) -> NodeId {
+fn build_modal() -> impl IntoNode {
     let show = signal(true);
-    cx.add(modal(show).title("Settings"))
+    modal(show).title("Settings")
 }
 
 fn find(update: &TreeUpdate, id: NodeId) -> Option<&AkNode> {

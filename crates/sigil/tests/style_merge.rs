@@ -4,9 +4,8 @@
 )]
 #![allow(clippy::panic)]
 
-use sigil::style::{ColorKey, Token};
 use sigil::style::{
-    Dimension, Px, StyleAtom, bump_unknown_class_count, merge_classes,
+    ColorKey, Dimension, Px, StyleAtom, Token, bump_unknown_class_count, merge_classes,
     merge_warning_count_for_component, unknown_class_warning_count,
 };
 

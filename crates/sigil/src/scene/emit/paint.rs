@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{ImageCrop, Node, NodeId, NodeType, TextContent, ThemedImage};
 use crate::scene::builder::SceneBuilder;
 use crate::scene::command::{

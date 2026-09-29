@@ -10,7 +10,6 @@
 use sigil::app::DefaultTextMeasure;
 
 use sigil::prelude::*;
-use sigil::widgets::patterns;
 
 use sigil_kittest::{
     InteractionMode, assert_rendered_matches_golden, golden_path, render_widget_to_png_stub,

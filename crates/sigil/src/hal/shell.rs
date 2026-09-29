@@ -2,8 +2,8 @@ use core::error::Error;
 
 use alloc::vec::IntoIter;
 
+use crate::hal::events::ShellEvent;
 use crate::hal::{
-    ShellEvent,
     geometry::{PhysicalSize, Rect},
     size::{LogicalSize, Scale},
 };

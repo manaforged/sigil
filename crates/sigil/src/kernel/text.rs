@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use crate::hal::Shortcut;
+use crate::events::Shortcut;
 use crate::reactive::{Signal, derived};
 use accesskit::Role;
 

@@ -40,15 +40,15 @@ fn with_runtime_allows_signal_mutation() {
 #[test]
 fn tree_size_counts_a_single_root() {
     use crate::prelude::container;
-    let count = tree_size("tree-size-single", |cx| cx.add(container()));
+    let count = tree_size("tree-size-single", container());
     assert_eq!(count, 1);
 }
 
 #[test]
 fn tree_size_counts_children() {
     use crate::prelude::{container, text};
-    let count = tree_size("tree-size-children", |cx| {
-        cx.add(container().child(text("a")).child(text("b")))
+    let count = tree_size("tree-size-children", || {
+        container().child(text("a")).child(text("b"))
     });
     assert_eq!(count, 3);
 }

@@ -1,6 +1,6 @@
 use super::*;
 use crate::kernel::{FocusScopeKind, container};
-use crate::layout::prelude::*;
+use crate::layout::*;
 
 fn scope_marker(kind: FocusScopeKind) -> impl FnOnce(&mut crate::kernel::Node) {
     move |node| {

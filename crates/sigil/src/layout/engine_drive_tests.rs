@@ -1,5 +1,5 @@
 use super::*;
-use crate::hal::{LogicalSize, Size as HalSize};
+use crate::geometry::{LogicalSize, Size as HalSize};
 use crate::kernel::TextContent;
 use crate::layout::style_data::{Dimension, Display, Size as StyleSize, StyleData};
 

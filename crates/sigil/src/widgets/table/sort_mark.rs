@@ -38,7 +38,7 @@ pub(super) fn sort_mark<Row: 'static>(
     sortable: bool,
 ) -> NodeBuilder {
     use crate::icons::builtin::{ARROW_DOWN_SVG, ARROW_UP_SVG, CHEVRONS_UP_DOWN_SVG};
-    use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+    use crate::layout::{LayoutBuilderExt, LayoutStyle};
     use crate::style::space;
     use crate::widgets::icon_svg;
     let mark = sort_state(state, column, sortable);

@@ -1,4 +1,4 @@
-use crate::hal::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
+use crate::events::{Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, Shortcut};
 use crate::kernel::{Cx, NodeId, Role};
 use crate::layout::LayoutEngine;
 use smallvec::SmallVec;

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, NodeId, NodeType};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::scene::{SceneCommand, emit_scene};

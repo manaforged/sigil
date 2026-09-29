@@ -1,6 +1,7 @@
-use sigil::hal::{Color, PhysicalSize};
+use sigil::geometry::PhysicalSize;
 use sigil::renderer::{CpuRenderer, WgpuRenderer};
 use sigil::scene::CommandScene;
+use sigil::style::Color;
 
 use crate::Error;
 use crate::gpu::{Capture, read_pixels, render_capture};

@@ -8,9 +8,10 @@
 
 use std::path::PathBuf;
 
-use sigil::hal::{Color, PhysicalSize};
+use sigil::geometry::PhysicalSize;
 use sigil::renderer::{CpuRenderer, OffscreenTarget, WgpuRenderer, scenes};
 use sigil::scene::CommandScene;
+use sigil::style::Color;
 use sigil_kittest::gpu::read_pixels;
 use sigil_kittest::parity::{CLOSE_TOLERANCE, MAX_MEAN_DIFF, MIN_CLOSE_FRACTION, diff};
 

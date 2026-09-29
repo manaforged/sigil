@@ -4,13 +4,14 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::IntoNode;
 use std::hint::black_box;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::Duration;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use rayon::{ThreadPool, ThreadPoolBuilder};
-use sigil::hal::{Scale, Size};
+use sigil::geometry::{Scale, Size};
 use sigil::kernel::{Cx, NodeBuilder, NodeId, container, text};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::CharMeasure;
@@ -51,18 +52,18 @@ fn nested_subtree_with_text_children(count: usize) -> NodeBuilder {
 
 fn build_100k_flex_tree() -> (Cx, NodeId, LayoutEngine) {
     let mut cx = Cx::new_root();
-    let root = build_100k_root(&mut cx);
+    let root = cx.add(build_100k_root);
     let engine = stub_engine();
     (cx, root, engine)
 }
 
-fn build_100k_root(cx: &mut Cx) -> NodeId {
+fn build_100k_root() -> impl IntoNode {
     let mut root_builder =
         container().layout(LayoutStyle::flex_column().fixed_size(ROOT_WIDTH, ROOT_HEIGHT));
     for _ in 0..ROWS_100K {
         root_builder = root_builder.child(row_100k());
     }
-    cx.add(root_builder)
+    root_builder
 }
 
 fn first_leaf_under(cx: &Cx, root: NodeId) -> NodeId {
@@ -269,7 +270,7 @@ fn bench_incremental_single_leaf_mutation(c: &mut Criterion) {
         b.iter_batched(
             || {
                 let mut cx = Cx::new_root();
-                let root = build_100k_root(&mut cx);
+                let root = cx.add(build_100k_root);
                 let leaf = first_leaf_under(&cx, root);
                 let mut engine = stub_engine();
                 engine

@@ -52,6 +52,7 @@ need wasm-bindgen-test-runner "cargo install --locked wasm-bindgen-cli@0.2.127"
 step env refuse_env
 step source node scripts/check-source.mjs
 step api-doc node scripts/check-api-doc.mjs --modules
+step story node scripts/check-story.mjs
 step fmt cargo fmt --all --check
 step clippy cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 step features cargo hack clippy -p sigil-ui --lib --each-feature --keep-going --locked -- -D warnings

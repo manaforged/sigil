@@ -1,6 +1,7 @@
-use crate::hal::Point;
+use crate::geometry::Point;
+use crate::geometry::{Rect, Size};
 use crate::kernel::container;
-use crate::layout::prelude::*;
+use crate::layout::*;
 
 use super::*;
 use crate::events::EventRouter;
@@ -11,9 +12,9 @@ impl TextMeasure for ZeroTextMeasure {
     fn measure(
         &self,
         _content: &crate::kernel::TextContent,
-        _space: crate::hal::Size,
-    ) -> crate::hal::LogicalSize {
-        crate::hal::LogicalSize::default()
+        _space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::default()
     }
 }
 

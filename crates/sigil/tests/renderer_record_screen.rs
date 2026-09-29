@@ -10,10 +10,10 @@
     clippy::missing_const_for_fn
 )]
 
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::{OffscreenTarget, ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneRectStyle};
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::read_pixels;
 
 const W: u32 = 64;

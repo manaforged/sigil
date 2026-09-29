@@ -66,8 +66,9 @@ fn run_rects(
     run: &GlyphRun,
     start: usize,
     end: usize,
-) -> Vec<crate::hal::Rect> {
-    use crate::hal::{HitPosition, Point, Rect, TextAffinity};
+) -> Vec<crate::geometry::Rect> {
+    use crate::geometry::{Point, Rect};
+    use crate::hal::{HitPosition, TextAffinity};
     let at = |byte_index| HitPosition {
         byte_index,
         affinity: TextAffinity::Downstream,
@@ -92,7 +93,7 @@ fn run_rects(
 fn fill(
     scene: &mut SceneBuilder,
     id: NodeId,
-    rects: &[crate::hal::Rect],
+    rects: &[crate::geometry::Rect],
     color: crate::style::Rgba8,
     opacity: u16,
 ) {
@@ -111,11 +112,11 @@ fn fill(
 #[cfg(feature = "scene")]
 fn underline(
     scene: &mut SceneBuilder,
-    rects: &[crate::hal::Rect],
+    rects: &[crate::geometry::Rect],
     color: crate::style::Rgba8,
     run: &GlyphRun,
 ) {
-    use crate::hal::{Point, Rect};
+    use crate::geometry::{Point, Rect};
     use crate::scene::command::{DecorationKind, SceneDecorationStyle};
     let thickness = (run.style.font_size * 0.06).max(1.0);
     for rect in rects {

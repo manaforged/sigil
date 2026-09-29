@@ -1,4 +1,4 @@
-use crate::hal::WindowOpts;
+use crate::app::WindowOpts;
 use winit::window::WindowLevel;
 
 use crate::shell::WinitWindowHandle;

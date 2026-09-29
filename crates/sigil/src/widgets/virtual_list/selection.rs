@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use crate::events::prelude::{ModifiersState, MouseButton, PointerEvent};
+use crate::events::{ModifiersState, MouseButton, PointerEvent};
 use crate::reactive::Signal;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

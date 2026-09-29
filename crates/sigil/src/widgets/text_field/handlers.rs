@@ -1,7 +1,7 @@
 use std::cell::RefMut;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 

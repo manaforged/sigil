@@ -4,10 +4,10 @@
 )]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::OffscreenTarget;
 use sigil::scene::{SceneBuilder, SceneRectStyle};
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 

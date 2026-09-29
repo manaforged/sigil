@@ -5,7 +5,7 @@
     reason = "region texels are clamped to the atlas before the cast"
 )]
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use tiny_skia::Pixmap;
 
 use crate::renderer::scene_command::{DrawSprite, SpriteKind};

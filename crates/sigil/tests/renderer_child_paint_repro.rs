@@ -5,7 +5,7 @@
 #![allow(clippy::unwrap_used, clippy::print_stdout, clippy::doc_markdown)]
 #![allow(clippy::cast_precision_loss)]
 
-use sigil::kernel::{Cx, prelude::*};
+use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
 use sigil::style::{NodeStyleExt, Theme};
 
@@ -20,7 +20,10 @@ fn relative_track_absolute_child_paints_under_clip() {
     const THUMB_SAMPLE_X: u32 = 4;
     const THUMB_SAMPLE_Y: u32 = 20;
 
-    let img = capture(build_relative_track_shape, [VIEWPORT_W, VIEWPORT_H]);
+    let img = capture(
+        sigil_kittest::WithCx(build_relative_track_shape),
+        [VIEWPORT_W, VIEWPORT_H],
+    );
 
     let px = img.get_pixel(THUMB_SAMPLE_X, THUMB_SAMPLE_Y);
     let [r, g, b, _a] = px.0;
@@ -73,7 +76,10 @@ fn build_relative_track_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
 #[test]
 fn rounded_overflow_masks_child_pixels() {
     const SIZE: u32 = 80;
-    let img = capture(build_rounded_overflow_shape, [SIZE, SIZE]);
+    let img = capture(
+        sigil_kittest::WithCx(build_rounded_overflow_shape),
+        [SIZE, SIZE],
+    );
     let accent = Theme::default().accent;
     let corner = img.get_pixel(9, 9).0;
     let edge = img.get_pixel(40, 9).0;
@@ -110,7 +116,10 @@ fn build_rounded_overflow_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
 
 #[test]
 fn rectangular_clip_preserves_child_corner_geometry() {
-    let img = capture(build_partially_clipped_round_rect, [32, 32]);
+    let img = capture(
+        sigil_kittest::WithCx(build_partially_clipped_round_rect),
+        [32, 32],
+    );
     let accent = Theme::default().accent;
     let visible_top = img.get_pixel(22, 10).0;
 
@@ -148,7 +157,10 @@ fn narrow_text_in_flex_child_renders_ink() {
     const WIN_W: u32 = 14;
     const WIN_H: u32 = 16;
 
-    let img = capture(build_narrow_text_flex_shape, [ROOT_W, ROOT_H]);
+    let img = capture(
+        sigil_kittest::WithCx(build_narrow_text_flex_shape),
+        [ROOT_W, ROOT_H],
+    );
 
     let window = InkWindow {
         x: WIN_X,
@@ -202,7 +214,10 @@ const TOOLTIP_BUBBLE_H: u32 = 26;
 
 #[test]
 fn nested_absolute_text_tooltip_shape_renders_ink() {
-    let img = capture(build_tooltip_shape, [TOOLTIP_ROOT_W, TOOLTIP_ROOT_H]);
+    let img = capture(
+        sigil_kittest::WithCx(build_tooltip_shape),
+        [TOOLTIP_ROOT_W, TOOLTIP_ROOT_H],
+    );
 
     let window = InkWindow {
         x: TOOLTIP_BUBBLE_X + 4,

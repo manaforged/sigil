@@ -2,7 +2,7 @@ use skrifa::instance::{LocationRef, NormalizedCoord, Size};
 use skrifa::metrics::{BoundingBox, GlyphMetrics};
 use skrifa::{FontRef, GlyphId};
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph};
 

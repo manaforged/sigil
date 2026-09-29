@@ -4,14 +4,13 @@
 )]
 #![allow(clippy::float_cmp, clippy::unwrap_used)]
 
-use sigil::hal::Size;
-use sigil::kernel::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::scene::{
     CommandScene, DrawGlyphRun, DrawRect, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
-use sigil::style::TextLineHeight;
-use sigil::style::{FocusRing, NodeStyleExt, Theme};
+use sigil::style::{FocusRing, NodeStyleExt, TextLineHeight, Theme};
 use sigil_kittest::FixedMeasure;
 
 #[test]

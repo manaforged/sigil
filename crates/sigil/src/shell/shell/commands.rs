@@ -1,4 +1,5 @@
-use crate::hal::{ResizeDirection, ShellEvent, WindowCommand, WindowEvent as SigilWindowEvent};
+use crate::app::{ResizeDirection, WindowCommand};
+use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
 
 use crate::shell::WinitWindowHandle;
 
@@ -30,7 +31,7 @@ impl WinitShell {
                 }
                 self.push_scale_factor_changed(id, factor);
                 self.push_event(ShellEvent::Window(SigilWindowEvent::Resized(
-                    crate::hal::PhysicalSize::new(size.width, size.height),
+                    crate::geometry::PhysicalSize::new(size.width, size.height),
                 )));
                 self.request_redraws();
             }

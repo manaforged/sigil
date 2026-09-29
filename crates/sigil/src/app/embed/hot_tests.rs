@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::app::Host;
+use crate::Host;
 use crate::events::EventRouter;
 use crate::reactive::{Runtime, signal};
 use crate::terminal::step;
@@ -13,9 +13,9 @@ fn a_patch_remounts_the_root_and_keeps_outside_state() {
         let calls = Rc::new(Cell::new(0_u32));
         let counter = Rc::clone(&calls);
         let mut host = Host::cells();
-        host.mount_hot(move |cx| {
+        host.mount_hot(move || {
             counter.set(counter.get() + 1);
-            cx.add(crate::kernel::text(format!("Count: {}", count.get())))
+            crate::kernel::text(format!("Count: {}", count.get()))
         });
         let mut router = EventRouter::new();
         let _ = step(&mut host, &mut router, [], 30, 3);

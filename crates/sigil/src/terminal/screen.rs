@@ -1,8 +1,10 @@
 use std::io::{self, Write};
 
-use crate::app::{FrameHooks, Host, LayoutError};
+use crate::Host;
+use crate::app::FrameHooks;
 use crate::events::EventRouter;
-use crate::hal::ShellEvent;
+use crate::events::ShellEvent;
+use crate::layout::LayoutError;
 use crate::profile;
 use crate::scene::CommandScene;
 

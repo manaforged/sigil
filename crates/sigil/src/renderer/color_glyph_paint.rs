@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::hal::{Point, Rect, RenderedGlyph};
+use crate::geometry::{Point, Rect};
+use crate::hal::RenderedGlyph;
 use crate::kernel::{ImageSource, NodeId, ObjectFit};
 use crate::text::{Paragraph, color_glyph};
 use skrifa::{FontRef, GlyphId};

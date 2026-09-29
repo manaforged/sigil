@@ -8,7 +8,8 @@ use std::cell::{Cell, OnceCell};
 use std::rc::Rc;
 use std::sync::Arc;
 
-use crate::hal::{HitPosition, ParagraphMetrics, Point, Rect, TextAffinity};
+use crate::geometry::{Point, Rect};
+use crate::hal::{HitPosition, ParagraphMetrics, TextAffinity};
 use smallvec::SmallVec;
 
 use crate::text::Font;

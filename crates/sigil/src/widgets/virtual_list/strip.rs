@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container, node, schedule_keyed_rebuild};
 use crate::layout::LayoutReactiveExt;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, effect_named, signal as signal_of};
 
 use super::measure::{Measure, Tops, row_key_of};
@@ -253,7 +253,7 @@ fn deferred_row<S, T, R>(
     index: usize,
     cache_key: u64,
     spec: &BoundStrip<T, R>,
-) -> impl FnOnce(&mut Cx) -> NodeId + use<S, T, R>
+) -> impl IntoNode + use<S, T, R>
 where
     S: Deref + 'static,
     S::Target: AsRef<[T]>,
@@ -267,7 +267,7 @@ where
     let width = spec.width;
     let selection = spec.selection;
     let measure = spec.measure.clone();
-    move |cx: &mut Cx| {
+    crate::kernel::WithCx(move |cx: &mut Cx| {
         let slice: &[T] = (*items).as_ref();
         let row = slice
             .get(index)
@@ -277,5 +277,5 @@ where
             None => place_row(index, row_height, width, row, selection),
         };
         slot.build(cx)
-    }
+    })
 }

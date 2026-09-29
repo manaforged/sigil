@@ -21,7 +21,8 @@ use zeno as _;
 
 use std::time::Instant;
 
-use sigil::renderer::{ScreenSubmission, TextTuning, WgpuRenderer, set_text_tuning};
+use sigil::app::{TextTuning, set_text_tuning};
+use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, SceneBuilder, shape_glyph_run};
 use sigil::style::{Rgba8, TextLineHeight, TextStyle};
 
@@ -92,7 +93,7 @@ fn bench_path(
                     format: FORMAT,
                     viewport: (LOGICAL_W, LOGICAL_H),
                     scale: 1.0,
-                    clear: Some(sigil::hal::Color::BLACK),
+                    clear: Some(sigil::style::Color::BLACK),
                 },
                 scene,
             )
@@ -122,8 +123,8 @@ fn build_scene(content: &str) -> (CommandScene, usize) {
         line_height: TextLineHeight::FontSizeRelative(1.2),
         ..TextStyle::default()
     };
-    let rect = sigil::hal::Rect::new(
-        sigil::hal::Point::new(ORIGIN.0, ORIGIN.1),
+    let rect = sigil::geometry::Rect::new(
+        sigil::geometry::Point::new(ORIGIN.0, ORIGIN.1),
         LOGICAL_W - ORIGIN.0,
         LOGICAL_H - ORIGIN.1,
     );

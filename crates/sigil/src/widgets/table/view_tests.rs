@@ -5,10 +5,11 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use crate::events::EventRouter;
-use crate::hal::{
-    LogicalSize, ModifiersState, MouseButton, MouseButtons, Point, PointerEvent, PointerEventInit,
-    PointerKind, PointerPhase, Rect, ShellEvent, Size,
+use crate::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEvent, PointerEventInit, PointerKind,
+    PointerPhase, ShellEvent,
 };
+use crate::geometry::{LogicalSize, Point, Rect, Size};
 use crate::kernel::{AccessibleName, Cx, NodeId, TextContent, container};
 use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use crate::reactive::Runtime;

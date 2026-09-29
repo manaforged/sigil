@@ -4,10 +4,9 @@
 )]
 #![allow(clippy::expect_used, clippy::panic)]
 
-use sigil::app::{Host, HostCaps};
-use sigil::events::EventRouter;
-use sigil::hal::ShellEvent;
-use sigil::kernel::Cx;
+use sigil::Host;
+use sigil::app::HostCaps;
+use sigil::events::{EventRouter, ShellEvent};
 use sigil::prelude::NodeStyleExt;
 use sigil::reactive::{Runtime, signal};
 use sigil::terminal::{Cell, Grid, Underline, step};
@@ -21,13 +20,7 @@ const TABLE: &str = "\
 ";
 
 fn render(cols: u16) -> String {
-    sigil::terminal::present(
-        |cx: &mut Cx| cx.add(markdown(signal(TABLE.to_string()))),
-        cols,
-        80,
-        &[],
-    )
-    .expect("layout")
+    sigil::terminal::present(|| markdown(signal(TABLE.to_string())), cols, 80, &[]).expect("layout")
 }
 
 fn widths(grid: &str) -> Vec<usize> {
@@ -98,11 +91,11 @@ const REASONING: &str = "The events are emitted to callback, but `Turn.events` d
 
 fn paragraph(cols: u16, inline: bool) -> Vec<String> {
     let grid = sigil::terminal::present(
-        move |cx: &mut Cx| {
+        move || {
             if inline {
-                cx.add(sigil::widgets::markdown_inline(REASONING).class("italic"))
+                sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).class("italic"))
             } else {
-                cx.add(markdown(signal(REASONING.to_string())))
+                sigil::kernel::node(markdown(signal(REASONING.to_string())))
             }
         },
         cols,
@@ -157,7 +150,7 @@ fn grid(source: &str, cols: u16, hyperlinks: bool) -> Grid {
         let mut host = Host::cells();
         let mut router = EventRouter::new();
         host.set_caps(HostCaps { hyperlinks });
-        host.build(move |cx: &mut Cx| cx.add(markdown(signal(source))));
+        host.mount(move || markdown(signal(source.clone())));
         step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout");
         step(&mut host, &mut router, Vec::<ShellEvent>::new(), cols, 24).expect("layout")
     })
@@ -261,13 +254,8 @@ fn links_use_osc_8_or_fall_back_to_a_muted_url() {
 #[test]
 fn a_wrapped_cell_keeps_every_column_border_full_height() {
     let source = "| Seat | Key env |\n| --- | --- |\n| nvidia | NVIDIA_API_KEY |\n";
-    let grid = sigil::terminal::present(
-        move |cx: &mut Cx| cx.add(markdown(signal(source.to_string()))),
-        22,
-        14,
-        &[],
-    )
-    .expect("layout");
+    let grid = sigil::terminal::present(move || markdown(signal(source.to_string())), 22, 14, &[])
+        .expect("layout");
     let body: Vec<&str> = grid
         .lines()
         .skip_while(|line| !line.contains('┌'))

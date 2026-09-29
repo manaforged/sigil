@@ -4,8 +4,9 @@
 
 use std::sync::OnceLock;
 
-use crate::hal::{Color, Rect};
+use crate::geometry::Rect;
 use crate::icons::{IconBaker, builtin};
+use crate::style::Color;
 use crate::style::Rgba8;
 
 mod backdrop_blur;

@@ -3,7 +3,8 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::hal::{PhysicalSize, Shell};
+use sigil::geometry::PhysicalSize;
+use sigil::hal::Shell;
 use sigil::shell::WinitShell;
 use std::sync::atomic::Ordering;
 

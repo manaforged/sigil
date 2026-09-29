@@ -1,5 +1,5 @@
-use crate::hal::{LogicalSize, Point, Rect, Size};
-use crate::kernel::{Cx, NodeId, Surface, TextContent, prelude::*};
+use crate::geometry::{LogicalSize, Point, Rect, Size};
+use crate::kernel::*;
 use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use crate::style::{NodeStyleExt, Rgba8};
 

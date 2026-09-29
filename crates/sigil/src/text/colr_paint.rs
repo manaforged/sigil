@@ -13,7 +13,7 @@ use tiny_skia::{
 
 use super::color_glyph::ColorGlyphRaster;
 use super::colr_radial::{Radial, Stop, cut_negative};
-use crate::hal::Color as TextColor;
+use crate::style::Color as TextColor;
 
 const ASCENT_FRAC: f32 = 0.85;
 const FOREGROUND: u16 = 0xFFFF;

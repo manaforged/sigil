@@ -1,4 +1,6 @@
-use crate::hal::{Color, HitPosition, Point, Rect, RenderedGlyph, TextAffinity};
+use crate::geometry::{Point, Rect};
+use crate::hal::{HitPosition, RenderedGlyph, TextAffinity};
+use crate::style::Color;
 
 use super::{FaceEntry, LayoutLine, LineGlyph, Paragraph, u32_clamp};
 

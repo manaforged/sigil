@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, Node, NodeId, NodeType};
 use crate::layout::{LayoutResult, with_text_geometry};
 use crate::style::{StyleBinding, TextStyle, Theme, text_style_for};

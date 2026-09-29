@@ -12,8 +12,16 @@ thread_local! {
     };
 }
 
-pub fn queue_announcement(text: impl Into<String>, live: Live) {
+pub(crate) fn queue_announcement(text: impl Into<String>, live: Live) {
     PENDING.with(|cell| cell.borrow_mut().push_back((text.into(), live)));
+}
+
+pub fn announce(text: impl Into<String>) {
+    queue_announcement(text, Live::Polite);
+}
+
+pub fn announce_assertive(text: impl Into<String>) {
+    queue_announcement(text, Live::Assertive);
 }
 
 impl Cx {
@@ -25,14 +33,6 @@ impl Cx {
             };
             self.post_announcement(text, live);
         }
-    }
-
-    pub fn announce(&mut self, text: impl Into<String>) {
-        self.post_announcement(text.into(), Live::Polite);
-    }
-
-    pub fn announce_assertive(&mut self, text: impl Into<String>) {
-        self.post_announcement(text.into(), Live::Assertive);
     }
 
     #[cfg(any(test, feature = "kittest"))]

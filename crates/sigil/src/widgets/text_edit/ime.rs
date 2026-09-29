@@ -1,7 +1,7 @@
 use std::cell::Cell;
 use std::rc::Rc;
 
-use crate::events::prelude::{ImeEvent, NodeEventsExt};
+use crate::events::{ImeEvent, NodeEventsExt};
 use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::NodeBuilder;
 use crate::layout::{CaretGeometry, with_text_geometry};

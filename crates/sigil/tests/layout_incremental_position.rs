@@ -7,9 +7,9 @@
 #[path = "layout_stub/mod.rs"]
 mod stub;
 
-use sigil::hal::Size;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
 use stub::stub_engine;
 

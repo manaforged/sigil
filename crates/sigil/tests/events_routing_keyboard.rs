@@ -14,10 +14,9 @@ mod routing_helpers;
 use std::cell::Cell;
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
-use sigil::hal::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut};
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::{Key, KeyPhase, LogicalKey, PhysicalKey, Shortcut, *};
+use sigil::kernel::*;
+use sigil::layout::*;
 
 use input::{ctrl_s, key_event};
 use routing_helpers::{compute_layout, route_event};
@@ -108,8 +107,8 @@ fn focused_key_any_receives_unregistered_text_input() {
     assert_eq!(hits.get(), 1);
 }
 
-fn text_key_event(text: &str, physical: PhysicalKey) -> sigil::hal::ShellEvent {
-    sigil::hal::ShellEvent::Key(sigil::hal::KeyEvent::new(sigil::hal::KeyEventInit {
+fn text_key_event(text: &str, physical: PhysicalKey) -> sigil::events::ShellEvent {
+    sigil::events::ShellEvent::Key(sigil::events::KeyEvent::new(sigil::events::KeyEventInit {
         key: LogicalKey::character(text),
         physical,
         modifiers: ModifiersState::empty(),
@@ -253,8 +252,8 @@ fn modifier_chord_still_fires_while_text_input_focused() {
     assert_eq!(typed.get(), 0);
 }
 
-fn ctrl_k() -> sigil::hal::ShellEvent {
-    sigil::hal::ShellEvent::Key(sigil::hal::KeyEvent::new(sigil::hal::KeyEventInit {
+fn ctrl_k() -> sigil::events::ShellEvent {
+    sigil::events::ShellEvent::Key(sigil::events::KeyEvent::new(sigil::events::KeyEventInit {
         key: LogicalKey::character("k"),
         physical: PhysicalKey::KeyK,
         modifiers: ModifiersState::CONTROL,

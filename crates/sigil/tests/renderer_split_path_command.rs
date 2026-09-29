@@ -8,9 +8,9 @@
 mod scene_support;
 
 use scene_support::{color, rect};
-use sigil::hal::Color;
 use sigil::renderer::{ScreenSubmission, WgpuRenderer};
 use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
+use sigil::style::Color;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 const VIEWPORT: (f32, f32) = (220.0, 80.0);

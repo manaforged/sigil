@@ -1,9 +1,9 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
-use sigil::kernel::{Cx, NodeId, container};
-use sigil::layout::LayoutEngine;
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::geometry::Size;
+use sigil::kernel::IntoNode;
+use sigil::kernel::{Cx, container};
+use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 use std::hint::black_box;
 const TEXT_MEASURE: FixedMeasure = FixedMeasure {
@@ -12,7 +12,7 @@ const TEXT_MEASURE: FixedMeasure = FixedMeasure {
 };
 const CHILDREN: usize = 1_000;
 const LEAVES: usize = 100;
-fn build(cx: &mut Cx) -> NodeId {
+fn build() -> impl IntoNode {
     let mut root = container().layout(LayoutStyle::flex_row().fixed_size(12800.0, 100.0));
     for _ in 0..CHILDREN {
         let mut col = container().layout(LayoutStyle::flex_column().fixed_size(12.0, 100.0));
@@ -21,12 +21,12 @@ fn build(cx: &mut Cx) -> NodeId {
         }
         root = root.child(col);
     }
-    cx.add(root)
+    root
 }
 fn bench_resize(c: &mut Criterion) {
     c.bench_function("resize/owned", |b| {
         let mut cx = Cx::new_root();
-        let root = build(&mut cx);
+        let root = cx.add(build);
         let mut engine = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));
         engine
             .compute(&mut cx, root, Size::fixed(12800.0, 100.0))

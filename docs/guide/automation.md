@@ -36,7 +36,7 @@ compares pixels against a committed golden:
 # use sigil::prelude::*;
 # fn main() -> Result<(), Box<dyn std::error::Error>> {
 let Some(img) = sigil_kittest::render_widget_to_png(
-    |cx| cx.add(button("Save")),
+    || button("Save"),
     sigil_kittest::InteractionMode::Default,
     [200, 60],
     (10.0, 10.0),

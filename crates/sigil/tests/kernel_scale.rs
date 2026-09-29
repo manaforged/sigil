@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::hal::Scale;
+use sigil::geometry::Scale;
 use sigil::kernel::Cx;
 
 #[test]

@@ -1,4 +1,4 @@
-use sigil::hal::{LogicalSize, Size};
+use sigil::geometry::{LogicalSize, Size};
 use sigil::layout::TextMeasure;
 use sigil::prelude::TextContent;
 

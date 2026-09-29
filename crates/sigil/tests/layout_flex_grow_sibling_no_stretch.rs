@@ -10,8 +10,9 @@
 mod stub;
 use stub::{layout_rect, stub_engine};
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 #[test]
 fn non_grow_row_beside_grow_spacer_stays_intrinsic_height() {

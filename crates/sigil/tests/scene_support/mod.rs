@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use sigil::hal::{Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::style::Rgba8;
 
 pub(crate) const fn color(r: u8, g: u8, b: u8, a: u8) -> Rgba8 {

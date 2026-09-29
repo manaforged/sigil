@@ -4,11 +4,11 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
-use sigil::style::{AlignKind, DisplayKind, FlexDir, JustifyKind, MillisU16, Style, TransitionId};
-use sigil::style::{ColorAtom, Dimension, Px, RenderStyle, Rgba8, StyleAtom, StyleEngine, Theme};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{NodeStyleExt, StyleBinding};
-use sigil::style::{ParseError, parse_class_string};
+use sigil::style::{
+    AlignKind, ColorAtom, ColorKey, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16,
+    NodeStyleExt, ParseError, Px, RenderStyle, Rgba8, Style, StyleAtom, StyleBinding, StyleEngine,
+    Theme, Token, TransitionId, parse_class_string,
+};
 
 #[test]
 fn atom_size_within_budget() {

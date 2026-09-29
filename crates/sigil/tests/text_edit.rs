@@ -3,7 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::layout::prelude::Dimension;
+use sigil::layout::Dimension;
 use sigil::prelude::*;
 use sigil::testing::with_cx;
 use sigil::widgets::{TextEditBuilder, text_edit};

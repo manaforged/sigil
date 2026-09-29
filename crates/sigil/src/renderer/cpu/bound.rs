@@ -3,7 +3,7 @@
     reason = "target sizes are far below the f32 mantissa limit"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use tiny_skia::{Path, PathBuilder, Pixmap, Point as TsPoint, Transform as TsTransform};
 
 use crate::renderer::scene_command::walk::intersect_rect;

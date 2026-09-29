@@ -6,10 +6,10 @@ use std::sync::{
 };
 use web_time::Instant;
 
-use crate::hal::{
-    LogicalSize, ModifiersState, MouseButtons, PhysicalSize, Point, Rect, Scale, Shell, ShellEvent,
-    WindowCommand, WindowOpts,
-};
+use crate::app::{WindowCommand, WindowOpts};
+use crate::events::{ModifiersState, MouseButtons, ShellEvent};
+use crate::geometry::{LogicalSize, PhysicalSize, Point, Rect, Scale};
+use crate::hal::Shell;
 use winit::{
     dpi::{LogicalPosition as WinitLogicalPosition, LogicalSize as WinitLogicalSize},
     event_loop::{EventLoop, EventLoopProxy},

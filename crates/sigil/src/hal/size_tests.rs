@@ -1,5 +1,5 @@
 use super::{LogicalSize, Scale};
-use crate::hal::{PhysicalSize, Point};
+use crate::geometry::{PhysicalSize, Point};
 
 #[test]
 fn scale_new_clamps_zero_to_one() {

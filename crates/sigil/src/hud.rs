@@ -83,7 +83,7 @@ pub(crate) fn compact(frame: &Frame) -> String {
 #[cfg(feature = "scene")]
 mod overlay {
     use super::{compact, level};
-    use crate::hal::{Point, Rect};
+    use crate::geometry::{Point, Rect};
     use crate::profile::{self, FRAME_BUDGET_NS, Frame};
     use crate::scene::command::{DrawGlyphRun, DrawRect, SceneRectStyle, shape_glyph_run};
     use crate::scene::corner_radii::CornerRadii;

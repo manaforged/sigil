@@ -1,4 +1,5 @@
-use crate::hal::{Color, Rect};
+use crate::geometry::Rect;
+use crate::style::Color;
 
 use super::helpers::{rect, rgba};
 use crate::scene::{

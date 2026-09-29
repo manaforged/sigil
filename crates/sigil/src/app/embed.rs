@@ -1,6 +1,7 @@
+use crate::events::ShellEvent;
 use crate::events::hit_test::HitTestCache;
 use crate::events::{EventRouter, FocusIntent};
-use crate::hal::{Point, Rect, ShellEvent, Size};
+use crate::geometry::{Point, Rect, Size};
 use crate::reactive::Runtime;
 use std::rc::Rc;
 
@@ -130,22 +131,23 @@ impl Host {
         self.env.exit.replace(false)
     }
 
-    pub fn build(&mut self, tree: impl FnOnce(&mut Cx) -> NodeId) {
+    pub fn mount(&mut self, app: impl crate::kernel::IntoNode) {
         #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
         self.forget_hot();
-        self.replace_root(tree);
-    }
-
-    pub fn mount(&mut self, tree: impl crate::app::TreeRoot) {
-        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
-        self.forget_hot();
-        self.replace_root(|cx| tree.install(cx));
+        self.replace_root(|cx| cx.add(app));
     }
 
     #[cfg(any(feature = "desktop", feature = "terminal"))]
-    pub(crate) fn mount_app(&mut self, tree: impl crate::app::TreeRoot) {
+    pub(crate) fn mount_app<F, N>(&mut self, app: F)
+    where
+        F: Fn() -> N + 'static,
+        N: crate::kernel::IntoNode,
+    {
         self.fill_root = true;
-        super::tree_root::sealed::Sealed::mount_into(tree, self);
+        #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]
+        self.mount_hot(app);
+        #[cfg(not(all(feature = "hot", not(target_arch = "wasm32"))))]
+        self.mount(app);
     }
 
     #[cfg(all(feature = "hot", not(target_arch = "wasm32")))]

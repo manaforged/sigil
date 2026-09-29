@@ -1,7 +1,9 @@
 use std::num::NonZeroU32;
 use std::sync::Arc;
 
-use crate::hal::{Color, PhysicalSize, Renderer};
+use crate::geometry::PhysicalSize;
+use crate::hal::Renderer;
+use crate::style::Color;
 use tiny_skia::Pixmap;
 
 use crate::renderer::error::RendererError;

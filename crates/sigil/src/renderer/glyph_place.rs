@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::renderer::raster::RASTER_MAX_LOGICAL_PX;
 use crate::renderer::scene_command::state::invert;
 use crate::renderer::scene_command::walk::{IDENTITY, transform_rect};

@@ -6,11 +6,12 @@ use crate::animation_runtime::active_count as active_animation_count;
 #[cfg(test)]
 use crate::animation_runtime::tick as tick_animations;
 use crate::events::EventRouter;
-use crate::hal::{LogicalSize, PhysicalSize, Scale, Shell};
+#[cfg(test)]
+use crate::geometry::Size;
+use crate::geometry::{LogicalSize, PhysicalSize, Scale};
+use crate::hal::Shell;
 #[cfg(test)]
 use crate::layout::LayoutEngine;
-#[cfg(test)]
-use crate::layout::prelude::Size;
 use crate::reactive::{Owner, Runtime, next_interval_deadline};
 use crate::shell::{WinitShell, WinitWindowHandle};
 use crate::tasks::AsyncRuntime;
@@ -19,7 +20,7 @@ use crate::app::config::{AppConfig, PanicPolicy};
 use crate::app::embed::Host;
 use crate::app::error::{AppResult, Error};
 use crate::app::exit::clear_exit;
-use crate::app::tree_root::TreeRoot;
+use crate::kernel::IntoNode;
 
 mod backend;
 mod event_wiring;
@@ -37,10 +38,11 @@ use frame::frame_once;
 use frame::{begin_effect, run_layout_if_dirty};
 use scene_cache::SceneCache;
 
-pub(crate) fn launch<C, T>(config: C, tree: T) -> AppResult<()>
+pub(crate) fn launch<C, F, N>(config: C, tree: F) -> AppResult<()>
 where
     C: Into<AppConfig>,
-    T: TreeRoot,
+    F: Fn() -> N + 'static,
+    N: IntoNode,
 {
     let config = config.into();
     let owner = Owner::new("sigil-app", None);
@@ -55,7 +57,11 @@ where
 }
 
 #[allow(clippy::too_many_lines, reason = "launch is one linear setup")]
-fn run<T: TreeRoot>(config: AppConfig, tree: T, owner: Owner) -> AppResult<()> {
+fn run<F, N>(config: AppConfig, tree: F, owner: Owner) -> AppResult<()>
+where
+    F: Fn() -> N + 'static,
+    N: IntoNode,
+{
     let mut config = AppConfig {
         user_zoom: if config.user_zoom > 0.0 {
             config.user_zoom
@@ -213,7 +219,7 @@ where
         .create_window_with(
             &config.title,
             logical_size,
-            crate::hal::WindowOpts {
+            crate::app::WindowOpts {
                 overlay: config.overlay,
                 frameless: config.frameless,
                 anchor: config.anchor,

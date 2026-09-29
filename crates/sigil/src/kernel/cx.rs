@@ -1,6 +1,6 @@
 use core::sync::atomic::{AtomicU64, Ordering};
 
-use crate::hal::Scale;
+use crate::geometry::Scale;
 use crate::reactive::{Owner, OwnerId};
 use ahash::{AHashMap, AHashSet};
 use slotmap::{DefaultKey, SlotMap};

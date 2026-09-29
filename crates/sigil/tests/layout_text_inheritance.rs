@@ -7,8 +7,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::hal::{LogicalSize, Size};
-use sigil::kernel::{TextContent, prelude::*};
+use sigil::geometry::{LogicalSize, Size};
+use sigil::kernel::*;
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::style::{NodeStyleExt, StyleBinding, TextStyle, parse_class_string};
 

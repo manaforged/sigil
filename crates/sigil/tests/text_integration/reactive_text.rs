@@ -2,10 +2,9 @@
 
 use std::rc::Rc;
 
-use sigil::hal::{Dim, Size};
+use sigil::geometry::{Dim, Size};
 use sigil::kernel::TextContent;
-use sigil::layout::TextEngineMeasure;
-use sigil::layout::TextMeasure;
+use sigil::layout::{TextEngineMeasure, TextMeasure};
 use sigil::reactive::{Runtime, signal};
 use sigil::text::{OwnedTextEngine, TextConfig};
 

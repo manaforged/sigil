@@ -1,3 +1,3 @@
-pub mod heatmap;
+mod heatmap;
 
 pub use heatmap::heatmap;

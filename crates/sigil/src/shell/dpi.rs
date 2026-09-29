@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::hal::{Point, Scale};
+use crate::geometry::{Point, Scale};
 use winit::window::{Window, WindowId};
 
 use crate::shell::WinitWindowHandle;

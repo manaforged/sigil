@@ -6,7 +6,7 @@
     reason = "pixel coordinates are bounded by the target size; float-to-int rounding is the rasterizer contract"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use tiny_skia::Paint;
 
 use crate::renderer::scene_command::state::shadow_reach;

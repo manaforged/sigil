@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use super::effects::DecorationKind;
 use super::payloads::DrawDecoration;

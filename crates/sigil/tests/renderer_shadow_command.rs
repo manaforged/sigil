@@ -7,12 +7,13 @@
 mod scene_support;
 
 use scene_support::color;
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
 use sigil::scene::{
     CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneCommand,
     SceneGradientStyle, SceneRectStyle, Shadow, ShadowKind,
 };
+use sigil::style::Color;
 use smallvec::smallvec;
 
 #[test]

@@ -1,4 +1,5 @@
-use crate::hal::{ImeEvent, Point, Rect};
+use crate::events::ImeEvent;
+use crate::geometry::{Point, Rect};
 use crate::kernel::{Cx, NodeId};
 use crate::layout::{CaretGeometry, LayoutEngine};
 

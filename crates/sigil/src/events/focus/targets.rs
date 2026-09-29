@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 

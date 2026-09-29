@@ -1,7 +1,8 @@
-use crate::hal::{HitPosition, Rect};
+use crate::geometry::Rect;
+use crate::hal::HitPosition;
 use crate::kernel::{NodeBuilder, container, fragment};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::layout::with_text_geometry;
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::style::{ColorAtom, NodeStyleExt, SELECTION_FILL, StyleAtom};
 
 use super::super::handlers::geometry_width;

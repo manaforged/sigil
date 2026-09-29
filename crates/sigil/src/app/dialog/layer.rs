@@ -128,10 +128,13 @@ pub(crate) fn sync(cx: &mut Cx, root: Option<NodeId>, mounted: &mut Vec<Mounted>
             resolve: Rc::new(RefCell::new(Some(request.resolve))),
         };
         let prompt = request.prompt;
-        let node = cx.add_child(root, move |cx: &mut Cx| match prompt {
-            Prompt::Files { dialog, kind } => picker_view(cx, dialog, kind, finish),
-            Prompt::Alert { kind, title, body } => alert_view(cx, kind, title, body, finish),
-        });
+        let node = cx.add_child(
+            root,
+            crate::kernel::WithCx(move |child: &mut Cx| match prompt {
+                Prompt::Files { dialog, kind } => picker_view(child, dialog, kind, finish),
+                Prompt::Alert { kind, title, body } => alert_view(child, kind, title, body, finish),
+            }),
+        );
         mounted.push(Mounted { node, done });
     }
 }

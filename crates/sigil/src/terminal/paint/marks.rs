@@ -82,12 +82,17 @@ fn within(cx: &Cx, mut id: NodeId, focus: NodeId) -> bool {
 }
 
 pub(super) struct Line {
-    pub(super) band: crate::hal::Rect,
+    pub(super) band: crate::geometry::Rect,
     pub(super) kind: DecorationKind,
     pub(super) color: Rgba8,
 }
 
-pub(super) fn decorate(grid: &mut Grid, line: &Line, clip: Option<crate::hal::Rect>, size: f32) {
+pub(super) fn decorate(
+    grid: &mut Grid,
+    line: &Line,
+    clip: Option<crate::geometry::Rect>,
+    size: f32,
+) {
     let band = line.band;
     let middle = band.origin.y + band.height / 2.0;
     if let Some(clip) = clip

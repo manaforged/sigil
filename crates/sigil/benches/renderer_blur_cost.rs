@@ -10,13 +10,12 @@
 #![allow(clippy::cast_possible_truncation)]
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use sigil::hal::Color;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
     CommandScene, CornerRadii, GradientStop, LayerEffect, LayerScope, LinearGradient, SceneBuilder,
     SceneGradientStyle, SceneRectStyle,
 };
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 use sigil_kittest::gpu::shared_device;
 use std::hint::black_box;
 use wgpu::TextureFormat;
@@ -180,7 +179,7 @@ fn multi_blur_scene(
 }
 
 fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
-    use sigil::hal::{Point, Rect};
+    use sigil::geometry::{Point, Rect};
     scene.draw_gradient(
         Rect::new(Point::new(0.0, 0.0), w as f32, h as f32),
         SceneGradientStyle::new(
@@ -200,7 +199,7 @@ fn draw_gradient_background(scene: &mut SceneBuilder, w: u32, h: u32) {
 
 #[allow(clippy::too_many_arguments, reason = "bench harness; deliberate")]
 fn push_blur_surface(scene: &mut SceneBuilder, x: f32, y: f32, w: f32, h: f32, sigma: f32) {
-    use sigil::hal::{Point, Rect};
+    use sigil::geometry::{Point, Rect};
     let clip = Rect::new(Point::new(x, y), w, h);
     scene.push_layer(LayerScope {
         clip,

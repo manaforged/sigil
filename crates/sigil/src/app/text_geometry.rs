@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use crate::hal::{HitPosition, Point, Rect, TextAffinity};
+use crate::geometry::{Point, Rect};
+use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::{CaretGeometry, TextGeometry};
 use crate::style::TextStyle;
 use crate::text::OwnedTextEngine;

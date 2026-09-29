@@ -1,8 +1,8 @@
 use crate::kernel::{NodeBuilder, Role, container};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::style::{NodeStyleExt, Rgba8, Style};
 
-pub const CELL_PX: f32 = 8.0;
+pub(crate) const CELL_PX: f32 = 8.0;
 
 #[must_use]
 pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(

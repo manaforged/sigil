@@ -8,10 +8,9 @@
 mod scene_support;
 
 use scene_support::rect;
-use sigil::hal::Color;
 use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
 use sigil::scene::{CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle};
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 
 #[test]
 #[ignore = "needs a wgpu adapter; run with --ignored on GPU hardware (see README verification)"]

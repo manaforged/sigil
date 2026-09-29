@@ -3,7 +3,7 @@ use sigil::prelude::*;
 use super::spec::Build;
 use super::{chrome, content, controls, data, inputs, overlays, plumbing};
 
-pub(crate) type App = fn(&mut Cx) -> NodeId;
+pub(crate) type App = fn() -> Box<dyn IntoNode>;
 
 const BUILDERS: [&[(&str, Build)]; 7] = [
     plumbing::BUILDERS,
@@ -83,13 +83,27 @@ const SOURCES: &[(&str, &str)] = &[
 ];
 
 const APPS: &[(&str, App)] = &[
-    ("todo-terminal", crate::todo_terminal::app),
-    ("preferences-window", crate::preferences_window::build),
-    ("chat-both", crate::chat_both::app_tree),
-    ("pomodoro-both", crate::pomodoro_both::app_tree),
-    ("showcase-dashboard", crate::showcase_dashboard::app),
-    ("showcase-editor", crate::showcase_editor::app),
-    ("showcase-settings", crate::showcase_settings::app),
+    ("todo-terminal", || {
+        sigil::kernel::node(crate::todo_terminal::app())
+    }),
+    ("preferences-window", || {
+        sigil::kernel::node(crate::preferences_window::build())
+    }),
+    ("chat-both", || {
+        sigil::kernel::node(crate::chat_both::app_tree())
+    }),
+    ("pomodoro-both", || {
+        sigil::kernel::node(crate::pomodoro_both::app_tree())
+    }),
+    ("showcase-dashboard", || {
+        sigil::kernel::node(crate::showcase_dashboard::app())
+    }),
+    ("showcase-editor", || {
+        sigil::kernel::node(crate::showcase_editor::app())
+    }),
+    ("showcase-settings", || {
+        sigil::kernel::node(crate::showcase_settings::app())
+    }),
 ];
 
 pub(crate) fn builder(id: &str) -> Option<Build> {

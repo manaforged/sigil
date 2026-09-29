@@ -1,4 +1,5 @@
-use crate::hal::{LogicalSize, ModifiersState, Point};
+use crate::events::ModifiersState;
+use crate::geometry::{LogicalSize, Point};
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 #[non_exhaustive]

@@ -14,12 +14,12 @@ fn row_label(label: &str) -> NodeBuilder {
 #[test]
 fn virtual_list_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
                 .row_height(20.0)
                 .viewport_height(200.0)
                 .viewport_width(220.0);
-            cx.add(on_black(w, 232.0, 212.0))
+            on_black(w, 232.0, 212.0)
         },
         InteractionMode::Default,
         [232, 212],
@@ -31,12 +31,12 @@ fn virtual_list_default() {
 #[test]
 fn virtual_list_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let w = virtual_list(ten_row_list(), |_, s: &String| row_label(s))
                 .row_height(20.0)
                 .viewport_height(200.0)
                 .viewport_width(220.0);
-            cx.add(on_black(w, 232.0, 212.0))
+            on_black(w, 232.0, 212.0)
         },
         InteractionMode::Focused,
         [232, 212],
@@ -48,13 +48,13 @@ fn virtual_list_focused() {
 #[test]
 fn virtual_list_items_bind() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let items: Signal<Vec<String>> = signal(ten_row_list());
             let w = virtual_list(items, |_, s: &String| row_label(s))
                 .row_height(20.0)
                 .viewport_height(200.0)
                 .viewport_width(220.0);
-            cx.add(on_black(w, 232.0, 212.0))
+            on_black(w, 232.0, 212.0)
         },
         InteractionMode::Default,
         [232, 212],
@@ -72,12 +72,12 @@ fn splitter_pane(class: &'static str) -> NodeBuilder {
 #[test]
 fn splitter_horizontal_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let w = splitter(SplitterOrientation::Horizontal)
                 .child(splitter_pane("bg-accent"), 120.0)
                 .child(splitter_pane("bg-surface-hover"), 120.0)
                 .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
-            cx.add(on_black(w, 258.0, 92.0))
+            on_black(w, 258.0, 92.0)
         },
         InteractionMode::Default,
         [258, 92],
@@ -89,12 +89,12 @@ fn splitter_horizontal_default() {
 #[test]
 fn splitter_vertical_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let w = splitter(SplitterOrientation::Vertical)
                 .child(splitter_pane("bg-accent"), 60.0)
                 .child(splitter_pane("bg-surface-hover"), 60.0)
                 .layout(LayoutStyle::flex_column().fixed_size(160.0, 126.0));
-            cx.add(on_black(w, 172.0, 138.0))
+            on_black(w, 172.0, 138.0)
         },
         InteractionMode::Default,
         [172, 138],
@@ -106,7 +106,7 @@ fn splitter_vertical_default() {
 #[test]
 fn splitter_horizontal_with_min_max() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let w = splitter(SplitterOrientation::Horizontal)
                 .child(splitter_pane("bg-accent"), 120.0)
                 .child(splitter_pane("bg-surface-hover"), 120.0)
@@ -115,7 +115,7 @@ fn splitter_horizontal_with_min_max() {
                 .min_size(1, 60.0)
                 .max_size(1, 200.0)
                 .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
-            cx.add(on_black(w, 258.0, 92.0))
+            on_black(w, 258.0, 92.0)
         },
         InteractionMode::Default,
         [258, 92],

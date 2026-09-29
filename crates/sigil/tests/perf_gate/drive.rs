@@ -4,8 +4,7 @@ use std::time::Instant;
 
 use sigil::Host;
 use sigil::app::FrameHooks;
-use sigil::events::EventRouter;
-use sigil::hal::ShellEvent;
+use sigil::events::{EventRouter, ShellEvent};
 use sigil::reactive::Runtime;
 use sigil::terminal::Screen;
 

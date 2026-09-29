@@ -57,8 +57,10 @@ fn modal_open_announces_polite_in_accesskit_tree() {
 #[test]
 fn multiple_announces_overwrite_label_polite() {
     let mut cx = Cx::new_root();
-    cx.announce("foo");
-    cx.announce("bar");
+    sigil::kernel::announce("foo");
+    cx.flush_announcements();
+    sigil::kernel::announce("bar");
+    cx.flush_announcements();
 
     let update = tree(&cx, None, &|_| None);
     assert_eq!(
@@ -100,7 +102,8 @@ fn no_announce_no_live_region_node() {
 #[test]
 fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
     let mut cx = Cx::new_root();
-    cx.announce_assertive("Connection lost");
+    sigil::kernel::announce_assertive("Connection lost");
+    cx.flush_announcements();
 
     let update = tree(&cx, None, &|_| None);
     let (_, live_node) = find_live_node(&update)
@@ -121,7 +124,8 @@ fn announce_assertive_surfaces_assertive_in_accesskit_tree() {
 fn announcement_tree_is_accepted_by_platform_consumer() {
     let mut cx = Cx::new_root();
     let _ = cx.add(button("Save"));
-    cx.announce("saved");
+    sigil::kernel::announce("saved");
+    cx.flush_announcements();
     cx.flush_announcements();
     let consumed = accesskit_consumer::Tree::new(tree(&cx, None, &|_| None), false);
     assert!(consumed.state().root().children().count() >= 2);

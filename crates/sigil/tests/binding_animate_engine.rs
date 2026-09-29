@@ -14,13 +14,12 @@
 mod widget_support;
 
 use sigil::animation_runtime::{AttachedAnimators, MotionPrefs, install_animators, presets, tick};
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::{Cx, IntoNode, NodeId, container};
-use sigil::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use sigil::layout::{LayoutBuilderExt, LayoutStyle};
 use sigil::reactive::Runtime;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding};
+use sigil::style::{ColorKey, NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding, Token};
 use widget_support::compute;
 
 const DT_60HZ: f32 = 1.0 / 60.0;

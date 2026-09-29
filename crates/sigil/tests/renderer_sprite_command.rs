@@ -8,9 +8,10 @@
 mod scene_support;
 
 use scene_support::color;
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
 use sigil::scene::{CommandScene, SceneBuilder, SceneCommand, SpriteKind, SpriteSource};
+use sigil::style::Color;
 use sigil_kittest::gpu::{Capture, render_capture};
 
 const VIEWPORT: (f32, f32) = (220.0, 80.0);

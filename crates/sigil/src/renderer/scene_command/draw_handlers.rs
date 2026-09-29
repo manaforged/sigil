@@ -1,4 +1,5 @@
-use crate::hal::{Color, RenderedGlyph};
+use crate::hal::RenderedGlyph;
+use crate::style::Color;
 
 use crate::renderer::glyph_place::{GlyphMode, plan_glyph_run};
 use crate::renderer::raster_paint::{RasterDrawParams, RasterTextPipeline};
@@ -139,7 +140,7 @@ impl Walk<'_> {
         run: &GlyphRun,
         origin: (f32, f32),
         color: Color,
-        clip: Option<crate::hal::Rect>,
+        clip: Option<crate::geometry::Rect>,
     ) -> Option<Vec<RenderedGlyph>> {
         let paragraph = run.paragraph()?;
         self.finish();

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
+use crate::events::{Key, KeyEvent, ModifiersState, NodeEventsExt, Shortcut};
 use crate::kernel::NodeBuilder;
 
 use super::super::TextEdit;

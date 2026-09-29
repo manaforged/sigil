@@ -6,7 +6,7 @@ use crate::hal::{ParagraphMetrics, TextEngine};
 use crate::style::{StyledTextEngine, TextLineHeight, TextStyle};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::text::bidi;
+use crate::bidi;
 use crate::text::cache::ParagraphCache;
 use crate::text::config::TextConfig;
 use crate::text::error::TextError;

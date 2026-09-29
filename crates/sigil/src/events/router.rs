@@ -1,6 +1,5 @@
-use crate::hal::{
-    FileDropEvent, Point, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut,
-};
+use crate::events::{FileDropEvent, PointerEvent, PointerPhase, ScrollEvent, ShellEvent, Shortcut};
+use crate::geometry::Point;
 use crate::kernel::{Cx, NodeId};
 use crate::layout::LayoutEngine;
 use accesskit::TreeUpdate;
@@ -42,7 +41,7 @@ impl EventRouter {
         match event {
             ShellEvent::Pointer(event) => self.route_pointer(cx, layout, event),
             ShellEvent::Key(event) => self.route_key(cx, layout, event),
-            ShellEvent::Window(crate::hal::WindowEvent::Focused(false)) => {
+            ShellEvent::Window(crate::events::WindowEvent::Focused(false)) => {
                 self.focus_lost(cx, layout);
             }
             ShellEvent::Scroll(event) => self.route_scroll(cx, layout, event),

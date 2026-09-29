@@ -1,4 +1,4 @@
-use sigil::hal::{Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::scene::{
     CornerRadii, LayerEffect, LayerScope, Shadow, ShadowKind, Stroke, StrokeAlign, StrokeStyle,
     Transform,

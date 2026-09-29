@@ -4,10 +4,11 @@ use sigil_kittest::FixedMeasure;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
+use sigil::events::*;
+use sigil::geometry::Size;
 use sigil::hal::Shell;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 use super::mock_shell::MockShell;
 

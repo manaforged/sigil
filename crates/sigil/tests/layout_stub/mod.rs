@@ -14,7 +14,7 @@ pub(crate) fn stub_engine() -> LayoutEngine {
     LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE))
 }
 
-pub(crate) fn layout_rect(cx: &Cx, id: NodeId) -> sigil::hal::Rect {
+pub(crate) fn layout_rect(cx: &Cx, id: NodeId) -> sigil::geometry::Rect {
     cx.get(id)
         .and_then(|node| node.get_extension::<LayoutResult>())
         .expect("layout result exists")

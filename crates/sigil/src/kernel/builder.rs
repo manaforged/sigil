@@ -1,4 +1,4 @@
-use crate::hal::Shortcut;
+use crate::events::Shortcut;
 use crate::reactive::Signal;
 use accesskit::{Action, Role, SortDirection};
 use smallvec::SmallVec;

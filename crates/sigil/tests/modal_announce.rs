@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
 use sigil::kernel::{AccessibleName, Live};
 use sigil::prelude::*;
 

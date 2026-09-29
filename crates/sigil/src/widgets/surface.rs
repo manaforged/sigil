@@ -1,5 +1,5 @@
 use crate::kernel::{NodeBuilder, Role, Surface, container};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 
 #[must_use]
 pub fn surface(key: u64) -> NodeBuilder {

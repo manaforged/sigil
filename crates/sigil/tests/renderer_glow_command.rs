@@ -3,12 +3,12 @@
     reason = "target does not use every package dependency"
 )]
 
-use sigil::hal::{Color, Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::renderer::{RendererError, WgpuRenderer, WgpuSurface};
 use sigil::scene::{
     CommandScene, CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Shadow, ShadowKind,
 };
-use sigil::style::Rgba8;
+use sigil::style::{Color, Rgba8};
 
 #[test]
 fn glow_command_keeps_shadow_kind_glow() {

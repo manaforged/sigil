@@ -26,8 +26,8 @@ const SCALE_STEMS: [(&str, f32); 4] = [
     ("dpi/button_label_s200", 2.0),
 ];
 
-fn build_button(cx: &mut Cx) -> NodeId {
-    cx.add(button("Save"))
+fn build_button() -> impl IntoNode {
+    button("Save")
 }
 
 fn capture_at_scale(stem: &str, scale: f32) {

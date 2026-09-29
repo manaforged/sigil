@@ -9,9 +9,9 @@ mod mock_shell;
 #[path = "events_support/routing_helpers.rs"]
 mod routing_helpers;
 
-use sigil::events::prelude::*;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::*;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 use routing_helpers::{abs_rect, compute_layout};
 

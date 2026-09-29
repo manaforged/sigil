@@ -1,8 +1,7 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
-use sigil::hal::Size;
-use sigil::layout::LayoutEngine;
-use sigil::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use sigil::geometry::Size;
+use sigil::layout::{AlignItems, LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil_kittest::FixedMeasure;
 
 fn row_height(align: AlignItems) -> f32 {

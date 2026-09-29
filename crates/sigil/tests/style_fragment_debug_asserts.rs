@@ -5,8 +5,7 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, container, fragment};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{NodeStyleExt, StyleAtom, Theme};
+use sigil::style::{ColorKey, NodeStyleExt, StyleAtom, Theme, Token};
 
 static ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Accent,

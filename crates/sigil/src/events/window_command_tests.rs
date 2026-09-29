@@ -1,4 +1,4 @@
-use crate::hal::{ResizeDirection, WindowCommand};
+use crate::app::{ResizeDirection, WindowCommand};
 
 use super::{request_window_command, take_window_commands};
 

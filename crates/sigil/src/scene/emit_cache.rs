@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use std::hash::{Hash as _, Hasher as _};
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::kernel::{Node, NodeId, NodeType, TextContent};
 use crate::style::{Rgba8, StyleBinding, TextStyle, Theme};
 use ahash::AHasher;

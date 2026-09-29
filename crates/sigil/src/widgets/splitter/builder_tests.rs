@@ -4,7 +4,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
 use crate::reactive::Runtime;
 
 use super::{SplitterOrientation, splitter};
-use crate::hal::{LogicalSize, Size};
+use crate::geometry::{LogicalSize, Size};
 use crate::kernel::TextContent;
 use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
 use crate::widgets::layout_ext::WidgetLayoutExt;

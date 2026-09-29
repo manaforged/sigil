@@ -1,5 +1,6 @@
-use crate::events::prelude::KeyEvent;
-use crate::hal::{HitPosition, Point, TextAffinity};
+use crate::events::KeyEvent;
+use crate::geometry::Point;
+use crate::hal::{HitPosition, TextAffinity};
 use crate::layout::with_text_geometry;
 
 use super::super::TextEdit;

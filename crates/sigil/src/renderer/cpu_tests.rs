@@ -4,7 +4,8 @@
     clippy::cast_possible_truncation
 )]
 
-use crate::hal::{Color, PhysicalSize, Point, Rect};
+use crate::geometry::{PhysicalSize, Point, Rect};
+use crate::style::Color;
 use crate::style::Rgba8;
 
 use super::*;

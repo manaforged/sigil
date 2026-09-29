@@ -1,10 +1,9 @@
-use crate::events::prelude::{NodeEventsExt, PointerEvent};
-use crate::hal::{HitPosition, Point, TextAffinity};
+use crate::events::{NodeEventsExt, PointerEvent};
+use crate::geometry::Point;
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
-use crate::layout::prelude::{
-    LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
-};
 use crate::layout::with_text_geometry;
+use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position};
 use crate::reactive::{Signal, derived};
 use crate::style::{ColorAtom, NodeStyleExt, SELECTION_FILL, StyleAtom, TextStyle, Token};
 

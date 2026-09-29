@@ -10,12 +10,13 @@
 mod scene_support;
 
 use scene_support::{color, rect};
-use sigil::hal::{Color, Point};
+use sigil::geometry::Point;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::{
     CommandScene, CornerRadii, GradientStop, LinearGradient, SceneBuilder, SceneGradientStyle,
     SceneRectStyle,
 };
+use sigil::style::Color;
 use sigil_kittest::gpu::read_pixels;
 
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;

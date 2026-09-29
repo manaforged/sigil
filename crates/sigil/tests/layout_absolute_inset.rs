@@ -7,9 +7,9 @@
 #[path = "layout_stub/mod.rs"]
 mod stub;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
-use sigil::layout::{LengthPercentageAuto, Rect as StyleRect};
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::{LengthPercentageAuto, Rect as StyleRect, *};
 
 use stub::{first_child, layout_rect, stub_engine};
 

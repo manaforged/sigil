@@ -1,8 +1,8 @@
 use core::time::Duration;
 
+use crate::AppConfig;
 use crate::animation_runtime::MotionPrefs;
-use crate::app::AppConfig;
-use crate::hal::ClickConfig;
+use crate::events::ClickConfig;
 
 #[derive(Default)]
 struct PlatformPrefs {

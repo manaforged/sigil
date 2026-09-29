@@ -4,8 +4,7 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
-use sigil::style::{ColorKey, Token};
-use sigil::style::{StyleAtom, parse_class_string};
+use sigil::style::{ColorKey, StyleAtom, Token, parse_class_string};
 
 #[test]
 fn shadow_family_resolves_to_elevation_atoms() {

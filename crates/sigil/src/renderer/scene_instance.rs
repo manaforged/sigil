@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::style::Rgba8;
 use bytemuck::{Pod, Zeroable};
 use half::f16;

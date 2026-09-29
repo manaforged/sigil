@@ -8,8 +8,9 @@
 mod stub;
 use stub::stub_engine;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
 use sigil::reactive::{Runtime, derived, signal};
 use sigil::style::NodeStyleExt;
@@ -107,9 +108,9 @@ fn hidden_subtree_is_not_measured() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
             self.hits.set(self.hits.get() + 1);
-            sigil::hal::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::LogicalSize::new(40.0, 16.0)
         }
     }
 
@@ -156,9 +157,9 @@ fn second_engine_does_not_inherit_text_memo() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
             self.hits.set(self.hits.get() + 1);
-            sigil::hal::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::LogicalSize::new(40.0, 16.0)
         }
     }
 
@@ -197,9 +198,9 @@ fn dirty_parent_reuses_text_memo() {
         hits: Rc<Cell<u32>>,
     }
     impl TextMeasure for CountMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
             self.hits.set(self.hits.get() + 1);
-            sigil::hal::LogicalSize::new(40.0, 16.0)
+            sigil::geometry::LogicalSize::new(40.0, 16.0)
         }
     }
 
@@ -329,16 +330,16 @@ fn paint_only_tick_on_wide_tree_is_hit() {
 fn letter_spacing_change_remeasures_text() {
     struct SpacingMeasure;
     impl TextMeasure for SpacingMeasure {
-        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::hal::LogicalSize {
-            sigil::hal::LogicalSize::new(40.0, 16.0)
+        fn measure(&self, _: &sigil::kernel::TextContent, _: Size) -> sigil::geometry::LogicalSize {
+            sigil::geometry::LogicalSize::new(40.0, 16.0)
         }
         fn measure_styled(
             &self,
             _: &sigil::kernel::TextContent,
             style: &sigil::style::TextStyle,
             _: Size,
-        ) -> sigil::hal::LogicalSize {
-            sigil::hal::LogicalSize::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
+        ) -> sigil::geometry::LogicalSize {
+            sigil::geometry::LogicalSize::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
         }
     }
     use sigil::style::StyleAtom;

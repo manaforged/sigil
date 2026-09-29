@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn vector_path_shapes() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let accent = sigil::style::Rgba8 {
                 r: 80,
                 g: 130,
@@ -38,7 +38,7 @@ fn vector_path_shapes() {
                         .cubic_to(22.0, 6.0, 38.0, 6.0, 54.0, 54.0)
                         .stroke(warn, 5.0),
                 );
-            cx.add(on_black(row, 162.0, 88.0))
+            on_black(row, 162.0, 88.0)
         },
         InteractionMode::Default,
         [162, 88],
@@ -63,7 +63,7 @@ fn vector_gradient_fill() {
         }
     }
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let gold = sigil::style::Rgba8 {
                 r: 255,
                 g: 210,
@@ -86,7 +86,7 @@ fn vector_gradient_fill() {
                 .class("bg-surface")
                 .child(square(gold, rose, true))
                 .child(square(gold, rose, false));
-            cx.add(on_black(row, 162.0, 88.0))
+            on_black(row, 162.0, 88.0)
         },
         InteractionMode::Default,
         [162, 88],
@@ -98,7 +98,7 @@ fn vector_gradient_fill() {
 #[test]
 fn emoji_text_line() {
     let img = render_widget_to_png_with(
-        |cx| {
+        || {
             let panel = container()
                 .layout(
                     LayoutStyle::flex_column()
@@ -107,7 +107,7 @@ fn emoji_text_line() {
                 )
                 .class("bg-surface")
                 .child(text("OK \u{2705} go \u{1F680}").class("text-on-surface"));
-            cx.add(on_black(panel, 312.0, 72.0))
+            on_black(panel, 312.0, 72.0)
         },
         InteractionMode::Default,
         [312, 72],

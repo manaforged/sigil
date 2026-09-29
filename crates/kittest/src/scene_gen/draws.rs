@@ -1,4 +1,4 @@
-use sigil::hal::{Point, Rect};
+use sigil::geometry::{Point, Rect};
 use sigil::kernel::{ImageCrop, ImageSource, ObjectFit};
 use sigil::renderer::BUILTIN_SPRITE_ATLAS_ID;
 use sigil::renderer::scenes::BUILTIN_ICON_ATLAS_BASE_ID;

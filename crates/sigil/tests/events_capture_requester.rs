@@ -14,9 +14,9 @@ mod routing_helpers;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::events::prelude::*;
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::events::*;
+use sigil::kernel::*;
+use sigil::layout::*;
 use sigil::reactive::Runtime;
 
 use input::{pointer_down, pointer_drag, pointer_up};

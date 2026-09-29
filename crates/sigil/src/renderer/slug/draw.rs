@@ -3,8 +3,10 @@ use crate::renderer::glyph_place::{pen_shift, text_gamma};
 use crate::renderer::scene_instance::BlendSpace;
 use std::collections::HashMap;
 
-use crate::hal::{Color, Point, Rect, RenderedGlyph};
+use crate::geometry::{Point, Rect};
+use crate::hal::RenderedGlyph;
 use crate::scene::command::effects::transform_point;
+use crate::style::Color;
 use crate::text::Paragraph;
 use wgpu::util::DeviceExt as _;
 

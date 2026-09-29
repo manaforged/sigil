@@ -211,7 +211,7 @@ fn children_reactive_coalesces_rebuilds_before_mounting_captured_state() {
         let parent = cx.add(container().children_reactive(move || {
             let current = value.get();
             let captured = signal(current);
-            [move |child_cx: &mut Cx| child_cx.add(text(captured.get().to_string()))]
+            [move || text(captured.get().to_string())]
         }));
         cx.flush_reactive_children();
 

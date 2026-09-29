@@ -7,7 +7,7 @@
 use std::error::Error as StdError;
 use std::fmt;
 
-use sigil::app::Error;
+use sigil::Error;
 
 #[derive(Debug)]
 struct DummyErr(&'static str);

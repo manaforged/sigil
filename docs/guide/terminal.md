@@ -20,8 +20,8 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Sigil - hello-terminal").terminal(), app_tree)
 }
 
-fn app_tree(cx: &mut Cx) -> NodeId {
-    cx.add(text("hello"))
+fn app_tree() -> impl IntoNode {
+    text("hello")
 }
 ```
 
@@ -40,7 +40,8 @@ scrollback and remains after exit.
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::terminal::{Hooks, print_above};
+use sigil::terminal::Hooks;
+use sigil::terminal::print_above;
 
 fn main() -> sigil::AppResult<()> {
     let hooks = Hooks {
@@ -54,9 +55,9 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(config, app_tree)
 }
 
-fn app_tree(cx: &mut Cx) -> NodeId {
+fn app_tree() -> impl IntoNode {
     let _ = print_above("build started");
-    cx.add(text("working"))
+    text("working")
 }
 ```
 
@@ -92,7 +93,8 @@ and follow the terminal cursor. The terminal host uses both.
 use std::time::Duration;
 
 use sigil::prelude::*;
-use sigil::terminal::{Access, FocusCursor};
+use sigil::terminal::Access;
+use sigil::terminal::FocusCursor;
 
 fn main() -> sigil::AppResult<()> {
     let access = Access {
@@ -105,8 +107,8 @@ fn main() -> sigil::AppResult<()> {
     )
 }
 
-fn app_tree(cx: &mut Cx) -> NodeId {
-    cx.add(text("hello"))
+fn app_tree() -> impl IntoNode {
+    text("hello")
 }
 ```
 

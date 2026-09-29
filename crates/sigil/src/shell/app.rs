@@ -9,7 +9,7 @@ use winit::{
     window::WindowId,
 };
 
-use crate::hal::{ShellEvent, WindowEvent as SigilWindowEvent};
+use crate::events::{ShellEvent, WindowEvent as SigilWindowEvent};
 
 use crate::shell::{shell::WinitShell, waker::WakeEvent};
 

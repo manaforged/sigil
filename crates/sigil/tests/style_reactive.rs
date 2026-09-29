@@ -9,8 +9,7 @@ use std::rc::Rc;
 
 use sigil::kernel::{Cx, container};
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, Token};
-use sigil::style::{NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding};
+use sigil::style::{ColorKey, NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding, Token};
 
 static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Surface,

@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::kernel::NodeId;
 use crate::style::{Rgba8, Tone};
 
@@ -285,7 +285,7 @@ impl DrawImage {
             return (self.source.clone(), dest);
         };
         let snapped = Rect::new(
-            crate::hal::Point::new(left / scale, top / scale),
+            crate::geometry::Point::new(left / scale, top / scale),
             source.width() as f32 / scale,
             source.height() as f32 / scale,
         );

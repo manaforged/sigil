@@ -6,7 +6,8 @@
     reason = "pixel coordinates are bounded by the target size; float-to-int rounding is the rasterizer contract"
 )]
 
-use crate::hal::{Point, Rect, RenderedGlyph};
+use crate::geometry::{Point, Rect};
+use crate::hal::RenderedGlyph;
 use crate::renderer::cache_limits::CacheLimits;
 use crate::renderer::raster::{GlyphMask, Hinters, RasterKey, subpixel_quantize};
 use crate::style::Rgba8;

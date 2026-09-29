@@ -7,7 +7,7 @@ use super::*;
 #[test]
 fn announce_marks_live_region_polite_and_sets_label() {
     let mut cx = Cx::new_root();
-    cx.announce("File saved");
+    announce_then_flush(&mut cx, super::announce, "File saved");
 
     let id = cx.live_region_id().expect("announce should create node");
     let node = cx.get(id).expect("live region node exists");
@@ -23,9 +23,9 @@ fn announce_marks_live_region_polite_and_sets_label() {
 #[test]
 fn announce_reuses_the_same_node_across_calls() {
     let mut cx = Cx::new_root();
-    cx.announce("first");
+    announce_then_flush(&mut cx, super::announce, "first");
     let first = cx.live_region_id().expect("created");
-    cx.announce("second");
+    announce_then_flush(&mut cx, super::announce, "second");
     let second = cx.live_region_id().expect("still present");
 
     assert_eq!(first, second);
@@ -39,7 +39,7 @@ fn announce_reuses_the_same_node_across_calls() {
 #[test]
 fn announce_assertive_sets_assertive_politeness() {
     let mut cx = Cx::new_root();
-    cx.announce_assertive("Connection lost");
+    announce_then_flush(&mut cx, super::announce_assertive, "Connection lost");
 
     let id = cx.live_region_id().expect("node created");
     let node = cx.get(id).expect("node exists");
@@ -50,4 +50,9 @@ fn announce_assertive_sets_assertive_politeness() {
 fn cx_without_announce_has_no_live_region() {
     let cx = Cx::new_root();
     assert!(cx.live_region_id().is_none());
+}
+
+fn announce_then_flush(cx: &mut Cx, post: fn(String), text: &str) {
+    post(text.to_owned());
+    cx.flush_announcements();
 }

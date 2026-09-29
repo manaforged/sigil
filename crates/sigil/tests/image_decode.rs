@@ -4,7 +4,7 @@
 mod decode {
     use std::io::Cursor;
 
-    use sigil::prelude::*;
+    use sigil::kernel::{Cx, NodeType};
     use sigil::widgets::image_bytes;
 
     fn png(w: u32, h: u32, rgba: [u8; 4]) -> Vec<u8> {

@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::NodeBuilder;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

@@ -149,9 +149,9 @@ fn measure_scope_borrows_forest_and_constraints() {
         fn measure(
             &self,
             _: &crate::kernel::TextContent,
-            _: crate::hal::Size,
-        ) -> crate::hal::LogicalSize {
-            crate::hal::LogicalSize::default()
+            _: crate::geometry::Size,
+        ) -> crate::geometry::LogicalSize {
+            crate::geometry::LogicalSize::default()
         }
     }
     let f = LayoutForest::new();
@@ -217,9 +217,9 @@ impl TextMeasure for NullText {
     fn measure(
         &self,
         _: &crate::kernel::TextContent,
-        _: crate::hal::Size,
-    ) -> crate::hal::LogicalSize {
-        crate::hal::LogicalSize::default()
+        _: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::default()
     }
 }
 

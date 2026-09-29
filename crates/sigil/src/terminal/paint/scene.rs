@@ -1,4 +1,4 @@
-use crate::hal::Rect;
+use crate::geometry::Rect;
 use crate::scene::{
     CellBorder, CommandScene, DrawDecoration, DrawGlyphRun, DrawGradient, DrawImage, DrawRect,
     LinearGradient, SceneCommand,

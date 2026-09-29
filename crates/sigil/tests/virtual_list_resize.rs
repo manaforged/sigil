@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use sigil::Host;
 use sigil::events::EventRouter;
-use sigil::kernel::{Cx, container, text};
+use sigil::kernel::{container, text};
 use sigil::prelude::{LayoutBuilderExt, LayoutStyle, virtual_list};
 use sigil::reactive::{Runtime, Signal, signal};
 
@@ -37,28 +37,26 @@ fn measured_rows_keep_the_view_still_when_a_row_grows() {
         let keys = signal(Rc::new((0..60_u64).collect::<Vec<_>>()));
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(
-                container()
-                    .layout(LayoutStyle::flex_column().fill_width().fill_height())
-                    .child(
-                        virtual_list(keys, move |index, _: &u64| {
-                            container()
-                                .layout(LayoutStyle::flex_column().fill_width())
-                                .children_reactive(move || {
-                                    (0..lines.get()[index])
-                                        .map(|line| text(format!("r{index} l{line}")))
-                                        .collect::<Vec<_>>()
-                                })
-                        })
-                        .key_by(|_, key| *key)
-                        .measured()
-                        .viewport_fill()
-                        .scroll_bind(scroll_y)
-                        .auto_pin_to_bottom(true)
-                        .scroll_to_end(),
-                    ),
-            )
+        host.mount(move || {
+            container()
+                .layout(LayoutStyle::flex_column().fill_width().fill_height())
+                .child(
+                    virtual_list(keys, move |index, _: &u64| {
+                        container()
+                            .layout(LayoutStyle::flex_column().fill_width())
+                            .children_reactive(move || {
+                                (0..lines.get()[index])
+                                    .map(|line| text(format!("r{index} l{line}")))
+                                    .collect::<Vec<_>>()
+                            })
+                    })
+                    .key_by(|_, key| *key)
+                    .measured()
+                    .viewport_fill()
+                    .scroll_bind(scroll_y)
+                    .auto_pin_to_bottom(true)
+                    .scroll_to_end(),
+                )
         });
         let pinned = settle(&mut host, &mut router);
         assert!(pinned.contains("r59 l0"), "tail shown:\n{pinned}");

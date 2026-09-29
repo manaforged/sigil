@@ -4,7 +4,7 @@
 )]
 
 use sigil::app::DefaultTextMeasure;
-use sigil::hal::{Dim, Size};
+use sigil::geometry::{Dim, Size};
 use sigil::kernel::TextContent;
 use sigil::layout::TextMeasure;
 

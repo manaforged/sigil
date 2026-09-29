@@ -1,4 +1,5 @@
-use crate::hal::{Color, Point};
+use crate::geometry::Point;
+use crate::style::Color;
 
 use super::helpers::{rect, rgba};
 use crate::renderer::scene_command::{GradientStop, LinearGradient};

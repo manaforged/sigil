@@ -1,7 +1,8 @@
 use std::borrow::Cow;
 
-use sigil::hal::{Color, PhysicalSize};
+use sigil::geometry::PhysicalSize;
 use sigil::scene::{CommandScene, SceneCommand};
+use sigil::style::Color;
 
 mod draws;
 mod shapes;

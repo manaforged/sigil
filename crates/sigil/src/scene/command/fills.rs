@@ -1,4 +1,4 @@
-use crate::hal::Point;
+use crate::geometry::Point;
 use crate::style::Rgba8;
 use smallvec::SmallVec;
 

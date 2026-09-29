@@ -2,7 +2,7 @@
 #![allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
 #![allow(clippy::unwrap_used)]
 
-use sigil::hal::Size;
+use sigil::geometry::Size;
 use sigil::kernel::Cx;
 use sigil::layout::LayoutEngine;
 use sigil::scene::emit_scene;
@@ -48,12 +48,9 @@ pub(super) fn count_ink(
     ink
 }
 
-pub(super) fn capture(
-    build: impl FnOnce(&mut Cx) -> sigil::kernel::NodeId,
-    size_px: [u32; 2],
-) -> image::RgbaImage {
+pub(super) fn capture(build: impl sigil::kernel::IntoNode, size_px: [u32; 2]) -> image::RgbaImage {
     let mut cx = Cx::new_root();
-    let root = build(&mut cx);
+    let root = cx.add(build);
 
     let [w, h] = size_px;
     let mut layout = LayoutEngine::with_text_measure(Box::new(TEXT_MEASURE));

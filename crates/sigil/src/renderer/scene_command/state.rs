@@ -1,6 +1,6 @@
 use smallvec::{SmallVec, smallvec};
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::renderer::glyph_place::run_ink;
 use crate::renderer::scene_command::walk::{IDENTITY, compose, intersect_rect, transform_rect};
 use crate::renderer::scene_command::{LayerEffect, LayerScope, SceneCommand, Stroke, Transform};

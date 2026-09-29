@@ -6,8 +6,8 @@
 #![allow(clippy::unwrap_used)]
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::hal::Size;
-use sigil::kernel::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::{Cx, container, text};
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::text::{OwnedTextEngine, TextConfig};

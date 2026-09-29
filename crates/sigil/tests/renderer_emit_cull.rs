@@ -1,7 +1,7 @@
 #![allow(unused_crate_dependencies, clippy::unwrap_used)]
 
-use sigil::hal::{Point, Rect, Size};
-use sigil::kernel::prelude::*;
+use sigil::geometry::{Point, Rect, Size};
+use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene, emit_scene_clipped};
 use sigil::style::NodeStyleExt;

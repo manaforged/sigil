@@ -1,7 +1,7 @@
 use crate::events::EventRouter;
-use crate::hal::{
-    Key, KeyPhase, PhysicalSize, PointerPhase, Scale, Shell as _, ShellEvent, WindowEvent,
-};
+use crate::events::{Key, KeyPhase, PointerPhase, ShellEvent, WindowEvent};
+use crate::geometry::{PhysicalSize, Scale};
+use crate::hal::Shell as _;
 use crate::kernel::Cx;
 use crate::layout::LayoutEngine;
 use crate::profile::Cause;
@@ -131,7 +131,7 @@ pub(super) fn drain_events(ctx: DrainCtx<'_>) {
         router.route(cx, layout, event);
     }
     for command in crate::events::take_window_commands() {
-        if let crate::hal::WindowCommand::SetZoom(percent) = command
+        if let crate::app::WindowCommand::SetZoom(percent) = command
             && percent > 0
         {
             config.user_zoom = f32::from(percent) / 100.0;

@@ -16,8 +16,7 @@
 #![allow(clippy::many_single_char_names, clippy::similar_names)]
 
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
-use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba};
-use sigil_kittest::gpu::{read_pixels, shared_device};
+use sigil_kittest::gpu::{FORMAT, create_capture_texture, pixel_rgba, read_pixels, shared_device};
 
 const SCALE: u32 = 1;
 

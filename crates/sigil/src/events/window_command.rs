@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use crate::hal::WindowCommand;
+use crate::app::WindowCommand;
 
 thread_local! {
     static PENDING: RefCell<Vec<WindowCommand>> = const { RefCell::new(Vec::new()) };

@@ -10,8 +10,9 @@ mod stub;
 use sigil_kittest::FixedMeasure;
 use stub::stub_engine;
 
-use sigil::kernel::prelude::*;
-use sigil::layout::prelude::*;
+use sigil::geometry::Size;
+use sigil::kernel::*;
+use sigil::layout::*;
 
 const TEXT_MEASURE: FixedMeasure = FixedMeasure {
     width: 100.0,

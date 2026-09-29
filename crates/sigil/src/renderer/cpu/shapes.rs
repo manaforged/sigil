@@ -6,7 +6,7 @@
     reason = "pixel coordinates are bounded by the target size; float-to-int rounding is the rasterizer contract"
 )]
 
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 use crate::style::Rgba8;
 use tiny_skia::{
     Color as TsColor, ColorSpace, FillRule, FilterQuality, GradientStop as TsStop, IntSize,
@@ -53,7 +53,7 @@ pub(super) fn ts_transform(transform: Transform, scale: f32, origin: Point) -> T
         .post_translate(-origin.x, -origin.y)
 }
 
-pub(super) fn color(color: crate::hal::Color) -> TsColor {
+pub(super) fn color(color: crate::style::Color) -> TsColor {
     TsColor::from_rgba(
         encode(color.r),
         encode(color.g),

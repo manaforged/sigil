@@ -1,8 +1,9 @@
-use crate::hal::PointerEvent;
-use crate::hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind, PointerPhase,
+use crate::events::PointerEvent;
+use crate::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
     ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase, ShellEvent,
 };
+use crate::geometry::Point;
 use crossterm::event::{KeyModifiers, MouseButton as TermButton, MouseEvent, MouseEventKind};
 
 const NOTCH: f32 = 3.0;
@@ -31,7 +32,7 @@ impl MouseTracking {
 
 #[must_use]
 pub fn cell_point(col: u16, row: u16) -> Point {
-    let cell = crate::app::Host::CELL;
+    let cell = crate::Host::CELL;
     Point::new((f32::from(col) + 0.5) * cell, (f32::from(row) + 0.5) * cell)
 }
 

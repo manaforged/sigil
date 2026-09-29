@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::hal::{HitPosition, Point, Rect};
+use crate::geometry::{Point, Rect};
+use crate::hal::HitPosition;
 use crate::reactive::Signal;
 use crate::style::TextStyle;
 

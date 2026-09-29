@@ -107,14 +107,14 @@ impl<'a> MeasureScope<'a> {
         let width = if text.wrap {
             known.width.or(wrap_to).map_or_else(
                 || space_constraint_to_hal_dim(self.available.w),
-                crate::hal::Dim::Fixed,
+                crate::geometry::Dim::Fixed,
             )
         } else {
-            crate::hal::Dim::MaxContent
+            crate::geometry::Dim::MaxContent
         };
-        let space = crate::hal::Size {
+        let space = crate::geometry::Size {
             width,
-            height: crate::hal::Dim::MaxContent,
+            height: crate::geometry::Dim::MaxContent,
         };
         let measured = text.style.as_ref().map_or_else(
             || self.text.measure(&text.content, space),
@@ -137,10 +137,10 @@ impl<'a> MeasureScope<'a> {
     }
 }
 
-const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> crate::hal::Dim {
+const fn space_constraint_to_hal_dim(space: SpaceConstraint) -> crate::geometry::Dim {
     match space {
-        SpaceConstraint::Definite(value) => crate::hal::Dim::Fixed(value),
-        SpaceConstraint::MinContent => crate::hal::Dim::MinContent,
-        SpaceConstraint::MaxContent => crate::hal::Dim::MaxContent,
+        SpaceConstraint::Definite(value) => crate::geometry::Dim::Fixed(value),
+        SpaceConstraint::MinContent => crate::geometry::Dim::MinContent,
+        SpaceConstraint::MaxContent => crate::geometry::Dim::MaxContent,
     }
 }

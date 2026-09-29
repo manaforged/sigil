@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn viewport_fill_sets_root_dimensions_to_fill() {
-    use crate::layout::prelude::Dimension;
+    use crate::layout::Dimension;
     Runtime::scope("sigil-virtual-list-viewport-fill", || {
         let mut cx = Cx::new_root();
         let items: Vec<usize> = (0..10).collect();
@@ -20,9 +20,9 @@ fn viewport_fill_sets_root_dimensions_to_fill() {
 
 #[test]
 fn viewport_fill_tracks_parent_pane_measured_size() {
-    use crate::hal::{LogicalSize, Size};
+    use crate::geometry::{LogicalSize, Size};
     use crate::kernel::TextContent;
-    use crate::layout::prelude::LayoutBuilderExt;
+    use crate::layout::LayoutBuilderExt;
     use crate::layout::{LayoutEngine, LayoutStyle, TextMeasure};
 
     struct StubMeasure;

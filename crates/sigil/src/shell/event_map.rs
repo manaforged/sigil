@@ -1,8 +1,9 @@
 #![allow(clippy::redundant_pub_crate)]
 
-use crate::hal::{
-    ModifiersState, MouseButton, MouseButtons, Point, PointerPhase, Scale, ScrollDelta, ScrollPhase,
+use crate::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerPhase, ScrollDelta, ScrollPhase,
 };
+use crate::geometry::{Point, Scale};
 use winit::{
     event::{
         MouseButton as WinitMouseButton, MouseScrollDelta as WinitMouseScrollDelta, TouchPhase,

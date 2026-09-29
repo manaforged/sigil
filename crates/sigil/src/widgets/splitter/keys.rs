@@ -1,4 +1,4 @@
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::derived;
 

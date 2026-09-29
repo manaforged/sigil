@@ -8,8 +8,8 @@
 #[allow(dead_code)]
 mod support;
 
-use sigil::hal::Size;
-use sigil::kernel::{Cx, prelude::*};
+use sigil::geometry::Size;
+use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
 use sigil::style::NodeStyleExt;

@@ -1,20 +1,24 @@
 use super::*;
 use crate::kernel::FocusScopeKind;
-use crate::kernel::prelude::*;
+use crate::kernel::*;
 use crate::prelude::button;
 use crate::reactive::{Runtime, signal};
 
 struct StubMeasure;
 impl crate::layout::TextMeasure for StubMeasure {
-    fn measure(&self, _content: &TextContent, _space: crate::hal::Size) -> crate::hal::LogicalSize {
-        crate::hal::LogicalSize::new(40.0, 16.0)
+    fn measure(
+        &self,
+        _content: &TextContent,
+        _space: crate::geometry::Size,
+    ) -> crate::geometry::LogicalSize {
+        crate::geometry::LogicalSize::new(40.0, 16.0)
     }
 }
 
 fn compute(cx: &mut Cx, root: NodeId) -> LayoutEngine {
     let mut layout = LayoutEngine::with_text_measure(Box::new(StubMeasure));
     layout
-        .compute(cx, root, crate::hal::Size::fixed(200.0, 100.0))
+        .compute(cx, root, crate::geometry::Size::fixed(200.0, 100.0))
         .expect("layout computes");
     layout
 }

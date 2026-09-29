@@ -7,7 +7,7 @@
 mod scene_support;
 
 use scene_support::rect;
-use sigil::hal::Rect;
+use sigil::geometry::Rect;
 use sigil::scene::{CornerRadii, SceneBuilder, SceneCommand, SceneRectStyle, Transform};
 use sigil::style::Rgba8;
 

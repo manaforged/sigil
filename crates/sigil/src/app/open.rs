@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::process::Command;
 
-use crate::app::{AppResult, Error};
+use crate::{AppResult, Error};
 
 pub fn open(target: impl AsRef<OsStr>) -> AppResult<()> {
     if !allowed(target.as_ref()) {

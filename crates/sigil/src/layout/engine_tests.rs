@@ -1,5 +1,5 @@
-use crate::hal::{LogicalSize, Size};
-use crate::kernel::{Cx, TextContent, prelude::container};
+use crate::geometry::{LogicalSize, Size};
+use crate::kernel::{Cx, TextContent, container};
 use crate::reactive::{Runtime, effect, signal};
 use crate::style::{NodeStyleExt, Px, StyleAtom};
 

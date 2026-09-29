@@ -1,4 +1,4 @@
-use crate::hal::{Point, Rect};
+use crate::geometry::{Point, Rect};
 
 use crate::renderer::blur_paint::BlurPipeline;
 use crate::renderer::decoration_paint::{DecorationInstance, DecorationPipeline};

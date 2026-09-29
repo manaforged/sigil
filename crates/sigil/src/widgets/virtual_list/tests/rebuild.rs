@@ -83,9 +83,9 @@ fn scrolling_rebuilds_rows_at_most_once_per_block() {
 
 #[test]
 fn scrolled_rows_land_at_their_document_position() {
-    use crate::hal::{LogicalSize, Size};
+    use crate::geometry::{LogicalSize, Size};
     use crate::kernel::TextContent;
-    use crate::layout::prelude::LayoutBuilderExt;
+    use crate::layout::LayoutBuilderExt;
     use crate::layout::{LayoutEngine, TextMeasure};
 
     struct StubMeasure;

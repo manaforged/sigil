@@ -1,7 +1,7 @@
 pub(crate) mod actions;
-pub mod bridge;
-pub mod mapping;
-pub mod snapshot;
+pub(crate) mod bridge;
+pub(crate) mod mapping;
+pub(crate) mod snapshot;
 mod text;
 
 pub use bridge::{AccessKitBridge, BridgeError, RecordingBridge};

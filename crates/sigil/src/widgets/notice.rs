@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, TextContent, container, text};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Tone, space};
 
 static NOTICE_BAND: &[StyleAtom] = &[

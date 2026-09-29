@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use web_time::Instant;
 
 use crate::events::handlers::EventHandlers;
-use crate::hal::{
-    ClickConfig, HitPosition, ModifiersState, MouseButton, Point, PointerEvent, PointerPhase,
-    TextAffinity,
-};
+use crate::events::{ClickConfig, ModifiersState, MouseButton, PointerEvent, PointerPhase};
+use crate::geometry::Point;
+use crate::hal::{HitPosition, TextAffinity};
 use crate::kernel::{Cx, Node, NodeId};
 use crate::layout::LayoutEngine;
 

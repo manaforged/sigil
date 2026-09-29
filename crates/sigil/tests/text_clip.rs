@@ -4,15 +4,18 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
+use sigil::kernel::TextBuilder;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::SceneCommand;
 
 const LONG: &str = "an over-long single-line value that cannot fit a ninety-six pixel box";
 
-fn clip_for(cell: TextBuilder) -> (Option<sigil::hal::Rect>, sigil::hal::Rect) {
+fn clip_for(cell: TextBuilder) -> (Option<sigil::geometry::Rect>, sigil::geometry::Rect) {
     let mut out = (
         None,
-        sigil::hal::Rect::new(sigil::hal::Point::new(0.0, 0.0), 0.0, 0.0),
+        sigil::geometry::Rect::new(sigil::geometry::Point::new(0.0, 0.0), 0.0, 0.0),
     );
     sigil::reactive::Runtime::scope("text-clip", || {
         let mut cx = Cx::new_root();
@@ -29,7 +32,7 @@ fn clip_for(cell: TextBuilder) -> (Option<sigil::hal::Rect>, sigil::hal::Rect) {
         let text_id = *cx.get(root).unwrap().children().first().unwrap();
         let rect = layout.result(text_id).unwrap().rect();
         let scene = sigil::scene::emit_scene(&cx, root);
-        let mut clip: Option<sigil::hal::Rect> = None;
+        let mut clip: Option<sigil::geometry::Rect> = None;
         let mut hit = None;
         for command in &scene.commands {
             match command {

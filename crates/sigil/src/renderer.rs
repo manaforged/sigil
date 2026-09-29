@@ -33,7 +33,7 @@ mod scene_paint;
 pub mod scenes;
 mod scissor;
 mod shadow_paint;
-mod slug;
+pub(crate) mod slug;
 mod split_encoder;
 mod sprite_atlas;
 mod sprite_paint;
@@ -59,7 +59,6 @@ pub use raster_paint::set_test_atlas_size_override;
 pub use renderer::{ScreenSubmission, WgpuRenderer};
 #[cfg(any(test, feature = "kittest"))]
 pub use slug::{DrawParams, SlugTextPipeline};
-pub use slug::{TextTuning, set_text_tuning, text_tuning};
 #[cfg(any(test, feature = "kittest"))]
 pub use sprite_paint::BUILTIN_SPRITE_ATLAS_ID;
 pub use surface::WgpuSurface;

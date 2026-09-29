@@ -3,14 +3,14 @@ use windows_core as _;
 
 mod appearance;
 #[cfg(feature = "audio")]
-pub mod audio;
+pub(crate) mod audio;
 mod cell_text;
-mod config;
+pub(crate) mod config;
 #[cfg(feature = "dialog")]
 pub mod dialog;
-mod embed;
-mod error;
-mod exit;
+pub(crate) mod embed;
+pub(crate) mod error;
+pub(crate) mod exit;
 mod frame;
 mod host_env;
 #[cfg(all(feature = "inspect", any(feature = "desktop", feature = "terminal")))]
@@ -20,11 +20,11 @@ mod launch;
 #[cfg(feature = "menu")]
 pub mod menu;
 #[cfg(feature = "desktop")]
-pub mod open;
+mod open;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) mod platform_prefs;
 #[cfg(feature = "pty")]
-pub mod pty;
+pub(crate) mod pty;
 #[cfg(feature = "scene")]
 mod text_geometry;
 #[cfg(feature = "scene")]
@@ -35,15 +35,13 @@ mod theme_file;
 mod theme_watch;
 #[cfg(feature = "tray")]
 pub mod tray;
-mod tree_root;
+pub(crate) mod tree_root;
 
-pub use crate::hal::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
-pub use crate::layout::LayoutError;
-pub use crate::profile;
+pub use crate::hal::shell::{Anchor, ResizeDirection, WindowCommand, WindowOpts};
 #[cfg(feature = "scene")]
-pub use crate::renderer::{TextTuning, set_text_tuning, text_tuning};
+pub use crate::renderer::slug::{TextTuning, set_text_tuning, text_tuning};
 #[cfg(feature = "scene")]
-pub use crate::text::{DefaultFonts, set_default_fonts, use_system_fonts};
+pub use crate::text::fonts::{DefaultFonts, set_default_fonts, use_system_fonts};
 pub use appearance::set_theme;
 #[cfg(feature = "audio")]
 pub use audio::Player;
@@ -52,10 +50,10 @@ pub use cell_text::{
 };
 #[cfg(feature = "terminal")]
 pub(crate) use config::FRAME_INTERVAL;
-pub use config::{AppConfig, PanicPolicy};
-pub use embed::{AccessibilityTree, Host};
-pub use error::{AppResult, Error, ErrorKind};
-pub use exit::{clear_exit, request_exit, take_exit};
+pub use config::PanicPolicy;
+pub use embed::AccessibilityTree;
+pub use error::ErrorKind;
+pub use exit::{clear_exit, take_exit};
 pub use frame::{
     FrameHooks, FrameInfo, FrameInputHook, FrameLayoutHook, FrameOutput, FramePaintHook,
 };
@@ -76,7 +74,6 @@ pub(crate) use theme_file::launch as launch_theme;
 pub use theme_file::parse as parse_theme;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub use theme_watch::{ThemeWatcher, watch_theme};
-pub use tree_root::{TreeRoot, root};
 
 #[cfg(all(feature = "desktop", any(test, feature = "kittest")))]
 pub use launch::__drive_test_frame;

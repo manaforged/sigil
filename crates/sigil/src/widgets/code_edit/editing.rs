@@ -1,7 +1,7 @@
 use crate::clipboard::clipboard;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, batch, effect, signal};
 use crate::widgets::grapheme::col_count;

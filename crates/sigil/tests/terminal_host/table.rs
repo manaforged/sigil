@@ -23,13 +23,11 @@ fn replacing_rows_repaints_the_table() {
         );
         let mounted = state.clone();
         let mut host = Host::cells();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(
-                table(mounted.clone())
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_height(64.0),
-            )
+        host.mount(move || {
+            table(mounted.clone())
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_height(64.0)
         });
         host.layout((320.0, 96.0)).expect("layout");
         drop(host.emit((320.0, 96.0)));
@@ -59,7 +57,7 @@ fn a_click_selects_the_row_under_it() {
     use crossterm::event::{KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
     use sigil::Host;
     use sigil::events::EventRouter;
-    use sigil::hal::Point;
+    use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
     use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
@@ -84,13 +82,11 @@ fn a_click_selects_the_row_under_it() {
         let mounted = state.clone();
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(
-                table(mounted.clone())
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_height(64.0),
-            )
+        host.mount(move || {
+            table(mounted.clone())
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_height(64.0)
         });
         let grid = step(&mut host, &mut router, [], 40, 10);
         let text = grid.text();
@@ -132,7 +128,7 @@ fn the_wheel_scrolls_the_body() {
     use crossterm::event::{KeyModifiers, MouseEvent, MouseEventKind};
     use sigil::Host;
     use sigil::events::EventRouter;
-    use sigil::hal::Point;
+    use sigil::geometry::Point;
     use sigil::terminal::map_mouse;
     use sigil::widgets::{ColWidth, TableColumn, TableState, table};
 
@@ -158,13 +154,11 @@ fn the_wheel_scrolls_the_body() {
         let mounted = state;
         let mut host = Host::cells();
         let mut router = EventRouter::new();
-        host.mount(move |cx: &mut Cx| {
-            cx.add(
-                table(mounted.clone())
-                    .row_height(8.0)
-                    .header_height(8.0)
-                    .viewport_height(64.0),
-            )
+        host.mount(move || {
+            table(mounted.clone())
+                .row_height(8.0)
+                .header_height(8.0)
+                .viewport_height(64.0)
         });
         let before = step(&mut host, &mut router, [], 40, 12).text();
         assert!(before.contains("row-00"), "starts at the top:\n{before}");

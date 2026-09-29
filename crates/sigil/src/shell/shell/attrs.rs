@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::hal::{Anchor, LogicalSize};
+use crate::app::Anchor;
+use crate::geometry::LogicalSize;
 use winit::{
     dpi::{
         LogicalSize as WinitLogicalSize, PhysicalPosition as WinitPhysicalPosition,

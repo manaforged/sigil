@@ -1,10 +1,11 @@
 use serde_json::{Value, json};
 
-use crate::hal::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons, Point,
+use crate::events::{
+    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
     PointerEvent, PointerEventInit, PointerKind, PointerPhase, ScrollDelta, ScrollEvent,
     ScrollEventInit, ScrollPhase, ShellEvent,
 };
+use crate::geometry::Point;
 
 pub(super) fn events_of(request: &Value, unit: f32) -> Result<Vec<ShellEvent>, String> {
     match request.get("op").and_then(Value::as_str) {

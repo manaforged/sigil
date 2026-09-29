@@ -3,10 +3,10 @@ use std::iter::once;
 use std::rc::Rc;
 
 use crate::events::EventRouter;
-use crate::hal::{
-    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, LogicalSize, ModifiersState, PhysicalKey,
-    ShellEvent, Size,
+use crate::events::{
+    KeyEvent, KeyEventInit, KeyPhase, LogicalKey, ModifiersState, PhysicalKey, ShellEvent,
 };
+use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{Cx, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};

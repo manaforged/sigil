@@ -6,8 +6,8 @@ pub struct WgpuSurface {
 
 impl WgpuSurface {
     #[must_use]
-    pub const fn size(&self) -> crate::hal::PhysicalSize {
-        crate::hal::PhysicalSize::new(self.config.width, self.config.height)
+    pub const fn size(&self) -> crate::geometry::PhysicalSize {
+        crate::geometry::PhysicalSize::new(self.config.width, self.config.height)
     }
 
     #[must_use]
