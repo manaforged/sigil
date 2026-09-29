@@ -3,6 +3,8 @@ book = "docs"
 
 [[crate]]
 package = "sigil-ui"
+prelude = "sigil::prelude"
+features = ["desktop","scene","shell","cpu","shaping-complex","render","clipboard","clipboard-image","dialog","native-dialog","menu","tray","image-decode","inspect","audio","pty","terminal"]
 tag = "sigil-ui-v{version}"
 
 [[crate]]
@@ -12,3 +14,6 @@ tag = "sigil-kittest-v{version}"
 [[crate]]
 package = "sigil-sign"
 tag = "sigil-sign-v{version}"
+
+[lint]
+duplicate-path = "deny"

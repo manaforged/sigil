@@ -1,13 +1,13 @@
 use std::io::{self, Write};
 use std::time::Duration;
 
-use crate::app::{
-    AppConfig, AppResult, CellWidth, Error, Host, LayoutError, PanicPolicy, TreeRoot,
-    set_cell_width,
-};
+use crate::app::{CellWidth, PanicPolicy, set_cell_width};
 use crate::events::EventRouter;
-use crate::hal::ShellEvent;
+use crate::events::ShellEvent;
+use crate::kernel::IntoNode;
+use crate::layout::LayoutError;
 use crate::reactive::Runtime;
+use crate::{AppConfig, AppResult, Error, Host};
 use crossterm::style::Print;
 use crossterm::terminal::{Clear, ClearType};
 use crossterm::{cursor, execute};
@@ -23,7 +23,7 @@ use crate::terminal::signals::SignalGuard;
 use crate::terminal::term::paint_frame;
 use crate::terminal::term::{HookGuard, Term, restore};
 
-pub(crate) const CELL: f32 = crate::app::Host::CELL;
+pub(crate) const CELL: f32 = crate::Host::CELL;
 
 pub fn calibrate(out: &mut impl Write) -> io::Result<()> {
     set_cell_width(CellWidth::Unicode);
@@ -74,7 +74,7 @@ pub struct Hooks<'a> {
     pub region_rows: Option<Box<dyn FnMut() -> u16 + 'a>>,
 }
 
-pub(crate) fn run<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
+pub(crate) fn run<N: IntoNode>(config: &AppConfig, tree: impl Fn() -> N + 'static) -> AppResult {
     let hooks = &mut config.terminal_hooks.take();
     #[cfg(feature = "inspect")]
     let inspect = crate::app::inspect::install();
@@ -120,8 +120,8 @@ pub(crate) fn run<T: TreeRoot>(config: &AppConfig, tree: T) -> AppResult<()> {
     result
 }
 
-pub fn present(
-    tree: impl TreeRoot,
+pub fn present<N: IntoNode>(
+    tree: impl Fn() -> N + 'static,
     cols: u16,
     rows: u16,
     events: &[ShellEvent],
@@ -164,7 +164,7 @@ pub(crate) fn view(cols: u16, rows: u16) -> (f32, f32) {
 type Prepared = (
     crate::tasks::AsyncRuntime,
     Wake,
-    Option<crate::ThemeWatcher>,
+    Option<crate::app::ThemeWatcher>,
 );
 
 fn prepare(config: &AppConfig) -> AppResult<Prepared> {
@@ -180,17 +180,24 @@ fn prepare(config: &AppConfig) -> AppResult<Prepared> {
     ))
 }
 
-fn live<T: TreeRoot>(
+type Setup = (Prepared, Term, (SignalGuard, HookGuard), (u16, u16));
+
+fn setup(config: &AppConfig) -> AppResult<Setup> {
+    let prepared = prepare(config)?;
+    let term = enter(config)?;
+    let hooks = HookGuard::install();
+    let signals = SignalGuard::install().map_err(Error::io)?;
+    Ok((prepared, term, (signals, hooks), term_size(config)?))
+}
+
+fn live<N: IntoNode>(
     config: &AppConfig,
-    tree: T,
+    tree: impl Fn() -> N + 'static,
     hooks: &mut Hooks<'_>,
     inspect_pending: impl Fn() -> bool,
-) -> AppResult<()> {
-    let (mut async_rt, waker, _theme_watch) = prepare(config)?;
-    let mut term = enter(config)?;
-    let _hooks = HookGuard::install();
-    let _signals = SignalGuard::install().map_err(Error::io)?;
-    let (mut cols, mut rows) = term_size(config)?;
+) -> AppResult {
+    let ((mut async_rt, waker, _theme_watch), mut term, _guards, (mut cols, mut rows)) =
+        setup(config)?;
     let mut host = Host::cells();
     let mut router = EventRouter::new();
     crate::terminal::clipboard::install_clipboard(term.caps());
@@ -198,10 +205,10 @@ fn live<T: TreeRoot>(
     host.mount_app(tree);
     prime(&mut host, &mut router, cols, rows).map_err(Error::from)?;
     let mut screen = open_screen(config, (cols, rows), term.caps());
-    let mut pointer = crate::hal::Point::new(0.0, 0.0);
+    let mut pointer = crate::geometry::Point::new(0.0, 0.0);
     let (mut first, mut settle, mut last) = (true, true, std::time::Instant::now());
     loop {
-        if crate::app::take_exit() || crate::terminal::signals::halted() {
+        if crate::terminal::signals::stopped() {
             break;
         }
         let woke = pump(&host, &mut async_rt);
