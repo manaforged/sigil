@@ -8,8 +8,8 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, ClassSource, Metrics, NodeStyleExt, Px, Size, StateHost, StateStyle, Style,
-    StyleAccess, StyleAtom, StyleOverlay, StyleVariant, Theme, Token, Tone, TransitionId,
+    BORDER_WIDTH, Metrics, NodeStyleExt, PaintTarget, Px, Size, StateHost, StateStyle, Style,
+    StyleAtom, StyleOverlay, StyleSlot, StyleVariant, Theme, Token, Tone, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;
@@ -121,19 +121,6 @@ impl CheckboxBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style_accumulator.merge(style);
-        self
-    }
-
-    #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
         self
@@ -200,9 +187,9 @@ impl CheckboxBuilder {
     }
 }
 
-impl StyleAccess for CheckboxBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for CheckboxBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

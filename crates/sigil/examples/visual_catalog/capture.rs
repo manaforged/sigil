@@ -63,7 +63,7 @@ pub(crate) fn paint<N: IntoNode + 'static>(
     let frame = move || {
         container()
             .theme(theme)
-            .class("bg-surface")
+            .bg(Token::Surface)
             .layout(LayoutStyle::flex_column().fill().padding(pad))
             .child(child())
     };

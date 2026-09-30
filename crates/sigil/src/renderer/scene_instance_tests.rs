@@ -1,7 +1,7 @@
 use crate::geometry::{LogicalSize, Point, Rect, Size};
 use crate::kernel::*;
 use crate::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, TextMeasure};
-use crate::style::{NodeStyleExt, Rgba8};
+use crate::style::Rgba8;
 
 use super::{
     BlendSpace, RectInstance, draw_gradient_instance, draw_rect_instance, draw_shadow_instance,

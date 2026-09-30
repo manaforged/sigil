@@ -32,7 +32,7 @@ the image renders as `[alt]` text.
 
 `markdown_inline(&str) -> TextBuilder` renders one paragraph of inline
 spans as a single wrapped text node. Code spans keep their background,
-and the caller's text classes style the rest of the paragraph.
+and the caller's `Paint` methods style the rest of the paragraph.
 
 `markdown_edit(Signal<String>) -> MarkdownEditBuilder` is the editor
 split: `text_edit(source)` beside `markdown(source)` inside a horizontal

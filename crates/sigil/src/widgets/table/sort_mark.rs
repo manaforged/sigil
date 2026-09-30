@@ -1,6 +1,5 @@
 use crate::kernel::{NodeBuilder, container};
 use crate::reactive::{Signal, derived};
-use crate::style::NodeStyleExt;
 
 use super::state::{SortDir, TableState};
 

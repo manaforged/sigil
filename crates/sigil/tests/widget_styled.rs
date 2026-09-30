@@ -6,309 +6,245 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
 
-use sigil::prelude::{
-    Fill, Geometry, MenuItem, NodeBuilder, Spacing, StateVariants, StyleAccess, StyleAtom, Visual,
-    button, checkbox, container, dropdown, menu, modal, panel, progress, scroll, signal, slider,
-    tabs, text_field, toggle,
-};
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::{pointer_down, pointer_move};
+use scene_support::color;
+use sigil::events::EventRouter;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutResult;
+use sigil::prelude::*;
 use sigil::reactive::Runtime;
-use sigil::style::{ColorKey, Token};
+use widget_support::{compute, rect_colors};
+
+const VIEWPORT: Size = Size::fixed(640.0, 480.0);
+const A: Rgba8 = color(200, 20, 20, 255);
+const B: Rgba8 = color(20, 200, 20, 255);
+const C: Rgba8 = color(20, 20, 200, 255);
+const D: Rgba8 = color(200, 200, 20, 255);
+const E: Rgba8 = color(20, 200, 200, 255);
+
+#[derive(Clone, Copy)]
+enum Drive {
+    Rest,
+    Hover,
+    Press,
+    Focus,
+}
+
+fn laid_out(build: impl IntoNode, drive: Drive) -> (Cx, NodeId) {
+    let mut cx = Cx::new_root();
+    let root = cx.add(build);
+    let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+    let mut router = EventRouter::new();
+    match drive {
+        Drive::Rest => {}
+        Drive::Hover => router.route(&mut cx, &layout, pointer_move(8.0, 8.0)),
+        Drive::Press => {
+            router.route(&mut cx, &layout, pointer_move(8.0, 8.0));
+            router.route(&mut cx, &layout, pointer_down(8.0, 8.0));
+        }
+        Drive::Focus => router.set_focus(&mut cx, Some(root)),
+    }
+    (cx, root)
+}
+
+fn painted(build: impl IntoNode, drive: Drive) -> Vec<Rgba8> {
+    let (cx, root) = laid_out(build, drive);
+    rect_colors(&cx, root)
+}
+
+fn width(build: impl IntoNode) -> f32 {
+    let (cx, root) = laid_out(build, Drive::Rest);
+    cx.get(root)
+        .and_then(|node| node.get_extension::<LayoutResult>())
+        .map_or(0.0, |result| result.rect().width)
+}
+
+fn assert_paints(colors: &[Rgba8], expected: Rgba8, what: &str) {
+    assert!(
+        colors.contains(&expected),
+        "{what} must paint {expected:?}, got {colors:?}"
+    );
+}
 
 #[test]
 fn button_styled_bg_emits_atom() {
     Runtime::scope("widget-styled-button-bg", || {
-        let mut b = button("Run").bg("surface").rounded(8);
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "button bg('surface') must push BackgroundThemeRef onto the accumulator, got {atoms:?}",
-        );
-        assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil::style::Px(8))),
-            "button rounded(8) must push BorderRadius, got {atoms:?}",
-        );
+        let colors = painted(button("Run").bg(A).rounded(Radius::Lg), Drive::Rest);
+        assert_paints(&colors, A, "button bg");
     });
 }
 
 #[test]
 fn button_styled_hover_populates_state_slot() {
     Runtime::scope("widget-styled-button-hover", || {
-        let mut b = button("Run").hover(|s| s.bg("surface-hover").opacity(0.8));
-        let style = StyleAccess::style_mut(&mut b);
-        let hover = style.hover_atoms().to_vec();
-        assert_eq!(
-            hover.len(),
-            2,
-            "hover closure must record both bg + opacity atoms, got {hover:?}",
-        );
-        assert_eq!(
-            hover[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
-        );
-        assert_eq!(hover[1], StyleAtom::Opacity(8_000));
+        let colors = painted(button("Run").hover(|s| s.bg(A).opacity(1.0)), Drive::Hover);
+        assert_paints(&colors, A, "button hover");
     });
 }
 
 #[test]
 fn button_styled_accepts_full_compile_surface() {
     Runtime::scope("widget-styled-button-compile", || {
-        let mut b = button("X")
-            .bg("surface")
-            .px(16)
-            .py(8)
-            .hover(|s| s.bg("surface-hover"));
-        let style = StyleAccess::style_mut(&mut b);
-        assert!(
-            !style.is_empty(),
-            "chained styled methods must populate the accumulator",
-        );
-        assert_eq!(style.hover_atoms().len(), 1);
+        let build = || {
+            button("X")
+                .bg(B)
+                .layout(LayoutStyle::default().padding_x(48.0).padding_y(8.0))
+                .hover(|s| s.bg(A))
+        };
+        assert_paints(&painted(build(), Drive::Rest), B, "button bg");
+        assert_paints(&painted(build(), Drive::Hover), A, "button hover");
+        assert!(width(build()) > width(button("X")));
     });
 }
 
 #[test]
 fn checkbox_styled_bg_emits_atom() {
     Runtime::scope("widget-styled-checkbox-bg", || {
-        let checked = signal(false);
-        let mut b = checkbox(checked).bg("surface").rounded(6);
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "checkbox bg('surface') must reach the trait accumulator, got {atoms:?}",
+        let colors = painted(
+            checkbox(signal(false)).bg(A).rounded(Radius::Md),
+            Drive::Rest,
         );
-        assert!(
-            atoms.contains(&StyleAtom::BorderRadius(sigil::style::Px(6))),
-            "rounded(6) must land, got {atoms:?}",
-        );
+        assert_paints(&colors, A, "checkbox bg");
     });
 }
 
 #[test]
 fn checkbox_styled_hover_populates_state_slot() {
     Runtime::scope("widget-styled-checkbox-hover", || {
-        let checked = signal(false);
-        let mut b = checkbox(checked).hover(|s| s.bg("accent-hover"));
-        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
-        assert_eq!(hover.len(), 1, "hover slot must capture exactly one atom");
-        assert_eq!(
-            hover[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::AccentHover))
-        );
+        let colors = painted(checkbox(signal(false)).hover(|s| s.bg(A)), Drive::Hover);
+        assert_paints(&colors, A, "checkbox hover");
     });
 }
 
 #[test]
 fn dropdown_styled_emits_on_trigger_accumulator() {
     Runtime::scope("widget-styled-dropdown-bg", || {
-        let selected = signal(0_usize);
-        let mut b = dropdown(selected, vec!["a".into(), "b".into()])
-            .bg("surface")
-            .padding(12);
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "dropdown bg('surface') must hit the trait accumulator (which is then \
-             merged into the trigger at build time), got {atoms:?}",
+        let build = |px: f32| {
+            dropdown(signal(0_usize), vec!["a".into(), "b".into()])
+                .bg(A)
+                .layout(LayoutStyle::default().width(px))
+        };
+        assert_paints(
+            &painted(build(200.0), Drive::Rest),
+            A,
+            "dropdown trigger bg",
         );
-        assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil::style::Px(12))),
-            "padding(12) must land in the accumulator, got {atoms:?}",
-        );
+        assert!((width(build(200.0)) - 200.0).abs() < f32::EPSILON);
+        assert!((width(build(260.0)) - 260.0).abs() < f32::EPSILON);
     });
 }
 
 #[test]
 fn dropdown_styled_pressed_populates_state_slot() {
     Runtime::scope("widget-styled-dropdown-pressed", || {
-        let selected = signal(0_usize);
-        let mut b =
-            dropdown(selected, vec!["a".into()]).pressed(|s| s.bg("surface-pressed-strong"));
-        let pressed = StyleAccess::style_mut(&mut b).pressed_atoms().to_vec();
-        assert_eq!(pressed.len(), 1);
-        assert_eq!(
-            pressed[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfacePressedStrong)),
-        );
+        let build = dropdown(signal(0_usize), vec!["a".into()]).pressed(|s| s.bg(A));
+        assert_paints(&painted(build, Drive::Press), A, "dropdown pressed");
     });
 }
 
 #[test]
 fn panel_accepts_styled_surface() {
     Runtime::scope("widget-styled-panel-surface", || {
-        let mut b = panel().title("Settings").bg("accent").px(20);
-        let style = StyleAccess::style_mut(&mut b);
-        let atoms = style.as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Accent
-            ))),
-            "panel bg('accent') must land in the trait accumulator, got {atoms:?}",
-        );
-        assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
-            "panel px(20) must land in the trait accumulator, got {atoms:?}",
-        );
+        let build = |padding: f32| {
+            panel()
+                .title("Settings")
+                .bg(A)
+                .layout(LayoutStyle::default().padding_x(padding))
+        };
+        assert_paints(&painted(build(20.0), Drive::Rest), A, "panel bg");
+        assert!(width(build(20.0)) >= width(build(0.0)));
     });
 }
 
 #[test]
 fn text_field_styled_composes_with_state_variant() {
     Runtime::scope("widget-styled-text-field-state-compose", || {
-        let value = signal(String::new());
-        let mut b = text_field(value)
-            .placeholder("Search…")
-            .bg("surface")
-            .px(10)
-            .hover(|s| s.bg("surface-hover"))
-            .focus(|s| s.bg("on-surface"))
-            .pressed(|s| s.bg("surface-pressed"));
-        b = StateVariants::disabled_style(b, |s| s.opacity(0.5));
-        let style = StyleAccess::style_mut(&mut b);
-        let base = style.as_atoms().to_vec();
-        assert!(
-            base.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "text_field bg('surface') must land in trait accumulator base, got {base:?}",
-        );
-        assert!(
-            base.contains(&StyleAtom::PaddingX(sigil::style::Px(10))),
-            "text_field px(10) must land in trait accumulator base, got {base:?}",
-        );
-        let hover = style.hover_atoms().to_vec();
-        assert_eq!(hover.len(), 1, "hover slot must capture one atom");
-        assert_eq!(
-            hover[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
-        );
-        let focus = style.focus_atoms().to_vec();
-        assert_eq!(focus.len(), 1, "focus slot must capture one atom");
-        assert_eq!(
-            focus[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::OnSurface))
-        );
-        let pressed = style.pressed_atoms().to_vec();
-        assert_eq!(pressed.len(), 1, "pressed slot must capture one atom");
-        assert_eq!(
-            pressed[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfacePressed))
-        );
-        let disabled = style.disabled_atoms().to_vec();
-        assert_eq!(disabled.len(), 1, "disabled slot must capture one atom");
-        assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
+        let build = || {
+            let field = text_field(signal(String::new()))
+                .placeholder("Search…")
+                .bg(A)
+                .layout(LayoutStyle::default().padding_x(10.0))
+                .hover(|s| s.bg(B))
+                .focus(|s| s.bg(C))
+                .pressed(|s| s.bg(D));
+            StateVariants::disabled_style(field, |s| s.bg(E))
+        };
+        assert_paints(&painted(build(), Drive::Rest), A, "text_field bg");
+        assert_paints(&painted(build(), Drive::Hover), B, "text_field hover");
+        assert_paints(&painted(build(), Drive::Focus), C, "text_field focus");
+        assert_paints(&painted(build(), Drive::Press), D, "text_field pressed");
+        assert!(!painted(build(), Drive::Rest).contains(&E));
     });
 }
 
 #[test]
 fn slider_accepts_styled_surface() {
     Runtime::scope("widget-styled-slider", || {
-        let value = signal(0.5_f32);
-        let mut b = slider(value, 0.0..=1.0).bg("surface").padding(8);
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "slider bg('surface') must hit the trait accumulator, got {atoms:?}",
-        );
-        assert!(
-            atoms.contains(&StyleAtom::PaddingAll(sigil::style::Px(8))),
-            "padding(8) must land in the accumulator, got {atoms:?}",
-        );
+        let build = slider(signal(0.5_f32), 0.0..=1.0)
+            .bg(A)
+            .layout(LayoutStyle::default().padding(8.0));
+        assert_paints(&painted(build, Drive::Rest), A, "slider bg");
     });
 }
 
 #[test]
 fn progress_accepts_styled_surface() {
     Runtime::scope("widget-styled-progress", || {
-        let value = signal(0.75_f32);
-        let mut b = progress(value, 1.0).bg("surface");
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "progress bg('surface') must hit the trait accumulator, got {atoms:?}",
-        );
+        let build = progress(signal(0.75_f32), 1.0).bg(A);
+        assert_paints(&painted(build, Drive::Rest), A, "progress bg");
     });
 }
 
 #[test]
 fn style_and_typed_methods_share_one_store() {
     Runtime::scope("widget-styled-one-store", || {
-        let my_style = sigil::style::Style::new()
-            .padding(8)
-            .background_theme("surface");
-        let mut b = button("X").style(my_style).padding(12);
-        let merged = sigil::style::merge_classes(&[], StyleAccess::style_mut(&mut b).as_atoms(), 0);
+        let layered = button("X")
+            .layout(LayoutStyle::default().padding(8.0))
+            .layout(LayoutStyle::default().padding(12.0));
+        let single = button("X").layout(LayoutStyle::default().padding(12.0));
         assert!(
-            merged.contains(&StyleAtom::PaddingTop(sigil::style::Px(12)))
-                && !merged.contains(&StyleAtom::PaddingTop(sigil::style::Px(8))),
-            "the later padding must replace the earlier one: {merged:?}"
+            (width(layered) - width(single)).abs() < f32::EPSILON,
+            "the later padding must win"
         );
 
-        let checked = signal(false);
-        let _cb = checkbox(checked).style(sigil::style::Style::new().padding(4));
-
-        let on = signal(false);
-        let _tg = toggle(on).style(sigil::style::Style::new().padding(4));
-
-        let value = signal(0.5_f32);
-        let _sl = slider(value, 0.0..=1.0).style(sigil::style::Style::new().padding(4));
+        let padded = LayoutStyle::default().padding(4.0);
+        let _cb = checkbox(signal(false)).layout(padded.clone());
+        let _tg = toggle(signal(false)).layout(padded.clone());
+        let _sl = slider(signal(0.5_f32), 0.0..=1.0).layout(padded);
     });
 }
 
 #[test]
 fn modal_accepts_styled_surface() {
     Runtime::scope("widget-styled-modal-surface", || {
-        let mut b = modal(signal(false))
+        let build = modal(signal(true))
             .title("Confirm action")
-            .bg("surface")
-            .px(20);
-        let style = StyleAccess::style_mut(&mut b);
-        let atoms = style.as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "modal bg('surface') must land in the trait accumulator, got {atoms:?}",
-        );
-        assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
-            "modal px(20) must land in the trait accumulator, got {atoms:?}",
-        );
+            .bg(A)
+            .layout(LayoutStyle::default().padding_x(20.0));
+        assert_paints(&painted(build, Drive::Rest), A, "modal bg");
     });
 }
 
 #[test]
 fn tabs_accepts_styled_surface() {
     Runtime::scope("widget-styled-tabs", || {
-        let active = signal(0_usize);
-        let mut b = tabs()
-            .active(active)
-            .labels(["A", "B"])
-            .label("Settings sections")
-            .bg("surface")
-            .hover(|s| s.bg("surface-hover"));
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        let hover = StyleAccess::style_mut(&mut b).hover_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "tabs bg('surface') must hit the trait accumulator, got {atoms:?}",
-        );
-        assert_eq!(hover.len(), 1, "hover slot must capture one atom");
-        assert_eq!(
-            hover[0],
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
-        );
+        let build = || {
+            tabs()
+                .active(signal(0_usize))
+                .labels(["A", "B"])
+                .label("Settings sections")
+                .bg(A)
+                .hover(|s| s.bg(B))
+        };
+        assert_paints(&painted(build(), Drive::Rest), A, "tabs bg");
+        assert_paints(&painted(build(), Drive::Hover), B, "tabs hover");
     });
 }
 
@@ -316,41 +252,23 @@ fn tabs_accepts_styled_surface() {
 fn scroll_accepts_styled_surface() {
     Runtime::scope("widget-styled-scroll", || {
         let inner: NodeBuilder = container();
-        let mut b = scroll(inner).extent(400.0_f32).bg("surface");
-        let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "scroll bg('surface') must hit the trait accumulator, got {atoms:?}",
-        );
+        let build = scroll(inner).extent(400.0_f32).bg(A);
+        assert_paints(&painted(build, Drive::Rest), A, "scroll bg");
     });
 }
 
 #[test]
 fn menu_accepts_styled_surface() {
     Runtime::scope("widget-styled-menu-surface", || {
-        let open = signal(true);
-        let mut b = menu(open)
+        let build = menu(signal(true))
             .label("File menu")
             .item(MenuItem::new("New"))
             .item(MenuItem::new("Save").shortcut("Ctrl+S"))
             .separator()
             .item(MenuItem::new("Quit"))
-            .bg("surface")
-            .px(20);
-        let style = StyleAccess::style_mut(&mut b);
-        let atoms = style.as_atoms().to_vec();
-        assert!(
-            atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-                Token::Surface
-            ))),
-            "menu bg('surface') must land in the trait accumulator, got {atoms:?}",
-        );
-        assert!(
-            atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(20))),
-            "menu px(20) must land in the trait accumulator, got {atoms:?}",
-        );
+            .bg(A)
+            .layout(LayoutStyle::default().padding_x(20.0));
+        assert_paints(&painted(build, Drive::Rest), A, "menu bg");
     });
 }
 
@@ -364,4 +282,34 @@ fn menu_item_chain_works() {
     assert_eq!(item.shortcut.as_deref(), Some("Ctrl+Shift+S"));
     assert!(item.disabled);
     assert!(!item.submenu_indicator);
+}
+
+#[test]
+fn layout_override_sizes_every_widget_root() {
+    Runtime::scope("widget-styled-layout-override", || {
+        let wide = || LayoutStyle::default().width(210.0);
+        let value = signal(0.5_f32);
+        let widths = [
+            ("panel", width(panel().layout(wide()))),
+            ("progress", width(progress(value, 1.0).layout(wide()))),
+            ("gauge", width(gauge(value).layout(wide()))),
+            ("slider", width(slider(value, 0.0..=1.0).layout(wide()))),
+            ("scroll", width(scroll(container()).layout(wide()))),
+            (
+                "tooltip",
+                width(tooltip("tip").child(button("X")).layout(wide())),
+            ),
+            (
+                "interactive",
+                width(interactive(container()).layout(wide())),
+            ),
+            ("diff", width(diff("").width(210.0))),
+        ];
+        for (name, laid) in widths {
+            assert!(
+                (laid - 210.0).abs() < f32::EPSILON,
+                "{name} laid out at {laid}"
+            );
+        }
+    });
 }

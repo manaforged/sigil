@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, signal};
-use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
+use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
 
 use crate::widgets::interaction::InteractionState;
 
@@ -28,6 +28,8 @@ pub struct TextEditBuilder {
     pub(super) content_padding: (f32, f32),
     pub(super) chrome: bool,
     state: Option<TextEditState>,
+    autofocus: bool,
+    focus_trigger: Option<Signal<u64>>,
     pub(super) style_accumulator: Style,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
@@ -53,17 +55,12 @@ impl TextEditBuilder {
             content_padding: content_padding(),
             chrome: true,
             state: None,
+            autofocus: false,
+            focus_trigger: None,
             style_accumulator: Style::new(),
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
     }
 
     pub fn caret_visible(&mut self) -> Signal<bool> {
@@ -117,6 +114,18 @@ impl TextEditBuilder {
     #[must_use]
     pub fn submit(mut self, f: impl Fn(&str) + 'static) -> Self {
         self.submit = Some(Rc::new(f));
+        self
+    }
+
+    #[must_use]
+    pub const fn autofocus(mut self) -> Self {
+        self.autofocus = true;
+        self
+    }
+
+    #[must_use]
+    pub const fn focus_when(mut self, trigger: Signal<u64>) -> Self {
+        self.focus_trigger = Some(trigger);
         self
     }
 
@@ -177,9 +186,9 @@ impl TextEditBuilder {
     }
 }
 
-impl StyleAccess for TextEditBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for TextEditBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 
@@ -193,6 +202,16 @@ impl WidgetLayoutExt for TextEditBuilder {
 
 impl IntoNode for TextEditBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
+        let (autofocus, trigger) = (self.autofocus, self.focus_trigger);
+        let id = self.into_node_builder().build(cx);
+        if autofocus {
+            crate::events::request_focus(id);
+        }
+        if let Some(trigger) = trigger {
+            crate::events::focus::focus_on_trigger(trigger, move || {
+                crate::events::request_focus(id);
+            });
+        }
+        id
     }
 }

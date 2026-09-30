@@ -7,7 +7,7 @@
 
 use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow, Position};
-use sigil::style::{NodeStyleExt, Theme};
+use sigil::style::{Paint, Radius, Theme, Token};
 
 #[path = "renderer_child_paint_repro/support.rs"]
 mod support;
@@ -57,10 +57,10 @@ fn build_relative_track_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
                 .inset_left(0.0)
                 .inset_top(0.0),
         )
-        .class("bg-accent");
+        .bg(Token::Accent);
     let track = container()
         .layout(LayoutStyle::block().fixed_size(8.0, VIEWPORT_H))
-        .class("bg-surface-pressed")
+        .bg(Token::SurfacePressed)
         .child(thumb);
     let viewport = container()
         .layout(
@@ -68,7 +68,7 @@ fn build_relative_track_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
                 .fixed_size(VIEWPORT_W, VIEWPORT_H)
                 .overflow_y(Overflow::Hidden),
         )
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(track);
     cx.add(viewport)
 }
@@ -102,10 +102,14 @@ fn rounded_overflow_masks_child_pixels() {
 fn build_rounded_overflow_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
     let child = container()
         .layout(LayoutStyle::block().fixed_size(64.0, 64.0))
-        .class("bg-accent");
+        .bg(Token::Accent);
     let clipped = container()
-        .layout(LayoutStyle::block().fixed_size(64.0, 64.0))
-        .class("rounded-full overflow-hidden")
+        .layout(
+            LayoutStyle::block()
+                .fixed_size(64.0, 64.0)
+                .overflow(Overflow::Hidden),
+        )
+        .rounded(Radius::Full)
         .child(child);
     cx.add(
         container()
@@ -132,7 +136,8 @@ fn rectangular_clip_preserves_child_corner_geometry() {
 fn build_partially_clipped_round_rect(cx: &mut Cx) -> sigil::kernel::NodeId {
     let child = container()
         .layout(LayoutStyle::block().fixed_size(24.0, 16.0))
-        .class("rounded-full bg-accent");
+        .rounded(Radius::Full)
+        .bg(Token::Accent);
     let clipped = container()
         .layout(
             LayoutStyle::block()
@@ -189,10 +194,10 @@ fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
 
     let glyph = text("v")
         .layout(LayoutStyle::block().width(WIN_W))
-        .class("text-on-surface");
+        .text_color(Token::OnSurface);
     let wrapper = container()
         .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(glyph);
     let root = container()
         .layout(
@@ -200,7 +205,7 @@ fn build_narrow_text_flex_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
                 .fixed_size(ROOT_W, ROOT_H)
                 .padding(WIN_X),
         )
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(wrapper);
     cx.add(root)
 }
@@ -241,7 +246,7 @@ fn nested_absolute_text_tooltip_shape_renders_ink() {
 fn build_tooltip_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
     let bubble_text = text("Save the file")
         .layout(LayoutStyle::block().width(TOOLTIP_BUBBLE_W as f32 - 8.0))
-        .class("text-on-surface");
+        .text_color(Token::OnSurface);
     let bubble = container()
         .layout(
             LayoutStyle::block()
@@ -250,18 +255,18 @@ fn build_tooltip_shape(cx: &mut Cx) -> sigil::kernel::NodeId {
                 .inset_left(TOOLTIP_BUBBLE_X as f32)
                 .inset_top(TOOLTIP_BUBBLE_Y as f32),
         )
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(bubble_text);
     let target = container()
         .layout(LayoutStyle::block().fixed_size(60.0, 20.0))
-        .class("bg-surface-pressed");
+        .bg(Token::SurfacePressed);
     let wrapper = container()
         .layout(
             LayoutStyle::block()
                 .fixed_size(TOOLTIP_ROOT_W as f32, TOOLTIP_ROOT_H as f32)
                 .position(Position::Relative),
         )
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(target)
         .child(bubble);
     cx.add(wrapper)

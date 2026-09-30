@@ -7,10 +7,8 @@ use crate::kernel::{AccessibleName, TextContent};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{
-    ClassSource, Metrics, NodeStyleExt, Radius, Size, Style, StyleAtom, StyleVariant, Theme,
-};
 use crate::style::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, Tone};
+use crate::style::{Metrics, NodeStyleExt, Radius, Size, Style, StyleAtom, StyleVariant, Theme};
 
 #[cfg(feature = "scene")]
 use crate::widgets::icon::icon_svg;
@@ -205,19 +203,6 @@ impl ButtonBuilder {
     #[must_use]
     pub fn activate(mut self, activate: impl Fn() + 'static) -> Self {
         self.activate = Some(Rc::new(activate));
-        self
-    }
-
-    #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style_accumulator.merge(style);
         self
     }
 

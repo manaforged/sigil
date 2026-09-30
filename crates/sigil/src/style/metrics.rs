@@ -18,6 +18,7 @@ pub const fn space(steps: u8) -> f32 {
 pub enum Radius {
     None,
     Sm,
+    Base,
     Md,
     Lg,
     Full,
@@ -25,7 +26,7 @@ pub enum Radius {
 
 impl Radius {
     #[must_use]
-    pub const fn atom(self) -> StyleAtom {
+    pub(crate) const fn atom(self) -> StyleAtom {
         StyleAtom::Radius(self)
     }
 }
@@ -97,6 +98,7 @@ impl Metrics {
         match radius {
             Radius::None => Px(0),
             Radius::Sm => Px(2),
+            Radius::Base => Px(4),
             Radius::Md => Px(6),
             Radius::Lg => Px(8),
             Radius::Full => Px(9_999),

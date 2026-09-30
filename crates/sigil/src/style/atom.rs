@@ -4,17 +4,6 @@ pub const SPACING_STEP: f32 = 4.0;
 
 pub(crate) const FACTOR_SCALE: f32 = 1000.0;
 
-#[allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the value is clamped to the u16 range first"
-)]
-pub(crate) fn factor_units(factor: f32) -> u16 {
-    (factor.max(0.0) * FACTOR_SCALE)
-        .round()
-        .min(f32::from(u16::MAX)) as u16
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Px(pub i16);
 

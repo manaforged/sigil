@@ -3,9 +3,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, effect, signal};
-use crate::style::{
-    BORDER_WIDTH, Metrics, NodeStyleExt, Radius, Rgba8, Size, Style, StyleAtom, Token, space,
-};
+use crate::style::{BORDER_WIDTH, Metrics, Paint, Radius, Rgba8, Size, StyleAtom, Token, space};
 
 use super::layout_ext::WidgetLayoutExt;
 use super::shared::disabled_look;
@@ -101,7 +99,7 @@ fn swatch(value: Signal<Rgba8>) -> NodeBuilder {
             container()
                 .layout(LayoutStyle::block().width(width).height(extent))
                 .class(chrome)
-                .style(Style::new().bg(value.get())),
+                .bg(value.get()),
         ]
     })
 }

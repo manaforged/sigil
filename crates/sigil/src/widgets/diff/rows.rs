@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, Token};
+use crate::style::{BORDER_WIDTH, Paint, Token};
 
 use super::GUTTER_W;
 use super::patch::{Kind, Pair, changed};
@@ -134,11 +134,9 @@ fn half(
             .overflow_x(Overflow::Hidden),
     );
     let column = if ruled {
-        column.style(
-            Style::new()
-                .border_right(BORDER_WIDTH.0)
-                .border_theme(Token::Border.name()),
-        )
+        column
+            .border_right(BORDER_WIDTH.0)
+            .border_color(Token::Border)
     } else {
         column
     };

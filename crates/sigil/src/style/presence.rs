@@ -5,7 +5,7 @@ use crate::animation_runtime::{AnimationConfig, Animator};
 use crate::kernel::Node;
 use crate::reactive::{Signal, batch, effect_named, signal};
 
-use super::builder_ext::{install_animation, install_reactive};
+use super::install::{install_animation, install_reactive};
 use super::{DisplayKind, NumericAtomKind, StyleAtom};
 
 pub(crate) struct Presence {

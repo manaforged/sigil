@@ -11,10 +11,11 @@ use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, P
 use crate::layout::{Popup, PopupSide, ViewportOverlay};
 use crate::reactive::{IntervalId, Signal, cancel_interval, interval, signal};
 use crate::style::{
-    ClassSource, DisplayKind, Metrics, NodeStyleExt, Size, Style, StyleAccess, StyleAtom, Theme,
+    DisplayKind, Metrics, NodeStyleExt, PaintTarget, Size, Style, StyleAtom, StyleSlot, Theme,
     Token, TransitionId, space,
 };
 
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::popup::{POPUP_GAP, surface};
 use super::shared::BuilderMutator;
 
@@ -32,6 +33,7 @@ pub struct TooltipBuilder {
     delay_ms: u64,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -50,6 +52,7 @@ impl TooltipBuilder {
             delay_ms: 0,
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -78,19 +81,6 @@ impl TooltipBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style_accumulator.merge(style);
-        self
-    }
-
-    #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
         self
@@ -111,7 +101,7 @@ impl TooltipBuilder {
         let delay_ms = self.delay_ms;
         let pending_for_enter = Rc::clone(&pending);
 
-        let mut root = wrapper_root(&description)
+        let mut root = wrapper_root(&description, self.layout_overrides)
             .pointer_enter(move |event| {
                 event.stop_propagation();
                 if visible.peek() || pending_for_enter.get().is_some() {
@@ -156,9 +146,15 @@ impl TooltipBuilder {
     }
 }
 
-impl StyleAccess for TooltipBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for TooltipBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for TooltipBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 
@@ -216,15 +212,17 @@ fn watch_focus(cx: &mut Cx, target: NodeId, visible: Signal<bool>) {
     });
 }
 
-fn wrapper_root(description: &str) -> NodeBuilder {
+fn wrapper_root(description: &str, overrides: LayoutOverrides) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .description(description.to_owned())
         .layout(
-            LayoutStyle::flex_column()
-                .position(Position::Relative)
-                .align_items(AlignItems::Center)
-                .justify_content(JustifyContent::Center),
+            overrides.apply(
+                LayoutStyle::flex_column()
+                    .position(Position::Relative)
+                    .align_items(AlignItems::Center)
+                    .justify_content(JustifyContent::Center),
+            ),
         )
 }
 

@@ -13,12 +13,6 @@ impl From<Rgba8> for ColorOrToken {
     }
 }
 
-impl From<&'static str> for ColorOrToken {
-    fn from(value: &'static str) -> Self {
-        Self::Token(ColorKey::parse(value))
-    }
-}
-
 impl From<Token> for ColorOrToken {
     fn from(value: Token) -> Self {
         Self::Token(ColorKey::Token(value))
@@ -31,7 +25,7 @@ impl From<ColorAtom> for ColorOrToken {
     }
 }
 
-pub(super) const fn background_atom(color: ColorOrToken) -> StyleAtom {
+pub(crate) const fn background_atom(color: ColorOrToken) -> StyleAtom {
     match color {
         ColorOrToken::Rgba(rgba) => StyleAtom::BackgroundColor(ColorAtom::Rgba8(rgba)),
         ColorOrToken::Token(token) => StyleAtom::BackgroundThemeRef(token),
@@ -39,7 +33,7 @@ pub(super) const fn background_atom(color: ColorOrToken) -> StyleAtom {
     }
 }
 
-pub(super) const fn border_color_atom(color: ColorOrToken) -> StyleAtom {
+pub(crate) const fn border_color_atom(color: ColorOrToken) -> StyleAtom {
     match color {
         ColorOrToken::Rgba(rgba) => StyleAtom::BorderColor(ColorAtom::Rgba8(rgba)),
         ColorOrToken::Token(token) => StyleAtom::BorderThemeRef(token),
@@ -47,7 +41,7 @@ pub(super) const fn border_color_atom(color: ColorOrToken) -> StyleAtom {
     }
 }
 
-pub(super) const fn text_atom(color: ColorOrToken) -> StyleAtom {
+pub(crate) const fn text_atom(color: ColorOrToken) -> StyleAtom {
     match color {
         ColorOrToken::Rgba(rgba) => StyleAtom::TextColor(ColorAtom::Rgba8(rgba)),
         ColorOrToken::Token(token) => StyleAtom::TextThemeRef(token),

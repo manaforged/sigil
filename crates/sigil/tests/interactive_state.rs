@@ -17,7 +17,7 @@ use sigil::geometry::Point;
 use sigil::kernel::Cx;
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
-use sigil::style::{Rgba8, Style, Theme};
+use sigil::style::{Rgba8, Theme};
 use widget_support::{compute, rect_colors};
 
 const HOVER_BG: Rgba8 = Rgba8 {
@@ -55,7 +55,7 @@ const fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
 fn rest_pane() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(100.0, 100.0))
-        .style(Style::new().bg(REST_BG))
+        .bg(REST_BG)
 }
 
 #[test]
@@ -92,7 +92,7 @@ fn interactive_class_hover_prefix_paints_on_pointer_enter() {
         let root = cx.add(
             container()
                 .theme(Theme::dark())
-                .child(interactive(rest_pane()).class("hover:bg-accent-9")),
+                .child(interactive(rest_pane()).hover(|s| s.bg(Token::Accent9))),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         let mut router = EventRouter::new();
@@ -157,7 +157,7 @@ fn interactive_hover_does_not_stop_ancestor_hover() {
             interactive(
                 container()
                     .layout(LayoutStyle::block().fixed_size(200.0, 200.0))
-                    .style(Style::new().bg(REST_BG))
+                    .bg(REST_BG)
                     .child(inner),
             )
             .hover(|s| s.bg(HOVER_BG)),

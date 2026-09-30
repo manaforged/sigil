@@ -6,6 +6,7 @@ use crate::reactive::{Signal, derived};
 use accesskit::Role;
 
 use crate::kernel::{A11yProps, AccessibleName, Cx, IntoNode, NodeId, NodeType};
+use crate::style::{PaintTarget, Style, StyleSlot};
 
 type TextMutator = Box<dyn FnOnce(&mut crate::kernel::Node)>;
 
@@ -96,6 +97,7 @@ pub struct TextBuilder {
     wrap: bool,
     ellipsis: bool,
     pre_extensions: Vec<TextMutator>,
+    style: Style,
 }
 
 #[must_use]
@@ -109,6 +111,7 @@ pub fn text(source: impl Into<TextContent>) -> TextBuilder {
         wrap: true,
         ellipsis: false,
         pre_extensions: Vec::new(),
+        style: Style::new(),
     }
 }
 
@@ -199,10 +202,27 @@ impl TextBuilder {
         self.pre_extensions.push(Box::new(apply));
         self
     }
+
+    pub(crate) const fn pending_style(&mut self) -> &mut Style {
+        &mut self.style
+    }
+}
+
+impl PaintTarget for TextBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style)
+    }
 }
 
 impl IntoNode for TextBuilder {
     fn build(self, cx: &mut Cx) -> NodeId {
+        let this = self.flush_paint();
+        this.build_text(cx)
+    }
+}
+
+impl TextBuilder {
+    fn build_text(self, cx: &mut Cx) -> NodeId {
         let id = cx.new_node(
             NodeType::Text {
                 content: self.source.into_live(),

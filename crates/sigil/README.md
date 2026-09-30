@@ -35,13 +35,14 @@ A window:
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - hello-counter", 480, 240), app_tree)
+    sigil::run(AppConfig::new("Sigil - hello-counter").size(480, 240), app_tree)
 }
 
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .class("p-32 bg-surface")
+        .layout(LayoutStyle::default().padding(32.0))
+        .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -62,7 +63,9 @@ fn main() -> sigil::AppResult<()> {
 An embed host. You own the window and the GPU:
 
 ```rust
+use sigil::Host;
 use sigil::prelude::*;
+use sigil::reactive::Runtime;
 
 Runtime::scope("embed", || {
     let mut host = Host::new();
@@ -119,9 +122,8 @@ With the `desktop` feature, `open(url)` passes an `http`, `https`, or
 - Public modules not listed in `docs/api.md` are used by tests and
   macro expansion. They are not API and can change in any 0.1.x release.
 
-`.class("...")` parses the class string at runtime. An unknown class
-panics in a debug build with the nearest valid names, and logs one
-warning in a release build. Typed
+Styling is typed: paint through `Paint` methods and state variants,
+layout through `LayoutStyle`. Typed
 actions use a plain `impl Action for ...`; there is no derive macro.
 
 ## Docs
@@ -138,7 +140,7 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 
 <!-- truesight:surface sigil-ui -->
 
-3406 public items (452 types, 256 functions, 1367 methods, 520 fields, 755 variants, 56 constants) at 3908 paths; 502 are re-export aliases. 1847 trait impl lines, 203 inherent impl lines. 36 modules, 1 re-export only.
+3239 public items (437 types, 252 functions, 1224 methods, 514 fields, 756 variants, 56 constants) at 3734 paths; 495 are re-export aliases. 1800 trait impl lines, 201 inherent impl lines. 36 modules, 1 re-export only.
 
 | Module | Items | Types | Functions | Methods | Aliases |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -159,23 +161,23 @@ which the `scene` feature pulls in, under the SIL Open Font License 1.1.
 | `sigil::icons` | 12 | 3 | 0 | 2 | 0 |
 | `sigil::icons::builtin` | 9 | 0 | 0 | 0 | 0 |
 | `sigil::kernel` | 197 | 21 | 10 | 104 | 0 |
-| `sigil::layout` | 217 | 30 | 5 | 85 | 0 |
-| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 502 |
-| `sigil::profile` | 161 | 11 | 15 | 12 | 0 |
+| `sigil::layout` | 225 | 30 | 5 | 93 | 0 |
+| `sigil::prelude` (re-export only) | 0 | 0 | 0 | 0 | 495 |
+| `sigil::profile` | 162 | 11 | 15 | 12 | 0 |
 | `sigil::reactive` | 51 | 9 | 14 | 24 | 0 |
 | `sigil::reactive::debug` | 2 | 0 | 2 | 0 | 0 |
 | `sigil::renderer` | 55 | 9 | 1 | 19 | 0 |
 | `sigil::renderer::capture` | 6 | 1 | 2 | 0 | 0 |
 | `sigil::scene` | 251 | 36 | 3 | 52 | 0 |
 | `sigil::shell` | 25 | 5 | 0 | 15 | 0 |
-| `sigil::style` | 742 | 76 | 14 | 302 | 0 |
+| `sigil::style` | 588 | 61 | 10 | 173 | 0 |
 | `sigil::style::palette` | 19 | 1 | 0 | 12 | 0 |
 | `sigil::style::scale` | 27 | 2 | 14 | 3 | 0 |
 | `sigil::style::variant` | 12 | 3 | 0 | 1 | 0 |
 | `sigil::tasks` | 46 | 9 | 8 | 20 | 0 |
 | `sigil::terminal` | 175 | 27 | 33 | 35 | 0 |
 | `sigil::text` | 33 | 5 | 2 | 21 | 0 |
-| `sigil::widgets` | 677 | 87 | 82 | 390 | 0 |
+| `sigil::widgets` | 655 | 87 | 82 | 368 | 0 |
 | `sigil::widgets::interaction` | 11 | 1 | 0 | 10 | 0 |
 | `sigil::widgets::layout_ext` | 15 | 2 | 0 | 13 | 0 |
 

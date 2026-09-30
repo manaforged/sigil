@@ -26,7 +26,7 @@ fn a_still_tree_reports_no_movement() {
 fn a_reactive_class_change_repaints() {
     use sigil::Host;
     use sigil::reactive::signal;
-    use sigil::style::NodeStyleExt;
+    use sigil::style::{NodeStyleExt, Paint, Token};
 
     fn fills(scene: &sigil::scene::CommandScene) -> Vec<sigil::style::Rgba8> {
         scene
@@ -45,7 +45,7 @@ fn a_reactive_class_change_repaints() {
             let mut host = Host::cells();
             host.mount(move || {
                 container()
-                    .class_when(active, "bg-accent")
+                    .paint_when(active, |s| s.bg(Token::Accent))
                     .child(text("cell"))
             });
             host.layout((320.0, 64.0)).expect("layout");
@@ -64,7 +64,7 @@ fn a_reactive_class_change_repaints() {
         let mut host = Host::cells();
         host.mount(move || {
             container()
-                .class_when(active, "bg-accent")
+                .paint_when(active, |s| s.bg(Token::Accent))
                 .child(text("cell"))
         });
         host.layout((320.0, 64.0)).expect("layout");

@@ -147,9 +147,10 @@ fn scroll_default() {
     let img = render_widget_to_png_stub(
         || {
             let body = container()
-                .class("bg-accent rounded-sm")
+                .bg(Token::Accent)
+                .rounded(Radius::Sm)
                 .layout(LayoutStyle::block().fixed_size(312.0, 400.0));
-            scroll(body).extent(400.0).class("rounded-sm")
+            scroll(body).extent(400.0).rounded(Radius::Sm)
         },
         InteractionMode::Default,
         [330, 252],

@@ -8,13 +8,13 @@ never needs them directly.
 
 `interactive(inner: NodeBuilder) -> InteractiveBuilder` turns any node
 into a state-tracking widget: it installs internal `hovered`,
-`pressed`, and `focused` signals and resolves the `Style` state
-overlay against them, so `.hover()`, `.pressed()`, `.focus()`, and
+`pressed`, and `focused` signals and resolves the state
+paint against them, so `.hover()`, `.pressed()`, `.focus()`, and
 `.disabled_style()` style closures work on a plain container.
 
 - `.focusable(bool)` — participate in keyboard focus.
 - `.disabled(value, signal, or closure)` — drive the disabled slot.
-- `.class(&str)` — base classes; `.into_node_builder()` finishes.
+- `Paint` methods set the base paint; `.into_node_builder()` finishes.
 
 This is the primitive `button`, `icon_button`, and the menu-bar
 triggers are made of. If you only need event handlers, use

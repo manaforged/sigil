@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{
-    Dimension, NodeStyleExt, Px, Radius, Style, StyleAccess, StyleAtom, Token, space,
-};
+use crate::style::{Dimension, PaintTarget, Px, Radius, Style, StyleAtom, StyleSlot, Token, space};
 
 const TRACK_WIDTH: f32 = 160.0;
 const TRACK_HEIGHT: f32 = 8.0;
@@ -22,6 +21,7 @@ pub struct GaugeBuilder {
     label: Option<TextContent>,
     warn_threshold: Option<f32>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -38,6 +38,7 @@ impl GaugeBuilder {
             label: None,
             warn_threshold: None,
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -74,9 +75,11 @@ impl GaugeBuilder {
             .label(accessible_label(self.label.as_ref()))
             .value(value, 0.0, max)
             .layout(
-                LayoutStyle::flex_row()
-                    .gap(GAUGE_GAP)
-                    .align_items(AlignItems::Center),
+                self.layout_overrides.apply(
+                    LayoutStyle::flex_row()
+                        .gap(GAUGE_GAP)
+                        .align_items(AlignItems::Center),
+                ),
             );
         if let Some(label) = self.label {
             node = node.child(label_node(label));
@@ -89,9 +92,15 @@ impl GaugeBuilder {
     }
 }
 
-impl StyleAccess for GaugeBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for GaugeBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for GaugeBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 

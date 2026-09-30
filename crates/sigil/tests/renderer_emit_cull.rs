@@ -4,7 +4,7 @@ use sigil::geometry::{Point, Rect, Size};
 use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene, emit_scene_clipped};
-use sigil::style::NodeStyleExt;
+use sigil::style::{Paint, Token};
 use sigil_kittest::CharMeasure;
 
 const TEXT_MEASURE: CharMeasure = CharMeasure {
@@ -37,7 +37,7 @@ fn column(overflow: Option<Overflow>) -> NodeBuilder {
         col = col.child(
             text(format!("row {index}"))
                 .layout(LayoutStyle::block().fixed_size(200.0, 20.0).shrink(0.0))
-                .class("text-on-surface"),
+                .text_color(Token::OnSurface),
         );
     }
     col

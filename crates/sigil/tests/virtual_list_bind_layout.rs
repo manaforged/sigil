@@ -209,8 +209,17 @@ fn items_bind_app_shape_batched_keystrokes() {
             virtual_list(rows, |i, s: &String| {
                 container()
                     .layout(LayoutStyle::flex_row().fixed_size(900.0, 22.0).gap(8.0))
-                    .child(text(format!("{i}")).class("text-on-surface text-xs"))
-                    .child(text(s.clone()).class("text-on-surface text-xs font-mono"))
+                    .child(
+                        text(format!("{i}"))
+                            .text_color(Token::OnSurface)
+                            .font_size(12),
+                    )
+                    .child(
+                        text(s.clone())
+                            .text_color(Token::OnSurface)
+                            .font_size(12)
+                            .font_family(FontFamily::Mono),
+                    )
             })
             .row_height(22.0)
             .viewport_height(330.0)

@@ -20,7 +20,7 @@ use sigil::geometry::Size;
 use sigil::kernel::{FocusScopeKind, *};
 use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{DisplayKind, NodeStyleExt, StyleAtom};
+use sigil::style::NodeStyleExt;
 
 use input::pointer_drag;
 use routing_helpers::{compute_layout, route_event};

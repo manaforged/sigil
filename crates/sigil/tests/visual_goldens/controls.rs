@@ -71,7 +71,7 @@ fn checkbox_checked() {
     let img = render_widget_to_png_stub(
         || {
             let checked = signal(true);
-            checkbox(checked).class("bg-surface rounded-sm")
+            checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
         },
         InteractionMode::Default,
         [36, 36],
@@ -85,7 +85,7 @@ fn checkbox_default() {
     let img = render_widget_to_png_stub(
         || {
             let checked = signal(false);
-            checkbox(checked).class("bg-surface rounded-sm")
+            checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
         },
         InteractionMode::Default,
         [36, 36],
@@ -99,7 +99,7 @@ fn checkbox_hover() {
     let img = render_widget_to_png_stub(
         || {
             let checked = signal(false);
-            checkbox(checked).class("bg-surface rounded-sm")
+            checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
         },
         InteractionMode::Hover,
         [36, 36],
@@ -113,7 +113,7 @@ fn checkbox_pressed() {
     let img = render_widget_to_png_stub(
         || {
             let checked = signal(false);
-            checkbox(checked).class("bg-surface rounded-sm")
+            checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
         },
         InteractionMode::Pressed,
         [36, 36],
@@ -127,7 +127,7 @@ fn checkbox_focused() {
     let img = render_widget_to_png_stub(
         || {
             let checked = signal(false);
-            checkbox(checked).class("bg-surface rounded-sm")
+            checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
         },
         InteractionMode::Focused,
         [36, 36],
@@ -143,7 +143,8 @@ fn checkbox_disabled() {
             let checked = signal(false);
             let dis = signal(true);
             checkbox(checked)
-                .class("bg-surface rounded-sm")
+                .bg(Token::Surface)
+                .rounded(Radius::Sm)
                 .disabled(dis)
         },
         InteractionMode::Disabled,

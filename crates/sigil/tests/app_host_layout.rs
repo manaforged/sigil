@@ -3,7 +3,7 @@
 use sigil::Host;
 use sigil::kernel::{Surface, container, text};
 use sigil::layout::{LayoutBuilderExt, LayoutError, LayoutStyle};
-use sigil::style::{NodeStyleExt, Tone, ToneContext};
+use sigil::style::{Paint, Token, Tone, ToneContext};
 
 #[test]
 fn host_root_is_none_until_build() {
@@ -81,7 +81,7 @@ fn host_paint_skips_surface_children() {
                 container()
                     .layout(LayoutStyle::block().fixed_size(40.0, 24.0))
                     .with(Surface { key: 1 })
-                    .class("bg-accent")
+                    .bg(Token::Accent)
                     .child(text("secret")),
             )
     });

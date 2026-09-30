@@ -56,10 +56,9 @@ this table.
 | `renderer` | `mod renderer` | The GPU and CPU renderers (feature `scene`). |
 | `scene` | `mod scene` | The `CommandScene` display list. |
 | `shell` | `mod shell` | The window shell (feature `desktop`). |
-| `style` | `mod style` | Styles, themes, tokens, and utility classes. |
+| `style` | `mod style` | Paint, themes, tokens, and metrics. |
 | `tasks` | `mod tasks` | Async tasks and cross-thread dispatch. |
 | `terminal` | `mod terminal` | The terminal host (feature `terminal`). |
-| `testing` | `mod testing` | Test support for `sigil-kittest` (feature `kittest`, hidden). |
 | `text` | `mod text` | Fonts and text shaping (feature `scene`). |
 | `widgets` | `mod widgets` | Widget builders. |
 | `wgpu` | `extern crate wgpu` | The `wgpu` version that the renderer uses (feature `scene`). |
@@ -277,6 +276,7 @@ fn main() {
 | `row` | `fn row() -> NodeBuilder` | A container that places its children left to right with the theme gap: 8 px in a window, one cell in a terminal. |
 | `column` | `fn column() -> NodeBuilder` | A container that places its children top to bottom with the theme gap. |
 | `LayoutStyle` | `LayoutStyle::flex_column()`, `flex_row()`, `grid(cols)`, `block()` | Layout description of a node. |
+| `LayoutStyle` spacing | `padding(v)`, `padding_x/y(v)`, `padding_top/right/bottom/left(v)`, `margin(v)`, `margin_x(v)`, `margin_y(v)`, `margin_top(v)`, `margin_right(v)`, `margin_bottom(v)`, `margin_left(v)`, `gap(v)`, `gap_x(v)`, `gap_y(v)` | Padding, margin, and gap in px or text units. `margin_*` take the same type as `margin`; `gap_x` and `gap_y` take the same type as `gap`. |
 | `LayoutBuilderExt` | `fn layout(self, style: LayoutStyle) -> Self` | Set the layout of a node or text. |
 | `WidgetLayoutExt` | `fn layout`, `width`, `height`, `grow` | Override the layout of a widget builder or an image. `layout` sets only the fields its `LayoutStyle` sets; the widget keeps the rest. |
 | `LayoutReactiveExt` | `fn position_reactive`, `size_reactive`, `bounds_reactive` | Write the laid-out position or size to a signal. |
@@ -514,12 +514,16 @@ fn main() {
 
 | Name | Signature | Purpose |
 | --- | --- | --- |
-| `NodeStyleExt` | `class`, `style`, `theme`, `tone`, `focus_ring`, `presence`, `animate` | Style a `NodeBuilder`. |
-| `StyleAtom` | `enum StyleAtom` | One style property. |
+| `NodeStyleExt` | `theme`, `tone`, `focus_ring`, `presence`, `animate`, `visible_when`, `paint_when(signal, \|s\| ..)` | Theme, tone, focus ring, presence, and animation of a `NodeBuilder`. `paint_when` applies the paint from its closure while the signal is true. |
+| `Paint` | `bg(c)`, `background_gradient(g)`, `text_color(c)`, `border_color(c)`, `border_w(px)`, `border_top/right/bottom/left(px)`, `rounded(Radius)`, `shadow(Elevation)`, `opacity(f32)`, `font_size(px)`, `font_weight(u16)`, `font_italic(bool)`, `font_family(FontFamily)`, `line_height(px)`, `letter_spacing_em(f32)`, `tabular_nums(bool)`, `underline()`, `line_through()`, `transition(id)`, `duration(ms)` | Typed paint on nodes, text, widget builders, and state closures. `c` is `impl Into<ColorOrToken>`. Sealed. |
+| `StateVariants` | `fn rest(f)`, `hover(f)`, `focus(f)`, `pressed(f)`, `disabled_style(f)`; `f: FnOnce(StateStyleBuilder) -> StateStyleBuilder` | Paint per interaction state. Works on a plain node, a text node, and a widget. Sealed. |
+| `Token` | `enum Token { Accent, Surface, OnSurface, Border, .. }` | A theme colour. Pass it to `bg`, `text_color`, or `border_color`. |
+| `Radius` | `enum Radius { None, Sm, Base, Md, Lg, Full }` | Corner radius from the theme: 2, 4, 6, 8, and 9999 px. 0 on a character grid. |
+| `Elevation` | `enum Elevation { Sm, Base, Md, Lg, Xl }` | Shadow depth from the theme. |
+| `FontFamily` | `enum FontFamily { Sans, Mono, Serif, Icon, Display }` | Font family for `font_family`. |
 | `Rgba8` | `struct Rgba8 { r, g, b, a: u8 }` | An 8-bit RGBA colour. |
 | `ColorAtom` | `enum ColorAtom { Rgba8(Rgba8), ThemeRef(ColorKey) }` | A colour or a theme colour key. |
 | `Token::scale` / `Token::scale_step` | `fn scale(ScaleRole, u8) -> Option<Token>`, `fn scale_step(self) -> Option<(ScaleRole, u8)>` | Map a scale role and step 1..=12 to its token and back. |
-| `Token::from_name` | `fn from_name(&str) -> Option<Token>` | Parse a built-in token name. |
 | `Theme` | `Theme::light()`, `Theme::dark()`, `Theme::console_dark()` | Theme values. |
 | `Theme::resolve_color` | `fn resolve_color(&self, key: ColorKey) -> Rgba8` | Resolve a colour key. Order: runtime override, theme table, built-in value. An unknown `Custom` name panics in debug builds and paints `missing_token_fallback` with one `tracing` warning per name in release builds. |
 | `Theme::color` | `fn color(&self, token: Token) -> Rgba8` | `resolve_color` for a built-in token. |
@@ -527,72 +531,47 @@ fn main() {
 | `Theme::with_theme_tokens` | `fn with_theme_tokens(self, tokens: &phf::Map<&'static str, ThemeValue>) -> Self` | Fill the theme table layer from static data. |
 | `Tone` | `enum Tone { Neutral, Primary, Info, Success, Warn, Error }` | Semantic colour family. |
 | `FocusRing` | `FocusRing::static_visible(bool)`; `theme_color(Token)` | Focus ring settings. `theme_color` sets the ring colour from a theme token. |
-| `StyleAccess` | `trait StyleAccess` | Access to the `Style` of a builder. |
-| `Styleable` | `fn styled(self) -> NodeStyledBuilder` | Style a `NodeBuilder` with method calls. |
-| `Styled` | `trait Styled` | All the style method traits together. |
-| `Fill` | `fn bg(color)`, `fn text_color(color)` | Background and text colour. |
-| `Flex` | `fn flex_row()`, `flex_col()`, `hidden()` | Display and flex direction. |
-| `Geometry` | `fn rounded(px)`, `border_w(px)`, `border_color(color)` | Radius and border. |
-| `Sizing` | `fn w(dim)`, `h(dim)`, `min_w(dim)`, `max_w(dim)` | Width and height. |
-| `Spacing` | `fn padding(px)`, `px(px)`, `py(px)` | Padding. |
-| `Typography` | `fn font_size(px)`, `font_weight(w)`, `line_height(px)` | Font properties. |
-| `Visual` | `fn opacity(v)`, `overflow_hidden()` | Opacity, transform, and overflow. |
-| `Transitions` | `fn transition(id)`, `duration(ms)` | Style transitions. |
-| `StateVariants` | `fn hover(f)`, `focus(f)`, `pressed(f)` | Style per interaction state. |
 
-Style calls write to one store per node. A later call wins for each
-property that it sets, whether it is `.class`, `.style`, a typed method
-such as `.padding`, or `.layout`. A background, border, or size that you
-set on a widget holds in every state, over the widget's own defaults.
-To keep a widget's hover and press feedback in another colour, set
-`.tone(..)` instead of a colour. `.style(Style)` keeps the hover, focus,
-pressed, and disabled states of its `Style`. On a widget builder,
-`class`, `style`, and the typed methods win over `width`, `height`,
-`grow`, and `layout` for the same property. Text has no pointer state,
-so put state styles on the container around it.
+Paint calls write to one store per node. A later call wins for each
+property that it sets, whether it is a `Paint` method, a state variant,
+or `.layout`. A background, border, or size that you set on a widget
+holds in every state, over the widget's own defaults. To keep a
+widget's hover and press feedback in another colour, set `.tone(..)`
+instead of a colour. On a widget builder, the `Paint` methods win over
+`width`, `height`, `grow`, and `layout` for the same property.
 
 ```rust,no_run
 use sigil::style::ColorOrToken;
 use sigil::style::NumericAtomKind;
-use sigil::style::Px;
-use sigil::style::StateStyle;
-use sigil::style::Style;
 use sigil::style::StyleState;
-use sigil::style::StyleVariant;
 use sigil::style::ThemeValue;
-use sigil::style::parse_classes;
 use sigil::prelude::*;
 
 fn tree() -> impl IntoNode {
-    let atoms = parse_classes("p-8 rounded-md");
-    let styled = container().styled().bg(Rgba8 { r: 20, g: 20, b: 30, a: 255 }).padding(8).rounded(4);
-    let styled = styled.text_color(ColorOrToken::Token(sigil::style::Token::OnSurface.into())).font_weight(600).opacity(0.9);
-    let styled = styled.w(sigil::style::Dimension::Px(Px(200))).flex_col().hover(|s| s.bg(ColorOrToken::Token(sigil::style::Token::SurfaceHover.into())));
-    let style = Style::new().class("bg-surface text-sm");
-    let _ = (StyleAtom::PaddingAll(Px(4)), sigil::style::Token::Accent.color(), ThemeValue::Ms(150));
-    let _ = StyleVariant::new(atoms, StateStyle::new(&[], &[], &[], &[], &[]));
+    let card = container()
+        .layout(LayoutStyle::default().padding(8.0).margin_x(16.0).gap_y(4.0))
+        .bg(Rgba8 { r: 20, g: 20, b: 30, a: 255 })
+        .rounded(Radius::Base)
+        .shadow(Elevation::Md)
+        .border_w(1)
+        .border_color(Token::Border)
+        .hover(|s| s.bg(Token::SurfaceHover))
+        .disabled_style(|s| s.opacity(0.5))
+        .child(text("Title").font_size(14).font_weight(600).text_color(Token::OnSurface))
+        .child(text("42").font_family(FontFamily::Mono).tabular_nums(true));
+    let _ = (ColorOrToken::from(Token::Accent), Token::Accent.color(), ThemeValue::Ms(150));
     let _ = (StyleState { disabled: false, hovered: true, pressed: false, focused: false }, NumericAtomKind::Opacity);
     let theme = Theme::dark();
-    let node = container().class(atoms).style(style).tone(Tone::Primary).focus_ring(FocusRing::static_visible(true));
-    fragment().child(node.theme(theme)).child(styled)
+    let node = container().tone(Tone::Primary).focus_ring(FocusRing::static_visible(true));
+    fragment().child(node.theme(theme)).child(card)
 }
 
 fn main() {
     let _ = tree;
-    fn _traits<T: Styled + Fill + Flex + Geometry + Sizing + Spacing + Typography + Visual + Transitions + StateVariants + StyleAccess>(_: T) {}
-    fn _styleable<T: Styleable + NodeStyleExt>(_: T) {}
+    fn _traits<T: Paint + StateVariants>(_: T) {}
+    fn _node<T: NodeStyleExt>(_: T) {}
 }
 ```
-
-`.class("...")` takes a class string. An unknown class name panics in
-a debug build with the three nearest valid names, and logs one warning
-per name in a release build and has no effect. Spacing and size
-numbers in a class are pixels, the same unit as the builder methods:
-`p-16` equals `.padding(16.0)`. A class that names an unknown theme token
-reports the token and the nearest registered names in a debug build,
-and uses a fallback colour in a release build. The class names follow the token names in
-`sigil::style::Token`, for example `bg-surface`, `text-on-surface`,
-and `border-border`.
 
 ### Animation
 
@@ -644,7 +623,7 @@ fn main() {
 | `slider` | `fn slider(value: Signal<f32>, range: RangeInclusive<f32>) -> SliderBuilder` | A value slider. |
 | `Orientation` | `enum Orientation { Horizontal, Vertical }` | Slider axis. |
 | `text_field` | `fn text_field(value: Signal<String>) -> TextFieldBuilder` | A single-line text input. |
-| `text_edit` | `fn text_edit(value: Signal<String>) -> TextEditBuilder` | A multi-line text editor. |
+| `text_edit` | `fn text_edit(value: Signal<String>) -> TextEditBuilder`; `.autofocus()`, `.focus_when(Signal<u64>)` | A multi-line text editor. `autofocus` focuses it when it mounts; `focus_when` focuses it each time the signal changes. |
 | `number_field` | `fn number_field<T: NumericKind>(value: Signal<T>, range: RangeInclusive<T>) -> NumberFieldBuilder<T>` | A numeric input. |
 | `NumericKind` | `trait NumericKind` | Number types that `number_field` accepts. |
 | `date_field` | `fn date_field(value: Signal<Date>) -> DateFieldBuilder` | A date input. |
@@ -989,7 +968,6 @@ Public items outside the prelude. Import them by path.
 | `style::scale` | `const fn {slate, blue, green, amber, ruby, cyan, iris}_{light, dark}() -> ColorScale` | Twelve-step colour scales for `Theme`. |
 | `style::Theme::with_gray_scale` | `with_gray_scale`, `with_accent_scale`, `with_success_scale`, `with_warn_scale`, `with_error_scale`, `with_info_scale` (each `const fn(self, scale: ColorScale) -> Self`) | Replace one colour scale of a theme. |
 | `style::theme::font_family_hint` | `const fn font_family_hint(variant: Variant) -> FontFamilyHint` | The font family a theme variant asks for. |
-| `style::Style` | `as_atoms() -> &[StyleAtom]`, `grid_columns(n)`, `grid_rows(n)`, `max_height(Dimension)`, `background_theme(impl Into<ColorKey>)`, `font_italic(bool)`, `line_through()`, `opacity_raw(u16)`, `radius_token(Radius)`, `unknown_theme_ref(&'static str)` | More `Style` builders. `opacity_raw` takes the raw stored `u16` value of the opacity atom. `unknown_theme_ref` records a theme name that did not parse, for diagnostics. |
 | `layout::LayoutStyle` | `grid_columns(Vec<TrackSize>)`, `grid_rows(Vec<TrackSize>)`, `grid_area(col, row)`, `grid_dense()`, `max_height(impl Into<Dimension>)`, `with_layout(f: impl FnOnce(&mut StyleData))` | Grid tracks and placement, and direct access to the layout data. |
 | `style::Metrics::icon_size` | `fn icon_size(self) -> f32` | Icon size in points, or one cell on the terminal host. |
 | `style::Size::px_or_zero` | `const fn px_or_zero(self) -> f32` | The pixel value, or 0 for a non-pixel size. `LengthPercentage` and `Dimension` have the same method. |
@@ -1341,22 +1319,16 @@ fn main() -> AppResult<()> {
 | `style::atom::RenderStyle` | `struct RenderStyle { background_color, background_gradient, text_color, border_radius, border_width, border_top, .., border_color, shadow, opacity: u16, transform: Transform2D }` | Holds the resolved paint properties of one node. Opacity is in units of 1/10000. |
 | `style::atom::TextDecoration` | `enum TextDecoration { None, Underline, .. }` | Selects the line drawn with text. |
 | `style::binding::ReactiveStateSlot`, `style::binding::ReactiveStyleAtoms` | `type ReactiveStateSlot = Rc<Cell<StateSlot>>`; `type ReactiveStyleAtoms = Rc<Cell<&'static [StyleAtom]>>` | Shared cells that let code change a node's state slot or style atoms without rebuilding the tree. |
-| `style::builder_ext::ClassSource` | `enum ClassSource { Static(&'static [StyleAtom]), Owned(Box<SmallVec<[StyleAtom; 16]>>), RawString(&'static str), .. }` | Holds the classes given to a builder as parsed atoms or as a class string to parse. |
-| `style::builder_ext::parse_classes` | `fn parse_classes(input: &'static str) -> &'static [StyleAtom]` | Parses a class string into style atoms and caches the result per string. |
 | `style::engine::StyleEngine` | `struct StyleEngine<'theme>`; `apply(&self, &[StyleAtom], &mut RenderStyle)`, `apply_text(&self, &[StyleAtom], &mut TextStyle)`, `resolve_color(&self, ColorAtom) -> Rgba8` | Applies style atoms to paint and text styles against a theme and tone. |
-| `style::merge::merge_classes` | `fn merge_classes(defaults: &[StyleAtom], overrides: &[StyleAtom], component_id: ComponentId) -> SmallVec<[StyleAtom; 32]>` | Merges default and override atoms so an override replaces the default in the same slot. |
 | `style::merge::merge_warning_count`, `style::merge::merge_warning_count_for_component`, `style::merge::unknown_class_warning_count`, `style::merge::bump_unknown_class_count` | `fn merge_warning_count() -> usize`; `fn merge_warning_count_for_component(ComponentId) -> usize`; `fn unknown_class_warning_count() -> usize`; `fn bump_unknown_class_count()` | Read and increment the counters for merge conflicts and unknown class names. |
 | `style::metrics::BORDER_WIDTH`, `style::metrics::DISABLED_OPACITY`, `style::metrics::ICON_SIZE`, `style::metrics::OVERLAY_SHADOW` | `const BORDER_WIDTH: Px = Px(1)`; `const DISABLED_OPACITY: u16 = 5_000`; `const ICON_SIZE: Px = Px(20)`; `const OVERLAY_SHADOW: Elevation = Elevation::Md` | Default border width, disabled opacity, icon size, and overlay shadow for widgets. |
 | `style::metrics::space` | `const fn space(steps: u8) -> f32` | Converts a number of spacing steps to pixels. |
 | `style::overlay::StyleOverlay` | `struct StyleOverlay`; `new()`, `is_empty()`, `rest()`, `hover()`, `focus()`, `pressed()`, `disabled()`, `atoms_for(StateSlot) -> &[StyleAtom]` | Holds extra style atoms for each interaction state. |
-| `style::parser::ParseError` | `enum ParseError { Unknown { token, suggestions: [String; 3] }, ResponsiveNotSupported { prefix }, PseudoNotSupported { prefix } }` | Reports a class token that does not parse, with the three nearest known tokens. |
-| `style::parser::parse_class_string` | `fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, ParseError>` | Parses a space-separated class string into style atoms. |
-| `style::parser::StatefulToken`, `style::parser::parse_stateful_token` | `struct StatefulToken { slot: Option<StateSlot>, atoms: SmallVec<[StyleAtom; 2]> }`; `fn parse_stateful_token(token: &str) -> Result<StatefulToken, ParseError>` | Parses one class token with an optional state prefix such as `hover:`. |
 | `style::resolve::render_style_for` | `fn render_style_for(id: NodeId, node: &Node, inherited: &Theme, inherited_text: Option<Rgba8>) -> RenderStyle` | Resolves the paint style of a node from its style binding and theme. |
 | `style::resolve::text_style_for` | `fn text_style_for(node: &Node, inherited: &Theme, base: &TextStyle) -> TextStyle` | Resolves the text style of a node on top of a base text style. |
 | `style::scale::slate_light`, `style::scale::iris_light`, `style::scale::blue_light`, `style::scale::green_light`, `style::scale::amber_light`, `style::scale::ruby_light`, `style::scale::cyan_light`, `style::scale::slate_dark`, `style::scale::iris_dark`, `style::scale::blue_dark`, `style::scale::green_dark`, `style::scale::amber_dark`, `style::scale::ruby_dark`, `style::scale::cyan_dark` | `const fn slate_light() -> ColorScale` (same shape for each) | Return the built-in 12-step color scales for light and dark themes. |
 | `style::state::StateSlot` | `enum StateSlot { Rest, Focused, Hovered, Pressed, Disabled }` | Names the interaction state that selects state style atoms. |
-| `style::styled::StateHost`, `style::styled::StateStyleBuilder` | `trait StateHost {}`; `struct StateStyleBuilder` | Mark a builder that accepts per-state styles and build the style for one state. |
+| `style::styled::StateStyleBuilder` | `struct StateStyleBuilder` | Builds the paint for one interaction state. Implements `Paint`. |
 | `style::text_style::TextLineHeight` | `enum TextLineHeight { FontSizeRelative(f32), Absolute(f32) }` | Gives line height as a multiple of font size or in pixels. |
 | `style::text_style::TextStyle` | `struct TextStyle { font_family: String, font_size: f32, font_weight: u16, italic: bool, line_height: TextLineHeight, letter_spacing_em: f32, tabular_nums: bool, decoration: TextDecoration, runs: Option<TextRuns> }` | Holds the resolved typography of a text node. |
 | `style::text_style::TextFace`, `style::text_style::TextRun`, `style::text_style::TextRuns` | `struct TextFace { bold, italic, mono, .. }`; `struct TextRun { start: usize, end: usize, face: TextFace, .. }`; `struct TextRuns(pub Arc<[TextRun]>)` | Mark byte ranges of a text with bold, italic, or monospace faces. |
@@ -1366,11 +1338,9 @@ fn main() -> AppResult<()> {
 | `style::tone::ToneContext` | `struct ToneContext { tone: Tone }`; `new(Tone)` | Carries the tone that descendants resolve tone colors against. |
 | `style::variant::VariantTokens` | `struct VariantTokens { radius: u16, shadows: bool, hover_lift: bool, font: FontFamilyHint }` | Holds the radius, shadow, hover, and font settings of a theme variant. |
 | `style::variant_kit::SOLID_VARIANT`, `style::variant_kit::SOFT_VARIANT`, `style::variant_kit::GHOST_VARIANT` | `const SOLID_VARIANT: StyleVariant` (same for soft and ghost) | Built-in solid, soft, and ghost style variants with their per-state atoms. |
-| `style::parse_classes` | `fn parse_classes(input: &'static str) -> &'static [StyleAtom]` | Parse utility classes into style atoms, cached per string. `.class("...")` calls it. |
-| `style::Style` | `Style::new().class(input)` | A list of style atoms with state variants. |
 | `style::Px` | `struct Px(pub i16)` | A pixel length in a style atom. |
-| `style::ColorOrToken` | `enum ColorOrToken { Rgba(Rgba8), Token(ColorKey), Atom(ColorAtom) }` | Colour argument of the style traits. A `&'static str` converts through `ColorKey::parse`. |
-| `style::ColorKey` | `enum ColorKey { Token(Token), Custom(&'static str) }`, `ColorKey::parse(name)` | Typed key of a theme colour. `parse` maps a built-in name to `Token` and any other name to `Custom`. Class strings parse to this key once. |
+| `style::ColorOrToken` | `enum ColorOrToken { Rgba(Rgba8), Token(ColorKey), Atom(ColorAtom) }` | Colour argument of the `Paint` methods. Converts from `Token`, `Rgba8`, and `ColorAtom`. |
+| `style::ColorKey` | `enum ColorKey { Token(Token), Custom(&'static str) }`, `ColorKey::parse(name)` | Typed key of a theme colour. `parse` maps a built-in name to `Token` and any other name to `Custom`. |
 | `style::TokenTable` | `struct TokenTable { overrides: TokenLayer, theme: TokenLayer }` | The runtime override and theme layers of `Theme::tokens`. |
 | `style::TokenLayer` | `color(ColorKey)`, `value(&str)`, `insert(&str, ThemeValue)`, `names()` | One layer: a fixed array per `Token` plus a map for custom names. |
 | `style::ThemeValue` | `enum ThemeValue { Color(Rgba8), Px(f32), Ms(u16) }` | One theme token value. |

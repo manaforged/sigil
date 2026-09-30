@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
+use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
 
 use crate::widgets::interaction::InteractionState;
 
@@ -66,13 +66,6 @@ impl TextFieldBuilder {
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
         }
-    }
-
-    #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
     }
 
     pub fn caret_visible(&mut self) -> Signal<bool> {
@@ -205,9 +198,9 @@ impl TextFieldBuilder {
     }
 }
 
-impl StyleAccess for TextFieldBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for TextFieldBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 
@@ -230,7 +223,7 @@ impl IntoNode for TextFieldBuilder {
             focus_field(id, &runtime, at);
         }
         if let Some(trigger) = focus_trigger {
-            install_focus_trigger(id, trigger, runtime, at);
+            crate::events::focus::focus_on_trigger(trigger, move || focus_field(id, &runtime, at));
         }
         id
     }
@@ -239,19 +232,4 @@ impl IntoNode for TextFieldBuilder {
 fn focus_field(id: crate::kernel::NodeId, runtime: &TextFieldRuntime, at: FocusCaret) {
     crate::events::request_focus(id);
     runtime.input.place_on_focus(at);
-}
-
-fn install_focus_trigger(
-    id: crate::kernel::NodeId,
-    trigger: Signal<u64>,
-    runtime: TextFieldRuntime,
-    at: FocusCaret,
-) {
-    let last = std::cell::Cell::new(trigger.peek());
-    crate::reactive::effect_named("sigil::text_field::focus_when", move || {
-        let generation = trigger.get();
-        if generation != last.replace(generation) {
-            focus_field(id, &runtime, at);
-        }
-    });
 }

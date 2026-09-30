@@ -1,7 +1,7 @@
 use crate::kernel::{AccessibleName, Cx, IntoNode, NodeId, Role, TextContent, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Reactive, Signal, derived};
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{DisplayKind, StyleAtom, Token, space};
 
 use super::color_field::ColorFieldBuilder;
 use super::number_field::{NumberFieldBuilder, NumericKind};

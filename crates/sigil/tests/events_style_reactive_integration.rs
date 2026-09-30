@@ -17,11 +17,9 @@ use sigil::geometry::{Point, Size};
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, NodeStyleExt, StyleAtom, StyleBinding, Token};
+use sigil::style::{ColorKey, NodeStyleExt, Paint, StyleAtom, StyleBinding, Token};
 
-static HOVER_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Surface,
-))];
+static HOVER_OFF: &[StyleAtom] = &[];
 static HOVER_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Accent,
 ))];
@@ -48,7 +46,8 @@ fn pointer_move_drives_style_reactive_without_allocating() {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(50.0, 50.0))
-                        .style_reactive(move || if hover.get() { HOVER_ON } else { HOVER_OFF }),
+                        .bg(Token::Surface)
+                        .paint_when(hover, |s| s.bg(Token::Accent)),
                 ),
         );
         let child = first_child(&cx, root);

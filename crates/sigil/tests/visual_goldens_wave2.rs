@@ -21,7 +21,7 @@ fn icon_default() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(icon("i"))
         },
@@ -37,7 +37,7 @@ fn icon_primary_tone() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(icon("+").tone(Tone::Primary))
         },
@@ -53,7 +53,7 @@ fn icon_error_tone() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(icon("x").tone(Tone::Error))
         },
@@ -69,7 +69,7 @@ fn dot_success() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(dot(Tone::Success))
         },
@@ -85,7 +85,7 @@ fn dot_warn_default_size() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(dot(Tone::Warn).size(ControlSize::Default))
         },
@@ -101,7 +101,7 @@ fn dot_error_wide() {
     let img = render_widget_to_png_stub(
         || {
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(dot(Tone::Error).size(ControlSize::Wide))
         },
@@ -118,7 +118,7 @@ fn radio_group_three_options_first_selected() {
         || {
             let selected = signal(String::from("light"));
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(
                     radio_group(selected)
@@ -144,7 +144,7 @@ fn radio_group_middle_selected() {
         || {
             let selected = signal(String::from("dark"));
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(
                     radio_group(selected)
@@ -166,7 +166,7 @@ fn validated_field_no_error() {
         || {
             let error: Signal<Option<String>> = signal(None);
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(
                     sigil::widgets::field("Email", text_field(signal(String::new()))).error(error),
@@ -185,7 +185,7 @@ fn validated_field_with_error() {
         || {
             let error: Signal<Option<String>> = signal(Some(String::from("Email must contain @")));
             container()
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .layout(LayoutStyle::flex_row().fill())
                 .child(
                     sigil::widgets::field("Email", text_field(signal(String::new()))).error(error),

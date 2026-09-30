@@ -8,10 +8,11 @@ use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, StyleOverlay, Theme};
+use crate::style::{NodeStyleExt, PaintTarget, StateHost, Style, StyleOverlay, StyleSlot, Theme};
 
 use crate::widgets::interaction::InteractionState;
 
+use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::{BuilderMutator, control_surface, disabled_now};
 use super::handlers::{
     attach_key_handlers, normalized_step, pointer_down, pointer_move, pointer_up, quantize,
@@ -65,6 +66,7 @@ pub struct SliderBuilder {
     marks: Vec<String>,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -90,6 +92,7 @@ impl SliderBuilder {
             marks: Vec::new(),
             mutators: Vec::new(),
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -142,19 +145,6 @@ impl SliderBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style_accumulator.merge(style);
-        self
-    }
-
-    #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
         self
@@ -184,13 +174,19 @@ impl SliderBuilder {
     }
 }
 
-impl StyleAccess for SliderBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for SliderBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 
 impl StateHost for SliderBuilder {}
+
+impl WidgetLayoutExt for SliderBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
 
 impl SliderBuilder {
     fn base_node(
@@ -201,7 +197,13 @@ impl SliderBuilder {
     ) -> NodeBuilder {
         let runtime = SliderRuntime::from_builder(self);
         let node = attach_key_handlers(
-            slider_root(runtime, interaction, user_overlay, self.accessible_label()),
+            slider_root(
+                runtime,
+                interaction,
+                user_overlay,
+                self.accessible_label(),
+                self.layout_overrides.clone(),
+            ),
             interaction,
             runtime,
             Rc::clone(&on_change),
@@ -303,6 +305,7 @@ fn slider_root(
     interaction: InteractionState,
     user_overlay: StyleOverlay,
     label: String,
+    overrides: LayoutOverrides,
 ) -> NodeBuilder {
     let root = container()
         .role(Role::Slider)
@@ -311,7 +314,7 @@ fn slider_root(
         .action(Action::Decrement)
         .value(runtime.value, runtime.range.min, runtime.range.max)
         .value_step(runtime.step)
-        .layout(slider_layout(runtime.orientation, runtime.length));
+        .layout(overrides.apply(slider_layout(runtime.orientation, runtime.length)));
     let root = control_surface(root, interaction, runtime.disabled, user_overlay);
     match runtime.orientation {
         Orientation::Horizontal => root

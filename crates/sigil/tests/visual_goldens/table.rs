@@ -52,7 +52,7 @@ fn table_golden_state() -> sigil::widgets::TableState<TableRow> {
 fn table_golden_view() -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(
             table(table_golden_state())
                 .row_height(24.0)
@@ -81,7 +81,7 @@ fn table_selected() {
             state.select_only(1);
             container()
                 .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(
                     table(state)
                         .row_height(24.0)
@@ -105,7 +105,7 @@ fn table_sorted() {
             state.toggle_sort("name");
             container()
                 .layout(LayoutStyle::block().fixed_size(320.0, 172.0))
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(
                     table(state)
                         .row_height(24.0)

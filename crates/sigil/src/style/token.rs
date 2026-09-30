@@ -20,7 +20,7 @@ macro_rules! tokens {
             }
 
             #[must_use]
-            pub fn from_name(name: &str) -> Option<Self> {
+            pub(crate) fn from_name(name: &str) -> Option<Self> {
                 match name {
                     $($name => Some(Self::$variant),)*
                     _ => None,
@@ -169,17 +169,17 @@ impl Token {
     }
 
     #[must_use]
-    pub const fn bg(self) -> StyleAtom {
+    pub(crate) const fn bg(self) -> StyleAtom {
         StyleAtom::BackgroundThemeRef(ColorKey::Token(self))
     }
 
     #[must_use]
-    pub const fn text(self) -> StyleAtom {
+    pub(crate) const fn text(self) -> StyleAtom {
         StyleAtom::TextThemeRef(ColorKey::Token(self))
     }
 
     #[must_use]
-    pub const fn border(self) -> StyleAtom {
+    pub(crate) const fn border(self) -> StyleAtom {
         StyleAtom::BorderThemeRef(ColorKey::Token(self))
     }
 }
@@ -192,7 +192,7 @@ pub enum ColorKey {
 
 impl ColorKey {
     #[must_use]
-    pub fn parse(name: &'static str) -> Self {
+    pub(crate) fn parse(name: &'static str) -> Self {
         Token::from_name(name).map_or(Self::Custom(name), Self::Token)
     }
 
@@ -208,11 +208,5 @@ impl ColorKey {
 impl From<Token> for ColorKey {
     fn from(token: Token) -> Self {
         Self::Token(token)
-    }
-}
-
-impl From<&'static str> for ColorKey {
-    fn from(name: &'static str) -> Self {
-        Self::parse(name)
     }
 }

@@ -1,19 +1,45 @@
 toolchain = "nightly-2026-09-16"
 book = "docs"
+markdown = ["README.md"]
 
 [[crate]]
 package = "sigil-ui"
 prelude = "sigil::prelude"
+prelude-budget = 174
+docs = ["docs/api.md"]
+doc-sections = { "Prelude" = "prelude", "Crate root" = "" }
+journey-prefix = "story-"
+journey-ignore = ["contains", "is_empty", "iter", "filter", "push", "max", "trim", "to_string", "into", "clone", "map", "unwrap_or_default", "retain", "count", "Rc"]
 features = ["desktop","scene","shell","cpu","shaping-complex","render","clipboard","clipboard-image","dialog","native-dialog","menu","tray","image-decode","inspect","audio","pty","terminal"]
 tag = "sigil-ui-v{version}"
 
+[crate.journeys]
+story-01-hello = 6
+story-02-counter = 13
+story-03-form = 19
+story-04-todo = 24
+story-05-nav = 17
+story-07-async = 19
+story-08-component = 14
+story-09-test = 8
+
 [[crate]]
 package = "sigil-kittest"
+docs = ["docs/api.md"]
 tag = "sigil-kittest-v{version}"
+
+[crate.lint]
+undocumented = "allow"
 
 [[crate]]
 package = "sigil-sign"
+docs = ["docs/api.md"]
 tag = "sigil-sign-v{version}"
+
+[crate.lint]
+undocumented = "allow"
 
 [lint]
 duplicate-path = "deny"
+undocumented = "deny"
+stale-doc = "deny"

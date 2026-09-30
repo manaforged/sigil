@@ -1,23 +1,38 @@
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::collections::{HashMap, HashSet};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use smallvec::SmallVec;
 
 use crate::style::{StyleAtom, parse_class_string, parser::ParseError};
 
-pub fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
+pub(crate) fn parse_classes(input: &'static str) -> &'static [StyleAtom] {
     static CACHE: OnceLock<Mutex<HashMap<&'static str, &'static [StyleAtom]>>> = OnceLock::new();
 
-    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    let Ok(mut cache) = cache.lock() else {
-        return parse_and_leak(input);
-    };
+    let mut cache = CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
     if let Some(atoms) = cache.get(input).copied() {
         return atoms;
     }
     let atoms = parse_and_leak(input);
     cache.insert(input, atoms);
     atoms
+}
+
+pub(crate) fn intern_atoms(atoms: SmallVec<[StyleAtom; 16]>) -> &'static [StyleAtom] {
+    static CACHE: OnceLock<Mutex<HashSet<&'static [StyleAtom]>>> = OnceLock::new();
+
+    let mut cache = CACHE
+        .get_or_init(|| Mutex::new(HashSet::new()))
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner);
+    if let Some(interned) = cache.get(atoms.as_slice()).copied() {
+        return interned;
+    }
+    let interned: &'static [StyleAtom] = Box::leak(atoms.into_vec().into_boxed_slice());
+    cache.insert(interned);
+    interned
 }
 
 fn parse_and_leak(input: &'static str) -> &'static [StyleAtom] {
@@ -49,7 +64,7 @@ pub(crate) mod diagnostic {
     #[cold]
     pub(crate) fn class_parse(input: &str, err: &ParseError) {
         use std::collections::HashSet;
-        use std::sync::{Mutex, OnceLock};
+        use std::sync::{Mutex, OnceLock, PoisonError};
 
         static WARNED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
         bump_unknown_class_count();

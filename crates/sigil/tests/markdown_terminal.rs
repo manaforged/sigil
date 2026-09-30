@@ -7,7 +7,7 @@
 use sigil::Host;
 use sigil::app::HostCaps;
 use sigil::events::{EventRouter, ShellEvent};
-use sigil::prelude::NodeStyleExt;
+use sigil::prelude::Paint;
 use sigil::reactive::{Runtime, signal};
 use sigil::terminal::{Cell, Grid, Underline, step};
 use sigil::widgets::markdown;
@@ -93,7 +93,7 @@ fn paragraph(cols: u16, inline: bool) -> Vec<String> {
     let grid = sigil::terminal::present(
         move || {
             if inline {
-                sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).class("italic"))
+                sigil::kernel::node(sigil::widgets::markdown_inline(REASONING).font_italic(true))
             } else {
                 sigil::kernel::node(markdown(signal(REASONING.to_string())))
             }

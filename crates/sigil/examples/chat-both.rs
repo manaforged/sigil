@@ -228,7 +228,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
                 .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)))
                 .child(text(move || format!("# {}", current_name(chat))).nowrap())
                 .child(spacer())
-                .child(text("sigil-chat").nowrap().class("text-sm")),
+                .child(text("sigil-chat").nowrap().font_size(14)),
         )
         .child(work(chat, posts))
         .child(status_bar([
@@ -310,7 +310,7 @@ fn message(chat: Chat, index: usize) -> NodeBuilder {
     let body = text(move || read(|msg| msg.body.clone()).unwrap_or_default());
     container()
         .layout(LayoutStyle::flex_column().fill_width())
-        .child(text(head).nowrap().class("text-sm text-accent"))
+        .child(text(head).nowrap().font_size(14).text_color(Token::Accent))
         .child(body.wrap())
 }
 

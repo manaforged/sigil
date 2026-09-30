@@ -13,7 +13,7 @@ use crate::style::{
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::shared::{control_surface, disabled_a11y, disabled_now};
 use crate::kernel::IntoNode;
-use crate::style::StyleAccess;
+use crate::style::{PaintTarget, StyleSlot};
 use crate::widgets::interaction::InteractionState;
 
 type Locked = Option<Signal<bool>>;
@@ -280,9 +280,9 @@ fn mark_inner_layout() -> LayoutStyle {
     LayoutStyle::flex_row().fixed_size(MARK_INNER, MARK_INNER)
 }
 
-impl StyleAccess for RadioGroupBuilder {
-    fn style_mut(&mut self) -> &mut crate::style::Style {
-        &mut self.style_accumulator
+impl PaintTarget for RadioGroupBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

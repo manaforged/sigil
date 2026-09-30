@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::{AccessibleName, Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
-use crate::style::{NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, Tone};
+use crate::style::{NodeStyleExt, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, Tone};
 
 const TRACK_HEIGHT: f32 = 8.0;
 const INDETERMINATE_RATIO: f32 = 0.30;
@@ -17,10 +18,10 @@ pub struct ProgressBuilder {
     max: f32,
     pub indeterminate: bool,
     track_height: f32,
-    track_width: Option<f32>,
     tone: Tone,
     name: AccessibleName,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -36,10 +37,10 @@ impl ProgressBuilder {
             max: max.max(f32::EPSILON),
             indeterminate: false,
             track_height: TRACK_HEIGHT,
-            track_width: None,
             tone: Tone::Primary,
             name: AccessibleName::from("Progress"),
             style_accumulator: Style::new(),
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -52,12 +53,6 @@ impl ProgressBuilder {
     #[must_use]
     pub const fn height(mut self, px: f32) -> Self {
         self.track_height = px;
-        self
-    }
-
-    #[must_use]
-    pub const fn width(mut self, px: f32) -> Self {
-        self.track_width = Some(px);
         self
     }
 
@@ -77,7 +72,6 @@ impl ProgressBuilder {
         let value = self.value;
         let max = self.max;
         let track_h = self.track_height;
-        let track_w = self.track_width;
         let is_indeterminate = self.indeterminate;
         let style_accumulator = self.style_accumulator;
 
@@ -91,7 +85,7 @@ impl ProgressBuilder {
             .role(Role::ProgressIndicator)
             .label(self.name)
             .value(value, 0.0, max)
-            .layout(track_layout(track_h, track_w))
+            .layout(self.layout_overrides.apply(track_layout(track_h)))
             .class(TRACK)
             .child(fill);
         if !style_accumulator.is_empty() {
@@ -101,9 +95,15 @@ impl ProgressBuilder {
     }
 }
 
-impl StyleAccess for ProgressBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for ProgressBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for ProgressBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 
@@ -113,13 +113,11 @@ impl IntoNode for ProgressBuilder {
     }
 }
 
-fn track_layout(track_h: f32, track_w: Option<f32>) -> LayoutStyle {
-    let base = LayoutStyle::flex_row().height(track_h);
-    let base = match track_w {
-        Some(w) => base.width(w),
-        None => base.fill_width(),
-    };
-    base.align_items(AlignItems::Center)
+fn track_layout(track_h: f32) -> LayoutStyle {
+    LayoutStyle::flex_row()
+        .height(track_h)
+        .fill_width()
+        .align_items(AlignItems::Center)
 }
 
 fn determinate_fill(value: Signal<f32>, max: f32, track_h: f32, tone: Tone) -> NodeBuilder {

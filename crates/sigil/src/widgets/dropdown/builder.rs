@@ -7,11 +7,13 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, tex
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
-    BORDER_WIDTH, NodeStyleExt, Radius, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
-    StyleOverlay, StyleVariant, Token, TransitionId, space,
+    BORDER_WIDTH, PaintTarget, Radius, StateHost, StateStyle, Style, StyleAtom, StyleOverlay,
+    StyleSlot, StyleVariant, Token, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;
+
+use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 use super::super::listbox::listbox;
 use super::super::popup::{ChevronDirection, chevron};
@@ -48,8 +50,7 @@ pub struct DropdownBuilder {
     disabled: Option<Signal<bool>>,
     on_change: Option<IndexChange>,
     style_accumulator: Style,
-    width: Option<f32>,
-    height: f32,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -67,8 +68,7 @@ impl DropdownBuilder {
             disabled: None,
             on_change: None,
             style_accumulator: Style::new(),
-            width: None,
-            height: TRIGGER_HEIGHT,
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -81,18 +81,6 @@ impl DropdownBuilder {
     #[must_use]
     pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.disabled = Some(disabled.into_signal());
-        self
-    }
-
-    #[must_use]
-    pub const fn width(mut self, px: f32) -> Self {
-        self.width = Some(px);
-        self
-    }
-
-    #[must_use]
-    pub const fn height(mut self, px: f32) -> Self {
-        self.height = px;
         self
     }
 
@@ -121,8 +109,11 @@ impl DropdownBuilder {
             open,
             cursor,
             disabled,
-            width: self.width,
-            trigger_height: self.height,
+            width: self.layout_overrides.width_hint(),
+            trigger_height: self
+                .layout_overrides
+                .height_hint()
+                .unwrap_or(TRIGGER_HEIGHT),
         };
         let user_overlay = self.style_accumulator.take_state_overlay();
         let trigger = build_trigger(
@@ -134,27 +125,39 @@ impl DropdownBuilder {
         );
         let popup_options = Rc::clone(&options);
         let popup_on_change = Rc::clone(&on_change);
-        let root = dropdown_root(ctx, Rc::clone(&options), self.label, on_change)
-            .child(trigger)
-            .children_reactive(move || {
-                if ctx.open.get() {
-                    vec![build_popup(ctx, &popup_options, &popup_on_change)]
-                } else {
-                    Vec::new()
-                }
-            });
+        let root = dropdown_root(
+            ctx,
+            self.layout_overrides,
+            Rc::clone(&options),
+            self.label,
+            on_change,
+        )
+        .child(trigger)
+        .children_reactive(move || {
+            if ctx.open.get() {
+                vec![build_popup(ctx, &popup_options, &popup_on_change)]
+            } else {
+                Vec::new()
+            }
+        });
 
         interaction.install(root)
     }
 }
 
-impl StyleAccess for DropdownBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for DropdownBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 
 impl StateHost for DropdownBuilder {}
+
+impl WidgetLayoutExt for DropdownBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
 
 impl IntoNode for DropdownBuilder {
     fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
@@ -164,18 +167,17 @@ impl IntoNode for DropdownBuilder {
 
 fn dropdown_root(
     ctx: OptionCtx,
+    overrides: LayoutOverrides,
     options: Rc<Vec<String>>,
     label: String,
     on_change: IndexChange,
 ) -> NodeBuilder {
-    let root_layout = ctx
-        .width
-        .map_or_else(
-            || LayoutStyle::block().fill_width(),
-            |px| LayoutStyle::block().width(px),
-        )
-        .height(ctx.trigger_height)
-        .min_size(MIN_TRIGGER_WIDTH, 0.0);
+    let root_layout = overrides.apply(
+        LayoutStyle::block()
+            .fill_width()
+            .height(ctx.trigger_height)
+            .min_size(MIN_TRIGGER_WIDTH, 0.0),
+    );
     listbox(
         container()
             .role(Role::ComboBox)

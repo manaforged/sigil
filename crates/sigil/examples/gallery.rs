@@ -33,7 +33,7 @@ fn build() -> impl IntoNode {
     container()
         .role(Role::Main)
         .layout(LayoutStyle::flex_row().fill())
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(sidebar(nav(page)))
         .child(content(page, dialog, drawer, queue))
         .child(
@@ -80,9 +80,9 @@ fn nav_row(page: Signal<usize>, index: usize, name: &'static str) -> NodeBuilder
                 .padding_x(8.0)
                 .align_items(AlignItems::Center),
         )
-        .class("rounded-md")
-        .class_when(active, "bg-accent-4")
-        .child(text(name).nowrap().class("text-sm"))
+        .rounded(Radius::Md)
+        .paint_when(active, |s| s.bg(Token::Accent4))
+        .child(text(name).nowrap().font_size(14))
         .pointer_up(move |_| page.set(index))
 }
 

@@ -4,125 +4,21 @@
 )]
 #![allow(clippy::panic, clippy::unwrap_used)]
 
-use std::cell::Cell;
-use std::rc::Rc;
-
 use sigil::kernel::{Cx, container};
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{ColorKey, NodeStyleExt, Px, Rgba8, StyleAtom, StyleBinding, Token};
-
-static INACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Surface,
-))];
-static ACTIVE: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Accent,
-))];
-static PADDING_ON: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(16))];
-static PADDING_OFF: &[StyleAtom] = &[StyleAtom::PaddingAll(Px(4))];
+use sigil::style::{ColorKey, NodeStyleExt, Paint, StyleAtom, StyleBinding, Token};
 
 #[test]
-fn reactive_reapplies_on_signal_change() {
-    Runtime::scope("sigil_style_reactive_reapplies", || {
-        let active = signal(false);
-        let mut cx = Cx::new_root();
-        let id = cx.add(container().style_reactive(
-            move || {
-                if active.get() { ACTIVE } else { INACTIVE }
-            },
-        ));
-
-        assert_eq!(reactive_slice(&cx, id), INACTIVE);
-
-        active.set(true);
-        assert_eq!(reactive_slice(&cx, id), ACTIVE);
-    });
-}
-
-#[test]
-fn dispose_drops_effect() {
-    let runs = Rc::new(Cell::new(0_u32));
-
-    Runtime::scope("sigil_style_reactive_dispose", || {
-        let active = signal(false);
-        let runs_for_effect = Rc::clone(&runs);
-        let mut cx = Cx::new_root();
-        let id = cx.add(container().style_reactive(move || {
-            runs_for_effect.set(runs_for_effect.get() + 1);
-            if active.get() { ACTIVE } else { INACTIVE }
-        }));
-
-        assert_eq!(runs.get(), 1);
-        active.set(true);
-        assert_eq!(runs.get(), 2);
-        assert!(cx.remove(id));
-
-        active.set(false);
-        assert_eq!(runs.get(), 2);
-    });
-}
-
-#[test]
-fn reactive_toggle_is_alloc_free() {
-    Runtime::scope("sigil_style_reactive_alloc_free", || {
-        let active = signal(false);
-        let mut cx = Cx::new_root();
-        let id = cx.add(container().style_reactive(move || {
-            if active.get() {
-                PADDING_ON
-            } else {
-                PADDING_OFF
-            }
-        }));
-
-        active.set(true);
-        active.set(false);
-
-        let info = allocation_counter::measure(|| {
-            for index in 0..100 {
-                active.set(index % 2 == 0);
-            }
-        });
-
-        assert_eq!(info.count_total, 0, "{info:?}");
-        assert_eq!(reactive_slice(&cx, id), PADDING_OFF);
-    });
-}
-
-#[test]
-fn pillar_call_site_compiles() {
-    Runtime::scope("sigil_style_pillar_call_site", || {
-        let danger = signal(false);
-        let mut cx = Cx::new_root();
-        let id = cx.add(container().style_reactive(move || {
-            if danger.get() {
-                &[StyleAtom::BackgroundColor(sigil::style::ColorAtom::Rgba8(
-                    Rgba8 {
-                        r: 255,
-                        g: 0,
-                        b: 0,
-                        a: 255,
-                    },
-                ))]
-            } else {
-                INACTIVE
-            }
-        }));
-
-        assert_eq!(reactive_slice(&cx, id), INACTIVE);
-    });
-}
-
-#[test]
-fn class_when_toggles_on_signal_change() {
-    Runtime::scope("sigil_style_class_when_toggle", || {
+fn paint_when_toggles_on_signal_change() {
+    Runtime::scope("sigil_style_paint_when_toggle", || {
         let highlighted = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(container().class_when(highlighted, "bg-accent"));
+        let id = cx.add(container().paint_when(highlighted, |s| s.bg(Token::Accent)));
 
         let initial = reactive_slice(&cx, id);
         assert!(
             initial.is_empty(),
-            "class_when starts with empty slice while signal is false, got {initial:?}",
+            "paint_when starts with empty slice while signal is false, got {initial:?}",
         );
 
         highlighted.set(true);
@@ -132,13 +28,13 @@ fn class_when_toggles_on_signal_change() {
             &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
                 Token::Accent
             ))],
-            "class_when must install `bg-accent` atoms when signal flips true, got {live:?}",
+            "paint_when must install the accent background when signal flips true, got {live:?}",
         );
 
         highlighted.set(false);
         assert!(
             reactive_slice(&cx, id).is_empty(),
-            "class_when must clear atoms when signal flips false",
+            "paint_when must clear atoms when signal flips false",
         );
     });
 }

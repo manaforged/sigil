@@ -7,12 +7,11 @@ use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
 use crate::layout::{LayoutStyle, snap};
 use crate::reactive::{Signal, derived};
 use crate::style::DISABLED_OPACITY;
-use crate::style::{BORDER_WIDTH, ClassSource, NodeStyleExt, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::menu::MenuItem;
 use super::super::scroll::{WheelAxis, wheel};
-use super::super::shared::BuilderMutator;
 use super::super::virtual_list::virtual_list;
 use super::chrome::{RowActivate, RowMenu, TableChrome, context_overlay};
 use super::density::Density;
@@ -50,7 +49,7 @@ pub struct TableBuilder<Row: 'static> {
     frame: &'static [StyleAtom],
     scroll_y: Option<Signal<f32>>,
     disabled: Option<Signal<bool>>,
-    mutators: Vec<BuilderMutator>,
+    style_accumulator: Style,
     layout_overrides: LayoutOverrides,
 }
 
@@ -72,7 +71,7 @@ pub fn table<Row: 'static>(state: TableState<Row>) -> TableBuilder<Row> {
         frame: FRAMED,
         scroll_y: None,
         disabled: None,
-        mutators: Vec::new(),
+        style_accumulator: Style::new(),
         layout_overrides: LayoutOverrides::new(),
     }
 }
@@ -164,13 +163,6 @@ impl<Row: 'static> TableBuilder<Row> {
         self
     }
 
-    #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
     fn body_spec(&self, pad_x: f32) -> BodySpec {
         BodySpec {
             row_height: snap::line(self.row_height),
@@ -227,7 +219,7 @@ impl<Row: 'static> TableBuilder<Row> {
             .child(hscroll.scrollbar())
             .child(context_overlay(state.clone(), chrome.clone()));
         wire_hscroll(
-            apply_mutators(dim(root, self.disabled), self.mutators),
+            apply_style(dim(root, self.disabled), self.style_accumulator),
             hscroll,
         )
     }
@@ -323,11 +315,12 @@ fn dim(root: NodeBuilder, disabled: Option<Signal<bool>>) -> NodeBuilder {
     }
 }
 
-fn apply_mutators(mut root: NodeBuilder, mutators: Vec<BuilderMutator>) -> NodeBuilder {
-    for mutate in mutators {
-        root = mutate(root);
+fn apply_style(root: NodeBuilder, style: Style) -> NodeBuilder {
+    if style.is_empty() {
+        root
+    } else {
+        root.style(style)
     }
-    root
 }
 
 fn wire_hscroll(root: NodeBuilder, hs: hscroll::HScroll) -> NodeBuilder {
@@ -384,3 +377,9 @@ impl<Row: 'static> WidgetLayoutExt for TableBuilder<Row> {
 #[cfg(test)]
 #[path = "view_tests.rs"]
 mod tests;
+
+impl<Row: 'static> PaintTarget for TableBuilder<Row> {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}

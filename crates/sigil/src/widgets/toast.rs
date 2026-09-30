@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived};
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{DisplayKind, StyleAtom, Token, space};
 
 use super::popup::SURFACE;
 

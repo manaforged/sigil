@@ -2,7 +2,9 @@ use core::fmt;
 
 use smallvec::SmallVec;
 
-use crate::style::{OverflowKind, Px, StateSlot, StyleAtom};
+#[cfg(any(test, fuzzing))]
+use crate::style::StateSlot;
+use crate::style::{OverflowKind, Px, StyleAtom};
 
 mod atoms;
 mod keywords;
@@ -98,7 +100,7 @@ const STRUCTURAL_TOKENS: [&str; 81] = [
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ParseError {
+pub(crate) enum ParseError {
     Unknown {
         token: String,
         suggestions: [String; 3],
@@ -131,7 +133,7 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, ParseError> {
+pub(crate) fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, ParseError> {
     let mut atoms = SmallVec::new();
     for token in input.split(' ').filter(|token| !token.is_empty()) {
         reject_prefix(token)?;
@@ -146,17 +148,13 @@ pub fn parse_class_string(input: &str) -> Result<SmallVec<[StyleAtom; 16]>, Pars
     Ok(atoms)
 }
 
-pub struct StatefulToken {
-    pub slot: Option<StateSlot>,
-    pub atoms: SmallVec<[StyleAtom; 2]>,
-}
+#[cfg(any(test, fuzzing))]
+pub(crate) type StatefulAtoms = (Option<StateSlot>, SmallVec<[StyleAtom; 16]>);
 
-pub fn parse_stateful_token(token: &str) -> Result<StatefulToken, ParseError> {
+#[cfg(any(test, fuzzing))]
+pub(crate) fn parse_stateful_token(token: &str) -> Result<StatefulAtoms, ParseError> {
     let Some((prefix, rest)) = token.split_once(':') else {
-        return Ok(StatefulToken {
-            slot: None,
-            atoms: parse_class_string(token)?.into_iter().collect(),
-        });
+        return Ok((None, parse_class_string(token)?));
     };
     let slot = match prefix {
         "hover" => StateSlot::Hovered,
@@ -174,10 +172,7 @@ pub fn parse_stateful_token(token: &str) -> Result<StatefulToken, ParseError> {
             });
         }
     };
-    Ok(StatefulToken {
-        slot: Some(slot),
-        atoms: parse_class_string(rest)?.into_iter().collect(),
-    })
+    Ok((Some(slot), parse_class_string(rest)?))
 }
 
 fn parse_token(token: &str) -> Result<StyleAtom, ParseError> {

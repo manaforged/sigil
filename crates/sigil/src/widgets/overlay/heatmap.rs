@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Rgba8, Style};
+use crate::style::{Paint, Rgba8};
 
 pub(crate) const CELL_PX: f32 = 8.0;
 
@@ -28,7 +28,7 @@ pub fn heatmap<F: Fn(usize, usize) -> Rgba8>(
 fn cell(color: Rgba8) -> NodeBuilder {
     container()
         .layout(LayoutStyle::block().fixed_size(CELL_PX, CELL_PX))
-        .style(Style::new().bg(color))
+        .bg(color)
 }
 
 #[cfg(test)]

@@ -10,7 +10,9 @@ use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutResult, LayoutStyle};
 use sigil::scene::{
     CommandScene, DrawGlyphRun, DrawRect, SceneCommand, StrokeAlign, StrokeStyle, emit_scene,
 };
-use sigil::style::{FocusRing, NodeStyleExt, TextLineHeight, Theme};
+use sigil::style::{
+    Elevation, FocusRing, FontFamily, NodeStyleExt, Paint, Radius, TextLineHeight, Theme, Token,
+};
 use sigil_kittest::FixedMeasure;
 
 #[test]
@@ -19,7 +21,7 @@ fn theme_accent_rect_emits_in_scene() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("bg-accent"),
+            .bg(Token::Accent),
     );
 
     layout(&mut cx, root);
@@ -51,7 +53,7 @@ fn text_emits_default_on_surface_color() {
 #[test]
 fn styled_text_color_overrides_default() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Accent").class("text-accent"));
+    let root = cx.add(text("Accent").text_color(Token::Accent));
 
     layout(&mut cx, root);
 
@@ -64,7 +66,7 @@ fn styled_text_color_overrides_default() {
 #[test]
 fn styled_text_typography_emits_in_scene() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Large").class("text-xl font-bold leading-32"));
+    let root = cx.add(text("Large").font_size(20).font_weight(700).line_height(32));
 
     layout(&mut cx, root);
 
@@ -82,7 +84,7 @@ fn visible_focus_ring_emits_one_rounded_outside_stroke() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-            .class("rounded-lg")
+            .rounded(Radius::Lg)
             .focus_ring(FocusRing::static_visible(true)),
     );
 
@@ -136,7 +138,8 @@ fn shadow_class_parses_cleanly_and_paints() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-            .class("bg-surface shadow-xl"),
+            .bg(Token::Surface)
+            .shadow(Elevation::Xl),
     );
 
     layout(&mut cx, root);
@@ -195,7 +198,7 @@ fn container_text_class_cascades_to_child_glyphs() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-accent")
+            .text_color(Token::Accent)
             .child(text("Doom")),
     );
 
@@ -218,7 +221,10 @@ fn container_font_classes_cascade_to_child_glyph_style() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-lg font-bold font-mono leading-24")
+            .font_size(18)
+            .font_weight(700)
+            .font_family(FontFamily::Mono)
+            .line_height(24)
             .child(text("Doom")),
     );
 
@@ -245,8 +251,9 @@ fn own_font_class_beats_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-lg font-bold")
-            .child(text("Own").class("text-xs")),
+            .font_size(18)
+            .font_weight(700)
+            .child(text("Own").font_size(12)),
     );
 
     layout(&mut cx, root);
@@ -273,7 +280,9 @@ fn deferred_top_layer_subtree_keeps_inherited_typography() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-lg font-bold text-accent")
+            .font_size(18)
+            .font_weight(700)
+            .text_color(Token::Accent)
             .child(popup),
     );
 
@@ -299,8 +308,8 @@ fn own_text_class_beats_inherited_cascade() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(120.0, 48.0))
-            .class("text-accent")
-            .child(text("Own").class("text-on-accent")),
+            .text_color(Token::Accent)
+            .child(text("Own").text_color(Token::OnAccent)),
     );
 
     layout(&mut cx, root);
@@ -320,10 +329,10 @@ fn top_layer_subtree_paints_after_later_siblings() {
     let floating = container()
         .with(TopLayer)
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-        .class("bg-accent");
+        .bg(Token::Accent);
     let sibling = container()
         .layout(LayoutStyle::block().fixed_size(100.0, 40.0))
-        .class("bg-error-9");
+        .bg(Token::Error9);
     let root = cx.add(container().child(floating).child(sibling));
 
     layout(&mut cx, root);

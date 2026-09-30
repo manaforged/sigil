@@ -162,7 +162,7 @@ fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
                         let row = container()
                             .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)));
                         let row = if index == at {
-                            row.class("bg-accent-5")
+                            row.bg(Token::Accent5)
                         } else {
                             row
                         };
@@ -230,7 +230,7 @@ pub(crate) fn app() -> impl IntoNode {
         .child(
             container()
                 .layout(LayoutStyle::flex_row().fill_width().gap(cols(2.0)))
-                .child(text("Todo").nowrap().class("text-accent"))
+                .child(text("Todo").nowrap().text_color(Token::Accent))
                 .child(text(move || filter_strip(todos.filter.get())).nowrap()),
         )
         .child(

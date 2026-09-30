@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, space};
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;

@@ -6,8 +6,8 @@ use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, NodeStyleExt,
-    Rgba8, StateStyle, Style, StyleAtom, StyleVariant, Token, TransitionId,
+    BORDER_WIDTH, BgGradient, ColorAtom, Elevation, GradientAxis, GradientStopKey, Rgba8,
+    StateStyle, Style, StyleAtom, StyleVariant, Token, TransitionId,
 };
 
 use crate::widgets::interaction::InteractionState;

@@ -11,7 +11,7 @@ mod support;
 use sigil::kernel::{ImageSource, ObjectFit, container, image};
 use sigil::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::{NodeStyleExt, Style};
+use sigil::style::Paint;
 use sigil::widgets::layout_ext::WidgetLayoutExt;
 use support::{capture, close};
 
@@ -26,7 +26,7 @@ fn transparent_parent_hides_its_image_and_preserves_visible_siblings() {
                 .child(
                     container()
                         .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-                        .style(Style::new().opacity(0.0))
+                        .opacity(0.0)
                         .child(image(quadrant_image())),
                 )
                 .child(image(quadrant_image()).layout(LayoutStyle::block().fixed_size(16.0, 16.0)))
@@ -231,12 +231,12 @@ fn image_alpha_blends_color_and_coverage() {
         || {
             let mut row = container()
                 .layout(LayoutStyle::flex_row().fixed_size(40.0, 8.0))
-                .style(Style::new().bg(sigil::style::Rgba8 {
+                .bg(sigil::style::Rgba8 {
                     r: 0,
                     g: 0,
                     b: 255,
                     a: 255,
-                }));
+                });
             for alpha in [0, 64, 128, 192, 255] {
                 let source = ImageSource::from_rgba8(8, 8, [255, 0, 0, alpha].repeat(64)).unwrap();
                 row = row.child(

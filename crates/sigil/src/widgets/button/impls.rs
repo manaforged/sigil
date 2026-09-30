@@ -1,12 +1,12 @@
 use crate::kernel::{Cx, IntoNode};
-use crate::style::{StateHost, Style, StyleAccess};
+use crate::style::{PaintTarget, StateHost, StyleSlot};
 use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 use super::ButtonBuilder;
 
-impl StyleAccess for ButtonBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for ButtonBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

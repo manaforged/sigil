@@ -1,6 +1,6 @@
 use crate::kernel::{NodeBuilder, TextBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Style, Token};
+use crate::style::{ColorKey, ColorOrToken, Paint, Token};
 use crate::widgets::grapheme::{col_bytes, col_count};
 
 use super::{
@@ -275,7 +275,9 @@ fn selected_run(seg: String, token: Option<&'static str>, row_h: f32) -> NodeBui
 fn run_text(seg: String, token: Option<&'static str>) -> TextBuilder {
     text(seg)
         .class(RUN_CLASS)
-        .style(Style::new().text_theme(token.unwrap_or(Token::OnSurface.name())))
+        .text_color(ColorOrToken::Token(
+            token.map_or(ColorKey::Token(Token::OnSurface), ColorKey::parse),
+        ))
         .layout(LayoutStyle::block().shrink(0.0))
 }
 

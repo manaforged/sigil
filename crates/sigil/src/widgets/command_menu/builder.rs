@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode};
-use crate::style::{Style, StyleAccess};
+use crate::style::{PaintTarget, Style, StyleSlot};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::shared::Activate;
@@ -135,9 +135,9 @@ impl WidgetLayoutExt for CommandMenuBuilder {
     }
 }
 
-impl StyleAccess for CommandMenuBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for CommandMenuBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

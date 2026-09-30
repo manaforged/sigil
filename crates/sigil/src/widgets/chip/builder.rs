@@ -5,7 +5,7 @@ use crate::kernel::{NodeBuilder, Role};
 use crate::layout::snap::line;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{NodeStyleExt, Radius, Tone, space};
+use crate::style::{Radius, Tone, space};
 
 use crate::widgets::interaction::InteractionState;
 

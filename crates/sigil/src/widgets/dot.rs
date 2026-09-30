@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
-use crate::style::{NodeStyleExt, Size, StyleAccess};
+use crate::style::{NodeStyleExt, PaintTarget, Size, StyleSlot};
 use crate::style::{Px, StyleAtom, Tone};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -105,9 +105,9 @@ fn dot_inner_layout(extent: f32) -> LayoutStyle {
     LayoutStyle::flex_row().fixed_size(extent, extent)
 }
 
-impl StyleAccess for DotBuilder {
-    fn style_mut(&mut self) -> &mut crate::style::Style {
-        &mut self.style_accumulator
+impl PaintTarget for DotBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

@@ -1,10 +1,4 @@
-#![allow(
-    unused_crate_dependencies,
-    reason = "target does not use every package dependency"
-)]
-#![allow(clippy::panic)]
-
-use sigil::style::{
+use crate::style::{
     ColorKey, Dimension, Px, StyleAtom, Token, bump_unknown_class_count, merge_classes,
     merge_warning_count_for_component, unknown_class_warning_count,
 };

@@ -19,7 +19,7 @@ use sigil::kernel::{Cx, IntoNode, NodeId, container};
 use sigil::layout::{LayoutBuilderExt, LayoutStyle};
 use sigil::reactive::Runtime;
 use sigil::scene::{SceneCommand, emit_scene};
-use sigil::style::{ColorKey, NodeStyleExt, StateSlot, StateStyle, StyleAtom, StyleBinding, Token};
+use sigil::style::{Paint, StateSlot, StateStyle, StyleAtom, StyleBinding, Token};
 use widget_support::compute;
 
 const DT_60HZ: f32 = 1.0 / 60.0;
@@ -55,13 +55,10 @@ fn first_rect_opacity(cx: &Cx, root: NodeId) -> u16 {
 }
 
 fn build_animated_node(cx: &mut Cx) -> NodeId {
-    static BASE: &[StyleAtom] = &[
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
-        StyleAtom::Opacity(OPACITY_BASE),
-        StyleAtom::Transition(presets::DEFAULT),
-    ];
     container()
-        .class(BASE)
+        .bg(Token::Surface)
+        .opacity(0.5)
+        .transition(presets::DEFAULT)
         .layout(LayoutStyle::block().fixed_size(64.0, 32.0))
         .build(cx)
 }
@@ -70,7 +67,7 @@ fn install_overlay(cx: &mut Cx, root: NodeId, attached: AttachedAnimators) {
     let node = cx.get_mut(root).expect("node");
     let binding = node
         .get_extension_mut::<StyleBinding>()
-        .expect("binding installed by .class()");
+        .expect("binding installed by the paint methods");
     binding.set_animator_overlay(Some(Box::new(attached)));
 }
 
@@ -143,12 +140,9 @@ fn engine_falls_back_to_literal_when_no_animator() {
         || {
             MotionPrefs::set(false);
             let mut cx = Cx::new_root();
-            static NO_TRANSITION: &[StyleAtom] = &[
-                StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
-                StyleAtom::Opacity(OPACITY_BASE),
-            ];
             let root = container()
-                .class(NO_TRANSITION)
+                .bg(Token::Surface)
+                .opacity(0.5)
                 .layout(LayoutStyle::block().fixed_size(64.0, 32.0))
                 .build(&mut cx);
             compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

@@ -1,9 +1,9 @@
 # Widgets
 
 The catalog ships in `sigil`. Every widget constructs from a lowercase
-function and chains a builder. Widgets take `class`/`style` styling —
-through `NodeStyleExt` for `NodeBuilder`/`TextBuilder` returns, through
-inherent builder methods, or through `StyleAccess`. `WidgetLayoutExt`
+function and chains a builder. Widgets take typed styling: the `Paint` methods for colour, border,
+radius, shadow, and font, and `StateVariants` for hover, focus, press,
+and disabled paint. `WidgetLayoutExt`
 sizing applies where the builder implements it (containers and most
 controls); `virtual_list`, `table`, `slider`, and `code_edit` size via
 `.viewport_height()`/`.row_height()` or `.layout()` instead. Widgets
@@ -169,8 +169,8 @@ The family pages carry signatures, options, and behavior notes:
 - **tabs()** — chain `.tab(label, component)` per tab, and
   `.close(Fn(usize))`.
 - **scroll(inner)** — measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
-- **menu_bar()** — a GPU app bar. `.class("bg-surface-hover px-12")`
-  styles the strip. `.menu("File", [MenuItem::new("Open").select(|| {})])`
+- **menu_bar()** — a GPU app bar. `Paint` methods such as
+  `.bg(Token::SurfaceHover)` style the strip. `.menu("File", [MenuItem::new("Open").select(|| {})])`
   builds a dropdown. This is the bar you design. The native OS bar is
   opt-in: `sigil::menu::set_menu_bar` (feature `menu`, next frame).
 - **menu(Signal\<bool\>)** — a GPU popup panel (`.item`, `.separator()`).

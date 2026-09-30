@@ -5,24 +5,21 @@
 #![allow(clippy::unwrap_used)]
 
 use sigil::kernel::{Cx, container, fragment};
-use sigil::style::{ColorKey, NodeStyleExt, StyleAtom, Theme, Token};
-
-static ATOMS: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Accent,
-))];
+use sigil::reactive::{Runtime, signal};
+use sigil::style::{NodeStyleExt, Paint, Theme, Token};
 
 #[test]
-fn class_on_container_is_allowed() {
+fn paint_on_container_is_allowed() {
     let mut cx = Cx::new_root();
-    let _ = cx.add(container().class("bg-accent"));
+    let _ = cx.add(container().bg(Token::Accent));
 }
 
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "class() on a Fragment")]
-fn class_on_fragment_panics_in_debug() {
+fn paint_on_fragment_panics_in_debug() {
     let mut cx = Cx::new_root();
-    let _ = cx.add(fragment().class("bg-accent"));
+    let _ = cx.add(fragment().bg(Token::Accent));
 }
 
 #[cfg(debug_assertions)]
@@ -36,7 +33,9 @@ fn theme_on_fragment_panics_in_debug() {
 #[cfg(debug_assertions)]
 #[test]
 #[should_panic(expected = "style_reactive() on a Fragment")]
-fn style_reactive_on_fragment_panics_in_debug() {
-    let mut cx = Cx::new_root();
-    let _ = cx.add(fragment().style_reactive(|| ATOMS));
+fn paint_when_on_fragment_panics_in_debug() {
+    Runtime::scope("paint_when_on_fragment", || {
+        let mut cx = Cx::new_root();
+        let _ = cx.add(fragment().paint_when(signal(true), |s| s.opacity(0.5)));
+    });
 }

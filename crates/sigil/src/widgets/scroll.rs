@@ -3,7 +3,9 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect_named, signal};
-use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, space};
+use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot, Token, space};
+
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
 mod bar;
 pub(crate) mod geometry;
@@ -36,14 +38,12 @@ static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
 pub struct ScrollBuilder {
     content: NodeBuilder,
     extent: Option<Signal<f32>>,
-    height: f32,
-    width: Option<f32>,
     sizing: Sizing,
     scroll_y: Option<Signal<f32>>,
     initial_end: bool,
     pin_bottom: bool,
-    extra: Option<ClassSource>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 pub trait IntoScrollExtent {
@@ -67,14 +67,12 @@ pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
         extent: None,
-        height: VIEWPORT_HEIGHT,
-        width: None,
         sizing: Sizing::Fixed,
         scroll_y: None,
         initial_end: false,
         pin_bottom: false,
-        extra: None,
         style_accumulator: Style::new(),
+        layout_overrides: LayoutOverrides::new(),
     }
 }
 
@@ -82,24 +80,6 @@ impl ScrollBuilder {
     #[must_use]
     pub fn extent(mut self, extent: impl IntoScrollExtent) -> Self {
         self.extent = Some(extent.into_extent());
-        self
-    }
-
-    #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        self.extra = Some(source.into());
-        self
-    }
-
-    #[must_use]
-    pub const fn height(mut self, px: f32) -> Self {
-        self.height = px;
-        self
-    }
-
-    #[must_use]
-    pub const fn width(mut self, px: f32) -> Self {
-        self.width = Some(px);
         self
     }
 
@@ -112,7 +92,6 @@ impl ScrollBuilder {
     #[must_use]
     pub const fn fit(mut self) -> Self {
         self.sizing = Sizing::Fit;
-        self.height = 0.0;
         self
     }
 
@@ -137,9 +116,12 @@ impl ScrollBuilder {
     pub(crate) fn into_node_builder(self) -> NodeBuilder {
         let scroll_y = self.scroll_y.unwrap_or_else(|| signal(0.0_f32));
         let (content, extent) = resolve_extent(self.content, self.extent);
-        let height = self.height;
-        let width = self.width;
         let sizing = self.sizing;
+        let width = self.layout_overrides.width_hint();
+        let height = self.layout_overrides.height_hint().unwrap_or(match sizing {
+            Sizing::Fit => 0.0,
+            Sizing::Fill | Sizing::Fixed => VIEWPORT_HEIGHT,
+        });
         let (viewport, viewport_height) = viewport_signals(width, height, sizing != Sizing::Fixed);
 
         let max_scroll = derived(move || (extent.get() - viewport_height.get()).max(0.0));
@@ -159,7 +141,7 @@ impl ScrollBuilder {
             sizing != Sizing::Fit,
         );
 
-        let root = viewport_container(width, height, sizing)
+        let root = viewport_container(self.layout_overrides, height, sizing)
             .child(body)
             .child(track);
         let scrollable = overflows(max_scroll);
@@ -174,9 +156,6 @@ impl ScrollBuilder {
         );
         if sizing != Sizing::Fixed {
             root = root.size_reactive(viewport);
-        }
-        if let Some(classes) = self.extra {
-            root = root.class(classes);
         }
         if !self.style_accumulator.is_empty() {
             root = root.style(self.style_accumulator);
@@ -230,9 +209,15 @@ fn viewport_signals(
     (viewport, viewport_height)
 }
 
-impl StyleAccess for ScrollBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for ScrollBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for ScrollBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 
@@ -242,19 +227,15 @@ impl IntoNode for ScrollBuilder {
     }
 }
 
-fn viewport_container(width: Option<f32>, height: f32, sizing: Sizing) -> NodeBuilder {
+fn viewport_container(overrides: LayoutOverrides, height: f32, sizing: Sizing) -> NodeBuilder {
     let base = match sizing {
         Sizing::Fill => LayoutStyle::flex_row().fill_height(),
         Sizing::Fit => LayoutStyle::flex_row().max_size(Dimension::Auto, Dimension::Percent(1.0)),
         Sizing::Fixed => LayoutStyle::flex_row().height(height),
     };
-    let base = match width {
-        Some(px) => base.width(px),
-        None => base.fill_width(),
-    };
     container()
         .role(Role::ScrollView)
-        .layout(base.overflow_y(Overflow::Hidden))
+        .layout(overrides.apply(base.fill_width().overflow_y(Overflow::Hidden)))
         .class(VIEWPORT_ATOMS)
 }
 

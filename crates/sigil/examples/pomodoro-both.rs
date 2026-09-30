@@ -126,7 +126,7 @@ pub(crate) fn app_tree() -> impl IntoNode {
         .shortcut(LogicalKey::character("s"), move |_| settings_open.set(true))
         .shortcut(LogicalKey::character("q"), |_| sigil::request_exit())
         .child(text(phase))
-        .child(text(clock).class("text-xl"))
+        .child(text(clock).font_size(20))
         .child(text(count))
         .child(controls(timer, settings_open))
         .child(text("space start/pause  r reset  s settings  q quit"))

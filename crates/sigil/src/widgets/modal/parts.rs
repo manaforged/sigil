@@ -2,7 +2,7 @@ use crate::kernel::{IntoNode, NodeBuilder, TextContent, container, text};
 use crate::layout::snap;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{NodeStyleExt, Size, StyleAtom, Token, space};
+use crate::style::{Paint, Size, Token, space};
 
 use super::super::button::icon_button;
 use super::super::scroll::{SCROLLBAR_WIDTH, scroll};
@@ -15,7 +15,6 @@ pub(super) enum CloseControl {
     Hidden,
 }
 
-static BODY: &[StyleAtom] = &[Token::Overlay.bg()];
 const CLOSE_GLYPH: &str = "\u{00D7}";
 
 pub(super) fn dialog_header(title: TextContent, close: Option<Signal<bool>>) -> NodeBuilder {
@@ -59,5 +58,5 @@ pub(super) fn dialog_body(children: Vec<Box<dyn IntoNode>>, offset: Signal<f32>)
                 .shrink(1.0)
                 .min_size(0.0, 0.0),
         )
-        .child(scroll(content).fit().scroll_bind(offset).class(BODY))
+        .child(scroll(content).fit().scroll_bind(offset).bg(Token::Overlay))
 }

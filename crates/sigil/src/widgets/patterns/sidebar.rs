@@ -1,6 +1,6 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{IntoPx, LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, StyleAtom, Token, space};
 
 const SIDEBAR_DEFAULT: f32 = space(55);
 

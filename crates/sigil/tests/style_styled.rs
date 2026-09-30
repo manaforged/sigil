@@ -5,245 +5,276 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 #![allow(clippy::indexing_slicing)]
+#![allow(clippy::float_cmp)]
 
-use sigil::kernel::container;
-use sigil::style::{
-    ColorAtom, ColorKey, ColorOrToken, Dimension, Fill, Flex, Geometry, OverflowKind, Rgba8,
-    Sizing, Spacing, StateStyleBuilder, StateVariants, StyleAtom, Styleable, Token, Typography,
-    Visual,
+#[path = "events_support/input.rs"]
+mod input;
+#[path = "scene_support/mod.rs"]
+mod scene_support;
+#[path = "widget_support/mod.rs"]
+mod widget_support;
+
+use input::{pointer_down, pointer_move};
+use scene_support::color;
+use sigil::events::EventRouter;
+use sigil::geometry::Size;
+use sigil::kernel::{Cx, IntoNode, NodeBuilder, container, text};
+use sigil::layout::{
+    AlignItems, Dimension, Display, FlexDirection, JustifyContent, LayoutBuilderExt, LayoutStyle,
+    LengthPercentage, Overflow,
 };
+use sigil::scene::{DrawRect, SceneCommand, emit_scene};
+use sigil::style::{
+    ColorAtom, ColorKey, ColorOrToken, FontFamily, Paint, Radius, Rgba8, StateStyleBuilder,
+    StateVariants, TextLineHeight, Theme, Token,
+};
+use widget_support::compute;
 
-fn styled() -> sigil::style::NodeStyledBuilder {
-    container().styled()
+const VIEWPORT: Size = Size::fixed(200.0, 100.0);
+const REST: Rgba8 = color(240, 240, 240, 255);
+const A: Rgba8 = color(200, 20, 20, 255);
+const B: Rgba8 = color(20, 200, 20, 255);
+const C: Rgba8 = color(20, 20, 200, 255);
+const D: Rgba8 = color(90, 90, 90, 255);
+
+#[derive(Clone, Copy)]
+enum Drive {
+    Rest,
+    Hover,
+    Press,
+    Focus,
+}
+
+fn pane() -> NodeBuilder {
+    container()
+        .focusable(true)
+        .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
+}
+
+fn rects(build: impl IntoNode, drive: Drive) -> Vec<DrawRect> {
+    let mut cx = Cx::new_root();
+    let root = cx.add(build);
+    let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+    let mut router = EventRouter::new();
+    match drive {
+        Drive::Rest => {}
+        Drive::Hover => router.route(&mut cx, &layout, pointer_move(8.0, 8.0)),
+        Drive::Press => {
+            router.route(&mut cx, &layout, pointer_move(8.0, 8.0));
+            router.route(&mut cx, &layout, pointer_down(8.0, 8.0));
+        }
+        Drive::Focus => router.set_focus(&mut cx, Some(root)),
+    }
+    emit_scene(&cx, root)
+        .commands
+        .into_iter()
+        .filter_map(|command| match command {
+            SceneCommand::Rect(rect) => Some(rect),
+            _ => None,
+        })
+        .collect()
+}
+
+fn colors(build: impl IntoNode, drive: Drive) -> Vec<Rgba8> {
+    rects(build, drive).iter().map(|rect| rect.color).collect()
+}
+
+fn rest_rect(build: impl IntoNode) -> DrawRect {
+    rects(build, Drive::Rest)
+        .into_iter()
+        .next()
+        .expect("a rect")
+}
+
+fn painted_opacity(build: impl IntoNode) -> Option<u16> {
+    let mut cx = Cx::new_root();
+    let root = cx.add(build);
+    let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+    let mut layers = vec![1.0_f32];
+    for command in emit_scene(&cx, root).commands {
+        let top = *layers.last().unwrap();
+        match command {
+            SceneCommand::PushLayer(scope) => layers.push(top * scope.opacity),
+            SceneCommand::SaveLayer { opacity } => layers.push(top * opacity),
+            SceneCommand::PopLayer | SceneCommand::RestoreLayer => {
+                layers.pop();
+            }
+            SceneCommand::Rect(rect) => {
+                let scaled = (f32::from(rect.opacity) * top).round();
+                #[allow(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "the value is clamped to the u16 opacity range first"
+                )]
+                return Some(scaled.clamp(0.0, 10_000.0) as u16);
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 #[test]
 fn default_impl_chains_correctly() {
-    let b = styled().bg("surface").px(16);
-    let atoms = b.style().as_atoms();
-    assert!(
-        atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Surface
-        )))
-    );
-    assert!(atoms.contains(&StyleAtom::PaddingX(sigil::style::Px(16))));
+    let node = container()
+        .bg(Token::Surface)
+        .layout(
+            LayoutStyle::flex_row()
+                .fixed_size(80.0, 20.0)
+                .padding_x(16.0),
+        )
+        .child(
+            container()
+                .bg(A)
+                .layout(LayoutStyle::block().fixed_size(10.0, 10.0)),
+        );
+    let all = rects(node, Drive::Rest);
+    assert_eq!(all[0].color, Theme::default().surface);
+    let child = all.iter().find(|rect| rect.color == A).expect("child rect");
+    assert_eq!(child.rect.origin.x, 16.0);
 }
 
 #[test]
 fn hover_state_record_overwrites_on_second_call() {
-    let b = styled().hover(|s| s.bg("a")).hover(|s| s.bg("b"));
-    let hover = b.style().hover_atoms();
-    assert_eq!(hover.len(), 1, "hover slot must be last-call-wins");
-    assert_eq!(
-        hover[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Custom("b"))
+    let hovered = colors(
+        pane().bg(REST).hover(|s| s.bg(A)).hover(|s| s.bg(B)),
+        Drive::Hover,
+    );
+    assert!(
+        hovered.contains(&B),
+        "hover slot must be last-call-wins: {hovered:?}"
+    );
+    assert!(
+        !hovered.contains(&A),
+        "the first hover call must be replaced: {hovered:?}"
     );
 }
 
 #[test]
 fn hover_atoms_accumulate_within_closure() {
-    let b = styled().hover(|s| s.bg("a").px(8));
-    let hover = b.style().hover_atoms();
-    assert_eq!(hover.len(), 2);
-    assert_eq!(
-        hover[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Custom("a"))
-    );
-    assert_eq!(hover[1], StyleAtom::PaddingX(sigil::style::Px(8)));
+    let node = pane().bg(REST).hover(|s| s.bg(A).rounded(Radius::Md));
+    let hovered = rects(node, Drive::Hover);
+    let rect = hovered
+        .iter()
+        .find(|rect| rect.color == A)
+        .expect("hover bg");
+    assert_eq!(rect.border_radius.0[0], 6.0);
 }
 
 #[test]
 fn focus_slot_records_atoms() {
-    let b = styled().focus(|s| s.bg("focus-ring"));
-    let focus = b.style().focus_atoms();
-    assert_eq!(focus.len(), 1);
-    assert_eq!(
-        focus[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Custom("focus-ring"))
-    );
+    let focused = colors(pane().bg(REST).focus(|s| s.bg(A)), Drive::Focus);
+    assert!(focused.contains(&A), "focus slot must paint: {focused:?}");
 }
 
 #[test]
 fn pressed_slot_records_atoms() {
-    let b = styled().pressed(|s| s.bg("pressed"));
-    let pressed = b.style().pressed_atoms();
-    assert_eq!(pressed.len(), 1);
-    assert_eq!(
-        pressed[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Custom("pressed"))
-    );
+    let pressed = colors(pane().bg(REST).pressed(|s| s.bg(A)), Drive::Press);
+    assert!(pressed.contains(&A), "pressed slot must paint: {pressed:?}");
 }
 
 #[test]
 fn disabled_state_atoms_emit() {
-    let b = styled().disabled_style(|s| s.opacity(0.5));
-    let disabled = b.style().disabled_atoms();
-    assert_eq!(disabled.len(), 1);
-    assert_eq!(disabled[0], StyleAtom::Opacity(5_000));
+    let node = || pane().bg(REST).disabled_style(|s| s.bg(A));
+    assert_eq!(colors(node(), Drive::Rest), [REST]);
+    assert!(!colors(node(), Drive::Hover).contains(&A));
 }
 
 #[test]
 fn bg_accepts_rgba8() {
-    let red = Rgba8 {
-        r: 255,
-        g: 0,
-        b: 0,
-        a: 255,
-    };
-    let b = styled().bg(red);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::BackgroundColor(ColorAtom::Rgba8(red)));
+    assert_eq!(rest_rect(pane().bg(A)).color, A);
 }
 
 #[test]
 fn bg_accepts_theme_token() {
-    let b = styled().bg("surface");
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 1);
     assert_eq!(
-        atoms[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface))
+        rest_rect(pane().bg(Token::Surface)).color,
+        Theme::default().surface
     );
 }
 
 #[test]
 fn bg_accepts_color_atom() {
-    let blue = Rgba8 {
-        r: 0,
-        g: 0,
-        b: 255,
-        a: 255,
-    };
-    let atom = ColorAtom::Rgba8(blue);
-    let b = styled().bg(atom);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::BackgroundColor(atom));
+    assert_eq!(rest_rect(pane().bg(ColorAtom::Rgba8(C))).color, C);
 }
 
 #[test]
 fn padding_methods_sweep_order_preserved() {
-    let b = styled()
-        .padding(8)
-        .px(16)
-        .py(24)
-        .pt(32)
-        .pr(40)
-        .pb(48)
-        .pl(56);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 7);
-    assert_eq!(atoms[0], StyleAtom::PaddingAll(sigil::style::Px(8)));
-    assert_eq!(atoms[1], StyleAtom::PaddingX(sigil::style::Px(16)));
-    assert_eq!(atoms[2], StyleAtom::PaddingY(sigil::style::Px(24)));
-    assert_eq!(atoms[3], StyleAtom::PaddingTop(sigil::style::Px(32)));
-    assert_eq!(atoms[4], StyleAtom::PaddingRight(sigil::style::Px(40)));
-    assert_eq!(atoms[5], StyleAtom::PaddingBottom(sigil::style::Px(48)));
-    assert_eq!(atoms[6], StyleAtom::PaddingLeft(sigil::style::Px(56)));
+    let style = LayoutStyle::default()
+        .padding(8.0)
+        .padding_x(16.0)
+        .padding_y(24.0)
+        .padding_top(32.0)
+        .padding_right(40.0)
+        .padding_bottom(48.0)
+        .padding_left(56.0);
+    let padding = style.data().padding;
+    assert_eq!(padding.top, LengthPercentage::Px(32.0));
+    assert_eq!(padding.right, LengthPercentage::Px(40.0));
+    assert_eq!(padding.bottom, LengthPercentage::Px(48.0));
+    assert_eq!(padding.left, LengthPercentage::Px(56.0));
 }
 
 #[test]
 fn sizing_methods_emit_correct_atoms() {
-    let b = styled()
-        .w(Dimension::Px(sigil::style::Px(100)))
-        .h(Dimension::Px(sigil::style::Px(50)))
-        .w(Dimension::Full);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 3);
-    assert_eq!(
-        atoms[0],
-        StyleAtom::Width(Dimension::Px(sigil::style::Px(100)))
-    );
-    assert_eq!(
-        atoms[1],
-        StyleAtom::Height(Dimension::Px(sigil::style::Px(50)))
-    );
-    assert_eq!(atoms[2], StyleAtom::Width(Dimension::Full));
+    let style = LayoutStyle::default()
+        .width(100.0)
+        .height(50.0)
+        .width(Dimension::Percent(1.0));
+    assert_eq!(style.data().size.width, Dimension::Percent(1.0));
+    assert_eq!(style.data().size.height, Dimension::Px(50.0));
 }
 
 #[test]
 fn overflow_hidden_emits_both_axes() {
-    let b = styled().overflow_hidden();
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 2);
-    assert_eq!(atoms[0], StyleAtom::OverflowX(OverflowKind::Hidden));
-    assert_eq!(atoms[1], StyleAtom::OverflowY(OverflowKind::Hidden));
+    let style = LayoutStyle::default().overflow(Overflow::Hidden);
+    assert_eq!(style.data().overflow.width, Overflow::Hidden);
+    assert_eq!(style.data().overflow.height, Overflow::Hidden);
 }
 
 #[test]
 fn rounded_presets_emit_distinct_radii() {
-    let sm = styled().rounded(2);
-    let md = styled().rounded(6);
-    let lg = styled().rounded(10);
-    assert_eq!(
-        sm.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil::style::Px(2))
-    );
-    assert_eq!(
-        md.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil::style::Px(6))
-    );
-    assert_eq!(
-        lg.style().as_atoms()[0],
-        StyleAtom::BorderRadius(sigil::style::Px(10))
-    );
+    for (radius, px) in [(Radius::Sm, 2.0), (Radius::Md, 6.0), (Radius::Lg, 8.0)] {
+        let rect = rest_rect(pane().bg(A).rounded(radius));
+        assert_eq!(rect.border_radius.0[0], px, "{radius:?}");
+    }
 }
 
 #[test]
 fn all_four_state_slots_populate_independently() {
-    let b = styled()
-        .hover(|s| s.bg("h"))
-        .focus(|s| s.bg("f"))
-        .pressed(|s| s.bg("p"))
-        .disabled_style(|s| s.opacity(0.5));
-    let style = b.style();
-    assert_eq!(style.hover_atoms().len(), 1);
-    assert_eq!(style.focus_atoms().len(), 1);
-    assert_eq!(style.pressed_atoms().len(), 1);
-    assert_eq!(style.disabled_atoms().len(), 1);
-    assert!(style.has_state_overlays());
+    let node = || {
+        pane()
+            .bg(REST)
+            .hover(|s| s.bg(A))
+            .focus(|s| s.bg(B))
+            .pressed(|s| s.bg(C))
+            .disabled_style(|s| s.bg(D))
+    };
+    assert_eq!(colors(node(), Drive::Rest), [REST]);
+    assert!(colors(node(), Drive::Hover).contains(&A));
+    assert!(colors(node(), Drive::Focus).contains(&B));
+    assert!(colors(node(), Drive::Press).contains(&C));
 }
 
 #[test]
 fn state_builder_implements_styled_within_closure() {
-    let b = styled().hover(|s| {
-        s.bg("surface-hover")
-            .text_color("on-surface")
-            .px(12)
-            .opacity(0.9)
-    });
-    let hover = b.style().hover_atoms();
-    assert_eq!(hover.len(), 4);
-    assert_eq!(
-        hover[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::SurfaceHover))
-    );
-    assert_eq!(
-        hover[1],
-        StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface))
-    );
-    assert_eq!(hover[2], StyleAtom::PaddingX(sigil::style::Px(12)));
-    assert_eq!(hover[3], StyleAtom::Opacity(9_000));
+    let node = pane()
+        .bg(REST)
+        .hover(|s| s.bg(Token::SurfaceHover).rounded(Radius::Lg).opacity(1.0));
+    let hovered = rects(node, Drive::Hover);
+    let color = Theme::default().surface_hover;
+    let rect = hovered
+        .iter()
+        .find(|rect| rect.color == color)
+        .expect("hover bg");
+    assert_eq!(rect.border_radius.0[0], 8.0);
 }
 
 #[test]
 fn color_or_token_from_impls_route_correctly() {
-    let from_rgba: ColorOrToken = Rgba8 {
-        r: 1,
-        g: 2,
-        b: 3,
-        a: 4,
-    }
-    .into();
-    let from_token: ColorOrToken = "surface".into();
-    let from_atom: ColorOrToken = ColorAtom::Rgba8(Rgba8 {
-        r: 9,
-        g: 9,
-        b: 9,
-        a: 9,
-    })
-    .into();
+    let from_rgba: ColorOrToken = color(1, 2, 3, 4).into();
+    let from_token: ColorOrToken = Token::Surface.into();
+    let from_atom: ColorOrToken = ColorAtom::Rgba8(color(9, 9, 9, 9)).into();
 
     assert!(matches!(from_rgba, ColorOrToken::Rgba(_)));
     assert!(matches!(
@@ -255,146 +286,69 @@ fn color_or_token_from_impls_route_correctly() {
 
 #[test]
 fn state_style_builder_can_be_built_standalone() {
-    let outer = styled().hover(|s: StateStyleBuilder| s.bg("h"));
-    let hover = outer.style().hover_atoms();
-    assert_eq!(hover.len(), 1);
-    assert_eq!(
-        hover[0],
-        StyleAtom::BackgroundThemeRef(ColorKey::Custom("h"))
-    );
+    let node = pane().bg(REST).hover(|s: StateStyleBuilder| s.bg(A));
+    assert!(colors(node, Drive::Hover).contains(&A));
 }
 
 #[test]
 fn font_methods_emit_typography_atoms() {
-    let b = styled()
-        .font_size(14)
-        .font_weight(600)
-        .font_family("mono")
-        .line_height(20);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 4);
-    assert_eq!(atoms[0], StyleAtom::FontSize(sigil::style::Px(14)));
-    assert_eq!(atoms[1], StyleAtom::FontWeight(600));
-    assert_eq!(atoms[2], StyleAtom::FontFamily("mono"));
-    assert_eq!(atoms[3], StyleAtom::LineHeight(sigil::style::Px(20)));
+    let mut cx = Cx::new_root();
+    let root = cx.add(
+        text("Aa")
+            .font_size(14)
+            .font_weight(600)
+            .font_family(FontFamily::Mono)
+            .line_height(20),
+    );
+    let _layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
+    let scene = emit_scene(&cx, root);
+    let style = &scene.find_text("Aa").expect("glyph run").run.style;
+    assert_eq!(style.font_size, 14.0);
+    assert_eq!(style.font_weight, 600);
+    assert_eq!(style.font_family, "mono");
+    assert_eq!(style.line_height, TextLineHeight::Absolute(20.0));
 }
 
 #[test]
 fn flex_layout_methods_emit_correct_atoms() {
-    let b = styled()
-        .flex()
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(8)
-        .flex_grow(1.0)
+    let style = LayoutStyle::default()
+        .display(Display::Flex)
+        .flex_direction(FlexDirection::Row)
+        .align_items(AlignItems::Center)
+        .justify_content(JustifyContent::SpaceBetween)
+        .gap(8.0)
+        .grow(1.0)
         .shrink(0.5);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 7);
-    assert_eq!(
-        atoms[0],
-        StyleAtom::Display(sigil::style::DisplayKind::Flex)
-    );
-    assert_eq!(
-        atoms[1],
-        StyleAtom::FlexDirection(sigil::style::FlexDir::Row)
-    );
-    assert_eq!(
-        atoms[2],
-        StyleAtom::AlignItems(sigil::style::AlignKind::Center)
-    );
-    assert_eq!(
-        atoms[3],
-        StyleAtom::JustifyContent(sigil::style::JustifyKind::Between)
-    );
-    assert_eq!(atoms[4], StyleAtom::Gap(sigil::style::Px(8)));
-    assert_eq!(atoms[5], StyleAtom::FlexGrow(1000));
-    assert_eq!(atoms[6], StyleAtom::FlexShrink(500));
+    let data = style.data();
+    assert_eq!(data.display, Display::Flex);
+    assert_eq!(data.flex_direction, FlexDirection::Row);
+    assert_eq!(data.align_items, Some(AlignItems::Center));
+    assert_eq!(data.justify_content, Some(JustifyContent::SpaceBetween));
+    assert_eq!(data.gap.width, LengthPercentage::Px(8.0));
+    assert_eq!(data.gap.height, LengthPercentage::Px(8.0));
+    assert_eq!(data.flex_grow, 1.0);
+    assert_eq!(data.flex_shrink, 0.5);
 }
 
 #[test]
 fn empty_builder_has_empty_style() {
-    let b = styled();
-    let style = b.style();
-    assert!(style.is_empty());
-    assert_eq!(style.as_atoms().len(), 0);
-    assert!(!style.has_state_overlays());
+    assert!(rects(pane(), Drive::Rest).is_empty());
+    assert!(rects(pane(), Drive::Hover).is_empty());
 }
 
 #[test]
 fn flex_grow_takes_a_factor_like_every_other_grow() {
-    let b = styled().flex_grow(2.0);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::FlexGrow(2000));
-
-    let b2 = styled().flex_grow(1.0);
-    assert_eq!(b2.style().as_atoms()[0], StyleAtom::FlexGrow(1000));
+    assert_eq!(LayoutStyle::default().grow(2.0).data().flex_grow, 2.0);
+    assert_eq!(LayoutStyle::default().grow(1.0).data().flex_grow, 1.0);
 }
 
 #[test]
 fn trap2_opacity_f32_scales_to_atom() {
-    let b = styled().opacity(0.5);
-    let atoms = b.style().as_atoms();
-    assert_eq!(atoms.len(), 1);
-    assert_eq!(atoms[0], StyleAtom::Opacity(5_000));
+    assert_eq!(painted_opacity(pane().bg(A).opacity(0.5)), Some(5_000));
 }
 
 #[test]
 fn trap2_opacity_clamps_at_boundaries() {
-    let zero = styled().opacity(0.0);
-    assert_eq!(zero.style().as_atoms()[0], StyleAtom::Opacity(0));
-
-    let one = styled().opacity(1.0);
-    assert_eq!(one.style().as_atoms()[0], StyleAtom::Opacity(10_000));
-}
-
-#[test]
-fn class_routes_state_prefixes_to_overlay_slots() {
-    let s = sigil::style::Style::new()
-        .class("bg-surface hover:bg-surface-hover active:bg-surface-pressed focus:rounded-md disabled:opacity-50");
-
-    assert_eq!(
-        s.as_atoms(),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::Surface
-        ))]
-    );
-    assert_eq!(
-        s.hover_atoms(),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::SurfaceHover
-        ))]
-    );
-    assert_eq!(
-        s.pressed_atoms(),
-        [StyleAtom::BackgroundThemeRef(ColorKey::Token(
-            Token::SurfacePressed
-        ))]
-    );
-    assert_eq!(
-        s.focus_atoms(),
-        [StyleAtom::BorderRadius(sigil::style::Px(6))]
-    );
-    assert_eq!(s.disabled_atoms(), [StyleAtom::Opacity(5_000)]);
-}
-
-#[test]
-fn class_accumulates_slot() {
-    let s = sigil::style::Style::new().class("hover:bg-accent hover:rounded-md px-16");
-
-    assert_eq!(
-        s.hover_atoms(),
-        [
-            StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-            StyleAtom::BorderRadius(sigil::style::Px(6)),
-        ]
-    );
-    assert_eq!(s.as_atoms(), [StyleAtom::PaddingX(sigil::style::Px(16))]);
-}
-
-#[test]
-#[should_panic(expected = "invalid class")]
-fn unknown_class_panics_in_debug() {
-    let _ = sigil::style::Style::new().class("bogus:x px-16");
+    assert_eq!(painted_opacity(pane().bg(A).opacity(0.0)).unwrap_or(0), 0);
+    assert_eq!(painted_opacity(pane().bg(A).opacity(1.0)), Some(10_000));
 }

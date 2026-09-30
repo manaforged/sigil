@@ -7,8 +7,8 @@ use crate::kernel::{AccessibleName, IntoNode, NodeBuilder, Role, TextBuilder, co
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    ClassSource, ColorAtom, DISABLED_OPACITY, NodeStyleExt, Px, Radius, Rgba8, StateSlot,
-    StateStyle, StyleAtom, StyleOverlay, StyleVariant, Token, space,
+    ClassSource, ColorAtom, DISABLED_OPACITY, Px, Radius, Rgba8, StateSlot, StateStyle, StyleAtom,
+    StyleOverlay, StyleVariant, Token, space,
 };
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::shared::{Activate, activate_key, activate_pointer};

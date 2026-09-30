@@ -12,7 +12,7 @@
 use sigil::events::{Key, ShellEvent};
 use sigil::kernel::IntoNode;
 use sigil::kernel::{container, text};
-use sigil::prelude::{LayoutBuilderExt, NodeStyleExt};
+use sigil::prelude::{LayoutBuilderExt, Paint};
 use sigil::reactive::{derived, signal};
 use sigil::widgets::button;
 

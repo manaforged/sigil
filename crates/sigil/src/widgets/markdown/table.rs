@@ -3,7 +3,7 @@ use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::snap::CellForm;
 use crate::layout::{Dimension, cols};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Px, StyleAtom, TextRun, TextRuns, TextStyle, Token};
+use crate::style::{Px, StyleAtom, TextRun, TextRuns, TextStyle, Token};
 
 use super::inline::{Styled, styled};
 

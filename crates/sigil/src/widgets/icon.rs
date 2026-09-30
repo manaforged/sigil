@@ -7,7 +7,7 @@ use crate::layout::{AlignItems, JustifyContent, LayoutStyle};
 #[cfg(feature = "scene")]
 use crate::style::Token;
 use crate::style::Tone;
-use crate::style::{NodeStyleExt, Size, StyleAccess, StyleAtom};
+use crate::style::{NodeStyleExt, PaintTarget, Size, StyleAtom, StyleSlot};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 
@@ -174,9 +174,9 @@ fn icon_layout(extent: f32) -> LayoutStyle {
         .justify_content(JustifyContent::Center)
 }
 
-impl StyleAccess for IconBuilder {
-    fn style_mut(&mut self) -> &mut crate::style::Style {
-        &mut self.style_accumulator
+impl PaintTarget for IconBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

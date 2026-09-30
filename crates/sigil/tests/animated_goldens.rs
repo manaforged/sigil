@@ -57,7 +57,7 @@ fn button_hover_filmstrip() {
 
 fn checkbox_widget() -> impl IntoNode {
     let checked = signal(false);
-    checkbox(checked).class("bg-surface rounded-sm")
+    checkbox(checked).bg(Token::Surface).rounded(Radius::Sm)
 }
 
 #[test]

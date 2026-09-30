@@ -2,7 +2,7 @@ use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Position};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{DisplayKind, NodeStyleExt, Radius, StyleAtom, Token};
+use crate::style::{DisplayKind, Radius, StyleAtom, Token};
 
 use super::{SCROLLBAR_WIDTH, THUMB_MIN_HEIGHT, THUMB_REST_WIDTH, geometry, overflows, to_i16};
 

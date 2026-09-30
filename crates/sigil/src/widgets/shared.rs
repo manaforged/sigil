@@ -5,8 +5,8 @@ use crate::kernel::NodeBuilder;
 use crate::layout::LayoutStyle;
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, NodeStyleExt, Radius, StateStyle, StyleAtom,
-    StyleOverlay, StyleState, StyleVariant, Token, space,
+    BORDER_WIDTH, DISABLED_OPACITY, ICON_SIZE, Radius, StateStyle, StyleAtom, StyleOverlay,
+    StyleState, StyleVariant, Token, space,
 };
 
 use crate::widgets::interaction::InteractionState;

@@ -27,14 +27,14 @@ fn position_relative_child_paints() {
                         .inset_left(20.0)
                         .inset_top(20.0),
                 )
-                .class("bg-accent");
+                .bg(Token::Accent);
             let middle = container()
                 .layout(
                     LayoutStyle::block()
                         .fixed_size(80.0, 80.0)
                         .position(Position::Relative),
                 )
-                .class("bg-surface-pressed")
+                .bg(Token::SurfacePressed)
                 .child(inner);
             container()
                 .layout(
@@ -42,7 +42,7 @@ fn position_relative_child_paints() {
                         .fixed_size(150.0, 150.0)
                         .padding(ROOT_PADDING as f32),
                 )
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(middle)
         },
         InteractionMode::Default,
@@ -80,10 +80,11 @@ fn narrow_text_renders_glyph() {
         || {
             let glyph = text("v")
                 .layout(LayoutStyle::block().width(WIN_W as f32))
-                .class("text-on-surface");
+                .text_color(Token::OnSurface);
             let wrapper = container()
                 .layout(LayoutStyle::block().fixed_size(16.0, 16.0))
-                .class("rounded-sm bg-surface")
+                .rounded(Radius::Sm)
+                .bg(Token::Surface)
                 .child(glyph);
             container()
                 .layout(
@@ -91,7 +92,7 @@ fn narrow_text_renders_glyph() {
                         .fixed_size(200.0, 80.0)
                         .padding(ROOT_PADDING as f32),
                 )
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(wrapper)
         },
         InteractionMode::Default,

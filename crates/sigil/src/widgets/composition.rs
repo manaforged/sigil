@@ -1,6 +1,6 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, TextContent, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
-use crate::style::{BORDER_WIDTH, Metrics, NodeStyleExt, Size, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Metrics, Size, StyleAtom, Token, space};
 
 pub(crate) const STATUS_BAR_HEIGHT: f32 = space(7);
 const STATUS_BAR_GAP: f32 = space(3);

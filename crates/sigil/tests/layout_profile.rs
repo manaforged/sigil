@@ -13,7 +13,7 @@ use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::profile::{disable, enable, frames, reset, tick_frame};
 use sigil::reactive::{Runtime, derived, signal};
-use sigil::style::NodeStyleExt;
+use sigil::style::{NodeStyleExt, Paint};
 
 static RECORDER: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -342,16 +342,14 @@ fn letter_spacing_change_remeasures_text() {
             sigil::geometry::LogicalSize::new(style.letter_spacing_em.mul_add(100.0, 40.0), 16.0)
         }
     }
-    use sigil::style::StyleAtom;
-    static TIGHT: &[StyleAtom] = &[StyleAtom::LetterSpacing(0)];
-    static LOOSE: &[StyleAtom] = &[StyleAtom::LetterSpacing(200)];
 
     Runtime::scope("layout-memo-letter-spacing", || {
         let loose = signal(false);
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
-                .style_reactive(move || if loose.get() { LOOSE } else { TIGHT })
+                .letter_spacing_em(0.0)
+                .paint_when(loose, |s| s.letter_spacing_em(0.2))
                 .layout(LayoutStyle::flex_row().fixed_size(400.0, 24.0)),
         );
         let label = cx.add_child(root, text("hello"));

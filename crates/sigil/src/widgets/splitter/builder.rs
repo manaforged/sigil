@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, Fill, NodeStyleExt, StateVariants, StyleAtom, Token};
+use crate::style::{BORDER_WIDTH, Paint, StateVariants, StyleAtom, Token};
 
 use super::super::interactive::interactive;
 

@@ -5,7 +5,7 @@ use crate::events::{MouseButton, MouseButtons, NodeEventsExt, PointerEvent};
 use crate::kernel::{NodeBuilder, container};
 use crate::layout::LayoutReactiveExt;
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token};
 
 pub const DRAG_THRESHOLD_PX: f32 = 4.0;
 

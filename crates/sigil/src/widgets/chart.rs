@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, Tone, space};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom, Token, Tone, space};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::text;

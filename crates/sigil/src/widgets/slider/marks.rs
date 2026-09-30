@@ -1,7 +1,7 @@
 use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, container, text};
 use crate::layout::{JustifyContent, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Token};
+use crate::style::Token;
 
 use super::builder::{SliderRuntime, ValueChange};
 use super::handlers::quantize;

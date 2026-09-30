@@ -1,9 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, container, text};
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::Signal;
-use crate::style::{
-    DisplayKind, Metrics, NodeStyleExt, Radius, Size, StyleAtom, Token, Tone, space,
-};
+use crate::style::{DisplayKind, Metrics, Radius, Size, StyleAtom, Token, Tone, space};
 
 use super::super::chart::tone_solid;
 use super::super::vector::path;

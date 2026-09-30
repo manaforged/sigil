@@ -1,7 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom};
+use crate::style::{BORDER_WIDTH, Radius, StyleAtom};
 
 use super::button::button;
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};

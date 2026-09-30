@@ -6,7 +6,6 @@ use crate::layout::LayoutEngine;
 use crate::layout::TextMeasure;
 use crate::reactive::Runtime;
 use crate::style::NumericAtomKind;
-use crate::style::Style;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -54,13 +53,11 @@ fn transformed(child: NodeBuilder) -> NodeBuilder {
         .child(
             container()
                 .layout(LayoutStyle::block().fixed_size(100.0, 60.0))
-                .style(
-                    Style::new().transform(
-                        Transform2D::IDENTITY
-                            .translate(100.0, 40.0)
-                            .scale(2.0, 2.0)
-                            .origin(0.0, 0.0),
-                    ),
+                .transform(
+                    Transform2D::IDENTITY
+                        .translate(100.0, 40.0)
+                        .scale(2.0, 2.0)
+                        .origin(0.0, 0.0),
                 )
                 .child(child),
         )

@@ -4,7 +4,7 @@ use crate::events::{Key, ModifiersState, MouseButton, NodeEventsExt, PointerEven
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived};
-use crate::style::{NodeStyleExt, StateStyle, StyleAtom, StyleVariant, Token};
+use crate::style::{StateStyle, StyleAtom, StyleVariant, Token};
 
 use super::super::interaction::InteractionState;
 use super::super::patterns::{ROW_SELECTED, ROW_SELECTED_HOVER};

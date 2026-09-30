@@ -11,7 +11,7 @@ mod slots;
 pub(crate) use slots::SlotSet;
 
 #[must_use]
-pub fn merge_classes(
+pub(crate) fn merge_classes(
     defaults: &[StyleAtom],
     overrides: &[StyleAtom],
     component_id: ComponentId,

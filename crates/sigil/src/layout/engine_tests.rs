@@ -1,7 +1,7 @@
 use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{Cx, TextContent, container};
 use crate::reactive::{Runtime, effect, signal};
-use crate::style::{NodeStyleExt, Px, StyleAtom};
+use crate::style::{Dimension, Px, StyleAtom};
 
 use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, TextMeasure};
 
@@ -108,5 +108,35 @@ fn repaint_reuses_layout_storage_and_preserves_geometry() {
                 "frame {frame} retains dead layout nodes"
             );
         }
+    });
+}
+
+static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
+static WIDE: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(96)))];
+
+#[test]
+fn reactive_layout_style_change_invalidates_cache() {
+    Runtime::scope("layout_reactive_style_cache", || {
+        let wide = signal(false);
+        let mut cx = Cx::new_root();
+        let root =
+            cx.add(container().style_reactive(move || if wide.get() { WIDE } else { NARROW }));
+        let mut engine = LayoutEngine::with_text_measure(Box::new(Measure));
+        let available = Size::fixed(120.0, 40.0);
+        let width = |laid: &LayoutEngine| laid.result(root).expect("root layout").rect().width;
+
+        engine
+            .compute(&mut cx, root, available)
+            .expect("initial style compute succeeds");
+        let generation = engine.generation();
+        assert_eq!(width(&engine).to_bits(), 32.0_f32.to_bits());
+
+        wide.set(true);
+        engine
+            .compute(&mut cx, root, available)
+            .expect("changed style compute succeeds");
+
+        assert_ne!(engine.generation(), generation);
+        assert_eq!(width(&engine).to_bits(), 96.0_f32.to_bits());
     });
 }

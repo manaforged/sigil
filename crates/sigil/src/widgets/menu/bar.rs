@@ -6,8 +6,8 @@ use crate::layout::PopupSide;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Owner, OwnerId, Signal, signal};
 use crate::style::{
-    BORDER_WIDTH, Fill, Metrics, NodeStyleExt, Radius, Size, StateVariants, Style, StyleAccess,
-    StyleAtom, Token, space,
+    BORDER_WIDTH, Metrics, Paint, PaintTarget, Radius, Size, StateVariants, Style, StyleAtom,
+    StyleSlot, Token, space,
 };
 
 use super::super::interactive::interactive;
@@ -60,12 +60,6 @@ impl MenuBarBuilder {
         self
     }
 
-    #[must_use]
-    pub fn class(mut self, classes: &str) -> Self {
-        self.style_accumulator = self.style_accumulator.class(classes);
-        self
-    }
-
     fn into_node_builder(self) -> NodeBuilder {
         let open_idx: Signal<Option<usize>> = signal(None);
         let host = Owner::current();
@@ -93,9 +87,9 @@ impl WidgetLayoutExt for MenuBarBuilder {
     }
 }
 
-impl StyleAccess for MenuBarBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for MenuBarBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

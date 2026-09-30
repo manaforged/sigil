@@ -181,18 +181,19 @@ fn main() -> AppResult<()> {
 }
 ```
 
-`sigil::style::Token` names each theme colour. `Token::Surface.bg()`,
-`Token::OnSurface.text()`, and `Token::Border.border()` return style
-atoms, so a misspelled token does not compile.
+`Token` names each theme colour. The `Paint` methods `bg`,
+`text_color`, and `border_color` take a token, so a misspelled token
+does not compile.
 
 ```rust,no_run
 use sigil::prelude::*;
-use sigil::style::Token;
 
 fn tree() -> impl IntoNode {
     container()
-        .class([Token::SurfaceSubtle.bg(), Token::Border.border()])
-        .child(text("Panel").class(Token::OnSurfaceMuted.text()))
+        .bg(Token::SurfaceSubtle)
+        .border_w(1)
+        .border_color(Token::Border)
+        .child(text("Panel").text_color(Token::OnSurfaceMuted))
 }
 
 fn main() -> AppResult<()> {
@@ -217,7 +218,7 @@ then chain setters:
 | `width`, `height` | Fixed size |
 | `min_width`, `min_height`, `max_width`, `max_height` | Size limits |
 | `fill_width`, `fill_height`, `fill` | 100% of the parent |
-| `gap`, `padding`, `padding_x`, `padding_y`, `margin` | Spacing |
+| `gap`, `gap_x`, `gap_y`, `padding`, `padding_x`, `padding_y`, `padding_top`, ..., `margin`, `margin_x`, `margin_y`, `margin_top`, ... | Spacing |
 | `grow`, `shrink`, `flex_basis` | Flex sizing |
 | `align_items`, `align_self`, `justify_content` | Alignment |
 | `grid_columns`, `grid_rows`, `grid_column_span`, `grid_area` | Grid placement |

@@ -1,8 +1,7 @@
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{
-    BORDER_WIDTH, NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, space,
-};
+use crate::style::{BORDER_WIDTH, PaintTarget, Radius, Style, StyleAtom, StyleSlot, Token, space};
 
 const PANEL_MIN_HEIGHT: f32 = space(12);
 const DEFAULT_PADDING: f32 = space(4);
@@ -14,15 +13,7 @@ pub struct PanelBuilder {
     pub elevation: u32,
     content: Option<Box<dyn IntoNode>>,
     style_accumulator: Style,
-    width: Option<f32>,
-}
-
-impl PanelBuilder {
-    #[must_use]
-    pub const fn width(mut self, px: f32) -> Self {
-        self.width = Some(px);
-        self
-    }
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -39,7 +30,7 @@ impl PanelBuilder {
             elevation: 1,
             content: None,
             style_accumulator: Style::new(),
-            width: None,
+            layout_overrides: LayoutOverrides::new(),
         }
     }
 
@@ -70,7 +61,7 @@ impl PanelBuilder {
     fn into_node_builder(self) -> NodeBuilder {
         let mut root = container()
             .role(Role::GenericContainer)
-            .layout(panel_layout(self.padding, self.width))
+            .layout(self.layout_overrides.apply(panel_layout(self.padding)))
             .class(Radius::Md.atom())
             .class(surface_atoms(self.elevation));
 
@@ -96,9 +87,15 @@ impl Default for PanelBuilder {
     }
 }
 
-impl StyleAccess for PanelBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for PanelBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
+    }
+}
+
+impl WidgetLayoutExt for PanelBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
     }
 }
 
@@ -108,13 +105,12 @@ impl IntoNode for PanelBuilder {
     }
 }
 
-fn panel_layout(padding: f32, width: Option<f32>) -> LayoutStyle {
-    let base = LayoutStyle::flex_column().padding(padding).gap(TITLE_GAP);
-    let base = match width {
-        Some(px) => base.width(px),
-        None => base.fill_width(),
-    };
-    base.min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT)
+fn panel_layout(padding: f32) -> LayoutStyle {
+    LayoutStyle::flex_column()
+        .padding(padding)
+        .gap(TITLE_GAP)
+        .fill_width()
+        .min_size(crate::layout::Dimension::Auto, PANEL_MIN_HEIGHT)
 }
 
 fn panel_title(title: String) -> impl IntoNode {

@@ -5,34 +5,30 @@
 #![allow(clippy::panic)]
 
 use std::hint::black_box;
-use std::sync::LazyLock;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use sigil::kernel::{Cx, NodeId, container};
+use sigil::kernel::{Cx, NodeBuilder, NodeId, container};
+use sigil::layout::{LayoutBuilderExt, LayoutStyle};
 use sigil::reactive::{Runtime, signal};
 use sigil::style::{
-    AlignKind, ColorKey, Dimension, DisplayKind, FlexDir, JustifyKind, MillisU16, NodeStyleExt, Px,
-    RenderStyle, Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token,
-    TransitionId, merge_classes, parse_classes,
+    ColorKey, Elevation, FontFamily, MillisU16, NodeStyleExt, Paint, Px, Radius, RenderStyle,
+    Rgba8, StateStyle, StyleAtom, StyleBinding, StyleEngine, StyleState, Theme, Token,
+    TransitionId,
 };
 
-static CLASS_50: LazyLock<&'static [StyleAtom]> = LazyLock::new(|| {
-    parse_classes(
-        "p-16 px-16 py-16 pt-16 pr-16 pb-16 pl-16 m-16 mx-16 my-16 mt-16 mr-16 mb-16 ml-16 gap-16 w-16 h-16 w-full h-full w-auto h-auto flex block hidden flex-row flex-col flex-row-reverse flex-col-reverse items-start items-center items-end items-stretch justify-start justify-center justify-end justify-between justify-around rounded rounded-sm rounded-md rounded-lg rounded-full bg-accent bg-border bg-surface text-xs text-sm text-base text-lg text-xl",
-    )
-});
-
-static APPLY_ATOMS: LazyLock<&'static [StyleAtom]> =
-    LazyLock::new(|| parse_classes("bg-accent text-on-surface rounded-md opacity-100"));
-static REACTIVE_OFF: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Surface,
-))];
-static REACTIVE_ON: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
-    Token::Accent,
-))];
-static THEME_SWAP_ATOMS: LazyLock<&'static [StyleAtom]> =
-    LazyLock::new(|| parse_classes("bg-accent text-on-accent rounded-md opacity-100"));
+static APPLY_ATOMS: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
+    StyleAtom::BorderRadius(Px(6)),
+    StyleAtom::Opacity(10_000),
+];
+static THEME_SWAP_ATOMS: &[StyleAtom] = &[
+    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
+    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
+    StyleAtom::BorderRadius(Px(6)),
+    StyleAtom::Opacity(10_000),
+];
 static STATE_REST: &[StyleAtom] = &[StyleAtom::BackgroundThemeRef(ColorKey::Token(
     Token::Surface,
 ))];
@@ -51,82 +47,30 @@ static STATE_DISABLED: &[StyleAtom] = &[
     StyleAtom::Opacity(5_000),
 ];
 
-const DEFAULTS_32: [StyleAtom; 32] = [
-    StyleAtom::PaddingTop(Px(1)),
-    StyleAtom::PaddingRight(Px(2)),
-    StyleAtom::PaddingBottom(Px(3)),
-    StyleAtom::PaddingLeft(Px(4)),
-    StyleAtom::MarginTop(Px(5)),
-    StyleAtom::MarginRight(Px(6)),
-    StyleAtom::MarginBottom(Px(7)),
-    StyleAtom::MarginLeft(Px(8)),
-    StyleAtom::Gap(Px(9)),
-    StyleAtom::Width(Dimension::Px(Px(10))),
-    StyleAtom::Height(Dimension::Px(Px(11))),
-    StyleAtom::MinWidth(Dimension::Px(Px(12))),
-    StyleAtom::MaxWidth(Dimension::Px(Px(13))),
-    StyleAtom::Display(DisplayKind::Block),
-    StyleAtom::FlexDirection(FlexDir::Column),
-    StyleAtom::AlignItems(AlignKind::Start),
-    StyleAtom::JustifyContent(JustifyKind::Start),
-    StyleAtom::FlexGrow(1_000),
-    StyleAtom::FlexShrink(1_000),
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Surface)),
-    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnSurface)),
-    StyleAtom::BorderRadius(Px(2)),
-    StyleAtom::Opacity(8_000),
-    StyleAtom::FontSize(Px(14)),
-    StyleAtom::FontWeight(400),
-    StyleAtom::LineHeight(Px(16)),
-    StyleAtom::Transition(TransitionId(1)),
-    StyleAtom::TransitionDuration(MillisU16(150)),
-    StyleAtom::UnknownThemeRef("shadow-sm"),
-    StyleAtom::PaddingAll(Px(1)),
-    StyleAtom::PaddingX(Px(1)),
-    StyleAtom::MarginAll(Px(1)),
-];
+fn paint_node() -> NodeBuilder {
+    container()
+        .layout(LayoutStyle::default().padding(16.0).gap(16.0))
+        .bg(Token::Surface)
+        .text_color(Token::OnSurface)
+        .border_color(Token::Border)
+        .border_w(1)
+        .rounded(Radius::Md)
+        .shadow(Elevation::Sm)
+        .opacity(0.8)
+        .font_size(14)
+        .font_weight(400)
+        .font_family(FontFamily::Sans)
+        .line_height(16)
+        .transition(TransitionId(1))
+        .duration(MillisU16(150))
+}
 
-const OVERRIDES_32: [StyleAtom; 32] = [
-    StyleAtom::PaddingTop(Px(11)),
-    StyleAtom::PaddingRight(Px(12)),
-    StyleAtom::PaddingBottom(Px(13)),
-    StyleAtom::PaddingLeft(Px(14)),
-    StyleAtom::MarginTop(Px(15)),
-    StyleAtom::MarginRight(Px(16)),
-    StyleAtom::MarginBottom(Px(17)),
-    StyleAtom::MarginLeft(Px(18)),
-    StyleAtom::Gap(Px(19)),
-    StyleAtom::Width(Dimension::Px(Px(20))),
-    StyleAtom::Height(Dimension::Px(Px(21))),
-    StyleAtom::MinWidth(Dimension::Px(Px(22))),
-    StyleAtom::MaxWidth(Dimension::Px(Px(23))),
-    StyleAtom::Display(DisplayKind::Flex),
-    StyleAtom::FlexDirection(FlexDir::Row),
-    StyleAtom::AlignItems(AlignKind::Center),
-    StyleAtom::JustifyContent(JustifyKind::Between),
-    StyleAtom::FlexGrow(2_000),
-    StyleAtom::FlexShrink(0),
-    StyleAtom::BackgroundThemeRef(ColorKey::Token(Token::Accent)),
-    StyleAtom::TextThemeRef(ColorKey::Token(Token::OnAccent)),
-    StyleAtom::BorderRadius(Px(8)),
-    StyleAtom::Opacity(10_000),
-    StyleAtom::FontSize(Px(18)),
-    StyleAtom::FontWeight(700),
-    StyleAtom::LineHeight(Px(24)),
-    StyleAtom::Transition(TransitionId(2)),
-    StyleAtom::TransitionDuration(MillisU16(300)),
-    StyleAtom::UnknownThemeRef("shadow-xl"),
-    StyleAtom::PaddingAll(Px(15)),
-    StyleAtom::PaddingX(Px(16)),
-    StyleAtom::MarginAll(Px(17)),
-];
-
-fn classes_resolve_50_atoms(c: &mut Criterion) {
-    LazyLock::force(&CLASS_50);
-    c.bench_function("classes_resolve_50_atoms", |b| {
+fn paint_resolve_atoms(c: &mut Criterion) {
+    c.bench_function("paint_resolve_atoms", |b| {
         b.iter(|| {
-            let binding = StyleBinding::static_atoms(black_box(*CLASS_50));
-            black_box(binding.static_slice().len());
+            let mut cx = Cx::new_root();
+            let id = cx.add(black_box(paint_node()));
+            black_box(binding_len(&cx, id));
         });
     });
 }
@@ -135,46 +79,44 @@ fn style_engine_apply_1000_nodes(c: &mut Criterion) {
     let theme = Theme::default();
     let engine = StyleEngine::new(&theme);
     let mut render_styles = vec![RenderStyle::default(); 1_000];
-    LazyLock::force(&APPLY_ATOMS);
 
     c.bench_function("style_engine_apply_1000_nodes", |b| {
         b.iter(|| {
             for render in &mut render_styles {
                 *render = RenderStyle::default();
-                engine.apply(black_box(*APPLY_ATOMS), render);
+                engine.apply(black_box(APPLY_ATOMS), render);
             }
             black_box(&render_styles);
         });
     });
 }
 
-fn merge_classes_worst_case(c: &mut Criterion) {
-    let component_id = 7_007;
-    let _warm = merge_classes(&DEFAULTS_32, &OVERRIDES_32, component_id);
-
-    c.bench_function("merge_classes_worst_case", |b| {
+fn paint_override_last_wins(c: &mut Criterion) {
+    c.bench_function("paint_override_last_wins", |b| {
         b.iter(|| {
-            let merged = merge_classes(
-                black_box(&DEFAULTS_32),
-                black_box(&OVERRIDES_32),
-                component_id,
-            );
-            black_box(merged.len());
+            let mut cx = Cx::new_root();
+            let node = paint_node()
+                .bg(Token::Accent)
+                .text_color(Token::OnAccent)
+                .rounded(Radius::Lg)
+                .shadow(Elevation::Lg)
+                .opacity(1.0)
+                .font_size(18)
+                .font_weight(700)
+                .line_height(24)
+                .transition(TransitionId(2))
+                .duration(MillisU16(300));
+            let id = cx.add(black_box(node));
+            black_box(binding_len(&cx, id));
         });
     });
 }
 
-fn style_reactive_toggle(c: &mut Criterion) {
-    Runtime::scope("sigil_style_bench_reactive_toggle", || {
+fn visible_when_toggle(c: &mut Criterion) {
+    Runtime::scope("sigil_style_bench_visible_toggle", || {
         let active = signal(false);
         let mut cx = Cx::new_root();
-        let id = cx.add(container().style_reactive(move || {
-            if active.get() {
-                REACTIVE_ON
-            } else {
-                REACTIVE_OFF
-            }
-        }));
+        let id = cx.add(container().visible_when(active));
 
         active.set(true);
         active.set(false);
@@ -187,11 +129,11 @@ fn style_reactive_toggle(c: &mut Criterion) {
         active.set(false);
 
         let mut next = false;
-        c.bench_function("style_reactive_toggle", |b| {
+        c.bench_function("visible_when_toggle", |b| {
             b.iter(|| {
                 next = !next;
                 active.set(black_box(next));
-                black_box(reactive_slice(&cx, id));
+                black_box(reactive_len(&cx, id));
             });
         });
     });
@@ -248,7 +190,6 @@ fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
     };
     let mut render_styles = vec![RenderStyle::default(); 10_000];
     let mut use_accent_theme = false;
-    LazyLock::force(&THEME_SWAP_ATOMS);
 
     c.bench_function("theme_swap_10_000_bound_nodes", |b| {
         b.iter(|| {
@@ -261,7 +202,7 @@ fn theme_swap_10_000_bound_nodes(c: &mut Criterion) {
             let engine = StyleEngine::new(theme);
             for render in &mut render_styles {
                 *render = RenderStyle::default();
-                engine.apply(black_box(*THEME_SWAP_ATOMS), render);
+                engine.apply(black_box(THEME_SWAP_ATOMS), render);
             }
             black_box(&render_styles);
         });
@@ -275,22 +216,25 @@ criterion_group! {
         .measurement_time(Duration::from_secs(3))
         .sample_size(30);
     targets =
-        classes_resolve_50_atoms,
+        paint_resolve_atoms,
         style_engine_apply_1000_nodes,
-        merge_classes_worst_case,
-        style_reactive_toggle,
+        paint_override_last_wins,
+        visible_when_toggle,
         state_style_resolve_1000_widgets,
         theme_swap_10_000_bound_nodes
 }
 criterion_main!(benches);
 
-fn reactive_slice(cx: &Cx, id: NodeId) -> &'static [StyleAtom] {
-    let Some(binding) = cx
-        .get(id)
+fn binding_len(cx: &Cx, id: NodeId) -> usize {
+    cx.get(id)
         .and_then(|node| node.get_extension::<StyleBinding>())
-    else {
-        return &[];
-    };
-    let atoms: Vec<StyleAtom> = binding.reactive_channels().flatten().copied().collect();
-    Box::leak(atoms.into_boxed_slice())
+        .map_or(0, |binding| {
+            binding.static_slice().len() + binding.dynamic_slice().len()
+        })
+}
+
+fn reactive_len(cx: &Cx, id: NodeId) -> usize {
+    cx.get(id)
+        .and_then(|node| node.get_extension::<StyleBinding>())
+        .map_or(0, |binding| binding.reactive_channels().flatten().count())
 }

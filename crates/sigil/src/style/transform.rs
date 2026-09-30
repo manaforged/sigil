@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::geometry::{Point, Rect};
 
-use super::{AnimatorOverlay, NumericAtomKind, Style, StyleAtom, StyleBinding};
+use super::{AnimatorOverlay, NumericAtomKind, StyleAtom, StyleBinding};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Transform2D {
@@ -164,13 +164,5 @@ impl Transform2D {
         binding
             .animator_overlay()
             .map_or(transform, |overlay| transform.overlay(overlay))
-    }
-}
-
-impl Style {
-    #[must_use]
-    pub fn transform(mut self, transform: Transform2D) -> Self {
-        self.push_atom(StyleAtom::Transform(transform));
-        self
     }
 }

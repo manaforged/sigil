@@ -7,7 +7,7 @@ use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleOverlay,
+    JustifyKind, NodeStyleExt, PaintTarget, StateStyle, Style, StyleAtom, StyleOverlay, StyleSlot,
     StyleVariant, Theme, Token, TransitionId, space,
 };
 
@@ -122,19 +122,6 @@ impl ToggleBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style.merge(style);
-        self
-    }
-
-    #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
         self
@@ -194,6 +181,12 @@ impl ToggleBuilder {
             node = node.child(toggle_label(label_source));
         }
         interaction.install(control_surface(node, interaction, disabled, user_overlay))
+    }
+}
+
+impl PaintTarget for ToggleBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style)
     }
 }
 

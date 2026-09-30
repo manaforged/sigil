@@ -6,10 +6,11 @@
 
 use sigil::kernel::*;
 use sigil::reactive::Runtime;
-use sigil::style::{NodeStyleExt, Px, StyleAtom, StyleBinding};
+use sigil::reactive::signal;
+use sigil::style::{NodeStyleExt, Paint, Radius, StyleAtom, StyleBinding};
 
 static FIRST: &[StyleAtom] = &[StyleAtom::Opacity(5_000)];
-static SECOND: &[StyleAtom] = &[StyleAtom::Opacity(9_000), StyleAtom::BorderRadius(Px(4))];
+static SECOND: &[StyleAtom] = &[StyleAtom::Opacity(9_000), StyleAtom::Radius(Radius::Base)];
 
 #[test]
 fn multiple_reactive_sources_compose_in_install_order() {
@@ -17,8 +18,8 @@ fn multiple_reactive_sources_compose_in_install_order() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
-                .style_reactive(|| FIRST)
-                .style_reactive(|| SECOND),
+                .paint_when(signal(true), |s| s.opacity(0.5))
+                .paint_when(signal(true), |s| s.opacity(0.9).rounded(Radius::Base)),
         );
         let binding = cx
             .get(root)
@@ -38,9 +39,9 @@ fn composition_is_append_only_across_many_installs() {
         let mut cx = Cx::new_root();
         let root = cx.add(
             container()
-                .style_reactive(|| FIRST)
-                .style_reactive(|| FIRST)
-                .style_reactive(|| SECOND),
+                .paint_when(signal(true), |s| s.opacity(0.5))
+                .paint_when(signal(true), |s| s.opacity(0.5))
+                .paint_when(signal(true), |s| s.opacity(0.9).rounded(Radius::Base)),
         );
         let binding = cx
             .get(root)

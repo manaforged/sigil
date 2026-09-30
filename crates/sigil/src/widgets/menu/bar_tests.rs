@@ -28,11 +28,11 @@ fn bar_builds_one_child_per_menu() {
 }
 
 #[test]
-fn class_is_accepted() {
-    Runtime::scope("menu-bar-class", || {
+fn paint_is_accepted() {
+    Runtime::scope("menu-bar-paint", || {
         let mut cx = Cx::new_root();
         let root = menu_bar()
-            .class("bg-surface-hover px-16")
+            .bg(Token::SurfaceHover)
             .menu("File", [MenuItem::new("Open")])
             .build(&mut cx);
         assert!(cx.child_count(root) >= 1);

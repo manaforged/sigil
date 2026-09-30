@@ -7,7 +7,8 @@ fn ten_row_list() -> Vec<String> {
 fn row_label(label: &str) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_row())
-        .class("bg-surface text-on-surface")
+        .bg(Token::Surface)
+        .text_color(Token::OnSurface)
         .child(text(label.to_owned()))
 }
 
@@ -63,10 +64,8 @@ fn virtual_list_items_bind() {
     assert_rendered_matches_golden(img, &golden_path!("virtual_list_items_bind"), DELTA_PCT);
 }
 
-fn splitter_pane(class: &'static str) -> NodeBuilder {
-    container()
-        .class(class)
-        .layout(LayoutStyle::flex_column().fill())
+fn splitter_pane(bg: Token) -> NodeBuilder {
+    container().bg(bg).layout(LayoutStyle::flex_column().fill())
 }
 
 #[test]
@@ -74,8 +73,8 @@ fn splitter_horizontal_default() {
     let img = render_widget_to_png_stub(
         || {
             let w = splitter(SplitterOrientation::Horizontal)
-                .child(splitter_pane("bg-accent"), 120.0)
-                .child(splitter_pane("bg-surface-hover"), 120.0)
+                .child(splitter_pane(Token::Accent), 120.0)
+                .child(splitter_pane(Token::SurfaceHover), 120.0)
                 .layout(LayoutStyle::flex_row().fixed_size(246.0, 80.0));
             on_black(w, 258.0, 92.0)
         },
@@ -91,8 +90,8 @@ fn splitter_vertical_default() {
     let img = render_widget_to_png_stub(
         || {
             let w = splitter(SplitterOrientation::Vertical)
-                .child(splitter_pane("bg-accent"), 60.0)
-                .child(splitter_pane("bg-surface-hover"), 60.0)
+                .child(splitter_pane(Token::Accent), 60.0)
+                .child(splitter_pane(Token::SurfaceHover), 60.0)
                 .layout(LayoutStyle::flex_column().fixed_size(160.0, 126.0));
             on_black(w, 172.0, 138.0)
         },
@@ -108,8 +107,8 @@ fn splitter_horizontal_with_min_max() {
     let img = render_widget_to_png_stub(
         || {
             let w = splitter(SplitterOrientation::Horizontal)
-                .child(splitter_pane("bg-accent"), 120.0)
-                .child(splitter_pane("bg-surface-hover"), 120.0)
+                .child(splitter_pane(Token::Accent), 120.0)
+                .child(splitter_pane(Token::SurfaceHover), 120.0)
                 .min_size(0, 60.0)
                 .max_size(0, 200.0)
                 .min_size(1, 60.0)

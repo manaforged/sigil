@@ -5,7 +5,7 @@ use crate::kernel::{Cx, FocusScopeKind, IntoNode, NodeBuilder, container};
 use crate::layout::PopupSide;
 use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Owner, OwnerId, Signal};
-use crate::style::{DisplayKind, NodeStyleExt, Style, StyleAccess, StyleAtom};
+use crate::style::{DisplayKind, PaintTarget, Style, StyleAtom, StyleSlot};
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use super::super::popup::PANEL_WIDTH;
@@ -181,9 +181,9 @@ impl WidgetLayoutExt for MenuBuilder {
     }
 }
 
-impl StyleAccess for MenuBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for MenuBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

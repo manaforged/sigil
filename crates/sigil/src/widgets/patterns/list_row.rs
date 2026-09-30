@@ -1,7 +1,7 @@
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
 use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::{Signal, signal};
-use crate::style::{Fill, NodeStyleExt, Radius, StateVariants, Token, space};
+use crate::style::{Paint, Radius, StateVariants, Token, space};
 
 use super::super::interactive::interactive;
 use super::super::popup::{ChevronDirection, chevron};

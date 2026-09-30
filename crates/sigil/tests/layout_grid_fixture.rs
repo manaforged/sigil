@@ -10,7 +10,6 @@ mod stub;
 use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutResult, TrackSize, *};
-use sigil::style::NodeStyleExt;
 
 use stub::stub_engine;
 
@@ -259,9 +258,12 @@ fn fr_rows_share_leftover_when_height_is_definite() {
 #[test]
 fn grid_cols_class_lays_out_as_a_grid() {
     let mut cx = Cx::new_root();
-    let mut root_b = container()
-        .layout(LayoutStyle::block().width(200.0))
-        .class("grid-cols-2");
+    let mut root_b = container().layout(
+        LayoutStyle::block()
+            .width(200.0)
+            .display(Display::Grid)
+            .grid_columns(vec![TrackSize::Fr(1.0); 2]),
+    );
     for _ in 0..4 {
         root_b = root_b.child(container().layout(LayoutStyle::block().height(30.0)));
     }

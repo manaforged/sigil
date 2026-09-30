@@ -4,6 +4,7 @@ use crate::events::{Key, NodeEventsExt};
 use crate::events::{KeyEvent, LogicalKey};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
+use crate::widgets::layout_ext::WidgetLayoutExt;
 use crate::widgets::scroll::{reveal_row, scroll};
 
 pub(crate) trait ListModel: 'static {

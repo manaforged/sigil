@@ -1,13 +1,5 @@
 use super::*;
 
-fn hidden_atoms(show: sigil::reactive::Signal<bool>) -> &'static [StyleAtom] {
-    if show.get() {
-        &[]
-    } else {
-        &[StyleAtom::Display(DisplayKind::None)]
-    }
-}
-
 fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (NodeId, NodeId) {
     let root = cx.add(
         container()
@@ -16,7 +8,7 @@ fn hideable_child_tree(cx: &mut Cx, show: sigil::reactive::Signal<bool>) -> (Nod
                 container()
                     .focusable(true)
                     .layout(LayoutStyle::block().fixed_size(80.0, 32.0))
-                    .style_reactive(move || hidden_atoms(show)),
+                    .visible_when(show),
             ),
     );
     let child = cx.nth_child(root, 0).expect("child must exist");

@@ -14,9 +14,9 @@ fn main() -> sigil::AppResult<()> {
 fn counter(count: Signal<i32>) -> NodeBuilder {
     let label = derived(move || format!("Count: {}", count.get()));
     container()
-        .layout(LayoutStyle::flex_column().gap(16.0))
-        .class("p-32 bg-surface")
-        .child(text(label).class("text-on-surface"))
+        .layout(LayoutStyle::flex_column().gap(16.0).padding(32.0))
+        .bg(Token::Surface)
+        .child(text(label).text_color(Token::OnSurface))
         .child(button("Increment").primary().activate(move || {
             count.set(count.peek() + 1);
         }))

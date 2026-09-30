@@ -7,6 +7,7 @@ use crate::kernel::component::{ErasedComponent, IntoNode};
 use crate::kernel::{
     A11yProps, AccessibleName, Cx, Node, NodeId, NodeType, TextCursor, reactive_children,
 };
+use crate::style::{PaintTarget, StateHost, Style, StyleSlot};
 
 type NodeMutator = Box<dyn FnOnce(&mut Node)>;
 type ReactiveChildrenInstall = Box<dyn FnOnce(NodeId)>;
@@ -20,6 +21,7 @@ pub struct NodeBuilder {
     pre_extensions: Vec<NodeMutator>,
     reactive_children: Option<ReactiveChildrenInstall>,
     on_added: Vec<AddedHook>,
+    style: Style,
 }
 
 #[must_use]
@@ -41,6 +43,7 @@ impl NodeBuilder {
             pre_extensions: Vec::new(),
             reactive_children: None,
             on_added: Vec::new(),
+            style: Style::new(),
         }
     }
 
@@ -260,10 +263,30 @@ impl NodeBuilder {
     pub fn add(self, cx: &mut Cx) -> NodeId {
         cx.add(self)
     }
+
+    pub(crate) const fn pending_style(&mut self) -> &mut Style {
+        &mut self.style
+    }
 }
 
+impl PaintTarget for NodeBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style)
+    }
+}
+
+impl StateHost for NodeBuilder {}
+
 impl IntoNode for NodeBuilder {
-    fn build(self, cx: &mut Cx) -> NodeId {
+    fn build(mut self, cx: &mut Cx) -> NodeId {
+        let style = std::mem::take(&mut self.style);
+        let this = crate::style::attach_style(self, style);
+        this.build_node(cx)
+    }
+}
+
+impl NodeBuilder {
+    fn build_node(self, cx: &mut Cx) -> NodeId {
         let id = cx.new_node(self.kind, self.a11y);
         if let Some(node) = cx.get_mut(id) {
             for apply in self.pre_extensions {

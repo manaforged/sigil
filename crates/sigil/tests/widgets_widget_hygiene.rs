@@ -98,6 +98,6 @@ fn check_line(path: &Path, lineno: usize, line: &str, out: &mut Vec<String>) {
         ));
     }
     if name == "style_atoms" {
-        out.push(format!("{cite}  — forbidden `style_atoms`; setter is .style(), trait surface is .style_mut() (Wave B item 9)"));
+        out.push(format!("{cite}  — forbidden `style_atoms`; paint goes through the typed Paint methods (Wave B item 9)"));
     }
 }

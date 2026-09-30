@@ -10,7 +10,8 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .class("p-32 bg-surface")
+        .layout(LayoutStyle::default().padding(32.0))
+        .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(
             button("Increment")

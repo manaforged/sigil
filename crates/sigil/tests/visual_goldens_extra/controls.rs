@@ -83,13 +83,13 @@ fn divider_horizontal_default() {
                 .layout(LayoutStyle::flex_column().fixed_size(180.0, 60.0))
                 .child(
                     container()
-                        .class("bg-accent")
+                        .bg(Token::Accent)
                         .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
                 )
                 .child(divider_horizontal())
                 .child(
                     container()
-                        .class("bg-surface-hover")
+                        .bg(Token::SurfaceHover)
                         .layout(LayoutStyle::flex_row().fill_width().height(20.0)),
                 )
         },
@@ -108,13 +108,13 @@ fn divider_vertical_default() {
                 .layout(LayoutStyle::flex_row().fixed_size(120.0, 60.0))
                 .child(
                     container()
-                        .class("bg-accent")
+                        .bg(Token::Accent)
                         .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
                 )
                 .child(divider_vertical())
                 .child(
                     container()
-                        .class("bg-surface-hover")
+                        .bg(Token::SurfaceHover)
                         .layout(LayoutStyle::flex_column().fill_height().width(40.0)),
                 )
         },
@@ -131,8 +131,11 @@ fn kv_row_default() {
         || {
             let row = container()
                 .layout(LayoutStyle::flex_column().fixed_size(220.0, 40.0))
-                .class("bg-surface")
-                .child(kv_row("Status", text("200 OK").class("font-mono")));
+                .bg(Token::Surface)
+                .child(kv_row(
+                    "Status",
+                    text("200 OK").font_family(FontFamily::Mono),
+                ));
             on_black(row, 232.0, 52.0)
         },
         InteractionMode::Default,
@@ -148,7 +151,7 @@ fn status_bar_default() {
         || {
             let bar = container()
                 .layout(LayoutStyle::flex_column().fixed_size(280.0, 48.0))
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(status_bar([
                     chip("READY", Tone::Success),
                     chip("3 ITEMS", Tone::Neutral),

@@ -5,7 +5,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, signal};
 use crate::style::{
-    ClassSource, NodeStyleExt, Radius, StateHost, Style, StyleAccess, Theme, Token, space,
+    NodeStyleExt, PaintTarget, Radius, StateHost, Style, StyleSlot, Theme, Token, space,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -122,19 +122,6 @@ impl TabsBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
-        let source = source.into();
-        self.mutators.push(Box::new(move |node| node.class(source)));
-        self
-    }
-
-    #[must_use]
-    pub fn style(mut self, style: Style) -> Self {
-        self.style_accumulator.merge(style);
-        self
-    }
-
-    #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
         self
@@ -213,9 +200,9 @@ impl TabsBuilder {
     }
 }
 
-impl StyleAccess for TabsBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for TabsBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

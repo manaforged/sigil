@@ -2,9 +2,10 @@ use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, Overflow};
-use crate::style::{BORDER_WIDTH, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, space};
+use crate::style::{BORDER_WIDTH, Paint, PaintTarget, Style, StyleSlot, Token, space};
 
-use super::button::button;
+use super::button::{ButtonBuilder, button};
+use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::kernel::text;
 
 mod patch;
@@ -16,8 +17,7 @@ use rows::{source_row, split_row, unified_rows, weights};
 const GUTTER_W: f32 = 56.0;
 pub(super) const ROW_INSET: f32 = space(2);
 
-static ACTIVE_CHOICE: &[StyleAtom] = &[Token::Gray12.text(), Token::Gray4.bg()];
-static IDLE_CHOICE: &[StyleAtom] = &[Token::Gray10.text()];
+const CHOICE_FONT_PX: i16 = 12;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DiffLayout {
@@ -73,6 +73,7 @@ pub struct DiffBuilder {
     max_rows: usize,
     pick: Option<LayoutPick>,
     style_accumulator: Style,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -85,6 +86,7 @@ pub fn diff(patch: impl Into<String>) -> DiffBuilder {
         max_rows: usize::MAX,
         pick: None,
         style_accumulator: Style::new(),
+        layout_overrides: LayoutOverrides::new(),
     }
 }
 
@@ -150,18 +152,11 @@ impl DiffBuilder {
                     .class(Token::Error11.text()),
             );
         for choice in [DiffLayout::Split, DiffLayout::Unified] {
-            let tone = if choice == self.layout {
-                ACTIVE_CHOICE
-            } else {
-                IDLE_CHOICE
-            };
+            let active = choice == self.layout;
+            let choice_button = paint_choice(button(choice.name()).ghost(), active);
             row = row.child(match self.pick.clone() {
-                Some(pick) => button(choice.name())
-                    .ghost()
-                    .activate(move || pick(choice))
-                    .class("text-xs")
-                    .class(tone),
-                None => button(choice.name()).ghost().class("text-xs").class(tone),
+                Some(pick) => choice_button.activate(move || pick(choice)),
+                None => choice_button,
             });
         }
         row
@@ -184,11 +179,8 @@ impl DiffBuilder {
                         .class(Token::Gray10.text()),
                 );
             if ruled {
-                half.style(
-                    Style::new()
-                        .border_right(BORDER_WIDTH.0)
-                        .border_theme(Token::Border.name()),
-                )
+                half.border_right(BORDER_WIDTH.0)
+                    .border_color(Token::Border)
             } else {
                 half
             }
@@ -271,20 +263,11 @@ impl DiffBuilder {
             .role(Role::List)
             .label(self.path.clone().unwrap_or_else(|| String::from("Diff")))
             .description(format!("{added} added, {removed} removed"))
-            .layout(
-                LayoutStyle::flex_column()
-                    .fill_width()
-                    .min_size(0.0, 0.0)
-                    .overflow_x(Overflow::Hidden)
-                    .gap(0.0),
-            )
+            .layout(self.layout_overrides.clone().apply(root_layout()))
             .class("rounded")
             .class(Token::Field.bg())
-            .style(
-                Style::new()
-                    .border_width(BORDER_WIDTH.0)
-                    .border_theme(Token::Border.name()),
-            )
+            .border_w(BORDER_WIDTH.0)
+            .border_color(Token::Border)
             .child(self.header(added, removed));
         if self.layout == DiffLayout::Split {
             root = root.child(Self::labels(weights(&pairs)));
@@ -311,10 +294,24 @@ impl DiffBuilder {
     }
 }
 
-impl StyleAccess for DiffBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for DiffBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
+}
+
+impl WidgetLayoutExt for DiffBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
+
+fn root_layout() -> LayoutStyle {
+    LayoutStyle::flex_column()
+        .fill_width()
+        .min_size(0.0, 0.0)
+        .overflow_x(Overflow::Hidden)
+        .gap(0.0)
 }
 
 impl IntoNode for DiffBuilder {
@@ -326,3 +323,12 @@ impl IntoNode for DiffBuilder {
 #[cfg(all(test, feature = "terminal"))]
 #[path = "diff_tests.rs"]
 mod tests;
+
+fn paint_choice(choice: ButtonBuilder, active: bool) -> ButtonBuilder {
+    let choice = choice.font_size(CHOICE_FONT_PX);
+    if active {
+        choice.text_color(Token::Gray12).bg(Token::Gray4)
+    } else {
+        choice.text_color(Token::Gray10)
+    }
+}

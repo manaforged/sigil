@@ -12,7 +12,7 @@ use crate::layout::snap::CellForm;
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
-use crate::style::{NodeStyleExt, Radius, Token, space};
+use crate::style::{Radius, Token, space};
 
 use super::layout_ext::WidgetLayoutExt;
 use std::rc::Rc;

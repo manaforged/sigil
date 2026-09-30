@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![allow(clippy::must_use_candidate, clippy::wildcard_imports)]
 
 extern crate alloc;
@@ -79,6 +80,19 @@ pub mod clipboard;
 #[cfg(any(test, feature = "kittest"))]
 pub mod testing;
 
+#[cfg(fuzzing)]
+pub mod fuzzing {
+    #[must_use]
+    pub fn parse_class_string(input: &str) -> bool {
+        crate::style::parse_class_string(input).is_ok()
+    }
+
+    #[must_use]
+    pub fn parse_stateful_token(input: &str) -> bool {
+        crate::style::parse_stateful_token(input).is_ok()
+    }
+}
+
 pub mod prelude {
     #[cfg(feature = "desktop")]
     pub use crate::app::open;
@@ -103,9 +117,8 @@ pub mod prelude {
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
     pub use crate::style::{
-        ColorAtom, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Rgba8, Sizing, Spacing,
-        StateVariants, StyleAccess, StyleAtom, Styleable, Styled, Theme, Tone, Transitions,
-        Typography, Visual,
+        ColorAtom, Elevation, FocusRing, FontFamily, NodeStyleExt, Paint, Radius, Rgba8,
+        StateVariants, Theme, Token, Tone,
     };
     pub use crate::tasks::{ScheduleError, SignalWriter, Status, Task, signal_writer, spawn, task};
     #[cfg(feature = "scene")]

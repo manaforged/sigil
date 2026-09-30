@@ -11,14 +11,11 @@ use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::*;
 use sigil::reactive::{Runtime, signal};
-use sigil::style::{Dimension, DisplayKind, NodeStyleExt, Px, StyleAtom};
+use sigil::style::NodeStyleExt;
 use sigil_kittest::CharMeasure;
 use stub::{layout_rect, stub_engine};
 
 const AVAILABLE: Size = Size::fixed(120.0, 40.0);
-static NARROW: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(32)))];
-static WIDE: &[StyleAtom] = &[StyleAtom::Width(Dimension::Px(Px(96)))];
-static HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
 
 fn build_tree() -> (Cx, NodeId, NodeId) {
     let mut cx = Cx::new_root();

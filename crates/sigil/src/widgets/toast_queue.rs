@@ -4,7 +4,7 @@ use web_time::Instant;
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle, Position};
 use crate::reactive::{Signal, interval, signal};
-use crate::style::{NodeStyleExt, Token, Tone, space};
+use crate::style::{Token, Tone, space};
 
 use super::dot::dot;
 use super::popup::SURFACE;

@@ -12,7 +12,7 @@ use sigil::geometry::Size;
 use sigil::kernel::*;
 use sigil::layout::{LayoutBuilderExt, LayoutEngine, LayoutStyle};
 use sigil::scene::{SceneCommand, ShadowKind, emit_scene};
-use sigil::style::NodeStyleExt;
+use sigil::style::{Elevation, Paint, Token};
 use support::TEXT_MEASURE;
 
 const SIZE: u32 = 64;
@@ -24,13 +24,13 @@ fn layout(cx: &mut Cx, root: NodeId) {
         .expect("layout compute");
 }
 
-fn shadow_extent(class: &'static str) -> Option<f32> {
+fn shadow_extent(elevation: Option<Elevation>) -> Option<f32> {
     let mut cx = Cx::new_root();
-    let root = cx.add(
-        container()
-            .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
-            .class(class),
-    );
+    let node = container().layout(LayoutStyle::block().fixed_size(40.0, 40.0));
+    let root = cx.add(match elevation {
+        Some(elevation) => node.shadow(elevation),
+        None => node.bg(Token::Surface),
+    });
     layout(&mut cx, root);
     emit_scene(&cx, root)
         .commands
@@ -47,7 +47,8 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
     let root = cx.add(
         container()
             .layout(LayoutStyle::block().fixed_size(40.0, 40.0))
-            .class("bg-surface shadow-lg"),
+            .bg(Token::Surface)
+            .shadow(Elevation::Lg),
     );
     layout(&mut cx, root);
 
@@ -74,9 +75,9 @@ fn shadow_class_emits_translucent_outer_drop_shadow() {
 
 #[test]
 fn elevation_scale_is_monotonic() {
-    let sm = shadow_extent("shadow-sm").expect("shadow-sm emits");
-    let base = shadow_extent("shadow").expect("shadow emits");
-    let xl = shadow_extent("shadow-xl").expect("shadow-xl emits");
+    let sm = shadow_extent(Some(Elevation::Sm)).expect("shadow-sm emits");
+    let base = shadow_extent(Some(Elevation::Base)).expect("shadow emits");
+    let xl = shadow_extent(Some(Elevation::Xl)).expect("shadow-xl emits");
     assert!(
         sm < base && base < xl,
         "higher elevation must cast a larger shadow: sm={sm}, base={base}, xl={xl}",
@@ -86,7 +87,7 @@ fn elevation_scale_is_monotonic() {
 #[test]
 fn no_shadow_class_emits_no_shadow_command() {
     assert!(
-        shadow_extent("bg-surface").is_none(),
+        shadow_extent(None).is_none(),
         "a plain surface must not emit a shadow",
     );
 }

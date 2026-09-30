@@ -3,9 +3,7 @@ mod item;
 use crate::kernel::{NodeBuilder, Role, TopLayer, container};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::{Popup, PopupSide};
-use crate::style::{
-    BORDER_WIDTH, Metrics, NodeStyleExt, OVERLAY_SHADOW, Radius, Size, StyleAtom, Token, space,
-};
+use crate::style::{BORDER_WIDTH, Metrics, OVERLAY_SHADOW, Radius, Size, StyleAtom, Token, space};
 
 pub(crate) use item::{ChevronDirection, ItemSlots, chevron, footer, item_row};
 

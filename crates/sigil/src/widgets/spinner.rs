@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use crate::kernel::{NodeBuilder, Role, container, text};
 use crate::reactive::{derived, interval, signal};
-use crate::style::{Metrics, NodeStyleExt};
+use crate::style::Metrics;
 
 use super::shared::ICON_GLYPH;
 

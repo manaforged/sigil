@@ -11,7 +11,7 @@ fn hint_overlay_default() {
             ]);
             let surface = container()
                 .layout(LayoutStyle::flex_column().fixed_size(220.0, 84.0))
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(overlay);
             on_black(surface, 232.0, 96.0)
         },
@@ -31,11 +31,11 @@ fn pattern_app_shell() {
                 .layout(LayoutStyle::flex_column().fixed_size(360.0, 200.0))
                 .child(sigil::widgets::app_shell(
                     container()
-                        .class("bg-accent")
+                        .bg(Token::Accent)
                         .layout(LayoutStyle::flex_row().fill().padding(8.0))
                         .child(text("Top bar")),
                     container()
-                        .class("bg-surface-hover")
+                        .bg(Token::SurfaceHover)
                         .layout(LayoutStyle::flex_column().fill().padding(8.0))
                         .child(text("Work")),
                     status_bar([chip("READY", Tone::Success)]),
@@ -60,7 +60,7 @@ fn pattern_field() {
                         .fixed_size(220.0, 70.0)
                         .padding(8.0),
                 )
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(sigil::widgets::field("Username", text_field(buffer)));
             on_black(field, 232.0, 82.0)
         },
@@ -81,7 +81,7 @@ fn pattern_kv_grid() {
                         .fixed_size(280.0, 96.0)
                         .padding(8.0),
                 )
-                .class("bg-surface")
+                .bg(Token::Surface)
                 .child(sigil::widgets::kv_grid(&[
                     ("Content-Type", "application/json"),
                     ("Status", "200 OK"),

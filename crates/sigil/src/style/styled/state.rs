@@ -1,9 +1,6 @@
 use smallvec::SmallVec;
 
-use super::StyleAccess;
-use crate::style::{Style, StyleAtom};
-
-pub trait StateHost {}
+use crate::style::{PaintTarget, Style, StyleAtom, StyleSlot};
 
 pub struct StateStyleBuilder {
     style: Style,
@@ -23,8 +20,8 @@ impl StateStyleBuilder {
     }
 }
 
-impl StyleAccess for StateStyleBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style
+impl PaintTarget for StateStyleBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style)
     }
 }

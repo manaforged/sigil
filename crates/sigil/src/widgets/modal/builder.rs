@@ -14,7 +14,7 @@ use crate::layout::{
 };
 use crate::reactive::{Signal, effect_named, signal};
 use crate::style::{
-    DisplayKind, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, TransitionId, space,
+    DisplayKind, PaintTarget, Style, StyleAtom, StyleSlot, Token, TransitionId, space,
 };
 
 use super::super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -217,9 +217,9 @@ fn install_open_effects(show: Signal<bool>, title: Option<TextContent>, body_scr
     });
 }
 
-impl StyleAccess for ModalBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
+impl PaintTarget for ModalBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style_accumulator)
     }
 }
 

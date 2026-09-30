@@ -2,7 +2,7 @@ use crate::kernel::{NodeBuilder, Role, TextBuilder, container, text};
 use crate::layout::cols;
 use crate::layout::snap::CellForm;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Px, Radius, StyleAtom, TextFace, TextRun, Token, space};
+use crate::style::{Px, Radius, StyleAtom, TextFace, TextRun, Token, space};
 use crate::widgets::{Highlight, highlight};
 
 use super::containers::List;

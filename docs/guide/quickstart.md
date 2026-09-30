@@ -2,7 +2,7 @@
 
 Sigil is a desktop UI library in Rust. State is a signal graph. Layout,
 text shaping, and the wgpu renderer are owned code. AccessKit, IME,
-utility classes, and the widget catalog ship in the crate. You write
+typed styling, and the widget catalog ship in the crate. You write
 plain Rust against one import.
 
 ```rust,no_run
@@ -32,7 +32,8 @@ fn main() -> sigil::AppResult<()> {
 fn app_tree() -> impl IntoNode {
     let count = signal(0_i32);
     column()
-        .class("p-32 bg-surface")
+        .layout(LayoutStyle::default().padding(32.0))
+        .bg(Token::Surface)
         .child(text(move || format!("Count: {}", count.get())))
         .child(button("Increment").primary().activate(move || count.update(|n| *n += 1)))
 }
@@ -97,39 +98,49 @@ details.
 
 ## Styling
 
-`.class("p-32 bg-surface rounded-md")` is the default styling path.
-The tokens are Tailwind-shaped and parsed at runtime. An unknown class
-panics in a debug build with the nearest valid names, and logs one
-warning in a release build. Spacing and size numbers are pixels, the
-same unit as the builder methods: `p-16` and `.padding(16.0)` are both
-16 px, `w-16` is 16 px wide.
-`opacity-50` is a percent. Theme tokens (`bg-surface`, `text-on-surface`,
-`bg-accent`) come from the active theme. Dark mode is a theme swap, not
-a restyle.
-
-### Typed theme tokens
-
-`Token` names every theme colour. An unknown name does not compile.
-Class strings still parse token names at runtime.
+Styling is typed Rust. Paint goes through the `Paint` methods. Layout
+goes through `LayoutStyle`. A misspelt name does not compile.
 
 ```rust,no_run
 # use sigil::prelude::*;
 # let _ = {
-use sigil::style::BORDER_WIDTH;
-use sigil::style::Radius;
-use sigil::style::StyleAtom;
-use sigil::style::Token;
-
 container()
-    .class("p-16")
-    .class([
-        Token::Overlay.bg(),
-        Token::OverlayBorder.border(),
-        StyleAtom::BorderWidth(BORDER_WIDTH),
-        Radius::Md.atom(),
-    ])
+    .layout(LayoutStyle::default().padding(16.0).gap(8.0))
+    .bg(Token::Overlay)
+    .border_w(1)
+    .border_color(Token::OverlayBorder)
+    .rounded(Radius::Md)
+    .shadow(Elevation::Md)
+    .child(text("Title").font_size(18).font_weight(600).text_color(Token::OnSurface))
+    .child(text("12:30").font_family(FontFamily::Mono).text_color(Token::OnSurfaceMuted))
 # };
 ```
+
+`Paint` has these methods:
+
+| Method | Sets |
+| --- | --- |
+| `bg`, `background_gradient` | Background colour or gradient |
+| `text_color` | Text colour |
+| `border_color`, `border_w`, `border_top`, `border_right`, `border_bottom`, `border_left` | Border colour and width in px |
+| `rounded(Radius)` | Corner radius |
+| `shadow(Elevation)` | Drop shadow |
+| `opacity(f32)` | Opacity, 0.0 to 1.0 |
+| `font_size`, `font_weight`, `font_italic`, `font_family(FontFamily)` | Font |
+| `line_height`, `letter_spacing_em`, `tabular_nums` | Text metrics |
+| `underline`, `line_through` | Text decoration |
+| `transition`, `duration` | Style transitions |
+
+Spacing and size numbers are pixels. `LayoutStyle` sets padding,
+margin, gap, size, flex, and grid. `row()` and `column()` are flex
+containers with the default gap. Put all layout for one node in one
+`LayoutStyle` chain.
+
+### Typed theme tokens
+
+`Token` names every theme colour. `bg`, `text_color`, and
+`border_color` take a `Token` or an `Rgba8`. Theme tokens come from the
+active theme. Dark mode is a theme swap, not a restyle.
 
 | Group | Tokens |
 | --- | --- |
@@ -141,7 +152,6 @@ container()
 | Overlays | `Overlay`, `OverlayBorder`, `Scrim` |
 | Scales | `Gray1`..`Gray12`, `Accent1`..`Accent12`, `Success1`.., `Warn1`.., `Error1`.., `Info1`.. |
 
-`Token::bg`, `Token::text`, and `Token::border` return a `StyleAtom`.
 `Token::color` returns a `ColorAtom`. `Theme::color(token)` resolves a
 token to a colour. Widgets resolve tokens when they paint, so a theme
 swap recolours a built tree.
@@ -150,8 +160,8 @@ Shared metrics:
 
 | Item | API | Value |
 | --- | --- | --- |
-| Spacing step | `space(n)` | `n` × 4 px, for builder methods and classes alike |
-| Radius family | `Radius::{Sm, Md, Lg, Full}.atom()` | 2, 6, 8, 9999 px; 0 on a character grid |
+| Spacing step | `space(n)` | `n` × 4 px |
+| Radius family | `Radius::{Sm, Base, Md, Lg, Full}` | 2, 4, 6, 8, 9999 px; 0 on a character grid |
 | Border width | `BORDER_WIDTH` | 1 px |
 | Focus ring | `FocusRing` default | 2 px wide, 2 px offset, colour `Ring` |
 | Overlay | `Token::Overlay`, `Token::OverlayBorder`, `OVERLAY_SHADOW`, `Metrics::overlay_padding` | fill, border, `Elevation::Md`, 4 px |
@@ -160,7 +170,7 @@ Shared metrics:
 | Control hover | `SurfaceHover` fill, `SurfacePressed` while pressed | checkbox, toggle, radio row, slider, `interactive` |
 | Controls | `Metrics::current()` | `control_height`, `padding`, `gap` per `Size` |
 
-A radius atom reads the theme at paint time. `Metrics::current()`
+A radius reads the theme at paint time. `Metrics::current()`
 returns the host metrics. On a character grid, control heights,
 padding, and gaps are one cell.
 
@@ -186,10 +196,11 @@ press, focus, and disabled semantics:
 # let _ = {
 interactive(
     container()
-        .layout(LayoutStyle::block().fixed_size(328.0, 304.0))
-        .class("p-32 bg-accent rounded-md"),
+        .layout(LayoutStyle::block().fixed_size(328.0, 304.0).padding(32.0))
+        .bg(Token::Accent)
+        .rounded(Radius::Md),
 )
-.hover(|s| s.bg("accent-hover"))
+.hover(|s| s.bg(Token::AccentHover))
 # };
 ```
 

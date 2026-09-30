@@ -1,8 +1,10 @@
 use crate::kernel::NodeBuilder;
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Reactive;
 use crate::reactive::Signal;
-use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess};
+use crate::style::{ClassSource, NodeStyleExt, PaintTarget, Style, StyleSlot};
 use crate::widgets::interaction::InteractionState;
+use crate::widgets::layout_ext::{LayoutOverrides, WidgetLayoutExt};
 use crate::widgets::shared::state_surface;
 
 pub struct InteractiveBuilder {
@@ -10,6 +12,7 @@ pub struct InteractiveBuilder {
     style: Style,
     disabled: Option<Signal<bool>>,
     focusable: bool,
+    layout_overrides: LayoutOverrides,
 }
 
 #[must_use]
@@ -19,6 +22,7 @@ pub fn interactive(inner: NodeBuilder) -> InteractiveBuilder {
         style: Style::new(),
         disabled: None,
         focusable: false,
+        layout_overrides: LayoutOverrides::new(),
     }
 }
 
@@ -36,18 +40,15 @@ impl InteractiveBuilder {
     }
 
     #[must_use]
-    pub fn class(mut self, classes: &str) -> Self {
-        self.style = core::mem::take(&mut self.style).class(classes);
-        self
-    }
-
-    #[must_use]
     pub fn into_node_builder(self) -> NodeBuilder {
         let mut style = self.style;
         let overlay = style.take_state_overlay();
         let base_atoms = style.into_atoms();
         let interaction = InteractionState::new(true);
         let mut node = self.inner.focusable(self.focusable);
+        if self.layout_overrides != LayoutOverrides::new() {
+            node = node.layout(self.layout_overrides.apply(LayoutStyle::default()));
+        }
         if !base_atoms.is_empty() {
             node = node.class(ClassSource::Owned(Box::new(base_atoms)));
         }
@@ -61,13 +62,19 @@ impl InteractiveBuilder {
     }
 }
 
-impl StyleAccess for InteractiveBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style
+impl PaintTarget for InteractiveBuilder {
+    fn style_slot(&mut self) -> StyleSlot<'_> {
+        StyleSlot(&mut self.style)
     }
 }
 
 impl crate::style::StateHost for InteractiveBuilder {}
+
+impl WidgetLayoutExt for InteractiveBuilder {
+    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
+        &mut self.layout_overrides
+    }
+}
 
 impl crate::kernel::IntoNode for InteractiveBuilder {
     fn build(self, cx: &mut crate::kernel::Cx) -> crate::kernel::NodeId {

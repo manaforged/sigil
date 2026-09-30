@@ -50,7 +50,7 @@ pub(crate) fn build() -> impl IntoNode {
     container()
         .role(Role::Main)
         .layout(LayoutStyle::flex_row().fill())
-        .class("bg-surface")
+        .bg(Token::Surface)
         .child(sidebar(nav(page)))
         .child(
             container()
@@ -137,7 +137,7 @@ fn account(prefs: Prefs) -> NodeBuilder {
     let languages = LANGUAGES.iter().map(|s| String::from(*s)).collect();
     container()
         .layout(page_layout())
-        .child(text("Account").class("text-lg"))
+        .child(text("Account").font_size(18))
         .child(
             container()
                 .layout(
@@ -171,7 +171,7 @@ fn appearance(prefs: Prefs) -> NodeBuilder {
     let scale_text = derived(move || format!("Interface scale: {:.0}%", prefs.scale.get()));
     container()
         .layout(page_layout())
-        .child(text("Appearance").class("text-lg"))
+        .child(text("Appearance").font_size(18))
         .child(toggle(prefs.dark).label("Dark theme"))
         .child(checkbox(prefs.compact).label("Compact rows"))
         .child(field(
@@ -184,7 +184,7 @@ fn notifications(prefs: Prefs) -> NodeBuilder {
     let volume_text = derived(move || format!("Alert volume: {:.0}", prefs.volume.get()));
     container()
         .layout(page_layout())
-        .child(text("Notifications").class("text-lg"))
+        .child(text("Notifications").font_size(18))
         .child(toggle(prefs.notify_email).label("Email digests"))
         .child(toggle(prefs.notify_push).label("Push notifications"))
         .child(field(
@@ -205,7 +205,7 @@ fn footer(prefs: Prefs, queue: ToastQueue) -> NodeBuilder {
                 .gap(cols(1.0))
                 .align_items(AlignItems::Center),
         )
-        .class("bg-surface-hover")
+        .bg(Token::SurfaceHover)
         .child(spacer())
         .child(
             button("Save")

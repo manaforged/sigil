@@ -8,8 +8,7 @@ use crate::layout::TextStyleCapture;
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived};
 use crate::style::{
-    ColorAtom, NodeStyleExt, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay,
-    TransitionId, space,
+    ColorAtom, ReactiveStateSlot, Rgba8, StateSlot, StyleAtom, StyleOverlay, TransitionId, space,
 };
 
 use crate::widgets::interaction::InteractionState;

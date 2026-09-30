@@ -17,3 +17,12 @@ fn parse_classes_reuses_the_parsed_slice() {
     let second = parse_classes(input);
     assert!(core::ptr::eq(first, second));
 }
+
+#[cfg(debug_assertions)]
+#[test]
+fn parse_classes_cache_survives_a_diagnostic_panic() {
+    let bad: &'static str = "cache-poison:x";
+    drop(std::panic::catch_unwind(|| parse_classes(bad)));
+    let input: &'static str = "p-12 bg-surface";
+    assert!(core::ptr::eq(parse_classes(input), parse_classes(input)));
+}

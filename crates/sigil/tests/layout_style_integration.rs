@@ -10,7 +10,7 @@ mod stub;
 use sigil::geometry::{LogicalSize, Size};
 use sigil::kernel::{TextContent, *};
 use sigil::layout::*;
-use sigil::style::{NodeStyleExt, TextLineHeight, TextStyle};
+use sigil::style::{Paint, TextLineHeight, TextStyle};
 
 use stub::{first_child, layout_rect, stub_engine};
 
@@ -19,9 +19,14 @@ fn p_4_applies_sixteen_px_padding() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::block().fixed_size(100.0, 50.0))
-            .class("p-16")
-            .child(container().class("w-full h-full")),
+            .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(16.0))
+            .child(
+                container().layout(
+                    LayoutStyle::default()
+                        .width(Dimension::Percent(1.0))
+                        .height(Dimension::Percent(1.0)),
+                ),
+            ),
     );
     let child = first_child(&cx, root);
 
@@ -38,7 +43,15 @@ fn p_4_applies_sixteen_px_padding() {
 
 fn padded_child_origin(root: NodeBuilder) -> f32 {
     let mut cx = Cx::new_root();
-    let root = cx.add(root.child(container().class("w-full h-full")));
+    let root = cx.add(
+        root.child(
+            container().layout(
+                LayoutStyle::default()
+                    .width(Dimension::Percent(1.0))
+                    .height(Dimension::Percent(1.0)),
+            ),
+        ),
+    );
     let child = first_child(&cx, root);
     stub_engine()
         .compute(&mut cx, root, Size::fixed(100.0, 50.0))
@@ -51,7 +64,7 @@ fn a_class_written_after_layout_wins() {
     let origin = padded_child_origin(
         container()
             .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0))
-            .class("p-16"),
+            .layout(LayoutStyle::default().padding(16.0)),
     );
     assert_eq!(origin, 16.0);
 }
@@ -60,7 +73,7 @@ fn a_class_written_after_layout_wins() {
 fn a_layout_written_after_class_wins() {
     let origin = padded_child_origin(
         container()
-            .class("p-16")
+            .layout(LayoutStyle::default().padding(16.0))
             .layout(LayoutStyle::block().fixed_size(100.0, 50.0).padding(24.0)),
     );
     assert_eq!(origin, 24.0);
@@ -73,9 +86,11 @@ fn w_full_is_percent_100() {
         container()
             .layout(LayoutStyle::block().fixed_size(200.0, 40.0))
             .child(
-                container()
-                    .layout(LayoutStyle::default().height(10.0))
-                    .class("w-full"),
+                container().layout(
+                    LayoutStyle::default()
+                        .height(10.0)
+                        .width(Dimension::Percent(1.0)),
+                ),
             ),
     );
     let child = first_child(&cx, root);
@@ -92,8 +107,13 @@ fn flex_row_items_center() {
     let mut cx = Cx::new_root();
     let root = cx.add(
         container()
-            .layout(LayoutStyle::default().fixed_size(100.0, 40.0))
-            .class("flex flex-row items-center")
+            .layout(
+                LayoutStyle::default()
+                    .fixed_size(100.0, 40.0)
+                    .display(Display::Flex)
+                    .flex_direction(FlexDirection::Row)
+                    .align_items(AlignItems::Center),
+            )
             .child(container().layout(LayoutStyle::default().fixed_size(10.0, 10.0)))
             .child(container().layout(LayoutStyle::default().fixed_size(20.0, 10.0))),
     );
@@ -115,7 +135,7 @@ fn flex_row_items_center() {
 #[test]
 fn typography_atoms_drive_text_measurement() {
     let mut cx = Cx::new_root();
-    let root = cx.add(text("Type").class("text-xl font-bold leading-32"));
+    let root = cx.add(text("Type").font_size(20).font_weight(700).line_height(32));
 
     LayoutEngine::with_text_measure(Box::new(StyleAwareMeasure))
         .compute(&mut cx, root, Size::max_content())

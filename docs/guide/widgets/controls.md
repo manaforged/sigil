@@ -2,11 +2,11 @@
 
 Action and value controls. Each constructs from a lowercase function and
 chains a builder. `button`, `icon_button`, `checkbox`, `toggle`, and
-`slider` take `.class()`, `.style()`, `.theme()` on the builder;
-`radio_group` reaches styling through `StyleAccess`. `button`,
+`slider` and `radio_group` take the `Paint` methods and `.theme()` on the
+builder. `button`,
 `icon_button`, `checkbox`, `toggle`, and `radio_group` take the
 `WidgetLayoutExt` sizing methods (`.width()`, `.height()`, `.grow()`,
-`.padding()`, `.layout()`); `slider` sizes through its style classes.
+`.padding()`, `.layout()`); `slider` sizes through `.layout()`.
 `button`, `checkbox`, and `slider` implement `StateHost` — the state
 closures `.hover()`, `.focus()`, `.pressed()`, and `.disabled_style()`.
 

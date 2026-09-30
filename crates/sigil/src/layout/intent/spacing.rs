@@ -124,4 +124,56 @@ impl LayoutStyle {
         self.0.margin = Rect::splat(margin.into());
         self.mark(MARGIN)
     }
+
+    #[must_use]
+    pub fn margin_x(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        let margin = margin.into();
+        self.0.margin.left = margin;
+        self.0.margin.right = margin;
+        self.mark(LayoutFields::MARGIN_LEFT.with(LayoutFields::MARGIN_RIGHT))
+    }
+
+    #[must_use]
+    pub fn margin_y(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        let margin = margin.into();
+        self.0.margin.top = margin;
+        self.0.margin.bottom = margin;
+        self.mark(LayoutFields::MARGIN_TOP.with(LayoutFields::MARGIN_BOTTOM))
+    }
+
+    #[must_use]
+    pub fn margin_top(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.margin.top = margin.into();
+        self.mark(LayoutFields::MARGIN_TOP)
+    }
+
+    #[must_use]
+    pub fn margin_right(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.margin.right = margin.into();
+        self.mark(LayoutFields::MARGIN_RIGHT)
+    }
+
+    #[must_use]
+    pub fn margin_bottom(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.margin.bottom = margin.into();
+        self.mark(LayoutFields::MARGIN_BOTTOM)
+    }
+
+    #[must_use]
+    pub fn margin_left(mut self, margin: impl Into<LengthPercentageAuto>) -> Self {
+        self.0.margin.left = margin.into();
+        self.mark(LayoutFields::MARGIN_LEFT)
+    }
+
+    #[must_use]
+    pub fn gap_x(mut self, gap: impl Into<LengthPercentage>) -> Self {
+        self.0.gap.width = gap.into();
+        self.mark(LayoutFields::GAP_X)
+    }
+
+    #[must_use]
+    pub fn gap_y(mut self, gap: impl Into<LengthPercentage>) -> Self {
+        self.0.gap.height = gap.into();
+        self.mark(LayoutFields::GAP_Y)
+    }
 }

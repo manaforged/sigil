@@ -1,7 +1,7 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
-use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, space};
+use crate::style::{DisplayKind, StyleAtom, space};
 
 pub(super) fn wrap_with_content(
     tab_list: NodeBuilder,

@@ -23,7 +23,7 @@ First release.
 - `sigil::Host` embeds the tree in another engine's event loop.
 - A wgpu renderer and a CPU renderer; `SIGIL_BACKEND=cpu` selects the CPU one.
 - Text shaping, bidirectional text, IME input, and text editing widgets.
-- Layout with flexbox and grid, class strings, and builder methods.
+- Layout with flexbox and grid through `LayoutStyle`, `row()`, and `column()`.
 - Themes with design tokens and tones.
 - Content widgets: `markdown`, `html`, `mermaid`, charts, icons, and images.
 - `sparkline(..).fill(SparkFill::Shade)` draws the body of a multi-row
@@ -34,6 +34,8 @@ First release.
 - Background tasks with `tasks` and `signal_writer` for results from
   other threads.
 - `sigil-sign`: the `sigil-pack` binary packs and signs release builds.
+- Each crate's docs.rs page shows its README, and the README examples
+  run as doctests.
 - `sigil-kittest`: a PNG golden harness for apps that depend on Sigil.
 - `sigil-fonts`: the default fonts (Fira Sans, Cascadia Mono, and a Noto
   Color Emoji subset) under the SIL Open Font License 1.1. `sigil-ui` is
@@ -55,14 +57,13 @@ First release.
   the button on screen; before, the field took the whole width and
   pushed the button past the window edge.
 - Style calls write to one store per node, and a later call wins for
-  each property it sets: `.class`, `.style`, the typed methods, and
+  each property it sets: the `Paint` methods, the state variants, and
   `.layout`. A background or border that you set on a widget holds over
   the widget's defaults in every state; `.tone()` keeps the state
-  feedback in another palette. `.style(Style)` keeps its hover, focus,
-  pressed, and disabled states. `WidgetLayoutExt::padding` is removed,
+  feedback in another palette. `WidgetLayoutExt::padding` is removed,
   so `padding` on a widget is the one typed method. `flex_grow` and
   `shrink` take factors: `flex_grow(2.0)` grows by 2. Before,
-  `.class("p-32")` on a button left it 30 px wide, `button("A").padding(4.0)`
+  padding on a button left it 30 px wide, `button("A").padding(4.0)`
   did not compile, and a button's hover colour replaced a background you
   set.
 - `disabled` on every widget takes a value, a signal, or a closure, so
@@ -104,6 +105,8 @@ First release.
   `sigil::events::{EventRouter, ShellEvent, PointerEventInit}`,
   `sigil::layout::{TextMeasure, LayoutError}`, `sigil::kernel::Surface`,
   and `sigil::clipboard::{Clipboard, Delivery, install}`.
+- `text_edit` takes `.autofocus()` and `.focus_when(signal)`, as
+  `text_field` does, so an app focuses an editor without a node id.
 
 - Every public item has one path. `sigil::prelude` is the only module
   that re-exports items from elsewhere, and it holds the names app code
@@ -165,14 +168,22 @@ First release.
   `text_live`, `TextContent::compute`, and `widgets::label` are
   removed; write `text(f)` and `text(source).nowrap()`. This is a
   breaking change.
-- The `classes!` macro is removed; write `.class("p-16 bg-surface")`.
-  `parse_classes` is in `sigil::style`. An unknown class panics in a debug
-  build with the nearest valid names and logs one warning per name in a
-  release build. This is a breaking change.
-- Spacing and size numbers in class strings are pixels, the unit of the
-  builder methods: `p-16` is 16 px, as `.padding(16.0)` is. Multiply an
-  old class number by 4 to keep the same size (`p-4` becomes `p-16`).
-  This is a breaking change.
+- Styling is typed. Paint goes through the `Paint` methods (`bg`,
+  `text_color`, `border_color`, `border_w`, `rounded`, `shadow`,
+  `opacity`, `font_size`, `font_weight`, `font_family`, and more) and
+  the `StateVariants` closures `rest`, `hover`, `focus`, `pressed`, and
+  `disabled_style`. Layout goes through `LayoutStyle`, `row()`, and
+  `column()`. `LayoutStyle` gains `margin_x`, `margin_y`, `margin_top`,
+  `margin_right`, `margin_bottom`, `margin_left`, `gap_x`, and `gap_y`.
+  Class strings, the `classes!` macro, `.class(..)`, `parse_classes`,
+  `Style`, `.styled()`, and the `Spacing`, `Sizing`, `Flex`, `Fill`,
+  `Geometry`, `Typography`, `Visual`, and `Transitions` traits are no
+  longer public. `ColorOrToken` no longer converts from a string.
+  `Radius::Base` (4 px) and `FontFamily` are new. `paint_when(signal,
+  |s| ..)` replaces `class_when` and applies typed paint while a signal
+  is true. Widget builders take `.layout(..)`, `.width(..)`, and
+  `.height(..)` through `WidgetLayoutExt`. Spacing and size numbers are
+  pixels. This is a breaking change.
 - The app root fills the viewport on both hosts when its width or
   height is auto. A root no longer needs `fixed_size` to match the
   window.
@@ -327,6 +338,13 @@ First release.
 - Each frame cleared the target in a separate pass before drawing. The
   clear now happens in the first draw pass, which saves one full-target
   store and load per frame on tile-based GPUs.
+- Every frame redrew the whole window, even when only a caret, a hovered
+  row, or one label changed. The renderer now compares each frame with the
+  one before, redraws up to three changed regions into a kept back buffer,
+  and copies it to the window. A layer blur, a rotated layer, or a change
+  to most of the scene still redraws the whole frame. The
+  `gpu.redrawn_pixels` profile counter and `FrameStats::redrawn_pixels`
+  report the pixels drawn.
 
 ### Added
 
@@ -375,8 +393,8 @@ First release.
   `gauge`, `heatmap`), application chrome, and overlays. The
   [widgets guide](docs/guide/widgets.md) lists each group.
 - Layout on flexbox and grid, with `rows`, `cols`, and `em` text units.
-- Styling: utility class strings, typed theme colours through
-  `Token`, and shared metrics. `parse_theme`, `set_theme`,
+- Styling: typed `Paint` methods and state variants, theme colours
+  through `Token`, and shared metrics. `parse_theme`, `set_theme`,
   `watch_theme`, and `AppConfig::theme_file` load a TOML theme and
   reload it when the file changes.
 - Accessibility through AccessKit: roles, names, and live regions.

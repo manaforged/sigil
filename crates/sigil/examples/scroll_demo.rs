@@ -17,8 +17,8 @@ fn root() -> NodeBuilder {
     let items = tall_column();
     container()
         .role(Role::Main)
-        .layout(LayoutStyle::flex_column().padding(24.0))
-        .class("w-full h-full bg-surface")
+        .layout(LayoutStyle::flex_column().fill().padding(24.0))
+        .bg(Token::Surface)
         .child(scroll(items).extent(600.0).height(300.0))
 }
 

@@ -15,7 +15,7 @@ use sigil::layout::{LayoutEngine, LayoutResult};
 use sigil::prelude::*;
 use sigil::reactive::Runtime;
 use sigil::style::scale::ruby_light;
-use sigil::style::{Style, Token, render_style_for};
+use sigil::style::{Token, render_style_for};
 use widget_support::{compute, rect_colors};
 
 const VIEWPORT: Size = Size::fixed(640.0, 480.0);
@@ -45,10 +45,10 @@ fn rest_and_hover_colors(build: impl IntoNode) -> (Vec<Rgba8>, Vec<Rgba8>) {
 fn a_padding_class_widens_a_button() {
     Runtime::scope("precedence-class-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").class("p-32"));
+        let padded = width(button("A").layout(LayoutStyle::default().padding(32.0)));
         assert!(
             padded >= plain + 40.0,
-            "p-32 left the button at {padded} (plain {plain})"
+            "padding(32) left the button at {padded} (plain {plain})"
         );
     });
 }
@@ -57,10 +57,10 @@ fn a_padding_class_widens_a_button() {
 fn typed_padding_widens_a_button() {
     Runtime::scope("precedence-typed-padding", || {
         let plain = width(button("A"));
-        let padded = width(button("A").padding(32));
+        let padded = width(button("A").layout(LayoutStyle::default().padding_x(32.0)));
         assert!(
             padded >= plain + 40.0,
-            "padding(32) left the button at {padded} (plain {plain})"
+            "padding_x(32) left the button at {padded} (plain {plain})"
         );
     });
 }
@@ -71,9 +71,10 @@ fn a_hover_state_in_style_paints_on_hover() {
         let (rest, hovered) = rest_and_hover_colors(
             container()
                 .layout(LayoutStyle::block().fixed_size(32.0, 32.0))
-                .style(Style::new().class("bg-surface hover:bg-accent")),
+                .bg(Token::Surface)
+                .hover(|s| s.bg(Token::Accent)),
         );
-        assert_ne!(rest, hovered, "the hover state of .style() never painted");
+        assert_ne!(rest, hovered, "the hover state never painted");
     });
 }
 
@@ -94,7 +95,7 @@ fn a_background_set_on_a_button_holds_under_hover() {
 fn a_border_set_on_a_text_field_holds_at_rest() {
     Runtime::scope("precedence-field-border", || {
         let value = signal(String::new());
-        let (cx, root, _) = laid_out(text_field(value).class([Token::Accent9.border()]));
+        let (cx, root, _) = laid_out(text_field(value).border_color(Token::Accent9));
         let node = cx.get(root).expect("the field is in the tree");
         let theme = Theme::light();
         let style = render_style_for(root, node, &theme, None);

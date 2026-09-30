@@ -13,7 +13,7 @@ fn main() -> sigil::AppResult<()> {
 fn interactive_demo() -> InteractiveBuilder {
     interactive(container().child(text("Focusable row").nowrap()))
         .focusable(true)
-        .class("rounded-md")
+        .rounded(Radius::Md)
 }
 
 fn axis_drag_demo() -> NodeBuilder {

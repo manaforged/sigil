@@ -1,6 +1,6 @@
 use crate::kernel::{Cx, IntoNode, NodeId, Role, TextBuilder, container, text};
 use crate::layout::{LayoutBuilderExt, LayoutStyle};
-use crate::style::{NodeStyleExt, Tone};
+use crate::style::Tone;
 
 use super::chart::{tone_shade, tone_solid};
 

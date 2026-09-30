@@ -2,7 +2,7 @@ use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::{Signal, derived, signal};
-use crate::style::{Metrics, NodeStyleExt, Size, Style, space};
+use crate::style::{Metrics, Size, Style, space};
 
 use super::super::layout_ext::LayoutOverrides;
 use super::super::listbox::{ListModel, listbox};

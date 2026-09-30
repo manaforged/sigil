@@ -1,5 +1,6 @@
 use crate::style::{
-    Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, Px, StyleAtom, TextDecoration,
+    Dimension, DisplayKind, Elevation, FlexDir, FlexWrapKind, FontFamily, Px, StyleAtom,
+    TextDecoration,
 };
 
 pub(super) fn parse_display_token(token: &str) -> Option<StyleAtom> {
@@ -67,11 +68,11 @@ pub(super) fn parse_font_token(token: &str) -> Option<StyleAtom> {
         "font-bold" => Some(StyleAtom::FontWeight(700)),
         "italic" => Some(StyleAtom::FontItalic(true)),
         "not-italic" => Some(StyleAtom::FontItalic(false)),
-        "font-sans" => Some(StyleAtom::FontFamily("sans")),
-        "font-mono" => Some(StyleAtom::FontFamily("mono")),
-        "font-serif" => Some(StyleAtom::FontFamily("serif")),
-        "font-icon" => Some(StyleAtom::FontFamily("icon")),
-        "font-display" => Some(StyleAtom::FontFamily("display")),
+        "font-sans" => Some(StyleAtom::FontFamily(FontFamily::Sans.name())),
+        "font-mono" => Some(StyleAtom::FontFamily(FontFamily::Mono.name())),
+        "font-serif" => Some(StyleAtom::FontFamily(FontFamily::Serif.name())),
+        "font-icon" => Some(StyleAtom::FontFamily(FontFamily::Icon.name())),
+        "font-display" => Some(StyleAtom::FontFamily(FontFamily::Display.name())),
         _ => None,
     }
 }

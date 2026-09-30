@@ -24,8 +24,9 @@ text(move || format!("Count: {}", count.get())).nowrap();
 `Role::Label`), `.label(name)` and `.description(text)` for
 accessibility, `.focusable(bool)`, `.tab_index(i32)`,
 `.keyboard_shortcut(Shortcut)`, `.hittable(bool)`, and `.mutate(f)` for
-raw node edits. Font size and color come from `.class()` / `.style()`
-(`"text-sm"`, `"text-*"` tone classes, …), not dedicated methods.
+raw node edits. Font and colour come from the `Paint` methods: `.font_size(14)`,
+`.font_weight(600)`, `.font_family(FontFamily::Mono)`,
+`.text_color(Token::OnSurfaceMuted)`.
 
 ## icon
 
@@ -134,7 +135,7 @@ example `.focusable(true)` and `.key(...)` on a `text` node.
 ## Terminal notes
 
 - Text keeps bold, dim, italic, underline, and strikethrough when the
-  terminal supports them. Font size classes do not change the cell
+  terminal supports them. `font_size` does not change the cell
   size.
 - Images use the Kitty, iTerm2, or Sixel protocol when the terminal
   has one. Other terminals get sextant glyphs. See

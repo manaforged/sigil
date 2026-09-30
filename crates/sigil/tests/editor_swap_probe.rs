@@ -9,24 +9,21 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::events::EventRouter;
 use sigil::events::{
-    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
-    ShellEvent,
+    EventRouter, ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind,
+    PointerPhase, ShellEvent,
 };
 use sigil::geometry::Point;
 use sigil::kernel::{Cx, NodeId};
-use sigil::layout::LayoutEngine;
+use sigil::layout::{Dimension, LayoutEngine};
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
 use sigil::style::Color;
-use sigil_kittest::CharMeasure;
+use sigil_kittest::{CharMeasure, gpu::read_pixels};
 use std::env::temp_dir;
 use std::process;
 use wgpu::TextureFormat;
-
-use sigil_kittest::gpu::read_pixels;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 
@@ -38,12 +35,17 @@ const TEXT_MEASURE: CharMeasure = CharMeasure {
 fn editor_view(name: &str, body: &str) -> NodeBuilder {
     let line_count = body.lines().count().max(1);
     let extent = (line_count as f32).mul_add(16.8, 20.0);
+    let mono = text(body.to_owned())
+        .font_size(14)
+        .font_family(FontFamily::Mono);
     let code = container()
         .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
-        .child(text(body.to_owned()).class("text-sm font-mono"));
+        .child(mono);
+    let column = LayoutStyle::flex_column()
+        .grow(1.0)
+        .width(Dimension::Percent(1.0));
     container()
-        .layout(LayoutStyle::flex_column().grow(1.0))
-        .class("w-full")
+        .layout(column)
         .child(
             container()
                 .label(name.to_owned())
@@ -225,18 +227,17 @@ fn shell_root(selected: Signal<usize>, files: Vec<(String, String)>) -> NodeBuil
 }
 
 fn explorer_row(selected: Signal<usize>, idx: usize, name: &str, active: bool) -> NodeBuilder {
-    let class = if active { "bg-accent" } else { "" };
-    container()
+    let row = container()
         .role(Role::Button)
         .label(name.to_owned())
         .focusable(true)
-        .layout(LayoutStyle::flex_row().height(22.0).padding_x(8.0))
-        .class(class)
-        .pointer_down(move |ev| {
-            selected.set(idx);
-            ev.stop_propagation();
-        })
-        .child(text(name.to_owned()).nowrap())
+        .layout(LayoutStyle::flex_row().height(22.0).padding_x(8.0));
+    let row = if active { row.bg(Token::Accent) } else { row };
+    row.pointer_down(move |ev| {
+        selected.set(idx);
+        ev.stop_propagation();
+    })
+    .child(text(name.to_owned()).nowrap())
 }
 
 #[test]
