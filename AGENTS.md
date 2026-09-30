@@ -41,18 +41,20 @@ where an adapter exists. Tests marked `#[ignore = "manual: ..."]` never run in
 the gate. Rules for sources, ignores, and waiver caps: `scripts/gate-policy.json`.
 The gate refuses `SIGIL_ALLOW_NO_GPU`, `SIGIL_REGEN_GOLDENS`, and
 `SIGIL_REGEN_ALLOW_CONTENT_LOSS`. Its perf step reads frame allocation budgets
-from `crates/sigil/perf_budgets.toml`, the only budget table.
+from `crates/sigil/perf_budgets.toml`. Its truesight step runs
+`cargo truesight check`: the generated API reference, the prelude and story
+name budgets, and `docs/api.md` coverage, all set in `truesight.toml`.
+`cargo truesight health` prints the same measures.
 
 `SIGIL_BACKEND=cpu` selects the software renderer.
 
 ## Conventions
 
-- No comments in source, rustdoc included. No `missing_docs` lint. Docs go in README, `docs/api.md`, and `docs/guide`.
+- No comments in source, rustdoc included. No `missing_docs` lint. Docs go in README, `docs/api.md`, and `docs/guide`. Each package README is its crate page (`#![doc = include_str!("../README.md")]`), so its code blocks run as doctests.
 - Unit tests go next to the code as `*_tests.rs`. Tests through the public API go in `crates/sigil/tests`.
 - Clippy caps functions at 50 lines.
 - `unsafe` is denied except `crates/sigil/src/app/menu.rs`.
 - Do not add a crate when std or an existing dependency already does the job.
-- First-party git dependencies track `main`; `Cargo.lock` holds the commit. Move it with `cargo update -p <crate>`.
 - Commits: `area: summary` then `Problem:`, `Fix:`, `Impact:`, `Test:`.
 
 ## Do not
