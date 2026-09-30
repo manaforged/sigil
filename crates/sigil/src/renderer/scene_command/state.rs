@@ -300,7 +300,7 @@ pub(crate) fn shadow_reach(shadow: &Shadow) -> f32 {
     )
 }
 
-fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
+pub(crate) fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
     let stroked =
         |rect: Rect, stroke: Option<Stroke>| rect.expand(stroke.map_or(0.0, |s| s.width.max(0.0)));
     Some(match command {
@@ -334,7 +334,7 @@ fn ink_rect(command: &SceneCommand, scale: f32) -> Option<Rect> {
     })
 }
 
-fn snap_out(rect: Rect, grid: Point, scale: f32) -> Rect {
+pub(crate) fn snap_out(rect: Rect, grid: Point, scale: f32) -> Rect {
     let snap = |value: f32, origin: f32, round: fn(f32) -> f32| {
         round((value - origin) * scale) / scale + origin
     };

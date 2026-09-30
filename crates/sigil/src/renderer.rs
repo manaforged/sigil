@@ -9,6 +9,7 @@ pub mod capture;
 pub(crate) mod color_glyph_paint;
 #[cfg(feature = "cpu")]
 mod cpu;
+mod damage;
 mod decoration_paint;
 mod device_state;
 #[cfg(target_arch = "wasm32")]

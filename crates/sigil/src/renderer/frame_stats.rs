@@ -22,6 +22,7 @@ pub struct FrameStats {
     pub frame_upload_capacity_bytes: u64,
     pub frame_upload_writes: usize,
     pub frame_uploaded_bytes: u64,
+    pub redrawn_pixels: u64,
 }
 
 impl FrameStats {
@@ -67,6 +68,10 @@ impl FrameStats {
             (
                 crate::profile::Counter::GpuUploadBytes,
                 self.frame_uploaded_bytes,
+            ),
+            (
+                crate::profile::Counter::GpuRedrawnPixels,
+                self.redrawn_pixels,
             ),
             (crate::profile::Counter::RenderFrames, 1),
         ] {

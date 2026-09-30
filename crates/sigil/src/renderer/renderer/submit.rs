@@ -2,8 +2,10 @@ use crate::profile::count;
 use crate::style::Color;
 
 use super::WgpuRenderer;
+use crate::geometry::{Point, Rect};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::profile::gpu::snapshot;
+use crate::renderer::damage::{self, FrameKey, Plan, Retained};
 use crate::renderer::device_state::{DeviceState, ReadyState};
 use crate::renderer::error::RendererError;
 use crate::renderer::frame_stats::FrameStats;
@@ -147,57 +149,19 @@ pub(super) fn walk_screen(
     clippy::cast_precision_loss,
     reason = "pixel and char-count magnitudes are bounded; sub-unit precision is irrelevant at render scale"
 )]
-fn surface_text_scale(surface: &WgpuSurface, viewport: (f32, f32)) -> f32 {
+pub(super) fn surface_text_scale(surface: &WgpuSurface, viewport: (f32, f32)) -> f32 {
     surface.config.width as f32 / viewport.0.max(1.0)
 }
 
 #[allow(
-    clippy::too_many_arguments,
-    reason = "the argument list mirrors the upstream API contract"
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "physical pixel counts are non-negative and far below u64::MAX"
 )]
-pub(super) fn render_command_scene_surface(
-    ready: &mut ReadyState,
-    surface: &WgpuSurface,
-    scene: &CommandScene,
-    clear_color: crate::style::Color,
-    viewport: (f32, f32),
-    stats: &mut FrameStats,
-) -> Result<(), RendererError> {
-    let Some((frame, view)) = acquire_frame(ready, surface)? else {
-        return Ok(());
-    };
-    let device = ready.device.clone();
-    let queue = ready.queue.clone();
-    let encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        label: Some("sigil-renderer surface frame encoder"),
-    });
-    let mut retained = Vec::new();
-    let scale = surface_text_scale(surface, viewport);
-    let format = surface.config.format;
-    let mut encoder = SplitEncoder::new(&device, &queue, encoder);
-    encoder.clear(&view, clear_color);
-    encoder.reuse_uploads(&mut ready.uploads);
-    walk_screen(
-        ready,
-        &device,
-        &queue,
-        &mut encoder,
-        &mut retained,
-        &view,
-        viewport,
-        scale,
-        format,
-        scene,
-        stats,
-    )?;
-    ready.uploads = Some(encoder.submit());
-    queue.present(frame);
-    if let Some(pool) = ready.layer_pool.as_mut() {
-        for handle in retained {
-            pool.release(handle);
-        }
-    }
-    Ok(())
+pub(super) fn physical_pixels(region: Rect, scale: f32) -> u64 {
+    let width = (region.width * scale).ceil().max(0.0) as u64;
+    let height = (region.height * scale).ceil().max(0.0) as u64;
+    width * height
 }
 
 fn clear_screen(split: &mut SplitEncoder, target: &ScreenSubmission<'_>) {
@@ -221,14 +185,28 @@ impl WgpuRenderer {
             target.queue.submit(core::iter::once(encoder.finish()));
             return Err(error);
         }
+        let key = target.clear.map(|clear| FrameKey {
+            target: target.view.texture().clone(),
+            viewport: target.viewport,
+            scale: target.scale,
+            clear,
+        });
+        let plan = match (&self.retained, &key) {
+            (Some(retained), Some(key)) => retained.plan(key, scene),
+            _ => Plan::Full,
+        };
+        if plan == Plan::Unchanged {
+            target.queue.submit(core::iter::once(encoder.finish()));
+            return Ok(());
+        }
         let mut split = SplitEncoder::new(target.device, target.queue, encoder);
-        clear_screen(&mut split, target);
         if let DeviceState::Ready(ready) = &mut self.state
             && ready.device == *target.device
         {
             split.reuse_uploads(&mut ready.uploads);
         }
-        let result = self.walk_screen_commands(target, scene, &mut split);
+        let result = self.draw_planned(target, scene, &plan, &mut split);
+        self.retained = key.map(|key| Retained::new(key, scene.clone()));
         let uploads = split.submit();
         if let DeviceState::Ready(ready) = &mut self.state
             && ready.device == *target.device
@@ -263,6 +241,33 @@ impl WgpuRenderer {
         if self.device().is_some_and(|device| device == target.device) {
             snapshot(self.instance());
         }
+        result
+    }
+
+    fn draw_planned(
+        &mut self,
+        target: &ScreenSubmission<'_>,
+        scene: &CommandScene,
+        plan: &Plan,
+        split: &mut SplitEncoder,
+    ) -> Result<(), RendererError> {
+        let region = match (plan, target.clear) {
+            (Plan::Regions(regions), Some(clear)) => Some((regions, clear)),
+            _ => None,
+        };
+        let Some((region, clear)) = region else {
+            clear_screen(split, target);
+            let result = self.walk_screen_commands(target, scene, split);
+            let full = Rect::new(Point::new(0.0, 0.0), target.viewport.0, target.viewport.1);
+            self.last_frame_stats.redrawn_pixels = physical_pixels(full, target.scale);
+            return result;
+        };
+        let damaged = damage::clipped(scene, region, clear);
+        let result = self.walk_screen_commands(target, &damaged, split);
+        self.last_frame_stats.redrawn_pixels = region
+            .iter()
+            .map(|rect| physical_pixels(*rect, target.scale))
+            .sum();
         result
     }
 

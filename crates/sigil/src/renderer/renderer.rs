@@ -3,7 +3,10 @@ mod submit;
 pub use submit::ScreenSubmission;
 pub(crate) use submit::{record_clear, submit_clear};
 
-use submit::{acquire_frame, render_command_scene_surface};
+mod surface_frame;
+
+use submit::acquire_frame;
+use surface_frame::{SurfaceFrame, render_surface};
 
 use crate::geometry::PhysicalSize;
 use crate::hal::Renderer;
@@ -26,6 +29,7 @@ pub struct WgpuRenderer {
     frame_transients: Vec<crate::renderer::layer_pool::LayerHandle>,
     transparent: bool,
     pub(crate) last_frame_stats: FrameStats,
+    retained: Option<crate::renderer::damage::Retained>,
 }
 
 impl WgpuRenderer {
@@ -35,6 +39,7 @@ impl WgpuRenderer {
             frame_transients: Vec::new(),
             transparent: false,
             last_frame_stats: FrameStats::default(),
+            retained: None,
         })
     }
 
@@ -183,17 +188,16 @@ impl WgpuRenderer {
         let Self {
             state,
             last_frame_stats,
+            retained,
             ..
         } = self;
         let ready = state.ready_mut()?;
-        let result = render_command_scene_surface(
-            ready,
-            surface,
+        let request = SurfaceFrame {
             scene,
-            clear_color,
+            clear: clear_color,
             viewport,
-            last_frame_stats,
-        );
+        };
+        let result = render_surface(ready, surface, &request, last_frame_stats, retained);
         #[cfg(not(target_arch = "wasm32"))]
         snapshot(&ready.instance);
         result
@@ -228,7 +232,11 @@ impl Renderer for WgpuRenderer {
         let (width, height) = surface_extent(initial_size, ready.max_texture_dimension_2d());
         let config = wgpu::SurfaceConfiguration {
             color_space: wgpu::SurfaceColorSpace::Srgb,
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            usage: if caps.usages.contains(wgpu::TextureUsages::COPY_DST) {
+                wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_DST
+            } else {
+                wgpu::TextureUsages::RENDER_ATTACHMENT
+            },
             format,
             width,
             height,
@@ -239,7 +247,11 @@ impl Renderer for WgpuRenderer {
         };
         surface.configure(&ready.device, &config);
         self.prepare_compositing(format)?;
-        Ok(WgpuSurface { surface, config })
+        Ok(WgpuSurface {
+            surface,
+            config,
+            backbuffer: None,
+        })
     }
 
     fn resize(

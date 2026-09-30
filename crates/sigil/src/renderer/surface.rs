@@ -2,6 +2,7 @@ pub struct WgpuSurface {
     pub(crate) surface: wgpu::Surface<'static>,
 
     pub(crate) config: wgpu::SurfaceConfiguration,
+    pub(crate) backbuffer: Option<Box<wgpu::Texture>>,
 }
 
 impl WgpuSurface {

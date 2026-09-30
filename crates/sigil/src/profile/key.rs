@@ -124,6 +124,7 @@ named!(Counter {
     GpuSprites => "gpu.sprites",
     GpuLayers => "gpu.layers",
     GpuLayerPixels => "gpu.layer_pixels",
+    GpuRedrawnPixels => "gpu.redrawn_pixels",
     GpuUploadBuffers => "gpu.upload_buffers",
     GpuUploadCapacityBytes => "gpu.upload_capacity_bytes",
     GpuUploadWrites => "gpu.upload_writes",

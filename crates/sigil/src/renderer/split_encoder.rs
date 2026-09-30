@@ -229,6 +229,17 @@ impl SplitEncoder {
         self.pass.as_mut().expect("render pass just started")
     }
 
+    pub(crate) fn copy_texture(&mut self, source: &wgpu::Texture, destination: &wgpu::Texture) {
+        self.flush_clear();
+        drop(self.pass.take());
+        self.target = None;
+        self.encoder.copy_texture_to_texture(
+            source.as_image_copy(),
+            destination.as_image_copy(),
+            source.size(),
+        );
+    }
+
     pub(crate) fn submit(mut self) -> UploadBuffers {
         self.flush_clear();
         drop(self.pass.take());
