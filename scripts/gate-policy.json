@@ -15,5 +15,28 @@
     "unwrap_used": { "lint": "clippy::unwrap_used", "max": 0 },
     "indexing_slicing": { "lint": "clippy::indexing_slicing", "max": 5 },
     "expect_call": { "pattern": "\\.expect\\(", "max": 89 }
+  },
+  "story": {
+    "prelude": 181,
+    "budgets": {
+      "story-01-hello": 6,
+      "story-02-counter": 13,
+      "story-03-form": 19,
+      "story-04-todo": 24,
+      "story-05-nav": 17,
+      "story-07-async": 19,
+      "story-08-component": 14,
+      "story-09-test": 8
+    },
+    "ignored": [
+      "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern", "false",
+      "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub",
+      "ref", "return", "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
+      "where", "while", "bool", "char", "str", "u8", "u16", "u32", "u64", "usize", "i8", "i16",
+      "i32", "i64", "isize", "f32", "f64", "String", "Vec", "Option", "Some", "None", "Ok", "Err",
+      "Result", "Box", "Rc", "std", "format", "println", "vec", "main", "contains", "is_empty", "iter", "filter",
+      "push", "max", "trim", "to_string", "into", "clone", "map", "unwrap_or_default", "retain",
+      "count"
+    ]
   }
 }

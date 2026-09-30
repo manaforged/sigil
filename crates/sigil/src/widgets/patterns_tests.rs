@@ -1,8 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::indexing_slicing)]
 
 use super::*;
+use crate::kernel::AccessibleName;
 use crate::kernel::container as kernel_container;
 use crate::reactive::Runtime;
+use crate::widgets::field;
 
 #[test]
 fn empty_state_has_title_and_body() {
@@ -121,7 +123,9 @@ fn validated_field_emits_three_children() {
         let mut cx = Cx::new_root();
         let error: crate::reactive::Signal<Option<String>> = crate::reactive::signal(None);
         let value = crate::reactive::signal(String::new());
-        let id = validated_field("Email", text_field(value), error).build(&mut cx);
+        let id = field("Email", text_field(value))
+            .error(error)
+            .build(&mut cx);
         let node = cx.get(id).expect("validated field root");
         assert_eq!(
             node.children().len(),
@@ -160,13 +164,6 @@ fn kv_grid_empty_input_has_no_rows() {
             node.children().is_empty(),
             "empty input must produce zero rows"
         );
-    });
-}
-
-#[test]
-fn patterns_tooltip_wraps_target() {
-    Runtime::scope("patterns-tooltip", || {
-        let _builder = tooltip(kernel_container(), "Save the file");
     });
 }
 

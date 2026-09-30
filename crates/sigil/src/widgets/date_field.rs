@@ -1,3 +1,4 @@
+use crate::reactive::Reactive;
 use std::fmt::Write as _;
 
 use crate::kernel::{Cx, IntoNode, NodeId};
@@ -64,7 +65,7 @@ pub struct DateFieldBuilder {
 
 impl DateFieldBuilder {
     #[must_use]
-    pub fn disabled(mut self, disabled: Signal<bool>) -> Self {
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.inner = self.inner.disabled(disabled);
         self
     }

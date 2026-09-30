@@ -1,6 +1,7 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, container};
-use crate::layout::prelude::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
 use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, Dimension, LayoutBuilderExt, LayoutStyle, cols};
+use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, effect, signal};
 use crate::style::{
     BORDER_WIDTH, Metrics, NodeStyleExt, Radius, Rgba8, Size, Style, StyleAtom, Token, space,
@@ -27,8 +28,8 @@ pub const fn color_field(value: Signal<Rgba8>) -> ColorFieldBuilder {
 
 impl ColorFieldBuilder {
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 

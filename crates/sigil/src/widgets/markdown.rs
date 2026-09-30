@@ -8,8 +8,9 @@ mod table;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextBuilder, container, text};
 use crate::layout::cols;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle};
 use crate::layout::snap::CellForm;
+use crate::layout::{LayoutBuilderExt, LayoutStyle};
+use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived};
 use crate::style::{NodeStyleExt, Radius, Token, space};
 
@@ -74,8 +75,8 @@ pub const fn markdown_edit(source: Signal<String>) -> MarkdownEditBuilder {
 
 impl MarkdownEditBuilder {
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 

@@ -1,19 +1,16 @@
 #![allow(clippy::missing_const_for_fn)]
 
-use crate::events::prelude::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{
-    Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow, Position,
-};
+use crate::layout::{Dimension, LayoutBuilderExt, LayoutReactiveExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect_named, signal};
-use crate::style::{
-    ClassSource, NodeStyleExt, Radius, Style, StyleAccess, StyleAtom, Token, space,
-};
+use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess, StyleAtom, Token, space};
 
+mod bar;
 pub(crate) mod geometry;
 mod input;
 
-pub(crate) use input::{ScrollAxis, WheelAxis, pin_to_bottom, wheel};
+pub(crate) use bar::{THUMB_ATOMS, TRACK_ATOMS, scrollbar};
+pub(crate) use input::{ScrollAxis, WheelAxis, contain_scroll, pin_to_bottom, wheel};
 
 const VIEWPORT_HEIGHT: f32 = space(60);
 pub(crate) const SCROLLBAR_WIDTH: f32 = space(2);
@@ -33,11 +30,8 @@ impl Sizing {
 pub(crate) const THUMB_REST_WIDTH: f32 = space(1);
 pub(crate) const THUMB_MIN_HEIGHT: f32 = space(6);
 const SCROLL_LINE: f32 = space(10);
+const MIN_SCROLL_RANGE: f32 = 1.0;
 static VIEWPORT_ATOMS: &[StyleAtom] = &[Token::Surface.bg()];
-pub(crate) static THUMB_ATOMS: &[StyleAtom] =
-    &[Token::SurfacePressedStrong.bg(), Radius::Full.atom()];
-pub(crate) static TRACK_ATOMS: &[StyleAtom] = &[Radius::Full.atom()];
-static TRACK_HOVER: &[StyleAtom] = &[Radius::Full.atom(), Token::SurfaceSubtle.bg()];
 
 pub struct ScrollBuilder {
     content: NodeBuilder,
@@ -69,10 +63,10 @@ impl IntoScrollExtent for Signal<f32> {
 }
 
 #[must_use]
-pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuilder {
+pub fn scroll(content: NodeBuilder) -> ScrollBuilder {
     ScrollBuilder {
         content,
-        extent: Some(extent.into_extent()),
+        extent: None,
         height: VIEWPORT_HEIGHT,
         width: None,
         sizing: Sizing::Fixed,
@@ -84,14 +78,13 @@ pub fn scroll(content: NodeBuilder, extent: impl IntoScrollExtent) -> ScrollBuil
     }
 }
 
-#[must_use]
-pub fn scroll_auto(content: NodeBuilder) -> ScrollBuilder {
-    let mut builder = scroll(content, 0.0);
-    builder.extent = None;
-    builder
-}
-
 impl ScrollBuilder {
+    #[must_use]
+    pub fn extent(mut self, extent: impl IntoScrollExtent) -> Self {
+        self.extent = Some(extent.into_extent());
+        self
+    }
+
     #[must_use]
     pub fn class(mut self, source: impl Into<ClassSource> + 'static) -> Self {
         self.extra = Some(source.into());
@@ -169,7 +162,7 @@ impl ScrollBuilder {
         let root = viewport_container(width, height, sizing)
             .child(body)
             .child(track);
-        let scrollable = derived(move || max_scroll.get() > 0.0);
+        let scrollable = overflows(max_scroll);
         let root = root
             .focusable(true)
             .mutate(move |node| node.a11y.tab_stop = Some(scrollable));
@@ -190,6 +183,10 @@ impl ScrollBuilder {
         }
         root
     }
+}
+
+fn overflows(max_scroll: Signal<f32>) -> Signal<bool> {
+    derived(move || max_scroll.get() >= MIN_SCROLL_RANGE)
 }
 
 fn resolve_extent(content: NodeBuilder, extent: Option<Signal<f32>>) -> (NodeBuilder, Signal<f32>) {
@@ -268,13 +265,12 @@ fn wrap_content(
     extent: Signal<f32>,
     viewport_height: Signal<f32>,
 ) -> NodeBuilder {
-    let geometry = derived(move || {
-        let clamped = scroll_y.get().clamp(0.0, max_scroll.get());
-        (
-            to_i16(clamped),
-            to_i16(extent.get().max(viewport_height.get())),
-        )
-    });
+    let height = derived(move || to_i16(extent.get().max(viewport_height.get())));
+    let position = derived(move || (0.0, -scroll_y.get().clamp(0.0, max_scroll.get()).round()));
+    let layer = container()
+        .layout(LayoutStyle::block().width(Dimension::Percent(1.0)))
+        .position_reactive(position)
+        .child(content);
     container()
         .layout(
             LayoutStyle::block()
@@ -282,109 +278,8 @@ fn wrap_content(
                 .width(0.0)
                 .height(extent.peek().max(viewport_height.peek())),
         )
-        .child(content)
-        .style_reactive(move || geometry::content_atoms(geometry.get()))
-}
-
-pub(crate) fn scrollbar(
-    scroll_y: Signal<f32>,
-    max_scroll: Signal<f32>,
-    extent: Signal<f32>,
-    viewport_height: Signal<f32>,
-    fill_height: bool,
-) -> NodeBuilder {
-    let hovered = signal(false);
-    let thumb = scrollbar_thumb(scroll_y, max_scroll, extent, viewport_height, hovered);
-    let page = move |ev: &mut crate::hal::PointerEvent| {
-        let (thumb_h, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
-        let max = max_scroll.peek();
-        let thumb_top = if max > 0.0 && max_travel > 0.0 {
-            scroll_y.peek().clamp(0.0, max) / max * max_travel
-        } else {
-            0.0
-        };
-        if ev.position.y >= thumb_top && ev.position.y < thumb_top + thumb_h {
-            return;
-        }
-        let dir = if ev.position.y < thumb_top { -1.0 } else { 1.0 };
-        scroll_y.set((scroll_y.peek() + dir * viewport_height.peek()).clamp(0.0, max));
-        ev.stop_propagation();
-    };
-    let layout = LayoutStyle::block().width(SCROLLBAR_WIDTH).shrink(0.0);
-    container()
-        .layout(if fill_height {
-            layout.fill_height()
-        } else {
-            layout
-        })
-        .style_reactive(move || {
-            if hovered.get() {
-                TRACK_HOVER
-            } else {
-                TRACK_ATOMS
-            }
-        })
-        .pointer_enter(move |_| hovered.set(true))
-        .pointer_leave(move |_| hovered.set(false))
-        .pointer_down_capture(page)
-        .child(thumb)
-}
-
-fn scrollbar_thumb(
-    scroll_y: Signal<f32>,
-    max_scroll: Signal<f32>,
-    extent: Signal<f32>,
-    viewport_height: Signal<f32>,
-    hovered: Signal<bool>,
-) -> NodeBuilder {
-    let geometry = derived(move || {
-        let (thumb_h, max_travel) = geometry::thumb_metrics(extent.get(), viewport_height.get());
-        let max = max_scroll.get();
-        let t = if max > 0.0 {
-            scroll_y.get().clamp(0.0, max) / max
-        } else {
-            0.0
-        };
-        (to_i16(thumb_h), to_i16(t * max_travel))
-    });
-    let drag_anchor = signal::<Option<(f32, f32)>>(None);
-    let thick = derived(move || hovered.get() || drag_anchor.get().is_some());
-
-    container()
-        .layout(
-            LayoutStyle::block()
-                .fixed_size(THUMB_REST_WIDTH, THUMB_MIN_HEIGHT)
-                .position(Position::Absolute)
-                .inset_left(0.0)
-                .inset_top(0.0),
-        )
-        .class(THUMB_ATOMS)
-        .style_reactive(move || geometry::thumb_atoms(geometry.get(), thick.get()))
-        .pointer_down(move |ev| {
-            ev.capture_pointer();
-            drag_anchor.set(Some((ev.position.y, scroll_y.peek())));
-        })
-        .pointer_up(move |_| {
-            drag_anchor.set(None);
-        })
-        .pointer_move(move |ev| {
-            if !ev.is_captured() {
-                return;
-            }
-            let Some((anchor_y, anchor_scroll)) = drag_anchor.peek() else {
-                return;
-            };
-            let max = max_scroll.peek();
-            let (_, max_travel) = geometry::thumb_metrics(extent.peek(), viewport_height.peek());
-            if max_travel <= 0.0 || max <= 0.0 {
-                return;
-            }
-            let drag_dy = ev.position.y - anchor_y;
-            let offset_dy = drag_dy * (max / max_travel);
-            let next = (anchor_scroll + offset_dy).clamp(0.0, max);
-            scroll_y.set(next);
-            ev.stop_propagation();
-        })
+        .child(layer)
+        .style_reactive(move || geometry::content_atoms(height.get()))
 }
 
 pub(crate) fn to_i16(px: f32) -> i16 {

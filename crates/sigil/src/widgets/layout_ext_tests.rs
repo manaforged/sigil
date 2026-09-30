@@ -1,8 +1,8 @@
 #![allow(clippy::indexing_slicing, clippy::panic, clippy::unwrap_used)]
 
 use super::*;
+use crate::layout::Dimension;
 use crate::layout::LayoutStyle;
-use crate::layout::prelude::Dimension;
 
 #[test]
 fn empty_overrides_are_pass_through() {
@@ -148,7 +148,13 @@ fn tabs_width_height_override_reaches_root_node() {
         let mut cx = crate::kernel::Cx::new_root();
         let active = crate::reactive::signal(0_usize);
         let labels = vec![String::from("A"), String::from("B")];
-        let root = cx.add(tabs(active, labels).width(100.0).height(50.0));
+        let root = cx.add(
+            tabs()
+                .active(active)
+                .labels(labels)
+                .width(100.0)
+                .height(50.0),
+        );
         let style = root_layout_style(&cx, root);
         assert_eq!(style.data().size.width, Dimension::Px(100.0));
         assert_eq!(style.data().size.height, Dimension::Px(50.0));

@@ -240,14 +240,18 @@ fn progress_accepts_styled_surface() {
 }
 
 #[test]
-fn trap3_style_and_trait_style_coexist() {
-    Runtime::scope("widget-styled-trap3-style", || {
+fn style_and_typed_methods_share_one_store() {
+    Runtime::scope("widget-styled-one-store", || {
         let my_style = sigil::style::Style::new()
             .padding(8)
             .background_theme("surface");
-        let mut b = button("X").style(my_style);
-        let style_view = StyleAccess::style_mut(&mut b);
-        assert!(style_view.is_empty());
+        let mut b = button("X").style(my_style).padding(12);
+        let merged = sigil::style::merge_classes(&[], StyleAccess::style_mut(&mut b).as_atoms(), 0);
+        assert!(
+            merged.contains(&StyleAtom::PaddingTop(sigil::style::Px(12)))
+                && !merged.contains(&StyleAtom::PaddingTop(sigil::style::Px(8))),
+            "the later padding must replace the earlier one: {merged:?}"
+        );
 
         let checked = signal(false);
         let _cb = checkbox(checked).style(sigil::style::Style::new().padding(4));
@@ -286,7 +290,9 @@ fn modal_accepts_styled_surface() {
 fn tabs_accepts_styled_surface() {
     Runtime::scope("widget-styled-tabs", || {
         let active = signal(0_usize);
-        let mut b = tabs(active, vec!["A".into(), "B".into()])
+        let mut b = tabs()
+            .active(active)
+            .labels(["A", "B"])
             .label("Settings sections")
             .bg("surface")
             .hover(|s| s.bg("surface-hover"));
@@ -310,7 +316,7 @@ fn tabs_accepts_styled_surface() {
 fn scroll_accepts_styled_surface() {
     Runtime::scope("widget-styled-scroll", || {
         let inner: NodeBuilder = container();
-        let mut b = scroll(inner, 400.0_f32).bg("surface");
+        let mut b = scroll(inner).extent(400.0_f32).bg("surface");
         let atoms = StyleAccess::style_mut(&mut b).as_atoms().to_vec();
         assert!(
             atoms.contains(&StyleAtom::BackgroundThemeRef(ColorKey::Token(

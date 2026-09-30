@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::ScrollBuilder;
 
 const SECTIONS: &[&str] = &["Account", "Appearance", "Notifications"];
 const LANGUAGES: &[&str] = &["English", "Deutsch", "Français", "日本語"];
@@ -25,7 +26,7 @@ fn main() -> sigil::AppResult<()> {
     sigil::run(AppConfig::new("Preferences").size(880, 600).window(), build)
 }
 
-pub(crate) fn build(cx: &mut Cx) -> NodeId {
+pub(crate) fn build() -> impl IntoNode {
     let page = signal(0_usize);
     let queue = ToastQueue::new();
     let prefs = Prefs {
@@ -46,20 +47,18 @@ pub(crate) fn build(cx: &mut Cx) -> NodeId {
             Theme::light()
         });
     });
-    cx.add(
-        container()
-            .role(Role::Main)
-            .layout(LayoutStyle::flex_row().fill())
-            .class("bg-surface")
-            .child(sidebar(nav(page)))
-            .child(
-                container()
-                    .layout(LayoutStyle::flex_column().fill())
-                    .child(content(page, prefs))
-                    .child(footer(prefs, queue)),
-            )
-            .child(toast_queue(queue)),
-    )
+    container()
+        .role(Role::Main)
+        .layout(LayoutStyle::flex_row().fill())
+        .class("bg-surface")
+        .child(sidebar(nav(page)))
+        .child(
+            container()
+                .layout(LayoutStyle::flex_column().fill())
+                .child(content(page, prefs))
+                .child(footer(prefs, queue)),
+        )
+        .child(toast_queue(queue))
 }
 
 fn name_error(name: &str) -> Option<String> {
@@ -100,7 +99,7 @@ fn nav(page: Signal<usize>) -> NodeBuilder {
 }
 
 fn content(page: Signal<usize>, prefs: Prefs) -> ScrollBuilder {
-    scroll_auto(
+    scroll(
         container()
             .layout(
                 LayoutStyle::flex_column()
@@ -123,7 +122,7 @@ fn page_layout() -> LayoutStyle {
     LayoutStyle::flex_column().fill_width().gap(rows(0.75))
 }
 
-fn half(child: NodeBuilder) -> NodeBuilder {
+fn half(child: impl IntoNode + 'static) -> NodeBuilder {
     container()
         .layout(
             LayoutStyle::flex_column()
@@ -147,16 +146,20 @@ fn account(prefs: Prefs) -> NodeBuilder {
                         .gap(cols(2.0))
                         .flex_wrap(FlexWrap::Wrap),
                 )
-                .child(half(validated_field(
-                    "Display name",
-                    text_field(prefs.name).placeholder("Your name"),
-                    move || name_error(&prefs.name.get()),
-                )))
-                .child(half(validated_field(
-                    "Email",
-                    text_field(prefs.email).placeholder("name@example.com"),
-                    move || email_error(&prefs.email.get()),
-                ))),
+                .child(half(
+                    field(
+                        "Display name",
+                        text_field(prefs.name).placeholder("Your name"),
+                    )
+                    .error(move || name_error(&prefs.name.get())),
+                ))
+                .child(half(
+                    field(
+                        "Email",
+                        text_field(prefs.email).placeholder("name@example.com"),
+                    )
+                    .error(move || email_error(&prefs.email.get())),
+                )),
         )
         .child(field(
             "Language",

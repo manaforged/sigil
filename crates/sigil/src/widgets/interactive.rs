@@ -1,4 +1,5 @@
 use crate::kernel::NodeBuilder;
+use crate::reactive::Reactive;
 use crate::reactive::Signal;
 use crate::style::{ClassSource, NodeStyleExt, Style, StyleAccess};
 use crate::widgets::interaction::InteractionState;
@@ -29,8 +30,8 @@ impl InteractiveBuilder {
     }
 
     #[must_use]
-    pub const fn disabled_signal(mut self, signal: Signal<bool>) -> Self {
-        self.disabled = Some(signal);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 

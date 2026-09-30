@@ -39,6 +39,7 @@ mod dot;
 mod drag;
 mod drag_drop;
 mod dropdown;
+mod field;
 mod fuzzy;
 mod gauge;
 mod grapheme;
@@ -46,7 +47,7 @@ mod highlight;
 mod html;
 mod icon;
 mod image;
-pub mod interactive;
+mod interactive;
 pub mod layout_ext;
 mod listbox;
 mod markdown;
@@ -54,10 +55,10 @@ mod menu;
 mod mermaid;
 mod modal;
 mod notice;
-pub mod number_field;
-pub mod overlay;
+mod number_field;
+pub(crate) mod overlay;
 mod panel;
-pub mod patterns;
+pub(crate) mod patterns;
 mod popup;
 mod progress;
 mod radio_group;
@@ -82,7 +83,6 @@ mod tooltip;
 mod vector;
 mod virtual_list;
 
-pub use crate::kernel::ImageBuilder;
 pub use button::{ButtonBuilder, button, icon_button};
 pub use chart::{ChartBuilder, ChartMark, chart};
 pub use checkbox::{CheckboxBuilder, checkbox};
@@ -99,6 +99,7 @@ pub use dot::{DotBuilder, dot};
 pub use drag::{Axis, axis_drag};
 pub use drag_drop::{DRAG_THRESHOLD_PX, DROP_TARGET_CLASS, DragDropExt, DragState, drag_ghost};
 pub use dropdown::{DropdownBuilder, dropdown};
+pub use field::{FieldBuilder, FieldControl, field};
 pub use fuzzy::{FuzzyMatch, fuzzy_score};
 pub use gauge::{GaugeBuilder, gauge};
 pub use highlight::{Highlight, highlight, hl_spans};
@@ -118,18 +119,18 @@ pub use number_field::{NumberFieldBuilder, NumericKind, number_field};
 pub use overlay::heatmap;
 pub use panel::{PanelBuilder, panel};
 pub use patterns::{
-    Disclosure, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, app_shell, avatar, card,
-    empty_state, field, hairline, hint_bar, hint_overlay, kv_grid, list_row, list_row_with,
-    notice_band, section_label, sidebar, sidebar_width, spacer, validated_field,
+    Disclosure, HintEntry, HintOverlayBuilder, ListColumn, ListRowSlots, RowTone, app_shell,
+    avatar, card, empty_state, hairline, hint_bar, hint_overlay, kv_grid, list_row, list_row_with,
+    notice_band, section_label, sidebar, sidebar_width, spacer,
 };
 pub use progress::{ProgressBuilder, progress};
 pub use radio_group::{RadioGroupBuilder, radio_group};
-pub use scroll::{ScrollBuilder, scroll, scroll_auto};
+pub use scroll::{ScrollBuilder, scroll};
 pub use segmented::{SegmentedBuilder, segmented};
 pub use slider::{Orientation, SliderBuilder, slider};
 #[cfg(feature = "terminal")]
 pub(crate) use sparkline::spark_glyph;
-pub use sparkline::{SparkMark, SparklineBuilder, sparkline};
+pub use sparkline::{SparkFill, SparkMark, SparklineBuilder, sparkline};
 pub use spinner::{spinner, spinner_frame};
 pub use splitter::{PaneBuilder, SplitterBuilder, SplitterOrientation, splitter};
 pub use surface::surface;

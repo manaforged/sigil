@@ -16,10 +16,15 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
+use sigil::kernel::AccessibleName;
+use sigil::kernel::{Cx, NodeId};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use sigil::hal::{MouseButton, MouseButtons, Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{MouseButton, MouseButtons, PointerEventInit};
+use sigil::geometry::Point;
 use sigil::prelude::*;
 use widget_support::compute;
 
@@ -110,25 +115,23 @@ fn routing_only_materialises_active_content() {
         let active = signal(0_usize);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            tabs(active, vec!["One".into(), "Two".into(), "Three".into()])
-                .content_for(
-                    0,
+            tabs()
+                .active(active)
+                .tab("One", move || {
                     container()
                         .label("panel-0")
-                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0)),
-                )
-                .content_for(
-                    1,
+                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
+                })
+                .tab("Two", move || {
                     container()
                         .label("panel-1")
-                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0)),
-                )
-                .content_for(
-                    2,
+                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
+                })
+                .tab("Three", move || {
                     container()
                         .label("panel-2")
-                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0)),
-                ),
+                        .layout(LayoutStyle::block().fixed_size(120.0, 40.0))
+                }),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
@@ -186,7 +189,9 @@ fn close_button_wired_into_each_tab() {
         };
         let mut cx = Cx::new_root();
         let root = cx.add(
-            tabs(active, vec!["A".into(), "B".into(), "C".into()])
+            tabs()
+                .active(active)
+                .labels(["A", "B", "C"])
                 .closeable(true)
                 .close(recorder),
         );
@@ -221,8 +226,12 @@ fn non_reorderable_ignores_drag() {
         let active = signal(0_usize);
         let order = signal(vec![0_usize, 1, 2]);
         let mut cx = Cx::new_root();
-        let root =
-            cx.add(tabs(active, vec!["Alpha".into(), "Beta".into(), "Gamma".into()]).order(order));
+        let root = cx.add(
+            tabs()
+                .active(active)
+                .labels(["Alpha", "Beta", "Gamma"])
+                .order(order),
+        );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
 
         let tab_nodes = find_all_by_role(&cx, root, Role::Tab);
@@ -253,7 +262,9 @@ fn reorder_swaps_tab_indices_on_drag() {
         let order = signal(vec![0_usize, 1, 2]);
         let mut cx = Cx::new_root();
         let root = cx.add(
-            tabs(active, vec!["Alpha".into(), "Beta".into(), "Gamma".into()])
+            tabs()
+                .active(active)
+                .labels(["Alpha", "Beta", "Gamma"])
                 .reorderable(true)
                 .order(order),
         );
@@ -296,7 +307,9 @@ fn close_button_fires_callback_with_index() {
         };
         let mut cx = Cx::new_root();
         let root = cx.add(
-            tabs(active, vec!["A".into(), "B".into(), "C".into()])
+            tabs()
+                .active(active)
+                .labels(["A", "B", "C"])
                 .closeable(true)
                 .close(recorder),
         );

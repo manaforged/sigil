@@ -178,25 +178,25 @@ pointer enter moves it too. `focus_out` on the root closes the popup.
 The popup is a `TopLayer` list of `Role::ListBoxOption` rows capped at
 six visible options; longer lists scroll inside the popup.
 
-## field and validated_field
+## field
 
-`field(label, control) -> NodeBuilder` stacks a label over any control.
-`validated_field(label, TextFieldBuilder, error) -> NodeBuilder` adds
-an error line under a text field. `error` is any reactive
-`Option<String>`: a `Signal` or a `derived` value. While the error is
-`Some`, the field paints its invalid frame and shows the message.
+`field(label, control)` stacks a label over any control.
+`.error(reactive)` adds an error line under a text, number, or colour
+field. The error is a `Signal<Option<String>>` or a closure that
+returns one. While it is `Some`, the field paints its invalid frame and
+shows the message.
 
 ## States, keys, and accessibility
 
 The visual catalog captures each field in the states in the table.
 Invalid comes from `.invalid_when(Signal<bool>)`, from a buffer that
-does not parse, or from a `validated_field` error. Open is the popup
+does not parse, or from a `field(..).error(..)`. Open is the popup
 of a dropdown or combobox.
 
 | Widget | States | Keys | Role | Name source |
 | --- | --- | --- | --- | --- |
 | `text_field` | default, hover, pressed, focused, disabled, invalid | Editing keys, Enter submits | `TextInput`, or `PasswordInput` with `.password()` | The placeholder, else "Text field" |
-| `validated_field` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
+| `field(..).error(..)` | default, focused, invalid | As `text_field` | As `text_field` | As `text_field` |
 | `text_edit` | default, hover, pressed, focused, disabled | Editing keys, Ctrl+Enter submits | `TextInput` | The placeholder, else "Text field" |
 | `number_field`, `date_field`, `color_field` | default, hover, pressed, focused, disabled, invalid | As `text_field` | `TextInput` | As `text_field` |
 | `dropdown` | default, hover, pressed, focused, disabled, open | Enter, Arrow keys, Escape | `ComboBox`, popup `ListBox` | `.label()`, else "Dropdown" |

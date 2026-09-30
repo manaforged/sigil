@@ -4,7 +4,8 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The `sigil-ui`, `sigil-sign`, and `sigil-kittest` crates share one version.
+The `sigil-ui`, `sigil-fonts`, `sigil-sign`, and `sigil-kittest` crates share
+one version.
 
 ## [0.1.0] - Unreleased
 
@@ -12,8 +13,9 @@ First release.
 
 ### Added
 
-- A retained widget tree built with `Cx` and builder helpers, driven by
-  reactive signals: `signal`, `derived`, and effects.
+- A retained widget tree built from components, functions that return
+  `impl IntoNode`, driven by reactive signals: `signal`, `derived`, and
+  effects.
 - `sigil::run` opens the tree in a desktop window on Linux, macOS, and
   Windows, and in a canvas on `wasm32`.
 - A terminal host (feature `terminal`) paints the same tree on a character
@@ -24,14 +26,105 @@ First release.
 - Layout with flexbox and grid, class strings, and builder methods.
 - Themes with design tokens and tones.
 - Content widgets: `markdown`, `html`, `mermaid`, charts, icons, and images.
+- `sparkline(..).fill(SparkFill::Shade)` draws the body of a multi-row
+  graph in a dim step of its tone and keeps the top cell of each column
+  solid, so a steady high value reads as a line, not a block.
 - Accessibility: roles, names, and focus exported to the platform screen
   reader.
 - Background tasks with `tasks` and `signal_writer` for results from
   other threads.
 - `sigil-sign`: the `sigil-pack` binary packs and signs release builds.
 - `sigil-kittest`: a PNG golden harness for apps that depend on Sigil.
+- `sigil-fonts`: the default fonts (Fira Sans, Cascadia Mono, and a Noto
+  Color Emoji subset) under the SIL Open Font License 1.1. `sigil-ui` is
+  MIT and pulls `sigil-fonts` in only with the `scene` feature.
 
 ### Changed
+
+- A component is a function that returns `impl IntoNode`. It runs once
+  inside its own reactive owner, so signals it creates live and die with
+  its node. `run(config, app)` takes the root component; the closure no
+  longer receives `&mut Cx` or returns `NodeId`. `TreeRoot` and `root()`
+  are removed. `Host::mount` and `Harness::new` take any `IntoNode`.
+  This is a breaking change.
+- `row()` and `column()` place children with the theme gap: 8 px in a
+  window, one cell in a terminal. A row or column is as wide as its
+  content until a child fills. A `Fill` width or a `grow` factor then
+  makes it take the width its parent offers, and a row shares that
+  width among its children. A row with a `text_field` and a button keeps
+  the button on screen; before, the field took the whole width and
+  pushed the button past the window edge.
+- Style calls write to one store per node, and a later call wins for
+  each property it sets: `.class`, `.style`, the typed methods, and
+  `.layout`. A background or border that you set on a widget holds over
+  the widget's defaults in every state; `.tone()` keeps the state
+  feedback in another palette. `.style(Style)` keeps its hover, focus,
+  pressed, and disabled states. `WidgetLayoutExt::padding` is removed,
+  so `padding` on a widget is the one typed method. `flex_grow` and
+  `shrink` take factors: `flex_grow(2.0)` grows by 2. Before,
+  `.class("p-32")` on a button left it 30 px wide, `button("A").padding(4.0)`
+  did not compile, and a button's hover colour replaced a background you
+  set.
+- `disabled` on every widget takes a value, a signal, or a closure, so
+  `.disabled(move || name.get().is_empty())` needs no `derived`.
+  `interactive(..).disabled_signal` is now `disabled`.
+- `tabs().tab(label, component)` builds tabs; each component builds once,
+  so a tab keeps its state while another is shown. `.active(signal)`
+  binds the selected index. `tabs(active, labels)`, `content_for`, and
+  `content_for_fn` are removed.
+- `field(label, control).error(reactive)` replaces `validated_field`.
+- `scroll(content)` measures its content; `.extent(height)` sets a known
+  height. `scroll_auto` is removed.
+- `announce(text)` and `announce_assertive(text)` are free functions;
+  `Cx::announce` and `queue_announcement` are removed. `AppResult`
+  defaults its type to `()`.
+- `task(make)` runs async work on demand: `run()` shows `Pending`, aborts
+  the run it replaces, and drops a result from a replaced run;
+  `status()` reads the result. `Status` gains `Idle`, the state before a
+  first run. `spawn` stays for a future that starts now. `post`,
+  `dispatch_to_owner`, `spawn_to_signal`, `Dispatcher`, and
+  `SendableSignal` are removed: write from another thread with
+  `signal_writer` or `on_message`.
+- `Signal` has five methods: `get`, `peek`, `with`, `set`, and `update`.
+  `set_always`, `try_set`, `try_set_always`, `try_peek`, `track`, and
+  `into_sendable` are removed. Write `update(|v| *v = next)` where you
+  wrote `set_always(next)`, and `with(|_| ())` where you wrote `track()`.
+- `Harness` runs async work: it installs a task runtime and applies
+  finished results each frame.
+- `Harness` finds controls by the label a user sees: `click("Save")`,
+  `type_into("Name", "Ada")`, and `expect_text("Saved")`, which waits up
+  to `EXPECT_TIMEOUT` for frames and async work. A label picks the
+  control over a plain text with the same name and fails on two
+  controls. `Target::point` takes the harness.
+- `run` takes a title or an `AppConfig`. The `(title, width, height)`
+  and `()` conversions and `AppConfig::default` are removed; write
+  `AppConfig::new(title).size(width, height)`.
+- The prelude holds what an app writes. Embedding and clipboard back-end
+  items move to their modules: `sigil::Host`, `sigil::reactive::Runtime`,
+  `sigil::events::{EventRouter, ShellEvent, PointerEventInit}`,
+  `sigil::layout::{TextMeasure, LayoutError}`, `sigil::kernel::Surface`,
+  and `sigil::clipboard::{Clipboard, Delivery, install}`.
+
+- Every public item has one path. `sigil::prelude` is the only module
+  that re-exports items from elsewhere, and it holds the names app code
+  uses: widget functions, core types, and the extension traits that
+  method calls need. The `events`, `kernel`, `layout`, and `style`
+  preludes, the `render` module, and the crate root re-exports are
+  removed. This is a breaking change.
+- The crate root holds the entry points: `run`, `Host`, `AppConfig`,
+  `AppResult`, `Error`, `request_exit`, and `root`. Other application
+  items are in `sigil::app`.
+- Input and window events are in `sigil::events`. Points, rectangles,
+  sizes, and the scale factor are in the new `sigil::geometry`. `Color`
+  is in `sigil::style`. `sigil::hal` keeps only the backend traits and
+  the types in their signatures. This is a breaking change.
+- Smaller moves to one path: `profile` and `bidi` are only at the crate
+  root; `NumericAtomKind` is in `style`; `ImageBuilder` is in `kernel`;
+  `LayoutError` is in `layout`; `DefaultFonts`, `TextTuning`, and their
+  setters are in `app`.
+- `widgets::patterns` is removed; its widgets are in `sigil::widgets`.
+  The second `tooltip(target, hint)` is removed; use
+  `tooltip(hint).child(target)`.
 
 - The terminal host picks colour depth from more terminals: `TERM`
   `xterm-ghostty`, `xterm-kitty`, `wezterm`, `alacritty`, `foot`,
@@ -73,7 +166,7 @@ First release.
   removed; write `text(f)` and `text(source).nowrap()`. This is a
   breaking change.
 - The `classes!` macro is removed; write `.class("p-16 bg-surface")`.
-  `parse_classes` is in the prelude. An unknown class panics in a debug
+  `parse_classes` is in `sigil::style`. An unknown class panics in a debug
   build with the nearest valid names and logs one warning per name in a
   release build. This is a breaking change.
 - Spacing and size numbers in class strings are pixels, the unit of the
@@ -210,6 +303,30 @@ First release.
 - The renderer always asked wgpu for the low-power adapter, so a
   hybrid-GPU machine could not use its discrete GPU. It now honours
   `WGPU_POWER_PREF=high|low|none`; the default stays low power.
+- An open modal was laid out again from scratch on every frame that
+  changed layout anywhere, so scrolling or typing in a large modal ran
+  well past the frame budget. A modal or context menu is now laid out
+  again only when it is new or an ancestor was laid out again. The
+  `layout.overlay` profile counter counts these passes.
+- A hidden tooltip with a transition was marked changed on every layout,
+  so any change elsewhere laid the whole window out again from the root.
+  Layout now leaves a hidden node alone once its box is cleared.
+- Scrolling a `scroll` area laid its whole content out again on every
+  wheel step. The content and the scrollbar thumb now move by
+  translation, so a step does no layout work.
+- Layout measured every flex item again on each change, even when only
+  one label in a large tree changed. Measurements now persist across
+  frames and are dropped only for the changed node and its ancestors.
+  The `layout.intrinsic.miss` profile counter counts the measurements.
+- `TableState::replace_rows` rebuilt the cells of every mounted row on
+  each call. It now skips the same rows, notifies only when the visible
+  order changes, and with `TableState::row_eq` keeps the cells of rows
+  that did not change.
+- `image_bytes` decoded the image again on every call. Decoded images now
+  share one bounded cache with rasterized vector icons.
+- Each frame cleared the target in a separate pass before drawing. The
+  clear now happens in the first draw pass, which saves one full-target
+  store and load per frame on tile-based GPUs.
 
 ### Added
 
@@ -258,7 +375,7 @@ First release.
   `gauge`, `heatmap`), application chrome, and overlays. The
   [widgets guide](docs/guide/widgets.md) lists each group.
 - Layout on flexbox and grid, with `rows`, `cols`, and `em` text units.
-- Styling: `classes!` utility classes, typed theme colours through
+- Styling: utility class strings, typed theme colours through
   `Token`, and shared metrics. `parse_theme`, `set_theme`,
   `watch_theme`, and `AppConfig::theme_file` load a TOML theme and
   reload it when the file changes.

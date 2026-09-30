@@ -4,6 +4,8 @@
 )]
 #![allow(clippy::unwrap_used, clippy::panic)]
 
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil_kittest::CharMeasure;
 
@@ -20,7 +22,7 @@ impl sigil::layout::TextGeometry for NativeLineGeometry {
         _text: &str,
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
-        _point: sigil::hal::Point,
+        _point: sigil::geometry::Point,
     ) -> sigil::hal::HitPosition {
         sigil::hal::HitPosition {
             byte_index: 0,
@@ -48,7 +50,7 @@ impl sigil::layout::TextGeometry for NativeLineGeometry {
         _style: &sigil::style::TextStyle,
         _width: Option<f32>,
         _selection: (sigil::hal::HitPosition, sigil::hal::HitPosition),
-    ) -> Vec<sigil::hal::Rect> {
+    ) -> Vec<sigil::geometry::Rect> {
         Vec::new()
     }
 }
@@ -258,7 +260,7 @@ fn scrolled_content_is_sound_at_every_width() {
                 ]));
             container()
                 .layout(LayoutStyle::flex_column().fill_width())
-                .child(sigil::widgets::scroll(page, 600.0_f32))
+                .child(sigil::widgets::scroll(page).extent(600.0_f32))
         });
     }
 }

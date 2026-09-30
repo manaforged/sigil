@@ -8,6 +8,9 @@
     clippy::cast_precision_loss
 )]
 
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
+use sigil::layout::TextMeasure;
 use sigil::prelude::*;
 
 const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
@@ -15,10 +18,14 @@ const VIEWPORT: Size = Size::fixed(1440.0, 900.0);
 struct StubMeasure;
 
 impl TextMeasure for StubMeasure {
-    fn measure(&self, content: &TextContent, _space: sigil::hal::Size) -> sigil::hal::LogicalSize {
+    fn measure(
+        &self,
+        content: &TextContent,
+        _space: sigil::geometry::Size,
+    ) -> sigil::geometry::LogicalSize {
         let text = content.as_static_str().unwrap_or("");
         let lines = text.lines().count().max(1) as f32;
-        sigil::hal::LogicalSize::new(120.0, lines * 16.8)
+        sigil::geometry::LogicalSize::new(120.0, lines * 16.8)
     }
 }
 
@@ -39,7 +46,7 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                 let code = container()
                     .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
                     .child(text(body));
-                vec![scroll(code, extent).width(580.0).height(720.0)]
+                vec![scroll(code).extent(extent).width(580.0).height(720.0)]
             });
         let mut filler = container().layout(LayoutStyle::flex_column());
         for i in 0..120 {

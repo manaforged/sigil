@@ -1,8 +1,9 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
+use crate::layout::{LayoutBuilderExt, LayoutReactiveExt, Overflow, Position};
 use crate::layout::{LayoutStyle, snap};
 use crate::reactive::{Signal, derived};
 use crate::style::DISABLED_OPACITY;
@@ -146,8 +147,8 @@ impl<Row: 'static> TableBuilder<Row> {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -202,7 +203,7 @@ impl<Row: 'static> TableBuilder<Row> {
             .column_count(state.columns().len() + usize::from(self.select))
             .class(self.frame)
             .class(self.density.text())
-            .layout(
+            .with(
                 self.layout_overrides
                     .apply(root_layout(viewport_fill, viewport_width)),
             )
@@ -350,7 +351,7 @@ fn empty_slot(empty: Option<&Rc<dyn Fn() -> NodeBuilder>>) -> NodeBuilder {
 
 fn default_empty() -> NodeBuilder {
     use crate::kernel::text;
-    use crate::layout::prelude::{AlignItems, JustifyContent};
+    use crate::layout::{AlignItems, JustifyContent};
     container()
         .layout(
             LayoutStyle::flex_column()

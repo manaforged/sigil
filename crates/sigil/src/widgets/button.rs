@@ -1,14 +1,14 @@
-use crate::hal::LogicalKey;
+use crate::events::LogicalKey;
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, TextContent};
-use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::kernel::{NodeBuilder, Role, container};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
-    ClassSource, Metrics, NodeStyleExt, Radius, Size, StateHost, Style, StyleAccess, StyleAtom,
-    StyleVariant, Theme,
+    ClassSource, Metrics, NodeStyleExt, Radius, Size, Style, StyleAtom, StyleVariant, Theme,
 };
 use crate::style::{GHOST_VARIANT, SOFT_VARIANT, SOLID_VARIANT, Tone};
 
@@ -17,7 +17,7 @@ use crate::widgets::icon::icon_svg;
 use crate::widgets::interaction::InteractionState;
 use crate::widgets::spinner::spinner;
 
-use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
+use super::layout_ext::LayoutOverrides;
 use super::shared::{
     Activate, BuilderMutator, ICON_GLYPH, activate_key_reactive, activate_pointer_reactive,
     noop_activate, or_disabled, reactive_style_state,
@@ -176,8 +176,8 @@ impl ButtonBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -217,7 +217,7 @@ impl ButtonBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style_accumulator.merge(style);
         self
     }
 
@@ -250,7 +250,7 @@ impl ButtonBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.layout(layout_overrides.apply(button_layout(self.width, self.height, self.padding_x)))
+        node.with(layout_overrides.apply(button_layout(self.width, self.height, self.padding_x)))
     }
 
     fn base_node(
@@ -282,6 +282,7 @@ impl ButtonBuilder {
             .stateful_style(variant, user_overlay, move || {
                 reactive_style_state(interaction, look_disabled)
             })
+            .seal_style()
             .pointer_up(move |event| {
                 activate_pointer_reactive(event, interaction, disabled, &pointer_activate);
             })
@@ -367,26 +368,7 @@ impl ButtonBuilder {
     }
 }
 
-impl StyleAccess for ButtonBuilder {
-    fn style_mut(&mut self) -> &mut Style {
-        &mut self.style_accumulator
-    }
-}
-
-impl WidgetLayoutExt for ButtonBuilder {
-    fn layout_overrides_mut(&mut self) -> &mut LayoutOverrides {
-        &mut self.layout_overrides
-    }
-}
-
-impl StateHost for ButtonBuilder {}
-
-impl IntoNode for ButtonBuilder {
-    fn build(self, cx: &mut Cx) -> crate::kernel::NodeId {
-        self.into_node_builder().build(cx)
-    }
-}
-
+mod impls;
 mod parts;
 
 use parts::{

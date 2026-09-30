@@ -10,9 +10,14 @@ mod input;
 mod widget_support;
 
 use input::pointer_move;
-use sigil::hal::{Point, PointerEventInit};
+use sigil::events::EventRouter;
+use sigil::events::PointerEventInit;
+use sigil::events::ShellEvent;
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
 use sigil::prelude::*;
-use sigil::style::{Rgba8, Theme};
+use sigil::reactive::Runtime;
+use sigil::style::{Rgba8, Style, Theme};
 use widget_support::{compute, rect_colors};
 
 const HOVER_BG: Rgba8 = Rgba8 {
@@ -40,7 +45,7 @@ const fn pointer_down_event(x: f32, y: f32) -> ShellEvent {
         position: Point::new(x, y),
         delta: Point::new(0.0, 0.0),
         kind: PointerKind::Mouse,
-        button: Some(sigil::hal::MouseButton::Left),
+        button: Some(sigil::events::MouseButton::Left),
         phase: PointerPhase::Down,
         buttons: MouseButtons::empty(),
         modifiers: ModifiersState::empty(),
@@ -175,7 +180,7 @@ fn interactive_disabled_signal_suppresses_hover() {
         let disabled = signal(true);
         let root = cx.add(
             interactive(rest_pane())
-                .disabled_signal(disabled)
+                .disabled(disabled)
                 .hover(|s| s.bg(HOVER_BG)),
         );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());

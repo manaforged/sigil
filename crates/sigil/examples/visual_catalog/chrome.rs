@@ -14,7 +14,7 @@ pub(crate) const BUILDERS: &[(&str, Build)] = &[
     ("tabs_line", tabs_line_row),
     ("splitter", splitter_row),
     ("scroll", scroll_fixed_row),
-    ("scroll_auto", scroll_row),
+    ("scroll", scroll_row),
     ("terminal", terminal_row),
 ];
 
@@ -76,14 +76,12 @@ fn tabs_row(state: State) -> NodeBuilder {
     let active = signal(usize::from(state == State::Selected));
     let disabled: &[usize] = if state == State::Disabled { &[1] } else { &[] };
     node(
-        tabs(
-            active,
-            vec!["First".into(), "Second".into(), "Third".into()],
-        )
-        .disabled(disabled)
-        .content_for(0, text("First tab pane").nowrap())
-        .content_for(1, text("Second tab pane").nowrap())
-        .content_for(2, text("Third tab pane").nowrap()),
+        tabs()
+            .active(active)
+            .tab("First", move || text("First tab pane").nowrap())
+            .tab("Second", move || text("Second tab pane").nowrap())
+            .tab("Third", move || text("Third tab pane").nowrap())
+            .disabled(disabled),
     )
 }
 
@@ -91,15 +89,13 @@ fn tabs_line_row(state: State) -> NodeBuilder {
     let active = signal(usize::from(state == State::Selected));
     let disabled: &[usize] = if state == State::Disabled { &[1] } else { &[] };
     node(
-        tabs(
-            active,
-            vec!["Overview".into(), "Activity".into(), "Settings".into()],
-        )
-        .line()
-        .disabled(disabled)
-        .content_for(0, text("Overview pane").nowrap())
-        .content_for(1, text("Activity pane").nowrap())
-        .content_for(2, text("Settings pane").nowrap()),
+        tabs()
+            .active(active)
+            .tab("Overview", move || text("Overview pane").nowrap())
+            .tab("Activity", move || text("Activity pane").nowrap())
+            .tab("Settings", move || text("Settings pane").nowrap())
+            .line()
+            .disabled(disabled),
     )
 }
 
@@ -115,7 +111,7 @@ fn splitter_row(_state: State) -> NodeBuilder {
 fn scroll_fixed_row(_state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(120.0))
-        .child(scroll(scroll_lines(), 280.0).fill())
+        .child(scroll(scroll_lines()).extent(280.0).fill())
 }
 
 fn scroll_lines() -> NodeBuilder {
@@ -129,7 +125,7 @@ fn scroll_lines() -> NodeBuilder {
 fn scroll_row(_state: State) -> NodeBuilder {
     container()
         .layout(LayoutStyle::flex_column().fill_width().height(120.0))
-        .child(scroll_auto(scroll_lines()).fill())
+        .child(scroll(scroll_lines()).fill())
 }
 
 fn terminal_row(_state: State) -> NodeBuilder {

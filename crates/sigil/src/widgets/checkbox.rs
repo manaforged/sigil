@@ -1,12 +1,11 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, LogicalKey, NodeEventsExt};
+use crate::events::{Key, LogicalKey, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::prelude::{
-    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
-};
 use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, ClassSource, Metrics, NodeStyleExt, Px, Size, StateHost, StateStyle, Style,
@@ -98,8 +97,8 @@ impl CheckboxBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -130,7 +129,7 @@ impl CheckboxBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style_accumulator.merge(style);
         self
     }
 
@@ -157,7 +156,7 @@ impl CheckboxBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        node.layout(layout_overrides.apply(checkbox_layout(has_label)))
+        node.with(layout_overrides.apply(checkbox_layout(has_label)))
     }
 
     fn base_node(

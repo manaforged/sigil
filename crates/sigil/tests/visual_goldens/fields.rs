@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn panel_default() {
     let img = render_widget_to_png_stub(
-        |cx| cx.add(panel().title("Settings")),
+        || panel().title("Settings"),
         InteractionMode::Default,
         [340, 92],
         (1.0, 1.0),
@@ -14,9 +14,9 @@ fn panel_default() {
 #[test]
 fn progress_empty() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(0.0_f32);
-            cx.add(progress(v, 100.0).height(24.0))
+            progress(v, 100.0).height(24.0)
         },
         InteractionMode::Default,
         [244, 32],
@@ -28,9 +28,9 @@ fn progress_empty() {
 #[test]
 fn progress_half() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(50.0_f32);
-            cx.add(progress(v, 100.0).height(24.0))
+            progress(v, 100.0).height(24.0)
         },
         InteractionMode::Default,
         [244, 32],
@@ -42,9 +42,9 @@ fn progress_half() {
 #[test]
 fn progress_full() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(100.0_f32);
-            cx.add(progress(v, 100.0).height(24.0))
+            progress(v, 100.0).height(24.0)
         },
         InteractionMode::Default,
         [244, 32],
@@ -60,9 +60,9 @@ fn dropdown_options() -> Vec<String> {
 #[test]
 fn dropdown_open() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
-            cx.add(dropdown(sel, dropdown_options()))
+            dropdown(sel, dropdown_options())
         },
         InteractionMode::Clicked,
         [212, 160],
@@ -74,9 +74,9 @@ fn dropdown_open() {
 #[test]
 fn dropdown_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
-            cx.add(dropdown(sel, dropdown_options()))
+            dropdown(sel, dropdown_options())
         },
         InteractionMode::Default,
         [212, 52],
@@ -88,9 +88,9 @@ fn dropdown_default() {
 #[test]
 fn dropdown_hover() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
-            cx.add(dropdown(sel, dropdown_options()))
+            dropdown(sel, dropdown_options())
         },
         InteractionMode::Hover,
         [212, 52],
@@ -102,9 +102,9 @@ fn dropdown_hover() {
 #[test]
 fn dropdown_pressed() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
-            cx.add(dropdown(sel, dropdown_options()))
+            dropdown(sel, dropdown_options())
         },
         InteractionMode::Pressed,
         [212, 52],
@@ -116,9 +116,9 @@ fn dropdown_pressed() {
 #[test]
 fn dropdown_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
-            cx.add(dropdown(sel, dropdown_options()))
+            dropdown(sel, dropdown_options())
         },
         InteractionMode::Focused,
         [212, 52],
@@ -130,10 +130,10 @@ fn dropdown_focused() {
 #[test]
 fn dropdown_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let sel = signal(0_usize);
             let dis = signal(true);
-            cx.add(dropdown(sel, dropdown_options()).disabled(dis))
+            dropdown(sel, dropdown_options()).disabled(dis)
         },
         InteractionMode::Disabled,
         [212, 52],
@@ -145,11 +145,11 @@ fn dropdown_disabled() {
 #[test]
 fn scroll_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let body = container()
                 .class("bg-accent rounded-sm")
                 .layout(LayoutStyle::block().fixed_size(312.0, 400.0));
-            cx.add(scroll(body, 400.0).class("rounded-sm"))
+            scroll(body).extent(400.0).class("rounded-sm")
         },
         InteractionMode::Default,
         [330, 252],
@@ -161,9 +161,9 @@ fn scroll_default() {
 #[test]
 fn text_field_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(String::from("Hello"));
-            cx.add(text_field(v))
+            text_field(v)
         },
         InteractionMode::Default,
         [192, 44],
@@ -175,9 +175,9 @@ fn text_field_default() {
 #[test]
 fn text_field_hover() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(String::from("Hello"));
-            cx.add(text_field(v))
+            text_field(v)
         },
         InteractionMode::Hover,
         [192, 44],
@@ -189,9 +189,9 @@ fn text_field_hover() {
 #[test]
 fn text_field_pressed() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(String::from("Hello"));
-            cx.add(text_field(v))
+            text_field(v)
         },
         InteractionMode::Pressed,
         [192, 44],
@@ -203,9 +203,9 @@ fn text_field_pressed() {
 #[test]
 fn text_field_focused() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(String::from("Hello"));
-            cx.add(text_field(v))
+            text_field(v)
         },
         InteractionMode::Focused,
         [192, 44],
@@ -217,10 +217,10 @@ fn text_field_focused() {
 #[test]
 fn text_field_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let v = signal(String::from("Hello"));
             let dis = signal(true);
-            cx.add(text_field(v).disabled(dis))
+            text_field(v).disabled(dis)
         },
         InteractionMode::Disabled,
         [192, 44],
@@ -236,9 +236,9 @@ fn tab_labels() -> Vec<String> {
 #[test]
 fn tabs_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let active = signal(0_usize);
-            cx.add(tabs(active, tab_labels()))
+            tabs().active(active).labels(tab_labels())
         },
         InteractionMode::Default,
         [260, 56],
@@ -250,9 +250,9 @@ fn tabs_default() {
 #[test]
 fn tabs_hover_tab2() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let active = signal(0_usize);
-            cx.add(tabs(active, tab_labels()))
+            tabs().active(active).labels(tab_labels())
         },
         InteractionMode::Hover,
         [260, 56],
@@ -264,9 +264,9 @@ fn tabs_hover_tab2() {
 #[test]
 fn tabs_active_tab2() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let active = signal(1_usize);
-            cx.add(tabs(active, tab_labels()))
+            tabs().active(active).labels(tab_labels())
         },
         InteractionMode::Default,
         [260, 56],
@@ -278,9 +278,9 @@ fn tabs_active_tab2() {
 #[test]
 fn tabs_focused() {
     let img = render_widget_to_png_focus_descendant(
-        |cx| {
+        || {
             let active = signal(0_usize);
-            cx.add(tabs(active, tab_labels()))
+            tabs().active(active).labels(tab_labels())
         },
         InteractionMode::Focused,
         [260, 56],
@@ -298,9 +298,9 @@ fn tabs_focused_differs_from_default() {
 #[test]
 fn tabs_disabled() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let active = signal(0_usize);
-            cx.add(tabs(active, tab_labels()).disabled(&[1]))
+            tabs().active(active).labels(tab_labels()).disabled(&[1])
         },
         InteractionMode::Default,
         [260, 56],

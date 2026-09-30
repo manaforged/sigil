@@ -26,18 +26,20 @@ fn text_field_row(state: State) -> NodeBuilder {
 }
 
 fn field_row(_state: State) -> NodeBuilder {
-    field(
+    node(field(
         "Name",
         text_field(signal(String::new())).placeholder("Full name"),
-    )
+    ))
 }
 
 fn validated_row(state: State) -> NodeBuilder {
     let error = (state == State::Invalid).then(|| String::from("Enter a valid email address"));
-    validated_field(
-        "Email",
-        text_field(signal(String::from("ada@"))).placeholder("name@example.com"),
-        signal(error),
+    node(
+        field(
+            "Email",
+            text_field(signal(String::from("ada@"))).placeholder("name@example.com"),
+        )
+        .error(signal(error)),
     )
 }
 

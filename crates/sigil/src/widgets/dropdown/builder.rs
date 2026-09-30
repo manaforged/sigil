@@ -1,9 +1,10 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container, text};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{
     BORDER_WIDTH, NodeStyleExt, Radius, StateHost, StateStyle, Style, StyleAccess, StyleAtom,
@@ -78,8 +79,8 @@ impl DropdownBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -213,6 +214,7 @@ fn build_trigger(
         .stateful_style(TRIGGER_VARIANT, user_overlay, move || {
             reactive_style_state(interaction, disabled)
         })
+        .seal_style()
         .pointer_up(move |ev| {
             let cb: Activate = Rc::new(move || {
                 open.set(!open.peek());

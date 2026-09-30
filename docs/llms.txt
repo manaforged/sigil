@@ -4,99 +4,45 @@
 
 ## sigil-ui 0.1.0
 
-- [Every public item, one per line](reference/sigil-ui/api.txt): 7978 lines
+- [Every public item, one per line](reference/sigil-ui/api.txt): 6020 lines
 - [API overview](reference/sigil-ui/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-ui/changes.html)
-- [sigil](reference/sigil-ui/sigil.html): 101 items
-- [sigil::a11y](reference/sigil-ui/sigil-a11y.html): 0 items
-- [sigil::a11y::bridge](reference/sigil-ui/sigil-a11y-bridge.html): 9 items
-- [sigil::a11y::mapping](reference/sigil-ui/sigil-a11y-mapping.html): 3 items
-- [sigil::a11y::snapshot](reference/sigil-ui/sigil-a11y-snapshot.html): 1 items
+- [sigil](reference/sigil-ui/sigil.html): 60 items
+- [sigil::a11y](reference/sigil-ui/sigil-a11y.html): 13 items
 - [sigil::animation](reference/sigil-ui/sigil-animation.html): 76 items
-- [sigil::animation_runtime](reference/sigil-ui/sigil-animation_runtime.html): 36 items
-- [sigil::animation_runtime::binding_animate](reference/sigil-ui/sigil-animation_runtime-binding_animate.html): 16 items
+- [sigil::animation_runtime](reference/sigil-ui/sigil-animation_runtime.html): 52 items
 - [sigil::animation_runtime::presets](reference/sigil-ui/sigil-animation_runtime-presets.html): 8 items
-- [sigil::app](reference/sigil-ui/sigil-app.html): 35 items
-- [sigil::app::open](reference/sigil-ui/sigil-app-open.html): 1 items
-- [sigil::app::profile](reference/sigil-ui/sigil-app-profile.html): 0 items
+- [sigil::app](reference/sigil-ui/sigil-app.html): 115 items
+- [sigil::app::dialog](reference/sigil-ui/sigil-app-dialog.html): 15 items
+- [sigil::app::menu](reference/sigil-ui/sigil-app-menu.html): 2 items
+- [sigil::app::tray](reference/sigil-ui/sigil-app-tray.html): 2 items
 - [sigil::bidi](reference/sigil-ui/sigil-bidi.html): 11 items
-- [sigil::clipboard](reference/sigil-ui/sigil-clipboard.html): 14 items
-- [sigil::events](reference/sigil-ui/sigil-events.html): 52 items
-- [sigil::events::prelude](reference/sigil-ui/sigil-events-prelude.html): 0 items
-- [sigil::hal](reference/sigil-ui/sigil-hal.html): 60 items
-- [sigil::hal::a11y](reference/sigil-ui/sigil-hal-a11y.html): 7 items
-- [sigil::hal::events](reference/sigil-ui/sigil-hal-events.html): 80 items
-- [sigil::hal::geometry](reference/sigil-ui/sigil-hal-geometry.html): 26 items
-- [sigil::hal::layout](reference/sigil-ui/sigil-hal-layout.html): 11 items
-- [sigil::hal::renderer](reference/sigil-ui/sigil-hal-renderer.html): 7 items
-- [sigil::hal::scheduler](reference/sigil-ui/sigil-hal-scheduler.html): 7 items
-- [sigil::hal::shell](reference/sigil-ui/sigil-hal-shell.html): 40 items
-- [sigil::hal::size](reference/sigil-ui/sigil-hal-size.html): 11 items
-- [sigil::hal::text](reference/sigil-ui/sigil-hal-text.html): 27 items
+- [sigil::clipboard](reference/sigil-ui/sigil-clipboard.html): 16 items
+- [sigil::events](reference/sigil-ui/sigil-events.html): 192 items
+- [sigil::geometry](reference/sigil-ui/sigil-geometry.html): 39 items
+- [sigil::hal](reference/sigil-ui/sigil-hal.html): 62 items
 - [sigil::icons](reference/sigil-ui/sigil-icons.html): 12 items
 - [sigil::icons::builtin](reference/sigil-ui/sigil-icons-builtin.html): 9 items
-- [sigil::interaction](reference/sigil-ui/sigil-interaction.html): 0 items
-- [sigil::kernel](reference/sigil-ui/sigil-kernel.html): 198 items
-- [sigil::kernel::prelude](reference/sigil-ui/sigil-kernel-prelude.html): 0 items
-- [sigil::kernel::prelude::image](reference/sigil-ui/sigil-kernel-prelude-image.html): 0 items
-- [sigil::kernel::prelude::node](reference/sigil-ui/sigil-kernel-prelude-node.html): 0 items
-- [sigil::kernel::prelude::text](reference/sigil-ui/sigil-kernel-prelude-text.html): 0 items
-- [sigil::layout](reference/sigil-ui/sigil-layout.html): 205 items
-- [sigil::layout::builder_ext](reference/sigil-ui/sigil-layout-builder_ext.html): 2 items
-- [sigil::layout::prelude](reference/sigil-ui/sigil-layout-prelude.html): 0 items
-- [sigil::layout::reactive_position](reference/sigil-ui/sigil-layout-reactive_position.html): 8 items
-- [sigil::open](reference/sigil-ui/sigil-open.html): 0 items
+- [sigil::kernel](reference/sigil-ui/sigil-kernel.html): 197 items
+- [sigil::layout](reference/sigil-ui/sigil-layout.html): 217 items
 - [sigil::prelude](reference/sigil-ui/sigil-prelude.html): 0 items
-- [sigil::prelude::heatmap](reference/sigil-ui/sigil-prelude-heatmap.html): 0 items
-- [sigil::prelude::interactive](reference/sigil-ui/sigil-prelude-interactive.html): 0 items
-- [sigil::prelude::number_field](reference/sigil-ui/sigil-prelude-number_field.html): 0 items
-- [sigil::prelude::open](reference/sigil-ui/sigil-prelude-open.html): 0 items
-- [sigil::prelude::patterns](reference/sigil-ui/sigil-prelude-patterns.html): 0 items
-- [sigil::profile](reference/sigil-ui/sigil-profile.html): 159 items
-- [sigil::reactive](reference/sigil-ui/sigil-reactive.html): 58 items
+- [sigil::profile](reference/sigil-ui/sigil-profile.html): 161 items
+- [sigil::reactive](reference/sigil-ui/sigil-reactive.html): 51 items
 - [sigil::reactive::debug](reference/sigil-ui/sigil-reactive-debug.html): 2 items
 - [sigil::renderer](reference/sigil-ui/sigil-renderer.html): 55 items
 - [sigil::renderer::capture](reference/sigil-ui/sigil-renderer-capture.html): 6 items
 - [sigil::scene](reference/sigil-ui/sigil-scene.html): 251 items
 - [sigil::shell](reference/sigil-ui/sigil-shell.html): 25 items
-- [sigil::style](reference/sigil-ui/sigil-style.html): 105 items
-- [sigil::style::animator_overlay](reference/sigil-ui/sigil-style-animator_overlay.html): 25 items
-- [sigil::style::atom](reference/sigil-ui/sigil-style-atom.html): 156 items
-- [sigil::style::binding](reference/sigil-ui/sigil-style-binding.html): 19 items
-- [sigil::style::builder_ext](reference/sigil-ui/sigil-style-builder_ext.html): 18 items
-- [sigil::style::engine](reference/sigil-ui/sigil-style-engine.html): 6 items
-- [sigil::style::focus_ring](reference/sigil-ui/sigil-style-focus_ring.html): 13 items
-- [sigil::style::merge](reference/sigil-ui/sigil-style-merge.html): 6 items
-- [sigil::style::metrics](reference/sigil-ui/sigil-style-metrics.html): 25 items
-- [sigil::style::overlay](reference/sigil-ui/sigil-style-overlay.html): 10 items
+- [sigil::style](reference/sigil-ui/sigil-style.html): 742 items
 - [sigil::style::palette](reference/sigil-ui/sigil-style-palette.html): 19 items
-- [sigil::style::parser](reference/sigil-ui/sigil-style-parser.html): 13 items
-- [sigil::style::prelude](reference/sigil-ui/sigil-style-prelude.html): 0 items
-- [sigil::style::reactive](reference/sigil-ui/sigil-style-reactive.html): 2 items
-- [sigil::style::resolve](reference/sigil-ui/sigil-style-resolve.html): 2 items
 - [sigil::style::scale](reference/sigil-ui/sigil-style-scale.html): 27 items
-- [sigil::style::size](reference/sigil-ui/sigil-style-size.html): 9 items
-- [sigil::style::state](reference/sigil-ui/sigil-style-state.html): 31 items
-- [sigil::style::struct_api](reference/sigil-ui/sigil-style-struct_api.html): 79 items
-- [sigil::style::styled](reference/sigil-ui/sigil-style-styled.html): 0 items
-- [sigil::style::text_style](reference/sigil-ui/sigil-style-text_style.html): 33 items
-- [sigil::style::theme](reference/sigil-ui/sigil-style-theme.html): 56 items
-- [sigil::style::token](reference/sigil-ui/sigil-style-token.html): 110 items
-- [sigil::style::tone](reference/sigil-ui/sigil-style-tone.html): 11 items
 - [sigil::style::variant](reference/sigil-ui/sigil-style-variant.html): 12 items
-- [sigil::style::variant_kit](reference/sigil-ui/sigil-style-variant_kit.html): 3 items
-- [sigil::tasks](reference/sigil-ui/sigil-tasks.html): 47 items
+- [sigil::tasks](reference/sigil-ui/sigil-tasks.html): 46 items
+- [sigil::terminal](reference/sigil-ui/sigil-terminal.html): 175 items
 - [sigil::text](reference/sigil-ui/sigil-text.html): 33 items
-- [sigil::text::bidi](reference/sigil-ui/sigil-text-bidi.html): 0 items
-- [sigil::widgets](reference/sigil-ui/sigil-widgets.html): 636 items
-- [sigil::widgets::heatmap](reference/sigil-ui/sigil-widgets-heatmap.html): 0 items
+- [sigil::widgets](reference/sigil-ui/sigil-widgets.html): 677 items
 - [sigil::widgets::interaction](reference/sigil-ui/sigil-widgets-interaction.html): 11 items
-- [sigil::widgets::interactive](reference/sigil-ui/sigil-widgets-interactive.html): 6 items
-- [sigil::widgets::layout_ext](reference/sigil-ui/sigil-widgets-layout_ext.html): 17 items
-- [sigil::widgets::number_field](reference/sigil-ui/sigil-widgets-number_field.html): 9 items
-- [sigil::widgets::overlay](reference/sigil-ui/sigil-widgets-overlay.html): 0 items
-- [sigil::widgets::overlay::heatmap](reference/sigil-ui/sigil-widgets-overlay-heatmap.html): 2 items
-- [sigil::widgets::patterns](reference/sigil-ui/sigil-widgets-patterns.html): 17 items
+- [sigil::widgets::layout_ext](reference/sigil-ui/sigil-widgets-layout_ext.html): 15 items
 - [Example button_demo](reference/sigil-ui/examples/button_demo.html): `cargo run -p sigil-ui --example button_demo`
 - [Example chat-both](reference/sigil-ui/examples/chat-both.html): `cargo run -p sigil-ui --example chat-both --features terminal,desktop`
 - [Example checkbox_demo](reference/sigil-ui/examples/checkbox_demo.html): `cargo run -p sigil-ui --example checkbox_demo`
@@ -116,6 +62,14 @@
 - [Example showcase-editor](reference/sigil-ui/examples/showcase-editor.html): `cargo run -p sigil-ui --example showcase-editor --features desktop`
 - [Example showcase-settings](reference/sigil-ui/examples/showcase-settings.html): `cargo run -p sigil-ui --example showcase-settings --features desktop`
 - [Example slider_demo](reference/sigil-ui/examples/slider_demo.html): `cargo run -p sigil-ui --example slider_demo`
+- [Example story-01-hello](reference/sigil-ui/examples/story-01-hello.html): `cargo run -p sigil-ui --example story-01-hello`
+- [Example story-02-counter](reference/sigil-ui/examples/story-02-counter.html): `cargo run -p sigil-ui --example story-02-counter`
+- [Example story-03-form](reference/sigil-ui/examples/story-03-form.html): `cargo run -p sigil-ui --example story-03-form`
+- [Example story-04-todo](reference/sigil-ui/examples/story-04-todo.html): `cargo run -p sigil-ui --example story-04-todo`
+- [Example story-05-nav](reference/sigil-ui/examples/story-05-nav.html): `cargo run -p sigil-ui --example story-05-nav`
+- [Example story-07-async](reference/sigil-ui/examples/story-07-async.html): `cargo run -p sigil-ui --example story-07-async`
+- [Example story-08-component](reference/sigil-ui/examples/story-08-component.html): `cargo run -p sigil-ui --example story-08-component`
+- [Example story-09-test](reference/sigil-ui/examples/story-09-test.html): `cargo run -p sigil-ui --example story-09-test`
 - [Example text_field_demo](reference/sigil-ui/examples/text_field_demo.html): `cargo run -p sigil-ui --example text_field_demo`
 - [Example todo-terminal](reference/sigil-ui/examples/todo-terminal.html): `cargo run -p sigil-ui --example todo-terminal --features terminal`
 - [Example toggle_demo](reference/sigil-ui/examples/toggle_demo.html): `cargo run -p sigil-ui --example toggle_demo`
@@ -132,10 +86,10 @@
 
 ## sigil-kittest 0.1.0
 
-- [Every public item, one per line](reference/sigil-kittest/api.txt): 243 lines
+- [Every public item, one per line](reference/sigil-kittest/api.txt): 249 lines
 - [API overview](reference/sigil-kittest/index.html): tasks, modules, features, and examples
 - [API changes by release](reference/sigil-kittest/changes.html)
-- [sigil_kittest](reference/sigil-kittest/sigil_kittest.html): 112 items
+- [sigil_kittest](reference/sigil-kittest/sigil_kittest.html): 116 items
 - [sigil_kittest::gpu](reference/sigil-kittest/sigil_kittest-gpu.html): 16 items
 - [sigil_kittest::input](reference/sigil-kittest/sigil_kittest-input.html): 15 items
 - [sigil_kittest::parity](reference/sigil-kittest/sigil_kittest-parity.html): 16 items

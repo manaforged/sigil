@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::ScrollBuilder;
 
 const PAGES: &[&str] = &[
     "Controls",
@@ -18,38 +19,39 @@ const PAGES: &[&str] = &[
 const PATCH: &str = "--- a/src/app.rs\n+++ b/src/app.rs\n@@ -1,3 +1,3 @@\n fn main() {\n-    old();\n+    fresh();\n }";
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - widget gallery", 1040, 680), build)
+    sigil::run(
+        AppConfig::new("Sigil - widget gallery").size(1040, 680),
+        build,
+    )
 }
 
-fn build(cx: &mut Cx) -> NodeId {
+fn build() -> impl IntoNode {
     let page = signal(0_usize);
     let dialog = signal(false);
     let drawer = signal(false);
     let queue = ToastQueue::new();
-    cx.add(
-        container()
-            .role(Role::Main)
-            .layout(LayoutStyle::flex_row().fill())
-            .class("bg-surface")
-            .child(sidebar(nav(page)))
-            .child(content(page, dialog, drawer, queue))
-            .child(
-                modal(dialog)
-                    .title("Confirm action")
-                    .child(text("This modal is mounted at the root.").nowrap())
-                    .child(
-                        button("Close")
-                            .primary()
-                            .activate(move || dialog.set(false)),
-                    ),
-            )
-            .child(
-                sheet(drawer)
-                    .title("Details")
-                    .child(text("A right-edge sheet.").nowrap()),
-            )
-            .child(toast_queue(queue)),
-    )
+    container()
+        .role(Role::Main)
+        .layout(LayoutStyle::flex_row().fill())
+        .class("bg-surface")
+        .child(sidebar(nav(page)))
+        .child(content(page, dialog, drawer, queue))
+        .child(
+            modal(dialog)
+                .title("Confirm action")
+                .child(text("This modal is mounted at the root.").nowrap())
+                .child(
+                    button("Close")
+                        .primary()
+                        .activate(move || dialog.set(false)),
+                ),
+        )
+        .child(
+            sheet(drawer)
+                .title("Details")
+                .child(text("A right-edge sheet.").nowrap()),
+        )
+        .child(toast_queue(queue))
 }
 
 fn nav(page: Signal<usize>) -> NodeBuilder {
@@ -90,7 +92,7 @@ fn content(
     drawer: Signal<bool>,
     queue: ToastQueue,
 ) -> ScrollBuilder {
-    scroll_auto(
+    scroll(
         container()
             .layout(
                 LayoutStyle::flex_column()
@@ -333,9 +335,10 @@ fn chrome_page() -> NodeBuilder {
         ))
         .child(section_label("Tabs"))
         .child(
-            tabs(tab, vec!["First".into(), "Second".into()])
-                .content_for(0, text("First tab pane").nowrap())
-                .content_for(1, text("Second tab pane").nowrap()),
+            tabs()
+                .active(tab)
+                .tab("First", move || text("First tab pane").nowrap())
+                .tab("Second", move || text("Second tab pane").nowrap()),
         )
         .child(section_label("Splitter"))
         .child(

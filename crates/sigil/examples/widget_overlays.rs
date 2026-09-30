@@ -4,9 +4,10 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{CommandMenuBuilder, HintOverlayBuilder, MenuBarBuilder, TooltipBuilder};
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - overlays", 640, 560), build)
+    sigil::run(AppConfig::new("Sigil - overlays").size(640, 560), build)
 }
 
 fn modal_demo() -> NodeBuilder {
@@ -99,26 +100,24 @@ fn hint_overlay_demo() -> HintOverlayBuilder {
     hint_overlay(&[("Ctrl+K", "Command menu"), ("Ctrl+S", "Save")]).entry("Esc", "Close")
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(menu_bar_demo())
-                .child(
-                    container()
-                        .layout(LayoutStyle::flex_row().gap(cols(1.0)))
-                        .child(modal_demo())
-                        .child(sheet_demo())
-                        .child(menu_demo())
-                        .child(tooltip_demo()),
-                )
-                .child(command_menu_demo())
-                .child(hint_overlay_demo())
-                .child(toast_demo())
-                .child(toast_queue_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(menu_bar_demo())
+            .child(
+                container()
+                    .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+                    .child(modal_demo())
+                    .child(sheet_demo())
+                    .child(menu_demo())
+                    .child(tooltip_demo()),
+            )
+            .child(command_menu_demo())
+            .child(hint_overlay_demo())
+            .child(toast_demo())
+            .child(toast_queue_demo()),
     )
+    .fill()
 }

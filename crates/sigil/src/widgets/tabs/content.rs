@@ -1,17 +1,14 @@
 use crate::kernel::{IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{DisplayKind, NodeStyleExt, StyleAtom, space};
-
-use super::builder::{ContentFactory, ContentSlot};
 
 pub(super) fn wrap_with_content(
     tab_list: NodeBuilder,
     active: Signal<usize>,
-    contents: Vec<Option<ContentSlot>>,
-    count: usize,
+    contents: Vec<Option<Box<dyn IntoNode>>>,
 ) -> NodeBuilder {
-    let mut root = container()
+    let root = container()
         .role(Role::GenericContainer)
         .layout(
             LayoutStyle::flex_column()
@@ -19,56 +16,21 @@ pub(super) fn wrap_with_content(
                 .gap(space(2)),
         )
         .child(tab_list);
-
-    let mut factories: Vec<Option<ContentFactory>> = (0..count).map(|_| None).collect();
-    let mut any_factory = false;
-
-    for (index, slot) in contents.into_iter().enumerate() {
-        match slot {
-            Some(ContentSlot::Static(node)) => {
-                root = root.child(content_panel(active, index, node, count));
-            }
-            Some(ContentSlot::Factory(factory)) => {
-                if let Some(slot_mut) = factories.get_mut(index) {
-                    *slot_mut = Some(factory);
-                    any_factory = true;
-                }
-            }
-            None => {}
-        }
-    }
-
-    if any_factory {
-        root = root.child(reactive_content(active, factories));
-    }
-    root
-}
-
-fn reactive_content(active: Signal<usize>, factories: Vec<Option<ContentFactory>>) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().align_items(AlignItems::Stretch))
-        .children_reactive(move || {
-            let idx = active.get();
-            factories
-                .get(idx)
-                .and_then(|slot| slot.as_ref().map(|factory| factory()))
-                .into_iter()
-                .collect::<Vec<_>>()
+    contents
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, content)| content.map(|content| (index, content)))
+        .fold(root, |root, (index, content)| {
+            root.child(content_panel(active, index, content))
         })
 }
 
-fn content_panel(
-    active: Signal<usize>,
-    index: usize,
-    node: Box<dyn IntoNode>,
-    _count: usize,
-) -> NodeBuilder {
+fn content_panel(active: Signal<usize>, index: usize, content: Box<dyn IntoNode>) -> NodeBuilder {
     container()
         .role(Role::GenericContainer)
         .layout(LayoutStyle::flex_column())
         .style_reactive(move || content_display(active, index))
-        .child(node)
+        .child(content)
 }
 
 fn content_display(active: Signal<usize>, index: usize) -> &'static [StyleAtom] {

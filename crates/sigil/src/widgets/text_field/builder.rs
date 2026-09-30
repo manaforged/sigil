@@ -1,8 +1,8 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use crate::layout::prelude::LayoutBuilderExt;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
@@ -90,8 +90,8 @@ impl TextFieldBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, flag: Signal<bool>) -> Self {
-        self.disabled = Some(flag);
+    pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
+        self.disabled = Some(flag.into_signal());
         self
     }
 
@@ -200,7 +200,7 @@ impl TextFieldBuilder {
         if !self.style_accumulator.is_empty() {
             node = node.style(self.style_accumulator);
         }
-        let node = node.layout(self.layout_overrides.apply(field_layout()));
+        let node = node.with(self.layout_overrides.apply(field_layout()));
         (node, runtime)
     }
 }

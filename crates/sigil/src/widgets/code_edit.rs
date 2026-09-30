@@ -3,13 +3,14 @@ mod editing;
 mod render;
 mod scroll;
 
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::prelude::{KeyEvent, NodeEventsExt};
+use crate::events::{KeyEvent, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, container};
 use crate::layout::LayoutReactiveExt;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::layout::snap::{CellForm, line};
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Overflow};
 use crate::reactive::{Signal, derived, effect, signal};
 use crate::style::{NodeStyleExt, StyleOverlay, Token, space};
 
@@ -127,8 +128,8 @@ impl CodeEditBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -215,6 +216,7 @@ fn field_chrome(
     node.stateful_style(FIELD_VARIANT, StyleOverlay::default(), move || {
         reactive_style_state(interaction, disabled)
     })
+    .seal_style()
     .focus_ring(interaction.focus_ring())
 }
 

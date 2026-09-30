@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::kernel::NodeId;
 use sigil::prelude::*;
 
 #[derive(Clone, PartialEq)]
@@ -56,7 +57,7 @@ impl Todos {
             })
         });
         effect(move || {
-            filter.track();
+            filter.with(|_| ());
             cursor.set(0);
         });
         Self {
@@ -146,7 +147,7 @@ fn filter_strip(active: usize) -> String {
 
 fn list(todos: Todos, list_id: Signal<Option<NodeId>>) -> NodeBuilder {
     let cursor = todos.cursor;
-    let entries = scroll_auto(
+    let entries = scroll(
         container()
             .layout(LayoutStyle::flex_column().fill_width())
             .children_reactive(move || {
@@ -211,38 +212,36 @@ fn status(todos: Todos) -> NodeBuilder {
     ])
 }
 
-pub(crate) fn app(cx: &mut Cx) -> NodeId {
+pub(crate) fn app() -> impl IntoNode {
     let todos = Todos::new();
     let draft = signal(String::new());
     let list_id = signal(None::<NodeId>);
     let quit = Shortcut::plain(LogicalKey::character("q"));
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_column().fill())
-            .keyboard_shortcut(quit.clone())
-            .key(quit, |_| sigil::request_exit())
-            .key_capture(Key::Escape, move |event| {
-                if let Some(id) = list_id.peek() {
-                    request_focus(id);
-                    event.stop_propagation();
-                }
-            })
-            .child(
-                container()
-                    .layout(LayoutStyle::flex_row().fill_width().gap(cols(2.0)))
-                    .child(text("Todo").nowrap().class("text-accent"))
-                    .child(text(move || filter_strip(todos.filter.get())).nowrap()),
-            )
-            .child(
-                text_field(draft)
-                    .placeholder("New item, Enter to add")
-                    .autofocus()
-                    .submit(move |value| {
-                        todos.add(value);
-                        draft.set(String::new());
-                    }),
-            )
-            .child(list(todos, list_id))
-            .child(status(todos)),
-    )
+    container()
+        .layout(LayoutStyle::flex_column().fill())
+        .keyboard_shortcut(quit.clone())
+        .key(quit, |_| sigil::request_exit())
+        .key_capture(Key::Escape, move |event| {
+            if let Some(id) = list_id.peek() {
+                request_focus(id);
+                event.stop_propagation();
+            }
+        })
+        .child(
+            container()
+                .layout(LayoutStyle::flex_row().fill_width().gap(cols(2.0)))
+                .child(text("Todo").nowrap().class("text-accent"))
+                .child(text(move || filter_strip(todos.filter.get())).nowrap()),
+        )
+        .child(
+            text_field(draft)
+                .placeholder("New item, Enter to add")
+                .autofocus()
+                .submit(move |value| {
+                    todos.add(value);
+                    draft.set(String::new());
+                }),
+        )
+        .child(list(todos, list_id))
+        .child(status(todos))
 }

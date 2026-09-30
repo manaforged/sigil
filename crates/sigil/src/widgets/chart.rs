@@ -1,5 +1,5 @@
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, Tone, space};
 
 use super::layout_ext::{LayoutOverrides, WidgetLayoutExt};
@@ -115,7 +115,7 @@ impl ChartBuilder {
                 Token::Gray6.border(),
                 Token::Surface.bg(),
             ])
-            .layout(
+            .with(
                 self.layout_overrides.apply(
                     LayoutStyle::flex_column()
                         .width(self.width)
@@ -180,8 +180,15 @@ impl WidgetLayoutExt for ChartBuilder {
     }
 }
 
+const SOLID_STEP: u8 = 11;
+const SHADE_STEP: u8 = 4;
+
 pub(crate) fn tone_solid(tone: Tone) -> Token {
-    Token::scale(tone.scale_role(), 11).unwrap_or(Token::Gray11)
+    Token::scale(tone.scale_role(), SOLID_STEP).unwrap_or(Token::Gray11)
+}
+
+pub(crate) fn tone_shade(tone: Tone) -> Token {
+    Token::scale(tone.scale_role(), SHADE_STEP).unwrap_or(Token::Gray4)
 }
 
 pub(crate) const fn tone_fill(tone: Tone) -> Token {

@@ -1,11 +1,10 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
+use crate::events::{Key, NodeEventsExt};
 use crate::kernel::{AccessibleName, NodeBuilder, NodeId, Role, container, text};
-use crate::layout::prelude::{
-    AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows,
-};
 use crate::layout::snap::CellForm;
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, cols, rows};
 use crate::reactive::{Signal, derived};
 use crate::style::{
     Metrics, NodeStyleExt, Size, Style, StyleAtom, StyleOverlay, Token, Tone, space,
@@ -72,8 +71,8 @@ impl RadioGroupBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -98,7 +97,7 @@ impl RadioGroupBuilder {
         let mut group = container()
             .role(Role::RadioGroup)
             .focusable(true)
-            .layout(self.layout_overrides.apply(group_layout()))
+            .with(self.layout_overrides.apply(group_layout()))
             .focus_in(move || group_focus.set(true))
             .focus_out(move || group_focus.set(false))
             .label(self.name);
@@ -176,12 +175,11 @@ fn option_row(
     let key_for_ring = key.clone();
     let ring_visible = derived(move || group_focus.get() && selected.get() == key_for_ring);
     let interaction = InteractionState::new(true);
-    let row = interaction.observe_style(container());
+    let row = interaction.observe_style(container().layout(option_layout()));
     control_surface(row, interaction, disabled, StyleOverlay::default())
         .role(Role::RadioButton)
         .label(label.clone())
         .checked(checked)
-        .layout(option_layout())
         .tone(tone)
         .focus_ring(crate::style::FocusRing::new(ring_visible))
         .child(

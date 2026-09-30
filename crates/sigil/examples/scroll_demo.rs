@@ -6,11 +6,11 @@
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - scroll demo", 800, 600), build)
+    sigil::run(AppConfig::new("Sigil - scroll demo").size(800, 600), build)
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(root())
+fn build() -> impl IntoNode {
+    root()
 }
 
 fn root() -> NodeBuilder {
@@ -19,7 +19,7 @@ fn root() -> NodeBuilder {
         .role(Role::Main)
         .layout(LayoutStyle::flex_column().padding(24.0))
         .class("w-full h-full bg-surface")
-        .child(scroll(items, 600.0).height(300.0))
+        .child(scroll(items).extent(600.0).height(300.0))
 }
 
 fn tall_column() -> NodeBuilder {

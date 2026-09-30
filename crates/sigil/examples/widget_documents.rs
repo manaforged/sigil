@@ -4,12 +4,13 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{CodeEditBuilder, DiffBuilder, MarkdownEditBuilder};
 
 const NOTES: &str = "# Notes\n\nBody with **bold** and `code`.\n\n- one\n- two";
 const PATCH: &str = "--- a/src/app.rs\n+++ b/src/app.rs\n@@ -1,3 +1,3 @@\n fn main() {\n-    println!(\"hello\");\n+    println!(\"hello, sigil\");\n }\n";
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - documents", 640, 720), build)
+    sigil::run(AppConfig::new("Sigil - documents").size(640, 720), build)
 }
 
 fn markdown_demo() -> NodeBuilder {
@@ -47,19 +48,17 @@ fn diff_demo() -> DiffBuilder {
     diff(PATCH).path("src/app.rs").layout(DiffLayout::Unified)
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(markdown_demo())
-                .child(markdown_edit_demo())
-                .child(html_demo())
-                .child(code_edit_demo())
-                .child(mermaid_demo())
-                .child(diff_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(markdown_demo())
+            .child(markdown_edit_demo())
+            .child(html_demo())
+            .child(code_edit_demo())
+            .child(mermaid_demo())
+            .child(diff_demo()),
     )
+    .fill()
 }

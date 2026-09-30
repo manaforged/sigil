@@ -50,7 +50,10 @@ inside; it does not scroll or collapse on its own.
 
 ## tabs
 
-`tabs(active: Signal<usize>, labels: Vec<String>) -> TabsBuilder`.
+`tabs().tab(label, component)` adds one tab per call. Each component
+builds once when the tabs mount; a hidden tab keeps its state.
+`.active(Signal<usize>)` binds the selected index. `.labels(iter)`
+adds tabs without panels, for a strip that drives content elsewhere.
 The strip is a `Role::TabList`; each tab activates on click or Enter.
 The active tab label is semibold in the surface text colour; other
 labels are medium weight in gray step 11. The bare strip also gives
@@ -61,11 +64,6 @@ underline. The pane sits 8 px (`space(2)`) below the strip.
 - `.label(name)` — assistive name for the list.
 - `.disabled(&[usize])` — disable specific indices.
 - `.justify_list(JustifyContent)` — strip alignment.
-- `.content_for(index, node)` — mount every pane up front and toggle
-  display; state survives tab switches.
-- `.content_for_fn(index, Fn() -> impl IntoNode)` — build only the
-  active pane and rebuild on switch; cheap for heavy panes, but pane
-  state resets each visit.
 - `.reorderable(true)` + `.order(Signal<Vec<usize>>)` — drag to
   reorder; the order signal holds the permutation.
 - `.closeable(true)` + `.close(Fn(usize))` — per-tab close buttons;
@@ -95,7 +93,7 @@ splitter(SplitterOrientation::Horizontal)
 - `.child(node, initial_px)` — simple pane.
 - `.pane(node)` — returns a `PaneBuilder` with `.initial(px)`,
   `.min(px)`, `.max(px)`, `.grow(factor)`; finish with `.commit()`,
-  another `.pane(...)`, or pass it straight to `cx.add`.
+  another `.pane(...)`, or return it from a component.
 - `.min_size(index, px)` / `.max_size(index, px)` — clamp by index.
 - `.sizes_bind(Signal<Vec<f32>>)` — observe or persist pane sizes.
 - `.snap_points(handle_index, &[px])` — snap a handle to offsets within
@@ -103,10 +101,9 @@ splitter(SplitterOrientation::Horizontal)
 
 ## scroll
 
-`scroll(content: NodeBuilder, extent) -> ScrollBuilder` where `extent`
-is `f32` or `Signal<f32>` — the total content height. `scroll_auto
-(content)` measures the content itself (`size_reactive`), which is the
-common case.
+`scroll(content: NodeBuilder) -> ScrollBuilder` measures the content
+itself (`size_reactive`). `.extent(f32 or Signal<f32>)` sets the total
+content height instead, for content whose height you already know.
 
 - `.height(px)` (default 240) / `.width(px)` / `.fill()` — size the
   viewport.
@@ -137,17 +134,13 @@ border color, not hittable. `status_bar(children)` — a 28 px
 border and an 8 px side inset. Every child except the last packs to the
 left; the last child aligns right. A single child stays on the left.
 
-## patterns
+## Small composites
 
-Small composites in `sigil::widgets::patterns` (except `kv_row`, which
-lives in `sigil::widgets::composition`; all are also re-exported at
-`sigil::widgets`):
+Small composites in `sigil::widgets`:
 
 - `field(label, control)` — label stacked over a control with a 4 px
-  gap.
-- `validated_field(label, TextFieldBuilder, error: Signal<Option<String>>)`
-  — additionally wires `invalid_when` and shows the error text under
-  the field while the signal is `Some`.
+  gap. `.error(reactive)` shows the error text under a text, number,
+  or colour field and paints it invalid while the value is `Some`.
 - `kv_row(label, value)` — a row at least 28 px tall. The key is a
   muted 16-column cell that ellipsizes. The value starts 12 px after it
   and fills the rest, so values in a stack align.
@@ -191,7 +184,7 @@ The visual catalog captures these states. The frame widgets (`panel`,
 | `menu_bar` | default, hover, pressed, open | Enter or Space on a trigger; the open panel uses the list keys in [Overlays](overlays.md#keyboard-in-lists) | Triggers are `Button` | The trigger label |
 | `tabs` | default, hover, pressed, focused, disabled, selected | Tab enters the active tab only; Left, Right, Home, and End move focus between tabs and select the tab; Enter activates | `TabList`, tabs `Tab` | `.label()` for the list, else "Tabs"; each tab uses its label |
 | `splitter` | default, hover, pressed, focused | Arrow keys move the handle by 16 px; Home and End move it to the minimum and maximum | Handles are `Splitter` with a value: the size of the pane before the handle | "Resize panes" |
-| `scroll`, `scroll_auto` | default, hover | Wheel, scrollbar drag; when focused, arrow keys, Page Up, Page Down, Home, and End. The area is a Tab stop only when its content overflows | `ScrollView` | None |
+| `scroll` | default, hover | Wheel, scrollbar drag; when focused, arrow keys, Page Up, Page Down, Home, and End. The area is a Tab stop only when its content overflows | `ScrollView` | None |
 | `sidebar` | static | none | `Navigation` | None |
 | `status_bar` | static | none | `Status` | None; the children carry the text |
 

@@ -113,8 +113,8 @@ The family pages carry signatures, options, and behavior notes:
   `.tone_signal(...)` retints reactively. `.activate(Fn())` makes it a
   button; without `.activate` it stays a label.
 - **badge(label, Tone)** — a pill chip (`rounded-full`).
-- **field(label, control)** and **validated_field** — a label above a
-  control. Use these for forms.
+- **field(label, control)** — a label above a control; `.error(..)`
+  adds an error line. Use it for forms.
 - **icon(glyph)**, **dot(Tone)**, **divider_horizontal()**, and
   **divider_vertical()**.
 - **code_edit(...)**.
@@ -148,13 +148,13 @@ The family pages carry signatures, options, and behavior notes:
 - **modal(open)** — a GPU dialog. `open` is a `Signal<bool>`. `.title()`,
   `.width()`, and `.height()` size the frame. Escape and the focus trap
   are on. A backdrop click is off unless `.dismiss_on_backdrop()`. The
-  alert is `sigil::dialog::message` / `confirm` (feature `dialog`).
+  alert is `sigil::app::dialog::message` / `confirm` (feature `dialog`).
   File and message dialogs return a `Signal<Status<..>>` and never block
   the frame loop. Feature `dialog` shows an in-app picker on every host;
   add `native-dialog` for the OS dialog on the window host. Read the result like any spawned task:
 
   ```rust,ignore
-  let picked = sigil::dialog::FileDialog::new().filter("CSV", &["csv"]).open_file();
+  let picked = sigil::app::dialog::FileDialog::new().filter("CSV", &["csv"]).open_file();
   text(move || picked.with(|status| match status {
       Status::Ok(Some(path)) => path.display().to_string(),
       Status::Ok(None) => String::from("Cancelled"),
@@ -166,9 +166,9 @@ The family pages carry signatures, options, and behavior notes:
   `.side(Side::Bottom)`. A backdrop click dismisses.
 - **toast(message)** — a `Signal<Option<String>>`. `Some` shows a status
   line; `None` hides it.
-- **tabs(Signal\<usize\>, Vec\<String\>)** — chain `.content_for(i, node)`
-  and `.close(Fn(usize))`.
-- **scroll(inner, extent)** — chain `.width()` and `.height()`.
+- **tabs()** — chain `.tab(label, component)` per tab, and
+  `.close(Fn(usize))`.
+- **scroll(inner)** — measures its content; `.extent(px)` sets a known height. Chain `.width()` and `.height()`.
 - **menu_bar()** — a GPU app bar. `.class("bg-surface-hover px-12")`
   styles the strip. `.menu("File", [MenuItem::new("Open").select(|| {})])`
   builds a dropdown. This is the bar you design. The native OS bar is

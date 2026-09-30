@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
-use crate::events::prelude::{Key, NodeEventsExt};
-use crate::hal::{KeyEvent, LogicalKey};
+use crate::events::{Key, NodeEventsExt};
+use crate::events::{KeyEvent, LogicalKey};
 use crate::kernel::NodeBuilder;
 use crate::reactive::{Signal, signal};
 use crate::widgets::scroll::{reveal_row, scroll};
@@ -159,7 +159,8 @@ pub(crate) fn scrolled(
 ) -> NodeBuilder {
     let scroll_y = signal(0.0_f32);
     reveal_row(scroll_y, cursor, row_height, viewport.1);
-    let view = scroll(list, extent)
+    let view = scroll(list)
+        .extent(extent)
         .height(viewport.1)
         .scroll_bind(scroll_y);
     let view = match viewport.0 {

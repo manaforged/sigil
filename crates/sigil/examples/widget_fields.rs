@@ -4,9 +4,13 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{
+    ColorFieldBuilder, DateFieldBuilder, DropdownBuilder, NumberFieldBuilder, TextEditBuilder,
+    TextFieldBuilder,
+};
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - fields", 520, 720), build)
+    sigil::run(AppConfig::new("Sigil - fields").size(520, 720), build)
 }
 
 fn text_field_demo() -> TextFieldBuilder {
@@ -58,39 +62,32 @@ fn dropdown_demo() -> DropdownBuilder {
     dropdown(size, vec!["Small".into(), "Large".into()]).label("Size")
 }
 
-fn field_demo() -> NodeBuilder {
+fn field_demo() -> impl IntoNode {
     let city = signal(String::new());
     field("City", text_field(city).placeholder("Berlin"))
 }
 
-fn validated_field_demo() -> NodeBuilder {
+fn validated_field_demo() -> impl IntoNode {
     let email = signal(String::from("ada@"));
-    let email_error = derived(move || {
+    field("Email", text_field(email).placeholder("name@example.com")).error(move || {
         (!email.get().contains('.')).then(|| String::from("Enter a valid email address"))
-    });
-    validated_field(
-        "Email",
-        text_field(email).placeholder("name@example.com"),
-        email_error,
-    )
+    })
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(field("Name", text_field_demo()))
-                .child(field("Notes", text_edit_demo()))
-                .child(field("Quantity", number_field_demo()))
-                .child(field("Due", date_field_demo()))
-                .child(field("Accent", color_field_demo()))
-                .child(field("Language", combobox_demo()))
-                .child(field("Size", dropdown_demo()))
-                .child(field_demo())
-                .child(validated_field_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(field("Name", text_field_demo()))
+            .child(field("Notes", text_edit_demo()))
+            .child(field("Quantity", number_field_demo()))
+            .child(field("Due", date_field_demo()))
+            .child(field("Accent", color_field_demo()))
+            .child(field("Language", combobox_demo()))
+            .child(field("Size", dropdown_demo()))
+            .child(field_demo())
+            .child(validated_field_demo()),
     )
+    .fill()
 }

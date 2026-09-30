@@ -1,7 +1,7 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, TextContent};
-use crate::layout::prelude::LayoutBuilderExt;
 use crate::reactive::{Signal, signal};
 use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess};
 
@@ -103,8 +103,8 @@ impl TextEditBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, flag: Signal<bool>) -> Self {
-        self.disabled = Some(flag);
+    pub fn disabled(mut self, flag: impl Reactive<bool>) -> Self {
+        self.disabled = Some(flag.into_signal());
         self
     }
 
@@ -173,7 +173,7 @@ impl TextEditBuilder {
         if !style_accumulator.is_empty() {
             node = node.style(style_accumulator);
         }
-        node.layout(layout_overrides.apply(edit_layout()))
+        node.with(layout_overrides.apply(edit_layout()))
     }
 }
 

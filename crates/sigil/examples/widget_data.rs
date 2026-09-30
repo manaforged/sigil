@@ -4,6 +4,7 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::TableBuilder;
 
 struct Repo {
     name: &'static str,
@@ -11,7 +12,7 @@ struct Repo {
 }
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - data", 520, 720), build)
+    sigil::run(AppConfig::new("Sigil - data").size(520, 720), build)
 }
 
 fn virtual_list_demo() -> NodeBuilder {
@@ -72,19 +73,17 @@ fn kv_row_demo() -> NodeBuilder {
     kv_row("Status", chip("Healthy", Tone::Success))
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(table_demo())
-                .child(virtual_list_demo())
-                .child(heatmap_demo())
-                .child(list_row_demo())
-                .child(kv_grid_demo())
-                .child(kv_row_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(table_demo())
+            .child(virtual_list_demo())
+            .child(heatmap_demo())
+            .child(list_row_demo())
+            .child(kv_grid_demo())
+            .child(kv_row_demo()),
     )
+    .fill()
 }

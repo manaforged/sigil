@@ -1,7 +1,8 @@
-use crate::events::prelude::NodeEventsExt;
+use crate::events::NodeEventsExt;
 use crate::kernel::{NodeBuilder, Role, container};
 use crate::layout::PopupSide;
-use crate::layout::prelude::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::layout::{LayoutBuilderExt, LayoutStyle, Position};
+use crate::reactive::Reactive;
 use crate::reactive::{Signal, derived, signal};
 use crate::style::{Metrics, Size, space};
 
@@ -41,8 +42,8 @@ impl Combobox {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 

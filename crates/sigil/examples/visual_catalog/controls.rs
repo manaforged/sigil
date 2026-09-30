@@ -85,7 +85,7 @@ fn interactive_row(state: State) -> NodeBuilder {
     interactive(node(text("Interactive row").nowrap().class("text-sm")))
         .focusable(true)
         .class("rounded-md")
-        .disabled_signal(off(state))
+        .disabled(off(state))
         .into_node_builder()
 }
 

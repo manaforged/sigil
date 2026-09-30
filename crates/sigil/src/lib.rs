@@ -19,6 +19,7 @@ pub mod animation_runtime;
 pub mod app;
 pub mod bidi;
 pub mod events;
+pub mod geometry;
 pub mod hal;
 #[cfg(any(feature = "desktop", feature = "terminal"))]
 pub(crate) mod hud;
@@ -41,46 +42,27 @@ pub mod terminal;
 pub mod text;
 pub mod widgets;
 
-#[cfg(feature = "audio")]
-pub use crate::app::Player;
-#[cfg(feature = "pty")]
-pub use crate::app::Session;
-#[cfg(feature = "dialog")]
-pub use crate::app::dialog;
-#[cfg(feature = "menu")]
-pub use crate::app::menu;
-#[cfg(feature = "desktop")]
-pub use crate::app::open;
-pub use crate::app::set_theme;
-#[cfg(feature = "tray")]
-pub use crate::app::tray;
-pub use crate::app::{
-    AccessibilityTree, Anchor, AppConfig, AppResult, Error, ErrorKind, Host, HostCaps, PanicPolicy,
-    ResizeDirection, TreeRoot, WindowCommand, WindowOpts, is_grid, request_exit, root,
-    viewport_size,
-};
-#[cfg(any(feature = "desktop", feature = "render"))]
-pub use crate::app::{
-    DefaultFonts, TextTuning, set_default_fonts, set_text_tuning, text_tuning, use_system_fonts,
-};
-#[cfg(any(feature = "desktop", feature = "terminal"))]
-pub use crate::app::{ThemeWatcher, parse_theme, watch_theme};
+pub use crate::app::config::AppConfig;
+pub use crate::app::embed::Host;
+pub use crate::app::error::{AppResult, Error};
+pub use crate::app::exit::request_exit;
 
 #[cfg(any(feature = "desktop", feature = "terminal"))]
-pub fn run<C, T>(config: C, tree: T) -> AppResult<()>
+pub fn run<C, F, N>(config: C, app: F) -> AppResult
 where
     C: Into<AppConfig>,
-    T: TreeRoot,
+    F: Fn() -> N + 'static,
+    N: crate::kernel::IntoNode,
 {
     let config = config.into();
     app::platform_prefs::apply(&config);
     match config.host {
         #[cfg(feature = "terminal")]
-        kernel::HostMode::Cell => terminal::run(&config, tree),
+        kernel::HostMode::Cell => terminal::run(&config, app),
         #[cfg(feature = "desktop")]
         kernel::HostMode::Pixel => {
             clipboard::install_os();
-            app::launch(config, tree)
+            app::launch(config, app)
         }
         #[allow(
             unreachable_patterns,
@@ -96,103 +78,56 @@ where
 pub mod clipboard;
 #[cfg(any(test, feature = "kittest"))]
 pub mod testing;
-pub use crate::widgets::interaction;
-
-#[cfg(feature = "render")]
-pub mod render;
 
 pub mod prelude {
-    pub use crate::animation::{
-        AnimationDirection, AnimationFill, CubicBezier, Easing, Keyframe, Keyframes, SpringPreset,
-    };
-    pub use crate::animation_runtime::{AnimationConfig, Animator, MotionPrefs, Playback};
+    #[cfg(feature = "desktop")]
+    pub use crate::app::open;
+    pub use crate::app::set_theme;
+    #[cfg(any(feature = "desktop", feature = "terminal"))]
+    pub use crate::app::{ThemeWatcher, watch_theme};
     pub use crate::events::{
-        EventHandlers, EventRouter, FocusIntent, NodeEventsExt, SelectableText, request_focus,
-        request_reveal, request_window_command,
+        Key, KeyEvent, KeyPhase, LogicalKey, ModifiersState, MouseButton, MouseButtons,
+        PointerEvent, PointerKind, PointerPhase, Shortcut,
     };
-    pub use crate::hal::{
-        Dim, FileDropEvent, FileDropPhase, ImeEvent, Key, KeyEvent, KeyPhase, LogicalKey,
-        LogicalSize, ModifiersState, MouseButton, MouseButtons, PhysicalKey, Point, PointerEvent,
-        PointerEventInit, PointerKind, PointerPhase, ResizeDirection, ScrollDelta, ScrollEvent,
-        ScrollPhase, ShellEvent, Shortcut, Size, WindowCommand, WindowEvent,
-    };
+    pub use crate::events::{NodeEventsExt, request_focus};
+    pub use crate::geometry::{Point, Size};
     pub use crate::kernel::{
-        A11yProps, AccessibleName, Action, Cx, ImageCrop, ImageRaster, ImageSource, IntoNode, Node,
-        NodeBuilder, NodeExtensions, NodeId, NodeType, ObjectFit, Role, Surface, TextBuilder,
-        TextContent, TopLayer, container, for_each, fragment, image, node, show, text,
+        Action, ImageSource, IntoNode, NodeBuilder, Role, TextContent, container, for_each,
+        fragment, image, node, show, text,
     };
     pub use crate::layout::{
-        AlignItems, AlignSelf, BoundsReactive, Dimension, Display, FlexDirection, FlexWrap, IntoPx,
-        JustifyContent, LayoutBuilderExt, LayoutEngine, LayoutError, LayoutReactiveExt,
-        LayoutResult, LayoutStyle, LengthPercentage, LengthPercentageAuto, Overflow, Position,
-        ReactivePosition, TextLength, TextMeasure, TrackSize, cols, em, rows,
+        AlignItems, Display, FlexWrap, IntoPx, JustifyContent, LayoutBuilderExt, LayoutReactiveExt,
+        LayoutStyle, cols, column, em, row, rows,
     };
-    pub use crate::reactive::{
-        EventChannel, IntervalId, Reactive, Signal, batch, defer, derived, effect, interval,
-        on_cleanup, signal, untrack,
-    };
-    pub use crate::style::{
-        ColorAtom, ColorKey, ColorOrToken, Dimension as StyleDimension, Fill, Flex, FocusRing,
-        Geometry, NodeStyleExt, NumericAtomKind, Px, Rgba8, Sizing, Spacing, StateStyle,
-        StateVariants, Style, StyleAccess, StyleAtom, StyleState, StyleVariant, Styleable, Styled,
-        Theme, ThemeValue, TokenLayer, TokenTable, Tone, Transitions, Typography, Visual,
-        parse_classes,
-    };
-    pub use crate::tasks::{
-        OwnerHandle, ScheduleError, SignalWriter, Status, dispatch_to_owner, dispatcher,
-        on_message, on_message_or_close, post, signal_writer, spawn,
-    };
-
-    #[cfg(feature = "audio")]
-    pub use crate::Player;
-    #[cfg(feature = "pty")]
-    pub use crate::Session;
-    #[cfg(feature = "clipboard")]
-    pub use crate::clipboard::OsClipboard;
-    pub use crate::clipboard::{ClipError, Clipboard, Delivery, copy, install, paste};
-    pub use crate::interaction::InteractionState;
-    #[cfg(feature = "desktop")]
-    pub use crate::open;
-    pub use crate::reactive::Runtime;
-    pub use crate::root;
+    pub use crate::reactive::{IntervalId, Reactive, Signal, derived, effect, interval, signal};
     #[cfg(any(feature = "desktop", feature = "terminal"))]
     pub use crate::run;
-    pub use crate::set_theme;
+    pub use crate::style::{
+        ColorAtom, Fill, Flex, FocusRing, Geometry, NodeStyleExt, Rgba8, Sizing, Spacing,
+        StateVariants, StyleAccess, StyleAtom, Styleable, Styled, Theme, Tone, Transitions,
+        Typography, Visual,
+    };
+    pub use crate::tasks::{ScheduleError, SignalWriter, Status, Task, signal_writer, spawn, task};
     #[cfg(feature = "scene")]
     pub use crate::widgets::icon_svg;
     #[cfg(feature = "image-decode")]
     pub use crate::widgets::image_bytes;
     pub use crate::widgets::layout_ext::WidgetLayoutExt;
-    pub use crate::widgets::patterns;
     pub use crate::widgets::{
-        ButtonBuilder, ChartBuilder, ChartMark, CheckboxBuilder, ChipBuilder, CodeEditBuilder,
-        ColAlign, ColWidth, ColorFieldBuilder, Combobox, CommandMenuBuilder, DRAG_THRESHOLD_PX,
-        DROP_TARGET_CLASS, Date, DateFieldBuilder, Density, DiffBuilder, DiffLayout, Disclosure,
-        DotBuilder, DragDropExt, DragState, DropdownBuilder, FocusCaret, FuzzyMatch, GaugeBuilder,
-        Highlight, HintOverlayBuilder, HlSpan, IconBuilder, Identifiable, ImageBuilder,
-        InteractiveBuilder, ListColumn, ListRowSlots, MarkdownEditBuilder, MenuBarBuilder,
-        MenuBuilder, MenuItem, ModalBuilder, NumberFieldBuilder, NumericKind, Orientation,
-        PanelBuilder, PathCmd, PathColor, PathFill, PathNode, ProgressBuilder, RadioGroupBuilder,
-        RowTone, ScrollAnchor, ScrollBuilder, SegmentedBuilder, SelectionMode, SelectionState,
-        Side, SliderBuilder, SparkMark, SparklineBuilder, SplitterBuilder, SplitterOrientation,
-        SubmenuBuilder, TableBuilder, TableColumn, TableState, TabsBuilder, TextEditBuilder,
-        TextEditState, TextFieldBuilder, ToastEntry, ToastLevel, ToastQueue, ToggleBuilder,
-        TooltipBuilder, VirtualListBuilder, app_shell, avatar, axis_drag, badge, button, card,
-        chart, checkbox, chip, code_edit, color_field, combobox, command_menu, context_menu,
-        date_field, diff, divider_horizontal, divider_vertical, dot, drag_ghost, dropdown,
-        empty_state, field, fuzzy_score, gauge, hairline, heatmap, highlight, hint_bar,
-        hint_overlay, hl_spans, html, icon, icon_button, image_rgba, interactive, kv_grid, kv_row,
-        list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu, menu_bar, mermaid,
-        modal, notice_band, number_field, panel, path, progress, radio_group, scroll, scroll_auto,
-        section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer, sparkline,
+        ColWidth, Combobox, Date, Density, DiffLayout, Disclosure, DragDropExt, DragState,
+        Identifiable, ListRowSlots, MenuItem, NumericKind, Orientation, PathNode, SelectionMode,
+        Side, SplitterOrientation, TableColumn, TableState, ToastQueue, app_shell, avatar,
+        axis_drag, badge, button, card, chart, checkbox, chip, code_edit, color_field, combobox,
+        command_menu, context_menu, date_field, diff, divider_horizontal, divider_vertical, dot,
+        drag_ghost, dropdown, empty_state, field, fuzzy_score, gauge, hairline, heatmap, highlight,
+        hint_bar, hint_overlay, hl_spans, html, icon, icon_button, image_rgba, interactive,
+        kv_grid, kv_row, list_row, list_row_with, markdown, markdown_edit, markdown_inline, menu,
+        menu_bar, mermaid, modal, notice_band, number_field, panel, path, progress, radio_group,
+        scroll, section_label, segmented, sheet, sidebar, sidebar_width, slider, spacer, sparkline,
         spinner, spinner_frame, splitter, status_bar, surface, table, tabs, terminal, text_edit,
-        text_field, toast, toast_queue, toggle, tooltip, validated_field, virtual_list,
+        text_field, toast, toast_queue, toggle, tooltip, virtual_list,
     };
-    pub use crate::{
-        AppConfig, AppResult, Error, Host, HostCaps, TreeRoot, is_grid, viewport_size,
-    };
-    #[cfg(any(feature = "desktop", feature = "terminal"))]
-    pub use crate::{ThemeWatcher, parse_theme, watch_theme};
+    pub use crate::{AppConfig, AppResult};
 }
 
 #[cfg(doctest)]

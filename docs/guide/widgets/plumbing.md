@@ -13,7 +13,7 @@ overlay against them, so `.hover()`, `.pressed()`, `.focus()`, and
 `.disabled_style()` style closures work on a plain container.
 
 - `.focusable(bool)` — participate in keyboard focus.
-- `.disabled_signal(Signal<bool>)` — drive the disabled slot.
+- `.disabled(value, signal, or closure)` — drive the disabled slot.
 - `.class(&str)` — base classes; `.into_node_builder()` finishes.
 
 This is the primitive `button`, `icon_button`, and the menu-bar

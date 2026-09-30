@@ -4,6 +4,7 @@
 )]
 #![allow(clippy::unwrap_used)]
 
+use sigil::kernel::Cx;
 use sigil::prelude::*;
 
 #[test]
@@ -14,7 +15,7 @@ fn scroll_preserves_content_layout_style() {
         let content =
             container().layout(LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32));
 
-        let root = cx.add(scroll(content, 800.0_f32));
+        let root = cx.add(scroll(content).extent(800.0_f32));
 
         let root_node = cx.get(root).expect("root node exists");
         let root_children = root_node.children().to_vec();
@@ -26,15 +27,20 @@ fn scroll_preserves_content_layout_style() {
 
         let body_id = *root_children.first().expect("body child exists");
         let body_node = cx.get(body_id).expect("body node exists");
-        let body_children = body_node.children().to_vec();
+        let layer_id = *body_node.children().first().expect("scroll layer exists");
+        let layer_children = cx
+            .get(layer_id)
+            .expect("layer node exists")
+            .children()
+            .to_vec();
         assert_eq!(
-            body_children.len(),
+            layer_children.len(),
             1,
-            "sizing container must have exactly 1 child (the user's content), got {}",
-            body_children.len()
+            "scroll layer must have exactly 1 child (the user's content), got {}",
+            layer_children.len()
         );
 
-        let content_id = *body_children.first().expect("content child exists");
+        let content_id = *layer_children.first().expect("content child exists");
         let content_node = cx.get(content_id).expect("content node exists");
 
         let style = content_node
@@ -57,7 +63,7 @@ fn scroll_sizing_container_has_fixed_size_layout() {
 
         let content =
             container().layout(LayoutStyle::flex_column().padding(16.0_f32).gap(24.0_f32));
-        let root = cx.add(scroll(content, 800.0_f32));
+        let root = cx.add(scroll(content).extent(800.0_f32));
 
         let root_node = cx.get(root).expect("root exists");
         let body_id = root_node.children().first().copied().expect("body exists");

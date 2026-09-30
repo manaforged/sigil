@@ -6,7 +6,7 @@
 use sigil::prelude::*;
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - settings", 880, 600), app)
+    sigil::run(AppConfig::new("Sigil - settings").size(880, 600), app)
 }
 
 fn navigation() -> NodeBuilder {
@@ -92,7 +92,7 @@ fn content() -> NodeBuilder {
         .role(Role::Main)
         .layout(LayoutStyle::flex_column().fill())
         .child(
-            scroll_auto(
+            scroll(
                 container()
                     .layout(LayoutStyle::flex_column().gap(rows(2.0)).padding(cols(3.0)))
                     .child(profile_section())
@@ -105,11 +105,9 @@ fn content() -> NodeBuilder {
         .child(footer())
 }
 
-pub(crate) fn app(cx: &mut Cx) -> NodeId {
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_row().fill())
-            .child(navigation())
-            .child(content()),
-    )
+pub(crate) fn app() -> impl IntoNode {
+    container()
+        .layout(LayoutStyle::flex_row().fill())
+        .child(navigation())
+        .child(content())
 }

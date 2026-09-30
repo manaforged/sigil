@@ -19,13 +19,11 @@ const DELTA_PCT: f32 = 0.5;
 #[test]
 fn icon_default() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(icon("i")),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(icon("i"))
         },
         InteractionMode::Default,
         [32, 32],
@@ -37,13 +35,11 @@ fn icon_default() {
 #[test]
 fn icon_primary_tone() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(icon("+").tone(Tone::Primary)),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(icon("+").tone(Tone::Primary))
         },
         InteractionMode::Default,
         [32, 32],
@@ -55,13 +51,11 @@ fn icon_primary_tone() {
 #[test]
 fn icon_error_tone() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(icon("x").tone(Tone::Error)),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(icon("x").tone(Tone::Error))
         },
         InteractionMode::Default,
         [32, 32],
@@ -73,13 +67,11 @@ fn icon_error_tone() {
 #[test]
 fn dot_success() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(dot(Tone::Success)),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(dot(Tone::Success))
         },
         InteractionMode::Default,
         [32, 32],
@@ -91,13 +83,11 @@ fn dot_success() {
 #[test]
 fn dot_warn_default_size() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(dot(Tone::Warn).size(ControlSize::Default)),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(dot(Tone::Warn).size(ControlSize::Default))
         },
         InteractionMode::Default,
         [32, 32],
@@ -109,13 +99,11 @@ fn dot_warn_default_size() {
 #[test]
 fn dot_error_wide() {
     let img = render_widget_to_png_stub(
-        |cx| {
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(dot(Tone::Error).size(ControlSize::Wide)),
-            )
+        || {
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(dot(Tone::Error).size(ControlSize::Wide))
         },
         InteractionMode::Default,
         [32, 32],
@@ -127,19 +115,17 @@ fn dot_error_wide() {
 #[test]
 fn radio_group_three_options_first_selected() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let selected = signal(String::from("light"));
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(
-                        radio_group(selected)
-                            .option("light", "Light")
-                            .option("dark", "Dark")
-                            .option("auto", "Match system"),
-                    ),
-            )
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(
+                    radio_group(selected)
+                        .option("light", "Light")
+                        .option("dark", "Dark")
+                        .option("auto", "Match system"),
+                )
         },
         InteractionMode::Default,
         [220, 120],
@@ -155,19 +141,17 @@ fn radio_group_three_options_first_selected() {
 #[test]
 fn radio_group_middle_selected() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let selected = signal(String::from("dark"));
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(
-                        radio_group(selected)
-                            .option("light", "Light")
-                            .option("dark", "Dark")
-                            .option("auto", "Match system"),
-                    ),
-            )
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(
+                    radio_group(selected)
+                        .option("light", "Light")
+                        .option("dark", "Dark")
+                        .option("auto", "Match system"),
+                )
         },
         InteractionMode::Default,
         [220, 120],
@@ -179,18 +163,14 @@ fn radio_group_middle_selected() {
 #[test]
 fn validated_field_no_error() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let error: Signal<Option<String>> = signal(None);
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(patterns::validated_field(
-                        "Email",
-                        text_field(signal(String::new())),
-                        error,
-                    )),
-            )
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(
+                    sigil::widgets::field("Email", text_field(signal(String::new()))).error(error),
+                )
         },
         InteractionMode::Default,
         [200, 52],
@@ -202,18 +182,14 @@ fn validated_field_no_error() {
 #[test]
 fn validated_field_with_error() {
     let img = render_widget_to_png_stub(
-        |cx| {
+        || {
             let error: Signal<Option<String>> = signal(Some(String::from("Email must contain @")));
-            cx.add(
-                container()
-                    .class("bg-surface")
-                    .layout(LayoutStyle::flex_row().fill())
-                    .child(patterns::validated_field(
-                        "Email",
-                        text_field(signal(String::new())),
-                        error,
-                    )),
-            )
+            container()
+                .class("bg-surface")
+                .layout(LayoutStyle::flex_row().fill())
+                .child(
+                    sigil::widgets::field("Email", text_field(signal(String::new()))).error(error),
+                )
         },
         InteractionMode::Default,
         [200, 80],

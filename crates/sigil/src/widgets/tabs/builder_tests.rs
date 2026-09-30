@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used, clippy::panic, clippy::float_cmp)]
 
 use super::*;
-use crate::hal::{LogicalSize, Size};
+use crate::geometry::{LogicalSize, Size};
 use crate::kernel::{AccessibleName, NodeId, Role, TextContent};
 use crate::layout::{LayoutEngine, TextMeasure};
 use crate::reactive::{Runtime, signal};
@@ -35,7 +35,7 @@ fn chrome_keeps_tabs_centered_and_reserves_its_height() {
     ] {
         Runtime::scope("tabs-chrome", || {
             let mut cx = Cx::new_root();
-            let strip = chrome(tabs(signal(0), vec!["A".into(), "B".into()])).label("test");
+            let strip = chrome(tabs().labels(["A", "B"])).label("test");
             let root = cx.add(
                 container()
                     .layout(LayoutStyle::flex_column().fill())
@@ -71,7 +71,7 @@ fn selection_moves_the_painted_highlight_between_existing_tabs() {
         let active = signal(0);
         let theme = Theme::light();
         let mut cx = Cx::new_root();
-        let root = cx.add(tabs(active, vec!["A".into(), "B".into()]));
+        let root = cx.add(tabs().active(active).labels(["A", "B"]));
         let first = find(&cx, root, Role::Tab, "A");
         let second = find(&cx, root, Role::Tab, "B");
         let color = |id| render_style_for(id, cx.get(id).unwrap(), &theme, None).background_color;

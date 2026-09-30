@@ -4,9 +4,10 @@
 )]
 
 use sigil::prelude::*;
+use sigil::widgets::{PanelBuilder, ScrollBuilder, SplitterBuilder, TabsBuilder};
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - chrome", 720, 720), build)
+    sigil::run(AppConfig::new("Sigil - chrome").size(720, 720), build)
 }
 
 fn app_shell_demo() -> NodeBuilder {
@@ -41,10 +42,11 @@ fn sidebar_demo() -> NodeBuilder {
 
 fn tabs_demo() -> TabsBuilder {
     let active = signal(0_usize);
-    tabs(active, vec!["Summary".into(), "Details".into()])
+    tabs()
+        .active(active)
+        .tab("Summary", move || text("Summary pane").nowrap())
+        .tab("Details", move || text("Details pane").nowrap())
         .line()
-        .content_for(0, text("Summary pane").nowrap())
-        .content_for(1, text("Details pane").nowrap())
 }
 
 fn splitter_demo() -> SplitterBuilder {
@@ -61,7 +63,7 @@ fn scroll_demo() -> ScrollBuilder {
         container().layout(LayoutStyle::flex_column()),
         |column, index| column.child(text(format!("Line {index}")).nowrap()),
     );
-    scroll_auto(content).height(120.0)
+    scroll(content).height(120.0)
 }
 
 fn surface_demo() -> NodeBuilder {
@@ -76,26 +78,24 @@ fn status_bar_demo() -> NodeBuilder {
     ])
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(app_shell_demo())
-                .child(
-                    container()
-                        .layout(LayoutStyle::flex_row().gap(cols(1.0)))
-                        .child(sidebar_demo())
-                        .child(tabs_demo()),
-                )
-                .child(panel_demo())
-                .child(card_demo())
-                .child(splitter_demo())
-                .child(scroll_demo())
-                .child(surface_demo())
-                .child(status_bar_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(app_shell_demo())
+            .child(
+                container()
+                    .layout(LayoutStyle::flex_row().gap(cols(1.0)))
+                    .child(sidebar_demo())
+                    .child(tabs_demo()),
+            )
+            .child(panel_demo())
+            .child(card_demo())
+            .child(splitter_demo())
+            .child(scroll_demo())
+            .child(surface_demo())
+            .child(status_bar_demo()),
     )
+    .fill()
 }

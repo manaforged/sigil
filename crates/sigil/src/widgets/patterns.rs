@@ -1,17 +1,11 @@
-use crate::kernel::{
-    AccessibleName, Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text,
-};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
-use crate::reactive::{Reactive, Signal, derived};
-use crate::style::{BORDER_WIDTH, DisplayKind, NodeStyleExt, Radius, StyleAtom, Token, space};
+use crate::kernel::{Cx, IntoNode, NodeBuilder, NodeId, Role, TextContent, container, text};
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle, Position};
+use crate::style::{BORDER_WIDTH, NodeStyleExt, Radius, StyleAtom, Token, space};
 
 use super::composition::{STATUS_BAR_HEIGHT, STATUS_CHROME, kv_row};
 pub use super::notice::notice_band;
-use super::text_field::TextFieldBuilder;
-use super::tooltip::{TooltipBuilder, tooltip as tooltip_widget};
 
 const TOP_BAR_HEIGHT: f32 = space(12);
-const FIELD_GAP: f32 = space(1);
 
 static TOP_CHROME: &[StyleAtom] = &[
     Token::SurfaceSubtle.bg(),
@@ -90,59 +84,6 @@ fn modal_overlay(child: impl IntoNode + 'static) -> NodeBuilder {
 }
 
 #[must_use]
-pub fn field(label_text: impl Into<TextContent>, control: impl IntoNode + 'static) -> NodeBuilder {
-    container()
-        .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
-        .child(text(label_text).nowrap())
-        .child(control)
-        .on_added(|cx, id| {
-            let Some(node) = cx.get(id) else { return };
-            let [label_id, control_id, ..] = *node.children() else {
-                return;
-            };
-            if let Some(target) = cx.get_mut(control_id) {
-                target.a11y.labelled_by = Some(label_id);
-                target.a11y.name = AccessibleName::None;
-            }
-        })
-}
-
-#[must_use]
-pub fn validated_field(
-    label_text: impl Into<TextContent>,
-    control: TextFieldBuilder,
-    error: impl Reactive<Option<String>>,
-) -> NodeBuilder {
-    let error: Signal<Option<String>> = derived(move || error.read());
-    let message: Signal<String> = derived(move || error.get().unwrap_or_default());
-    let visible: Signal<bool> = derived(move || error.get().is_some());
-    let invalid_signal: Signal<bool> = derived(move || error.get().is_some());
-    let control = control.invalid_when(invalid_signal);
-    container()
-        .role(Role::GenericContainer)
-        .layout(LayoutStyle::flex_column().fill_width().gap(FIELD_GAP))
-        .child(text(label_text).nowrap())
-        .child(control)
-        .child(
-            text(message)
-                .role(Role::Label)
-                .class("text-xs font-medium")
-                .class(Token::Error12.text())
-                .style_reactive(move || {
-                    if visible.get() {
-                        ERROR_VISIBLE
-                    } else {
-                        ERROR_HIDDEN
-                    }
-                }),
-        )
-}
-
-static ERROR_VISIBLE: &[StyleAtom] = &[];
-static ERROR_HIDDEN: &[StyleAtom] = &[StyleAtom::Display(DisplayKind::None)];
-
-#[must_use]
 pub fn kv_grid(rows: &[(&'static str, &'static str)]) -> NodeBuilder {
     let mut root = container()
         .role(Role::GenericContainer)
@@ -163,11 +104,6 @@ static ROW_RULE: &[StyleAtom] = &[
     StyleAtom::BorderBottom(BORDER_WIDTH),
     Token::Border.border(),
 ];
-
-#[must_use]
-pub fn tooltip(target: impl IntoNode + 'static, hint: impl Into<String>) -> TooltipBuilder {
-    tooltip_widget(hint).child(target)
-}
 
 pub type HintEntry<'a> = (&'a str, &'a str);
 

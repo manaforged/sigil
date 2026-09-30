@@ -9,15 +9,21 @@
     clippy::cast_precision_loss
 )]
 
-use sigil::hal::{
-    Color, ModifiersState, MouseButton, MouseButtons, Point, PointerEventInit, PointerKind,
-    PointerPhase, ShellEvent,
+use sigil::events::EventRouter;
+use sigil::events::{
+    ModifiersState, MouseButton, MouseButtons, PointerEventInit, PointerKind, PointerPhase,
+    ShellEvent,
 };
+use sigil::geometry::Point;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::renderer::{OffscreenTarget, WgpuRenderer};
 use sigil::scene::emit_scene;
+use sigil::style::Color;
 use sigil_kittest::CharMeasure;
-use std::{env::temp_dir, process};
+use std::env::temp_dir;
+use std::process;
 use wgpu::TextureFormat;
 
 use sigil_kittest::gpu::read_pixels;
@@ -43,7 +49,7 @@ fn editor_view(name: &str, body: &str) -> NodeBuilder {
                 .label(name.to_owned())
                 .layout(LayoutStyle::flex_row().height(28.0).padding_x(10.0)),
         )
-        .child(scroll(code, extent).width(580.0).height(720.0))
+        .child(scroll(code).extent(extent).width(580.0).height(720.0))
 }
 
 fn recompute(layout: &mut LayoutEngine, cx: &mut Cx, root: NodeId) {
@@ -348,7 +354,7 @@ fn deep_reactive_scroll_switch_stays_positioned() {
                 let code = container()
                     .layout(LayoutStyle::flex_column().padding(10.0).width(2000.0))
                     .child(text(body));
-                vec![scroll(code, extent).width(580.0).height(720.0)]
+                vec![scroll(code).extent(extent).width(580.0).height(720.0)]
             });
         let mut filler = container().layout(LayoutStyle::flex_column());
         for i in 0..120 {

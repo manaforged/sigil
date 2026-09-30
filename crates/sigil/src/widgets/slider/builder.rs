@@ -1,11 +1,12 @@
+use crate::reactive::Reactive;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
 use accesskit::Action;
 
-use crate::events::prelude::{NodeEventsExt, PointerEvent};
+use crate::events::{NodeEventsExt, PointerEvent};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{ClassSource, NodeStyleExt, StateHost, Style, StyleAccess, StyleOverlay, Theme};
 
@@ -117,8 +118,8 @@ impl SliderBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -149,7 +150,7 @@ impl SliderBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style_accumulator.merge(style);
         self
     }
 

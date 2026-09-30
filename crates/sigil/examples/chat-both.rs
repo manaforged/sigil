@@ -3,6 +3,7 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::widgets::{ModalBuilder, ScrollBuilder, TextFieldBuilder};
 use std::time::Duration;
 
 use sigil::prelude::*;
@@ -204,7 +205,7 @@ fn current_name(chat: Chat) -> String {
         .with(|names| names.get(index).cloned().unwrap_or_default())
 }
 
-pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
+pub(crate) fn app_tree() -> impl IntoNode {
     let (chat, posts) = start();
     let picker = Picker {
         open: signal(false),
@@ -219,25 +220,23 @@ pub(crate) fn app_tree(cx: &mut Cx) -> NodeId {
         picker.focus.update(|n| *n += 1);
     };
     let unread = move || format!("{} unread", chat.unread.with(|u| u.iter().sum::<usize>()));
-    cx.add(
-        container()
-            .layout(LayoutStyle::flex_column().fill())
-            .key_capture(Shortcut::ctrl(LogicalKey::character("k")), open_picker)
-            .child(
-                container()
-                    .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)))
-                    .child(text(move || format!("# {}", current_name(chat))).nowrap())
-                    .child(spacer())
-                    .child(text("sigil-chat").nowrap().class("text-sm")),
-            )
-            .child(work(chat, posts))
-            .child(status_bar([
-                text(move || link_text(chat)).nowrap(),
-                text(unread).nowrap(),
-                text("^K switch channel  Enter send").nowrap(),
-            ]))
-            .child(picker_modal(chat, picker)),
-    )
+    container()
+        .layout(LayoutStyle::flex_column().fill())
+        .key_capture(Shortcut::ctrl(LogicalKey::character("k")), open_picker)
+        .child(
+            container()
+                .layout(LayoutStyle::flex_row().fill_width().padding_x(cols(1.0)))
+                .child(text(move || format!("# {}", current_name(chat))).nowrap())
+                .child(spacer())
+                .child(text("sigil-chat").nowrap().class("text-sm")),
+        )
+        .child(work(chat, posts))
+        .child(status_bar([
+            text(move || link_text(chat)).nowrap(),
+            text(unread).nowrap(),
+            text("^K switch channel  Enter send").nowrap(),
+        ]))
+        .child(picker_modal(chat, picker))
 }
 
 fn work(chat: Chat, posts: Sender<Post>) -> NodeBuilder {
@@ -288,7 +287,7 @@ fn channels(chat: Chat) -> NodeBuilder {
 }
 
 fn transcript(chat: Chat) -> ScrollBuilder {
-    scroll_auto(
+    scroll(
         container()
             .layout(LayoutStyle::flex_column().fill_width().gap(rows(1.0)))
             .children_reactive(move || {

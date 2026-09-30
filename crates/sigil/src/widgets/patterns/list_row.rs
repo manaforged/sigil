@@ -1,7 +1,5 @@
 use crate::kernel::{NodeBuilder, Role, TextBuilder, TextContent, container, text};
-use crate::layout::prelude::{
-    AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols,
-};
+use crate::layout::{AlignItems, Dimension, JustifyContent, LayoutBuilderExt, LayoutStyle, cols};
 use crate::reactive::{Signal, signal};
 use crate::style::{Fill, NodeStyleExt, Radius, StateVariants, Token, space};
 
@@ -149,7 +147,7 @@ pub(crate) fn row_states(row: NodeBuilder, disabled: Option<Signal<bool>>) -> No
         .hover(|s| s.bg(Token::SurfaceHover))
         .pressed(|s| s.bg(Token::SurfacePressed));
     match disabled {
-        Some(disabled) => row.disabled_signal(disabled),
+        Some(disabled) => row.disabled(disabled),
         None => row,
     }
     .into_node_builder()

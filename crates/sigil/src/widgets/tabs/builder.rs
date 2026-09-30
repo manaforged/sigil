@@ -1,9 +1,9 @@
 use std::rc::Rc;
 
 use crate::kernel::{Cx, IntoNode, NodeBuilder, container};
-use crate::layout::prelude::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
 use crate::layout::snap::CellForm;
-use crate::reactive::Signal;
+use crate::layout::{AlignItems, JustifyContent, LayoutBuilderExt, LayoutStyle};
+use crate::reactive::{Signal, signal};
 use crate::style::{
     ClassSource, NodeStyleExt, Radius, StateHost, Style, StyleAccess, Theme, Token, space,
 };
@@ -27,21 +27,14 @@ pub(super) enum StripChrome {
 
 pub(super) type CloseHandler = Rc<dyn Fn(usize) + 'static>;
 
-pub(super) type ContentFactory = Rc<dyn Fn() -> Box<dyn IntoNode>>;
-
-pub(super) enum ContentSlot {
-    Static(Box<dyn IntoNode>),
-    Factory(ContentFactory),
-}
-
 pub struct TabsBuilder {
-    active: Signal<usize>,
+    active: Option<Signal<usize>>,
     labels: Vec<String>,
     disabled: Vec<usize>,
     aria_label: String,
     mutators: Vec<BuilderMutator>,
     style_accumulator: Style,
-    contents: Vec<Option<ContentSlot>>,
+    contents: Vec<Option<Box<dyn IntoNode>>>,
     reorderable: bool,
     order: Option<Signal<Vec<usize>>>,
     closeable: bool,
@@ -52,34 +45,50 @@ pub struct TabsBuilder {
 }
 
 #[must_use]
-pub fn tabs(active: Signal<usize>, labels: Vec<String>) -> TabsBuilder {
-    TabsBuilder::new(active, labels)
+pub fn tabs() -> TabsBuilder {
+    TabsBuilder {
+        active: None,
+        labels: Vec::new(),
+        disabled: Vec::new(),
+        aria_label: String::new(),
+        mutators: Vec::new(),
+        style_accumulator: Style::new(),
+        contents: Vec::new(),
+        reorderable: false,
+        order: None,
+        closeable: false,
+        close_handler: None,
+        list_justify: None,
+        chrome: StripChrome::Bare,
+        layout_overrides: LayoutOverrides::new(),
+    }
 }
 
 impl TabsBuilder {
     #[must_use]
-    pub fn new(active: Signal<usize>, labels: Vec<String>) -> Self {
-        let count = labels.len();
-        let mut contents: Vec<Option<ContentSlot>> = Vec::with_capacity(count);
-        for _ in 0..count {
-            contents.push(None);
+    pub fn tab<F, N>(mut self, label: impl Into<String>, content: F) -> Self
+    where
+        F: FnOnce() -> N + 'static,
+        N: IntoNode + 'static,
+    {
+        self.labels.push(label.into());
+        self.contents.push(Some(Box::new(content)));
+        self
+    }
+
+    #[must_use]
+    pub fn labels(mut self, labels: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        for label in labels {
+            self.labels.push(label.into());
+            self.contents.push(None);
         }
-        Self {
-            active,
-            labels,
-            disabled: Vec::new(),
-            aria_label: String::new(),
-            mutators: Vec::new(),
-            style_accumulator: Style::new(),
-            contents,
-            reorderable: false,
-            order: None,
-            closeable: false,
-            close_handler: None,
-            list_justify: None,
-            chrome: StripChrome::Bare,
-            layout_overrides: LayoutOverrides::new(),
-        }
+        self
+    }
+
+    #[must_use]
+    pub const fn active(mut self, active: Signal<usize>) -> Self {
+        self.active = Some(active);
+        self
     }
 
     #[must_use]
@@ -121,34 +130,13 @@ impl TabsBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style_accumulator.merge(style);
         self
     }
 
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.mutators.push(Box::new(move |node| node.theme(theme)));
-        self
-    }
-
-    #[must_use]
-    pub fn content_for(mut self, index: usize, node: impl IntoNode + 'static) -> Self {
-        if let Some(slot) = self.contents.get_mut(index) {
-            *slot = Some(ContentSlot::Static(Box::new(node)));
-        }
-        self
-    }
-
-    #[must_use]
-    pub fn content_for_fn<F, N>(mut self, index: usize, factory: F) -> Self
-    where
-        F: Fn() -> N + 'static,
-        N: IntoNode + 'static,
-    {
-        if let Some(slot) = self.contents.get_mut(index) {
-            let wrapped: ContentFactory = Rc::new(move || Box::new(factory()) as Box<dyn IntoNode>);
-            *slot = Some(ContentSlot::Factory(wrapped));
-        }
         self
     }
 
@@ -182,8 +170,7 @@ impl TabsBuilder {
     }
 
     fn into_node_builder(mut self) -> NodeBuilder {
-        let count = self.labels.len();
-        let has_content = self.contents.iter().any(Option::is_some);
+        let active = self.active.unwrap_or_else(|| signal(0));
         let order_signal = self.order;
         let drag = self.reorderable.then(DragState::new);
         let user_overlay = self.style_accumulator.take_state_overlay();
@@ -191,7 +178,7 @@ impl TabsBuilder {
             self.chrome,
             self.list_justify,
             build_tab_list(
-                self.active,
+                active,
                 self.labels,
                 &self.disabled,
                 &self.aria_label,
@@ -203,8 +190,8 @@ impl TabsBuilder {
                 self.chrome,
             ),
         );
-        let mut root = if has_content {
-            wrap_with_content(tab_list, self.active, self.contents, count)
+        let mut root = if self.contents.iter().any(Option::is_some) {
+            wrap_with_content(tab_list, active, self.contents)
         } else {
             tab_list
         };

@@ -3,7 +3,9 @@
     reason = "target does not use every package dependency"
 )]
 
+use sigil::kernel::TextBuilder;
 use sigil::prelude::*;
+use sigil::widgets::{ChartBuilder, IconBuilder};
 
 const BLUE: Rgba8 = Rgba8 {
     r: 90,
@@ -13,7 +15,7 @@ const BLUE: Rgba8 = Rgba8 {
 };
 
 fn main() -> sigil::AppResult<()> {
-    sigil::run(("Sigil - content", 480, 720), build)
+    sigil::run(AppConfig::new("Sigil - content").size(480, 720), build)
 }
 
 fn text_demo() -> TextBuilder {
@@ -91,27 +93,25 @@ fn hairline_demo() -> NodeBuilder {
     hairline()
 }
 
-fn build(cx: &mut Cx) -> NodeId {
-    cx.add(
-        scroll_auto(
-            container()
-                .role(Role::Main)
-                .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
-                .child(text_demo())
-                .child(label_demo())
-                .child(icon_demo())
-                .child(image_demo())
-                .child(path_demo())
-                .child(chart_demo())
-                .child(section_label_demo())
-                .child(notice_band_demo())
-                .child(empty_state_demo())
-                .child(hint_bar_demo())
-                .child(avatar_demo())
-                .child(divider_horizontal_demo())
-                .child(divider_vertical_demo())
-                .child(hairline_demo()),
-        )
-        .fill(),
+fn build() -> impl IntoNode {
+    scroll(
+        container()
+            .role(Role::Main)
+            .layout(LayoutStyle::flex_column().gap(rows(1.0)).padding(cols(2.0)))
+            .child(text_demo())
+            .child(label_demo())
+            .child(icon_demo())
+            .child(image_demo())
+            .child(path_demo())
+            .child(chart_demo())
+            .child(section_label_demo())
+            .child(notice_band_demo())
+            .child(empty_state_demo())
+            .child(hint_bar_demo())
+            .child(avatar_demo())
+            .child(divider_horizontal_demo())
+            .child(divider_vertical_demo())
+            .child(hairline_demo()),
     )
+    .fill()
 }

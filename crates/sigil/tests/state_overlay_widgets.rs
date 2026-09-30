@@ -10,6 +10,9 @@ mod input;
 mod widget_support;
 
 use input::pointer_move;
+use sigil::events::EventRouter;
+use sigil::kernel::{Cx, NodeId};
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil::style::Rgba8;
@@ -87,7 +90,12 @@ fn tabs_user_hover_overlay_paints_hovered_tab() {
         let active = signal(0_usize);
         let mut cx = Cx::new_root();
         let ruby_9 = ruby_light().step(9);
-        let root = cx.add(tabs(active, vec!["A".into(), "B".into()]).hover(|s| s.bg(ruby_9)));
+        let root = cx.add(
+            tabs()
+                .active(active)
+                .labels(["A", "B"])
+                .hover(|s| s.bg(ruby_9)),
+        );
         let layout = compute(&mut cx, root, VIEWPORT, sigil_kittest::stub_text_measure());
         assert_hover_overlay_paints(&mut cx, root, &layout, (120.0, 17.0), ruby_9);
     });

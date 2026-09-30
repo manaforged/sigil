@@ -1,3 +1,4 @@
+use crate::reactive::Reactive;
 use std::ops::RangeInclusive;
 use std::rc::Rc;
 
@@ -72,7 +73,7 @@ pub struct NumberFieldBuilder<T: NumericKind> {
 
 impl<T: NumericKind> NumberFieldBuilder<T> {
     #[must_use]
-    pub fn disabled(mut self, disabled: Signal<bool>) -> Self {
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
         self.inner = self.inner.disabled(disabled);
         self
     }

@@ -1,6 +1,6 @@
 use crate::style::Tone;
 
-use super::SparkMark;
+use super::{Layer, SparkFill, SparkMark};
 
 pub(super) const SPARKS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 const BLOCK_LEVELS: usize = 8;
@@ -121,13 +121,41 @@ pub(super) fn cell_tones(
     }
 }
 
-pub(super) fn tone_runs(row: &str, tones: &[Tone], base: Tone) -> Vec<(Tone, String)> {
-    let mut runs: Vec<(Tone, String)> = Vec::new();
+pub(super) fn cell_layers(graph: &[String], fill: SparkFill) -> Vec<Vec<Layer>> {
+    let rows: Vec<Vec<char>> = graph.iter().map(|row| row.chars().collect()).collect();
+    let width = rows.iter().map(Vec::len).max().unwrap_or(0);
+    let edge: Vec<Option<usize>> = (0..width)
+        .map(|col| {
+            rows.iter()
+                .position(|row| row.get(col).is_some_and(|glyph| *glyph != EMPTY))
+        })
+        .collect();
+    rows.iter()
+        .enumerate()
+        .map(|(index, row)| {
+            (0..row.len())
+                .map(|col| match (fill, edge.get(col).copied().flatten()) {
+                    (SparkFill::Shade, Some(top)) if index > top => Layer::Body,
+                    _ => Layer::Edge,
+                })
+                .collect()
+        })
+        .collect()
+}
+
+pub(super) fn tone_runs(
+    row: &str,
+    tones: &[Tone],
+    layers: &[Layer],
+    base: Tone,
+) -> Vec<(Tone, Layer, String)> {
+    let mut runs: Vec<(Tone, Layer, String)> = Vec::new();
     for (index, glyph) in row.chars().enumerate() {
         let tone = tones.get(index).copied().unwrap_or(base);
+        let layer = layers.get(index).copied().unwrap_or(Layer::Edge);
         match runs.last_mut() {
-            Some((last, text)) if *last == tone => text.push(glyph),
-            _ => runs.push((tone, glyph.to_string())),
+            Some((last, kind, text)) if *last == tone && *kind == layer => text.push(glyph),
+            _ => runs.push((tone, layer, glyph.to_string())),
         }
     }
     runs

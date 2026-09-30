@@ -1,9 +1,10 @@
+use crate::reactive::Reactive;
 use std::rc::Rc;
 
 use crate::animation_runtime::presets;
-use crate::events::prelude::{Key, LogicalKey, NodeEventsExt};
+use crate::events::{Key, LogicalKey, NodeEventsExt};
 use crate::kernel::{Cx, IntoNode, NodeBuilder, Role, TextContent, container};
-use crate::layout::prelude::{AlignItems, LayoutBuilderExt, LayoutStyle};
+use crate::layout::{AlignItems, LayoutBuilderExt, LayoutStyle};
 use crate::reactive::Signal;
 use crate::style::{
     ClassSource, JustifyKind, NodeStyleExt, StateStyle, Style, StyleAtom, StyleOverlay,
@@ -28,6 +29,7 @@ pub struct ToggleBuilder {
     on_change: Option<BoolChange>,
     mutators: Vec<BuilderMutator>,
     layout_overrides: LayoutOverrides,
+    style: Style,
 }
 
 impl WidgetLayoutExt for ToggleBuilder {
@@ -76,13 +78,13 @@ static THUMB_ON: &[StyleAtom] = &[Token::OnAccent.bg()];
 static THUMB_OFF: &[StyleAtom] = &[Token::Gray11.bg()];
 
 #[must_use]
-pub const fn toggle(on: Signal<bool>) -> ToggleBuilder {
+pub fn toggle(on: Signal<bool>) -> ToggleBuilder {
     ToggleBuilder::new(on)
 }
 
 impl ToggleBuilder {
     #[must_use]
-    pub const fn new(on: Signal<bool>) -> Self {
+    pub fn new(on: Signal<bool>) -> Self {
         Self {
             on,
             label: None,
@@ -91,6 +93,7 @@ impl ToggleBuilder {
             on_change: None,
             mutators: Vec::new(),
             layout_overrides: LayoutOverrides::new(),
+            style: Style::new(),
         }
     }
 
@@ -107,8 +110,8 @@ impl ToggleBuilder {
     }
 
     #[must_use]
-    pub const fn disabled(mut self, disabled: Signal<bool>) -> Self {
-        self.disabled = Some(disabled);
+    pub fn disabled(mut self, disabled: impl Reactive<bool>) -> Self {
+        self.disabled = Some(disabled.into_signal());
         self
     }
 
@@ -127,7 +130,7 @@ impl ToggleBuilder {
 
     #[must_use]
     pub fn style(mut self, style: Style) -> Self {
-        self.mutators.push(Box::new(move |node| node.style(style)));
+        self.style.merge(style);
         self
     }
 
@@ -137,7 +140,7 @@ impl ToggleBuilder {
         self
     }
 
-    fn into_node_builder(self) -> NodeBuilder {
+    fn into_node_builder(mut self) -> NodeBuilder {
         let enabled = !disabled_now(self.disabled);
         let interaction = InteractionState::new(enabled);
         let on_change = self
@@ -146,14 +149,23 @@ impl ToggleBuilder {
             .map_or_else(noop_bool_change, Rc::clone);
         let layout_overrides = self.layout_overrides.clone();
         let has_label = self.label.is_some();
-        let mut node = self.base_node(interaction, Rc::clone(&on_change));
+        let user_overlay = self.style.take_state_overlay();
+        let mut node = self.base_node(interaction, Rc::clone(&on_change), user_overlay);
         for mutate in self.mutators {
             node = mutate(node);
         }
-        node.layout(layout_overrides.apply(toggle_layout(has_label)))
+        if !self.style.is_empty() {
+            node = node.style(self.style);
+        }
+        node.with(layout_overrides.apply(toggle_layout(has_label)))
     }
 
-    fn base_node(&self, interaction: InteractionState, on_change: BoolChange) -> NodeBuilder {
+    fn base_node(
+        &self,
+        interaction: InteractionState,
+        on_change: BoolChange,
+        user_overlay: StyleOverlay,
+    ) -> NodeBuilder {
         let on = self.on;
         let disabled = self.disabled;
         let pointer_change = Rc::clone(&on_change);
@@ -181,12 +193,7 @@ impl ToggleBuilder {
         if let Some(label_source) = self.label.clone() {
             node = node.child(toggle_label(label_source));
         }
-        interaction.install(control_surface(
-            node,
-            interaction,
-            disabled,
-            StyleOverlay::default(),
-        ))
+        interaction.install(control_surface(node, interaction, disabled, user_overlay))
     }
 }
 

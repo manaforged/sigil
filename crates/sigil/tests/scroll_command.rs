@@ -7,7 +7,12 @@
 #[path = "widget_support/mod.rs"]
 mod widget_support;
 
-use sigil::hal::{Point, ScrollEventInit};
+use sigil::events::EventRouter;
+use sigil::events::ShellEvent;
+use sigil::events::{ScrollDelta, ScrollEvent, ScrollEventInit, ScrollPhase};
+use sigil::geometry::Point;
+use sigil::kernel::Cx;
+use sigil::layout::LayoutEngine;
 use sigil::prelude::*;
 use sigil::scene::{SceneCommand, emit_scene};
 use sigil_kittest::FixedMeasure;
@@ -25,7 +30,7 @@ fn scroll_viewport_has_scroll_view_role() {
     sigil::reactive::Runtime::scope("sigil-scroll-role", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 800.0));
+        let root = cx.add(scroll(content).extent(800.0));
         let node = cx.get(root).unwrap();
         assert_eq!(node.a11y.role, Role::ScrollView);
     });
@@ -36,7 +41,7 @@ fn scroll_emits_viewport_and_scrollbar_rects() {
     sigil::reactive::Runtime::scope("sigil-scroll-rects", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 800.0));
+        let root = cx.add(scroll(content).extent(800.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
@@ -57,7 +62,7 @@ fn scroll_at_zero_has_no_thumb_offset() {
     sigil::reactive::Runtime::scope("sigil-scroll-zero-offset", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 800.0));
+        let root = cx.add(scroll(content).extent(800.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
@@ -84,7 +89,7 @@ fn scroll_thumb_proportional_to_content() {
     sigil::reactive::Runtime::scope("sigil-scroll-thumb-size", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 480.0).height(240.0));
+        let root = cx.add(scroll(content).extent(480.0).height(240.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
 
         let scene = emit_scene(&cx, root);
@@ -108,7 +113,7 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
     sigil::reactive::Runtime::scope("sigil-scroll-thumb-zero", || {
         let mut cx = Cx::new_root();
         let content = container();
-        let root = cx.add(scroll(content, 800.0).height(240.0));
+        let root = cx.add(scroll(content).extent(800.0).height(240.0));
         compute(&mut cx, root, VIEWPORT, Box::new(TEXT_MEASURE));
         let scene = emit_scene(&cx, root);
         let rect_count = scene
@@ -124,7 +129,7 @@ fn scroll_thumb_no_offset_at_zero_with_overflow() {
 fn scroll_fill_uses_measured_parent_height_for_bounds() {
     sigil::reactive::Runtime::scope("sigil-scroll-fill-height", || {
         let mut cx = Cx::new_root();
-        let viewport = scroll(container(), 800.0).fill();
+        let viewport = scroll(container()).extent(800.0).fill();
         let root = cx.add(
             container()
                 .layout(LayoutStyle::flex_column().fixed_size(500.0, 360.0))
@@ -161,10 +166,16 @@ fn scroll_fill_uses_measured_parent_height_for_bounds() {
             .compute(&mut cx, root, Size::fixed(640.0, 480.0))
             .expect("scrolled layout computes");
 
-        let body_y = layout.result(body_id).expect("body layout").rect().origin.y;
+        let content_id = cx.nth_child(body_id, 0).expect("scroll content exists");
+        let content_y = layout
+            .result(content_id)
+            .expect("content layout")
+            .rect()
+            .origin
+            .y;
         assert!(
-            (body_y + 440.0).abs() < 1.0,
-            "800px content in a measured 360px viewport must clamp at -440px, got {body_y}"
+            (content_y + 440.0).abs() < 1.0,
+            "800px content in a measured 360px viewport must clamp at -440px, got {content_y}"
         );
     });
 }
@@ -176,7 +187,8 @@ fn scroll_can_follow_growth_without_overriding_manual_position() {
         let offset = signal(0.0_f32);
         let mut cx = Cx::new_root();
         let _root = cx.add(
-            scroll(container(), extent)
+            scroll(container())
+                .extent(extent)
                 .height(240.0)
                 .scroll_bind(offset)
                 .scroll_to_end()
