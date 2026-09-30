@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use std::error::Error;
 use std::fmt;
 use std::fs::{File, read_to_string};

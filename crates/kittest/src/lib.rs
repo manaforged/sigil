@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 use sigil::kernel::{Cx, NodeId};
 use sigil::layout::{LayoutEngine, TextMeasure};
 use sigil::prelude::*;
